@@ -1,0 +1,120 @@
+/* Stand-in for Fhi.Helsedata.Stiler.
+
+   The RCL ships no CSS — the host provides it. In helsedata's Optimizely site that is the
+   Stiler stylesheet; here it is this file, styling the same `variabelutforsker-*` class names
+   the component emits. Adapted from samples/LegacyHost/wwwroot/css/host.css and kept in step
+   with it on purpose: if the two hosts style the component identically, any difference you see
+   between them is a difference in the *hosting model*, not in the CSS.
+
+   It exists so the sample host is legible, and to make the "styling lives outside the package"
+   split obvious rather than theoretical. */
+
+:root {
+  --ink: #201b33;
+  --ink-soft: #5a5570;
+  --rule: #e2e0ea;
+  --surface: #f6f6fa;
+  --accent: #521eff;
+  --accent-dark: #32378d;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: #fff;
+  color: var(--ink);
+  font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.hostbar {
+  background: var(--ink);
+  color: #fff;
+  padding: 12px 24px;
+  display: flex;
+  gap: 16px;
+  align-items: baseline;
+  flex-wrap: wrap;
+  font-size: 14px;
+}
+.hostbar span { color: #b9b5cc; }
+
+.hostmain { max-width: 1100px; margin: 0 auto; padding: 28px 24px 64px; }
+
+.hostchrome-note {
+  color: var(--ink-soft);
+  font-size: 14.5px;
+  background: var(--surface);
+  border-left: 3px solid var(--accent);
+  padding: 12px 16px;
+  margin: 0 0 12px;
+}
+.hostchrome-note:last-child { margin-bottom: 24px; }
+.hostchrome-note code { font-size: 13px; }
+
+/* A dashed frame so it is obvious which part of the page came out of the package. */
+.hostframe {
+  border: 1px dashed #c3bfd4;
+  border-radius: 6px;
+  padding: 22px;
+}
+
+/* ---- the component's own class names ---- */
+
+.variabelutforsker-tittel { margin: 0 0 18px; font-size: 26px; letter-spacing: -0.01em; }
+
+.variabelutforsker-sok { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; margin-bottom: 14px; }
+.variabelutforsker-sok-ledetekst { display: block; font-size: 13px; color: var(--ink-soft); margin-bottom: 4px; width: 100%; }
+.variabelutforsker-sok-felt {
+  flex: 1 1 320px;
+  padding: 9px 12px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  font: inherit;
+}
+.variabelutforsker-sok-felt:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.variabelutforsker-sok-knapp {
+  padding: 9px 20px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.variabelutforsker-sok-knapp:hover:not(:disabled) { background: var(--accent-dark); }
+.variabelutforsker-sok-knapp:disabled { opacity: 0.55; cursor: default; }
+
+.variabelutforsker-status { font-size: 14px; color: var(--ink-soft); margin: 0 0 14px; }
+.variabelutforsker-feil { color: #a11338; }
+.variabelutforsker-tomt { color: var(--ink-soft); }
+
+.variabelutforsker-tabell-omslag { overflow-x: auto; }
+.variabelutforsker-tabell { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+.variabelutforsker-tabell th {
+  text-align: left;
+  font-size: 12px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  font-weight: 500;
+  border-bottom: 1px solid var(--ink-soft);
+  padding: 8px 14px 8px 0;
+}
+.variabelutforsker-tabell td { border-bottom: 1px solid var(--rule); padding: 12px 14px 12px 0; vertical-align: top; }
+
+.variabelutforsker-variabel-navn { display: block; font-weight: 600; }
+.variabelutforsker-variabel-kode {
+  display: block;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-top: 2px;
+}
+.variabelutforsker-variabel-beskrivelse {
+  display: block;
+  color: var(--ink-soft);
+  margin-top: 6px;
+  max-width: 60ch;
+}
