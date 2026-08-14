@@ -63,6 +63,17 @@ jobs:
           dotnet test --configuration Release --no-build --verbosity quiet
           echo "TEST_DUR=$((SECONDS-S))s" >> "$GITHUB_ENV"
 
+      - name: Format
+        id: format
+        continue-on-error: true
+        run: |
+          S=$SECONDS
+          # .editorconfig is Munin's, so the two codebases read the same way.
+          # .gitattributes forces LF in the working tree, which keeps this agreeing
+          # between a Linux runner and a Windows checkout.
+          dotnet format --verify-no-changes
+          echo "FORMAT_DUR=$((SECONDS-S))s" >> "$GITHUB_ENV"
+
       - name: Pack
         id: pack
         continue-on-error: true
@@ -81,16 +92,18 @@ jobs:
 
           R='${{ steps.restore.outcome }}'; B='${{ steps.build.outcome }}'
           T='${{ steps.test.outcome }}';    P='${{ steps.pack.outcome }}'
+          F='${{ steps.format.outcome }}'
 
           FILE=pr-summary.md
           {
-            echo "### Status: Build $(badge "$B") · Test $(badge "$T") · Pack $(badge "$P")"
+            echo "### Status: Build $(badge "$B") · Test $(badge "$T") · Format $(badge "$F") · Pack $(badge "$P")"
             echo ""
             echo "| Step    | Outcome | Duration |"
             echo "|---------|---------|----------|"
             echo "| restore | $(to_emoji "$R") $R | ${RESTORE_DUR:-—} |"
             echo "| build   | $(to_emoji "$B") $B | ${BUILD_DUR:-—} |"
             echo "| test    | $(to_emoji "$T") $T | ${TEST_DUR:-—} |"
+            echo "| format  | $(to_emoji "$F") $F | ${FORMAT_DUR:-—} |"
             echo "| pack    | $(to_emoji "$P") $P | ${PACK_DUR:-—} |"
             echo ""
             if compgen -G "artifacts/*.nupkg" > /dev/null; then
@@ -125,7 +138,8 @@ jobs:
         run: |
           fail=0
           for s in '${{ steps.restore.outcome }}' '${{ steps.build.outcome }}' \
-                   '${{ steps.test.outcome }}' '${{ steps.pack.outcome }}'; do
+                   '${{ steps.test.outcome }}' '${{ steps.format.outcome }}' \
+                   '${{ steps.pack.outcome }}'; do
             [ "$s" = "success" ] || fail=1
           done
           [ "$fail" = "0" ] || { echo "::error::One or more build phases failed — see the summary table."; exit 1; }

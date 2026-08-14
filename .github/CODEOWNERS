@@ -1,0 +1,14 @@
+# The Munin team owns this repository. Team ownership rather than an individual's,
+# so the package a partner service depends on does not hang off one person's account.
+* @FHIDev/fhi-munin-maintainer
+
+# The component library is the contract with every consuming host. Changes here can
+# break helsedata's site without breaking our build, so they get looked at.
+/src/Fhi.Munin.Explorer.Blazor/   @FHIDev/fhi-munin-maintainer
+/src/Fhi.Munin.Explorer.Contracts/ @FHIDev/fhi-munin-maintainer
+
+# Publishing is irreversible: a version pushed to nuget.org can be unlisted but never
+# withdrawn.
+/.github/workflows/  @FHIDev/fhi-munin-maintainer
+/Directory.Build.props @FHIDev/fhi-munin-maintainer
+/BannedSymbols.txt   @FHIDev/fhi-munin-maintainer

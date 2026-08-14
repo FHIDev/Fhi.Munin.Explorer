@@ -1,0 +1,14 @@
+@* Load-bearing, despite looking like boilerplate.
+
+   A project with no .razor files at all is not treated as a Blazor project by the Razor
+   SDK, so the Blazor framework static web assets — including _framework/blazor.server.js —
+   are never contributed to it. The page then renders, MapBlazorHub answers on
+   /_blazor/negotiate, and the component still never appears: the browser 404s on the
+   script, so the circuit never starts.
+
+   helsedata's Optimizely project satisfies this naturally; it has an _Imports.razor and
+   thirteen .razor components of its own. A sample host with none was the anomaly. *@
+
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+@using Fhi.Munin.Explorer.Blazor
