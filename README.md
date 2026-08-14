@@ -68,4 +68,3 @@ GitHub Issues here are open for external consumers to report problems.
 ## Licence
 
 MIT.
-# protection probe

@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write # sticky build-summary comment on same-repo PRs
 
 concurrency:
   # One run per branch; a new push cancels the in-flight run for the same ref.
@@ -17,33 +18,114 @@ jobs:
   build:
     name: build + test
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
 
+      - name: Cache NuGet
+        uses: actions/cache@v5
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      # Each phase records its own outcome and duration so the PR comment can show
+      # which one failed rather than just "the build broke". continue-on-error keeps
+      # later phases running so the table is complete; the gate step at the end is
+      # what actually fails the job.
       - name: Restore
-        run: dotnet restore
+        id: restore
+        continue-on-error: true
+        run: |
+          S=$SECONDS
+          dotnet restore
+          echo "RESTORE_DUR=$((SECONDS-S))s" >> "$GITHUB_ENV"
 
       - name: Build
-        # TreatWarningsAsErrors is set in Directory.Build.props, so a new warning
-        # fails here. The RCL's banned-API guard (RS0030) surfaces the same way.
-        run: dotnet build --configuration Release --no-restore
+        id: build
+        continue-on-error: true
+        run: |
+          S=$SECONDS
+          # TreatWarningsAsErrors is set in Directory.Build.props, so a new warning
+          # fails here — as does the RCL's banned-API guard (RS0030).
+          dotnet build --configuration Release --no-restore
+          echo "BUILD_DUR=$((SECONDS-S))s" >> "$GITHUB_ENV"
 
       - name: Test
-        run: dotnet test --configuration Release --no-build --verbosity quiet
+        id: test
+        continue-on-error: true
+        run: |
+          S=$SECONDS
+          dotnet test --configuration Release --no-build --verbosity quiet
+          echo "TEST_DUR=$((SECONDS-S))s" >> "$GITHUB_ENV"
 
       - name: Pack
-        # Packaging is the deliverable and a nuget.org publish cannot be undone,
-        # so prove the package still builds on every change rather than at tag time.
-        run: dotnet pack --configuration Release --no-build --output artifacts
+        id: pack
+        continue-on-error: true
+        run: |
+          S=$SECONDS
+          # Packaging is the deliverable and a nuget.org publish cannot be undone,
+          # so prove the package still builds on every change, not just at tag time.
+          dotnet pack --configuration Release --no-build --output artifacts
+          echo "PACK_DUR=$((SECONDS-S))s" >> "$GITHUB_ENV"
+
+      - name: Summary
+        if: always()
+        run: |
+          to_emoji() { case "$1" in success) echo "✅";; failure) echo "❌";; skipped) echo "⏭️";; *) echo "❔";; esac; }
+          badge() { case "$1" in success) echo "✅";; *) echo "❌";; esac; }
+
+          R='${{ steps.restore.outcome }}'; B='${{ steps.build.outcome }}'
+          T='${{ steps.test.outcome }}';    P='${{ steps.pack.outcome }}'
+
+          FILE=pr-summary.md
+          {
+            echo "### Status: Build $(badge "$B") · Test $(badge "$T") · Pack $(badge "$P")"
+            echo ""
+            echo "| Step    | Outcome | Duration |"
+            echo "|---------|---------|----------|"
+            echo "| restore | $(to_emoji "$R") $R | ${RESTORE_DUR:-—} |"
+            echo "| build   | $(to_emoji "$B") $B | ${BUILD_DUR:-—} |"
+            echo "| test    | $(to_emoji "$T") $T | ${TEST_DUR:-—} |"
+            echo "| pack    | $(to_emoji "$P") $P | ${PACK_DUR:-—} |"
+            echo ""
+            if compgen -G "artifacts/*.nupkg" > /dev/null; then
+              echo "**Packages**"
+              echo ""
+              for f in artifacts/*.nupkg; do echo "- \`$(basename "$f")\`"; done
+              echo ""
+            fi
+            echo "**Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          } | tee "$FILE" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Comment summary on PR
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        uses: marocchino/sticky-pull-request-comment@v3
+        with:
+          header: build-summary
+          path: pr-summary.md
 
       - name: Upload packages
-        uses: actions/upload-artifact@v4
+        if: steps.pack.outcome == 'success'
+        uses: actions/upload-artifact@v7
         with:
           name: nupkg
           path: artifacts/*.nupkg
           if-no-files-found: ignore
           retention-days: 14
+
+      # continue-on-error above means the job would otherwise report success even
+      # when a phase failed. This is what actually fails it.
+      - name: Gate
+        if: always()
+        run: |
+          fail=0
+          for s in '${{ steps.restore.outcome }}' '${{ steps.build.outcome }}' \
+                   '${{ steps.test.outcome }}' '${{ steps.pack.outcome }}'; do
+            [ "$s" = "success" ] || fail=1
+          done
+          [ "$fail" = "0" ] || { echo "::error::One or more build phases failed — see the summary table."; exit 1; }
