@@ -10,5 +10,11 @@
 # override after following the redirect — you would get a separate database and a silently
 # split bead pool. There must be no metadata.json alongside this file.
 #
-# Relative paths resolve from the project root (the parent of .beads).
-../Fhi.Metadata/.beads
+# Relative paths resolve from the project root (the parent of .beads), so this assumes the
+# Munin checkout sits alongside this one.
+#
+# Lower-case on purpose. Locally the sibling is C:\source\fhigit\Fhi.Metadata and Windows
+# does not care about case; in Skybert the forge clones anvils to /home/forge/anvils/<name>
+# and the Munin anvil is named `fhi.metadata`. Linux does care, so the lower-case form is
+# the only spelling that resolves in both places.
+../fhi.metadata/.beads

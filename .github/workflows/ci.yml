@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  # One run per branch; a new push cancels the in-flight run for the same ref.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        # TreatWarningsAsErrors is set in Directory.Build.props, so a new warning
+        # fails here. The RCL's banned-API guard (RS0030) surfaces the same way.
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test --configuration Release --no-build --verbosity quiet
+
+      - name: Pack
+        # Packaging is the deliverable and a nuget.org publish cannot be undone,
+        # so prove the package still builds on every change rather than at tag time.
+        run: dotnet pack --configuration Release --no-build --output artifacts
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: nupkg
+          path: artifacts/*.nupkg
+          if-no-files-found: ignore
+          retention-days: 14
