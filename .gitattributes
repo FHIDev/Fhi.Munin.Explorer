@@ -1,0 +1,17 @@
+# Normalise line endings so a Linux CI runner and a Windows dev machine agree.
+* text=auto
+
+*.cs        text diff=csharp
+*.razor     text
+*.csproj    text
+*.props     text
+*.slnx      text
+*.md        text
+*.json      text
+*.config    text
+*.yml       text
+
+*.png binary
+*.jpg binary
+*.woff binary
+*.woff2 binary
