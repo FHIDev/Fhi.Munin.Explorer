@@ -15,6 +15,14 @@
 Bead: Fhi.Metadata-
 Closes FHIDev/Munin#
 
+## Changelog
+
+<!-- Anything that touches src/ needs a fragment: changelog.d/<slug>.md, one line saying what
+     changed for someone embedding the package and what they have to do about it. CI checks it.
+     Format and examples: changelog.d/README.md. Docs, samples, tests and CI need none. -->
+
+- [ ] Added `changelog.d/<slug>.md`, or this PR does not change `src/`
+
 ## Host-compatibility check
 
 The RCL has to render in helsedata's Optimizely CMS (legacy Blazor Server, no router)
