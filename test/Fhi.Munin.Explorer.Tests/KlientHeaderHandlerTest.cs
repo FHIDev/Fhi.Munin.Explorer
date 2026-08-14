@@ -38,7 +38,7 @@ public class KlientHeaderHandlerTest
     }
 
     [Fact]
-    public async Task SendAsync_NårForespørselenSendes_ThenErVersjonenUtenByggemetadata()
+    public async Task SendAsync_NårForespørselenSendes_ThenErVersjonenIkkeTom()
     {
         var stub = StubbetHttpHandler.Status(HttpStatusCode.NotFound);
 
@@ -46,10 +46,40 @@ public class KlientHeaderHandlerTest
 
         var verdi = Assert.Single(stub.SisteKlientheader);
         Assert.StartsWith("blazor/", verdi, StringComparison.Ordinal);
-
-        // "+<commit sha>" would give Munin one label value per commit — a dashboard nobody can group by.
-        Assert.DoesNotContain('+', verdi);
         Assert.NotEqual("blazor/", verdi);
+        Assert.NotEqual("blazor/ukjent", verdi);
+    }
+
+    [Theory]
+    // No build currently stamps a sha, but a release pipeline or SourceLink would — the header
+    // must not gain a label value per commit the day that changes.
+    [InlineData("0.1.0+9f2c1ab", "0.1.0")]
+    [InlineData("1.0.0-beta.2+9f2c1ab", "1.0.0-beta.2")]
+    [InlineData("0.1.0", "0.1.0")]
+    [InlineData("1.2.3.4", "1.2.3.4")]
+    public void Versjon_NårVersjonenHarByggemetadata_ThenBeholdesBareVersjonsdelen(string raa, string forventet)
+    {
+        Assert.Equal(forventet, KlientHeaderHandler.Versjon(raa));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("+9f2c1ab")]
+    [InlineData("(/)")]
+    public void Versjon_NårVersjonenIkkeGirNoeBrukbart_ThenBrukesUkjent(string? raa)
+    {
+        // "ukjent" is a real label Munin can group by; an empty or unsendable value is not.
+        Assert.Equal("ukjent", KlientHeaderHandler.Versjon(raa));
+    }
+
+    [Fact]
+    public void Versjon_NårVersjonenHarTegnSomIkkeHørerHjemmeIEnHeader_ThenFjernesDe()
+    {
+        // A header value has to survive being sent; a stray space or slash must not make the
+        // request the thing that fails.
+        Assert.Equal("1.0.0rc1", KlientHeaderHandler.Versjon("1.0.0 rc/1"));
     }
 
     [Fact]

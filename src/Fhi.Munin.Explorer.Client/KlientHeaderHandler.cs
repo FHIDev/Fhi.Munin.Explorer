@@ -46,38 +46,50 @@ internal sealed class KlientHeaderHandler : DelegatingHandler
         return base.SendAsync(request, cancellationToken);
     }
 
+    /// <summary>Used when the assembly carries no usable version at all.</summary>
+    private const string Ukjent = "ukjent";
+
     /// <summary>
-    /// Reads the assembly's informational version — the one the build stamps from
-    /// <c>VersionPrefix</c>, and the release pipeline from the tag.
+    /// Reads the assembly's informational version — today that is <c>VersionPrefix</c> from
+    /// <c>Directory.Build.props</c>, and at release time whatever the pipeline passes as
+    /// <c>-p:Version=</c>.
     /// </summary>
+    /// <remarks>
+    /// Nothing in this repository stamps a commit sha into the version yet, so every build between
+    /// two releases reports the same value. Munin can therefore tell releases apart but not
+    /// individual builds; enabling SourceLink or setting <c>SourceRevisionId</c> would change that,
+    /// and <see cref="Versjon"/> is written to cope with it when it does.
+    /// </remarks>
     private static string LesVersjon()
     {
         var assembly = typeof(KlientHeaderHandler).Assembly;
 
-        var versjon = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
-                      ?? assembly.GetName().Version?.ToString();
-
-        if (string.IsNullOrWhiteSpace(versjon))
-        {
-            return "ukjent";
-        }
-
-        // SourceLink appends "+<commit sha>". Keeping it would give Munin a new label value per
-        // commit, which is exactly the cardinality explosion that makes a dashboard useless.
-        var pluss = versjon.IndexOf('+');
-        if (pluss >= 0)
-        {
-            versjon = versjon[..pluss];
-        }
-
-        return Rensk(versjon);
+        return Versjon(assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+                       ?? assembly.GetName().Version?.ToString());
     }
 
-    /// <summary>Keeps the value to characters that are safe in a header token.</summary>
-    private static string Rensk(string versjon)
+    /// <summary>Reduces a raw assembly version to the part that belongs in the header.</summary>
+    /// <remarks>
+    /// Anything after a <c>+</c> is semver build metadata — a commit sha, once a build stamps one.
+    /// Keeping it would hand Munin a new label value per commit, the cardinality explosion that
+    /// makes a dashboard useless, so it is dropped. What remains is reduced to characters that are
+    /// safe in a header token, because an odd version string must never be the reason a page fails
+    /// to load its data.
+    /// </remarks>
+    internal static string Versjon(string? raaVersjon)
     {
-        var rene = versjon.Where(static c => char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_').ToArray();
+        if (string.IsNullOrWhiteSpace(raaVersjon))
+        {
+            return Ukjent;
+        }
 
-        return rene.Length == 0 ? "ukjent" : new string(rene);
+        var pluss = raaVersjon.IndexOf('+');
+        var utenByggemetadata = pluss >= 0 ? raaVersjon[..pluss] : raaVersjon;
+
+        var rene = utenByggemetadata
+            .Where(static c => char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_')
+            .ToArray();
+
+        return rene.Length == 0 ? Ukjent : new string(rene);
     }
 }
