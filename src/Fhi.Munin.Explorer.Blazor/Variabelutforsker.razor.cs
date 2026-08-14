@@ -3,6 +3,34 @@ using Microsoft.AspNetCore.Components;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
+/// <summary>
+/// Search and browse published variables from the Munin Explorer API.
+/// </summary>
+/// <remarks>
+/// <para>
+/// This package ships no CSS, so the host stylesheet — <c>Fhi.Helsedata.Stiler</c> on
+/// helsedata.no — owns everything visual. Three of those are accessibility requirements the
+/// markup here cannot meet on its own, and a host that skips them fails WCAG whatever this
+/// component does:
+/// </para>
+/// <list type="bullet">
+/// <item><description>
+/// A visible focus indicator on the search field, the Søk button and the scrollable table
+/// wrapper (<c>variabelutforsker-tabell-omslag</c>, which is deliberately focusable so it can
+/// be scrolled from the keyboard). WCAG 2.4.7.
+/// </description></item>
+/// <item><description>
+/// Text and non-text contrast, WCAG 1.4.3 and 1.4.11 — including the em dash that stands in
+/// for a missing value.
+/// </description></item>
+/// <item><description>
+/// A <c>variabelutforsker-visuelt-skjult</c> rule that takes an element out of the visual
+/// layout while leaving it readable by assistive technology (the usual clip-rect recipe, not
+/// <c>display: none</c>, which hides it from screen readers too). Without it the table caption
+/// and the "Ikke oppgitt" stand-in for empty cells simply appear on screen.
+/// </description></item>
+/// </list>
+/// </remarks>
 public partial class Variabelutforsker : ComponentBase
 {
     /// <summary>

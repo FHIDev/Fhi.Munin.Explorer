@@ -43,8 +43,12 @@ public class VariabelutforskerTest : BunitContext
             => throw new HttpRequestException("nede");
     }
 
-    /// <summary>A client that never answers until the test lets it, so the loading state can be inspected.</summary>
-    private sealed class TregClient : IMuninExplorerClient
+    /// <summary>
+    /// A client that never answers until the test lets it, so the loading state can be inspected.
+    /// Given a <paramref name="forsteSvar"/> it answers the first call at once and stalls only on
+    /// the next one — the case where a second search is in flight over rows already on screen.
+    /// </summary>
+    private sealed class TregClient(Side<VariabelSammendrag>? forsteSvar = null) : IMuninExplorerClient
     {
         private readonly TaskCompletionSource<Side<VariabelSammendrag>> _svar =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -55,7 +59,7 @@ public class VariabelutforskerTest : BunitContext
             string? sok, int side = 1, int sideStorrelse = 25, CancellationToken cancellationToken = default)
         {
             Kall++;
-            return _svar.Task;
+            return Kall == 1 && forsteSvar is not null ? Task.FromResult(forsteSvar) : _svar.Task;
         }
 
         public void Svar(Side<VariabelSammendrag> side) => _svar.TrySetResult(side);
@@ -281,6 +285,7 @@ public class VariabelutforskerTest : BunitContext
         var varsel = cut.Find("[role='alert']");
 
         Assert.Equal("assertive", varsel.GetAttribute("aria-live"));
+        Assert.Equal("true", varsel.GetAttribute("aria-atomic"));
         Assert.Contains("Kunne ikke hente variabler", varsel.TextContent);
         Assert.Contains("Prøv igjen", varsel.TextContent); // a way out, not just bad news
     }
@@ -462,6 +467,27 @@ public class VariabelutforskerTest : BunitContext
         cut.Find("form").Submit();
 
         Assert.Equal(1, client.Kall);
+    }
+
+    [Fact]
+    public async Task Sok_NårRadeneErForeldetAvEtNyttSøk_ThenMerkesTabellenSomOpptatt()
+    {
+        // The previous rows stay on screen while the next search runs, so they are stale
+        // rather than current — aria-busy is what says so to a screen reader.
+        var treff = EnSide(Variabel("1. Tale", "KODE"));
+        var client = new TregClient(treff);
+        var cut = RenderMed(client);
+
+        Assert.Equal("false", cut.Find("div.variabelutforsker-tabell-omslag").GetAttribute("aria-busy"));
+
+        cut.Find("form").Submit(); // second search, still in flight
+
+        Assert.Equal("true", cut.Find("div.variabelutforsker-tabell-omslag").GetAttribute("aria-busy"));
+
+        await cut.InvokeAsync(() => client.Svar(treff));
+
+        cut.WaitForAssertion(() =>
+            Assert.Equal("false", cut.Find("div.variabelutforsker-tabell-omslag").GetAttribute("aria-busy")));
     }
 
     [Fact]
