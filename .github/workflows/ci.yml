@@ -143,3 +143,37 @@ jobs:
             [ "$s" = "success" ] || fail=1
           done
           [ "$fail" = "0" ] || { echo "::error::One or more build phases failed — see the summary table."; exit 1; }
+
+  # Changelog fragments. CHANGELOG.md is a single file every branch wants to edit on the same
+  # few lines — the most reliable merge conflict there is — so changes are recorded one file
+  # per change under changelog.d/ and folded in at release time. That only works if the
+  # fragments get written, which is what this job is for.
+  #
+  # A separate job, not a step in "build + test": that job's name is a required status check
+  # and renaming it breaks branch protection, and a missing changelog is not a broken build.
+  # For this to *block* a merge rather than just show red, add "changelog fragment" to the
+  # branch-protection required checks.
+  changelog:
+    name: changelog fragment
+    # Dependabot touches src/**/*.csproj on every bump and ships its own changelog, and
+    # [no-changelog] in the title is the escape hatch for the mechanical src/ change that has
+    # nothing to tell a host. It sits in the PR title where a reviewer sees it.
+    if: >-
+      github.event_name == 'pull_request'
+      && github.event.pull_request.user.login != 'dependabot[bot]'
+      && !contains(github.event.pull_request.title, '[no-changelog]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The check diffs against the merge base, so it needs both sides of the history.
+          fetch-depth: 0
+
+      - name: Require a changelog fragment for src/ changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        # The same script developers can run locally before pushing, so a red check here is
+        # never a surprise that only CI knows how to reproduce.
+        run: ./scripts/check-changelog-fragment.sh "$BASE_SHA" "$HEAD_SHA"
