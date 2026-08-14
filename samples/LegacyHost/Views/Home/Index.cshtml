@@ -1,8 +1,20 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+@using Fhi.Munin.Explorer.Blazor
+@{
+    ViewData["Title"] = "Legacy host";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="hostchrome">
+    <p class="hostchrome-note">
+        This page is plain MVC. Everything inside the frame below is the
+        <code>Fhi.Munin.Explorer.Blazor</code> package, mounted the way helsedata's
+        Optimizely CMS mounts Blazor components — a <code>&lt;component&gt;</code> tag helper
+        in a Razor view, with no router and no <code>@@rendermode</code>.
+    </p>
+</div>
+
+<div class="hostframe">
+    @* render-mode is set HERE, by the host. The component itself is render-mode free.
+       Server (not ServerPrerendered) because the component fetches on initialise and
+       prerendering would run that twice. *@
+    <component type="typeof(Variabelutforsker)" render-mode="Server" param-Sprak="@("no")" />
 </div>

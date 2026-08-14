@@ -4,6 +4,11 @@
     <ProjectReference Include="..\Fhi.Munin.Explorer.Contracts\Fhi.Munin.Explorer.Contracts.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.11" />
+  </ItemGroup>
+
   <PropertyGroup>
   </PropertyGroup>
 
