@@ -122,9 +122,15 @@ public partial class Variabelutforsker : ComponentBase
     private int TittelNivaa => Math.Clamp(OverskriftNivaa, 1, 6);
 
     /// <summary>
-    /// The heading level for a result card, one step below the component's own title so the
+    /// The heading level for a result card: one step below the component's own title, so the
     /// outline stays unbroken however deep the host mounted us.
     /// </summary>
+    /// <remarks>
+    /// With the title already at <c>h6</c> there is no level below, so the cards sit at
+    /// <c>h6</c> alongside it. That flattens the outline rather than breaking it, which is the
+    /// better of the two available answers — HTML has no <c>h7</c>, and dropping the headings
+    /// altogether would cost the heading rotor these cards were given for.
+    /// </remarks>
     private int RadNivaa => Math.Clamp(TittelNivaa + 1, 1, 6);
 
     /// <summary>
