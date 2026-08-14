@@ -10,6 +10,9 @@
 *.json      text
 *.config    text
 *.yml       text
+*.ps1       text
+# LF always: CI runs this on ubuntu and git bash chokes on a CRLF shebang line.
+*.sh        text eol=lf
 
 *.png binary
 *.jpg binary
