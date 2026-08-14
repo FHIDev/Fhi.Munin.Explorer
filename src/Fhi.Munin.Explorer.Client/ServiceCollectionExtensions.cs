@@ -1,6 +1,7 @@
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Fhi.Munin.Explorer.Client;
 
@@ -34,7 +35,14 @@ public static class ServiceCollectionExtensions
                 "the base URL of the Munin API, e.g. https://munin.skytest.fhi.no");
         }
 
+        // TryAdd, so a host that wants real tokens registers its own provider BEFORE
+        // calling AddMuninExplorer and wins. Registered as a singleton on purpose: the
+        // handler pipeline below is built and cached by IHttpClientFactory in its own
+        // scope and reused across callers, so nothing scoped may be captured in it.
+        services.TryAddSingleton<IMuninExplorerTokenProvider, AnonymTokenProvider>();
+
         services.AddTransient<KlientHeaderHandler>();
+        services.AddTransient<BearerTokenHandler>();
 
         services.AddHttpClient<IMuninExplorerClient, MuninExplorerClient>(client =>
         {
@@ -43,7 +51,11 @@ public static class ServiceCollectionExtensions
             client.BaseAddress = new Uri(options.ApiBaseUrl.TrimEnd('/') + "/");
         })
         // Identifies this component to Munin's observability — see KlientHeaderHandler.
-        .AddHttpMessageHandler<KlientHeaderHandler>();
+        .AddHttpMessageHandler<KlientHeaderHandler>()
+        // Attaches the host's user token when it supplies one. With no provider
+        // registered the default supplies none and calls stay anonymous, which is what
+        // public metadata browsing needs.
+        .AddHttpMessageHandler<BearerTokenHandler>();
 
         return services;
     }
