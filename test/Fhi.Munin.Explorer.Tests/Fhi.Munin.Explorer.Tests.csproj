@@ -24,7 +24,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Fhi.Munin.Explorer.Blazor\Fhi.Munin.Explorer.Blazor.csproj" />
+    <ProjectReference Include="..\..\src\Fhi.Munin.Explorer.Client\Fhi.Munin.Explorer.Client.csproj" />
     <ProjectReference Include="..\..\src\Fhi.Munin.Explorer.Contracts\Fhi.Munin.Explorer.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Responses captured from the live API. Embedded rather than copied to the output
+         directory so the tests read them the same way on every runner. -->
+    <EmbeddedResource Include="Testdata\*.json" />
   </ItemGroup>
 
 </Project>

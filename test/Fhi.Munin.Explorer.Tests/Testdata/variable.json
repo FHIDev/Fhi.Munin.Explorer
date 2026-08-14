@@ -1,0 +1,522 @@
+{
+  "id": "bc8a6515-af36-44d0-aa10-b498813327b4",
+  "code": "V_ALS.F1.ALSFRSR1TALE",
+  "preferredTerm": "1. Tale",
+  "beskrivelse": "Angir pasientens grad av utfall på \"1. Tale\" i ALSFRS-R.",
+  "kildeId": "8ec4c2c4-662d-47a5-a946-f1086a014070",
+  "kildeName": "Als registeret",
+  "kildeKortNavn": "ALS",
+  "kildeType": "nasjonaltMedisinskKvalitetsregister",
+  "datasamlingId": "0c027ce6-2994-45bf-99ec-facad3d1703e",
+  "datasamlingName": "Inklusjon",
+  "datasamlingStatistikkType": "yearly",
+  "variabelgruppeId": "6f649fb0-5181-485d-8b7c-2e70fba2f6f1",
+  "variabelgruppeName": "Funksjonsscore",
+  "dataFrom": "2010-01-01T00:00:00.000Z",
+  "dataTo": "2025-06-01T00:00:00.000Z",
+  "dataType": "2",
+  "versjonStatus": "Active",
+  "versjonId": "13e96651-095d-4337-8721-ab30a15e36df",
+  "additionalProperties": {
+    "DataType": "2",
+    "DatabaseReferanse": "ALSFRSR1Tale",
+    "Erstatter": "ALSFRS_1Tale",
+    "Identifiseringsgrad": "1",
+    "Kommentar": "Variabelen er gyldig fra 2019 og fremover.\n",
+    "Opprinnelse": "5",
+    "Synlig": "1"
+  },
+  "versjoner": [
+    {
+      "versjonId": "13e96651-095d-4337-8721-ab30a15e36df",
+      "preferredTerm": "1. Tale",
+      "beskrivelse": "Angir pasientens grad av utfall på \"1. Tale\" i ALSFRS-R.",
+      "gyldigFra": "2010-01-01T00:00:00.000Z",
+      "gyldigTil": null,
+      "status": "Active",
+      "publishedAt": null,
+      "additionalProperties": {
+        "DataType": "2",
+        "DatabaseReferanse": "ALSFRSR1Tale",
+        "Erstatter": "ALSFRS_1Tale",
+        "Identifiseringsgrad": "1",
+        "Kommentar": "Variabelen er gyldig fra 2019 og fremover.\n",
+        "Opprinnelse": "5",
+        "Synlig": "1"
+      }
+    }
+  ],
+  "kodeverklinker": [
+    {
+      "kodeverkType": "Kildekodeverk",
+      "kodeverkReference": "2336",
+      "displayName": null,
+      "harKodeverdier": true
+    }
+  ],
+  "statistikker": [],
+  "alleVariabelgrupper": [
+    {
+      "id": "6f649fb0-5181-485d-8b7c-2e70fba2f6f1",
+      "name": "Funksjonsscore",
+      "parentId": "388ee80e-95ab-40cc-91c2-5d1c6ed0350e"
+    }
+  ],
+  "alleDatasamlinger": [
+    {
+      "id": "0c027ce6-2994-45bf-99ec-facad3d1703e",
+      "name": "Inklusjon",
+      "validFrom": "2026-05-19T13:03:22.085Z",
+      "validTo": null
+    }
+  ],
+  "propertyMetadata": [
+    {
+      "key": "VersjonReferanseKode",
+      "displayNameTranslations": {
+        "no": "Versjonsreferanse",
+        "en": "Version reference"
+      },
+      "groupTranslations": {},
+      "sortOrder": 5,
+      "type": "String",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "NavnEngelsk",
+      "displayNameTranslations": {
+        "no": "Navn på engelsk",
+        "en": "Name in English"
+      },
+      "groupTranslations": {
+        "no": "Identifikasjon",
+        "en": "Identification"
+      },
+      "sortOrder": 10,
+      "type": "String",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "BeskrivelseEngelsk",
+      "displayNameTranslations": {
+        "no": "Beskrivelse på engelsk",
+        "en": "Description in English"
+      },
+      "groupTranslations": {
+        "no": "Beskrivelse",
+        "en": "Description"
+      },
+      "sortOrder": 20,
+      "type": "Text",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "PreferredTerm",
+      "displayNameTranslations": {
+        "no": "Foretrukken term",
+        "en": "Preferred term"
+      },
+      "groupTranslations": {},
+      "sortOrder": 20,
+      "type": "String",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "Beskrivelse",
+      "displayNameTranslations": {
+        "no": "Beskrivelse",
+        "en": "Description"
+      },
+      "groupTranslations": {},
+      "sortOrder": 30,
+      "type": "Text",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "Opprinnelse",
+      "displayNameTranslations": {
+        "no": "Opprinnelse",
+        "en": "Origin"
+      },
+      "groupTranslations": {
+        "no": "Beskrivelse",
+        "en": "Description"
+      },
+      "sortOrder": 30,
+      "type": "SingleSelect",
+      "optionsJson": "[{\"value\":\"1\",\"label\":\"Beregnet\",\"labelEn\":\"Calculated\"},{\"value\":\"2\",\"label\":\"Avledet\",\"labelEn\":\"Derived\"},{\"value\":\"3\",\"label\":\"Kodet\",\"labelEn\":\"Coded\"},{\"value\":\"4\",\"label\":\"Direkte fra fagsystem/EPJ\",\"labelEn\":\"Directly from clinical system/EHR\"},{\"value\":\"5\",\"label\":\"Direkte fra skjema\",\"labelEn\":\"Directly from form\"},{\"value\":\"6\",\"label\":\"Annet\",\"labelEn\":\"Other\"}]"
+    },
+    {
+      "key": "OpprinnelseUtledning",
+      "displayNameTranslations": {
+        "no": "Opprinnelse utledning",
+        "en": "Origin derivation"
+      },
+      "groupTranslations": {
+        "no": "Beskrivelse",
+        "en": "Description"
+      },
+      "sortOrder": 40,
+      "type": "Text",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "Kommentar",
+      "displayNameTranslations": {
+        "no": "Kommentar",
+        "en": "Comment"
+      },
+      "groupTranslations": {
+        "no": "Beskrivelse",
+        "en": "Description"
+      },
+      "sortOrder": 50,
+      "type": "Text",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "KommentarEngelsk",
+      "displayNameTranslations": {
+        "no": "Kommentar på engelsk",
+        "en": "Comment in English"
+      },
+      "groupTranslations": {
+        "no": "Beskrivelse",
+        "en": "Description"
+      },
+      "sortOrder": 60,
+      "type": "Text",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "KvalitetsnoteEngelsk",
+      "displayNameTranslations": {
+        "no": "Kvalitetsnote på engelsk",
+        "en": "Quality note in English"
+      },
+      "groupTranslations": {
+        "no": "Kvalitet",
+        "en": "Quality"
+      },
+      "sortOrder": 80,
+      "type": "Text",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "MaaleType",
+      "displayNameTranslations": {
+        "no": "Måletype",
+        "en": "Measurement type"
+      },
+      "groupTranslations": {
+        "no": "Datatype",
+        "en": "Data Type"
+      },
+      "sortOrder": 90,
+      "type": "String",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "MaaleEnhet",
+      "displayNameTranslations": {
+        "no": "Måleenhet",
+        "en": "Unit of measurement"
+      },
+      "groupTranslations": {
+        "no": "Datatype",
+        "en": "Data Type"
+      },
+      "sortOrder": 100,
+      "type": "String",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "DataType",
+      "displayNameTranslations": {
+        "no": "Datatype",
+        "en": "Data type"
+      },
+      "groupTranslations": {
+        "no": "Datatype",
+        "en": "Data Type"
+      },
+      "sortOrder": 110,
+      "type": "SingleSelect",
+      "optionsJson": "[{\"value\":\"1\",\"label\":\"String\",\"labelEn\":\"String\"},{\"value\":\"2\",\"label\":\"Integer\",\"labelEn\":\"Integer\"},{\"value\":\"3\",\"label\":\"Decimal\",\"labelEn\":\"Decimal\"},{\"value\":\"4\",\"label\":\"Boolean\",\"labelEn\":\"Boolean\"},{\"value\":\"5\",\"label\":\"Time\",\"labelEn\":\"Time\"},{\"value\":\"6\",\"label\":\"Date\",\"labelEn\":\"Date\"},{\"value\":\"7\",\"label\":\"Datetime\",\"labelEn\":\"Datetime\"},{\"value\":\"8\",\"label\":\"Uri\",\"labelEn\":\"Uri\"},{\"value\":\"9\",\"label\":\"Base64binary\",\"labelEn\":\"Base64binary\"},{\"value\":\"10\",\"label\":\"F\\u00F8dselsnummer (11 siffer)\",\"labelEn\":\"National identity number (11 digits)\"}]"
+    },
+    {
+      "key": "GyldigFra",
+      "displayNameTranslations": {
+        "no": "Gyldig fra",
+        "en": "Valid from"
+      },
+      "groupTranslations": {},
+      "sortOrder": 110,
+      "type": "Date",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "Lengde",
+      "displayNameTranslations": {
+        "no": "Lengde",
+        "en": "Length"
+      },
+      "groupTranslations": {
+        "no": "Datatype",
+        "en": "Data Type"
+      },
+      "sortOrder": 120,
+      "type": "Number",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "Kvalitetsnote",
+      "displayNameTranslations": {
+        "no": "Kvalitetsnote",
+        "en": "Quality Note"
+      },
+      "groupTranslations": {
+        "no": "Kvalitet",
+        "en": "Quality"
+      },
+      "sortOrder": 120,
+      "type": "Text",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "GyldigTil",
+      "displayNameTranslations": {
+        "no": "Gyldig til",
+        "en": "Valid to"
+      },
+      "groupTranslations": {},
+      "sortOrder": 120,
+      "type": "Date",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "Presisjon",
+      "displayNameTranslations": {
+        "no": "Presisjon",
+        "en": "Precision"
+      },
+      "groupTranslations": {
+        "no": "Datatype",
+        "en": "Data Type"
+      },
+      "sortOrder": 130,
+      "type": "Number",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "GrenseLav",
+      "displayNameTranslations": {
+        "no": "Grense lav",
+        "en": "Lower bound"
+      },
+      "groupTranslations": {
+        "no": "Validering",
+        "en": "Validation"
+      },
+      "sortOrder": 140,
+      "type": "String",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "GrenseHoy",
+      "displayNameTranslations": {
+        "no": "Grense høy",
+        "en": "Upper bound"
+      },
+      "groupTranslations": {
+        "no": "Validering",
+        "en": "Validation"
+      },
+      "sortOrder": 150,
+      "type": "String",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "Identifiseringsgrad",
+      "displayNameTranslations": {
+        "no": "Identifiseringsgrad",
+        "en": "Identification level"
+      },
+      "groupTranslations": {
+        "no": "Personvern",
+        "en": "Privacy"
+      },
+      "sortOrder": 160,
+      "type": "SingleSelect",
+      "optionsJson": "[{\"value\":\"1\",\"label\":\"Ikke vurdert\",\"labelEn\":\"Not assessed\"},{\"value\":\"2\",\"label\":\"Ingen\",\"labelEn\":\"None\"},{\"value\":\"3\",\"label\":\"Lav\",\"labelEn\":\"Low\"},{\"value\":\"4\",\"label\":\"Middels\",\"labelEn\":\"Medium\"},{\"value\":\"5\",\"label\":\"H\\u00F8y\",\"labelEn\":\"High\"}]"
+    },
+    {
+      "key": "Ledetekst",
+      "displayNameTranslations": {
+        "no": "Ledetekst",
+        "en": "Lead text"
+      },
+      "groupTranslations": {
+        "no": "Skjema",
+        "en": "Form"
+      },
+      "sortOrder": 170,
+      "type": "Text",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "LedetekstEngelsk",
+      "displayNameTranslations": {
+        "no": "Ledetekst på engelsk",
+        "en": "Lead text in English"
+      },
+      "groupTranslations": {
+        "no": "Skjema",
+        "en": "Form"
+      },
+      "sortOrder": 180,
+      "type": "Text",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "LedetekstFlerspraklig",
+      "displayNameTranslations": {
+        "no": "Ledetekst (flerspråklig)",
+        "en": "Lead text (multilingual)"
+      },
+      "groupTranslations": {
+        "no": "Skjema",
+        "en": "Form"
+      },
+      "sortOrder": 185,
+      "type": "MultilingualText",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "AnbefaltForDigitaltInnsyn",
+      "displayNameTranslations": {
+        "no": "Anbefalt for digitalt innsyn",
+        "en": "Recommended for digital access"
+      },
+      "groupTranslations": {
+        "no": "Publisering",
+        "en": "Publication"
+      },
+      "sortOrder": 210,
+      "type": "SingleSelect",
+      "optionsJson": "[{\"value\":\"1\",\"label\":\"Ja\",\"labelEn\":\"Yes\"},{\"value\":\"2\",\"label\":\"Nei\",\"labelEn\":\"No\"}]"
+    },
+    {
+      "key": "FlerkodetFelt",
+      "displayNameTranslations": {
+        "no": "Flerkodet felt",
+        "en": "Multi-coded field"
+      },
+      "groupTranslations": {
+        "no": "Publisering",
+        "en": "Publication"
+      },
+      "sortOrder": 215,
+      "type": "Boolean",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "TabellvennligNavn",
+      "displayNameTranslations": {
+        "no": "Tabellvennlig navn",
+        "en": "Table-friendly name"
+      },
+      "groupTranslations": {
+        "no": "Publisering",
+        "en": "Publication"
+      },
+      "sortOrder": 220,
+      "type": "String",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "TabellvennligNavnEngelsk",
+      "displayNameTranslations": {
+        "no": "Tabellvennlig navn på engelsk",
+        "en": "Table-friendly name in English"
+      },
+      "groupTranslations": {
+        "no": "Publisering",
+        "en": "Publication"
+      },
+      "sortOrder": 230,
+      "type": "String",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "DatabaseReferanse",
+      "displayNameTranslations": {
+        "no": "Databasereferanse",
+        "en": "Database reference"
+      },
+      "groupTranslations": {
+        "no": "Teknisk",
+        "en": "Technical"
+      },
+      "sortOrder": 240,
+      "type": "String",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "Erstatter",
+      "displayNameTranslations": {
+        "no": "Erstatter",
+        "en": "Replaces"
+      },
+      "groupTranslations": {
+        "no": "Versjonering",
+        "en": "Versioning"
+      },
+      "sortOrder": 250,
+      "type": "String",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "ErstattesAv",
+      "displayNameTranslations": {
+        "no": "Erstattes av",
+        "en": "Replaced by"
+      },
+      "groupTranslations": {
+        "no": "Versjonering",
+        "en": "Versioning"
+      },
+      "sortOrder": 260,
+      "type": "String",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "StartdatoHistorikk",
+      "displayNameTranslations": {
+        "no": "Startdato historikk",
+        "en": "History start date"
+      },
+      "groupTranslations": {
+        "no": "Versjonering",
+        "en": "Versioning"
+      },
+      "sortOrder": 270,
+      "type": "Date",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "Synlig",
+      "displayNameTranslations": {
+        "no": "Synlig",
+        "en": "Visible"
+      },
+      "groupTranslations": {
+        "no": "Synlighet",
+        "en": "Visibility"
+      },
+      "sortOrder": 280,
+      "type": "SingleSelect",
+      "optionsJson": "[{\"value\":\"1\",\"label\":\"Ja\",\"labelEn\":\"Yes\"},{\"value\":\"2\",\"label\":\"Nei\",\"labelEn\":\"No\"}]"
+    }
+  ]
+}

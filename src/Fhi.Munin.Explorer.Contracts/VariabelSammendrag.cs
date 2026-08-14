@@ -28,6 +28,12 @@ public sealed record VariabelSammendrag
     [JsonPropertyName("kildeKortNavn")] public string? KildeKortNavn { get; init; }
     [JsonPropertyName("kildeType")] public string? KildeType { get; init; }
 
+    /// <summary>
+    /// Curated display order from the catalogue. Null when the variable has no curated order.
+    /// Sort by it to reproduce the API's own default ordering.
+    /// </summary>
+    [JsonPropertyName("presentationOrder")] public int? PresentationOrder { get; init; }
+
     [JsonPropertyName("datasamlingId")] public Guid? DatasamlingId { get; init; }
     [JsonPropertyName("datasamlingName")] public string? DatasamlingName { get; init; }
 
@@ -40,6 +46,15 @@ public sealed record VariabelSammendrag
     /// <summary>End of the period the data covers, when known.</summary>
     [JsonPropertyName("dataTo")] public DateTimeOffset? DataTo { get; init; }
 
+    /// <summary>
+    /// Datatype code, a small integer as a string (<c>"1"</c>, <c>"2"</c>, …). Munin's datatype
+    /// kodeverk is not exposed by this API, so the meaning of each code has to come from elsewhere.
+    /// </summary>
+    [JsonPropertyName("dataType")] public string? DataType { get; init; }
+
     /// <summary><c>Active</c> or <c>Historical</c>. Drafts are never exposed here.</summary>
     [JsonPropertyName("versjonStatus")] public string? VersjonStatus { get; init; }
+
+    /// <summary>The published version this row was built from — the one <see cref="VariabelDetalj"/> opens on.</summary>
+    [JsonPropertyName("versjonId")] public Guid? VersjonId { get; init; }
 }

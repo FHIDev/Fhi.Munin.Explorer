@@ -1,0 +1,636 @@
+{
+  "kildeTyper": [
+    {
+      "value": "befolkningsbasertHelseundersokelse",
+      "displayName": "BefolkningsbasertHelseundersokelse",
+      "count": 6219
+    },
+    {
+      "value": "nasjonaltMedisinskKvalitetsregister",
+      "displayName": "NasjonaltMedisinskKvalitetsregister",
+      "count": 9977
+    },
+    {
+      "value": "sentraltHelseregister",
+      "displayName": "SentraltHelseregister",
+      "count": 2093
+    }
+  ],
+  "kilder": [
+    {
+      "id": "8ec4c2c4-662d-47a5-a946-f1086a014070",
+      "name": "Als registeret",
+      "kortNavn": "ALS",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 230
+    },
+    {
+      "id": "cfcb064c-0c9b-4d07-8e5b-53107318cfd4",
+      "name": "Barnediabetes",
+      "kortNavn": "BDR",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 630
+    },
+    {
+      "id": "7a0616eb-c742-4b28-af18-726a20f88251",
+      "name": "Bivirkningsregisteret",
+      "kortNavn": "BIV",
+      "kildeType": "sentraltHelseregister",
+      "count": 23
+    },
+    {
+      "id": "6ec05131-6762-430f-9c25-04dece37d47a",
+      "name": "Data fra SSB",
+      "kortNavn": "",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 10
+    },
+    {
+      "id": "4e4def45-e4d0-4118-a582-b18cbbec21fe",
+      "name": "Dødsårsaksregisteret",
+      "kortNavn": "DÅR",
+      "kildeType": "sentraltHelseregister",
+      "count": 61
+    },
+    {
+      "id": "b39f0875-8ee1-4614-8064-b353a81aefa4",
+      "name": "Forsvarets helseregister",
+      "kortNavn": "FHR",
+      "kildeType": "sentraltHelseregister",
+      "count": 8
+    },
+    {
+      "id": "08a14564-49f5-4a33-b400-a0ef00bfdd97",
+      "name": "Fylkeshelseundersøkelsene (FHUS)",
+      "kortNavn": "FHUS",
+      "kildeType": "befolkningsbasertHelseundersokelse",
+      "count": 467
+    },
+    {
+      "id": "8125e63f-53d8-405d-b209-834b967ecffb",
+      "name": "Gastronet",
+      "kortNavn": "GASTRO",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 276
+    },
+    {
+      "id": "ed05563c-23a7-4e63-9c0f-0f3b2f565132",
+      "name": "Helsearkivregisteret",
+      "kortNavn": "NHA",
+      "kildeType": "sentraltHelseregister",
+      "count": 15
+    },
+    {
+      "id": "ed2a44f3-b750-498e-8932-b47d6d248938",
+      "name": "Hjertestansregisteret",
+      "kortNavn": "HJST",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 327
+    },
+    {
+      "id": "82504f25-a028-4df3-8680-464d70f71b39",
+      "name": "Hjertesviktregisteret",
+      "kortNavn": "NHSR",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 307
+    },
+    {
+      "id": "87d54d19-7020-4414-9f4b-b5da5227e7f6",
+      "name": "Hodepineregisteret",
+      "kortNavn": "HDPINE",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 25
+    },
+    {
+      "id": "de56776a-25f2-491f-87eb-0d1a190c0296",
+      "name": "Hørselsregisteret for Barn",
+      "kortNavn": "HFB",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 445
+    },
+    {
+      "id": "0a08583f-ba86-4916-a1ba-b615b2e7a577",
+      "name": "Kreftregisteret",
+      "kortNavn": "KREG",
+      "kildeType": "sentraltHelseregister",
+      "count": 433
+    },
+    {
+      "id": "f338f6f6-5e13-4122-8e44-8ad9317157d1",
+      "name": "Legemiddelregisteret",
+      "kortNavn": "LMR",
+      "kildeType": "sentraltHelseregister",
+      "count": 110
+    },
+    {
+      "id": "a48acbbb-6f30-4f48-9952-74e2347bfc60",
+      "name": "Medisinsk Fødselsregister",
+      "kortNavn": "MFR",
+      "kildeType": "sentraltHelseregister",
+      "count": 346
+    },
+    {
+      "id": "5e84fc6d-2a8e-450b-b4b5-402d535a271a",
+      "name": "Meldingssystem for smittsomme sykdommer",
+      "kortNavn": "MSIS",
+      "kildeType": "sentraltHelseregister",
+      "count": 239
+    },
+    {
+      "id": "058b9c4b-ed33-4cc7-a73f-b5f651c12705",
+      "name": "Nasjonalt Barnehofteregister",
+      "kortNavn": "BARNEHOFTE",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 509
+    },
+    {
+      "id": "f05dc56c-ce5a-48dd-a0b1-ad726d967912",
+      "name": "Nasjonalt hoftebruddregister",
+      "kortNavn": "HOFTEBRUDD",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 185
+    },
+    {
+      "id": "fd84b3b9-9e7e-4832-a8f9-48449fad53d7",
+      "name": "Nasjonalt Korsbåndregister",
+      "kortNavn": "NKLR",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 380
+    },
+    {
+      "id": "9fc1f5ba-fae6-4ab4-b3dd-cdf310c77cb2",
+      "name": "Nasjonalt kvalitetsregister for ryggkirurgi (NKR), degenerativ nakke.",
+      "kortNavn": "NKR-NAKKE",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 370
+    },
+    {
+      "id": "f455e142-c389-4a69-b50b-dba63ded65be",
+      "name": "Nasjonalt kvalitetsregister for ryggkirurgi (NKR), degenerativ rygg.",
+      "kortNavn": "NKR-RYGG",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 383
+    },
+    {
+      "id": "4f951222-3c07-4a8b-aefd-a74aee9e2938",
+      "name": "Nasjonalt register for langtids mekanisk ventilasjon",
+      "kortNavn": "LTMV",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 135
+    },
+    {
+      "id": "441c4d5b-54ed-48fe-a442-fb093457a7e9",
+      "name": "Nasjonalt traumeregister",
+      "kortNavn": "NTR",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 412
+    },
+    {
+      "id": "32b98c45-8c66-4bc2-853b-89797e3c1eea",
+      "name": "NorArtritt",
+      "kortNavn": "NORARTRITT",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 831
+    },
+    {
+      "id": "0a38818b-75cd-46b5-8612-7497779d2b7c",
+      "name": "NorHiv",
+      "kortNavn": "NORHIV",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 163
+    },
+    {
+      "id": "74405154-9014-43f7-998f-47b1f3319195",
+      "name": "Norkog",
+      "kortNavn": "NKG",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 505
+    },
+    {
+      "id": "6c4702b5-cf2c-4b45-ae29-ab092b654e34",
+      "name": "Norsk gynekologisk endoskopiregister",
+      "kortNavn": "NGER",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 314
+    },
+    {
+      "id": "2357daa1-df49-40b1-93c4-f84e8303ef01",
+      "name": "Norsk hjerneslagregister",
+      "kortNavn": "NHR",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 402
+    },
+    {
+      "id": "2404b2bd-2e3d-498c-81ba-898a962278cd",
+      "name": "Norsk hjerteinfarktregister",
+      "kortNavn": "NHIR",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 136
+    },
+    {
+      "id": "cb22661e-6e3b-4865-904d-f4b5a562c34d",
+      "name": "Norsk Intensivregister (NIR)",
+      "kortNavn": "NIR",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 500
+    },
+    {
+      "id": "711695b0-30be-4892-9627-2ecedcefe9fe",
+      "name": "Norsk kvalitets- og oppfølgingsregister for cerebral parese (NorCP)",
+      "kortNavn": "NORCP",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 580
+    },
+    {
+      "id": "6267350b-8380-413e-afcd-8ebeb7c17968",
+      "name": "Norsk kvinnelig inkontinensregister",
+      "kortNavn": "NKIR",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 151
+    },
+    {
+      "id": "9c3c12fe-b8c5-49b2-8da7-fe255de33968",
+      "name": "Norsk MS-register og biobank",
+      "kortNavn": "MS",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 288
+    },
+    {
+      "id": "0a22ea5f-6f25-4be7-a70d-3796a4361c4b",
+      "name": "Norsk Nakke- og Ryggregister",
+      "kortNavn": "NNRR",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 486
+    },
+    {
+      "id": "55783408-b698-49c9-bdb3-a70287af1f3c",
+      "name": "Norsk nyfødtmedisinsk kvalitetsregister",
+      "kortNavn": "NNK",
+      "kildeType": "sentraltHelseregister",
+      "count": 546
+    },
+    {
+      "id": "e9065d6a-477d-44a3-8f9f-b06b6f75267d",
+      "name": "Norsk pasientregister",
+      "kortNavn": "NPR",
+      "kildeType": "sentraltHelseregister",
+      "count": 232
+    },
+    {
+      "id": "0fb5c548-df2c-4380-9fff-264183bfcb20",
+      "name": "NORSPIS",
+      "kortNavn": "NORSPIS",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 440
+    },
+    {
+      "id": "eca59fb8-1964-4d14-b7f9-218931476759",
+      "name": "Parkinsonregisteret",
+      "kortNavn": "PARKINSON",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 557
+    },
+    {
+      "id": "7ea0a63e-076a-423e-98bf-c81013dae009",
+      "name": "Register over svangerskapsavbrudd (Abortregisteret)",
+      "kortNavn": "ABR",
+      "kildeType": "sentraltHelseregister",
+      "count": 80
+    },
+    {
+      "id": "e358db40-0efa-47bb-893a-40ee00ccde12",
+      "name": "The Tromsø study",
+      "kortNavn": "",
+      "kildeType": "befolkningsbasertHelseundersokelse",
+      "count": 5752
+    }
+  ],
+  "variabelgrupper": [
+    {
+      "id": "b5896234-3042-4ee5-8300-2cb5fcbcceaf",
+      "name": "Anamnese",
+      "parentId": null,
+      "count": 19
+    }
+  ],
+  "filtere": [],
+  "delkilder": [
+    {
+      "id": "38f8f0f2-9b12-48e3-b24b-eeaa3a84a5a7",
+      "name": "Tromsø4 - The Fourth Tromsø Study",
+      "parentDelkildeId": null,
+      "kildeId": "e358db40-0efa-47bb-893a-40ee00ccde12",
+      "count": 210
+    },
+    {
+      "id": "4f6d7094-8976-42e8-b2da-841394a88771",
+      "name": "Tromsø5 - The Fifth Tromsø Study",
+      "parentDelkildeId": null,
+      "kildeId": "e358db40-0efa-47bb-893a-40ee00ccde12",
+      "count": 1170
+    },
+    {
+      "id": "276ad1bd-71e9-40ee-b000-11909f3a4896",
+      "name": "Tromsø6 - The Sixth Tromsø Study",
+      "parentDelkildeId": null,
+      "kildeId": "e358db40-0efa-47bb-893a-40ee00ccde12",
+      "count": 1043
+    },
+    {
+      "id": "4bbdf1a9-5285-4c9d-913c-9e6ead7a30c2",
+      "name": "Tromsø7 - The Seventh Tromsø Study",
+      "parentDelkildeId": null,
+      "kildeId": "e358db40-0efa-47bb-893a-40ee00ccde12",
+      "count": 3087
+    },
+    {
+      "id": "0e438c45-c0b1-4df7-babc-d60d50ae818c",
+      "name": "Vestland 2022",
+      "parentDelkildeId": null,
+      "kildeId": "08a14564-49f5-4a33-b400-a0ef00bfdd97",
+      "count": 282
+    }
+  ],
+  "datatyper": [
+    {
+      "value": "1",
+      "count": 3897
+    },
+    {
+      "value": "10",
+      "count": 10
+    },
+    {
+      "value": "2",
+      "count": 9145
+    },
+    {
+      "value": "3",
+      "count": 2065
+    },
+    {
+      "value": "4",
+      "count": 2164
+    },
+    {
+      "value": "6",
+      "count": 266
+    },
+    {
+      "value": "7",
+      "count": 681
+    }
+  ],
+  "helsefagligKodeverk": [
+    {
+      "kortNavn": "PHBU",
+      "fulltNavn": "Multiaksial klassifikasjon i psykisk helsevern for barn og unge",
+      "count": 6
+    },
+    {
+      "kortNavn": "ICD-10",
+      "fulltNavn": "Den internasjonale statistiske klassifikasjonen av sykdommer og beslektede helseproblemer. Versjon 10",
+      "count": 4
+    },
+    {
+      "kortNavn": "NCMP-NCSP-NCRP",
+      "fulltNavn": "Norsk klinisk prosedyrekodeverk",
+      "count": 3
+    },
+    {
+      "kortNavn": "ATC",
+      "fulltNavn": "Anatomisk Terapeutisk Kjemisk legemiddelregister",
+      "count": 1
+    }
+  ],
+  "administrativtKodeverk": [
+    {
+      "oid": "3402",
+      "navn": "Kommunenummer",
+      "count": 12
+    },
+    {
+      "oid": "1101",
+      "navn": "Ja, nei",
+      "count": 8
+    },
+    {
+      "oid": "1103",
+      "navn": "Ja, nei, ukjent",
+      "count": 7
+    },
+    {
+      "oid": "3101",
+      "navn": "Kjønn",
+      "count": 7
+    },
+    {
+      "oid": "8404",
+      "navn": "Tjenester og vesen",
+      "count": 4
+    },
+    {
+      "oid": "8406",
+      "navn": "Omsorgsnivå",
+      "count": 3
+    },
+    {
+      "oid": "8451",
+      "navn": "Fagområde",
+      "count": 3
+    },
+    {
+      "oid": "8408",
+      "navn": "Sted",
+      "count": 2
+    },
+    {
+      "oid": "8444",
+      "navn": "Rett til helsehjelp",
+      "count": 2
+    },
+    {
+      "oid": "8445",
+      "navn": "Ventetid sluttkode",
+      "count": 2
+    },
+    {
+      "oid": "7424",
+      "navn": "Preparattype legemiddel",
+      "count": 2
+    },
+    {
+      "oid": "7426",
+      "navn": "Helsepersonellregisterets (HPR) klassifikasjon av spesialiteter",
+      "count": 2
+    },
+    {
+      "oid": "3404",
+      "navn": "Fylker i Norge",
+      "count": 2
+    },
+    {
+      "oid": "8426",
+      "navn": "Debitor",
+      "count": 2
+    },
+    {
+      "oid": "8485",
+      "navn": null,
+      "count": 2
+    },
+    {
+      "oid": "8486",
+      "navn": null,
+      "count": 2
+    },
+    {
+      "oid": "9060",
+      "navn": "Kategori helsepersonell",
+      "count": 2
+    },
+    {
+      "oid": "9064",
+      "navn": "Status for innhenting av pasientens samtykke",
+      "count": 1
+    },
+    {
+      "oid": "8601",
+      "navn": "Kontaktårsak ved personskade",
+      "count": 1
+    },
+    {
+      "oid": "8602",
+      "navn": "Aktivitet ved skadetidspunkt",
+      "count": 1
+    }
+  ],
+  "instrumenter": [
+    {
+      "id": "8eca678a-6e06-4268-a7d7-97a14c9ad0fe",
+      "code": "RAND-36",
+      "navn": "RAND 36-spørsmål om helse",
+      "count": 153
+    },
+    {
+      "id": "65bc8d83-3e52-46e8-8c9d-ab32409dc2fc",
+      "code": "I_NORSPIS.SCL90R",
+      "navn": "Symptom Checklist 90 Revised (SCL-90-R)",
+      "count": 90
+    },
+    {
+      "id": "91c59558-1597-4c72-ad4b-1b52310b3213",
+      "code": "I_NORSPIS.SDQP",
+      "navn": "Strengths and Difficulties Questionnaire (SDQ) (P4-17)",
+      "count": 36
+    },
+    {
+      "id": "e3297da8-890d-4686-a6ca-3645e33a8af9",
+      "code": "EQ-5D-5L",
+      "navn": "EQ-5D 5 svaralternativer",
+      "count": 36
+    },
+    {
+      "id": "b164a21c-ae4e-4dbc-a1eb-94a0f13dc480",
+      "code": "I_NORSPIS.EDEQ60",
+      "navn": "Eating Disorder Examination Questionnaire (EDE-Q) 6.0",
+      "count": 35
+    },
+    {
+      "id": "d5e31a2e-8d4e-47e0-94de-a2f10d4d96ee",
+      "code": "I_NORSPIS.SDQ",
+      "navn": "Strengths and Difficulties Questionnaire (SDQ) (S11-17)",
+      "count": 34
+    },
+    {
+      "id": "41d42d1c-f857-4db6-a5df-e50d561c22b8",
+      "code": "I_NKR-NAKKE.NDI",
+      "navn": "Neck Disability Index (NDI)",
+      "count": 33
+    },
+    {
+      "id": "2694f60a-45d1-4992-8a67-de58a792e065",
+      "code": "I_NORSPIS.KIDSCREEN27",
+      "navn": "KIDSCREEN-27",
+      "count": 28
+    },
+    {
+      "id": "0d43a12e-745c-4680-819a-2740d95c1a90",
+      "code": "I_NKR-NAKKE.EUROQOL_(EQ-5D-5L)",
+      "navn": "EuroQol (EQ-5D-5L)",
+      "count": 21
+    },
+    {
+      "id": "69d177fe-ba2a-45cc-aba2-635342975447",
+      "code": "I_NKR-NAKKE.EMS",
+      "navn": "Europeisk myelopatiskår (EMS)",
+      "count": 18
+    },
+    {
+      "id": "ce69085e-8f60-477f-8009-086d5bc5cd91",
+      "code": "I_NORSPIS.HONOSCA",
+      "navn": "Health of the Nation Outcome Scales for Children and Adolescents (HoNOSCA)",
+      "count": 16
+    },
+    {
+      "id": "2f66492e-b669-4cc4-aeb5-3fe44ea02156",
+      "code": "I_NORSPIS.CIA30",
+      "navn": "Clinical Impairment Assessment Questionnaire (CIA) 3.0",
+      "count": 16
+    },
+    {
+      "id": "c57bfeca-8a19-40bb-968c-5ab0774acc12",
+      "code": "I_NGER.I_NGER_TSS",
+      "navn": "TSS-2 4 uker etter opr.",
+      "count": 15
+    },
+    {
+      "id": "987f4b18-5956-4bf5-9c36-c012f599d19e",
+      "code": "I_NORSPIS.HONOS",
+      "navn": "Health of the Nation Outcome Scales (HoNOS)",
+      "count": 14
+    },
+    {
+      "id": "1f004138-ab22-462f-8e60-909887a9c662",
+      "code": "I_NORSPIS.PASERF",
+      "navn": "Pasienterfaringer i spesialisthelsetjenesten",
+      "count": 10
+    },
+    {
+      "id": "da4e276a-61d1-49c6-b114-4f1b245de8b3",
+      "code": "I_LTMV.PROM_5",
+      "navn": "PROM_5_Symptomer",
+      "count": 6
+    },
+    {
+      "id": "f304a408-7cb5-4f53-b48e-183bd7d6b157",
+      "code": "I_MFR.SRS-22",
+      "navn": "Skoliosespørsmål",
+      "count": 4
+    },
+    {
+      "id": "593f47d9-e219-43d0-bfde-0321bfb5de48",
+      "code": "I_NKR-NAKKE.NCSP",
+      "navn": "Norsk klinisk prosedyrekodeverk",
+      "count": 4
+    },
+    {
+      "id": "984896d0-7a15-4c9b-b3c4-c3a3adfe187b",
+      "code": "I_MFR.EQ5D-5L",
+      "navn": "EuroQol (EQ-5D-5L)",
+      "count": 4
+    },
+    {
+      "id": "f0075591-935b-49a1-9c8d-38316ea13d56",
+      "code": "I_LTMV.ESS",
+      "navn": "ESS",
+      "count": 1
+    }
+  ],
+  "kildeKodeverkCount": 3876,
+  "dateRange": {
+    "min": "1868-05-08T00:00:00.000Z",
+    "max": null
+  },
+  "totalCount": 18289
+}

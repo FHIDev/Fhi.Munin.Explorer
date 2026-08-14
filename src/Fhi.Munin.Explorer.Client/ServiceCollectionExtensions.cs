@@ -34,12 +34,16 @@ public static class ServiceCollectionExtensions
                 "the base URL of the Munin API, e.g. https://munin.skytest.fhi.no");
         }
 
+        services.AddTransient<KlientHeaderHandler>();
+
         services.AddHttpClient<IMuninExplorerClient, MuninExplorerClient>(client =>
         {
             // Trailing slash so relative routes ("api/explorer/...") resolve against the
             // base address instead of replacing its last segment.
             client.BaseAddress = new Uri(options.ApiBaseUrl.TrimEnd('/') + "/");
-        });
+        })
+        // Identifies this component to Munin's observability — see KlientHeaderHandler.
+        .AddHttpMessageHandler<KlientHeaderHandler>();
 
         return services;
     }

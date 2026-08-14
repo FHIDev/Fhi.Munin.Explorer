@@ -22,12 +22,12 @@ public class VariabelutforskerTest : BunitContext
             DataTo = new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero)
         };
 
-    private sealed class FakeClient(Side<VariabelSammendrag> svar) : IMuninExplorerClient
+    private sealed class FakeClient(Side<VariabelSammendrag> svar) : TomMuninExplorerKlient
     {
         public string? SisteSok { get; private set; }
         public int Kall { get; private set; }
 
-        public Task<Side<VariabelSammendrag>> SokVariablerAsync(
+        public override Task<Side<VariabelSammendrag>> SokVariablerAsync(
             string? sok, int side = 1, int sideStorrelse = 25, CancellationToken cancellationToken = default)
         {
             SisteSok = sok;
@@ -36,9 +36,9 @@ public class VariabelutforskerTest : BunitContext
         }
     }
 
-    private sealed class FeilendeClient : IMuninExplorerClient
+    private sealed class FeilendeClient : TomMuninExplorerKlient
     {
-        public Task<Side<VariabelSammendrag>> SokVariablerAsync(
+        public override Task<Side<VariabelSammendrag>> SokVariablerAsync(
             string? sok, int side = 1, int sideStorrelse = 25, CancellationToken cancellationToken = default)
             => throw new HttpRequestException("nede");
     }

@@ -16,8 +16,19 @@ service embeds cannot move under them without warning.
   Explorer API. Takes `Sok`, `SokChanged`, `SideStorrelse` and `Sprak` (`"no"` / `"en"`).
 - `AddMuninExplorer(...)` registers the data client; the host supplies `ApiBaseUrl`, or sets
   `MuninExplorer:ApiBaseUrl` in configuration.
+- The rest of the Explorer API is now on `IMuninExplorerClient`: `HentFiltreAsync`,
+  `HentKilderAsync`, `HentKildeAsync`, `HentKildeHierarkiAsync`, `HentDatasamlingAsync`,
+  `HentVariabelAsync` and `HentVariabelTidslinjeAsync`, with contracts to match. A resource that
+  does not exist answers `null`, or an empty collection, instead of throwing.
+- `VariabelSammendrag` gained `PresentationOrder`, `DataType` and `VersjonId` — the API was
+  already returning all three.
 
 ### Notes for hosts
+- Every request the client makes carries `X-Munin-Explorer-Client: blazor/<version>`. Munin's API
+  is anonymous, and this is how it tells embedded-component traffic apart from anything else.
+- A host that implements `IMuninExplorerClient` itself has seven new members to fill in. While on
+  `0.x` the interface still moves; a component only calls what it needs, so unimplemented members
+  can throw.
 - The component ships **no CSS**. Styling comes from the host — on helsedata.no that is
   `Fhi.Helsedata.Stiler`. Class names are prefixed `variabelutforsker-`.
 - The component sets no render mode. The host decides at the mount site — `render-mode="Server"`

@@ -1,0 +1,48 @@
+{
+  "items": [
+    {
+      "id": "bc8a6515-af36-44d0-aa10-b498813327b4",
+      "code": "V_ALS.F1.ALSFRSR1TALE",
+      "preferredTerm": "1. Tale",
+      "beskrivelse": "Angir pasientens grad av utfall på \"1. Tale\" i ALSFRS-R.",
+      "kildeId": "8ec4c2c4-662d-47a5-a946-f1086a014070",
+      "kildeName": "Als registeret",
+      "kildeKortNavn": "ALS",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "presentationOrder": null,
+      "datasamlingId": "0c027ce6-2994-45bf-99ec-facad3d1703e",
+      "datasamlingName": "Inklusjon",
+      "variabelgruppeId": "6f649fb0-5181-485d-8b7c-2e70fba2f6f1",
+      "variabelgruppeName": "Funksjonsscore",
+      "dataFrom": "2010-01-01T00:00:00.000Z",
+      "dataTo": "2025-06-01T00:00:00.000Z",
+      "dataType": "2",
+      "versjonStatus": "Active",
+      "versjonId": "13e96651-095d-4337-8721-ab30a15e36df"
+    },
+    {
+      "id": "83ced574-6d32-447e-ad65-c54c63327476",
+      "code": "V_ALS.F2.OSALSFRSR1TALE",
+      "preferredTerm": "1. Tale",
+      "beskrivelse": "Angir pasientens grad av utfall på \"1. Tale\" i ALSFRS-R.",
+      "kildeId": "8ec4c2c4-662d-47a5-a946-f1086a014070",
+      "kildeName": "Als registeret",
+      "kildeKortNavn": "ALS",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "presentationOrder": null,
+      "datasamlingId": "4411873c-0367-4334-a7cf-8e763c8e3490",
+      "datasamlingName": "Oppfølgingskonsultasjon",
+      "variabelgruppeId": "6f649fb0-5181-485d-8b7c-2e70fba2f6f1",
+      "variabelgruppeName": "Funksjonsscore",
+      "dataFrom": "2010-01-01T00:00:00.000Z",
+      "dataTo": "2025-06-01T00:00:00.000Z",
+      "dataType": "2",
+      "versjonStatus": "Active",
+      "versjonId": "39a5c77c-f0af-435c-ab2c-e80daa862ade"
+    }
+  ],
+  "totalCount": 18289,
+  "page": 1,
+  "size": 2,
+  "totalPages": 9145
+}

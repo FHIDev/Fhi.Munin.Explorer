@@ -1,0 +1,253 @@
+{
+  "id": "0c027ce6-2994-45bf-99ec-facad3d1703e",
+  "code": "K_ALS.INKLUSJON",
+  "kortNavn": "ALS",
+  "preferredTerm": "Inklusjon",
+  "beskrivelse": "Skjemaet inneholder opplysninger om utredning og oppstart av behandling fra symptomdebut fra symptomdebut til diagnosetidspunkt.",
+  "opprettet": "2026-05-19T13:03:18.807Z",
+  "sistOppdatert": "2026-08-12T08:08:22.690Z",
+  "gyldigFra": "2010-01-01T00:00:00.000Z",
+  "gyldigTil": null,
+  "lovverk": null,
+  "dataansvarlig": null,
+  "databehandler": null,
+  "gradAvPersonidentifikasjon": null,
+  "statistikkType": "yearly",
+  "telleEnhet": "",
+  "frekvens": null,
+  "effectiveLovverk": "Innmelding av opplysninger fra det enkelte helseforetak til kvalitetsregistrene som inngår i § 2-3 i Forskrift om medisinske kvalitetsregistre. Personopplysningsloven, personvernforordningen (jf. Personopplysningsloven § 1) og helseregisterloven gjelder for behandling av helseopplysninger i medisinske kvalitetsregistre. Behandlingsgrunnlaget for ALS-registeret er personvernforordningen artikkel 6 nr. 1 bokstav e og artikkel 9 nr. 2 bokstav g, h, i og j. Overgang fra samtykkebasert register til reservasjonsbasert register 04.04.2024.",
+  "effectiveDataansvarlig": "St. Olavs hospital HF",
+  "effectiveDatabehandler": "St. Olavs hospital HF",
+  "effectiveGradAvPersonidentifikasjon": "indirectlyIdentifiable",
+  "effectiveGyldigFra": "2010-01-01T00:00:00.000Z",
+  "effectiveGyldigTil": null,
+  "effectiveKildetype": "nasjonaltMedisinskKvalitetsregister",
+  "variableCount": 99,
+  "inklusjonsOgEksklusjonskriterier": "Alle pasienter som er 18 år eller eldre og som etter utredning får ICD10-diagnosekode «G12.2 Sykdom i motoriske nevroner», ved genetisk analyse får påvist Kennedys sykdom eller uspesifisert motonevronsykdom (ICD10-kode G12.9).",
+  "additionalProperties": {
+    "AnbefalteBruksomraader": "Kvalitetsforbedring;Forskning;Statistikk",
+    "Dataansvarlig": "St. Olavs hospital HF",
+    "Databehandler": "St. Olavs hospital HF",
+    "GradAvPersonidentifikasjon": "1",
+    "Lovverk": "Innmelding av opplysninger fra det enkelte helseforetak til kvalitetsregistrene som inngår i § 2-3 i Forskrift om medisinske kvalitetsregistre. Personopplysningsloven, personvernforordningen (jf. Personopplysningsloven § 1) og helseregisterloven gjelder for behandling av helseopplysninger i medisinske kvalitetsregistre. Behandlingsgrunnlaget for ALS-registeret er personvernforordningen artikkel 6 nr. 1 bokstav e og artikkel 9 nr. 2 bokstav g, h, i og j. Overgang fra samtykkebasert register til reservasjonsbasert register 04.04.2024.",
+    "healthCategory": "[\"ehds-cat:registries-quality-of-healthcare\"]"
+  },
+  "propertyMetadata": [
+    {
+      "key": "Code",
+      "displayNameTranslations": {
+        "no": "Kode",
+        "en": "Code"
+      },
+      "groupTranslations": {},
+      "sortOrder": 5,
+      "type": "String",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "NavnEngelsk",
+      "displayNameTranslations": {
+        "no": "Navn på engelsk",
+        "en": "Name in English"
+      },
+      "groupTranslations": {
+        "no": "Identifikasjon",
+        "en": "Identification"
+      },
+      "sortOrder": 10,
+      "type": "String",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "KortNavn",
+      "displayNameTranslations": {
+        "no": "Kortnavn",
+        "en": "Short name"
+      },
+      "groupTranslations": {},
+      "sortOrder": 10,
+      "type": "String",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "PreferredTerm",
+      "displayNameTranslations": {
+        "no": "Foretrukken term",
+        "en": "Preferred term"
+      },
+      "groupTranslations": {},
+      "sortOrder": 20,
+      "type": "String",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "BeskrivelseEngelsk",
+      "displayNameTranslations": {
+        "no": "Beskrivelse på engelsk",
+        "en": "Description in English"
+      },
+      "groupTranslations": {
+        "no": "Beskrivelse",
+        "en": "Description"
+      },
+      "sortOrder": 20,
+      "type": "Text",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "AnbefalteBruksomraader",
+      "displayNameTranslations": {
+        "no": "Anbefalte bruksområder",
+        "en": "Recommended Use Cases"
+      },
+      "groupTranslations": {
+        "no": "Beskrivelse",
+        "en": "Description"
+      },
+      "sortOrder": 30,
+      "type": "Text",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "Beskrivelse",
+      "displayNameTranslations": {
+        "no": "Beskrivelse",
+        "en": "Description"
+      },
+      "groupTranslations": {},
+      "sortOrder": 30,
+      "type": "Text",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "TelleEnhet",
+      "displayNameTranslations": {
+        "no": "Telleenhet",
+        "en": "Counting unit"
+      },
+      "groupTranslations": {},
+      "sortOrder": 40,
+      "type": "String",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "Emneord",
+      "displayNameTranslations": {
+        "no": "Emneord",
+        "en": "Keywords"
+      },
+      "groupTranslations": {
+        "no": "Beskrivelse",
+        "en": "Description"
+      },
+      "sortOrder": 40,
+      "type": "String",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "StatistikkType",
+      "displayNameTranslations": {
+        "no": "Statistikktype",
+        "en": "Statistics type"
+      },
+      "groupTranslations": {},
+      "sortOrder": 50,
+      "type": "SingleSelect",
+      "optionsJson": "[{\"value\":\"yearly\",\"label\":\"Årsbasert\",\"labelEn\":\"Yearly\"},{\"value\":\"accumulated\",\"label\":\"Akkumulert\",\"labelEn\":\"Accumulated\"}]"
+    },
+    {
+      "key": "Frekvens",
+      "displayNameTranslations": {
+        "no": "Frekvens",
+        "en": "Frequency"
+      },
+      "groupTranslations": {},
+      "sortOrder": 60,
+      "type": "SingleSelect",
+      "optionsJson": "[{\"value\":\"daily\",\"label\":\"Daglig\",\"labelEn\":\"Daily\"},{\"value\":\"weekly\",\"label\":\"Ukentlig\",\"labelEn\":\"Weekly\"},{\"value\":\"monthly\",\"label\":\"Månedlig\",\"labelEn\":\"Monthly\"},{\"value\":\"quarterly\",\"label\":\"Kvartalsvis\",\"labelEn\":\"Quarterly\"},{\"value\":\"yearly\",\"label\":\"Årlig\",\"labelEn\":\"Yearly\"},{\"value\":\"onDemand\",\"label\":\"På forespørsel\",\"labelEn\":\"On demand\"},{\"value\":\"continuous\",\"label\":\"Kontinuerlig\",\"labelEn\":\"Continuous\"},{\"value\":\"other\",\"label\":\"Annet\",\"labelEn\":\"Other\"}]"
+    },
+    {
+      "key": "GradAvPersonidentifikasjon",
+      "displayNameTranslations": {
+        "no": "Grad av personidentifikasjon",
+        "en": "Degree of personal identification"
+      },
+      "groupTranslations": {},
+      "sortOrder": 70,
+      "type": "SingleSelect",
+      "optionsJson": "[{\"value\":\"directlyIdentifiable\",\"label\":\"Direkte personidentifiserbare data\",\"labelEn\":\"Directly identifiable data\"},{\"value\":\"indirectlyIdentifiable\",\"label\":\"Indirekte personidentifiserbare data\",\"labelEn\":\"Indirectly identifiable data\"},{\"value\":\"deIdentified\",\"label\":\"Avidentifiserte data\",\"labelEn\":\"De-identified data\"},{\"value\":\"anonymous\",\"label\":\"Anonyme data\",\"labelEn\":\"Anonymous data\"}]"
+    },
+    {
+      "key": "Lovverk",
+      "displayNameTranslations": {
+        "no": "Lovverk",
+        "en": "Legislation"
+      },
+      "groupTranslations": {},
+      "sortOrder": 80,
+      "type": "Url",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "Dataansvarlig",
+      "displayNameTranslations": {
+        "no": "Dataansvarlig",
+        "en": "Data controller"
+      },
+      "groupTranslations": {},
+      "sortOrder": 90,
+      "type": "String",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "Databehandler",
+      "displayNameTranslations": {
+        "no": "Databehandler",
+        "en": "Data processor"
+      },
+      "groupTranslations": {},
+      "sortOrder": 100,
+      "type": "String",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "GyldigFra",
+      "displayNameTranslations": {
+        "no": "Gyldig fra",
+        "en": "Valid from"
+      },
+      "groupTranslations": {},
+      "sortOrder": 110,
+      "type": "Date",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "GyldigTil",
+      "displayNameTranslations": {
+        "no": "Gyldig til",
+        "en": "Valid to"
+      },
+      "groupTranslations": {},
+      "sortOrder": 120,
+      "type": "Date",
+      "optionsJson": "[]"
+    },
+    {
+      "key": "healthCategory",
+      "displayNameTranslations": {
+        "no": "Datakategori",
+        "en": "Data category"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 330,
+      "type": "MultiSelect",
+      "optionsJson": "[{\"value\":\"ehds-cat:health-registries\",\"label\":\"Helseregistre\",\"labelEn\":\"Health registries\"},{\"value\":\"ehds-cat:registries-quality-of-healthcare\",\"label\":\"Kvalitetsregistre\",\"labelEn\":\"Quality-of-healthcare registries\"},{\"value\":\"ehds-cat:population-health-surveys\",\"label\":\"Befolkningsbaserte helseundersøkelser\",\"labelEn\":\"Population health surveys\"},{\"value\":\"ehds-cat:provesamling\",\"label\":\"Prøvesamling\",\"labelEn\":\"Sample collection\"},{\"value\":\"ehds-cat:biodata\",\"label\":\"Biodata (DNA/omikk)\",\"labelEn\":\"Biodata (DNA/omics)\"},{\"value\":\"ehds-cat:biobanks\",\"label\":\"Biobanker\",\"labelEn\":\"Biobanks\"},{\"value\":\"ehds-cat:other\",\"label\":\"Annet\",\"labelEn\":\"Other\"}]"
+    }
+  ],
+  "parentDelkildeId": null,
+  "parentKildeId": "8ec4c2c4-662d-47a5-a946-f1086a014070",
+  "parentKildeNavn": "Als registeret"
+}

@@ -1,0 +1,20 @@
+[
+  {
+    "versjonId": "13e96651-095d-4337-8721-ab30a15e36df",
+    "preferredTerm": "1. Tale",
+    "beskrivelse": "Angir pasientens grad av utfall på \"1. Tale\" i ALSFRS-R.",
+    "gyldigFra": "2010-01-01T00:00:00.000Z",
+    "gyldigTil": null,
+    "status": "Active",
+    "publishedAt": null,
+    "additionalProperties": {
+      "DataType": "2",
+      "DatabaseReferanse": "ALSFRSR1Tale",
+      "Erstatter": "ALSFRS_1Tale",
+      "Identifiseringsgrad": "1",
+      "Kommentar": "Variabelen er gyldig fra 2019 og fremover.\n",
+      "Opprinnelse": "5",
+      "Synlig": "1"
+    }
+  }
+]
