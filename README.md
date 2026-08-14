@@ -57,6 +57,12 @@ dotnet test
 Requires the .NET 10 SDK. The target framework is set once in `Directory.Build.props`, never in
 the individual project files.
 
+## Changelog
+
+`CHANGELOG.md` is the released record. Unreleased changes live one file per change in
+[`changelog.d/`](changelog.d/README.md) — a shared changelog file is a merge conflict on every
+parallel branch, a new file is never one. A PR touching `src/` needs a fragment, and CI says so.
+
 ## Issue tracking
 
 Work is tracked in the Munin beads workspace, not in this repository's issues — epic
