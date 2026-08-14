@@ -123,6 +123,55 @@ public class VariabelutforskerTest : BunitContext
     }
 
     [Fact]
+    public void Sok_NårBrukerenTasterITekstfeltet_ThenGjøresIngenTjenerrundtur()
+    {
+        // Regression guard. The field used to be value="@_sok" + @oninput, which on
+        // helsedata's Blazor Server circuit is one round-trip per keystroke — and the
+        // re-render each round-trip triggers rewrote the element while more input was
+        // still arriving, so a fast fill lost characters ("svelging" arrived as "sng").
+        // No registered oninput handler means the browser event never reaches the circuit,
+        // and bUnit says so by refusing to dispatch it.
+        var client = new FakeClient(EnSide());
+        var cut = RenderMed(client);
+
+        var input = cut.Find("input[type=search]");
+
+        Assert.Throws<MissingEventHandlerException>(() => input.Input("svelging"));
+        Assert.Equal(1, client.Kall); // only the initial load
+    }
+
+    [Fact]
+    public void Sok_NårHeleTekstenErSkrevetFørInnsending_ThenSøkesDetÉnGangMedHeleTeksten()
+    {
+        var client = new FakeClient(EnSide());
+        var cut = RenderMed(client);
+
+        // onchange carries the finished value, however fast it was typed or pasted.
+        cut.Find("input[type=search]").Change("svelging");
+        cut.Find("form").Submit();
+
+        Assert.Equal("svelging", client.SisteSok);
+        Assert.Equal(2, client.Kall); // initial load + this one search
+    }
+
+    [Fact]
+    public void Sok_NårBrukerenKlikkerSøkUtenÅForlateFeltetFørst_ThenSøkesDetMedHeleTeksten()
+    {
+        // The case onchange has to survive: type, then go straight for the Søk button
+        // without tabbing away. The browser blurs the field as the button takes focus, so
+        // change reaches the circuit before the click turns into a submit — this test
+        // pins that order, and would fail if the value only ever arrived on blur-by-tab.
+        var client = new FakeClient(EnSide());
+        var cut = RenderMed(client);
+
+        cut.Find("input[type=search]").Change("svelging"); // blur caused by the click
+        cut.Find("button[type=submit]").Click();
+
+        Assert.Equal("svelging", client.SisteSok);
+        Assert.Equal(2, client.Kall);
+    }
+
+    [Fact]
     public void Render_Alltid_ThenSøkefeltetHarKoblaLedetekst()
     {
         var cut = RenderMed(new FakeClient(EnSide()));

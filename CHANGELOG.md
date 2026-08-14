@@ -25,3 +25,5 @@ service embeds cannot move under them without warning.
   Blazor Web App.
 - A host mounting it must contain at least one `.razor` file (an `_Imports.razor` is enough), or
   the Blazor framework script is not served to the project and the circuit never starts.
+- The search field talks to the server only when the search is submitted — Enter or the Søk
+  button — not on every keystroke. `SokChanged` fires once per search, not once per character.
