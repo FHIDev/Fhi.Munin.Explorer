@@ -9,32 +9,11 @@ we stay below `1.0.0` until a consuming host is live and the surface has settled
 `1.0.0`, a breaking change means a new major with a deprecation window — a package a partner
 service embeds cannot move under them without warning.
 
-## Unreleased
+**Unreleased changes are not in this file.** Each one lands on its branch as its own file in
+[`changelog.d/`](changelog.d/README.md), and `scripts/assemble-changelog.ps1` folds them in under
+a version heading at release time. One file per change means two PRs in flight never conflict
+over this one. To see what is queued for the next release, read `changelog.d/`.
 
-### Added
-- First component: `Variabelutforsker` — search and browse published variables from the Munin
-  Explorer API. Takes `Sok`, `SokChanged`, `SideStorrelse` and `Sprak` (`"no"` / `"en"`).
-- `AddMuninExplorer(...)` registers the data client; the host supplies `ApiBaseUrl`, or sets
-  `MuninExplorer:ApiBaseUrl` in configuration.
-- The rest of the Explorer API is now on `IMuninExplorerClient`: `HentFiltreAsync`,
-  `HentKilderAsync`, `HentKildeAsync`, `HentKildeHierarkiAsync`, `HentDatasamlingAsync`,
-  `HentVariabelAsync` and `HentVariabelTidslinjeAsync`, with contracts to match. A resource that
-  does not exist answers `null`, or an empty collection, instead of throwing.
-- `VariabelSammendrag` gained `PresentationOrder`, `DataType` and `VersjonId` — the API was
-  already returning all three.
+Nothing has been published to nuget.org yet, so there are no released versions below.
 
-### Notes for hosts
-- Every request the client makes carries `X-Munin-Explorer-Client: blazor/<version>`. Munin's API
-  is anonymous, and this is how it tells embedded-component traffic apart from anything else.
-- A host that implements `IMuninExplorerClient` itself has seven new members to fill in. While on
-  `0.x` the interface still moves; a component only calls what it needs, so unimplemented members
-  can throw.
-- The component ships **no CSS**. Styling comes from the host — on helsedata.no that is
-  `Fhi.Helsedata.Stiler`. Class names are prefixed `variabelutforsker-`.
-- The component sets no render mode. The host decides at the mount site — `render-mode="Server"`
-  on the `<component>` tag helper in a legacy Blazor Server host, or `@rendermode` in a modern
-  Blazor Web App.
-- A host mounting it must contain at least one `.razor` file (an `_Imports.razor` is enough), or
-  the Blazor framework script is not served to the project and the circuit never starts.
-- The search field talks to the server only when the search is submitted — Enter or the Søk
-  button — not on every keystroke. `SokChanged` fires once per search, not once per character.
+<!-- assemble-changelog: new version sections are inserted directly below this line, newest first. -->

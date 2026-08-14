@@ -1,9 +1,13 @@
 /* Stand-in for Fhi.Helsedata.Stiler.
 
-   The RCL ships no CSS — the host provides it. In helsedata's Optimizely site that is
-   the Stiler stylesheet; here it is this file, styling the same `variabelutforsker-*`
-   class names the component emits. It exists so the sample host is legible, and to make
-   the "styling lives outside the package" split obvious rather than theoretical. */
+   The RCL ships no CSS — the host provides it. In helsedata's Optimizely site that is the
+   Stiler stylesheet; here it is this file, styling the same `variabelutforsker-*` class names
+   the component emits. Adapted from samples/LegacyHost/wwwroot/css/host.css and kept in step
+   with it on purpose: if the two hosts style the component identically, any difference you see
+   between them is a difference in the *hosting model*, not in the CSS.
+
+   It exists so the sample host is legible, and to make the "styling lives outside the package"
+   split obvious rather than theoretical. */
 
 :root {
   --ink: #201b33;
@@ -45,10 +49,6 @@ body {
   padding: 12px 16px;
   margin: 0 0 12px;
 }
-/* Kept in step with ModernHost's copy: the two samples style the component with the
-   same rules, so any visible difference between them is a difference in the HOSTING
-   MODEL rather than in CSS. With a single note — as here — :last-child resolves to the
-   same 24px this previously hard-coded, so nothing changes visually. */
 .hostchrome-note:last-child { margin-bottom: 24px; }
 .hostchrome-note code { font-size: 13px; }
 
