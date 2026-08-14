@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Text;
 using Fhi.Munin.Explorer.Contracts;
 
@@ -54,6 +55,7 @@ internal sealed class StubbetHttpHandler(Func<HttpRequestMessage, HttpResponseMe
 {
     public Uri? SisteUri { get; private set; }
     public IReadOnlyList<string> SisteKlientheader { get; private set; } = [];
+    public AuthenticationHeaderValue? SisteAutorisasjon { get; private set; }
     public int Kall { get; private set; }
 
     /// <summary>Answers <c>200 OK</c> with the given JSON body to every request.</summary>
@@ -72,6 +74,7 @@ internal sealed class StubbetHttpHandler(Func<HttpRequestMessage, HttpResponseMe
         SisteKlientheader = request.Headers.TryGetValues(Explorer.Client.KlientHeaderHandler.Header, out var verdier)
             ? [.. verdier]
             : [];
+        SisteAutorisasjon = request.Headers.Authorization;
 
         return Task.FromResult(svar(request));
     }
