@@ -31,7 +31,10 @@ internal sealed class BearerTokenHandler(IMuninExplorerTokenProvider tokenProvid
 
             if (!string.IsNullOrWhiteSpace(token))
             {
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                // Trimmed because a provider that reads the token from configuration, a file
+                // or an environment variable easily returns a trailing newline, and that would
+                // travel into the header verbatim.
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token.Trim());
             }
         }
 

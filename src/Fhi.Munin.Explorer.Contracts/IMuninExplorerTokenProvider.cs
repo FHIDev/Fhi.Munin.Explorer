@@ -30,11 +30,18 @@ namespace Fhi.Munin.Explorer.Contracts;
 public interface IMuninExplorerTokenProvider
 {
     /// <summary>
-    /// Returns the bearer token for the current user, or <c>null</c> to call anonymously.
+    /// Returns the access token for the current user, or <c>null</c> to call anonymously.
     /// </summary>
     /// <remarks>
+    /// <para>
+    /// Return the raw token value only — <c>eyJhbGci...</c>, not <c>Bearer eyJhbGci...</c>.
+    /// The scheme is added when the header is written, so a returned prefix would be sent
+    /// twice and the API would reject the call.
+    /// </para>
+    /// <para>
     /// Returning <c>null</c> is a normal answer, not a failure: a signed-out visitor
     /// browsing public metadata is the common case. Callers must not throw on it.
+    /// </para>
     /// </remarks>
     Task<string?> HentTokenAsync(CancellationToken cancellationToken = default);
 }

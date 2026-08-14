@@ -64,6 +64,19 @@ public class BearerTokenHandlerTest
     }
 
     [Fact]
+    public async Task SendAsync_NårTokenetHarWhitespaceRundtSeg_ThenTrimmesDet()
+    {
+        // A provider reading the token from configuration or a file easily hands back a
+        // trailing newline. Sending that verbatim produces a header the API rejects.
+        var ytre = StubbetHttpHandler.Ok("{}");
+        var klient = MedProvider(new FastTokenProvider("  et-token\n"), ytre);
+
+        await klient.GetAsync("api/explorer/variables");
+
+        Assert.Equal("et-token", ytre.SisteAutorisasjon?.Parameter);
+    }
+
+    [Fact]
     public async Task SendAsync_ForHverForespørsel_ThenSpørresProvideren()
     {
         // Tokens expire, and IHttpClientFactory caches this pipeline across callers for
