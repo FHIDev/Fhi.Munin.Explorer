@@ -35,8 +35,12 @@ These are not style preferences — each one is a host that breaks otherwise.
 - **No `@rendermode`.** The host decides, at the mount site. This is what lets one package serve
   both a legacy and a modern host.
 - **No CSS, no `wwwroot`, no `.razor.css`.** Styling comes from the host's
-  `Fhi.Helsedata.Stiler` stylesheet. Component styles live in that repo under a namespaced
-  folder, the way `soknader/` does.
+  `Fhi.Helsedata.Stiler` stylesheet — and the class names the markup emits are Stiler's own
+  (`searchbox__freetext`, `hd-button-square`, `datasourcecard*`, …), not names of our own
+  invention. A name Stiler has never heard of renders as a raw browser default inside an
+  otherwise styled page, which defeats the point of shipping this as a component at all. Where
+  Stiler has no rule for a shape, change the shape rather than adding a stylesheet: results are
+  a `datasourcecard` list, not a table, because Stiler styles no table this package could use.
 - **No `HeadOutlet`.** Not available in the Optimizely host — the component cannot set the page
   title or inject meta tags.
 - **Nothing host-specific.** `IHttpContextAccessor`, `Microsoft.AspNetCore.Components.Server.*`,

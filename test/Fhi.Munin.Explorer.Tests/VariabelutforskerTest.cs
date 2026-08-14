@@ -73,14 +73,14 @@ public class VariabelutforskerTest : BunitContext
     }
 
     [Fact]
-    public void Render_NårSøketGirTreff_ThenViserRadPerVariabel()
+    public void Render_NårSøketGirTreff_ThenViserKortPerVariabel()
     {
         var client = new FakeClient(EnSide(Variabel("1. Tale", "V_ALS.F1.ALSFRSR1TALE"),
                                            Variabel("2. Spyttsekresjon", "V_ALS.F1.ALSFRSR2SPYTT")));
 
         var cut = RenderMed(client);
 
-        Assert.Equal(2, cut.FindAll("tbody tr").Count);
+        Assert.Equal(2, cut.FindAll("ul.datasourcecard-list > li").Count);
         Assert.Contains("1. Tale", cut.Markup);
         Assert.Contains("V_ALS.F1.ALSFRSR1TALE", cut.Markup);
         Assert.Contains("2 variabler", cut.Markup);
@@ -91,7 +91,7 @@ public class VariabelutforskerTest : BunitContext
     {
         var cut = RenderMed(new FakeClient(EnSide()));
 
-        Assert.Empty(cut.FindAll("tbody tr"));
+        Assert.Empty(cut.FindAll("ul.datasourcecard-list > li"));
         Assert.Contains("Ingen variabler passet søket", cut.Markup);
     }
 
@@ -101,7 +101,7 @@ public class VariabelutforskerTest : BunitContext
         var cut = RenderMed(new FeilendeClient());
 
         Assert.Contains("Kunne ikke hente variabler", cut.Markup);
-        Assert.Empty(cut.FindAll("tbody tr"));
+        Assert.Empty(cut.FindAll("ul.datasourcecard-list > li"));
     }
 
     [Fact]
@@ -215,7 +215,7 @@ public class VariabelutforskerTest : BunitContext
     {
         var cut = RenderMed(new FakeClient(EnSide()));
 
-        var status = cut.Find("p.variabelutforsker-status");
+        var status = cut.Find("p[role='status']");
 
         // role + aria-live together, because older screen readers honour one or the other.
         // aria-atomic so the whole sentence is read: hearing "12" on its own is not news.
@@ -224,13 +224,83 @@ public class VariabelutforskerTest : BunitContext
         Assert.Equal("true", status.GetAttribute("aria-atomic"));
     }
 
+    // ---------------------------------------------------------------------------------
+    // Styling contract. The package ships no CSS, so every class name it emits has to be
+    // one Fhi.Helsedata.Stiler already defines — otherwise the host stylesheet has never
+    // heard of it and the element renders as a raw browser default inside a styled page.
+    // ---------------------------------------------------------------------------------
+
+    [Fact]
+    public void Render_Alltid_ThenBrukesStilerSineKlassenavnPåSøkefeltet()
+    {
+        var cut = RenderMed(new FakeClient(EnSide()));
+
+        Assert.Equal("form-element__label", cut.Find("label").ClassName);
+        Assert.Equal("searchbox__freetext", cut.Find("input[type=search]").ClassName);
+        Assert.NotNull(cut.Find("div.searchbox__freetext-container"));
+
+        // hd-button-square carries the shape, button-square--primary the colour, and
+        // searchbox__freetext-submit-button places it inside the field's reserved padding.
+        var knapp = cut.Find("button[type=submit]").ClassName!;
+        Assert.Contains("hd-button-square", knapp);
+        Assert.Contains("button-square--primary", knapp);
+        Assert.Contains("searchbox__freetext-submit-button", knapp);
+    }
+
+    [Fact]
+    public void Render_Alltid_ThenFinnesIngenOppfunneKlassenavnUtenomRotkroken()
+    {
+        // The root class is a DOM handle, not a style hook — nothing styles it. Everything
+        // else has to come from Stiler, and this is the guard that says so out loud.
+        var cut = RenderMed(new FakeClient(EnSide(Variabel("1. Tale", "KODE"))),
+                            b => b.Add(c => c.Sok, "tale"));
+
+        var oppfunne = cut.FindAll("[class]")
+            .SelectMany(e => e.ClassName!.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            .Where(k => k.StartsWith("variabelutforsker", StringComparison.Ordinal))
+            .Distinct()
+            .ToList();
+
+        Assert.Equal(["variabelutforsker"], oppfunne);
+        Assert.Equal("variabelutforsker", cut.Find("section").ClassName);
+    }
+
+    [Fact]
+    public void Render_NårSøketGirTreff_ThenBrukesStilerSittKortoppsettTilResultatene()
+    {
+        var cut = RenderMed(new FakeClient(EnSide(Variabel("1. Tale", "KODE"))));
+
+        Assert.NotNull(cut.Find("ul.datasourcecard-list > li.datasourcecard-list__item > div.datasourcecard"));
+        Assert.NotNull(cut.Find(".datasourcecard__heading"));
+        Assert.NotNull(cut.Find(".datasourcecard__info > .datasourcecard__info--text"));
+    }
+
+    [Fact]
+    public void Render_NårApietFeiler_ThenFårFeilmeldingaStilerSinInfoboks()
+    {
+        var cut = RenderMed(new FeilendeClient());
+
+        Assert.Contains("infobox", cut.Find("[role='alert'] p").ClassName!);
+    }
+
+    [Fact]
+    public void Render_NårIngentingErGalt_ThenTegnesIngenTomInfoboks()
+    {
+        // The alert container is always in the document (see below), so it must carry no
+        // class of its own — an `infobox` there would paint an empty coloured box on every
+        // page that has nothing to report.
+        var cut = RenderMed(new FakeClient(EnSide()));
+
+        Assert.False(cut.Find("[role='alert']").HasAttribute("class"));
+    }
+
     [Fact]
     public void Render_NårSøketGirTreff_ThenNevnerStatuslinjaBådeAntalletOgSøkeordet()
     {
         var cut = RenderMed(new FakeClient(EnSide(Variabel("1. Tale", "KODE"))),
                             b => b.Add(c => c.Sok, "tale"));
 
-        var status = cut.Find("p.variabelutforsker-status").TextContent;
+        var status = cut.Find("p[role='status']").TextContent;
 
         Assert.Contains("1 variabel funnet", status);
         Assert.Contains("«tale»", status);
@@ -242,7 +312,7 @@ public class VariabelutforskerTest : BunitContext
         var cut = RenderMed(new FakeClient(EnSide()), b => b.Add(c => c.Sok, "svelging"));
 
         Assert.Contains("Ingen variabler passet søket «svelging»",
-                        cut.Find("p.variabelutforsker-status").TextContent);
+                        cut.Find("p[role='status']").TextContent);
     }
 
     [Fact]
@@ -261,7 +331,7 @@ public class VariabelutforskerTest : BunitContext
         var cut = RenderMed(new FakeClient(side));
 
         Assert.Contains("Viser 2 av 312 variabler funnet",
-                        cut.Find("p.variabelutforsker-status").TextContent);
+                        cut.Find("p[role='status']").TextContent);
     }
 
     [Fact]
@@ -274,7 +344,7 @@ public class VariabelutforskerTest : BunitContext
 
         cut.Find("input[type=search]").Change("noe helt annet");
 
-        Assert.Contains("«tale»", cut.Find("p.variabelutforsker-status").TextContent);
+        Assert.Contains("«tale»", cut.Find("p[role='status']").TextContent);
     }
 
     [Fact]
@@ -303,65 +373,87 @@ public class VariabelutforskerTest : BunitContext
     }
 
     [Fact]
-    public void Render_NårSøketGirTreff_ThenHarTabellenEtTilgjengeligNavn()
+    public void Render_NårSøketGirTreff_ThenHarResultatlistaEtTilgjengeligNavn()
     {
         var cut = RenderMed(new FakeClient(EnSide(Variabel("1. Tale", "KODE"))),
                             b => b.Add(c => c.Sok, "tale"));
 
-        var caption = cut.Find("table caption");
+        // aria-label rather than a clipped <caption>: Stiler has no visually-hidden rule, so
+        // markup that needs one is markup that shows its scaffolding on helsedata's page.
+        var navn = cut.Find("ul.datasourcecard-list").GetAttribute("aria-label")!;
 
-        Assert.Contains("1 variabel funnet", caption.TextContent);
-        Assert.Contains("«tale»", caption.TextContent);
-        // Hidden from the eye only — the same sentence is already visible in the status line.
-        Assert.Contains("variabelutforsker-visuelt-skjult", caption.ClassName);
+        Assert.Contains("1 variabel funnet", navn);
+        Assert.Contains("«tale»", navn);
     }
 
     [Fact]
-    public void Render_NårSøketGirTreff_ThenHarAlleKolonneoverskrifterScopeCol()
+    public void Render_NårSøketGirTreff_ThenErHvertResultatEnOverskriftEttNivåUnderTittelen()
     {
+        // Real headings per result are what let a screen-reader user move between them with
+        // the heading rotor. One level below the component's own title keeps the outline whole.
+        var cut = RenderMed(new FakeClient(EnSide(Variabel("1. Tale", "KODE"))),
+                            b => b.Add(c => c.OverskriftNivaa, 3));
+
+        var kortoverskrift = cut.Find("li h4");
+
+        Assert.Equal("1. Tale", kortoverskrift.TextContent);
+        Assert.Equal("datasourcecard__heading", kortoverskrift.ClassName);
+    }
+
+    [Fact]
+    public void Render_NårSøketGirTreff_ThenErHvertFeltMerketMedHvaDetEr()
+    {
+        // A table had column headers doing this job. A card has nothing, and "Inklusjon" on
+        // its own does not say which field it is.
+        var cut = RenderMed(new FakeClient(EnSide(Variabel("1. Tale", "V_ALS.F1.TALE"))));
+
+        var info = cut.Find(".datasourcecard__info").TextContent;
+
+        Assert.Contains("Kode: V_ALS.F1.TALE", info);
+        Assert.Contains("Datakilde: Als registeret", info);
+        Assert.Contains("Datasamling: Inklusjon", info);
+        Assert.Contains("Periode: 2010–2025", info);
+    }
+
+    [Fact]
+    public void Render_NårResultateneVises_ThenErListaMerketSomOpptattUtenEkstraTabbstopp()
+    {
+        // The table version wrapped itself in a focusable scroll box, because a box that
+        // scrolls sideways and cannot be focused cannot be scrolled from the keyboard. Cards
+        // wrap instead of scrolling, so that tab stop is gone rather than merely moved.
         var cut = RenderMed(new FakeClient(EnSide(Variabel("1. Tale", "KODE"))));
 
-        var overskrifter = cut.FindAll("thead th");
+        var liste = cut.Find("ul.datasourcecard-list");
 
-        Assert.Equal(4, overskrifter.Count);
-        Assert.All(overskrifter, th => Assert.Equal("col", th.GetAttribute("scope")));
+        Assert.Equal("false", liste.GetAttribute("aria-busy"));
+        Assert.False(liste.HasAttribute("tabindex"));
+        Assert.Empty(cut.FindAll("[tabindex]"));
     }
 
     [Fact]
-    public void Render_NårTabellenVises_ThenErRulleområdetTastaturnåbartOgNavngitt()
-    {
-        // The wrapper scrolls sideways on narrow screens; a scroll box nothing can focus
-        // cannot be scrolled from the keyboard at all.
-        var cut = RenderMed(new FakeClient(EnSide(Variabel("1. Tale", "KODE"))));
-
-        var omslag = cut.Find("div.variabelutforsker-tabell-omslag");
-
-        Assert.Equal("0", omslag.GetAttribute("tabindex"));
-        Assert.Equal("region", omslag.GetAttribute("role"));
-        Assert.Equal(cut.Find("caption").Id, omslag.GetAttribute("aria-labelledby"));
-    }
-
-    [Fact]
-    public void Render_NårEnRadManglerVerdier_ThenLesesCellaSomIkkeOppgittIStedetForEnStrek()
+    public void Render_NårEnVerdiMangler_ThenSkrivesIkkeOppgittSynligForAlle()
     {
         // "—" is either read as "em dash" or skipped in silence, depending on the reader's
-        // punctuation setting. Neither says "we do not know".
+        // punctuation setting. Neither says "we do not know". The words used to be there but
+        // clipped out of sight for everyone except a screen reader; now they are simply there,
+        // which needs no visually-hidden rule from the host — and Stiler has none to give.
         var utenKilde = new VariabelSammendrag { Id = Guid.NewGuid(), Code = "K", PreferredTerm = "Uten kilde" };
 
         var cut = RenderMed(new FakeClient(EnSide(utenKilde)));
 
-        var kildeCelle = cut.FindAll("tbody td")[1];
+        var info = cut.Find(".datasourcecard__info");
 
-        Assert.Equal("true", kildeCelle.QuerySelector("span[aria-hidden]")!.GetAttribute("aria-hidden"));
-        Assert.Contains("Ikke oppgitt", kildeCelle.TextContent);
-        Assert.Contains("variabelutforsker-visuelt-skjult", kildeCelle.InnerHtml);
+        Assert.Contains("Datakilde: Ikke oppgitt", info.TextContent);
+        Assert.Contains("Periode: Ikke oppgitt", info.TextContent);
+        Assert.DoesNotContain("—", info.TextContent);
     }
 
     [Fact]
-    public void Render_NårVariabelenHarBeskrivelse_ThenSkillesKodeOgBeskrivelseAvEtMellomrom()
+    public void Render_NårVariabelenHarBeskrivelse_ThenStårDenForSegSelvUnderNøkkelopplysningene()
     {
-        // Razor eats the whitespace around a code block, and the two spans are then read as
-        // one word: "…ALSFRSR1TALEHvordan er talen?".
+        // The code and the description used to be two adjacent spans in one table cell, and
+        // Razor eats the whitespace between them: "…ALSFRSR1TALEHvordan er talen?". They are
+        // now different parts of the card, so nothing can run them together.
         var medBeskrivelse = new VariabelSammendrag
         {
             Id = Guid.NewGuid(),
@@ -372,18 +464,23 @@ public class VariabelutforskerTest : BunitContext
 
         var cut = RenderMed(new FakeClient(EnSide(medBeskrivelse)));
 
-        Assert.Contains("V_ALS.F1.TALE Hvordan er talen?", cut.Find("tbody td").TextContent);
+        Assert.Equal("Hvordan er talen?", cut.Find(".datasourcecard__intro p").TextContent);
+        Assert.DoesNotContain("Hvordan er talen?", cut.Find(".datasourcecard__info").TextContent);
     }
 
     [Fact]
-    public void Render_NårSpråkErEn_ThenErDataradeneFortsattMerketSomNorske()
+    public void Render_NårSpråkErEn_ThenErSjølveMetadataenFortsattMerketSomNorsk()
     {
         // The UI turns English; Munin's variable names do not. An English synthesiser
-        // reading Norwegian terms is unintelligible (WCAG 3.1.2).
+        // reading Norwegian terms is unintelligible (WCAG 3.1.2). The mark sits on the data
+        // rather than on the whole list, so the English field labels around it are not
+        // announced as Norwegian too.
         var cut = RenderMed(new FakeClient(EnSide(Variabel("1. Tale", "KODE"))),
                             b => b.Add(c => c.Sprak, "en"));
 
-        Assert.Equal("no", cut.Find("tbody").GetAttribute("lang"));
+        Assert.Equal("no", cut.Find(".datasourcecard__heading").GetAttribute("lang"));
+        Assert.Equal("no", cut.Find(".datasourcecard__info--text span[lang]").GetAttribute("lang"));
+        Assert.False(cut.Find("ul.datasourcecard-list").HasAttribute("lang"));
     }
 
     [Fact]
@@ -434,15 +531,16 @@ public class VariabelutforskerTest : BunitContext
     }
 
     [Fact]
-    public void Render_ToInstanserPåSammeSide_ThenErOgsåOverskriftOgSammendragUnike()
+    public void Render_ToInstanserPåSammeSide_ThenErOgsåOverskrifteneUnike()
     {
         Services.AddSingleton<IMuninExplorerClient>(new FakeClient(EnSide(Variabel("1. Tale", "KODE"))));
 
         var a = Render<Variabelutforsker>();
         var b = Render<Variabelutforsker>();
 
+        // The title id is what both the section and the search landmark are named by, so a
+        // collision would leave a screen reader with two identically named landmarks.
         Assert.NotEqual(a.Find("h2").Id, b.Find("h2").Id);
-        Assert.NotEqual(a.Find("caption").Id, b.Find("caption").Id);
     }
 
     [Fact]
@@ -453,7 +551,7 @@ public class VariabelutforskerTest : BunitContext
         var cut = RenderMed(new TregClient());
 
         Assert.False(cut.Find("button[type=submit]").HasAttribute("disabled"));
-        Assert.Contains("Henter variabler", cut.Find("p.variabelutforsker-status").TextContent);
+        Assert.Contains("Henter variabler", cut.Find("p[role='status']").TextContent);
     }
 
     [Fact]
@@ -470,24 +568,24 @@ public class VariabelutforskerTest : BunitContext
     }
 
     [Fact]
-    public async Task Sok_NårRadeneErForeldetAvEtNyttSøk_ThenMerkesTabellenSomOpptatt()
+    public async Task Sok_NårResultateneErForeldetAvEtNyttSøk_ThenMerkesListaSomOpptatt()
     {
-        // The previous rows stay on screen while the next search runs, so they are stale
+        // The previous cards stay on screen while the next search runs, so they are stale
         // rather than current — aria-busy is what says so to a screen reader.
         var treff = EnSide(Variabel("1. Tale", "KODE"));
         var client = new TregClient(treff);
         var cut = RenderMed(client);
 
-        Assert.Equal("false", cut.Find("div.variabelutforsker-tabell-omslag").GetAttribute("aria-busy"));
+        Assert.Equal("false", cut.Find("ul.datasourcecard-list").GetAttribute("aria-busy"));
 
         cut.Find("form").Submit(); // second search, still in flight
 
-        Assert.Equal("true", cut.Find("div.variabelutforsker-tabell-omslag").GetAttribute("aria-busy"));
+        Assert.Equal("true", cut.Find("ul.datasourcecard-list").GetAttribute("aria-busy"));
 
         await cut.InvokeAsync(() => client.Svar(treff));
 
         cut.WaitForAssertion(() =>
-            Assert.Equal("false", cut.Find("div.variabelutforsker-tabell-omslag").GetAttribute("aria-busy")));
+            Assert.Equal("false", cut.Find("ul.datasourcecard-list").GetAttribute("aria-busy")));
     }
 
     [Fact]
@@ -501,7 +599,7 @@ public class VariabelutforskerTest : BunitContext
 
         cut.WaitForAssertion(() =>
         {
-            var status = cut.Find("p.variabelutforsker-status").TextContent;
+            var status = cut.Find("p[role='status']").TextContent;
             Assert.Contains("1 variabel funnet", status);
             Assert.DoesNotContain("Henter variabler", status);
         });

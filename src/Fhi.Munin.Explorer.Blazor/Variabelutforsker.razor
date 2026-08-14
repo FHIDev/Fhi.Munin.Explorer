@@ -3,14 +3,24 @@
 @* No @page — the host owns routing; in helsedata's Optimizely CMS there is no router at all.
    No @rendermode — the host decides at the mount site, which is what lets this same
    component render under legacy Blazor Server and under a modern Blazor Web App.
-   No CSS ships from this package: class names below are styled by Fhi.Helsedata.Stiler.
+   No CSS ships from this package.
+
+   Every class name below is one Fhi.Helsedata.Stiler already defines, and the shapes are
+   lifted from helsedata's own datakildeutforsker (Features/DataSources/DataSourceComponent):
+   a searchbox with the submit button inside the field, and results as a card list. Inventing
+   `variabelutforsker-*` names — which is what this used to do — meant the host stylesheet had
+   never heard of them, so the Søk button, the search field and the table headers rendered as
+   raw browser defaults inside an otherwise styled page. Matching helsedata without guessing is
+   the entire reason this ships as a component, so the names have to be theirs.
 
    Accessibility: helsedata.no is a public-sector site, so WCAG 2.1 AA is a legal
    requirement — and this is our markup on their page. The choices below are the ones
-   markup can make. Visible focus, contrast and the visually-hidden rule are the host
-   stylesheet's to get right, and are spelled out for hosts in the doc comment on the
-   component class in the codebehind. *@
+   markup can make. Visible focus and contrast are the host stylesheet's to get right, and
+   are spelled out for hosts in the doc comment on the component class in the codebehind. *@
 
+@* The one name here that is not Stiler's. It carries no styling — nothing in this package or
+   in Stiler defines a rule for it — and exists so the component can be found in the DOM of a
+   CMS page that renders a hundred other things. *@
 <section class="variabelutforsker" aria-labelledby="@TittelId">
     @* Rendered from OverskriftNivaa rather than hard-coded to h2: the level that keeps the
        document outline unbroken is only knowable at the mount site. *@
@@ -18,39 +28,49 @@
 
     @* role="search" makes this a search landmark, and aria-labelledby names it after this
        instance's title so two explorers on one page are told apart in a landmark list. *@
-    <form class="variabelutforsker-sok"
-          role="search"
+    <form role="search"
           aria-labelledby="@TittelId"
           @onsubmit="SokAsync"
           @onsubmit:preventDefault="true">
-        <label class="variabelutforsker-sok-ledetekst" for="@SokId">@T.SokLedetekst</label>
-        @* @bind (onchange), deliberately NOT value + @oninput.
+        @* A visible label, deliberately, where helsedata's datakildeutforsker uses a bare
+           aria-label. `form-element__label` is Stiler's own label style, so it costs nothing
+           to keep the text on screen — and a visible label serves far more people than an
+           invisible one. *@
+        <label class="form-element__label" for="@SokId">@T.SokLedetekst</label>
 
-           This renders inside helsedata.no's Blazor Server circuit, so @oninput means one
-           round-trip per keystroke — for a search that only ever runs on submit, that is
-           traffic for nothing, multiplied by every visitor on a public site. Worse, each
-           round-trip re-renders and rewrites the input while more input is still arriving:
-           a fast paste or a programmatic fill loses characters (typing "svelging" quickly
-           arrived as "sng").
+        @* searchbox__freetext reserves 104px of right padding for a button sitting inside the
+           field, which is what searchbox__freetext-submit-button positions there. Both come
+           from Stiler; this is the arrangement their own search box uses. *@
+        <div class="searchbox__freetext-container">
+            @* @bind (onchange), deliberately NOT value + @oninput.
 
-           onchange is enough because searching is always an explicit act here: it fires on
-           implicit submit (Enter), and a click on Søk blurs the field first, so the change
-           event reaches the circuit before @onsubmit does. The event is spelled out rather
-           than left implicit so nobody "helpfully" restores oninput. *@
-        <input class="variabelutforsker-sok-felt"
-               id="@SokId"
-               type="search"
-               @bind="_sok"
-               @bind:event="onchange"
-               placeholder="@T.SokPlassholder"
-               autocomplete="off"
-               maxlength="200" />
-        @* Deliberately NOT disabled while a search runs. Disabling the element that
-           currently has focus drops focus to <body>, so a keyboard user who just pressed
-           Enter on Søk loses their place and starts tabbing from the top of the page
-           again. SokAsync ignores a second submit while one is in flight instead, which
-           stops the double request without touching focus. *@
-        <button class="variabelutforsker-sok-knapp" type="submit">@T.SokKnapp</button>
+               This renders inside helsedata.no's Blazor Server circuit, so @oninput means one
+               round-trip per keystroke — for a search that only ever runs on submit, that is
+               traffic for nothing, multiplied by every visitor on a public site. Worse, each
+               round-trip re-renders and rewrites the input while more input is still arriving:
+               a fast paste or a programmatic fill loses characters (typing "svelging" quickly
+               arrived as "sng").
+
+               onchange is enough because searching is always an explicit act here: it fires on
+               implicit submit (Enter), and a click on Søk blurs the field first, so the change
+               event reaches the circuit before @onsubmit does. The event is spelled out rather
+               than left implicit so nobody "helpfully" restores oninput. *@
+            <input class="searchbox__freetext"
+                   id="@SokId"
+                   type="search"
+                   @bind="_sok"
+                   @bind:event="onchange"
+                   placeholder="@T.SokPlassholder"
+                   autocomplete="off"
+                   maxlength="200" />
+            @* Deliberately NOT disabled while a search runs. Disabling the element that
+               currently has focus drops focus to <body>, so a keyboard user who just pressed
+               Enter on Søk loses their place and starts tabbing from the top of the page
+               again. SokAsync ignores a second submit while one is in flight instead, which
+               stops the double request without touching focus. *@
+            <button class="hd-button-square button-square--primary searchbox__freetext-submit-button"
+                    type="submit">@T.SokKnapp</button>
+        </div>
     </form>
 
     @* One polite status line, holding one message at a time: loading, the result summary,
@@ -60,8 +80,13 @@
        Loading is announced too. That is one extra utterance per search, which is the price
        of telling a screen-reader user that pressing Søk did something at all when the API
        is slow; the region is shared rather than stacked so the messages replace each other
-       instead of piling up. *@
-    <p class="variabelutforsker-status" role="status" aria-live="polite" aria-atomic="true">
+       instead of piling up.
+
+       `caption` is Stiler's muted secondary-text style. It also carries the empty state: a
+       full-page emptystate block would be out of proportion inside a component that is one
+       section of somebody else's page, and duplicating the sentence outside the live region
+       would put it on screen twice. *@
+    <p class="caption" role="status" aria-live="polite" aria-atomic="true">
         @if (_laster)
         {
             @T.Laster
@@ -72,70 +97,61 @@
         }
         else if (_resultat is not null)
         {
-            <span class="variabelutforsker-tomt">@T.IngenTreff(_utfortSok)</span>
+            @T.IngenTreff(_utfortSok)
         }
     </p>
 
     @* The failure is worth interrupting for, so it is an alert rather than a polite update.
        The container is always rendered, empty when there is nothing wrong: a role="alert"
        element that is inserted and filled in the same DOM update is announced unreliably,
-       while one that is already there when its text arrives is not. *@
-    <div class="variabelutforsker-varsel" role="alert" aria-live="assertive" aria-atomic="true">
+       while one that is already there when its text arrives is not. It carries no class of
+       its own precisely because it is always present — an `infobox` here would draw an empty
+       coloured box on every page that has nothing to report. *@
+    <div role="alert" aria-live="assertive" aria-atomic="true">
         @if (_feil is not null)
         {
-            <p class="variabelutforsker-feil">@_feil</p>
+            <p class="infobox infobox--bg-yellow">@_feil</p>
         }
     </div>
 
     @if (_resultat is { Items.Count: > 0 })
     {
-        @* The wrapper scrolls sideways on narrow screens (host CSS), and a scrollable box
-           that nothing can focus cannot be scrolled from the keyboard at all. tabindex="0"
-           makes it reachable; role + aria-labelledby stop that stop from being an unnamed
-           "group" of nothing. *@
-        <div class="variabelutforsker-tabell-omslag"
-             role="region"
-             tabindex="0"
-             aria-labelledby="@SammendragId"
-             aria-busy="@Opptatt">
-            <table class="variabelutforsker-tabell">
-                @* The table's accessible name. Visually hidden because the same sentence is
-                   already on screen in the status line above — a screen reader user arrives
-                   at the table without that context, a sighted user does not. *@
-                <caption id="@SammendragId" class="@VisueltSkjult">@Sammendrag</caption>
-                <thead>
-                    <tr>
-                        <th scope="col">@T.KolonneVariabel</th>
-                        <th scope="col">@T.KolonneKilde</th>
-                        <th scope="col">@T.KolonneDatasamling</th>
-                        <th scope="col">@T.KolonnePeriode</th>
-                    </tr>
-                </thead>
-                @* The metadata itself is Norwegian whatever language the surrounding UI is
-                   in, so it is marked as such: an English page reading Norwegian variable
-                   names with an English speech synthesiser is unintelligible (WCAG 3.1.2). *@
-                <tbody lang="no">
-                    @foreach (var v in _resultat.Items)
-                    {
-                        <tr>
-                            <td>
-                                <span class="variabelutforsker-variabel-navn">@v.PreferredTerm</span>
-                                <span class="variabelutforsker-variabel-kode">@v.Code</span>
-                                @if (!string.IsNullOrWhiteSpace(v.Beskrivelse))
-                                {
-                                    @* Razor eats the whitespace around a code block, and without
-                                       a separator here the code and the description are read as
-                                       one run-on word: "…ALSFRSR1TALEHvordan er talen?". *@
-                                    @(" ")<span class="variabelutforsker-variabel-beskrivelse">@v.Beskrivelse</span>
-                                }
-                            </td>
-                            <td>@Verdi(v.KildeName)</td>
-                            <td>@Verdi(v.DatasamlingName)</td>
-                            <td>@Verdi(Perioden(v))</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+        @* A card list, not a table. Stiler styles no table this package could use — the only
+           table rules it has are scoped to `article.registerOwnerListPage` — so a <table> here
+           renders with 400-weight headers and no rules at all, which is exactly the raw-default
+           look this change exists to remove. helsedata's own datakildeutforsker lists results as
+           datasourcecards, so that is the shape adopted here: it needs no CSS from us, it wraps
+           instead of scrolling sideways (which retires the focusable scroll box the table needed),
+           and it drops the clipped <caption> in favour of a plain aria-label on the list.
+
+           aria-label rather than aria-labelledby: the name is the same sentence the status line
+           above shows, and pointing at that element would make the list's name change under a
+           screen reader every time the status line does. *@
+        <ul class="datasourcecard-list" aria-label="@Sammendrag" aria-busy="@Opptatt">
+            @foreach (var v in _resultat.Items)
+            {
+                <li class="datasourcecard-list__item">
+                    @* Stiler gives .datasourcecard a pointer cursor because on helsedata's page
+                       the whole card is a link to a datasource page. Variables have no detail
+                       URL in the Explorer API yet, so ours is not a link; when that endpoint
+                       lands the heading becomes an anchor and the card is already right. *@
+                    <div class="datasourcecard">
+                        @RadOverskrift(v)
+                        @Infolinje(v)
+                        @if (!string.IsNullOrWhiteSpace(v.Beskrivelse))
+                        {
+                            <div class="datasourcecard__intro">
+                                @* lang on the data itself, not on the whole list: the field
+                                   labels around it follow Sprak, but Munin's descriptions are
+                                   Norwegian whatever language the surrounding UI is in, and an
+                                   English synthesiser reading Norwegian is unintelligible
+                                   (WCAG 3.1.2). *@
+                                <p lang="no">@v.Beskrivelse</p>
+                            </div>
+                        }
+                    </div>
+                </li>
+            }
+        </ul>
     }
 </section>

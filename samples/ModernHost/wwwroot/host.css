@@ -1,21 +1,41 @@
 /* Stand-in for Fhi.Helsedata.Stiler.
 
    The RCL ships no CSS — the host provides it. In helsedata's Optimizely site that is the
-   Stiler stylesheet; here it is this file, styling the same `variabelutforsker-*` class names
-   the component emits. Adapted from samples/LegacyHost/wwwroot/css/host.css and kept in step
-   with it on purpose: if the two hosts style the component identically, any difference you see
-   between them is a difference in the *hosting model*, not in the CSS.
+   Stiler stylesheet; here it is this file. Every rule below the "Stiler stand-in" divider
+   is a class name *Stiler* defines, not one we invented, because that is what the component
+   now emits: inventing `variabelutforsker-*` names meant helsedata's stylesheet had never
+   heard of them and the search box, the Søk button and the results rendered as raw browser
+   defaults inside an otherwise styled page.
 
-   It exists so the sample host is legible, and to make the "styling lives outside the package"
-   split obvious rather than theoretical. */
+   So this file is an approximation of Stiler, not a design of its own. Values are copied from
+   `Fhi.Helsedata.Stiler/Static/scss` — the palette and the 4px spacing scale from
+   `abstracts/_variables.scss`, the rules from `components/_searchbox.scss`,
+   `components/_datasourcecard.scss`, `components/buttons/_squarebutton.scss`,
+   `components/_formelement.scss`, `components/_infobox.scss`, `base/_headline.scss` and
+   `base/_caption.scss`. It will never match exactly: Stiler ships the Graphik typeface and a
+   set of SVG icons, and neither is ours to redistribute here.
+
+   Kept byte-for-byte in step with samples/LegacyHost/wwwroot/css/host.css on purpose: if the two
+   hosts style the component identically, any difference you see between them is a difference
+   in the *hosting model*, not in the CSS. */
 
 :root {
-  --ink: #201b33;
-  --ink-soft: #5a5570;
-  --rule: #e2e0ea;
-  --surface: #f6f6fa;
-  --accent: #521eff;
-  --accent-dark: #32378d;
+  /* Stiler's palette — abstracts/_variables.scss */
+  --primary: #521eff;
+  --primary-dark: #32378d;
+  --dark: #262045;
+  --focus: #428bff;
+  --grey10: #f6f7fc;
+  --grey20: #eff0fa;
+  --grey30: #e6e6ed;
+  --grey40: #bbb8c9;
+  --grey60: #51547b;
+  --warning-light: #fff3cd;
+  --error-dark: #b4002c;
+
+  /* Stiler sets Graphik here. It is a licensed typeface and is not redistributed with this
+     sample, so the sample falls back to the system stack and leans on weight instead. */
+  --font: system-ui, -apple-system, "Segoe UI", Arial, Helvetica, sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -23,12 +43,14 @@
 body {
   margin: 0;
   background: #fff;
-  color: var(--ink);
-  font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--dark);
+  font: normal 1rem/160% var(--font);
 }
 
+/* ---- host chrome: this sample's own furniture, not the component's ---- */
+
 .hostbar {
-  background: var(--ink);
+  background: var(--dark);
   color: #fff;
   padding: 12px 24px;
   display: flex;
@@ -42,13 +64,17 @@ body {
 .hostmain { max-width: 1100px; margin: 0 auto; padding: 28px 24px 64px; }
 
 .hostchrome-note {
-  color: var(--ink-soft);
+  color: var(--grey60);
   font-size: 14.5px;
-  background: var(--surface);
-  border-left: 3px solid var(--accent);
+  background: var(--grey10);
+  border-left: 3px solid var(--primary);
   padding: 12px 16px;
   margin: 0 0 12px;
 }
+/* Kept in step with LegacyHost's copy: the two samples style the component with the
+   same rules, so any visible difference between them is a difference in the HOSTING
+   MODEL rather than in CSS. With a single note — as here — :last-child resolves to the
+   same 24px this previously hard-coded, so nothing changes visually. */
 .hostchrome-note:last-child { margin-bottom: 24px; }
 .hostchrome-note code { font-size: 13px; }
 
@@ -59,81 +85,167 @@ body {
   padding: 22px;
 }
 
-/* ---- the component's own class names ---- */
+/* ======================================================================
+   Stiler stand-in — everything below here is Fhi.Helsedata.Stiler's job
+   in the real host, and the component depends on nothing else.
+   ====================================================================== */
 
-.variabelutforsker-tittel { margin: 0 0 18px; font-size: 26px; letter-spacing: -0.01em; }
+/* base/_headings.scss */
+h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
-.variabelutforsker-sok { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; margin-bottom: 14px; }
-.variabelutforsker-sok-ledetekst { display: block; font-size: 13px; color: var(--ink-soft); margin-bottom: 4px; width: 100%; }
-.variabelutforsker-sok-felt {
-  flex: 1 1 320px;
-  padding: 9px 12px;
-  border: 1px solid var(--rule);
-  border-radius: 6px;
-  font: inherit;
+/* base/_headline.scss — the component pins its title's size with headline-3 so that a host
+   mounting it deeper in the outline does not silently shrink it. */
+.headline { margin: 16px 0; }
+.headline-3 { font: normal 500 2rem/160% var(--font); }
+
+/* base/_caption.scss — muted secondary text; the component's status line. */
+.caption { font: normal 1rem/160% var(--font); color: var(--grey60); }
+
+/* components/_formelement.scss */
+.form-element__label {
+  display: inline-block;
+  color: var(--dark);
+  font: normal 500 1.3125rem/160% var(--font);
+  margin-top: 16px;
+  margin-bottom: 8px;
 }
-.variabelutforsker-sok-felt:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.variabelutforsker-sok-knapp {
-  padding: 9px 20px;
-  border: 0;
-  border-radius: 6px;
-  background: var(--accent);
-  color: #fff;
-  font: inherit;
-  font-weight: 600;
+
+/* components/_searchbox.scss — the field reserves 104px on the right for a button that sits
+   inside it, which is where searchbox__freetext-submit-button puts one. */
+.searchbox__freetext-container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  position: relative;
+  margin-bottom: 16px;
+  padding: 8px 0;
+}
+.searchbox__freetext {
+  width: 100%;
+  height: 3.5rem;
+  margin: 0;
+  padding: 18px 104px 16px 16px;
+  line-height: 56px;
+  color: var(--dark);
+  background-color: #fff;
+  border: 1px solid var(--grey40);
+  border-radius: 8px;
+  outline: none;
+  font: normal 1rem/160% var(--font);
+  letter-spacing: 0;
+  text-align: left;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+.searchbox__freetext:focus {
+  border: 1px solid var(--focus);
+  outline: none;
+  box-shadow: 0 0 0 1px var(--focus);
+}
+.searchbox__freetext::placeholder { color: var(--grey60); opacity: 1; }
+.searchbox__freetext-submit-button {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  margin: 0;
+}
+
+/* components/buttons/_squarebutton.scss */
+.hd-button-square {
+  cursor: pointer;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  height: 2.75rem;
+  padding: 0.8125rem 1rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: none;
+  color: inherit;
+  font: normal 500 1rem/1 var(--font);
+  white-space: nowrap;
+  text-decoration: none;
+}
+.hd-button-square:focus {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 6px var(--focus);
+  outline: none;
+}
+.hd-button-square.button-square--primary { background-color: var(--primary); color: #fff; }
+.hd-button-square.button-square--primary:hover { background-color: var(--primary-dark); color: #fff; }
+
+/* components/_infobox.scss — the component's failure message. Only ever rendered when there
+   is something to say; the always-present role="alert" container carries no class. */
+.infobox {
+  display: flex;
+  position: relative;
+  max-width: 720px;
+  margin: auto;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  background-color: var(--grey30);
+  color: var(--dark);
+  word-break: break-word;
+}
+.infobox--bg-yellow { background-color: var(--warning-light); }
+
+/* components/_datasourcecard.scss — helsedata's own datakildeutforsker lists its results as
+   these cards, so the variabelutforsker does too rather than shipping a table Stiler has no
+   rules for. */
+.datasourcecard-list { padding: 0; margin: 0; }
+.datasourcecard-list__item { position: relative; display: block; list-style: none; }
+
+.datasourcecard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin-bottom: 40px;
+  padding: 32px 24px;
+  border-radius: 5px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(11, 17, 120, 0.16);
+  color: var(--dark);
+  text-decoration: none;
+  /* Stiler's own, because on helsedata's page the whole card is a link to a datasource. Ours
+     is not one yet — the Explorer API has no per-variable URL — so this is inherited
+     imprecision rather than a decision, and it goes away when that endpoint lands. */
   cursor: pointer;
 }
-.variabelutforsker-sok-knapp:hover:not(:disabled) { background: var(--accent-dark); }
-.variabelutforsker-sok-knapp:disabled { opacity: 0.55; cursor: default; }
+.datasourcecard:hover { box-shadow: 0 6px 11px rgba(33, 42, 190, 0.18); }
+.datasourcecard:focus-within { box-shadow: 0 0 0 2px var(--focus); }
 
-.variabelutforsker-status { font-size: 14px; color: var(--ink-soft); margin: 0 0 14px; }
-.variabelutforsker-feil { color: #a11338; }
-.variabelutforsker-tomt { color: var(--ink-soft); }
-
-.variabelutforsker-tabell-omslag { overflow-x: auto; }
-.variabelutforsker-tabell { border-collapse: collapse; width: 100%; font-size: 14.5px; }
-.variabelutforsker-tabell th {
-  text-align: left;
-  font-size: 12px;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-  font-weight: 500;
-  border-bottom: 1px solid var(--ink-soft);
-  padding: 8px 14px 8px 0;
+.datasourcecard__heading {
+  margin: 0 40px 0 0;
+  font: normal 500 1.3125rem/160% var(--font);
+  overflow-wrap: break-word;
 }
-.variabelutforsker-tabell td { border-bottom: 1px solid var(--rule); padding: 12px 14px 12px 0; vertical-align: top; }
 
-.variabelutforsker-variabel-navn { display: block; font-weight: 600; }
-.variabelutforsker-variabel-kode {
+.datasourcecard__info {
+  margin: 16px 0 20px;
+  color: var(--grey60);
+  font: normal 1rem/160% var(--font);
+}
+.datasourcecard__info--text { display: inline-block; }
+.datasourcecard__info .dot {
+  display: inline-block;
+  height: 5px;
+  width: 5px;
+  margin: 0 16px 2px;
+  border-radius: 50%;
+  background-color: var(--grey60);
+}
+
+.datasourcecard__intro p {
+  margin: 0;
   display: block;
-  font-family: ui-monospace, Consolas, monospace;
-  font-size: 12px;
-  color: var(--ink-soft);
-  margin-top: 2px;
-}
-.variabelutforsker-variabel-beskrivelse {
-  display: block;
-  color: var(--ink-soft);
-  margin-top: 6px;
-  max-width: 60ch;
-}
-
-/* The component marks screen-reader-only text with this class — the caption naming the
-   results table, and "Ikke oppgitt" in place of an em dash. Providing it is the HOST's
-   job, exactly like the rest of this stylesheet: in helsedata's site it will come from
-   Fhi.Helsedata.Stiler. Clip-rect rather than display:none on purpose — display:none and
-   visibility:hidden remove the text from the accessibility tree too, which would defeat
-   the point. */
-.variabelutforsker-visuelt-skjult {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
+  line-height: 150%;
+  font: normal 1.125rem/160% var(--font);
   overflow: hidden;
-  clip: rect(0 0 0 0);
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border: 0;
+}
+
+@media (max-width: 1280px) {
+  .datasourcecard__info { display: flex; flex-direction: column; }
+  .datasourcecard__info .dot { margin-left: 0; margin-bottom: 0; position: relative; bottom: 2.5px; }
 }
