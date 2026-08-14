@@ -10,11 +10,24 @@
 
     <form class="variabelutforsker-sok" role="search" @onsubmit="SokAsync" @onsubmit:preventDefault="true">
         <label class="variabelutforsker-sok-ledetekst" for="@SokId">@T.SokLedetekst</label>
+        @* @bind (onchange), deliberately NOT value + @oninput.
+
+           This renders inside helsedata.no's Blazor Server circuit, so @oninput means one
+           round-trip per keystroke — for a search that only ever runs on submit, that is
+           traffic for nothing, multiplied by every visitor on a public site. Worse, each
+           round-trip re-renders and rewrites the input while more input is still arriving:
+           a fast paste or a programmatic fill loses characters (typing "svelging" quickly
+           arrived as "sng").
+
+           onchange is enough because searching is always an explicit act here: it fires on
+           implicit submit (Enter), and a click on Søk blurs the field first, so the change
+           event reaches the circuit before @onsubmit does. The event is spelled out rather
+           than left implicit so nobody "helpfully" restores oninput. *@
         <input class="variabelutforsker-sok-felt"
                id="@SokId"
                type="search"
-               value="@_sok"
-               @oninput="e => _sok = e.Value?.ToString()"
+               @bind="_sok"
+               @bind:event="onchange"
                placeholder="@T.SokPlassholder"
                autocomplete="off"
                maxlength="200" />
