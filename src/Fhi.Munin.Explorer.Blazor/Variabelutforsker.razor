@@ -1,0 +1,77 @@
+@namespace Fhi.Munin.Explorer.Blazor
+
+@* No @page — the host owns routing; in helsedata's Optimizely CMS there is no router at all.
+   No @rendermode — the host decides at the mount site, which is what lets this same
+   component render under legacy Blazor Server and under a modern Blazor Web App.
+   No CSS ships from this package: class names below are styled by Fhi.Helsedata.Stiler. *@
+
+<section class="variabelutforsker" aria-labelledby="@TittelId">
+    <h2 class="variabelutforsker-tittel" id="@TittelId">@T.Tittel</h2>
+
+    <form class="variabelutforsker-sok" role="search" @onsubmit="SokAsync" @onsubmit:preventDefault="true">
+        <label class="variabelutforsker-sok-ledetekst" for="@SokId">@T.SokLedetekst</label>
+        <input class="variabelutforsker-sok-felt"
+               id="@SokId"
+               type="search"
+               value="@_sok"
+               @oninput="e => _sok = e.Value?.ToString()"
+               placeholder="@T.SokPlassholder"
+               autocomplete="off"
+               maxlength="200" />
+        <button class="variabelutforsker-sok-knapp" type="submit" disabled="@_laster">@T.SokKnapp</button>
+    </form>
+
+    @* Screen readers are told about result changes; sighted users see the same count. *@
+    <p class="variabelutforsker-status" aria-live="polite">
+        @if (_laster)
+        {
+            @T.Laster
+        }
+        else if (_feil is not null)
+        {
+            <span class="variabelutforsker-feil">@_feil</span>
+        }
+        else if (_resultat is not null)
+        {
+            @T.Treff(_resultat.TotalCount)
+        }
+    </p>
+
+    @if (_resultat is { Items.Count: > 0 })
+    {
+        <div class="variabelutforsker-tabell-omslag">
+            <table class="variabelutforsker-tabell">
+                <thead>
+                    <tr>
+                        <th scope="col">@T.KolonneVariabel</th>
+                        <th scope="col">@T.KolonneKilde</th>
+                        <th scope="col">@T.KolonneDatasamling</th>
+                        <th scope="col">@T.KolonnePeriode</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var v in _resultat.Items)
+                    {
+                        <tr>
+                            <td>
+                                <span class="variabelutforsker-variabel-navn">@v.PreferredTerm</span>
+                                <span class="variabelutforsker-variabel-kode">@v.Code</span>
+                                @if (!string.IsNullOrWhiteSpace(v.Beskrivelse))
+                                {
+                                    <span class="variabelutforsker-variabel-beskrivelse">@v.Beskrivelse</span>
+                                }
+                            </td>
+                            <td>@(v.KildeName ?? "—")</td>
+                            <td>@(v.DatasamlingName ?? "—")</td>
+                            <td>@Perioden(v)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else if (!_laster && _feil is null && _resultat is not null)
+    {
+        <p class="variabelutforsker-tomt">@T.IngenTreff</p>
+    }
+</section>

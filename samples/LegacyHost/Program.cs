@@ -1,29 +1,41 @@
+using Fhi.Munin.Explorer.Client;
+
+// Deliberately a LEGACY Blazor Server host: AddServerSideBlazor() + MapBlazorHub(),
+// with components mounted inside MVC views via the <component> tag helper. That is how
+// helsedata.no's Optimizely CMS hosts Blazor today, and it is the configuration our RCL
+// has to survive — no router, no @rendermode, no HeadOutlet.
+//
+// samples/ModernHost covers the other shape (MapRazorComponents<App>). A component that
+// only ever ran there can still break here.
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 builder.Services.AddControllersWithViews();
+builder.Services.AddServerSideBlazor();
+
+builder.Services.AddMuninExplorer(
+    builder.Configuration,
+    // Development-only convenience. Outside Development the base URL must be configured,
+    // and startup fails loudly if it is not.
+    utviklingsFallback: builder.Environment.IsDevelopment() ? "https://munin.skytest.fhi.no" : null);
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
+app.UseStaticFiles();
 app.UseRouting();
-
 app.UseAuthorization();
-
-app.MapStaticAssets();
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}")
-    .WithStaticAssets();
+    pattern: "{controller=Home}/{action=Index}/{id?}");
 
+// The circuit endpoint the legacy host needs; MapRazorComponents<App>() is deliberately absent.
+app.MapBlazorHub();
 
 app.Run();
