@@ -1,0 +1,31 @@
+<Project>
+
+  <!-- TFM and language settings live here only — never in the individual csproj files,
+       so there is one place to change them. Matches the Fhi.Helsedata.Soknader convention. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <!-- Portability guard, RCL only.
+
+       The Munin explorer ships as a Razor Class Library that has to render inside
+       helsedata.no's Optimizely CMS (legacy Blazor Server: AddServerSideBlazor +
+       MapBlazorHub) as well as a modern Blazor Web App. Anything host-specific that
+       leaks into the component breaks one of those hosts, usually at runtime and
+       usually only for some users.
+
+       BannedApiAnalyzers turns that from a review question into a build error (RS0030).
+       Scoped to the RCL: the sample hosts are *supposed* to use host-specific types. -->
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'Fhi.Munin.Explorer.Blazor'">
+    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="4.14.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)BannedSymbols.txt" />
+  </ItemGroup>
+
+</Project>

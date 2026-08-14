@@ -1,0 +1,14 @@
+# Beads for this repo live in the Munin workspace, not here.
+#
+# Work on the explorer RCL is tracked under epic Fhi.Metadata-l9l2n so it shares one
+# dependency graph with the Munin API changes it depends on, and stays visible on the
+# team's project board. This repo is public; syncing beads to its issues would publish
+# internal planning.
+#
+# Written by hand on purpose. Do NOT run `bd init` here: that writes a metadata.json with
+# its own dolt_database, and ResolveRedirect applies the *source* database name as an
+# override after following the redirect — you would get a separate database and a silently
+# split bead pool. There must be no metadata.json alongside this file.
+#
+# Relative paths resolve from the project root (the parent of .beads).
+../Fhi.Metadata/.beads

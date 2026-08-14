@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/samples/">
+    <Project Path="samples/LegacyHost/LegacyHost.csproj" />
+    <Project Path="samples/ModernHost/ModernHost.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Fhi.Munin.Explorer.Blazor/Fhi.Munin.Explorer.Blazor.csproj" />
+    <Project Path="src/Fhi.Munin.Explorer.Client/Fhi.Munin.Explorer.Client.csproj" />
+    <Project Path="src/Fhi.Munin.Explorer.Contracts/Fhi.Munin.Explorer.Contracts.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/Fhi.Munin.Explorer.Tests/Fhi.Munin.Explorer.Tests.csproj" />
+  </Folder>
+</Solution>

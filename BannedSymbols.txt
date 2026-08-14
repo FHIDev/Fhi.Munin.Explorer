@@ -1,0 +1,17 @@
+; Host-independence guard for Fhi.Munin.Explorer.Blazor (RS0030 build errors).
+; Format: T:Type or N:Namespace ; message
+;
+; The RCL renders inside helsedata.no's Optimizely CMS (legacy Blazor Server) and inside
+; a modern Blazor Web App. Anything below ties the component to one host or to a server,
+; and breaks the other. Adapted from Fhi.Helsedata.Soknader's portability-guard.
+
+T:Microsoft.AspNetCore.Http.IHttpContextAccessor;Host-spesifikk, og det finnes ingen HttpContext inne i en interaktiv Blazor Server-circuit — send data inn som komponent-parametre eller hent den via IMuninExplorerClient
+N:Microsoft.AspNetCore.Components.Server;Server-spesifikt namespace — komponenten skal være host-uavhengig
+N:Microsoft.EntityFrameworkCore;Datatilgang hører hjemme bak IMuninExplorerClient, ikke i komponenten
+N:EPiServer;CMS-typer hører hjemme i hosten, ikke i RCL-en
+N:Optimizely;CMS-typer hører hjemme i hosten, ikke i RCL-en
+T:System.IO.File;Fil-IO hører ikke hjemme i en RCL — bruk IMuninExplorerClient
+T:System.IO.Directory;Fil-IO hører ikke hjemme i en RCL — bruk IMuninExplorerClient
+T:System.IO.FileInfo;Fil-IO hører ikke hjemme i en RCL — bruk IMuninExplorerClient
+T:System.IO.DirectoryInfo;Fil-IO hører ikke hjemme i en RCL — bruk IMuninExplorerClient
+T:System.IO.FileStream;Fil-IO hører ikke hjemme i en RCL — bruk IMuninExplorerClient

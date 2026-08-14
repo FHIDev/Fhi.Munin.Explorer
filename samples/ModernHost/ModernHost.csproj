@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Fhi.Munin.Explorer.Blazor\Fhi.Munin.Explorer.Blazor.csproj" />
+    <ProjectReference Include="..\..\src\Fhi.Munin.Explorer.Client\Fhi.Munin.Explorer.Client.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+  </PropertyGroup>
+
+</Project>
