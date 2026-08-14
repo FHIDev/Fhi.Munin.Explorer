@@ -3,12 +3,26 @@
 @* No @page — the host owns routing; in helsedata's Optimizely CMS there is no router at all.
    No @rendermode — the host decides at the mount site, which is what lets this same
    component render under legacy Blazor Server and under a modern Blazor Web App.
-   No CSS ships from this package: class names below are styled by Fhi.Helsedata.Stiler. *@
+   No CSS ships from this package: class names below are styled by Fhi.Helsedata.Stiler.
+
+   Accessibility: helsedata.no is a public-sector site, so WCAG 2.1 AA is a legal
+   requirement — and this is our markup on their page. The choices below are the ones
+   that markup can make; the rest (visible focus, contrast, the visually-hidden rule)
+   lives in the host stylesheet and is listed for hosts on the parameters in the
+   codebehind. *@
 
 <section class="variabelutforsker" aria-labelledby="@TittelId">
-    <h2 class="variabelutforsker-tittel" id="@TittelId">@T.Tittel</h2>
+    @* Rendered from OverskriftNivaa rather than hard-coded to h2: the level that keeps the
+       document outline unbroken is only knowable at the mount site. *@
+    @Overskrift
 
-    <form class="variabelutforsker-sok" role="search" @onsubmit="SokAsync" @onsubmit:preventDefault="true">
+    @* role="search" makes this a search landmark, and aria-labelledby names it after this
+       instance's title so two explorers on one page are told apart in a landmark list. *@
+    <form class="variabelutforsker-sok"
+          role="search"
+          aria-labelledby="@TittelId"
+          @onsubmit="SokAsync"
+          @onsubmit:preventDefault="true">
         <label class="variabelutforsker-sok-ledetekst" for="@SokId">@T.SokLedetekst</label>
         @* @bind (onchange), deliberately NOT value + @oninput.
 
@@ -31,29 +45,64 @@
                placeholder="@T.SokPlassholder"
                autocomplete="off"
                maxlength="200" />
-        <button class="variabelutforsker-sok-knapp" type="submit" disabled="@_laster">@T.SokKnapp</button>
+        @* Deliberately NOT disabled while a search runs. Disabling the element that
+           currently has focus drops focus to <body>, so a keyboard user who just pressed
+           Enter on Søk loses their place and starts tabbing from the top of the page
+           again. SokAsync ignores a second submit while one is in flight instead, which
+           stops the double request without touching focus. *@
+        <button class="variabelutforsker-sok-knapp" type="submit">@T.SokKnapp</button>
     </form>
 
-    @* Screen readers are told about result changes; sighted users see the same count. *@
-    <p class="variabelutforsker-status" aria-live="polite">
+    @* One polite status line, holding one message at a time: loading, the result summary,
+       or "no matches". aria-atomic makes a screen reader read the whole new sentence rather
+       than only the words that changed — "12" on its own is not information.
+
+       Loading is announced too. That is one extra utterance per search, which is the price
+       of telling a screen-reader user that pressing Søk did something at all when the API
+       is slow; the region is shared rather than stacked so the messages replace each other
+       instead of piling up. *@
+    <p class="variabelutforsker-status" role="status" aria-live="polite" aria-atomic="true">
         @if (_laster)
         {
             @T.Laster
         }
-        else if (_feil is not null)
+        else if (_resultat is { Items.Count: > 0 })
         {
-            <span class="variabelutforsker-feil">@_feil</span>
+            @Sammendrag
         }
         else if (_resultat is not null)
         {
-            @T.Treff(_resultat.TotalCount)
+            <span class="variabelutforsker-tomt">@T.IngenTreff(_utfortSok)</span>
         }
     </p>
 
+    @* The failure is worth interrupting for, so it is an alert rather than a polite update.
+       The container is always rendered, empty when there is nothing wrong: a role="alert"
+       element that is inserted and filled in the same DOM update is announced unreliably,
+       while one that is already there when its text arrives is not. *@
+    <div class="variabelutforsker-varsel" role="alert" aria-live="assertive" aria-atomic="true">
+        @if (_feil is not null)
+        {
+            <p class="variabelutforsker-feil">@_feil</p>
+        }
+    </div>
+
     @if (_resultat is { Items.Count: > 0 })
     {
-        <div class="variabelutforsker-tabell-omslag">
+        @* The wrapper scrolls sideways on narrow screens (host CSS), and a scrollable box
+           that nothing can focus cannot be scrolled from the keyboard at all. tabindex="0"
+           makes it reachable; role + aria-labelledby stop that stop from being an unnamed
+           "group" of nothing. *@
+        <div class="variabelutforsker-tabell-omslag"
+             role="region"
+             tabindex="0"
+             aria-labelledby="@SammendragId"
+             aria-busy="@Opptatt">
             <table class="variabelutforsker-tabell">
+                @* The table's accessible name. Visually hidden because the same sentence is
+                   already on screen in the status line above — a screen reader user arrives
+                   at the table without that context, a sighted user does not. *@
+                <caption id="@SammendragId" class="@VisueltSkjult">@Sammendrag</caption>
                 <thead>
                     <tr>
                         <th scope="col">@T.KolonneVariabel</th>
@@ -62,7 +111,10 @@
                         <th scope="col">@T.KolonnePeriode</th>
                     </tr>
                 </thead>
-                <tbody>
+                @* The metadata itself is Norwegian whatever language the surrounding UI is
+                   in, so it is marked as such: an English page reading Norwegian variable
+                   names with an English speech synthesiser is unintelligible (WCAG 3.1.2). *@
+                <tbody lang="no">
                     @foreach (var v in _resultat.Items)
                     {
                         <tr>
@@ -71,20 +123,19 @@
                                 <span class="variabelutforsker-variabel-kode">@v.Code</span>
                                 @if (!string.IsNullOrWhiteSpace(v.Beskrivelse))
                                 {
-                                    <span class="variabelutforsker-variabel-beskrivelse">@v.Beskrivelse</span>
+                                    @* Razor eats the whitespace around a code block, and without
+                                       a separator here the code and the description are read as
+                                       one run-on word: "…ALSFRSR1TALEHvordan er talen?". *@
+                                    @(" ")<span class="variabelutforsker-variabel-beskrivelse">@v.Beskrivelse</span>
                                 }
                             </td>
-                            <td>@(v.KildeName ?? "—")</td>
-                            <td>@(v.DatasamlingName ?? "—")</td>
-                            <td>@Perioden(v)</td>
+                            <td>@Verdi(v.KildeName)</td>
+                            <td>@Verdi(v.DatasamlingName)</td>
+                            <td>@Verdi(Perioden(v))</td>
                         </tr>
                     }
                 </tbody>
             </table>
         </div>
-    }
-    else if (!_laster && _feil is null && _resultat is not null)
-    {
-        <p class="variabelutforsker-tomt">@T.IngenTreff</p>
     }
 </section>
