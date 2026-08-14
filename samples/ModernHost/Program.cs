@@ -30,9 +30,9 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
-    // Only outside Development: `dotnet run --urls http://localhost:5290` is the documented way
-    // to poke at this sample, and redirecting that to a port nothing is listening on turns a
-    // working host into a connection error.
+    // Only outside Development. This sample gets run over plain http — either the `http`
+    // launch profile or an explicit `dotnet run --urls http://...` — and redirecting that to
+    // an https port nothing is listening on turns a working host into a connection error.
     app.UseHttpsRedirection();
 }
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
