@@ -430,3 +430,6 @@ FodyWeavers.xsd
 
 # Sample host chrome: vendor libs are not used — the real host styles via Fhi.Helsedata.Stiler.
 samples/LegacyHost/wwwroot/lib/
+
+# Build output
+artifacts/

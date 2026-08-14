@@ -10,6 +10,34 @@
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
+  <!-- Package identity and version.
+
+       Deliberately 0.x. A 1.0.0 on nuget.org is a stability promise, and published
+       versions cannot be withdrawn — only unlisted. We stay below 1.0 until a real
+       consumer (the helsedata POC) is wired up and the API surface has stopped moving.
+       The publish pipeline overrides this from the release tag with -p:Version=. -->
+  <PropertyGroup>
+    <VersionPrefix>0.1.0</VersionPrefix>
+    <Authors>Folkehelseinstituttet (FHI)</Authors>
+    <Company>Folkehelseinstituttet</Company>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/FHIDev/Fhi.Munin.Explorer</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/FHIDev/Fhi.Munin.Explorer</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <!-- Sample hosts and tests are never published. -->
+  <PropertyGroup Condition="$(MSBuildProjectName.StartsWith('ModernHost')) OR
+                            $(MSBuildProjectName.StartsWith('LegacyHost')) OR
+                            $(MSBuildProjectName.EndsWith('.Tests'))">
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(IsPackable)' != 'false'">
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\" Visible="false" />
+  </ItemGroup>
+
   <!-- Portability guard, RCL only.
 
        The Munin explorer ships as a Razor Class Library that has to render inside
