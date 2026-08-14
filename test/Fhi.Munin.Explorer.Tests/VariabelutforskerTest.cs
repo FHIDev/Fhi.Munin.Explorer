@@ -48,14 +48,14 @@ public class VariabelutforskerTest : BunitContext
     /// Given a <paramref name="forsteSvar"/> it answers the first call at once and stalls only on
     /// the next one — the case where a second search is in flight over rows already on screen.
     /// </summary>
-    private sealed class TregClient(Side<VariabelSammendrag>? forsteSvar = null) : IMuninExplorerClient
+    private sealed class TregClient(Side<VariabelSammendrag>? forsteSvar = null) : TomMuninExplorerKlient
     {
         private readonly TaskCompletionSource<Side<VariabelSammendrag>> _svar =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public int Kall { get; private set; }
 
-        public Task<Side<VariabelSammendrag>> SokVariablerAsync(
+        public override Task<Side<VariabelSammendrag>> SokVariablerAsync(
             string? sok, int side = 1, int sideStorrelse = 25, CancellationToken cancellationToken = default)
         {
             Kall++;
