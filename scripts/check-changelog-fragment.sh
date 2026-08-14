@@ -36,8 +36,12 @@ fi
 
 # Added or modified: amending an existing fragment on a follow-up push is a legitimate way to
 # satisfy this, and a bare rename is not.
+#
+# [^/]+ rather than .+ on purpose: assemble-changelog.ps1 reads changelog.d/*.md
+# non-recursively, so a fragment in a subdirectory would satisfy this check and then be
+# silently dropped at release time — the check would be actively misleading.
 fragments=$(git diff --name-only --diff-filter=AM "$MERGE_BASE" "$HEAD_REF" \
-  | grep -E '^changelog\.d/.+\.md$' \
+  | grep -E '^changelog\.d/[^/]+\.md$' \
   | grep -v -x 'changelog.d/README.md' || true)
 
 if [ -n "$fragments" ]; then
