@@ -118,3 +118,22 @@ body {
   margin-top: 6px;
   max-width: 60ch;
 }
+
+/* The component marks screen-reader-only text with this class — the caption naming the
+   results table, and "Ikke oppgitt" in place of an em dash. Providing it is the HOST's
+   job, exactly like the rest of this stylesheet: in helsedata's site it will come from
+   Fhi.Helsedata.Stiler. Clip-rect rather than display:none on purpose — display:none and
+   visibility:hidden remove the text from the accessibility tree too, which would defeat
+   the point. */
+.variabelutforsker-visuelt-skjult {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
