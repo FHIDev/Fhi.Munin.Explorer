@@ -82,6 +82,10 @@ jobs:
           # Packaging is the deliverable and a nuget.org publish cannot be undone,
           # so prove the package still builds on every change, not just at tag time.
           dotnet pack --configuration Release --no-build --output artifacts
+          # Same check the release workflow runs before pushing. Here it is only red on a PR;
+          # there it is the difference between a correct package and a permanent one. Finding
+          # out on the PR that added the stray file is the cheap end of that.
+          ./scripts/assert-package-contents.sh artifacts
           echo "PACK_DUR=$((SECONDS-S))s" >> "$GITHUB_ENV"
 
       - name: Summary

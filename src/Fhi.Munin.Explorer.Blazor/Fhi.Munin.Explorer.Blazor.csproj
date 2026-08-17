@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
+    <Description>Munin variable explorer as an embeddable Blazor component. Renders inside a modern Blazor Web App and inside legacy Blazor Server (AddServerSideBlazor + MapBlazorHub, as used by Optimizely) alike — no router, no @page, no @rendermode of its own. Ships no CSS: it emits the host's own class names so it inherits the surrounding site's styling instead of fighting it. Needs Fhi.Munin.Explorer.Client (or your own IMuninExplorerKlient) registered for data.</Description>
+    <PackageTags>munin;fhi;helsedata;blazor;razor-class-library;metadata;variabler</PackageTags>
   </PropertyGroup>
 
 

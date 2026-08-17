@@ -16,7 +16,15 @@ public sealed class MuninExplorerOptions
 public static class ServiceCollectionExtensions
 {
     /// <summary>Registers the explorer's data client.</summary>
+    /// <remarks>
+    /// Calls are anonymous unless the host has already registered its own
+    /// <see cref="Contracts.IMuninExplorerTokenProvider"/>. Registration order decides it:
+    /// register yours <em>before</em> this call, or the anonymous default wins and the
+    /// explorer quietly keeps calling without a token.
+    /// </remarks>
+    /// <param name="services">The host's service collection.</param>
     /// <param name="konfigurer">Sets at least <see cref="MuninExplorerOptions.ApiBaseUrl"/>.</param>
+    /// <returns>The same collection, so calls can be chained.</returns>
     public static IServiceCollection AddMuninExplorer(
         this IServiceCollection services,
         Action<MuninExplorerOptions> konfigurer)
