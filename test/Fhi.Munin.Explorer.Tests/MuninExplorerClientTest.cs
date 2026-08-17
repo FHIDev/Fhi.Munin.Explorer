@@ -288,33 +288,46 @@ public class MuninExplorerClientTest
     }
 
     [Theory]
-    [InlineData(Sorteringsfelt.Navn, Sorteringsretning.Synkende, "name", "desc")]
-    [InlineData(Sorteringsfelt.Kilde, Sorteringsretning.Stigende, "kilde", "asc")]
-    [InlineData(Sorteringsfelt.Datasamling, Sorteringsretning.Stigende, "datasamling", "asc")]
-    [InlineData(Sorteringsfelt.Variabelgruppe, Sorteringsretning.Synkende, "variabelgruppe", "desc")]
-    public async Task SokVariablerAsync_NårSorteringErValgt_ThenSendesApietsEgneTokens(
-        Sorteringsfelt felt, Sorteringsretning retning, string sort, string sortDir)
+    [InlineData(SortField.Default, SortDirection.Descending, "name", "desc")]
+    [InlineData(SortField.Kilde, SortDirection.Ascending, "kilde", "asc")]
+    [InlineData(SortField.Datasamling, SortDirection.Ascending, "datasamling", "asc")]
+    [InlineData(SortField.Variabelgruppe, SortDirection.Descending, "variabelgruppe", "desc")]
+    public async Task SokVariablerAsync_WhenASortIsChosen_ThenTheApisOwnTokensAreSent(
+        SortField field, SortDirection direction, string sort, string sortDir)
     {
-        // The API takes these as free text and quietly falls back to the name sort for anything it
-        // does not recognise, so a wrong token would not fail — it would return a different order
+        // The API takes these as free text and quietly falls back to its default order for anything
+        // it does not recognise, so a wrong token would not fail — it would return a different order
         // than the UI says it is showing. Hence the tokens are pinned here.
         var handler = StubbetHttpHandler.Ok("{}");
 
-        await Klient(handler).SokVariablerAsync(null, sortering: felt, retning: retning);
+        await Klient(handler).SokVariablerAsync(null, sort: field, direction: direction);
 
         Assert.Equal($"?page=1&size=25&sort={sort}&sortDir={sortDir}", handler.SisteUri?.Query);
     }
 
     [Fact]
-    public async Task SokVariablerAsync_NårSorteringaErStandard_ThenSendesIngenSorteringsparametre()
+    public async Task SokVariablerAsync_WhenTheSortIsTheDefault_ThenNoSortParametersAreSent()
     {
-        // Name ascending is what the API does when neither parameter arrives, so sending them
-        // would only make the URL longer — and a shorter URL caches better on a public page.
+        // The default order ascending is what the API does when neither parameter arrives, so
+        // sending them would only make the URL longer — and a shorter URL caches better on a
+        // public page.
         var handler = StubbetHttpHandler.Ok("{}");
 
         await Klient(handler).SokVariablerAsync(null);
 
         Assert.Equal("?page=1&size=25", handler.SisteUri?.Query);
+    }
+
+    [Fact]
+    public async Task SokVariablerAsync_WhenASortFieldHasNoToken_ThenItFailsRatherThanFallingBack()
+    {
+        // The closed enum exists so the URL cannot ask for one order while the UI claims another.
+        // A member added without a token here must therefore throw rather than quietly send `name`,
+        // which is what a `_ => "name"` arm used to do.
+        var handler = StubbetHttpHandler.Ok("{}");
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            Klient(handler).SokVariablerAsync(null, sort: (SortField)99));
     }
 
     [Fact]

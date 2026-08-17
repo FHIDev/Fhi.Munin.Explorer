@@ -16,8 +16,8 @@ internal abstract class TomMuninExplorerKlient : IMuninExplorerClient
 {
     public virtual Task<Side<VariabelSammendrag>> SokVariablerAsync(
         string? sok, int side = 1, int sideStorrelse = 25,
-        Sorteringsfelt sortering = Sorteringsfelt.Navn,
-        Sorteringsretning retning = Sorteringsretning.Stigende,
+        SortField sort = SortField.Default,
+        SortDirection direction = SortDirection.Ascending,
         CancellationToken cancellationToken = default) =>
         Task.FromResult(new Side<VariabelSammendrag>());
 

@@ -26,15 +26,15 @@ public interface IMuninExplorerClient
     /// <param name="sok">Free-text search. Null or empty returns unfiltered results.</param>
     /// <param name="side">1-based page number.</param>
     /// <param name="sideStorrelse">Rows per page.</param>
-    /// <param name="sortering">Field to order by. Defaults to the API's own order.</param>
-    /// <param name="retning">Direction to order in.</param>
+    /// <param name="sort">Order to sort by. Defaults to the API's own order.</param>
+    /// <param name="direction">Direction to sort in.</param>
     /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
     Task<Side<VariabelSammendrag>> SokVariablerAsync(
         string? sok,
         int side = 1,
         int sideStorrelse = 25,
-        Sorteringsfelt sortering = Sorteringsfelt.Navn,
-        Sorteringsretning retning = Sorteringsretning.Stigende,
+        SortField sort = SortField.Default,
+        SortDirection direction = SortDirection.Ascending,
         CancellationToken cancellationToken = default);
 
     /// <summary>

@@ -19,8 +19,8 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
         string? sok,
         int side = 1,
         int sideStorrelse = 25,
-        Sorteringsfelt sortering = Sorteringsfelt.Navn,
-        Sorteringsretning retning = Sorteringsretning.Stigende,
+        SortField sort = SortField.Default,
+        SortDirection direction = SortDirection.Ascending,
         CancellationToken cancellationToken = default)
     {
         var url = $"api/explorer/variables?page={side}&size={sideStorrelse}";
@@ -30,12 +30,12 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
         }
 
         // Left off entirely at the default, the same reasoning as includeHistorical below: the API
-        // already orders by name ascending when neither parameter arrives, and a shorter URL caches
-        // better on a public page. Once either differs both are sent, so the URL says which order
-        // it asked for rather than leaving half of it implied.
-        if ((sortering, retning) != (Sorteringsfelt.Navn, Sorteringsretning.Stigende))
+        // already uses its default order ascending when neither parameter arrives, and a shorter URL
+        // caches better on a public page. Once either differs both are sent, so the URL says which
+        // order it asked for rather than leaving half of it implied.
+        if ((sort, direction) != (SortField.Default, SortDirection.Ascending))
         {
-            url += $"&sort={Sortfelt(sortering)}&sortDir={Sortretning(retning)}";
+            url += $"&sort={SortToken(sort)}&sortDir={DirectionToken(direction)}";
         }
 
         // An empty result is a normal answer to a search, not an error worth throwing over.
@@ -111,20 +111,33 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
     }
 
     /// <summary>
-    /// The API's own token for a sort field. Spelled out rather than derived from the enum name:
-    /// <see cref="Sorteringsfelt.Navn"/> goes over the wire as <c>name</c>, and an unrecognised
-    /// token is not rejected by the API — it silently orders by name instead.
+    /// The API's own token for a sort order. Spelled out rather than derived from the enum name:
+    /// <see cref="SortField.Default"/> goes over the wire as <c>name</c>, and an unrecognised token
+    /// is not rejected by the API — it silently falls back to that same default order instead.
     /// </summary>
-    private static string Sortfelt(Sorteringsfelt felt) => felt switch
+    /// <remarks>
+    /// Every member has its own arm, and an unknown one throws rather than falling through to
+    /// <c>name</c>. Falling through is the exact failure <see cref="SortField"/> was made a closed
+    /// set to prevent: a member added without a token here would quietly ask for the default order
+    /// while the UI claimed another, with nothing to notice it. Throwing makes that a bug report
+    /// instead of a wrong list.
+    /// </remarks>
+    private static string SortToken(SortField sort) => sort switch
     {
-        Sorteringsfelt.Kilde => "kilde",
-        Sorteringsfelt.Datasamling => "datasamling",
-        Sorteringsfelt.Variabelgruppe => "variabelgruppe",
-        _ => "name"
+        SortField.Default => "name",
+        SortField.Kilde => "kilde",
+        SortField.Datasamling => "datasamling",
+        SortField.Variabelgruppe => "variabelgruppe",
+        _ => throw new ArgumentOutOfRangeException(nameof(sort), sort, "No API sort token for this field.")
     };
 
-    private static string Sortretning(Sorteringsretning retning) =>
-        retning == Sorteringsretning.Synkende ? "desc" : "asc";
+    /// <summary>The API's own token for a direction — same reasoning as <see cref="SortToken"/>.</summary>
+    private static string DirectionToken(SortDirection direction) => direction switch
+    {
+        SortDirection.Ascending => "asc",
+        SortDirection.Descending => "desc",
+        _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, "No API sort token for this direction.")
+    };
 
     /// <summary>Builds <c>?a=1&amp;b=2</c> from the parameters that actually have a value.</summary>
     private static string Sporring(params (string Navn, string? Verdi)[] parametere)
