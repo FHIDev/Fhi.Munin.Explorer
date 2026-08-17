@@ -86,6 +86,38 @@ services.AddMuninExplorer(o => o.ApiBaseUrl = "https://munin.skytest.fhi.no");
 Leave the provider out entirely and calls are anonymous, which is all public metadata browsing
 needs.
 
+### Writing the token provider for a Blazor Server host
+
+Two things about Blazor Server make the obvious implementations wrong, and both fail quietly
+rather than loudly:
+
+- **`IHttpContextAccessor` returns null.** Circuit activity arrives over a WebSocket, so there is
+  no `HttpContext` for anything after the connection is established. A provider written against
+  it does not throw — it finds no token and calls anonymously, which reads as "Munin forgot who
+  I am" rather than as a bug in the host.
+- **The provider is a singleton, so it cannot hold a user.** `IHttpClientFactory` builds the
+  handler pipeline in its own scope and reuses it across every caller for about two minutes.
+  Whatever the provider captures at construction is shared with everyone who calls afterwards —
+  which is how one person's token ends up on another person's request.
+
+So the provider has to ask *per call* which circuit it is answering for.
+[`samples/LegacyHost/Authentication/`](samples/LegacyHost/Authentication/) has a working
+implementation of the documented pattern — an `AsyncLocal` holding the circuit's service
+provider, set and cleared around inbound activity by a `CircuitHandler`. That sample host is a
+legacy Blazor Server + MVC app on purpose, the same shape as helsedata's Optimizely CMS, so it
+can be copied rather than translated.
+
+The part that is load-bearing is `AsyncLocal` rather than a field: work forked from two circuits
+runs on independent execution contexts, so neither can observe the other's token. That is what
+the concurrency test covers, and swapping the `AsyncLocal` for a plain static field is what makes
+it fail.
+
+The explicit clear afterwards is deliberately *not* claimed to be doing the heavy lifting.
+An `async` method runs against a copy of the `ExecutionContext`, so the value is already restored
+for the caller when the call returns — removing the clear does not fail any test here. It is kept
+as insurance for the day someone makes that method synchronous, which would drop the automatic
+restore without any visible sign.
+
 ## Releasing
 
 Publishing is triggered by a tag, never by a merge:
