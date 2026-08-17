@@ -107,10 +107,16 @@ provider, set and cleared around inbound activity by a `CircuitHandler`. That sa
 legacy Blazor Server + MVC app on purpose, the same shape as helsedata's Optimizely CMS, so it
 can be copied rather than translated.
 
-The `finally` that clears the `AsyncLocal` is load-bearing, and the tests cover it: two circuits
-running concurrently never see each other's token, and a circuit whose work throws does not leave
-its token visible to whatever runs next. Swapping the `AsyncLocal` for a plain static field makes
-the concurrency test fail, which is what it is there for.
+The part that is load-bearing is `AsyncLocal` rather than a field: work forked from two circuits
+runs on independent execution contexts, so neither can observe the other's token. That is what
+the concurrency test covers, and swapping the `AsyncLocal` for a plain static field is what makes
+it fail.
+
+The explicit clear afterwards is deliberately *not* claimed to be doing the heavy lifting.
+An `async` method runs against a copy of the `ExecutionContext`, so the value is already restored
+for the caller when the call returns — removing the clear does not fail any test here. It is kept
+as insurance for the day someone makes that method synchronous, which would drop the automatic
+restore without any visible sign.
 
 ## Releasing
 

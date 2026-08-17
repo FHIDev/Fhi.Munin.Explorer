@@ -23,6 +23,13 @@ builder.Services.AddServerSideBlazor();
 //
 // See Authentication/CircuitServicesAccessor.cs for why this cannot be IHttpContextAccessor.
 builder.Services.AddSingleton<CircuitServicesAccessor>();
+
+// The `sp` here is the CIRCUIT's provider, not the root one — Blazor resolves CircuitHandler
+// from a scope it creates per circuit, and a scoped factory's argument is whichever provider is
+// doing the resolving. That is the whole reason this works, and it is easy to break silently:
+// hand it a root IServiceProvider captured from outside, and the accessor starts handing out
+// root services, where BrukerToken is not the signed-in user's. Nothing would throw. Every user
+// would simply get no token, or the wrong one.
 builder.Services.AddScoped<CircuitHandler>(sp => new ServicesAccessorCircuitHandler(
     sp, sp.GetRequiredService<CircuitServicesAccessor>()));
 builder.Services.AddScoped<BrukerToken>();

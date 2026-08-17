@@ -47,11 +47,25 @@ public sealed class CircuitServicesAccessor
 /// activity, and clears it again afterwards.
 /// </summary>
 /// <remarks>
-/// The <c>finally</c> is the whole point. An <see cref="AsyncLocal{T}"/> that is set but never
-/// cleared stays visible to continuations that run on the same execution context afterwards, so
-/// a later caller — possibly a different user's circuit — would observe the previous circuit's
-/// services and, through them, the previous user's token. Clearing on the way out is what keeps
-/// the value scoped to the work it belongs to rather than to the thread that happened to run it.
+/// <para>
+/// What actually keeps one circuit's services from being visible to the next is the runtime, not
+/// the <c>finally</c> below. An <c>async</c> method runs against a copy of the
+/// <c>ExecutionContext</c>, so an <see cref="AsyncLocal{T}"/> written inside
+/// <see cref="KjorMedKretsensTjenester"/> is already invisible to its caller once the call
+/// returns — deleting the <c>finally</c> does not make a single test in this repository fail.
+/// </para>
+/// <para>
+/// It is kept anyway, as the cheap half of a belt and braces. The guarantee above holds because
+/// this method is <c>async</c>; a later edit that made it synchronous would lose the automatic
+/// restore silently, and then the explicit clear is the only thing standing between one user's
+/// token and the next caller. Isolation that depends on a method keeping its <c>async</c>
+/// modifier is worth one line of insurance.
+/// </para>
+/// <para>
+/// The isolation that <em>is</em> load-bearing here is <see cref="AsyncLocal{T}"/> itself rather
+/// than a plain field: work forked from two circuits runs on genuinely independent contexts, and
+/// that is the property the concurrency test in <c>CircuitTokenProviderTest</c> fails without.
+/// </para>
 /// </remarks>
 public sealed class ServicesAccessorCircuitHandler(
     IServiceProvider services,

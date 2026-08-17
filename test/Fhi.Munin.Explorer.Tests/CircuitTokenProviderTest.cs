@@ -115,9 +115,10 @@ public class CircuitTokenProviderTest
     [Fact]
     public async Task HentTokenAsync_EtterAtKretsensArbeidErFerdig_ThenLekkerIkkeTokenetVidere()
     {
-        // The reason the handler clears the accessor in a finally. Without that, work running
-        // after the circuit's turn — on the same execution context — would still see the last
-        // user's services, and the next caller would be handed their token.
+        // Pins the behaviour, but be honest about what enforces it: the runtime, not this code.
+        // KjorMedKretsensTjenester is async, so it runs against a copy of the ExecutionContext
+        // and its AsyncLocal write is already invisible here. Deleting the handler's finally
+        // does not make this test fail — see the note in CircuitServicesAccessor.
         var accessor = new CircuitServicesAccessor();
         var provider = new CircuitTokenProvider(accessor);
         var (krets, _) = Krets(accessor, "brukerens-token");
@@ -130,9 +131,9 @@ public class CircuitTokenProviderTest
     [Fact]
     public async Task KjorMedKretsensTjenester_NårArbeidetKaster_ThenRyddesLikevelOpp()
     {
-        // A circuit whose work throws must not leave its services visible to whatever runs
-        // next. Without the finally, the exception path is exactly where a token outlives its
-        // request — and the exception path is the one nobody exercises by hand.
+        // Same caveat as the test above: the ExecutionContext copy would restore this even with
+        // no finally at all, so this documents the exception path rather than guarding it. Kept
+        // because a future edit could make the method synchronous, and then it would guard it.
         var accessor = new CircuitServicesAccessor();
         var tjenester = new ServiceCollection().BuildServiceProvider();
         var handler = new ServicesAccessorCircuitHandler(tjenester, accessor);
