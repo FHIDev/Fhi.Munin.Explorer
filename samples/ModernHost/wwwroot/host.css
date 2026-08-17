@@ -15,6 +15,11 @@
    `base/_caption.scss`. It will never match exactly: Stiler ships the Graphik typeface and a
    set of SVG icons, and neither is ours to redistribute here.
 
+   Every declaration below was read back off helsedata.no's own compiled stylesheet rather than
+   off a list of names, which is the only way to be sure a class exists and is not scoped under
+   an ancestor an embedded component is never inside — Stiler's sort-header rules, for one, live
+   under `article.registerOwnerListPage` and are unreachable from here.
+
    Kept byte-for-byte in step with samples/LegacyHost/wwwroot/css/host.css on purpose: if the two
    hosts style the component identically, any difference you see between them is a difference
    in the *hosting model*, not in the CSS. */
@@ -174,6 +179,21 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 }
 .hd-button-square.button-square--primary { background-color: var(--primary); color: #fff; }
 .hd-button-square.button-square--primary:hover { background-color: var(--primary-dark); color: #fff; }
+
+/* The sort control's two states: the field the list is ordered by is filled, the rest are ghosts.
+   Deliberately not --primary, so the one primary call to action on screen stays the Søk button. */
+.hd-button-square.button-square--secondary { background-color: var(--grey60); color: #fff; }
+.hd-button-square.button-square--secondary:hover { background-color: var(--dark); color: #fff; }
+.hd-button-square.button-square--ghost { border: none; color: var(--dark); }
+.hd-button-square.button-square--ghost:hover { background-color: var(--grey30); color: var(--dark); }
+
+/* Stiler's spacing modifiers, which only apply on a square button. The sort buttons need them
+   because Razor drops the whitespace between elements, so without a margin they would touch. */
+.hd-button-square.margin-right { margin-right: 16px; }
+.hd-button-square.margin-bottom { margin-bottom: 16px; }
+
+/* components/_formelement.scss — the sort control is a fieldset so its legend can name the group. */
+.form-fieldset { border: none; margin: 0; padding: 0; }
 
 /* components/_infobox.scss — the component's failure message. Only ever rendered when there
    is something to say; the always-present role="alert" container carries no class. */

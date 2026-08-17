@@ -13,10 +13,11 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// the markup emits are therefore not ours to invent: they are the ones
 /// <c>Fhi.Helsedata.Stiler</c> already defines, so that on helsedata.no the component is
 /// styled by the site it is embedded in rather than by whatever we guessed. The families used
-/// are <c>form-element__label</c>, <c>searchbox__freetext*</c>,
-/// <c>hd-button-square</c>/<c>button-square--primary</c>, <c>headline</c>, <c>caption</c>,
-/// <c>infobox</c> and <c>datasourcecard*</c> — the last of these is the same card list
-/// helsedata's own datakildeutforsker renders its results with.
+/// are <c>form-element__label</c>, <c>form-fieldset</c>, <c>searchbox__freetext*</c>,
+/// <c>hd-button-square</c> with <c>button-square--primary</c>, <c>button-square--secondary</c>,
+/// <c>button-square--ghost</c>, <c>margin-right</c> and <c>margin-bottom</c>, <c>headline</c>,
+/// <c>caption</c>, <c>infobox</c> and <c>datasourcecard*</c> — the last of these is the same card
+/// list helsedata's own datakildeutforsker renders its results with.
 /// </para>
 /// <para>
 /// A host outside helsedata's estate has to provide equivalents for those names, and two
@@ -102,6 +103,34 @@ public partial class Variabelutforsker : ComponentBase
     private string? _feil;
     private Side<VariabelSammendrag>? _resultat;
 
+    // Name ascending, the same default Runa starts on — and the order the API returns when it is
+    // asked for none, so the first render costs no extra query parameters.
+    private Sorteringsfelt _sortering = Sorteringsfelt.Navn;
+    private Sorteringsretning _retning = Sorteringsretning.Stigende;
+
+    // The page being asked for. There is no pager yet — that is bead Fhi.Metadata-l9l2n.12 — so
+    // this only ever holds 1 today. It is here rather than written inline at the call site because
+    // "any change of search or sort goes back to page one" is a rule about state: a result set
+    // reordered under someone still looking at page 7 shows them rows from the middle of a
+    // sequence they never saw the start of. Keeping the reset next to the state it resets is what
+    // stops the pager from landing without it.
+    private int _side = 1;
+
+    /// <summary>
+    /// The fields offered for sorting, in the order the buttons appear.
+    /// </summary>
+    /// <remarks>
+    /// The same four Runa offers. Code, datatype, status and data period are absent because the
+    /// API does not sort on them — a fifth button would order the list by name and claim otherwise.
+    /// </remarks>
+    private static readonly Sorteringsfelt[] Sorterbare =
+    [
+        Sorteringsfelt.Navn,
+        Sorteringsfelt.Kilde,
+        Sorteringsfelt.Datasamling,
+        Sorteringsfelt.Variabelgruppe
+    ];
+
     // The search text the visible result actually came from, which is not the same as the
     // text in the box: @bind writes _sok on blur, so the box can hold an unsubmitted query
     // while the table below still shows the previous one. The announcement has to describe
@@ -135,10 +164,42 @@ public partial class Variabelutforsker : ComponentBase
 
     /// <summary>
     /// One sentence describing the visible result, used both as the live announcement and
-    /// as the table's caption so the two can never drift apart.
+    /// as the list's accessible name so the two can never drift apart.
     /// </summary>
+    /// <remarks>
+    /// It names the ordering as well as the count. Without column headers there is no
+    /// <c>aria-sort</c> to carry that, so it rides along on the status line the component already
+    /// has: pressing a sort button changes this sentence, and the polite, atomic live region reads
+    /// the whole of it back.
+    /// </remarks>
     private string Sammendrag =>
-        _resultat is null ? "" : T.Treff(_resultat.Items.Count, _resultat.TotalCount, _utfortSok);
+        _resultat is null ? "" : T.Treff(_resultat.Items.Count, _resultat.TotalCount, _utfortSok) + Sortert;
+
+    /// <summary>The trailing clause of <see cref="Sammendrag"/>: what the list is ordered by.</summary>
+    private string Sortert => T.Sortert(T.Feltetikett(_sortering), T.Retningsnavn(_retning));
+
+    /// <summary>A sort button's label — the field, plus the direction when it is the active one.</summary>
+    private string Knappetekst(Sorteringsfelt felt) =>
+        felt == _sortering ? T.AktivEtikett(T.Feltetikett(felt), T.Retningsnavn(_retning)) : T.Feltetikett(felt);
+
+    /// <summary>
+    /// A sort button's classes. The active field is filled, the rest are ghosts; the trailing
+    /// margins are Stiler's own modifiers, which the buttons need because nothing else separates
+    /// them — Razor drops the whitespace between elements.
+    /// </summary>
+    private string Knappeklasse(Sorteringsfelt felt)
+    {
+        var stil = felt == _sortering ? "button-square--secondary" : "button-square--ghost";
+
+        return $"hd-button-square {stil} margin-right margin-bottom";
+    }
+
+    /// <summary><c>"true"</c> on the active field, and nothing at all on the others.</summary>
+    /// <remarks>
+    /// Null rather than <c>"false"</c>: Blazor leaves an attribute out when its value is null, and
+    /// three buttons carrying <c>aria-current="false"</c> is noise in the accessibility tree.
+    /// </remarks>
+    private string? Valgt(Sorteringsfelt felt) => felt == _sortering ? "true" : null;
 
     /// <summary>
     /// The title, at the level the host asked for. Razor has no syntax for a computed
@@ -262,19 +323,65 @@ public partial class Variabelutforsker : ComponentBase
             return;
         }
 
+        // A different search is a different result set; page 7 of the old one means nothing in it.
+        _side = 1;
+
+        if (await HentAsync() && SokChanged.HasDelegate)
+        {
+            await SokChanged.InvokeAsync(_sok);
+        }
+    }
+
+    /// <summary>
+    /// Order by <paramref name="felt"/>: the active field again reverses the direction, another
+    /// field starts ascending. Runa's rule, moved off the column header it used to live on.
+    /// </summary>
+    private async Task SorterAsync(Sorteringsfelt felt)
+    {
+        // Dropped rather than queued while a fetch is in flight, the same as a second submit. The
+        // guard comes first on purpose: changing the state and then not fetching would leave a
+        // button saying the list is ordered one way while it is still ordered the other.
+        if (_laster)
+        {
+            return;
+        }
+
+        if (felt == _sortering)
+        {
+            _retning = _retning == Sorteringsretning.Stigende
+                ? Sorteringsretning.Synkende
+                : Sorteringsretning.Stigende;
+        }
+        else
+        {
+            _sortering = felt;
+            _retning = Sorteringsretning.Stigende;
+        }
+
+        // Reordering renumbers every page, so the page the user is on is no longer the same rows.
+        _side = 1;
+
+        await HentAsync();
+    }
+
+    /// <summary>Fetch the current search, page and ordering. True when it succeeded.</summary>
+    private async Task<bool> HentAsync()
+    {
         _laster = true;
         _feil = null;
         StateHasChanged();
 
         try
         {
-            _resultat = await Client.SokVariablerAsync(_sok, side: 1, sideStorrelse: SideStorrelse);
+            _resultat = await Client.SokVariablerAsync(
+                _sok,
+                side: _side,
+                sideStorrelse: SideStorrelse,
+                sortering: _sortering,
+                retning: _retning);
             _utfortSok = Renset(_sok);
 
-            if (SokChanged.HasDelegate)
-            {
-                await SokChanged.InvokeAsync(_sok);
-            }
+            return true;
         }
         catch (Exception)
         {
@@ -282,6 +389,8 @@ public partial class Variabelutforsker : ComponentBase
             // not on the page.
             _resultat = null;
             _feil = T.Feil;
+
+            return false;
         }
         finally
         {
@@ -313,28 +422,57 @@ public partial class Variabelutforsker : ComponentBase
         string SokLedetekst,
         string SokPlassholder,
         string SokKnapp,
+        string SorterEtter,
         string Laster,
         string Feil,
         string IkkeOppgitt,
+        string FeltNavn,
         string FeltKode,
         string FeltKilde,
         string FeltDatasamling,
+        string FeltVariabelgruppe,
         string FeltPeriode,
+        string Stigende,
+        string Synkende,
+        Func<string, string, string> AktivEtikett,
+        Func<string, string, string> Sortert,
         Func<int, int, string?, string> Treff,
         Func<string?, string> IngenTreff)
     {
+        /// <summary>
+        /// The label for a sortable field. The same words the result cards label their values
+        /// with, so the button and the line it orders say the same thing.
+        /// </summary>
+        public string Feltetikett(Sorteringsfelt felt) => felt switch
+        {
+            Sorteringsfelt.Kilde => FeltKilde,
+            Sorteringsfelt.Datasamling => FeltDatasamling,
+            Sorteringsfelt.Variabelgruppe => FeltVariabelgruppe,
+            _ => FeltNavn
+        };
+
+        public string Retningsnavn(Sorteringsretning retning) =>
+            retning == Sorteringsretning.Synkende ? Synkende : Stigende;
+
         private static readonly Tekster No = new(
             Tittel: "Variabelutforsker",
             SokLedetekst: "Søk i variabler",
             SokPlassholder: "Søk etter variabelnavn eller kode",
             SokKnapp: "Søk",
+            SorterEtter: "Sorter etter",
             Laster: "Henter variabler …",
             Feil: "Kunne ikke hente variabler nå. Prøv igjen om litt.",
             IkkeOppgitt: "Ikke oppgitt",
+            FeltNavn: "Navn",
             FeltKode: "Kode",
             FeltKilde: "Datakilde",
             FeltDatasamling: "Datasamling",
+            FeltVariabelgruppe: "Variabelgruppe",
             FeltPeriode: "Periode",
+            Stigende: "stigende",
+            Synkende: "synkende",
+            AktivEtikett: (felt, retning) => $"{felt} ({retning})",
+            Sortert: (felt, retning) => $", sortert på {felt}, {retning}",
             Treff: (vist, total, sok) =>
             {
                 var antall = total == 1 ? "1 variabel" : $"{total} variabler";
@@ -352,13 +490,20 @@ public partial class Variabelutforsker : ComponentBase
             SokLedetekst: "Search variables",
             SokPlassholder: "Search by variable name or code",
             SokKnapp: "Search",
+            SorterEtter: "Sort by",
             Laster: "Loading variables …",
             Feil: "Could not load variables right now. Please try again shortly.",
             IkkeOppgitt: "Not specified",
+            FeltNavn: "Name",
             FeltKode: "Code",
             FeltKilde: "Data source",
             FeltDatasamling: "Data collection",
+            FeltVariabelgruppe: "Variable group",
             FeltPeriode: "Period",
+            Stigende: "ascending",
+            Synkende: "descending",
+            AktivEtikett: (felt, retning) => $"{felt} ({retning})",
+            Sortert: (felt, retning) => $", sorted by {felt}, {retning}",
             Treff: (vist, total, sok) =>
             {
                 var antall = total == 1 ? "1 variable" : $"{total} variables";

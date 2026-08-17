@@ -19,12 +19,23 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
         string? sok,
         int side = 1,
         int sideStorrelse = 25,
+        Sorteringsfelt sortering = Sorteringsfelt.Navn,
+        Sorteringsretning retning = Sorteringsretning.Stigende,
         CancellationToken cancellationToken = default)
     {
         var url = $"api/explorer/variables?page={side}&size={sideStorrelse}";
         if (!string.IsNullOrWhiteSpace(sok))
         {
             url += $"&search={Uri.EscapeDataString(sok)}";
+        }
+
+        // Left off entirely at the default, the same reasoning as includeHistorical below: the API
+        // already orders by name ascending when neither parameter arrives, and a shorter URL caches
+        // better on a public page. Once either differs both are sent, so the URL says which order
+        // it asked for rather than leaving half of it implied.
+        if ((sortering, retning) != (Sorteringsfelt.Navn, Sorteringsretning.Stigende))
+        {
+            url += $"&sort={Sortfelt(sortering)}&sortDir={Sortretning(retning)}";
         }
 
         // An empty result is a normal answer to a search, not an error worth throwing over.
@@ -98,6 +109,22 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
 
         return await response.Content.ReadFromJsonAsync<T>(Json, cancellationToken);
     }
+
+    /// <summary>
+    /// The API's own token for a sort field. Spelled out rather than derived from the enum name:
+    /// <see cref="Sorteringsfelt.Navn"/> goes over the wire as <c>name</c>, and an unrecognised
+    /// token is not rejected by the API — it silently orders by name instead.
+    /// </summary>
+    private static string Sortfelt(Sorteringsfelt felt) => felt switch
+    {
+        Sorteringsfelt.Kilde => "kilde",
+        Sorteringsfelt.Datasamling => "datasamling",
+        Sorteringsfelt.Variabelgruppe => "variabelgruppe",
+        _ => "name"
+    };
+
+    private static string Sortretning(Sorteringsretning retning) =>
+        retning == Sorteringsretning.Synkende ? "desc" : "asc";
 
     /// <summary>Builds <c>?a=1&amp;b=2</c> from the parameters that actually have a value.</summary>
     private static string Sporring(params (string Navn, string? Verdi)[] parametere)

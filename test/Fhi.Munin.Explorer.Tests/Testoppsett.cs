@@ -15,7 +15,10 @@ namespace Fhi.Munin.Explorer.Tests;
 internal abstract class TomMuninExplorerKlient : IMuninExplorerClient
 {
     public virtual Task<Side<VariabelSammendrag>> SokVariablerAsync(
-        string? sok, int side = 1, int sideStorrelse = 25, CancellationToken cancellationToken = default) =>
+        string? sok, int side = 1, int sideStorrelse = 25,
+        Sorteringsfelt sortering = Sorteringsfelt.Navn,
+        Sorteringsretning retning = Sorteringsretning.Stigende,
+        CancellationToken cancellationToken = default) =>
         Task.FromResult(new Side<VariabelSammendrag>());
 
     public virtual Task<Filtervalg> HentFiltreAsync(

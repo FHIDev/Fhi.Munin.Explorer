@@ -18,14 +18,23 @@ namespace Fhi.Munin.Explorer.Contracts;
 public interface IMuninExplorerClient
 {
     /// <summary>Search published variables.</summary>
+    /// <remarks>
+    /// The server orders with the variable code as a secondary key, so rows sharing a value come
+    /// back in the same sequence every time — which is what keeps paging through a sorted result
+    /// from showing the same variable twice.
+    /// </remarks>
     /// <param name="sok">Free-text search. Null or empty returns unfiltered results.</param>
     /// <param name="side">1-based page number.</param>
     /// <param name="sideStorrelse">Rows per page.</param>
+    /// <param name="sortering">Field to order by. Defaults to the API's own order.</param>
+    /// <param name="retning">Direction to order in.</param>
     /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
     Task<Side<VariabelSammendrag>> SokVariablerAsync(
         string? sok,
         int side = 1,
         int sideStorrelse = 25,
+        Sorteringsfelt sortering = Sorteringsfelt.Navn,
+        Sorteringsretning retning = Sorteringsretning.Stigende,
         CancellationToken cancellationToken = default);
 
     /// <summary>

@@ -1,5 +1,6 @@
 using System.Net;
 using Fhi.Munin.Explorer.Client;
+using Fhi.Munin.Explorer.Contracts;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -284,6 +285,36 @@ public class MuninExplorerClientTest
         await Klient(handler).HentKilderAsync();
 
         Assert.Equal("", handler.SisteUri?.Query);
+    }
+
+    [Theory]
+    [InlineData(Sorteringsfelt.Navn, Sorteringsretning.Synkende, "name", "desc")]
+    [InlineData(Sorteringsfelt.Kilde, Sorteringsretning.Stigende, "kilde", "asc")]
+    [InlineData(Sorteringsfelt.Datasamling, Sorteringsretning.Stigende, "datasamling", "asc")]
+    [InlineData(Sorteringsfelt.Variabelgruppe, Sorteringsretning.Synkende, "variabelgruppe", "desc")]
+    public async Task SokVariablerAsync_NårSorteringErValgt_ThenSendesApietsEgneTokens(
+        Sorteringsfelt felt, Sorteringsretning retning, string sort, string sortDir)
+    {
+        // The API takes these as free text and quietly falls back to the name sort for anything it
+        // does not recognise, so a wrong token would not fail — it would return a different order
+        // than the UI says it is showing. Hence the tokens are pinned here.
+        var handler = StubbetHttpHandler.Ok("{}");
+
+        await Klient(handler).SokVariablerAsync(null, sortering: felt, retning: retning);
+
+        Assert.Equal($"?page=1&size=25&sort={sort}&sortDir={sortDir}", handler.SisteUri?.Query);
+    }
+
+    [Fact]
+    public async Task SokVariablerAsync_NårSorteringaErStandard_ThenSendesIngenSorteringsparametre()
+    {
+        // Name ascending is what the API does when neither parameter arrives, so sending them
+        // would only make the URL longer — and a shorter URL caches better on a public page.
+        var handler = StubbetHttpHandler.Ok("{}");
+
+        await Klient(handler).SokVariablerAsync(null);
+
+        Assert.Equal("?page=1&size=25", handler.SisteUri?.Query);
     }
 
     [Fact]
