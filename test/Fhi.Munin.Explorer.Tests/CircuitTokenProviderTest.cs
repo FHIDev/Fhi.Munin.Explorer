@@ -75,7 +75,7 @@ public class CircuitTokenProviderTest
     }
 
     [Fact]
-    public async Task HentTokenAsync_NårToBrukereErPåleneSamtidig_ThenSerIngenDenAndresToken()
+    public async Task HentTokenAsync_NårToBrukereErPåloggetSamtidig_ThenSerIngenDenAndresToken()
     {
         // The property the whole pattern exists for. One provider instance — it is a singleton,
         // because IHttpClientFactory reuses the handler pipeline across callers — answering for
