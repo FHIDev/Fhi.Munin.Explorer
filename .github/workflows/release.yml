@@ -1,0 +1,117 @@
+name: Release
+
+# Publishing is triggered by a tag, not by a merge to main.
+#
+# nuget.org is append-only: a published version can be unlisted but never replaced or removed,
+# and a package id can never be reclaimed. Publishing on every merge would make that permanent
+# act a side effect of ordinary work. A tag is somebody deciding "this one goes out", which is
+# the right weight for something that cannot be taken back.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write # create the GitHub Release for the tag
+
+concurrency:
+  # Deliberately not cancel-in-progress. Cancelling a publish halfway leaves some packages on
+  # nuget.org and some not, and the missing ones cannot be filled in under the same version.
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: publish to nuget.org
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The "tag is on main" check below walks history, so it needs more than the tag.
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Read the version from the tag
+        id: version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+
+          # A tag like "v0.2" or "vlatest" would otherwise pack as some surprising version and
+          # claim it forever. Prerelease suffixes are allowed; build metadata (+foo) is not,
+          # because nuget.org ignores it and two tags would resolve to one version.
+          # Leading zeros are rejected too: NuGet normalises 01.2.3 to 1.2.3, so the tag and the
+          # version people can actually install would disagree from the day it shipped.
+          if ! echo "$VERSION" | grep -Eq '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.]+)?$'; then
+            echo "::error::Tag '$GITHUB_REF_NAME' does not give a usable version. Expected vMAJOR.MINOR.PATCH, optionally with a prerelease suffix — for example v0.2.0 or v0.2.0-beta.1."
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Publishing $VERSION"
+
+      - name: Refuse to publish a commit that is not on main
+        run: |
+          # Without this, a tag pushed from any branch would publish code that never passed
+          # review. The package is public and permanent; the bar for what goes in it is the
+          # same bar as main.
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Tag '$GITHUB_REF_NAME' points at a commit that is not on origin/main. Merge it first, then tag the merge commit."
+            exit 1
+          fi
+
+      - name: Check the push credential is present
+        env:
+          NUGET_ORG_FHI_PUBLISH: ${{ secrets.NUGET_ORG_FHI_PUBLISH }}
+        run: |
+          # Checked before building rather than after: failing at the push step means a green
+          # build, a created tag, and nothing published — the confusing half-done state.
+          #
+          # The name matches the one FHI already publishes with in FHIDev/Fhi.HelseId, so if it
+          # exists as an organisation secret this repository only needs to be given access to
+          # it rather than a new key being minted.
+          if [ -z "$NUGET_ORG_FHI_PUBLISH" ]; then
+            echo "::error::Secret NUGET_ORG_FHI_PUBLISH is not available to this repository. If it exists as an FHIDev organisation secret, add this repository to its access list; otherwise create an API key on nuget.org scoped to the Fhi.Munin.Explorer.* ids and add it under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore -p:Version=${{ steps.version.outputs.version }}
+
+      - name: Test
+        # A published version cannot be withdrawn, so the tests run here too rather than
+        # trusting that main was green when the tag was cut.
+        run: dotnet test --configuration Release --no-build --verbosity quiet
+
+      - name: Pack
+        run: dotnet pack --configuration Release --no-build --output artifacts -p:Version=${{ steps.version.outputs.version }}
+
+      - name: Assert package contents
+        # Last gate before the irreversible step. Also catches a version mismatch between the
+        # tag and what actually got packed.
+        run: ./scripts/assert-package-contents.sh artifacts "${{ steps.version.outputs.version }}"
+
+      - name: Push to nuget.org
+        env:
+          NUGET_ORG_FHI_PUBLISH: ${{ secrets.NUGET_ORG_FHI_PUBLISH }}
+        # Pushes in dependency order, retries a failed push, and skips anything a previous run
+        # already published — so a network blip halfway through is fixed by re-running rather
+        # than by hand. A genuinely reused tag still stops the run. See the script's header.
+        run: ./scripts/push-packages.sh artifacts "${{ steps.version.outputs.version }}"
+
+      - name: Create the GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: v${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          files: artifacts/*.nupkg
+          # A prerelease tag (v0.2.0-beta.1) is marked as one on GitHub too, so the release
+          # list says the same thing nuget.org does.
+          prerelease: ${{ contains(steps.version.outputs.version, '-') }}

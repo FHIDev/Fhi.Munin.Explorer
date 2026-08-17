@@ -21,6 +21,7 @@ public interface IMuninExplorerClient
     /// <param name="sok">Free-text search. Null or empty returns unfiltered results.</param>
     /// <param name="side">1-based page number.</param>
     /// <param name="sideStorrelse">Rows per page.</param>
+    /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
     Task<Side<VariabelSammendrag>> SokVariablerAsync(
         string? sok,
         int side = 1,
@@ -36,6 +37,7 @@ public interface IMuninExplorerClient
     /// </remarks>
     /// <param name="sok">Same free-text search as <see cref="SokVariablerAsync"/>.</param>
     /// <param name="kildeType">Restrict counts to one kildetype, e.g. <c>sentraltHelseregister</c>.</param>
+    /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
     Task<Filtervalg> HentFiltreAsync(
         string? sok = null,
         string? kildeType = null,
@@ -45,6 +47,7 @@ public interface IMuninExplorerClient
     /// <remarks>Not paged — the API returns the full list in one array.</remarks>
     /// <param name="sok">Case-insensitive substring match on name, code or short name.</param>
     /// <param name="kildeType">Restrict to one kildetype, e.g. <c>sentraltHelseregister</c>.</param>
+    /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
     Task<IReadOnlyList<KildeSammendrag>> HentKilderAsync(
         string? sok = null,
         string? kildeType = null,
@@ -63,10 +66,12 @@ public interface IMuninExplorerClient
     Task<DatasamlingDetalj?> HentDatasamlingAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>Fetch one variable with version history, kodeverk and statistics. Null when not published.</summary>
+    /// <param name="id">The variable's id.</param>
     /// <param name="inkluderHistoriske">
     /// Include variables whose every version has expired. Off by default, so a search result and a
     /// detail page agree on what exists.
     /// </param>
+    /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
     Task<VariabelDetalj?> HentVariabelAsync(
         Guid id,
         bool inkluderHistoriske = false,

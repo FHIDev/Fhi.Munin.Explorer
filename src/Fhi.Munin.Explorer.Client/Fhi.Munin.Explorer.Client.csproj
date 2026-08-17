@@ -16,6 +16,8 @@
   </ItemGroup>
 
   <PropertyGroup>
+    <Description>Typed HTTP client for the Munin Explorer API, and the AddMuninExplorer registration that wires it up. Calls are anonymous by default; register an IMuninExplorerTokenProvider before AddMuninExplorer and the user's access token is forwarded on every request. This is the data half of Fhi.Munin.Explorer.Blazor — install both to render the component.</Description>
+    <PackageTags>munin;fhi;helsedata;metadata;variabler;http-client</PackageTags>
   </PropertyGroup>
 
 </Project>

@@ -27,6 +27,21 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
+  <!-- Ship the XML docs. The point of this package is that a helsedata developer does not
+       have to guess how it behaves, and several of the rules that matter — the token provider
+       must be singleton-safe, must not touch IHttpContextAccessor — are only written down in
+       the doc comments. Without this they stop at our repo boundary. -->
+  <PropertyGroup Condition="'$(IsPackable)' != 'false'">
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- CS1591 (missing comment on a public member) is off deliberately. Turning it on adds
+         226 errors, nearly all of them DTO properties that mirror the Explorer API field for
+         field — Id, Name, Count. A one-line comment restating the property name is not
+         documentation, and the meaning of those fields lives in the API contract, not here.
+         Suppressing it ships the prose that carries real information and leaves the obvious
+         members bare, rather than trading the former away to avoid the latter. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
   <!-- Sample hosts and tests are never published. -->
   <PropertyGroup Condition="$(MSBuildProjectName.StartsWith('ModernHost')) OR
                             $(MSBuildProjectName.StartsWith('LegacyHost')) OR

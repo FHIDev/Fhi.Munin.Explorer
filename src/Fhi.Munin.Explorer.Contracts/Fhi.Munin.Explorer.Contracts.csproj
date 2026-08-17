@@ -1,6 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <Description>Data types and interfaces for the Munin Explorer API — the shapes returned by the API, IMuninExplorerClient, and IMuninExplorerTokenProvider. No dependencies at all, so a host can implement or substitute either interface without taking on the HTTP client or the Blazor component. Both of those packages depend on this one; you rarely install it directly.</Description>
+    <PackageTags>munin;fhi;helsedata;metadata;variabler;contracts</PackageTags>
   </PropertyGroup>
 
 </Project>
