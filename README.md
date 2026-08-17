@@ -102,7 +102,13 @@ The workflow refuses to publish a tag whose commit is not on `main`, a tag that 
 exist because nuget.org is append-only: a version can be unlisted but never replaced, and a
 package id can never be reclaimed.
 
-Requires the repository secret `NUGET_API_KEY` — an API key from nuget.org scoped to the
+If a push fails partway through, **re-run the workflow** — it asks nuget.org what already went
+out and pushes only what is missing. It stops only if *every* package is already published,
+which means the tag is being reused rather than a run needing to finish.
+
+Requires the secret `NUGET_ORG_FHI_PUBLISH` — the same name FHI already publishes with in
+`FHIDev/Fhi.HelseId`. If that exists as an organisation secret, this repository only needs to be
+granted access to it; otherwise it is an API key from nuget.org scoped to the
 `Fhi.Munin.Explorer.*` ids.
 
 To check the package shape yourself before tagging:

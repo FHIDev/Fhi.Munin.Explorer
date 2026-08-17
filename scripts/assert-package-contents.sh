@@ -110,12 +110,22 @@ for pkg in "${PACKAGES[@]}"; do
   nuspec=$(unzip -p "$nupkg" "$pkg.nuspec")
   flat=$(echo "$nuspec" | tr '\n' ' ')
 
+  # Note what this compares against. When no <Description> property is set, dotnet pack does not
+  # leave the element empty — it substitutes the literal string "Package Description". Checking
+  # only for emptiness therefore passes happily on exactly the package this check exists to
+  # stop, and "Package Description" would be the permanent headline text on nuget.org.
   description=$(echo "$flat" | grep -o '<description>.*</description>' | sed 's/<[^>]*>//g' | tr -d ' \t')
-  if [ -z "$description" ]; then
-    bad "empty <description> — this is the text nuget.org shows, and it cannot be edited after publish"
-  else
-    note "description present"
-  fi
+  case "$description" in
+    "")
+      bad "empty <description> — this is the text nuget.org shows, and it cannot be edited after publish"
+      ;;
+    "PackageDescription")
+      bad "<description> is still dotnet pack's placeholder 'Package Description' — set <Description> in $pkg.csproj"
+      ;;
+    *)
+      note "description present"
+      ;;
+  esac
 
   echo "$flat" | grep -q '<license type="expression">MIT</license>' \
     || bad "license is not the MIT expression we publish under"

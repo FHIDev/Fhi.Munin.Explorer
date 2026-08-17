@@ -66,12 +66,16 @@ jobs:
 
       - name: Check the push credential is present
         env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+          NUGET_ORG_FHI_PUBLISH: ${{ secrets.NUGET_ORG_FHI_PUBLISH }}
         run: |
           # Checked before building rather than after: failing at the push step means a green
           # build, a created tag, and nothing published — the confusing half-done state.
-          if [ -z "$NUGET_API_KEY" ]; then
-            echo "::error::Repository secret NUGET_API_KEY is not set. Create an API key on nuget.org scoped to the Fhi.Munin.Explorer.* package ids and add it under Settings → Secrets and variables → Actions."
+          #
+          # The name matches the one FHI already publishes with in FHIDev/Fhi.HelseId, so if it
+          # exists as an organisation secret this repository only needs to be given access to
+          # it rather than a new key being minted.
+          if [ -z "$NUGET_ORG_FHI_PUBLISH" ]; then
+            echo "::error::Secret NUGET_ORG_FHI_PUBLISH is not available to this repository. If it exists as an FHIDev organisation secret, add this repository to its access list; otherwise create an API key on nuget.org scoped to the Fhi.Munin.Explorer.* ids and add it under Settings → Secrets and variables → Actions."
             exit 1
           fi
 
@@ -96,20 +100,11 @@ jobs:
 
       - name: Push to nuget.org
         env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-        run: |
-          # Dependency order, not glob order. Contracts is what the other two depend on, and
-          # nuget.org takes a few minutes to index a new package — pushing it first means a
-          # consumer who restores in that window is never told the dependency does not exist.
-          #
-          # No --skip-duplicate on purpose: a duplicate means this version was already
-          # published and the tag is being reused, which should stop the run rather than
-          # report success for a push that did not happen.
-          for pkg in Contracts Client Blazor; do
-            dotnet nuget push "artifacts/Fhi.Munin.Explorer.$pkg.${{ steps.version.outputs.version }}.nupkg" \
-              --source https://api.nuget.org/v3/index.json \
-              --api-key "$NUGET_API_KEY"
-          done
+          NUGET_ORG_FHI_PUBLISH: ${{ secrets.NUGET_ORG_FHI_PUBLISH }}
+        # Pushes in dependency order, retries a failed push, and skips anything a previous run
+        # already published — so a network blip halfway through is fixed by re-running rather
+        # than by hand. A genuinely reused tag still stops the run. See the script's header.
+        run: ./scripts/push-packages.sh artifacts "${{ steps.version.outputs.version }}"
 
       - name: Create the GitHub Release
         uses: softprops/action-gh-release@v2
