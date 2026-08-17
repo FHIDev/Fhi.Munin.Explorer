@@ -45,6 +45,10 @@ PACKAGES=(
 
 MAX_ATTEMPTS=5
 
+# How many of the packages we set out to push turned out to be on nuget.org already. Used after
+# the loop to tell "we finished a half-done publish" apart from "none of this was new".
+conflicts=0
+
 # Is this exact version already on nuget.org? Answers "no" when it cannot tell — a failed query
 # must not be able to skip a push. The 409 handling below is what covers that case safely.
 already_published() {
@@ -77,10 +81,14 @@ push_one() {
 
     [ "$status" -eq 0 ] && return 0
 
-    # Not the reused-tag case: that was ruled out before any push happened. Here it means our
-    # own attempt landed, or the package is mid-indexing.
+    # Already on nuget.org. Usually that means our own attempt landed and we lost the answer, or
+    # the package is mid-indexing — so the version is in the state we want and the run carries
+    # on. It is recorded rather than just accepted, because if *every* package we believed was
+    # missing says this, we did not publish anything and the caller has to decide whether that
+    # was a reused tag. See the tally after the push loop.
     if printf '%s' "$output" | grep -qiE '409|already exists'; then
       echo "    $name is already on nuget.org — counting it as pushed."
+      conflicts=$((conflicts + 1))
       return 0
     fi
 
@@ -131,4 +139,23 @@ for pkg in "${missing[@]}"; do
 done
 
 echo
+
+# The pre-flight check above is the first line of defence against a reused tag, but it can be
+# wrong: if nuget.org is unreachable it reports everything as missing, and a version that is
+# entirely published would then be pushed, 409 on every package, and finish green — which is
+# exactly the "reported success for a push that never happened" outcome this script exists to
+# prevent.
+#
+# So the same question gets asked again from what actually happened. Every package we believed
+# was missing came back already-published, and we had not knowingly published any of them
+# earlier in this version: nothing here was new.
+if [ "$conflicts" -eq "${#missing[@]}" ] && [ "${#present[@]}" -eq 0 ]; then
+  echo "::error::Nothing was published. Every package was already on nuget.org at $VERSION, which the pre-flight check did not see — most likely nuget.org was unreachable when it ran. Versions cannot be replaced, so tag a new version rather than reusing this one."
+  exit 1
+fi
+
+if [ "$conflicts" -gt 0 ]; then
+  echo "$conflicts package(s) were already published and were not pushed again."
+fi
+
 echo "All packages are on nuget.org at $VERSION."

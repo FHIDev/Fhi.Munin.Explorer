@@ -82,10 +82,12 @@ for pkg in "${PACKAGES[@]}"; do
   # Contents. Everything under _rels/ and package/services/ is OPC plumbing written by the
   # packer itself, and [Content_Types].xml likewise — none of it is ours to assert on.
   # ------------------------------------------------------------------------------------------
+  # `|| true` for the same reason as below: a package whose every entry was filtered out would
+  # otherwise abort the script rather than be reported as the empty package it is.
   actual=$(unzip -Z1 "$nupkg" \
     | grep -Ev '^(_rels/|package/services/)' \
     | grep -Fxv '[Content_Types].xml' \
-    | LC_ALL=C sort)
+    | LC_ALL=C sort || true)
 
   expected=$(printf '%s\n' \
     "$pkg.nuspec" \
@@ -114,7 +116,11 @@ for pkg in "${PACKAGES[@]}"; do
   # leave the element empty — it substitutes the literal string "Package Description". Checking
   # only for emptiness therefore passes happily on exactly the package this check exists to
   # stop, and "Package Description" would be the permanent headline text on nuget.org.
-  description=$(echo "$flat" | grep -o '<description>.*</description>' | sed 's/<[^>]*>//g' | tr -d ' \t')
+  # The `|| true` matters. grep exits 1 when it matches nothing, and under `set -e` a bare
+  # assignment from a failing pipeline kills the script — so a nuspec with no <description> at
+  # all would abort the run with a bare exit code instead of reporting which package is wrong
+  # and carrying on to check the others. An absent element must reach the check as "".
+  description=$(echo "$flat" | grep -o '<description>.*</description>' | sed 's/<[^>]*>//g' | tr -d ' \t' || true)
   case "$description" in
     "")
       bad "empty <description> — this is the text nuget.org shows, and it cannot be edited after publish"
@@ -133,7 +139,7 @@ for pkg in "${PACKAGES[@]}"; do
     || bad "README not declared in the nuspec — the package page would render empty"
 
   if [ -n "$EXPECTED_VERSION" ]; then
-    version=$(echo "$flat" | grep -o '<version>[^<]*</version>' | head -1 | sed 's/<[^>]*>//g')
+    version=$(echo "$flat" | grep -o '<version>[^<]*</version>' | head -1 | sed 's/<[^>]*>//g' || true)
     if [ "$version" = "$EXPECTED_VERSION" ]; then
       note "version $version"
     else
