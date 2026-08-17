@@ -86,6 +86,32 @@ services.AddMuninExplorer(o => o.ApiBaseUrl = "https://munin.skytest.fhi.no");
 Leave the provider out entirely and calls are anonymous, which is all public metadata browsing
 needs.
 
+### Writing the token provider for a Blazor Server host
+
+Two things about Blazor Server make the obvious implementations wrong, and both fail quietly
+rather than loudly:
+
+- **`IHttpContextAccessor` returns null.** Circuit activity arrives over a WebSocket, so there is
+  no `HttpContext` for anything after the connection is established. A provider written against
+  it does not throw — it finds no token and calls anonymously, which reads as "Munin forgot who
+  I am" rather than as a bug in the host.
+- **The provider is a singleton, so it cannot hold a user.** `IHttpClientFactory` builds the
+  handler pipeline in its own scope and reuses it across every caller for about two minutes.
+  Whatever the provider captures at construction is shared with everyone who calls afterwards —
+  which is how one person's token ends up on another person's request.
+
+So the provider has to ask *per call* which circuit it is answering for.
+[`samples/LegacyHost/Authentication/`](samples/LegacyHost/Authentication/) has a working
+implementation of the documented pattern — an `AsyncLocal` holding the circuit's service
+provider, set and cleared around inbound activity by a `CircuitHandler`. That sample host is a
+legacy Blazor Server + MVC app on purpose, the same shape as helsedata's Optimizely CMS, so it
+can be copied rather than translated.
+
+The `finally` that clears the `AsyncLocal` is load-bearing, and the tests cover it: two circuits
+running concurrently never see each other's token, and a circuit whose work throws does not leave
+its token visible to whatever runs next. Swapping the `AsyncLocal` for a plain static field makes
+the concurrency test fail, which is what it is there for.
+
 ## Releasing
 
 Publishing is triggered by a tag, never by a merge:

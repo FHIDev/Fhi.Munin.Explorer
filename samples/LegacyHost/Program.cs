@@ -1,4 +1,7 @@
 using Fhi.Munin.Explorer.Client;
+using Fhi.Munin.Explorer.Contracts;
+using LegacyHost.Authentication;
+using Microsoft.AspNetCore.Components.Server.Circuits;
 
 // Deliberately a LEGACY Blazor Server host: AddServerSideBlazor() + MapBlazorHub(),
 // with components mounted inside MVC views via the <component> tag helper. That is how
@@ -12,6 +15,18 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddServerSideBlazor();
+
+// Calling Munin as the signed-in user. Registered BEFORE AddMuninExplorer, which is not a
+// style choice: AddMuninExplorer uses TryAdd, so whoever registers first wins. Register after
+// it and the anonymous default is already in place — the explorer keeps working, silently
+// without a token, which is the failure that looks like a Munin bug rather than a host one.
+//
+// See Authentication/CircuitServicesAccessor.cs for why this cannot be IHttpContextAccessor.
+builder.Services.AddSingleton<CircuitServicesAccessor>();
+builder.Services.AddScoped<CircuitHandler>(sp => new ServicesAccessorCircuitHandler(
+    sp, sp.GetRequiredService<CircuitServicesAccessor>()));
+builder.Services.AddScoped<BrukerToken>();
+builder.Services.AddSingleton<IMuninExplorerTokenProvider, CircuitTokenProvider>();
 
 builder.Services.AddMuninExplorer(
     builder.Configuration,
