@@ -172,6 +172,15 @@ public partial class Variabelutforsker : ComponentBase
     // it had to keep.
     private int _page = 1;
 
+    // Whether the pager has been pressed since the last search or reordering, which is the one
+    // thing "there is more than one page" cannot tell the markup on its own. A retreat can land on
+    // a result that legitimately has a single page — the index shrank to one page's worth between
+    // two requests — and dropping the pager in that render would take Neste out of the document
+    // under the finger that pressed it, which is the failure the retreat exists to avoid rather
+    // than a new one to introduce. Reset by a search and by a sort, neither of which is started
+    // from a pager button, so a single-page result reached that way still costs no furniture.
+    private bool _keepPager;
+
     /// <summary>
     /// The orders offered for sorting, in the order the buttons appear.
     /// </summary>
@@ -238,6 +247,16 @@ public partial class Variabelutforsker : ComponentBase
     private bool CanGoPrevious => _page > 1;
 
     private bool CanGoNext => _page < TotalPages;
+
+    /// <summary>Whether the pager belongs on screen at all.</summary>
+    /// <remarks>
+    /// More than one page, or a pager the reader is already standing on. "Side 1 av 1" between two
+    /// buttons that can never do anything is furniture and is left out — but only when the reader
+    /// did not arrive at that single page by pressing one of those two buttons, because taking the
+    /// pressed control out of the document drops focus to <c>&lt;body&gt;</c>. See
+    /// <see cref="_keepPager"/> for the path that reaches a single page from a pager button.
+    /// </remarks>
+    private bool ShowPager => _resultat is not null && (TotalPages > 1 || _keepPager);
 
     /// <summary>The 1-based position of the first row on screen, or 0 when there are no rows.</summary>
     /// <remarks>
@@ -484,6 +503,7 @@ public partial class Variabelutforsker : ComponentBase
 
         // A different search is a different result set; page 7 of the old one means nothing in it.
         _page = 1;
+        _keepPager = false;
 
         // The live contents of the box, which is what submitting means.
         await FetchAsync(_sok);
@@ -523,6 +543,7 @@ public partial class Variabelutforsker : ComponentBase
 
         // Reordering renumbers every page, so the page the user is on is no longer the same rows.
         _page = 1;
+        _keepPager = false;
 
         // _utfortSok, not _sok. Sorting is not searching: a click blurs the field first, so by the
         // time this runs the box's contents have already been written to _sok — text the user may
@@ -576,7 +597,15 @@ public partial class Variabelutforsker : ComponentBase
             return;
         }
 
+        // Both kept so a failed fetch can put them back. The result as well as the number, because
+        // the retreat below turns a second page and has to be able to undo both of them together.
         var previous = _page;
+        var previousResult = _resultat;
+
+        // A pager button was pressed, so the pager stays until a search or a sort replaces the
+        // result — including through a retreat that lands on a single-page answer.
+        _keepPager = true;
+
         _page = target;
 
         // keepResult: the pressed button must survive the failure. The rest of the component
@@ -593,7 +622,7 @@ public partial class Variabelutforsker : ComponentBase
             return;
         }
 
-        await RetreatFromEmptyPageAsync();
+        await RetreatFromEmptyPageAsync(previous, previousResult);
     }
 
     /// <summary>
@@ -613,10 +642,21 @@ public partial class Variabelutforsker : ComponentBase
     /// søket" over a search that matched hundreds, with no rows to show and nothing but a fresh
     /// search to get back from. So the component takes itself back to a page that exists — the last
     /// one the new answer admits to, or page 1, which is the one page that can never be out of
-    /// range. One step only: if that page is empty too the result really is empty.
+    /// range. One step only: a second empty answer is not retreated from again, so the reader is
+    /// left on that page with the pager still under their finger rather than walking backwards
+    /// through the result a page at a time.
+    /// </para>
+    /// <para>
+    /// And its own fetch is checked like every other one. <paramref name="previous"/> and
+    /// <paramref name="previousResult"/> are the page turn's starting point — a page that had rows
+    /// on it — so a retreat that fails puts the reader back where they pressed the button instead
+    /// of leaving <c>_page</c> naming one page while the empty answer for another is still on
+    /// screen. That pairing is what would otherwise report "Ingen variabler passet søket" over a
+    /// search that matched hundreds and take the pager with it, which is the exact state this
+    /// method exists to prevent.
     /// </para>
     /// </remarks>
-    private async Task RetreatFromEmptyPageAsync()
+    private async Task RetreatFromEmptyPageAsync(int previous, Side<VariabelSammendrag>? previousResult)
     {
         if (_page == 1 || _resultat is not { Items.Count: 0 })
         {
@@ -629,7 +669,16 @@ public partial class Variabelutforsker : ComponentBase
         var last = TotalCount > 0 ? TotalPages : 1;
         _page = last < _page ? last : 1;
 
-        await FetchAsync(_utfortSok, keepResult: true);
+        if (await FetchAsync(_utfortSok, keepResult: true))
+        {
+            return;
+        }
+
+        // Nothing arrived, so — exactly as on the first fetch — the state has to go back to
+        // describing the last answer that did. keepResult held on to the empty page that started
+        // the retreat, which is the one result that must not be the one left on screen.
+        _page = previous;
+        _resultat = previousResult;
     }
 
     /// <summary>
@@ -704,6 +753,15 @@ public partial class Variabelutforsker : ComponentBase
                 sort: _sort,
                 direction: _direction);
             _utfortSok = Renset(sok);
+
+            // The page we are on is the page that arrived, not the page that was asked for. A
+            // server that clamps page 12 to page 8 and says so has answered truthfully, and
+            // ResultPage already counts the row range from its answer — leaving _page at 12 would
+            // caption those rows "Side 12 av 8" and, worse, keep Neste enabled against a number
+            // the server disowned, so every further press would walk the position further from the
+            // rows without ever moving them. One page number for the caption, the two buttons and
+            // the range, taken from the same place.
+            _page = ResultPage;
 
             return true;
         }

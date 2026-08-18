@@ -155,7 +155,7 @@
 
     @if (_resultat is { Items.Count: > 0 })
     {
-        @if (TotalPages > 1)
+        @if (ShowPager)
         {
             @* Without this a keyboard user reaches Neste by tabbing past every card on the page —
                25 stops to move one page. `skiplink-pagination` is helsedata's own class and their
@@ -210,9 +210,13 @@
        Munin's own explorer pages the same way, and a list that grows as you scroll has no end
        for a keyboard user to reach.
 
-       Only when there is more than one page. "Side 1 av 1" between two buttons that can never
-       do anything is furniture, and leaving it out costs nothing: a single page is only ever
-       reached by a new search or a new ordering, neither of which is started from a pager button.
+       Only when there is more than one page, or when a pager button is what put the reader here.
+       "Side 1 av 1" between two buttons that can never do anything is furniture, and a single page
+       reached by a new search or a new ordering costs nothing to leave out — neither is started
+       from a pager button. A retreat is: an index that shrank to one page's worth between two
+       requests answers Neste with an empty page and lands back on page 1 with TotalPages == 1, and
+       dropping the pager in that render would take Neste out of the document under the finger that
+       pressed it. ShowPager is where those two cases are told apart.
 
        Outside the rows' own guard on purpose. Tied to the rows it would vanish under the finger
        that pressed it the moment a page came back empty — an index that shrank between two
@@ -228,7 +232,7 @@
        is named so it does not sit anonymously among the host page's own, but the element has
        to be the one helsedata's selectors expect. tabindex="-1" makes it the skip link's
        target — focusable programmatically, and still not a tab stop. *@
-    @if (_resultat is not null && TotalPages > 1)
+    @if (ShowPager)
     {
         <div class="variables-pagination"
              id="@PaginationId"

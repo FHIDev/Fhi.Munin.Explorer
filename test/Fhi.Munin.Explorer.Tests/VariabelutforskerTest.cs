@@ -1077,6 +1077,33 @@ public class VariabelutforskerTest : BunitContext
     }
 
     /// <summary>
+    /// Answers page 1, 404s anything after it into an empty <see cref="Side{T}"/> the same way
+    /// <see cref="NotFoundPagedClient"/> does — and then fails outright, so the retreat's own fetch
+    /// is the call that throws. The transient blip the retreat has to survive, arriving in the one
+    /// window where the result on screen is the empty page the retreat is trying to escape.
+    /// </summary>
+    private sealed class RetreatFailingClient(int totalCount) : TomMuninExplorerKlient
+    {
+        public int Calls { get; private set; }
+
+        public override Task<Side<VariabelSammendrag>> SokVariablerAsync(
+            string? sok, int side = 1, int sideStorrelse = 25,
+            SortField sort = SortField.Default,
+            SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default)
+        {
+            Calls++;
+
+            return Calls switch
+            {
+                1 => Task.FromResult(ResultPage(totalCount)),
+                2 => Task.FromResult(new Side<VariabelSammendrag>()),
+                _ => throw new HttpRequestException("nede")
+            };
+        }
+    }
+
+    /// <summary>
     /// A server that clamps an out-of-range page rather than 404ing it: asked for page 12 of 8 it
     /// answers page 8, and says so in the page it echoes back.
     /// </summary>
@@ -1389,6 +1416,94 @@ public class VariabelutforskerTest : BunitContext
         Next(cut).Click();
 
         Assert.Contains("Viser 1–25 av 312 variabler funnet", StatusLine(cut));
+
+        // And the caption between the buttons counts from the same answer. Pinning only the range
+        // would leave the pager free to say "Side 2 av 13" over page 1's rows — the row range and
+        // the position describing two different pages of one result.
+        Assert.Equal("Side 1 av 13", Position(cut));
+    }
+
+    [Fact]
+    public void Page_WhenTheServerKeepsAnsweringTheSamePage_ThenThePositionDoesNotWalkAwayFromTheRows()
+    {
+        // The half that only shows up on the second press. With the position taken from the number
+        // that was asked for, Neste stays enabled against a page the server disowned, so every
+        // further press bumps the caption — "Side 3 av 13", "Side 4 av 13" — while the same 25 rows
+        // sit underneath it.
+        var cut = RenderMed(new ClampingPagedClient(312, maxPage: 1));
+
+        Next(cut).Click();
+        Next(cut).Click();
+        Next(cut).Click();
+
+        Assert.Equal("Side 1 av 13", Position(cut));
+        Assert.Contains("Viser 1–25 av 312 variabler funnet", StatusLine(cut));
+        Assert.Contains("Variabel 1", cut.Markup);
+    }
+
+    [Fact]
+    public void Page_WhenTheRetreatLandsOnASinglePageResult_ThenThePagerIsStillUnderTheFinger()
+    {
+        // The pager is normally left out of a single-page result, on the grounds that one is only
+        // ever reached by a new search or a new ordering — neither started from a pager button. The
+        // retreat is the exception: an index that shrank to one page's worth between two requests
+        // answers Neste with an empty page and puts the reader back on page 1 of 1. Dropping the
+        // pager in that render would take Neste out of the document under the finger that pressed
+        // it, which is the failure the retreat exists to avoid rather than a new one to introduce.
+        var cut = RenderMed(new ShrinkingPagedClient(312, calmCalls: 1, afterwards: 10));
+
+        Next(cut).Click();
+
+        Assert.NotEmpty(cut.FindAll("div.variables-pagination"));
+        Assert.NotEmpty(cut.FindAll("a.skiplink-pagination"));
+        Assert.Equal("Side 1 av 1", Position(cut));
+        Assert.Contains("10 variabler funnet", StatusLine(cut)); // the whole result, so no range
+        Assert.Equal(10, cut.FindAll("ul.datasourcecard-list > li").Count);
+
+        // Both ends of a one-page result: neither button can go anywhere, and both say so without
+        // being taken away.
+        Assert.Equal("true", Previous(cut).GetAttribute("aria-disabled"));
+        Assert.Equal("true", Next(cut).GetAttribute("aria-disabled"));
+    }
+
+    [Fact]
+    public void Page_WhenANewSearchFollowsARetreatToOnePage_ThenTheOneButtonPagerIsGoneAgain()
+    {
+        // The other half of the same rule: the pager is kept because a button was pressed, not
+        // forever. A search is not started from one, so a single-page answer to it costs no
+        // furniture — and the reader's focus is in the search box, not on a pager button.
+        var cut = RenderMed(new ShrinkingPagedClient(312, calmCalls: 1, afterwards: 10));
+
+        Next(cut).Click();
+
+        cut.Find("input[type=search]").Change("svelging");
+        cut.Find("form").Submit();
+
+        Assert.Empty(cut.FindAll("div.variables-pagination"));
+        Assert.Empty(cut.FindAll("a.skiplink-pagination"));
+    }
+
+    [Fact]
+    public void Page_WhenTheRetreatsOwnFetchFails_ThenTheRowsItWasEscapingBackToAreRestored()
+    {
+        // The retreat turns a second page, so it can fail the same way the first one can — and its
+        // failure is the worse of the two, because the result it would otherwise keep is the empty
+        // page it was called to escape from. Left unchecked the reader gets "Ingen variabler passet
+        // søket" over a search that matched 312, and no pager either: a zero count makes TotalPages
+        // 1 and takes the guard's other branch with it. So the whole page turn is undone, back to
+        // the page that had rows on it.
+        var client = new RetreatFailingClient(312);
+        var cut = RenderMed(client);
+
+        Next(cut).Click();
+
+        Assert.Equal(3, client.Calls); // the initial load, the missing page 2, and the failed way back
+        Assert.Contains("Kunne ikke hente variabler", cut.Markup);
+        Assert.NotEmpty(cut.FindAll("div.variables-pagination"));
+        Assert.Equal("Side 1 av 13", Position(cut));
+        Assert.Contains("Viser 1–25 av 312 variabler funnet", StatusLine(cut));
+        Assert.Contains("Variabel 1", cut.Markup);
+        Assert.DoesNotContain("Ingen variabler passet", StatusLine(cut));
     }
 
     [Fact]
