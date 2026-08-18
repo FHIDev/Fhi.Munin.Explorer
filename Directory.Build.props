@@ -64,7 +64,7 @@
        BannedApiAnalyzers turns that from a review question into a build error (RS0030).
        Scoped to the RCL: the sample hosts are *supposed* to use host-specific types. -->
   <ItemGroup Condition="'$(MSBuildProjectName)' == 'Fhi.Munin.Explorer.Blazor'">
-    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="4.14.0">
+    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="5.6.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
