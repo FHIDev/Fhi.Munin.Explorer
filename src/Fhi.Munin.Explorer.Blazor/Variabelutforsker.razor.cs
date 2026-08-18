@@ -260,10 +260,10 @@ public partial class Variabelutforsker : ComponentBase
 
         // Fixed, spread-out sequence numbers: each Felt call writes its own contiguous block,
         // so the renderer's diff sees a stable tree across renders.
-        Felt(builder, 100, T.FeltKode, v.Code, forste: true);
-        Felt(builder, 200, T.FeltKilde, v.KildeName, forste: false);
-        Felt(builder, 300, T.FeltDatasamling, v.DatasamlingName, forste: false);
-        Felt(builder, 400, T.FeltPeriode, Perioden(v), forste: false);
+        Felt(builder, 100, T.FieldCode, v.Code, forste: true);
+        Felt(builder, 200, T.FieldSource, v.KildeName, forste: false);
+        Felt(builder, 300, T.FieldDataCollection, v.DatasamlingName, forste: false);
+        Felt(builder, 400, T.FieldPeriod, Perioden(v), forste: false);
 
         builder.CloseElement();
     };
@@ -497,11 +497,11 @@ public partial class Variabelutforsker : ComponentBase
         string Feil,
         string IkkeOppgitt,
         string SortDefault,
-        string FeltKode,
-        string FeltKilde,
-        string FeltDatasamling,
-        string FieldVariabelgruppe,
-        string FeltPeriode,
+        string FieldCode,
+        string FieldSource,
+        string FieldDataCollection,
+        string FieldVariableGroup,
+        string FieldPeriod,
         string Ascending,
         string Descending,
         // (field, direction) — the active sort button's label.
@@ -527,14 +527,26 @@ public partial class Variabelutforsker : ComponentBase
             // on SortField.Default — so a button labelled Navn would describe an order the list is
             // not in, which is the one thing the live-region announcement exists to get right.
             SortField.Default => SortDefault,
-            SortField.Kilde => FeltKilde,
-            SortField.Datasamling => FeltDatasamling,
-            SortField.Variabelgruppe => FieldVariabelgruppe,
+            SortField.Kilde => FieldSource,
+            SortField.Datasamling => FieldDataCollection,
+            SortField.Variabelgruppe => FieldVariableGroup,
             _ => throw new ArgumentOutOfRangeException(nameof(sort), sort, "No label for this sort field.")
         };
 
-        public string DirectionName(SortDirection direction) =>
-            direction == SortDirection.Descending ? Descending : Ascending;
+        /// <summary>The word for a direction, as the status line and the active button say it.</summary>
+        /// <remarks>
+        /// A switch with an arm per member rather than "descending, else ascending", for the same
+        /// reason <see cref="FieldLabel"/> is one: a member added to <see cref="SortDirection"/>
+        /// without a word here would be announced as ascending, and a list announced as ordered the
+        /// opposite way to the order it is in is worse than one that fails loudly.
+        /// </remarks>
+        public string DirectionName(SortDirection direction) => direction switch
+        {
+            SortDirection.Ascending => Ascending,
+            SortDirection.Descending => Descending,
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(direction), direction, "No name for this sort direction.")
+        };
 
         private static readonly Tekster No = new(
             Tittel: "Variabelutforsker",
@@ -546,11 +558,11 @@ public partial class Variabelutforsker : ComponentBase
             Feil: "Kunne ikke hente variabler nå. Prøv igjen om litt.",
             IkkeOppgitt: "Ikke oppgitt",
             SortDefault: "Standard",
-            FeltKode: "Kode",
-            FeltKilde: "Datakilde",
-            FeltDatasamling: "Datasamling",
-            FieldVariabelgruppe: "Variabelgruppe",
-            FeltPeriode: "Periode",
+            FieldCode: "Kode",
+            FieldSource: "Datakilde",
+            FieldDataCollection: "Datasamling",
+            FieldVariableGroup: "Variabelgruppe",
+            FieldPeriod: "Periode",
             Ascending: "stigende",
             Descending: "synkende",
             ActiveLabel: (field, direction) => $"{field} ({direction})",
@@ -579,11 +591,11 @@ public partial class Variabelutforsker : ComponentBase
             Feil: "Could not load variables right now. Please try again shortly.",
             IkkeOppgitt: "Not specified",
             SortDefault: "Default",
-            FeltKode: "Code",
-            FeltKilde: "Data source",
-            FeltDatasamling: "Data collection",
-            FieldVariabelgruppe: "Variable group",
-            FeltPeriode: "Period",
+            FieldCode: "Code",
+            FieldSource: "Data source",
+            FieldDataCollection: "Data collection",
+            FieldVariableGroup: "Variable group",
+            FieldPeriod: "Period",
             Ascending: "ascending",
             Descending: "descending",
             ActiveLabel: (field, direction) => $"{field} ({direction})",
