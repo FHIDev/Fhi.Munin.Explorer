@@ -889,7 +889,19 @@ public partial class VariableExplorer : ComponentBase
         // so none of them is a root, and dropping them would take a filter off the panel with no
         // error anywhere. Each one that is still unplaced becomes a root of its own, which places
         // the rest of its cycle underneath it.
-        roots.AddRange(all.Where(node => !placed.Contains(node.Id)).Select(Build));
+        //
+        // A foreach rather than AddRange over a query, because the test is against a set the body
+        // mutates: for two nodes naming each other, building the first places the second, and the
+        // second must not then be built as a root as well. Written as a query that would hold only
+        // while nothing materialised it between the filter and the projection — and drawing one
+        // node twice means two <li> siblings with the same key, which the renderer throws on.
+        foreach (var node in all)
+        {
+            if (!placed.Contains(node.Id))
+            {
+                roots.Add(Build(node));
+            }
+        }
 
         return roots;
 
@@ -897,10 +909,17 @@ public partial class VariableExplorer : ComponentBase
         {
             placed.Add(node.Id);
 
-            var children = byParent[node.Id]
-                .Where(child => !placed.Contains(child.Id))
-                .Select(Build)
-                .ToList();
+            // Same shape as the second pass above, and for the same reason: each child is tested
+            // against a set the recursion mutates, so building one sibling can place the next.
+            List<FacetValue> children = [];
+
+            foreach (var child in byParent[node.Id])
+            {
+                if (!placed.Contains(child.Id))
+                {
+                    children.Add(Build(child));
+                }
+            }
 
             return new FacetValue($"{keyPrefix}{node.Id}", node.Label, node.Count, selected(node.Id), toggle(node.Id), children);
         }

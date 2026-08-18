@@ -1731,6 +1731,7 @@ public class VariableExplorerTest : BunitContext
     private static readonly Guid Tromso4 = new("bbbbbbbb-0000-0000-0000-000000000001");
     private static readonly Guid Tromso4Visit = new("bbbbbbbb-0000-0000-0000-000000000002");
     private static readonly Guid Bakgrunn = new("cccccccc-0000-0000-0000-000000000001");
+    private static readonly Guid Levekaar = new("cccccccc-0000-0000-0000-000000000002");
 
     /// <summary>Facets shaped like the real ones: two kildetyper, a kilde each, a nested delkilde.</summary>
     private static FilterOptions Facets() => new()
@@ -2283,6 +2284,36 @@ public class VariableExplorerTest : BunitContext
 
         ClickFacet(cut, "Selvforelder");
         Assert.Equal([Bakgrunn], client.SearchFilter?.VariabelgruppeIds);
+    }
+
+    [Fact]
+    public void Render_WhenTwoNodesNameEachOtherAsParent_ThenEachIsDrawnExactlyOnce()
+    {
+        // The case the second pass actually exists for, and the one the self-parented row above
+        // cannot reach: a self-parent is placed whole by a single Build, whereas here building the
+        // first node places the second, so the pass has to re-read what it has placed as it goes.
+        // Get that wrong and the second node is drawn again as a root — two <li> siblings carrying
+        // the same key, which the renderer throws on rather than drawing a stray row.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), Facets() with
+        {
+            Variabelgrupper =
+            [
+                new() { Id = Bakgrunn, Name = "GruppeA", ParentId = Levekaar, Count = 7 },
+                new() { Id = Levekaar, Name = "GruppeB", ParentId = Bakgrunn, Count = 4 }
+            ]
+        });
+
+        var cut = RenderWith(client);
+
+        Assert.Equal(1, Buttons(cut, "GruppeA"));
+        Assert.Equal(1, Buttons(cut, "GruppeB"));
+
+        // And a filter rather than a label: the nested one is the one a duplicate would double.
+        ClickFacet(cut, "GruppeB");
+        Assert.Equal([Levekaar], client.SearchFilter?.VariabelgruppeIds);
+
+        static int Buttons(IRenderedComponent<VariableExplorer> cut, string label) =>
+            FacetButtons(cut).Count(b => b.TextContent.StartsWith(label, StringComparison.Ordinal));
     }
 
     [Fact]

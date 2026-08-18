@@ -165,6 +165,29 @@ public class VariableFilterTest
     }
 
     [Fact]
+    public void Parse_WhenAPlusIsEscaped_ThenItIsReadAsAPlus()
+    {
+        // The other half of the same rule, and the reason Decode replaces + before unescaping:
+        // unescape first and %2B becomes a literal +, which the replace then turns into a space.
+        // A value that really contains one — written by ToQueryString as %2B — would come back
+        // different from what was linked and match nothing at the API, silently.
+        Assert.Equal(["ICD+10"], VariableFilter.Parse("?helsefagligKodeverkReferanser=ICD%2B10").HelsefagligKodeverk);
+    }
+
+    [Fact]
+    public void ToQueryString_WhenAValueContainsAPlus_ThenParseReadsBackTheSameValue()
+    {
+        // The round trip over the one character the two escapes disagree about. No fixture value
+        // holds a +, so Everything()'s round-trip test cannot reach this on its own.
+        var filter = new VariableFilter { HelsefagligKodeverk = ["ICD+10"], Categories = ["a+b"] };
+
+        var parsed = VariableFilter.Parse(filter.ToQueryString());
+
+        Assert.Equal(["ICD+10"], parsed.HelsefagligKodeverk);
+        Assert.Equal(["a+b"], parsed.Categories);
+    }
+
+    [Fact]
     public void Parse_WhenAFacetHasMoreValuesThanASelectionCanHave_ThenTheRestAreDropped()
     {
         // The input is an anonymous URL and the result is held for the life of a circuit, scanned
