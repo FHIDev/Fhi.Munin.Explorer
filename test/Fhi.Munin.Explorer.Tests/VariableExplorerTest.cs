@@ -1762,6 +1762,11 @@ public class VariableExplorerTest : BunitContext
     {
         private readonly FilterOptions _facets = facets ?? Facets();
 
+        // Never completed. A search asked for while this is set stays in flight for the rest of
+        // the test, which is the only way to press a second facet while the first is still running.
+        private readonly TaskCompletionSource<Page<VariableSummary>> _stalled =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
         public VariableFilter? SearchFilter { get; private set; }
         public VariableFilter? FacetFilter { get; private set; }
         public string? FacetSearch { get; private set; }
@@ -1775,6 +1780,9 @@ public class VariableExplorerTest : BunitContext
         /// <summary>Fail every facet refresh from the next one on.</summary>
         public bool FailFacets { get; set; }
 
+        /// <summary>Never answer a search from the next one on — the in-flight path.</summary>
+        public bool StallSearch { get; set; }
+
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
             string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default,
@@ -1787,6 +1795,11 @@ public class VariableExplorerTest : BunitContext
             // the component was left holding afterwards.
             SearchFilter = filter;
             LastPage = page;
+
+            if (StallSearch)
+            {
+                return _stalled.Task;
+            }
 
             // The page it was asked for, so the component's own paging state moves the way it does
             // against the real API rather than being reset to 1 by a fixture that always says 1.
@@ -2185,6 +2198,111 @@ public class VariableExplorerTest : BunitContext
         // The kilde sits at the top of its facet's list rather than one level in, under a heading.
         var kilde = Facet(cut, "Tromsøundersøkelsen").ParentElement!;
         Assert.Null(kilde.ParentElement?.ParentElement?.Closest("li"));
+    }
+
+    [Fact]
+    public void Filter_WhenHarKildekodeverkIsPressedTwice_ThenItStopsFilteringRatherThanAskingForNo()
+    {
+        // Two states, not three, and the difference is invisible on screen: the obvious-looking
+        // negation cycles aria-pressed exactly the same way while sending harKildekodeverk=false,
+        // which inverts the result set to only the variables *without* a kildekodeverk.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        ClickFacet(cut, "Har kildekodeverk");
+
+        Assert.True(client.SearchFilter?.HasKildekodeverk);
+        Assert.Equal("true", Facet(cut, "Har kildekodeverk").GetAttribute("aria-pressed"));
+
+        ClickFacet(cut, "Har kildekodeverk");
+
+        Assert.Null(client.SearchFilter?.HasKildekodeverk);
+        Assert.DoesNotContain("harKildekodeverk", client.SearchFilter!.ToQueryString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Filter_WhenHistoricalIsChosen_ThenItGoesOnTheWireRatherThanOnlyOnTheButton()
+    {
+        // The one filter whose parameter is left out at its default, so a flip in the wrong
+        // direction produces a URL that looks unfiltered rather than one that looks wrong.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        ClickFacet(cut, "Vis historiske");
+
+        Assert.True(client.SearchFilter?.IncludeHistorical);
+        Assert.Contains("includeHistorical=true", client.SearchFilter!.ToQueryString(), StringComparison.Ordinal);
+        Assert.Equal("true", Facet(cut, "Vis historiske").GetAttribute("aria-pressed"));
+    }
+
+    [Fact]
+    public void Render_WhenADelkildesParentIsMissingFromTheFacets_ThenItBecomesARootRatherThanDisappearing()
+    {
+        // Routine rather than defensive: the API cross-filters every facet, so a parent delkilde
+        // with no matching variables of its own is genuinely absent from a payload its children are
+        // in. Dropping the child would be a filter the reader can neither see nor clear — and
+        // narrowing the root rule to "no parent at all" is a plausible simplification that nothing
+        // else in the suite would catch.
+        var absent = new Guid("dddddddd-0000-0000-0000-000000000009");
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), Facets() with
+        {
+            Delkilder =
+            [
+                new()
+                {
+                    Id = Tromso4Visit, Name = "Første besøk", KildeId = Tromso,
+                    ParentDelkildeId = absent, Count = 3
+                }
+            ]
+        });
+
+        var cut = RenderWith(client);
+
+        var orphan = Facet(cut, "Første besøk");
+        Assert.Contains(orphan.ParentElement!, Facet(cut, "Tromsøundersøkelsen").ParentElement!.QuerySelectorAll("li"));
+
+        // And still a filter, not just a label: a root that cannot be pressed is the same loss.
+        orphan.Click();
+        Assert.Equal([Tromso4Visit], client.SearchFilter?.DelkildeIds);
+    }
+
+    [Fact]
+    public void Render_WhenAParentChainLoopsBackOnItself_ThenTheNodesAreStillDrawn()
+    {
+        // A self-parented row is one bad record, and every member of a loop has its parent present
+        // — so none of them is a root, and without a second pass over what the walk did not reach
+        // the whole subtree leaves the panel with no error anywhere. Same loss as a dropped orphan.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), Facets() with
+        {
+            Variabelgrupper = [new() { Id = Bakgrunn, Name = "Selvforelder", ParentId = Bakgrunn, Count = 7 }]
+        });
+
+        var cut = RenderWith(client);
+
+        Assert.NotNull(Facet(cut, "Selvforelder"));
+
+        ClickFacet(cut, "Selvforelder");
+        Assert.Equal([Bakgrunn], client.SearchFilter?.VariabelgruppeIds);
+    }
+
+    [Fact]
+    public void Filter_WhenAFetchIsAlreadyRunning_ThenTheClickIsIgnored()
+    {
+        // The fourth entry point to the loading state, and the one that does the most on the far
+        // side of the guard. Two overlapping applications interleave their rollback captures, so a
+        // second fetch that fails can restore a filter that is neither what is on screen nor what
+        // was asked for — and then report that filter to the host, which is exactly the "the URL
+        // claims something the page is not showing" failure the rollback tests exist to prevent.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        client.StallSearch = true;
+        ClickFacet(cut, "Dødsårsaksregisteret");
+        ClickFacet(cut, "Streng");
+
+        Assert.Equal(2, client.SearchCalls); // the initial load and the first press, not the second
+        Assert.Equal([Dodsarsak], client.SearchFilter?.KildeIds);
+        Assert.Empty(client.SearchFilter!.DataTypes);
     }
 
     [Fact]

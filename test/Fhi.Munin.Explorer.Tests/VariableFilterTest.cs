@@ -46,10 +46,14 @@ public class VariableFilterTest
         Assert.Contains($"kildeIds={Kilde}", query, StringComparison.Ordinal);
         Assert.Contains("kildeType=sentraltHelseregister", query, StringComparison.Ordinal);
         Assert.Contains($"delkildeIds={Delkilde}", query, StringComparison.Ordinal);
+        Assert.Contains($"datasamlingIds={Gruppe}", query, StringComparison.Ordinal);
         Assert.Contains($"variabelgruppeIds={Gruppe}", query, StringComparison.Ordinal);
+        Assert.Contains($"filterIds={Kilde}", query, StringComparison.Ordinal);
         Assert.Contains("datatypes=1", query, StringComparison.Ordinal);
         Assert.Contains("helsefagligKodeverkReferanser=ICD-10", query, StringComparison.Ordinal);
         Assert.Contains("administrativtKodeverkOids=3402", query, StringComparison.Ordinal);
+        Assert.Contains($"instrumentIds={Delkilde}", query, StringComparison.Ordinal);
+        Assert.Contains("datakategorier=ehds-cat%3Abiobanks", query, StringComparison.Ordinal);
         Assert.Contains("harKildekodeverk=true", query, StringComparison.Ordinal);
         Assert.Contains("dataFrom=2010-01-01", query, StringComparison.Ordinal);
         Assert.Contains("dataTo=2025-06-30", query, StringComparison.Ordinal);
@@ -67,7 +71,7 @@ public class VariableFilterTest
     [Fact]
     public void ToQueryString_WhenAValueNeedsEscaping_ThenItIsEscaped()
     {
-        var query = new VariableFilter { Datakategorier = ["ehds-cat:population health"] }.ToQueryString();
+        var query = new VariableFilter { Categories = ["ehds-cat:population health"] }.ToQueryString();
 
         Assert.Equal("datakategorier=ehds-cat%3Apopulation%20health", query);
     }
@@ -151,6 +155,52 @@ public class VariableFilterTest
         Assert.False(filter.IsEmpty);
     }
 
+    [Fact]
+    public void Parse_WhenASpaceIsWrittenAsAPlus_ThenItIsReadAsASpace()
+    {
+        // ToQueryString writes %20, but a host may hand over a query string it did not write: an
+        // HTML GET form, WebUtility.UrlEncode and QueryHelpers all write a space as +. Read
+        // literally, "ICD+10" goes back to the API as ICD%2B10 and matches nothing, silently.
+        Assert.Equal(["ICD 10"], VariableFilter.Parse("?helsefagligKodeverkReferanser=ICD+10").HelsefagligKodeverk);
+    }
+
+    [Fact]
+    public void Parse_WhenAFacetHasMoreValuesThanASelectionCanHave_ThenTheRestAreDropped()
+    {
+        // The input is an anonymous URL and the result is held for the life of a circuit, scanned
+        // per value on every render and put back on the outbound API URL on every fetch. Without a
+        // cap, one crafted link is sustained server work — see the constants on Parse.
+        var crafted = string.Join('&', Enumerable.Repeat($"kildeIds={Kilde}", 5_000));
+
+        Assert.Equal(100, VariableFilter.Parse(crafted).KildeIds.Count);
+    }
+
+    [Fact]
+    public void Parse_WhenAValueIsLongerThanAnyTheApiReports_ThenItIsDropped()
+    {
+        // The free-form facets have no format to fail on, so length is the only bound there is.
+        var crafted = $"datatypes={new string('x', 500)}&kildeIds={Kilde}";
+
+        var filter = VariableFilter.Parse(crafted);
+
+        Assert.Empty(filter.DataTypes);
+        Assert.Equal([Kilde], filter.KildeIds); // and the rest of the filter still survives
+    }
+
+    [Fact]
+    public void ActiveCount_WhenAValueIsSetButNotSent_ThenItIsNotCounted()
+    {
+        // Counting and sending have to describe the same filter. A blank value narrows nothing, so
+        // ToQuery leaves it out and Equals calls the filter unfiltered — counting it anyway leaves
+        // a UI saying "Filtre (1)" over a live clear button whose press does nothing at all.
+        var blank = new VariableFilter { KildeType = "", DataTypes = [""] };
+
+        Assert.Equal(0, blank.ActiveCount);
+        Assert.True(blank.IsEmpty);
+        Assert.Equal(VariableFilter.None, blank);
+        Assert.Equal("", blank.ToQueryString());
+    }
+
     private static VariableFilter Everything() => new()
     {
         KildeIds = [Kilde],
@@ -163,7 +213,7 @@ public class VariableFilterTest
         HelsefagligKodeverk = ["ICD-10"],
         AdministrativtKodeverk = ["3402"],
         InstrumentIds = [Delkilde],
-        Datakategorier = ["ehds-cat:biobanks"],
+        Categories = ["ehds-cat:biobanks"],
         HasKildekodeverk = true,
         DataFrom = new DateOnly(2010, 1, 1),
         DataTo = new DateOnly(2025, 6, 30),

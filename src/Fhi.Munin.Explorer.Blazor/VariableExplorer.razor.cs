@@ -854,9 +854,14 @@ public partial class VariableExplorer : ComponentBase
     /// hung off a missing parent would be a filter the reader can neither see nor clear.
     /// </para>
     /// <para>
-    /// The walk remembers what it has already placed, so a parent chain that loops back on itself —
-    /// which the catalogue should never produce and which nothing here could otherwise survive —
-    /// stops at the repeat instead of recursing until the stack runs out.
+    /// A parent chain that loops back on itself — a self-parented node, or two nodes naming each
+    /// other, neither of which the catalogue should ever produce — has no root to be reached from,
+    /// so the walk seeds itself with whatever the first pass did not reach. Without that second
+    /// pass a cycle and everything hanging off it vanishes from the panel silently, which is the
+    /// same failure the orphan rule above exists to prevent, arriving by the other door. The walk
+    /// remembers what it has already placed, so entering a cycle stops at the repeat rather than
+    /// recursing until the stack runs out; that memory also keeps a duplicated id from being drawn
+    /// twice.
     /// </para>
     /// </remarks>
     private static IReadOnlyList<FacetValue> Tree(
@@ -876,7 +881,17 @@ public partial class VariableExplorer : ComponentBase
         var byParent = all.Where(node => node.ParentId is not null).ToLookup(node => node.ParentId!.Value);
         HashSet<Guid> placed = [];
 
-        return [.. all.Where(node => node.ParentId is not { } parent || !known.Contains(parent)).Select(Build)];
+        var rooted = all.Where(node => node.ParentId is not { } parent || !known.Contains(parent));
+
+        List<FacetValue> roots = [.. rooted.Select(Build)];
+
+        // Whatever the first pass could not reach: every member of a cycle has its parent present,
+        // so none of them is a root, and dropping them would take a filter off the panel with no
+        // error anywhere. Each one that is still unplaced becomes a root of its own, which places
+        // the rest of its cycle underneath it.
+        roots.AddRange(all.Where(node => !placed.Contains(node.Id)).Select(Build));
+
+        return roots;
 
         FacetValue Build(TreeNode node)
         {
@@ -983,11 +998,18 @@ public partial class VariableExplorer : ComponentBase
     }
 
     /// <summary>Add or remove one value from a facet, and fetch what that leaves.</summary>
-    private Task ToggleAsync<T>(IReadOnlyList<T> selected, T value, Func<IReadOnlyList<T>, VariableFilter> apply)
+    /// <remarks>
+    /// The type parameter is <c>TItem</c> and not <c>T</c>, which is the component's own
+    /// translations accessor: a <c>T</c> here would shadow it, and the first string this body ever
+    /// needs would fail to compile with an error pointing at the type parameter instead.
+    /// </remarks>
+    private Task ToggleAsync<TItem>(
+        IReadOnlyList<TItem> selected, TItem value, Func<IReadOnlyList<TItem>, VariableFilter> apply)
     {
         if (selected.Contains(value))
         {
-            return ApplyFilterAsync(apply([.. selected.Where(chosen => !EqualityComparer<T>.Default.Equals(chosen, value))]));
+            return ApplyFilterAsync(
+                apply([.. selected.Where(chosen => !EqualityComparer<TItem>.Default.Equals(chosen, value))]));
         }
 
         return ApplyFilterAsync(apply([.. selected, value]));
@@ -1337,7 +1359,7 @@ public partial class VariableExplorer : ComponentBase
     /// survived is the same for both: the handler is the host's, and what it most often does is
     /// rewrite a URL.
     /// </remarks>
-    private static async Task RaiseAsync<T>(EventCallback<T> callback, T value)
+    private static async Task RaiseAsync<TValue>(EventCallback<TValue> callback, TValue value)
     {
         if (!callback.HasDelegate)
         {

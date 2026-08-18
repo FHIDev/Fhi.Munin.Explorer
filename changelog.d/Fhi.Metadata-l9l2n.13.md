@@ -15,9 +15,3 @@ category: Added
   and `VariableFilter.Parse()` are the two halves of putting it in a URL, using the Explorer API's
   own parameter names; the callback always reports the filter actually in force, including after a
   rollback, so a host's URL cannot come to disagree with the page. (Fhi.Metadata-l9l2n.13)
-- **`IMuninExplorerClient` takes a `VariableFilter`** - on `SearchVariablesAsync` and on
-  `GetFiltersAsync`, which replaces the latter's `kildeType` parameter with the whole selection.
-  It covers everything the API filters on, including datasamling and EHDS datakategori, which the
-  filters endpoint reports no facet for and the panel therefore does not draw. A filter that
-  narrows nothing adds nothing to the URL, so an unfiltered search is byte-identical to what it was
-  before. (Fhi.Metadata-l9l2n.13)

@@ -81,11 +81,18 @@ public sealed record VariableFilter
     /// EHDS datakategori tokens, e.g. <c>ehds-cat:biobanks</c>, matched whole.
     /// </summary>
     /// <remarks>
+    /// The same tokens <see cref="HierarchyDatasamling.Categories"/> carries, and named the same
+    /// way: <c>datakategori</c> has an honest English equivalent this package already uses, and two
+    /// names for one concept on a published surface is a consumer's problem forever. The wire name
+    /// is unaffected — <see cref="ToQuery"/> spells it <c>datakategorier</c>, which is what the API
+    /// binds.
+    /// <para>
     /// Honoured like every other facet, and like <see cref="DatasamlingIds"/> it has no entry in
     /// <see cref="FilterOptions"/> — the tokens live on the datasamling nodes of a kilde hierarchy,
     /// so there are no cross-filtered counts to render beside them.
+    /// </para>
     /// </remarks>
-    public IReadOnlyList<string> Datakategorier { get; init; } = [];
+    public IReadOnlyList<string> Categories { get; init; } = [];
 
     /// <summary>
     /// <c>true</c> keeps only variables that have a kildekodeverk (V-KK) link, <c>false</c> only
@@ -113,16 +120,22 @@ public sealed record VariableFilter
 
     /// <summary>How many separate choices are active, which is what a UI counts in "3 filtre".</summary>
     /// <remarks>
-    /// Each selected value counts once, so two kilder and a datatype is three. The three filters
-    /// that are not lists count as one each when they are set — including
-    /// <see cref="IncludeHistorical"/>, which changes the result set exactly as the others do.
+    /// <para>
+    /// Each selected value counts once, so two kilder and a datatype is three. The filters that are
+    /// not lists count as one each when they are set — including <see cref="IncludeHistorical"/>,
+    /// which changes the result set exactly as the others do.
+    /// </para>
+    /// <para>
+    /// Counted off <see cref="ToQuery"/> rather than off the properties, so "how many filters" and
+    /// "which filters go on the wire" cannot describe different filters. Counting the properties
+    /// instead makes a value that is set but not sent — <c>KildeType = ""</c>, a blank entry in a
+    /// list — count here while <see cref="Equals(VariableFilter)"/> calls the filter equal to
+    /// <see cref="None"/>: a UI would then say "Filtre (1)" over a live clear button whose press
+    /// asks for the filter already in force and does nothing, with no other control able to reach
+    /// that state either.
+    /// </para>
     /// </remarks>
-    public int ActiveCount =>
-        KildeIds.Count + DelkildeIds.Count + DatasamlingIds.Count + VariabelgruppeIds.Count +
-        FilterIds.Count + DataTypes.Count + HelsefagligKodeverk.Count + AdministrativtKodeverk.Count +
-        InstrumentIds.Count + Datakategorier.Count +
-        (KildeType is null ? 0 : 1) + (HasKildekodeverk is null ? 0 : 1) +
-        (DataFrom is null ? 0 : 1) + (DataTo is null ? 0 : 1) + (IncludeHistorical ? 1 : 0);
+    public int ActiveCount => ToQuery().Count();
 
     /// <summary>Whether this narrows anything at all.</summary>
     public bool IsEmpty => ActiveCount == 0;
@@ -187,7 +200,7 @@ public sealed record VariableFilter
             yield return pair;
         }
 
-        foreach (var pair in Repeat("datakategorier", Datakategorier))
+        foreach (var pair in Repeat("datakategorier", Categories))
         {
             yield return pair;
         }
@@ -217,15 +230,29 @@ public sealed record VariableFilter
 
     /// <summary>One parameter per value, which is how the API binds a list.</summary>
     /// <remarks>
+    /// <para>
     /// Comma-joining them would arrive as a single malformed id, and the API would answer with an
     /// empty result rather than a complaint.
+    /// </para>
+    /// <para>
+    /// A blank value is left out, for the same reason a blank <see cref="KildeType"/> is: a bare
+    /// <c>datatypes=</c> narrows nothing at the API and is dropped by <see cref="Parse"/>, so
+    /// sending it would make a shared link come back as a different filter than it went out as —
+    /// and, through <see cref="ActiveCount"/>, be counted as a filter nothing could clear. A
+    /// <see cref="Guid"/> can never write one, so the check only ever fires on the free-form facets.
+    /// </para>
     /// </remarks>
-    private static IEnumerable<(string Name, string Value)> Repeat<T>(string name, IReadOnlyList<T> values)
-        where T : notnull
+    private static IEnumerable<(string Name, string Value)> Repeat<TValue>(string name, IReadOnlyList<TValue> values)
+        where TValue : notnull
     {
         foreach (var value in values)
         {
-            yield return (Name: name, Value: value.ToString() ?? "");
+            var text = value.ToString();
+
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                yield return (Name: name, Value: text);
+            }
         }
     }
 
@@ -252,15 +279,54 @@ public sealed record VariableFilter
         return query.ToString();
     }
 
+    /// <summary>How many values <see cref="Parse"/> keeps for one facet.</summary>
+    /// <remarks>
+    /// What <see cref="Parse"/> reads is untrusted: this renders on a public, unauthenticated page,
+    /// and the remarks below invite a host to hand over whatever the request carried. The filter it
+    /// produces is then held for the life of a circuit, scanned once per selected value on every
+    /// render, and written back onto the outbound API URL on every fetch — so an unbounded list
+    /// turns one cheap crafted link into sustained server work and a multi-megabyte upstream
+    /// request. The cap is far above any selection the catalogue can offer, the API's own facets
+    /// being hundreds of values rather than thousands, so it only ever truncates input that was
+    /// never a selection a reader could make — which "drop what you cannot read" already allows.
+    /// </remarks>
+    private const int MaxValuesPerFacet = 100;
+
+    /// <summary>How long one value may be before <see cref="Parse"/> drops it.</summary>
+    /// <remarks>
+    /// The bound on the free-form facets, where nothing else limits the length: a guid is 36
+    /// characters and the longest value the API's facets report is a kodeverk name.
+    /// </remarks>
+    private const int MaxValueLength = 200;
+
+    /// <summary>How many parameters <see cref="Parse"/> reads before ignoring the rest.</summary>
+    /// <remarks>
+    /// Bounds the parse itself and not only what it keeps — without it a crafted URL still costs
+    /// a <see cref="Guid.TryParse(string?, out Guid)"/> per repetition before
+    /// <see cref="MaxValuesPerFacet"/> discards the result. Above what every facet filled to its
+    /// own cap amounts to, plus room for the host's own parameters, so a real query string is
+    /// never truncated.
+    /// </remarks>
+    private const int MaxParameters = 2_000;
+
     /// <summary>
     /// Read a filter back from a query string, with or without a leading <c>?</c>.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Nothing throws. A parameter this record does not know, a malformed id, a date that is not a
     /// date — each is dropped and the rest of the filter is kept, because the input is a URL a
     /// person can edit and a public page has to survive that. Returns <see cref="None"/> for null,
     /// empty or entirely unrecognised input, so a host can hand it <c>Request.QueryString.Value</c>
     /// without checking first.
+    /// </para>
+    /// <para>
+    /// Dropping extends to input that is well formed but larger than a selection can be — see
+    /// <see cref="MaxValuesPerFacet"/>, <see cref="MaxValueLength"/> and
+    /// <see cref="MaxParameters"/>. The caps live here rather than at the call sites because this
+    /// is where untrusted input arrives, and a host that has already handed the string over has no
+    /// second chance to bound it.
+    /// </para>
     /// </remarks>
     public static VariableFilter Parse(string? queryString)
     {
@@ -271,45 +337,61 @@ public sealed record VariableFilter
 
         List<Guid> kildeIds = [], delkildeIds = [], datasamlingIds = [], variabelgruppeIds = [],
                    filterIds = [], instrumentIds = [];
-        List<string> dataTypes = [], helsefagligKodeverk = [], administrativtKodeverk = [], datakategorier = [];
+        List<string> dataTypes = [], helsefagligKodeverk = [], administrativtKodeverk = [], categories = [];
         string? kildeType = null;
         bool? hasKildekodeverk = null;
         DateOnly? dataFrom = null, dataTo = null;
         var includeHistorical = false;
 
+        // Keyed by the API's own parameter names, spelled exactly as ToQuery writes them a few
+        // lines above: this file's one job is to keep those two lists identical, and a lowercased
+        // copy of each name is a copy that can drift without anything noticing. The comparer, not
+        // a fold, is what makes the match case-insensitive — as everywhere else here.
+        var readers = new Dictionary<string, Action<string>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["kildeIds"] = value => AddGuid(kildeIds, value),
+            ["kildeType"] = value => kildeType = value,
+            ["delkildeIds"] = value => AddGuid(delkildeIds, value),
+            ["datasamlingIds"] = value => AddGuid(datasamlingIds, value),
+            ["variabelgruppeIds"] = value => AddGuid(variabelgruppeIds, value),
+            ["filterIds"] = value => AddGuid(filterIds, value),
+            ["datatypes"] = value => Add(dataTypes, value),
+            ["helsefagligKodeverkReferanser"] = value => Add(helsefagligKodeverk, value),
+            ["administrativtKodeverkOids"] = value => Add(administrativtKodeverk, value),
+            ["instrumentIds"] = value => AddGuid(instrumentIds, value),
+            ["datakategorier"] = value => Add(categories, value),
+            ["harKildekodeverk"] = value => hasKildekodeverk = Bool(value) ?? hasKildekodeverk,
+            ["dataFrom"] = value => dataFrom = Date(value) ?? dataFrom,
+            ["dataTo"] = value => dataTo = Date(value) ?? dataTo,
+            ["includeHistorical"] = value => includeHistorical = Bool(value) ?? includeHistorical
+        };
+
+        var read = 0;
+
         foreach (var pair in queryString.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
         {
+            if (++read > MaxParameters)
+            {
+                break;
+            }
+
             var separator = pair.IndexOf('=', StringComparison.Ordinal);
             if (separator <= 0)
             {
                 continue;
             }
 
-            var name = Uri.UnescapeDataString(pair[..separator]);
-            var value = Uri.UnescapeDataString(pair[(separator + 1)..]);
+            var name = Decode(pair[..separator]);
+            var value = Decode(pair[(separator + 1)..]);
 
-            if (string.IsNullOrWhiteSpace(value))
+            if (string.IsNullOrWhiteSpace(value) || value.Length > MaxValueLength)
             {
                 continue;
             }
 
-            switch (name.ToLowerInvariant())
+            if (readers.TryGetValue(name, out var apply))
             {
-                case "kildeids": AddGuid(kildeIds, value); break;
-                case "kildetype": kildeType = value; break;
-                case "delkildeids": AddGuid(delkildeIds, value); break;
-                case "datasamlingids": AddGuid(datasamlingIds, value); break;
-                case "variabelgruppeids": AddGuid(variabelgruppeIds, value); break;
-                case "filterids": AddGuid(filterIds, value); break;
-                case "datatypes": dataTypes.Add(value); break;
-                case "helsefagligkodeverkreferanser": helsefagligKodeverk.Add(value); break;
-                case "administrativtkodeverkoids": administrativtKodeverk.Add(value); break;
-                case "instrumentids": AddGuid(instrumentIds, value); break;
-                case "datakategorier": datakategorier.Add(value); break;
-                case "harkildekodeverk": hasKildekodeverk = Bool(value) ?? hasKildekodeverk; break;
-                case "datafrom": dataFrom = Date(value) ?? dataFrom; break;
-                case "datato": dataTo = Date(value) ?? dataTo; break;
-                case "includehistorical": includeHistorical = Bool(value) ?? includeHistorical; break;
+                apply(value);
             }
         }
 
@@ -325,13 +407,24 @@ public sealed record VariableFilter
             HelsefagligKodeverk = helsefagligKodeverk,
             AdministrativtKodeverk = administrativtKodeverk,
             InstrumentIds = instrumentIds,
-            Datakategorier = datakategorier,
+            Categories = categories,
             HasKildekodeverk = hasKildekodeverk,
             DataFrom = dataFrom,
             DataTo = dataTo,
             IncludeHistorical = includeHistorical
         };
     }
+
+    /// <summary>One query-string token, unescaped — <c>+</c> as a space as well as <c>%XX</c>.</summary>
+    /// <remarks>
+    /// <see cref="Uri.UnescapeDataString(string)"/> on its own leaves <c>+</c> as itself, which is
+    /// right for what <see cref="ToQueryString"/> writes — it escapes a space as <c>%20</c> — and
+    /// wrong for what a host hands over. An HTML GET form, <c>WebUtility.UrlEncode</c> and
+    /// <c>QueryHelpers.AddQueryString</c> all write a space as <c>+</c>, so without this
+    /// <c>?helsefagligKodeverkReferanser=ICD+10</c> parses to the literal "ICD+10", goes back to the
+    /// API as <c>ICD%2B10</c> and matches nothing, silently.
+    /// </remarks>
+    private static string Decode(string token) => Uri.UnescapeDataString(token.Replace('+', ' '));
 
     /// <summary>
     /// Two filters are equal when they narrow the same way, compared through
@@ -360,9 +453,18 @@ public sealed record VariableFilter
 
     private static void AddGuid(List<Guid> ids, string value)
     {
-        if (Guid.TryParse(value, out var id))
+        if (ids.Count < MaxValuesPerFacet && Guid.TryParse(value, out var id))
         {
             ids.Add(id);
+        }
+    }
+
+    /// <summary>A free-form value, kept only while the facet is under its cap.</summary>
+    private static void Add(List<string> values, string value)
+    {
+        if (values.Count < MaxValuesPerFacet)
+        {
+            values.Add(value);
         }
     }
 
