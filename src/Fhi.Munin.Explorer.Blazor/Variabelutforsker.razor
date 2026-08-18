@@ -204,54 +204,59 @@
                 </li>
             }
         </ul>
+    }
 
-        @* The pager. Forrige / Neste with the position between them, and no infinite scrolling —
-           Munin's own explorer pages the same way, and a list that grows as you scroll has no end
-           for a keyboard user to reach.
+    @* The pager. Forrige / Neste with the position between them, and no infinite scrolling —
+       Munin's own explorer pages the same way, and a list that grows as you scroll has no end
+       for a keyboard user to reach.
 
-           Only when there is more than one page. "Side 1 av 1" between two buttons that can never
-           do anything is furniture, and leaving it out costs nothing: the pager only ever
-           disappears on a new search or a new ordering, neither of which is started from a pager
-           button, so it cannot vanish under the finger that pressed it.
+       Only when there is more than one page. "Side 1 av 1" between two buttons that can never
+       do anything is furniture, and leaving it out costs nothing: a single page is only ever
+       reached by a new search or a new ordering, neither of which is started from a pager button.
 
-           `variables-pagination` and `variables-pagination-content` are helsedata's own names from
-           the variable page's own stylesheet — Stiler has no pagination rule at all. The component
-           class's remarks say what that costs a host mounted anywhere else.
+       Outside the rows' own guard on purpose. Tied to the rows it would vanish under the finger
+       that pressed it the moment a page came back empty — an index that shrank between two
+       requests, or an API that answers an out-of-range page with 404 — taking the focused button
+       with it. RetreatFromEmptyPageAsync is what stops that state from lasting; this is what makes
+       it survivable while it does.
 
-           A div with role="navigation" rather than a <nav>: the landmark is worth having, and it
-           is named so it does not sit anonymously among the host page's own, but the element has
-           to be the one helsedata's selectors expect. tabindex="-1" makes it the skip link's
-           target — focusable programmatically, and still not a tab stop. *@
-        @if (TotalPages > 1)
-        {
-            <div class="variables-pagination"
-                 id="@PaginationId"
-                 tabindex="-1"
-                 role="navigation"
-                 aria-label="@T.Pagination">
-                <div class="variables-pagination-content">
-                    @* aria-disabled, not disabled — see AriaDisabled in the codebehind. Both
-                       buttons ask for a page that does not exist at the ends of the list; the
-                       clamp in GoToPageAsync is what makes that inert, so the boundary is one
-                       rule in one place rather than a condition repeated on each button. *@
-                    <button class="hd-button-square button-square--secondary"
-                            type="button"
-                            aria-label="@T.PreviousLabel"
-                            aria-disabled="@AriaDisabled(CanGoPrevious)"
-                            @onclick="() => GoToPageAsync(_page - 1)">@T.Previous</button>
+       `variables-pagination` and `variables-pagination-content` are helsedata's own names from
+       the variable page's own stylesheet — Stiler has no pagination rule at all. The component
+       class's remarks say what that costs a host mounted anywhere else.
 
-                    @* Not a live region of its own. Turning a page rewrites the status line above,
-                       which is already polite and atomic and already says which rows are on
-                       screen, so a second announcement here would say the same thing twice. *@
-                    <span class="caption">@T.PageOf(_page, TotalPages)</span>
+       A div with role="navigation" rather than a <nav>: the landmark is worth having, and it
+       is named so it does not sit anonymously among the host page's own, but the element has
+       to be the one helsedata's selectors expect. tabindex="-1" makes it the skip link's
+       target — focusable programmatically, and still not a tab stop. *@
+    @if (_resultat is not null && TotalPages > 1)
+    {
+        <div class="variables-pagination"
+             id="@PaginationId"
+             tabindex="-1"
+             role="navigation"
+             aria-label="@T.Pagination">
+            <div class="variables-pagination-content">
+                @* aria-disabled, not disabled — see AriaDisabled in the codebehind. Both
+                   buttons ask for a page that does not exist at the ends of the list; the
+                   clamp in GoToPageAsync is what makes that inert, so the boundary is one
+                   rule in one place rather than a condition repeated on each button. *@
+                <button class="hd-button-square button-square--secondary"
+                        type="button"
+                        aria-label="@T.PreviousLabel"
+                        aria-disabled="@AriaDisabled(CanGoPrevious)"
+                        @onclick="() => GoToPageAsync(_page - 1)">@T.Previous</button>
 
-                    <button class="hd-button-square button-square--secondary"
-                            type="button"
-                            aria-label="@T.NextLabel"
-                            aria-disabled="@AriaDisabled(CanGoNext)"
-                            @onclick="() => GoToPageAsync(_page + 1)">@T.Next</button>
-                </div>
+                @* Not a live region of its own. Turning a page rewrites the status line above,
+                   which is already polite and atomic and already says which rows are on
+                   screen, so a second announcement here would say the same thing twice. *@
+                <span class="caption">@T.PageOf(_page, TotalPages)</span>
+
+                <button class="hd-button-square button-square--secondary"
+                        type="button"
+                        aria-label="@T.NextLabel"
+                        aria-disabled="@AriaDisabled(CanGoNext)"
+                        @onclick="() => GoToPageAsync(_page + 1)">@T.Next</button>
             </div>
-        }
+        </div>
     }
 </section>

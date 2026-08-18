@@ -216,6 +216,9 @@ public partial class Variabelutforsker : ComponentBase
     /// a Neste button on screen for a page that does not exist. The arithmetic is kept as a fallback
     /// for a substituted <see cref="IMuninExplorerClient"/> that leaves the field at zero — claiming
     /// one page over three hundred rows would strand the reader on the first twenty-five of them.
+    /// It divides by <see cref="ResultPageSize"/> and not by <see cref="PageSize"/> for the same
+    /// reason: counting the pages against a size the rows were not built with would put the page
+    /// count and the row range on screen describing two different pagings of one result.
     /// </remarks>
     private int TotalPages
     {
@@ -228,7 +231,7 @@ public partial class Variabelutforsker : ComponentBase
 
             return _resultat.TotalPages > 0
                 ? _resultat.TotalPages
-                : (int)Math.Ceiling(TotalCount / (double)PageSize);
+                : (int)Math.Ceiling(TotalCount / (double)ResultPageSize);
         }
     }
 
@@ -236,8 +239,14 @@ public partial class Variabelutforsker : ComponentBase
 
     private bool CanGoNext => _page < TotalPages;
 
-    /// <summary>The 1-based position of the first row on screen, or 0 when nothing matched.</summary>
-    private int FirstItemOnPage => TotalCount == 0 ? 0 : ((_page - 1) * ResultPageSize) + 1;
+    /// <summary>The 1-based position of the first row on screen, or 0 when there are no rows.</summary>
+    /// <remarks>
+    /// Guarded on the rows rather than on <see cref="TotalCount"/>, so that it agrees with
+    /// <see cref="LastItemOnPage"/> without either of them relying on the markup to keep the pair
+    /// off screen: a page with no rows on a non-zero total would otherwise read "Viser 26–0 av 312".
+    /// </remarks>
+    private int FirstItemOnPage =>
+        _resultat is null || _resultat.Items.Count == 0 ? 0 : ((ResultPage - 1) * ResultPageSize) + 1;
 
     /// <summary>
     /// The 1-based position of the last row on screen, counted from the rows actually delivered.
@@ -254,7 +263,19 @@ public partial class Variabelutforsker : ComponentBase
     /// The page size the visible result was actually built with, which is the server's answer when
     /// it gave one and what we asked for otherwise.
     /// </summary>
-    private int ResultPageSize => _resultat is { Size: > 0 } side ? side.Size : PageSize;
+    private int ResultPageSize => _resultat is { Size: > 0 } page ? page.Size : PageSize;
+
+    /// <summary>
+    /// The page the visible result actually is, which is the server's answer when it gave one and
+    /// the page we asked for otherwise.
+    /// </summary>
+    /// <remarks>
+    /// The same treatment <see cref="ResultPageSize"/> gives the size, for the same reason. An API
+    /// that clamps an out-of-range page — answering page 8 of 8 to a request for page 12 — would
+    /// otherwise have the row range counted from the number that was asked for, so the status line
+    /// would offer "Viser 276–300 av 200" over rows the reader is not looking at.
+    /// </remarks>
+    private int ResultPage => _resultat is { Page: > 0 } page ? page.Page : _page;
 
     /// <summary>
     /// <c>"true"</c> on a pager button that would do nothing, and nothing at all on one that works.
@@ -313,7 +334,7 @@ public partial class Variabelutforsker : ComponentBase
     /// </remarks>
     private string Sammendrag => _resultat is null
         ? ""
-        : T.Treff(FirstItemOnPage, LastItemOnPage, _resultat.TotalCount, _utfortSok,
+        : T.Treff(FirstItemOnPage, LastItemOnPage, TotalCount, _utfortSok,
                   T.FieldLabel(_sort), T.DirectionName(_direction));
 
     /// <summary>A sort button's label — the field, plus the direction when it is the active one.</summary>
@@ -538,8 +559,9 @@ public partial class Variabelutforsker : ComponentBase
     private async Task GoToPageAsync(int page)
     {
         // Dropped rather than queued while a fetch is in flight, the same as a second submit and a
-        // sort click — and for the same reason the buttons carry aria-disabled instead of disabled,
-        // since neither is ever taken out of the document under the finger that pressed it.
+        // sort click — and for the same reason the buttons carry aria-disabled instead of disabled:
+        // neither is taken out of the document under the finger that pressed it, which is also why
+        // a failed page turn below keeps the rows it already had.
         if (_laster)
         {
             return;
@@ -557,12 +579,57 @@ public partial class Variabelutforsker : ComponentBase
         var previous = _page;
         _page = target;
 
-        if (!await FetchAsync(_utfortSok))
+        // keepResult: the pressed button must survive the failure. The rest of the component
+        // never removes a control the user just used, and the pager is the only pressable thing in
+        // it that is rendered conditionally — so a page turn that cleared the rows would take
+        // Forrige and Neste out of the document in the same render that reports the error, drop
+        // focus to <body>, and leave a keyboard user restarting from the top of the host's page.
+        if (!await FetchAsync(_utfortSok, keepResult: true))
         {
-            // Nothing arrived, so the state has to keep describing what did. Same invariant the
-            // sort rollback protects.
+            // Nothing arrived, so the state has to keep describing what did — and what did is
+            // still on screen. Same invariant the sort rollback protects.
             _page = previous;
+
+            return;
         }
+
+        await RetreatFromEmptyPageAsync();
+    }
+
+    /// <summary>
+    /// Step back to a page that has rows, when the page just fetched turned out not to.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The clamp in <see cref="GoToPageAsync"/> measures the target against the count the
+    /// <em>previous</em> answer carried, so it can only ever ask for a page that existed when that
+    /// answer was written. Two routes lead past it: the index shrinks between the two requests, and
+    /// the API answers an out-of-range page with 404 — which
+    /// <see cref="IMuninExplorerClient.SokVariablerAsync"/> reports as an empty page rather than
+    /// throwing, so no rollback runs.
+    /// </para>
+    /// <para>
+    /// Left alone, either one strands the reader: the status line would say "Ingen variabler passet
+    /// søket" over a search that matched hundreds, with no rows to show and nothing but a fresh
+    /// search to get back from. So the component takes itself back to a page that exists — the last
+    /// one the new answer admits to, or page 1, which is the one page that can never be out of
+    /// range. One step only: if that page is empty too the result really is empty.
+    /// </para>
+    /// </remarks>
+    private async Task RetreatFromEmptyPageAsync()
+    {
+        if (_page == 1 || _resultat is not { Items.Count: 0 })
+        {
+            return;
+        }
+
+        // TotalPages reads the answer that just arrived, so this is the new count and not the stale
+        // one the clamp trusted. A server still claiming the page exists after sending nothing has
+        // told us nothing usable, so page 1 is the only safe answer left.
+        var last = TotalCount > 0 ? TotalPages : 1;
+        _page = last < _page ? last : 1;
+
+        await FetchAsync(_utfortSok, keepResult: true);
     }
 
     /// <summary>
@@ -608,11 +675,21 @@ public partial class Variabelutforsker : ComponentBase
 
     /// <summary>Fetch <paramref name="sok"/> at the current page and ordering. True when it succeeded.</summary>
     /// <remarks>
+    /// <para>
     /// The search is a parameter rather than read from <c>_sok</c>, because the two callers do not
     /// mean the same thing by it: searching means the live contents of the box, sorting means the
     /// text the visible rows actually came from.
+    /// </para>
+    /// <para>
+    /// <paramref name="keepResult"/> keeps the rows already on screen when the call fails,
+    /// which is what a page turn wants and a search does not. A search that failed has no result
+    /// to describe — the rows on screen came from a different query, and leaving them there under
+    /// the new search's error message would say they answered it. A page turn's rows came from the
+    /// query that is still on screen, so they stay, and with them the pager button the reader is
+    /// standing on.
+    /// </para>
     /// </remarks>
-    private async Task<bool> FetchAsync(string? sok)
+    private async Task<bool> FetchAsync(string? sok, bool keepResult = false)
     {
         _laster = true;
         _feil = null;
@@ -634,7 +711,11 @@ public partial class Variabelutforsker : ComponentBase
         {
             // Say what the reader can do about it; the detail belongs in the host's logs,
             // not on the page.
-            _resultat = null;
+            if (!keepResult)
+            {
+                _resultat = null;
+            }
+
             _feil = T.Feil;
 
             return false;
