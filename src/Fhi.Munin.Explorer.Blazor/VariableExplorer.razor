@@ -8,10 +8,13 @@
    Every class name below is one Fhi.Helsedata.Stiler already defines, and the shapes are
    lifted from helsedata's own datakildeutforsker (Features/DataSources/DataSourceComponent):
    a searchbox with the submit button inside the field, and results as a card list. Inventing
-   `variable-explorer-*` names — which is what this used to do — meant the host stylesheet had
-   never heard of them, so the Søk button, the search field and the table headers rendered as
+   `variabelutforsker-*` names — which is what this used to do, twice — meant the host stylesheet
+   had never heard of them, so the Søk button, the search field and the table headers rendered as
    raw browser defaults inside an otherwise styled page. Matching helsedata without guessing is
-   the entire reason this ships as a component, so the names have to be theirs.
+   the entire reason this ships as a component, so the names have to be theirs. (The historical
+   spelling is deliberate: it records the mistake as it was made. The root `variable-explorer`
+   class below, and the `variable-explorer-*` DOM ids the codebehind mints, are not that mistake
+   — they carry no styling at all; see the comment above the `<section>`.)
 
    The pager is the one exception, and it is still helsedata's names rather than ours: Stiler has
    no pagination rule at all, so `variables-pagination*` and `skiplink-pagination` come from the

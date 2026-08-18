@@ -1104,6 +1104,41 @@ public class VariableExplorerTest : BunitContext
     }
 
     /// <summary>
+    /// A client that hands back rows but describes nothing about the paging it did them by:
+    /// <see cref="Page{T}.Size"/>, <see cref="Page{T}.PageNumber"/> and
+    /// <see cref="Page{T}.TotalPages"/> all stay at zero.
+    /// </summary>
+    /// <remarks>
+    /// Which is what a substituted <see cref="IMuninExplorerClient"/> leaves them at — a host's mock,
+    /// or a stand-in over a different backend — and is the case the arithmetic fallbacks in
+    /// <c>TotalPages</c>, <c>ResultPageSize</c> and <c>ResultPage</c> exist for. Every other fake here
+    /// echoes <c>Size = pageSize</c> back, which makes the fallback and the server's own answer
+    /// indistinguishable and so pins neither.
+    /// </remarks>
+    private sealed class SizelessPagedClient(int totalCount) : EmptyMuninExplorerClient
+    {
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, int page = 1, int pageSize = 25,
+            SortField sort = SortField.Default,
+            SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default)
+        {
+            var first = (page - 1) * pageSize;
+            var count = Math.Clamp(totalCount - first, 0, pageSize);
+
+            return Task.FromResult(new Page<VariableSummary>
+            {
+                Items =
+                [
+                    .. Enumerable.Range(1, count)
+                        .Select(i => Variable($"Variabel {first + i}", $"K{first + i}"))
+                ],
+                TotalCount = totalCount
+            });
+        }
+    }
+
+    /// <summary>
     /// A server that clamps an out-of-range page rather than 404ing it: asked for page 12 of 8 it
     /// answers page 8, and says so in the page it echoes back.
     /// </summary>
@@ -1571,6 +1606,27 @@ public class VariableExplorerTest : BunitContext
         RenderWith(client, b => b.Add(c => c.PageSize, asked));
 
         Assert.Equal(sent, client.LastPageSize);
+    }
+
+    [Theory]
+    [InlineData(500, "Side 2 av 4", "Viser 101–200 av 312")]
+    [InlineData(0, "Side 2 av 312", "Viser 2–2 av 312")]
+    public void Page_WhenTheServerDescribesNoPageSize_ThenTheArithmeticUsesTheClampedOneNotTheAsked(
+        int asked, string position, string range)
+    {
+        // The row range and the page count are counted client-side whenever the server leaves
+        // `size` at zero, and they have to be counted against the size the rows were actually
+        // requested with — the clamped one, which is what went out on the wire. Counting against
+        // the raw PageSize parameter instead is a one-keystroke slip that no other test would
+        // catch, because every other fake echoes the size back and hides the fallback: 500 would
+        // make this one page of 312 and take the pager off screen entirely, and 0 would divide by
+        // zero. Both ends of the clamp, so neither direction of the slip survives.
+        var cut = RenderWith(new SizelessPagedClient(312), b => b.Add(c => c.PageSize, asked));
+
+        Next(cut).Click();
+
+        Assert.Equal(position, Position(cut));
+        Assert.Contains(range, StatusLine(cut));
     }
 
     [Fact]

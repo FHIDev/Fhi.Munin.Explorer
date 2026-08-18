@@ -50,7 +50,7 @@ public sealed record KildeDetail
         new Dictionary<string, string?>();
 
     /// <summary>Labels, grouping and order for the keys in <see cref="AdditionalProperties"/>.</summary>
-    [JsonPropertyName("propertyMetadata")] public IReadOnlyList<PropertyMetadata> PropertyMetadata { get; init; } = [];
+    [JsonPropertyName("propertyMetadata")] public IReadOnlyList<PropertyMetadataEntry> PropertyMetadata { get; init; } = [];
 
     /// <summary>Datasamlinger hanging directly off the kilde — those under a delkilde are inside <see cref="Delkilder"/>.</summary>
     [JsonPropertyName("datasamlinger")] public IReadOnlyList<KildeDatasamling> Datasamlinger { get; init; } = [];

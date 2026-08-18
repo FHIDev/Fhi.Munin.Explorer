@@ -89,7 +89,7 @@ public sealed record VariableDetail
     [JsonPropertyName("alleDatasamlinger")] public IReadOnlyList<DatasamlingReference> AllDatasamlinger { get; init; } = [];
 
     /// <summary>Labels, grouping and order for the keys in <see cref="AdditionalProperties"/>.</summary>
-    [JsonPropertyName("propertyMetadata")] public IReadOnlyList<PropertyMetadata> PropertyMetadata { get; init; } = [];
+    [JsonPropertyName("propertyMetadata")] public IReadOnlyList<PropertyMetadataEntry> PropertyMetadata { get; init; } = [];
 }
 
 /// <summary>

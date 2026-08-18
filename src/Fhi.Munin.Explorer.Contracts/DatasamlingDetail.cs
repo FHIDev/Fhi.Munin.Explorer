@@ -97,7 +97,7 @@ public sealed record DatasamlingDetail
         new Dictionary<string, string?>();
 
     /// <summary>Labels, grouping and order for the keys in <see cref="AdditionalProperties"/>.</summary>
-    [JsonPropertyName("propertyMetadata")] public IReadOnlyList<PropertyMetadata> PropertyMetadata { get; init; } = [];
+    [JsonPropertyName("propertyMetadata")] public IReadOnlyList<PropertyMetadataEntry> PropertyMetadata { get; init; } = [];
 
     /// <summary>Owning delkilde, or null when the datasamling hangs directly off the kilde.</summary>
     [JsonPropertyName("parentDelkildeId")] public Guid? ParentDelkildeId { get; init; }

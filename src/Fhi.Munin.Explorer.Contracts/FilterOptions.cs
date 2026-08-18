@@ -24,7 +24,7 @@ public sealed record FilterOptions
     [JsonPropertyName("filtere")] public IReadOnlyList<FilterFacet> Filters { get; init; } = [];
 
     [JsonPropertyName("delkilder")] public IReadOnlyList<DelkildeFacet> Delkilder { get; init; } = [];
-    [JsonPropertyName("datatyper")] public IReadOnlyList<DatatypeFacet> DataTypes { get; init; } = [];
+    [JsonPropertyName("datatyper")] public IReadOnlyList<DataTypeFacet> DataTypes { get; init; } = [];
 
     /// <summary>Most-used helsefaglige kodeverk (V-HK) under the current selection.</summary>
     [JsonPropertyName("helsefagligKodeverk")] public IReadOnlyList<HelsefagligKodeverkFacet> HelsefagligKodeverk { get; init; } = [];
@@ -108,7 +108,7 @@ public sealed record DelkildeFacet
 }
 
 /// <summary>A datatype facet.</summary>
-public sealed record DatatypeFacet
+public sealed record DataTypeFacet
 {
     /// <summary>
     /// The datatype code as stored on the variable, a small integer rendered as a string

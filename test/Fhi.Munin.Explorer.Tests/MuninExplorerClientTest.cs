@@ -48,7 +48,7 @@ public class MuninExplorerClientTest
         Assert.Equal(3876, filters.KildeKodeverkCount);
         Assert.Equal(18289, filters.TotalCount);
 
-        // Datatypes arrive as bare codes with no label — the point of the note on DatatypeFacet.
+        // Datatypes arrive as bare codes with no label — the point of the note on DataTypeFacet.
         Assert.Equal(["1", "10", "2", "3", "4", "6", "7"], filters.DataTypes.Select(d => d.Value));
 
         // A root-level variabelgruppe has no parent; the delkilde facet carries its kilde.

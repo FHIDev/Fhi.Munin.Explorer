@@ -7,7 +7,7 @@ category: Changed
   `GetDatasamlingAsync`, `GetVariableAsync` and `GetVariableTimelineAsync`;
   `IMuninExplorerTokenProvider` answers `GetTokenAsync`; and the contracts are `Page<T>`,
   `VariableSummary`, `VariableDetail`, `VariableVersion`, `KildeSummary`, `KildeDetail`,
-  `KildeHierarchy`, `DatasamlingDetail`, `FilterOptions`, `PropertyMetadata` and the `*Facet`
+  `KildeHierarchy`, `DatasamlingDetail`, `FilterOptions`, `PropertyMetadataEntry` and the `*Facet`
   records. DTO properties follow — `Navn` is `Name`, `Beskrivelse` is `Description`,
   `GyldigFra`/`GyldigTil` are `ValidFrom`/`ValidTo`, `Dataansvarlig`/`Databehandler` are
   `DataController`/`DataProcessor`, and so on. **The JSON contract is unchanged**: every
