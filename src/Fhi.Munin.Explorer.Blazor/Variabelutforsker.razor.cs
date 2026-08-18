@@ -20,6 +20,27 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// list helsedata's own datakildeutforsker renders its results with.
 /// </para>
 /// <para>
+/// The pager is the exception, and it is worth spelling out because it is a dependency rather
+/// than an oversight. Stiler defines no pagination rule at all — its compiled stylesheet has no
+/// <c>pagination</c>, <c>pager</c>, <c>paging</c>, <c>page-link</c> or <c>page-item</c> — while
+/// helsedata's own variable page styles its pager from a page-specific <c>variables.css</c> that
+/// is not part of the site-wide stylesheet. The markup therefore emits *their* names,
+/// <c>variables-pagination</c>, <c>variables-pagination-content</c> and
+/// <c>skiplink-pagination</c>, so that mounting the explorer on that page needs nothing new. A
+/// host mounting it anywhere else has to supply those three itself — including the rule that
+/// keeps <c>skiplink-pagination</c> out of sight until it is focused, which is the whole point
+/// of a skip link. Where the component is mounted is not settled yet, so this is a known cost of
+/// wearing helsedata's clothes rather than inventing our own.
+/// </para>
+/// <para>
+/// Two names from that stylesheet are deliberately left unused. <c>variables-pagination-mobile</c>
+/// is a second copy of the controls that helsedata's own media queries swap in; rendering it too
+/// would put two "Neste" buttons for one list in the tab order and in the accessibility tree, so
+/// this renders the one pager at every width. The <c>__expired</c> modifiers describe a state
+/// this component does not have — it never lists expired variables — and a modifier whose meaning
+/// cannot be read back off the stylesheet is exactly the guess this package exists to avoid.
+/// </para>
+/// <para>
 /// A host outside helsedata's estate has to provide equivalents for those names, and two
 /// accessibility requirements the markup cannot meet on its own come with them. A host that
 /// skips either fails WCAG whatever this component does:
@@ -69,7 +90,29 @@ public partial class Variabelutforsker : ComponentBase
     /// </remarks>
     [Parameter] public EventCallback<string?> SokChanged { get; set; }
 
-    /// <summary>Rows per page.</summary>
+    /// <summary>Rows per page. Clamped to 1–100, the range the API itself accepts.</summary>
+    /// <remarks>
+    /// <para>
+    /// The host owns this, and the reader is deliberately given no way to change it. Munin's own
+    /// explorer offers a 10/20/50 picker; this one does not, and that is a decision rather than a
+    /// gap. A picker is a <c>&lt;select&gt;</c>, and no class name for one can be read back off
+    /// helsedata's stylesheets — their pager has no size control, so there is nothing to copy and
+    /// anything we chose would be invented. An unstyled select inside an otherwise styled page is
+    /// the failure this package exists to avoid, and the rule the rest of the component follows is
+    /// to change the shape rather than to ship CSS. The host already knows how much room it gave
+    /// us, which is the other reason this is a parameter in the first place.
+    /// </para>
+    /// <para>
+    /// If a picker is wanted later it needs a verified class name first, and it belongs with the
+    /// shareable-state work that puts the page number in the host's URL — page and size travel
+    /// together there. Nothing in the current surface makes that harder: paging is private state
+    /// behind one method, not an API.
+    /// </para>
+    /// <para>
+    /// Values outside 1–100 are clamped rather than rejected. The server clamps them anyway, and a
+    /// zero or negative page size would otherwise make the page arithmetic on this side meaningless.
+    /// </para>
+    /// </remarks>
     [Parameter] public int SideStorrelse { get; set; } = 25;
 
     /// <summary>
@@ -117,12 +160,16 @@ public partial class Variabelutforsker : ComponentBase
     private SortField _sort = SortField.Default;
     private SortDirection _direction = SortDirection.Ascending;
 
-    // The page being asked for. There is no pager yet — that is bead Fhi.Metadata-l9l2n.12 — so
-    // this only ever holds 1 today. It is here rather than written inline at the call site because
-    // "any change of search or sort goes back to page one" is a rule about state: a result set
-    // reordered under someone still looking at page 7 shows them rows from the middle of a
-    // sequence they never saw the start of. Keeping the reset next to the state it resets is what
-    // stops the pager from landing without it.
+    // The page being asked for, and the only piece of paging state there is. "Any change of search
+    // or sort goes back to page one" is a rule about state — a result set reordered under someone
+    // still looking at page 7 shows them rows from the middle of a sequence they never saw the
+    // start of — so the resets live next to the field rather than at the call sites.
+    //
+    // Private, and reached only through GoToPageAsync. The host has no Side parameter and no
+    // SideChanged callback, deliberately: the page number belongs in the host's URL alongside the
+    // search text, and that contract is still being designed. One field and one method is the
+    // smallest thing for it to hook into when it arrives; a public parameter now would be a shape
+    // it had to keep.
     private int _page = 1;
 
     /// <summary>
@@ -148,10 +195,86 @@ public partial class Variabelutforsker : ComponentBase
     private readonly string _instans = Guid.NewGuid().ToString("N")[..8];
     private string SokId => $"variabelutforsker-sok-{_instans}";
     private string TittelId => $"variabelutforsker-tittel-{_instans}";
+    private string PaginationId => $"variabelutforsker-pagination-{_instans}";
 
     private Tekster T => Tekster.For(Sprak);
 
     private string Opptatt => _laster ? "true" : "false";
+
+    /// <summary>Rows per page as actually requested — see <see cref="SideStorrelse"/>.</summary>
+    private int PageSize => Math.Clamp(SideStorrelse, 1, 100);
+
+    /// <summary>How many variables the search matched, not how many are on screen.</summary>
+    private int TotalCount => _resultat?.TotalCount ?? 0;
+
+    /// <summary>
+    /// How many pages the result has. At least 1, so "Side 1 av 0" can never be written.
+    /// </summary>
+    /// <remarks>
+    /// The server's own count is preferred over arithmetic here, because the server is the one that
+    /// clamps the page size: counting the pages ourselves from a size it quietly changed would put
+    /// a Neste button on screen for a page that does not exist. The arithmetic is kept as a fallback
+    /// for a substituted <see cref="IMuninExplorerClient"/> that leaves the field at zero — claiming
+    /// one page over three hundred rows would strand the reader on the first twenty-five of them.
+    /// </remarks>
+    private int TotalPages
+    {
+        get
+        {
+            if (_resultat is null || TotalCount <= 0)
+            {
+                return 1;
+            }
+
+            return _resultat.TotalPages > 0
+                ? _resultat.TotalPages
+                : (int)Math.Ceiling(TotalCount / (double)PageSize);
+        }
+    }
+
+    private bool CanGoPrevious => _page > 1;
+
+    private bool CanGoNext => _page < TotalPages;
+
+    /// <summary>The 1-based position of the first row on screen, or 0 when nothing matched.</summary>
+    private int FirstItemOnPage => TotalCount == 0 ? 0 : ((_page - 1) * ResultPageSize) + 1;
+
+    /// <summary>
+    /// The 1-based position of the last row on screen, counted from the rows actually delivered.
+    /// </summary>
+    /// <remarks>
+    /// Counted rather than calculated as <c>page × size</c>, so the last page says 312 and not 325,
+    /// and so a server that returned a different page size than it was asked for still describes
+    /// itself truthfully.
+    /// </remarks>
+    private int LastItemOnPage =>
+        _resultat is null || _resultat.Items.Count == 0 ? 0 : FirstItemOnPage + _resultat.Items.Count - 1;
+
+    /// <summary>
+    /// The page size the visible result was actually built with, which is the server's answer when
+    /// it gave one and what we asked for otherwise.
+    /// </summary>
+    private int ResultPageSize => _resultat is { Size: > 0 } side ? side.Size : PageSize;
+
+    /// <summary>
+    /// <c>"true"</c> on a pager button that would do nothing, and nothing at all on one that works.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>aria-disabled</c> rather than the <c>disabled</c> attribute, for the same reason the Søk
+    /// button is never disabled: disabling the element that currently has focus drops focus to
+    /// <c>&lt;body&gt;</c>. Pressing Neste until the last page, or Forrige back to the first, is the
+    /// ordinary way to use a pager, and both end with the pressed button becoming unavailable — so
+    /// with a real <c>disabled</c> attribute the reward for reaching the end of the list is to start
+    /// tabbing from the top of the host's page again.
+    /// </para>
+    /// <para>
+    /// The button is genuinely inert either way: <see cref="GoToPageAsync"/> clamps, so a click at
+    /// the boundary asks for the page it is already on and returns without a request. This is the
+    /// ARIA Authoring Practices' own recommendation for a control that must stay focusable.
+    /// </para>
+    /// </remarks>
+    private static string? AriaDisabled(bool enabled) => enabled ? null : "true";
 
     /// <summary>The component's own heading level, clamped into the range that is a heading.</summary>
     private int TittelNivaa => Math.Clamp(OverskriftNivaa, 1, 6);
@@ -173,15 +296,24 @@ public partial class Variabelutforsker : ComponentBase
     /// as the list's accessible name so the two can never drift apart.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// It names the ordering as well as the count. Without column headers there is no
     /// <c>aria-sort</c> to carry that, so it rides along on the status line the component already
     /// has: pressing a sort button changes this sentence, and the polite, atomic live region reads
     /// the whole of it back. The sentence is assembled inside <see cref="Tekster"/> rather than
     /// glued together here, so a language that has to state the ordering first can say it that way.
+    /// </para>
+    /// <para>
+    /// It names <em>which</em> rows are on screen — "Viser 26–50 av 312" — rather than only how
+    /// many, and that is also what announces a page change: turning a page rewrites this sentence,
+    /// and the live region reads it. The range is not repeated inside the pager, where Munin's own
+    /// explorer puts it, because saying it twice on one screen is the duplication the empty state
+    /// already avoids, and because only one of the two copies would be announced.
+    /// </para>
     /// </remarks>
     private string Sammendrag => _resultat is null
         ? ""
-        : T.Treff(_resultat.Items.Count, _resultat.TotalCount, _utfortSok,
+        : T.Treff(FirstItemOnPage, LastItemOnPage, _resultat.TotalCount, _utfortSok,
                   T.FieldLabel(_sort), T.DirectionName(_direction));
 
     /// <summary>A sort button's label — the field, plus the direction when it is the active one.</summary>
@@ -389,6 +521,51 @@ public partial class Variabelutforsker : ComponentBase
     }
 
     /// <summary>
+    /// Show page <paramref name="page"/> of the current result, keeping the search and the order.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The one way the page number ever changes, which is what the pager's two buttons, the clamp
+    /// and a future URL-backed page all go through. Both buttons hand it an out-of-range number at
+    /// the ends of the list rather than being guarded at the call site, so the boundary is enforced
+    /// once, here, instead of once per caller.
+    /// </para>
+    /// <para>
+    /// Not a search, so <see cref="SokChanged"/> is not raised: the host's URL follows what was
+    /// searched for, and turning a page did not change that.
+    /// </para>
+    /// </remarks>
+    private async Task GoToPageAsync(int page)
+    {
+        // Dropped rather than queued while a fetch is in flight, the same as a second submit and a
+        // sort click — and for the same reason the buttons carry aria-disabled instead of disabled,
+        // since neither is ever taken out of the document under the finger that pressed it.
+        if (_laster)
+        {
+            return;
+        }
+
+        var target = Math.Clamp(page, 1, TotalPages);
+
+        // Also the whole of what makes a click on an unavailable button inert: at either end the
+        // clamped target is the page already on screen.
+        if (target == _page)
+        {
+            return;
+        }
+
+        var previous = _page;
+        _page = target;
+
+        if (!await FetchAsync(_utfortSok))
+        {
+            // Nothing arrived, so the state has to keep describing what did. Same invariant the
+            // sort rollback protects.
+            _page = previous;
+        }
+    }
+
+    /// <summary>
     /// Tell the host what was searched for, so it can reflect it in its own URL.
     /// </summary>
     /// <remarks>
@@ -446,7 +623,7 @@ public partial class Variabelutforsker : ComponentBase
             _resultat = await Client.SokVariablerAsync(
                 sok,
                 side: _page,
-                sideStorrelse: SideStorrelse,
+                sideStorrelse: PageSize,
                 sort: _sort,
                 direction: _direction);
             _utfortSok = Renset(sok);
@@ -504,12 +681,21 @@ public partial class Variabelutforsker : ComponentBase
         string FieldPeriod,
         string Ascending,
         string Descending,
-        // (field, direction) — the active sort button's label.
-        Func<string, string, string> ActiveLabel,
-        // (shown, total, search, field, direction) — the whole result sentence. The ordering clause
-        // is part of it rather than appended by the caller, so a language whose grammar puts the
-        // ordering first can say it that way instead of inheriting Norwegian's clause order.
-        Func<int, int, string?, string, string, string> Treff,
+        string Pagination,
+        string SkipToPagination,
+        string Previous,
+        string Next,
+        // The buttons' accessible names. Longer than the words on them because "Forrige" on its own
+        // does not say forrige what — and each one starts with the visible text, so a speech-input
+        // user saying what they can see still hits the button (WCAG 2.5.3).
+        string PreviousLabel,
+        string NextLabel,
+        // (page, totalPages) — the pager's own "Side 2 av 13".
+        Func<int, int, string> PageOf,
+        // (from, to, total, search, field, direction) — the whole result sentence. The ordering
+        // clause is part of it rather than appended by the caller, so a language whose grammar puts
+        // the ordering first can say it that way instead of inheriting Norwegian's clause order.
+        Func<int, int, int, string?, string, string, string> Treff,
         Func<string?, string> IngenTreff)
     {
         /// <summary>
@@ -565,15 +751,24 @@ public partial class Variabelutforsker : ComponentBase
             FieldPeriod: "Periode",
             Ascending: "stigende",
             Descending: "synkende",
+            Pagination: "Paginering",
+            SkipToPagination: "Hopp til paginering",
+            Previous: "Forrige",
+            Next: "Neste",
+            PreviousLabel: "Forrige side",
+            NextLabel: "Neste side",
+            PageOf: (page, totalPages) => $"Side {page} av {totalPages}",
             ActiveLabel: (field, direction) => $"{field} ({direction})",
             // The whole sentence, ordering clause included, because the comma and where the clause
             // sits are this language's grammar and not something to fix in C#.
-            Treff: (shown, total, search, field, direction) =>
+            Treff: (from, to, total, search, field, direction) =>
             {
                 var antall = total == 1 ? "1 variabel" : $"{total} variabler";
-                // Only the first page is fetched, so say so rather than captioning 25 rows
-                // with a count of 312.
-                var basis = shown < total ? $"Viser {shown} av {antall} funnet" : $"{antall} funnet";
+                // One page of a longer list, so say which rows these are rather than captioning
+                // rows 26 to 50 as though they were the first 25 of 312.
+                var basis = from <= 1 && to >= total
+                    ? $"{antall} funnet"
+                    : $"Viser {from}–{to} av {antall} funnet";
                 var forSok = search is null ? "" : $" for «{search}»";
                 return $"{basis}{forSok}, sortert på {field}, {direction}";
             },
@@ -598,11 +793,20 @@ public partial class Variabelutforsker : ComponentBase
             FieldPeriod: "Period",
             Ascending: "ascending",
             Descending: "descending",
+            Pagination: "Pagination",
+            SkipToPagination: "Skip to pagination",
+            Previous: "Previous",
+            Next: "Next",
+            PreviousLabel: "Previous page",
+            NextLabel: "Next page",
+            PageOf: (page, totalPages) => $"Page {page} of {totalPages}",
             ActiveLabel: (field, direction) => $"{field} ({direction})",
-            Treff: (shown, total, search, field, direction) =>
+            Treff: (from, to, total, search, field, direction) =>
             {
                 var antall = total == 1 ? "1 variable" : $"{total} variables";
-                var basis = shown < total ? $"Showing {shown} of {antall} found" : $"{antall} found";
+                var basis = from <= 1 && to >= total
+                    ? $"{antall} found"
+                    : $"Showing {from}–{to} of {antall} found";
                 var forSok = search is null ? "" : $" for “{search}”";
                 return $"{basis}{forSok}, sorted by {field}, {direction}";
             },
