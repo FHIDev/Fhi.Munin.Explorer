@@ -1,0 +1,27 @@
+rules:
+    - id: throw-on-unknown-enum-value
+      category: error-handling
+      pattern: >-
+        A mapping/formatting function branches on enum values with an if/else or default fallback (e.g. treating any non-matching value as a default label) instead of exhaustively handling every enum member
+      check: >-
+        Verify the function throws (or otherwise fails loudly) for unrecognized/unmapped enum values rather than silently defaulting to one of the known labels, consistent with how other enum/token mappings in the codebase already handle unknown values
+      source: copilot:PR#23
+      added: "2026-08-18"
+      paths:
+        - '**/*.cs'
+        - '**/*.css'
+        - '**/*.md'
+        - '**/*.razor'
+    - id: no-mixed-language-record-field-names
+      category: style
+      pattern: >-
+        A record/class groups multiple related fields under one naming scheme (e.g. a `Tekster`/translation record), and a newly added field breaks that scheme by mixing languages or naming conventions (e.g. Norwegian `Felt*` fields alongside an English `FieldX` name)
+      check: >-
+        Verify new fields follow the same language/naming convention as sibling fields in the same type, and that any switch/mapping arms and call-site named arguments referencing the field are updated consistently
+      source: copilot:PR#23
+      added: "2026-08-18"
+      paths:
+        - '**/*.cs'
+        - '**/*.css'
+        - '**/*.md'
+        - '**/*.razor'
