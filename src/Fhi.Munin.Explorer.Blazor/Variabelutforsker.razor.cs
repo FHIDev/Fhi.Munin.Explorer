@@ -692,6 +692,8 @@ public partial class Variabelutforsker : ComponentBase
         string NextLabel,
         // (page, totalPages) — the pager's own "Side 2 av 13".
         Func<int, int, string> PageOf,
+        // (field, direction) — the active sort button's label.
+        Func<string, string, string> ActiveLabel,
         // (from, to, total, search, field, direction) — the whole result sentence. The ordering
         // clause is part of it rather than appended by the caller, so a language whose grammar puts
         // the ordering first can say it that way instead of inheriting Norwegian's clause order.
