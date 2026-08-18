@@ -58,6 +58,20 @@ If a callback parameter is added, note that an `EventCallback` silently serialis
 delegate across a static-SSR to interactive-island boundary — such a mount point has to be fully
 interactive.
 
+## Running it
+
+```bash
+dotnet run --project samples/LegacyHost
+```
+
+Open <http://localhost:5113>. No API key, no database, no login — it reads the public test API
+and shows the real catalogue. `samples/ModernHost` (<http://localhost:5087>) mounts the same
+component the modern way; LegacyHost is the one that mirrors helsedata's host, so prefer it.
+
+Running it inside helsedata's own site — needed only when the question is styling or
+authentication — is covered in [`docs/running-locally.md`](docs/running-locally.md), along with
+the two setup traps that cost the most time.
+
 ## Build
 
 ```bash
