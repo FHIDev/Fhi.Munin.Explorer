@@ -47,7 +47,10 @@ These are not style preferences — each one is a host that breaks otherwise.
   invention. A name Stiler has never heard of renders as a raw browser default inside an
   otherwise styled page, which defeats the point of shipping this as a component at all. Where
   Stiler has no rule for a shape, change the shape rather than adding a stylesheet: results are
-  a `datasourcecard` list, not a table, because Stiler styles no table this package could use.
+  a `datasourcecard` list, not a table, because Stiler styles no table this package could use, and
+  the filter panel is `<details>` plus a nested `<ul>` rather than an accordion and a tree, because
+  Stiler has names for neither. What a host supplies for those is base element styling — list
+  indentation in particular, which is what shows a delkilde sitting under its kilde.
   The pager is the one place that rule ran out — Stiler has no pagination rule at all — so it
   emits the names helsedata's own variable page uses (`variables-pagination*`,
   `skiplink-pagination`) from a stylesheet only that page carries. Still their names rather than

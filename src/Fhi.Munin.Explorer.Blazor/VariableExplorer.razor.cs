@@ -41,6 +41,19 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// cannot be read back off the stylesheet is exactly the guess this package exists to avoid.
 /// </para>
 /// <para>
+/// The filter panel adds no class name to that list. Stiler has no accordion, no tree and no
+/// checkbox whose names can be read back off its compiled stylesheet — and helsedata's own
+/// sidebar is styled from <c>filter-search-explorer</c> in the same page-specific
+/// <c>variables.css</c> the pager's names come from, which is not a stylesheet this repository
+/// can read. So the panel is <c>&lt;details&gt;</c> for the disclosure, a nested
+/// <c>&lt;ul&gt;</c> for the kilde/delkilde hierarchy and the square button in its two states for
+/// the values, and what a host supplies is base styling for those three elements rather than
+/// three more names. List indentation is the part that matters: without it the hierarchy still
+/// nests in the accessibility tree but reads flat on screen. <c>variable-explorer-filters</c> is
+/// a DOM handle for placing the panel, and carries no styling, exactly like the
+/// <c>variable-explorer</c> root.
+/// </para>
+/// <para>
 /// A host outside helsedata's estate has to provide equivalents for those names, and two
 /// accessibility requirements the markup cannot meet on its own come with them. A host that
 /// skips either fails WCAG whatever this component does:
@@ -148,12 +161,75 @@ public partial class VariableExplorer : ComponentBase
     /// </remarks>
     [Parameter] public int HeadingLevel { get; set; } = 2;
 
+    /// <summary>
+    /// The facet selection to start from. Set by the host, typically from its own URL, the same way
+    /// <see cref="Search"/> is.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Read once, when the component initialises, and owned by the component afterwards — again like
+    /// <see cref="Search"/>. A host that rewrites this parameter later does not move the filters that
+    /// are on screen; what it gets instead is <see cref="FilterChanged"/>, which fires whenever the
+    /// reader moves them.
+    /// </para>
+    /// <para>
+    /// <see cref="VariableFilter.ToQueryString"/> and <see cref="VariableFilter.Parse"/> are the two
+    /// halves of putting this in a URL: parse the request's query string into this parameter on the
+    /// way in, and write the callback's value back out on the way out. Both use the Explorer API's
+    /// own parameter names, so a link built that way says what it filters on in terms anybody
+    /// reading the URL — or the API's own documentation — can follow.
+    /// </para>
+    /// <para>
+    /// Null is <see cref="VariableFilter.None"/>: no narrowing, every published variable the search
+    /// matches.
+    /// </para>
+    /// </remarks>
+    [Parameter] public VariableFilter? Filter { get; set; }
+
+    /// <summary>
+    /// Raised when the filter selection changes, so the host can reflect it in its own URL. The
+    /// Filter/FilterChanged naming gives the host <c>@bind-Filter</c> for free.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A host mounting this component must make the mount point fully interactive. An
+    /// EventCallback serialises to an empty delegate across a static-SSR to interactive-island
+    /// boundary, and the callback then silently never fires.
+    /// </para>
+    /// <para>
+    /// It carries the filter that is actually in force, which is not always the one the reader just
+    /// asked for: a selection whose fetch failed is rolled back, and this then reports the filter
+    /// the rows on screen came from. A host that wrote the attempted filter to its URL instead would
+    /// hand out a link that reloads into a different selection than the one the page is showing.
+    /// Unlike <see cref="SearchChanged"/> it is not raised on the initial load — nothing has changed
+    /// yet, and the value would be the one the host just passed in.
+    /// </para>
+    /// </remarks>
+    [Parameter] public EventCallback<VariableFilter> FilterChanged { get; set; }
+
     [Inject] private IMuninExplorerClient Client { get; set; } = null!;
 
     private string? _search;
     private bool _loading;
     private string? _error;
     private Page<VariableSummary>? _result;
+
+    // The facet selection the visible rows were fetched with. Never null — VariableFilter.None is
+    // "no narrowing" — so nothing downstream has to spell that case out twice.
+    private VariableFilter _filter = VariableFilter.None;
+
+    // The facets and their counts, as the API last reported them for _executedSearch and _filter.
+    // Null only until the first answer arrives, and never set back to null: the filter controls are
+    // rendered from it, and taking them off the page after a failed refresh would remove the
+    // control the reader just pressed — the same rule the pager and the Søk button follow. A
+    // refresh that fails therefore leaves the previous counts on screen, and says so through
+    // _facetError rather than by emptying the panel.
+    private FilterOptions? _facets;
+
+    // Set when the facets could not be refreshed, which is a different failure from the search
+    // failing: the rows on screen are the right rows, and it is the numbers beside the filters that
+    // may now be stale. Reported separately for that reason.
+    private string? _facetError;
 
     // The API's own default order, ascending, which is also where Runa starts — and the order the
     // API returns when it is asked for none, so the first render costs no extra query parameters.
@@ -353,7 +429,7 @@ public partial class VariableExplorer : ComponentBase
     /// </remarks>
     private string Summary => _result is null
         ? ""
-        : T.ResultSummary(FirstItemOnPage, LastItemOnPage, TotalCount, _executedSearch,
+        : T.ResultSummary(FirstItemOnPage, LastItemOnPage, TotalCount, _executedSearch, _filter.ActiveCount,
                           T.FieldLabel(_sort), T.DirectionName(_direction));
 
     /// <summary>A sort button's label — the field, plus the direction when it is the active one.</summary>
@@ -486,9 +562,565 @@ public partial class VariableExplorer : ComponentBase
         builder.CloseElement();
     }
 
+    // ---------------------------------------------------------------------------- the filter panel
+
+    /// <summary>One facet, as the panel draws it: a disclosure holding a list of values.</summary>
+    /// <remarks>
+    /// <c>Key</c> is stable across renders, so the disclosure's open state stays with its own facet.
+    /// <c>EmptyText</c> is what to say when the facet has no values; null means the facet is left out
+    /// instead, which is the right answer for most of them, because a facet the API returned nothing
+    /// for is one there is nothing to choose from. Variabelgruppe is the exception: its emptiness is
+    /// a message.
+    /// </remarks>
+    private sealed record FacetGroup(
+        string Key,
+        string Label,
+        bool OpenByDefault,
+        IReadOnlyList<FacetValue> Values,
+        string? EmptyText = null)
+    {
+        /// <summary>How many values in this facet are selected, counting nested ones.</summary>
+        public int SelectedCount => Selected(Values);
+
+        private static int Selected(IReadOnlyList<FacetValue> values) =>
+            values.Sum(value => (value.Selected ? 1 : 0) + Selected(value.Children));
+    }
+
+    /// <summary>
+    /// One value inside a facet, and the values nested under it.
+    /// </summary>
+    /// <remarks>
+    /// <c>Count</c> is how many variables the value would leave, or null where there is no count to
+    /// show. <c>Toggle</c> is what pressing it does, or null for a value that is not selectable —
+    /// the kildetype headings the kilder are grouped under are labels rather than filters, because
+    /// kildetype has a facet of its own.
+    /// </remarks>
+    private sealed record FacetValue(
+        string Key,
+        string Label,
+        int? Count,
+        bool Selected,
+        Func<Task>? Toggle,
+        IReadOnlyList<FacetValue> Children);
+
+    /// <summary>A node on the way to becoming a <see cref="FacetValue"/> tree.</summary>
+    /// <remarks>
+    /// The delkilde, variabelgruppe and saved-filter facets all arrive as a flat list carrying a
+    /// parent id, and all three become a tree the same way. This is the shape <see cref="Tree"/>
+    /// works in so that rule lives in one place.
+    /// </remarks>
+    private sealed record TreeNode(Guid Id, Guid? ParentId, string Label, int Count);
+
+    /// <summary>The facets on screen, in the order they are drawn.</summary>
+    /// <remarks>
+    /// Built from the last answer rather than cached, so a facet's selected state and its count can
+    /// never describe two different moments. It is a few hundred records per render, which is the
+    /// same order as the rows the component already renders.
+    /// </remarks>
+    private IReadOnlyList<FacetGroup> FacetGroups
+    {
+        get
+        {
+            if (_facets is not { } facets)
+            {
+                return [];
+            }
+
+            // Kildetype first and kilde second, which is the order helsedata's own variable page
+            // puts them in; the rest follow Munin's explorer.
+            List<FacetGroup> groups =
+            [
+                KildeTypeGroup(facets),
+                KildeGroup(facets),
+                VariabelgruppeGroup(facets),
+                SavedFilterGroup(facets),
+                DataTypeGroup(facets),
+                HelsefagligKodeverkGroup(facets),
+                AdministrativtKodeverkGroup(facets),
+                InstrumentGroup(facets),
+                OtherGroup(facets)
+            ];
+
+            // A facet the API returned nothing for is left out rather than drawn as an empty
+            // disclosure — except where the emptiness is itself the message.
+            return [.. groups.Where(group => group.Values.Count > 0 || group.EmptyText is not null)];
+        }
+    }
+
+    /// <summary>The kildetype facet — one value each, and only one of them can be chosen.</summary>
+    private FacetGroup KildeTypeGroup(FilterOptions facets) =>
+        new("kildetype", T.FacetKildeType, OpenByDefault: true, [.. facets.KildeTyper.Select(KildeTypeValue)]);
+
+    private FacetValue KildeTypeValue(KildetypeFacet type) =>
+        new($"kildetype:{type.Value}",
+            // The facet's own displayName is the raw enum name (SentraltHelseregister), so the
+            // prose comes from the component's own translations and falls back to what the API said.
+            T.KildeTypeLabel(type.Value, type.DisplayName),
+            type.Count,
+            string.Equals(_filter.KildeType, type.Value, StringComparison.OrdinalIgnoreCase),
+            () => SetKildeTypeAsync(type.Value),
+            []);
+
+    /// <summary>
+    /// The kilde facet: kilder grouped under their kildetype, each with its own delkilde tree.
+    /// </summary>
+    /// <remarks>
+    /// The whole tree is built from the facet payload alone — <see cref="DelkildeFacet"/> carries
+    /// both its parent delkilde and its kilde precisely so this needs no second request. The level
+    /// below it, datasamling, is not in that payload at all and is therefore not drawn; reaching it
+    /// would mean a hierarchy request per kilde whose counts are the kilde's own totals rather than
+    /// counts cross-filtered against the current selection, which would put two kinds of number in
+    /// one tree. <see cref="VariableFilter.DatasamlingIds"/> still filters when a host sets it.
+    /// </remarks>
+    private FacetGroup KildeGroup(FilterOptions facets)
+    {
+        var delkilderByKilde = facets.Delkilder.ToLookup(delkilde => delkilde.KildeId);
+
+        // The order the kildetype facet is in, so the headings here and the facet above agree.
+        var kildeTypeOrder = facets.KildeTyper
+            .Select((type, index) => (type.Value, Index: index))
+            .ToDictionary(entry => entry.Value, entry => entry.Index, StringComparer.OrdinalIgnoreCase);
+
+        var grouped = facets.Kilder
+            .GroupBy(KildeTypeKey, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(group => kildeTypeOrder.TryGetValue(group.Key, out var index) ? index : int.MaxValue)
+            .ThenBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(group => KildeTypeHeading(group, delkilderByKilde))
+            .ToList();
+
+        // With one kildetype in the list its heading says nothing the facet above does not — and it
+        // is exactly one whenever a kildetype has been chosen, which is when the panel is most
+        // crowded. So the kilder are lifted out of it.
+        if (grouped.Count == 1)
+        {
+            return new FacetGroup("kilde", T.FieldSource, OpenByDefault: true, grouped[0].Children);
+        }
+
+        return new FacetGroup("kilde", T.FieldSource, OpenByDefault: true, grouped);
+    }
+
+    /// <summary>A kilde's kildetype, or the empty string when it has none — never null, so it can be a key.</summary>
+    private static string KildeTypeKey(KildeFacet kilde) =>
+        string.IsNullOrWhiteSpace(kilde.KildeType) ? "" : kilde.KildeType;
+
+    /// <summary>A kildetype heading: a label rather than a filter, because kildetype has its own facet.</summary>
+    private FacetValue KildeTypeHeading(
+        IGrouping<string, KildeFacet> kilder,
+        ILookup<Guid, DelkildeFacet> delkilderByKilde) =>
+        new($"kildetype-group:{kilder.Key}",
+            T.KildeTypeLabel(kilder.Key, kilder.Key),
+            Count: null,
+            Selected: false,
+            Toggle: null,
+            [.. kilder.Select(kilde => KildeValue(kilde, delkilderByKilde))]);
+
+    private FacetValue KildeValue(KildeFacet kilde, ILookup<Guid, DelkildeFacet> delkilderByKilde) =>
+        new($"kilde:{kilde.Id}",
+            kilde.Name,
+            kilde.Count,
+            _filter.KildeIds.Contains(kilde.Id),
+            () => ToggleAsync(_filter.KildeIds, kilde.Id, ids => _filter with { KildeIds = ids }),
+            DelkildeChildren(kilde.Id, delkilderByKilde));
+
+    private IReadOnlyList<FacetValue> DelkildeChildren(Guid kildeId, ILookup<Guid, DelkildeFacet> delkilderByKilde) =>
+        Tree(delkilderByKilde[kildeId].Select(d => new TreeNode(d.Id, d.ParentDelkildeId, d.Name, d.Count)),
+             "delkilde:",
+             IsDelkildeChosen,
+             ToggleDelkilde);
+
+    private bool IsDelkildeChosen(Guid id) => _filter.DelkildeIds.Contains(id);
+
+    private Func<Task> ToggleDelkilde(Guid id) =>
+        () => ToggleAsync(_filter.DelkildeIds, id, ids => _filter with { DelkildeIds = ids });
+
+    /// <summary>
+    /// The variabelgruppe facet, as a tree.
+    /// </summary>
+    /// <remarks>
+    /// Its empty state is a message rather than an omission. With nothing chosen in the source
+    /// hierarchy the API answers this facet with a curated shortlist — the whole catalogue is 930
+    /// per-kilde groups and useless as a starting point — and that shortlist is empty in every
+    /// environment probed so far. Saying "pick a datakilde" is what stops an empty list from
+    /// reading as a broken one.
+    /// </remarks>
+    private FacetGroup VariabelgruppeGroup(FilterOptions facets) =>
+        new("variabelgruppe",
+            T.FieldVariableGroup,
+            OpenByDefault: false,
+            Tree(facets.Variabelgrupper.Select(g => new TreeNode(g.Id, g.ParentId, g.Name, g.Count)),
+                 "variabelgruppe:",
+                 IsGruppeChosen,
+                 ToggleGruppe),
+            T.NoVariabelgrupper);
+
+    private bool IsGruppeChosen(Guid id) => _filter.VariabelgruppeIds.Contains(id);
+
+    private Func<Task> ToggleGruppe(Guid id) =>
+        () => ToggleAsync(_filter.VariabelgruppeIds, id, ids => _filter with { VariabelgruppeIds = ids });
+
+    /// <summary>The saved catalogue filters — see <see cref="FilterOptions.Filters"/> for why this is usually empty.</summary>
+    private FacetGroup SavedFilterGroup(FilterOptions facets) =>
+        new("filter",
+            T.FacetFilter,
+            OpenByDefault: false,
+            Tree(facets.Filters.Select(f => new TreeNode(f.Id, f.ParentId, f.Name, f.Count)),
+                 "filter:",
+                 IsSavedFilterChosen,
+                 ToggleSavedFilter));
+
+    private bool IsSavedFilterChosen(Guid id) => _filter.FilterIds.Contains(id);
+
+    private Func<Task> ToggleSavedFilter(Guid id) =>
+        () => ToggleAsync(_filter.FilterIds, id, ids => _filter with { FilterIds = ids });
+
+    private FacetGroup DataTypeGroup(FilterOptions facets) =>
+        new("datatype", T.FacetDataType, OpenByDefault: false, [.. facets.DataTypes.Select(DataTypeValue)]);
+
+    private FacetValue DataTypeValue(DataTypeFacet dataType) =>
+        new($"datatype:{dataType.Value}",
+            // The API returns the code with no label at all, so the prose is the component's own.
+            T.DataTypeLabel(dataType.Value),
+            dataType.Count,
+            _filter.DataTypes.Contains(dataType.Value),
+            () => ToggleAsync(_filter.DataTypes, dataType.Value, values => _filter with { DataTypes = values }),
+            []);
+
+    private FacetGroup HelsefagligKodeverkGroup(FilterOptions facets) =>
+        new("helsefaglig-kodeverk",
+            T.FacetHelsefagligKodeverk,
+            OpenByDefault: false,
+            [.. facets.HelsefagligKodeverk.Select(HelsefagligKodeverkValue)]);
+
+    private FacetValue HelsefagligKodeverkValue(HelsefagligKodeverkFacet kodeverk) =>
+        new($"hk:{kodeverk.ShortName}",
+            kodeverk.ShortName,
+            kodeverk.Count,
+            _filter.HelsefagligKodeverk.Contains(kodeverk.ShortName),
+            () => ToggleAsync(_filter.HelsefagligKodeverk, kodeverk.ShortName,
+                              values => _filter with { HelsefagligKodeverk = values }),
+            []);
+
+    private FacetGroup AdministrativtKodeverkGroup(FilterOptions facets) =>
+        new("administrativt-kodeverk",
+            T.FacetAdministrativtKodeverk,
+            OpenByDefault: false,
+            [.. facets.AdministrativtKodeverk.Select(AdministrativtKodeverkValue)]);
+
+    private FacetValue AdministrativtKodeverkValue(AdministrativtKodeverkFacet kodeverk) =>
+        new($"ak:{kodeverk.Oid}",
+            // The OID when fhi.kodeverk could not be reached, because a nameless button is worse
+            // than one labelled with the number the filter actually sends.
+            string.IsNullOrWhiteSpace(kodeverk.Name) ? kodeverk.Oid : kodeverk.Name,
+            kodeverk.Count,
+            _filter.AdministrativtKodeverk.Contains(kodeverk.Oid),
+            () => ToggleAsync(_filter.AdministrativtKodeverk, kodeverk.Oid,
+                              values => _filter with { AdministrativtKodeverk = values }),
+            []);
+
+    private FacetGroup InstrumentGroup(FilterOptions facets) =>
+        new("instrument", T.FacetInstrument, OpenByDefault: false, [.. facets.Instruments.Select(InstrumentValue)]);
+
+    private FacetValue InstrumentValue(InstrumentFacet instrument) =>
+        new($"instrument:{instrument.Id}",
+            string.IsNullOrWhiteSpace(instrument.Name) ? instrument.Code : instrument.Name,
+            instrument.Count,
+            _filter.InstrumentIds.Contains(instrument.Id),
+            () => ToggleAsync(_filter.InstrumentIds, instrument.Id, ids => _filter with { InstrumentIds = ids }),
+            []);
+
+    /// <summary>The two filters that are a yes/no rather than a choice of values.</summary>
+    private FacetGroup OtherGroup(FilterOptions facets) =>
+        new("other",
+            T.FacetOther,
+            OpenByDefault: false,
+            [
+                new FacetValue("has-kildekodeverk", T.HasKildekodeverk, facets.KildeKodeverkCount,
+                               _filter.HasKildekodeverk == true, ToggleKildekodeverkAsync, []),
+
+                // No count of its own: the API reports no facet for it, and the number it would
+                // change is the total, which the status line already states.
+                new FacetValue("include-historical", T.IncludeHistorical, null,
+                               _filter.IncludeHistorical, ToggleHistoricalAsync, [])
+            ]);
+
+    /// <summary>
+    /// Turn a flat list of parented nodes into the tree the panel draws.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A node whose parent is not in the list is treated as a root rather than dropped. That is not
+    /// a defensive flourish: the API cross-filters each facet, so a parent with no matching
+    /// variables of its own is genuinely absent from a payload its children are in, and a child
+    /// hung off a missing parent would be a filter the reader can neither see nor clear.
+    /// </para>
+    /// <para>
+    /// The walk remembers what it has already placed, so a parent chain that loops back on itself —
+    /// which the catalogue should never produce and which nothing here could otherwise survive —
+    /// stops at the repeat instead of recursing until the stack runs out.
+    /// </para>
+    /// </remarks>
+    private static IReadOnlyList<FacetValue> Tree(
+        IEnumerable<TreeNode> nodes,
+        string keyPrefix,
+        Func<Guid, bool> selected,
+        Func<Guid, Func<Task>> toggle)
+    {
+        var all = nodes.ToList();
+
+        if (all.Count == 0)
+        {
+            return [];
+        }
+
+        var known = all.Select(node => node.Id).ToHashSet();
+        var byParent = all.Where(node => node.ParentId is not null).ToLookup(node => node.ParentId!.Value);
+        HashSet<Guid> placed = [];
+
+        return [.. all.Where(node => node.ParentId is not { } parent || !known.Contains(parent)).Select(Build)];
+
+        FacetValue Build(TreeNode node)
+        {
+            placed.Add(node.Id);
+
+            var children = byParent[node.Id]
+                .Where(child => !placed.Contains(child.Id))
+                .Select(Build)
+                .ToList();
+
+            return new FacetValue($"{keyPrefix}{node.Id}", node.Label, node.Count, selected(node.Id), toggle(node.Id), children);
+        }
+    }
+
+    /// <summary>The legend over the whole panel, saying how many filters are in force.</summary>
+    private string FiltersLegend => _filter.IsEmpty ? T.FiltersTitle : $"{T.FiltersTitle} ({_filter.ActiveCount})";
+
+    /// <summary>A facet's own label, saying how many of its values are chosen.</summary>
+    /// <remarks>
+    /// On the summary line, so a collapsed facet still says that something inside it is narrowing
+    /// the list. Without it the only sign of a filter chosen three disclosures down is the number of
+    /// results changing.
+    /// </remarks>
+    private static string GroupLabel(FacetGroup group) =>
+        group.SelectedCount == 0 ? group.Label : $"{group.Label} ({group.SelectedCount})";
+
+    /// <summary>
+    /// A facet's values as a nested list of toggle buttons.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A plain <c>&lt;ul&gt;</c> with no class of its own, and buttons rather than checkboxes. Both
+    /// follow the rule the rest of this component follows: no class name goes into the markup that
+    /// cannot be read back off the host's stylesheet, and where there is nothing to read back the
+    /// shape changes rather than a stylesheet appearing. Stiler has a square button and this
+    /// component already renders one in two states, so a chosen value is a pressed button; a list
+    /// is an element every base stylesheet styles, and its indentation is what draws the hierarchy
+    /// without a class for a tree that nobody has verified.
+    /// </para>
+    /// <para>
+    /// Every value is keyed. Counts move as the reader filters, so the values reorder between
+    /// renders, and without keys the renderer would patch the button under the reader's finger into
+    /// a different filter — leaving focus on a control that is no longer the one they pressed.
+    /// </para>
+    /// </remarks>
+    private RenderFragment FacetList(IReadOnlyList<FacetValue> values) => builder =>
+    {
+        builder.OpenElement(0, "ul");
+
+        foreach (var value in values)
+        {
+            builder.OpenElement(1, "li");
+            builder.SetKey(value.Key);
+
+            // Held in a local so the null check below is one the compiler can carry into the branch.
+            var toggle = value.Toggle;
+
+            if (toggle is null)
+            {
+                builder.AddContent(2, value.Label);
+            }
+            else
+            {
+                builder.OpenElement(3, "button");
+                builder.AddAttribute(4, "class", FacetClass(value));
+                builder.AddAttribute(5, "type", "button");
+
+                // aria-pressed, and spelled out as "false" on the values that are not chosen —
+                // unlike the sort buttons' aria-current, which is left off. The attribute is what
+                // says these are toggles at all, so an unselected one carrying nothing would be
+                // announced as an ordinary button that gives no sign of having two states.
+                builder.AddAttribute(6, "aria-pressed", value.Selected ? "true" : "false");
+                builder.AddAttribute(7, "onclick", EventCallback.Factory.Create(this, toggle));
+                builder.AddContent(8, FacetText(value));
+                builder.CloseElement();
+            }
+
+            if (value.Children.Count > 0)
+            {
+                builder.AddContent(9, FacetList(value.Children));
+            }
+
+            builder.CloseElement();
+        }
+
+        builder.CloseElement();
+    };
+
+    /// <summary>A value's visible text — its label, and the count of what it would leave.</summary>
+    /// <remarks>
+    /// The count is in the button's own text rather than in a badge beside it, so it is part of the
+    /// accessible name: "Dødsårsaksregisteret (1 234)" is announced whole, where a separate element
+    /// would be read as a stray number or skipped.
+    /// </remarks>
+    private static string FacetText(FacetValue value) =>
+        value.Count is { } count ? $"{value.Label} ({count})" : value.Label;
+
+    /// <summary>A value's classes — filled when chosen, a ghost when not, the same pair the sort buttons use.</summary>
+    private static string FacetClass(FacetValue value)
+    {
+        var style = value.Selected ? "button-square--secondary" : "button-square--ghost";
+
+        return $"hd-button-square {style} margin-right margin-bottom";
+    }
+
+    /// <summary>Add or remove one value from a facet, and fetch what that leaves.</summary>
+    private Task ToggleAsync<T>(IReadOnlyList<T> selected, T value, Func<IReadOnlyList<T>, VariableFilter> apply)
+    {
+        if (selected.Contains(value))
+        {
+            return ApplyFilterAsync(apply([.. selected.Where(chosen => !EqualityComparer<T>.Default.Equals(chosen, value))]));
+        }
+
+        return ApplyFilterAsync(apply([.. selected, value]));
+    }
+
+    /// <summary>
+    /// Choose a kildetype, or clear it by choosing the one already chosen.
+    /// </summary>
+    /// <remarks>
+    /// One at a time, because the API takes one. Pressing the chosen one again clears it, which is
+    /// what the button's own aria-pressed promises — a radio group would say the choice cannot be
+    /// undone, and there is no "any kildetype" value to go back to.
+    /// </remarks>
+    private Task SetKildeTypeAsync(string value)
+    {
+        var chosen = string.Equals(_filter.KildeType, value, StringComparison.OrdinalIgnoreCase);
+
+        return ApplyFilterAsync(_filter with { KildeType = chosen ? null : value });
+    }
+
+    /// <summary>
+    /// Keep only variables that have a kildekodeverk link, or stop filtering on it.
+    /// </summary>
+    /// <remarks>
+    /// Two states, not three. The API's <c>false</c> — only variables *without* one — is a question
+    /// nobody asked of a catalogue browser, and offering it from one button would make a single
+    /// press mean "yes", "no" or "either depending on where you are in the cycle".
+    /// </remarks>
+    private Task ToggleKildekodeverkAsync() =>
+        ApplyFilterAsync(_filter with { HasKildekodeverk = _filter.HasKildekodeverk == true ? null : true });
+
+    private Task ToggleHistoricalAsync() =>
+        ApplyFilterAsync(_filter with { IncludeHistorical = !_filter.IncludeHistorical });
+
+    /// <summary>Drop every filter and fetch the whole search again.</summary>
+    /// <remarks>
+    /// Always on screen, and inert rather than absent when there is nothing to clear — the same
+    /// treatment the pager's buttons get, and for the same reason: taking the control the reader
+    /// just pressed out of the document drops focus to <c>&lt;body&gt;</c>. Pressing it with no
+    /// filters set asks for the filter already in force, which <see cref="ApplyFilterAsync"/>
+    /// returns from without a request.
+    /// </remarks>
+    private Task ClearFiltersAsync() => ApplyFilterAsync(VariableFilter.None);
+
+    /// <summary>
+    /// Apply <paramref name="next"/>: fetch what it leaves, and refresh the counts beside it.
+    /// </summary>
+    /// <remarks>
+    /// The one way the filter ever changes, so the rules that go with changing it — back to page
+    /// one, roll back a fetch that failed, tell the host what is actually in force — are written
+    /// once rather than once per facet.
+    /// </remarks>
+    private async Task ApplyFilterAsync(VariableFilter next)
+    {
+        // Dropped rather than queued while a fetch is in flight, the same as a second submit, a
+        // sort click and a page turn.
+        if (_loading)
+        {
+            return;
+        }
+
+        // Also what makes the clear button inert when there is nothing to clear. VariableFilter
+        // compares by what it narrows, not by the identity of its lists — see the note on it.
+        if (next == _filter)
+        {
+            return;
+        }
+
+        var previous = _filter;
+
+        _filter = next;
+
+        // Narrowing renumbers every page, so the page the reader is on is no longer the same rows.
+        _page = 1;
+        _keepPager = false;
+
+        // _executedSearch, not _search: a click blurs the search field first, so the box's contents
+        // have already been written to _search — text the reader may never have submitted. Same
+        // reason the sort buttons fetch with it.
+        if (await FetchAsync(_executedSearch))
+        {
+            // Only on success. The counts describe a selection, and after a rollback the selection
+            // they already describe is the one back in force.
+            await FetchFacetsAsync();
+        }
+        else
+        {
+            // The rows on screen are still the old ones, so the buttons have to say so — the same
+            // invariant the sort rollback protects.
+            _filter = previous;
+        }
+
+        // _filter and not next: what the host is told is what is in force, rolled back or not.
+        await RaiseAsync(FilterChanged, _filter);
+    }
+
+    /// <summary>
+    /// Refresh the facets and their counts for the current search and filter.
+    /// </summary>
+    /// <remarks>
+    /// Its own request, and its own failure. The counts are cross-filtered against the whole
+    /// selection, so they move whenever the search or the filter does — but not when the page or
+    /// the ordering does, which is why turning a page does not re-ask for them.
+    /// <para>
+    /// A failure keeps the facets already on screen rather than clearing them. They are the controls
+    /// the reader is using, and the numbers being briefly stale is a far smaller problem than the
+    /// panel emptying under a press.
+    /// </para>
+    /// </remarks>
+    private async Task FetchFacetsAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            _facets = await Client.GetFiltersAsync(_executedSearch, _filter);
+            _facetError = null;
+        }
+        catch (Exception)
+        {
+            _facetError = T.FilterError;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
     protected override async Task OnInitializedAsync()
     {
         _search = Search;
+        _filter = Filter ?? VariableFilter.None;
         await SearchAsync();
     }
 
@@ -506,7 +1138,13 @@ public partial class VariableExplorer : ComponentBase
         _keepPager = false;
 
         // The live contents of the box, which is what submitting means.
-        await FetchAsync(_search);
+        if (await FetchAsync(_search))
+        {
+            // The counts are cross-filtered against the search as well as the filter, so a new
+            // search moves them; only on success, so a failed search leaves the numbers describing
+            // the rows that are still on screen.
+            await FetchFacetsAsync();
+        }
 
         await NotifySearchChangedAsync();
     }
@@ -689,16 +1327,26 @@ public partial class VariableExplorer : ComponentBase
     /// documents: a host whose URL kept the previous query after a failed search would hand out a
     /// link that reloads into a different search than the box on screen is showing.
     /// </remarks>
-    private async Task NotifySearchChangedAsync()
+    private Task NotifySearchChangedAsync() => RaiseAsync(SearchChanged, _search);
+
+    /// <summary>
+    /// Hand a value to one of the host's callbacks without letting the host's own failure out.
+    /// </summary>
+    /// <remarks>
+    /// Shared by <see cref="SearchChanged"/> and <see cref="FilterChanged"/>, because what has to be
+    /// survived is the same for both: the handler is the host's, and what it most often does is
+    /// rewrite a URL.
+    /// </remarks>
+    private static async Task RaiseAsync<T>(EventCallback<T> callback, T value)
     {
-        if (!SearchChanged.HasDelegate)
+        if (!callback.HasDelegate)
         {
             return;
         }
 
         try
         {
-            await SearchChanged.InvokeAsync(_search);
+            await callback.InvokeAsync(value);
         }
         catch (NavigationException)
         {
@@ -748,6 +1396,7 @@ public partial class VariableExplorer : ComponentBase
         {
             _result = await Client.SearchVariablesAsync(
                 search,
+                _filter,
                 page: _page,
                 pageSize: ClampedPageSize,
                 sort: _sort,
@@ -818,6 +1467,27 @@ public partial class VariableExplorer : ComponentBase
         string FieldDataCollection,
         string FieldVariableGroup,
         string FieldPeriod,
+        // The filter panel. FieldSource and FieldVariableGroup name two of the facets as well as two
+        // of the card fields — deliberately the same word for the same thing in both places.
+        string FiltersTitle,
+        string ClearFilters,
+        string FilterError,
+        string FacetKildeType,
+        string FacetFilter,
+        string FacetDataType,
+        string FacetHelsefagligKodeverk,
+        string FacetAdministrativtKodeverk,
+        string FacetInstrument,
+        string FacetOther,
+        string HasKildekodeverk,
+        string IncludeHistorical,
+        string NoVariabelgrupper,
+        // Prose for the two facets the API reports as raw tokens: kildetype as its enum name, and
+        // datatype as a bare code with no label at all. Both are Munin's own explorer wording, so
+        // the two UIs name the same value the same way. A token missing from either falls back to
+        // what the API sent rather than to nothing.
+        IReadOnlyDictionary<string, string> KildeTypeNames,
+        IReadOnlyDictionary<string, string> DataTypeNames,
         string Ascending,
         string Descending,
         string Pagination,
@@ -833,11 +1503,16 @@ public partial class VariableExplorer : ComponentBase
         Func<int, int, string> PageOf,
         // (field, direction) — the active sort button's label.
         Func<string, string, string> ActiveLabel,
-        // (from, to, total, search, field, direction) — the whole result sentence. The ordering
-        // clause is part of it rather than appended by the caller, so a language whose grammar puts
-        // the ordering first can say it that way instead of inheriting Norwegian's clause order.
-        Func<int, int, int, string?, string, string, string> ResultSummary,
-        Func<string?, string> NoResults)
+        // (from, to, total, search, filters, field, direction) — the whole result sentence. The
+        // ordering clause is part of it rather than appended by the caller, so a language whose
+        // grammar puts the ordering first can say it that way instead of inheriting Norwegian's
+        // clause order. The filter count is in it for the same reason the ordering is: with the
+        // facets collapsed, the sentence is the only place that says the list is narrowed at all.
+        Func<int, int, int, string?, int, string, string, string> ResultSummary,
+        // (search, filters) — the empty state. It names the filters because a search that matches
+        // nothing *with three filters on* is a different thing to be told than one that matches
+        // nothing at all, and the second reads as "this catalogue does not have it".
+        Func<string?, int, string> NoResults)
     {
         /// <summary>
         /// The label for a sort order. The three that name one field use the same words the result
@@ -859,6 +1534,29 @@ public partial class VariableExplorer : ComponentBase
             SortField.Variabelgruppe => FieldVariableGroup,
             _ => throw new ArgumentOutOfRangeException(nameof(sort), sort, "No label for this sort field.")
         };
+
+        /// <summary>
+        /// Prose for a kildetype token, falling back to what the API called it.
+        /// </summary>
+        /// <remarks>
+        /// A fallback rather than a throw, unlike <see cref="FieldLabel"/>: the tokens are Munin's
+        /// kildetype enum and a new member appearing there is a catalogue change, not a bug in this
+        /// component. "SentraltHelseregister" on a button is poor prose but it is the truth, where
+        /// dropping the value would take a filter off the screen that the API is still counting.
+        /// </remarks>
+        public string KildeTypeLabel(string? value, string? fallback)
+        {
+            if (value is not null && KildeTypeNames.TryGetValue(value, out var name))
+            {
+                return name;
+            }
+
+            return string.IsNullOrWhiteSpace(fallback) ? NotSpecified : fallback;
+        }
+
+        /// <summary>Prose for a datatype code, falling back to the code — same reasoning as above.</summary>
+        public string DataTypeLabel(string value) =>
+            DataTypeNames.TryGetValue(value, out var name) ? name : value;
 
         /// <summary>The word for a direction, as the status line and the active button say it.</summary>
         /// <remarks>
@@ -890,6 +1588,44 @@ public partial class VariableExplorer : ComponentBase
             FieldDataCollection: "Datasamling",
             FieldVariableGroup: "Variabelgruppe",
             FieldPeriod: "Periode",
+            FiltersTitle: "Filtre",
+            ClearFilters: "Fjern alle filtre",
+            FilterError: "Kunne ikke oppdatere filtrene nå. Tallene kan være utdaterte.",
+            // helsedata's own variable page calls it this, rather than Munin's "Kildetype".
+            FacetKildeType: "Type datakilde",
+            FacetFilter: "Filter",
+            FacetDataType: "Datatype",
+            FacetHelsefagligKodeverk: "Helsefaglig kodeverk",
+            FacetAdministrativtKodeverk: "Administrativt kodeverk",
+            FacetInstrument: "Instrument",
+            FacetOther: "Andre filtre",
+            HasKildekodeverk: "Har kildekodeverk",
+            IncludeHistorical: "Vis historiske",
+            NoVariabelgrupper: "Velg en datakilde for å se variabelgrupper.",
+            KildeTypeNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["sentraltHelseregister"] = "Sentralt helseregister",
+                ["nasjonaltMedisinskKvalitetsregister"] = "Nasjonalt medisinsk kvalitetsregister",
+                ["annetMedisinskKvalitetsregister"] = "Annet medisinsk kvalitetsregister",
+                ["befolkningsbasertHelseundersokelse"] = "Befolkningsbasert helseundersøkelse",
+                ["biobank"] = "Biobank",
+                ["annenDatakilde"] = "Annen datakilde",
+                ["forskningsprosjekt"] = "Forskningsprosjekt",
+                ["manueltOpprettet"] = "Manuelt opprettet"
+            },
+            DataTypeNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["1"] = "Streng",
+                ["2"] = "Heltall",
+                ["3"] = "Desimaltall",
+                ["4"] = "Boolsk",
+                ["5"] = "Klokkeslett",
+                ["6"] = "Dato",
+                ["7"] = "Dato og tid",
+                ["8"] = "URI",
+                ["9"] = "Base64Binary",
+                ["10"] = "Fødselsnummer (11 siffer)"
+            },
             Ascending: "stigende",
             Descending: "synkende",
             Pagination: "Paginering",
@@ -902,7 +1638,7 @@ public partial class VariableExplorer : ComponentBase
             ActiveLabel: (field, direction) => $"{field} ({direction})",
             // The whole sentence, ordering clause included, because the comma and where the clause
             // sits are this language's grammar and not something to fix in C#.
-            ResultSummary: (from, to, total, search, field, direction) =>
+            ResultSummary: (from, to, total, search, filters, field, direction) =>
             {
                 var count = total == 1 ? "1 variabel" : $"{total} variabler";
                 // One page of a longer list, so say which rows these are rather than captioning
@@ -911,11 +1647,19 @@ public partial class VariableExplorer : ComponentBase
                     ? $"{count} funnet"
                     : $"Viser {from}–{to} av {count} funnet";
                 var forSearch = search is null ? "" : $" for «{search}»";
-                return $"{found}{forSearch}, sortert på {field}, {direction}";
+                var narrowed = filters switch
+                {
+                    0 => "",
+                    1 => ", avgrenset av 1 filter",
+                    _ => $", avgrenset av {filters} filtre"
+                };
+                return $"{found}{forSearch}{narrowed}, sortert på {field}, {direction}";
             },
-            NoResults: search => search is null
-                ? "Ingen variabler passet søket."
-                : $"Ingen variabler passet søket «{search}».");
+            NoResults: (search, filters) =>
+            {
+                var forSearch = search is null ? "Ingen variabler passet søket" : $"Ingen variabler passet søket «{search}»";
+                return filters == 0 ? $"{forSearch}." : $"{forSearch} med filtrene som er valgt.";
+            });
 
         private static readonly Texts En = new(
             Title: "Variable explorer",
@@ -932,6 +1676,43 @@ public partial class VariableExplorer : ComponentBase
             FieldDataCollection: "Data collection",
             FieldVariableGroup: "Variable group",
             FieldPeriod: "Period",
+            FiltersTitle: "Filters",
+            ClearFilters: "Clear all filters",
+            FilterError: "Could not refresh the filters right now. The counts may be out of date.",
+            FacetKildeType: "Type of data source",
+            FacetFilter: "Filter",
+            FacetDataType: "Data type",
+            FacetHelsefagligKodeverk: "Clinical code system",
+            FacetAdministrativtKodeverk: "Administrative code system",
+            FacetInstrument: "Instrument",
+            FacetOther: "Other filters",
+            HasKildekodeverk: "Has source code system",
+            IncludeHistorical: "Show historical",
+            NoVariabelgrupper: "Select a data source to see variable groups.",
+            KildeTypeNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["sentraltHelseregister"] = "Central health registry",
+                ["nasjonaltMedisinskKvalitetsregister"] = "National medical quality registry",
+                ["annetMedisinskKvalitetsregister"] = "Other medical quality registry",
+                ["befolkningsbasertHelseundersokelse"] = "Population-based health survey",
+                ["biobank"] = "Biobank",
+                ["annenDatakilde"] = "Other data source",
+                ["forskningsprosjekt"] = "Research project",
+                ["manueltOpprettet"] = "Manually created"
+            },
+            DataTypeNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["1"] = "String",
+                ["2"] = "Integer",
+                ["3"] = "Decimal",
+                ["4"] = "Boolean",
+                ["5"] = "Time",
+                ["6"] = "Date",
+                ["7"] = "Datetime",
+                ["8"] = "URI",
+                ["9"] = "Base64Binary",
+                ["10"] = "National ID (11 digits)"
+            },
             Ascending: "ascending",
             Descending: "descending",
             Pagination: "Pagination",
@@ -942,18 +1723,26 @@ public partial class VariableExplorer : ComponentBase
             NextLabel: "Next page",
             PageOf: (page, totalPages) => $"Page {page} of {totalPages}",
             ActiveLabel: (field, direction) => $"{field} ({direction})",
-            ResultSummary: (from, to, total, search, field, direction) =>
+            ResultSummary: (from, to, total, search, filters, field, direction) =>
             {
                 var count = total == 1 ? "1 variable" : $"{total} variables";
                 var found = from <= 1 && to >= total
                     ? $"{count} found"
                     : $"Showing {from}–{to} of {count} found";
                 var forSearch = search is null ? "" : $" for “{search}”";
-                return $"{found}{forSearch}, sorted by {field}, {direction}";
+                var narrowed = filters switch
+                {
+                    0 => "",
+                    1 => ", narrowed by 1 filter",
+                    _ => $", narrowed by {filters} filters"
+                };
+                return $"{found}{forSearch}{narrowed}, sorted by {field}, {direction}";
             },
-            NoResults: search => search is null
-                ? "No variables matched your search."
-                : $"No variables matched your search for “{search}”.");
+            NoResults: (search, filters) =>
+            {
+                var forSearch = search is null ? "No variables matched your search" : $"No variables matched your search for “{search}”";
+                return filters == 0 ? $"{forSearch}." : $"{forSearch} with the filters you have chosen.";
+            });
 
         public static Texts For(string? language) =>
             string.Equals(language, "en", StringComparison.OrdinalIgnoreCase) ? En : No;

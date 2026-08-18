@@ -81,6 +81,66 @@
         </div>
     </form>
 
+    @* The filters.
+
+       A stack of disclosures above the results, not a sidebar beside them. A sidebar is a layout,
+       and a layout is a class name — helsedata's own variable page styles one from
+       `filter-search-explorer` in its page-specific variables.css, which is not a stylesheet this
+       repository can read back. The standing rule is that a class name goes into this markup only
+       once it has been read off the host's compiled CSS, so the panel is built out of names that
+       have been: `form-fieldset` and `form-element__label` from the sort control, `hd-button-square`
+       with the same filled/ghost pair, `caption` and `infobox`. When those sidebar names can be
+       verified, this block is what moves into it — the markup below is already a list of facets and
+       nothing about it assumes it is stacked.
+
+       Two shapes here are elements rather than classes, for the same reason:
+
+       * `<details>` per facet. With every facet expanded the panel is hundreds of buttons; Munin's
+         explorer uses an accordion, and `<details>` is the one this package can have — native
+         disclosure behaviour, no script, no class name, and the browser draws the marker. Its open
+         state lives in the browser, so filtering does not collapse what the reader opened: the
+         `open` attribute below is a constant per facet, and a constant is never patched.
+       * A bare `<ul>` for the values, nested for the hierarchy. Indentation is what shows a delkilde
+         sitting under its kilde, and a list is an element every base stylesheet already styles —
+         unlike `variabelutforsker-tree`, which would be exactly the invented name that renders as a
+         raw browser default. Values are toggle buttons rather than checkboxes for the same reason:
+         Stiler has a square button and this component already draws one in two states.
+
+       `variable-explorer-filters` carries no styling, in this package or in Stiler. It is the same
+       kind of name as the `variable-explorer` root above it: a hook for a host that wants to place
+       the panel, and nothing this markup relies on. *@
+    @if (_facets is not null)
+    {
+        <fieldset class="form-fieldset variable-explorer-filters" aria-busy="@Busy">
+            <legend class="form-element__label">@FiltersLegend</legend>
+
+            @foreach (var group in FacetGroups)
+            {
+                @* Keyed, so a facet that drops out of the list — the API omits one with no matches
+                   — cannot hand its open state to whichever facet takes its place. *@
+                <details @key="group.Key" open="@group.OpenByDefault">
+                    <summary><span class="form-element__label">@GroupLabel(group)</span></summary>
+                    @if (group.Values.Count > 0)
+                    {
+                        @FacetList(group.Values)
+                    }
+                    else
+                    {
+                        <p class="caption">@group.EmptyText</p>
+                    }
+                </details>
+            }
+
+            @* Never taken off the page, only made inert — the same treatment the pager's buttons
+               get, and for the same reason: clearing the filters from a button that then disappears
+               drops focus to <body>. aria-disabled says so; ClearFiltersAsync is what makes it true. *@
+            <button class="hd-button-square button-square--ghost margin-right margin-bottom"
+                    type="button"
+                    aria-disabled="@AriaDisabled(!_filter.IsEmpty)"
+                    @onclick="ClearFiltersAsync">@T.ClearFilters</button>
+        </fieldset>
+    }
+
     @* Ordering, as its own control rather than as clickable column headers.
 
        Runa sorts by clicking a <th>, with aria-sort on the header saying which way. There are no
@@ -139,7 +199,7 @@
         }
         else if (_result is not null)
         {
-            @T.NoResults(_executedSearch)
+            @T.NoResults(_executedSearch, _filter.ActiveCount)
         }
     </p>
 
@@ -153,6 +213,14 @@
         @if (_error is not null)
         {
             <p class="infobox infobox--bg-yellow">@_error</p>
+        }
+        @* The facets failing is a different failure from the search failing — the rows are the right
+           rows and it is the numbers beside the filters that may be stale — but it shares this one
+           alert region rather than opening a second. Two assertive regions on one component race to
+           be announced, and the reader has no way to tell which one spoke. *@
+        @if (_facetError is not null)
+        {
+            <p class="infobox infobox--bg-yellow">@_facetError</p>
         }
     </div>
 

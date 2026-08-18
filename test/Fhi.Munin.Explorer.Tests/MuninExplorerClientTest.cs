@@ -319,6 +319,55 @@ public class MuninExplorerClientTest
     }
 
     [Fact]
+    public async Task SearchVariablesAsync_WhenAFilterIsGiven_ThenItsParametersAreSentAlongsideThePaging()
+    {
+        var handler = StubHttpHandler.Ok("{}");
+        var kilde = Guid.NewGuid();
+
+        await Client(handler).SearchVariablesAsync(
+            "tale", new VariableFilter { KildeIds = [kilde], DataTypes = ["1"] });
+
+        Assert.Equal($"?page=1&size=25&search=tale&kildeIds={kilde}&datatypes=1", handler.LastUri?.Query);
+    }
+
+    [Fact]
+    public async Task SearchVariablesAsync_WhenTheFilterNarrowsNothing_ThenTheUrlIsTheOneAnUnfilteredSearchAlwaysHad()
+    {
+        // Filtering must not lengthen the URL of a search that is not filtered — a public page's
+        // cache hit rate depends on the unfiltered request staying byte-identical.
+        var handler = StubHttpHandler.Ok("{}");
+
+        await Client(handler).SearchVariablesAsync(null, VariableFilter.None);
+
+        Assert.Equal("?page=1&size=25", handler.LastUri?.Query);
+    }
+
+    [Fact]
+    public async Task GetFiltersAsync_WhenAFilterIsGiven_ThenTheCountsAreAskedForWithTheSameNarrowing()
+    {
+        // The counts are cross-filtered. Asking for them with different narrowing than the search
+        // used is how a list and the numbers beside it end up describing two different selections.
+        var handler = StubHttpHandler.Ok("{}");
+        var kilde = Guid.NewGuid();
+
+        await Client(handler).GetFiltersAsync("tale", new VariableFilter { KildeIds = [kilde] });
+
+        Assert.Equal($"?search=tale&kildeIds={kilde}", handler.LastUri?.Query);
+    }
+
+    [Fact]
+    public async Task GetFiltersAsync_WhenOnlyAFilterIsGiven_ThenTheQuestionMarkIsStillWrittenOnce()
+    {
+        // The search parameter is what usually opens the query string; without it the filter has to
+        // open it itself rather than appending to a URL that has no `?` yet.
+        var handler = StubHttpHandler.Ok("{}");
+
+        await Client(handler).GetFiltersAsync(filter: new VariableFilter { KildeType = "biobank" });
+
+        Assert.Equal("?kildeType=biobank", handler.LastUri?.Query);
+    }
+
+    [Fact]
     public async Task SearchVariablesAsync_WhenASortFieldHasNoToken_ThenItFailsRatherThanFallingBack()
     {
         // The closed enum exists so the URL cannot ask for one order while the UI claims another.

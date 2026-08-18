@@ -331,3 +331,45 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   color: #fff;
   font: normal 500 1rem/1.5 var(--font);
 }
+
+/* ---- not Stiler either: base element styling for the filter panel ----
+
+   The filter panel is built from `<details>`, `<summary>` and nested `<ul>`s rather than from class
+   names, because Stiler has no accordion, no tree and no checkbox that can be read back off its
+   compiled stylesheet — and a name it has never heard of renders as a raw browser default, which is
+   the failure the whole approach exists to avoid. On helsedata.no what dresses those elements is
+   that site's own base rules; here it is this block. The package emits `variable-explorer-filters`
+   as a handle for exactly this, and styles nothing itself.
+
+   A host that provides none of this still gets a working panel — the nesting is what carries the
+   hierarchy, and the values are Stiler's own square buttons either way. What it loses is the
+   indentation that makes a delkilde look like it sits under its kilde. Scoped to the panel so none
+   of it can reach the results list, which is Stiler's datasourcecard-list. */
+
+.variable-explorer-filters { margin-bottom: 24px; }
+
+.variable-explorer-filters details {
+  border-bottom: 1px solid var(--grey30);
+  padding: 8px 0;
+}
+.variable-explorer-filters summary { cursor: pointer; }
+.variable-explorer-filters summary .form-element__label { margin-top: 0; cursor: pointer; }
+.variable-explorer-filters summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.variable-explorer-filters ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  list-style: none;
+}
+.variable-explorer-filters > details > ul { padding-left: 0; }
+
+/* The clear button is never `disabled` — the same focus reason as the pager's — so its unavailable
+   state has to be drawn from aria-disabled. */
+.variable-explorer-filters [aria-disabled="true"] {
+  color: var(--grey40);
+  cursor: default;
+}
+.variable-explorer-filters [aria-disabled="true"]:hover {
+  background: none;
+  color: var(--grey40);
+}

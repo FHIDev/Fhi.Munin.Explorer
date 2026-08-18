@@ -17,6 +17,7 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
 
     public async Task<Page<VariableSummary>> SearchVariablesAsync(
         string? search,
+        VariableFilter? filter = null,
         int page = 1,
         int pageSize = 25,
         SortField sort = SortField.Default,
@@ -28,6 +29,8 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
         {
             url += $"&search={Uri.EscapeDataString(search)}";
         }
+
+        url = WithFilter(url, filter);
 
         // Left off entirely at the default, the same reasoning as includeHistorical below: the API
         // already uses its default order ascending when neither parameter arrives, and a shorter URL
@@ -44,10 +47,12 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
 
     public async Task<FilterOptions> GetFiltersAsync(
         string? search = null,
-        string? kildeType = null,
+        VariableFilter? filter = null,
         CancellationToken cancellationToken = default)
     {
-        var url = "api/explorer/filters" + Query(("search", search), ("kildeType", kildeType));
+        // The same narrowing the variable search was given, so the counts describe the list beside
+        // them. The API is what makes a facet not narrow itself — see the remarks on the interface.
+        var url = WithFilter("api/explorer/filters" + Query(("search", search)), filter);
 
         // No facets is a legitimate answer to a narrow search — same reasoning as an empty page.
         return await GetOrNullAsync<FilterOptions>(url, cancellationToken) ?? new FilterOptions();
@@ -138,6 +143,26 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
         SortDirection.Descending => "desc",
         _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, "No API sort token for this direction.")
     };
+
+    /// <summary>Appends a <see cref="VariableFilter"/>'s parameters to a URL that may already have some.</summary>
+    /// <remarks>
+    /// The filter writes its own query string, using the API's own parameter names, so that the one
+    /// place those names are spelled out is the contract every caller already has to hold — a host
+    /// putting the same filter in its URL and this client putting it on the wire cannot drift apart.
+    /// A filter that narrows nothing adds nothing, which keeps the unfiltered URL as short and as
+    /// cacheable as it was before filtering existed.
+    /// </remarks>
+    private static string WithFilter(string url, VariableFilter? filter)
+    {
+        var query = filter?.ToQueryString();
+
+        if (string.IsNullOrEmpty(query))
+        {
+            return url;
+        }
+
+        return url + (url.Contains('?', StringComparison.Ordinal) ? '&' : '?') + query;
+    }
 
     /// <summary>Builds <c>?a=1&amp;b=2</c> from the parameters that actually have a value.</summary>
     private static string Query(params (string Name, string? Value)[] parameters)
