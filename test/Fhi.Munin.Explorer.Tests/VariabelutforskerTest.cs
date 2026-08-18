@@ -25,22 +25,50 @@ public class VariabelutforskerTest : BunitContext
     private sealed class FakeClient(Side<VariabelSammendrag> svar) : TomMuninExplorerKlient
     {
         public string? SisteSok { get; private set; }
+        public int LastPage { get; private set; }
+        public SortField LastSort { get; private set; }
+        public SortDirection LastDirection { get; private set; }
         public int Kall { get; private set; }
 
         public override Task<Side<VariabelSammendrag>> SokVariablerAsync(
-            string? sok, int side = 1, int sideStorrelse = 25, CancellationToken cancellationToken = default)
+            string? sok, int side = 1, int sideStorrelse = 25,
+            SortField sort = SortField.Default,
+            SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default)
         {
             SisteSok = sok;
+            LastPage = side;
+            LastSort = sort;
+            LastDirection = direction;
             Kall++;
             return Task.FromResult(svar);
         }
     }
 
-    private sealed class FeilendeClient : TomMuninExplorerKlient
+    /// <summary>
+    /// Fails every call. Given a <paramref name="firstAnswer"/> it answers the first one and fails
+    /// only from the second — the case where a sort fails over rows already on screen.
+    /// </summary>
+    private sealed class FeilendeClient(Side<VariabelSammendrag>? firstAnswer = null) : TomMuninExplorerKlient
     {
+        public SortField LastSort { get; private set; }
+        public SortDirection LastDirection { get; private set; }
+        public int Kall { get; private set; }
+
         public override Task<Side<VariabelSammendrag>> SokVariablerAsync(
-            string? sok, int side = 1, int sideStorrelse = 25, CancellationToken cancellationToken = default)
-            => throw new HttpRequestException("nede");
+            string? sok, int side = 1, int sideStorrelse = 25,
+            SortField sort = SortField.Default,
+            SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default)
+        {
+            LastSort = sort;
+            LastDirection = direction;
+            Kall++;
+
+            return Kall == 1 && firstAnswer is not null
+                ? Task.FromResult(firstAnswer)
+                : throw new HttpRequestException("nede");
+        }
     }
 
     /// <summary>
@@ -56,7 +84,10 @@ public class VariabelutforskerTest : BunitContext
         public int Kall { get; private set; }
 
         public override Task<Side<VariabelSammendrag>> SokVariablerAsync(
-            string? sok, int side = 1, int sideStorrelse = 25, CancellationToken cancellationToken = default)
+            string? sok, int side = 1, int sideStorrelse = 25,
+            SortField sort = SortField.Default,
+            SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default)
         {
             Kall++;
             return Kall == 1 && forsteSvar is not null ? Task.FromResult(forsteSvar) : _svar.Task;
@@ -205,10 +236,341 @@ public class VariabelutforskerTest : BunitContext
     }
 
     // ---------------------------------------------------------------------------------
+    // Sorting. Runa sorts by clicking a column header; there are no headers here, so the
+    // ordering gets a control of its own above the list. The rules it keeps from Runa are
+    // the ones about the ORDER, not about the headers: four sortable orders, the API's own
+    // default ascending to start with, the active field reverses, and any change goes back
+    // to page one.
+    // ---------------------------------------------------------------------------------
+
+    /// <summary>The sort buttons, in the order they are rendered.</summary>
+    private static IReadOnlyList<AngleSharp.Dom.IElement> SortButtons(
+        IRenderedComponent<Variabelutforsker> cut) =>
+        cut.FindAll("fieldset.form-fieldset button");
+
+    /// <summary>Clicks the sort button with the given label, whatever direction suffix it carries.</summary>
+    private static void ClickSort(IRenderedComponent<Variabelutforsker> cut, string label) =>
+        SortButtons(cut).Single(k => k.TextContent.StartsWith(label, StringComparison.Ordinal)).Click();
+
+    [Fact]
+    public void Render_WhenNoSortIsChosen_ThenTheApisOwnOrderIsAskedForAscending()
+    {
+        var client = new FakeClient(EnSide(Variabel("1. Tale", "KODE")));
+
+        var cut = RenderMed(client);
+
+        Assert.Equal(SortField.Default, client.LastSort);
+        Assert.Equal(SortDirection.Ascending, client.LastDirection);
+        Assert.Equal("Standard (stigende)", SortButtons(cut)[0].TextContent);
+    }
+
+    [Fact]
+    public void Render_Always_ThenTheDefaultOrderIsNotLabelledAsANameSort()
+    {
+        // The API's `name` sort leads with kilde, not the name — see the remarks on
+        // SortField.Default. A button reading "Navn" would describe an order the list is not in,
+        // and would make this button and Datakilde look like they differ in primary key when they
+        // only differ in what happens inside a kilde.
+        var cut = RenderMed(new FakeClient(EnSide(Variabel("1. Tale", "KODE"))));
+
+        var etiketter = SortButtons(cut).Select(k => k.TextContent).ToList();
+
+        Assert.Equal(["Standard (stigende)", "Datakilde", "Datasamling", "Variabelgruppe"], etiketter);
+        Assert.DoesNotContain("Navn", cut.Find("fieldset.form-fieldset").TextContent);
+    }
+
+    [Fact]
+    public void Render_Always_ThenEverySortFieldTheContractOffersHasAButton()
+    {
+        // The button row is Enum.GetValues rather than a list of its own, so it cannot fall behind
+        // the enum. Kode, datatype, status and dataperiode are absent because they are absent
+        // there — the API does not sort on them, and a fifth button would reorder nothing while
+        // claiming to have.
+        var cut = RenderMed(new FakeClient(EnSide(Variabel("1. Tale", "KODE"))));
+
+        Assert.Equal(Enum.GetValues<SortField>().Length, SortButtons(cut).Count);
+    }
+
+    [Theory]
+    [InlineData("Datakilde", SortField.Kilde)]
+    [InlineData("Datasamling", SortField.Datasamling)]
+    [InlineData("Variabelgruppe", SortField.Variabelgruppe)]
+    public void Sort_WhenAnotherFieldIsChosen_ThenThatFieldIsFetchedAscending(string label, SortField expected)
+    {
+        var client = new FakeClient(EnSide(Variabel("1. Tale", "KODE")));
+        var cut = RenderMed(client);
+
+        ClickSort(cut, label);
+
+        Assert.Equal(expected, client.LastSort);
+        Assert.Equal(SortDirection.Ascending, client.LastDirection);
+        Assert.Equal(2, client.Kall); // initial load + this one
+    }
+
+    [Fact]
+    public void Sort_WhenTheActiveFieldIsChosenAgain_ThenTheDirectionReverses()
+    {
+        var client = new FakeClient(EnSide(Variabel("1. Tale", "KODE")));
+        var cut = RenderMed(client);
+
+        ClickSort(cut, "Standard");
+
+        Assert.Equal(SortField.Default, client.LastSort);
+        Assert.Equal(SortDirection.Descending, client.LastDirection);
+        Assert.Equal("Standard (synkende)", SortButtons(cut)[0].TextContent);
+
+        ClickSort(cut, "Standard");
+
+        Assert.Equal(SortDirection.Ascending, client.LastDirection);
+    }
+
+    [Fact]
+    public void Sort_WhenANewFieldIsChosenAfterDescending_ThenItStartsAscendingAgain()
+    {
+        // Runa's rule: a new column always starts ascending rather than inheriting the direction
+        // of the one before it.
+        var client = new FakeClient(EnSide(Variabel("1. Tale", "KODE")));
+        var cut = RenderMed(client);
+
+        ClickSort(cut, "Standard");    // synkende
+        ClickSort(cut, "Datakilde");   // nytt felt
+
+        Assert.Equal(SortField.Kilde, client.LastSort);
+        Assert.Equal(SortDirection.Ascending, client.LastDirection);
+    }
+
+    [Fact]
+    public void Sort_WhenTheOrderChanges_ThenTheFirstPageIsFetchedAgain()
+    {
+        // Reordering renumbers every page, so page 7 of the old order is not page 7 of the new one.
+        // There is no pager yet (bead Fhi.Metadata-l9l2n.12), which is exactly why this is pinned
+        // now: the reset has to already be in place when one arrives.
+        var client = new FakeClient(EnSide(Variabel("1. Tale", "KODE")));
+        var cut = RenderMed(client);
+
+        ClickSort(cut, "Datasamling");
+
+        Assert.Equal(1, client.LastPage);
+    }
+
+    [Fact]
+    public void Sort_WhenAFetchIsAlreadyRunning_ThenTheClickIsIgnored()
+    {
+        // Same reasoning as a second submit: the buttons are never disabled, because disabling the
+        // element that has focus drops focus to <body>. Changing the state and skipping the fetch
+        // would leave a button claiming an order the list is not in, so the guard comes first.
+        var client = new TregClient();
+        var cut = RenderMed(client);
+
+        ClickSort(cut, "Datakilde");
+
+        Assert.Equal(1, client.Kall);
+        Assert.Equal("Standard (stigende)", SortButtons(cut)[0].TextContent);
+    }
+
+    [Fact]
+    public void Sort_WhenTheFetchFails_ThenTheOrderRollsBackToTheOneTheListIsActuallyIn()
+    {
+        // The buttons and the status line describe the order the list is in, and a failed fetch
+        // delivered no order at all. Left moved, the state would have them claim one the API never
+        // returned — and pressing the same button again would take the reversal branch and ask for
+        // descending, leaving no way back to the ascending fetch that just failed short of cycling
+        // twice. Same invariant as the _laster guard, on the path that guard cannot see.
+        var client = new FeilendeClient(EnSide(Variabel("1. Tale", "KODE")));
+        var cut = RenderMed(client);
+
+        ClickSort(cut, "Datakilde");
+
+        Assert.Equal(SortField.Kilde, client.LastSort);
+        Assert.Contains("Kunne ikke hente variabler", cut.Markup);
+        Assert.Equal("Standard (stigende)", SortButtons(cut)[0].TextContent);
+
+        var merka = SortButtons(cut).Where(k => k.HasAttribute("aria-current")).ToList();
+        Assert.Equal("Standard (stigende)", Assert.Single(merka).TextContent);
+
+        ClickSort(cut, "Datakilde"); // the same retry, not its reversal
+
+        Assert.Equal(SortField.Kilde, client.LastSort);
+        Assert.Equal(SortDirection.Ascending, client.LastDirection);
+        Assert.Equal(3, client.Kall);
+    }
+
+    [Fact]
+    public void Sort_WhenTheBoxHoldsTextNobodySubmitted_ThenSortingDoesNotSearchForIt()
+    {
+        // A sort click blurs the field first — the same ordering the Søk button relies on — so the
+        // change event has already written the box's contents to _sok by the time the click is
+        // handled. Fetching with that would run a search nobody asked for, and the status line
+        // would then describe the accidental search instead of saying anything had moved.
+        var client = new FakeClient(EnSide(Variabel("1. Tale", "KODE")));
+        var cut = RenderMed(client, b => b.Add(c => c.Sok, "tale"));
+
+        cut.Find("input[type=search]").Change("noe helt annet");
+        ClickSort(cut, "Datakilde");
+
+        Assert.Equal("tale", client.SisteSok);
+        Assert.Contains("«tale»", cut.Find("p[role='status']").TextContent);
+    }
+
+    [Fact]
+    public void Sort_Always_ThenTheHostIsNotToldTheSearchChanged()
+    {
+        // SokChanged is the host's URL contract, and sorting is not searching. Raising it here
+        // would put text the user never submitted into the host's URL.
+        var meldt = new List<string?>();
+        var cut = RenderMed(new FakeClient(EnSide(Variabel("1. Tale", "KODE"))),
+                            b => b.Add(c => c.Sok, "tale")
+                                  .Add(c => c.SokChanged, (string? s) => meldt.Add(s)));
+
+        meldt.Clear(); // the initial load's own notification
+
+        cut.Find("input[type=search]").Change("noe helt annet");
+        ClickSort(cut, "Datakilde");
+
+        Assert.Empty(meldt);
+    }
+
+    [Fact]
+    public void Sort_WhenTheLanguageIsEn_ThenTheSortControlIsEnglishToo()
+    {
+        var cut = RenderMed(new FakeClient(EnSide(Variabel("1. Tale", "KODE"))),
+                            b => b.Add(c => c.Sprak, "en"));
+
+        var etiketter = SortButtons(cut).Select(k => k.TextContent).ToList();
+
+        Assert.Equal(["Default (ascending)", "Data source", "Data collection", "Variable group"], etiketter);
+        Assert.Equal("Sort by", cut.Find("fieldset.form-fieldset legend").TextContent);
+    }
+
+    // ---------------------------------------------------------------------------------
+    // SokChanged — the host's URL contract. The Sok/SokChanged pair gives a host @bind-Sok,
+    // and helsedata's CMS host is what turns that into a shareable link, so when it fires
+    // is part of the contract rather than an implementation detail.
+    // ---------------------------------------------------------------------------------
+
+    [Fact]
+    public void Sok_WhenTheUserSearches_ThenTheHostIsToldWhatWasSearchedFor()
+    {
+        var meldt = new List<string?>();
+        var cut = RenderMed(new FakeClient(EnSide()),
+                            b => b.Add(c => c.SokChanged, (string? s) => meldt.Add(s)));
+
+        cut.Find("input[type=search]").Change("svelging");
+        cut.Find("form").Submit();
+
+        // The initial load reports the parameter it was given, then the search reports itself.
+        Assert.Equal([null, "svelging"], meldt);
+    }
+
+    [Fact]
+    public void Sok_WhenTheFetchFails_ThenTheHostIsStillToldWhatWasSearchedFor()
+    {
+        // Unconditional, as the parameter's own doc says. A host whose URL kept the previous query
+        // after a failed search would hand out a link that reloads into a different search than
+        // the box on screen is showing.
+        var meldt = new List<string?>();
+        var cut = RenderMed(new FeilendeClient(),
+                            b => b.Add(c => c.SokChanged, (string? s) => meldt.Add(s)));
+
+        cut.Find("input[type=search]").Change("svelging");
+        cut.Find("form").Submit();
+
+        Assert.Contains("Kunne ikke hente variabler", cut.Markup);
+        Assert.Equal([null, "svelging"], meldt);
+    }
+
+    [Fact]
+    public void Sok_WhenTheHostsOwnHandlerThrows_ThenItDoesNotEscapeIntoTheHost()
+    {
+        // The handler this exists for is a NavigationManager call or a CMS URL rewrite, which is
+        // exactly the kind that throws. Unhandled it would propagate out of Blazor's event
+        // dispatch — and out of the initial render, since OnInitializedAsync runs this path too —
+        // which in helsedata's legacy Blazor Server host tears down the circuit for the whole CMS
+        // page. Nothing is shown to the reader either: the search itself worked, and reporting a
+        // host bug as "Kunne ikke hente variabler" would blame the API for it.
+        var client = new FakeClient(EnSide(Variabel("1. Tale", "KODE")));
+
+        var cut = RenderMed(client,
+                            b => b.Add<string?>(c => c.SokChanged,
+                                                _ => throw new InvalidOperationException("vertsfeil")));
+
+        cut.Find("input[type=search]").Change("svelging");
+        cut.Find("form").Submit();
+
+        Assert.Equal("svelging", client.SisteSok);
+        Assert.DoesNotContain("Kunne ikke hente variabler", cut.Markup);
+        Assert.Single(cut.FindAll("ul.datasourcecard-list > li"));
+    }
+
+    // ---------------------------------------------------------------------------------
     // Accessibility. helsedata.no is a public-sector site, so WCAG 2.1 AA is a legal
     // requirement there — and this is our markup on their page. Each test below pins one
     // property a screen-reader or keyboard user depends on, so it cannot quietly go away.
     // ---------------------------------------------------------------------------------
+
+    [Fact]
+    public void Sort_WhenTheOrderChanges_ThenTheStatusLineSaysWhatTheListIsOrderedBy()
+    {
+        // There are no column headers, so there is no aria-sort to carry this. The chosen order
+        // rides on the status line instead — already a polite, atomic live region, so changing the
+        // sentence is what announces the new ordering.
+        var cut = RenderMed(new FakeClient(EnSide(Variabel("1. Tale", "KODE"))));
+
+        Assert.Contains("sortert på Standard, stigende", cut.Find("p[role='status']").TextContent);
+
+        ClickSort(cut, "Datakilde");
+
+        Assert.Contains("sortert på Datakilde, stigende", cut.Find("p[role='status']").TextContent);
+
+        ClickSort(cut, "Datakilde");
+
+        Assert.Contains("sortert på Datakilde, synkende", cut.Find("p[role='status']").TextContent);
+    }
+
+    [Fact]
+    public void Render_WhenTheSearchHasHits_ThenTheListNameNamesTheOrderingToo()
+    {
+        // The list's accessible name is the same sentence as the status line, so the two cannot
+        // drift apart and say the result is ordered two different ways.
+        var cut = RenderMed(new FakeClient(EnSide(Variabel("1. Tale", "KODE"))));
+
+        Assert.Contains("sortert på Standard, stigende",
+                        cut.Find("ul.datasourcecard-list").GetAttribute("aria-label")!);
+    }
+
+    [Fact]
+    public void Render_Always_ThenOnlyTheActiveSortFieldIsMarked()
+    {
+        // aria-current rather than aria-pressed: pressing the active button does not release it,
+        // it reverses the direction, and a toggle that never toggles off misdescribes itself.
+        var cut = RenderMed(new FakeClient(EnSide(Variabel("1. Tale", "KODE"))));
+
+        var merka = SortButtons(cut).Where(k => k.HasAttribute("aria-current")).ToList();
+
+        Assert.Equal("Standard (stigende)", Assert.Single(merka).TextContent);
+        Assert.Equal("true", merka[0].GetAttribute("aria-current"));
+    }
+
+    [Fact]
+    public void Render_WhenThereAreNoHits_ThenTheSortControlStaysAnyway()
+    {
+        // Removing the control after a search that found nothing would take the button the user
+        // just pressed out of the document, dropping focus to <body> — the same failure the Søk
+        // button is never disabled to avoid.
+        var cut = RenderMed(new FakeClient(EnSide()));
+
+        Assert.Equal(Enum.GetValues<SortField>().Length, SortButtons(cut).Count);
+    }
+
+    [Fact]
+    public void Render_Always_ThenTheSortFieldsAreGroupedAndNamed()
+    {
+        // fieldset + legend names the group of buttons for a screen reader without inventing ARIA.
+        var cut = RenderMed(new FakeClient(EnSide()));
+
+        Assert.Equal("Sorter etter", cut.Find("fieldset.form-fieldset legend").TextContent);
+        Assert.All(SortButtons(cut), k => Assert.Equal("button", k.GetAttribute("type")));
+    }
 
     [Fact]
     public void Render_Alltid_ThenErStatuslinjaEtHøfligOgAtomiskStatusområde()

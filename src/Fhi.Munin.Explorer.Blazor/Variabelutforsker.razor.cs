@@ -13,10 +13,11 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// the markup emits are therefore not ours to invent: they are the ones
 /// <c>Fhi.Helsedata.Stiler</c> already defines, so that on helsedata.no the component is
 /// styled by the site it is embedded in rather than by whatever we guessed. The families used
-/// are <c>form-element__label</c>, <c>searchbox__freetext*</c>,
-/// <c>hd-button-square</c>/<c>button-square--primary</c>, <c>headline</c>, <c>caption</c>,
-/// <c>infobox</c> and <c>datasourcecard*</c> — the last of these is the same card list
-/// helsedata's own datakildeutforsker renders its results with.
+/// are <c>form-element__label</c>, <c>form-fieldset</c>, <c>searchbox__freetext*</c>,
+/// <c>hd-button-square</c> with <c>button-square--primary</c>, <c>button-square--secondary</c>,
+/// <c>button-square--ghost</c>, <c>margin-right</c> and <c>margin-bottom</c>, <c>headline</c>,
+/// <c>caption</c>, <c>infobox</c> and <c>datasourcecard*</c> — the last of these is the same card
+/// list helsedata's own datakildeutforsker renders its results with.
 /// </para>
 /// <para>
 /// A host outside helsedata's estate has to provide equivalents for those names, and two
@@ -53,9 +54,18 @@ public partial class Variabelutforsker : ComponentBase
     /// The Sok/SokChanged naming gives the host <c>@bind-Sok</c> for free.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// A host mounting this component must make the mount point fully interactive.
     /// An EventCallback serialises to an empty delegate across a static-SSR to
     /// interactive-island boundary, and the callback then silently never fires.
+    /// </para>
+    /// <para>
+    /// Raised on every search, including one whose fetch failed and including the initial load:
+    /// a URL that kept the previous query after a failed search would be a shared link that
+    /// reloads into a different search than the box on screen is showing. Sorting is not a
+    /// search and does not raise it. An exception out of the handler is swallowed rather than
+    /// left to reach the host's circuit — see the catch in the component.
+    /// </para>
     /// </remarks>
     [Parameter] public EventCallback<string?> SokChanged { get; set; }
 
@@ -102,6 +112,31 @@ public partial class Variabelutforsker : ComponentBase
     private string? _feil;
     private Side<VariabelSammendrag>? _resultat;
 
+    // The API's own default order, ascending, which is also where Runa starts — and the order the
+    // API returns when it is asked for none, so the first render costs no extra query parameters.
+    private SortField _sort = SortField.Default;
+    private SortDirection _direction = SortDirection.Ascending;
+
+    // The page being asked for. There is no pager yet — that is bead Fhi.Metadata-l9l2n.12 — so
+    // this only ever holds 1 today. It is here rather than written inline at the call site because
+    // "any change of search or sort goes back to page one" is a rule about state: a result set
+    // reordered under someone still looking at page 7 shows them rows from the middle of a
+    // sequence they never saw the start of. Keeping the reset next to the state it resets is what
+    // stops the pager from landing without it.
+    private int _page = 1;
+
+    /// <summary>
+    /// The orders offered for sorting, in the order the buttons appear.
+    /// </summary>
+    /// <remarks>
+    /// Every member of <see cref="SortField"/>, in declaration order, rather than a list restating
+    /// it: that enum is already the closed set of orders the API implements, and its own remarks are
+    /// where the reason a field is missing from it is written down. Two copies of a list and of its
+    /// reason drift apart independently — a member added there would otherwise leave the button row
+    /// silently short.
+    /// </remarks>
+    private static readonly SortField[] Sortable = Enum.GetValues<SortField>();
+
     // The search text the visible result actually came from, which is not the same as the
     // text in the box: @bind writes _sok on blur, so the box can hold an unsubmitted query
     // while the table below still shows the previous one. The announcement has to describe
@@ -135,10 +170,42 @@ public partial class Variabelutforsker : ComponentBase
 
     /// <summary>
     /// One sentence describing the visible result, used both as the live announcement and
-    /// as the table's caption so the two can never drift apart.
+    /// as the list's accessible name so the two can never drift apart.
     /// </summary>
-    private string Sammendrag =>
-        _resultat is null ? "" : T.Treff(_resultat.Items.Count, _resultat.TotalCount, _utfortSok);
+    /// <remarks>
+    /// It names the ordering as well as the count. Without column headers there is no
+    /// <c>aria-sort</c> to carry that, so it rides along on the status line the component already
+    /// has: pressing a sort button changes this sentence, and the polite, atomic live region reads
+    /// the whole of it back. The sentence is assembled inside <see cref="Tekster"/> rather than
+    /// glued together here, so a language that has to state the ordering first can say it that way.
+    /// </remarks>
+    private string Sammendrag => _resultat is null
+        ? ""
+        : T.Treff(_resultat.Items.Count, _resultat.TotalCount, _utfortSok,
+                  T.FieldLabel(_sort), T.DirectionName(_direction));
+
+    /// <summary>A sort button's label — the field, plus the direction when it is the active one.</summary>
+    private string ButtonText(SortField sort) =>
+        sort == _sort ? T.ActiveLabel(T.FieldLabel(sort), T.DirectionName(_direction)) : T.FieldLabel(sort);
+
+    /// <summary>
+    /// A sort button's classes. The active field is filled, the rest are ghosts; the trailing
+    /// margins are Stiler's own modifiers, which the buttons need because nothing else separates
+    /// them — Razor drops the whitespace between elements.
+    /// </summary>
+    private string ButtonClass(SortField sort)
+    {
+        var stil = sort == _sort ? "button-square--secondary" : "button-square--ghost";
+
+        return $"hd-button-square {stil} margin-right margin-bottom";
+    }
+
+    /// <summary><c>"true"</c> on the active field, and nothing at all on the others.</summary>
+    /// <remarks>
+    /// Null rather than <c>"false"</c>: Blazor leaves an attribute out when its value is null, and
+    /// three buttons carrying <c>aria-current="false"</c> is noise in the accessibility tree.
+    /// </remarks>
+    private string? AriaCurrent(SortField sort) => sort == _sort ? "true" : null;
 
     /// <summary>
     /// The title, at the level the host asked for. Razor has no syntax for a computed
@@ -193,10 +260,10 @@ public partial class Variabelutforsker : ComponentBase
 
         // Fixed, spread-out sequence numbers: each Felt call writes its own contiguous block,
         // so the renderer's diff sees a stable tree across renders.
-        Felt(builder, 100, T.FeltKode, v.Code, forste: true);
-        Felt(builder, 200, T.FeltKilde, v.KildeName, forste: false);
-        Felt(builder, 300, T.FeltDatasamling, v.DatasamlingName, forste: false);
-        Felt(builder, 400, T.FeltPeriode, Perioden(v), forste: false);
+        Felt(builder, 100, T.FieldCode, v.Code, forste: true);
+        Felt(builder, 200, T.FieldSource, v.KildeName, forste: false);
+        Felt(builder, 300, T.FieldDataCollection, v.DatasamlingName, forste: false);
+        Felt(builder, 400, T.FieldPeriod, Perioden(v), forste: false);
 
         builder.CloseElement();
     };
@@ -262,19 +329,129 @@ public partial class Variabelutforsker : ComponentBase
             return;
         }
 
+        // A different search is a different result set; page 7 of the old one means nothing in it.
+        _page = 1;
+
+        // The live contents of the box, which is what submitting means.
+        await FetchAsync(_sok);
+
+        await NotifySokChangedAsync();
+    }
+
+    /// <summary>
+    /// Sort by <paramref name="sort"/>: the active field again reverses the direction, another
+    /// field starts ascending. Runa's rule, moved off the column header it used to live on.
+    /// </summary>
+    private async Task SortAsync(SortField sort)
+    {
+        // Dropped rather than queued while a fetch is in flight, the same as a second submit. The
+        // guard comes first on purpose: changing the state and then not fetching would leave a
+        // button saying the list is ordered one way while it is still ordered the other.
+        if (_laster)
+        {
+            return;
+        }
+
+        // Kept so a failed fetch can put them back — see below.
+        var previousSort = _sort;
+        var previousDirection = _direction;
+
+        if (sort == _sort)
+        {
+            _direction = _direction == SortDirection.Ascending
+                ? SortDirection.Descending
+                : SortDirection.Ascending;
+        }
+        else
+        {
+            _sort = sort;
+            _direction = SortDirection.Ascending;
+        }
+
+        // Reordering renumbers every page, so the page the user is on is no longer the same rows.
+        _page = 1;
+
+        // _utfortSok, not _sok. Sorting is not searching: a click blurs the field first, so by the
+        // time this runs the box's contents have already been written to _sok — text the user may
+        // never have submitted. Fetching with it would run a search nobody asked for, quietly,
+        // under a status line that then described the accidental search instead of saying anything
+        // moved. It would also desynchronise the host, whose URL only follows SokChanged.
+        if (!await FetchAsync(_utfortSok))
+        {
+            // The same invariant the _laster guard above protects, on the path that guard cannot
+            // see: the list is still in the old order, so the buttons have to say so. Left moved,
+            // they would claim an order the API never delivered — and pressing the same button
+            // again would take the reversal branch and ask for descending, with no way back to the
+            // ascending fetch that just failed short of cycling twice.
+            _sort = previousSort;
+            _direction = previousDirection;
+        }
+    }
+
+    /// <summary>
+    /// Tell the host what was searched for, so it can reflect it in its own URL.
+    /// </summary>
+    /// <remarks>
+    /// Raised whether or not the fetch succeeded, which is what <see cref="SokChanged"/> documents:
+    /// a host whose URL kept the previous query after a failed search would hand out a link that
+    /// reloads into a different search than the box on screen is showing.
+    /// </remarks>
+    private async Task NotifySokChangedAsync()
+    {
+        if (!SokChanged.HasDelegate)
+        {
+            return;
+        }
+
+        try
+        {
+            await SokChanged.InvokeAsync(_sok);
+        }
+        catch (NavigationException)
+        {
+            // A host that navigates from its handler. During static SSR that is signalled by this
+            // exception and the framework turns it into the redirect, so swallowing it would drop
+            // the navigation on the floor.
+            throw;
+        }
+        catch (Exception)
+        {
+            // The host's handler threw, and a NavigationManager call or a CMS URL rewrite is
+            // exactly the kind that does. Left unhandled it would propagate out of Blazor's event
+            // dispatch — and this same path runs from OnInitializedAsync, so during initial render
+            // too. In helsedata's legacy Blazor Server host inside Optimizely that tears down the
+            // circuit for the whole CMS page, not just this component.
+            //
+            // Nothing is said to the reader on top of what the search already reported for itself,
+            // success or failure. What broke here is the host's own URL, which is the host's bug to
+            // find in the host's logs — and reporting it as "Kunne ikke hente variabler" would
+            // blame the API for a call the API was never part of.
+        }
+    }
+
+    /// <summary>Fetch <paramref name="sok"/> at the current page and ordering. True when it succeeded.</summary>
+    /// <remarks>
+    /// The search is a parameter rather than read from <c>_sok</c>, because the two callers do not
+    /// mean the same thing by it: searching means the live contents of the box, sorting means the
+    /// text the visible rows actually came from.
+    /// </remarks>
+    private async Task<bool> FetchAsync(string? sok)
+    {
         _laster = true;
         _feil = null;
         StateHasChanged();
 
         try
         {
-            _resultat = await Client.SokVariablerAsync(_sok, side: 1, sideStorrelse: SideStorrelse);
-            _utfortSok = Renset(_sok);
+            _resultat = await Client.SokVariablerAsync(
+                sok,
+                side: _page,
+                sideStorrelse: SideStorrelse,
+                sort: _sort,
+                direction: _direction);
+            _utfortSok = Renset(sok);
 
-            if (SokChanged.HasDelegate)
-            {
-                await SokChanged.InvokeAsync(_sok);
-            }
+            return true;
         }
         catch (Exception)
         {
@@ -282,6 +459,8 @@ public partial class Variabelutforsker : ComponentBase
             // not on the page.
             _resultat = null;
             _feil = T.Feil;
+
+            return false;
         }
         finally
         {
@@ -313,35 +492,90 @@ public partial class Variabelutforsker : ComponentBase
         string SokLedetekst,
         string SokPlassholder,
         string SokKnapp,
+        string SortBy,
         string Laster,
         string Feil,
         string IkkeOppgitt,
-        string FeltKode,
-        string FeltKilde,
-        string FeltDatasamling,
-        string FeltPeriode,
-        Func<int, int, string?, string> Treff,
+        string SortDefault,
+        string FieldCode,
+        string FieldSource,
+        string FieldDataCollection,
+        string FieldVariableGroup,
+        string FieldPeriod,
+        string Ascending,
+        string Descending,
+        // (field, direction) — the active sort button's label.
+        Func<string, string, string> ActiveLabel,
+        // (shown, total, search, field, direction) — the whole result sentence. The ordering clause
+        // is part of it rather than appended by the caller, so a language whose grammar puts the
+        // ordering first can say it that way instead of inheriting Norwegian's clause order.
+        Func<int, int, string?, string, string, string> Treff,
         Func<string?, string> IngenTreff)
     {
+        /// <summary>
+        /// The label for a sort order. The three that name one field use the same words the result
+        /// cards label that value with, so the button and the line it orders say the same thing.
+        /// </summary>
+        /// <remarks>
+        /// Every member has its own arm, and an unknown one throws rather than falling through to
+        /// the default order's label: a member added to <see cref="SortField"/> without a label here
+        /// would otherwise put a button on screen claiming an order it does not ask for.
+        /// </remarks>
+        public string FieldLabel(SortField sort) => sort switch
+        {
+            // Not "Navn". The API's default order leads with kilde, not the name — see the remarks
+            // on SortField.Default — so a button labelled Navn would describe an order the list is
+            // not in, which is the one thing the live-region announcement exists to get right.
+            SortField.Default => SortDefault,
+            SortField.Kilde => FieldSource,
+            SortField.Datasamling => FieldDataCollection,
+            SortField.Variabelgruppe => FieldVariableGroup,
+            _ => throw new ArgumentOutOfRangeException(nameof(sort), sort, "No label for this sort field.")
+        };
+
+        /// <summary>The word for a direction, as the status line and the active button say it.</summary>
+        /// <remarks>
+        /// A switch with an arm per member rather than "descending, else ascending", for the same
+        /// reason <see cref="FieldLabel"/> is one: a member added to <see cref="SortDirection"/>
+        /// without a word here would be announced as ascending, and a list announced as ordered the
+        /// opposite way to the order it is in is worse than one that fails loudly.
+        /// </remarks>
+        public string DirectionName(SortDirection direction) => direction switch
+        {
+            SortDirection.Ascending => Ascending,
+            SortDirection.Descending => Descending,
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(direction), direction, "No name for this sort direction.")
+        };
+
         private static readonly Tekster No = new(
             Tittel: "Variabelutforsker",
             SokLedetekst: "Søk i variabler",
             SokPlassholder: "Søk etter variabelnavn eller kode",
             SokKnapp: "Søk",
+            SortBy: "Sorter etter",
             Laster: "Henter variabler …",
             Feil: "Kunne ikke hente variabler nå. Prøv igjen om litt.",
             IkkeOppgitt: "Ikke oppgitt",
-            FeltKode: "Kode",
-            FeltKilde: "Datakilde",
-            FeltDatasamling: "Datasamling",
-            FeltPeriode: "Periode",
-            Treff: (vist, total, sok) =>
+            SortDefault: "Standard",
+            FieldCode: "Kode",
+            FieldSource: "Datakilde",
+            FieldDataCollection: "Datasamling",
+            FieldVariableGroup: "Variabelgruppe",
+            FieldPeriod: "Periode",
+            Ascending: "stigende",
+            Descending: "synkende",
+            ActiveLabel: (field, direction) => $"{field} ({direction})",
+            // The whole sentence, ordering clause included, because the comma and where the clause
+            // sits are this language's grammar and not something to fix in C#.
+            Treff: (shown, total, search, field, direction) =>
             {
                 var antall = total == 1 ? "1 variabel" : $"{total} variabler";
                 // Only the first page is fetched, so say so rather than captioning 25 rows
                 // with a count of 312.
-                var basis = vist < total ? $"Viser {vist} av {antall} funnet" : $"{antall} funnet";
-                return sok is null ? basis : $"{basis} for «{sok}»";
+                var basis = shown < total ? $"Viser {shown} av {antall} funnet" : $"{antall} funnet";
+                var forSok = search is null ? "" : $" for «{search}»";
+                return $"{basis}{forSok}, sortert på {field}, {direction}";
             },
             IngenTreff: sok => sok is null
                 ? "Ingen variabler passet søket."
@@ -352,18 +586,25 @@ public partial class Variabelutforsker : ComponentBase
             SokLedetekst: "Search variables",
             SokPlassholder: "Search by variable name or code",
             SokKnapp: "Search",
+            SortBy: "Sort by",
             Laster: "Loading variables …",
             Feil: "Could not load variables right now. Please try again shortly.",
             IkkeOppgitt: "Not specified",
-            FeltKode: "Code",
-            FeltKilde: "Data source",
-            FeltDatasamling: "Data collection",
-            FeltPeriode: "Period",
-            Treff: (vist, total, sok) =>
+            SortDefault: "Default",
+            FieldCode: "Code",
+            FieldSource: "Data source",
+            FieldDataCollection: "Data collection",
+            FieldVariableGroup: "Variable group",
+            FieldPeriod: "Period",
+            Ascending: "ascending",
+            Descending: "descending",
+            ActiveLabel: (field, direction) => $"{field} ({direction})",
+            Treff: (shown, total, search, field, direction) =>
             {
                 var antall = total == 1 ? "1 variable" : $"{total} variables";
-                var basis = vist < total ? $"Showing {vist} of {antall} found" : $"{antall} found";
-                return sok is null ? basis : $"{basis} for “{sok}”";
+                var basis = shown < total ? $"Showing {shown} of {antall} found" : $"{antall} found";
+                var forSok = search is null ? "" : $" for “{search}”";
+                return $"{basis}{forSok}, sorted by {field}, {direction}";
             },
             IngenTreff: sok => sok is null
                 ? "No variables matched your search."
