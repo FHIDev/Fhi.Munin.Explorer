@@ -7,11 +7,11 @@ namespace Fhi.Munin.Explorer.Contracts;
 /// <c>GET /api/explorer/kilder/{id}/hierarchy</c>.
 /// </summary>
 /// <remarks>
-/// Deliberately thinner than <see cref="KildeDetalj"/>: ids, names and counts only, because this
+/// Deliberately thinner than <see cref="KildeDetail"/>: ids, names and counts only, because this
 /// is what a filter tree needs and the detail payload is an order of magnitude larger. Fetch this
 /// to draw the tree, and the detail endpoint when the user opens something.
 /// </remarks>
-public sealed record KildeHierarki
+public sealed record KildeHierarchy
 {
     [JsonPropertyName("kildeId")] public Guid KildeId { get; init; }
     [JsonPropertyName("kildeName")] public string KildeName { get; init; } = "";
@@ -19,14 +19,14 @@ public sealed record KildeHierarki
     /// <summary>Visible published variables under the whole kilde.</summary>
     [JsonPropertyName("totalVariableCount")] public int TotalVariableCount { get; init; }
 
-    [JsonPropertyName("delkilder")] public IReadOnlyList<HierarkiDelkilde> Delkilder { get; init; } = [];
+    [JsonPropertyName("delkilder")] public IReadOnlyList<HierarchyDelkilde> Delkilder { get; init; } = [];
 
     /// <summary>Datasamlinger that belong to the kilde itself rather than to any delkilde.</summary>
-    [JsonPropertyName("directDatasamlinger")] public IReadOnlyList<HierarkiDatasamling> DirectDatasamlinger { get; init; } = [];
+    [JsonPropertyName("directDatasamlinger")] public IReadOnlyList<HierarchyDatasamling> DirectDatasamlinger { get; init; } = [];
 }
 
 /// <summary>A delkilde node in the tree.</summary>
-public sealed record HierarkiDelkilde
+public sealed record HierarchyDelkilde
 {
     [JsonPropertyName("id")] public Guid Id { get; init; }
     [JsonPropertyName("name")] public string Name { get; init; } = "";
@@ -34,30 +34,30 @@ public sealed record HierarkiDelkilde
     /// <summary>Visible published variables under this delkilde, including its children.</summary>
     [JsonPropertyName("variableCount")] public int VariableCount { get; init; }
 
-    [JsonPropertyName("datasamlinger")] public IReadOnlyList<HierarkiDatasamling> Datasamlinger { get; init; } = [];
+    [JsonPropertyName("datasamlinger")] public IReadOnlyList<HierarchyDatasamling> Datasamlinger { get; init; } = [];
 
     /// <summary>
     /// Variabelgrupper under the delkilde that are not tied to any of its datasamlinger. They
     /// would otherwise be invisible in a tree drawn datasamling-first.
     /// </summary>
-    [JsonPropertyName("unassignedVariabelgrupper")] public IReadOnlyList<HierarkiVariabelgruppe> UnassignedVariabelgrupper { get; init; } = [];
+    [JsonPropertyName("unassignedVariabelgrupper")] public IReadOnlyList<HierarchyVariabelgruppe> UnassignedVariabelgrupper { get; init; } = [];
 
     /// <summary>Nested delkilder — walk recursively.</summary>
-    [JsonPropertyName("children")] public IReadOnlyList<HierarkiDelkilde> Children { get; init; } = [];
+    [JsonPropertyName("children")] public IReadOnlyList<HierarchyDelkilde> Children { get; init; } = [];
 
     /// <summary>Curated display order; null when unordered.</summary>
     [JsonPropertyName("presentationOrder")] public int? PresentationOrder { get; init; }
 }
 
 /// <summary>A datasamling node in the tree.</summary>
-public sealed record HierarkiDatasamling
+public sealed record HierarchyDatasamling
 {
     [JsonPropertyName("id")] public Guid Id { get; init; }
     [JsonPropertyName("name")] public string Name { get; init; } = "";
     [JsonPropertyName("variableCount")] public int VariableCount { get; init; }
 
     /// <summary>Top-level variabelgrupper; each carries its own children.</summary>
-    [JsonPropertyName("variabelgrupper")] public IReadOnlyList<HierarkiVariabelgruppe> Variabelgrupper { get; init; } = [];
+    [JsonPropertyName("variabelgrupper")] public IReadOnlyList<HierarchyVariabelgruppe> Variabelgrupper { get; init; } = [];
 
     /// <summary>Curated display order; null when unordered.</summary>
     [JsonPropertyName("presentationOrder")] public int? PresentationOrder { get; init; }
@@ -73,12 +73,12 @@ public sealed record HierarkiDatasamling
 }
 
 /// <summary>A variabelgruppe node in the tree.</summary>
-public sealed record HierarkiVariabelgruppe
+public sealed record HierarchyVariabelgruppe
 {
     [JsonPropertyName("id")] public Guid Id { get; init; }
     [JsonPropertyName("name")] public string Name { get; init; } = "";
     [JsonPropertyName("variableCount")] public int VariableCount { get; init; }
 
     /// <summary>Nested groups — walk recursively.</summary>
-    [JsonPropertyName("childVariabelgrupper")] public IReadOnlyList<HierarkiVariabelgruppe> ChildVariabelgrupper { get; init; } = [];
+    [JsonPropertyName("childVariabelgrupper")] public IReadOnlyList<HierarchyVariabelgruppe> ChildVariabelgrupper { get; init; } = [];
 }

@@ -27,7 +27,7 @@ internal sealed class BearerTokenHandler(IMuninExplorerTokenProvider tokenProvid
     {
         if (request.Headers.Authorization is null)
         {
-            var token = await tokenProvider.HentTokenAsync(cancellationToken);
+            var token = await tokenProvider.GetTokenAsync(cancellationToken);
 
             if (!string.IsNullOrWhiteSpace(token))
             {
@@ -46,8 +46,8 @@ internal sealed class BearerTokenHandler(IMuninExplorerTokenProvider tokenProvid
 /// The default when no host registers one: never supplies a token, so the explorer calls
 /// Munin anonymously exactly as it did before the seam existed.
 /// </summary>
-internal sealed class AnonymTokenProvider : IMuninExplorerTokenProvider
+internal sealed class AnonymousTokenProvider : IMuninExplorerTokenProvider
 {
-    public Task<string?> HentTokenAsync(CancellationToken cancellationToken = default)
+    public Task<string?> GetTokenAsync(CancellationToken cancellationToken = default)
         => Task.FromResult<string?>(null);
 }

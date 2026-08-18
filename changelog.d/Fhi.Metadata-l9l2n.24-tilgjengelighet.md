@@ -1,5 +1,5 @@
 category: Fixed
-- Accessibility pass over `Variabelutforsker`. The result summary now names the search it
+- Accessibility pass over `VariableExplorer`. The result summary now names the search it
   describes and says when only the first page is shown; failures are announced assertively
   through a `role="alert"` region instead of politely alongside the count; the result list has
   an accessible name; the Søk button is no longer disabled mid-search, which used to drop focus

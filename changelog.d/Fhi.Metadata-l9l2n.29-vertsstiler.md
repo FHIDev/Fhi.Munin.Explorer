@@ -5,4 +5,4 @@ category: Notes for hosts
   everyone rather than shown as an em dash and whispered to assistive technology. What is still
   the host's to get right is a visible focus indicator on the search field and the Søk button
   (WCAG 2.4.7) and text and non-text contrast (WCAG 1.4.3, 1.4.11) — the package ships no CSS,
-  so it cannot supply either. Both are listed on the doc comment on `Variabelutforsker`.
+  so it cannot supply either. Both are listed on the doc comment on `VariableExplorer`.

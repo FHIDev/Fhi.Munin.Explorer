@@ -8,7 +8,7 @@
    Every class name below is one Fhi.Helsedata.Stiler already defines, and the shapes are
    lifted from helsedata's own datakildeutforsker (Features/DataSources/DataSourceComponent):
    a searchbox with the submit button inside the field, and results as a card list. Inventing
-   `variabelutforsker-*` names — which is what this used to do — meant the host stylesheet had
+   `variable-explorer-*` names — which is what this used to do — meant the host stylesheet had
    never heard of them, so the Søk button, the search field and the table headers rendered as
    raw browser defaults inside an otherwise styled page. Matching helsedata without guessing is
    the entire reason this ships as a component, so the names have to be theirs.
@@ -26,22 +26,22 @@
 @* The one name here that is not Stiler's. It carries no styling — nothing in this package or
    in Stiler defines a rule for it — and exists so the component can be found in the DOM of a
    CMS page that renders a hundred other things. *@
-<section class="variabelutforsker" aria-labelledby="@TittelId">
-    @* Rendered from OverskriftNivaa rather than hard-coded to h2: the level that keeps the
+<section class="variable-explorer" aria-labelledby="@TitleId">
+    @* Rendered from HeadingLevel rather than hard-coded to h2: the level that keeps the
        document outline unbroken is only knowable at the mount site. *@
-    @Overskrift
+    @Heading
 
     @* role="search" makes this a search landmark, and aria-labelledby names it after this
        instance's title so two explorers on one page are told apart in a landmark list. *@
     <form role="search"
-          aria-labelledby="@TittelId"
-          @onsubmit="SokAsync"
+          aria-labelledby="@TitleId"
+          @onsubmit="SearchAsync"
           @onsubmit:preventDefault="true">
         @* A visible label, deliberately, where helsedata's datakildeutforsker uses a bare
            aria-label. `form-element__label` is Stiler's own label style, so it costs nothing
            to keep the text on screen — and a visible label serves far more people than an
            invisible one. *@
-        <label class="form-element__label" for="@SokId">@T.SokLedetekst</label>
+        <label class="form-element__label" for="@SearchId">@T.SearchLabel</label>
 
         @* searchbox__freetext reserves 104px of right padding for a button sitting inside the
            field, which is what searchbox__freetext-submit-button positions there. Both come
@@ -61,20 +61,20 @@
                event reaches the circuit before @onsubmit does. The event is spelled out rather
                than left implicit so nobody "helpfully" restores oninput. *@
             <input class="searchbox__freetext"
-                   id="@SokId"
+                   id="@SearchId"
                    type="search"
-                   @bind="_sok"
+                   @bind="_search"
                    @bind:event="onchange"
-                   placeholder="@T.SokPlassholder"
+                   placeholder="@T.SearchPlaceholder"
                    autocomplete="off"
                    maxlength="200" />
             @* Deliberately NOT disabled while a search runs. Disabling the element that
                currently has focus drops focus to <body>, so a keyboard user who just pressed
                Enter on Søk loses their place and starts tabbing from the top of the page
-               again. SokAsync ignores a second submit while one is in flight instead, which
+               again. SearchAsync ignores a second submit while one is in flight instead, which
                stops the double request without touching focus. *@
             <button class="hd-button-square button-square--primary searchbox__freetext-submit-button"
-                    type="submit">@T.SokKnapp</button>
+                    type="submit">@T.SearchButton</button>
         </div>
     </form>
 
@@ -126,17 +126,17 @@
        section of somebody else's page, and duplicating the sentence outside the live region
        would put it on screen twice. *@
     <p class="caption" role="status" aria-live="polite" aria-atomic="true">
-        @if (_laster)
+        @if (_loading)
         {
-            @T.Laster
+            @T.Loading
         }
-        else if (_resultat is { Items.Count: > 0 })
+        else if (_result is { Items.Count: > 0 })
         {
-            @Sammendrag
+            @Summary
         }
-        else if (_resultat is not null)
+        else if (_result is not null)
         {
-            @T.IngenTreff(_utfortSok)
+            @T.NoResults(_executedSearch)
         }
     </p>
 
@@ -147,13 +147,13 @@
        its own precisely because it is always present — an `infobox` here would draw an empty
        coloured box on every page that has nothing to report. *@
     <div role="alert" aria-live="assertive" aria-atomic="true">
-        @if (_feil is not null)
+        @if (_error is not null)
         {
-            <p class="infobox infobox--bg-yellow">@_feil</p>
+            <p class="infobox infobox--bg-yellow">@_error</p>
         }
     </div>
 
-    @if (_resultat is { Items.Count: > 0 })
+    @if (_result is { Items.Count: > 0 })
     {
         @if (ShowPager)
         {
@@ -178,8 +178,8 @@
            aria-label rather than aria-labelledby: the name is the same sentence the status line
            above shows, and pointing at that element would make the list's name change under a
            screen reader every time the status line does. *@
-        <ul class="datasourcecard-list" aria-label="@Sammendrag" aria-busy="@Opptatt">
-            @foreach (var v in _resultat.Items)
+        <ul class="datasourcecard-list" aria-label="@Summary" aria-busy="@Busy">
+            @foreach (var v in _result.Items)
             {
                 <li class="datasourcecard-list__item">
                     @* Stiler gives .datasourcecard a pointer cursor because on helsedata's page
@@ -187,17 +187,17 @@
                        URL in the Explorer API yet, so ours is not a link; when that endpoint
                        lands the heading becomes an anchor and the card is already right. *@
                     <div class="datasourcecard">
-                        @RadOverskrift(v)
-                        @Infolinje(v)
-                        @if (!string.IsNullOrWhiteSpace(v.Beskrivelse))
+                        @RowHeading(v)
+                        @InfoLine(v)
+                        @if (!string.IsNullOrWhiteSpace(v.Description))
                         {
                             <div class="datasourcecard__intro">
                                 @* lang on the data itself, not on the whole list: the field
-                                   labels around it follow Sprak, but Munin's descriptions are
+                                   labels around it follow Language, but Munin's descriptions are
                                    Norwegian whatever language the surrounding UI is in, and an
                                    English synthesiser reading Norwegian is unintelligible
                                    (WCAG 3.1.2). *@
-                                <p lang="no">@v.Beskrivelse</p>
+                                <p lang="no">@v.Description</p>
                             </div>
                         }
                     </div>

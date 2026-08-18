@@ -61,18 +61,18 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// assistive technology.
 /// </para>
 /// </remarks>
-public partial class Variabelutforsker : ComponentBase
+public partial class VariableExplorer : ComponentBase
 {
     /// <summary>
     /// Initial search text. Set by the host, typically from a URL query parameter — the
     /// component has no NavigationManager and no URL logic of its own, because the CMS
     /// host owns routing.
     /// </summary>
-    [Parameter] public string? Sok { get; set; }
+    [Parameter] public string? Search { get; set; }
 
     /// <summary>
     /// Raised when the user searches, so the host can reflect it in its own URL.
-    /// The Sok/SokChanged naming gives the host <c>@bind-Sok</c> for free.
+    /// The Search/SearchChanged naming gives the host <c>@bind-Search</c> for free.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -88,7 +88,7 @@ public partial class Variabelutforsker : ComponentBase
     /// left to reach the host's circuit — see the catch in the component.
     /// </para>
     /// </remarks>
-    [Parameter] public EventCallback<string?> SokChanged { get; set; }
+    [Parameter] public EventCallback<string?> SearchChanged { get; set; }
 
     /// <summary>Rows per page. Clamped to 1–100, the range the API itself accepts.</summary>
     /// <remarks>
@@ -113,7 +113,7 @@ public partial class Variabelutforsker : ComponentBase
     /// zero or negative page size would otherwise make the page arithmetic on this side meaningless.
     /// </para>
     /// </remarks>
-    [Parameter] public int SideStorrelse { get; set; } = 25;
+    [Parameter] public int PageSize { get; set; } = 25;
 
     /// <summary>
     /// <c>"no"</c> or <c>"en"</c>. Matches helsedata's own culture tokens rather than
@@ -126,7 +126,7 @@ public partial class Variabelutforsker : ComponentBase
     /// variable names and descriptions coming from Munin are Norwegian either way, and the
     /// result rows are marked as Norwegian for exactly that reason.
     /// </remarks>
-    [Parameter] public string Sprak { get; set; } = "no";
+    [Parameter] public string Language { get; set; } = "no";
 
     /// <summary>
     /// Heading level for the component's own title, 1–6. Defaults to <c>2</c>.
@@ -146,14 +146,14 @@ public partial class Variabelutforsker : ComponentBase
     /// a worse failure than an approximately-right one.
     /// </para>
     /// </remarks>
-    [Parameter] public int OverskriftNivaa { get; set; } = 2;
+    [Parameter] public int HeadingLevel { get; set; } = 2;
 
     [Inject] private IMuninExplorerClient Client { get; set; } = null!;
 
-    private string? _sok;
-    private bool _laster;
-    private string? _feil;
-    private Side<VariabelSammendrag>? _resultat;
+    private string? _search;
+    private bool _loading;
+    private string? _error;
+    private Page<VariableSummary>? _result;
 
     // The API's own default order, ascending, which is also where Runa starts — and the order the
     // API returns when it is asked for none, so the first render costs no extra query parameters.
@@ -165,8 +165,8 @@ public partial class Variabelutforsker : ComponentBase
     // still looking at page 7 shows them rows from the middle of a sequence they never saw the
     // start of — so the resets live next to the field rather than at the call sites.
     //
-    // Private, and reached only through GoToPageAsync. The host has no Side parameter and no
-    // SideChanged callback, deliberately: the page number belongs in the host's URL alongside the
+    // Private, and reached only through GoToPageAsync. The host has no Page parameter and no
+    // PageChanged callback, deliberately: the page number belongs in the host's URL alongside the
     // search text, and that contract is still being designed. One field and one method is the
     // smallest thing for it to hook into when it arrives; a public parameter now would be a shape
     // it had to keep.
@@ -194,27 +194,27 @@ public partial class Variabelutforsker : ComponentBase
     private static readonly SortField[] Sortable = Enum.GetValues<SortField>();
 
     // The search text the visible result actually came from, which is not the same as the
-    // text in the box: @bind writes _sok on blur, so the box can hold an unsubmitted query
+    // text in the box: @bind writes _search on blur, so the box can hold an unsubmitted query
     // while the table below still shows the previous one. The announcement has to describe
     // what is on screen.
-    private string? _utfortSok;
+    private string? _executedSearch;
 
     // Unique per instance so two explorers on one page cannot collide on DOM ids,
     // which would be a WCAG 4.1.1 failure as well as breaking label association.
-    private readonly string _instans = Guid.NewGuid().ToString("N")[..8];
-    private string SokId => $"variabelutforsker-sok-{_instans}";
-    private string TittelId => $"variabelutforsker-tittel-{_instans}";
-    private string PaginationId => $"variabelutforsker-pagination-{_instans}";
+    private readonly string _instance = Guid.NewGuid().ToString("N")[..8];
+    private string SearchId => $"variable-explorer-search-{_instance}";
+    private string TitleId => $"variable-explorer-title-{_instance}";
+    private string PaginationId => $"variable-explorer-pagination-{_instance}";
 
-    private Tekster T => Tekster.For(Sprak);
+    private Texts T => Texts.For(Language);
 
-    private string Opptatt => _laster ? "true" : "false";
+    private string Busy => _loading ? "true" : "false";
 
-    /// <summary>Rows per page as actually requested — see <see cref="SideStorrelse"/>.</summary>
-    private int PageSize => Math.Clamp(SideStorrelse, 1, 100);
+    /// <summary>Rows per page as actually requested — see <see cref="PageSize"/>.</summary>
+    private int ClampedPageSize => Math.Clamp(PageSize, 1, 100);
 
     /// <summary>How many variables the search matched, not how many are on screen.</summary>
-    private int TotalCount => _resultat?.TotalCount ?? 0;
+    private int TotalCount => _result?.TotalCount ?? 0;
 
     /// <summary>
     /// How many pages the result has. At least 1, so "Side 1 av 0" can never be written.
@@ -225,21 +225,21 @@ public partial class Variabelutforsker : ComponentBase
     /// a Neste button on screen for a page that does not exist. The arithmetic is kept as a fallback
     /// for a substituted <see cref="IMuninExplorerClient"/> that leaves the field at zero — claiming
     /// one page over three hundred rows would strand the reader on the first twenty-five of them.
-    /// It divides by <see cref="ResultPageSize"/> and not by <see cref="PageSize"/> for the same
-    /// reason: counting the pages against a size the rows were not built with would put the page
-    /// count and the row range on screen describing two different pagings of one result.
+    /// It divides by <see cref="ResultPageSize"/> and not by <see cref="ClampedPageSize"/> for the
+    /// same reason: counting the pages against a size the rows were not built with would put the
+    /// page count and the row range on screen describing two different pagings of one result.
     /// </remarks>
     private int TotalPages
     {
         get
         {
-            if (_resultat is null || TotalCount <= 0)
+            if (_result is null || TotalCount <= 0)
             {
                 return 1;
             }
 
-            return _resultat.TotalPages > 0
-                ? _resultat.TotalPages
+            return _result.TotalPages > 0
+                ? _result.TotalPages
                 : (int)Math.Ceiling(TotalCount / (double)ResultPageSize);
         }
     }
@@ -256,7 +256,7 @@ public partial class Variabelutforsker : ComponentBase
     /// pressed control out of the document drops focus to <c>&lt;body&gt;</c>. See
     /// <see cref="_keepPager"/> for the path that reaches a single page from a pager button.
     /// </remarks>
-    private bool ShowPager => _resultat is not null && (TotalPages > 1 || _keepPager);
+    private bool ShowPager => _result is not null && (TotalPages > 1 || _keepPager);
 
     /// <summary>The 1-based position of the first row on screen, or 0 when there are no rows.</summary>
     /// <remarks>
@@ -265,7 +265,7 @@ public partial class Variabelutforsker : ComponentBase
     /// off screen: a page with no rows on a non-zero total would otherwise read "Viser 26–0 av 312".
     /// </remarks>
     private int FirstItemOnPage =>
-        _resultat is null || _resultat.Items.Count == 0 ? 0 : ((ResultPage - 1) * ResultPageSize) + 1;
+        _result is null || _result.Items.Count == 0 ? 0 : ((ResultPage - 1) * ResultPageSize) + 1;
 
     /// <summary>
     /// The 1-based position of the last row on screen, counted from the rows actually delivered.
@@ -276,13 +276,13 @@ public partial class Variabelutforsker : ComponentBase
     /// itself truthfully.
     /// </remarks>
     private int LastItemOnPage =>
-        _resultat is null || _resultat.Items.Count == 0 ? 0 : FirstItemOnPage + _resultat.Items.Count - 1;
+        _result is null || _result.Items.Count == 0 ? 0 : FirstItemOnPage + _result.Items.Count - 1;
 
     /// <summary>
     /// The page size the visible result was actually built with, which is the server's answer when
     /// it gave one and what we asked for otherwise.
     /// </summary>
-    private int ResultPageSize => _resultat is { Size: > 0 } page ? page.Size : PageSize;
+    private int ResultPageSize => _result is { Size: > 0 } page ? page.Size : ClampedPageSize;
 
     /// <summary>
     /// The page the visible result actually is, which is the server's answer when it gave one and
@@ -294,7 +294,7 @@ public partial class Variabelutforsker : ComponentBase
     /// otherwise have the row range counted from the number that was asked for, so the status line
     /// would offer "Viser 276–300 av 200" over rows the reader is not looking at.
     /// </remarks>
-    private int ResultPage => _resultat is { Page: > 0 } page ? page.Page : _page;
+    private int ResultPage => _result is { PageNumber: > 0 } page ? page.PageNumber : _page;
 
     /// <summary>
     /// <c>"true"</c> on a pager button that would do nothing, and nothing at all on one that works.
@@ -317,7 +317,7 @@ public partial class Variabelutforsker : ComponentBase
     private static string? AriaDisabled(bool enabled) => enabled ? null : "true";
 
     /// <summary>The component's own heading level, clamped into the range that is a heading.</summary>
-    private int TittelNivaa => Math.Clamp(OverskriftNivaa, 1, 6);
+    private int TitleLevel => Math.Clamp(HeadingLevel, 1, 6);
 
     /// <summary>
     /// The heading level for a result card: one step below the component's own title, so the
@@ -329,7 +329,7 @@ public partial class Variabelutforsker : ComponentBase
     /// better of the two available answers — HTML has no <c>h7</c>, and dropping the headings
     /// altogether would cost the heading rotor these cards were given for.
     /// </remarks>
-    private int RadNivaa => Math.Clamp(TittelNivaa + 1, 1, 6);
+    private int RowLevel => Math.Clamp(TitleLevel + 1, 1, 6);
 
     /// <summary>
     /// One sentence describing the visible result, used both as the live announcement and
@@ -340,7 +340,7 @@ public partial class Variabelutforsker : ComponentBase
     /// It names the ordering as well as the count. Without column headers there is no
     /// <c>aria-sort</c> to carry that, so it rides along on the status line the component already
     /// has: pressing a sort button changes this sentence, and the polite, atomic live region reads
-    /// the whole of it back. The sentence is assembled inside <see cref="Tekster"/> rather than
+    /// the whole of it back. The sentence is assembled inside <see cref="Texts"/> rather than
     /// glued together here, so a language that has to state the ordering first can say it that way.
     /// </para>
     /// <para>
@@ -351,10 +351,10 @@ public partial class Variabelutforsker : ComponentBase
     /// already avoids, and because only one of the two copies would be announced.
     /// </para>
     /// </remarks>
-    private string Sammendrag => _resultat is null
+    private string Summary => _result is null
         ? ""
-        : T.Treff(FirstItemOnPage, LastItemOnPage, TotalCount, _utfortSok,
-                  T.FieldLabel(_sort), T.DirectionName(_direction));
+        : T.ResultSummary(FirstItemOnPage, LastItemOnPage, TotalCount, _executedSearch,
+                          T.FieldLabel(_sort), T.DirectionName(_direction));
 
     /// <summary>A sort button's label — the field, plus the direction when it is the active one.</summary>
     private string ButtonText(SortField sort) =>
@@ -367,9 +367,9 @@ public partial class Variabelutforsker : ComponentBase
     /// </summary>
     private string ButtonClass(SortField sort)
     {
-        var stil = sort == _sort ? "button-square--secondary" : "button-square--ghost";
+        var style = sort == _sort ? "button-square--secondary" : "button-square--ghost";
 
-        return $"hd-button-square {stil} margin-right margin-bottom";
+        return $"hd-button-square {style} margin-right margin-bottom";
     }
 
     /// <summary><c>"true"</c> on the active field, and nothing at all on the others.</summary>
@@ -388,17 +388,17 @@ public partial class Variabelutforsker : ComponentBase
     /// element, because the element is the host's choice: without it, mounting the explorer
     /// one level deeper would silently shrink its title.
     /// </remarks>
-    private RenderFragment Overskrift => builder =>
+    private RenderFragment Heading => builder =>
     {
-        builder.OpenElement(0, $"h{TittelNivaa}");
+        builder.OpenElement(0, $"h{TitleLevel}");
         builder.AddAttribute(1, "class", "headline headline-3");
-        builder.AddAttribute(2, "id", TittelId);
-        builder.AddContent(3, T.Tittel);
+        builder.AddAttribute(2, "id", TitleId);
+        builder.AddContent(3, T.Title);
         builder.CloseElement();
     };
 
     /// <summary>
-    /// A result card's heading — the variable's display name, at <see cref="RadNivaa"/>.
+    /// A result card's heading — the variable's display name, at <see cref="RowLevel"/>.
     /// </summary>
     /// <remarks>
     /// Giving every result a real heading is what lets a screen-reader user move between
@@ -406,9 +406,9 @@ public partial class Variabelutforsker : ComponentBase
     /// The size comes from <c>datasourcecard__heading</c>, so it stays card-sized whatever
     /// level the element ends up being.
     /// </remarks>
-    private RenderFragment RadOverskrift(VariabelSammendrag v) => builder =>
+    private RenderFragment RowHeading(VariableSummary v) => builder =>
     {
-        builder.OpenElement(0, $"h{RadNivaa}");
+        builder.OpenElement(0, $"h{RowLevel}");
         builder.AddAttribute(1, "class", "datasourcecard__heading");
         builder.AddAttribute(2, "lang", "no");
         builder.AddContent(3, v.PreferredTerm);
@@ -425,17 +425,17 @@ public partial class Variabelutforsker : ComponentBase
     /// and once the column headers of a table are gone "Inklusjon" on its own says nothing
     /// about which field it is.
     /// </remarks>
-    private RenderFragment Infolinje(VariabelSammendrag v) => builder =>
+    private RenderFragment InfoLine(VariableSummary v) => builder =>
     {
         builder.OpenElement(0, "span");
         builder.AddAttribute(1, "class", "datasourcecard__info");
 
-        // Fixed, spread-out sequence numbers: each Felt call writes its own contiguous block,
+        // Fixed, spread-out sequence numbers: each Field call writes its own contiguous block,
         // so the renderer's diff sees a stable tree across renders.
-        Felt(builder, 100, T.FieldCode, v.Code, forste: true);
-        Felt(builder, 200, T.FieldSource, v.KildeName, forste: false);
-        Felt(builder, 300, T.FieldDataCollection, v.DatasamlingName, forste: false);
-        Felt(builder, 400, T.FieldPeriod, Perioden(v), forste: false);
+        Field(builder, 100, T.FieldCode, v.Code, first: true);
+        Field(builder, 200, T.FieldSource, v.KildeName, first: false);
+        Field(builder, 300, T.FieldDataCollection, v.DatasamlingName, first: false);
+        Field(builder, 400, T.FieldPeriod, Period(v), first: false);
 
         builder.CloseElement();
     };
@@ -451,12 +451,12 @@ public partial class Variabelutforsker : ComponentBase
     /// it to assistive technology alone, and it means this markup needs no screen-reader-only
     /// rule from the host, which is just as well: Stiler has none.
     /// </remarks>
-    private void Felt(RenderTreeBuilder builder, int seq, string etikett, string? verdi, bool forste)
+    private void Field(RenderTreeBuilder builder, int seq, string label, string? value, bool first)
     {
         builder.OpenElement(seq, "span");
         builder.AddAttribute(seq + 1, "class", "datasourcecard__info--text");
 
-        if (!forste)
+        if (!first)
         {
             // Stiler's dot separator between card metadata items. Purely decorative and empty,
             // so it is kept out of the accessibility tree rather than left as a nameless node.
@@ -466,20 +466,20 @@ public partial class Variabelutforsker : ComponentBase
             builder.CloseElement();
         }
 
-        builder.AddContent(seq + 5, $"{etikett}: ");
+        builder.AddContent(seq + 5, $"{label}: ");
 
-        if (string.IsNullOrWhiteSpace(verdi))
+        if (string.IsNullOrWhiteSpace(value))
         {
-            builder.AddContent(seq + 6, T.IkkeOppgitt);
+            builder.AddContent(seq + 6, T.NotSpecified);
         }
         else
         {
-            // The label follows Sprak; the value does not. Munin's metadata is Norwegian
+            // The label follows Language; the value does not. Munin's metadata is Norwegian
             // whatever language the surrounding UI is in, and an English speech synthesiser
             // reading Norwegian variable names is unintelligible (WCAG 3.1.2).
             builder.OpenElement(seq + 7, "span");
             builder.AddAttribute(seq + 8, "lang", "no");
-            builder.AddContent(seq + 9, verdi);
+            builder.AddContent(seq + 9, value);
             builder.CloseElement();
         }
 
@@ -488,15 +488,15 @@ public partial class Variabelutforsker : ComponentBase
 
     protected override async Task OnInitializedAsync()
     {
-        _sok = Sok;
-        await SokAsync();
+        _search = Search;
+        await SearchAsync();
     }
 
-    private async Task SokAsync()
+    private async Task SearchAsync()
     {
         // Nothing disables the submit button while a search runs — see the comment on it in
         // the markup — so a second submit is dropped here instead.
-        if (_laster)
+        if (_loading)
         {
             return;
         }
@@ -506,9 +506,9 @@ public partial class Variabelutforsker : ComponentBase
         _keepPager = false;
 
         // The live contents of the box, which is what submitting means.
-        await FetchAsync(_sok);
+        await FetchAsync(_search);
 
-        await NotifySokChangedAsync();
+        await NotifySearchChangedAsync();
     }
 
     /// <summary>
@@ -520,7 +520,7 @@ public partial class Variabelutforsker : ComponentBase
         // Dropped rather than queued while a fetch is in flight, the same as a second submit. The
         // guard comes first on purpose: changing the state and then not fetching would leave a
         // button saying the list is ordered one way while it is still ordered the other.
-        if (_laster)
+        if (_loading)
         {
             return;
         }
@@ -545,14 +545,14 @@ public partial class Variabelutforsker : ComponentBase
         _page = 1;
         _keepPager = false;
 
-        // _utfortSok, not _sok. Sorting is not searching: a click blurs the field first, so by the
-        // time this runs the box's contents have already been written to _sok — text the user may
-        // never have submitted. Fetching with it would run a search nobody asked for, quietly,
-        // under a status line that then described the accidental search instead of saying anything
-        // moved. It would also desynchronise the host, whose URL only follows SokChanged.
-        if (!await FetchAsync(_utfortSok))
+        // _executedSearch, not _search. Sorting is not searching: a click blurs the field first, so
+        // by the time this runs the box's contents have already been written to _search — text the
+        // user may never have submitted. Fetching with it would run a search nobody asked for,
+        // quietly, under a status line that then described the accidental search instead of saying
+        // anything moved. It would also desynchronise the host, whose URL only follows SearchChanged.
+        if (!await FetchAsync(_executedSearch))
         {
-            // The same invariant the _laster guard above protects, on the path that guard cannot
+            // The same invariant the _loading guard above protects, on the path that guard cannot
             // see: the list is still in the old order, so the buttons have to say so. Left moved,
             // they would claim an order the API never delivered — and pressing the same button
             // again would take the reversal branch and ask for descending, with no way back to the
@@ -573,7 +573,7 @@ public partial class Variabelutforsker : ComponentBase
     /// once, here, instead of once per caller.
     /// </para>
     /// <para>
-    /// Not a search, so <see cref="SokChanged"/> is not raised: the host's URL follows what was
+    /// Not a search, so <see cref="SearchChanged"/> is not raised: the host's URL follows what was
     /// searched for, and turning a page did not change that.
     /// </para>
     /// </remarks>
@@ -583,7 +583,7 @@ public partial class Variabelutforsker : ComponentBase
         // sort click — and for the same reason the buttons carry aria-disabled instead of disabled:
         // neither is taken out of the document under the finger that pressed it, which is also why
         // a failed page turn below keeps the rows it already had.
-        if (_laster)
+        if (_loading)
         {
             return;
         }
@@ -600,7 +600,7 @@ public partial class Variabelutforsker : ComponentBase
         // Both kept so a failed fetch can put them back. The result as well as the number, because
         // the retreat below turns a second page and has to be able to undo both of them together.
         var previous = _page;
-        var previousResult = _resultat;
+        var previousResult = _result;
 
         // A pager button was pressed, so the pager stays until a search or a sort replaces the
         // result — including through a retreat that lands on a single-page answer.
@@ -613,7 +613,7 @@ public partial class Variabelutforsker : ComponentBase
         // it that is rendered conditionally — so a page turn that cleared the rows would take
         // Forrige and Neste out of the document in the same render that reports the error, drop
         // focus to <body>, and leave a keyboard user restarting from the top of the host's page.
-        if (!await FetchAsync(_utfortSok, keepResult: true))
+        if (!await FetchAsync(_executedSearch, keepResult: true))
         {
             // Nothing arrived, so the state has to keep describing what did — and what did is
             // still on screen. Same invariant the sort rollback protects.
@@ -634,7 +634,7 @@ public partial class Variabelutforsker : ComponentBase
     /// <em>previous</em> answer carried, so it can only ever ask for a page that existed when that
     /// answer was written. Two routes lead past it: the index shrinks between the two requests, and
     /// the API answers an out-of-range page with 404 — which
-    /// <see cref="IMuninExplorerClient.SokVariablerAsync"/> reports as an empty page rather than
+    /// <see cref="IMuninExplorerClient.SearchVariablesAsync"/> reports as an empty page rather than
     /// throwing, so no rollback runs.
     /// </para>
     /// <para>
@@ -656,9 +656,9 @@ public partial class Variabelutforsker : ComponentBase
     /// method exists to prevent.
     /// </para>
     /// </remarks>
-    private async Task RetreatFromEmptyPageAsync(int previous, Side<VariabelSammendrag>? previousResult)
+    private async Task RetreatFromEmptyPageAsync(int previous, Page<VariableSummary>? previousResult)
     {
-        if (_page == 1 || _resultat is not { Items.Count: 0 })
+        if (_page == 1 || _result is not { Items.Count: 0 })
         {
             return;
         }
@@ -669,7 +669,7 @@ public partial class Variabelutforsker : ComponentBase
         var last = TotalCount > 0 ? TotalPages : 1;
         _page = last < _page ? last : 1;
 
-        if (await FetchAsync(_utfortSok, keepResult: true))
+        if (await FetchAsync(_executedSearch, keepResult: true))
         {
             return;
         }
@@ -678,27 +678,27 @@ public partial class Variabelutforsker : ComponentBase
         // describing the last answer that did. keepResult held on to the empty page that started
         // the retreat, which is the one result that must not be the one left on screen.
         _page = previous;
-        _resultat = previousResult;
+        _result = previousResult;
     }
 
     /// <summary>
     /// Tell the host what was searched for, so it can reflect it in its own URL.
     /// </summary>
     /// <remarks>
-    /// Raised whether or not the fetch succeeded, which is what <see cref="SokChanged"/> documents:
-    /// a host whose URL kept the previous query after a failed search would hand out a link that
-    /// reloads into a different search than the box on screen is showing.
+    /// Raised whether or not the fetch succeeded, which is what <see cref="SearchChanged"/>
+    /// documents: a host whose URL kept the previous query after a failed search would hand out a
+    /// link that reloads into a different search than the box on screen is showing.
     /// </remarks>
-    private async Task NotifySokChangedAsync()
+    private async Task NotifySearchChangedAsync()
     {
-        if (!SokChanged.HasDelegate)
+        if (!SearchChanged.HasDelegate)
         {
             return;
         }
 
         try
         {
-            await SokChanged.InvokeAsync(_sok);
+            await SearchChanged.InvokeAsync(_search);
         }
         catch (NavigationException)
         {
@@ -722,12 +722,12 @@ public partial class Variabelutforsker : ComponentBase
         }
     }
 
-    /// <summary>Fetch <paramref name="sok"/> at the current page and ordering. True when it succeeded.</summary>
+    /// <summary>Fetch <paramref name="search"/> at the current page and ordering. True when it succeeded.</summary>
     /// <remarks>
     /// <para>
-    /// The search is a parameter rather than read from <c>_sok</c>, because the two callers do not
-    /// mean the same thing by it: searching means the live contents of the box, sorting means the
-    /// text the visible rows actually came from.
+    /// The search is a parameter rather than read from <c>_search</c>, because the two callers do
+    /// not mean the same thing by it: searching means the live contents of the box, sorting means
+    /// the text the visible rows actually came from.
     /// </para>
     /// <para>
     /// <paramref name="keepResult"/> keeps the rows already on screen when the call fails,
@@ -738,21 +738,21 @@ public partial class Variabelutforsker : ComponentBase
     /// standing on.
     /// </para>
     /// </remarks>
-    private async Task<bool> FetchAsync(string? sok, bool keepResult = false)
+    private async Task<bool> FetchAsync(string? search, bool keepResult = false)
     {
-        _laster = true;
-        _feil = null;
+        _loading = true;
+        _error = null;
         StateHasChanged();
 
         try
         {
-            _resultat = await Client.SokVariablerAsync(
-                sok,
-                side: _page,
-                sideStorrelse: PageSize,
+            _result = await Client.SearchVariablesAsync(
+                search,
+                page: _page,
+                pageSize: ClampedPageSize,
                 sort: _sort,
                 direction: _direction);
-            _utfortSok = Renset(sok);
+            _executedSearch = Trimmed(search);
 
             // The page we are on is the page that arrived, not the page that was asked for. A
             // server that clamps page 12 to page 8 and says so has answered truthfully, and
@@ -771,47 +771,47 @@ public partial class Variabelutforsker : ComponentBase
             // not on the page.
             if (!keepResult)
             {
-                _resultat = null;
+                _result = null;
             }
 
-            _feil = T.Feil;
+            _error = T.Error;
 
             return false;
         }
         finally
         {
-            _laster = false;
+            _loading = false;
         }
     }
 
-    private static string? Renset(string? tekst) =>
-        string.IsNullOrWhiteSpace(tekst) ? null : tekst.Trim();
+    private static string? Trimmed(string? text) =>
+        string.IsNullOrWhiteSpace(text) ? null : text.Trim();
 
-    private static string? Perioden(VariabelSammendrag v)
+    private static string? Period(VariableSummary v)
     {
-        var fra = v.DataFrom?.Year.ToString();
-        var til = v.DataTo?.Year.ToString();
-        return (fra, til) switch
+        var from = v.DataFrom?.Year.ToString();
+        var to = v.DataTo?.Year.ToString();
+        return (from, to) switch
         {
             (null, null) => null,
-            (not null, null) => $"{fra}–",
-            (null, not null) => $"–{til}",
-            _ => fra == til ? fra! : $"{fra}–{til}"
+            (not null, null) => $"{from}–",
+            (null, not null) => $"–{to}",
+            _ => from == to ? from! : $"{from}–{to}"
         };
     }
 
     /// <summary>
-    /// Self-contained translations. Deliberately not IStringLocalizer — see <see cref="Sprak"/>.
+    /// Self-contained translations. Deliberately not IStringLocalizer — see <see cref="Language"/>.
     /// </summary>
-    private sealed record Tekster(
-        string Tittel,
-        string SokLedetekst,
-        string SokPlassholder,
-        string SokKnapp,
+    private sealed record Texts(
+        string Title,
+        string SearchLabel,
+        string SearchPlaceholder,
+        string SearchButton,
         string SortBy,
-        string Laster,
-        string Feil,
-        string IkkeOppgitt,
+        string Loading,
+        string Error,
+        string NotSpecified,
         string SortDefault,
         string FieldCode,
         string FieldSource,
@@ -836,8 +836,8 @@ public partial class Variabelutforsker : ComponentBase
         // (from, to, total, search, field, direction) — the whole result sentence. The ordering
         // clause is part of it rather than appended by the caller, so a language whose grammar puts
         // the ordering first can say it that way instead of inheriting Norwegian's clause order.
-        Func<int, int, int, string?, string, string, string> Treff,
-        Func<string?, string> IngenTreff)
+        Func<int, int, int, string?, string, string, string> ResultSummary,
+        Func<string?, string> NoResults)
     {
         /// <summary>
         /// The label for a sort order. The three that name one field use the same words the result
@@ -875,15 +875,15 @@ public partial class Variabelutforsker : ComponentBase
                 nameof(direction), direction, "No name for this sort direction.")
         };
 
-        private static readonly Tekster No = new(
-            Tittel: "Variabelutforsker",
-            SokLedetekst: "Søk i variabler",
-            SokPlassholder: "Søk etter variabelnavn eller kode",
-            SokKnapp: "Søk",
+        private static readonly Texts No = new(
+            Title: "Variabelutforsker",
+            SearchLabel: "Søk i variabler",
+            SearchPlaceholder: "Søk etter variabelnavn eller kode",
+            SearchButton: "Søk",
             SortBy: "Sorter etter",
-            Laster: "Henter variabler …",
-            Feil: "Kunne ikke hente variabler nå. Prøv igjen om litt.",
-            IkkeOppgitt: "Ikke oppgitt",
+            Loading: "Henter variabler …",
+            Error: "Kunne ikke hente variabler nå. Prøv igjen om litt.",
+            NotSpecified: "Ikke oppgitt",
             SortDefault: "Standard",
             FieldCode: "Kode",
             FieldSource: "Datakilde",
@@ -902,30 +902,30 @@ public partial class Variabelutforsker : ComponentBase
             ActiveLabel: (field, direction) => $"{field} ({direction})",
             // The whole sentence, ordering clause included, because the comma and where the clause
             // sits are this language's grammar and not something to fix in C#.
-            Treff: (from, to, total, search, field, direction) =>
+            ResultSummary: (from, to, total, search, field, direction) =>
             {
-                var antall = total == 1 ? "1 variabel" : $"{total} variabler";
+                var count = total == 1 ? "1 variabel" : $"{total} variabler";
                 // One page of a longer list, so say which rows these are rather than captioning
                 // rows 26 to 50 as though they were the first 25 of 312.
-                var basis = from <= 1 && to >= total
-                    ? $"{antall} funnet"
-                    : $"Viser {from}–{to} av {antall} funnet";
-                var forSok = search is null ? "" : $" for «{search}»";
-                return $"{basis}{forSok}, sortert på {field}, {direction}";
+                var found = from <= 1 && to >= total
+                    ? $"{count} funnet"
+                    : $"Viser {from}–{to} av {count} funnet";
+                var forSearch = search is null ? "" : $" for «{search}»";
+                return $"{found}{forSearch}, sortert på {field}, {direction}";
             },
-            IngenTreff: sok => sok is null
+            NoResults: search => search is null
                 ? "Ingen variabler passet søket."
-                : $"Ingen variabler passet søket «{sok}».");
+                : $"Ingen variabler passet søket «{search}».");
 
-        private static readonly Tekster En = new(
-            Tittel: "Variable explorer",
-            SokLedetekst: "Search variables",
-            SokPlassholder: "Search by variable name or code",
-            SokKnapp: "Search",
+        private static readonly Texts En = new(
+            Title: "Variable explorer",
+            SearchLabel: "Search variables",
+            SearchPlaceholder: "Search by variable name or code",
+            SearchButton: "Search",
             SortBy: "Sort by",
-            Laster: "Loading variables …",
-            Feil: "Could not load variables right now. Please try again shortly.",
-            IkkeOppgitt: "Not specified",
+            Loading: "Loading variables …",
+            Error: "Could not load variables right now. Please try again shortly.",
+            NotSpecified: "Not specified",
             SortDefault: "Default",
             FieldCode: "Code",
             FieldSource: "Data source",
@@ -942,20 +942,20 @@ public partial class Variabelutforsker : ComponentBase
             NextLabel: "Next page",
             PageOf: (page, totalPages) => $"Page {page} of {totalPages}",
             ActiveLabel: (field, direction) => $"{field} ({direction})",
-            Treff: (from, to, total, search, field, direction) =>
+            ResultSummary: (from, to, total, search, field, direction) =>
             {
-                var antall = total == 1 ? "1 variable" : $"{total} variables";
-                var basis = from <= 1 && to >= total
-                    ? $"{antall} found"
-                    : $"Showing {from}–{to} of {antall} found";
-                var forSok = search is null ? "" : $" for “{search}”";
-                return $"{basis}{forSok}, sorted by {field}, {direction}";
+                var count = total == 1 ? "1 variable" : $"{total} variables";
+                var found = from <= 1 && to >= total
+                    ? $"{count} found"
+                    : $"Showing {from}–{to} of {count} found";
+                var forSearch = search is null ? "" : $" for “{search}”";
+                return $"{found}{forSearch}, sorted by {field}, {direction}";
             },
-            IngenTreff: sok => sok is null
+            NoResults: search => search is null
                 ? "No variables matched your search."
-                : $"No variables matched your search for “{sok}”.");
+                : $"No variables matched your search for “{search}”.");
 
-        public static Tekster For(string? sprak) =>
-            string.Equals(sprak, "en", StringComparison.OrdinalIgnoreCase) ? En : No;
+        public static Texts For(string? language) =>
+            string.Equals(language, "en", StringComparison.OrdinalIgnoreCase) ? En : No;
     }
 }

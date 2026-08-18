@@ -13,11 +13,12 @@ conventions a compiler cannot check. This file adds the Claude-Code-specific wor
 Three things here fail *silently* when broken — no build error, no failing test, just wrong
 behaviour found later by someone else.
 
-1. **Identifiers are English.** Norwegian is for user-facing strings, changelog fragments and
-   untranslatable domain terms (`kilde`, `datasamling`, `variabelgruppe`). Existing Norwegian
-   names are being renamed under `Fhi.Metadata-osxfx`, which must land **before the first
-   nuget.org publish** — the public surface becomes a breaking change afterwards. Reasoning in
-   `AGENTS.md`.
+1. **Identifiers are English.** Norwegian is for user-facing strings and untranslatable domain
+   terms (`kilde`, `datasamling`, `variabelgruppe`, `kildetype`, `kodeverk`). The Norwegian
+   names the package started with were renamed under `Fhi.Metadata-osxfx`, before the first
+   nuget.org publish, so there is no Norwegian half left to add to. A DTO property's C# name is
+   free to differ from its wire name — every one carries a `[JsonPropertyName]`, so the JSON
+   keeps Munin's spelling whatever the property is called. Reasoning in `AGENTS.md`.
 
 2. **Class names in markup belong to `Fhi.Helsedata.Stiler`, not to us.** Verify every one
    against Stiler's compiled `main.css` before using it. A name Stiler has never heard of

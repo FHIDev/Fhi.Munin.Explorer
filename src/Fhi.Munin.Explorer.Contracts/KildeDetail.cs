@@ -8,12 +8,12 @@ namespace Fhi.Munin.Explorer.Contracts;
 /// </summary>
 /// <remarks>
 /// Several fields exist twice — an own value and an <c>Effective…</c> value. Munin lets a
-/// datasamling or delkilde inherit dataansvarlig, databehandler, identification level and validity
-/// from its parent; the own value is null when nothing is set at that level, and the effective
-/// value is what actually applies. Comparing the two is how a UI shows "overridden here" rather
-/// than repeating the inherited value as if it were local.
+/// datasamling or delkilde inherit data controller, data processor, identification level and
+/// validity from its parent; the own value is null when nothing is set at that level, and the
+/// effective value is what actually applies. Comparing the two is how a UI shows "overridden here"
+/// rather than repeating the inherited value as if it were local.
 /// </remarks>
-public sealed record KildeDetalj
+public sealed record KildeDetail
 {
     [JsonPropertyName("id")] public Guid Id { get; init; }
 
@@ -23,34 +23,34 @@ public sealed record KildeDetalj
     /// <summary>Display name. The list endpoint calls the same value <c>navn</c>.</summary>
     [JsonPropertyName("preferredTerm")] public string PreferredTerm { get; init; } = "";
 
-    [JsonPropertyName("kortNavn")] public string? KortNavn { get; init; }
-    [JsonPropertyName("beskrivelse")] public string? Beskrivelse { get; init; }
+    [JsonPropertyName("kortNavn")] public string? ShortName { get; init; }
+    [JsonPropertyName("beskrivelse")] public string? Description { get; init; }
     [JsonPropertyName("kildetype")] public string Kildetype { get; init; } = "";
 
     /// <summary>The legal basis for collecting the data, as prose.</summary>
-    [JsonPropertyName("lovverk")] public string? Lovverk { get; init; }
+    [JsonPropertyName("lovverk")] public string? LegalBasis { get; init; }
 
-    [JsonPropertyName("dataansvarlig")] public string? Dataansvarlig { get; init; }
-    [JsonPropertyName("databehandler")] public string? Databehandler { get; init; }
+    [JsonPropertyName("dataansvarlig")] public string? DataController { get; init; }
+    [JsonPropertyName("databehandler")] public string? DataProcessor { get; init; }
 
     /// <summary>e.g. <c>indirectlyIdentifiable</c>. Null when not stated.</summary>
-    [JsonPropertyName("gradAvPersonidentifikasjon")] public string? GradAvPersonidentifikasjon { get; init; }
+    [JsonPropertyName("gradAvPersonidentifikasjon")] public string? PersonIdentificationLevel { get; init; }
 
-    [JsonPropertyName("gyldigFra")] public DateTimeOffset? GyldigFra { get; init; }
+    [JsonPropertyName("gyldigFra")] public DateTimeOffset? ValidFrom { get; init; }
 
     /// <summary>End of the period of validity; null means ongoing.</summary>
-    [JsonPropertyName("gyldigTil")] public DateTimeOffset? GyldigTil { get; init; }
+    [JsonPropertyName("gyldigTil")] public DateTimeOffset? ValidTo { get; init; }
 
-    [JsonPropertyName("opprettet")] public DateTimeOffset Opprettet { get; init; }
-    [JsonPropertyName("sistOppdatert")] public DateTimeOffset SistOppdatert { get; init; }
+    [JsonPropertyName("opprettet")] public DateTimeOffset Created { get; init; }
+    [JsonPropertyName("sistOppdatert")] public DateTimeOffset LastUpdated { get; init; }
 
-    /// <summary>Curated free-form metadata; see <see cref="KildeSammendrag.AdditionalProperties"/>.</summary>
+    /// <summary>Curated free-form metadata; see <see cref="KildeSummary.AdditionalProperties"/>.</summary>
     [JsonPropertyName("additionalProperties")]
     public IReadOnlyDictionary<string, string?> AdditionalProperties { get; init; } =
         new Dictionary<string, string?>();
 
     /// <summary>Labels, grouping and order for the keys in <see cref="AdditionalProperties"/>.</summary>
-    [JsonPropertyName("propertyMetadata")] public IReadOnlyList<EgenskapMetadata> PropertyMetadata { get; init; } = [];
+    [JsonPropertyName("propertyMetadata")] public IReadOnlyList<PropertyMetadata> PropertyMetadata { get; init; } = [];
 
     /// <summary>Datasamlinger hanging directly off the kilde — those under a delkilde are inside <see cref="Delkilder"/>.</summary>
     [JsonPropertyName("datasamlinger")] public IReadOnlyList<KildeDatasamling> Datasamlinger { get; init; } = [];
@@ -69,15 +69,15 @@ public sealed record KildeDetalj
 }
 
 /// <summary>
-/// A datasamling as it appears inside <see cref="KildeDetalj"/>, with own and inherited values.
-/// See the inheritance note on <see cref="KildeDetalj"/>.
+/// A datasamling as it appears inside <see cref="KildeDetail"/>, with own and inherited values.
+/// See the inheritance note on <see cref="KildeDetail"/>.
 /// </summary>
 public sealed record KildeDatasamling
 {
     [JsonPropertyName("id")] public Guid Id { get; init; }
     [JsonPropertyName("name")] public string Name { get; init; } = "";
-    [JsonPropertyName("kortNavn")] public string? KortNavn { get; init; }
-    [JsonPropertyName("beskrivelse")] public string Beskrivelse { get; init; } = "";
+    [JsonPropertyName("kortNavn")] public string? ShortName { get; init; }
+    [JsonPropertyName("beskrivelse")] public string Description { get; init; } = "";
 
     /// <summary>Visible published variables pinned into this datasamling.</summary>
     [JsonPropertyName("variableCount")] public int VariableCount { get; init; }
@@ -91,35 +91,35 @@ public sealed record KildeDatasamling
     /// <summary>Owning delkilde, or null when the datasamling hangs directly off the kilde.</summary>
     [JsonPropertyName("parentDelkildeId")] public Guid? ParentDelkildeId { get; init; }
 
-    /// <summary>Own value; null means inherited — see <see cref="EffectiveDataansvarlig"/>.</summary>
-    [JsonPropertyName("dataansvarlig")] public string? Dataansvarlig { get; init; }
+    /// <summary>Own value; null means inherited — see <see cref="EffectiveDataController"/>.</summary>
+    [JsonPropertyName("dataansvarlig")] public string? DataController { get; init; }
 
     /// <summary>Own value; null means inherited.</summary>
-    [JsonPropertyName("databehandler")] public string? Databehandler { get; init; }
+    [JsonPropertyName("databehandler")] public string? DataProcessor { get; init; }
 
     /// <summary>Own value; null means inherited.</summary>
-    [JsonPropertyName("gradAvPersonidentifikasjon")] public string? GradAvPersonidentifikasjon { get; init; }
+    [JsonPropertyName("gradAvPersonidentifikasjon")] public string? PersonIdentificationLevel { get; init; }
 
     /// <summary>Own value; null means inherited.</summary>
-    [JsonPropertyName("gyldigFra")] public DateTimeOffset? GyldigFra { get; init; }
+    [JsonPropertyName("gyldigFra")] public DateTimeOffset? ValidFrom { get; init; }
 
     /// <summary>Own value; null means inherited.</summary>
-    [JsonPropertyName("gyldigTil")] public DateTimeOffset? GyldigTil { get; init; }
+    [JsonPropertyName("gyldigTil")] public DateTimeOffset? ValidTo { get; init; }
 
     /// <summary>Own value if set, otherwise resolved up the delkilde chain to the kilde.</summary>
-    [JsonPropertyName("effectiveDataansvarlig")] public string? EffectiveDataansvarlig { get; init; }
+    [JsonPropertyName("effectiveDataansvarlig")] public string? EffectiveDataController { get; init; }
 
     /// <summary>Own value if set, otherwise inherited.</summary>
-    [JsonPropertyName("effectiveDatabehandler")] public string? EffectiveDatabehandler { get; init; }
+    [JsonPropertyName("effectiveDatabehandler")] public string? EffectiveDataProcessor { get; init; }
 
     /// <summary>Own value if set, otherwise inherited.</summary>
-    [JsonPropertyName("effectiveGradAvPersonidentifikasjon")] public string? EffectiveGradAvPersonidentifikasjon { get; init; }
+    [JsonPropertyName("effectiveGradAvPersonidentifikasjon")] public string? EffectivePersonIdentificationLevel { get; init; }
 
     /// <summary>Own value if set, otherwise inherited.</summary>
-    [JsonPropertyName("effectiveGyldigFra")] public DateTimeOffset? EffectiveGyldigFra { get; init; }
+    [JsonPropertyName("effectiveGyldigFra")] public DateTimeOffset? EffectiveValidFrom { get; init; }
 
     /// <summary>Own value if set, otherwise inherited.</summary>
-    [JsonPropertyName("effectiveGyldigTil")] public DateTimeOffset? EffectiveGyldigTil { get; init; }
+    [JsonPropertyName("effectiveGyldigTil")] public DateTimeOffset? EffectiveValidTo { get; init; }
 
     /// <summary>
     /// Always the owning kilde's kildetype — there is no per-datasamling column, so there is no
@@ -127,14 +127,14 @@ public sealed record KildeDatasamling
     /// </summary>
     [JsonPropertyName("effectiveKildetype")] public string EffectiveKildetype { get; init; } = "";
 
-    /// <summary>The datasamling's own curated metadata; see <see cref="KildeSammendrag.AdditionalProperties"/>.</summary>
+    /// <summary>The datasamling's own curated metadata; see <see cref="KildeSummary.AdditionalProperties"/>.</summary>
     [JsonPropertyName("additionalProperties")]
     public IReadOnlyDictionary<string, string?> AdditionalProperties { get; init; } =
         new Dictionary<string, string?>();
 }
 
 /// <summary>
-/// A delkilde inside <see cref="KildeDetalj"/> — a sub-source such as one wave of a study —
+/// A delkilde inside <see cref="KildeDetail"/> — a sub-source such as one wave of a study —
 /// with its own values, the inherited ones, its datasamlinger and any nested delkilder.
 /// </summary>
 public sealed record KildeDelkilde
@@ -145,8 +145,8 @@ public sealed record KildeDelkilde
     [JsonPropertyName("code")] public string Code { get; init; } = "";
 
     [JsonPropertyName("name")] public string Name { get; init; } = "";
-    [JsonPropertyName("kortNavn")] public string? KortNavn { get; init; }
-    [JsonPropertyName("beskrivelse")] public string Beskrivelse { get; init; } = "";
+    [JsonPropertyName("kortNavn")] public string? ShortName { get; init; }
+    [JsonPropertyName("beskrivelse")] public string Description { get; init; } = "";
 
     /// <summary>Curated display order; null when unordered.</summary>
     [JsonPropertyName("presentationOrder")] public int? PresentationOrder { get; init; }
@@ -155,34 +155,34 @@ public sealed record KildeDelkilde
     [JsonPropertyName("parentDelkildeId")] public Guid? ParentDelkildeId { get; init; }
 
     /// <summary>Own value; null means inherited.</summary>
-    [JsonPropertyName("dataansvarlig")] public string? Dataansvarlig { get; init; }
+    [JsonPropertyName("dataansvarlig")] public string? DataController { get; init; }
 
     /// <summary>Own value; null means inherited.</summary>
-    [JsonPropertyName("databehandler")] public string? Databehandler { get; init; }
+    [JsonPropertyName("databehandler")] public string? DataProcessor { get; init; }
 
     /// <summary>Own value; null means inherited.</summary>
-    [JsonPropertyName("gradAvPersonidentifikasjon")] public string? GradAvPersonidentifikasjon { get; init; }
+    [JsonPropertyName("gradAvPersonidentifikasjon")] public string? PersonIdentificationLevel { get; init; }
 
     /// <summary>Own value; null means inherited.</summary>
-    [JsonPropertyName("gyldigFra")] public DateTimeOffset? GyldigFra { get; init; }
+    [JsonPropertyName("gyldigFra")] public DateTimeOffset? ValidFrom { get; init; }
 
     /// <summary>Own value; null means inherited.</summary>
-    [JsonPropertyName("gyldigTil")] public DateTimeOffset? GyldigTil { get; init; }
+    [JsonPropertyName("gyldigTil")] public DateTimeOffset? ValidTo { get; init; }
 
     /// <summary>Own value if set, otherwise resolved up the parent chain to the kilde.</summary>
-    [JsonPropertyName("effectiveDataansvarlig")] public string? EffectiveDataansvarlig { get; init; }
+    [JsonPropertyName("effectiveDataansvarlig")] public string? EffectiveDataController { get; init; }
 
     /// <summary>Own value if set, otherwise inherited.</summary>
-    [JsonPropertyName("effectiveDatabehandler")] public string? EffectiveDatabehandler { get; init; }
+    [JsonPropertyName("effectiveDatabehandler")] public string? EffectiveDataProcessor { get; init; }
 
     /// <summary>Own value if set, otherwise inherited.</summary>
-    [JsonPropertyName("effectiveGradAvPersonidentifikasjon")] public string? EffectiveGradAvPersonidentifikasjon { get; init; }
+    [JsonPropertyName("effectiveGradAvPersonidentifikasjon")] public string? EffectivePersonIdentificationLevel { get; init; }
 
     /// <summary>Own value if set, otherwise inherited.</summary>
-    [JsonPropertyName("effectiveGyldigFra")] public DateTimeOffset? EffectiveGyldigFra { get; init; }
+    [JsonPropertyName("effectiveGyldigFra")] public DateTimeOffset? EffectiveValidFrom { get; init; }
 
     /// <summary>Own value if set, otherwise inherited.</summary>
-    [JsonPropertyName("effectiveGyldigTil")] public DateTimeOffset? EffectiveGyldigTil { get; init; }
+    [JsonPropertyName("effectiveGyldigTil")] public DateTimeOffset? EffectiveValidTo { get; init; }
 
     /// <summary>Always the owning kilde's kildetype — there is no per-delkilde column.</summary>
     [JsonPropertyName("effectiveKildetype")] public string EffectiveKildetype { get; init; } = "";

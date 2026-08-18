@@ -16,15 +16,15 @@ namespace Fhi.Munin.Explorer.Tests;
 public class CircuitTokenProviderTest
 {
     /// <summary>Builds a circuit-like scope holding one user's token.</summary>
-    private static (IServiceProvider Services, CircuitServicesAccessor Accessor) Krets(
+    private static (IServiceProvider Services, CircuitServicesAccessor Accessor) Circuit(
         CircuitServicesAccessor accessor,
         string? token)
     {
-        var tjenester = new ServiceCollection();
-        tjenester.AddSingleton(accessor);
-        tjenester.AddScoped(_ => new BrukerToken { AccessToken = token });
+        var services = new ServiceCollection();
+        services.AddSingleton(accessor);
+        services.AddScoped(_ => new UserToken { AccessToken = token });
 
-        var scope = tjenester.BuildServiceProvider().CreateScope();
+        var scope = services.BuildServiceProvider().CreateScope();
         return (scope.ServiceProvider, accessor);
     }
 
@@ -32,50 +32,50 @@ public class CircuitTokenProviderTest
     /// Runs a token fetch the way inbound circuit activity would — through the real handler, so
     /// the tests exercise the shipped code path rather than a re-implementation of it.
     /// </summary>
-    private static async Task<string?> IKrets(
+    private static async Task<string?> InCircuit(
         CircuitServicesAccessor accessor,
-        IServiceProvider kretsTjenester,
+        IServiceProvider circuitServices,
         CircuitTokenProvider provider)
     {
-        var handler = new ServicesAccessorCircuitHandler(kretsTjenester, accessor);
+        var handler = new ServicesAccessorCircuitHandler(circuitServices, accessor);
 
         string? token = null;
-        await handler.KjorMedKretsensTjenester(async () => token = await provider.HentTokenAsync());
+        await handler.RunWithCircuitServicesAsync(async () => token = await provider.GetTokenAsync());
         return token;
     }
 
     [Fact]
-    public async Task HentTokenAsync_NårKalletSkjerIEnKrets_ThenGirKretsensToken()
+    public async Task GetTokenAsync_WhenTheCallHappensInsideACircuit_ThenTheCircuitsTokenIsReturned()
     {
         var accessor = new CircuitServicesAccessor();
         var provider = new CircuitTokenProvider(accessor);
-        var (krets, _) = Krets(accessor, "brukerens-token");
+        var (circuit, _) = Circuit(accessor, "the-users-token");
 
-        Assert.Equal("brukerens-token", await IKrets(accessor, krets, provider));
+        Assert.Equal("the-users-token", await InCircuit(accessor, circuit, provider));
     }
 
     [Fact]
-    public async Task HentTokenAsync_NårDetIkkeErNoenKrets_ThenGirNullIStedetForÅKaste()
+    public async Task GetTokenAsync_WhenThereIsNoCircuit_ThenNullIsReturnedRatherThanThrowing()
     {
         // A background job, a health check, or a plain HTTP request. There is no user to speak
         // for, and that is an ordinary situation — the explorer is anonymous by default.
         var provider = new CircuitTokenProvider(new CircuitServicesAccessor());
 
-        Assert.Null(await provider.HentTokenAsync());
+        Assert.Null(await provider.GetTokenAsync());
     }
 
     [Fact]
-    public async Task HentTokenAsync_NårBrukerenIkkeErInnlogget_ThenGirNull()
+    public async Task GetTokenAsync_WhenTheUserIsNotSignedIn_ThenNullIsReturned()
     {
         var accessor = new CircuitServicesAccessor();
         var provider = new CircuitTokenProvider(accessor);
-        var (krets, _) = Krets(accessor, null);
+        var (circuit, _) = Circuit(accessor, null);
 
-        Assert.Null(await IKrets(accessor, krets, provider));
+        Assert.Null(await InCircuit(accessor, circuit, provider));
     }
 
     [Fact]
-    public async Task HentTokenAsync_NårToBrukereErPåloggetSamtidig_ThenSerIngenDenAndresToken()
+    public async Task GetTokenAsync_WhenTwoUsersAreSignedInAtOnce_ThenNeitherSeesTheOthersToken()
     {
         // The property the whole pattern exists for. One provider instance — it is a singleton,
         // because IHttpClientFactory reuses the handler pipeline across callers — answering for
@@ -83,29 +83,29 @@ public class CircuitTokenProviderTest
         var accessor = new CircuitServicesAccessor();
         var provider = new CircuitTokenProvider(accessor);
 
-        var (kretsA, _) = Krets(accessor, "token-A");
-        var (kretsB, _) = Krets(accessor, "token-B");
+        var (circuitA, _) = Circuit(accessor, "token-A");
+        var (circuitB, _) = Circuit(accessor, "token-B");
 
         var a = Task.Run(async () =>
         {
-            var svar = new List<string?>();
+            var answers = new List<string?>();
             for (var i = 0; i < 50; i++)
             {
-                svar.Add(await IKrets(accessor, kretsA, provider));
+                answers.Add(await InCircuit(accessor, circuitA, provider));
                 await Task.Yield();
             }
-            return svar;
+            return answers;
         });
 
         var b = Task.Run(async () =>
         {
-            var svar = new List<string?>();
+            var answers = new List<string?>();
             for (var i = 0; i < 50; i++)
             {
-                svar.Add(await IKrets(accessor, kretsB, provider));
+                answers.Add(await InCircuit(accessor, circuitB, provider));
                 await Task.Yield();
             }
-            return svar;
+            return answers;
         });
 
         Assert.All(await a, t => Assert.Equal("token-A", t));
@@ -113,33 +113,33 @@ public class CircuitTokenProviderTest
     }
 
     [Fact]
-    public async Task HentTokenAsync_EtterAtKretsensArbeidErFerdig_ThenLekkerIkkeTokenetVidere()
+    public async Task GetTokenAsync_AfterTheCircuitsWorkIsDone_ThenTheTokenDoesNotLeakOnwards()
     {
         // Pins the behaviour, but be honest about what enforces it: the runtime, not this code.
-        // KjorMedKretsensTjenester is async, so it runs against a copy of the ExecutionContext
+        // RunWithCircuitServicesAsync is async, so it runs against a copy of the ExecutionContext
         // and its AsyncLocal write is already invisible here. Deleting the handler's finally
         // does not make this test fail — see the note in CircuitServicesAccessor.
         var accessor = new CircuitServicesAccessor();
         var provider = new CircuitTokenProvider(accessor);
-        var (krets, _) = Krets(accessor, "brukerens-token");
+        var (circuit, _) = Circuit(accessor, "the-users-token");
 
-        await IKrets(accessor, krets, provider);
+        await InCircuit(accessor, circuit, provider);
 
-        Assert.Null(await provider.HentTokenAsync());
+        Assert.Null(await provider.GetTokenAsync());
     }
 
     [Fact]
-    public async Task KjorMedKretsensTjenester_NårArbeidetKaster_ThenRyddesLikevelOpp()
+    public async Task RunWithCircuitServicesAsync_WhenTheWorkThrows_ThenItStillCleansUp()
     {
         // Same caveat as the test above: the ExecutionContext copy would restore this even with
         // no finally at all, so this documents the exception path rather than guarding it. Kept
         // because a future edit could make the method synchronous, and then it would guard it.
         var accessor = new CircuitServicesAccessor();
-        var tjenester = new ServiceCollection().BuildServiceProvider();
-        var handler = new ServicesAccessorCircuitHandler(tjenester, accessor);
+        var services = new ServiceCollection().BuildServiceProvider();
+        var handler = new ServicesAccessorCircuitHandler(services, accessor);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => handler.KjorMedKretsensTjenester(() => throw new InvalidOperationException("boom")));
+            () => handler.RunWithCircuitServicesAsync(() => throw new InvalidOperationException("boom")));
 
         Assert.Null(accessor.Services);
     }

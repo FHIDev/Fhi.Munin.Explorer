@@ -11,128 +11,128 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </summary>
 public class BearerTokenHandlerTest
 {
-    private const string Basisadresse = "https://munin.skytest.fhi.no/";
+    private const string BaseAddress = "https://munin.skytest.fhi.no/";
 
-    private sealed class FastTokenProvider(string? token) : IMuninExplorerTokenProvider
+    private sealed class FixedTokenProvider(string? token) : IMuninExplorerTokenProvider
     {
-        public int Kall { get; private set; }
+        public int Calls { get; private set; }
 
-        public Task<string?> HentTokenAsync(CancellationToken cancellationToken = default)
+        public Task<string?> GetTokenAsync(CancellationToken cancellationToken = default)
         {
-            Kall++;
+            Calls++;
             return Task.FromResult(token);
         }
     }
 
-    private static HttpClient MedProvider(IMuninExplorerTokenProvider provider, StubbetHttpHandler ytre) =>
-        new(new BearerTokenHandler(provider) { InnerHandler = ytre }) { BaseAddress = new Uri(Basisadresse) };
+    private static HttpClient WithProvider(IMuninExplorerTokenProvider provider, StubHttpHandler inner) =>
+        new(new BearerTokenHandler(provider) { InnerHandler = inner }) { BaseAddress = new Uri(BaseAddress) };
 
     [Fact]
-    public async Task SendAsync_NårVertenGirEtToken_ThenSendesDetSomBearer()
+    public async Task SendAsync_WhenTheHostSuppliesAToken_ThenItIsSentAsBearer()
     {
-        var ytre = StubbetHttpHandler.Ok("{}");
-        var klient = MedProvider(new FastTokenProvider("et-token"), ytre);
+        var inner = StubHttpHandler.Ok("{}");
+        var client = WithProvider(new FixedTokenProvider("a-token"), inner);
 
-        await klient.GetAsync("api/explorer/variables");
+        await client.GetAsync("api/explorer/variables");
 
-        Assert.Equal("Bearer", ytre.SisteAutorisasjon?.Scheme);
-        Assert.Equal("et-token", ytre.SisteAutorisasjon?.Parameter);
+        Assert.Equal("Bearer", inner.LastAuthorization?.Scheme);
+        Assert.Equal("a-token", inner.LastAuthorization?.Parameter);
     }
 
     [Fact]
-    public async Task SendAsync_NårVertenIkkeGirNoeToken_ThenSendesIngenAuthorizationHeader()
+    public async Task SendAsync_WhenTheHostSuppliesNoToken_ThenNoAuthorizationHeaderIsSent()
     {
         // The common case: a signed-out visitor browsing public metadata. Returning null is
         // a normal answer, not a failure, and must not turn into an empty Bearer header.
-        var ytre = StubbetHttpHandler.Ok("{}");
-        var klient = MedProvider(new FastTokenProvider(null), ytre);
+        var inner = StubHttpHandler.Ok("{}");
+        var client = WithProvider(new FixedTokenProvider(null), inner);
 
-        await klient.GetAsync("api/explorer/variables");
+        await client.GetAsync("api/explorer/variables");
 
-        Assert.Null(ytre.SisteAutorisasjon);
+        Assert.Null(inner.LastAuthorization);
     }
 
     [Fact]
-    public async Task SendAsync_NårVertenGirTomStreng_ThenSendesIngenAuthorizationHeader()
+    public async Task SendAsync_WhenTheHostSuppliesAnEmptyString_ThenNoAuthorizationHeaderIsSent()
     {
-        var ytre = StubbetHttpHandler.Ok("{}");
-        var klient = MedProvider(new FastTokenProvider("   "), ytre);
+        var inner = StubHttpHandler.Ok("{}");
+        var client = WithProvider(new FixedTokenProvider("   "), inner);
 
-        await klient.GetAsync("api/explorer/variables");
+        await client.GetAsync("api/explorer/variables");
 
-        Assert.Null(ytre.SisteAutorisasjon);
+        Assert.Null(inner.LastAuthorization);
     }
 
     [Fact]
-    public async Task SendAsync_NårTokenetHarWhitespaceRundtSeg_ThenTrimmesDet()
+    public async Task SendAsync_WhenTheTokenHasWhitespaceAroundIt_ThenItIsTrimmed()
     {
         // A provider reading the token from configuration or a file easily hands back a
         // trailing newline. Sending that verbatim produces a header the API rejects.
-        var ytre = StubbetHttpHandler.Ok("{}");
-        var klient = MedProvider(new FastTokenProvider("  et-token\n"), ytre);
+        var inner = StubHttpHandler.Ok("{}");
+        var client = WithProvider(new FixedTokenProvider("  a-token\n"), inner);
 
-        await klient.GetAsync("api/explorer/variables");
+        await client.GetAsync("api/explorer/variables");
 
-        Assert.Equal("et-token", ytre.SisteAutorisasjon?.Parameter);
+        Assert.Equal("a-token", inner.LastAuthorization?.Parameter);
     }
 
     [Fact]
-    public async Task SendAsync_ForHverForespørsel_ThenSpørresProvideren()
+    public async Task SendAsync_ForEveryRequest_ThenTheProviderIsAsked()
     {
         // Tokens expire, and IHttpClientFactory caches this pipeline across callers for
         // minutes. Asking once and caching the answer in the handler would serve a stale
         // token — or worse, one user's token to the next.
-        var provider = new FastTokenProvider("et-token");
-        var ytre = StubbetHttpHandler.Ok("{}");
-        var klient = MedProvider(provider, ytre);
+        var provider = new FixedTokenProvider("a-token");
+        var inner = StubHttpHandler.Ok("{}");
+        var client = WithProvider(provider, inner);
 
-        await klient.GetAsync("api/explorer/variables");
-        await klient.GetAsync("api/explorer/kilder");
+        await client.GetAsync("api/explorer/variables");
+        await client.GetAsync("api/explorer/kilder");
 
-        Assert.Equal(2, provider.Kall);
+        Assert.Equal(2, provider.Calls);
     }
 
     [Fact]
-    public async Task AddMuninExplorer_NårVertenIkkeRegistrererNoe_ThenErKalleneAnonyme()
+    public async Task AddMuninExplorer_WhenTheHostRegistersNothing_ThenTheCallsAreAnonymous()
     {
         // Regression guard for v1: the explorer is public and read-only, and adding this
         // seam must not have made it start demanding a token.
-        var tjenester = new ServiceCollection();
-        tjenester.AddMuninExplorer(o => o.ApiBaseUrl = Basisadresse);
+        var services = new ServiceCollection();
+        services.AddMuninExplorer(o => o.ApiBaseUrl = BaseAddress);
 
-        using var leverandør = tjenester.BuildServiceProvider();
-        var provider = leverandør.GetRequiredService<IMuninExplorerTokenProvider>();
+        using var serviceProvider = services.BuildServiceProvider();
+        var provider = serviceProvider.GetRequiredService<IMuninExplorerTokenProvider>();
 
-        Assert.Null(await provider.HentTokenAsync());
+        Assert.Null(await provider.GetTokenAsync());
     }
 
     [Fact]
-    public async Task AddMuninExplorer_NårVertenRegistrererEgenProviderFørst_ThenVinnerVertens()
+    public async Task AddMuninExplorer_WhenTheHostRegistersItsOwnProviderFirst_ThenTheHostsWins()
     {
         // TryAdd means registration order matters, and the host has to go first. Worth
         // pinning: if this inverts, a host that thinks it wired up authentication would
         // silently keep calling anonymously.
-        var tjenester = new ServiceCollection();
-        tjenester.AddSingleton<IMuninExplorerTokenProvider>(new FastTokenProvider("vertens-token"));
-        tjenester.AddMuninExplorer(o => o.ApiBaseUrl = Basisadresse);
+        var services = new ServiceCollection();
+        services.AddSingleton<IMuninExplorerTokenProvider>(new FixedTokenProvider("the-hosts-token"));
+        services.AddMuninExplorer(o => o.ApiBaseUrl = BaseAddress);
 
-        using var leverandør = tjenester.BuildServiceProvider();
-        var provider = leverandør.GetRequiredService<IMuninExplorerTokenProvider>();
+        using var serviceProvider = services.BuildServiceProvider();
+        var provider = serviceProvider.GetRequiredService<IMuninExplorerTokenProvider>();
 
-        Assert.Equal("vertens-token", await provider.HentTokenAsync());
+        Assert.Equal("the-hosts-token", await provider.GetTokenAsync());
     }
 
     [Fact]
-    public async Task SendAsync_NårForespørselenAlleredeErAutentisert_ThenRøresDenIkke()
+    public async Task SendAsync_WhenTheRequestIsAlreadyAuthenticated_ThenItIsLeftAlone()
     {
-        var ytre = StubbetHttpHandler.Ok("{}");
-        var klient = MedProvider(new FastTokenProvider("vårt-token"), ytre);
+        var inner = StubHttpHandler.Ok("{}");
+        var client = WithProvider(new FixedTokenProvider("our-token"), inner);
 
-        using var forespørsel = new HttpRequestMessage(HttpMethod.Get, "api/explorer/variables");
-        forespørsel.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "hostens-eget");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "api/explorer/variables");
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "the-hosts-own");
 
-        await klient.SendAsync(forespørsel);
+        await client.SendAsync(request);
 
-        Assert.Equal("hostens-eget", ytre.SisteAutorisasjon?.Parameter);
+        Assert.Equal("the-hosts-own", inner.LastAuthorization?.Parameter);
     }
 }

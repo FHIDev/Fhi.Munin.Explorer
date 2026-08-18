@@ -28,10 +28,10 @@ there in ways that never show up in development.
 
 ## Conventions
 
-Code identifiers here are **English**; Norwegian is for user-facing strings, changelog
-fragments and domain terms that have no honest translation (`kilde`, `datasamling`,
-`variabelgruppe`). See [`AGENTS.md`](AGENTS.md) — it covers the conventions the compiler
-cannot check.
+Code identifiers here are **English**; Norwegian is for user-facing strings and domain terms
+that have no honest translation (`kilde`, `datasamling`, `variabelgruppe`, `kildetype`,
+`kodeverk`). See [`AGENTS.md`](AGENTS.md) — it covers the conventions the compiler cannot
+check.
 
 ## Rules the components follow
 
@@ -104,7 +104,7 @@ you are implementing one of the interfaces without taking the rest.
 // Registration order matters. To call Munin as the signed-in user, register the token provider
 // BEFORE AddMuninExplorer — it uses TryAdd, so the anonymous default wins if it goes first and
 // the explorer will quietly keep calling without a token.
-services.AddSingleton<IMuninExplorerTokenProvider, MinTokenProvider>();
+services.AddSingleton<IMuninExplorerTokenProvider, MyTokenProvider>();
 services.AddMuninExplorer(o => o.ApiBaseUrl = "https://munin.skytest.fhi.no");
 ```
 

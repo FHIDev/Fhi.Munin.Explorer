@@ -23,5 +23,5 @@
        prerender: false for the same reason LegacyHost uses render-mode="Server" rather than
        "ServerPrerendered" — the component fetches on initialise, and prerendering would run
        that call twice against the public API on every page load. *@
-    <Variabelutforsker Sprak="no" @rendermode="@(new InteractiveServerRenderMode(prerender: false))" />
+    <VariableExplorer Language="no" @rendermode="@(new InteractiveServerRenderMode(prerender: false))" />
 </div>

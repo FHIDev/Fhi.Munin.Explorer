@@ -20,7 +20,7 @@ builder.Services.AddMuninExplorer(
     builder.Configuration,
     // Development-only convenience. Outside Development the base URL must be configured,
     // and startup fails loudly if it is not.
-    utviklingsFallback: builder.Environment.IsDevelopment() ? "https://munin.skytest.fhi.no" : null);
+    developmentFallback: builder.Environment.IsDevelopment() ? "https://munin.skytest.fhi.no" : null);
 
 var app = builder.Build();
 

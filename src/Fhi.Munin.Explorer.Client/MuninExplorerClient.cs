@@ -15,18 +15,18 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
     // quietly appear between them.
     internal static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
-    public async Task<Side<VariabelSammendrag>> SokVariablerAsync(
-        string? sok,
-        int side = 1,
-        int sideStorrelse = 25,
+    public async Task<Page<VariableSummary>> SearchVariablesAsync(
+        string? search,
+        int page = 1,
+        int pageSize = 25,
         SortField sort = SortField.Default,
         SortDirection direction = SortDirection.Ascending,
         CancellationToken cancellationToken = default)
     {
-        var url = $"api/explorer/variables?page={side}&size={sideStorrelse}";
-        if (!string.IsNullOrWhiteSpace(sok))
+        var url = $"api/explorer/variables?page={page}&size={pageSize}";
+        if (!string.IsNullOrWhiteSpace(search))
         {
-            url += $"&search={Uri.EscapeDataString(sok)}";
+            url += $"&search={Uri.EscapeDataString(search)}";
         }
 
         // Left off entirely at the default, the same reasoning as includeHistorical below: the API
@@ -39,54 +39,54 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
         }
 
         // An empty result is a normal answer to a search, not an error worth throwing over.
-        return await HentAsync<Side<VariabelSammendrag>>(url, cancellationToken) ?? new Side<VariabelSammendrag>();
+        return await GetOrNullAsync<Page<VariableSummary>>(url, cancellationToken) ?? new Page<VariableSummary>();
     }
 
-    public async Task<Filtervalg> HentFiltreAsync(
-        string? sok = null,
+    public async Task<FilterOptions> GetFiltersAsync(
+        string? search = null,
         string? kildeType = null,
         CancellationToken cancellationToken = default)
     {
-        var url = "api/explorer/filters" + Sporring(("search", sok), ("kildeType", kildeType));
+        var url = "api/explorer/filters" + Query(("search", search), ("kildeType", kildeType));
 
         // No facets is a legitimate answer to a narrow search — same reasoning as an empty page.
-        return await HentAsync<Filtervalg>(url, cancellationToken) ?? new Filtervalg();
+        return await GetOrNullAsync<FilterOptions>(url, cancellationToken) ?? new FilterOptions();
     }
 
-    public async Task<IReadOnlyList<KildeSammendrag>> HentKilderAsync(
-        string? sok = null,
+    public async Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
+        string? search = null,
         string? kildeType = null,
         CancellationToken cancellationToken = default)
     {
-        var url = "api/explorer/kilder" + Sporring(("search", sok), ("kildeType", kildeType));
+        var url = "api/explorer/kilder" + Query(("search", search), ("kildeType", kildeType));
 
-        return await HentAsync<IReadOnlyList<KildeSammendrag>>(url, cancellationToken) ?? [];
+        return await GetOrNullAsync<IReadOnlyList<KildeSummary>>(url, cancellationToken) ?? [];
     }
 
-    public Task<KildeDetalj?> HentKildeAsync(Guid id, CancellationToken cancellationToken = default) =>
-        HentAsync<KildeDetalj>($"api/explorer/kilder/{id}", cancellationToken);
+    public Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default) =>
+        GetOrNullAsync<KildeDetail>($"api/explorer/kilder/{id}", cancellationToken);
 
-    public Task<KildeHierarki?> HentKildeHierarkiAsync(Guid id, CancellationToken cancellationToken = default) =>
-        HentAsync<KildeHierarki>($"api/explorer/kilder/{id}/hierarchy", cancellationToken);
+    public Task<KildeHierarchy?> GetKildeHierarchyAsync(Guid id, CancellationToken cancellationToken = default) =>
+        GetOrNullAsync<KildeHierarchy>($"api/explorer/kilder/{id}/hierarchy", cancellationToken);
 
-    public Task<DatasamlingDetalj?> HentDatasamlingAsync(Guid id, CancellationToken cancellationToken = default) =>
-        HentAsync<DatasamlingDetalj>($"api/explorer/datasamling/{id}", cancellationToken);
+    public Task<DatasamlingDetail?> GetDatasamlingAsync(Guid id, CancellationToken cancellationToken = default) =>
+        GetOrNullAsync<DatasamlingDetail>($"api/explorer/datasamling/{id}", cancellationToken);
 
-    public Task<VariabelDetalj?> HentVariabelAsync(
+    public Task<VariableDetail?> GetVariableAsync(
         Guid id,
-        bool inkluderHistoriske = false,
+        bool includeHistorical = false,
         CancellationToken cancellationToken = default)
     {
         // Only sent when true: the API defaults to false, and a shorter URL caches better.
-        var url = $"api/explorer/variables/{id}" + (inkluderHistoriske ? "?includeHistorical=true" : "");
+        var url = $"api/explorer/variables/{id}" + (includeHistorical ? "?includeHistorical=true" : "");
 
-        return HentAsync<VariabelDetalj>(url, cancellationToken);
+        return GetOrNullAsync<VariableDetail>(url, cancellationToken);
     }
 
-    public async Task<IReadOnlyList<Variabelversjon>> HentVariabelTidslinjeAsync(
+    public async Task<IReadOnlyList<VariableVersion>> GetVariableTimelineAsync(
         Guid id,
         CancellationToken cancellationToken = default) =>
-        await HentAsync<IReadOnlyList<Variabelversjon>>($"api/explorer/variables/{id}/timeline", cancellationToken) ?? [];
+        await GetOrNullAsync<IReadOnlyList<VariableVersion>>($"api/explorer/variables/{id}/timeline", cancellationToken) ?? [];
 
     /// <summary>
     /// GET and deserialise, mapping 404 to null.
@@ -96,7 +96,7 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
     /// been unpublished — or for an id someone typed — is an ordinary event the caller should be
     /// able to render as "not found". Every other failure still throws.
     /// </remarks>
-    private async Task<T?> HentAsync<T>(string url, CancellationToken cancellationToken)
+    private async Task<T?> GetOrNullAsync<T>(string url, CancellationToken cancellationToken)
     {
         using var response = await httpClient.GetAsync(url, cancellationToken);
 
@@ -140,21 +140,21 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
     };
 
     /// <summary>Builds <c>?a=1&amp;b=2</c> from the parameters that actually have a value.</summary>
-    private static string Sporring(params (string Navn, string? Verdi)[] parametere)
+    private static string Query(params (string Name, string? Value)[] parameters)
     {
         var query = new StringBuilder();
 
-        foreach (var (navn, verdi) in parametere)
+        foreach (var (name, value) in parameters)
         {
-            if (string.IsNullOrWhiteSpace(verdi))
+            if (string.IsNullOrWhiteSpace(value))
             {
                 continue;
             }
 
             query.Append(query.Length == 0 ? '?' : '&')
-                 .Append(navn)
+                 .Append(name)
                  .Append('=')
-                 .Append(Uri.EscapeDataString(verdi));
+                 .Append(Uri.EscapeDataString(value));
         }
 
         return query.ToString();

@@ -5,43 +5,43 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Tests;
 
-public class VariabelutforskerTest : BunitContext
+public class VariableExplorerTest : BunitContext
 {
-    private static Side<VariabelSammendrag> EnSide(params VariabelSammendrag[] rader) =>
-        new() { Items = rader, TotalCount = rader.Length, Page = 1, Size = 25, TotalPages = 1 };
+    private static Page<VariableSummary> OnePage(params VariableSummary[] rows) =>
+        new() { Items = rows, TotalCount = rows.Length, PageNumber = 1, Size = 25, TotalPages = 1 };
 
-    private static VariabelSammendrag Variabel(string navn, string kode, string? kilde = "Als registeret") =>
+    private static VariableSummary Variable(string name, string code, string? kilde = "Als registeret") =>
         new()
         {
             Id = Guid.NewGuid(),
-            Code = kode,
-            PreferredTerm = navn,
+            Code = code,
+            PreferredTerm = name,
             KildeName = kilde,
             DatasamlingName = "Inklusjon",
             DataFrom = new DateTimeOffset(2010, 1, 1, 0, 0, 0, TimeSpan.Zero),
             DataTo = new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero)
         };
 
-    private sealed class FakeClient(Side<VariabelSammendrag> svar) : TomMuninExplorerKlient
+    private sealed class FakeClient(Page<VariableSummary> answer) : EmptyMuninExplorerClient
     {
-        public string? SisteSok { get; private set; }
+        public string? LastSearch { get; private set; }
         public int LastPage { get; private set; }
         public SortField LastSort { get; private set; }
         public SortDirection LastDirection { get; private set; }
-        public int Kall { get; private set; }
+        public int Calls { get; private set; }
 
-        public override Task<Side<VariabelSammendrag>> SokVariablerAsync(
-            string? sok, int side = 1, int sideStorrelse = 25,
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default,
             SortDirection direction = SortDirection.Ascending,
             CancellationToken cancellationToken = default)
         {
-            SisteSok = sok;
-            LastPage = side;
+            LastSearch = search;
+            LastPage = page;
             LastSort = sort;
             LastDirection = direction;
-            Kall++;
-            return Task.FromResult(svar);
+            Calls++;
+            return Task.FromResult(answer);
         }
     }
 
@@ -49,23 +49,23 @@ public class VariabelutforskerTest : BunitContext
     /// Fails every call. Given a <paramref name="firstAnswer"/> it answers the first one and fails
     /// only from the second — the case where a sort fails over rows already on screen.
     /// </summary>
-    private sealed class FeilendeClient(Side<VariabelSammendrag>? firstAnswer = null) : TomMuninExplorerKlient
+    private sealed class FailingClient(Page<VariableSummary>? firstAnswer = null) : EmptyMuninExplorerClient
     {
         public SortField LastSort { get; private set; }
         public SortDirection LastDirection { get; private set; }
-        public int Kall { get; private set; }
+        public int Calls { get; private set; }
 
-        public override Task<Side<VariabelSammendrag>> SokVariablerAsync(
-            string? sok, int side = 1, int sideStorrelse = 25,
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default,
             SortDirection direction = SortDirection.Ascending,
             CancellationToken cancellationToken = default)
         {
             LastSort = sort;
             LastDirection = direction;
-            Kall++;
+            Calls++;
 
-            return Kall == 1 && firstAnswer is not null
+            return Calls == 1 && firstAnswer is not null
                 ? Task.FromResult(firstAnswer)
                 : throw new HttpRequestException("nede");
         }
@@ -73,43 +73,43 @@ public class VariabelutforskerTest : BunitContext
 
     /// <summary>
     /// A client that never answers until the test lets it, so the loading state can be inspected.
-    /// Given a <paramref name="forsteSvar"/> it answers the first call at once and stalls only on
+    /// Given a <paramref name="firstAnswer"/> it answers the first call at once and stalls only on
     /// the next one — the case where a second search is in flight over rows already on screen.
     /// </summary>
-    private sealed class TregClient(Side<VariabelSammendrag>? forsteSvar = null) : TomMuninExplorerKlient
+    private sealed class SlowClient(Page<VariableSummary>? firstAnswer = null) : EmptyMuninExplorerClient
     {
-        private readonly TaskCompletionSource<Side<VariabelSammendrag>> _svar =
+        private readonly TaskCompletionSource<Page<VariableSummary>> _answer =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        public int Kall { get; private set; }
+        public int Calls { get; private set; }
 
-        public override Task<Side<VariabelSammendrag>> SokVariablerAsync(
-            string? sok, int side = 1, int sideStorrelse = 25,
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default,
             SortDirection direction = SortDirection.Ascending,
             CancellationToken cancellationToken = default)
         {
-            Kall++;
-            return Kall == 1 && forsteSvar is not null ? Task.FromResult(forsteSvar) : _svar.Task;
+            Calls++;
+            return Calls == 1 && firstAnswer is not null ? Task.FromResult(firstAnswer) : _answer.Task;
         }
 
-        public void Svar(Side<VariabelSammendrag> side) => _svar.TrySetResult(side);
+        public void Answer(Page<VariableSummary> page) => _answer.TrySetResult(page);
     }
 
-    private IRenderedComponent<Variabelutforsker> RenderMed(
-        IMuninExplorerClient client, Action<ComponentParameterCollectionBuilder<Variabelutforsker>>? p = null)
+    private IRenderedComponent<VariableExplorer> RenderWith(
+        IMuninExplorerClient client, Action<ComponentParameterCollectionBuilder<VariableExplorer>>? p = null)
     {
         Services.AddSingleton(client);
-        return Render<Variabelutforsker>(b => p?.Invoke(b));
+        return Render<VariableExplorer>(b => p?.Invoke(b));
     }
 
     [Fact]
-    public void Render_NårSøketGirTreff_ThenViserKortPerVariabel()
+    public void Render_WhenTheSearchHasHits_ThenACardIsShownPerVariable()
     {
-        var client = new FakeClient(EnSide(Variabel("1. Tale", "V_ALS.F1.ALSFRSR1TALE"),
-                                           Variabel("2. Spyttsekresjon", "V_ALS.F1.ALSFRSR2SPYTT")));
+        var client = new FakeClient(OnePage(Variable("1. Tale", "V_ALS.F1.ALSFRSR1TALE"),
+                                           Variable("2. Spyttsekresjon", "V_ALS.F1.ALSFRSR2SPYTT")));
 
-        var cut = RenderMed(client);
+        var cut = RenderWith(client);
 
         Assert.Equal(2, cut.FindAll("ul.datasourcecard-list > li").Count);
         Assert.Contains("1. Tale", cut.Markup);
@@ -118,29 +118,29 @@ public class VariabelutforskerTest : BunitContext
     }
 
     [Fact]
-    public void Render_NårIngenTreff_ThenViserTomMelding()
+    public void Render_WhenThereAreNoHits_ThenTheEmptyMessageIsShown()
     {
-        var cut = RenderMed(new FakeClient(EnSide()));
+        var cut = RenderWith(new FakeClient(OnePage()));
 
         Assert.Empty(cut.FindAll("ul.datasourcecard-list > li"));
         Assert.Contains("Ingen variabler passet søket", cut.Markup);
     }
 
     [Fact]
-    public void Render_NårApietFeiler_ThenViserFeilmeldingIStedetForÅKaste()
+    public void Render_WhenTheApiFails_ThenAnErrorMessageIsShownRatherThanThrowing()
     {
-        var cut = RenderMed(new FeilendeClient());
+        var cut = RenderWith(new FailingClient());
 
         Assert.Contains("Kunne ikke hente variabler", cut.Markup);
         Assert.Empty(cut.FindAll("ul.datasourcecard-list > li"));
     }
 
     [Fact]
-    public void Render_NårSpråkErEn_ThenBrukerEngelskeTekster()
+    public void Render_WhenTheLanguageIsEn_ThenTheEnglishTextsAreUsed()
     {
         // helsedata's culture token is "en"/"no", not "nb" — worth pinning.
-        var cut = RenderMed(new FakeClient(EnSide(Variabel("1. Tale", "KODE"))),
-                         b => b.Add(c => c.Sprak, "en"));
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
+                         b => b.Add(c => c.Language, "en"));
 
         Assert.Contains("Variable explorer", cut.Markup);
         Assert.Contains("1 variable", cut.Markup);
@@ -148,25 +148,25 @@ public class VariabelutforskerTest : BunitContext
     }
 
     [Fact]
-    public void Render_NårSokErSattAvHosten_ThenSendesDenTilApiet()
+    public void Render_WhenTheHostSetsTheSearch_ThenItIsSentToTheApi()
     {
-        var client = new FakeClient(EnSide());
+        var client = new FakeClient(OnePage());
 
-        RenderMed(client, b => b.Add(c => c.Sok, "tale"));
+        RenderWith(client, b => b.Add(c => c.Search, "tale"));
 
-        Assert.Equal("tale", client.SisteSok);
-        Assert.Equal(1, client.Kall);
+        Assert.Equal("tale", client.LastSearch);
+        Assert.Equal(1, client.Calls);
     }
 
     [Fact]
-    public void Render_ToInstanserPåSammeSide_ThenKolliderIkkePåDomId()
+    public void Render_WhenTwoInstancesShareAPage_ThenTheirDomIdsDoNotCollide()
     {
         // Duplicate ids break label association and fail WCAG 4.1.1. helsedata can
         // legitimately put more than one explorer on a page.
-        Services.AddSingleton<IMuninExplorerClient>(new FakeClient(EnSide()));
+        Services.AddSingleton<IMuninExplorerClient>(new FakeClient(OnePage()));
 
-        var a = Render<Variabelutforsker>();
-        var b = Render<Variabelutforsker>();
+        var a = Render<VariableExplorer>();
+        var b = Render<VariableExplorer>();
 
         var idA = a.Find("input[type=search]").Id;
         var idB = b.Find("input[type=search]").Id;
@@ -176,7 +176,7 @@ public class VariabelutforskerTest : BunitContext
     }
 
     [Fact]
-    public void Sok_NårBrukerenTasterITekstfeltet_ThenGjøresIngenTjenerrundtur()
+    public void Search_WhenTheUserTypesInTheField_ThenNoServerRoundTripIsMade()
     {
         // Regression guard. The field used to be value="@_sok" + @oninput, which on
         // helsedata's Blazor Server circuit is one round-trip per keystroke — and the
@@ -184,50 +184,50 @@ public class VariabelutforskerTest : BunitContext
         // still arriving, so a fast fill lost characters ("svelging" arrived as "sng").
         // No registered oninput handler means the browser event never reaches the circuit,
         // and bUnit says so by refusing to dispatch it.
-        var client = new FakeClient(EnSide());
-        var cut = RenderMed(client);
+        var client = new FakeClient(OnePage());
+        var cut = RenderWith(client);
 
         var input = cut.Find("input[type=search]");
 
         Assert.Throws<MissingEventHandlerException>(() => input.Input("svelging"));
-        Assert.Equal(1, client.Kall); // only the initial load
+        Assert.Equal(1, client.Calls); // only the initial load
     }
 
     [Fact]
-    public void Sok_NårHeleTekstenErSkrevetFørInnsending_ThenSøkesDetÉnGangMedHeleTeksten()
+    public void Search_WhenTheWholeTextIsTypedBeforeSubmitting_ThenItSearchesOnceWithAllOfIt()
     {
-        var client = new FakeClient(EnSide());
-        var cut = RenderMed(client);
+        var client = new FakeClient(OnePage());
+        var cut = RenderWith(client);
 
         // onchange carries the finished value, however fast it was typed or pasted.
         cut.Find("input[type=search]").Change("svelging");
         cut.Find("form").Submit();
 
-        Assert.Equal("svelging", client.SisteSok);
-        Assert.Equal(2, client.Kall); // initial load + this one search
+        Assert.Equal("svelging", client.LastSearch);
+        Assert.Equal(2, client.Calls); // initial load + this one search
     }
 
     [Fact]
-    public void Sok_NårBrukerenKlikkerSøkUtenÅForlateFeltetFørst_ThenSøkesDetMedHeleTeksten()
+    public void Search_WhenTheUserClicksSearchWithoutLeavingTheFieldFirst_ThenTheWholeTextIsSearchedFor()
     {
         // The case onchange has to survive: type, then go straight for the Søk button
         // without tabbing away. The browser blurs the field as the button takes focus, so
         // change reaches the circuit before the click turns into a submit — this test
         // pins that order, and would fail if the value only ever arrived on blur-by-tab.
-        var client = new FakeClient(EnSide());
-        var cut = RenderMed(client);
+        var client = new FakeClient(OnePage());
+        var cut = RenderWith(client);
 
         cut.Find("input[type=search]").Change("svelging"); // blur caused by the click
         cut.Find("button[type=submit]").Click();
 
-        Assert.Equal("svelging", client.SisteSok);
-        Assert.Equal(2, client.Kall);
+        Assert.Equal("svelging", client.LastSearch);
+        Assert.Equal(2, client.Calls);
     }
 
     [Fact]
-    public void Render_Alltid_ThenSøkefeltetHarKoblaLedetekst()
+    public void Render_Always_ThenTheSearchFieldHasAnAssociatedLabel()
     {
-        var cut = RenderMed(new FakeClient(EnSide()));
+        var cut = RenderWith(new FakeClient(OnePage()));
 
         var input = cut.Find("input[type=search]");
         var label = cut.Find("label");
@@ -245,19 +245,19 @@ public class VariabelutforskerTest : BunitContext
 
     /// <summary>The sort buttons, in the order they are rendered.</summary>
     private static IReadOnlyList<AngleSharp.Dom.IElement> SortButtons(
-        IRenderedComponent<Variabelutforsker> cut) =>
+        IRenderedComponent<VariableExplorer> cut) =>
         cut.FindAll("fieldset.form-fieldset button");
 
     /// <summary>Clicks the sort button with the given label, whatever direction suffix it carries.</summary>
-    private static void ClickSort(IRenderedComponent<Variabelutforsker> cut, string label) =>
+    private static void ClickSort(IRenderedComponent<VariableExplorer> cut, string label) =>
         SortButtons(cut).Single(k => k.TextContent.StartsWith(label, StringComparison.Ordinal)).Click();
 
     [Fact]
     public void Render_WhenNoSortIsChosen_ThenTheApisOwnOrderIsAskedForAscending()
     {
-        var client = new FakeClient(EnSide(Variabel("1. Tale", "KODE")));
+        var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
 
-        var cut = RenderMed(client);
+        var cut = RenderWith(client);
 
         Assert.Equal(SortField.Default, client.LastSort);
         Assert.Equal(SortDirection.Ascending, client.LastDirection);
@@ -271,11 +271,11 @@ public class VariabelutforskerTest : BunitContext
         // SortField.Default. A button reading "Navn" would describe an order the list is not in,
         // and would make this button and Datakilde look like they differ in primary key when they
         // only differ in what happens inside a kilde.
-        var cut = RenderMed(new FakeClient(EnSide(Variabel("1. Tale", "KODE"))));
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        var etiketter = SortButtons(cut).Select(k => k.TextContent).ToList();
+        var labels = SortButtons(cut).Select(k => k.TextContent).ToList();
 
-        Assert.Equal(["Standard (stigende)", "Datakilde", "Datasamling", "Variabelgruppe"], etiketter);
+        Assert.Equal(["Standard (stigende)", "Datakilde", "Datasamling", "Variabelgruppe"], labels);
         Assert.DoesNotContain("Navn", cut.Find("fieldset.form-fieldset").TextContent);
     }
 
@@ -286,7 +286,7 @@ public class VariabelutforskerTest : BunitContext
         // the enum. Kode, datatype, status and dataperiode are absent because they are absent
         // there — the API does not sort on them, and a fifth button would reorder nothing while
         // claiming to have.
-        var cut = RenderMed(new FakeClient(EnSide(Variabel("1. Tale", "KODE"))));
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
         Assert.Equal(Enum.GetValues<SortField>().Length, SortButtons(cut).Count);
     }
@@ -297,21 +297,21 @@ public class VariabelutforskerTest : BunitContext
     [InlineData("Variabelgruppe", SortField.Variabelgruppe)]
     public void Sort_WhenAnotherFieldIsChosen_ThenThatFieldIsFetchedAscending(string label, SortField expected)
     {
-        var client = new FakeClient(EnSide(Variabel("1. Tale", "KODE")));
-        var cut = RenderMed(client);
+        var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
 
         ClickSort(cut, label);
 
         Assert.Equal(expected, client.LastSort);
         Assert.Equal(SortDirection.Ascending, client.LastDirection);
-        Assert.Equal(2, client.Kall); // initial load + this one
+        Assert.Equal(2, client.Calls); // initial load + this one
     }
 
     [Fact]
     public void Sort_WhenTheActiveFieldIsChosenAgain_ThenTheDirectionReverses()
     {
-        var client = new FakeClient(EnSide(Variabel("1. Tale", "KODE")));
-        var cut = RenderMed(client);
+        var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
 
         ClickSort(cut, "Standard");
 
@@ -329,11 +329,11 @@ public class VariabelutforskerTest : BunitContext
     {
         // Runa's rule: a new column always starts ascending rather than inheriting the direction
         // of the one before it.
-        var client = new FakeClient(EnSide(Variabel("1. Tale", "KODE")));
-        var cut = RenderMed(client);
+        var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
 
-        ClickSort(cut, "Standard");    // synkende
-        ClickSort(cut, "Datakilde");   // nytt felt
+        ClickSort(cut, "Standard");    // descending
+        ClickSort(cut, "Datakilde");   // a different field
 
         Assert.Equal(SortField.Kilde, client.LastSort);
         Assert.Equal(SortDirection.Ascending, client.LastDirection);
@@ -345,8 +345,8 @@ public class VariabelutforskerTest : BunitContext
         // Reordering renumbers every page, so page 7 of the old order is not page 7 of the new one.
         // There is no pager yet (bead Fhi.Metadata-l9l2n.12), which is exactly why this is pinned
         // now: the reset has to already be in place when one arrives.
-        var client = new FakeClient(EnSide(Variabel("1. Tale", "KODE")));
-        var cut = RenderMed(client);
+        var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
 
         ClickSort(cut, "Datasamling");
 
@@ -359,12 +359,12 @@ public class VariabelutforskerTest : BunitContext
         // Same reasoning as a second submit: the buttons are never disabled, because disabling the
         // element that has focus drops focus to <body>. Changing the state and skipping the fetch
         // would leave a button claiming an order the list is not in, so the guard comes first.
-        var client = new TregClient();
-        var cut = RenderMed(client);
+        var client = new SlowClient();
+        var cut = RenderWith(client);
 
         ClickSort(cut, "Datakilde");
 
-        Assert.Equal(1, client.Kall);
+        Assert.Equal(1, client.Calls);
         Assert.Equal("Standard (stigende)", SortButtons(cut)[0].TextContent);
     }
 
@@ -376,8 +376,8 @@ public class VariabelutforskerTest : BunitContext
         // returned — and pressing the same button again would take the reversal branch and ask for
         // descending, leaving no way back to the ascending fetch that just failed short of cycling
         // twice. Same invariant as the _laster guard, on the path that guard cannot see.
-        var client = new FeilendeClient(EnSide(Variabel("1. Tale", "KODE")));
-        var cut = RenderMed(client);
+        var client = new FailingClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
 
         ClickSort(cut, "Datakilde");
 
@@ -385,14 +385,14 @@ public class VariabelutforskerTest : BunitContext
         Assert.Contains("Kunne ikke hente variabler", cut.Markup);
         Assert.Equal("Standard (stigende)", SortButtons(cut)[0].TextContent);
 
-        var merka = SortButtons(cut).Where(k => k.HasAttribute("aria-current")).ToList();
-        Assert.Equal("Standard (stigende)", Assert.Single(merka).TextContent);
+        var marked = SortButtons(cut).Where(k => k.HasAttribute("aria-current")).ToList();
+        Assert.Equal("Standard (stigende)", Assert.Single(marked).TextContent);
 
         ClickSort(cut, "Datakilde"); // the same retry, not its reversal
 
         Assert.Equal(SortField.Kilde, client.LastSort);
         Assert.Equal(SortDirection.Ascending, client.LastDirection);
-        Assert.Equal(3, client.Kall);
+        Assert.Equal(3, client.Calls);
     }
 
     [Fact]
@@ -402,85 +402,85 @@ public class VariabelutforskerTest : BunitContext
         // change event has already written the box's contents to _sok by the time the click is
         // handled. Fetching with that would run a search nobody asked for, and the status line
         // would then describe the accidental search instead of saying anything had moved.
-        var client = new FakeClient(EnSide(Variabel("1. Tale", "KODE")));
-        var cut = RenderMed(client, b => b.Add(c => c.Sok, "tale"));
+        var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client, b => b.Add(c => c.Search, "tale"));
 
         cut.Find("input[type=search]").Change("noe helt annet");
         ClickSort(cut, "Datakilde");
 
-        Assert.Equal("tale", client.SisteSok);
+        Assert.Equal("tale", client.LastSearch);
         Assert.Contains("«tale»", cut.Find("p[role='status']").TextContent);
     }
 
     [Fact]
     public void Sort_Always_ThenTheHostIsNotToldTheSearchChanged()
     {
-        // SokChanged is the host's URL contract, and sorting is not searching. Raising it here
+        // SearchChanged is the host's URL contract, and sorting is not searching. Raising it here
         // would put text the user never submitted into the host's URL.
-        var meldt = new List<string?>();
-        var cut = RenderMed(new FakeClient(EnSide(Variabel("1. Tale", "KODE"))),
-                            b => b.Add(c => c.Sok, "tale")
-                                  .Add(c => c.SokChanged, (string? s) => meldt.Add(s)));
+        var reported = new List<string?>();
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
+                            b => b.Add(c => c.Search, "tale")
+                                  .Add(c => c.SearchChanged, (string? s) => reported.Add(s)));
 
-        meldt.Clear(); // the initial load's own notification
+        reported.Clear(); // the initial load's own notification
 
         cut.Find("input[type=search]").Change("noe helt annet");
         ClickSort(cut, "Datakilde");
 
-        Assert.Empty(meldt);
+        Assert.Empty(reported);
     }
 
     [Fact]
     public void Sort_WhenTheLanguageIsEn_ThenTheSortControlIsEnglishToo()
     {
-        var cut = RenderMed(new FakeClient(EnSide(Variabel("1. Tale", "KODE"))),
-                            b => b.Add(c => c.Sprak, "en"));
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
+                            b => b.Add(c => c.Language, "en"));
 
-        var etiketter = SortButtons(cut).Select(k => k.TextContent).ToList();
+        var labels = SortButtons(cut).Select(k => k.TextContent).ToList();
 
-        Assert.Equal(["Default (ascending)", "Data source", "Data collection", "Variable group"], etiketter);
+        Assert.Equal(["Default (ascending)", "Data source", "Data collection", "Variable group"], labels);
         Assert.Equal("Sort by", cut.Find("fieldset.form-fieldset legend").TextContent);
     }
 
     // ---------------------------------------------------------------------------------
-    // SokChanged — the host's URL contract. The Sok/SokChanged pair gives a host @bind-Sok,
-    // and helsedata's CMS host is what turns that into a shareable link, so when it fires
-    // is part of the contract rather than an implementation detail.
+    // SearchChanged — the host's URL contract. The Search/SearchChanged pair gives a host
+    // @bind-Search, and helsedata's CMS host is what turns that into a shareable link, so when
+    // it fires is part of the contract rather than an implementation detail.
     // ---------------------------------------------------------------------------------
 
     [Fact]
-    public void Sok_WhenTheUserSearches_ThenTheHostIsToldWhatWasSearchedFor()
+    public void Search_WhenTheUserSearches_ThenTheHostIsToldWhatWasSearchedFor()
     {
-        var meldt = new List<string?>();
-        var cut = RenderMed(new FakeClient(EnSide()),
-                            b => b.Add(c => c.SokChanged, (string? s) => meldt.Add(s)));
+        var reported = new List<string?>();
+        var cut = RenderWith(new FakeClient(OnePage()),
+                            b => b.Add(c => c.SearchChanged, (string? s) => reported.Add(s)));
 
         cut.Find("input[type=search]").Change("svelging");
         cut.Find("form").Submit();
 
         // The initial load reports the parameter it was given, then the search reports itself.
-        Assert.Equal([null, "svelging"], meldt);
+        Assert.Equal([null, "svelging"], reported);
     }
 
     [Fact]
-    public void Sok_WhenTheFetchFails_ThenTheHostIsStillToldWhatWasSearchedFor()
+    public void Search_WhenTheFetchFailsOnASearch_ThenTheHostIsStillToldWhatWasSearchedFor()
     {
         // Unconditional, as the parameter's own doc says. A host whose URL kept the previous query
         // after a failed search would hand out a link that reloads into a different search than
         // the box on screen is showing.
-        var meldt = new List<string?>();
-        var cut = RenderMed(new FeilendeClient(),
-                            b => b.Add(c => c.SokChanged, (string? s) => meldt.Add(s)));
+        var reported = new List<string?>();
+        var cut = RenderWith(new FailingClient(),
+                            b => b.Add(c => c.SearchChanged, (string? s) => reported.Add(s)));
 
         cut.Find("input[type=search]").Change("svelging");
         cut.Find("form").Submit();
 
         Assert.Contains("Kunne ikke hente variabler", cut.Markup);
-        Assert.Equal([null, "svelging"], meldt);
+        Assert.Equal([null, "svelging"], reported);
     }
 
     [Fact]
-    public void Sok_WhenTheHostsOwnHandlerThrows_ThenItDoesNotEscapeIntoTheHost()
+    public void Search_WhenTheHostsOwnHandlerThrows_ThenItDoesNotEscapeIntoTheHost()
     {
         // The handler this exists for is a NavigationManager call or a CMS URL rewrite, which is
         // exactly the kind that throws. Unhandled it would propagate out of Blazor's event
@@ -488,16 +488,16 @@ public class VariabelutforskerTest : BunitContext
         // which in helsedata's legacy Blazor Server host tears down the circuit for the whole CMS
         // page. Nothing is shown to the reader either: the search itself worked, and reporting a
         // host bug as "Kunne ikke hente variabler" would blame the API for it.
-        var client = new FakeClient(EnSide(Variabel("1. Tale", "KODE")));
+        var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
 
-        var cut = RenderMed(client,
-                            b => b.Add<string?>(c => c.SokChanged,
+        var cut = RenderWith(client,
+                            b => b.Add<string?>(c => c.SearchChanged,
                                                 _ => throw new InvalidOperationException("vertsfeil")));
 
         cut.Find("input[type=search]").Change("svelging");
         cut.Find("form").Submit();
 
-        Assert.Equal("svelging", client.SisteSok);
+        Assert.Equal("svelging", client.LastSearch);
         Assert.DoesNotContain("Kunne ikke hente variabler", cut.Markup);
         Assert.Single(cut.FindAll("ul.datasourcecard-list > li"));
     }
@@ -514,7 +514,7 @@ public class VariabelutforskerTest : BunitContext
         // There are no column headers, so there is no aria-sort to carry this. The chosen order
         // rides on the status line instead — already a polite, atomic live region, so changing the
         // sentence is what announces the new ordering.
-        var cut = RenderMed(new FakeClient(EnSide(Variabel("1. Tale", "KODE"))));
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
         Assert.Contains("sortert på Standard, stigende", cut.Find("p[role='status']").TextContent);
 
@@ -532,7 +532,7 @@ public class VariabelutforskerTest : BunitContext
     {
         // The list's accessible name is the same sentence as the status line, so the two cannot
         // drift apart and say the result is ordered two different ways.
-        var cut = RenderMed(new FakeClient(EnSide(Variabel("1. Tale", "KODE"))));
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
         Assert.Contains("sortert på Standard, stigende",
                         cut.Find("ul.datasourcecard-list").GetAttribute("aria-label")!);
@@ -543,12 +543,12 @@ public class VariabelutforskerTest : BunitContext
     {
         // aria-current rather than aria-pressed: pressing the active button does not release it,
         // it reverses the direction, and a toggle that never toggles off misdescribes itself.
-        var cut = RenderMed(new FakeClient(EnSide(Variabel("1. Tale", "KODE"))));
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        var merka = SortButtons(cut).Where(k => k.HasAttribute("aria-current")).ToList();
+        var marked = SortButtons(cut).Where(k => k.HasAttribute("aria-current")).ToList();
 
-        Assert.Equal("Standard (stigende)", Assert.Single(merka).TextContent);
-        Assert.Equal("true", merka[0].GetAttribute("aria-current"));
+        Assert.Equal("Standard (stigende)", Assert.Single(marked).TextContent);
+        Assert.Equal("true", marked[0].GetAttribute("aria-current"));
     }
 
     [Fact]
@@ -557,7 +557,7 @@ public class VariabelutforskerTest : BunitContext
         // Removing the control after a search that found nothing would take the button the user
         // just pressed out of the document, dropping focus to <body> — the same failure the Søk
         // button is never disabled to avoid.
-        var cut = RenderMed(new FakeClient(EnSide()));
+        var cut = RenderWith(new FakeClient(OnePage()));
 
         Assert.Equal(Enum.GetValues<SortField>().Length, SortButtons(cut).Count);
     }
@@ -566,16 +566,16 @@ public class VariabelutforskerTest : BunitContext
     public void Render_Always_ThenTheSortFieldsAreGroupedAndNamed()
     {
         // fieldset + legend names the group of buttons for a screen reader without inventing ARIA.
-        var cut = RenderMed(new FakeClient(EnSide()));
+        var cut = RenderWith(new FakeClient(OnePage()));
 
         Assert.Equal("Sorter etter", cut.Find("fieldset.form-fieldset legend").TextContent);
         Assert.All(SortButtons(cut), k => Assert.Equal("button", k.GetAttribute("type")));
     }
 
     [Fact]
-    public void Render_Alltid_ThenErStatuslinjaEtHøfligOgAtomiskStatusområde()
+    public void Render_Always_ThenTheStatusLineIsAPoliteAtomicStatusRegion()
     {
-        var cut = RenderMed(new FakeClient(EnSide()));
+        var cut = RenderWith(new FakeClient(OnePage()));
 
         var status = cut.Find("p[role='status']");
 
@@ -593,9 +593,9 @@ public class VariabelutforskerTest : BunitContext
     // ---------------------------------------------------------------------------------
 
     [Fact]
-    public void Render_Alltid_ThenBrukesStilerSineKlassenavnPåSøkefeltet()
+    public void Render_Always_ThenStilersOwnClassNamesAreUsedOnTheSearchField()
     {
-        var cut = RenderMed(new FakeClient(EnSide()));
+        var cut = RenderWith(new FakeClient(OnePage()));
 
         Assert.Equal("form-element__label", cut.Find("label").ClassName);
         Assert.Equal("searchbox__freetext", cut.Find("input[type=search]").ClassName);
@@ -603,34 +603,34 @@ public class VariabelutforskerTest : BunitContext
 
         // hd-button-square carries the shape, button-square--primary the colour, and
         // searchbox__freetext-submit-button places it inside the field's reserved padding.
-        var knapp = cut.Find("button[type=submit]").ClassName!;
-        Assert.Contains("hd-button-square", knapp);
-        Assert.Contains("button-square--primary", knapp);
-        Assert.Contains("searchbox__freetext-submit-button", knapp);
+        var submit = cut.Find("button[type=submit]").ClassName!;
+        Assert.Contains("hd-button-square", submit);
+        Assert.Contains("button-square--primary", submit);
+        Assert.Contains("searchbox__freetext-submit-button", submit);
     }
 
     [Fact]
-    public void Render_Alltid_ThenFinnesIngenOppfunneKlassenavnUtenomRotkroken()
+    public void Render_Always_ThenNoClassNamesAreInventedApartFromTheRootHandle()
     {
         // The root class is a DOM handle, not a style hook — nothing styles it. Everything
         // else has to come from Stiler, and this is the guard that says so out loud.
-        var cut = RenderMed(new FakeClient(EnSide(Variabel("1. Tale", "KODE"))),
-                            b => b.Add(c => c.Sok, "tale"));
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
+                            b => b.Add(c => c.Search, "tale"));
 
-        var oppfunne = cut.FindAll("[class]")
+        var invented = cut.FindAll("[class]")
             .SelectMany(e => e.ClassName!.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-            .Where(k => k.StartsWith("variabelutforsker", StringComparison.Ordinal))
+            .Where(k => k.StartsWith("variable-explorer", StringComparison.Ordinal))
             .Distinct()
             .ToList();
 
-        Assert.Equal(["variabelutforsker"], oppfunne);
-        Assert.Equal("variabelutforsker", cut.Find("section").ClassName);
+        Assert.Equal(["variable-explorer"], invented);
+        Assert.Equal("variable-explorer", cut.Find("section").ClassName);
     }
 
     [Fact]
-    public void Render_NårSøketGirTreff_ThenBrukesStilerSittKortoppsettTilResultatene()
+    public void Render_WhenTheSearchHasHits_ThenStilersCardLayoutIsUsedForTheResults()
     {
-        var cut = RenderMed(new FakeClient(EnSide(Variabel("1. Tale", "KODE"))));
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
         Assert.NotNull(cut.Find("ul.datasourcecard-list > li.datasourcecard-list__item > div.datasourcecard"));
         Assert.NotNull(cut.Find(".datasourcecard__heading"));
@@ -638,29 +638,29 @@ public class VariabelutforskerTest : BunitContext
     }
 
     [Fact]
-    public void Render_NårApietFeiler_ThenFårFeilmeldingaStilerSinInfoboks()
+    public void Render_WhenTheApiFails_ThenTheErrorMessageGetsStilersInfobox()
     {
-        var cut = RenderMed(new FeilendeClient());
+        var cut = RenderWith(new FailingClient());
 
         Assert.Contains("infobox", cut.Find("[role='alert'] p").ClassName!);
     }
 
     [Fact]
-    public void Render_NårIngentingErGalt_ThenTegnesIngenTomInfoboks()
+    public void Render_WhenNothingIsWrong_ThenNoEmptyInfoboxIsDrawn()
     {
         // The alert container is always in the document (see below), so it must carry no
         // class of its own — an `infobox` there would paint an empty coloured box on every
         // page that has nothing to report.
-        var cut = RenderMed(new FakeClient(EnSide()));
+        var cut = RenderWith(new FakeClient(OnePage()));
 
         Assert.False(cut.Find("[role='alert']").HasAttribute("class"));
     }
 
     [Fact]
-    public void Render_NårSøketGirTreff_ThenNevnerStatuslinjaBådeAntalletOgSøkeordet()
+    public void Render_WhenTheSearchHasHits_ThenTheStatusLineNamesBothTheCountAndTheSearchTerm()
     {
-        var cut = RenderMed(new FakeClient(EnSide(Variabel("1. Tale", "KODE"))),
-                            b => b.Add(c => c.Sok, "tale"));
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
+                            b => b.Add(c => c.Search, "tale"));
 
         var status = cut.Find("p[role='status']").TextContent;
 
@@ -669,41 +669,41 @@ public class VariabelutforskerTest : BunitContext
     }
 
     [Fact]
-    public void Render_NårIngenTreff_ThenSierMeldingaHvilketSøkSomIkkeGaTreff()
+    public void Render_WhenThereAreNoHits_ThenTheMessageSaysWhichSearchFoundNothing()
     {
-        var cut = RenderMed(new FakeClient(EnSide()), b => b.Add(c => c.Sok, "svelging"));
+        var cut = RenderWith(new FakeClient(OnePage()), b => b.Add(c => c.Search, "svelging"));
 
         Assert.Contains("Ingen variabler passet søket «svelging»",
                         cut.Find("p[role='status']").TextContent);
     }
 
     [Fact]
-    public void Render_NårBareFørsteSideVises_ThenSierSammendragetHvorMangeAvTotalen()
+    public void Render_WhenOnlyTheFirstPageIsShown_ThenTheSummarySaysHowManyOfTheTotal()
     {
         // 25 rows captioned "312 variabler" would be a lie to whoever cannot see the table — and
         // once there is a pager, so would "25 av 312" on page 2. The sentence says which rows.
-        var side = new Side<VariabelSammendrag>
+        var page = new Page<VariableSummary>
         {
-            Items = [Variabel("1. Tale", "K1"), Variabel("2. Spytt", "K2")],
+            Items = [Variable("1. Tale", "K1"), Variable("2. Spytt", "K2")],
             TotalCount = 312,
-            Page = 1,
+            PageNumber = 1,
             Size = 25,
             TotalPages = 156
         };
 
-        var cut = RenderMed(new FakeClient(side));
+        var cut = RenderWith(new FakeClient(page));
 
         Assert.Contains("Viser 1–2 av 312 variabler funnet",
                         cut.Find("p[role='status']").TextContent);
     }
 
     [Fact]
-    public void Sok_NårFeltetEndresUtenÅSendes_ThenBeskriverStatusFortsattSøketSomGaRadene()
+    public void Search_WhenTheFieldChangesWithoutBeingSubmitted_ThenTheStatusStillDescribesTheSearchTheRowsCameFrom()
     {
         // @bind writes the field on blur, so the box can hold an unsubmitted query while the
         // table still shows the previous result. The announcement follows the table.
-        var cut = RenderMed(new FakeClient(EnSide(Variabel("1. Tale", "KODE"))),
-                            b => b.Add(c => c.Sok, "tale"));
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
+                            b => b.Add(c => c.Search, "tale"));
 
         cut.Find("input[type=search]").Change("noe helt annet");
 
@@ -711,64 +711,64 @@ public class VariabelutforskerTest : BunitContext
     }
 
     [Fact]
-    public void Render_NårApietFeiler_ThenMeldesFeilenAssertivtOgSierHvaBrukerenKanGjøre()
+    public void Render_WhenTheApiFails_ThenTheErrorIsAnnouncedAssertivelyAndSaysWhatCanBeDone()
     {
-        var cut = RenderMed(new FeilendeClient());
+        var cut = RenderWith(new FailingClient());
 
-        var varsel = cut.Find("[role='alert']");
+        var alert = cut.Find("[role='alert']");
 
-        Assert.Equal("assertive", varsel.GetAttribute("aria-live"));
-        Assert.Equal("true", varsel.GetAttribute("aria-atomic"));
-        Assert.Contains("Kunne ikke hente variabler", varsel.TextContent);
-        Assert.Contains("Prøv igjen", varsel.TextContent); // a way out, not just bad news
+        Assert.Equal("assertive", alert.GetAttribute("aria-live"));
+        Assert.Equal("true", alert.GetAttribute("aria-atomic"));
+        Assert.Contains("Kunne ikke hente variabler", alert.TextContent);
+        Assert.Contains("Prøv igjen", alert.TextContent); // a way out, not just bad news
     }
 
     [Fact]
-    public void Render_NårIngentingErGalt_ThenFinnesVarselområdetLikevelOgErTomt()
+    public void Render_WhenNothingIsWrong_ThenTheAlertRegionIsStillPresentAndEmpty()
     {
         // A role="alert" element inserted and filled in the same DOM update is announced
         // unreliably; one already sitting in the document is not. So it is always rendered.
-        var cut = RenderMed(new FakeClient(EnSide()));
+        var cut = RenderWith(new FakeClient(OnePage()));
 
-        var varsel = cut.Find("[role='alert']");
+        var alert = cut.Find("[role='alert']");
 
-        Assert.Equal(string.Empty, varsel.TextContent.Trim());
+        Assert.Equal(string.Empty, alert.TextContent.Trim());
     }
 
     [Fact]
-    public void Render_NårSøketGirTreff_ThenHarResultatlistaEtTilgjengeligNavn()
+    public void Render_WhenTheSearchHasHits_ThenTheResultListHasAnAccessibleName()
     {
-        var cut = RenderMed(new FakeClient(EnSide(Variabel("1. Tale", "KODE"))),
-                            b => b.Add(c => c.Sok, "tale"));
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
+                            b => b.Add(c => c.Search, "tale"));
 
         // aria-label rather than a clipped <caption>: Stiler has no visually-hidden rule, so
         // markup that needs one is markup that shows its scaffolding on helsedata's page.
-        var navn = cut.Find("ul.datasourcecard-list").GetAttribute("aria-label")!;
+        var name = cut.Find("ul.datasourcecard-list").GetAttribute("aria-label")!;
 
-        Assert.Contains("1 variabel funnet", navn);
-        Assert.Contains("«tale»", navn);
+        Assert.Contains("1 variabel funnet", name);
+        Assert.Contains("«tale»", name);
     }
 
     [Fact]
-    public void Render_NårSøketGirTreff_ThenErHvertResultatEnOverskriftEttNivåUnderTittelen()
+    public void Render_WhenTheSearchHasHits_ThenEachResultIsAHeadingOneLevelBelowTheTitle()
     {
         // Real headings per result are what let a screen-reader user move between them with
         // the heading rotor. One level below the component's own title keeps the outline whole.
-        var cut = RenderMed(new FakeClient(EnSide(Variabel("1. Tale", "KODE"))),
-                            b => b.Add(c => c.OverskriftNivaa, 3));
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
+                            b => b.Add(c => c.HeadingLevel, 3));
 
-        var kortoverskrift = cut.Find("li h4");
+        var cardHeading = cut.Find("li h4");
 
-        Assert.Equal("1. Tale", kortoverskrift.TextContent);
-        Assert.Equal("datasourcecard__heading", kortoverskrift.ClassName);
+        Assert.Equal("1. Tale", cardHeading.TextContent);
+        Assert.Equal("datasourcecard__heading", cardHeading.ClassName);
     }
 
     [Fact]
-    public void Render_NårSøketGirTreff_ThenErHvertFeltMerketMedHvaDetEr()
+    public void Render_WhenTheSearchHasHits_ThenEveryFieldIsLabelledWithWhatItIs()
     {
         // A table had column headers doing this job. A card has nothing, and "Inklusjon" on
         // its own does not say which field it is.
-        var cut = RenderMed(new FakeClient(EnSide(Variabel("1. Tale", "V_ALS.F1.TALE"))));
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "V_ALS.F1.TALE"))));
 
         var info = cut.Find(".datasourcecard__info").TextContent;
 
@@ -779,30 +779,30 @@ public class VariabelutforskerTest : BunitContext
     }
 
     [Fact]
-    public void Render_NårResultateneVises_ThenErListaMerketSomOpptattUtenEkstraTabbstopp()
+    public void Render_WhenTheResultsAreShown_ThenTheListIsMarkedBusyWithoutAnExtraTabStop()
     {
         // The table version wrapped itself in a focusable scroll box, because a box that
         // scrolls sideways and cannot be focused cannot be scrolled from the keyboard. Cards
         // wrap instead of scrolling, so that tab stop is gone rather than merely moved.
-        var cut = RenderMed(new FakeClient(EnSide(Variabel("1. Tale", "KODE"))));
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        var liste = cut.Find("ul.datasourcecard-list");
+        var list = cut.Find("ul.datasourcecard-list");
 
-        Assert.Equal("false", liste.GetAttribute("aria-busy"));
-        Assert.False(liste.HasAttribute("tabindex"));
+        Assert.Equal("false", list.GetAttribute("aria-busy"));
+        Assert.False(list.HasAttribute("tabindex"));
         Assert.Empty(cut.FindAll("[tabindex]"));
     }
 
     [Fact]
-    public void Render_NårEnVerdiMangler_ThenSkrivesIkkeOppgittSynligForAlle()
+    public void Render_WhenAValueIsMissing_ThenNotSpecifiedIsWrittenVisiblyForEveryone()
     {
         // "—" is either read as "em dash" or skipped in silence, depending on the reader's
         // punctuation setting. Neither says "we do not know". The words used to be there but
         // clipped out of sight for everyone except a screen reader; now they are simply there,
         // which needs no visually-hidden rule from the host — and Stiler has none to give.
-        var utenKilde = new VariabelSammendrag { Id = Guid.NewGuid(), Code = "K", PreferredTerm = "Uten kilde" };
+        var withoutKilde = new VariableSummary { Id = Guid.NewGuid(), Code = "K", PreferredTerm = "Uten kilde" };
 
-        var cut = RenderMed(new FakeClient(EnSide(utenKilde)));
+        var cut = RenderWith(new FakeClient(OnePage(withoutKilde)));
 
         var info = cut.Find(".datasourcecard__info");
 
@@ -812,34 +812,34 @@ public class VariabelutforskerTest : BunitContext
     }
 
     [Fact]
-    public void Render_NårVariabelenHarBeskrivelse_ThenStårDenForSegSelvUnderNøkkelopplysningene()
+    public void Render_WhenTheVariableHasADescription_ThenItStandsOnItsOwnBelowTheKeyFacts()
     {
         // The code and the description used to be two adjacent spans in one table cell, and
         // Razor eats the whitespace between them: "…ALSFRSR1TALEHvordan er talen?". They are
         // now different parts of the card, so nothing can run them together.
-        var medBeskrivelse = new VariabelSammendrag
+        var withDescription = new VariableSummary
         {
             Id = Guid.NewGuid(),
             Code = "V_ALS.F1.TALE",
             PreferredTerm = "1. Tale",
-            Beskrivelse = "Hvordan er talen?"
+            Description = "Hvordan er talen?"
         };
 
-        var cut = RenderMed(new FakeClient(EnSide(medBeskrivelse)));
+        var cut = RenderWith(new FakeClient(OnePage(withDescription)));
 
         Assert.Equal("Hvordan er talen?", cut.Find(".datasourcecard__intro p").TextContent);
         Assert.DoesNotContain("Hvordan er talen?", cut.Find(".datasourcecard__info").TextContent);
     }
 
     [Fact]
-    public void Render_NårSpråkErEn_ThenErSjølveMetadataenFortsattMerketSomNorsk()
+    public void Render_WhenTheLanguageIsEn_ThenTheMetadataItselfIsStillMarkedAsNorwegian()
     {
         // The UI turns English; Munin's variable names do not. An English synthesiser
         // reading Norwegian terms is unintelligible (WCAG 3.1.2). The mark sits on the data
         // rather than on the whole list, so the English field labels around it are not
         // announced as Norwegian too.
-        var cut = RenderMed(new FakeClient(EnSide(Variabel("1. Tale", "KODE"))),
-                            b => b.Add(c => c.Sprak, "en"));
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
+                            b => b.Add(c => c.Language, "en"));
 
         Assert.Equal("no", cut.Find(".datasourcecard__heading").GetAttribute("lang"));
         Assert.Equal("no", cut.Find(".datasourcecard__info--text span[lang]").GetAttribute("lang"));
@@ -847,46 +847,46 @@ public class VariabelutforskerTest : BunitContext
     }
 
     [Fact]
-    public void Render_NårHostenIkkeSierNoe_ThenErTittelenH2()
+    public void Render_WhenTheHostSaysNothing_ThenTheTitleIsAnH2()
     {
-        var cut = RenderMed(new FakeClient(EnSide()));
+        var cut = RenderWith(new FakeClient(OnePage()));
 
         Assert.Equal("Variabelutforsker", cut.Find("h2").TextContent);
     }
 
     [Fact]
-    public void Render_NårHostenSetterOverskriftsnivå_ThenBrukesDetNivåetOgSeksjonenPekerPåDet()
+    public void Render_WhenTheHostSetsTheHeadingLevel_ThenThatLevelIsUsedAndTheSectionPointsAtIt()
     {
         // The level that keeps a page outline unbroken is only knowable at the mount site.
-        var cut = RenderMed(new FakeClient(EnSide()), b => b.Add(c => c.OverskriftNivaa, 3));
+        var cut = RenderWith(new FakeClient(OnePage()), b => b.Add(c => c.HeadingLevel, 3));
 
-        var overskrift = cut.Find("h3");
+        var heading = cut.Find("h3");
 
-        Assert.Equal("Variabelutforsker", overskrift.TextContent);
+        Assert.Equal("Variabelutforsker", heading.TextContent);
         Assert.Empty(cut.FindAll("h2"));
-        Assert.Equal(overskrift.Id, cut.Find("section").GetAttribute("aria-labelledby"));
+        Assert.Equal(heading.Id, cut.Find("section").GetAttribute("aria-labelledby"));
     }
 
     [Fact]
-    public void Render_NårOverskriftsnivåetErUtenforOmrådet_ThenKlemmesDetInnI1Til6()
+    public void Render_WhenTheHeadingLevelIsOutOfRange_ThenItIsClampedTo1Through6()
     {
         // An <h9> is not a heading at all, which would be a worse failure than an
         // approximately-right level.
-        Services.AddSingleton<IMuninExplorerClient>(new FakeClient(EnSide()));
+        Services.AddSingleton<IMuninExplorerClient>(new FakeClient(OnePage()));
 
-        var lavt = Render<Variabelutforsker>(b => b.Add(c => c.OverskriftNivaa, 0));
-        var hoyt = Render<Variabelutforsker>(b => b.Add(c => c.OverskriftNivaa, 9));
+        var low = Render<VariableExplorer>(b => b.Add(c => c.HeadingLevel, 0));
+        var high = Render<VariableExplorer>(b => b.Add(c => c.HeadingLevel, 9));
 
-        Assert.NotEmpty(lavt.FindAll("h1"));
-        Assert.NotEmpty(hoyt.FindAll("h6"));
+        Assert.NotEmpty(low.FindAll("h1"));
+        Assert.NotEmpty(high.FindAll("h6"));
     }
 
     [Fact]
-    public void Render_Alltid_ThenErSøkelandemerketNavngittEtterInstansen()
+    public void Render_Always_ThenTheSearchLandmarkIsNamedAfterTheInstance()
     {
         // Two explorers on one page otherwise leave two identical, unnamed "search"
         // entries in a screen reader's landmark list.
-        var cut = RenderMed(new FakeClient(EnSide()));
+        var cut = RenderWith(new FakeClient(OnePage()));
 
         var form = cut.Find("form[role='search']");
 
@@ -894,12 +894,12 @@ public class VariabelutforskerTest : BunitContext
     }
 
     [Fact]
-    public void Render_ToInstanserPåSammeSide_ThenErOgsåOverskrifteneUnike()
+    public void Render_WhenTwoInstancesShareAPage_ThenTheHeadingsAreUniqueToo()
     {
-        Services.AddSingleton<IMuninExplorerClient>(new FakeClient(EnSide(Variabel("1. Tale", "KODE"))));
+        Services.AddSingleton<IMuninExplorerClient>(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        var a = Render<Variabelutforsker>();
-        var b = Render<Variabelutforsker>();
+        var a = Render<VariableExplorer>();
+        var b = Render<VariableExplorer>();
 
         // The title id is what both the section and the search landmark are named by, so a
         // collision would leave a screen reader with two identically named landmarks.
@@ -907,37 +907,37 @@ public class VariabelutforskerTest : BunitContext
     }
 
     [Fact]
-    public void Sok_NårEtSøkPågår_ThenDeaktiveresIkkeSøkeknappen()
+    public void Search_WhileASearchIsRunning_ThenTheSearchButtonIsNotDisabled()
     {
         // Disabling the element that has focus drops focus to <body>: press Enter on Søk
         // and a keyboard user starts tabbing from the top of the page again.
-        var cut = RenderMed(new TregClient());
+        var cut = RenderWith(new SlowClient());
 
         Assert.False(cut.Find("button[type=submit]").HasAttribute("disabled"));
         Assert.Contains("Henter variabler", cut.Find("p[role='status']").TextContent);
     }
 
     [Fact]
-    public void Sok_NårEtSøkAlleredePågår_ThenIgnoreresNyInnsending()
+    public void Search_WhenASearchIsAlreadyRunning_ThenANewSubmitIsIgnored()
     {
         // What the disabled attribute used to do, without taking focus away to do it.
-        var client = new TregClient();
-        var cut = RenderMed(client);
+        var client = new SlowClient();
+        var cut = RenderWith(client);
 
         cut.Find("form").Submit();
         cut.Find("form").Submit();
 
-        Assert.Equal(1, client.Kall);
+        Assert.Equal(1, client.Calls);
     }
 
     [Fact]
-    public async Task Sok_NårResultateneErForeldetAvEtNyttSøk_ThenMerkesListaSomOpptatt()
+    public async Task Search_WhenTheResultsAreStaleFromANewSearch_ThenTheListIsMarkedBusy()
     {
         // The previous cards stay on screen while the next search runs, so they are stale
         // rather than current — aria-busy is what says so to a screen reader.
-        var treff = EnSide(Variabel("1. Tale", "KODE"));
-        var client = new TregClient(treff);
-        var cut = RenderMed(client);
+        var hits = OnePage(Variable("1. Tale", "KODE"));
+        var client = new SlowClient(hits);
+        var cut = RenderWith(client);
 
         Assert.Equal("false", cut.Find("ul.datasourcecard-list").GetAttribute("aria-busy"));
 
@@ -945,20 +945,20 @@ public class VariabelutforskerTest : BunitContext
 
         Assert.Equal("true", cut.Find("ul.datasourcecard-list").GetAttribute("aria-busy"));
 
-        await cut.InvokeAsync(() => client.Svar(treff));
+        await cut.InvokeAsync(() => client.Answer(hits));
 
         cut.WaitForAssertion(() =>
             Assert.Equal("false", cut.Find("ul.datasourcecard-list").GetAttribute("aria-busy")));
     }
 
     [Fact]
-    public async Task Sok_NårSvaretKommer_ThenErstatterResultatetLastemeldinga()
+    public async Task Search_WhenTheAnswerArrives_ThenTheResultReplacesTheLoadingMessage()
     {
         // One shared status region, so the messages replace each other instead of stacking.
-        var client = new TregClient();
-        var cut = RenderMed(client);
+        var client = new SlowClient();
+        var cut = RenderWith(client);
 
-        await cut.InvokeAsync(() => client.Svar(EnSide(Variabel("1. Tale", "KODE"))));
+        await cut.InvokeAsync(() => client.Answer(OnePage(Variable("1. Tale", "KODE"))));
 
         cut.WaitForAssertion(() =>
         {
@@ -978,16 +978,16 @@ public class VariabelutforskerTest : BunitContext
     // ---------------------------------------------------------------------------------
 
     /// <summary>One page of a <paramref name="totalCount"/>-row result, as the API would return it.</summary>
-    private static Side<VariabelSammendrag> ResultPage(int totalCount, int page = 1, int pageSize = 25)
+    private static Page<VariableSummary> ResultPage(int totalCount, int page = 1, int pageSize = 25)
     {
         var first = (page - 1) * pageSize;
         var count = Math.Clamp(totalCount - first, 0, pageSize);
 
-        return new Side<VariabelSammendrag>
+        return new Page<VariableSummary>
         {
-            Items = [.. Enumerable.Range(1, count).Select(i => Variabel($"Variabel {first + i}", $"K{first + i}"))],
+            Items = [.. Enumerable.Range(1, count).Select(i => Variable($"Variabel {first + i}", $"K{first + i}"))],
             TotalCount = totalCount,
-            Page = page,
+            PageNumber = page,
             Size = pageSize,
             TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
         };
@@ -997,11 +997,11 @@ public class VariabelutforskerTest : BunitContext
     /// A client with more rows than fit on one page, answering with whichever slice it is asked for.
     /// </summary>
     /// <remarks>
-    /// It has to answer per page rather than return one fixed <see cref="Side{T}"/>, because what
+    /// It has to answer per page rather than return one fixed <see cref="Page{T}"/>, because what
     /// these tests are about is the row range and the position moving as the pages turn — a fake
     /// that answered page 1 forever would agree with a component that never sent the page number.
     /// </remarks>
-    private sealed class PagedClient(int totalCount, int pageSize = 25) : TomMuninExplorerKlient
+    private sealed class PagedClient(int totalCount, int rowsPerPage = 25) : EmptyMuninExplorerClient
     {
         public string? LastSearch { get; private set; }
         public int LastPage { get; private set; }
@@ -1010,20 +1010,20 @@ public class VariabelutforskerTest : BunitContext
         public SortDirection LastDirection { get; private set; }
         public int Calls { get; private set; }
 
-        public override Task<Side<VariabelSammendrag>> SokVariablerAsync(
-            string? sok, int side = 1, int sideStorrelse = 25,
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default,
             SortDirection direction = SortDirection.Ascending,
             CancellationToken cancellationToken = default)
         {
-            LastSearch = sok;
-            LastPage = side;
-            LastPageSize = sideStorrelse;
+            LastSearch = search;
+            LastPage = page;
+            LastPageSize = pageSize;
             LastSort = sort;
             LastDirection = direction;
             Calls++;
 
-            return Task.FromResult(ResultPage(totalCount, side, pageSize));
+            return Task.FromResult(ResultPage(totalCount, page, rowsPerPage));
         }
     }
 
@@ -1035,59 +1035,59 @@ public class VariabelutforskerTest : BunitContext
     /// the request that straddles it come back empty.
     /// </summary>
     private sealed class ShrinkingPagedClient(int totalCount, int calmCalls, int afterwards)
-        : TomMuninExplorerKlient
+        : EmptyMuninExplorerClient
     {
         public int LastPage { get; private set; }
         public int Calls { get; private set; }
 
-        public override Task<Side<VariabelSammendrag>> SokVariablerAsync(
-            string? sok, int side = 1, int sideStorrelse = 25,
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default,
             SortDirection direction = SortDirection.Ascending,
             CancellationToken cancellationToken = default)
         {
-            LastPage = side;
+            LastPage = page;
             Calls++;
 
-            return Task.FromResult(ResultPage(Calls <= calmCalls ? totalCount : afterwards, side));
+            return Task.FromResult(ResultPage(Calls <= calmCalls ? totalCount : afterwards, page));
         }
     }
 
     /// <summary>
-    /// Answers page 1 and hands back an entirely empty <see cref="Side{T}"/> for anything after it —
+    /// Answers page 1 and hands back an entirely empty <see cref="Page{T}"/> for anything after it —
     /// which is what <c>MuninExplorerClient</c> produces from a 404 on an out-of-range page: no
     /// exception, no rows, and a count and page total of zero.
     /// </summary>
-    private sealed class NotFoundPagedClient(int totalCount) : TomMuninExplorerKlient
+    private sealed class NotFoundPagedClient(int totalCount) : EmptyMuninExplorerClient
     {
         public int LastPage { get; private set; }
         public int Calls { get; private set; }
 
-        public override Task<Side<VariabelSammendrag>> SokVariablerAsync(
-            string? sok, int side = 1, int sideStorrelse = 25,
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default,
             SortDirection direction = SortDirection.Ascending,
             CancellationToken cancellationToken = default)
         {
-            LastPage = side;
+            LastPage = page;
             Calls++;
 
-            return Task.FromResult(side == 1 ? ResultPage(totalCount) : new Side<VariabelSammendrag>());
+            return Task.FromResult(page == 1 ? ResultPage(totalCount) : new Page<VariableSummary>());
         }
     }
 
     /// <summary>
-    /// Answers page 1, 404s anything after it into an empty <see cref="Side{T}"/> the same way
+    /// Answers page 1, 404s anything after it into an empty <see cref="Page{T}"/> the same way
     /// <see cref="NotFoundPagedClient"/> does — and then fails outright, so the retreat's own fetch
     /// is the call that throws. The transient blip the retreat has to survive, arriving in the one
     /// window where the result on screen is the empty page the retreat is trying to escape.
     /// </summary>
-    private sealed class RetreatFailingClient(int totalCount) : TomMuninExplorerKlient
+    private sealed class RetreatFailingClient(int totalCount) : EmptyMuninExplorerClient
     {
         public int Calls { get; private set; }
 
-        public override Task<Side<VariabelSammendrag>> SokVariablerAsync(
-            string? sok, int side = 1, int sideStorrelse = 25,
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default,
             SortDirection direction = SortDirection.Ascending,
             CancellationToken cancellationToken = default)
@@ -1097,7 +1097,7 @@ public class VariabelutforskerTest : BunitContext
             return Calls switch
             {
                 1 => Task.FromResult(ResultPage(totalCount)),
-                2 => Task.FromResult(new Side<VariabelSammendrag>()),
+                2 => Task.FromResult(new Page<VariableSummary>()),
                 _ => throw new HttpRequestException("nede")
             };
         }
@@ -1107,31 +1107,31 @@ public class VariabelutforskerTest : BunitContext
     /// A server that clamps an out-of-range page rather than 404ing it: asked for page 12 of 8 it
     /// answers page 8, and says so in the page it echoes back.
     /// </summary>
-    private sealed class ClampingPagedClient(int totalCount, int maxPage) : TomMuninExplorerKlient
+    private sealed class ClampingPagedClient(int totalCount, int maxPage) : EmptyMuninExplorerClient
     {
-        public override Task<Side<VariabelSammendrag>> SokVariablerAsync(
-            string? sok, int side = 1, int sideStorrelse = 25,
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default,
             SortDirection direction = SortDirection.Ascending,
             CancellationToken cancellationToken = default)
-            => Task.FromResult(ResultPage(totalCount, Math.Min(side, maxPage)));
+            => Task.FromResult(ResultPage(totalCount, Math.Min(page, maxPage)));
     }
 
     private static IReadOnlyList<AngleSharp.Dom.IElement> PagerButtons(
-        IRenderedComponent<Variabelutforsker> cut) =>
+        IRenderedComponent<VariableExplorer> cut) =>
         cut.FindAll("div.variables-pagination .variables-pagination-content button");
 
-    private static AngleSharp.Dom.IElement Previous(IRenderedComponent<Variabelutforsker> cut) =>
+    private static AngleSharp.Dom.IElement Previous(IRenderedComponent<VariableExplorer> cut) =>
         PagerButtons(cut)[0];
 
-    private static AngleSharp.Dom.IElement Next(IRenderedComponent<Variabelutforsker> cut) =>
+    private static AngleSharp.Dom.IElement Next(IRenderedComponent<VariableExplorer> cut) =>
         PagerButtons(cut)[1];
 
     /// <summary>The "Side 2 av 13" between the two buttons.</summary>
-    private static string Position(IRenderedComponent<Variabelutforsker> cut) =>
+    private static string Position(IRenderedComponent<VariableExplorer> cut) =>
         cut.Find(".variables-pagination-content span.caption").TextContent;
 
-    private static string StatusLine(IRenderedComponent<Variabelutforsker> cut) =>
+    private static string StatusLine(IRenderedComponent<VariableExplorer> cut) =>
         cut.Find("p[role='status']").TextContent;
 
     [Fact]
@@ -1140,7 +1140,7 @@ public class VariabelutforskerTest : BunitContext
         // Turning a page must not quietly become a new search: the rows would change for two
         // reasons at once and the user would have no way to tell which.
         var client = new PagedClient(312);
-        var cut = RenderMed(client, b => b.Add(c => c.Sok, "tale"));
+        var cut = RenderWith(client, b => b.Add(c => c.Search, "tale"));
 
         ClickSort(cut, "Datakilde"); // something for the page turn to preserve
 
@@ -1158,7 +1158,7 @@ public class VariabelutforskerTest : BunitContext
     public void Page_WhenPreviousIsPressed_ThenThePageBeforeIsFetched()
     {
         var client = new PagedClient(312);
-        var cut = RenderMed(client);
+        var cut = RenderWith(client);
 
         Next(cut).Click();
         Next(cut).Click();
@@ -1175,7 +1175,7 @@ public class VariabelutforskerTest : BunitContext
     public void Page_WhenOnTheFirstPage_ThenPreviousIsUnavailableAndAsksForNothing()
     {
         var client = new PagedClient(312);
-        var cut = RenderMed(client);
+        var cut = RenderWith(client);
 
         Assert.Equal("true", Previous(cut).GetAttribute("aria-disabled"));
         Assert.Null(Next(cut).GetAttribute("aria-disabled"));
@@ -1192,7 +1192,7 @@ public class VariabelutforskerTest : BunitContext
         // An exact multiple of the page size: 50 rows at 25 a page is two full pages, which is
         // where an off-by-one in the page count offers a third page with nothing on it.
         var client = new PagedClient(50);
-        var cut = RenderMed(client);
+        var cut = RenderWith(client);
 
         Next(cut).Click();
 
@@ -1214,13 +1214,13 @@ public class VariabelutforskerTest : BunitContext
         // has focus drops focus to <body> — so the reward for finishing the list would be tabbing
         // from the top of the host's page again. Same decision as the never-disabled Søk button.
         var client = new PagedClient(50);
-        var cut = RenderMed(client);
+        var cut = RenderWith(client);
 
-        Assert.All(PagerButtons(cut), knapp => Assert.False(knapp.HasAttribute("disabled")));
+        Assert.All(PagerButtons(cut), button => Assert.False(button.HasAttribute("disabled")));
 
         Next(cut).Click();
 
-        Assert.All(PagerButtons(cut), knapp => Assert.False(knapp.HasAttribute("disabled")));
+        Assert.All(PagerButtons(cut), button => Assert.False(button.HasAttribute("disabled")));
         Assert.Equal("true", Next(cut).GetAttribute("aria-disabled"));
     }
 
@@ -1229,7 +1229,7 @@ public class VariabelutforskerTest : BunitContext
     {
         // "Side 1 av 1" between two buttons that can never do anything is furniture, and the skip
         // link would be a tab stop leading nowhere.
-        var cut = RenderMed(new PagedClient(3));
+        var cut = RenderWith(new PagedClient(3));
 
         Assert.Empty(cut.FindAll("div.variables-pagination"));
         Assert.Empty(cut.FindAll("a.skiplink-pagination"));
@@ -1238,7 +1238,7 @@ public class VariabelutforskerTest : BunitContext
     [Fact]
     public void Page_WhenThereAreNoHitsAtAll_ThenThereIsNoPager()
     {
-        var cut = RenderMed(new PagedClient(0));
+        var cut = RenderWith(new PagedClient(0));
 
         Assert.Empty(cut.FindAll("div.variables-pagination"));
         Assert.DoesNotContain("Viser", StatusLine(cut));
@@ -1251,7 +1251,7 @@ public class VariabelutforskerTest : BunitContext
         // A different search is a different result set, and page 3 of the old one means nothing
         // in it. Without this the user searches and lands in the middle of the answer.
         var client = new PagedClient(312);
-        var cut = RenderMed(client);
+        var cut = RenderWith(client);
 
         Next(cut).Click();
         Next(cut).Click();
@@ -1270,7 +1270,7 @@ public class VariabelutforskerTest : BunitContext
         // Reordering renumbers every page, so page 3 of the old order holds rows from the middle
         // of a sequence the reader never saw the start of.
         var client = new PagedClient(312);
-        var cut = RenderMed(client);
+        var cut = RenderWith(client);
 
         Next(cut).Click();
         Next(cut).Click();
@@ -1286,21 +1286,21 @@ public class VariabelutforskerTest : BunitContext
     {
         // Same rule as a second submit and a second sort click: dropped rather than queued, so two
         // impatient clicks cannot leave the position saying one page while the rows are another.
-        var client = new TregClient(ResultPage(312));
-        var cut = RenderMed(client);
+        var client = new SlowClient(ResultPage(312));
+        var cut = RenderWith(client);
 
         cut.Find("form").Submit(); // second search, still in flight
         Next(cut).Click();
 
-        Assert.Equal(2, client.Kall); // the initial load and the stalled search, not the page turn
+        Assert.Equal(2, client.Calls); // the initial load and the stalled search, not the page turn
         Assert.Equal("Side 1 av 13", Position(cut));
     }
 
     [Fact]
     public void Page_WhenTheFetchFails_ThenTheFailureIsReportedInsteadOfEscaping()
     {
-        var client = new FeilendeClient(ResultPage(312));
-        var cut = RenderMed(client);
+        var client = new FailingClient(ResultPage(312));
+        var cut = RenderWith(client);
 
         Next(cut).Click();
 
@@ -1315,8 +1315,8 @@ public class VariabelutforskerTest : BunitContext
         // helsedata's CMS page. It is why Søk is never disabled and why the pager uses
         // aria-disabled — and the pager is the only pressable control here that is rendered
         // conditionally, so a page turn that cleared the rows is the one way left to break it.
-        var client = new FeilendeClient(ResultPage(312));
-        var cut = RenderMed(client);
+        var client = new FailingClient(ResultPage(312));
+        var cut = RenderWith(client);
 
         Next(cut).Click();
 
@@ -1332,8 +1332,8 @@ public class VariabelutforskerTest : BunitContext
         // The other half of the same rule. A page turn keeps its rows because they came from the
         // search still on screen; a failed *search* has none of its own, and leaving the previous
         // one's rows under the error would say they answered the new query.
-        var client = new FeilendeClient(ResultPage(312));
-        var cut = RenderMed(client);
+        var client = new FailingClient(ResultPage(312));
+        var cut = RenderWith(client);
 
         cut.Find("input[type=search]").Change("svelging");
         cut.Find("form").Submit();
@@ -1353,7 +1353,7 @@ public class VariabelutforskerTest : BunitContext
         // Eleven answers out of 312 rows carry the reader to page 11; the twelfth request — for
         // page 12 of the 13 the pager is still offering — arrives after the index dropped to 200.
         var client = new ShrinkingPagedClient(312, calmCalls: 11, afterwards: 200);
-        var cut = RenderMed(client);
+        var cut = RenderWith(client);
 
         for (var i = 0; i < 11; i++)
         {
@@ -1369,11 +1369,11 @@ public class VariabelutforskerTest : BunitContext
     [Fact]
     public void Page_WhenTheApiReportsAnOutOfRangePageAsNotFound_ThenItFallsBackToTheFirstPage()
     {
-        // MuninExplorerClient maps 404 to an empty Side rather than throwing, so nothing rolls the
+        // MuninExplorerClient maps 404 to an empty Page rather than throwing, so nothing rolls the
         // page number back: the count and the page total arrive as zero, which describes no page at
         // all. Page 1 is the one page that can never be out of range.
         var client = new NotFoundPagedClient(312);
-        var cut = RenderMed(client);
+        var cut = RenderWith(client);
 
         Next(cut).Click();
 
@@ -1390,11 +1390,11 @@ public class VariabelutforskerTest : BunitContext
         // rows, so an answer carrying a count but no rows leaves something to press instead of a
         // dead end. Past page one RetreatFromEmptyPageAsync steps out of that state; on page one
         // there is nowhere to step to, so the pager staying is the whole of the recovery.
-        var cut = RenderMed(new FakeClient(new Side<VariabelSammendrag>
+        var cut = RenderWith(new FakeClient(new Page<VariableSummary>
         {
             Items = [],
             TotalCount = 312,
-            Page = 1,
+            PageNumber = 1,
             Size = 25,
             TotalPages = 13
         }));
@@ -1411,7 +1411,7 @@ public class VariabelutforskerTest : BunitContext
         // says so has described itself truthfully, and the row range has to be counted from what
         // arrived rather than from what was asked for — otherwise the status line offers rows the
         // reader is not looking at.
-        var cut = RenderMed(new ClampingPagedClient(312, maxPage: 1));
+        var cut = RenderWith(new ClampingPagedClient(312, maxPage: 1));
 
         Next(cut).Click();
 
@@ -1430,7 +1430,7 @@ public class VariabelutforskerTest : BunitContext
         // that was asked for, Neste stays enabled against a page the server disowned, so every
         // further press bumps the caption — "Side 3 av 13", "Side 4 av 13" — while the same 25 rows
         // sit underneath it.
-        var cut = RenderMed(new ClampingPagedClient(312, maxPage: 1));
+        var cut = RenderWith(new ClampingPagedClient(312, maxPage: 1));
 
         Next(cut).Click();
         Next(cut).Click();
@@ -1450,7 +1450,7 @@ public class VariabelutforskerTest : BunitContext
         // answers Neste with an empty page and puts the reader back on page 1 of 1. Dropping the
         // pager in that render would take Neste out of the document under the finger that pressed
         // it, which is the failure the retreat exists to avoid rather than a new one to introduce.
-        var cut = RenderMed(new ShrinkingPagedClient(312, calmCalls: 1, afterwards: 10));
+        var cut = RenderWith(new ShrinkingPagedClient(312, calmCalls: 1, afterwards: 10));
 
         Next(cut).Click();
 
@@ -1472,7 +1472,7 @@ public class VariabelutforskerTest : BunitContext
         // The other half of the same rule: the pager is kept because a button was pressed, not
         // forever. A search is not started from one, so a single-page answer to it costs no
         // furniture — and the reader's focus is in the search box, not on a pager button.
-        var cut = RenderMed(new ShrinkingPagedClient(312, calmCalls: 1, afterwards: 10));
+        var cut = RenderWith(new ShrinkingPagedClient(312, calmCalls: 1, afterwards: 10));
 
         Next(cut).Click();
 
@@ -1493,7 +1493,7 @@ public class VariabelutforskerTest : BunitContext
         // 1 and takes the guard's other branch with it. So the whole page turn is undone, back to
         // the page that had rows on it.
         var client = new RetreatFailingClient(312);
-        var cut = RenderMed(client);
+        var cut = RenderWith(client);
 
         Next(cut).Click();
 
@@ -1509,18 +1509,18 @@ public class VariabelutforskerTest : BunitContext
     [Fact]
     public void Page_Always_ThenTheHostIsNotToldTheSearchChanged()
     {
-        // SokChanged is the host's URL contract and turning a page did not change what was
+        // SearchChanged is the host's URL contract and turning a page did not change what was
         // searched for. The page number belongs in that URL too, but through its own contract.
-        var meldt = new List<string?>();
-        var cut = RenderMed(new PagedClient(312),
-                            b => b.Add(c => c.Sok, "tale")
-                                  .Add(c => c.SokChanged, (string? s) => meldt.Add(s)));
+        var reported = new List<string?>();
+        var cut = RenderWith(new PagedClient(312),
+                            b => b.Add(c => c.Search, "tale")
+                                  .Add(c => c.SearchChanged, (string? s) => reported.Add(s)));
 
-        meldt.Clear(); // the initial load's own notification
+        reported.Clear(); // the initial load's own notification
 
         Next(cut).Click();
 
-        Assert.Empty(meldt);
+        Assert.Empty(reported);
     }
 
     [Fact]
@@ -1528,7 +1528,7 @@ public class VariabelutforskerTest : BunitContext
     {
         // "Viser 25 av 312" was true only of the first page. The live region is what announces a
         // page change, so this sentence is also the announcement — hence one sentence, not two.
-        var cut = RenderMed(new PagedClient(312));
+        var cut = RenderWith(new PagedClient(312));
 
         Assert.Contains("Viser 1–25 av 312 variabler funnet", StatusLine(cut));
 
@@ -1543,7 +1543,7 @@ public class VariabelutforskerTest : BunitContext
     {
         // 13 pages of 25 over 312 rows leaves 12 on the last one. Counting the range as
         // page × size would caption it "301–325 av 312".
-        var cut = RenderMed(new PagedClient(312));
+        var cut = RenderWith(new PagedClient(312));
 
         for (var i = 0; i < 12; i++)
         {
@@ -1566,9 +1566,9 @@ public class VariabelutforskerTest : BunitContext
         // division by zero, and the server clamps regardless, so asking for something outside that
         // only desynchronises the two: it would answer with 100 rows while the component counted
         // the pages — and wrote the row range — as if it had asked for half a billion.
-        var client = new PagedClient(312, pageSize: 1);
+        var client = new PagedClient(312, rowsPerPage: 1);
 
-        RenderMed(client, b => b.Add(c => c.SideStorrelse, asked));
+        RenderWith(client, b => b.Add(c => c.PageSize, asked));
 
         Assert.Equal(sent, client.LastPageSize);
     }
@@ -1576,7 +1576,7 @@ public class VariabelutforskerTest : BunitContext
     [Fact]
     public void Page_WhenTheLanguageIsEn_ThenThePagerIsEnglishToo()
     {
-        var cut = RenderMed(new PagedClient(312), b => b.Add(c => c.Sprak, "en"));
+        var cut = RenderWith(new PagedClient(312), b => b.Add(c => c.Language, "en"));
 
         Assert.Equal("Previous", Previous(cut).TextContent);
         Assert.Equal("Next", Next(cut).TextContent);
@@ -1595,13 +1595,13 @@ public class VariabelutforskerTest : BunitContext
     [Fact]
     public void Render_WhenThereIsMoreThanOnePage_ThenThePagerUsesHelsedatasOwnClassNames()
     {
-        var cut = RenderMed(new PagedClient(312));
+        var cut = RenderWith(new PagedClient(312));
 
         var pager = cut.Find("div.variables-pagination > div.variables-pagination-content");
 
         Assert.NotNull(pager);
         Assert.Equal(2, PagerButtons(cut).Count);
-        Assert.All(PagerButtons(cut), knapp => Assert.Contains("hd-button-square", knapp.ClassName!));
+        Assert.All(PagerButtons(cut), button => Assert.Contains("hd-button-square", button.ClassName!));
     }
 
     [Fact]
@@ -1610,7 +1610,7 @@ public class VariabelutforskerTest : BunitContext
         // Without it a keyboard user tabs through 25 cards to reach Neste. It has to sit ahead of
         // the list to save anything, and its target has to be focusable programmatically, or
         // following it moves the viewport while focus stays behind.
-        var cut = RenderMed(new PagedClient(312));
+        var cut = RenderWith(new PagedClient(312));
 
         var skiplink = cut.Find("a.skiplink-pagination");
         var pager = cut.Find("div.variables-pagination");
@@ -1631,7 +1631,7 @@ public class VariabelutforskerTest : BunitContext
         // A second navigation landmark on the host's page has to say what it navigates, and
         // "Forrige" on its own does not say forrige what. Each accessible name starts with the
         // word on the button, so a speech-input user saying what they see still hits it (2.5.3).
-        var cut = RenderMed(new PagedClient(312));
+        var cut = RenderWith(new PagedClient(312));
 
         var pager = cut.Find("div.variables-pagination");
 
@@ -1639,7 +1639,7 @@ public class VariabelutforskerTest : BunitContext
         Assert.Equal("Paginering", pager.GetAttribute("aria-label"));
         Assert.Equal("Forrige side", Previous(cut).GetAttribute("aria-label"));
         Assert.Equal("Neste side", Next(cut).GetAttribute("aria-label"));
-        Assert.All(PagerButtons(cut), knapp => Assert.Equal("button", knapp.GetAttribute("type")));
+        Assert.All(PagerButtons(cut), button => Assert.Equal("button", button.GetAttribute("type")));
     }
 
     [Fact]
@@ -1648,8 +1648,8 @@ public class VariabelutforskerTest : BunitContext
         // Duplicate DOM ids would send both skip links to the same pager — and fail WCAG 4.1.1.
         Services.AddSingleton<IMuninExplorerClient>(new PagedClient(312));
 
-        var a = Render<Variabelutforsker>();
-        var b = Render<Variabelutforsker>();
+        var a = Render<VariableExplorer>();
+        var b = Render<VariableExplorer>();
 
         Assert.NotEqual(a.Find("div.variables-pagination").Id, b.Find("div.variables-pagination").Id);
         Assert.Equal($"#{a.Find("div.variables-pagination").Id}",
