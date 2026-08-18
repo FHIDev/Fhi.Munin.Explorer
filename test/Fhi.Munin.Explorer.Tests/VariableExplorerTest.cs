@@ -1123,18 +1123,8 @@ public class VariableExplorerTest : BunitContext
             SortDirection direction = SortDirection.Ascending,
             CancellationToken cancellationToken = default)
         {
-            var first = (page - 1) * pageSize;
-            var count = Math.Clamp(totalCount - first, 0, pageSize);
-
-            return Task.FromResult(new Page<VariableSummary>
-            {
-                Items =
-                [
-                    .. Enumerable.Range(1, count)
-                        .Select(i => Variable($"Variabel {first + i}", $"K{first + i}"))
-                ],
-                TotalCount = totalCount
-            });
+            return Task.FromResult(
+                ResultPage(totalCount, page, pageSize) with { PageNumber = 0, Size = 0, TotalPages = 0 });
         }
     }
 
