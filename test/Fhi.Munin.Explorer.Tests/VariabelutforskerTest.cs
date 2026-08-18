@@ -680,7 +680,8 @@ public class VariabelutforskerTest : BunitContext
     [Fact]
     public void Render_NårBareFørsteSideVises_ThenSierSammendragetHvorMangeAvTotalen()
     {
-        // 25 rows captioned "312 variabler" would be a lie to whoever cannot see the table.
+        // 25 rows captioned "312 variabler" would be a lie to whoever cannot see the table — and
+        // once there is a pager, so would "25 av 312" on page 2. The sentence says which rows.
         var side = new Side<VariabelSammendrag>
         {
             Items = [Variabel("1. Tale", "K1"), Variabel("2. Spytt", "K2")],
@@ -692,7 +693,7 @@ public class VariabelutforskerTest : BunitContext
 
         var cut = RenderMed(new FakeClient(side));
 
-        Assert.Contains("Viser 2 av 312 variabler funnet",
+        Assert.Contains("Viser 1–2 av 312 variabler funnet",
                         cut.Find("p[role='status']").TextContent);
     }
 
@@ -965,5 +966,693 @@ public class VariabelutforskerTest : BunitContext
             Assert.Contains("1 variabel funnet", status);
             Assert.DoesNotContain("Henter variabler", status);
         });
+    }
+
+    // ---------------------------------------------------------------------------------
+    // Paging. The result set is 18 000 variables and a page is 25 of them, so without a
+    // pager the other 17 975 are unreachable. Runa's rules are kept: Forrige/Neste with
+    // the position between them, no infinite scrolling, and any change of search or of
+    // ordering starts again at page one. The two things that are ours rather than Runa's
+    // are pinned here too — the buttons are never `disabled`, and the pager is left out
+    // when the whole result already fits on one page.
+    // ---------------------------------------------------------------------------------
+
+    /// <summary>One page of a <paramref name="totalCount"/>-row result, as the API would return it.</summary>
+    private static Side<VariabelSammendrag> ResultPage(int totalCount, int page = 1, int pageSize = 25)
+    {
+        var first = (page - 1) * pageSize;
+        var count = Math.Clamp(totalCount - first, 0, pageSize);
+
+        return new Side<VariabelSammendrag>
+        {
+            Items = [.. Enumerable.Range(1, count).Select(i => Variabel($"Variabel {first + i}", $"K{first + i}"))],
+            TotalCount = totalCount,
+            Page = page,
+            Size = pageSize,
+            TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+        };
+    }
+
+    /// <summary>
+    /// A client with more rows than fit on one page, answering with whichever slice it is asked for.
+    /// </summary>
+    /// <remarks>
+    /// It has to answer per page rather than return one fixed <see cref="Side{T}"/>, because what
+    /// these tests are about is the row range and the position moving as the pages turn — a fake
+    /// that answered page 1 forever would agree with a component that never sent the page number.
+    /// </remarks>
+    private sealed class PagedClient(int totalCount, int pageSize = 25) : TomMuninExplorerKlient
+    {
+        public string? LastSearch { get; private set; }
+        public int LastPage { get; private set; }
+        public int LastPageSize { get; private set; }
+        public SortField LastSort { get; private set; }
+        public SortDirection LastDirection { get; private set; }
+        public int Calls { get; private set; }
+
+        public override Task<Side<VariabelSammendrag>> SokVariablerAsync(
+            string? sok, int side = 1, int sideStorrelse = 25,
+            SortField sort = SortField.Default,
+            SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default)
+        {
+            LastSearch = sok;
+            LastPage = side;
+            LastPageSize = sideStorrelse;
+            LastSort = sort;
+            LastDirection = direction;
+            Calls++;
+
+            return Task.FromResult(ResultPage(totalCount, side, pageSize));
+        }
+    }
+
+    /// <summary>
+    /// A client whose index shrinks under the reader: the first <paramref name="calmCalls"/> calls
+    /// are answered out of <paramref name="totalCount"/> rows and every one after them out of
+    /// <paramref name="afterwards"/>, so the page the pager offered is past the end by the time it
+    /// is asked for. A moment in time rather than a property of a page number, which is what makes
+    /// the request that straddles it come back empty.
+    /// </summary>
+    private sealed class ShrinkingPagedClient(int totalCount, int calmCalls, int afterwards)
+        : TomMuninExplorerKlient
+    {
+        public int LastPage { get; private set; }
+        public int Calls { get; private set; }
+
+        public override Task<Side<VariabelSammendrag>> SokVariablerAsync(
+            string? sok, int side = 1, int sideStorrelse = 25,
+            SortField sort = SortField.Default,
+            SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default)
+        {
+            LastPage = side;
+            Calls++;
+
+            return Task.FromResult(ResultPage(Calls <= calmCalls ? totalCount : afterwards, side));
+        }
+    }
+
+    /// <summary>
+    /// Answers page 1 and hands back an entirely empty <see cref="Side{T}"/> for anything after it —
+    /// which is what <c>MuninExplorerClient</c> produces from a 404 on an out-of-range page: no
+    /// exception, no rows, and a count and page total of zero.
+    /// </summary>
+    private sealed class NotFoundPagedClient(int totalCount) : TomMuninExplorerKlient
+    {
+        public int LastPage { get; private set; }
+        public int Calls { get; private set; }
+
+        public override Task<Side<VariabelSammendrag>> SokVariablerAsync(
+            string? sok, int side = 1, int sideStorrelse = 25,
+            SortField sort = SortField.Default,
+            SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default)
+        {
+            LastPage = side;
+            Calls++;
+
+            return Task.FromResult(side == 1 ? ResultPage(totalCount) : new Side<VariabelSammendrag>());
+        }
+    }
+
+    /// <summary>
+    /// Answers page 1, 404s anything after it into an empty <see cref="Side{T}"/> the same way
+    /// <see cref="NotFoundPagedClient"/> does — and then fails outright, so the retreat's own fetch
+    /// is the call that throws. The transient blip the retreat has to survive, arriving in the one
+    /// window where the result on screen is the empty page the retreat is trying to escape.
+    /// </summary>
+    private sealed class RetreatFailingClient(int totalCount) : TomMuninExplorerKlient
+    {
+        public int Calls { get; private set; }
+
+        public override Task<Side<VariabelSammendrag>> SokVariablerAsync(
+            string? sok, int side = 1, int sideStorrelse = 25,
+            SortField sort = SortField.Default,
+            SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default)
+        {
+            Calls++;
+
+            return Calls switch
+            {
+                1 => Task.FromResult(ResultPage(totalCount)),
+                2 => Task.FromResult(new Side<VariabelSammendrag>()),
+                _ => throw new HttpRequestException("nede")
+            };
+        }
+    }
+
+    /// <summary>
+    /// A server that clamps an out-of-range page rather than 404ing it: asked for page 12 of 8 it
+    /// answers page 8, and says so in the page it echoes back.
+    /// </summary>
+    private sealed class ClampingPagedClient(int totalCount, int maxPage) : TomMuninExplorerKlient
+    {
+        public override Task<Side<VariabelSammendrag>> SokVariablerAsync(
+            string? sok, int side = 1, int sideStorrelse = 25,
+            SortField sort = SortField.Default,
+            SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(ResultPage(totalCount, Math.Min(side, maxPage)));
+    }
+
+    private static IReadOnlyList<AngleSharp.Dom.IElement> PagerButtons(
+        IRenderedComponent<Variabelutforsker> cut) =>
+        cut.FindAll("div.variables-pagination .variables-pagination-content button");
+
+    private static AngleSharp.Dom.IElement Previous(IRenderedComponent<Variabelutforsker> cut) =>
+        PagerButtons(cut)[0];
+
+    private static AngleSharp.Dom.IElement Next(IRenderedComponent<Variabelutforsker> cut) =>
+        PagerButtons(cut)[1];
+
+    /// <summary>The "Side 2 av 13" between the two buttons.</summary>
+    private static string Position(IRenderedComponent<Variabelutforsker> cut) =>
+        cut.Find(".variables-pagination-content span.caption").TextContent;
+
+    private static string StatusLine(IRenderedComponent<Variabelutforsker> cut) =>
+        cut.Find("p[role='status']").TextContent;
+
+    [Fact]
+    public void Page_WhenNextIsPressed_ThenTheNextPageIsFetchedWithTheSearchAndOrderIntact()
+    {
+        // Turning a page must not quietly become a new search: the rows would change for two
+        // reasons at once and the user would have no way to tell which.
+        var client = new PagedClient(312);
+        var cut = RenderMed(client, b => b.Add(c => c.Sok, "tale"));
+
+        ClickSort(cut, "Datakilde"); // something for the page turn to preserve
+
+        Next(cut).Click();
+
+        Assert.Equal(2, client.LastPage);
+        Assert.Equal("tale", client.LastSearch);
+        Assert.Equal(SortField.Kilde, client.LastSort);
+        Assert.Equal(SortDirection.Ascending, client.LastDirection);
+        Assert.Equal(3, client.Calls); // initial load, the sort, this page turn
+        Assert.Equal("Side 2 av 13", Position(cut));
+    }
+
+    [Fact]
+    public void Page_WhenPreviousIsPressed_ThenThePageBeforeIsFetched()
+    {
+        var client = new PagedClient(312);
+        var cut = RenderMed(client);
+
+        Next(cut).Click();
+        Next(cut).Click();
+        Assert.Equal("Side 3 av 13", Position(cut));
+
+        Previous(cut).Click();
+
+        Assert.Equal(2, client.LastPage);
+        Assert.Equal("Side 2 av 13", Position(cut));
+        Assert.Contains("Variabel 26", cut.Markup);
+    }
+
+    [Fact]
+    public void Page_WhenOnTheFirstPage_ThenPreviousIsUnavailableAndAsksForNothing()
+    {
+        var client = new PagedClient(312);
+        var cut = RenderMed(client);
+
+        Assert.Equal("true", Previous(cut).GetAttribute("aria-disabled"));
+        Assert.Null(Next(cut).GetAttribute("aria-disabled"));
+
+        Previous(cut).Click();
+
+        Assert.Equal(1, client.Calls); // the initial load, and nothing since
+        Assert.Equal("Side 1 av 13", Position(cut));
+    }
+
+    [Fact]
+    public void Page_WhenOnTheLastPage_ThenNextIsUnavailableAndAsksForNothing()
+    {
+        // An exact multiple of the page size: 50 rows at 25 a page is two full pages, which is
+        // where an off-by-one in the page count offers a third page with nothing on it.
+        var client = new PagedClient(50);
+        var cut = RenderMed(client);
+
+        Next(cut).Click();
+
+        Assert.Equal("Side 2 av 2", Position(cut));
+        Assert.Equal("true", Next(cut).GetAttribute("aria-disabled"));
+        Assert.Null(Previous(cut).GetAttribute("aria-disabled"));
+
+        Next(cut).Click();
+
+        Assert.Equal(2, client.Calls); // initial load and the one page turn
+        Assert.Equal("Side 2 av 2", Position(cut));
+    }
+
+    [Fact]
+    public void Page_AtEitherEndOfTheList_ThenTheButtonsAreNotDisabledAndKeepTheirFocus()
+    {
+        // The reason aria-disabled is used instead of the disabled attribute. Pressing Neste until
+        // the last page is the ordinary way to reach it, and disabling the element that currently
+        // has focus drops focus to <body> — so the reward for finishing the list would be tabbing
+        // from the top of the host's page again. Same decision as the never-disabled Søk button.
+        var client = new PagedClient(50);
+        var cut = RenderMed(client);
+
+        Assert.All(PagerButtons(cut), knapp => Assert.False(knapp.HasAttribute("disabled")));
+
+        Next(cut).Click();
+
+        Assert.All(PagerButtons(cut), knapp => Assert.False(knapp.HasAttribute("disabled")));
+        Assert.Equal("true", Next(cut).GetAttribute("aria-disabled"));
+    }
+
+    [Fact]
+    public void Page_WhenTheWholeResultFitsOnOnePage_ThenThereIsNoPagerAtAll()
+    {
+        // "Side 1 av 1" between two buttons that can never do anything is furniture, and the skip
+        // link would be a tab stop leading nowhere.
+        var cut = RenderMed(new PagedClient(3));
+
+        Assert.Empty(cut.FindAll("div.variables-pagination"));
+        Assert.Empty(cut.FindAll("a.skiplink-pagination"));
+    }
+
+    [Fact]
+    public void Page_WhenThereAreNoHitsAtAll_ThenThereIsNoPager()
+    {
+        var cut = RenderMed(new PagedClient(0));
+
+        Assert.Empty(cut.FindAll("div.variables-pagination"));
+        Assert.DoesNotContain("Viser", StatusLine(cut));
+        Assert.Contains("Ingen variabler passet søket", StatusLine(cut));
+    }
+
+    [Fact]
+    public void Page_WhenANewSearchIsMade_ThenItStartsAtPageOneAgain()
+    {
+        // A different search is a different result set, and page 3 of the old one means nothing
+        // in it. Without this the user searches and lands in the middle of the answer.
+        var client = new PagedClient(312);
+        var cut = RenderMed(client);
+
+        Next(cut).Click();
+        Next(cut).Click();
+
+        cut.Find("input[type=search]").Change("svelging");
+        cut.Find("form").Submit();
+
+        Assert.Equal(1, client.LastPage);
+        Assert.Equal("svelging", client.LastSearch);
+        Assert.Equal("Side 1 av 13", Position(cut));
+    }
+
+    [Fact]
+    public void Page_WhenTheOrderChanges_ThenItStartsAtPageOneAgain()
+    {
+        // Reordering renumbers every page, so page 3 of the old order holds rows from the middle
+        // of a sequence the reader never saw the start of.
+        var client = new PagedClient(312);
+        var cut = RenderMed(client);
+
+        Next(cut).Click();
+        Next(cut).Click();
+
+        ClickSort(cut, "Datasamling");
+
+        Assert.Equal(1, client.LastPage);
+        Assert.Equal("Side 1 av 13", Position(cut));
+    }
+
+    [Fact]
+    public void Page_WhenAFetchIsAlreadyRunning_ThenTheClickIsIgnored()
+    {
+        // Same rule as a second submit and a second sort click: dropped rather than queued, so two
+        // impatient clicks cannot leave the position saying one page while the rows are another.
+        var client = new TregClient(ResultPage(312));
+        var cut = RenderMed(client);
+
+        cut.Find("form").Submit(); // second search, still in flight
+        Next(cut).Click();
+
+        Assert.Equal(2, client.Kall); // the initial load and the stalled search, not the page turn
+        Assert.Equal("Side 1 av 13", Position(cut));
+    }
+
+    [Fact]
+    public void Page_WhenTheFetchFails_ThenTheFailureIsReportedInsteadOfEscaping()
+    {
+        var client = new FeilendeClient(ResultPage(312));
+        var cut = RenderMed(client);
+
+        Next(cut).Click();
+
+        Assert.Contains("Kunne ikke hente variabler", cut.Markup);
+    }
+
+    [Fact]
+    public void Page_WhenTheFetchFails_ThenTheRowsAndThePagerStayOnScreen()
+    {
+        // The component's standing rule: a control the user just pressed is never taken out of the
+        // document, because that drops focus to <body> and a keyboard user restarts from the top of
+        // helsedata's CMS page. It is why Søk is never disabled and why the pager uses
+        // aria-disabled — and the pager is the only pressable control here that is rendered
+        // conditionally, so a page turn that cleared the rows is the one way left to break it.
+        var client = new FeilendeClient(ResultPage(312));
+        var cut = RenderMed(client);
+
+        Next(cut).Click();
+
+        Assert.NotEmpty(cut.FindAll("div.variables-pagination"));
+        Assert.Equal("Side 1 av 13", Position(cut)); // rolled back, and still describing real rows
+        Assert.Contains("Variabel 1", cut.Markup);
+        Assert.Contains("Viser 1–25 av 312 variabler funnet", StatusLine(cut));
+    }
+
+    [Fact]
+    public void Search_WhenTheFetchFails_ThenThePreviousSearchesRowsAreNotLeftBehind()
+    {
+        // The other half of the same rule. A page turn keeps its rows because they came from the
+        // search still on screen; a failed *search* has none of its own, and leaving the previous
+        // one's rows under the error would say they answered the new query.
+        var client = new FeilendeClient(ResultPage(312));
+        var cut = RenderMed(client);
+
+        cut.Find("input[type=search]").Change("svelging");
+        cut.Find("form").Submit();
+
+        Assert.Contains("Kunne ikke hente variabler", cut.Markup);
+        Assert.Empty(cut.FindAll("ul.datasourcecard-list > li"));
+        Assert.Empty(cut.FindAll("div.variables-pagination"));
+    }
+
+    [Fact]
+    public void Page_WhenTheResultShrankBetweenTheTwoRequests_ThenItLandsOnTheLastPageThatExists()
+    {
+        // The clamp in GoToPageAsync measures against the count the *previous* answer carried, so
+        // it can offer a page that has since stopped existing. Left alone the reader would be told
+        // "Ingen variabler passet søket" over a search that matched 200 rows, with no pager left
+        // to press.
+        // Eleven answers out of 312 rows carry the reader to page 11; the twelfth request — for
+        // page 12 of the 13 the pager is still offering — arrives after the index dropped to 200.
+        var client = new ShrinkingPagedClient(312, calmCalls: 11, afterwards: 200);
+        var cut = RenderMed(client);
+
+        for (var i = 0; i < 11; i++)
+        {
+            Next(cut).Click();
+        }
+
+        Assert.Equal(8, client.LastPage); // asked for 12, told it was gone, went to the last real one
+        Assert.Equal("Side 8 av 8", Position(cut));
+        Assert.Contains("Viser 176–200 av 200 variabler funnet", StatusLine(cut));
+        Assert.Equal(25, cut.FindAll("ul.datasourcecard-list > li").Count);
+    }
+
+    [Fact]
+    public void Page_WhenTheApiReportsAnOutOfRangePageAsNotFound_ThenItFallsBackToTheFirstPage()
+    {
+        // MuninExplorerClient maps 404 to an empty Side rather than throwing, so nothing rolls the
+        // page number back: the count and the page total arrive as zero, which describes no page at
+        // all. Page 1 is the one page that can never be out of range.
+        var client = new NotFoundPagedClient(312);
+        var cut = RenderMed(client);
+
+        Next(cut).Click();
+
+        Assert.Equal(1, client.LastPage);
+        Assert.Equal(3, client.Calls); // the initial load, the missing page 2, and the way back
+        Assert.Equal("Side 1 av 13", Position(cut));
+        Assert.Contains("Viser 1–25 av 312 variabler funnet", StatusLine(cut));
+    }
+
+    [Fact]
+    public void Page_WhenAPageArrivesWithNoRowsOnIt_ThenThePagerIsStillThereToGetBackFrom()
+    {
+        // Belt to the retreat's braces: the pager is rendered from the page count and not from the
+        // rows, so an answer carrying a count but no rows leaves something to press instead of a
+        // dead end. Past page one RetreatFromEmptyPageAsync steps out of that state; on page one
+        // there is nowhere to step to, so the pager staying is the whole of the recovery.
+        var cut = RenderMed(new FakeClient(new Side<VariabelSammendrag>
+        {
+            Items = [],
+            TotalCount = 312,
+            Page = 1,
+            Size = 25,
+            TotalPages = 13
+        }));
+
+        Assert.NotEmpty(cut.FindAll("div.variables-pagination"));
+        Assert.Equal("Side 1 av 13", Position(cut));
+        Assert.Null(Next(cut).GetAttribute("aria-disabled"));
+    }
+
+    [Fact]
+    public void Page_WhenTheServerAnswersADifferentPageThanItWasAsked_ThenTheRangeFollowsTheAnswer()
+    {
+        // The same treatment the page size already gets: an API that clamps page 12 to page 8 and
+        // says so has described itself truthfully, and the row range has to be counted from what
+        // arrived rather than from what was asked for — otherwise the status line offers rows the
+        // reader is not looking at.
+        var cut = RenderMed(new ClampingPagedClient(312, maxPage: 1));
+
+        Next(cut).Click();
+
+        Assert.Contains("Viser 1–25 av 312 variabler funnet", StatusLine(cut));
+
+        // And the caption between the buttons counts from the same answer. Pinning only the range
+        // would leave the pager free to say "Side 2 av 13" over page 1's rows — the row range and
+        // the position describing two different pages of one result.
+        Assert.Equal("Side 1 av 13", Position(cut));
+    }
+
+    [Fact]
+    public void Page_WhenTheServerKeepsAnsweringTheSamePage_ThenThePositionDoesNotWalkAwayFromTheRows()
+    {
+        // The half that only shows up on the second press. With the position taken from the number
+        // that was asked for, Neste stays enabled against a page the server disowned, so every
+        // further press bumps the caption — "Side 3 av 13", "Side 4 av 13" — while the same 25 rows
+        // sit underneath it.
+        var cut = RenderMed(new ClampingPagedClient(312, maxPage: 1));
+
+        Next(cut).Click();
+        Next(cut).Click();
+        Next(cut).Click();
+
+        Assert.Equal("Side 1 av 13", Position(cut));
+        Assert.Contains("Viser 1–25 av 312 variabler funnet", StatusLine(cut));
+        Assert.Contains("Variabel 1", cut.Markup);
+    }
+
+    [Fact]
+    public void Page_WhenTheRetreatLandsOnASinglePageResult_ThenThePagerIsStillUnderTheFinger()
+    {
+        // The pager is normally left out of a single-page result, on the grounds that one is only
+        // ever reached by a new search or a new ordering — neither started from a pager button. The
+        // retreat is the exception: an index that shrank to one page's worth between two requests
+        // answers Neste with an empty page and puts the reader back on page 1 of 1. Dropping the
+        // pager in that render would take Neste out of the document under the finger that pressed
+        // it, which is the failure the retreat exists to avoid rather than a new one to introduce.
+        var cut = RenderMed(new ShrinkingPagedClient(312, calmCalls: 1, afterwards: 10));
+
+        Next(cut).Click();
+
+        Assert.NotEmpty(cut.FindAll("div.variables-pagination"));
+        Assert.NotEmpty(cut.FindAll("a.skiplink-pagination"));
+        Assert.Equal("Side 1 av 1", Position(cut));
+        Assert.Contains("10 variabler funnet", StatusLine(cut)); // the whole result, so no range
+        Assert.Equal(10, cut.FindAll("ul.datasourcecard-list > li").Count);
+
+        // Both ends of a one-page result: neither button can go anywhere, and both say so without
+        // being taken away.
+        Assert.Equal("true", Previous(cut).GetAttribute("aria-disabled"));
+        Assert.Equal("true", Next(cut).GetAttribute("aria-disabled"));
+    }
+
+    [Fact]
+    public void Page_WhenANewSearchFollowsARetreatToOnePage_ThenTheOneButtonPagerIsGoneAgain()
+    {
+        // The other half of the same rule: the pager is kept because a button was pressed, not
+        // forever. A search is not started from one, so a single-page answer to it costs no
+        // furniture — and the reader's focus is in the search box, not on a pager button.
+        var cut = RenderMed(new ShrinkingPagedClient(312, calmCalls: 1, afterwards: 10));
+
+        Next(cut).Click();
+
+        cut.Find("input[type=search]").Change("svelging");
+        cut.Find("form").Submit();
+
+        Assert.Empty(cut.FindAll("div.variables-pagination"));
+        Assert.Empty(cut.FindAll("a.skiplink-pagination"));
+    }
+
+    [Fact]
+    public void Page_WhenTheRetreatsOwnFetchFails_ThenTheRowsItWasEscapingBackToAreRestored()
+    {
+        // The retreat turns a second page, so it can fail the same way the first one can — and its
+        // failure is the worse of the two, because the result it would otherwise keep is the empty
+        // page it was called to escape from. Left unchecked the reader gets "Ingen variabler passet
+        // søket" over a search that matched 312, and no pager either: a zero count makes TotalPages
+        // 1 and takes the guard's other branch with it. So the whole page turn is undone, back to
+        // the page that had rows on it.
+        var client = new RetreatFailingClient(312);
+        var cut = RenderMed(client);
+
+        Next(cut).Click();
+
+        Assert.Equal(3, client.Calls); // the initial load, the missing page 2, and the failed way back
+        Assert.Contains("Kunne ikke hente variabler", cut.Markup);
+        Assert.NotEmpty(cut.FindAll("div.variables-pagination"));
+        Assert.Equal("Side 1 av 13", Position(cut));
+        Assert.Contains("Viser 1–25 av 312 variabler funnet", StatusLine(cut));
+        Assert.Contains("Variabel 1", cut.Markup);
+        Assert.DoesNotContain("Ingen variabler passet", StatusLine(cut));
+    }
+
+    [Fact]
+    public void Page_Always_ThenTheHostIsNotToldTheSearchChanged()
+    {
+        // SokChanged is the host's URL contract and turning a page did not change what was
+        // searched for. The page number belongs in that URL too, but through its own contract.
+        var meldt = new List<string?>();
+        var cut = RenderMed(new PagedClient(312),
+                            b => b.Add(c => c.Sok, "tale")
+                                  .Add(c => c.SokChanged, (string? s) => meldt.Add(s)));
+
+        meldt.Clear(); // the initial load's own notification
+
+        Next(cut).Click();
+
+        Assert.Empty(meldt);
+    }
+
+    [Fact]
+    public void Page_WhenThePageTurns_ThenTheStatusLineSaysWhichRowsAreOnScreen()
+    {
+        // "Viser 25 av 312" was true only of the first page. The live region is what announces a
+        // page change, so this sentence is also the announcement — hence one sentence, not two.
+        var cut = RenderMed(new PagedClient(312));
+
+        Assert.Contains("Viser 1–25 av 312 variabler funnet", StatusLine(cut));
+
+        Next(cut).Click();
+
+        Assert.Contains("Viser 26–50 av 312 variabler funnet", StatusLine(cut));
+        Assert.Contains("sortert på Standard, stigende", StatusLine(cut));
+    }
+
+    [Fact]
+    public void Page_WhenTheLastPageIsPartlyFull_ThenTheRangeStopsAtTheRowsThatExist()
+    {
+        // 13 pages of 25 over 312 rows leaves 12 on the last one. Counting the range as
+        // page × size would caption it "301–325 av 312".
+        var cut = RenderMed(new PagedClient(312));
+
+        for (var i = 0; i < 12; i++)
+        {
+            Next(cut).Click();
+        }
+
+        Assert.Equal("Side 13 av 13", Position(cut));
+        Assert.Contains("Viser 301–312 av 312 variabler funnet", StatusLine(cut));
+        Assert.Equal(12, cut.FindAll("ul.datasourcecard-list > li").Count);
+    }
+
+    [Theory]
+    [InlineData(0, 1)]
+    [InlineData(500, 100)]
+    [InlineData(int.MaxValue, 100)]
+    public void Page_WhenTheHostAsksForAnImpossiblePageSize_ThenItIsClampedToWhatTheApiAccepts(
+        int asked, int sent)
+    {
+        // Both ends of the documented 1–100 range. A zero page size would make every page count a
+        // division by zero, and the server clamps regardless, so asking for something outside that
+        // only desynchronises the two: it would answer with 100 rows while the component counted
+        // the pages — and wrote the row range — as if it had asked for half a billion.
+        var client = new PagedClient(312, pageSize: 1);
+
+        RenderMed(client, b => b.Add(c => c.SideStorrelse, asked));
+
+        Assert.Equal(sent, client.LastPageSize);
+    }
+
+    [Fact]
+    public void Page_WhenTheLanguageIsEn_ThenThePagerIsEnglishToo()
+    {
+        var cut = RenderMed(new PagedClient(312), b => b.Add(c => c.Sprak, "en"));
+
+        Assert.Equal("Previous", Previous(cut).TextContent);
+        Assert.Equal("Next", Next(cut).TextContent);
+        Assert.Equal("Page 1 of 13", Position(cut));
+        Assert.Equal("Skip to pagination", cut.Find("a.skiplink-pagination").TextContent);
+        Assert.Contains("Showing 1–25 of 312 variables found", StatusLine(cut));
+    }
+
+    // ---------------------------------------------------------------------------------
+    // The pager's own accessibility and styling contract. The class names here are NOT
+    // Stiler's: Stiler defines no pagination rule of any kind, so these are helsedata's
+    // own, from the stylesheet their variable page carries. Pinning them is what keeps
+    // someone from "tidying" them into names no host has ever heard of.
+    // ---------------------------------------------------------------------------------
+
+    [Fact]
+    public void Render_WhenThereIsMoreThanOnePage_ThenThePagerUsesHelsedatasOwnClassNames()
+    {
+        var cut = RenderMed(new PagedClient(312));
+
+        var pager = cut.Find("div.variables-pagination > div.variables-pagination-content");
+
+        Assert.NotNull(pager);
+        Assert.Equal(2, PagerButtons(cut).Count);
+        Assert.All(PagerButtons(cut), knapp => Assert.Contains("hd-button-square", knapp.ClassName!));
+    }
+
+    [Fact]
+    public void Render_WhenThereIsMoreThanOnePage_ThenTheSkipLinkComesBeforeTheCardsAndTargetsThePager()
+    {
+        // Without it a keyboard user tabs through 25 cards to reach Neste. It has to sit ahead of
+        // the list to save anything, and its target has to be focusable programmatically, or
+        // following it moves the viewport while focus stays behind.
+        var cut = RenderMed(new PagedClient(312));
+
+        var skiplink = cut.Find("a.skiplink-pagination");
+        var pager = cut.Find("div.variables-pagination");
+
+        Assert.Equal($"#{pager.Id}", skiplink.GetAttribute("href"));
+        Assert.Equal("-1", pager.GetAttribute("tabindex"));
+        Assert.Equal("Hopp til paginering", skiplink.TextContent);
+
+        // Ahead of the results, otherwise it skips nothing.
+        var markup = cut.Markup;
+        Assert.True(markup.IndexOf("skiplink-pagination", StringComparison.Ordinal)
+                    < markup.IndexOf("datasourcecard-list", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Render_WhenThereIsMoreThanOnePage_ThenThePagerIsANamedLandmarkWithLabelledButtons()
+    {
+        // A second navigation landmark on the host's page has to say what it navigates, and
+        // "Forrige" on its own does not say forrige what. Each accessible name starts with the
+        // word on the button, so a speech-input user saying what they see still hits it (2.5.3).
+        var cut = RenderMed(new PagedClient(312));
+
+        var pager = cut.Find("div.variables-pagination");
+
+        Assert.Equal("navigation", pager.GetAttribute("role"));
+        Assert.Equal("Paginering", pager.GetAttribute("aria-label"));
+        Assert.Equal("Forrige side", Previous(cut).GetAttribute("aria-label"));
+        Assert.Equal("Neste side", Next(cut).GetAttribute("aria-label"));
+        Assert.All(PagerButtons(cut), knapp => Assert.Equal("button", knapp.GetAttribute("type")));
+    }
+
+    [Fact]
+    public void Render_WhenTwoInstancesShareAPage_ThenEachSkipLinkTargetsItsOwnPager()
+    {
+        // Duplicate DOM ids would send both skip links to the same pager — and fail WCAG 4.1.1.
+        Services.AddSingleton<IMuninExplorerClient>(new PagedClient(312));
+
+        var a = Render<Variabelutforsker>();
+        var b = Render<Variabelutforsker>();
+
+        Assert.NotEqual(a.Find("div.variables-pagination").Id, b.Find("div.variables-pagination").Id);
+        Assert.Equal($"#{a.Find("div.variables-pagination").Id}",
+                     a.Find("a.skiplink-pagination").GetAttribute("href"));
     }
 }

@@ -48,6 +48,10 @@ These are not style preferences — each one is a host that breaks otherwise.
   otherwise styled page, which defeats the point of shipping this as a component at all. Where
   Stiler has no rule for a shape, change the shape rather than adding a stylesheet: results are
   a `datasourcecard` list, not a table, because Stiler styles no table this package could use.
+  The pager is the one place that rule ran out — Stiler has no pagination rule at all — so it
+  emits the names helsedata's own variable page uses (`variables-pagination*`,
+  `skiplink-pagination`) from a stylesheet only that page carries. Still their names rather than
+  ours, but a host mounting the component elsewhere has to supply those three itself.
 - **No `HeadOutlet`.** Not available in the Optimizely host — the component cannot set the page
   title or inject meta tags.
 - **Nothing host-specific.** `IHttpContextAccessor`, `Microsoft.AspNetCore.Components.Server.*`,
