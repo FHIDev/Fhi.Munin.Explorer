@@ -26,6 +26,13 @@ Both sample hosts exist on purpose. helsedata's production site runs **legacy** 
 `<component>` tag helper. A component that only ever ran in a modern Blazor Web App can break
 there in ways that never show up in development.
 
+## Conventions
+
+Code identifiers here are **English**; Norwegian is for user-facing strings, changelog
+fragments and domain terms that have no honest translation (`kilde`, `datasamling`,
+`variabelgruppe`). See [`AGENTS.md`](AGENTS.md) — it covers the conventions the compiler
+cannot check.
+
 ## Rules the components follow
 
 These are not style preferences — each one is a host that breaks otherwise.
