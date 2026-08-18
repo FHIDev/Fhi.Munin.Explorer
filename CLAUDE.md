@@ -69,18 +69,7 @@ checkout needs to find the shared database.
   shuts it whether or not the acceptance criteria are met.
 - **Work is not done until it is pushed.** A worktree can be deleted with the session.
 
-### Two hazards specific to this repository
-
-**The forge dispatch tag is not Munin's.** Both anvils resolve beads from the *same* database
-through `.beads/redirect`, so the tag is the only thing partitioning them:
-
-| Anvil | Local | Skybert (in-cluster) |
-| --- | --- | --- |
-| munin | `forgeReady` | `forgeSkybert` |
-| **explorer** | **`forgeExplorer`** | **`forgeExplorerSkybert`** |
-
-Label an explorer bead `forgeSkybert` and it surfaces under the *Munin* anvil, which dispatches
-it into the Munin checkout — where the component does not exist. Nothing warns you.
+### One hazard worth knowing
 
 **Never run `bd label list-all`.** It once blocked the shared Dolt cluster for thirteen minutes.
 Label directly with `bd create --label X` or `bd update <id> --add-label X`.
