@@ -28,18 +28,18 @@ builder.Services.AddSingleton<CircuitServicesAccessor>();
 // from a scope it creates per circuit, and a scoped factory's argument is whichever provider is
 // doing the resolving. That is the whole reason this works, and it is easy to break silently:
 // hand it a root IServiceProvider captured from outside, and the accessor starts handing out
-// root services, where BrukerToken is not the signed-in user's. Nothing would throw. Every user
+// root services, where UserToken is not the signed-in user's. Nothing would throw. Every user
 // would simply get no token, or the wrong one.
 builder.Services.AddScoped<CircuitHandler>(sp => new ServicesAccessorCircuitHandler(
     sp, sp.GetRequiredService<CircuitServicesAccessor>()));
-builder.Services.AddScoped<BrukerToken>();
+builder.Services.AddScoped<UserToken>();
 builder.Services.AddSingleton<IMuninExplorerTokenProvider, CircuitTokenProvider>();
 
 builder.Services.AddMuninExplorer(
     builder.Configuration,
     // Development-only convenience. Outside Development the base URL must be configured,
     // and startup fails loudly if it is not.
-    utviklingsFallback: builder.Environment.IsDevelopment() ? "https://munin.skytest.fhi.no" : null);
+    developmentFallback: builder.Environment.IsDevelopment() ? "https://munin.skytest.fhi.no" : null);
 
 var app = builder.Build();
 

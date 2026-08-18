@@ -21,7 +21,7 @@ namespace Fhi.Munin.Explorer.Contracts;
 /// <c>IHttpClientFactory</c> builds and caches the message-handler pipeline in its own
 /// scope, and reuses it across every caller for a couple of minutes, so a handler cannot
 /// capture anything scoped. Resolve whatever carries the current user *inside*
-/// <see cref="HentTokenAsync"/>, per call, rather than holding it in a field. In an
+/// <see cref="GetTokenAsync"/>, per call, rather than holding it in a field. In an
 /// interactive Blazor Server host that specifically means <b>not</b> reaching for
 /// <c>IHttpContextAccessor</c>: there is no <c>HttpContext</c> during circuit activity,
 /// which arrives over a WebSocket. Use the circuit's own service provider instead.
@@ -43,5 +43,5 @@ public interface IMuninExplorerTokenProvider
     /// browsing public metadata is the common case. Callers must not throw on it.
     /// </para>
     /// </remarks>
-    Task<string?> HentTokenAsync(CancellationToken cancellationToken = default);
+    Task<string?> GetTokenAsync(CancellationToken cancellationToken = default);
 }

@@ -23,16 +23,16 @@ public static class ServiceCollectionExtensions
     /// explorer quietly keeps calling without a token.
     /// </remarks>
     /// <param name="services">The host's service collection.</param>
-    /// <param name="konfigurer">Sets at least <see cref="MuninExplorerOptions.ApiBaseUrl"/>.</param>
+    /// <param name="configure">Sets at least <see cref="MuninExplorerOptions.ApiBaseUrl"/>.</param>
     /// <returns>The same collection, so calls can be chained.</returns>
     public static IServiceCollection AddMuninExplorer(
         this IServiceCollection services,
-        Action<MuninExplorerOptions> konfigurer)
+        Action<MuninExplorerOptions> configure)
     {
-        ArgumentNullException.ThrowIfNull(konfigurer);
+        ArgumentNullException.ThrowIfNull(configure);
 
         var options = new MuninExplorerOptions();
-        konfigurer(options);
+        configure(options);
 
         if (string.IsNullOrWhiteSpace(options.ApiBaseUrl))
         {
@@ -47,9 +47,9 @@ public static class ServiceCollectionExtensions
         // calling AddMuninExplorer and wins. Registered as a singleton on purpose: the
         // handler pipeline below is built and cached by IHttpClientFactory in its own
         // scope and reused across callers, so nothing scoped may be captured in it.
-        services.TryAddSingleton<IMuninExplorerTokenProvider, AnonymTokenProvider>();
+        services.TryAddSingleton<IMuninExplorerTokenProvider, AnonymousTokenProvider>();
 
-        services.AddTransient<KlientHeaderHandler>();
+        services.AddTransient<ClientHeaderHandler>();
         services.AddTransient<BearerTokenHandler>();
 
         services.AddHttpClient<IMuninExplorerClient, MuninExplorerClient>(client =>
@@ -58,8 +58,8 @@ public static class ServiceCollectionExtensions
             // base address instead of replacing its last segment.
             client.BaseAddress = new Uri(options.ApiBaseUrl.TrimEnd('/') + "/");
         })
-        // Identifies this component to Munin's observability — see KlientHeaderHandler.
-        .AddHttpMessageHandler<KlientHeaderHandler>()
+        // Identifies this component to Munin's observability — see ClientHeaderHandler.
+        .AddHttpMessageHandler<ClientHeaderHandler>()
         // Attaches the host's user token when it supplies one. With no provider
         // registered the default supplies none and calls stay anonymous, which is what
         // public metadata browsing needs.
@@ -75,10 +75,10 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddMuninExplorer(
         this IServiceCollection services,
         IConfiguration configuration,
-        string? utviklingsFallback = null)
+        string? developmentFallback = null)
     {
-        var fraKonfig = configuration["MuninExplorer:ApiBaseUrl"];
+        var fromConfiguration = configuration["MuninExplorer:ApiBaseUrl"];
         return services.AddMuninExplorer(o =>
-            o.ApiBaseUrl = string.IsNullOrWhiteSpace(fraKonfig) ? utviklingsFallback : fraKonfig);
+            o.ApiBaseUrl = string.IsNullOrWhiteSpace(fromConfiguration) ? developmentFallback : fromConfiguration);
     }
 }

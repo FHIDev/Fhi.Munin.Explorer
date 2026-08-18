@@ -16,7 +16,7 @@ Add `changelog.d/<slug>.md` on your branch:
 
 ```
 category: Added
-- `Variabelutforsker` gained a `Sprak` parameter (`"no"` / `"en"`). Hosts that render the
+- `VariableExplorer` gained a `Language` parameter (`"no"` / `"en"`). Hosts that render the
   component in English must set it; it defaults to `"no"`.
 ```
 
@@ -52,7 +52,7 @@ Good:
 
 Not a changelog entry — belongs in the commit message:
 
-> - Refactored `VariabelutforskerTest` to use a shared fixture.
+> - Refactored `VariableExplorerTest` to use a shared fixture.
 > - Bumped the analyzer package.
 > - Renamed an internal field.
 

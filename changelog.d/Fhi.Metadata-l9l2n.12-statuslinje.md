@@ -4,6 +4,6 @@ category: Changed
   first page, and it is also the results list's accessible name and the live announcement, so
   it is what tells a screen-reader user that a page turned. Hosts asserting on that sentence
   need to update. (Fhi.Metadata-l9l2n.12)
-- **`SideStorrelse` is clamped to 1–100** - the range the Explorer API itself accepts. A value
+- **`PageSize` is clamped to 1–100** - the range the Explorer API itself accepts. A value
   outside it was previously passed through and silently changed by the server, which left the
   page count on this side describing a page size that was never used. (Fhi.Metadata-l9l2n.12)

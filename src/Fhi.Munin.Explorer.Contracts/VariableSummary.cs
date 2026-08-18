@@ -11,7 +11,7 @@ namespace Fhi.Munin.Explorer.Contracts;
 /// the component. A scheduled contract test round-trips live API responses through these
 /// types so drift fails a build rather than a page.
 /// </remarks>
-public sealed record VariabelSammendrag
+public sealed record VariableSummary
 {
     [JsonPropertyName("id")] public Guid Id { get; init; }
 
@@ -21,11 +21,11 @@ public sealed record VariabelSammendrag
     /// <summary>Display name for the variable.</summary>
     [JsonPropertyName("preferredTerm")] public string PreferredTerm { get; init; } = "";
 
-    [JsonPropertyName("beskrivelse")] public string? Beskrivelse { get; init; }
+    [JsonPropertyName("beskrivelse")] public string? Description { get; init; }
 
     [JsonPropertyName("kildeId")] public Guid? KildeId { get; init; }
     [JsonPropertyName("kildeName")] public string? KildeName { get; init; }
-    [JsonPropertyName("kildeKortNavn")] public string? KildeKortNavn { get; init; }
+    [JsonPropertyName("kildeKortNavn")] public string? KildeShortName { get; init; }
     [JsonPropertyName("kildeType")] public string? KildeType { get; init; }
 
     /// <summary>
@@ -53,8 +53,8 @@ public sealed record VariabelSammendrag
     [JsonPropertyName("dataType")] public string? DataType { get; init; }
 
     /// <summary><c>Active</c> or <c>Historical</c>. Drafts are never exposed here.</summary>
-    [JsonPropertyName("versjonStatus")] public string? VersjonStatus { get; init; }
+    [JsonPropertyName("versjonStatus")] public string? VersionStatus { get; init; }
 
-    /// <summary>The published version this row was built from — the one <see cref="VariabelDetalj"/> opens on.</summary>
-    [JsonPropertyName("versjonId")] public Guid? VersjonId { get; init; }
+    /// <summary>The published version this row was built from — the one <see cref="VariableDetail"/> opens on.</summary>
+    [JsonPropertyName("versjonId")] public Guid? VersionId { get; init; }
 }

@@ -51,7 +51,7 @@ public sealed class CircuitServicesAccessor
 /// What actually keeps one circuit's services from being visible to the next is the runtime, not
 /// the <c>finally</c> below. An <c>async</c> method runs against a copy of the
 /// <c>ExecutionContext</c>, so an <see cref="AsyncLocal{T}"/> written inside
-/// <see cref="KjorMedKretsensTjenester"/> is already invisible to its caller once the call
+/// <see cref="RunWithCircuitServicesAsync"/> is already invisible to its caller once the call
 /// returns — deleting the <c>finally</c> does not make a single test in this repository fail.
 /// </para>
 /// <para>
@@ -73,10 +73,10 @@ public sealed class ServicesAccessorCircuitHandler(
 {
     public override Func<CircuitInboundActivityContext, Task> CreateInboundActivityHandler(
         Func<CircuitInboundActivityContext, Task> next) =>
-        context => KjorMedKretsensTjenester(() => next(context));
+        context => RunWithCircuitServicesAsync(() => next(context));
 
     /// <summary>
-    /// Runs <paramref name="arbeid"/> with this circuit's services visible to
+    /// Runs <paramref name="work"/> with this circuit's services visible to
     /// <see cref="CircuitServicesAccessor"/>, and clears them again afterwards — including when
     /// the work throws.
     /// </summary>
@@ -86,12 +86,12 @@ public sealed class ServicesAccessorCircuitHandler(
     /// in a test, and "the token does not outlive the request it belongs to" is too important
     /// to leave resting on a reading of the code.
     /// </remarks>
-    public async Task KjorMedKretsensTjenester(Func<Task> arbeid)
+    public async Task RunWithCircuitServicesAsync(Func<Task> work)
     {
         accessor.Services = services;
         try
         {
-            await arbeid();
+            await work();
         }
         finally
         {

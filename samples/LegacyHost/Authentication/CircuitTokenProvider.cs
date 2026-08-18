@@ -11,7 +11,7 @@ namespace LegacyHost.Authentication;
 /// already uses to sign people in; on helsedata.no that is the ID-porten access token their
 /// OIDC handler saved with <c>SaveTokens</c>.
 /// </remarks>
-public sealed class BrukerToken
+public sealed class UserToken
 {
     public string? AccessToken { get; set; }
 }
@@ -34,12 +34,12 @@ public sealed class BrukerToken
 public sealed class CircuitTokenProvider(CircuitServicesAccessor circuitServices)
     : IMuninExplorerTokenProvider
 {
-    public Task<string?> HentTokenAsync(CancellationToken cancellationToken = default)
+    public Task<string?> GetTokenAsync(CancellationToken cancellationToken = default)
     {
         // Resolved per call, never held. The circuit this runs for is decided by the caller's
         // execution context, so caching anything here would answer a later call with an earlier
         // user's token.
-        var token = circuitServices.Services?.GetService<BrukerToken>()?.AccessToken;
+        var token = circuitServices.Services?.GetService<UserToken>()?.AccessToken;
 
         return Task.FromResult(string.IsNullOrWhiteSpace(token) ? null : token);
     }

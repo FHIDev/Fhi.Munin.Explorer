@@ -16,7 +16,7 @@ namespace Fhi.Munin.Explorer.Client;
 /// adds its own handler for, and so a host that constructs its own client cannot forget it.
 /// </para>
 /// </remarks>
-internal sealed class KlientHeaderHandler : DelegatingHandler
+internal sealed class ClientHeaderHandler : DelegatingHandler
 {
     /// <summary>The header Munin's dashboards group by.</summary>
     internal const string Header = "X-Munin-Explorer-Client";
@@ -25,9 +25,9 @@ internal sealed class KlientHeaderHandler : DelegatingHandler
     /// Names the kind of consumer, not the package: several packages may ship out of this repo,
     /// but from Munin's side they are one Blazor component embedded in a host.
     /// </summary>
-    private const string Klient = "blazor";
+    private const string Consumer = "blazor";
 
-    private static readonly string Verdi = $"{Klient}/{LesVersjon()}";
+    private static readonly string Value = $"{Consumer}/{ReadVersion()}";
 
     protected override Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
@@ -40,14 +40,17 @@ internal sealed class KlientHeaderHandler : DelegatingHandler
         {
             // Without validation: the value is sanitised below, and a malformed version string
             // must not be the reason a page fails to load its data.
-            request.Headers.TryAddWithoutValidation(Header, Verdi);
+            request.Headers.TryAddWithoutValidation(Header, Value);
         }
 
         return base.SendAsync(request, cancellationToken);
     }
 
-    /// <summary>Used when the assembly carries no usable version at all.</summary>
-    private const string Ukjent = "ukjent";
+    /// <summary>
+    /// Used when the assembly carries no usable version at all. The label itself stays Norwegian:
+    /// it is a value Munin's dashboards already group by, not an identifier.
+    /// </summary>
+    private const string Unknown = "ukjent";
 
     /// <summary>
     /// Reads the assembly's informational version — today that is <c>VersionPrefix</c> from
@@ -58,14 +61,14 @@ internal sealed class KlientHeaderHandler : DelegatingHandler
     /// Nothing in this repository stamps a commit sha into the version yet, so every build between
     /// two releases reports the same value. Munin can therefore tell releases apart but not
     /// individual builds; enabling SourceLink or setting <c>SourceRevisionId</c> would change that,
-    /// and <see cref="Versjon"/> is written to cope with it when it does.
+    /// and <see cref="NormalizeVersion"/> is written to cope with it when it does.
     /// </remarks>
-    private static string LesVersjon()
+    private static string ReadVersion()
     {
-        var assembly = typeof(KlientHeaderHandler).Assembly;
+        var assembly = typeof(ClientHeaderHandler).Assembly;
 
-        return Versjon(assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
-                       ?? assembly.GetName().Version?.ToString());
+        return NormalizeVersion(assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+                                ?? assembly.GetName().Version?.ToString());
     }
 
     /// <summary>Reduces a raw assembly version to the part that belongs in the header.</summary>
@@ -76,20 +79,20 @@ internal sealed class KlientHeaderHandler : DelegatingHandler
     /// safe in a header token, because an odd version string must never be the reason a page fails
     /// to load its data.
     /// </remarks>
-    internal static string Versjon(string? raaVersjon)
+    internal static string NormalizeVersion(string? rawVersion)
     {
-        if (string.IsNullOrWhiteSpace(raaVersjon))
+        if (string.IsNullOrWhiteSpace(rawVersion))
         {
-            return Ukjent;
+            return Unknown;
         }
 
-        var pluss = raaVersjon.IndexOf('+');
-        var utenByggemetadata = pluss >= 0 ? raaVersjon[..pluss] : raaVersjon;
+        var plus = rawVersion.IndexOf('+');
+        var withoutBuildMetadata = plus >= 0 ? rawVersion[..plus] : rawVersion;
 
-        var rene = utenByggemetadata
+        var clean = withoutBuildMetadata
             .Where(static c => char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_')
             .ToArray();
 
-        return rene.Length == 0 ? Ukjent : new string(rene);
+        return clean.Length == 0 ? Unknown : new string(clean);
     }
 }

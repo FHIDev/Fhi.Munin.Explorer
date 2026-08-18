@@ -11,7 +11,7 @@ namespace Fhi.Munin.Explorer.Contracts;
 /// the component — the API ships the metadata alongside the values. Returned by the kilde,
 /// datasamling and variabel detail endpoints, each filtered to the keys that apply to that level.
 /// </remarks>
-public sealed record EgenskapMetadata
+public sealed record PropertyMetadataEntry
 {
     /// <summary>The key in the matching <c>additionalProperties</c> dictionary, e.g. <c>Formaal</c>.</summary>
     [JsonPropertyName("key")] public string Key { get; init; } = "";

@@ -6,11 +6,11 @@ namespace Fhi.Munin.Explorer.Contracts;
 /// Full detail for one variable, as returned by <c>GET /api/explorer/variables/{id}</c>.
 /// </summary>
 /// <remarks>
-/// A superset of <see cref="VariabelSammendrag"/>: the same identifying fields plus version
+/// A superset of <see cref="VariableSummary"/>: the same identifying fields plus version
 /// history, kodeverk links, statistics and the curated metadata bag. The kilde/datasamling names
 /// are denormalised into the payload so a detail page needs one request, not four.
 /// </remarks>
-public sealed record VariabelDetalj
+public sealed record VariableDetail
 {
     [JsonPropertyName("id")] public Guid Id { get; init; }
 
@@ -21,25 +21,25 @@ public sealed record VariabelDetalj
     [JsonPropertyName("preferredTerm")] public string PreferredTerm { get; init; } = "";
 
     /// <summary>Description from the version being shown.</summary>
-    [JsonPropertyName("beskrivelse")] public string Beskrivelse { get; init; } = "";
+    [JsonPropertyName("beskrivelse")] public string Description { get; init; } = "";
 
     [JsonPropertyName("kildeId")] public Guid KildeId { get; init; }
     [JsonPropertyName("kildeName")] public string KildeName { get; init; } = "";
-    [JsonPropertyName("kildeKortNavn")] public string KildeKortNavn { get; init; } = "";
+    [JsonPropertyName("kildeKortNavn")] public string KildeShortName { get; init; } = "";
     [JsonPropertyName("kildeType")] public string KildeType { get; init; } = "";
 
-    /// <summary>The datasamling shown as the variable's primary home; see <see cref="AlleDatasamlinger"/> for the rest.</summary>
+    /// <summary>The datasamling shown as the variable's primary home; see <see cref="AllDatasamlinger"/> for the rest.</summary>
     [JsonPropertyName("datasamlingId")] public Guid? DatasamlingId { get; init; }
 
     [JsonPropertyName("datasamlingName")] public string? DatasamlingName { get; init; }
 
     /// <summary>
     /// The primary datasamling's statistics cadence, e.g. <c>yearly</c>. Repeated here so a
-    /// statistics view can render <see cref="Statistikker"/> without fetching the datasamling.
+    /// statistics view can render <see cref="Statistics"/> without fetching the datasamling.
     /// </summary>
-    [JsonPropertyName("datasamlingStatistikkType")] public string? DatasamlingStatistikkType { get; init; }
+    [JsonPropertyName("datasamlingStatistikkType")] public string? DatasamlingStatisticsType { get; init; }
 
-    /// <summary>Primary variabelgruppe; see <see cref="AlleVariabelgrupper"/> for the rest.</summary>
+    /// <summary>Primary variabelgruppe; see <see cref="AllVariabelgrupper"/> for the rest.</summary>
     [JsonPropertyName("variabelgruppeId")] public Guid? VariabelgruppeId { get; init; }
 
     [JsonPropertyName("variabelgruppeName")] public string? VariabelgruppeName { get; init; }
@@ -57,10 +57,10 @@ public sealed record VariabelDetalj
     [JsonPropertyName("dataType")] public string? DataType { get; init; }
 
     /// <summary><c>Active</c> or <c>Historical</c>. Drafts are never exposed here.</summary>
-    [JsonPropertyName("versjonStatus")] public string VersjonStatus { get; init; } = "";
+    [JsonPropertyName("versjonStatus")] public string VersionStatus { get; init; } = "";
 
-    /// <summary>The published version this payload was built from — matches one entry in <see cref="Versjoner"/>.</summary>
-    [JsonPropertyName("versjonId")] public Guid? VersjonId { get; init; }
+    /// <summary>The published version this payload was built from — matches one entry in <see cref="Versions"/>.</summary>
+    [JsonPropertyName("versjonId")] public Guid? VersionId { get; init; }
 
     /// <summary>
     /// Curated metadata for the version being shown — database reference, comment, what it
@@ -71,53 +71,53 @@ public sealed record VariabelDetalj
         new Dictionary<string, string?>();
 
     /// <summary>Version history — the same entries the timeline endpoint returns.</summary>
-    [JsonPropertyName("versjoner")] public IReadOnlyList<Variabelversjon> Versjoner { get; init; } = [];
+    [JsonPropertyName("versjoner")] public IReadOnlyList<VariableVersion> Versions { get; init; } = [];
 
     /// <summary>Kodeverk the variable's values are drawn from.</summary>
-    [JsonPropertyName("kodeverklinker")] public IReadOnlyList<Kodeverklink> Kodeverklinker { get; init; } = [];
+    [JsonPropertyName("kodeverklinker")] public IReadOnlyList<KodeverkLink> KodeverkLinks { get; init; } = [];
 
     /// <summary>
     /// Value-frequency statistics. Empty across every variable probed on the test environment, so
     /// treat the shape as modelled-but-unverified.
     /// </summary>
-    [JsonPropertyName("statistikker")] public IReadOnlyList<Statistikk> Statistikker { get; init; } = [];
+    [JsonPropertyName("statistikker")] public IReadOnlyList<Statistic> Statistics { get; init; } = [];
 
     /// <summary>Every variabelgruppe the variable belongs to, not just the primary one.</summary>
-    [JsonPropertyName("alleVariabelgrupper")] public IReadOnlyList<VariabelgruppeReferanse> AlleVariabelgrupper { get; init; } = [];
+    [JsonPropertyName("alleVariabelgrupper")] public IReadOnlyList<VariabelgruppeReference> AllVariabelgrupper { get; init; } = [];
 
     /// <summary>Every datasamling the variable is pinned into, each with the period it applied there.</summary>
-    [JsonPropertyName("alleDatasamlinger")] public IReadOnlyList<DatasamlingReferanse> AlleDatasamlinger { get; init; } = [];
+    [JsonPropertyName("alleDatasamlinger")] public IReadOnlyList<DatasamlingReference> AllDatasamlinger { get; init; } = [];
 
     /// <summary>Labels, grouping and order for the keys in <see cref="AdditionalProperties"/>.</summary>
-    [JsonPropertyName("propertyMetadata")] public IReadOnlyList<EgenskapMetadata> PropertyMetadata { get; init; } = [];
+    [JsonPropertyName("propertyMetadata")] public IReadOnlyList<PropertyMetadataEntry> PropertyMetadata { get; init; } = [];
 }
 
 /// <summary>
-/// One published version of a variable. Returned both inside <see cref="VariabelDetalj.Versjoner"/>
+/// One published version of a variable. Returned both inside <see cref="VariableDetail.Versions"/>
 /// and as the whole payload of <c>GET /api/explorer/variables/{id}/timeline</c>.
 /// </summary>
-public sealed record Variabelversjon
+public sealed record VariableVersion
 {
-    [JsonPropertyName("versjonId")] public Guid VersjonId { get; init; }
+    [JsonPropertyName("versjonId")] public Guid VersionId { get; init; }
 
     /// <summary>The name as it read in this version — it can differ between versions.</summary>
     [JsonPropertyName("preferredTerm")] public string PreferredTerm { get; init; } = "";
 
     /// <summary>The description as it read in this version.</summary>
-    [JsonPropertyName("beskrivelse")] public string Beskrivelse { get; init; } = "";
+    [JsonPropertyName("beskrivelse")] public string Description { get; init; } = "";
 
     /// <summary>Start of the period this version describes the data for.</summary>
-    [JsonPropertyName("gyldigFra")] public DateTimeOffset? GyldigFra { get; init; }
+    [JsonPropertyName("gyldigFra")] public DateTimeOffset? ValidFrom { get; init; }
 
     /// <summary>End of that period; null on the version still in force.</summary>
-    [JsonPropertyName("gyldigTil")] public DateTimeOffset? GyldigTil { get; init; }
+    [JsonPropertyName("gyldigTil")] public DateTimeOffset? ValidTo { get; init; }
 
     /// <summary><c>Active</c> or <c>Historical</c>.</summary>
     [JsonPropertyName("status")] public string Status { get; init; } = "";
 
     /// <summary>
     /// When the version was published in Munin — a catalogue event, unrelated to
-    /// <see cref="GyldigFra"/>. Frequently null for versions imported before publishing was tracked.
+    /// <see cref="ValidFrom"/>. Frequently null for versions imported before publishing was tracked.
     /// </summary>
     [JsonPropertyName("publishedAt")] public DateTimeOffset? PublishedAt { get; init; }
 
@@ -128,7 +128,7 @@ public sealed record Variabelversjon
 }
 
 /// <summary>A link from a variable to a kodeverk.</summary>
-public sealed record Kodeverklink
+public sealed record KodeverkLink
 {
     /// <summary>
     /// Which kind of link this is: <c>Kildekodeverk</c> (V-KK, defined by the kilde itself),
@@ -147,11 +147,11 @@ public sealed record Kodeverklink
     /// True when the individual code values can be fetched. V-HK links never can, so a UI should
     /// not offer to expand those.
     /// </summary>
-    [JsonPropertyName("harKodeverdier")] public bool HarKodeverdier { get; init; }
+    [JsonPropertyName("harKodeverdier")] public bool HasCodeValues { get; init; }
 }
 
 /// <summary>A statistics entry for a variable, with the frequency of each code.</summary>
-public sealed record Statistikk
+public sealed record Statistic
 {
     [JsonPropertyName("id")] public Guid Id { get; init; }
     [JsonPropertyName("code")] public string Code { get; init; } = "";
@@ -161,15 +161,15 @@ public sealed record Statistikk
     public IReadOnlyDictionary<string, string?> AdditionalProperties { get; init; } =
         new Dictionary<string, string?>();
 
-    [JsonPropertyName("kodefrekvenser")] public IReadOnlyList<Kodefrekvens> Kodefrekvenser { get; init; } = [];
+    [JsonPropertyName("kodefrekvenser")] public IReadOnlyList<CodeFrequency> CodeFrequencies { get; init; } = [];
 }
 
 /// <summary>How often one code value occurs.</summary>
-public sealed record Kodefrekvens
+public sealed record CodeFrequency
 {
     [JsonPropertyName("code")] public string Code { get; init; } = "";
     [JsonPropertyName("preferredTerm")] public string PreferredTerm { get; init; } = "";
-    [JsonPropertyName("beskrivelse")] public string? Beskrivelse { get; init; }
+    [JsonPropertyName("beskrivelse")] public string? Description { get; init; }
 
     /// <summary>The counts themselves live here, keyed by period — the shape is set by the curated data.</summary>
     [JsonPropertyName("additionalProperties")]
@@ -178,7 +178,7 @@ public sealed record Kodefrekvens
 }
 
 /// <summary>A variabelgruppe a variable belongs to.</summary>
-public sealed record VariabelgruppeReferanse
+public sealed record VariabelgruppeReference
 {
     [JsonPropertyName("id")] public Guid Id { get; init; }
     [JsonPropertyName("name")] public string Name { get; init; } = "";
@@ -188,14 +188,14 @@ public sealed record VariabelgruppeReferanse
 }
 
 /// <summary>A datasamling a variable is pinned into, with the period it applied there.</summary>
-public sealed record DatasamlingReferanse
+public sealed record DatasamlingReference
 {
     [JsonPropertyName("id")] public Guid Id { get; init; }
     [JsonPropertyName("name")] public string Name { get; init; } = "";
 
     /// <summary>
     /// When the variable entered this datasamling. Note this is a catalogue timestamp on the
-    /// membership, not the data period — that is <see cref="VariabelDetalj.DataFrom"/>.
+    /// membership, not the data period — that is <see cref="VariableDetail.DataFrom"/>.
     /// </summary>
     [JsonPropertyName("validFrom")] public DateTimeOffset? ValidFrom { get; init; }
 

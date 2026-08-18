@@ -20,12 +20,11 @@ public Task<Side<VariabelSammendrag>> SokVariablerAsync(string? sok, ...)
 private async Task SorterAsync(Sorteringsfelt felt)
 ```
 
-This is a change of direction. Early work here used Norwegian identifiers, following Munin's
-own client code, and a good deal of the package still does — `Variabelutforsker`,
-`SokVariablerAsync`, `HentTokenAsync`, `Sorteringsfelt`. Those are being renamed under
-`Fhi.Metadata-osxfx`, which has to land **before the first nuget.org publish** — several of
-them are public API, so renaming is free now and a breaking change for helsedata afterwards.
-Until it lands you will see both, and **new code should not add to the Norwegian side**.
+Early work here used Norwegian identifiers, following Munin's own client code —
+`Variabelutforsker`, `SokVariablerAsync`, `HentTokenAsync`, `Side<VariabelSammendrag>`. They
+were all renamed under `Fhi.Metadata-osxfx`, before the first nuget.org publish, because
+several of them were public API: renaming was free then and a breaking change for helsedata
+afterwards. **There is no Norwegian half left to add to.**
 
 The reason is narrow and specific to this package rather than a general preference. This is a
 library published to nuget.org and consumed by teams outside FHI's Norwegian-speaking core —
@@ -39,13 +38,31 @@ Norwegian is correct, and required, for:
 
 - **User-facing strings** — labels, status messages, error text. The component is bilingual
   (`nb`/`en`); Norwegian copy belongs in the text records, not spread through markup.
-- **Changelog fragments** — `changelog.d/*.nb.md` alongside the English ones.
 - **Domain terms with no honest translation** — `kilde`, `datasamling`, `delkilde`,
-  `variabelgruppe`, `kildetype`. These are names of things in the Norwegian health-metadata
-  catalogue, not English concepts wearing a Norwegian coat. Keep them as they are, in English
-  identifiers: `KildeId`, `DatasamlingCount`, `SearchByVariabelgruppeAsync`. A "translation"
-  like `SourceCollection` invents a term nobody uses and breaks the link to the API's own
-  field names.
+  `variabelgruppe`, `kildetype`, plus `kodeverk` and the kinds it comes in
+  (`helsefagligKodeverk`, `administrativtKodeverk`, `kildekodeverk`). These are names of things
+  in the Norwegian health-metadata catalogue, not English concepts wearing a Norwegian coat.
+  Keep them as they are, inside otherwise-English identifiers: `KildeId`, `DatasamlingCount`,
+  `GetKildeHierarchyAsync`, `SearchByVariabelgruppeAsync`. A "translation" like
+  `SourceCollection` invents a term nobody uses and breaks the link to the API's own field
+  names.
+
+  Their Norwegian plurals come along with them, because that is what the API calls the
+  collections: `Kilder`, `Delkilder`, `Datasamlinger`, `Variabelgrupper`, `KildeTyper` — not
+  `Kildes`.
+
+  The list is short on purpose. Everything else has an honest English equivalent and uses it,
+  including the ones that look Norwegian-only at a glance: `dataansvarlig` is `DataController`
+  and `databehandler` is `DataProcessor` (the GDPR terms), `lovverk` is `LegalBasis`,
+  `gradAvPersonidentifikasjon` is `PersonIdentificationLevel`, `kortNavn` is `ShortName`.
+
+Note that a DTO property's C# name is free to differ from its wire name, because every one of
+them carries an explicit `[JsonPropertyName]`. Renaming a property is therefore not a contract
+change — `[JsonPropertyName("sistOppdatert")] public DateTimeOffset LastUpdated` is the normal
+shape here, and the JSON side must keep spelling it Munin's way.
+
+Changelog fragments are **English only** — see [`changelog.d/README.md`](changelog.d/README.md),
+which explains why this repository deliberately differs from Munin's bilingual pair.
 
 ## Tests
 

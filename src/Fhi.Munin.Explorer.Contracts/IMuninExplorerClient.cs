@@ -23,16 +23,16 @@ public interface IMuninExplorerClient
     /// back in the same sequence every time — which is what keeps paging through a sorted result
     /// from showing the same variable twice.
     /// </remarks>
-    /// <param name="sok">Free-text search. Null or empty returns unfiltered results.</param>
-    /// <param name="side">1-based page number.</param>
-    /// <param name="sideStorrelse">Rows per page.</param>
+    /// <param name="search">Free-text search. Null or empty returns unfiltered results.</param>
+    /// <param name="page">1-based page number.</param>
+    /// <param name="pageSize">Rows per page.</param>
     /// <param name="sort">Order to sort by. Defaults to the API's own order.</param>
     /// <param name="direction">Direction to sort in.</param>
     /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
-    Task<Side<VariabelSammendrag>> SokVariablerAsync(
-        string? sok,
-        int side = 1,
-        int sideStorrelse = 25,
+    Task<Page<VariableSummary>> SearchVariablesAsync(
+        string? search,
+        int page = 1,
+        int pageSize = 25,
         SortField sort = SortField.Default,
         SortDirection direction = SortDirection.Ascending,
         CancellationToken cancellationToken = default);
@@ -44,53 +44,53 @@ public interface IMuninExplorerClient
     /// The counts are cross-filtered, so pass the same narrowing the variable search used or the
     /// numbers will describe a different selection than the list beside them.
     /// </remarks>
-    /// <param name="sok">Same free-text search as <see cref="SokVariablerAsync"/>.</param>
+    /// <param name="search">Same free-text search as <see cref="SearchVariablesAsync"/>.</param>
     /// <param name="kildeType">Restrict counts to one kildetype, e.g. <c>sentraltHelseregister</c>.</param>
     /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
-    Task<Filtervalg> HentFiltreAsync(
-        string? sok = null,
+    Task<FilterOptions> GetFiltersAsync(
+        string? search = null,
         string? kildeType = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>List all kilder with summary metadata.</summary>
     /// <remarks>Not paged — the API returns the full list in one array.</remarks>
-    /// <param name="sok">Case-insensitive substring match on name, code or short name.</param>
+    /// <param name="search">Case-insensitive substring match on name, code or short name.</param>
     /// <param name="kildeType">Restrict to one kildetype, e.g. <c>sentraltHelseregister</c>.</param>
     /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
-    Task<IReadOnlyList<KildeSammendrag>> HentKilderAsync(
-        string? sok = null,
+    Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
+        string? search = null,
         string? kildeType = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>Fetch one kilde with its delkilde/datasamling tree. Null when no such kilde is published.</summary>
-    Task<KildeDetalj?> HentKildeAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Fetch the kilde's navigation tree — ids, names and counts only. Null when no such kilde is
-    /// published. Prefer this over <see cref="HentKildeAsync"/> when all that is needed is a tree.
+    /// published. Prefer this over <see cref="GetKildeAsync"/> when all that is needed is a tree.
     /// </summary>
-    Task<KildeHierarki?> HentKildeHierarkiAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<KildeHierarchy?> GetKildeHierarchyAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>Fetch one datasamling. Null when no such datasamling is published.</summary>
-    Task<DatasamlingDetalj?> HentDatasamlingAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<DatasamlingDetail?> GetDatasamlingAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>Fetch one variable with version history, kodeverk and statistics. Null when not published.</summary>
     /// <param name="id">The variable's id.</param>
-    /// <param name="inkluderHistoriske">
+    /// <param name="includeHistorical">
     /// Include variables whose every version has expired. Off by default, so a search result and a
     /// detail page agree on what exists.
     /// </param>
     /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
-    Task<VariabelDetalj?> HentVariabelAsync(
+    Task<VariableDetail?> GetVariableAsync(
         Guid id,
-        bool inkluderHistoriske = false,
+        bool includeHistorical = false,
         CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Fetch every published version of a variable, newest and oldest alike. Empty when the
     /// variable does not exist.
     /// </summary>
-    Task<IReadOnlyList<Variabelversjon>> HentVariabelTidslinjeAsync(
+    Task<IReadOnlyList<VariableVersion>> GetVariableTimelineAsync(
         Guid id,
         CancellationToken cancellationToken = default);
 }
