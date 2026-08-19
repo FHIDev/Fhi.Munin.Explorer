@@ -49,7 +49,7 @@
 
 body {
   margin: 0;
-  background: #fff;
+  background: var(--grey10);   /* helsedata's own page ground; their cards read as white *on* this */
   color: var(--dark);
   font: normal 1rem/160% var(--font);
 }
@@ -450,7 +450,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    which is the right answer on a phone. */
 
 @media (min-width: 1024px) {
-  .hostmain { max-width: 1600px; }
+  .hostmain { max-width: none; }   /* helsedata sets no cap; the page fills the window */
 
   .variable-explorer {
     display: grid;
