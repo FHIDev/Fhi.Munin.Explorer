@@ -8,8 +8,7 @@ category: Changed
   none, so its header is plain text rather than a button promising an ordering the API cannot do.
   The header renders whether or not the search found anything — it carries the ordering now, and
   taking it off screen mid-interaction would drop focus to `<body>`.
-- **The result columns are helsedata's five, so Kode moved into the panel** - source, period,
-  dataCollection and theme, in their order, each carrying the per-column modifier their grid widths
-  hang off. Their row has no code column, and adding a sixth would have meant inventing a class
-  name with no rule behind it. The code is still on screen, one click away, and searching by code
-  still finds the variable. (Fhi.Metadata-zs56s, Fhi.Metadata-35oil)
+- **The columns each carry a per-column modifier, which is what a cell lines up by** - the widths
+  hang off those names rather than off source order. The column SET is Runa's and is described in
+  its own entry; this change is about the header they line up under. (Fhi.Metadata-zs56s,
+  Fhi.Metadata-35oil)

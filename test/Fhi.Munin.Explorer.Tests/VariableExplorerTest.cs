@@ -784,10 +784,12 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
-    public void Render_WhenTheSearchHasHits_ThenEachResultIsAHeadingOneLevelBelowTheTitle()
+    public void Render_WhenTheSearchHasHits_ThenTheNameIsTheDisclosureAndNotAHeading()
     {
-        // Real headings per result are what let a screen-reader user move between them with
-        // the heading rotor. One level below the component's own title keeps the outline whole.
+        // This guarded the opposite until the row became a flex container. A heading per result
+        // would let a screen-reader user move between them with the heading rotor, which is why it
+        // was there — but helsedata sizes the name cell with `variable-dataitem-main__name`, and a
+        // heading in between becomes the flex item, so the column stops lining up with its header.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
                             b => b.Add(c => c.HeadingLevel, 3));
 

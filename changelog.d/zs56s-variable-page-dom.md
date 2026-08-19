@@ -9,7 +9,8 @@ category: Changed
 - **A result row is opened by its own name, and the dead click target is gone** - the variable's
   name is now the disclosure button, which is helsedata's pattern and the APG accordion pattern.
   The old card advertised a click it did not have: `.datasourcecard` carries a pointer cursor
-  because on their datakilde page the whole card is a link, and ours never was. The heading around
-  the button is ours and stays, so results remain navigable by heading rotor — none of their 28
-  selectors for these names uses a child combinator, so a heading between row and button changes
-  nothing about how it is styled. (Fhi.Metadata-ywnbs)
+  because on their datakilde page the whole card is a link, and ours never was. There is no heading
+  around the button: their row is a flex container and the name cell is sized by
+  `variable-dataitem-main__name`, so a heading in between becomes the flex item and the column stops
+  lining up with its header. Results are a list of list items, each with a named disclosure carrying
+  `aria-expanded`. (Fhi.Metadata-ywnbs)

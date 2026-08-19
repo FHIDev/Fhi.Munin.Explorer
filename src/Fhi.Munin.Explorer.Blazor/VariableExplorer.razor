@@ -267,11 +267,12 @@
                        old card had: a pointer cursor inherited from .datasourcecard, which is a
                        link on their datakilde page and was never a link here.
 
-                       The heading around it is ours, not theirs. Giving every result a real
-                       heading is what lets a screen-reader user move between results with the
-                       heading rotor, and none of their 28 selectors for these names uses a child
-                       combinator — every one matches by descent — so a heading between the row and
-                       the button changes nothing about how it is styled. *@
+                       There is no heading around it. One was tried, so results could be walked
+                       with a screen reader's heading rotor — their selectors all match by descent,
+                       so an element in between styles fine. But their row is a flex container and
+                       the name cell is sized by `variable-dataitem-main__name`, so a heading
+                       becomes the flex item and the column stops lining up with its header.
+                       Neither reference wraps it. *@
                     <div class="variable-data-list__item__row">
                         <div class="variable-dataitem-main">
                         @RowChevron(v)

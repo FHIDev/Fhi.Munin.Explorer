@@ -604,13 +604,15 @@ public partial class VariableExplorer : ComponentBase
     };
 
     /// <summary>
-    /// A result card's heading — the variable's display name, at <see cref="RowLevel"/>.
+    /// The first column: the variable's name, which is also the control that opens its panel.
     /// </summary>
     /// <remarks>
-    /// Giving every result a real heading is what lets a screen-reader user move between
-    /// results with the heading rotor, which the table this replaced offered no equivalent of.
-    /// The size comes from <c>datasourcecard__heading</c>, so it stays card-sized whatever
-    /// level the element ends up being.
+    /// No heading element. An earlier version wrapped this in one so results could be walked with
+    /// a screen reader's heading rotor, but helsedata's row is <c>display: flex</c> and
+    /// <c>variable-dataitem-main__name</c> sizes the flex ITEM — a heading in between becomes the
+    /// item and the name column falls out of line with its header. Neither reference wraps it:
+    /// helsedata puts the button straight in the row, and Runa's rows are table rows. The results
+    /// are a list of list items, each with a named disclosure carrying <c>aria-expanded</c>.
     /// </remarks>
     private RenderFragment RowHeading(VariableSummary v) => builder =>
     {
@@ -842,10 +844,9 @@ public partial class VariableExplorer : ComponentBase
     /// One column of a result row, in helsedata's <c>variable-dataitem-main__column</c> shape.
     /// </summary>
     /// <remarks>
-    /// The label is kept as a visually-hidden prefix rather than dropped. helsedata can drop it
-    /// because their header row names the columns; ours has no header row yet (see 35oil), and
-    /// "Inklusjon" on its own says nothing about which field it is. When the header row lands,
-    /// this is the thing to reconsider.
+    /// The field name is not shown in the cell — the column header names it. It is still emitted
+    /// for assistive technology, because a screen reader moving down a column has no header to
+    /// glance up at.
     /// </remarks>
     private void Column(
         RenderTreeBuilder builder,
@@ -855,9 +856,11 @@ public partial class VariableExplorer : ComponentBase
         string? key,
         string? tooltip = null)
     {
+        // Sequence numbers ascend without gaps or repeats through every path below. Blazor uses
+        // them positionally to diff one render against the next, so a number that goes backwards
+        // makes the renderer compare the wrong nodes — an earlier version emitted seq+15 before
+        // seq+2 and would have diffed the label span against the value span.
         builder.OpenElement(seq, "div");
-        // The per-column modifier is what gives a cell its width. Columns helsedata has no
-        // modifier for wear the bare class and size by content.
         builder.AddAttribute(seq + 1, "class",
             key is null
                 ? "variable-dataitem-main__column"
@@ -865,39 +868,42 @@ public partial class VariableExplorer : ComponentBase
 
         // The full value as a tooltip on the CELL, because a cell can be clipped — the code column
         // truncates rather than wraps, since a broken identifier is neither readable nor copyable.
+        // A column may show a shorter form than the value it holds: kilde shows the short name.
         var hoverText = string.IsNullOrWhiteSpace(tooltip) ? value : tooltip;
 
         if (!string.IsNullOrWhiteSpace(hoverText))
         {
-            builder.AddAttribute(seq + 12, "title", hoverText);
+            builder.AddAttribute(seq + 2, "title", hoverText);
         }
 
-        // The field name, for assistive technology only. It was visible in every cell until the
-        // column header made that redundant on screen — but a screen reader moving down a column
-        // has no header to glance up at, so dropping it outright would leave "Inklusjon" meaning
-        // nothing.
+        // The field name, for assistive technology only. The column header names it on screen, so
+        // showing it in every cell as well would undo what the header is for — but a screen reader
+        // moving down a column has no header to glance up at, so the name has to travel with the
+        // value or "Inklusjon" means nothing.
         //
         // NOT an aria-label on the value: aria-label REPLACES the text it labels, so a reader would
-        // hear the field name instead of the value. That is what this code did for one commit.
-        // screenreader-only is Stiler's own class for exactly this, 16 rules site-wide.
-        builder.OpenElement(seq + 13, "span");
-        builder.AddAttribute(seq + 14, "class", "screenreader-only");
-        builder.AddContent(seq + 15, $"{label}: ");
+        // hear the field name instead of the value. screenreader-only is Stiler's own class for
+        // this, 16 rules in the site-wide stylesheet.
+        builder.OpenElement(seq + 3, "span");
+        builder.AddAttribute(seq + 4, "class", "screenreader-only");
+        builder.AddContent(seq + 5, $"{label}: ");
         builder.CloseElement();
 
-        builder.OpenElement(seq + 2, "span");
-        builder.AddAttribute(seq + 3, "class", "variable-dataitem-main__column__text");
+        builder.OpenElement(seq + 6, "span");
+        builder.AddAttribute(seq + 7, "class", "variable-dataitem-main__column__text");
 
         if (string.IsNullOrWhiteSpace(value))
         {
-            builder.AddContent(seq + 5, T.NotSpecified);
+            builder.AddContent(seq + 8, T.NotSpecified);
         }
         else
         {
-            // The label follows Language; the value does not (WCAG 3.1.2).
-            builder.OpenElement(seq + 6, "span");
-            builder.AddAttribute(seq + 7, "lang", "no");
-            builder.AddContent(seq + 8, value);
+            // The label follows Language; the value does not. Munin's metadata is Norwegian
+            // whatever language the surrounding UI is in, and an English speech synthesiser
+            // reading Norwegian variable names is unintelligible (WCAG 3.1.2).
+            builder.OpenElement(seq + 9, "span");
+            builder.AddAttribute(seq + 10, "lang", "no");
+            builder.AddContent(seq + 11, value);
             builder.CloseElement();
         }
 
