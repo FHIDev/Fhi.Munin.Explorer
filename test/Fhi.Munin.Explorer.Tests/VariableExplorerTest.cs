@@ -114,9 +114,7 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Equal(2, cut.FindAll("ul.variable-data-list > li").Count);
         Assert.Contains("1. Tale", cut.Markup);
-        // The code is not in the collapsed row. helsedata's own row has no code column either —
-        // it is in the panel, one click away, and searching by code still finds the variable.
-        Assert.DoesNotContain("V_ALS.F1.ALSFRSR1TALE", cut.Markup);
+        Assert.Contains("V_ALS.F1.ALSFRSR1TALE", cut.Markup);
         Assert.Contains("2 variabler", cut.Markup);
     }
 
@@ -805,11 +803,12 @@ public class VariableExplorerTest : BunitContext
 
         var info = cut.Find(".variable-dataitem-main").TextContent;
 
-        // Kode moved to the panel with the switch to helsedata's columns.
+        Assert.Contains("Kode: V_ALS.F1.TALE", info);
         Assert.Contains("Variabelgruppe:", info);
         Assert.Contains("Datakilde: Als registeret", info);
         Assert.Contains("Datasamling: Inklusjon", info);
-        Assert.Contains("Periode: 2010–2025", info);
+        // Periode is not a Runa column, so it is not a row column here either — it is in the panel.
+        Assert.DoesNotContain("Periode:", info);
     }
 
     [Fact]
@@ -841,7 +840,7 @@ public class VariableExplorerTest : BunitContext
         var info = cut.Find(".variable-dataitem-main");
 
         Assert.Contains("Datakilde: Ikke oppgitt", info.TextContent);
-        Assert.Contains("Periode: Ikke oppgitt", info.TextContent);
+        Assert.Contains("Datasamling: Ikke oppgitt", info.TextContent);
         Assert.DoesNotContain("—", info.TextContent);
     }
 
@@ -2653,7 +2652,7 @@ public class VariableExplorerTest : BunitContext
 
         Toggles(cut)[0].Click();
 
-        Assert.Equal(["Beskrivelse", "Periode", "Datakilde", "Variabelgruppe", "Kode", "Kodeverk"],
+        Assert.Equal(["Beskrivelse", "Periode", "Datakilde", "Variabelgruppe", "Kodeverk"],
                      Panel(cut).QuerySelectorAll("dl > dt").Select(t => t.TextContent));
 
         var values = Values(cut);
@@ -2671,7 +2670,7 @@ public class VariableExplorerTest : BunitContext
         // Each kodeverk says which kind it is: "2336" alone does not distinguish a kildekodeverk
         // the register defined from a national classification.
         Assert.Equal(["Kildekodeverk: 2336", "Administrativt kodeverk: ICD-10"],
-                     values[5].QuerySelectorAll("li").Select(l => l.TextContent));
+                     values[4].QuerySelectorAll("li").Select(l => l.TextContent));
     }
 
     [Fact]
@@ -2684,10 +2683,7 @@ public class VariableExplorerTest : BunitContext
 
         Toggles(cut)[0].Click();
 
-        // Every field except the code, which the summary always carries — a variable without
-        // a code is not a variable, so it never reads "Ikke oppgitt".
-        Assert.All(Values(cut).Where(v => !v.TextContent.StartsWith("V_", StringComparison.Ordinal)),
-                   v => Assert.Equal("Ikke oppgitt", v.TextContent));
+        Assert.All(Values(cut), v => Assert.Equal("Ikke oppgitt", v.TextContent));
     }
 
     [Fact]
@@ -3239,7 +3235,7 @@ public class VariableExplorerTest : BunitContext
 
         Toggles(cut)[0].Click();
 
-        Assert.Equal(["Description", "Period", "Data source", "Variable group", "Code", "Code systems"],
+        Assert.Equal(["Description", "Period", "Data source", "Variable group", "Code systems"],
                      Panel(cut).QuerySelectorAll("dl > dt").Select(t => t.TextContent));
 
         var trail = Values(cut)[2].QuerySelectorAll("ol > li");

@@ -683,16 +683,49 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   padding-bottom: 8px;
 }
 
+/* helsedata lays these out with flex, not grid — `.variable-dataitem-header, .variable-dataitem-main
+   { display: flex; width: 100% }` — and each column is an inline-flex box that takes its width from
+   its own modifier. That is why extra columns are possible at all: flex distributes what is left
+   rather than needing a track declared up front.
+
+   The header carries `padding-left: 56px` on their side to clear the chevron, which is how the two
+   rows line up without the header having a chevron cell of its own. */
 .variable-dataitem-header,
 .variable-dataitem-main {
-  display: grid;
-  grid-template-columns: 24px minmax(200px, 2fr) repeat(4, minmax(0, 1fr));
-  align-items: baseline;
+  display: flex;
+  align-items: center;
+  width: 100%;
   gap: 12px;
 }
 
+.variable-dataitem-header {
+  padding-left: 36px;   /* clears the chevron column, as theirs does */
+}
+
+.variable-dataitem-main__expand-icon {
+  flex: 0 0 24px;
+}
+
+/* The four columns helsedata has a modifier for take a share; the three Runa adds — code,
+   datatype, status — have no modifier of theirs and size by content until one exists. */
+.variable-dataitem-main__name,
 .variable-dataitem-header__name {
-  grid-column: 2;   /* the chevron track has no header */
+  flex: 2 1 200px;
+}
+
+.variable-dataitem-main__source,
+.variable-dataitem-header__source,
+.variable-dataitem-main__dataCollection,
+.variable-dataitem-header__dataCollection,
+.variable-dataitem-main__theme,
+.variable-dataitem-header__theme {
+  flex: 1 1 0;
+}
+
+.variable-dataitem-main__column,
+.sortable-header {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .sortable-header {

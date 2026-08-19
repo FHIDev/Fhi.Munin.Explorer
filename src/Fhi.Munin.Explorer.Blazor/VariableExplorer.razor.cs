@@ -677,10 +677,12 @@ public partial class VariableExplorer : ComponentBase
         builder.AddAttribute(5, "class", "variable-dataitem-header");
 
         HeaderCell(builder, 100, "name", T.ColumnVariable, SortField.Default);
-        HeaderCell(builder, 200, "source", T.FieldSource, SortField.Kilde);
-        HeaderCell(builder, 300, "period", T.FieldPeriod, sort: null);
+        HeaderCell(builder, 200, null, T.FieldCode, sort: null);
+        HeaderCell(builder, 300, "source", T.FieldSource, SortField.Kilde);
         HeaderCell(builder, 400, "dataCollection", T.FieldDataCollection, SortField.Datasamling);
         HeaderCell(builder, 500, "theme", T.FieldVariableGroup, SortField.Variabelgruppe);
+        HeaderCell(builder, 600, null, T.FieldDataType, sort: null);
+        HeaderCell(builder, 700, null, T.FieldStatus, sort: null);
 
         builder.CloseElement();
         builder.CloseElement();
@@ -688,10 +690,11 @@ public partial class VariableExplorer : ComponentBase
     };
 
     /// <summary>One header cell, sortable when the column maps to a field the API can order by.</summary>
-    private void HeaderCell(RenderTreeBuilder builder, int seq, string key, string label, SortField? sort)
+    private void HeaderCell(RenderTreeBuilder builder, int seq, string? key, string label, SortField? sort)
     {
         builder.OpenElement(seq, "div");
-        builder.AddAttribute(seq + 1, "class", $"sortable-header variable-dataitem-header__{key}");
+        builder.AddAttribute(seq + 1, "class",
+            key is null ? "sortable-header" : $"sortable-header variable-dataitem-header__{key}");
 
         if (sort is not { } field)
         {
@@ -753,14 +756,21 @@ public partial class VariableExplorer : ComponentBase
         // One div per column, each holding a span, which is exactly helsedata's shape. Their grid
         // is on .variable-dataitem-main, so the columns line up only if they are its direct
         // children — the row's own layout comes from CSS we do not own.
-        // helsedata's own column order: source, period, dataCollection, theme. The variable's
-        // name is the first column and is drawn by RowHeading, because it is also the disclosure.
-        // Their row carries no code column, so ours moved into the panel rather than becoming a
-        // sixth column with a class name nobody has written a rule for.
-        Column(builder, 100, T.FieldSource, v.KildeName, "source");
-        Column(builder, 200, T.FieldPeriod, Period(v), "period");
+        // Runa's columns, in Runa's order. Runa is what this replaces helsedata's variable page
+        // WITH, so it decides what a row says; helsedata decides what a row looks like. Taking the
+        // column set from the page being retired would be copying the thing we are replacing.
+        //
+        // Four of the seven have a width modifier in helsedata's stylesheet. Code, datatype and
+        // status do not, so they wear the bare column class and size by content under their flex
+        // layout — using a class of theirs without a modifier, rather than inventing
+        // __code/__dataType/__status, which would be names with no rule behind them. Those three
+        // modifiers are worth asking for in the SCSS file helsedata offered.
+        Column(builder, 100, T.FieldCode, v.Code, null);
+        Column(builder, 200, T.FieldSource, v.KildeName, "source");
         Column(builder, 300, T.FieldDataCollection, v.DatasamlingName, "dataCollection");
         Column(builder, 400, T.FieldVariableGroup, v.VariabelgruppeName, "theme");
+        Column(builder, 500, T.FieldDataType, v.DataType, null);
+        Column(builder, 600, T.FieldStatus, v.VersionStatus, null);
     };
 
     /// <summary>
@@ -772,12 +782,15 @@ public partial class VariableExplorer : ComponentBase
     /// "Inklusjon" on its own says nothing about which field it is. When the header row lands,
     /// this is the thing to reconsider.
     /// </remarks>
-    private void Column(RenderTreeBuilder builder, int seq, string label, string? value, string key)
+    private void Column(RenderTreeBuilder builder, int seq, string label, string? value, string? key)
     {
         builder.OpenElement(seq, "div");
-        // The per-column modifier is what lines a cell up with its header — their grid widths hang
-        // off these, not off source order.
-        builder.AddAttribute(seq + 1, "class", $"variable-dataitem-main__column variable-dataitem-main__{key}");
+        // The per-column modifier is what gives a cell its width. Columns helsedata has no
+        // modifier for wear the bare class and size by content.
+        builder.AddAttribute(seq + 1, "class",
+            key is null
+                ? "variable-dataitem-main__column"
+                : $"variable-dataitem-main__column variable-dataitem-main__{key}");
 
         builder.OpenElement(seq + 2, "span");
         builder.AddAttribute(seq + 3, "class", "variable-dataitem-main__column__text");
@@ -2703,6 +2716,8 @@ public partial class VariableExplorer : ComponentBase
         string SortDefault,
         // The first column's header — the variable itself.
         string ColumnVariable,
+        string FieldDataType,
+        string FieldStatus,
         string FieldCode,
         string FieldSource,
         string FieldDataCollection,
@@ -2904,6 +2919,8 @@ public partial class VariableExplorer : ComponentBase
             NotSpecified: "Ikke oppgitt",
             SortDefault: "Standard",
             ColumnVariable: "Variabel",
+            FieldDataType: "Datatype",
+            FieldStatus: "Status",
             FieldCode: "Kode",
             FieldSource: "Datakilde",
             FieldDataCollection: "Datasamling",
@@ -3029,6 +3046,8 @@ public partial class VariableExplorer : ComponentBase
             NotSpecified: "Not specified",
             SortDefault: "Default",
             ColumnVariable: "Variable",
+            FieldDataType: "Data type",
+            FieldStatus: "Status",
             FieldCode: "Code",
             FieldSource: "Data source",
             FieldDataCollection: "Data collection",
