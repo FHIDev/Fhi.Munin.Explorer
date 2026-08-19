@@ -114,7 +114,9 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Equal(2, cut.FindAll("ul.variable-data-list > li").Count);
         Assert.Contains("1. Tale", cut.Markup);
-        Assert.Contains("V_ALS.F1.ALSFRSR1TALE", cut.Markup);
+        // The code is not in the collapsed row. helsedata's own row has no code column either —
+        // it is in the panel, one click away, and searching by code still finds the variable.
+        Assert.DoesNotContain("V_ALS.F1.ALSFRSR1TALE", cut.Markup);
         Assert.Contains("2 variabler", cut.Markup);
     }
 
@@ -252,7 +254,8 @@ public class VariableExplorerTest : BunitContext
     /// fieldset with its border off — so a selector for one has to say it is not the other. Without
     /// the exclusion these tests would silently start asserting about the filters.
     /// </remarks>
-    private const string SortControl = "fieldset.form-fieldset:not(.variable-explorer-filters)";
+    // The ordering lives in the column header now, not in a fieldset of its own.
+    private const string SortControl = ".variable-data-list__header";
 
     /// <summary>The sort buttons, in the order they are rendered.</summary>
     private static IReadOnlyList<AngleSharp.Dom.IElement> SortButtons(
@@ -450,7 +453,7 @@ public class VariableExplorerTest : BunitContext
         var labels = SortButtons(cut).Select(k => k.TextContent).ToList();
 
         Assert.Equal(["Default (ascending)", "Data source", "Data collection", "Variable group"], labels);
-        Assert.Equal("Sort by", cut.Find($"{SortControl} legend").TextContent);
+        Assert.NotNull(cut.Find($"{SortControl} .variable-data-list__item__row--header"));
     }
 
     // ---------------------------------------------------------------------------------
@@ -576,10 +579,13 @@ public class VariableExplorerTest : BunitContext
     [Fact]
     public void Render_Always_ThenTheSortFieldsAreGroupedAndNamed()
     {
-        // fieldset + legend names the group of buttons for a screen reader without inventing ARIA.
+        // The grouping used to be a fieldset with a legend reading "Sorter etter". It is a column
+        // header row now, which is what both helsedata and Runa use: each button names its own
+        // column, so the group needs no separate name. What still has to hold is that they are
+        // real buttons and that the header sits above the list rather than floating beside it.
         var cut = RenderWith(new FakeClient(OnePage()));
 
-        Assert.Equal("Sorter etter", cut.Find($"{SortControl} legend").TextContent);
+        Assert.NotNull(cut.Find($"{SortControl} .variable-data-list__item__row--header"));
         Assert.All(SortButtons(cut), k => Assert.Equal("button", k.GetAttribute("type")));
     }
 
@@ -799,7 +805,8 @@ public class VariableExplorerTest : BunitContext
 
         var info = cut.Find(".variable-dataitem-main").TextContent;
 
-        Assert.Contains("Kode: V_ALS.F1.TALE", info);
+        // Kode moved to the panel with the switch to helsedata's columns.
+        Assert.Contains("Variabelgruppe:", info);
         Assert.Contains("Datakilde: Als registeret", info);
         Assert.Contains("Datasamling: Inklusjon", info);
         Assert.Contains("Periode: 2010–2025", info);
@@ -1694,8 +1701,10 @@ public class VariableExplorerTest : BunitContext
 
         // Ahead of the results, otherwise it skips nothing.
         var markup = cut.Markup;
+        // Ahead of the ROWS, not ahead of the header: the header holds four sort buttons and is
+        // worth tabbing through. It is the twenty-five variables the link exists to skip.
         Assert.True(markup.IndexOf("skiplink-pagination", StringComparison.Ordinal)
-                    < markup.IndexOf("variable-data-list", StringComparison.Ordinal));
+                    < markup.IndexOf("<ul class=\"variable-data-list\"", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -2644,7 +2653,7 @@ public class VariableExplorerTest : BunitContext
 
         Toggles(cut)[0].Click();
 
-        Assert.Equal(["Beskrivelse", "Periode", "Datakilde", "Variabelgruppe", "Kodeverk"],
+        Assert.Equal(["Beskrivelse", "Periode", "Datakilde", "Variabelgruppe", "Kode", "Kodeverk"],
                      Panel(cut).QuerySelectorAll("dl > dt").Select(t => t.TextContent));
 
         var values = Values(cut);
@@ -2662,7 +2671,7 @@ public class VariableExplorerTest : BunitContext
         // Each kodeverk says which kind it is: "2336" alone does not distinguish a kildekodeverk
         // the register defined from a national classification.
         Assert.Equal(["Kildekodeverk: 2336", "Administrativt kodeverk: ICD-10"],
-                     values[4].QuerySelectorAll("li").Select(l => l.TextContent));
+                     values[5].QuerySelectorAll("li").Select(l => l.TextContent));
     }
 
     [Fact]
@@ -2675,7 +2684,10 @@ public class VariableExplorerTest : BunitContext
 
         Toggles(cut)[0].Click();
 
-        Assert.All(Values(cut), v => Assert.Equal("Ikke oppgitt", v.TextContent));
+        // Every field except the code, which the summary always carries — a variable without
+        // a code is not a variable, so it never reads "Ikke oppgitt".
+        Assert.All(Values(cut).Where(v => !v.TextContent.StartsWith("V_", StringComparison.Ordinal)),
+                   v => Assert.Equal("Ikke oppgitt", v.TextContent));
     }
 
     [Fact]
@@ -3227,7 +3239,7 @@ public class VariableExplorerTest : BunitContext
 
         Toggles(cut)[0].Click();
 
-        Assert.Equal(["Description", "Period", "Data source", "Variable group", "Code systems"],
+        Assert.Equal(["Description", "Period", "Data source", "Variable group", "Code", "Code systems"],
                      Panel(cut).QuerySelectorAll("dl > dt").Select(t => t.TextContent));
 
         var trail = Values(cut)[2].QuerySelectorAll("ol > li");

@@ -646,6 +646,74 @@ public partial class VariableExplorer : ComponentBase
     };
 
     /// <summary>
+    /// The column header row, in helsedata's own shape: a row wearing the <c>--header</c> modifier,
+    /// with one <c>sortable-header</c> cell per column.
+    /// </summary>
+    /// <remarks>
+    /// This replaces the "Sorter etter" fieldset. The fieldset existed because there was no header
+    /// to put the ordering in; now there is, and leaving both would give the same choice two
+    /// controls.
+    /// <para>
+    /// Four of the five columns map to a real <see cref="SortField"/>. Periode has none, so its
+    /// header is plain text rather than a button that would promise an ordering the API does not
+    /// offer. The variable column maps to <see cref="SortField.Default"/>, which is honest rather
+    /// than convenient: that member is documented as the API's own order and its wire token is
+    /// literally <c>name</c>.
+    /// </para>
+    /// <para>
+    /// aria-current, not aria-pressed, for the same reason the old buttons used it: a pressed
+    /// toggle promises that pressing again releases it, and this one flips the direction instead.
+    /// </para>
+    /// </remarks>
+    private RenderFragment ResultHeader() => builder =>
+    {
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "class", "variable-data-list__header");
+
+        builder.OpenElement(2, "div");
+        builder.AddAttribute(3, "class", "variable-data-list__item__row variable-data-list__item__row--header");
+
+        builder.OpenElement(4, "div");
+        builder.AddAttribute(5, "class", "variable-dataitem-header");
+
+        HeaderCell(builder, 100, "name", T.ColumnVariable, SortField.Default);
+        HeaderCell(builder, 200, "source", T.FieldSource, SortField.Kilde);
+        HeaderCell(builder, 300, "period", T.FieldPeriod, sort: null);
+        HeaderCell(builder, 400, "dataCollection", T.FieldDataCollection, SortField.Datasamling);
+        HeaderCell(builder, 500, "theme", T.FieldVariableGroup, SortField.Variabelgruppe);
+
+        builder.CloseElement();
+        builder.CloseElement();
+        builder.CloseElement();
+    };
+
+    /// <summary>One header cell, sortable when the column maps to a field the API can order by.</summary>
+    private void HeaderCell(RenderTreeBuilder builder, int seq, string key, string label, SortField? sort)
+    {
+        builder.OpenElement(seq, "div");
+        builder.AddAttribute(seq + 1, "class", $"sortable-header variable-dataitem-header__{key}");
+
+        if (sort is not { } field)
+        {
+            builder.AddContent(seq + 2, label);
+            builder.CloseElement();
+            return;
+        }
+
+        builder.OpenElement(seq + 3, "button");
+        // hd-button-reset is Stiler's own "this is a button but draw nothing" class, which is what
+        // their header buttons wear — 12 rules, in the site-wide stylesheet.
+        builder.AddAttribute(seq + 4, "class", "hd-button-reset variable-dataitem-header__button");
+        builder.AddAttribute(seq + 5, "type", "button");
+        builder.AddAttribute(seq + 6, "aria-current", AriaCurrent(field));
+        builder.AddAttribute(seq + 7, "onclick", EventCallback.Factory.Create(this, () => SortAsync(field)));
+        builder.AddContent(seq + 8, ButtonText(field));
+        builder.CloseElement();
+
+        builder.CloseElement();
+    }
+
+    /// <summary>
     /// The chevron helsedata draws at the head of every row, pointing down once the row is open.
     /// </summary>
     /// <remarks>
@@ -685,10 +753,14 @@ public partial class VariableExplorer : ComponentBase
         // One div per column, each holding a span, which is exactly helsedata's shape. Their grid
         // is on .variable-dataitem-main, so the columns line up only if they are its direct
         // children — the row's own layout comes from CSS we do not own.
-        Column(builder, 100, T.FieldSource, v.KildeName);
-        Column(builder, 200, T.FieldDataCollection, v.DatasamlingName);
-        Column(builder, 300, T.FieldPeriod, Period(v));
-        Column(builder, 400, T.FieldCode, v.Code);
+        // helsedata's own column order: source, period, dataCollection, theme. The variable's
+        // name is the first column and is drawn by RowHeading, because it is also the disclosure.
+        // Their row carries no code column, so ours moved into the panel rather than becoming a
+        // sixth column with a class name nobody has written a rule for.
+        Column(builder, 100, T.FieldSource, v.KildeName, "source");
+        Column(builder, 200, T.FieldPeriod, Period(v), "period");
+        Column(builder, 300, T.FieldDataCollection, v.DatasamlingName, "dataCollection");
+        Column(builder, 400, T.FieldVariableGroup, v.VariabelgruppeName, "theme");
     };
 
     /// <summary>
@@ -700,10 +772,12 @@ public partial class VariableExplorer : ComponentBase
     /// "Inklusjon" on its own says nothing about which field it is. When the header row lands,
     /// this is the thing to reconsider.
     /// </remarks>
-    private void Column(RenderTreeBuilder builder, int seq, string label, string? value)
+    private void Column(RenderTreeBuilder builder, int seq, string label, string? value, string key)
     {
         builder.OpenElement(seq, "div");
-        builder.AddAttribute(seq + 1, "class", "variable-dataitem-main__column");
+        // The per-column modifier is what lines a cell up with its header — their grid widths hang
+        // off these, not off source order.
+        builder.AddAttribute(seq + 1, "class", $"variable-dataitem-main__column variable-dataitem-main__{key}");
 
         builder.OpenElement(seq + 2, "span");
         builder.AddAttribute(seq + 3, "class", "variable-dataitem-main__column__text");
@@ -2627,6 +2701,8 @@ public partial class VariableExplorer : ComponentBase
         string Error,
         string NotSpecified,
         string SortDefault,
+        // The first column's header — the variable itself.
+        string ColumnVariable,
         string FieldCode,
         string FieldSource,
         string FieldDataCollection,
@@ -2827,6 +2903,7 @@ public partial class VariableExplorer : ComponentBase
             Error: "Kunne ikke hente variabler nå. Prøv igjen om litt.",
             NotSpecified: "Ikke oppgitt",
             SortDefault: "Standard",
+            ColumnVariable: "Variabel",
             FieldCode: "Kode",
             FieldSource: "Datakilde",
             FieldDataCollection: "Datasamling",
@@ -2951,6 +3028,7 @@ public partial class VariableExplorer : ComponentBase
             Error: "Could not load variables right now. Please try again shortly.",
             NotSpecified: "Not specified",
             SortDefault: "Default",
+            ColumnVariable: "Variable",
             FieldCode: "Code",
             FieldSource: "Data source",
             FieldDataCollection: "Data collection",

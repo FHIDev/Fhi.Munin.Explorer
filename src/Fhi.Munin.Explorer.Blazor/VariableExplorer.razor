@@ -156,24 +156,9 @@
        Always rendered, including when the search found nothing. Hiding it would take the button
        the user just pressed out of the document mid-interaction, dropping focus to <body> — the
        same reason the Søk button is never disabled. *@
-    <fieldset class="form-fieldset">
-        <legend class="form-element__label">@T.SortBy</legend>
-        @foreach (var sort in Sortable)
-        {
-            @* Runa's semantics, minus the header: choosing the active field again reverses it,
-               choosing another starts that one ascending.
-
-               aria-current rather than aria-pressed. A pressed toggle promises that pressing again
-               releases it, and this one does not — it flips the direction. aria-current="true" says
-               what is true: this is the field the list is ordered by. The direction is in the
-               button's own text, so it is on screen as well as announced, and no icon is needed —
-               Stiler's sort icons are the ones its table headers use and they carry no text. *@
-            <button class="@ButtonClass(sort)"
-                    type="button"
-                    aria-current="@AriaCurrent(sort)"
-                    @onclick="() => SortAsync(sort)">@ButtonText(sort)</button>
-        }
-    </fieldset>
+    @* The ordering used to live in a "Sorter etter" fieldset here. It moved into the column
+       header, which is where helsedata and Runa both put it, and where a reader looks for it.
+       Keeping both would offer the same choice twice. *@
 
     @* One polite status line, holding one message at a time: loading, the result summary,
        or "no matches". aria-atomic makes a screen reader read the whole new sentence rather
@@ -224,6 +209,14 @@
         }
     </div>
 
+    @* The container and its header render whether or not anything was found. The ordering lives
+       in that header, and hiding it when a search comes back empty would take the button the reader
+       just pressed out of the document — the same reason the Søk button is never disabled. *@
+    <div class="variable-explorer-container">
+    <div class="variable-explorer-results">
+    <div class="variable-data-list__result">
+    @ResultHeader()
+
     @if (_result is { Items.Count: > 0 })
     {
         @if (ShowPager)
@@ -259,9 +252,6 @@
            aria-label rather than aria-labelledby: the name is the same sentence the status line
            above shows, and pointing at that element would make the list's name change under a
            screen reader every time the status line does. *@
-        <div class="variable-explorer-container">
-        <div class="variable-explorer-results">
-        <div class="variable-data-list__result">
         <ul class="variable-data-list" aria-label="@Summary" aria-busy="@Busy">
             @foreach (var v in _result.Items)
             {
@@ -355,6 +345,13 @@
                                         <dt class="headline headline-xxs margin--none">@T.FieldVariableGroup</dt>
                                         <dd>@NameList(VariabelgruppeNames(detail))</dd>
 
+                                        @* The code goes last, and in the panel rather than the row:
+                                           helsedata's row has no code column, and a sixth one would
+                                           mean a class name with no rule behind it. It stays on
+                                           screen because the code is how a variable is cited. *@
+                                        <dt class="headline headline-xxs margin--none">@T.FieldCode</dt>
+                                        <dd lang="no">@v.Code</dd>
+
                                         <dt class="headline headline-xxs margin--none">@T.FieldKodeverk</dt>
                                         <dd>@KodeverkList(detail.KodeverkLinks)</dd>
                                     </dl>
@@ -430,10 +427,10 @@
                 </li>
             }
         </ul>
-        </div>@* variable-data-list__result *@
-        </div>@* variable-explorer-results *@
-        </div>@* variable-explorer-container *@
     }
+    </div>@* variable-data-list__result *@
+    </div>@* variable-explorer-results *@
+    </div>@* variable-explorer-container *@
 
     @* The pager. Forrige / Neste with the position between them, and no infinite scrolling —
        Munin's own explorer pages the same way, and a list that grows as you scroll has no end

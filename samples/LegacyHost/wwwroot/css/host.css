@@ -550,14 +550,6 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   background: var(--grey10);
 }
 
-/* Their grid. The name takes the widest track; the rest share what is left. */
-.variable-dataitem-main {
-  display: grid;
-  grid-template-columns: 24px minmax(220px, 2fr) repeat(4, minmax(0, 1fr));
-  align-items: baseline;
-  gap: 12px;
-}
-
 /* helsedata ships an icon font for this — .icon alone carries 466 rules across five of their
    bundles. A sample host has no such font, so the chevron is drawn from a character instead.
    It rotates rather than swapping glyphs, which is what makes the state change read as motion. */
@@ -673,4 +665,59 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 .variable-meta dl > dd {
   margin: 2px 0 0;
+}
+
+/* ---- the column header ----
+
+   The header and the rows have to share one grid template, or the columns line up with nothing.
+   helsedata solves it by giving variable-dataitem-header and variable-dataitem-main the same
+   track list; the header has no chevron, so its first cell starts in track 2 and the rest flow
+   after it. Get this wrong and every row sizes its own columns, which is what the sample looked
+   like before the header existed. */
+
+.variable-data-list__header {
+  border-bottom: 2px solid var(--grey30, #e2e4ef);
+}
+
+.variable-data-list__item__row--header {
+  padding-bottom: 8px;
+}
+
+.variable-dataitem-header,
+.variable-dataitem-main {
+  display: grid;
+  grid-template-columns: 24px minmax(200px, 2fr) repeat(4, minmax(0, 1fr));
+  align-items: baseline;
+  gap: 12px;
+}
+
+.variable-dataitem-header__name {
+  grid-column: 2;   /* the chevron track has no header */
+}
+
+.sortable-header {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--grey70, #5a5f78);
+}
+
+/* Stiler's "this is a button, draw nothing" class — 12 rules in their site-wide stylesheet. */
+.hd-button-reset {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.variable-dataitem-header__button:hover {
+  text-decoration: underline;
+}
+
+.variable-dataitem-header__button[aria-current="true"] {
+  color: var(--primary-dark, #2a1fb8);
 }
