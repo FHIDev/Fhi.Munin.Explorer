@@ -803,10 +803,13 @@ public class VariableExplorerTest : BunitContext
 
         var info = cut.Find(".variable-dataitem-main").TextContent;
 
-        Assert.Contains("Kode: V_ALS.F1.TALE", info);
-        Assert.Contains("Variabelgruppe:", info);
-        Assert.Contains("Datakilde: Als registeret", info);
-        Assert.Contains("Datasamling: Inklusjon", info);
+        // No label prefixes: the column header names the field, and repeating it in every row is
+        // exactly what a header exists to stop. The label survives as each cell's aria-label.
+        Assert.Contains("V_ALS.F1.TALE", info);
+        Assert.Contains("Als registeret", info);
+        Assert.Contains("Inklusjon", info);
+        Assert.DoesNotContain("Kode:", info);
+        Assert.DoesNotContain("Datakilde:", info);
         // Periode is not a Runa column, so it is not a row column here either — it is in the panel.
         Assert.DoesNotContain("Periode:", info);
     }
@@ -839,8 +842,8 @@ public class VariableExplorerTest : BunitContext
 
         var info = cut.Find(".variable-dataitem-main");
 
-        Assert.Contains("Datakilde: Ikke oppgitt", info.TextContent);
-        Assert.Contains("Datasamling: Ikke oppgitt", info.TextContent);
+        Assert.Contains("Ikke oppgitt", info.TextContent);
+        Assert.DoesNotContain("Datakilde:", info.TextContent);
         Assert.DoesNotContain("—", info.TextContent);
     }
 

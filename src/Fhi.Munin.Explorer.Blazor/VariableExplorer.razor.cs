@@ -682,7 +682,11 @@ public partial class VariableExplorer : ComponentBase
         HeaderCell(builder, 400, "dataCollection", T.FieldDataCollection, SortField.Datasamling);
         HeaderCell(builder, 500, "theme", T.FieldVariableGroup, SortField.Variabelgruppe);
         HeaderCell(builder, 600, null, T.FieldDataType, sort: null);
-        HeaderCell(builder, 700, null, T.FieldStatus, sort: null);
+
+        if (ShowStatusColumn)
+        {
+            HeaderCell(builder, 700, null, T.FieldStatus, sort: null);
+        }
 
         builder.CloseElement();
         builder.CloseElement();
@@ -735,6 +739,16 @@ public partial class VariableExplorer : ComponentBase
         builder.CloseElement();
     };
 
+    /// <summary>
+    /// Whether the Status column is worth drawing — that is, whether a row could say anything
+    /// other than "Active".
+    /// </summary>
+    /// <remarks>
+    /// The API computes VersjonStatus from GyldigTil and filters expired versions out unless
+    /// IncludeHistorical is asked for, so in the default view the column is a constant.
+    /// </remarks>
+    private bool ShowStatusColumn => _filter.IncludeHistorical;
+
     /// <summary>The list item's class, carrying helsedata's expanded state.</summary>
     private string RowItemClass(VariableSummary v) =>
         IsSelected(v)
@@ -770,7 +784,17 @@ public partial class VariableExplorer : ComponentBase
         Column(builder, 300, T.FieldDataCollection, v.DatasamlingName, "dataCollection");
         Column(builder, 400, T.FieldVariableGroup, v.VariabelgruppeName, "theme");
         Column(builder, 500, T.FieldDataType, v.DataType, null);
-        Column(builder, 600, T.FieldStatus, v.VersionStatus, null);
+
+        // Status is drawn only when historical variables can be in the list at all. The API
+        // computes it from GyldigTil — Active unless the version has expired — and excludes
+        // expired versions unless IncludeHistorical is set. In the default view every row is
+        // therefore Active, and a column that says the same word on every row is not a column,
+        // it is furniture. Verified against the live API: 100 rows sampled across five pages of
+        // the catalogue, all Active.
+        if (ShowStatusColumn)
+        {
+            Column(builder, 600, T.FieldStatus, v.VersionStatus, null);
+        }
     };
 
     /// <summary>
@@ -795,7 +819,12 @@ public partial class VariableExplorer : ComponentBase
         builder.OpenElement(seq + 2, "span");
         builder.AddAttribute(seq + 3, "class", "variable-dataitem-main__column__text");
 
-        builder.AddContent(seq + 4, $"{label}: ");
+        // No label prefix. It was there because there was no header row and "Inklusjon" on its own
+        // says nothing about which field it is; the header names the columns now, and repeating the
+        // name in all twenty-five rows is what a table stops you having to do. The label survives
+        // for assistive technology as the cell's own aria-label, so a screen reader moving across a
+        // row still hears which field it is on.
+        builder.AddAttribute(seq + 4, "aria-label", label);
 
         if (string.IsNullOrWhiteSpace(value))
         {
