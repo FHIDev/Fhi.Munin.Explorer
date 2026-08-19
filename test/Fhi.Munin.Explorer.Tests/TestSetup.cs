@@ -15,14 +15,14 @@ namespace Fhi.Munin.Explorer.Tests;
 internal abstract class EmptyMuninExplorerClient : IMuninExplorerClient
 {
     public virtual Task<Page<VariableSummary>> SearchVariablesAsync(
-        string? search, int page = 1, int pageSize = 25,
+        string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
         SortField sort = SortField.Default,
         SortDirection direction = SortDirection.Ascending,
         CancellationToken cancellationToken = default) =>
         Task.FromResult(new Page<VariableSummary>());
 
     public virtual Task<FilterOptions> GetFiltersAsync(
-        string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
+        string? search = null, VariableFilter? filter = null, CancellationToken cancellationToken = default) =>
         Task.FromResult(new FilterOptions());
 
     public virtual Task<IReadOnlyList<KildeSummary>> GetKilderAsync(

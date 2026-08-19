@@ -31,7 +31,7 @@ public class VariableExplorerTest : BunitContext
         public int Calls { get; private set; }
 
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
-            string? search, int page = 1, int pageSize = 25,
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default,
             SortDirection direction = SortDirection.Ascending,
             CancellationToken cancellationToken = default)
@@ -56,7 +56,7 @@ public class VariableExplorerTest : BunitContext
         public int Calls { get; private set; }
 
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
-            string? search, int page = 1, int pageSize = 25,
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default,
             SortDirection direction = SortDirection.Ascending,
             CancellationToken cancellationToken = default)
@@ -84,7 +84,7 @@ public class VariableExplorerTest : BunitContext
         public int Calls { get; private set; }
 
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
-            string? search, int page = 1, int pageSize = 25,
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default,
             SortDirection direction = SortDirection.Ascending,
             CancellationToken cancellationToken = default)
@@ -243,10 +243,20 @@ public class VariableExplorerTest : BunitContext
     // to page one.
     // ---------------------------------------------------------------------------------
 
+    /// <summary>
+    /// The sort control's own fieldset.
+    /// </summary>
+    /// <remarks>
+    /// Both the sort control and the filter panel are <c>form-fieldset</c> — Stiler's name for a
+    /// fieldset with its border off — so a selector for one has to say it is not the other. Without
+    /// the exclusion these tests would silently start asserting about the filters.
+    /// </remarks>
+    private const string SortControl = "fieldset.form-fieldset:not(.variable-explorer-filters)";
+
     /// <summary>The sort buttons, in the order they are rendered.</summary>
     private static IReadOnlyList<AngleSharp.Dom.IElement> SortButtons(
         IRenderedComponent<VariableExplorer> cut) =>
-        cut.FindAll("fieldset.form-fieldset button");
+        cut.FindAll($"{SortControl} button");
 
     /// <summary>Clicks the sort button with the given label, whatever direction suffix it carries.</summary>
     private static void ClickSort(IRenderedComponent<VariableExplorer> cut, string label) =>
@@ -276,7 +286,7 @@ public class VariableExplorerTest : BunitContext
         var labels = SortButtons(cut).Select(k => k.TextContent).ToList();
 
         Assert.Equal(["Standard (stigende)", "Datakilde", "Datasamling", "Variabelgruppe"], labels);
-        Assert.DoesNotContain("Navn", cut.Find("fieldset.form-fieldset").TextContent);
+        Assert.DoesNotContain("Navn", cut.Find(SortControl).TextContent);
     }
 
     [Fact]
@@ -439,7 +449,7 @@ public class VariableExplorerTest : BunitContext
         var labels = SortButtons(cut).Select(k => k.TextContent).ToList();
 
         Assert.Equal(["Default (ascending)", "Data source", "Data collection", "Variable group"], labels);
-        Assert.Equal("Sort by", cut.Find("fieldset.form-fieldset legend").TextContent);
+        Assert.Equal("Sort by", cut.Find($"{SortControl} legend").TextContent);
     }
 
     // ---------------------------------------------------------------------------------
@@ -568,7 +578,7 @@ public class VariableExplorerTest : BunitContext
         // fieldset + legend names the group of buttons for a screen reader without inventing ARIA.
         var cut = RenderWith(new FakeClient(OnePage()));
 
-        Assert.Equal("Sorter etter", cut.Find("fieldset.form-fieldset legend").TextContent);
+        Assert.Equal("Sorter etter", cut.Find($"{SortControl} legend").TextContent);
         Assert.All(SortButtons(cut), k => Assert.Equal("button", k.GetAttribute("type")));
     }
 
@@ -610,10 +620,12 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
-    public void Render_Always_ThenNoClassNamesAreInventedApartFromTheRootHandle()
+    public void Render_Always_ThenNoClassNamesAreInventedApartFromTheDomHandles()
     {
-        // The root class is a DOM handle, not a style hook — nothing styles it. Everything
-        // else has to come from Stiler, and this is the guard that says so out loud.
+        // Two names of our own, and both are DOM handles rather than style hooks — nothing in this
+        // package or in Stiler defines a rule for either. Everything else has to come from Stiler,
+        // and this is the guard that says so out loud. The list is exact on purpose: a third name
+        // appearing here is the failure this package exists to avoid, and it has happened twice.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
                             b => b.Add(c => c.Search, "tale"));
 
@@ -623,8 +635,12 @@ public class VariableExplorerTest : BunitContext
             .Distinct()
             .ToList();
 
-        Assert.Equal(["variable-explorer"], invented);
+        Assert.Equal(["variable-explorer", "variable-explorer-filters"], invented);
         Assert.Equal("variable-explorer", cut.Find("section").ClassName);
+
+        // The filter panel wears Stiler's fieldset alongside the handle, so a host that styles
+        // nothing still gets the fieldset the sort control gets.
+        Assert.Contains("form-fieldset", cut.Find(".variable-explorer-filters").ClassName!);
     }
 
     [Fact]
@@ -1011,7 +1027,7 @@ public class VariableExplorerTest : BunitContext
         public int Calls { get; private set; }
 
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
-            string? search, int page = 1, int pageSize = 25,
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default,
             SortDirection direction = SortDirection.Ascending,
             CancellationToken cancellationToken = default)
@@ -1041,7 +1057,7 @@ public class VariableExplorerTest : BunitContext
         public int Calls { get; private set; }
 
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
-            string? search, int page = 1, int pageSize = 25,
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default,
             SortDirection direction = SortDirection.Ascending,
             CancellationToken cancellationToken = default)
@@ -1064,7 +1080,7 @@ public class VariableExplorerTest : BunitContext
         public int Calls { get; private set; }
 
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
-            string? search, int page = 1, int pageSize = 25,
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default,
             SortDirection direction = SortDirection.Ascending,
             CancellationToken cancellationToken = default)
@@ -1087,7 +1103,7 @@ public class VariableExplorerTest : BunitContext
         public int Calls { get; private set; }
 
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
-            string? search, int page = 1, int pageSize = 25,
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default,
             SortDirection direction = SortDirection.Ascending,
             CancellationToken cancellationToken = default)
@@ -1118,7 +1134,7 @@ public class VariableExplorerTest : BunitContext
     private sealed class SizelessPagedClient(int totalCount) : EmptyMuninExplorerClient
     {
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
-            string? search, int page = 1, int pageSize = 25,
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default,
             SortDirection direction = SortDirection.Ascending,
             CancellationToken cancellationToken = default)
@@ -1135,7 +1151,7 @@ public class VariableExplorerTest : BunitContext
     private sealed class ClampingPagedClient(int totalCount, int maxPage) : EmptyMuninExplorerClient
     {
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
-            string? search, int page = 1, int pageSize = 25,
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default,
             SortDirection direction = SortDirection.Ascending,
             CancellationToken cancellationToken = default)
@@ -1700,5 +1716,641 @@ public class VariableExplorerTest : BunitContext
         Assert.NotEqual(a.Find("div.variables-pagination").Id, b.Find("div.variables-pagination").Id);
         Assert.Equal($"#{a.Find("div.variables-pagination").Id}",
                      a.Find("a.skiplink-pagination").GetAttribute("href"));
+    }
+
+    // ---------------------------------------------------------------------------------
+    // The filter panel. Two things have to hold for it to be worth anything: choosing a
+    // facet narrows the list, and the counts beside the facets describe that same narrowed
+    // list rather than the catalogue. Both come from the API — the component's part is to
+    // ask both endpoints with the same selection, and to hand that selection to the host so
+    // a filtered search can be linked to.
+    // ---------------------------------------------------------------------------------
+
+    private static readonly Guid Dodsarsak = new("aaaaaaaa-0000-0000-0000-000000000001");
+    private static readonly Guid Tromso = new("aaaaaaaa-0000-0000-0000-000000000002");
+    private static readonly Guid Tromso4 = new("bbbbbbbb-0000-0000-0000-000000000001");
+    private static readonly Guid Tromso4Visit = new("bbbbbbbb-0000-0000-0000-000000000002");
+    private static readonly Guid Bakgrunn = new("cccccccc-0000-0000-0000-000000000001");
+    private static readonly Guid Levekaar = new("cccccccc-0000-0000-0000-000000000002");
+
+    /// <summary>Facets shaped like the real ones: two kildetyper, a kilde each, a nested delkilde.</summary>
+    private static FilterOptions Facets() => new()
+    {
+        KildeTyper =
+        [
+            new() { Value = "sentraltHelseregister", DisplayName = "SentraltHelseregister", Count = 30 },
+            new() { Value = "biobank", DisplayName = "Biobank", Count = 12 }
+        ],
+        Kilder =
+        [
+            new() { Id = Dodsarsak, Name = "Dødsårsaksregisteret", KildeType = "sentraltHelseregister", Count = 30 },
+            new() { Id = Tromso, Name = "Tromsøundersøkelsen", KildeType = "biobank", Count = 12 }
+        ],
+        Delkilder =
+        [
+            new() { Id = Tromso4, Name = "Tromsø 4", KildeId = Tromso, Count = 8 },
+            new() { Id = Tromso4Visit, Name = "Første besøk", KildeId = Tromso, ParentDelkildeId = Tromso4, Count = 3 }
+        ],
+        Variabelgrupper = [new() { Id = Bakgrunn, Name = "Bakgrunn", Count = 7 }],
+        DataTypes = [new() { Value = "1", Count = 9 }],
+        KildeKodeverkCount = 4,
+        TotalCount = 42
+    };
+
+    /// <summary>Answers both endpoints and remembers what each was asked with.</summary>
+    private sealed class FilteringClient(Page<VariableSummary> answer, FilterOptions? facets = null)
+        : EmptyMuninExplorerClient
+    {
+        private readonly FilterOptions _facets = facets ?? Facets();
+
+        // Never completed. A search asked for while this is set stays in flight for the rest of
+        // the test, which is the only way to press a second facet while the first is still running.
+        private readonly TaskCompletionSource<Page<VariableSummary>> _stalled =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public VariableFilter? SearchFilter { get; private set; }
+        public VariableFilter? FacetFilter { get; private set; }
+        public string? FacetSearch { get; private set; }
+        public int SearchCalls { get; private set; }
+        public int FacetCalls { get; private set; }
+        public int LastPage { get; private set; }
+
+        /// <summary>Fail every search from the next one on — the rollback path.</summary>
+        public bool FailSearch { get; set; }
+
+        /// <summary>Fail every facet refresh from the next one on.</summary>
+        public bool FailFacets { get; set; }
+
+        /// <summary>Never answer a search from the next one on — the in-flight path.</summary>
+        public bool StallSearch { get; set; }
+
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
+            SortField sort = SortField.Default,
+            SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default)
+        {
+            SearchCalls++;
+
+            // Recorded before the failure, so a test can see what was asked for as well as what
+            // the component was left holding afterwards.
+            SearchFilter = filter;
+            LastPage = page;
+
+            if (StallSearch)
+            {
+                return _stalled.Task;
+            }
+
+            // The page it was asked for, so the component's own paging state moves the way it does
+            // against the real API rather than being reset to 1 by a fixture that always says 1.
+            return FailSearch
+                ? throw new HttpRequestException("nede")
+                : Task.FromResult(answer with { PageNumber = page });
+        }
+
+        public override Task<FilterOptions> GetFiltersAsync(
+            string? search = null, VariableFilter? filter = null, CancellationToken cancellationToken = default)
+        {
+            FacetCalls++;
+            FacetFilter = filter;
+            FacetSearch = search;
+
+            return FailFacets
+                ? throw new HttpRequestException("nede")
+                : Task.FromResult(_facets);
+        }
+    }
+
+    private static IReadOnlyList<AngleSharp.Dom.IElement> FacetButtons(
+        IRenderedComponent<VariableExplorer> cut) =>
+        cut.FindAll(".variable-explorer-filters button");
+
+    /// <summary>The facet button whose visible text starts with <paramref name="label"/>.</summary>
+    private static AngleSharp.Dom.IElement Facet(IRenderedComponent<VariableExplorer> cut, string label) =>
+        FacetButtons(cut).Single(b => b.TextContent.StartsWith(label, StringComparison.Ordinal));
+
+    private static void ClickFacet(IRenderedComponent<VariableExplorer> cut, string label) =>
+        Facet(cut, label).Click();
+
+    [Fact]
+    public void Render_WhenTheApiOffersFacets_ThenEachValueIsDrawnWithTheCountItWouldLeave()
+    {
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        // The count is inside the button's own text rather than beside it, so it is part of the
+        // accessible name — a number in a sibling element is read as a stray one or skipped.
+        Assert.Equal("Dødsårsaksregisteret (30)", Facet(cut, "Dødsårsaksregisteret").TextContent);
+        Assert.Equal("Sentralt helseregister (30)", Facet(cut, "Sentralt helseregister").TextContent);
+    }
+
+    [Fact]
+    public void Render_WhenTheApiNamesAKildetypeByItsEnumName_ThenTheButtonSaysItInProse()
+    {
+        // The facet's own displayName is the raw enum name. Munin's explorer carries the prose,
+        // and this carries the same words so the two UIs name one value the same way.
+        var cut = RenderWith(new FilteringClient(OnePage()));
+
+        Assert.NotNull(Facet(cut, "Sentralt helseregister"));
+        Assert.DoesNotContain("SentraltHelseregister", cut.Find(".variable-explorer-filters").TextContent);
+    }
+
+    [Fact]
+    public void Render_WhenADatatypeArrivesAsABareCode_ThenTheButtonSaysWhatTheCodeMeans()
+    {
+        // The API returns "1" with no label at all, so a UI has to carry its own mapping or put a
+        // button reading "1" on the page.
+        var cut = RenderWith(new FilteringClient(OnePage()));
+
+        Assert.Equal("Streng (9)", Facet(cut, "Streng").TextContent);
+    }
+
+    [Fact]
+    public void Render_WhenAKildeHasDelkilder_ThenTheyAreNestedUnderIt()
+    {
+        // The whole tree comes out of the facet payload — DelkildeFacet carries both its kilde and
+        // its parent delkilde precisely so no second request is needed to draw it.
+        var cut = RenderWith(new FilteringClient(OnePage()));
+
+        var kilde = Facet(cut, "Tromsøundersøkelsen").ParentElement!;
+        var delkilde = Facet(cut, "Tromsø 4").ParentElement!;
+        var nested = Facet(cut, "Første besøk").ParentElement!;
+
+        Assert.Contains(delkilde, kilde.QuerySelectorAll("li"));
+        Assert.Contains(nested, delkilde.QuerySelectorAll("li"));
+    }
+
+    [Fact]
+    public void Filter_WhenAFacetValueIsChosen_ThenTheSearchIsFetchedWithIt()
+    {
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        Assert.Equal([Dodsarsak], client.SearchFilter?.KildeIds);
+    }
+
+    [Fact]
+    public void Filter_WhenAFacetValueIsChosen_ThenTheCountsAreRefetchedWithTheSameNarrowing()
+    {
+        // The counts are cross-filtered. Asking the two endpoints with different narrowing is the
+        // one way to put a list and a set of numbers on screen that describe different selections.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        Assert.Equal(client.SearchFilter, client.FacetFilter);
+        Assert.Equal(2, client.FacetCalls); // the initial load, then the refresh
+    }
+
+    [Fact]
+    public void Filter_WhenAChosenValueIsChosenAgain_ThenItIsRemovedRatherThanAddedTwice()
+    {
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        ClickFacet(cut, "Dødsårsaksregisteret");
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        Assert.Empty(client.SearchFilter!.KildeIds);
+        Assert.True(client.SearchFilter.IsEmpty);
+    }
+
+    [Fact]
+    public void Filter_WhenAValueIsChosen_ThenItsButtonSaysItIsPressed()
+    {
+        // aria-pressed rather than aria-current, and spelled out as "false" on the rest: the
+        // attribute is what says these are two-state controls at all.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        Assert.Equal("false", Facet(cut, "Dødsårsaksregisteret").GetAttribute("aria-pressed"));
+
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        Assert.Equal("true", Facet(cut, "Dødsårsaksregisteret").GetAttribute("aria-pressed"));
+    }
+
+    [Fact]
+    public void Filter_WhenASecondKildetypeIsChosen_ThenItReplacesTheFirstRatherThanJoiningIt()
+    {
+        // The API takes one kildetype, not a list. Two pressed buttons would promise a filter it
+        // cannot express.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        ClickFacet(cut, "Sentralt helseregister");
+        ClickFacet(cut, "Biobank");
+
+        Assert.Equal("biobank", client.SearchFilter?.KildeType);
+        Assert.Equal("false", Facet(cut, "Sentralt helseregister").GetAttribute("aria-pressed"));
+    }
+
+    [Fact]
+    public void Filter_WhenTheChosenKildetypeIsChosenAgain_ThenItIsCleared()
+    {
+        // There is no "any kildetype" value to go back to, so pressing the chosen one has to be
+        // the way out — which is also what its own aria-pressed promises.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        ClickFacet(cut, "Biobank");
+        ClickFacet(cut, "Biobank");
+
+        Assert.Null(client.SearchFilter?.KildeType);
+    }
+
+    [Fact]
+    public void Filter_WhenAValueIsChosenFromAPageOtherThanTheFirst_ThenItGoesBackToPageOne()
+    {
+        // Narrowing renumbers every page, so page 7 of the old result is not the same rows.
+        var client = new FilteringClient(new Page<VariableSummary>
+        {
+            Items = [Variable("1. Tale", "KODE")],
+            TotalCount = 312,
+            PageNumber = 1,
+            Size = 25,
+            TotalPages = 13
+        });
+        var cut = RenderWith(client);
+
+        cut.FindAll("div.variables-pagination button")[1].Click(); // Neste
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        Assert.Equal(1, client.LastPage);
+    }
+
+    [Fact]
+    public void Filter_WhenTheFetchFails_ThenTheSelectionIsRolledBackToWhatTheRowsCameFrom()
+    {
+        // Same invariant the sort rollback protects: the rows on screen are still the old ones, so
+        // the buttons have to keep saying so rather than claiming a filter that never arrived.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        client.FailSearch = true;
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        Assert.Equal("false", Facet(cut, "Dødsårsaksregisteret").GetAttribute("aria-pressed"));
+        Assert.Equal(1, client.FacetCalls); // not refreshed: the counts still describe what is shown
+    }
+
+    [Fact]
+    public void Filter_WhenTheHostSuppliesOne_ThenTheFirstFetchIsAlreadyNarrowedByIt()
+    {
+        // The deep-link half of the round trip: a shared URL has to land on the filtered result,
+        // not on the whole catalogue with the filters merely drawn as chosen.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var filter = new VariableFilter { KildeIds = [Dodsarsak] };
+
+        var cut = RenderWith(client, b => b.Add(c => c.Filter, filter));
+
+        Assert.Equal(filter, client.SearchFilter);
+        Assert.Equal(filter, client.FacetFilter);
+        Assert.Equal("true", Facet(cut, "Dødsårsaksregisteret").GetAttribute("aria-pressed"));
+    }
+
+    [Fact]
+    public void Filter_WhenTheReaderChangesIt_ThenTheHostIsToldWhatIsNowInForce()
+    {
+        // The other half: the host writes this into its own URL, so a filtered search can be
+        // linked to at all.
+        VariableFilter? reported = null;
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))),
+                             b => b.Add(c => c.FilterChanged, f => reported = f));
+
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        Assert.Equal(new VariableFilter { KildeIds = [Dodsarsak] }, reported);
+    }
+
+    [Fact]
+    public void Filter_WhenTheFetchFails_ThenTheHostIsToldTheFilterTheRowsActuallyCameFrom()
+    {
+        // A host that wrote the attempted filter to its URL would hand out a link that reloads
+        // into a different selection than the page is showing.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        VariableFilter? reported = null;
+        var cut = RenderWith(client, b => b.Add(c => c.FilterChanged, f => reported = f));
+
+        client.FailSearch = true;
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        Assert.Equal(VariableFilter.None, reported);
+    }
+
+    [Fact]
+    public void Filter_WhenNothingHasChangedYet_ThenTheHostIsNotToldOnTheInitialLoad()
+    {
+        // Nothing has moved, and the value would be the one the host just passed in.
+        var reported = 0;
+
+        RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))),
+                   b => b.Add(c => c.FilterChanged, _ => reported++));
+
+        Assert.Equal(0, reported);
+    }
+
+    [Fact]
+    public void Filter_WhenClearIsPressed_ThenEveryFacetIsDropped()
+    {
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        ClickFacet(cut, "Dødsårsaksregisteret");
+        ClickFacet(cut, "Streng");
+        Facet(cut, "Fjern alle filtre").Click();
+
+        Assert.True(client.SearchFilter?.IsEmpty);
+    }
+
+    [Fact]
+    public void Render_WhenThereIsNothingToClear_ThenTheClearButtonIsInertRatherThanAbsent()
+    {
+        // Taking the control the reader just pressed out of the document drops focus to <body> —
+        // the same reason the pager's buttons carry aria-disabled instead of disabled.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        var clear = Facet(cut, "Fjern alle filtre");
+        Assert.Equal("true", clear.GetAttribute("aria-disabled"));
+        Assert.False(clear.HasAttribute("disabled"));
+
+        clear.Click();
+        Assert.Equal(1, client.SearchCalls); // inert: no request went out
+
+        ClickFacet(cut, "Dødsårsaksregisteret");
+        Assert.False(Facet(cut, "Fjern alle filtre").HasAttribute("aria-disabled"));
+    }
+
+    [Fact]
+    public void Render_WhenTheFacetRefreshFails_ThenTheFiltersStayOnScreenAndSayTheCountsMayBeStale()
+    {
+        // The rows are the right rows; it is the numbers beside the filters that may now be wrong.
+        // Emptying the panel would take the controls the reader is using off the page.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        client.FailFacets = true;
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        Assert.NotNull(Facet(cut, "Dødsårsaksregisteret"));
+        Assert.Contains("Tallene kan være utdaterte", cut.Find("[role='alert']").TextContent);
+        Assert.Single(cut.FindAll("ul.datasourcecard-list > li"));
+    }
+
+    [Fact]
+    public void Render_WhenTheFacetsHaveNeverArrived_ThenNoEmptyFilterPanelIsDrawn()
+    {
+        // The first search failed, so the facets were never asked for. A legend and a dead clear
+        // button over nothing is furniture.
+        var cut = RenderWith(new FailingClient());
+
+        Assert.Empty(cut.FindAll(".variable-explorer-filters"));
+    }
+
+    [Fact]
+    public void Render_WhenAFacetHasNoValues_ThenItIsLeftOutRatherThanDrawnEmpty()
+    {
+        // Except variabelgruppe, where the emptiness is the message: with no kilde chosen the API
+        // answers with a curated shortlist, and an empty list would otherwise read as a broken one.
+        var cut = RenderWith(new FilteringClient(OnePage(), new FilterOptions()));
+
+        var panel = cut.Find(".variable-explorer-filters").TextContent;
+
+        Assert.DoesNotContain("Instrument", panel, StringComparison.Ordinal);
+        Assert.Contains("Velg en datakilde for å se variabelgrupper", panel, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Filter_WhenValuesAreChosen_ThenTheStatusLineSaysTheListIsNarrowed()
+    {
+        // With the facets collapsed, this sentence is the only place that says the list is
+        // narrowed at all — and it is the one a screen reader reads back after every change.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        ClickFacet(cut, "Dødsårsaksregisteret");
+        Assert.Contains("avgrenset av 1 filter", cut.Find("p[role='status']").TextContent);
+
+        ClickFacet(cut, "Streng");
+        Assert.Contains("avgrenset av 2 filtre", cut.Find("p[role='status']").TextContent);
+    }
+
+    [Fact]
+    public void Filter_WhenNothingMatches_ThenTheEmptyStateNamesTheFiltersRatherThanBlamingTheCatalogue()
+    {
+        var client = new FilteringClient(OnePage());
+        var cut = RenderWith(client, b => b.Add(c => c.Filter, new VariableFilter { KildeIds = [Dodsarsak] }));
+
+        Assert.Contains("med filtrene som er valgt", cut.Find("p[role='status']").TextContent);
+    }
+
+    [Fact]
+    public void Filter_WhenAPageIsTurned_ThenTheCountsAreNotRefetched()
+    {
+        // Paging does not change what the counts describe, and the facet endpoint is the expensive
+        // one — it aggregates the whole read model once per facet.
+        var client = new FilteringClient(new Page<VariableSummary>
+        {
+            Items = [Variable("1. Tale", "KODE")],
+            TotalCount = 312,
+            PageNumber = 1,
+            Size = 25,
+            TotalPages = 13
+        });
+        var cut = RenderWith(client);
+
+        cut.FindAll("div.variables-pagination button")[1].Click(); // Neste
+        ClickSort(cut, "Datakilde");
+
+        Assert.Equal(1, client.FacetCalls);
+    }
+
+    [Fact]
+    public void Search_WhenANewSearchRuns_ThenTheCountsAreRefetchedForIt()
+    {
+        // The counts are cross-filtered against the search as well as the facets, so a new search
+        // moves every number in the panel.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        cut.Find("input[type=search]").Change("svelging");
+        cut.Find("form").Submit();
+
+        Assert.Equal(2, client.FacetCalls);
+        Assert.Equal("svelging", client.FacetSearch);
+    }
+
+    [Fact]
+    public void Render_WhenOnlyOneKildetypeIsLeft_ThenItsHeadingIsNotRepeatedOverTheKilder()
+    {
+        // One heading over the whole list says nothing the kildetype facet above does not — and
+        // there is exactly one whenever a kildetype has been chosen, which is when the panel is
+        // most crowded.
+        var facets = Facets() with
+        {
+            KildeTyper = [new() { Value = "biobank", DisplayName = "Biobank", Count = 12 }],
+            Kilder = [new() { Id = Tromso, Name = "Tromsøundersøkelsen", KildeType = "biobank", Count = 12 }]
+        };
+
+        var cut = RenderWith(new FilteringClient(OnePage(), facets));
+
+        // The kilde sits at the top of its facet's list rather than one level in, under a heading.
+        var kilde = Facet(cut, "Tromsøundersøkelsen").ParentElement!;
+        Assert.Null(kilde.ParentElement?.ParentElement?.Closest("li"));
+    }
+
+    [Fact]
+    public void Filter_WhenHarKildekodeverkIsPressedTwice_ThenItStopsFilteringRatherThanAskingForNo()
+    {
+        // Two states, not three, and the difference is invisible on screen: the obvious-looking
+        // negation cycles aria-pressed exactly the same way while sending harKildekodeverk=false,
+        // which inverts the result set to only the variables *without* a kildekodeverk.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        ClickFacet(cut, "Har kildekodeverk");
+
+        Assert.True(client.SearchFilter?.HasKildekodeverk);
+        Assert.Equal("true", Facet(cut, "Har kildekodeverk").GetAttribute("aria-pressed"));
+
+        ClickFacet(cut, "Har kildekodeverk");
+
+        Assert.Null(client.SearchFilter?.HasKildekodeverk);
+        Assert.DoesNotContain("harKildekodeverk", client.SearchFilter!.ToQueryString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Filter_WhenHistoricalIsChosen_ThenItGoesOnTheWireRatherThanOnlyOnTheButton()
+    {
+        // The one filter whose parameter is left out at its default, so a flip in the wrong
+        // direction produces a URL that looks unfiltered rather than one that looks wrong.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        ClickFacet(cut, "Vis historiske");
+
+        Assert.True(client.SearchFilter?.IncludeHistorical);
+        Assert.Contains("includeHistorical=true", client.SearchFilter!.ToQueryString(), StringComparison.Ordinal);
+        Assert.Equal("true", Facet(cut, "Vis historiske").GetAttribute("aria-pressed"));
+    }
+
+    [Fact]
+    public void Render_WhenADelkildesParentIsMissingFromTheFacets_ThenItBecomesARootRatherThanDisappearing()
+    {
+        // Routine rather than defensive: the API cross-filters every facet, so a parent delkilde
+        // with no matching variables of its own is genuinely absent from a payload its children are
+        // in. Dropping the child would be a filter the reader can neither see nor clear — and
+        // narrowing the root rule to "no parent at all" is a plausible simplification that nothing
+        // else in the suite would catch.
+        var absent = new Guid("dddddddd-0000-0000-0000-000000000009");
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), Facets() with
+        {
+            Delkilder =
+            [
+                new()
+                {
+                    Id = Tromso4Visit, Name = "Første besøk", KildeId = Tromso,
+                    ParentDelkildeId = absent, Count = 3
+                }
+            ]
+        });
+
+        var cut = RenderWith(client);
+
+        var orphan = Facet(cut, "Første besøk");
+        Assert.Contains(orphan.ParentElement!, Facet(cut, "Tromsøundersøkelsen").ParentElement!.QuerySelectorAll("li"));
+
+        // And still a filter, not just a label: a root that cannot be pressed is the same loss.
+        orphan.Click();
+        Assert.Equal([Tromso4Visit], client.SearchFilter?.DelkildeIds);
+    }
+
+    [Fact]
+    public void Render_WhenAParentChainLoopsBackOnItself_ThenTheNodesAreStillDrawn()
+    {
+        // A self-parented row is one bad record, and every member of a loop has its parent present
+        // — so none of them is a root, and without a second pass over what the walk did not reach
+        // the whole subtree leaves the panel with no error anywhere. Same loss as a dropped orphan.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), Facets() with
+        {
+            Variabelgrupper = [new() { Id = Bakgrunn, Name = "Selvforelder", ParentId = Bakgrunn, Count = 7 }]
+        });
+
+        var cut = RenderWith(client);
+
+        Assert.NotNull(Facet(cut, "Selvforelder"));
+
+        ClickFacet(cut, "Selvforelder");
+        Assert.Equal([Bakgrunn], client.SearchFilter?.VariabelgruppeIds);
+    }
+
+    [Fact]
+    public void Render_WhenTwoNodesNameEachOtherAsParent_ThenEachIsDrawnExactlyOnce()
+    {
+        // The case the second pass actually exists for, and the one the self-parented row above
+        // cannot reach: a self-parent is placed whole by a single Build, whereas here building the
+        // first node places the second, so the pass has to re-read what it has placed as it goes.
+        // Get that wrong and the second node is drawn again as a root — two <li> siblings carrying
+        // the same key, which the renderer throws on rather than drawing a stray row.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), Facets() with
+        {
+            Variabelgrupper =
+            [
+                new() { Id = Bakgrunn, Name = "GruppeA", ParentId = Levekaar, Count = 7 },
+                new() { Id = Levekaar, Name = "GruppeB", ParentId = Bakgrunn, Count = 4 }
+            ]
+        });
+
+        var cut = RenderWith(client);
+
+        Assert.Equal(1, Buttons(cut, "GruppeA"));
+        Assert.Equal(1, Buttons(cut, "GruppeB"));
+
+        // And a filter rather than a label: the nested one is the one a duplicate would double.
+        ClickFacet(cut, "GruppeB");
+        Assert.Equal([Levekaar], client.SearchFilter?.VariabelgruppeIds);
+
+        static int Buttons(IRenderedComponent<VariableExplorer> cut, string label) =>
+            FacetButtons(cut).Count(b => b.TextContent.StartsWith(label, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Filter_WhenAFetchIsAlreadyRunning_ThenTheClickIsIgnored()
+    {
+        // The fourth entry point to the loading state, and the one that does the most on the far
+        // side of the guard. Two overlapping applications interleave their rollback captures, so a
+        // second fetch that fails can restore a filter that is neither what is on screen nor what
+        // was asked for — and then report that filter to the host, which is exactly the "the URL
+        // claims something the page is not showing" failure the rollback tests exist to prevent.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        client.StallSearch = true;
+        ClickFacet(cut, "Dødsårsaksregisteret");
+        ClickFacet(cut, "Streng");
+
+        Assert.Equal(2, client.SearchCalls); // the initial load and the first press, not the second
+        Assert.Equal([Dodsarsak], client.SearchFilter?.KildeIds);
+        Assert.Empty(client.SearchFilter!.DataTypes);
+    }
+
+    [Fact]
+    public void Render_Always_ThenTheFilterPanelIsBuiltFromShapesRatherThanFromNewClassNames()
+    {
+        // Stiler has no accordion, no tree and no checkbox this package can verify, so the panel is
+        // <details> for the disclosure, a bare <ul> for the hierarchy and Stiler's own square button
+        // in its two states for the values. A class name for any of those would be one the host
+        // stylesheet has never heard of.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        var panel = cut.Find(".variable-explorer-filters");
+
+        Assert.NotEmpty(panel.QuerySelectorAll("details > summary"));
+        Assert.NotEmpty(panel.QuerySelectorAll("ul li button"));
+        Assert.All(panel.QuerySelectorAll("details"), d => Assert.False(d.HasAttribute("class")));
+        Assert.All(panel.QuerySelectorAll("ul"), u => Assert.False(u.HasAttribute("class")));
+        Assert.All(FacetButtons(cut), b => Assert.Contains("hd-button-square", b.ClassName!));
     }
 }

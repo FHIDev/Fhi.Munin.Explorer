@@ -24,6 +24,7 @@ public interface IMuninExplorerClient
     /// from showing the same variable twice.
     /// </remarks>
     /// <param name="search">Free-text search. Null or empty returns unfiltered results.</param>
+    /// <param name="filter">Facet narrowing on top of the search. Null, or <see cref="VariableFilter.None"/>, narrows nothing.</param>
     /// <param name="page">1-based page number.</param>
     /// <param name="pageSize">Rows per page.</param>
     /// <param name="sort">Order to sort by. Defaults to the API's own order.</param>
@@ -31,6 +32,7 @@ public interface IMuninExplorerClient
     /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
     Task<Page<VariableSummary>> SearchVariablesAsync(
         string? search,
+        VariableFilter? filter = null,
         int page = 1,
         int pageSize = 25,
         SortField sort = SortField.Default,
@@ -41,15 +43,24 @@ public interface IMuninExplorerClient
     /// Fetch the filter facets and their counts.
     /// </summary>
     /// <remarks>
-    /// The counts are cross-filtered, so pass the same narrowing the variable search used or the
-    /// numbers will describe a different selection than the list beside them.
+    /// <para>
+    /// The counts are cross-filtered, so pass the same <paramref name="search"/> and
+    /// <paramref name="filter"/> the variable search used or the numbers will describe a different
+    /// selection than the list beside them.
+    /// </para>
+    /// <para>
+    /// A facet does not narrow itself: the API drops the selection made <em>in</em> a facet before
+    /// counting that facet, so choosing one kilde leaves the other kilder listed with the counts
+    /// they would add. It is the selection in the <em>other</em> facets that moves those numbers,
+    /// which is what makes a filter reversible without a second request.
+    /// </para>
     /// </remarks>
     /// <param name="search">Same free-text search as <see cref="SearchVariablesAsync"/>.</param>
-    /// <param name="kildeType">Restrict counts to one kildetype, e.g. <c>sentraltHelseregister</c>.</param>
+    /// <param name="filter">Same narrowing as <see cref="SearchVariablesAsync"/>.</param>
     /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
     Task<FilterOptions> GetFiltersAsync(
         string? search = null,
-        string? kildeType = null,
+        VariableFilter? filter = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>List all kilder with summary metadata.</summary>
