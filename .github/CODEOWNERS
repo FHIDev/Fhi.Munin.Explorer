@@ -1,14 +1,30 @@
-# The Munin team owns this repository. Team ownership rather than an individual's,
-# so the package a partner service depends on does not hang off one person's account.
-* @FHIDev/fhi-munin-maintainer
+# Owners are set on what cannot be undone, not on everything.
+#
+# There used to be a `* @FHIDev/fhi-munin-maintainer` line here, which requested the team's
+# review on every pull request — a docs typo and a change to the publish pipeline arrived
+# looking exactly alike. An automatic request that lands on everything is one people learn to
+# dismiss, and dismissing it is a habit that does not switch off for the pull request where it
+# mattered. So the wildcard is gone and only the irreversible paths keep an owner.
+#
+# The test for whether something belongs below: can a mistake here be fixed by a follow-up
+# commit? If yes, leave it out. Ordinary component and sample work is recoverable and is not
+# listed. What is listed is rarely touched, so a request from this file should be rare enough
+# to still mean something.
+#
+# Team ownership rather than an individual's, so a package other services depend on does not
+# hang off one person's account.
 
-# The component library is the contract with every consuming host. Changes here can
-# break helsedata's site without breaking our build, so they get looked at.
-/src/Fhi.Munin.Explorer.Blazor/   @FHIDev/fhi-munin-maintainer
-/src/Fhi.Munin.Explorer.Contracts/ @FHIDev/fhi-munin-maintainer
+# Publishing is the irreversible one: a version pushed to nuget.org can be unlisted, never
+# withdrawn. That covers the workflow that publishes, the scripts that guard what goes into
+# the package, and the version and metadata the package is stamped with.
+/.github/workflows/       @FHIDev/fhi-munin-maintainer
+/scripts/                 @FHIDev/fhi-munin-maintainer
+/Directory.Build.props    @FHIDev/fhi-munin-maintainer
 
-# Publishing is irreversible: a version pushed to nuget.org can be unlisted but never
-# withdrawn.
-/.github/workflows/  @FHIDev/fhi-munin-maintainer
-/Directory.Build.props @FHIDev/fhi-munin-maintainer
-/BannedSymbols.txt   @FHIDev/fhi-munin-maintainer
+# The build error that keeps host-specific APIs out of a library that has to render inside
+# helsedata's legacy Blazor Server. Weakening it does not fail anything here; it fails later,
+# in someone else's site.
+/BannedSymbols.txt        @FHIDev/fhi-munin-maintainer
+
+# This file, so ownership cannot be quietly removed by the same pull request that needs it.
+/.github/CODEOWNERS       @FHIDev/fhi-munin-maintainer
