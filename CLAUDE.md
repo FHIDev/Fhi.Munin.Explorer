@@ -52,6 +52,26 @@ points there, so `bd` behaves exactly as it does in Munin and sees the same data
 `Fhi.Metadata-l9l2n` (v1 read-only), `Fhi.Metadata-dfy9u` (v2 login and variable lists),
 `Fhi.Metadata-2fomm` (Kelda).
 
+### Every bead for this repository gets `helsedata` and `rcl`
+
+```bash
+bd create --title="..." --description="..." --label=helsedata --label=rcl
+```
+
+Add `--label=kelda` for kildeutforsker work.
+
+Because the database is Munin's, a bead for this repository sits among hundreds that are not, and
+the label is the only thing separating them — `bd list --label=rcl` is how anyone finds this
+repository's work at all. Beads created ad hoc drifted out of that: eleven of them had no labels
+by 19 August 2026 and were invisible to the filter that was supposed to find them, which is a
+quiet failure — the list still returns results, just not all of them.
+
+Labels also cost nothing to add and are awkward to add later, since finding what to fix means
+already knowing what the filter missed.
+
+**Never run `bd label list-all`** to check what exists — see the hazard below. `bd list --json`
+carries every bead's labels and is safe.
+
 ### Starting work
 
 ```bash
