@@ -58,9 +58,16 @@ public interface IMuninExplorerClient
     /// <param name="search">Same free-text search as <see cref="SearchVariablesAsync"/>.</param>
     /// <param name="filter">Same narrowing as <see cref="SearchVariablesAsync"/>.</param>
     /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
+    /// <param name="language">
+    /// The language to resolve facet display names in, as a two-letter code — <c>"nb"</c> or
+    /// <c>"en"</c>. Sent as <c>Accept-Language</c>. The datatype facet's name is resolved server
+    /// side from editable master data, so it follows this rather than being mapped by the caller.
+    /// Null leaves the header off and takes the API's own default.
+    /// </param>
     Task<FilterOptions> GetFiltersAsync(
         string? search = null,
         VariableFilter? filter = null,
+        string? language = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>List all kilder with summary metadata.</summary>

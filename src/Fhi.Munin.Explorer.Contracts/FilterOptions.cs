@@ -112,12 +112,28 @@ public sealed record DataTypeFacet
 {
     /// <summary>
     /// The datatype code as stored on the variable, a small integer rendered as a string
-    /// (<c>"1"</c>, <c>"2"</c>, …). The endpoint returns no label for it — the meaning of each code
-    /// comes from Munin's datatype kodeverk, which this API does not expose, so a UI has to carry
-    /// its own mapping.
+    /// (<c>"1"</c>, <c>"2"</c>, …).
     /// </summary>
     [JsonPropertyName("value")] public string Value { get; init; } = "";
 
+    /// <summary>
+    /// The code's name, resolved by the API from the datatype property definition.
+    /// </summary>
+    /// <remarks>
+    /// This used to be absent, and the comment here used to say a UI had to carry its own mapping.
+    /// It does not: <c>Fhi.Metadata-xxi8k</c> made the endpoint resolve the name, in the request's
+    /// language — send <c>Accept-Language</c> and the label follows it.
+    /// <para>
+    /// A UI should still not build its own table. These names are editable master data, so a copy
+    /// freezes a snapshot in one language and drifts the moment someone edits a definition.
+    /// </para>
+    /// <para>
+    /// Null against an API that predates the change, in which case a caller shows the raw code.
+    /// </para>
+    /// </remarks>
+    [JsonPropertyName("displayName")] public string? DisplayName { get; init; }
+
+    /// <summary>How many variables carry this datatype.</summary>
     [JsonPropertyName("count")] public int Count { get; init; }
 }
 

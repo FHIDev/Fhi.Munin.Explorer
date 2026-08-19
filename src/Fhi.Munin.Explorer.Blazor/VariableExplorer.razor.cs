@@ -918,6 +918,64 @@ public partial class VariableExplorer : ComponentBase
         _tab = Tabs[next];
     }
 
+    /// <summary>
+    /// A datatype code as its name, from the facets the filter panel has already loaded.
+    /// </summary>
+    /// <remarks>
+    /// The row endpoint sends the code — "2" — and nothing else. The filters endpoint sends the
+    /// same codes WITH their names, and the component fetches those anyway to draw the filter
+    /// panel, so the name is already in memory and costs no second request.
+    /// <para>
+    /// Falls back to the raw code when the facets have not arrived yet, or against an API that
+    /// predates the names. A code is poor, but it is true; a lookup table here would freeze a copy
+    /// of editable master data inside a package that ships to other people.
+    /// </para>
+    /// </remarks>
+    private string? DataTypeName(string? code)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            return code;
+        }
+
+        var named = _facets?.DataTypes.FirstOrDefault(d => d.Value == code)?.DisplayName;
+
+        return string.IsNullOrWhiteSpace(named) ? code : named;
+    }
+
+    /// <summary>The heading of the drill-in view, named after whatever was opened.</summary>
+    private RenderFragment DrilldownHeading => builder =>
+    {
+        var name = _kilde?.PreferredTerm ?? _datasamling?.PreferredTerm;
+
+        builder.OpenElement(0, $"h{RowLevel}");
+        builder.AddAttribute(1, "class", "headline headline-s margin--bottom");
+        builder.AddAttribute(2, "id", SourceHeadingId);
+
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            // The catalogue's own name, so it stays Norwegian whatever the UI language is.
+            builder.AddAttribute(3, "lang", "no");
+            builder.AddContent(4, name);
+        }
+        else
+        {
+            builder.AddContent(5, _sourceKind == SourceKind.Kilde ? T.ShowKilde : T.ShowDatasamling);
+        }
+
+        builder.CloseElement();
+    };
+
+    /// <summary>Leaves the drill-in view and returns to the list, which was never torn down.</summary>
+    private Task CloseSourceAsync()
+    {
+        _sourceKind = null;
+        _kilde = null;
+        _datasamling = null;
+
+        return Task.CompletedTask;
+    }
+
     /// <summary>Whether this field is the one the list is currently ordered by.</summary>
     private bool IsActiveSort(SortField field) => _sort == field;
 
@@ -976,7 +1034,7 @@ public partial class VariableExplorer : ComponentBase
         Column(builder, 200, T.FieldSource, v.KildeShortName ?? v.KildeName, "source", tooltip: v.KildeName);
         Column(builder, 300, T.FieldDataCollection, v.DatasamlingName, "dataCollection");
         Column(builder, 400, T.FieldVariableGroup, v.VariabelgruppeName, "theme");
-        Column(builder, 500, T.FieldDataType, v.DataType, "dataType");
+        Column(builder, 500, T.FieldDataType, DataTypeName(v.DataType), "dataType");
 
         // Status is drawn only when historical variables can be in the list at all. The API
         // computes it from GyldigTil — Active unless the version has expired — and excludes
@@ -2201,7 +2259,9 @@ public partial class VariableExplorer : ComponentBase
 
         try
         {
-            _facets = await Client.GetFiltersAsync(_executedSearch, _filter);
+            // The component's own language, so the datatype names come back in the language the
+            // rest of the component is rendering in.
+            _facets = await Client.GetFiltersAsync(_executedSearch, _filter, Language);
             _facetError = null;
         }
         catch (Exception)
@@ -3014,6 +3074,8 @@ public partial class VariableExplorer : ComponentBase
         // Variabel. Runa decides what the component says.
         // The panel's two tabs and the groups inside the first, named as Runa names them.
         // "still running" — a period with no end date.
+        // The way out of the kilde view, back to the list of variables.
+        string BackToVariables,
         string Ongoing,
 
         // Runa's own words for two fields we had named differently. The trail through the
@@ -3228,6 +3290,7 @@ public partial class VariableExplorer : ComponentBase
             Error: "Kunne ikke hente variabler nå. Prøv igjen om litt.",
             NotSpecified: "Ikke oppgitt",
             SortDefault: "Standard",
+            BackToVariables: "← Tilbake til variabler",
             Ongoing: "Pågående",
             FieldKildePath: "Kildesti",
             FieldDataPeriod: "Dataperiode",
@@ -3362,6 +3425,7 @@ public partial class VariableExplorer : ComponentBase
             Error: "Could not load variables right now. Please try again shortly.",
             NotSpecified: "Not specified",
             SortDefault: "Default",
+            BackToVariables: "← Back to variables",
             Ongoing: "Ongoing",
             FieldKildePath: "Source path",
             FieldDataPeriod: "Data period",

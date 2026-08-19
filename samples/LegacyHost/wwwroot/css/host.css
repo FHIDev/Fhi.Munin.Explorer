@@ -943,3 +943,10 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .variable-meta__grid dd {
   margin: 0;
 }
+
+/* The drill-in view. A kilde or datasamling takes over the component's area rather than nesting
+   a third panel inside an open row — Runa navigates to a page for this, and a component with no
+   router gets closest by giving the reader the full width and a way back. */
+.variable-explorer-drilldown {
+  padding: 4px 0 24px;
+}

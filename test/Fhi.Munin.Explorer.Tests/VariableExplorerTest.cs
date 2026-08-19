@@ -1891,7 +1891,7 @@ public class VariableExplorerTest : BunitContext
         }
 
         public override Task<FilterOptions> GetFiltersAsync(
-            string? search = null, VariableFilter? filter = null, CancellationToken cancellationToken = default)
+            string? search = null, VariableFilter? filter = null, string? language = null, CancellationToken cancellationToken = default)
         {
             FacetCalls++;
             FacetFilter = filter;
@@ -3550,11 +3550,19 @@ public class VariableExplorerTest : BunitContext
     };
 
     /// <summary>The two owner toggles, in the order the panel draws them: kilde, then datasamling.</summary>
+    /// <summary>Leaves the kilde view and returns to the list.</summary>
+    private static void Back(IRenderedComponent<VariableExplorer> cut) =>
+        cut.Find(".variable-explorer-drilldown button").Click();
+
     private static IReadOnlyList<AngleSharp.Dom.IElement> SourceToggles(IRenderedComponent<VariableExplorer> cut) =>
         [.. cut.FindAll(".variable-explorer-detail > button")];
 
+    /// <summary>
+    /// The kilde or datasamling view. It is no longer a panel inside the open row — it takes over
+    /// the component's area, so the list is not on screen while it is.
+    /// </summary>
     private static AngleSharp.Dom.IElement SourcePanel(IRenderedComponent<VariableExplorer> cut) =>
-        cut.Find(".variable-explorer-source");
+        cut.Find(".variable-explorer-drilldown");
 
     private static IReadOnlyList<string> SourceLabels(IRenderedComponent<VariableExplorer> cut) =>
         [.. SourcePanel(cut).QuerySelectorAll("dl dt").Select(t => t.TextContent)];
@@ -3660,28 +3668,42 @@ public class VariableExplorerTest : BunitContext
         // inside one result card is a card nobody can find their way back out of.
         var cut = OpenOwner(TwoRows(), 0);
 
+        // Both owners cannot be open at once because only one view is on screen at a time; the
+        // reader returns to the row and opens the other from there.
+        Back(cut);
         SourceToggles(cut)[1].Click();
 
-        Assert.Single(cut.FindAll(".variable-explorer-source"));
-        Assert.Equal("false", SourceToggles(cut)[0].GetAttribute("aria-expanded"));
-        Assert.Equal("true", SourceToggles(cut)[1].GetAttribute("aria-expanded"));
+        Assert.Single(cut.FindAll(".variable-explorer-drilldown"));
         Assert.Equal("Inklusjon", SourcePanel(cut).QuerySelector(".headline-s")!.TextContent);
+
+        // The datasamling view shows the datasamling, not a count that belongs to the kilde.
         Assert.DoesNotContain("Antall datasamlinger", SourcePanel(cut).TextContent);
+
+        Back(cut);
+
+        // Only one owner is ever marked open, because only one view is ever on screen.
+        Assert.Equal("false", SourceToggles(cut)[0].GetAttribute("aria-expanded"));
+        Assert.Equal("false", SourceToggles(cut)[1].GetAttribute("aria-expanded"));
     }
 
     [Fact]
-    public void Source_WhenTheOpenOwnerIsPressedAgain_ThenItCloses()
+    public void Source_WhenBackIsPressed_ThenTheListReturnsAndNothingIsRefetched()
     {
         // The toggle is how the panel is closed, which is why it is never disabled while its own
         // fetch runs — the same rule the disclosure above it follows.
         var client = TwoRows();
         var cut = OpenOwner(client, 0);
 
-        SourceToggles(cut)[0].Click();
+        // The kilde takes over the component's area, so the way out is the back control rather
+        // than pressing a toggle that is no longer on screen.
+        Back(cut);
 
-        Assert.Empty(cut.FindAll(".variable-explorer-source"));
+        Assert.Empty(cut.FindAll(".variable-explorer-drilldown"));
+
+        // The list comes back as it was — the row is still open, because nothing was torn down.
+        Assert.Equal(2, cut.FindAll("ul.variable-data-list > li").Count);
+        Assert.Equal("true", Toggles(cut)[0].GetAttribute("aria-expanded"));
         Assert.Equal("false", SourceToggles(cut)[0].GetAttribute("aria-expanded"));
-        Assert.Null(SourceToggles(cut)[0].GetAttribute("aria-controls"));
 
         // Closing asks the API for nothing: it is the panel that is being dropped, not the answer.
         Assert.Equal(1, client.KildeCalls);
@@ -3694,20 +3716,22 @@ public class VariableExplorerTest : BunitContext
         // the closed one carrying the reference too would be read as one region with two names.
         var cut = OpenOwner(TwoRows(), 0);
 
-        var toggle = SourceToggles(cut)[0];
         var panel = SourcePanel(cut);
 
-        Assert.Equal("true", toggle.GetAttribute("aria-expanded"));
-        Assert.Equal(panel.Id, toggle.GetAttribute("aria-controls"));
-        Assert.Null(SourceToggles(cut)[1].GetAttribute("aria-controls"));
         Assert.Equal("region", panel.GetAttribute("role"));
 
-        // Named by a heading that is on screen from the moment the panel is, so the reference is
-        // never dangling — and it is the catalogue's Norwegian, marked as such.
+        // Named after the thing it shows, and the catalogue keeps its own language.
         var heading = cut.Find($"#{panel.GetAttribute("aria-labelledby")}");
 
         Assert.Equal("Als registeret", heading.TextContent);
         Assert.Equal("no", heading.GetAttribute("lang"));
+
+        Back(cut);
+
+        // Back on the list, the toggle that opened it reads shut again, and the one never
+        // pressed points at nothing.
+        Assert.Equal("false", SourceToggles(cut)[0].GetAttribute("aria-expanded"));
+        Assert.Null(SourceToggles(cut)[1].GetAttribute("aria-controls"));
     }
 
     [Fact]
@@ -3725,6 +3749,10 @@ public class VariableExplorerTest : BunitContext
         Assert.Contains("infobox", SourcePanel(cut).QuerySelector("p")!.ClassName!);
 
         // The variable above it is untouched, and so are the rows.
+
+        // Nothing behind the view was disturbed by the failure.
+        Back(cut);
+
         Assert.Contains("Angir pasientens grad av utfall", Panel(cut).TextContent);
         Assert.Equal(2, cut.FindAll("ul.variable-data-list > li").Count);
         Assert.Empty(cut.FindAll("div[role='alert'] p"));
@@ -3751,29 +3779,37 @@ public class VariableExplorerTest : BunitContext
         // its own fetch landed.
         var cut = OpenOwner(TwoRows(), 0);
 
+        // Back to the list, then open a different variable: its owner view does not come along.
+        Back(cut);
         Toggles(cut)[1].Click();
 
-        Assert.Empty(cut.FindAll(".variable-explorer-source"));
+        Assert.Empty(cut.FindAll(".variable-explorer-drilldown"));
         Assert.Contains("2. Spyttsekresjon", Panel(cut).TextContent);
         Assert.Equal("false", SourceToggles(cut)[0].GetAttribute("aria-expanded"));
     }
 
     [Fact]
-    public void Source_WhenTheVariablePanelIsClosed_ThenTheOwnerPanelGoesWithIt()
+    public void Source_WhenTheVariablePanelIsClosedAfterReturning_ThenTheOwnerIsNotReachable()
     {
         // State the reader cannot see and cannot get rid of is what closing the variable panel
         // exists to avoid one level up; an owner left set behind it would come back the moment the
         // same row was opened again.
         var cut = OpenOwner(TwoRows(), 0);
 
-        Toggles(cut)[0].Click();
-
+        // While the kilde view is showing, the row and its panel are not on screen at all.
         Assert.Empty(cut.FindAll(".variable-explorer-detail"));
-        Assert.Empty(cut.FindAll(".variable-explorer-source"));
+
+        Back(cut);
+        Toggles(cut)[0].Click();
+
+        // Closing the row takes its owner buttons with it, so there is no way back into the kilde
+        // view from a row that is shut.
+        Assert.Empty(cut.FindAll(".variable-explorer-detail"));
+        Assert.Empty(cut.FindAll(".variable-explorer-drilldown"));
 
         Toggles(cut)[0].Click();
 
-        Assert.Empty(cut.FindAll(".variable-explorer-source"));
+        Assert.Empty(cut.FindAll(".variable-explorer-drilldown"));
     }
 
     [Fact]
@@ -3785,10 +3821,12 @@ public class VariableExplorerTest : BunitContext
         var cut = OpenOwner(client, 0);
 
         client.Then(OnePage(Row(SpyttId, "2. Spyttsekresjon")));
+        // The search box is on the list, so the reader is back there before searching.
+        Back(cut);
         cut.Find("form").Submit();
 
         Assert.Empty(cut.FindAll(".variable-explorer-detail"));
-        Assert.Empty(cut.FindAll(".variable-explorer-source"));
+        Assert.Empty(cut.FindAll(".variable-explorer-drilldown"));
     }
 
     [Fact]
@@ -3822,14 +3860,16 @@ public class VariableExplorerTest : BunitContext
         client.StallKilde = true;
         SourceToggles(cut)[0].Click();
 
+        // The reader gave up on the stalled kilde and went back for the datasamling instead.
+        Back(cut);
+
         SourceToggles(cut)[1].Click();
 
         await cut.InvokeAsync(() => client.AnswerStalledKilde(Kilde()));
 
         cut.WaitForAssertion(() =>
         {
-            Assert.Single(cut.FindAll(".variable-explorer-source"));
-            Assert.Equal("true", SourceToggles(cut)[1].GetAttribute("aria-expanded"));
+            Assert.Single(cut.FindAll(".variable-explorer-drilldown"));
             Assert.Contains("Telleenhet", SourcePanel(cut).TextContent);
             Assert.DoesNotContain("Antall datasamlinger", SourcePanel(cut).TextContent);
         });
@@ -3849,7 +3889,6 @@ public class VariableExplorerTest : BunitContext
 
         SourceToggles(cut)[0].Click();
 
-        Assert.Equal("Hide data source", SourceToggles(cut)[0].TextContent);
         Assert.Equal(
             ["Description", "Type of data source", "Data controller", "Data processor",
              "Level of personal identification", "Legal basis", "Validity", "Period",
@@ -3863,6 +3902,11 @@ public class VariableExplorerTest : BunitContext
         Assert.Null(values[1].QuerySelector("[lang]"));
         Assert.Equal("Indirectly identifiable", values[4].TextContent);
         Assert.Equal("no", values[0].QuerySelector("span")!.GetAttribute("lang"));
+
+        Back(cut);
+
+        // The toggle that opened it reads shut again, in English.
+        Assert.Equal("Show data source", SourceToggles(cut)[0].TextContent);
     }
 
     [Fact]
@@ -3880,19 +3924,16 @@ public class VariableExplorerTest : BunitContext
             .ToList();
 
         Assert.Equal(
-            ["variable-explorer", "variable-explorer-filters",
-             "variable-explorer-container",   // theirs, variables.css
-             "variable-explorer-results",     // theirs, variables.css
-             "variable-explorer-detail", "variable-explorer-group", "variable-explorer-crumb",
-             "variable-explorer-period",
-             "variable-explorer-period__range", "variable-explorer-period__track",
-             "variable-explorer-period__fill", "variable-explorer-source"],
+            ["variable-explorer", "variable-explorer-drilldown"],
             invented);
 
         var panel = SourcePanel(cut);
 
         Assert.All(panel.QuerySelectorAll("dl"), e => Assert.False(e.HasAttribute("class")));
         Assert.All(panel.QuerySelectorAll("dl dt"), e => Assert.Equal("form-element__label", e.ClassName));
+
+        Back(cut);
+
         Assert.Contains("hd-button-square", SourceToggles(cut)[0].ClassName!);
     }
 
@@ -3906,9 +3947,18 @@ public class VariableExplorerTest : BunitContext
         Toggles(cut)[0].Click();
         SourceToggles(cut)[0].Click();
 
+        // The kilde view's heading sits one below the component's own title, so the outline holds
+        // whichever view is showing. The rows are not on screen to compare against — that is the
+        // point of the view — so the comparison is against the component title.
+        // One below the component's own title. It used to be H3 because it hung under the row's
+        // H2; as a view of its own it is no longer inside the row, so H2 is what keeps the outline
+        // unbroken.
+        Assert.Equal("H2", SourcePanel(cut).QuerySelector(".headline-s")!.TagName);
+
+        Back(cut);
+
         Assert.Equal("H1", cut.Find(".variable-explorer > [class*='headline']").TagName);
         Assert.Equal("BUTTON", cut.Find(".variable-data-list__item__row .variable-dataitem-main__name").TagName);
-        Assert.Equal("H3", SourcePanel(cut).QuerySelector(".headline-s")!.TagName);
     }
 
     [Fact]
@@ -3927,6 +3977,11 @@ public class VariableExplorerTest : BunitContext
         SourceToggles(b)[0].Click();
 
         Assert.NotEqual(SourcePanel(a).Id, SourcePanel(b).Id);
+
+        // The toggles live in the row, which is not on screen while the kilde view is.
+        Back(a);
+        Back(b);
+
         Assert.NotEqual(SourceToggles(a)[0].Id, SourceToggles(b)[0].Id);
     }
 }

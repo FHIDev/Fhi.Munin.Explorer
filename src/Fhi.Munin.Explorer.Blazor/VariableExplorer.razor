@@ -34,6 +34,39 @@
        document outline unbroken is only knowable at the mount site. *@
     @Heading
 
+@* A kilde or datasamling opens as its own view, not as a third panel inside an open row.
+   Runa navigates to a page for this; this component has no router, so instead of nesting a
+   panel inside a panel inside a row it takes over its own area and offers a way back. The
+   reader gets a full width to read in, which three levels of nesting cannot give, and the
+   search, filters, page and open row are all still there on return because none of it was
+   torn down. *@
+@if (_sourceKind is not null)
+{
+    @* A region named after what it shows, so a screen reader moving by landmark finds it and hears
+       which kilde it landed in. The old nested panel carried these; taking them off when it became
+       a view would have quietly removed it from the landmark list. *@
+    <div class="variable-explorer-drilldown"
+         id="@SourceId"
+         role="region"
+         aria-labelledby="@SourceHeadingId"
+         aria-busy="@SourceBusy">
+        <button class="hd-button-square button-square--ghost margin-bottom"
+                type="button"
+                @onclick="CloseSourceAsync">@T.BackToVariables</button>
+
+        @DrilldownHeading
+
+        <p class="@SourceStatusClass"
+           role="status"
+           aria-live="polite"
+           aria-atomic="true">@SourceStatus</p>
+
+        @SourceFields
+    </div>
+}
+else
+{
+
     @* role="search" makes this a search landmark, and aria-labelledby names it after this
        instance's title so two explorers on one page are told apart in a landmark list. *@
     <form role="search"
@@ -469,31 +502,6 @@
                                        nothing in this package or in Stiler defines a rule for it.
                                        What dresses the panel is base styling for <dl class="variable-meta__grid variable-meta__grid-2">, exactly as
                                        for the variable's own panel above. *@
-                                    @if (_sourceKind is { } openKind)
-                                    {
-                                        <div class="variable-explorer-source"
-                                             id="@SourceId"
-                                             role="region"
-                                             aria-labelledby="@SourceHeadingId"
-                                             aria-busy="@SourceBusy">
-                                            @* Named from the variable's own record rather than
-                                               from the payload being fetched, so the region has a
-                                               name from the moment it exists — see SourceHeading. *@
-                                            @SourceHeading(detail, openKind)
-
-                                            @* One line, one message: loading, or why the panel is
-                                               empty. Its own region rather than the variable
-                                               panel's, for the reason that one is not the
-                                               component's: a kilde that failed to load has not
-                                               changed what the variable above it says. *@
-                                            <p class="@SourceStatusClass"
-                                               role="status"
-                                               aria-live="polite"
-                                               aria-atomic="true">@SourceStatus</p>
-
-                                            @SourceFields
-                                        </div>
-                                    }
                                 }
                             </div>
                         }
@@ -562,4 +570,5 @@
             </div>
         </div>
     }
+}
 </section>
