@@ -706,6 +706,12 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   flex: 0 0 24px;
 }
 
+.variable-dataitem-main__column,
+.sortable-header {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
 /* The four columns helsedata has a modifier for take a share; the three Runa adds — code,
    datatype, status — have no modifier of theirs and size by content until one exists. */
 .variable-dataitem-main__name,
@@ -722,11 +728,6 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   flex: 1 1 0;
 }
 
-.variable-dataitem-main__column,
-.sortable-header {
-  flex: 1 1 0;
-  min-width: 0;
-}
 
 .sortable-header {
   font-weight: 600;

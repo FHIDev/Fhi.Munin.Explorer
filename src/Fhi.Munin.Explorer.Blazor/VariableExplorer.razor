@@ -279,20 +279,11 @@
                         @InfoLine(v)
                         </div>@* variable-dataitem-main — the columns end here *@
 
-                        @* The description is not one of their columns. helsedata's row has no
-                           description at all; ours does, and it reads as a paragraph under the key
-                           facts rather than as a fifth column squeezed into the grid. *@
-                        @if (ShowRowDescription(v))
-                        {
-                            <div class="variable-dataitem-main__column--description">
-                                @* lang on the data itself, not on the whole list: the field
-                                   labels around it follow Language, but Munin's descriptions are
-                                   Norwegian whatever language the surrounding UI is in, and an
-                                   English synthesiser reading Norwegian is unintelligible
-                                   (WCAG 3.1.2). *@
-                                <p lang="no">@v.Description</p>
-                            </div>
-                        }
+                    @* No description in the row. Neither reference has one: Runa's rows are a
+                       single table row, and helsedata's are explicitly one line —
+                       `.variable-dataitem-main { height: 3.5rem; overflow: hidden; text-overflow:
+                       ellipsis }`. A paragraph under the columns fights both. The description is
+                       the first field in the panel, one click away. *@
 
                     </div>@* variable-data-list__item__row — the panel below is its SIBLING,
                               not its child, which is how helsedata nests it *@
@@ -315,7 +306,9 @@
                             <div class="variable-meta variable-explorer-detail"
                                  id="@DetailId(v)"
                                  role="region"
-                                 aria-labelledby="@RowHeadingId(v)"
+                                 @* Named by the button that opens it, which is the element carrying the variable's
+                                    name now that there is no heading wrapping it. *@
+                                 aria-labelledby="@DetailToggleId(v)"
                                  aria-busy="@DetailBusy">
                                 @* One line, holding one message at a time: loading, or why the panel
                                    is empty. Its own region rather than the component's — the status

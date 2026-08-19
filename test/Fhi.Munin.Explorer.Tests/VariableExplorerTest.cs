@@ -273,22 +273,29 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Equal(SortField.Default, client.LastSort);
         Assert.Equal(SortDirection.Ascending, client.LastDirection);
-        Assert.Equal("Standard (stigende)", SortButtons(cut)[0].TextContent);
+        Assert.Equal("Navn ↑", SortButtons(cut)[0].TextContent);
     }
 
     [Fact]
     public void Render_Always_ThenTheDefaultOrderIsNotLabelledAsANameSort()
     {
+        // This guard used to say the opposite, and the reason it flipped is worth keeping.
+        //
         // The API's `name` sort leads with kilde, not the name — see the remarks on
-        // SortField.Default. A button reading "Navn" would describe an order the list is not in,
-        // and would make this button and Datakilde look like they differ in primary key when they
-        // only differ in what happens inside a kilde.
+        // SortField.Default. When the ordering was a row of standalone buttons, one reading "Navn"
+        // claimed the list was ordered by name, which it is not. In a COLUMN HEADER the same word
+        // names the column rather than the order: the column holds names, the arrow says it is the
+        // active one, and what the list is actually ordered by is stated in full in the status
+        // line below it.
+        //
+        // What must still not happen is the status line calling it a name sort. That is the
+        // sentence a reader gets read out, and it is the one that would be wrong.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
         var labels = SortButtons(cut).Select(k => k.TextContent).ToList();
 
-        Assert.Equal(["Standard (stigende)", "Datakilde", "Datasamling", "Variabelgruppe"], labels);
-        Assert.DoesNotContain("Navn", cut.Find(SortControl).TextContent);
+        Assert.Equal(["Navn ↑", "Datakilde", "Datasamling", "Variabelgruppe"], labels);
+        Assert.Contains("sortert på Standard", cut.Find("p.caption[role=status]").TextContent);
     }
 
     [Fact]
@@ -325,13 +332,13 @@ public class VariableExplorerTest : BunitContext
         var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
         var cut = RenderWith(client);
 
-        ClickSort(cut, "Standard");
+        ClickSort(cut, "Navn");
 
         Assert.Equal(SortField.Default, client.LastSort);
         Assert.Equal(SortDirection.Descending, client.LastDirection);
-        Assert.Equal("Standard (synkende)", SortButtons(cut)[0].TextContent);
+        Assert.Equal("Navn ↓", SortButtons(cut)[0].TextContent);
 
-        ClickSort(cut, "Standard");
+        ClickSort(cut, "Navn");
 
         Assert.Equal(SortDirection.Ascending, client.LastDirection);
     }
@@ -344,7 +351,7 @@ public class VariableExplorerTest : BunitContext
         var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
         var cut = RenderWith(client);
 
-        ClickSort(cut, "Standard");    // descending
+        ClickSort(cut, "Navn");    // descending
         ClickSort(cut, "Datakilde");   // a different field
 
         Assert.Equal(SortField.Kilde, client.LastSort);
@@ -377,7 +384,7 @@ public class VariableExplorerTest : BunitContext
         ClickSort(cut, "Datakilde");
 
         Assert.Equal(1, client.Calls);
-        Assert.Equal("Standard (stigende)", SortButtons(cut)[0].TextContent);
+        Assert.Equal("Navn ↑", SortButtons(cut)[0].TextContent);
     }
 
     [Fact]
@@ -395,10 +402,10 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Equal(SortField.Kilde, client.LastSort);
         Assert.Contains("Kunne ikke hente variabler", cut.Markup);
-        Assert.Equal("Standard (stigende)", SortButtons(cut)[0].TextContent);
+        Assert.Equal("Navn ↑", SortButtons(cut)[0].TextContent);
 
         var marked = SortButtons(cut).Where(k => k.HasAttribute("aria-current")).ToList();
-        Assert.Equal("Standard (stigende)", Assert.Single(marked).TextContent);
+        Assert.Equal("Navn ↑", Assert.Single(marked).TextContent);
 
         ClickSort(cut, "Datakilde"); // the same retry, not its reversal
 
@@ -450,7 +457,7 @@ public class VariableExplorerTest : BunitContext
 
         var labels = SortButtons(cut).Select(k => k.TextContent).ToList();
 
-        Assert.Equal(["Default (ascending)", "Data source", "Data collection", "Variable group"], labels);
+        Assert.Equal(["Name ↑", "Data source", "Data collection", "Variable group"], labels);
         Assert.NotNull(cut.Find($"{SortControl} .variable-data-list__item__row--header"));
     }
 
@@ -559,7 +566,7 @@ public class VariableExplorerTest : BunitContext
 
         var marked = SortButtons(cut).Where(k => k.HasAttribute("aria-current")).ToList();
 
-        Assert.Equal("Standard (stigende)", Assert.Single(marked).TextContent);
+        Assert.Equal("Navn ↑", Assert.Single(marked).TextContent);
         Assert.Equal("true", marked[0].GetAttribute("aria-current"));
     }
 
@@ -784,14 +791,18 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
                             b => b.Add(c => c.HeadingLevel, 3));
 
-        var cardHeading = cut.Find("li h4");
+        // No heading per result. An earlier version wrapped the name in one so results could be
+        // walked with a heading rotor, but their row is `display: flex` and the name cell is sized
+        // by `.variable-dataitem-main__name` — a heading in between becomes the flex item and the
+        // column falls out of line with its header. Neither reference wraps it: helsedata puts the
+        // button straight in the row, and Runa's rows are table rows. The rows are a list of list
+        // items, each with a named disclosure carrying aria-expanded.
+        Assert.Empty(cut.FindAll("li h1, li h2, li h3, li h4, li h5, li h6"));
 
-        Assert.Equal("1. Tale", cardHeading.TextContent);
-        // The heading carries the level and nothing else. helsedata's class sits on the button
-        // inside it, which is the disclosure — so the heading is bare by design.
-        Assert.False(cardHeading.HasAttribute("class"));
-        Assert.Equal("variable-dataitem-main__name",
-                     cardHeading.QuerySelector("button")!.ClassName);
+        var name = cut.Find("li .variable-dataitem-main__name");
+
+        Assert.Equal("1. Tale", name.TextContent);
+        Assert.Equal("BUTTON", name.TagName);
     }
 
     [Fact]
@@ -862,8 +873,7 @@ public class VariableExplorerTest : BunitContext
         };
 
         var cut = RenderWith(new FakeClient(OnePage(withDescription)));
-
-        Assert.Equal("Hvordan er talen?", cut.Find(".variable-dataitem-main__column--description p").TextContent);
+        // The description is not in the row any more — see the panel.
         Assert.DoesNotContain("Hvordan er talen?", cut.Find(".variable-dataitem-main").TextContent);
     }
 
@@ -3168,12 +3178,10 @@ public class VariableExplorerTest : BunitContext
         var client = new DetailClient(OnePage(Row(TaleId, "1. Tale", "Hvordan er talen?")))
             .Knows(Detail(TaleId) with { Description = "Hvordan er talen?" });
         var cut = RenderWith(client);
-
-        Assert.Equal("Hvordan er talen?", cut.Find(".variable-dataitem-main__column--description p").TextContent);
+        // The description is not in the row any more — see the panel.
 
         Toggles(cut)[0].Click();
-
-        Assert.Empty(cut.FindAll(".variable-dataitem-main__column--description"));
+        // The description is not in the row any more — see the panel.
         Assert.Equal("Hvordan er talen?", Values(cut)[0].TextContent);
     }
 
@@ -3188,7 +3196,8 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(TwoRows());
         // The heading wraps the button; the panel points at the heading, which is what holds
         // the row's name in the document outline.
-        var heading = cut.FindAll("ul.variable-data-list .variable-dataitem-main__name")[0].ParentElement!;
+        // The name button is the row's name — there is no heading wrapping it any more.
+        var heading = cut.FindAll("ul.variable-data-list .variable-dataitem-main__name")[0];
 
         // Closed: nothing to control yet, and aria-controls pointing at an element that is not in
         // the document is a dangling reference.
@@ -3198,7 +3207,7 @@ public class VariableExplorerTest : BunitContext
         // would otherwise have read as forty identical buttons. That reason is gone, and an
         // aria-labelledby repeating the element's own content is noise.
         Assert.False(Toggles(cut)[0].HasAttribute("aria-labelledby"));
-        Assert.Equal(heading.TextContent, Toggles(cut)[0].TextContent);
+        Assert.Equal(heading.TextContent.Trim(), Toggles(cut)[0].TextContent.Trim());
 
         Toggles(cut)[0].Click();
 
@@ -3741,7 +3750,7 @@ public class VariableExplorerTest : BunitContext
         SourceToggles(cut)[0].Click();
 
         Assert.Equal("H1", cut.Find(".variable-explorer > [class*='headline']").TagName);
-        Assert.Equal("H2", cut.Find(".variable-data-list__item__row .variable-dataitem-main__name").ParentElement!.TagName);
+        Assert.Equal("BUTTON", cut.Find(".variable-data-list__item__row .variable-dataitem-main__name").TagName);
         Assert.Equal("H3", SourcePanel(cut).QuerySelector(".headline-s")!.TagName);
     }
 

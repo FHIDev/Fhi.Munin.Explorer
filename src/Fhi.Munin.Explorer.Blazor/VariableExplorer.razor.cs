@@ -614,11 +614,17 @@ public partial class VariableExplorer : ComponentBase
     /// </remarks>
     private RenderFragment RowHeading(VariableSummary v) => builder =>
     {
-        builder.OpenElement(0, $"h{RowLevel}");
-        // No class of ours and none of theirs: the heading exists for the rotor, and every one of
-        // helsedata's 28 selectors for these names matches by descent, so an unstyled element
-        // between the row and the button is invisible to their CSS.
-        builder.AddAttribute(1, "id", RowHeadingId(v));
+        // No heading wrapper. An earlier version wrapped this button in an h-element so results
+        // could be walked with a screen reader's heading rotor, having checked that none of
+        // helsedata's selectors for these names uses a child combinator — descendant styling
+        // survives an extra element in between. But flex sizing does not: their row is
+        // `display: flex` and `.variable-dataitem-main__name` sizes the NAME CELL, so a heading
+        // in between becomes the flex item and the column collapses to its content, throwing every
+        // row out of line with the header. Neither reference wraps it — helsedata puts the button
+        // straight in the row, and Runa's rows are table rows with no per-row heading either.
+        //
+        // The rows are a list of list items, each with a named disclosure carrying aria-expanded,
+        // which is the pattern this is supposed to be.
 
         // The name IS the disclosure — helsedata's own pattern, and the APG accordion pattern.
         // It replaces a separate "Vis detaljer" button that sat under the metadata line, and with
@@ -641,7 +647,6 @@ public partial class VariableExplorer : ComponentBase
         builder.AddContent(12, v.PreferredTerm);
         builder.CloseElement();
 
-        builder.CloseElement();
         builder.CloseElement();
     };
 
@@ -707,6 +712,14 @@ public partial class VariableExplorer : ComponentBase
             return;
         }
 
+        // aria-sort on the cell rather than the button: it describes the COLUMN's state, and it is
+        // what a screen reader reads when moving across the header. Only the active column carries
+        // it — "none" on every other column is noise a reader has to listen through.
+        if (IsActiveSort(field))
+        {
+            builder.AddAttribute(seq + 2, "aria-sort", AriaSort());
+        }
+
         builder.OpenElement(seq + 3, "button");
         // hd-button-reset is Stiler's own "this is a button but draw nothing" class, which is what
         // their header buttons wear — 12 rules, in the site-wide stylesheet.
@@ -714,7 +727,21 @@ public partial class VariableExplorer : ComponentBase
         builder.AddAttribute(seq + 5, "type", "button");
         builder.AddAttribute(seq + 6, "aria-current", AriaCurrent(field));
         builder.AddAttribute(seq + 7, "onclick", EventCallback.Factory.Create(this, () => SortAsync(field)));
-        builder.AddContent(seq + 8, ButtonText(field));
+
+        // The button says what the COLUMN is, not what the ordering is. It used to render the sort
+        // field's own label, so the first column read "Standard (stigende)" where it should read
+        // "Navn" — the name of the thing in the column. The ordering is shown by the arrow beside
+        // it and announced by aria-sort above, which is how a column header carries both.
+        builder.AddContent(seq + 8, label);
+
+        if (IsActiveSort(field))
+        {
+            builder.OpenElement(seq + 9, "span");
+            builder.AddAttribute(seq + 10, "aria-hidden", "true");
+            builder.AddContent(seq + 11, Ascending ? " \u2191" : " \u2193");
+            builder.CloseElement();
+        }
+
         builder.CloseElement();
 
         builder.CloseElement();
@@ -738,6 +765,15 @@ public partial class VariableExplorer : ComponentBase
         builder.AddAttribute(2, "aria-hidden", "true");
         builder.CloseElement();
     };
+
+    /// <summary>Whether this field is the one the list is currently ordered by.</summary>
+    private bool IsActiveSort(SortField field) => _sort == field;
+
+    /// <summary>The ordering, in the words aria-sort uses.</summary>
+    private string AriaSort() => Ascending ? "ascending" : "descending";
+
+    /// <summary>Whether the current ordering runs ascending.</summary>
+    private bool Ascending => _direction == SortDirection.Ascending;
 
     /// <summary>
     /// Whether the Status column is worth drawing — that is, whether a row could say anything
@@ -2743,7 +2779,8 @@ public partial class VariableExplorer : ComponentBase
         string Error,
         string NotSpecified,
         string SortDefault,
-        // The first column's header — the variable itself.
+        // The first column's header. Runa calls it Navn; helsedata calls the same column
+        // Variabel. Runa decides what the component says.
         string ColumnVariable,
         string FieldDataType,
         string FieldStatus,
@@ -2947,7 +2984,7 @@ public partial class VariableExplorer : ComponentBase
             Error: "Kunne ikke hente variabler nå. Prøv igjen om litt.",
             NotSpecified: "Ikke oppgitt",
             SortDefault: "Standard",
-            ColumnVariable: "Variabel",
+            ColumnVariable: "Navn",
             FieldDataType: "Datatype",
             FieldStatus: "Status",
             FieldCode: "Kode",
@@ -3074,7 +3111,7 @@ public partial class VariableExplorer : ComponentBase
             Error: "Could not load variables right now. Please try again shortly.",
             NotSpecified: "Not specified",
             SortDefault: "Default",
-            ColumnVariable: "Variable",
+            ColumnVariable: "Name",
             FieldDataType: "Data type",
             FieldStatus: "Status",
             FieldCode: "Code",
