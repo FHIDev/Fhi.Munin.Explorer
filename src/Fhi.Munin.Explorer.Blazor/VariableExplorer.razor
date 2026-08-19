@@ -252,15 +252,21 @@
         <ul class="datasourcecard-list" aria-label="@Summary" aria-busy="@Busy">
             @foreach (var v in _result.Items)
             {
-                <li class="datasourcecard-list__item">
+                @* Keyed by the variable's own id, the same reason the facet values are keyed: a row
+                   carries a control the reader can be standing on — the disclosure below — and the
+                   rows reorder whenever the search, the filter or the ordering moves. Without a key
+                   the renderer would patch that button into a different variable's rather than
+                   moving it. *@
+                <li class="datasourcecard-list__item" @key="v.Id">
                     @* Stiler gives .datasourcecard a pointer cursor because on helsedata's page
-                       the whole card is a link to a datasource page. Variables have no detail
-                       URL in the Explorer API yet, so ours is not a link; when that endpoint
-                       lands the heading becomes an anchor and the card is already right. *@
+                       the whole card is a link to a datasource page. Ours is not a link: the
+                       Explorer API has no per-variable URL, and the CMS host owns routing, so the
+                       detail is disclosed inside the card instead — the whole point of the panel
+                       below is that reading a variable costs no page. *@
                     <div class="datasourcecard">
                         @RowHeading(v)
                         @InfoLine(v)
-                        @if (!string.IsNullOrWhiteSpace(v.Description))
+                        @if (ShowRowDescription(v))
                         {
                             <div class="datasourcecard__intro">
                                 @* lang on the data itself, not on the whole list: the field
@@ -269,6 +275,86 @@
                                    English synthesiser reading Norwegian is unintelligible
                                    (WCAG 3.1.2). *@
                                 <p lang="no">@v.Description</p>
+                            </div>
+                        }
+
+                        @* The disclosure.
+
+                           A button beside the heading rather than the heading itself. The APG
+                           accordion pattern wraps the heading's text in the button, and that is the
+                           right shape when the heading is the control — but here it would have to
+                           wear a button class to be recognisable as one, and the only button Stiler
+                           gives this package is the square button, which would draw every result
+                           heading as a filled block. A named button under the metadata line costs
+                           one more tab stop per card and keeps the heading a heading, which is what
+                           the results are navigated by.
+
+                           Never disabled, including while its own fetch runs: pressing it again is
+                           how the panel is closed, and disabling the element that has focus drops
+                           focus to <body> — the same rule the Søk button and the pager follow.
+
+                           The classes are the ghost square button the sort and facet values already
+                           use, so a host that styles those has styled this. *@
+                        <button class="hd-button-square button-square--ghost margin-right margin-bottom"
+                                type="button"
+                                id="@DetailToggleId(v)"
+                                aria-expanded="@DetailExpanded(v)"
+                                aria-controls="@DetailControls(v)"
+                                aria-labelledby="@DetailToggleLabelledBy(v)"
+                                @onclick="() => ToggleDetailAsync(v)">@DetailToggleText(v)</button>
+
+                        @* The panel itself, drawn inside the row it belongs to — no routing, no
+                           NavigationManager, nothing for the host's CMS to route. Only one row is
+                           ever open, so this is at most one extra region landmark on the page, and
+                           it is named after the variable rather than left anonymous among the host
+                           page's own.
+
+                           `variable-explorer-detail` is a handle, like `variable-explorer` and
+                           `variable-explorer-filters`: nothing in this package or in Stiler defines
+                           a rule for it. What dresses the panel is base styling for <dl>, <ol> and
+                           <ul>, for the reason the filter panel is built from <details> and <ul> —
+                           Stiler has no definition list, no breadcrumb and no key/value block whose
+                           names can be read back off its compiled stylesheet, and a name it has
+                           never heard of renders as a raw browser default. *@
+                        @if (IsSelected(v))
+                        {
+                            <div class="variable-explorer-detail"
+                                 id="@DetailId(v)"
+                                 role="region"
+                                 aria-labelledby="@RowHeadingId(v)"
+                                 aria-busy="@DetailBusy">
+                                @* One line, holding one message at a time: loading, or why the panel
+                                   is empty. Its own region rather than the component's — the status
+                                   line above describes the list, and a panel that failed to load has
+                                   not changed which rows are on screen. Polite, not an alert: the
+                                   reader asked for this one card and nothing else is affected. *@
+                                <p class="@DetailStatusClass"
+                                   role="status"
+                                   aria-live="polite"
+                                   aria-atomic="true">@DetailStatus</p>
+
+                                @if (_detail is { } detail)
+                                {
+                                    @* A definition list, because that is what this is: labels and
+                                       the values they name. The labels are the card's own words for
+                                       the same fields, so nothing is renamed by opening a row. *@
+                                    <dl>
+                                        <dt class="form-element__label">@T.FieldDescription</dt>
+                                        <dd>@DetailValue(detail.Description)</dd>
+
+                                        <dt class="form-element__label">@T.FieldPeriod</dt>
+                                        <dd>@DetailValue(Period(detail.DataFrom, detail.DataTo))</dd>
+
+                                        <dt class="form-element__label">@T.FieldSource</dt>
+                                        <dd>@KildeTrail(detail)</dd>
+
+                                        <dt class="form-element__label">@T.FieldVariableGroup</dt>
+                                        <dd>@NameList(VariabelgruppeNames(detail))</dd>
+
+                                        <dt class="form-element__label">@T.FieldKodeverk</dt>
+                                        <dd>@KodeverkList(detail.KodeverkLinks)</dd>
+                                    </dl>
+                                }
                             </div>
                         }
                     </div>

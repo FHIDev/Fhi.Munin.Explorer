@@ -373,3 +373,52 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   background: none;
   color: var(--grey40);
 }
+
+/* ---- not Stiler either: base element styling for the detail panel ----
+
+   The same reason as the filter panel above. The panel a row opens is a <dl> of labels and values,
+   an <ol> for the kilde trail and a <ul> for the variabelgrupper and kodeverk, because Stiler has
+   no definition list, no breadcrumb and no key/value block that can be read back off its compiled
+   stylesheet — and a name it has never heard of renders as a raw browser default. On helsedata.no
+   what dresses those elements is that site's own base rules; here it is this block. The package
+   emits `variable-explorer-detail` as a handle for exactly this, and styles nothing itself.
+
+   A host that supplies none of this still gets a panel that reads correctly: the labels are
+   Stiler's own and each value sits under the label that names it. What it loses is the trail
+   reading as a trail rather than as a numbered list. */
+
+.variable-explorer-detail {
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--grey30);
+}
+
+/* The panel's status line holds one message at a time and is empty when there is nothing to
+   report — it stays in the document so a failure replaces text in a region that is already
+   there, which is what makes it announced. Empty, it should take up no room. */
+.variable-explorer-detail > p:empty { display: none; }
+
+.variable-explorer-detail dl { margin: 0; }
+.variable-explorer-detail dt { margin-top: 12px; }
+.variable-explorer-detail dd { margin: 0; }
+
+.variable-explorer-detail dd ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+/* The kilde trail, drawn as one: a chevron between the steps rather than the numbers a bare <ol>
+   would carry. Generated content, so the separator is decoration — not announced, and not copied
+   out with the text. */
+.variable-explorer-detail dd ol {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.variable-explorer-detail dd ol li + li::before {
+  content: "\203A";
+  margin: 0 8px;
+  color: var(--grey60);
+}
