@@ -601,7 +601,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   display: block;
   font-size: 0.9375rem;
   color: var(--dark);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .variable-dataitem-main__column--description {
@@ -712,20 +712,51 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   min-width: 0;
 }
 
-/* The four columns helsedata has a modifier for take a share; the three Runa adds — code,
-   datatype, status — have no modifier of theirs and size by content until one exists. */
+/* Column widths in Runa's proportions, measured off it rather than guessed:
+
+     Navn 210   Kode 246   Kilde 96   Datasamling 212   Variabelgruppe 160
+     Datatype 114   Status 98
+
+   Kode is the WIDEST, which is the opposite of what it looks like it should be. A variable code
+   is one unbreakable token — V_ALS.F1.MRCAPUTJERNAVSWI has nowhere to wrap — so a narrow code
+   column either breaks mid-identifier or pushes everything else out of line. A name has spaces
+   and wraps gracefully, so the name is the column that should give way.
+
+   `flex: <width> 1 0` makes grow proportional to those numbers, so the ratios hold at any
+   container width rather than only at Runa's. */
 .variable-dataitem-main__name,
 .variable-dataitem-header__name {
-  flex: 2 1 200px;
+  flex: 210 1 0;
+}
+
+.variable-dataitem-main__code,
+.variable-dataitem-header__code {
+  flex: 246 1 0;
 }
 
 .variable-dataitem-main__source,
-.variable-dataitem-header__source,
+.variable-dataitem-header__source {
+  flex: 96 1 0;
+}
+
 .variable-dataitem-main__dataCollection,
-.variable-dataitem-header__dataCollection,
+.variable-dataitem-header__dataCollection {
+  flex: 212 1 0;
+}
+
 .variable-dataitem-main__theme,
 .variable-dataitem-header__theme {
-  flex: 1 1 0;
+  flex: 160 1 0;
+}
+
+.variable-dataitem-main__dataType,
+.variable-dataitem-header__dataType {
+  flex: 114 1 0;
+}
+
+.variable-dataitem-main__status,
+.variable-dataitem-header__status {
+  flex: 98 1 0;
 }
 
 
@@ -754,4 +785,28 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 .variable-dataitem-header__button[aria-current="true"] {
   color: var(--primary-dark, #2a1fb8);
+}
+
+/* A code is an identifier, not prose: broken across two lines it stops being readable and
+   stops being copyable as one token. So the code column never wraps — it truncates with an
+   ellipsis and keeps the whole value in the DOM, where assistive technology and the title
+   tooltip still get it in full. Names, kilder and datasamlinger are words and wrap happily. */
+.variable-dataitem-main__code .variable-dataitem-main__column__text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Stiler's own visually-hidden class (16 rules site-wide). The sample carries a stand-in, or every
+   cell would show its field name again and the column header would be pointless. */
+.screenreader-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

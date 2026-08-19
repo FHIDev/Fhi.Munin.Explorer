@@ -814,13 +814,18 @@ public class VariableExplorerTest : BunitContext
 
         var info = cut.Find(".variable-dataitem-main").TextContent;
 
-        // No label prefixes: the column header names the field, and repeating it in every row is
-        // exactly what a header exists to stop. The label survives as each cell's aria-label.
+        // The column header names the field on screen, so no cell shows its own label. The label
+        // is still in the DOM for a screen reader moving down a column, inside Stiler's
+        // screenreader-only span — visible to assistive technology, not to the eye.
         Assert.Contains("V_ALS.F1.TALE", info);
         Assert.Contains("Als registeret", info);
         Assert.Contains("Inklusjon", info);
-        Assert.DoesNotContain("Kode:", info);
-        Assert.DoesNotContain("Datakilde:", info);
+
+        var cell = cut.Find(".variable-dataitem-main__code");
+
+        Assert.Equal("Kode: ", cell.QuerySelector(".screenreader-only")!.TextContent);
+        Assert.Equal("V_ALS.F1.TALE",
+                     cell.QuerySelector(".variable-dataitem-main__column__text")!.TextContent);
         // Periode is not a Runa column, so it is not a row column here either — it is in the panel.
         Assert.DoesNotContain("Periode:", info);
     }
@@ -841,6 +846,45 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
+    public void Render_Always_ThenTheKildeColumnShowsTheShortNameWithTheFullOneOnHover()
+    {
+        // Runa's column reads "ALS" and carries "Als registeret" as its title. A kilde name is long
+        // and repeats down every row of one register's variables, so the short form is what makes
+        // the column readable — and the full name has to stay reachable, not be thrown away.
+        var cut = RenderWith(new FakeClient(OnePage(new VariableSummary
+        {
+            Id = Guid.NewGuid(),
+            Code = "V_ALS.F1.TALE",
+            PreferredTerm = "1. Tale",
+            KildeName = "Als registeret",
+            KildeShortName = "ALS",
+        })));
+
+        var cell = cut.Find(".variable-dataitem-main__source");
+
+        Assert.Equal("ALS", cell.QuerySelector(".variable-dataitem-main__column__text")!.TextContent);
+        Assert.Equal("Als registeret", cell.GetAttribute("title"));
+    }
+
+    [Fact]
+    public void Render_WhenAKildeHasNoShortName_ThenTheColumnFallsBackToTheFullName()
+    {
+        // Not every kilde has a short name, and a blank cell would be worse than a long one.
+        var cut = RenderWith(new FakeClient(OnePage(new VariableSummary
+        {
+            Id = Guid.NewGuid(),
+            Code = "V_X.1",
+            PreferredTerm = "Uten kortnavn",
+            KildeName = "Et register uten kortnavn",
+        })));
+
+        var cell = cut.Find(".variable-dataitem-main__source");
+
+        Assert.Equal("Et register uten kortnavn",
+                     cell.QuerySelector(".variable-dataitem-main__column__text")!.TextContent);
+    }
+
+    [Fact]
     public void Render_WhenAValueIsMissing_ThenNotSpecifiedIsWrittenVisiblyForEveryone()
     {
         // "—" is either read as "em dash" or skipped in silence, depending on the reader's
@@ -854,7 +898,9 @@ public class VariableExplorerTest : BunitContext
         var info = cut.Find(".variable-dataitem-main");
 
         Assert.Contains("Ikke oppgitt", info.TextContent);
-        Assert.DoesNotContain("Datakilde:", info.TextContent);
+        // The field name is present for assistive technology, hidden from the eye.
+        Assert.Equal("Datakilde: ",
+                     cut.Find(".variable-dataitem-main__source .screenreader-only").TextContent);
         Assert.DoesNotContain("—", info.TextContent);
     }
 

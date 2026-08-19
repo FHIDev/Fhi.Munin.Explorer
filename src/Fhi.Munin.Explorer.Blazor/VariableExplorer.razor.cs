@@ -682,15 +682,15 @@ public partial class VariableExplorer : ComponentBase
         builder.AddAttribute(5, "class", "variable-dataitem-header");
 
         HeaderCell(builder, 100, "name", T.ColumnVariable, SortField.Default);
-        HeaderCell(builder, 200, null, T.FieldCode, sort: null);
+        HeaderCell(builder, 200, "code", T.FieldCode, sort: null);
         HeaderCell(builder, 300, "source", T.FieldSource, SortField.Kilde);
         HeaderCell(builder, 400, "dataCollection", T.FieldDataCollection, SortField.Datasamling);
         HeaderCell(builder, 500, "theme", T.FieldVariableGroup, SortField.Variabelgruppe);
-        HeaderCell(builder, 600, null, T.FieldDataType, sort: null);
+        HeaderCell(builder, 600, "dataType", T.FieldDataType, sort: null);
 
         if (ShowStatusColumn)
         {
-            HeaderCell(builder, 700, null, T.FieldStatus, sort: null);
+            HeaderCell(builder, 700, "status", T.FieldStatus, sort: null);
         }
 
         builder.CloseElement();
@@ -810,16 +810,21 @@ public partial class VariableExplorer : ComponentBase
         // WITH, so it decides what a row says; helsedata decides what a row looks like. Taking the
         // column set from the page being retired would be copying the thing we are replacing.
         //
-        // Four of the seven have a width modifier in helsedata's stylesheet. Code, datatype and
-        // status do not, so they wear the bare column class and size by content under their flex
-        // layout — using a class of theirs without a modifier, rather than inventing
-        // __code/__dataType/__status, which would be names with no rule behind them. Those three
-        // modifiers are worth asking for in the SCSS file helsedata offered.
-        Column(builder, 100, T.FieldCode, v.Code, null);
-        Column(builder, 200, T.FieldSource, v.KildeName, "source");
+        // Four of the seven modifiers exist in helsedata's stylesheet today. __code, __dataType
+        // and __status do not, and they are emitted anyway — deliberately. The arrangement with
+        // helsedata is that we supply class names and they write the rules, so these three ARE the
+        // request, and the sample host carries the widths they should be given. A column with no
+        // width rule sizes by content, which is what put Kode on two lines: a variable code is one
+        // unbreakable token and cannot give way, so everything else must.
+        Column(builder, 100, T.FieldCode, v.Code, "code");
+        // The short name, which is what Runa shows — "ALS" rather than "Als registeret" — with the
+        // full name on hover, also as Runa does. A kilde name is long and repeats down every row of
+        // a single register's variables, so the short form is what makes the column readable. It
+        // falls back to the full name where a kilde has no short one.
+        Column(builder, 200, T.FieldSource, v.KildeShortName ?? v.KildeName, "source", tooltip: v.KildeName);
         Column(builder, 300, T.FieldDataCollection, v.DatasamlingName, "dataCollection");
         Column(builder, 400, T.FieldVariableGroup, v.VariabelgruppeName, "theme");
-        Column(builder, 500, T.FieldDataType, v.DataType, null);
+        Column(builder, 500, T.FieldDataType, v.DataType, "dataType");
 
         // Status is drawn only when historical variables can be in the list at all. The API
         // computes it from GyldigTil — Active unless the version has expired — and excludes
@@ -829,7 +834,7 @@ public partial class VariableExplorer : ComponentBase
         // the catalogue, all Active.
         if (ShowStatusColumn)
         {
-            Column(builder, 600, T.FieldStatus, v.VersionStatus, null);
+            Column(builder, 600, T.FieldStatus, v.VersionStatus, "status");
         }
     };
 
@@ -842,7 +847,13 @@ public partial class VariableExplorer : ComponentBase
     /// "Inklusjon" on its own says nothing about which field it is. When the header row lands,
     /// this is the thing to reconsider.
     /// </remarks>
-    private void Column(RenderTreeBuilder builder, int seq, string label, string? value, string? key)
+    private void Column(
+        RenderTreeBuilder builder,
+        int seq,
+        string label,
+        string? value,
+        string? key,
+        string? tooltip = null)
     {
         builder.OpenElement(seq, "div");
         // The per-column modifier is what gives a cell its width. Columns helsedata has no
@@ -852,15 +863,30 @@ public partial class VariableExplorer : ComponentBase
                 ? "variable-dataitem-main__column"
                 : $"variable-dataitem-main__column variable-dataitem-main__{key}");
 
+        // The full value as a tooltip on the CELL, because a cell can be clipped — the code column
+        // truncates rather than wraps, since a broken identifier is neither readable nor copyable.
+        var hoverText = string.IsNullOrWhiteSpace(tooltip) ? value : tooltip;
+
+        if (!string.IsNullOrWhiteSpace(hoverText))
+        {
+            builder.AddAttribute(seq + 12, "title", hoverText);
+        }
+
+        // The field name, for assistive technology only. It was visible in every cell until the
+        // column header made that redundant on screen — but a screen reader moving down a column
+        // has no header to glance up at, so dropping it outright would leave "Inklusjon" meaning
+        // nothing.
+        //
+        // NOT an aria-label on the value: aria-label REPLACES the text it labels, so a reader would
+        // hear the field name instead of the value. That is what this code did for one commit.
+        // screenreader-only is Stiler's own class for exactly this, 16 rules site-wide.
+        builder.OpenElement(seq + 13, "span");
+        builder.AddAttribute(seq + 14, "class", "screenreader-only");
+        builder.AddContent(seq + 15, $"{label}: ");
+        builder.CloseElement();
+
         builder.OpenElement(seq + 2, "span");
         builder.AddAttribute(seq + 3, "class", "variable-dataitem-main__column__text");
-
-        // No label prefix. It was there because there was no header row and "Inklusjon" on its own
-        // says nothing about which field it is; the header names the columns now, and repeating the
-        // name in all twenty-five rows is what a table stops you having to do. The label survives
-        // for assistive technology as the cell's own aria-label, so a screen reader moving across a
-        // row still hears which field it is on.
-        builder.AddAttribute(seq + 4, "aria-label", label);
 
         if (string.IsNullOrWhiteSpace(value))
         {
