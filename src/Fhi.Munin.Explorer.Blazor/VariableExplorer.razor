@@ -304,11 +304,17 @@
                            never heard of renders as a raw browser default. *@
                         @if (IsSelected(v))
                         {
+                            @* aria-labelledby points at the button that opens this panel, which is
+                               the element carrying the variable's name now that no heading wraps it.
+
+                               Note where this comment sits. A Razor comment between an element's
+                               ATTRIBUTES is emitted as an attribute name, and the browser throws
+                               InvalidCharacterError from setAttribute - the panel then never opens.
+                               bUnit renders it without complaint, so the suite stays green and only
+                               a real browser shows the failure. Comments go above the element. *@
                             <div class="variable-meta variable-explorer-detail"
                                  id="@DetailId(v)"
                                  role="region"
-                                 @* Named by the button that opens it, which is the element carrying the variable's
-                                    name now that there is no heading wrapping it. *@
                                  aria-labelledby="@DetailToggleId(v)"
                                  aria-busy="@DetailBusy">
                                 @* One line, holding one message at a time: loading, or why the panel
@@ -323,25 +329,105 @@
 
                                 @if (_detail is { } detail)
                                 {
-                                    @* A definition list, because that is what this is: labels and
-                                       the values they name. The labels are the card's own words for
-                                       the same fields, so nothing is renamed by opening a row. *@
-                                    <dl class="variable-meta__grid variable-meta__grid-2">
-                                        <dt class="headline headline-xxs margin--none">@T.FieldDescription</dt>
-                                        <dd>@DetailValue(detail.Description)</dd>
+                                    @* Runa's two tabs, in helsedata's vocabulary. The split is
+                                       Runa's — what the variable IS, and what its data holds —
+                                       because Runa is what replaces helsedata's variable page, so
+                                       it decides the content. helsedata decides the dress:
+                                       variable-meta__tabs, __tab, __tab--active, __body and
+                                       Stiler's hd-button-reset are all theirs, and variable-meta
+                                       carries 204 rules.
 
-                                        <dt class="headline headline-xxs margin--none">@T.FieldPeriod</dt>
-                                        <dd>@DetailValue(Period(detail.DataFrom, detail.DataTo))</dd>
+                                       Only the selected tab's button is in the tab order — the
+                                       others carry tabindex="-1" — so the tablist costs one tab
+                                       stop rather than one per tab. Arrow keys move between them,
+                                       which is what the APG tabs pattern replaces those stops
+                                       with; without it the panel would be unreachable by keyboard
+                                       rather than merely awkward. *@
+                                    <div class="variable-meta__tabs"
+                                         role="tablist"
+                                         aria-label="@T.TabDetails"
+                                         @onkeydown="TabKey">
+                                        @foreach (var tab in Tabs)
+                                        {
+                                            <div class="@TabClass(tab)" @key="tab">
+                                                <button class="hd-button-reset"
+                                                        type="button"
+                                                        role="tab"
+                                                        id="@TabId(tab)"
+                                                        aria-selected="@(tab == _tab ? "true" : "false")"
+                                                        aria-controls="@TabPanelId(tab)"
+                                                        tabindex="@(tab == _tab ? 0 : -1)"
+                                                        @onclick="() => SelectTab(tab)">@TabLabel(tab)</button>
+                                            </div>
+                                        }
+                                    </div>
 
-                                        <dt class="headline headline-xxs margin--none">@T.FieldSource</dt>
-                                        <dd>@KildeTrail(detail)</dd>
+                                    <div class="variable-meta__body">
+                                        <div class="variable-meta__tab-content"
+                                             role="tabpanel"
+                                             id="@TabPanelId(_tab)"
+                                             aria-labelledby="@TabId(_tab)"
+                                             tabindex="0">
+                                            @if (_tab is PanelTab.Details)
+                                            {
+                                                @* Runa's groups. Egenskaper is the third and is
+                                                   deliberately absent: it is almost entirely
+                                                   enum-valued properties that the API returns as
+                                                   bare codes, so drawing it today would print
+                                                   "Opprinnelse: 5". See Fhi.Metadata-88tyl, which
+                                                   waits on Fhi.Metadata-b2lzd. *@
+                                                <h3 class="headline headline-xxs margin--none variable-explorer-group">@T.GroupIdentification</h3>
 
-                                        <dt class="headline headline-xxs margin--none">@T.FieldVariableGroup</dt>
-                                        <dd>@NameList(VariabelgruppeNames(detail))</dd>
+                                                <dl class="variable-meta__grid variable-meta__grid-1">
+                                                    <div>
+                                                        <dt class="headline headline-xxs margin--none">@T.FieldDescription</dt>
+                                                        <dd>@DetailValue(detail.Description)</dd>
+                                                    </div>
+                                                </dl>
 
-                                        <dt class="headline headline-xxs margin--none">@T.FieldKodeverk</dt>
-                                        <dd>@KodeverkList(detail.KodeverkLinks)</dd>
-                                    </dl>
+                                                <h3 class="headline headline-xxs margin--none variable-explorer-group">@T.GroupPlacement</h3>
+
+                                                @* Side by side rather than stacked, which is how
+                                                   Runa lays these three out — she uses three lanes,
+                                                   helsedata's grid is two (`1fr 1fr`, collapsing to
+                                                   one below 1280px). Two of theirs beats three of
+                                                   ours: the arrangement is Runa's idea, the
+                                                   proportions and the breakpoint are helsedata's,
+                                                   and no new class name is needed for it.
+
+                                                   Each field is wrapped in a <div>, which a grid
+                                                   needs and the HTML spec allows inside <dl>.
+                                                   Without the wrapper the grid would take dt and dd
+                                                   as separate cells and lay out label | value
+                                                   across, instead of label-over-value in a lane. *@
+                                                <dl class="variable-meta__grid">
+                                                    <div>
+                                                        <dt class="headline headline-xxs margin--none">@T.FieldKildePath</dt>
+                                                        <dd>@KildeTrail(detail)</dd>
+                                                    </div>
+
+                                                    <div>
+                                                        <dt class="headline headline-xxs margin--none">@T.FieldVariableGroup</dt>
+                                                        <dd>@NameList(VariabelgruppeNames(detail))</dd>
+                                                    </div>
+
+                                                    <div>
+                                                        <dt class="headline headline-xxs margin--none">@T.FieldDataPeriod</dt>
+                                                        <dd>@PeriodBar(detail.DataFrom, detail.DataTo)</dd>
+                                                    </div>
+                                                </dl>
+                                            }
+                                            else
+                                            {
+                                                <dl class="variable-meta__grid variable-meta__grid-1">
+                                                    <div>
+                                                        <dt class="headline headline-xxs margin--none">@T.FieldKodeverk</dt>
+                                                        <dd>@KodeverkList(detail.KodeverkLinks)</dd>
+                                                    </div>
+                                                </dl>
+                                            }
+                                        </div>
+                                    </div>
 
                                     @* The way on to the kilde and the datasamling the variable
                                        belongs to. One press further in, in the same place and by

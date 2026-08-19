@@ -2,6 +2,7 @@ using Bunit;
 using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Tests;
@@ -294,7 +295,7 @@ public class VariableExplorerTest : BunitContext
 
         var labels = SortButtons(cut).Select(k => k.TextContent).ToList();
 
-        Assert.Equal(["Navn ↑", "Datakilde", "Datasamling", "Variabelgruppe"], labels);
+        Assert.Equal(["Navn ↑", "Kilde", "Datasamling", "Variabelgruppe"], labels);
         Assert.Contains("sortert på Standard", cut.Find("p.caption[role=status]").TextContent);
     }
 
@@ -311,7 +312,7 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Theory]
-    [InlineData("Datakilde", SortField.Kilde)]
+    [InlineData("Kilde", SortField.Kilde)]
     [InlineData("Datasamling", SortField.Datasamling)]
     [InlineData("Variabelgruppe", SortField.Variabelgruppe)]
     public void Sort_WhenAnotherFieldIsChosen_ThenThatFieldIsFetchedAscending(string label, SortField expected)
@@ -352,7 +353,7 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(client);
 
         ClickSort(cut, "Navn");    // descending
-        ClickSort(cut, "Datakilde");   // a different field
+        ClickSort(cut, "Kilde");   // a different field
 
         Assert.Equal(SortField.Kilde, client.LastSort);
         Assert.Equal(SortDirection.Ascending, client.LastDirection);
@@ -381,7 +382,7 @@ public class VariableExplorerTest : BunitContext
         var client = new SlowClient();
         var cut = RenderWith(client);
 
-        ClickSort(cut, "Datakilde");
+        ClickSort(cut, "Kilde");
 
         Assert.Equal(1, client.Calls);
         Assert.Equal("Navn ↑", SortButtons(cut)[0].TextContent);
@@ -398,7 +399,7 @@ public class VariableExplorerTest : BunitContext
         var client = new FailingClient(OnePage(Variable("1. Tale", "KODE")));
         var cut = RenderWith(client);
 
-        ClickSort(cut, "Datakilde");
+        ClickSort(cut, "Kilde");
 
         Assert.Equal(SortField.Kilde, client.LastSort);
         Assert.Contains("Kunne ikke hente variabler", cut.Markup);
@@ -407,7 +408,7 @@ public class VariableExplorerTest : BunitContext
         var marked = SortButtons(cut).Where(k => k.HasAttribute("aria-current")).ToList();
         Assert.Equal("Navn ↑", Assert.Single(marked).TextContent);
 
-        ClickSort(cut, "Datakilde"); // the same retry, not its reversal
+        ClickSort(cut, "Kilde"); // the same retry, not its reversal
 
         Assert.Equal(SortField.Kilde, client.LastSort);
         Assert.Equal(SortDirection.Ascending, client.LastDirection);
@@ -425,7 +426,7 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(client, b => b.Add(c => c.Search, "tale"));
 
         cut.Find("input[type=search]").Change("noe helt annet");
-        ClickSort(cut, "Datakilde");
+        ClickSort(cut, "Kilde");
 
         Assert.Equal("tale", client.LastSearch);
         Assert.Contains("«tale»", cut.Find("p[role='status']").TextContent);
@@ -444,7 +445,7 @@ public class VariableExplorerTest : BunitContext
         reported.Clear(); // the initial load's own notification
 
         cut.Find("input[type=search]").Change("noe helt annet");
-        ClickSort(cut, "Datakilde");
+        ClickSort(cut, "Kilde");
 
         Assert.Empty(reported);
     }
@@ -457,7 +458,7 @@ public class VariableExplorerTest : BunitContext
 
         var labels = SortButtons(cut).Select(k => k.TextContent).ToList();
 
-        Assert.Equal(["Name ↑", "Data source", "Data collection", "Variable group"], labels);
+        Assert.Equal(["Name ↑", "Source", "Data collection", "Variable group"], labels);
         Assert.NotNull(cut.Find($"{SortControl} .variable-data-list__item__row--header"));
     }
 
@@ -537,13 +538,13 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Contains("sortert på Standard, stigende", cut.Find("p[role='status']").TextContent);
 
-        ClickSort(cut, "Datakilde");
+        ClickSort(cut, "Kilde");
 
-        Assert.Contains("sortert på Datakilde, stigende", cut.Find("p[role='status']").TextContent);
+        Assert.Contains("sortert på Kilde, stigende", cut.Find("p[role='status']").TextContent);
 
-        ClickSort(cut, "Datakilde");
+        ClickSort(cut, "Kilde");
 
-        Assert.Contains("sortert på Datakilde, synkende", cut.Find("p[role='status']").TextContent);
+        Assert.Contains("sortert på Kilde, synkende", cut.Find("p[role='status']").TextContent);
     }
 
     [Fact]
@@ -901,7 +902,7 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Contains("Ikke oppgitt", info.TextContent);
         // The field name is present for assistive technology, hidden from the eye.
-        Assert.Equal("Datakilde: ",
+        Assert.Equal("Kilde: ",
                      cut.Find(".variable-dataitem-main__source .screenreader-only").TextContent);
         Assert.DoesNotContain("—", info.TextContent);
     }
@@ -1261,7 +1262,7 @@ public class VariableExplorerTest : BunitContext
         var client = new PagedClient(312);
         var cut = RenderWith(client, b => b.Add(c => c.Search, "tale"));
 
-        ClickSort(cut, "Datakilde"); // something for the page turn to preserve
+        ClickSort(cut, "Kilde"); // something for the page turn to preserve
 
         Next(cut).Click();
 
@@ -2242,7 +2243,7 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(client);
 
         cut.FindAll("div.variables-pagination button")[1].Click(); // Neste
-        ClickSort(cut, "Datakilde");
+        ClickSort(cut, "Kilde");
 
         Assert.Equal(1, client.FacetCalls);
     }
@@ -2672,8 +2673,92 @@ public class VariableExplorerTest : BunitContext
         cut.Find(".variable-explorer-detail");
 
     /// <summary>The panel's values, in the order the definition list draws them.</summary>
+    // ---------------------------------------------------------------------------------
+    // The panel's tabs. Runa splits an open row into what the variable IS and what its
+    // data holds; helsedata supplies the dress. What has to hold is that the split is
+    // announced correctly and reachable from a keyboard, because a tablist that costs
+    // one tab stop is unusable without arrow keys.
+
+    private static IReadOnlyList<AngleSharp.Dom.IElement> TabButtons(
+        IRenderedComponent<VariableExplorer> cut) =>
+        cut.FindAll(".variable-meta__tabs [role=tab]");
+
+    [Fact]
+    public void Panel_WhenOpened_ThenItHasRunasTwoTabsWithDetailsSelected()
+    {
+        var cut = RenderWith(TwoRows());
+
+        Toggles(cut)[0].Click();
+
+        Assert.Equal(["Detaljer", "Data"], TabButtons(cut).Select(b => b.TextContent));
+        Assert.Equal(["true", "false"], TabButtons(cut).Select(b => b.GetAttribute("aria-selected")));
+
+        // Only the selected tab is in the tab order, which is what keeps the tablist at one stop
+        // rather than one per tab.
+        Assert.Equal(["0", "-1"], TabButtons(cut).Select(b => b.GetAttribute("tabindex")));
+
+        var panel = cut.Find("[role=tabpanel]");
+
+        Assert.Equal(TabButtons(cut)[0].Id, panel.GetAttribute("aria-labelledby"));
+        Assert.Equal(panel.Id, TabButtons(cut)[0].GetAttribute("aria-controls"));
+    }
+
+    [Fact]
+    public void Panel_WhenTheDataTabIsChosen_ThenTheKodeverkShowsAndTheMetadataDoesNot()
+    {
+        var cut = RenderWith(TwoRows());
+
+        Toggles(cut)[0].Click();
+
+        Assert.Contains("Beskrivelse", Panel(cut).TextContent);
+
+        TabButtons(cut)[1].Click();
+
+        Assert.Equal(["false", "true"], TabButtons(cut).Select(b => b.GetAttribute("aria-selected")));
+        Assert.Contains("Kodeverk", Panel(cut).TextContent);
+        Assert.DoesNotContain("Beskrivelse", Panel(cut).TextContent);
+    }
+
+    [Fact]
+    public void Panel_WhenAnArrowKeyIsPressed_ThenTheTabMoves()
+    {
+        // The APG tabs pattern. Without it a keyboard user reaches the tablist and cannot leave the
+        // first tab: the others carry tabindex="-1", so Tab does not reach them.
+        var cut = RenderWith(TwoRows());
+
+        Toggles(cut)[0].Click();
+        cut.Find(".variable-meta__tabs").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
+
+        Assert.Equal("true", TabButtons(cut)[1].GetAttribute("aria-selected"));
+
+        cut.Find(".variable-meta__tabs").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
+
+        // Wraps rather than stopping, so the movement has no dead end.
+        Assert.Equal("true", TabButtons(cut)[0].GetAttribute("aria-selected"));
+
+        cut.Find(".variable-meta__tabs").KeyDown(new KeyboardEventArgs { Key = "End" });
+
+        Assert.Equal("true", TabButtons(cut)[1].GetAttribute("aria-selected"));
+    }
+
+    [Fact]
+    public void Panel_WhenAnotherRowIsOpened_ThenItStartsOnDetailsAgain()
+    {
+        // A reader who was on Data for one variable has not asked to be on Data for the next.
+        var cut = RenderWith(TwoRows());
+
+        Toggles(cut)[0].Click();
+        TabButtons(cut)[1].Click();
+
+        Assert.Equal("true", TabButtons(cut)[1].GetAttribute("aria-selected"));
+
+        Toggles(cut)[1].Click();
+
+        Assert.Equal("true", TabButtons(cut)[0].GetAttribute("aria-selected"));
+    }
+
     private static IReadOnlyList<AngleSharp.Dom.IElement> Values(IRenderedComponent<VariableExplorer> cut) =>
-        [.. Panel(cut).QuerySelectorAll("dl > dd")];
+        [.. Panel(cut).QuerySelectorAll("dl dd")];
 
     private static DetailClient TwoRows() =>
         new DetailClient(OnePage(Row(TaleId, "1. Tale"), Row(SpyttId, "2. Spyttsekresjon")))
@@ -2713,25 +2798,32 @@ public class VariableExplorerTest : BunitContext
 
         Toggles(cut)[0].Click();
 
-        Assert.Equal(["Beskrivelse", "Periode", "Datakilde", "Variabelgruppe", "Kodeverk"],
-                     Panel(cut).QuerySelectorAll("dl > dt").Select(t => t.TextContent));
+        Assert.Equal(["Beskrivelse", "Kildesti", "Variabelgruppe", "Dataperiode"],
+                     Panel(cut).QuerySelectorAll("dl dt").Select(t => t.TextContent));
 
         var values = Values(cut);
 
         Assert.Equal("Angir pasientens grad av utfall på «1. Tale».", values[0].TextContent);
-        Assert.Equal("2010–2025", values[1].TextContent);
+        // The period reads as month and year now, and carries a bar beneath it. Runa's format.
+        Assert.Contains("2010", values[3].TextContent);
+        Assert.Contains("2025", values[3].TextContent);
+        Assert.NotNull(values[3].QuerySelector(".variable-explorer-period__fill"));
 
         // Widest first, and the kilde's short name alongside its full one — the card has room for
         // neither the kildetype above it nor the abbreviation the register is known by.
         Assert.Equal(["Nasjonalt medisinsk kvalitetsregister", "Als registeret (ALS)", "Inklusjon"],
-                     values[2].QuerySelectorAll("ol > li").Select(l => l.TextContent));
+                     values[1].QuerySelectorAll("ol > li").Select(l => l.TextContent));
 
-        Assert.Equal(["Funksjonsscore"], values[3].QuerySelectorAll("li").Select(l => l.TextContent));
+        Assert.Equal(["Funksjonsscore"], values[2].QuerySelectorAll("li").Select(l => l.TextContent));
 
         // Each kodeverk says which kind it is: "2336" alone does not distinguish a kildekodeverk
         // the register defined from a national classification.
+        // Kodeverk moved to the Data tab — Runa splits the panel into what the variable IS and
+        // what its data holds, and the kodeverk is the latter.
+        cut.Find("[role=tab][aria-selected=false]").Click();
+
         Assert.Equal(["Kildekodeverk: 2336", "Administrativt kodeverk: ICD-10"],
-                     values[4].QuerySelectorAll("li").Select(l => l.TextContent));
+                     Values(cut)[0].QuerySelectorAll("li").Select(l => l.TextContent));
     }
 
     [Fact]
@@ -3149,7 +3241,7 @@ public class VariableExplorerTest : BunitContext
         Toggles(cut)[0].Click();
 
         Assert.Equal(["Funksjonsscore", "ALSFRS-R", "Pustefunksjon"],
-                     Values(cut)[3].QuerySelectorAll("li").Select(l => l.TextContent));
+                     Values(cut)[2].QuerySelectorAll("li").Select(l => l.TextContent));
     }
 
     [Fact]
@@ -3168,7 +3260,7 @@ public class VariableExplorerTest : BunitContext
         Toggles(cut)[0].Click();
 
         Assert.Equal(["Funksjonsscore"],
-                     Values(cut)[3].QuerySelectorAll("li").Select(l => l.TextContent));
+                     Values(cut)[2].QuerySelectorAll("li").Select(l => l.TextContent));
     }
 
     [Fact]
@@ -3183,7 +3275,7 @@ public class VariableExplorerTest : BunitContext
         Toggles(cut)[0].Click();
 
         Assert.Equal(["Nasjonalt medisinsk kvalitetsregister", "Als registeret", "Inklusjon"],
-                     Values(cut)[2].QuerySelectorAll("ol > li").Select(l => l.TextContent));
+                     Values(cut)[1].QuerySelectorAll("ol > li").Select(l => l.TextContent));
     }
 
     [Fact]
@@ -3198,7 +3290,7 @@ public class VariableExplorerTest : BunitContext
         Toggles(cut)[0].Click();
 
         Assert.Equal(["Nasjonalt medisinsk kvalitetsregister", "Als registeret", "Inklusjon"],
-                     Values(cut)[2].QuerySelectorAll("ol > li").Select(l => l.TextContent));
+                     Values(cut)[1].QuerySelectorAll("ol > li").Select(l => l.TextContent));
     }
 
     [Fact]
@@ -3295,10 +3387,10 @@ public class VariableExplorerTest : BunitContext
 
         Toggles(cut)[0].Click();
 
-        Assert.Equal(["Description", "Period", "Data source", "Variable group", "Code systems"],
-                     Panel(cut).QuerySelectorAll("dl > dt").Select(t => t.TextContent));
+        Assert.Equal(["Description", "Source path", "Variable group", "Data period"],
+                     Panel(cut).QuerySelectorAll("dl dt").Select(t => t.TextContent));
 
-        var trail = Values(cut)[2].QuerySelectorAll("ol > li");
+        var trail = Values(cut)[1].QuerySelectorAll("ol > li");
 
         Assert.Equal("National medical quality registry", trail[0].TextContent);
         Assert.False(trail[0].HasAttribute("lang"));
@@ -3334,6 +3426,14 @@ public class VariableExplorerTest : BunitContext
             "variable-explorer-container",  // theirs, variables.css (10 rules)
             "variable-explorer-results",    // theirs, variables.css (6 rules)
             "variable-explorer-detail",     // ours, a handle
+            "variable-explorer-group",      // ours — helsedata's panel is flat, so it has no
+                                            // group heading to borrow a name from
+            "variable-explorer-crumb",      // ours — the kilde step, which Runa makes a link and
+                                            // we make the control that discloses the kilde
+            "variable-explorer-period",     // ours — neither explorer's stylesheet has a period bar
+            "variable-explorer-period__range",
+            "variable-explorer-period__track",
+            "variable-explorer-period__fill",
         ], invented);
 
         var panel = Panel(cut);
@@ -3342,10 +3442,16 @@ public class VariableExplorerTest : BunitContext
         // helsedata's grid is class-based (`.variable-meta__grid { display: grid }`, with only a
         // `p { margin: 0 }` rule touching an element name), so their layout applies to dt/dd just
         // as it applies to their own spans. Semantics kept, styling borrowed.
+        // Both of helsedata's grid variants are in use: -1 for a group with one field, -2 for the
+        // ones with several. Runa's panel does the same.
         Assert.All(panel.QuerySelectorAll("dl"),
-                   e => Assert.Equal("variable-meta__grid variable-meta__grid-2", e.ClassName));
+                   e => Assert.Contains("variable-meta__grid", e.ClassName!));
+        // The multi-field group wears the plain grid, which is helsedata's two-lane one; a group
+        // with a single field wears -1, their single-column variant. Both are theirs.
+        Assert.All(panel.QuerySelectorAll("dl"),
+                   e => Assert.Matches(@"^variable-meta__grid( variable-meta__grid-1)?$", e.ClassName!));
         Assert.All(panel.QuerySelectorAll("ol, ul"), e => Assert.False(e.HasAttribute("class")));
-        Assert.All(panel.QuerySelectorAll("dl > dt"),
+        Assert.All(panel.QuerySelectorAll("dl dt"),
                    e => Assert.Equal("headline headline-xxs margin--none", e.ClassName));
         Assert.Equal("variable-dataitem-main__name", Toggles(cut)[0].ClassName);
     }
@@ -3451,10 +3557,10 @@ public class VariableExplorerTest : BunitContext
         cut.Find(".variable-explorer-source");
 
     private static IReadOnlyList<string> SourceLabels(IRenderedComponent<VariableExplorer> cut) =>
-        [.. SourcePanel(cut).QuerySelectorAll("dl > dt").Select(t => t.TextContent)];
+        [.. SourcePanel(cut).QuerySelectorAll("dl dt").Select(t => t.TextContent)];
 
     private static IReadOnlyList<string> SourceValues(IRenderedComponent<VariableExplorer> cut) =>
-        [.. SourcePanel(cut).QuerySelectorAll("dl > dd").Select(d => d.TextContent)];
+        [.. SourcePanel(cut).QuerySelectorAll("dl dd").Select(d => d.TextContent)];
 
     /// <summary>Open the first row's detail panel and then one of its two owners.</summary>
     private IRenderedComponent<VariableExplorer> OpenOwner(DetailClient client, int index)
@@ -3528,7 +3634,7 @@ public class VariableExplorerTest : BunitContext
         Assert.Equal(InklusjonId, client.LastSourceId);
 
         Assert.Equal(
-            ["Beskrivelse", "Datakilde", "Inklusjons- og eksklusjonskriterier", "Dataansvarlig",
+            ["Beskrivelse", "Kilde", "Inklusjons- og eksklusjonskriterier", "Dataansvarlig",
              "Databehandler", "Grad av personidentifikasjon", "Lovverk", "Gyldighet", "Frekvens",
              "Telleenhet", "Antall variabler"],
             SourceLabels(cut));
@@ -3750,7 +3856,7 @@ public class VariableExplorerTest : BunitContext
              "Number of data collections", "Number of variables"],
             SourceLabels(cut));
 
-        var values = SourcePanel(cut).QuerySelectorAll("dl > dd");
+        var values = SourcePanel(cut).QuerySelectorAll("dl dd");
 
         // Our prose, so no lang of its own; the register's own name keeps one.
         Assert.Equal("National medical quality registry", values[1].TextContent);
@@ -3777,13 +3883,16 @@ public class VariableExplorerTest : BunitContext
             ["variable-explorer", "variable-explorer-filters",
              "variable-explorer-container",   // theirs, variables.css
              "variable-explorer-results",     // theirs, variables.css
-             "variable-explorer-detail", "variable-explorer-source"],
+             "variable-explorer-detail", "variable-explorer-group", "variable-explorer-crumb",
+             "variable-explorer-period",
+             "variable-explorer-period__range", "variable-explorer-period__track",
+             "variable-explorer-period__fill", "variable-explorer-source"],
             invented);
 
         var panel = SourcePanel(cut);
 
         Assert.All(panel.QuerySelectorAll("dl"), e => Assert.False(e.HasAttribute("class")));
-        Assert.All(panel.QuerySelectorAll("dl > dt"), e => Assert.Equal("form-element__label", e.ClassName));
+        Assert.All(panel.QuerySelectorAll("dl dt"), e => Assert.Equal("form-element__label", e.ClassName));
         Assert.Contains("hd-button-square", SourceToggles(cut)[0].ClassName!);
     }
 
