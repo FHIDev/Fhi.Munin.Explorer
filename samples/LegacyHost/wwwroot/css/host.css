@@ -632,3 +632,45 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .variable-data-list__item--expanded {
   background: var(--grey10);
 }
+
+/* ---- the opened panel ----
+
+   variable-meta is the biggest single thing we borrow: 204 rules on their side, 176 selectors
+   under that prefix. This is the arrangement only.
+
+   The definition list keeps being a definition list. Their grid is class-based — the whole of
+   `.variable-meta__grid` is `display: grid; gap: 40px 24px`, and the only rule in the family that
+   names an element is `p { margin: 0 }` — so it lays out dt/dd exactly as it lays out their own
+   spans. We get their layout without giving up the semantics of labels and the values they name.
+
+   headline-s / headline-xxs / margin--none are Stiler's own headline scale, from the site-wide
+   styles.css, and are what their h4 field labels wear. The sample carries stand-ins. */
+
+.headline-s { font: normal 600 1.25rem/150% var(--font); }
+.headline-xxs { font: normal 600 0.875rem/150% var(--font); }
+.margin--none { margin: 0; }
+.margin--bottom { margin: 0 0 12px; }
+
+.variable-meta__grid {
+  display: grid;
+  gap: 16px 24px;
+}
+
+.variable-meta__grid-1,
+.variable-meta__grid-2 {
+  grid-template-columns: auto;
+}
+
+.variable-meta__grid p {
+  margin: 0;
+}
+
+/* dt/dd inside the grid: the label sits on the value rather than beside it, which is what their
+   h4-over-value blocks do. */
+.variable-meta dl > dt {
+  color: var(--grey70, #5a5f78);
+}
+
+.variable-meta dl > dd {
+  margin: 2px 0 0;
+}

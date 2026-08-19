@@ -315,7 +315,7 @@
 
                            `variable-explorer-detail` is a handle, like `variable-explorer` and
                            `variable-explorer-filters`: nothing in this package or in Stiler defines
-                           a rule for it. What dresses the panel is base styling for <dl>, <ol> and
+                           a rule for it. What dresses the panel is base styling for <dl class="variable-meta__grid variable-meta__grid-2">, <ol> and
                            <ul>, for the reason the filter panel is built from <details> and <ul> —
                            Stiler has no definition list, no breadcrumb and no key/value block whose
                            names can be read back off its compiled stylesheet, and a name it has
@@ -342,20 +342,20 @@
                                     @* A definition list, because that is what this is: labels and
                                        the values they name. The labels are the card's own words for
                                        the same fields, so nothing is renamed by opening a row. *@
-                                    <dl>
-                                        <dt class="form-element__label">@T.FieldDescription</dt>
+                                    <dl class="variable-meta__grid variable-meta__grid-2">
+                                        <dt class="headline headline-xxs margin--none">@T.FieldDescription</dt>
                                         <dd>@DetailValue(detail.Description)</dd>
 
-                                        <dt class="form-element__label">@T.FieldPeriod</dt>
+                                        <dt class="headline headline-xxs margin--none">@T.FieldPeriod</dt>
                                         <dd>@DetailValue(Period(detail.DataFrom, detail.DataTo))</dd>
 
-                                        <dt class="form-element__label">@T.FieldSource</dt>
+                                        <dt class="headline headline-xxs margin--none">@T.FieldSource</dt>
                                         <dd>@KildeTrail(detail)</dd>
 
-                                        <dt class="form-element__label">@T.FieldVariableGroup</dt>
+                                        <dt class="headline headline-xxs margin--none">@T.FieldVariableGroup</dt>
                                         <dd>@NameList(VariabelgruppeNames(detail))</dd>
 
-                                        <dt class="form-element__label">@T.FieldKodeverk</dt>
+                                        <dt class="headline headline-xxs margin--none">@T.FieldKodeverk</dt>
                                         <dd>@KodeverkList(detail.KodeverkLinks)</dd>
                                     </dl>
 
@@ -397,7 +397,7 @@
                                        `variable-explorer-source` is a handle, the fourth of ours
                                        in the DOM and the same kind of name as the three before it:
                                        nothing in this package or in Stiler defines a rule for it.
-                                       What dresses the panel is base styling for <dl>, exactly as
+                                       What dresses the panel is base styling for <dl class="variable-meta__grid variable-meta__grid-2">, exactly as
                                        for the variable's own panel above. *@
                                     @if (_sourceKind is { } openKind)
                                     {

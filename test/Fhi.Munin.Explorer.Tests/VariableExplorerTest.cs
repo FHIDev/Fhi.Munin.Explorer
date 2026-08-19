@@ -3270,8 +3270,15 @@ public class VariableExplorerTest : BunitContext
 
         var panel = Panel(cut);
 
-        Assert.All(panel.QuerySelectorAll("dl, ol, ul"), e => Assert.False(e.HasAttribute("class")));
-        Assert.All(panel.QuerySelectorAll("dl > dt"), e => Assert.Equal("form-element__label", e.ClassName));
+        // The definition list stays a definition list — it is labels and the values they name, and
+        // helsedata's grid is class-based (`.variable-meta__grid { display: grid }`, with only a
+        // `p { margin: 0 }` rule touching an element name), so their layout applies to dt/dd just
+        // as it applies to their own spans. Semantics kept, styling borrowed.
+        Assert.All(panel.QuerySelectorAll("dl"),
+                   e => Assert.Equal("variable-meta__grid variable-meta__grid-2", e.ClassName));
+        Assert.All(panel.QuerySelectorAll("ol, ul"), e => Assert.False(e.HasAttribute("class")));
+        Assert.All(panel.QuerySelectorAll("dl > dt"),
+                   e => Assert.Equal("headline headline-xxs margin--none", e.ClassName));
         Assert.Equal("variable-dataitem-main__name", Toggles(cut)[0].ClassName);
     }
 
