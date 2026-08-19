@@ -604,26 +604,194 @@ public partial class VariableExplorer : ComponentBase
     };
 
     /// <summary>
-    /// A result card's heading — the variable's display name, at <see cref="RowLevel"/>.
+    /// The first column: the variable's name, which is also the control that opens its panel.
     /// </summary>
     /// <remarks>
-    /// Giving every result a real heading is what lets a screen-reader user move between
-    /// results with the heading rotor, which the table this replaced offered no equivalent of.
-    /// The size comes from <c>datasourcecard__heading</c>, so it stays card-sized whatever
-    /// level the element ends up being.
+    /// No heading element. An earlier version wrapped this in one so results could be walked with
+    /// a screen reader's heading rotor, but helsedata's row is <c>display: flex</c> and
+    /// <c>variable-dataitem-main__name</c> sizes the flex ITEM — a heading in between becomes the
+    /// item and the name column falls out of line with its header. Neither reference wraps it:
+    /// helsedata puts the button straight in the row, and Runa's rows are table rows. The results
+    /// are a list of list items, each with a named disclosure carrying <c>aria-expanded</c>.
     /// </remarks>
     private RenderFragment RowHeading(VariableSummary v) => builder =>
     {
-        builder.OpenElement(0, $"h{RowLevel}");
-        builder.AddAttribute(1, "class", "datasourcecard__heading");
-        // Named so the row's detail panel and the button that opens it can both point at it
-        // rather than restating the variable's name in an aria-label of their own — which would
-        // put Norwegian text inside a string the surrounding UI language cannot mark.
-        builder.AddAttribute(2, "id", RowHeadingId(v));
-        builder.AddAttribute(3, "lang", "no");
-        builder.AddContent(4, v.PreferredTerm);
+        // No heading wrapper. An earlier version wrapped this button in an h-element so results
+        // could be walked with a screen reader's heading rotor, having checked that none of
+        // helsedata's selectors for these names uses a child combinator — descendant styling
+        // survives an extra element in between. But flex sizing does not: their row is
+        // `display: flex` and `.variable-dataitem-main__name` sizes the NAME CELL, so a heading
+        // in between becomes the flex item and the column collapses to its content, throwing every
+        // row out of line with the header. Neither reference wraps it — helsedata puts the button
+        // straight in the row, and Runa's rows are table rows with no per-row heading either.
+        //
+        // The rows are a list of list items, each with a named disclosure carrying aria-expanded,
+        // which is the pattern this is supposed to be.
+
+        // The name IS the disclosure — helsedata's own pattern, and the APG accordion pattern.
+        // It replaces a separate "Vis detaljer" button that sat under the metadata line, and with
+        // it the dead affordance: .datasourcecard carries a pointer cursor because on their
+        // datakilde page the whole card is a link, which ours never was.
+        builder.OpenElement(2, "button");
+        builder.AddAttribute(3, "class", "variable-dataitem-main__name");
+        builder.AddAttribute(4, "type", "button");
+        builder.AddAttribute(5, "id", DetailToggleId(v));
+        builder.AddAttribute(6, "aria-expanded", DetailExpanded(v));
+        builder.AddAttribute(7, "aria-controls", DetailControls(v));
+        // Never disabled, including while its own fetch runs: pressing it again is how the panel
+        // is closed, and disabling the element that has focus drops focus to <body>.
+        builder.AddAttribute(8, "onclick", EventCallback.Factory.Create(this, () => ToggleDetailAsync(v)));
+
+        builder.OpenElement(9, "span");
+        builder.AddAttribute(10, "class", "variable-dataitem-main__column__text");
+        // Munin's variable names are Norwegian whatever language the surrounding UI is in.
+        builder.AddAttribute(11, "lang", "no");
+        builder.AddContent(12, v.PreferredTerm);
+        builder.CloseElement();
+
         builder.CloseElement();
     };
+
+    /// <summary>
+    /// The column header row, in helsedata's own shape: a row wearing the <c>--header</c> modifier,
+    /// with one <c>sortable-header</c> cell per column.
+    /// </summary>
+    /// <remarks>
+    /// This replaces the "Sorter etter" fieldset. The fieldset existed because there was no header
+    /// to put the ordering in; now there is, and leaving both would give the same choice two
+    /// controls.
+    /// <para>
+    /// Four of the five columns map to a real <see cref="SortField"/>. Periode has none, so its
+    /// header is plain text rather than a button that would promise an ordering the API does not
+    /// offer. The variable column maps to <see cref="SortField.Default"/>, which is honest rather
+    /// than convenient: that member is documented as the API's own order and its wire token is
+    /// literally <c>name</c>.
+    /// </para>
+    /// <para>
+    /// aria-current, not aria-pressed, for the same reason the old buttons used it: a pressed
+    /// toggle promises that pressing again releases it, and this one flips the direction instead.
+    /// </para>
+    /// </remarks>
+    private RenderFragment ResultHeader() => builder =>
+    {
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "class", "variable-data-list__header");
+
+        builder.OpenElement(2, "div");
+        builder.AddAttribute(3, "class", "variable-data-list__item__row variable-data-list__item__row--header");
+
+        builder.OpenElement(4, "div");
+        builder.AddAttribute(5, "class", "variable-dataitem-header");
+
+        HeaderCell(builder, 100, "name", T.ColumnVariable, SortField.Default);
+        HeaderCell(builder, 200, "code", T.FieldCode, sort: null);
+        HeaderCell(builder, 300, "source", T.FieldSource, SortField.Kilde);
+        HeaderCell(builder, 400, "dataCollection", T.FieldDataCollection, SortField.Datasamling);
+        HeaderCell(builder, 500, "theme", T.FieldVariableGroup, SortField.Variabelgruppe);
+        HeaderCell(builder, 600, "dataType", T.FieldDataType, sort: null);
+
+        if (ShowStatusColumn)
+        {
+            HeaderCell(builder, 700, "status", T.FieldStatus, sort: null);
+        }
+
+        builder.CloseElement();
+        builder.CloseElement();
+        builder.CloseElement();
+    };
+
+    /// <summary>One header cell, sortable when the column maps to a field the API can order by.</summary>
+    private void HeaderCell(RenderTreeBuilder builder, int seq, string? key, string label, SortField? sort)
+    {
+        builder.OpenElement(seq, "div");
+        builder.AddAttribute(seq + 1, "class",
+            key is null ? "sortable-header" : $"sortable-header variable-dataitem-header__{key}");
+
+        if (sort is not { } field)
+        {
+            builder.AddContent(seq + 2, label);
+            builder.CloseElement();
+            return;
+        }
+
+        // aria-sort on the cell rather than the button: it describes the COLUMN's state, and it is
+        // what a screen reader reads when moving across the header. Only the active column carries
+        // it — "none" on every other column is noise a reader has to listen through.
+        if (IsActiveSort(field))
+        {
+            builder.AddAttribute(seq + 2, "aria-sort", AriaSort());
+        }
+
+        builder.OpenElement(seq + 3, "button");
+        // hd-button-reset is Stiler's own "this is a button but draw nothing" class, which is what
+        // their header buttons wear — 12 rules, in the site-wide stylesheet.
+        builder.AddAttribute(seq + 4, "class", "hd-button-reset variable-dataitem-header__button");
+        builder.AddAttribute(seq + 5, "type", "button");
+        builder.AddAttribute(seq + 6, "aria-current", AriaCurrent(field));
+        builder.AddAttribute(seq + 7, "onclick", EventCallback.Factory.Create(this, () => SortAsync(field)));
+
+        // The button says what the COLUMN is, not what the ordering is. It used to render the sort
+        // field's own label, so the first column read "Standard (stigende)" where it should read
+        // "Navn" — the name of the thing in the column. The ordering is shown by the arrow beside
+        // it and announced by aria-sort above, which is how a column header carries both.
+        builder.AddContent(seq + 8, label);
+
+        if (IsActiveSort(field))
+        {
+            builder.OpenElement(seq + 9, "span");
+            builder.AddAttribute(seq + 10, "aria-hidden", "true");
+            builder.AddContent(seq + 11, Ascending ? " \u2191" : " \u2193");
+            builder.CloseElement();
+        }
+
+        builder.CloseElement();
+
+        builder.CloseElement();
+    }
+
+    /// <summary>
+    /// The chevron helsedata draws at the head of every row, pointing down once the row is open.
+    /// </summary>
+    /// <remarks>
+    /// Their icon font, from the site-wide stylesheet: <c>.icon</c> alone carries 466 rules across
+    /// five bundles. Purely decorative — the button beside it already announces the state through
+    /// <c>aria-expanded</c>, so a second announcement here would be noise.
+    /// </remarks>
+    private RenderFragment RowChevron(VariableSummary v) => builder =>
+    {
+        builder.OpenElement(0, "span");
+        builder.AddAttribute(1, "class",
+            IsSelected(v)
+                ? "icon icon-keyboard-arrow-down variable-dataitem-main__expand-icon"
+                : "icon icon-keyboard-arrow-right variable-dataitem-main__expand-icon");
+        builder.AddAttribute(2, "aria-hidden", "true");
+        builder.CloseElement();
+    };
+
+    /// <summary>Whether this field is the one the list is currently ordered by.</summary>
+    private bool IsActiveSort(SortField field) => _sort == field;
+
+    /// <summary>The ordering, in the words aria-sort uses.</summary>
+    private string AriaSort() => Ascending ? "ascending" : "descending";
+
+    /// <summary>Whether the current ordering runs ascending.</summary>
+    private bool Ascending => _direction == SortDirection.Ascending;
+
+    /// <summary>
+    /// Whether the Status column is worth drawing — that is, whether a row could say anything
+    /// other than "Active".
+    /// </summary>
+    /// <remarks>
+    /// The API computes VersjonStatus from GyldigTil and filters expired versions out unless
+    /// IncludeHistorical is asked for, so in the default view the column is a constant.
+    /// </remarks>
+    private bool ShowStatusColumn => _filter.IncludeHistorical;
+
+    /// <summary>The list item's class, carrying helsedata's expanded state.</summary>
+    private string RowItemClass(VariableSummary v) =>
+        IsSelected(v)
+            ? "variable-data-list__item variable-data-list__item--expanded"
+            : "variable-data-list__item";
 
     /// <summary>
     /// The card's metadata line: code, source, data collection and period, in Stiler's
@@ -637,18 +805,111 @@ public partial class VariableExplorer : ComponentBase
     /// </remarks>
     private RenderFragment InfoLine(VariableSummary v) => builder =>
     {
-        builder.OpenElement(0, "span");
-        builder.AddAttribute(1, "class", "datasourcecard__info");
+        // One div per column, each holding a span, which is exactly helsedata's shape. Their grid
+        // is on .variable-dataitem-main, so the columns line up only if they are its direct
+        // children — the row's own layout comes from CSS we do not own.
+        // Runa's columns, in Runa's order. Runa is what this replaces helsedata's variable page
+        // WITH, so it decides what a row says; helsedata decides what a row looks like. Taking the
+        // column set from the page being retired would be copying the thing we are replacing.
+        //
+        // Four of the seven modifiers exist in helsedata's stylesheet today. __code, __dataType
+        // and __status do not, and they are emitted anyway — deliberately. The arrangement with
+        // helsedata is that we supply class names and they write the rules, so these three ARE the
+        // request, and the sample host carries the widths they should be given. A column with no
+        // width rule sizes by content, which is what put Kode on two lines: a variable code is one
+        // unbreakable token and cannot give way, so everything else must.
+        Column(builder, 100, T.FieldCode, v.Code, "code");
+        // The short name, which is what Runa shows — "ALS" rather than "Als registeret" — with the
+        // full name on hover, also as Runa does. A kilde name is long and repeats down every row of
+        // a single register's variables, so the short form is what makes the column readable. It
+        // falls back to the full name where a kilde has no short one.
+        Column(builder, 200, T.FieldSource, v.KildeShortName ?? v.KildeName, "source", tooltip: v.KildeName);
+        Column(builder, 300, T.FieldDataCollection, v.DatasamlingName, "dataCollection");
+        Column(builder, 400, T.FieldVariableGroup, v.VariabelgruppeName, "theme");
+        Column(builder, 500, T.FieldDataType, v.DataType, "dataType");
 
-        // Fixed, spread-out sequence numbers: each Field call writes its own contiguous block,
-        // so the renderer's diff sees a stable tree across renders.
-        Field(builder, 100, T.FieldCode, v.Code, first: true);
-        Field(builder, 200, T.FieldSource, v.KildeName, first: false);
-        Field(builder, 300, T.FieldDataCollection, v.DatasamlingName, first: false);
-        Field(builder, 400, T.FieldPeriod, Period(v), first: false);
+        // Status is drawn only when historical variables can be in the list at all. The API
+        // computes it from GyldigTil — Active unless the version has expired — and excludes
+        // expired versions unless IncludeHistorical is set. In the default view every row is
+        // therefore Active, and a column that says the same word on every row is not a column,
+        // it is furniture. Verified against the live API: 100 rows sampled across five pages of
+        // the catalogue, all Active.
+        if (ShowStatusColumn)
+        {
+            Column(builder, 600, T.FieldStatus, v.VersionStatus, "status");
+        }
+    };
+
+    /// <summary>
+    /// One column of a result row, in helsedata's <c>variable-dataitem-main__column</c> shape.
+    /// </summary>
+    /// <remarks>
+    /// The field name is not shown in the cell — the column header names it. It is still emitted
+    /// for assistive technology, because a screen reader moving down a column has no header to
+    /// glance up at.
+    /// </remarks>
+    private void Column(
+        RenderTreeBuilder builder,
+        int seq,
+        string label,
+        string? value,
+        string? key,
+        string? tooltip = null)
+    {
+        // Sequence numbers ascend without gaps or repeats through every path below. Blazor uses
+        // them positionally to diff one render against the next, so a number that goes backwards
+        // makes the renderer compare the wrong nodes — an earlier version emitted seq+15 before
+        // seq+2 and would have diffed the label span against the value span.
+        builder.OpenElement(seq, "div");
+        builder.AddAttribute(seq + 1, "class",
+            key is null
+                ? "variable-dataitem-main__column"
+                : $"variable-dataitem-main__column variable-dataitem-main__{key}");
+
+        // The full value as a tooltip on the CELL, because a cell can be clipped — the code column
+        // truncates rather than wraps, since a broken identifier is neither readable nor copyable.
+        // A column may show a shorter form than the value it holds: kilde shows the short name.
+        var hoverText = string.IsNullOrWhiteSpace(tooltip) ? value : tooltip;
+
+        if (!string.IsNullOrWhiteSpace(hoverText))
+        {
+            builder.AddAttribute(seq + 2, "title", hoverText);
+        }
+
+        // The field name, for assistive technology only. The column header names it on screen, so
+        // showing it in every cell as well would undo what the header is for — but a screen reader
+        // moving down a column has no header to glance up at, so the name has to travel with the
+        // value or "Inklusjon" means nothing.
+        //
+        // NOT an aria-label on the value: aria-label REPLACES the text it labels, so a reader would
+        // hear the field name instead of the value. screenreader-only is Stiler's own class for
+        // this, 16 rules in the site-wide stylesheet.
+        builder.OpenElement(seq + 3, "span");
+        builder.AddAttribute(seq + 4, "class", "screenreader-only");
+        builder.AddContent(seq + 5, $"{label}: ");
+        builder.CloseElement();
+
+        builder.OpenElement(seq + 6, "span");
+        builder.AddAttribute(seq + 7, "class", "variable-dataitem-main__column__text");
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            builder.AddContent(seq + 8, T.NotSpecified);
+        }
+        else
+        {
+            // The label follows Language; the value does not. Munin's metadata is Norwegian
+            // whatever language the surrounding UI is in, and an English speech synthesiser
+            // reading Norwegian variable names is unintelligible (WCAG 3.1.2).
+            builder.OpenElement(seq + 9, "span");
+            builder.AddAttribute(seq + 10, "lang", "no");
+            builder.AddContent(seq + 11, value);
+            builder.CloseElement();
+        }
 
         builder.CloseElement();
-    };
+        builder.CloseElement();
+    }
 
     /// <summary>
     /// One labelled item in the metadata line.
@@ -664,7 +925,7 @@ public partial class VariableExplorer : ComponentBase
     private void Field(RenderTreeBuilder builder, int seq, string label, string? value, bool first)
     {
         builder.OpenElement(seq, "span");
-        builder.AddAttribute(seq + 1, "class", "datasourcecard__info--text");
+        builder.AddAttribute(seq + 1, "class", "variable-dataitem-main__column__text");
 
         if (!first)
         {
@@ -1039,7 +1300,7 @@ public partial class VariableExplorer : ComponentBase
         var name = kind == SourceKind.Kilde ? detail.KildeName : detail.DatasamlingName;
 
         builder.OpenElement(0, $"h{SourceLevel}");
-        builder.AddAttribute(1, "class", "datasourcecard__heading");
+        builder.AddAttribute(1, "class", "headline headline-s margin--bottom");
         builder.AddAttribute(2, "id", SourceHeadingId);
         builder.AddAttribute(3, "lang", "no");
         builder.AddContent(4, Trimmed(name) ?? SourceFallbackName(kind));
@@ -2550,6 +2811,11 @@ public partial class VariableExplorer : ComponentBase
         string Error,
         string NotSpecified,
         string SortDefault,
+        // The first column's header. Runa calls it Navn; helsedata calls the same column
+        // Variabel. Runa decides what the component says.
+        string ColumnVariable,
+        string FieldDataType,
+        string FieldStatus,
         string FieldCode,
         string FieldSource,
         string FieldDataCollection,
@@ -2750,6 +3016,9 @@ public partial class VariableExplorer : ComponentBase
             Error: "Kunne ikke hente variabler nå. Prøv igjen om litt.",
             NotSpecified: "Ikke oppgitt",
             SortDefault: "Standard",
+            ColumnVariable: "Navn",
+            FieldDataType: "Datatype",
+            FieldStatus: "Status",
             FieldCode: "Kode",
             FieldSource: "Datakilde",
             FieldDataCollection: "Datasamling",
@@ -2874,6 +3143,9 @@ public partial class VariableExplorer : ComponentBase
             Error: "Could not load variables right now. Please try again shortly.",
             NotSpecified: "Not specified",
             SortDefault: "Default",
+            ColumnVariable: "Name",
+            FieldDataType: "Data type",
+            FieldStatus: "Status",
             FieldCode: "Code",
             FieldSource: "Data source",
             FieldDataCollection: "Data collection",

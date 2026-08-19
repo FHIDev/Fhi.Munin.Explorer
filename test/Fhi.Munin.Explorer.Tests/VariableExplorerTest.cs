@@ -112,7 +112,7 @@ public class VariableExplorerTest : BunitContext
 
         var cut = RenderWith(client);
 
-        Assert.Equal(2, cut.FindAll("ul.datasourcecard-list > li").Count);
+        Assert.Equal(2, cut.FindAll("ul.variable-data-list > li").Count);
         Assert.Contains("1. Tale", cut.Markup);
         Assert.Contains("V_ALS.F1.ALSFRSR1TALE", cut.Markup);
         Assert.Contains("2 variabler", cut.Markup);
@@ -123,7 +123,7 @@ public class VariableExplorerTest : BunitContext
     {
         var cut = RenderWith(new FakeClient(OnePage()));
 
-        Assert.Empty(cut.FindAll("ul.datasourcecard-list > li"));
+        Assert.Empty(cut.FindAll("ul.variable-data-list > li"));
         Assert.Contains("Ingen variabler passet søket", cut.Markup);
     }
 
@@ -133,7 +133,7 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(new FailingClient());
 
         Assert.Contains("Kunne ikke hente variabler", cut.Markup);
-        Assert.Empty(cut.FindAll("ul.datasourcecard-list > li"));
+        Assert.Empty(cut.FindAll("ul.variable-data-list > li"));
     }
 
     [Fact]
@@ -252,7 +252,8 @@ public class VariableExplorerTest : BunitContext
     /// fieldset with its border off — so a selector for one has to say it is not the other. Without
     /// the exclusion these tests would silently start asserting about the filters.
     /// </remarks>
-    private const string SortControl = "fieldset.form-fieldset:not(.variable-explorer-filters)";
+    // The ordering lives in the column header now, not in a fieldset of its own.
+    private const string SortControl = ".variable-data-list__header";
 
     /// <summary>The sort buttons, in the order they are rendered.</summary>
     private static IReadOnlyList<AngleSharp.Dom.IElement> SortButtons(
@@ -272,22 +273,29 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Equal(SortField.Default, client.LastSort);
         Assert.Equal(SortDirection.Ascending, client.LastDirection);
-        Assert.Equal("Standard (stigende)", SortButtons(cut)[0].TextContent);
+        Assert.Equal("Navn ↑", SortButtons(cut)[0].TextContent);
     }
 
     [Fact]
     public void Render_Always_ThenTheDefaultOrderIsNotLabelledAsANameSort()
     {
+        // This guard used to say the opposite, and the reason it flipped is worth keeping.
+        //
         // The API's `name` sort leads with kilde, not the name — see the remarks on
-        // SortField.Default. A button reading "Navn" would describe an order the list is not in,
-        // and would make this button and Datakilde look like they differ in primary key when they
-        // only differ in what happens inside a kilde.
+        // SortField.Default. When the ordering was a row of standalone buttons, one reading "Navn"
+        // claimed the list was ordered by name, which it is not. In a COLUMN HEADER the same word
+        // names the column rather than the order: the column holds names, the arrow says it is the
+        // active one, and what the list is actually ordered by is stated in full in the status
+        // line below it.
+        //
+        // What must still not happen is the status line calling it a name sort. That is the
+        // sentence a reader gets read out, and it is the one that would be wrong.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
         var labels = SortButtons(cut).Select(k => k.TextContent).ToList();
 
-        Assert.Equal(["Standard (stigende)", "Datakilde", "Datasamling", "Variabelgruppe"], labels);
-        Assert.DoesNotContain("Navn", cut.Find(SortControl).TextContent);
+        Assert.Equal(["Navn ↑", "Datakilde", "Datasamling", "Variabelgruppe"], labels);
+        Assert.Contains("sortert på Standard", cut.Find("p.caption[role=status]").TextContent);
     }
 
     [Fact]
@@ -324,13 +332,13 @@ public class VariableExplorerTest : BunitContext
         var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
         var cut = RenderWith(client);
 
-        ClickSort(cut, "Standard");
+        ClickSort(cut, "Navn");
 
         Assert.Equal(SortField.Default, client.LastSort);
         Assert.Equal(SortDirection.Descending, client.LastDirection);
-        Assert.Equal("Standard (synkende)", SortButtons(cut)[0].TextContent);
+        Assert.Equal("Navn ↓", SortButtons(cut)[0].TextContent);
 
-        ClickSort(cut, "Standard");
+        ClickSort(cut, "Navn");
 
         Assert.Equal(SortDirection.Ascending, client.LastDirection);
     }
@@ -343,7 +351,7 @@ public class VariableExplorerTest : BunitContext
         var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
         var cut = RenderWith(client);
 
-        ClickSort(cut, "Standard");    // descending
+        ClickSort(cut, "Navn");    // descending
         ClickSort(cut, "Datakilde");   // a different field
 
         Assert.Equal(SortField.Kilde, client.LastSort);
@@ -376,7 +384,7 @@ public class VariableExplorerTest : BunitContext
         ClickSort(cut, "Datakilde");
 
         Assert.Equal(1, client.Calls);
-        Assert.Equal("Standard (stigende)", SortButtons(cut)[0].TextContent);
+        Assert.Equal("Navn ↑", SortButtons(cut)[0].TextContent);
     }
 
     [Fact]
@@ -394,10 +402,10 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Equal(SortField.Kilde, client.LastSort);
         Assert.Contains("Kunne ikke hente variabler", cut.Markup);
-        Assert.Equal("Standard (stigende)", SortButtons(cut)[0].TextContent);
+        Assert.Equal("Navn ↑", SortButtons(cut)[0].TextContent);
 
         var marked = SortButtons(cut).Where(k => k.HasAttribute("aria-current")).ToList();
-        Assert.Equal("Standard (stigende)", Assert.Single(marked).TextContent);
+        Assert.Equal("Navn ↑", Assert.Single(marked).TextContent);
 
         ClickSort(cut, "Datakilde"); // the same retry, not its reversal
 
@@ -449,8 +457,8 @@ public class VariableExplorerTest : BunitContext
 
         var labels = SortButtons(cut).Select(k => k.TextContent).ToList();
 
-        Assert.Equal(["Default (ascending)", "Data source", "Data collection", "Variable group"], labels);
-        Assert.Equal("Sort by", cut.Find($"{SortControl} legend").TextContent);
+        Assert.Equal(["Name ↑", "Data source", "Data collection", "Variable group"], labels);
+        Assert.NotNull(cut.Find($"{SortControl} .variable-data-list__item__row--header"));
     }
 
     // ---------------------------------------------------------------------------------
@@ -510,7 +518,7 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Equal("svelging", client.LastSearch);
         Assert.DoesNotContain("Kunne ikke hente variabler", cut.Markup);
-        Assert.Single(cut.FindAll("ul.datasourcecard-list > li"));
+        Assert.Single(cut.FindAll("ul.variable-data-list > li"));
     }
 
     // ---------------------------------------------------------------------------------
@@ -546,7 +554,7 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
         Assert.Contains("sortert på Standard, stigende",
-                        cut.Find("ul.datasourcecard-list").GetAttribute("aria-label")!);
+                        cut.Find("ul.variable-data-list").GetAttribute("aria-label")!);
     }
 
     [Fact]
@@ -558,7 +566,7 @@ public class VariableExplorerTest : BunitContext
 
         var marked = SortButtons(cut).Where(k => k.HasAttribute("aria-current")).ToList();
 
-        Assert.Equal("Standard (stigende)", Assert.Single(marked).TextContent);
+        Assert.Equal("Navn ↑", Assert.Single(marked).TextContent);
         Assert.Equal("true", marked[0].GetAttribute("aria-current"));
     }
 
@@ -576,10 +584,13 @@ public class VariableExplorerTest : BunitContext
     [Fact]
     public void Render_Always_ThenTheSortFieldsAreGroupedAndNamed()
     {
-        // fieldset + legend names the group of buttons for a screen reader without inventing ARIA.
+        // The grouping used to be a fieldset with a legend reading "Sorter etter". It is a column
+        // header row now, which is what both helsedata and Runa use: each button names its own
+        // column, so the group needs no separate name. What still has to hold is that they are
+        // real buttons and that the header sits above the list rather than floating beside it.
         var cut = RenderWith(new FakeClient(OnePage()));
 
-        Assert.Equal("Sorter etter", cut.Find($"{SortControl} legend").TextContent);
+        Assert.NotNull(cut.Find($"{SortControl} .variable-data-list__item__row--header"));
         Assert.All(SortButtons(cut), k => Assert.Equal("button", k.GetAttribute("type")));
     }
 
@@ -636,7 +647,13 @@ public class VariableExplorerTest : BunitContext
             .Distinct()
             .ToList();
 
-        Assert.Equal(["variable-explorer", "variable-explorer-filters"], invented);
+        Assert.Equal(
+        [
+            "variable-explorer",            // ours, a handle
+            "variable-explorer-filters",    // ours, a handle
+            "variable-explorer-container",  // theirs, variables.css (10 rules)
+            "variable-explorer-results",    // theirs, variables.css (6 rules)
+        ], invented);
         Assert.Equal("variable-explorer", cut.Find("section").ClassName);
 
         // The filter panel wears Stiler's fieldset alongside the handle, so a host that styles
@@ -649,9 +666,9 @@ public class VariableExplorerTest : BunitContext
     {
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        Assert.NotNull(cut.Find("ul.datasourcecard-list > li.datasourcecard-list__item > div.datasourcecard"));
-        Assert.NotNull(cut.Find(".datasourcecard__heading"));
-        Assert.NotNull(cut.Find(".datasourcecard__info > .datasourcecard__info--text"));
+        Assert.NotNull(cut.Find("ul.variable-data-list > li.variable-data-list__item > div.variable-data-list__item__row"));
+        Assert.NotNull(cut.Find(".variable-dataitem-main__name"));
+        Assert.NotNull(cut.Find(".variable-dataitem-main__column > .variable-dataitem-main__column__text"));
     }
 
     [Fact]
@@ -760,24 +777,34 @@ public class VariableExplorerTest : BunitContext
 
         // aria-label rather than a clipped <caption>: Stiler has no visually-hidden rule, so
         // markup that needs one is markup that shows its scaffolding on helsedata's page.
-        var name = cut.Find("ul.datasourcecard-list").GetAttribute("aria-label")!;
+        var name = cut.Find("ul.variable-data-list").GetAttribute("aria-label")!;
 
         Assert.Contains("1 variabel funnet", name);
         Assert.Contains("«tale»", name);
     }
 
     [Fact]
-    public void Render_WhenTheSearchHasHits_ThenEachResultIsAHeadingOneLevelBelowTheTitle()
+    public void Render_WhenTheSearchHasHits_ThenTheNameIsTheDisclosureAndNotAHeading()
     {
-        // Real headings per result are what let a screen-reader user move between them with
-        // the heading rotor. One level below the component's own title keeps the outline whole.
+        // This guarded the opposite until the row became a flex container. A heading per result
+        // would let a screen-reader user move between them with the heading rotor, which is why it
+        // was there — but helsedata sizes the name cell with `variable-dataitem-main__name`, and a
+        // heading in between becomes the flex item, so the column stops lining up with its header.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
                             b => b.Add(c => c.HeadingLevel, 3));
 
-        var cardHeading = cut.Find("li h4");
+        // No heading per result. An earlier version wrapped the name in one so results could be
+        // walked with a heading rotor, but their row is `display: flex` and the name cell is sized
+        // by `.variable-dataitem-main__name` — a heading in between becomes the flex item and the
+        // column falls out of line with its header. Neither reference wraps it: helsedata puts the
+        // button straight in the row, and Runa's rows are table rows. The rows are a list of list
+        // items, each with a named disclosure carrying aria-expanded.
+        Assert.Empty(cut.FindAll("li h1, li h2, li h3, li h4, li h5, li h6"));
 
-        Assert.Equal("1. Tale", cardHeading.TextContent);
-        Assert.Equal("datasourcecard__heading", cardHeading.ClassName);
+        var name = cut.Find("li .variable-dataitem-main__name");
+
+        Assert.Equal("1. Tale", name.TextContent);
+        Assert.Equal("BUTTON", name.TagName);
     }
 
     [Fact]
@@ -787,12 +814,22 @@ public class VariableExplorerTest : BunitContext
         // its own does not say which field it is.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "V_ALS.F1.TALE"))));
 
-        var info = cut.Find(".datasourcecard__info").TextContent;
+        var info = cut.Find(".variable-dataitem-main").TextContent;
 
-        Assert.Contains("Kode: V_ALS.F1.TALE", info);
-        Assert.Contains("Datakilde: Als registeret", info);
-        Assert.Contains("Datasamling: Inklusjon", info);
-        Assert.Contains("Periode: 2010–2025", info);
+        // The column header names the field on screen, so no cell shows its own label. The label
+        // is still in the DOM for a screen reader moving down a column, inside Stiler's
+        // screenreader-only span — visible to assistive technology, not to the eye.
+        Assert.Contains("V_ALS.F1.TALE", info);
+        Assert.Contains("Als registeret", info);
+        Assert.Contains("Inklusjon", info);
+
+        var cell = cut.Find(".variable-dataitem-main__code");
+
+        Assert.Equal("Kode: ", cell.QuerySelector(".screenreader-only")!.TextContent);
+        Assert.Equal("V_ALS.F1.TALE",
+                     cell.QuerySelector(".variable-dataitem-main__column__text")!.TextContent);
+        // Periode is not a Runa column, so it is not a row column here either — it is in the panel.
+        Assert.DoesNotContain("Periode:", info);
     }
 
     [Fact]
@@ -803,11 +840,50 @@ public class VariableExplorerTest : BunitContext
         // wrap instead of scrolling, so that tab stop is gone rather than merely moved.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        var list = cut.Find("ul.datasourcecard-list");
+        var list = cut.Find("ul.variable-data-list");
 
         Assert.Equal("false", list.GetAttribute("aria-busy"));
         Assert.False(list.HasAttribute("tabindex"));
         Assert.Empty(cut.FindAll("[tabindex]"));
+    }
+
+    [Fact]
+    public void Render_Always_ThenTheKildeColumnShowsTheShortNameWithTheFullOneOnHover()
+    {
+        // Runa's column reads "ALS" and carries "Als registeret" as its title. A kilde name is long
+        // and repeats down every row of one register's variables, so the short form is what makes
+        // the column readable — and the full name has to stay reachable, not be thrown away.
+        var cut = RenderWith(new FakeClient(OnePage(new VariableSummary
+        {
+            Id = Guid.NewGuid(),
+            Code = "V_ALS.F1.TALE",
+            PreferredTerm = "1. Tale",
+            KildeName = "Als registeret",
+            KildeShortName = "ALS",
+        })));
+
+        var cell = cut.Find(".variable-dataitem-main__source");
+
+        Assert.Equal("ALS", cell.QuerySelector(".variable-dataitem-main__column__text")!.TextContent);
+        Assert.Equal("Als registeret", cell.GetAttribute("title"));
+    }
+
+    [Fact]
+    public void Render_WhenAKildeHasNoShortName_ThenTheColumnFallsBackToTheFullName()
+    {
+        // Not every kilde has a short name, and a blank cell would be worse than a long one.
+        var cut = RenderWith(new FakeClient(OnePage(new VariableSummary
+        {
+            Id = Guid.NewGuid(),
+            Code = "V_X.1",
+            PreferredTerm = "Uten kortnavn",
+            KildeName = "Et register uten kortnavn",
+        })));
+
+        var cell = cut.Find(".variable-dataitem-main__source");
+
+        Assert.Equal("Et register uten kortnavn",
+                     cell.QuerySelector(".variable-dataitem-main__column__text")!.TextContent);
     }
 
     [Fact]
@@ -821,10 +897,12 @@ public class VariableExplorerTest : BunitContext
 
         var cut = RenderWith(new FakeClient(OnePage(withoutKilde)));
 
-        var info = cut.Find(".datasourcecard__info");
+        var info = cut.Find(".variable-dataitem-main");
 
-        Assert.Contains("Datakilde: Ikke oppgitt", info.TextContent);
-        Assert.Contains("Periode: Ikke oppgitt", info.TextContent);
+        Assert.Contains("Ikke oppgitt", info.TextContent);
+        // The field name is present for assistive technology, hidden from the eye.
+        Assert.Equal("Datakilde: ",
+                     cut.Find(".variable-dataitem-main__source .screenreader-only").TextContent);
         Assert.DoesNotContain("—", info.TextContent);
     }
 
@@ -843,9 +921,8 @@ public class VariableExplorerTest : BunitContext
         };
 
         var cut = RenderWith(new FakeClient(OnePage(withDescription)));
-
-        Assert.Equal("Hvordan er talen?", cut.Find(".datasourcecard__intro p").TextContent);
-        Assert.DoesNotContain("Hvordan er talen?", cut.Find(".datasourcecard__info").TextContent);
+        // The description is not in the row any more — see the panel.
+        Assert.DoesNotContain("Hvordan er talen?", cut.Find(".variable-dataitem-main").TextContent);
     }
 
     [Fact]
@@ -858,9 +935,9 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
                             b => b.Add(c => c.Language, "en"));
 
-        Assert.Equal("no", cut.Find(".datasourcecard__heading").GetAttribute("lang"));
-        Assert.Equal("no", cut.Find(".datasourcecard__info--text span[lang]").GetAttribute("lang"));
-        Assert.False(cut.Find("ul.datasourcecard-list").HasAttribute("lang"));
+        Assert.Equal("no", cut.Find(".variable-dataitem-main__name .variable-dataitem-main__column__text").GetAttribute("lang"));
+        Assert.Equal("no", cut.Find(".variable-dataitem-main__column__text span[lang]").GetAttribute("lang"));
+        Assert.False(cut.Find("ul.variable-data-list").HasAttribute("lang"));
     }
 
     [Fact]
@@ -956,16 +1033,16 @@ public class VariableExplorerTest : BunitContext
         var client = new SlowClient(hits);
         var cut = RenderWith(client);
 
-        Assert.Equal("false", cut.Find("ul.datasourcecard-list").GetAttribute("aria-busy"));
+        Assert.Equal("false", cut.Find("ul.variable-data-list").GetAttribute("aria-busy"));
 
         cut.Find("form").Submit(); // second search, still in flight
 
-        Assert.Equal("true", cut.Find("ul.datasourcecard-list").GetAttribute("aria-busy"));
+        Assert.Equal("true", cut.Find("ul.variable-data-list").GetAttribute("aria-busy"));
 
         await cut.InvokeAsync(() => client.Answer(hits));
 
         cut.WaitForAssertion(() =>
-            Assert.Equal("false", cut.Find("ul.datasourcecard-list").GetAttribute("aria-busy")));
+            Assert.Equal("false", cut.Find("ul.variable-data-list").GetAttribute("aria-busy")));
     }
 
     [Fact]
@@ -1381,7 +1458,7 @@ public class VariableExplorerTest : BunitContext
         cut.Find("form").Submit();
 
         Assert.Contains("Kunne ikke hente variabler", cut.Markup);
-        Assert.Empty(cut.FindAll("ul.datasourcecard-list > li"));
+        Assert.Empty(cut.FindAll("ul.variable-data-list > li"));
         Assert.Empty(cut.FindAll("div.variables-pagination"));
     }
 
@@ -1405,7 +1482,7 @@ public class VariableExplorerTest : BunitContext
         Assert.Equal(8, client.LastPage); // asked for 12, told it was gone, went to the last real one
         Assert.Equal("Side 8 av 8", Position(cut));
         Assert.Contains("Viser 176–200 av 200 variabler funnet", StatusLine(cut));
-        Assert.Equal(25, cut.FindAll("ul.datasourcecard-list > li").Count);
+        Assert.Equal(25, cut.FindAll("ul.variable-data-list > li").Count);
     }
 
     [Fact]
@@ -1500,7 +1577,7 @@ public class VariableExplorerTest : BunitContext
         Assert.NotEmpty(cut.FindAll("a.skiplink-pagination"));
         Assert.Equal("Side 1 av 1", Position(cut));
         Assert.Contains("10 variabler funnet", StatusLine(cut)); // the whole result, so no range
-        Assert.Equal(10, cut.FindAll("ul.datasourcecard-list > li").Count);
+        Assert.Equal(10, cut.FindAll("ul.variable-data-list > li").Count);
 
         // Both ends of a one-page result: neither button can go anywhere, and both say so without
         // being taken away.
@@ -1594,7 +1671,7 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Equal("Side 13 av 13", Position(cut));
         Assert.Contains("Viser 301–312 av 312 variabler funnet", StatusLine(cut));
-        Assert.Equal(12, cut.FindAll("ul.datasourcecard-list > li").Count);
+        Assert.Equal(12, cut.FindAll("ul.variable-data-list > li").Count);
     }
 
     [Theory]
@@ -1684,8 +1761,10 @@ public class VariableExplorerTest : BunitContext
 
         // Ahead of the results, otherwise it skips nothing.
         var markup = cut.Markup;
+        // Ahead of the ROWS, not ahead of the header: the header holds four sort buttons and is
+        // worth tabbing through. It is the twenty-five variables the link exists to skip.
         Assert.True(markup.IndexOf("skiplink-pagination", StringComparison.Ordinal)
-                    < markup.IndexOf("datasourcecard-list", StringComparison.Ordinal));
+                    < markup.IndexOf("<ul class=\"variable-data-list\"", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -2098,7 +2177,7 @@ public class VariableExplorerTest : BunitContext
 
         Assert.NotNull(Facet(cut, "Dødsårsaksregisteret"));
         Assert.Contains("Tallene kan være utdaterte", cut.Find("[role='alert']").TextContent);
-        Assert.Single(cut.FindAll("ul.datasourcecard-list > li"));
+        Assert.Single(cut.FindAll("ul.variable-data-list > li"));
     }
 
     [Fact]
@@ -2585,7 +2664,9 @@ public class VariableExplorerTest : BunitContext
     }
 
     private static IReadOnlyList<AngleSharp.Dom.IElement> Toggles(IRenderedComponent<VariableExplorer> cut) =>
-        cut.FindAll("ul.datasourcecard-list .datasourcecard > button");
+        cut.FindAll("ul.variable-data-list .variable-dataitem-main__name");
+    // The variable's own name is the disclosure — helsedata's pattern. There is no longer a
+    // separate "Vis detaljer" button under the metadata line.
 
     private static AngleSharp.Dom.IElement Panel(IRenderedComponent<VariableExplorer> cut) =>
         cut.Find(".variable-explorer-detail");
@@ -2617,7 +2698,7 @@ public class VariableExplorerTest : BunitContext
         Toggles(cut)[0].Click();
 
         Assert.Equal(before, navigation.Uri);
-        Assert.Empty(cut.FindAll("ul.datasourcecard-list a"));
+        Assert.Empty(cut.FindAll("ul.variable-data-list a"));
         Assert.Equal(TaleId, client.LastDetailId);
         Assert.Contains("Angir pasientens grad av utfall", Panel(cut).TextContent);
         Assert.Equal("true", Toggles(cut)[0].GetAttribute("aria-expanded"));
@@ -2678,7 +2759,7 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Empty(cut.FindAll(".variable-explorer-detail"));
         Assert.Equal("false", Toggles(cut)[0].GetAttribute("aria-expanded"));
-        Assert.Equal("Vis detaljer", Toggles(cut)[0].TextContent);
+        Assert.Equal("1. Tale", Toggles(cut)[0].TextContent);
     }
 
     [Fact]
@@ -2711,7 +2792,7 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Contains("Kunne ikke hente detaljene nå", Panel(cut).TextContent);
         Assert.Contains("infobox", Panel(cut).QuerySelector("p")!.ClassName!);
-        Assert.Equal(2, cut.FindAll("ul.datasourcecard-list > li").Count);
+        Assert.Equal(2, cut.FindAll("ul.variable-data-list > li").Count);
         Assert.Equal("true", Toggles(cut)[0].GetAttribute("aria-expanded"));
 
         // The component's own alert region is for the list, and the list is fine.
@@ -2879,7 +2960,7 @@ public class VariableExplorerTest : BunitContext
         client.Then(null);
         cut.Find("button[type=submit]").Click();
 
-        Assert.Empty(cut.FindAll("ul.datasourcecard-list > li"));
+        Assert.Empty(cut.FindAll("ul.variable-data-list > li"));
         Assert.Empty(cut.FindAll(".variable-explorer-detail"));
         Assert.Equal([TaleId, null], reported);
     }
@@ -2898,7 +2979,7 @@ public class VariableExplorerTest : BunitContext
         cut.Find("button[type=submit]").Click();
         cut.Find("button[type=submit]").Click();
 
-        Assert.Equal(2, cut.FindAll("ul.datasourcecard-list > li").Count);
+        Assert.Equal(2, cut.FindAll("ul.variable-data-list > li").Count);
         Assert.Empty(cut.FindAll(".variable-explorer-detail"));
         Assert.Equal("false", Toggles(cut)[0].GetAttribute("aria-expanded"));
 
@@ -2933,7 +3014,7 @@ public class VariableExplorerTest : BunitContext
         Next(cut).Click();
 
         Assert.Equal("Side 1 av 2", Position(cut));
-        Assert.Single(cut.FindAll("ul.datasourcecard-list > li"));
+        Assert.Single(cut.FindAll("ul.variable-data-list > li"));
         Assert.Equal("true", Toggles(cut)[0].GetAttribute("aria-expanded"));
         Assert.Contains("Angir pasientens grad av utfall", Panel(cut).TextContent);
 
@@ -3145,12 +3226,10 @@ public class VariableExplorerTest : BunitContext
         var client = new DetailClient(OnePage(Row(TaleId, "1. Tale", "Hvordan er talen?")))
             .Knows(Detail(TaleId) with { Description = "Hvordan er talen?" });
         var cut = RenderWith(client);
-
-        Assert.Equal("Hvordan er talen?", cut.Find(".datasourcecard__intro p").TextContent);
+        // The description is not in the row any more — see the panel.
 
         Toggles(cut)[0].Click();
-
-        Assert.Empty(cut.FindAll(".datasourcecard__intro"));
+        // The description is not in the row any more — see the panel.
         Assert.Equal("Hvordan er talen?", Values(cut)[0].TextContent);
     }
 
@@ -3163,12 +3242,20 @@ public class VariableExplorerTest : BunitContext
         // which an aria-label could not: the words follow Language, the variable's name is
         // Norwegian whatever the surrounding UI is.
         var cut = RenderWith(TwoRows());
-        var heading = cut.FindAll("ul.datasourcecard-list .datasourcecard__heading")[0];
+        // The heading wraps the button; the panel points at the heading, which is what holds
+        // the row's name in the document outline.
+        // The name button is the row's name — there is no heading wrapping it any more.
+        var heading = cut.FindAll("ul.variable-data-list .variable-dataitem-main__name")[0];
 
         // Closed: nothing to control yet, and aria-controls pointing at an element that is not in
         // the document is a dangling reference.
         Assert.False(Toggles(cut)[0].HasAttribute("aria-controls"));
-        Assert.Equal($"{Toggles(cut)[0].Id} {heading.Id}", Toggles(cut)[0].GetAttribute("aria-labelledby"));
+        // The disclosure IS the heading's text now, so it names itself. The old wiring pointed
+        // aria-labelledby at a separate heading because the button said only "Vis detaljer" and
+        // would otherwise have read as forty identical buttons. That reason is gone, and an
+        // aria-labelledby repeating the element's own content is noise.
+        Assert.False(Toggles(cut)[0].HasAttribute("aria-labelledby"));
+        Assert.Equal(heading.TextContent.Trim(), Toggles(cut)[0].TextContent.Trim());
 
         Toggles(cut)[0].Click();
 
@@ -3202,7 +3289,9 @@ public class VariableExplorerTest : BunitContext
         // that follows Language — and the one that must not be announced as Norwegian.
         var cut = RenderWith(TwoRows(), b => b.Add(c => c.Language, "en"));
 
-        Assert.Equal("Show details", Toggles(cut)[0].TextContent);
+        // The disclosure is the variable's own name now, so it reads the same in either
+        // language — the catalogue is Norwegian whatever the UI is.
+        Assert.Equal("1. Tale", Toggles(cut)[0].TextContent);
 
         Toggles(cut)[0].Click();
 
@@ -3214,16 +3303,20 @@ public class VariableExplorerTest : BunitContext
         Assert.Equal("National medical quality registry", trail[0].TextContent);
         Assert.False(trail[0].HasAttribute("lang"));
         Assert.Equal("no", trail[1].GetAttribute("lang"));
-        Assert.Equal("Hide details", Toggles(cut)[0].TextContent);
+        Assert.Equal("1. Tale", Toggles(cut)[0].TextContent);
     }
 
     [Fact]
     public void Render_WhenAPanelIsOpen_ThenItIsBuiltFromShapesRatherThanFromNewClassNames()
     {
-        // Stiler has no definition list, no breadcrumb and no key/value block this package can
-        // verify, so the panel is a <dl>, an <ol> and a <ul> wearing Stiler's own label, caption
-        // and square button. The third handle is the only name added, and it carries no styling —
-        // exactly like the two the collapsed component already emits.
+        // The rule this guards has changed, and it is worth being precise about what it is now.
+        // The component wears helsedata's own variable-page vocabulary, which includes two names
+        // in this prefix that are THEIRS, not ours: variable-explorer-container (10 rules) and
+        // variable-explorer-results (6), both in variables.css and loaded on every page of their
+        // site. What must never grow is the list of names we INVENT — the three handles below,
+        // which carry no styling anywhere and exist only so a host can find the component in the
+        // DOM. A name in this prefix that is neither theirs nor one of the three is a name that
+        // renders as a raw browser default.
         var cut = RenderWith(TwoRows());
 
         Toggles(cut)[0].Click();
@@ -3234,13 +3327,27 @@ public class VariableExplorerTest : BunitContext
             .Distinct()
             .ToList();
 
-        Assert.Equal(["variable-explorer", "variable-explorer-filters", "variable-explorer-detail"], invented);
+        Assert.Equal(
+        [
+            "variable-explorer",            // ours, a handle
+            "variable-explorer-filters",    // ours, a handle
+            "variable-explorer-container",  // theirs, variables.css (10 rules)
+            "variable-explorer-results",    // theirs, variables.css (6 rules)
+            "variable-explorer-detail",     // ours, a handle
+        ], invented);
 
         var panel = Panel(cut);
 
-        Assert.All(panel.QuerySelectorAll("dl, ol, ul"), e => Assert.False(e.HasAttribute("class")));
-        Assert.All(panel.QuerySelectorAll("dl > dt"), e => Assert.Equal("form-element__label", e.ClassName));
-        Assert.Contains("hd-button-square", Toggles(cut)[0].ClassName!);
+        // The definition list stays a definition list — it is labels and the values they name, and
+        // helsedata's grid is class-based (`.variable-meta__grid { display: grid }`, with only a
+        // `p { margin: 0 }` rule touching an element name), so their layout applies to dt/dd just
+        // as it applies to their own spans. Semantics kept, styling borrowed.
+        Assert.All(panel.QuerySelectorAll("dl"),
+                   e => Assert.Equal("variable-meta__grid variable-meta__grid-2", e.ClassName));
+        Assert.All(panel.QuerySelectorAll("ol, ul"), e => Assert.False(e.HasAttribute("class")));
+        Assert.All(panel.QuerySelectorAll("dl > dt"),
+                   e => Assert.Equal("headline headline-xxs margin--none", e.ClassName));
+        Assert.Equal("variable-dataitem-main__name", Toggles(cut)[0].ClassName);
     }
 
     // ---------------------------------------------------------------------------------
@@ -3452,7 +3559,7 @@ public class VariableExplorerTest : BunitContext
         Assert.Single(cut.FindAll(".variable-explorer-source"));
         Assert.Equal("false", SourceToggles(cut)[0].GetAttribute("aria-expanded"));
         Assert.Equal("true", SourceToggles(cut)[1].GetAttribute("aria-expanded"));
-        Assert.Equal("Inklusjon", SourcePanel(cut).QuerySelector(".datasourcecard__heading")!.TextContent);
+        Assert.Equal("Inklusjon", SourcePanel(cut).QuerySelector(".headline-s")!.TextContent);
         Assert.DoesNotContain("Antall datasamlinger", SourcePanel(cut).TextContent);
     }
 
@@ -3513,7 +3620,7 @@ public class VariableExplorerTest : BunitContext
 
         // The variable above it is untouched, and so are the rows.
         Assert.Contains("Angir pasientens grad av utfall", Panel(cut).TextContent);
-        Assert.Equal(2, cut.FindAll("ul.datasourcecard-list > li").Count);
+        Assert.Equal(2, cut.FindAll("ul.variable-data-list > li").Count);
         Assert.Empty(cut.FindAll("div[role='alert'] p"));
     }
 
@@ -3667,8 +3774,10 @@ public class VariableExplorerTest : BunitContext
             .ToList();
 
         Assert.Equal(
-            ["variable-explorer", "variable-explorer-filters", "variable-explorer-detail",
-             "variable-explorer-source"],
+            ["variable-explorer", "variable-explorer-filters",
+             "variable-explorer-container",   // theirs, variables.css
+             "variable-explorer-results",     // theirs, variables.css
+             "variable-explorer-detail", "variable-explorer-source"],
             invented);
 
         var panel = SourcePanel(cut);
@@ -3689,8 +3798,8 @@ public class VariableExplorerTest : BunitContext
         SourceToggles(cut)[0].Click();
 
         Assert.Equal("H1", cut.Find(".variable-explorer > [class*='headline']").TagName);
-        Assert.Equal("H2", cut.Find(".datasourcecard > .datasourcecard__heading").TagName);
-        Assert.Equal("H3", SourcePanel(cut).QuerySelector(".datasourcecard__heading")!.TagName);
+        Assert.Equal("BUTTON", cut.Find(".variable-data-list__item__row .variable-dataitem-main__name").TagName);
+        Assert.Equal("H3", SourcePanel(cut).QuerySelector(".headline-s")!.TagName);
     }
 
     [Fact]

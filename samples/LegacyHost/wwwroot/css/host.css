@@ -519,3 +519,294 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   text-align: left;
   height: auto;
 }
+
+/* ---- not Stiler either: helsedata's variable-page vocabulary ----
+
+   Everything above stands in for Stiler, which every helsedata page loads. These names are not in
+   Stiler at all — they come from variables.css, which despite the name is loaded on every page of
+   their site (verified on /no/, /no/variabler/ and /no/datakilder/: identical seven bundles). The
+   component wears them because it replaces the variable page, and this is an approximation of what
+   they do so the sample shows the right shape.
+
+   The real rules are far richer — variable-meta alone carries 204, and there are 292 selectors
+   across this family. What matters for a sample is the arrangement: rows with columns, a name that
+   is a button, a chevron, and a panel that opens underneath. */
+
+.variable-data-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.variable-data-list__item {
+  border-bottom: 1px solid var(--grey30, #e2e4ef);
+}
+
+.variable-data-list__item__row {
+  padding: 14px 8px;
+}
+
+.variable-data-list__item__row:hover {
+  background: var(--grey10);
+}
+
+/* helsedata ships an icon font for this — .icon alone carries 466 rules across five of their
+   bundles. A sample host has no such font, so the chevron is drawn from a character instead.
+   It rotates rather than swapping glyphs, which is what makes the state change read as motion. */
+.variable-dataitem-main__expand-icon {
+  display: inline-block;
+  width: 16px;
+  color: var(--primary, #4a3aff);
+  transition: transform 120ms ease;
+}
+
+.variable-dataitem-main__expand-icon::before {
+  content: "\203A";           /* › */
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.icon-keyboard-arrow-down.variable-dataitem-main__expand-icon {
+  transform: rotate(90deg);
+}
+
+/* The name is the disclosure, so it has to look like the control it is without wearing a button
+   box: helsedata draws it as a link, left-aligned, and lets the row's hover carry the affordance. */
+.variable-dataitem-main__name {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  color: var(--primary-dark, #2a1fb8);
+  cursor: pointer;
+}
+
+.variable-dataitem-main__name:hover {
+  text-decoration: underline;
+}
+
+.variable-data-list__item__row:hover .variable-dataitem-main__name {
+  text-decoration: underline;
+}
+
+.variable-dataitem-main__column {
+  min-width: 0;
+}
+
+.variable-dataitem-main__column__text {
+  display: block;
+  font-size: 0.9375rem;
+  color: var(--dark);
+  overflow-wrap: break-word;
+}
+
+.variable-dataitem-main__column--description {
+  padding: 4px 8px 0 44px;
+}
+
+.variable-dataitem-main__column--description p {
+  margin: 0;
+  color: var(--grey70, #5a5f78);
+  font-size: 0.9375rem;
+}
+
+/* The panel is a sibling of the row, not a child of it — that is how helsedata nests it, and
+   several of their rules select on exactly that relationship. */
+.variable-meta {
+  padding: 4px 8px 20px 44px;
+  background: var(--grey10);
+}
+
+.variable-data-list__item--expanded {
+  background: var(--grey10);
+}
+
+/* ---- the opened panel ----
+
+   variable-meta is the biggest single thing we borrow: 204 rules on their side, 176 selectors
+   under that prefix. This is the arrangement only.
+
+   The definition list keeps being a definition list. Their grid is class-based — the whole of
+   `.variable-meta__grid` is `display: grid; gap: 40px 24px`, and the only rule in the family that
+   names an element is `p { margin: 0 }` — so it lays out dt/dd exactly as it lays out their own
+   spans. We get their layout without giving up the semantics of labels and the values they name.
+
+   headline-s / headline-xxs / margin--none are Stiler's own headline scale, from the site-wide
+   styles.css, and are what their h4 field labels wear. The sample carries stand-ins. */
+
+.headline-s { font: normal 600 1.25rem/150% var(--font); }
+.headline-xxs { font: normal 600 0.875rem/150% var(--font); }
+.margin--none { margin: 0; }
+.margin--bottom { margin: 0 0 12px; }
+
+.variable-meta__grid {
+  display: grid;
+  gap: 16px 24px;
+}
+
+.variable-meta__grid-1,
+.variable-meta__grid-2 {
+  grid-template-columns: auto;
+}
+
+.variable-meta__grid p {
+  margin: 0;
+}
+
+/* dt/dd inside the grid: the label sits on the value rather than beside it, which is what their
+   h4-over-value blocks do. */
+.variable-meta dl > dt {
+  color: var(--grey70, #5a5f78);
+}
+
+.variable-meta dl > dd {
+  margin: 2px 0 0;
+}
+
+/* ---- the column header ----
+
+   The header and the rows have to share one grid template, or the columns line up with nothing.
+   helsedata solves it by giving variable-dataitem-header and variable-dataitem-main the same
+   track list; the header has no chevron, so its first cell starts in track 2 and the rest flow
+   after it. Get this wrong and every row sizes its own columns, which is what the sample looked
+   like before the header existed. */
+
+.variable-data-list__header {
+  border-bottom: 2px solid var(--grey30, #e2e4ef);
+}
+
+.variable-data-list__item__row--header {
+  padding-bottom: 8px;
+}
+
+/* helsedata lays these out with flex, not grid — `.variable-dataitem-header, .variable-dataitem-main
+   { display: flex; width: 100% }` — and each column is an inline-flex box that takes its width from
+   its own modifier. That is why extra columns are possible at all: flex distributes what is left
+   rather than needing a track declared up front.
+
+   The header carries `padding-left: 56px` on their side to clear the chevron, which is how the two
+   rows line up without the header having a chevron cell of its own. */
+.variable-dataitem-header,
+.variable-dataitem-main {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 12px;
+}
+
+.variable-dataitem-header {
+  padding-left: 36px;   /* clears the chevron column, as theirs does */
+}
+
+.variable-dataitem-main__expand-icon {
+  flex: 0 0 24px;
+}
+
+.variable-dataitem-main__column,
+.sortable-header {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* Column widths in Runa's proportions, measured off it rather than guessed:
+
+     Navn 210   Kode 246   Kilde 96   Datasamling 212   Variabelgruppe 160
+     Datatype 114   Status 98
+
+   Kode is the WIDEST, which is the opposite of what it looks like it should be. A variable code
+   is one unbreakable token — V_ALS.F1.MRCAPUTJERNAVSWI has nowhere to wrap — so a narrow code
+   column either breaks mid-identifier or pushes everything else out of line. A name has spaces
+   and wraps gracefully, so the name is the column that should give way.
+
+   `flex: <width> 1 0` makes grow proportional to those numbers, so the ratios hold at any
+   container width rather than only at Runa's. */
+.variable-dataitem-main__name,
+.variable-dataitem-header__name {
+  flex: 210 1 0;
+}
+
+.variable-dataitem-main__code,
+.variable-dataitem-header__code {
+  flex: 246 1 0;
+}
+
+.variable-dataitem-main__source,
+.variable-dataitem-header__source {
+  flex: 96 1 0;
+}
+
+.variable-dataitem-main__dataCollection,
+.variable-dataitem-header__dataCollection {
+  flex: 212 1 0;
+}
+
+.variable-dataitem-main__theme,
+.variable-dataitem-header__theme {
+  flex: 160 1 0;
+}
+
+.variable-dataitem-main__dataType,
+.variable-dataitem-header__dataType {
+  flex: 114 1 0;
+}
+
+.variable-dataitem-main__status,
+.variable-dataitem-header__status {
+  flex: 98 1 0;
+}
+
+
+.sortable-header {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--grey70, #5a5f78);
+}
+
+/* Stiler's "this is a button, draw nothing" class — 12 rules in their site-wide stylesheet. */
+.hd-button-reset {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.variable-dataitem-header__button:hover {
+  text-decoration: underline;
+}
+
+.variable-dataitem-header__button[aria-current="true"] {
+  color: var(--primary-dark, #2a1fb8);
+}
+
+/* A code is an identifier, not prose: broken across two lines it stops being readable and
+   stops being copyable as one token. So the code column never wraps — it truncates with an
+   ellipsis and keeps the whole value in the DOM, where assistive technology and the title
+   tooltip still get it in full. Names, kilder and datasamlinger are words and wrap happily. */
+.variable-dataitem-main__code .variable-dataitem-main__column__text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Stiler's own visually-hidden class (16 rules site-wide). The sample carries a stand-in, or every
+   cell would show its field name again and the column header would be pointless. */
+.screenreader-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
