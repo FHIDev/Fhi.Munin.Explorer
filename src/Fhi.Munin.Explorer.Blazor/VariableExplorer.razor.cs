@@ -54,6 +54,17 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <c>variable-explorer</c> root.
 /// </para>
 /// <para>
+/// The detail panel adds no class name either, and for the same reason. It is a
+/// <c>&lt;dl&gt;</c> of labels and values, an <c>&lt;ol&gt;</c> for the kilde trail and a
+/// <c>&lt;ul&gt;</c> for the variabelgrupper and kodeverk, wearing Stiler's
+/// <c>form-element__label</c>, <c>caption</c>, <c>infobox</c> and the ghost square button for the
+/// disclosure that opens it. Stiler has no definition list, no breadcrumb and no key/value block
+/// that can be read back off its compiled stylesheet, so what a host supplies is base styling for
+/// those three elements — a host that supplies none still gets a panel that reads correctly, just
+/// an unindented one. <c>variable-explorer-detail</c> is a DOM handle like
+/// <c>variable-explorer-filters</c>, and carries no styling.
+/// </para>
+/// <para>
 /// A host outside helsedata's estate has to provide equivalents for those names, and two
 /// accessibility requirements the markup cannot meet on its own come with them. A host that
 /// skips either fails WCAG whatever this component does:
@@ -207,6 +218,46 @@ public partial class VariableExplorer : ComponentBase
     /// </remarks>
     [Parameter] public EventCallback<VariableFilter> FilterChanged { get; set; }
 
+    /// <summary>
+    /// The variable whose detail panel is open, or null when none is. Set by the host, typically
+    /// from its own URL, the same way <see cref="Search"/> and <see cref="Filter"/> are.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Read once, when the component initialises, and owned by the component afterwards. There is
+    /// no navigation behind it: the detail is drawn inside the row it belongs to, so opening one
+    /// costs a fetch and a render rather than a page.
+    /// </para>
+    /// <para>
+    /// The selection is always a row that is on screen. An id the first page does not contain is
+    /// dropped rather than fetched, because the panel has nowhere to be drawn — and that drop is
+    /// the one occasion <see cref="SelectedVariableIdChanged"/> fires without the reader having
+    /// done anything, so a host's URL is not left naming a variable the page is not showing.
+    /// </para>
+    /// </remarks>
+    [Parameter] public Guid? SelectedVariableId { get; set; }
+
+    /// <summary>
+    /// Raised when the open detail panel changes, so the host can reflect it in its own URL. The
+    /// SelectedVariableId/SelectedVariableIdChanged naming gives the host
+    /// <c>@bind-SelectedVariableId</c> for free.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A host mounting this component must make the mount point fully interactive. An
+    /// EventCallback serialises to an empty delegate across a static-SSR to interactive-island
+    /// boundary, and the callback then silently never fires.
+    /// </para>
+    /// <para>
+    /// It carries null when the panel is closed — by the reader pressing the open row again, and
+    /// also when a new search, filter, ordering or page leaves the selected variable off the
+    /// screen. A selection whose detail could not be fetched is <em>not</em> rolled back, unlike a
+    /// filter: the panel is open, it says why it is empty, and closing it under the reader would
+    /// take the button they just pressed out of the document.
+    /// </para>
+    /// </remarks>
+    [Parameter] public EventCallback<Guid?> SelectedVariableIdChanged { get; set; }
+
     [Inject] private IMuninExplorerClient Client { get; set; } = null!;
 
     private string? _search;
@@ -230,6 +281,19 @@ public partial class VariableExplorer : ComponentBase
     // failing: the rows on screen are the right rows, and it is the numbers beside the filters that
     // may now be stale. Reported separately for that reason.
     private string? _facetError;
+
+    // The variable whose detail panel is open, and what has been fetched for it. Never a variable
+    // that is not among the rows on screen: the panel is drawn inside its own row, so a selection
+    // the current result does not contain is one nothing can render — see DropSelectionIfGoneAsync.
+    private Guid? _selectedId;
+    private VariableDetail? _detail;
+    private bool _detailLoading;
+
+    // Set when the detail could not be fetched, or when the API says there is no such published
+    // variable. Its own field rather than _error, because the rows on screen are unaffected: what
+    // failed is one panel inside one card, and reporting it in the component's own alert region
+    // would say the whole list was stale.
+    private string? _detailError;
 
     // The API's own default order, ascending, which is also where Runa starts — and the order the
     // API returns when it is asked for none, so the first render costs no extra query parameters.
@@ -281,6 +345,13 @@ public partial class VariableExplorer : ComponentBase
     private string SearchId => $"variable-explorer-search-{_instance}";
     private string TitleId => $"variable-explorer-title-{_instance}";
     private string PaginationId => $"variable-explorer-pagination-{_instance}";
+
+    // Per row as well as per instance: the detail panel is wired to its own row with
+    // aria-controls and aria-labelledby, and two explorers listing the same variable would
+    // otherwise mint the same id twice on one page.
+    private string RowHeadingId(VariableSummary v) => $"variable-explorer-heading-{_instance}-{v.Id:N}";
+    private string DetailToggleId(VariableSummary v) => $"variable-explorer-toggle-{_instance}-{v.Id:N}";
+    private string DetailId(VariableSummary v) => $"variable-explorer-detail-{_instance}-{v.Id:N}";
 
     private Texts T => Texts.For(Language);
 
@@ -486,8 +557,12 @@ public partial class VariableExplorer : ComponentBase
     {
         builder.OpenElement(0, $"h{RowLevel}");
         builder.AddAttribute(1, "class", "datasourcecard__heading");
-        builder.AddAttribute(2, "lang", "no");
-        builder.AddContent(3, v.PreferredTerm);
+        // Named so the row's detail panel and the button that opens it can both point at it
+        // rather than restating the variable's name in an aria-label of their own — which would
+        // put Norwegian text inside a string the surrounding UI language cannot mark.
+        builder.AddAttribute(2, "id", RowHeadingId(v));
+        builder.AddAttribute(3, "lang", "no");
+        builder.AddContent(4, v.PreferredTerm);
         builder.CloseElement();
     };
 
@@ -561,6 +636,255 @@ public partial class VariableExplorer : ComponentBase
 
         builder.CloseElement();
     }
+
+    // ---------------------------------------------------------------------------- the detail panel
+
+    /// <summary>Whether this row is the one whose detail panel is open.</summary>
+    private bool IsSelected(VariableSummary v) => _selectedId == v.Id;
+
+    /// <summary>The open panel's description, trimmed, or null while there is none to show.</summary>
+    private string? DetailDescription => Trimmed(_detail?.Description);
+
+    /// <summary>
+    /// Whether the card draws the description the search listed it with.
+    /// </summary>
+    /// <remarks>
+    /// It stops as soon as the panel underneath is showing the same sentence out of the detail
+    /// payload, which is the fuller and the more authoritative of the two — the search returns the
+    /// description of the row, the detail returns the one on the version being shown. Printing both
+    /// would put the same paragraph on screen twice inside one card. The card keeps its own until
+    /// the fetch lands, so nothing blinks out while the panel is loading.
+    /// </remarks>
+    private bool ShowRowDescription(VariableSummary v) =>
+        !string.IsNullOrWhiteSpace(v.Description) && !(IsSelected(v) && DetailDescription is not null);
+
+    private string DetailBusy => _detailLoading ? "true" : "false";
+
+    private string DetailToggleText(VariableSummary v) => IsSelected(v) ? T.HideDetails : T.ShowDetails;
+
+    private string DetailExpanded(VariableSummary v) => IsSelected(v) ? "true" : "false";
+
+    /// <summary>
+    /// The panel's id while it exists, and nothing at all while it does not.
+    /// </summary>
+    /// <remarks>
+    /// A closed panel is not in the document, and <c>aria-controls</c> pointing at an element that
+    /// is not there is a dangling reference — announced by some readers as a control that opens
+    /// nothing. <c>aria-expanded</c> is what says the button is a disclosure; this only says which
+    /// element it revealed.
+    /// </remarks>
+    private string? DetailControls(VariableSummary v) => IsSelected(v) ? DetailId(v) : null;
+
+    /// <summary>
+    /// The toggle's accessible name: its own words, then the variable's.
+    /// </summary>
+    /// <remarks>
+    /// Twenty-five buttons all called "Vis detaljer" say nothing about which row they open when a
+    /// screen reader lists them out of context. Pointing at both elements names it "Vis detaljer
+    /// 1. Tale" and keeps each half in its own language, which an <c>aria-label</c> could not do:
+    /// the words are ours and follow <see cref="Language"/>, the variable's name is Munin's and is
+    /// Norwegian whatever the surrounding UI is. It starts with the visible text, so speech input
+    /// still reaches it by what is on screen (WCAG 2.5.3).
+    /// </remarks>
+    private string DetailToggleLabelledBy(VariableSummary v) => $"{DetailToggleId(v)} {RowHeadingId(v)}";
+
+    /// <summary>What the panel's status line says: that it is loading, or why it is empty.</summary>
+    private string? DetailStatus => _detailLoading ? T.DetailLoading : _detailError;
+
+    /// <summary>
+    /// The status line's class: Stiler's muted caption while it is loading, its infobox when
+    /// something went wrong.
+    /// </summary>
+    /// <remarks>
+    /// One element in one place rather than two that swap, so the polite live region it carries
+    /// survives the change. A failure is therefore announced — it replaces text in a region that
+    /// is already in the document, which is the arrangement a screen reader reads reliably. The
+    /// loading message itself arrives with the panel and may not be, which is the same trade the
+    /// component's own alert region documents; the button's <c>aria-expanded</c> is what reports
+    /// the press.
+    /// </remarks>
+    private string DetailStatusClass => _detailError is null ? "caption" : "infobox infobox--bg-yellow";
+
+    /// <summary>One step of the kilde trail, and whether it is Munin's Norwegian or our own prose.</summary>
+    private sealed record Crumb(string Text, bool Norwegian);
+
+    /// <summary>
+    /// The variable's place in the catalogue, widest first: kildetype, kilde, datasamling.
+    /// </summary>
+    /// <remarks>
+    /// A level with nothing in it is left out rather than written as "Ikke oppgitt": a trail is
+    /// read as a path, and a step saying nothing is worse than a shorter path. All three missing
+    /// leaves an empty list, which the markup reports as "Ikke oppgitt" once.
+    /// </remarks>
+    private IReadOnlyList<Crumb> KildeCrumbs(VariableDetail detail)
+    {
+        var crumbs = new List<Crumb>(3);
+
+        if (!string.IsNullOrWhiteSpace(detail.KildeType))
+        {
+            // The one step that is our prose rather than a name out of the catalogue — it follows
+            // Language, so it is the one step not marked as Norwegian.
+            crumbs.Add(new Crumb(T.KildeTypeLabel(detail.KildeType, detail.KildeType), Norwegian: false));
+        }
+
+        if (!string.IsNullOrWhiteSpace(detail.KildeName))
+        {
+            var shortName = Trimmed(detail.KildeShortName);
+            var sameThingTwice = shortName is null
+                || string.Equals(shortName, detail.KildeName, StringComparison.OrdinalIgnoreCase);
+
+            crumbs.Add(new Crumb(
+                sameThingTwice ? detail.KildeName : $"{detail.KildeName} ({shortName})", Norwegian: true));
+        }
+
+        if (!string.IsNullOrWhiteSpace(detail.DatasamlingName))
+        {
+            crumbs.Add(new Crumb(detail.DatasamlingName, Norwegian: true));
+        }
+
+        return crumbs;
+    }
+
+    /// <summary>
+    /// Every variabelgruppe the variable is in, by name.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="VariableDetail.AllVariabelgrupper"/> rather than the primary one alone, because a
+    /// variable in three groups listed under one is a half-truth the payload already has the answer
+    /// to. The primary name is the fallback for a payload that carries no list.
+    /// </remarks>
+    private static IReadOnlyList<string> VariabelgruppeNames(VariableDetail detail)
+    {
+        var names = detail.AllVariabelgrupper
+            .Select(gruppe => gruppe.Name)
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .ToList();
+
+        if (names.Count == 0 && !string.IsNullOrWhiteSpace(detail.VariabelgruppeName))
+        {
+            names.Add(detail.VariabelgruppeName);
+        }
+
+        return names;
+    }
+
+    /// <summary>One value in the panel: the catalogue's own words, or "Ikke oppgitt".</summary>
+    /// <remarks>
+    /// The same rule the result cards follow — a missing value is written out for everyone rather
+    /// than drawn as an em dash, and a value that is there is marked as Norwegian while the label
+    /// beside it follows <see cref="Language"/>.
+    /// </remarks>
+    private RenderFragment DetailValue(string? value) => builder =>
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            builder.AddContent(0, T.NotSpecified);
+
+            return;
+        }
+
+        builder.OpenElement(1, "span");
+        builder.AddAttribute(2, "lang", "no");
+        builder.AddContent(3, value);
+        builder.CloseElement();
+    };
+
+    /// <summary>
+    /// The kilde trail as an ordered list, one step per level.
+    /// </summary>
+    /// <remarks>
+    /// An <c>&lt;ol&gt;</c> and no class name, for the reason the filter panel's nested
+    /// <c>&lt;ul&gt;</c> carries none: Stiler has no breadcrumb rule that can be read back off its
+    /// compiled stylesheet, and a name it has never heard of renders as a raw browser default. The
+    /// list is also what says "these are steps in order" without a separator character — a "›"
+    /// between spans is either read out as a symbol or skipped in silence, and neither says the
+    /// kilde sits inside the kildetype. A host draws the chevrons; a host that draws nothing gets a
+    /// numbered list that still reads correctly.
+    /// </remarks>
+    private RenderFragment KildeTrail(VariableDetail detail) => builder =>
+    {
+        var crumbs = KildeCrumbs(detail);
+
+        if (crumbs.Count == 0)
+        {
+            builder.AddContent(0, T.NotSpecified);
+
+            return;
+        }
+
+        builder.OpenElement(1, "ol");
+
+        foreach (var crumb in crumbs)
+        {
+            builder.OpenElement(2, "li");
+
+            if (crumb.Norwegian)
+            {
+                builder.AddAttribute(3, "lang", "no");
+            }
+
+            builder.AddContent(4, crumb.Text);
+            builder.CloseElement();
+        }
+
+        builder.CloseElement();
+    };
+
+    /// <summary>A list of names out of the catalogue, or "Ikke oppgitt" when there are none.</summary>
+    private RenderFragment NameList(IReadOnlyList<string> names) => builder =>
+    {
+        if (names.Count == 0)
+        {
+            builder.AddContent(0, T.NotSpecified);
+
+            return;
+        }
+
+        builder.OpenElement(1, "ul");
+
+        foreach (var name in names)
+        {
+            builder.OpenElement(2, "li");
+            builder.AddAttribute(3, "lang", "no");
+            builder.AddContent(4, name);
+            builder.CloseElement();
+        }
+
+        builder.CloseElement();
+    };
+
+    /// <summary>
+    /// The kodeverk the variable's values are drawn from, one per line.
+    /// </summary>
+    /// <remarks>
+    /// Each line names the kind of kodeverk as well as the kodeverk itself, because "2336" on its
+    /// own says nothing: the same catalogue holds kildekodeverk defined by the kilde, national
+    /// administrative code systems and clinical classifications, and which one a code belongs to is
+    /// the point of the link. A link the API could not resolve a name for falls back to its
+    /// reference — the reference is what the reader can look up, where nothing at all would leave
+    /// the line saying only that a kodeverk exists.
+    /// </remarks>
+    private RenderFragment KodeverkList(IReadOnlyList<KodeverkLink> links) => builder =>
+    {
+        if (links.Count == 0)
+        {
+            builder.AddContent(0, T.NotSpecified);
+
+            return;
+        }
+
+        builder.OpenElement(1, "ul");
+
+        foreach (var link in links)
+        {
+            builder.OpenElement(2, "li");
+            builder.AddContent(3, $"{T.KodeverkTypeLabel(link.KodeverkType)}: ");
+            builder.AddContent(4, DetailValue(Trimmed(link.DisplayName) ?? link.KodeverkReference));
+            builder.CloseElement();
+        }
+
+        builder.CloseElement();
+    };
 
     // ---------------------------------------------------------------------------- the filter panel
 
@@ -1158,11 +1482,173 @@ public partial class VariableExplorer : ComponentBase
         }
     }
 
+    /// <summary>
+    /// Open this row's detail panel, or close it when it is the one already open.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// One panel at a time. Opening a second row closes the first, which is what keeps the
+    /// component to one fetched detail and one selection to report to the host — and what stops a
+    /// long list from turning into a page of expanded cards nobody can find their way back through.
+    /// </para>
+    /// <para>
+    /// Not dropped while a list fetch is in flight, unlike a sort or a page turn. Those all ask the
+    /// same question of the same endpoint and would race each other; this one asks a different
+    /// endpoint about a row that is already on screen, and making the reader wait for a slow search
+    /// before a card will open would be a delay with nothing behind it. If the search does replace
+    /// the rows underneath, the selection goes with them — see
+    /// <see cref="DropSelectionIfGoneAsync"/>.
+    /// </para>
+    /// </remarks>
+    private async Task ToggleDetailAsync(VariableSummary v)
+    {
+        if (IsSelected(v))
+        {
+            ClearSelection();
+            await RaiseAsync<Guid?>(SelectedVariableIdChanged, null);
+
+            return;
+        }
+
+        _selectedId = v.Id;
+        await LoadDetailAsync(v.Id);
+
+        // _selectedId rather than v.Id: the fetch above yields, so another row may have been opened
+        // while it ran, and what the host is told has to be what is open — the same rule
+        // FilterChanged follows after a rollback.
+        await RaiseAsync(SelectedVariableIdChanged, _selectedId);
+    }
+
+    /// <summary>
+    /// Fetch the detail for <paramref name="id"/> into the open panel.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Every write back into the component is guarded by the selection still being the one this
+    /// call was made for. Two rows opened in quick succession are two requests in flight, and
+    /// nothing says the first one answers first — without the guard the slower answer would paint
+    /// itself under the other row's heading, which is a panel describing a variable the reader is
+    /// not looking at rather than a visibly broken one.
+    /// </para>
+    /// <para>
+    /// The historical variables the filter is showing are asked for here too. The endpoint hides
+    /// them by default, so a reader who turned "Vis historiske" on would otherwise be told that a
+    /// row they can see does not exist.
+    /// </para>
+    /// <para>
+    /// Null is not a failure — <see cref="IMuninExplorerClient"/> answers it for something that is
+    /// not published — so it is reported as "not found" rather than as "try again in a moment",
+    /// which is advice that would never come good.
+    /// </para>
+    /// </remarks>
+    private async Task LoadDetailAsync(Guid id)
+    {
+        _detail = null;
+        _detailError = null;
+        _detailLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var detail = await Client.GetVariableAsync(id, includeHistorical: _filter.IncludeHistorical);
+
+            if (_selectedId != id)
+            {
+                return;
+            }
+
+            _detail = detail;
+            _detailError = detail is null ? T.DetailMissing : null;
+        }
+        catch (Exception)
+        {
+            if (_selectedId == id)
+            {
+                // Said in the panel, not in the component's alert region: the rows are unaffected.
+                _detailError = T.DetailError;
+            }
+        }
+        finally
+        {
+            // Only when this call still owns the panel. A later selection has already set the flag
+            // for its own fetch, and clearing it here would report that one as finished.
+            if (_selectedId == id)
+            {
+                _detailLoading = false;
+            }
+        }
+    }
+
+    /// <summary>Close the panel and forget what was fetched for it.</summary>
+    private void ClearSelection()
+    {
+        _selectedId = null;
+        _detail = null;
+        _detailError = null;
+
+        // Cleared as well, because a fetch may still be in flight for the row that was open. Its
+        // own guard keeps it from writing anything back, which also means it will not clear this.
+        _detailLoading = false;
+    }
+
+    /// <summary>
+    /// Close the panel when the variable it belongs to is no longer among the rows on screen.
+    /// </summary>
+    /// <remarks>
+    /// The panel is drawn inside its own row, so a selection the current result does not contain is
+    /// one nothing renders — state the reader cannot see and cannot get rid of, which would come
+    /// back the moment they paged past that row again. Run after every result that arrives, so a
+    /// new search, a filter, a reordering and a page turn are all covered by one rule rather than
+    /// four. The host is told, because a URL naming a variable the page is not showing hands out a
+    /// link that opens something else.
+    /// </remarks>
+    private async Task DropSelectionIfGoneAsync()
+    {
+        if (_selectedId is not { } id || IsOnScreen(id))
+        {
+            return;
+        }
+
+        ClearSelection();
+        await RaiseAsync<Guid?>(SelectedVariableIdChanged, null);
+    }
+
+    private bool IsOnScreen(Guid id) => _result?.Items.Any(v => v.Id == id) is true;
+
+    /// <summary>
+    /// Open the panel the host asked for, once the first result is known.
+    /// </summary>
+    /// <remarks>
+    /// After the search rather than before it, because whether the id is worth fetching depends on
+    /// whether the row is there to draw it in. A search that failed has no rows at all, which is
+    /// the case <see cref="DropSelectionIfGoneAsync"/> never sees — it only runs on an answer — and
+    /// is why the check is repeated here rather than left to it.
+    /// </remarks>
+    private async Task OpenInitialSelectionAsync()
+    {
+        if (_selectedId is not { } id)
+        {
+            return;
+        }
+
+        if (!IsOnScreen(id))
+        {
+            ClearSelection();
+            await RaiseAsync<Guid?>(SelectedVariableIdChanged, null);
+
+            return;
+        }
+
+        await LoadDetailAsync(id);
+    }
+
     protected override async Task OnInitializedAsync()
     {
         _search = Search;
         _filter = Filter ?? VariableFilter.None;
+        _selectedId = SelectedVariableId;
         await SearchAsync();
+        await OpenInitialSelectionAsync();
     }
 
     private async Task SearchAsync()
@@ -1411,6 +1897,29 @@ public partial class VariableExplorer : ComponentBase
         }
     }
 
+    /// <summary>
+    /// Fetch <paramref name="search"/> at the current page and ordering, and settle what the new
+    /// rows mean for the open detail panel. True when the fetch succeeded.
+    /// </summary>
+    /// <remarks>
+    /// The panel is settled here rather than at the five call sites, which is what makes "the
+    /// selection is always a row on screen" one rule instead of five. It is outside the fetch's own
+    /// try/catch on purpose: the host's callback runs in it, and a host that navigates from its
+    /// handler signals that with an exception the catch would otherwise swallow and report as a
+    /// failed search.
+    /// </remarks>
+    private async Task<bool> FetchAsync(string? search, bool keepResult = false)
+    {
+        var fetched = await FetchRowsAsync(search, keepResult);
+
+        if (fetched)
+        {
+            await DropSelectionIfGoneAsync();
+        }
+
+        return fetched;
+    }
+
     /// <summary>Fetch <paramref name="search"/> at the current page and ordering. True when it succeeded.</summary>
     /// <remarks>
     /// <para>
@@ -1427,7 +1936,7 @@ public partial class VariableExplorer : ComponentBase
     /// standing on.
     /// </para>
     /// </remarks>
-    private async Task<bool> FetchAsync(string? search, bool keepResult = false)
+    private async Task<bool> FetchRowsAsync(string? search, bool keepResult = false)
     {
         _loading = true;
         _error = null;
@@ -1477,10 +1986,19 @@ public partial class VariableExplorer : ComponentBase
     private static string? Trimmed(string? text) =>
         string.IsNullOrWhiteSpace(text) ? null : text.Trim();
 
-    private static string? Period(VariableSummary v)
+    private static string? Period(VariableSummary v) => Period(v.DataFrom, v.DataTo);
+
+    /// <summary>
+    /// The years a variable has data for, as the cards and the detail panel both write it.
+    /// </summary>
+    /// <remarks>
+    /// Shared so a row and the panel opened from it cannot word the same period differently — the
+    /// two dates come from different payloads, but the sentence they are written into is one.
+    /// </remarks>
+    private static string? Period(DateTimeOffset? dataFrom, DateTimeOffset? dataTo)
     {
-        var from = v.DataFrom?.Year.ToString();
-        var to = v.DataTo?.Year.ToString();
+        var from = dataFrom?.Year.ToString();
+        var to = dataTo?.Year.ToString();
         return (from, to) switch
         {
             (null, null) => null,
@@ -1508,6 +2026,16 @@ public partial class VariableExplorer : ComponentBase
         string FieldDataCollection,
         string FieldVariableGroup,
         string FieldPeriod,
+        string FieldDescription,
+        string FieldKodeverk,
+        // The detail panel. Its labels are the card's own words wherever it names the same thing —
+        // Datakilde, Variabelgruppe, Periode — so opening a row renames nothing.
+        string ShowDetails,
+        string HideDetails,
+        string DetailLoading,
+        string DetailError,
+        string DetailMissing,
+        string Kildekodeverk,
         // The filter panel. FieldSource and FieldVariableGroup name two of the facets as well as two
         // of the card fields — deliberately the same word for the same thing in both places.
         string FiltersTitle,
@@ -1595,6 +2123,28 @@ public partial class VariableExplorer : ComponentBase
             return string.IsNullOrWhiteSpace(fallback) ? NotSpecified : fallback;
         }
 
+        /// <summary>
+        /// Prose for a kodeverk link's type, falling back to the token the API sent.
+        /// </summary>
+        /// <remarks>
+        /// Two of the three words are the facets' own, deliberately: a helsefaglig kodeverk is the
+        /// same thing whether it is being filtered on or read off a variable, and naming it twice
+        /// over would be two vocabularies for one catalogue. Case-insensitive because the tokens are
+        /// Munin's enum names rather than a contract about capitalisation, and a fallback rather
+        /// than a throw for the reason <see cref="KildeTypeLabel"/> has one — a new kind of link is
+        /// a catalogue change, not a bug here.
+        /// </remarks>
+        public string KodeverkTypeLabel(string type) => type switch
+        {
+            _ when Is(type, "Kildekodeverk") => Kildekodeverk,
+            _ when Is(type, "AdministrativtKodeverk") => FacetAdministrativtKodeverk,
+            _ when Is(type, "HelsefagligKodeverk") => FacetHelsefagligKodeverk,
+            _ => type
+        };
+
+        private static bool Is(string value, string token) =>
+            string.Equals(value, token, StringComparison.OrdinalIgnoreCase);
+
         /// <summary>Prose for a datatype code, falling back to the code — same reasoning as above.</summary>
         public string DataTypeLabel(string value) =>
             DataTypeNames.TryGetValue(value, out var name) ? name : value;
@@ -1629,6 +2179,14 @@ public partial class VariableExplorer : ComponentBase
             FieldDataCollection: "Datasamling",
             FieldVariableGroup: "Variabelgruppe",
             FieldPeriod: "Periode",
+            FieldDescription: "Beskrivelse",
+            FieldKodeverk: "Kodeverk",
+            ShowDetails: "Vis detaljer",
+            HideDetails: "Skjul detaljer",
+            DetailLoading: "Henter detaljer …",
+            DetailError: "Kunne ikke hente detaljene nå. Prøv igjen om litt.",
+            DetailMissing: "Fant ingen detaljer for denne variabelen.",
+            Kildekodeverk: "Kildekodeverk",
             FiltersTitle: "Filtre",
             ClearFilters: "Fjern alle filtre",
             FilterError: "Kunne ikke oppdatere filtrene nå. Tallene kan være utdaterte.",
@@ -1717,6 +2275,14 @@ public partial class VariableExplorer : ComponentBase
             FieldDataCollection: "Data collection",
             FieldVariableGroup: "Variable group",
             FieldPeriod: "Period",
+            FieldDescription: "Description",
+            FieldKodeverk: "Code systems",
+            ShowDetails: "Show details",
+            HideDetails: "Hide details",
+            DetailLoading: "Loading details …",
+            DetailError: "Could not load the details right now. Please try again shortly.",
+            DetailMissing: "No details were found for this variable.",
+            Kildekodeverk: "Source code system",
             FiltersTitle: "Filters",
             ClearFilters: "Clear all filters",
             FilterError: "Could not refresh the filters right now. The counts may be out of date.",

@@ -1,6 +1,7 @@
 using Bunit;
 using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Tests;
@@ -2352,5 +2353,482 @@ public class VariableExplorerTest : BunitContext
         Assert.All(panel.QuerySelectorAll("details"), d => Assert.False(d.HasAttribute("class")));
         Assert.All(panel.QuerySelectorAll("ul"), u => Assert.False(u.HasAttribute("class")));
         Assert.All(FacetButtons(cut), b => Assert.Contains("hd-button-square", b.ClassName!));
+    }
+
+    // ---------------------------------------------------------------------------------
+    // The detail panel. The one thing that has to hold is the acceptance criterion itself:
+    // selecting a variable shows its detail without a page navigation. Everything else here
+    // follows from the panel living inside the row — the selection can only ever be a row on
+    // screen, and the host is told which one so a reader's place can be linked to.
+    // ---------------------------------------------------------------------------------
+
+    private static readonly Guid TaleId = new("dddddddd-0000-0000-0000-000000000001");
+    private static readonly Guid SpyttId = new("dddddddd-0000-0000-0000-000000000002");
+
+    /// <summary>A row with an id a test can hand back to the component as a selection.</summary>
+    private static VariableSummary Row(Guid id, string name, string? description = null) => new()
+    {
+        Id = id,
+        Code = $"V_ALS.F1.{name}",
+        PreferredTerm = name,
+        KildeName = "Als registeret",
+        DatasamlingName = "Inklusjon",
+        Description = description
+    };
+
+    /// <summary>A detail payload shaped like the captured one, with every field the panel draws.</summary>
+    private static VariableDetail Detail(Guid id, string name = "1. Tale") => new()
+    {
+        Id = id,
+        Code = $"V_ALS.F1.{name}",
+        PreferredTerm = name,
+        Description = $"Angir pasientens grad av utfall på «{name}».",
+        KildeName = "Als registeret",
+        KildeShortName = "ALS",
+        KildeType = "nasjonaltMedisinskKvalitetsregister",
+        DatasamlingName = "Inklusjon",
+        VariabelgruppeName = "Funksjonsscore",
+        DataFrom = new DateTimeOffset(2010, 1, 1, 0, 0, 0, TimeSpan.Zero),
+        DataTo = new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero),
+        AllVariabelgrupper = [new() { Id = Bakgrunn, Name = "Funksjonsscore" }],
+        KodeverkLinks =
+        [
+            new() { KodeverkType = "Kildekodeverk", KodeverkReference = "2336", HasCodeValues = true },
+            new()
+            {
+                KodeverkType = "AdministrativtKodeverk",
+                KodeverkReference = "2.16.578.1.12.4.1.1.7110",
+                DisplayName = "ICD-10"
+            }
+        ]
+    };
+
+    /// <summary>Answers the search from one page and the detail endpoint from what it was given.</summary>
+    private sealed class DetailClient(Page<VariableSummary> answer) : EmptyMuninExplorerClient
+    {
+        private readonly Dictionary<Guid, VariableDetail> _details = [];
+
+        // Never completed on its own, so a test can keep one detail in flight while it opens
+        // another row — the only way to reach the late-answer guard.
+        private readonly TaskCompletionSource<VariableDetail?> _stalled =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        /// <summary>The rows the next search answers with — settable, so a search can replace them.</summary>
+        public Page<VariableSummary> Answer { get; set; } = answer;
+
+        public int DetailCalls { get; private set; }
+        public Guid LastDetailId { get; private set; }
+        public bool LastIncludeHistorical { get; private set; }
+
+        /// <summary>Fail every detail fetch from the next one on.</summary>
+        public bool FailDetail { get; set; }
+
+        /// <summary>Never answer a detail fetch from the next one on.</summary>
+        public bool StallDetail { get; set; }
+
+        public DetailClient Knows(VariableDetail detail)
+        {
+            _details[detail.Id] = detail;
+
+            return this;
+        }
+
+        public void AnswerStalled(VariableDetail detail) => _stalled.TrySetResult(detail);
+
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
+            SortField sort = SortField.Default,
+            SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(Answer);
+
+        public override Task<VariableDetail?> GetVariableAsync(
+            Guid id, bool includeHistorical = false, CancellationToken cancellationToken = default)
+        {
+            DetailCalls++;
+            LastDetailId = id;
+            LastIncludeHistorical = includeHistorical;
+
+            if (FailDetail)
+            {
+                throw new HttpRequestException("nede");
+            }
+
+            if (StallDetail)
+            {
+                return _stalled.Task;
+            }
+
+            // Explicit, because Task.FromResult would infer a non-nullable result and the whole
+            // point of the answer is that a variable the catalogue does not publish comes back null.
+            return Task.FromResult<VariableDetail?>(_details.GetValueOrDefault(id));
+        }
+    }
+
+    private static IReadOnlyList<AngleSharp.Dom.IElement> Toggles(IRenderedComponent<VariableExplorer> cut) =>
+        cut.FindAll("ul.datasourcecard-list .datasourcecard > button");
+
+    private static AngleSharp.Dom.IElement Panel(IRenderedComponent<VariableExplorer> cut) =>
+        cut.Find(".variable-explorer-detail");
+
+    /// <summary>The panel's values, in the order the definition list draws them.</summary>
+    private static IReadOnlyList<AngleSharp.Dom.IElement> Values(IRenderedComponent<VariableExplorer> cut) =>
+        [.. Panel(cut).QuerySelectorAll("dl > dd")];
+
+    private static DetailClient TwoRows() =>
+        new DetailClient(OnePage(Row(TaleId, "1. Tale"), Row(SpyttId, "2. Spyttsekresjon")))
+            .Knows(Detail(TaleId))
+            .Knows(Detail(SpyttId, "2. Spyttsekresjon"));
+
+    [Fact]
+    public void Detail_WhenAVariableIsSelected_ThenItsDetailIsShownWithoutAPageNavigation()
+    {
+        // The acceptance criterion. The component holds no NavigationManager and the card is not a
+        // link, so the only way the detail can arrive is the way it does: into the same rendered
+        // component, from a second call to the same client the search came from.
+        var client = TwoRows();
+        var cut = RenderWith(client);
+        var navigation = Services.GetRequiredService<NavigationManager>();
+        var before = navigation.Uri;
+
+        Toggles(cut)[0].Click();
+
+        Assert.Equal(before, navigation.Uri);
+        Assert.Empty(cut.FindAll("ul.datasourcecard-list a"));
+        Assert.Equal(TaleId, client.LastDetailId);
+        Assert.Contains("Angir pasientens grad av utfall", Panel(cut).TextContent);
+        Assert.Equal("true", Toggles(cut)[0].GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void Detail_WhenTheDetailArrives_ThenItSaysWhatTheVariableIsAndWhereItSits()
+    {
+        // The five things the panel exists to show. The labels are the card's own words for the
+        // same fields, so opening a row renames nothing that was already on screen.
+        var cut = RenderWith(TwoRows());
+
+        Toggles(cut)[0].Click();
+
+        Assert.Equal(["Beskrivelse", "Periode", "Datakilde", "Variabelgruppe", "Kodeverk"],
+                     Panel(cut).QuerySelectorAll("dl > dt").Select(t => t.TextContent));
+
+        var values = Values(cut);
+
+        Assert.Equal("Angir pasientens grad av utfall på «1. Tale».", values[0].TextContent);
+        Assert.Equal("2010–2025", values[1].TextContent);
+
+        // Widest first, and the kilde's short name alongside its full one — the card has room for
+        // neither the kildetype above it nor the abbreviation the register is known by.
+        Assert.Equal(["Nasjonalt medisinsk kvalitetsregister", "Als registeret (ALS)", "Inklusjon"],
+                     values[2].QuerySelectorAll("ol > li").Select(l => l.TextContent));
+
+        Assert.Equal(["Funksjonsscore"], values[3].QuerySelectorAll("li").Select(l => l.TextContent));
+
+        // Each kodeverk says which kind it is: "2336" alone does not distinguish a kildekodeverk
+        // the register defined from a national classification.
+        Assert.Equal(["Kildekodeverk: 2336", "Administrativt kodeverk: ICD-10"],
+                     values[4].QuerySelectorAll("li").Select(l => l.TextContent));
+    }
+
+    [Fact]
+    public void Detail_WhenAValueIsMissing_ThenTheRowStillDrawsAndSaysSo()
+    {
+        // A variable with nothing but a name is a normal row in this catalogue, and a panel that
+        // renders nothing for it would look like a panel that failed to load.
+        var bare = new VariableDetail { Id = TaleId, Code = "K", PreferredTerm = "1. Tale" };
+        var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale"))).Knows(bare));
+
+        Toggles(cut)[0].Click();
+
+        Assert.All(Values(cut), v => Assert.Equal("Ikke oppgitt", v.TextContent));
+    }
+
+    [Fact]
+    public void Detail_WhenTheOpenRowIsPressedAgain_ThenThePanelCloses()
+    {
+        // What aria-expanded promises: the same press that opened it closes it. The button itself
+        // stays exactly where it was, so the focus does not go anywhere.
+        var cut = RenderWith(TwoRows());
+
+        Toggles(cut)[0].Click();
+        Toggles(cut)[0].Click();
+
+        Assert.Empty(cut.FindAll(".variable-explorer-detail"));
+        Assert.Equal("false", Toggles(cut)[0].GetAttribute("aria-expanded"));
+        Assert.Equal("Vis detaljer", Toggles(cut)[0].TextContent);
+    }
+
+    [Fact]
+    public void Detail_WhenASecondRowIsOpened_ThenOnlyOnePanelIsEverOpen()
+    {
+        // One selection, one fetched detail, one thing to tell the host — and a list of 25 rows
+        // that cannot be turned into a page of expanded cards with no way back through it.
+        var cut = RenderWith(TwoRows());
+
+        Toggles(cut)[0].Click();
+        Toggles(cut)[1].Click();
+
+        Assert.Single(cut.FindAll(".variable-explorer-detail"));
+        Assert.Equal("false", Toggles(cut)[0].GetAttribute("aria-expanded"));
+        Assert.Equal("true", Toggles(cut)[1].GetAttribute("aria-expanded"));
+        Assert.Contains("2. Spyttsekresjon", Panel(cut).TextContent);
+    }
+
+    [Fact]
+    public void Detail_WhenTheFetchFails_ThenThePanelSaysSoAndTheRowsStay()
+    {
+        // A panel that failed has not changed which rows are on screen, so the failure is reported
+        // inside it rather than in the component's own alert region — and the panel stays open,
+        // because closing it would take the button that was just pressed out of the document.
+        var client = TwoRows();
+        var cut = RenderWith(client);
+
+        client.FailDetail = true;
+        Toggles(cut)[0].Click();
+
+        Assert.Contains("Kunne ikke hente detaljene nå", Panel(cut).TextContent);
+        Assert.Contains("infobox", Panel(cut).QuerySelector("p")!.ClassName!);
+        Assert.Equal(2, cut.FindAll("ul.datasourcecard-list > li").Count);
+        Assert.Equal("true", Toggles(cut)[0].GetAttribute("aria-expanded"));
+
+        // The component's own alert region is for the list, and the list is fine.
+        Assert.Equal(string.Empty, cut.Find("[role='alert']").TextContent.Trim());
+    }
+
+    [Fact]
+    public void Detail_WhenTheVariableIsNotPublished_ThenItSaysSoRatherThanOfferingARetry()
+    {
+        // The client answers null for something that is not published rather than throwing, and
+        // "prøv igjen om litt" is advice that would never come good for it.
+        var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale"))));
+
+        Toggles(cut)[0].Click();
+
+        Assert.Contains("Fant ingen detaljer", Panel(cut).TextContent);
+        Assert.DoesNotContain("Prøv igjen", Panel(cut).TextContent);
+    }
+
+    [Fact]
+    public void Detail_WhenHistoricalVariablesAreShown_ThenTheDetailIsAskedForThemToo()
+    {
+        // The endpoint hides them by default. Without this a reader who turned "Vis historiske" on
+        // would be told that a row they are looking at does not exist.
+        var client = TwoRows();
+        var cut = RenderWith(client, b => b.Add(c => c.Filter, new VariableFilter { IncludeHistorical = true }));
+
+        Toggles(cut)[0].Click();
+
+        Assert.True(client.LastIncludeHistorical);
+    }
+
+    [Fact]
+    public void Detail_WhenTheReaderOpensAndClosesIt_ThenTheHostIsToldWhatIsOpen()
+    {
+        // The host writes this into its own URL, which is the whole of what "surfaced via
+        // parameters" buys: a reader's place in the catalogue can be linked to.
+        var reported = new List<Guid?>();
+        var cut = RenderWith(TwoRows(), b => b.Add(c => c.SelectedVariableIdChanged, id => reported.Add(id)));
+
+        Toggles(cut)[0].Click();
+        Toggles(cut)[0].Click();
+
+        Assert.Equal([TaleId, null], reported);
+    }
+
+    [Fact]
+    public void Detail_WhenTheHostSuppliesASelection_ThenThatRowIsOpenOnTheFirstRender()
+    {
+        // The other half of the round trip: a shared link has to land with the panel open, not
+        // merely with the row somewhere in the list.
+        var client = TwoRows();
+
+        var cut = RenderWith(client, b => b.Add(c => c.SelectedVariableId, (Guid?)SpyttId));
+
+        Assert.Equal(SpyttId, client.LastDetailId);
+        Assert.Equal("true", Toggles(cut)[1].GetAttribute("aria-expanded"));
+        Assert.Contains("2. Spyttsekresjon", Panel(cut).TextContent);
+    }
+
+    [Fact]
+    public void Detail_WhenTheHostSuppliesAVariableTheResultDoesNotHold_ThenItIsDroppedAndTheHostIsTold()
+    {
+        // The panel is drawn inside its own row, so an id the result does not contain is a
+        // selection nothing can render. Fetching it would be a request for a panel with nowhere to
+        // go, and leaving it set would let it spring open the moment the reader paged past that row.
+        var client = TwoRows();
+        Guid? reported = SpyttId;
+
+        RenderWith(client,
+                   b => b.Add(c => c.SelectedVariableId, (Guid?)Guid.NewGuid())
+                         .Add(c => c.SelectedVariableIdChanged, id => reported = id));
+
+        Assert.Equal(0, client.DetailCalls);
+        Assert.Null(reported);
+    }
+
+    [Fact]
+    public void Detail_WhenANewSearchLeavesTheOpenRowBehind_ThenThePanelClosesAndTheHostIsTold()
+    {
+        // Otherwise the selection is state the reader can neither see nor get rid of, and the
+        // host's URL names a variable the page is not showing.
+        var client = TwoRows();
+        var reported = new List<Guid?>();
+        var cut = RenderWith(client, b => b.Add(c => c.SelectedVariableIdChanged, id => reported.Add(id)));
+
+        Toggles(cut)[0].Click();
+        client.Answer = OnePage(Row(Guid.NewGuid(), "3. Svelging"));
+        cut.Find("button[type=submit]").Click();
+
+        Assert.Empty(cut.FindAll(".variable-explorer-detail"));
+        Assert.Equal([TaleId, null], reported);
+    }
+
+    [Fact]
+    public async Task Detail_WhenASlowAnswerArrivesAfterAnotherRowWasOpened_ThenItIsDropped()
+    {
+        // Two rows opened in quick succession are two requests in flight, and nothing says the
+        // first answers first. Without the guard the slower one paints itself under the other
+        // row's heading — a panel describing a variable the reader is not looking at, which reads
+        // as correct rather than as broken.
+        var client = TwoRows();
+        var cut = RenderWith(client);
+
+        client.StallDetail = true;
+        Toggles(cut)[0].Click();
+
+        client.StallDetail = false;
+        Toggles(cut)[1].Click();
+
+        await cut.InvokeAsync(() => client.AnswerStalled(Detail(TaleId)));
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Single(cut.FindAll(".variable-explorer-detail"));
+            Assert.Contains("2. Spyttsekresjon", Panel(cut).TextContent);
+            Assert.DoesNotContain("«1. Tale»", Panel(cut).TextContent);
+        });
+    }
+
+    [Fact]
+    public void Detail_WhileItIsLoading_ThenThePanelSaysSoAndIsMarkedBusy()
+    {
+        var client = TwoRows();
+        var cut = RenderWith(client);
+
+        client.StallDetail = true;
+        Toggles(cut)[0].Click();
+
+        Assert.Equal("true", Panel(cut).GetAttribute("aria-busy"));
+        Assert.Contains("Henter detaljer", Panel(cut).TextContent);
+
+        // Never disabled, including while its own fetch runs: disabling the element that has
+        // focus drops focus to <body>, which is the rule the Søk button and the pager follow.
+        Assert.False(Toggles(cut)[0].HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void Detail_WhenThePanelShowsTheDescription_ThenTheCardDoesNotRepeatIt()
+    {
+        // The two come from different payloads but say the same thing, and printing both would
+        // put one paragraph on screen twice inside one card.
+        var client = new DetailClient(OnePage(Row(TaleId, "1. Tale", "Hvordan er talen?")))
+            .Knows(Detail(TaleId) with { Description = "Hvordan er talen?" });
+        var cut = RenderWith(client);
+
+        Assert.Equal("Hvordan er talen?", cut.Find(".datasourcecard__intro p").TextContent);
+
+        Toggles(cut)[0].Click();
+
+        Assert.Empty(cut.FindAll(".datasourcecard__intro"));
+        Assert.Equal("Hvordan er talen?", Values(cut)[0].TextContent);
+    }
+
+    [Fact]
+    public void Detail_Always_ThenTheToggleIsWiredToThePanelAndNamedAfterItsRow()
+    {
+        // Twenty-five buttons all called "Vis detaljer" say nothing about which row they open when
+        // a screen reader lists them out of context. Pointing at the button's own words and then
+        // at the heading names it "Vis detaljer 1. Tale" and keeps each half in its own language,
+        // which an aria-label could not: the words follow Language, the variable's name is
+        // Norwegian whatever the surrounding UI is.
+        var cut = RenderWith(TwoRows());
+        var heading = cut.FindAll("ul.datasourcecard-list .datasourcecard__heading")[0];
+
+        // Closed: nothing to control yet, and aria-controls pointing at an element that is not in
+        // the document is a dangling reference.
+        Assert.False(Toggles(cut)[0].HasAttribute("aria-controls"));
+        Assert.Equal($"{Toggles(cut)[0].Id} {heading.Id}", Toggles(cut)[0].GetAttribute("aria-labelledby"));
+
+        Toggles(cut)[0].Click();
+
+        Assert.Equal(Panel(cut).Id, Toggles(cut)[0].GetAttribute("aria-controls"));
+        Assert.Equal("region", Panel(cut).GetAttribute("role"));
+        Assert.Equal(heading.Id, Panel(cut).GetAttribute("aria-labelledby"));
+    }
+
+    [Fact]
+    public void Detail_WhenTwoInstancesShareAPage_ThenTheirPanelIdsDoNotCollide()
+    {
+        // Two explorers on one page can list the same variable, and a duplicated id is a WCAG
+        // 4.1.1 failure as well as pointing both panels' wiring at whichever came first.
+        Services.AddSingleton<IMuninExplorerClient>(TwoRows());
+
+        var a = Render<VariableExplorer>();
+        var b = Render<VariableExplorer>();
+
+        Toggles(a)[0].Click();
+        Toggles(b)[0].Click();
+
+        Assert.NotEqual(Panel(a).Id, Panel(b).Id);
+        Assert.NotEqual(Toggles(a)[0].Id, Toggles(b)[0].Id);
+    }
+
+    [Fact]
+    public void Detail_WhenTheLanguageIsEn_ThenThePanelIsEnglishAndTheCatalogueStaysNorwegian()
+    {
+        // The UI turns English; Munin's metadata does not. The kildetype is the one step of the
+        // trail that is our prose rather than a name out of the catalogue, so it is the one step
+        // that follows Language — and the one that must not be announced as Norwegian.
+        var cut = RenderWith(TwoRows(), b => b.Add(c => c.Language, "en"));
+
+        Assert.Equal("Show details", Toggles(cut)[0].TextContent);
+
+        Toggles(cut)[0].Click();
+
+        Assert.Equal(["Description", "Period", "Data source", "Variable group", "Code systems"],
+                     Panel(cut).QuerySelectorAll("dl > dt").Select(t => t.TextContent));
+
+        var trail = Values(cut)[2].QuerySelectorAll("ol > li");
+
+        Assert.Equal("National medical quality registry", trail[0].TextContent);
+        Assert.False(trail[0].HasAttribute("lang"));
+        Assert.Equal("no", trail[1].GetAttribute("lang"));
+        Assert.Equal("Hide details", Toggles(cut)[0].TextContent);
+    }
+
+    [Fact]
+    public void Render_WhenAPanelIsOpen_ThenItIsBuiltFromShapesRatherThanFromNewClassNames()
+    {
+        // Stiler has no definition list, no breadcrumb and no key/value block this package can
+        // verify, so the panel is a <dl>, an <ol> and a <ul> wearing Stiler's own label, caption
+        // and square button. The third handle is the only name added, and it carries no styling —
+        // exactly like the two the collapsed component already emits.
+        var cut = RenderWith(TwoRows());
+
+        Toggles(cut)[0].Click();
+
+        var invented = cut.FindAll("[class]")
+            .SelectMany(e => e.ClassName!.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            .Where(k => k.StartsWith("variable-explorer", StringComparison.Ordinal))
+            .Distinct()
+            .ToList();
+
+        Assert.Equal(["variable-explorer", "variable-explorer-filters", "variable-explorer-detail"], invented);
+
+        var panel = Panel(cut);
+
+        Assert.All(panel.QuerySelectorAll("dl, ol, ul"), e => Assert.False(e.HasAttribute("class")));
+        Assert.All(panel.QuerySelectorAll("dl > dt"), e => Assert.Equal("form-element__label", e.ClassName));
+        Assert.Contains("hd-button-square", Toggles(cut)[0].ClassName!);
     }
 }
