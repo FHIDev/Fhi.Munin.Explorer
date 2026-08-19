@@ -2859,6 +2859,108 @@ public class VariableExplorerTest : BunitContext
 
         // Rolled back, not re-fetched: the payload put back is the one that described these rows.
         Assert.Equal(1, client.DetailCalls);
+
+        // Three searches and no more: the first render, the page turn, and the retreat that failed.
+        // A rollback that searched again would be the second failure the undo exists to avoid.
+        Assert.Equal(3, client.SearchCalls);
+    }
+
+    [Fact]
+    public async Task Detail_WhenAFailedRetreatRollsBackAPanelCaughtMidFetch_ThenItIsAskedForAgain()
+    {
+        // The other arm of the same rollback. The panel was captured with nothing in it — its own
+        // detail fetch was still running when the page turn closed it — so there is no payload to
+        // put back and the reopened panel has to ask again. The one place in the component that
+        // starts a request from inside a rollback.
+        var page1 = new Page<VariableSummary>
+        {
+            Items = [Row(TaleId, "1. Tale")],
+            TotalCount = 30,
+            PageNumber = 1,
+            Size = 25,
+            TotalPages = 2
+        };
+        var client = new DetailClient(page1).Knows(Detail(TaleId));
+        var reported = new List<Guid?>();
+        var cut = RenderWith(client, b => b.Add(c => c.SelectedVariableIdChanged, id => reported.Add(id)));
+
+        client.StallDetail = true;
+        Toggles(cut)[0].Click();
+
+        // Page 2 comes back empty the way a 404 does, and the retreat to page 1 throws — with the
+        // panel's first fetch still hanging, so what CapturePanel recorded is an empty panel.
+        client.Then(new Page<VariableSummary>()).Then(null);
+        Next(cut).Click();
+
+        // Reopened and asking again, rather than put back blank and left that way for good.
+        Assert.Equal("Side 1 av 2", Position(cut));
+        Assert.Equal("true", Toggles(cut)[0].GetAttribute("aria-expanded"));
+        Assert.Equal("true", Panel(cut).GetAttribute("aria-busy"));
+        Assert.Contains("Henter detaljer", Panel(cut).TextContent);
+        Assert.Equal(2, client.DetailCalls);
+
+        // The host has only been told the panel closed. On this arm the id waits on the re-fetch,
+        // so a slow one leaves the URL naming nothing while the panel is open on screen.
+        Assert.Equal([null], reported);
+
+        // The fetch the page turn disowned now fails. Its failure belongs to a panel that is gone,
+        // so the generation the rollback claimed has to keep it out of the one on screen.
+        await cut.InvokeAsync(client.FailStalled);
+
+        Assert.Equal("true", Panel(cut).GetAttribute("aria-busy"));
+        Assert.DoesNotContain("Kunne ikke hente detaljene", Panel(cut).TextContent);
+
+        // And the fetch the rollback started fills the panel it started for.
+        await cut.InvokeAsync(() => client.AnswerStalled(Detail(TaleId)));
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal("false", Panel(cut).GetAttribute("aria-busy"));
+            Assert.Contains("Angir pasientens grad av utfall", Panel(cut).TextContent);
+            Assert.Equal(TaleId, reported[^1]);
+        });
+
+        Assert.Equal(2, client.DetailCalls);
+    }
+
+    [Fact]
+    public async Task Detail_WhenThePanelIsClosedWhileARollbackRefetchesIt_ThenTheHostIsToldWhatIsOpen()
+    {
+        // The rollback's re-fetch yields with the rows back on screen and clickable, so the reader
+        // can shut the panel again before it answers. What the host is told has to be what is open
+        // — the captured id would leave the URL naming a variable whose panel is closed.
+        var page1 = new Page<VariableSummary>
+        {
+            Items = [Row(TaleId, "1. Tale")],
+            TotalCount = 30,
+            PageNumber = 1,
+            Size = 25,
+            TotalPages = 2
+        };
+        var client = new DetailClient(page1).Knows(Detail(TaleId));
+        var reported = new List<Guid?>();
+        var cut = RenderWith(client, b => b.Add(c => c.SelectedVariableIdChanged, id => reported.Add(id)));
+
+        client.StallDetail = true;
+        Toggles(cut)[0].Click();
+
+        client.Then(new Page<VariableSummary>()).Then(null);
+        Next(cut).Click();
+
+        // Reopened by the rollback and shut again by the reader while its fetch hangs.
+        Toggles(cut)[0].Click();
+
+        Assert.Empty(cut.FindAll(".variable-explorer-detail"));
+
+        // Oldest first: the page turn's abandoned fetch, then the rollback's, which is the one
+        // whose continuation reports to the host.
+        await cut.InvokeAsync(client.FailStalled);
+        await cut.InvokeAsync(client.FailStalled);
+
+        cut.WaitForAssertion(() => Assert.Equal(4, reported.Count));
+
+        Assert.Empty(cut.FindAll(".variable-explorer-detail"));
+        Assert.All(reported, Assert.Null);
     }
 
     [Fact]

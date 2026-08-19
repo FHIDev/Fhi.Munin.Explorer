@@ -1531,8 +1531,10 @@ public partial class VariableExplorer : ComponentBase
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Every write back into the component is guarded by the selection still being the one this
-    /// call was made for. Two rows opened in quick succession are two requests in flight, and
+    /// Every write back into the component is guarded by the generation this call claimed still
+    /// being the current one — not by the id, which names the variable and not the call, so it
+    /// cannot tell two fetches for the same row apart. Two rows opened in quick succession are two
+    /// requests in flight, and
     /// nothing says the first one answers first — without the guard the slower answer would paint
     /// itself under the other row's heading, which is a panel describing a variable the reader is
     /// not looking at rather than a visibly broken one.
@@ -1635,22 +1637,16 @@ public partial class VariableExplorer : ComponentBase
     /// </summary>
     /// <remarks>
     /// After the search rather than before it, because whether the id is worth fetching depends on
-    /// whether the row is there to draw it in. A search that failed has no rows at all, which is
-    /// the case <see cref="DropSelectionIfGoneAsync"/> never sees — it only runs on an answer — and
-    /// is why the check is repeated here rather than left to it.
+    /// whether the row is there to draw it in. Whether it is there is not asked here, though:
+    /// <see cref="FetchAsync"/> runs <see cref="DropSelectionIfGoneAsync"/> after every fetch,
+    /// failed or answered, so a selection the first result does not hold has already been closed
+    /// and reported as null by the time this runs. A selection still set is a row on screen, and
+    /// the only thing left to do with it is fetch it.
     /// </remarks>
     private async Task OpenInitialSelectionAsync()
     {
         if (_selectedId is not { } id)
         {
-            return;
-        }
-
-        if (!IsOnScreen(id))
-        {
-            ClearSelection();
-            await RaiseAsync<Guid?>(SelectedVariableIdChanged, null);
-
             return;
         }
 
@@ -1884,7 +1880,9 @@ public partial class VariableExplorer : ComponentBase
     /// result does: it is the answer that described these very rows, and putting a second request
     /// in the way of a rollback would let one failure turn into two. The exception is a panel
     /// captured while its own fetch was still running — it has no answer to put back, so that one
-    /// is fetched. The host is told, because it was told null on the way in.
+    /// is fetched, and the host waits for that fetch before being told: what is raised is the
+    /// selection as it stands afterwards, which on a slow re-fetch the reader may have moved.
+    /// The host is told at all because it was told null on the way in.
     /// </remarks>
     private async Task RestorePanelAsync(PanelState panel)
     {
@@ -1907,7 +1905,10 @@ public partial class VariableExplorer : ComponentBase
             await LoadDetailAsync(id);
         }
 
-        await RaiseAsync<Guid?>(SelectedVariableIdChanged, id);
+        // _selectedId rather than id, for the reason ToggleDetailAsync gives: the fetch above
+        // yields with the rows already back on screen and clickable, so another row may have been
+        // opened while it ran, and what the host is told has to be what is open.
+        await RaiseAsync(SelectedVariableIdChanged, _selectedId);
     }
 
     /// <summary>
