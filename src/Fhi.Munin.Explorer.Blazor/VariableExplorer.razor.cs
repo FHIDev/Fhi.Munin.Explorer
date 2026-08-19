@@ -615,15 +615,60 @@ public partial class VariableExplorer : ComponentBase
     private RenderFragment RowHeading(VariableSummary v) => builder =>
     {
         builder.OpenElement(0, $"h{RowLevel}");
-        builder.AddAttribute(1, "class", "datasourcecard__heading");
-        // Named so the row's detail panel and the button that opens it can both point at it
-        // rather than restating the variable's name in an aria-label of their own — which would
-        // put Norwegian text inside a string the surrounding UI language cannot mark.
-        builder.AddAttribute(2, "id", RowHeadingId(v));
-        builder.AddAttribute(3, "lang", "no");
-        builder.AddContent(4, v.PreferredTerm);
+        // No class of ours and none of theirs: the heading exists for the rotor, and every one of
+        // helsedata's 28 selectors for these names matches by descent, so an unstyled element
+        // between the row and the button is invisible to their CSS.
+        builder.AddAttribute(1, "id", RowHeadingId(v));
+
+        // The name IS the disclosure — helsedata's own pattern, and the APG accordion pattern.
+        // It replaces a separate "Vis detaljer" button that sat under the metadata line, and with
+        // it the dead affordance: .datasourcecard carries a pointer cursor because on their
+        // datakilde page the whole card is a link, which ours never was.
+        builder.OpenElement(2, "button");
+        builder.AddAttribute(3, "class", "variable-dataitem-main__name");
+        builder.AddAttribute(4, "type", "button");
+        builder.AddAttribute(5, "id", DetailToggleId(v));
+        builder.AddAttribute(6, "aria-expanded", DetailExpanded(v));
+        builder.AddAttribute(7, "aria-controls", DetailControls(v));
+        // Never disabled, including while its own fetch runs: pressing it again is how the panel
+        // is closed, and disabling the element that has focus drops focus to <body>.
+        builder.AddAttribute(8, "onclick", EventCallback.Factory.Create(this, () => ToggleDetailAsync(v)));
+
+        builder.OpenElement(9, "span");
+        builder.AddAttribute(10, "class", "variable-dataitem-main__column__text");
+        // Munin's variable names are Norwegian whatever language the surrounding UI is in.
+        builder.AddAttribute(11, "lang", "no");
+        builder.AddContent(12, v.PreferredTerm);
+        builder.CloseElement();
+
+        builder.CloseElement();
         builder.CloseElement();
     };
+
+    /// <summary>
+    /// The chevron helsedata draws at the head of every row, pointing down once the row is open.
+    /// </summary>
+    /// <remarks>
+    /// Their icon font, from the site-wide stylesheet: <c>.icon</c> alone carries 466 rules across
+    /// five bundles. Purely decorative — the button beside it already announces the state through
+    /// <c>aria-expanded</c>, so a second announcement here would be noise.
+    /// </remarks>
+    private RenderFragment RowChevron(VariableSummary v) => builder =>
+    {
+        builder.OpenElement(0, "span");
+        builder.AddAttribute(1, "class",
+            IsSelected(v)
+                ? "icon icon-keyboard-arrow-down variable-dataitem-main__expand-icon"
+                : "icon icon-keyboard-arrow-right variable-dataitem-main__expand-icon");
+        builder.AddAttribute(2, "aria-hidden", "true");
+        builder.CloseElement();
+    };
+
+    /// <summary>The list item's class, carrying helsedata's expanded state.</summary>
+    private string RowItemClass(VariableSummary v) =>
+        IsSelected(v)
+            ? "variable-data-list__item variable-data-list__item--expanded"
+            : "variable-data-list__item";
 
     /// <summary>
     /// The card's metadata line: code, source, data collection and period, in Stiler's
@@ -637,18 +682,50 @@ public partial class VariableExplorer : ComponentBase
     /// </remarks>
     private RenderFragment InfoLine(VariableSummary v) => builder =>
     {
-        builder.OpenElement(0, "span");
-        builder.AddAttribute(1, "class", "datasourcecard__info");
+        // One div per column, each holding a span, which is exactly helsedata's shape. Their grid
+        // is on .variable-dataitem-main, so the columns line up only if they are its direct
+        // children — the row's own layout comes from CSS we do not own.
+        Column(builder, 100, T.FieldSource, v.KildeName);
+        Column(builder, 200, T.FieldDataCollection, v.DatasamlingName);
+        Column(builder, 300, T.FieldPeriod, Period(v));
+        Column(builder, 400, T.FieldCode, v.Code);
+    };
 
-        // Fixed, spread-out sequence numbers: each Field call writes its own contiguous block,
-        // so the renderer's diff sees a stable tree across renders.
-        Field(builder, 100, T.FieldCode, v.Code, first: true);
-        Field(builder, 200, T.FieldSource, v.KildeName, first: false);
-        Field(builder, 300, T.FieldDataCollection, v.DatasamlingName, first: false);
-        Field(builder, 400, T.FieldPeriod, Period(v), first: false);
+    /// <summary>
+    /// One column of a result row, in helsedata's <c>variable-dataitem-main__column</c> shape.
+    /// </summary>
+    /// <remarks>
+    /// The label is kept as a visually-hidden prefix rather than dropped. helsedata can drop it
+    /// because their header row names the columns; ours has no header row yet (see 35oil), and
+    /// "Inklusjon" on its own says nothing about which field it is. When the header row lands,
+    /// this is the thing to reconsider.
+    /// </remarks>
+    private void Column(RenderTreeBuilder builder, int seq, string label, string? value)
+    {
+        builder.OpenElement(seq, "div");
+        builder.AddAttribute(seq + 1, "class", "variable-dataitem-main__column");
+
+        builder.OpenElement(seq + 2, "span");
+        builder.AddAttribute(seq + 3, "class", "variable-dataitem-main__column__text");
+
+        builder.AddContent(seq + 4, $"{label}: ");
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            builder.AddContent(seq + 5, T.NotSpecified);
+        }
+        else
+        {
+            // The label follows Language; the value does not (WCAG 3.1.2).
+            builder.OpenElement(seq + 6, "span");
+            builder.AddAttribute(seq + 7, "lang", "no");
+            builder.AddContent(seq + 8, value);
+            builder.CloseElement();
+        }
 
         builder.CloseElement();
-    };
+        builder.CloseElement();
+    }
 
     /// <summary>
     /// One labelled item in the metadata line.
@@ -664,7 +741,7 @@ public partial class VariableExplorer : ComponentBase
     private void Field(RenderTreeBuilder builder, int seq, string label, string? value, bool first)
     {
         builder.OpenElement(seq, "span");
-        builder.AddAttribute(seq + 1, "class", "datasourcecard__info--text");
+        builder.AddAttribute(seq + 1, "class", "variable-dataitem-main__column__text");
 
         if (!first)
         {
@@ -1039,7 +1116,7 @@ public partial class VariableExplorer : ComponentBase
         var name = kind == SourceKind.Kilde ? detail.KildeName : detail.DatasamlingName;
 
         builder.OpenElement(0, $"h{SourceLevel}");
-        builder.AddAttribute(1, "class", "datasourcecard__heading");
+        builder.AddAttribute(1, "class", "headline headline-s margin--bottom");
         builder.AddAttribute(2, "id", SourceHeadingId);
         builder.AddAttribute(3, "lang", "no");
         builder.AddContent(4, Trimmed(name) ?? SourceFallbackName(kind));

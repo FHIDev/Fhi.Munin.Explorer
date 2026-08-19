@@ -249,7 +249,20 @@
            aria-label rather than aria-labelledby: the name is the same sentence the status line
            above shows, and pointing at that element would make the list's name change under a
            screen reader every time the status line does. *@
-        <ul class="datasourcecard-list" aria-label="@Summary" aria-busy="@Busy">
+        @* helsedata's own variable page builds its result grid from a <ul> and a header row of
+           <div>s, not a <table> — there is not a single <table> element on the page. The column
+           layout is theirs; what this markup has to get right is the nesting, because 132 of the
+           292 selectors covering these names are descendant selectors. A class placed at the wrong
+           depth still renders, it just renders unstyled, which looks identical to a class that
+           matched something empty.
+
+           aria-label rather than aria-labelledby: the name is the same sentence the status line
+           above shows, and pointing at that element would make the list's name change under a
+           screen reader every time the status line does. *@
+        <div class="variable-explorer-container">
+        <div class="variable-explorer-results">
+        <div class="variable-data-list__result">
+        <ul class="variable-data-list" aria-label="@Summary" aria-busy="@Busy">
             @foreach (var v in _result.Items)
             {
                 @* Keyed by the variable's own id, the same reason the facet values are keyed: a row
@@ -257,18 +270,31 @@
                    rows reorder whenever the search, the filter or the ordering moves. Without a key
                    the renderer would patch that button into a different variable's rather than
                    moving it. *@
-                <li class="datasourcecard-list__item" @key="v.Id">
-                    @* Stiler gives .datasourcecard a pointer cursor because on helsedata's page
-                       the whole card is a link to a datasource page. Ours is not a link: the
-                       Explorer API has no per-variable URL, and the CMS host owns routing, so the
-                       detail is disclosed inside the card instead — the whole point of the panel
-                       below is that reading a variable costs no page. *@
-                    <div class="datasourcecard">
+                <li class="@RowItemClass(v)" @key="v.Id">
+                    @* The row is the disclosure. helsedata makes the variable's own name the
+                       button — button.variable-dataitem-main__name carrying aria-expanded — which
+                       is the APG accordion pattern, and it is what removes the dead affordance the
+                       old card had: a pointer cursor inherited from .datasourcecard, which is a
+                       link on their datakilde page and was never a link here.
+
+                       The heading around it is ours, not theirs. Giving every result a real
+                       heading is what lets a screen-reader user move between results with the
+                       heading rotor, and none of their 28 selectors for these names uses a child
+                       combinator — every one matches by descent — so a heading between the row and
+                       the button changes nothing about how it is styled. *@
+                    <div class="variable-data-list__item__row">
+                        <div class="variable-dataitem-main">
+                        @RowChevron(v)
                         @RowHeading(v)
                         @InfoLine(v)
+                        </div>@* variable-dataitem-main — the columns end here *@
+
+                        @* The description is not one of their columns. helsedata's row has no
+                           description at all; ours does, and it reads as a paragraph under the key
+                           facts rather than as a fifth column squeezed into the grid. *@
                         @if (ShowRowDescription(v))
                         {
-                            <div class="datasourcecard__intro">
+                            <div class="variable-dataitem-main__column--description">
                                 @* lang on the data itself, not on the whole list: the field
                                    labels around it follow Language, but Munin's descriptions are
                                    Norwegian whatever language the surrounding UI is in, and an
@@ -278,30 +304,8 @@
                             </div>
                         }
 
-                        @* The disclosure.
-
-                           A button beside the heading rather than the heading itself. The APG
-                           accordion pattern wraps the heading's text in the button, and that is the
-                           right shape when the heading is the control — but here it would have to
-                           wear a button class to be recognisable as one, and the only button Stiler
-                           gives this package is the square button, which would draw every result
-                           heading as a filled block. A named button under the metadata line costs
-                           one more tab stop per card and keeps the heading a heading, which is what
-                           the results are navigated by.
-
-                           Never disabled, including while its own fetch runs: pressing it again is
-                           how the panel is closed, and disabling the element that has focus drops
-                           focus to <body> — the same rule the Søk button and the pager follow.
-
-                           The classes are the ghost square button the sort and facet values already
-                           use, so a host that styles those has styled this. *@
-                        <button class="hd-button-square button-square--ghost margin-right margin-bottom"
-                                type="button"
-                                id="@DetailToggleId(v)"
-                                aria-expanded="@DetailExpanded(v)"
-                                aria-controls="@DetailControls(v)"
-                                aria-labelledby="@DetailToggleLabelledBy(v)"
-                                @onclick="() => ToggleDetailAsync(v)">@DetailToggleText(v)</button>
+                    </div>@* variable-data-list__item__row — the panel below is its SIBLING,
+                              not its child, which is how helsedata nests it *@
 
                         @* The panel itself, drawn inside the row it belongs to — no routing, no
                            NavigationManager, nothing for the host's CMS to route. Only one row is
@@ -318,7 +322,7 @@
                            never heard of renders as a raw browser default. *@
                         @if (IsSelected(v))
                         {
-                            <div class="variable-explorer-detail"
+                            <div class="variable-meta variable-explorer-detail"
                                  id="@DetailId(v)"
                                  role="region"
                                  aria-labelledby="@RowHeadingId(v)"
@@ -423,10 +427,12 @@
                                 }
                             </div>
                         }
-                    </div>
                 </li>
             }
         </ul>
+        </div>@* variable-data-list__result *@
+        </div>@* variable-explorer-results *@
+        </div>@* variable-explorer-container *@
     }
 
     @* The pager. Forrige / Neste with the position between them, and no infinite scrolling —
