@@ -65,6 +65,13 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <c>variable-explorer-filters</c>, and carries no styling.
 /// </para>
 /// <para>
+/// The kilde and datasamling panel inside it adds a fourth handle,
+/// <c>variable-explorer-source</c>, and again no style name. It is a <c>&lt;dl&gt;</c> under a
+/// <c>datasourcecard__heading</c>, opened by the same ghost square button, so what a host supplies
+/// for it is the base <c>&lt;dl&gt;</c> styling the variable's own panel already needed. Nothing
+/// new is required of a host that has styled the panel above it.
+/// </para>
+/// <para>
 /// A host outside helsedata's estate has to provide equivalents for those names, and two
 /// accessibility requirements the markup cannot meet on its own come with them. A host that
 /// skips either fails WCAG whatever this component does:
@@ -302,6 +309,32 @@ public partial class VariableExplorer : ComponentBase
     // would say the whole list was stale.
     private string? _detailError;
 
+    // Which of the two owners the open variable's panel is currently disclosing, and what has been
+    // fetched for it. Null is "neither", which is where every variable's panel starts: the owners
+    // are a second fetch each, and asking for them before the reader has said they want them would
+    // put three requests behind one press on a public page.
+    //
+    // One at a time, and only ever under an open variable panel — the kilde and the datasamling are
+    // reached *through* a variable, which is what the bead asks for, so there is no state here that
+    // can outlive the panel it hangs in. LoadDetailAsync and ClearSelection both clear it for that
+    // reason.
+    private SourceKind? _sourceKind;
+    private KildeDetail? _kilde;
+    private DatasamlingDetail? _datasamling;
+    private bool _sourceLoading;
+
+    // Its own generation, for the reason the detail panel has one: closing an owner and opening it
+    // again is two calls carrying one id, and the abandoned first must not report itself into the
+    // second one's panel. Separate from _detailGeneration because the two fetches are independent —
+    // an owner opened over a variable panel that is still on screen has not been abandoned by
+    // anything.
+    private int _sourceGeneration;
+
+    // Set when the owner could not be fetched, or when the API publishes no such kilde or
+    // datasamling. Its own field for the same reason _detailError is: what failed is one panel
+    // inside one panel, and neither the rows nor the variable above it are stale because of it.
+    private string? _sourceError;
+
     // The API's own default order, ascending, which is also where Runa starts — and the order the
     // API returns when it is asked for none, so the first render costs no extra query parameters.
     private SortField _sort = SortField.Default;
@@ -359,6 +392,14 @@ public partial class VariableExplorer : ComponentBase
     private string RowHeadingId(VariableSummary v) => $"variable-explorer-heading-{_instance}-{v.Id:N}";
     private string DetailToggleId(VariableSummary v) => $"variable-explorer-toggle-{_instance}-{v.Id:N}";
     private string DetailId(VariableSummary v) => $"variable-explorer-detail-{_instance}-{v.Id:N}";
+
+    // Per instance and not per row: the owner panel hangs inside the one open variable panel, so
+    // there is never more than one of it in this component's DOM. The kind is in the toggle's id
+    // because the two toggles are on screen together.
+    private string SourceId => $"variable-explorer-source-{_instance}";
+    private string SourceHeadingId => $"variable-explorer-source-heading-{_instance}";
+    private string SourceToggleId(SourceKind kind) =>
+        $"variable-explorer-source-toggle-{_instance}-{kind.ToString().ToLowerInvariant()}";
 
     private Texts T => Texts.For(Language);
 
@@ -484,6 +525,17 @@ public partial class VariableExplorer : ComponentBase
     /// altogether would cost the heading rotor these cards were given for.
     /// </remarks>
     private int RowLevel => Math.Clamp(TitleLevel + 1, 1, 6);
+
+    /// <summary>
+    /// The heading level for the kilde or datasamling panel: one step below the result card it
+    /// opens inside, so the owner reads as part of the variable rather than as a sibling of it.
+    /// </summary>
+    /// <remarks>
+    /// Clamped the same way <see cref="RowLevel"/> is, and flattens against the card's own level
+    /// for the same reason: HTML stops at <c>h6</c>, and a flattened outline is a smaller loss than
+    /// a missing heading.
+    /// </remarks>
+    private int SourceLevel => Math.Clamp(RowLevel + 1, 1, 6);
 
     /// <summary>
     /// One sentence describing the visible result, used both as the live announcement and
@@ -892,6 +944,227 @@ public partial class VariableExplorer : ComponentBase
 
         builder.CloseElement();
     };
+
+    // ---------------------------------------------------------- the kilde and datasamling panel
+
+    /// <summary>Which of a variable's two owners a panel is showing.</summary>
+    /// <remarks>
+    /// The two are one control each and one payload each, but one panel: they answer the same
+    /// question about the same variable at two widths, and a reader comparing them side by side is
+    /// not what the card has room for. One enum rather than two booleans, so "both open at once" is
+    /// a state that cannot be written down.
+    /// </remarks>
+    private enum SourceKind
+    {
+        /// <summary>The kilde the variable's datasamling belongs to.</summary>
+        Kilde,
+
+        /// <summary>The datasamling the variable is pinned into.</summary>
+        Datasamling
+    }
+
+    /// <summary>Whether <paramref name="kind"/> is the owner the panel is currently showing.</summary>
+    private bool SourceOpen(SourceKind kind) => _sourceKind == kind;
+
+    /// <summary>
+    /// The id to fetch for an owner, or null when the variable does not name one.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="VariableDetail.KildeId"/> is a bare <c>Guid</c> rather than a nullable one, so
+    /// "no kilde" arrives as <see cref="Guid.Empty"/> — a value the endpoint would answer 404 for.
+    /// It is treated as absent here, which is what keeps a button off the screen that could only
+    /// ever report "not found".
+    /// </remarks>
+    private static Guid? SourceIdOf(VariableDetail detail, SourceKind kind)
+    {
+        var id = kind == SourceKind.Kilde ? detail.KildeId : detail.DatasamlingId;
+
+        return id is { } value && value != Guid.Empty ? value : null;
+    }
+
+    /// <summary>The owners this variable can actually be opened out into, in trail order.</summary>
+    /// <remarks>
+    /// Widest first, matching the kilde trail directly above the buttons: a reader following the
+    /// path from kildetype to datasamling meets the two controls in the same order the trail names
+    /// the two things.
+    /// </remarks>
+    private static IReadOnlyList<SourceKind> SourceTargets(VariableDetail detail) =>
+        [.. new[] { SourceKind.Kilde, SourceKind.Datasamling }.Where(kind => SourceIdOf(detail, kind) is not null)];
+
+    private string SourceBusy => _sourceLoading ? "true" : "false";
+
+    private string SourceToggleText(SourceKind kind) => kind switch
+    {
+        SourceKind.Kilde => SourceOpen(kind) ? T.HideKilde : T.ShowKilde,
+        SourceKind.Datasamling => SourceOpen(kind) ? T.HideDatasamling : T.ShowDatasamling,
+        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "No label for this owner.")
+    };
+
+    private string SourceExpanded(SourceKind kind) => SourceOpen(kind) ? "true" : "false";
+
+    /// <summary>
+    /// The panel's id on the toggle that opened it, and nothing on the other one.
+    /// </summary>
+    /// <remarks>
+    /// The same rule <see cref="DetailControls"/> follows, with one addition: both toggles point at
+    /// the same panel, so the closed one has to carry no <c>aria-controls</c> at all rather than
+    /// point at a panel it did not open — two controls claiming one region is read as one region
+    /// with two names.
+    /// </remarks>
+    private string? SourceControls(SourceKind kind) => SourceOpen(kind) ? SourceId : null;
+
+    /// <summary>What the owner panel's status line says: that it is loading, or why it is empty.</summary>
+    private string? SourceStatus => _sourceKind switch
+    {
+        null => null,
+        SourceKind.Kilde => _sourceLoading ? T.KildeLoading : _sourceError,
+        SourceKind.Datasamling => _sourceLoading ? T.DatasamlingLoading : _sourceError,
+        _ => _sourceError
+    };
+
+    /// <summary>Muted while it is loading, Stiler's infobox when something went wrong.</summary>
+    private string SourceStatusClass => _sourceError is null ? "caption" : "infobox infobox--bg-yellow";
+
+    /// <summary>
+    /// The panel's heading: the owner's name as the variable itself records it.
+    /// </summary>
+    /// <remarks>
+    /// Taken from the variable's own detail rather than from the fetched payload, so the heading is
+    /// on screen the moment the panel is — and does not change under the reader when the fetch
+    /// lands. It is also what names the region, which a heading that only appeared with the payload
+    /// could not do without leaving a dangling <c>aria-labelledby</c> while the panel loaded.
+    /// </remarks>
+    private RenderFragment SourceHeading(VariableDetail detail, SourceKind kind) => builder =>
+    {
+        var name = kind == SourceKind.Kilde ? detail.KildeName : detail.DatasamlingName;
+
+        builder.OpenElement(0, $"h{SourceLevel}");
+        builder.AddAttribute(1, "class", "datasourcecard__heading");
+        builder.AddAttribute(2, "id", SourceHeadingId);
+        builder.AddAttribute(3, "lang", "no");
+        builder.AddContent(4, Trimmed(name) ?? SourceFallbackName(kind));
+        builder.CloseElement();
+    };
+
+    /// <summary>What to head the panel with when the variable records no name for its owner.</summary>
+    /// <remarks>
+    /// The field's own label — "Datakilde", "Datasamling" — rather than "Ikke oppgitt": the region
+    /// still has to be named after what it holds, and a region called "Ikke oppgitt" says nothing
+    /// about which of the two the reader opened.
+    /// </remarks>
+    private string SourceFallbackName(SourceKind kind) =>
+        kind == SourceKind.Kilde ? T.FieldSource : T.FieldDataCollection;
+
+    /// <summary>
+    /// The owner's record, as a definition list, once it has arrived.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Two shapes of the same list, because a kilde and a datasamling are not the same record: the
+    /// kilde carries the kildetype and the scale of the whole catalogue entry, the datasamling
+    /// carries what one row of its data counts and who it includes. What they share — dataansvarlig,
+    /// databehandler, identification level, lovverk, validity — is labelled identically in both, so
+    /// moving between them compares like with like.
+    /// </para>
+    /// <para>
+    /// The datasamling is drawn from its <c>Effective…</c> values throughout. Munin lets a
+    /// datasamling inherit those from its delkilde or its kilde, and the own value is null when
+    /// nothing is set at that level — so drawing the own values would report "Ikke oppgitt" for a
+    /// datasamling whose data controller is perfectly well known, one level up. What applies is
+    /// what the reader is asking about; where it was written down is a curation detail.
+    /// </para>
+    /// </remarks>
+    private RenderFragment SourceFields => builder =>
+    {
+        if (_kilde is null && _datasamling is null)
+        {
+            return;
+        }
+
+        builder.OpenElement(0, "dl");
+
+        // Fixed, spread-out sequence numbers, for the reason InfoLine has them: each field writes
+        // its own contiguous block, so the renderer's diff sees a stable tree across renders.
+        if (_kilde is { } kilde)
+        {
+            SourceField(builder, 100, T.FieldDescription, kilde.Description);
+            SourceField(builder, 200, T.FacetKildeType, T.KildeTypeLabel(kilde.Kildetype, kilde.Kildetype), norwegian: false);
+            SourceField(builder, 300, T.FieldDataController, kilde.DataController);
+            SourceField(builder, 400, T.FieldDataProcessor, kilde.DataProcessor);
+            SourceField(builder, 500, T.FieldPersonIdentification,
+                        T.PersonIdentificationLabel(kilde.PersonIdentificationLevel), norwegian: false);
+            SourceField(builder, 600, T.FieldLegalBasis, kilde.LegalBasis);
+            SourceField(builder, 700, T.FieldValidity, Period(kilde.ValidFrom, kilde.ValidTo));
+            SourceField(builder, 800, T.FieldPeriod, Period(kilde.DataFrom, kilde.DataTo));
+            SourceField(builder, 900, T.FieldDataCollections, DatasamlingCount(kilde).ToString(), norwegian: false);
+            SourceField(builder, 1000, T.FieldVariableCount, kilde.TotalVariables.ToString(), norwegian: false);
+        }
+        else if (_datasamling is { } datasamling)
+        {
+            SourceField(builder, 100, T.FieldDescription, datasamling.Description);
+            SourceField(builder, 200, T.FieldSource, datasamling.ParentKildeName);
+            SourceField(builder, 300, T.FieldInclusionCriteria, datasamling.InclusionAndExclusionCriteria);
+            SourceField(builder, 400, T.FieldDataController, datasamling.EffectiveDataController);
+            SourceField(builder, 500, T.FieldDataProcessor, datasamling.EffectiveDataProcessor);
+            SourceField(builder, 600, T.FieldPersonIdentification,
+                        T.PersonIdentificationLabel(datasamling.EffectivePersonIdentificationLevel), norwegian: false);
+            SourceField(builder, 700, T.FieldLegalBasis, datasamling.EffectiveLegalBasis);
+            SourceField(builder, 800, T.FieldValidity,
+                        Period(datasamling.EffectiveValidFrom, datasamling.EffectiveValidTo));
+            SourceField(builder, 900, T.FieldFrequency, datasamling.Frequency);
+            SourceField(builder, 1000, T.FieldCountingUnit, datasamling.CountingUnit);
+            SourceField(builder, 1100, T.FieldVariableCount, datasamling.VariableCount.ToString(), norwegian: false);
+        }
+
+        builder.CloseElement();
+    };
+
+    /// <summary>
+    /// How many datasamlinger the kilde holds, everywhere in its tree.
+    /// </summary>
+    /// <remarks>
+    /// Counted rather than listed. A large kilde has dozens, and a wall of names inside a result
+    /// card answers a question nobody asked while burying the one the panel is for; the number is
+    /// what says how big the thing the variable came out of actually is. The delkilde tree is
+    /// walked recursively because it can be deeper than one level — a study series has one delkilde
+    /// per wave, and counting only the top of it would report a fraction of the catalogue entry.
+    /// </remarks>
+    private static int DatasamlingCount(KildeDetail kilde) =>
+        kilde.Datasamlinger.Count + kilde.Delkilder.Sum(DatasamlingCount);
+
+    private static int DatasamlingCount(KildeDelkilde delkilde) =>
+        delkilde.Datasamlinger.Count + delkilde.Children.Sum(DatasamlingCount);
+
+    /// <summary>
+    /// One label and its value in the owner panel.
+    /// </summary>
+    /// <remarks>
+    /// <c>norwegian</c> says whether the value is the catalogue's own words. False for ours — the
+    /// kildetype and the identification level are prose that follows <see cref="Language"/>, and
+    /// marking those as Norwegian would hand an English page's synthesiser a language it is not
+    /// reading. A missing value is written out as "Ikke oppgitt" either way, which is the rule the
+    /// cards and the variable's own panel already follow.
+    /// </remarks>
+    private void SourceField(RenderTreeBuilder builder, int seq, string label, string? value, bool norwegian = true)
+    {
+        builder.OpenElement(seq, "dt");
+        builder.AddAttribute(seq + 1, "class", "form-element__label");
+        builder.AddContent(seq + 2, label);
+        builder.CloseElement();
+
+        builder.OpenElement(seq + 3, "dd");
+
+        if (norwegian)
+        {
+            builder.AddContent(seq + 4, DetailValue(value));
+        }
+        else
+        {
+            builder.AddContent(seq + 5, string.IsNullOrWhiteSpace(value) ? T.NotSpecified : value);
+        }
+
+        builder.CloseElement();
+    }
 
     // ---------------------------------------------------------------------------- the filter panel
 
@@ -1559,6 +1832,12 @@ public partial class VariableExplorer : ComponentBase
         _detail = null;
         _detailError = null;
         _detailLoading = true;
+
+        // The owner panel is drawn from the detail being replaced, so it cannot survive the
+        // replacement — opening a second row with a kilde disclosed would otherwise show that
+        // kilde under the new variable's name until its own fetch landed.
+        ClearSource();
+
         StateHasChanged();
 
         try
@@ -1606,6 +1885,124 @@ public partial class VariableExplorer : ComponentBase
         // Cleared as well, because that abandoned fetch will not clear it: its own guard keeps it
         // from writing anything back at all.
         _detailLoading = false;
+
+        // The owner panel hangs inside the panel being closed, so it goes with it. Left behind it
+        // would be a kilde nothing draws, and the next variable opened would inherit it.
+        ClearSource();
+    }
+
+    /// <summary>Close the kilde or datasamling panel and forget what was fetched for it.</summary>
+    private void ClearSource()
+    {
+        _sourceKind = null;
+        _kilde = null;
+        _datasamling = null;
+        _sourceError = null;
+
+        // Same reason ClearSelection bumps the detail's: closing disowns a fetch still in flight,
+        // and the generation it claimed cannot come back even though the id can.
+        _sourceGeneration++;
+        _sourceLoading = false;
+    }
+
+    /// <summary>
+    /// Open the kilde or the datasamling the variable belongs to, or close the one already open.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// One owner at a time, the same rule the variable panels follow: pressing Datasamling with
+    /// Datakilde open swaps the panel rather than stacking a second one inside a result card.
+    /// </para>
+    /// <para>
+    /// The id comes from the variable's own detail, which is the payload the buttons are rendered
+    /// from — so a press can only ever ask for an owner the open panel names. It is re-read here
+    /// rather than captured in the callback because <see cref="_detail"/> is what the panel is
+    /// drawn from: an owner fetched for a variable that is no longer the open one would paint
+    /// itself under the wrong heading.
+    /// </para>
+    /// </remarks>
+    private async Task ToggleSourceAsync(SourceKind kind)
+    {
+        if (SourceOpen(kind))
+        {
+            ClearSource();
+
+            return;
+        }
+
+        if (_detail is not { } detail || SourceIdOf(detail, kind) is not { } id)
+        {
+            return;
+        }
+
+        _sourceKind = kind;
+        await LoadSourceAsync(kind, id);
+    }
+
+    /// <summary>
+    /// Fetch one owner into the open panel.
+    /// </summary>
+    /// <remarks>
+    /// Guarded per call rather than per id, for the reason <see cref="LoadDetailAsync"/> is: the
+    /// two endpoints are different but the hazard is the same, and swapping between Datakilde and
+    /// Datasamling twice quickly is two calls whose answers can arrive in either order. Null is
+    /// "the catalogue does not publish this", not a failure, so it is reported as "not found"
+    /// rather than as advice to try again.
+    /// </remarks>
+    private async Task LoadSourceAsync(SourceKind kind, Guid id)
+    {
+        var generation = ++_sourceGeneration;
+
+        _kilde = null;
+        _datasamling = null;
+        _sourceError = null;
+        _sourceLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            if (kind == SourceKind.Kilde)
+            {
+                var kilde = await Client.GetKildeAsync(id);
+
+                if (_sourceGeneration != generation)
+                {
+                    return;
+                }
+
+                _kilde = kilde;
+                _sourceError = kilde is null ? T.KildeMissing : null;
+            }
+            else
+            {
+                var datasamling = await Client.GetDatasamlingAsync(id);
+
+                if (_sourceGeneration != generation)
+                {
+                    return;
+                }
+
+                _datasamling = datasamling;
+                _sourceError = datasamling is null ? T.DatasamlingMissing : null;
+            }
+        }
+        catch (Exception)
+        {
+            if (_sourceGeneration == generation)
+            {
+                // Said in the owner panel, not in the variable's above it and not in the
+                // component's alert region: neither the rows nor the variable is stale because the
+                // kilde endpoint was unreachable.
+                _sourceError = kind == SourceKind.Kilde ? T.KildeError : T.DatasamlingError;
+            }
+        }
+        finally
+        {
+            if (_sourceGeneration == generation)
+            {
+                _sourceLoading = false;
+            }
+        }
     }
 
     /// <summary>
@@ -1868,9 +2265,15 @@ public partial class VariableExplorer : ComponentBase
     }
 
     /// <summary>What is open in the panel and what was fetched into it.</summary>
-    private readonly record struct PanelState(Guid? Id, VariableDetail? Detail, string? Error);
+    private readonly record struct PanelState(Guid? Id, VariableDetail? Detail, string? Error, SourceState Source);
 
-    private PanelState CapturePanel() => new(_selectedId, _detail, _detailError);
+    /// <summary>What is open in the kilde or datasamling panel inside it, and what was fetched.</summary>
+    private readonly record struct SourceState(
+        SourceKind? Kind, KildeDetail? Kilde, DatasamlingDetail? Datasamling, string? Error);
+
+    private PanelState CapturePanel() => new(_selectedId, _detail, _detailError, CaptureSource());
+
+    private SourceState CaptureSource() => new(_sourceKind, _kilde, _datasamling, _sourceError);
 
     /// <summary>
     /// Reopen a panel that a fetch closed on its way through, when that fetch then failed.
@@ -1905,10 +2308,64 @@ public partial class VariableExplorer : ComponentBase
             await LoadDetailAsync(id);
         }
 
+        // After the detail, for the reason the detail comes after the rows: the owner panel is
+        // drawn inside the variable's, and LoadDetailAsync clears it on its way through.
+        await RestoreSourceAsync(panel.Source, id);
+
         // _selectedId rather than id, for the reason ToggleDetailAsync gives: the fetch above
         // yields with the rows already back on screen and clickable, so another row may have been
         // opened while it ran, and what the host is told has to be what is open.
         await RaiseAsync(SelectedVariableIdChanged, _selectedId);
+    }
+
+    /// <summary>
+    /// Put the kilde or datasamling panel back alongside the variable panel it hung inside.
+    /// </summary>
+    /// <remarks>
+    /// Same reasoning as <see cref="RestorePanelAsync"/>, one level down: the rollback exists so a
+    /// failed page turn does not leave the reader on the row they had opened, shut — and a reader
+    /// who had opened the kilde inside it was two presses in, not one. The fetched payload goes
+    /// back rather than being asked for again, except when it had not arrived yet, which is the one
+    /// case with nothing to put back.
+    /// <para>
+    /// Guarded on the selection still being the restored row: the detail above may have been
+    /// re-fetched, and that yields with the rows clickable, so the reader can have opened another
+    /// variable in the meantime. Restoring an owner into that one would name the wrong kilde under
+    /// the wrong variable.
+    /// </para>
+    /// </remarks>
+    private async Task RestoreSourceAsync(SourceState source, Guid id)
+    {
+        if (source.Kind is not { } kind || _selectedId != id)
+        {
+            return;
+        }
+
+        _sourceKind = kind;
+        _kilde = source.Kilde;
+        _datasamling = source.Datasamling;
+        _sourceError = source.Error;
+
+        // A new owner of the panel, for the reason RestorePanelAsync bumps the detail's.
+        _sourceGeneration++;
+        _sourceLoading = false;
+
+        if (source.Kilde is not null || source.Datasamling is not null || source.Error is not null)
+        {
+            return;
+        }
+
+        // Nothing had arrived when it closed, so it has to be asked for again — and only the
+        // restored detail can say which id to ask for. A detail that came back without one is a
+        // panel with nothing to open, so the owner closes rather than hanging empty.
+        if (_detail is { } detail && SourceIdOf(detail, kind) is { } sourceId)
+        {
+            await LoadSourceAsync(kind, sourceId);
+        }
+        else
+        {
+            ClearSource();
+        }
     }
 
     /// <summary>
@@ -2108,6 +2565,33 @@ public partial class VariableExplorer : ComponentBase
         string DetailError,
         string DetailMissing,
         string Kildekodeverk,
+        // The kilde and datasamling panel, one level in from the variable's own. Where it names
+        // something the card or the facets already name — Datakilde, Datasamling, Beskrivelse,
+        // Periode, Type datakilde — it borrows their words rather than minting a synonym, so moving
+        // inwards renames nothing. What is here is what only the owners have.
+        string ShowKilde,
+        string HideKilde,
+        string ShowDatasamling,
+        string HideDatasamling,
+        string KildeLoading,
+        string DatasamlingLoading,
+        string KildeError,
+        string DatasamlingError,
+        string KildeMissing,
+        string DatasamlingMissing,
+        string FieldLegalBasis,
+        string FieldDataController,
+        string FieldDataProcessor,
+        string FieldPersonIdentification,
+        string FieldValidity,
+        string FieldInclusionCriteria,
+        string FieldFrequency,
+        string FieldCountingUnit,
+        string FieldVariableCount,
+        string FieldDataCollections,
+        // Prose for the identification level, which the API reports as a raw token the same way
+        // kildetype is. A token missing from this falls back to what the API sent.
+        IReadOnlyDictionary<string, string> PersonIdentificationNames,
         // The filter panel. FieldSource and FieldVariableGroup name two of the facets as well as two
         // of the card fields — deliberately the same word for the same thing in both places.
         string FiltersTitle,
@@ -2196,6 +2680,26 @@ public partial class VariableExplorer : ComponentBase
         }
 
         /// <summary>
+        /// Prose for an identification-level token, falling back to what the API called it.
+        /// </summary>
+        /// <remarks>
+        /// A fallback rather than a throw, for the reason <see cref="KildeTypeLabel"/> has one — the
+        /// tokens are Munin's own enum and a new member is a catalogue change, not a bug here. Only
+        /// <c>indirectlyIdentifiable</c> appears in the captured payloads this repository holds; the
+        /// rest of the table is the literal reading of Munin's spelling, so a token that never
+        /// arrives costs nothing and one that does is not renamed into something it is not.
+        /// </remarks>
+        public string PersonIdentificationLabel(string? value)
+        {
+            if (value is not null && PersonIdentificationNames.TryGetValue(value, out var name))
+            {
+                return name;
+            }
+
+            return string.IsNullOrWhiteSpace(value) ? NotSpecified : value;
+        }
+
+        /// <summary>
         /// Prose for a kodeverk link's type, falling back to the token the API sent.
         /// </summary>
         /// <remarks>
@@ -2259,6 +2763,34 @@ public partial class VariableExplorer : ComponentBase
             DetailError: "Kunne ikke hente detaljene nå. Prøv igjen om litt.",
             DetailMissing: "Fant ingen detaljer for denne variabelen.",
             Kildekodeverk: "Kildekodeverk",
+            ShowKilde: "Vis datakilde",
+            HideKilde: "Skjul datakilde",
+            ShowDatasamling: "Vis datasamling",
+            HideDatasamling: "Skjul datasamling",
+            KildeLoading: "Henter datakilden …",
+            DatasamlingLoading: "Henter datasamlingen …",
+            KildeError: "Kunne ikke hente datakilden nå. Prøv igjen om litt.",
+            DatasamlingError: "Kunne ikke hente datasamlingen nå. Prøv igjen om litt.",
+            KildeMissing: "Fant ingen detaljer for denne datakilden.",
+            DatasamlingMissing: "Fant ingen detaljer for denne datasamlingen.",
+            FieldLegalBasis: "Lovverk",
+            FieldDataController: "Dataansvarlig",
+            FieldDataProcessor: "Databehandler",
+            FieldPersonIdentification: "Grad av personidentifikasjon",
+            FieldValidity: "Gyldighet",
+            FieldInclusionCriteria: "Inklusjons- og eksklusjonskriterier",
+            FieldFrequency: "Frekvens",
+            FieldCountingUnit: "Telleenhet",
+            FieldVariableCount: "Antall variabler",
+            FieldDataCollections: "Antall datasamlinger",
+            PersonIdentificationNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["directlyIdentifiable"] = "Direkte identifiserbar",
+                ["indirectlyIdentifiable"] = "Indirekte identifiserbar",
+                ["pseudonymous"] = "Pseudonymisert",
+                ["deIdentified"] = "Avidentifisert",
+                ["anonymous"] = "Anonym"
+            },
             FiltersTitle: "Filtre",
             ClearFilters: "Fjern alle filtre",
             FilterError: "Kunne ikke oppdatere filtrene nå. Tallene kan være utdaterte.",
@@ -2355,6 +2887,34 @@ public partial class VariableExplorer : ComponentBase
             DetailError: "Could not load the details right now. Please try again shortly.",
             DetailMissing: "No details were found for this variable.",
             Kildekodeverk: "Source code system",
+            ShowKilde: "Show data source",
+            HideKilde: "Hide data source",
+            ShowDatasamling: "Show data collection",
+            HideDatasamling: "Hide data collection",
+            KildeLoading: "Loading the data source …",
+            DatasamlingLoading: "Loading the data collection …",
+            KildeError: "Could not load the data source right now. Please try again shortly.",
+            DatasamlingError: "Could not load the data collection right now. Please try again shortly.",
+            KildeMissing: "No details were found for this data source.",
+            DatasamlingMissing: "No details were found for this data collection.",
+            FieldLegalBasis: "Legal basis",
+            FieldDataController: "Data controller",
+            FieldDataProcessor: "Data processor",
+            FieldPersonIdentification: "Level of personal identification",
+            FieldValidity: "Validity",
+            FieldInclusionCriteria: "Inclusion and exclusion criteria",
+            FieldFrequency: "Frequency",
+            FieldCountingUnit: "Counting unit",
+            FieldVariableCount: "Number of variables",
+            FieldDataCollections: "Number of data collections",
+            PersonIdentificationNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["directlyIdentifiable"] = "Directly identifiable",
+                ["indirectlyIdentifiable"] = "Indirectly identifiable",
+                ["pseudonymous"] = "Pseudonymised",
+                ["deIdentified"] = "De-identified",
+                ["anonymous"] = "Anonymous"
+            },
             FiltersTitle: "Filters",
             ClearFilters: "Clear all filters",
             FilterError: "Could not refresh the filters right now. The counts may be out of date.",

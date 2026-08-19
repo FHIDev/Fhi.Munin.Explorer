@@ -2365,6 +2365,11 @@ public class VariableExplorerTest : BunitContext
     private static readonly Guid TaleId = new("dddddddd-0000-0000-0000-000000000001");
     private static readonly Guid SpyttId = new("dddddddd-0000-0000-0000-000000000002");
 
+    // The two owners every detail below names, so a variable panel always has both buttons under
+    // it and the fetches they start can be told apart by id.
+    private static readonly Guid AlsId = new("eeeeeeee-0000-0000-0000-000000000001");
+    private static readonly Guid InklusjonId = new("eeeeeeee-0000-0000-0000-000000000002");
+
     /// <summary>A row with an id a test can hand back to the component as a selection.</summary>
     private static VariableSummary Row(Guid id, string name, string? description = null) => new()
     {
@@ -2383,9 +2388,11 @@ public class VariableExplorerTest : BunitContext
         Code = $"V_ALS.F1.{name}",
         PreferredTerm = name,
         Description = $"Angir pasientens grad av utfall på «{name}».",
+        KildeId = AlsId,
         KildeName = "Als registeret",
         KildeShortName = "ALS",
         KildeType = "nasjonaltMedisinskKvalitetsregister",
+        DatasamlingId = InklusjonId,
         DatasamlingName = "Inklusjon",
         VariabelgruppeName = "Funksjonsscore",
         DataFrom = new DateTimeOffset(2010, 1, 1, 0, 0, 0, TimeSpan.Zero),
@@ -2502,6 +2509,79 @@ public class VariableExplorerTest : BunitContext
             // point of the answer is that a variable the catalogue does not publish comes back null.
             return Task.FromResult<VariableDetail?>(_details.GetValueOrDefault(id));
         }
+
+        // The two owner endpoints, kept on the same fake as the detail because that is how they are
+        // reached: a kilde is only ever opened from a variable panel that is already on screen.
+        private readonly Dictionary<Guid, KildeDetail> _kilder = [];
+        private readonly Dictionary<Guid, DatasamlingDetail> _datasamlinger = [];
+
+        // Only the kilde fetch can be stalled, and that is enough: the swap the generation guard
+        // exists for needs one owner hanging and the other answering, which is exactly this.
+        private readonly List<TaskCompletionSource<KildeDetail?>> _kildeStalls = [];
+
+        public int KildeCalls { get; private set; }
+        public int DatasamlingCalls { get; private set; }
+        public Guid LastSourceId { get; private set; }
+
+        /// <summary>Fail every owner fetch, of either kind, from the next one on.</summary>
+        public bool FailSource { get; set; }
+
+        /// <summary>Never answer a kilde fetch from the next one on.</summary>
+        public bool StallKilde { get; set; }
+
+        public DetailClient Knows(KildeDetail kilde)
+        {
+            _kilder[kilde.Id] = kilde;
+
+            return this;
+        }
+
+        public DetailClient Knows(DatasamlingDetail datasamling)
+        {
+            _datasamlinger[datasamling.Id] = datasamling;
+
+            return this;
+        }
+
+        /// <summary>Answer the oldest kilde fetch still hanging.</summary>
+        public void AnswerStalledKilde(KildeDetail kilde) =>
+            _kildeStalls.First(stall => !stall.Task.IsCompleted).TrySetResult(kilde);
+
+        public override Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            KildeCalls++;
+            LastSourceId = id;
+
+            if (FailSource)
+            {
+                throw new HttpRequestException("nede");
+            }
+
+            if (StallKilde)
+            {
+                var stall = new TaskCompletionSource<KildeDetail?>(TaskCreationOptions.RunContinuationsAsynchronously);
+                _kildeStalls.Add(stall);
+
+                return stall.Task;
+            }
+
+            // Explicit for the reason GetVariableAsync is: null is the answer for something the
+            // catalogue does not publish, and it has to survive the inference.
+            return Task.FromResult<KildeDetail?>(_kilder.GetValueOrDefault(id));
+        }
+
+        public override Task<DatasamlingDetail?> GetDatasamlingAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            DatasamlingCalls++;
+            LastSourceId = id;
+
+            if (FailSource)
+            {
+                throw new HttpRequestException("nede");
+            }
+
+            return Task.FromResult<DatasamlingDetail?>(_datasamlinger.GetValueOrDefault(id));
+        }
     }
 
     private static IReadOnlyList<AngleSharp.Dom.IElement> Toggles(IRenderedComponent<VariableExplorer> cut) =>
@@ -2517,7 +2597,11 @@ public class VariableExplorerTest : BunitContext
     private static DetailClient TwoRows() =>
         new DetailClient(OnePage(Row(TaleId, "1. Tale"), Row(SpyttId, "2. Spyttsekresjon")))
             .Knows(Detail(TaleId))
-            .Knows(Detail(SpyttId, "2. Spyttsekresjon"));
+            .Knows(Detail(SpyttId, "2. Spyttsekresjon"))
+            // Both variables sit in the same datasamling in the same kilde, which is what the
+            // catalogue actually looks like — and what lets a test open either row's owners.
+            .Knows(Kilde())
+            .Knows(Datasamling());
 
     [Fact]
     public void Detail_WhenAVariableIsSelected_ThenItsDetailIsShownWithoutAPageNavigation()
@@ -3157,5 +3241,474 @@ public class VariableExplorerTest : BunitContext
         Assert.All(panel.QuerySelectorAll("dl, ol, ul"), e => Assert.False(e.HasAttribute("class")));
         Assert.All(panel.QuerySelectorAll("dl > dt"), e => Assert.Equal("form-element__label", e.ClassName));
         Assert.Contains("hd-button-square", Toggles(cut)[0].ClassName!);
+    }
+
+    // ---------------------------------------------------------------------------------
+    // The kilde and datasamling panel. The acceptance criterion is that both render from
+    // the Explorer API, reached from a variable result row — so the tests that must hold
+    // are the two payloads arriving from their own endpoints into the panel a row opened.
+    // The rest follow from the panel hanging inside the variable's: it is one at a time,
+    // it cannot outlive the variable it belongs to, and a failure at this depth leaves
+    // both the variable above it and the rows around it alone.
+    // ---------------------------------------------------------------------------------
+
+    private static readonly Guid BiodataId = new("eeeeeeee-0000-0000-0000-000000000003");
+    private static readonly Guid ProverId = new("eeeeeeee-0000-0000-0000-000000000004");
+    private static readonly Guid Runde2Id = new("eeeeeeee-0000-0000-0000-000000000005");
+    private static readonly Guid Runde2SkjemaId = new("eeeeeeee-0000-0000-0000-000000000006");
+
+    /// <summary>
+    /// A kilde payload shaped like the captured one, with a delkilde tree two levels deep.
+    /// </summary>
+    /// <remarks>
+    /// The nesting is the point of the fixture rather than decoration: the panel reports how many
+    /// datasamlinger the kilde holds, and a count that stopped at the top of the tree would report
+    /// a fraction of a study series. There are three here — one on the kilde, one on the delkilde,
+    /// one on the delkilde's own child.
+    /// </remarks>
+    private static KildeDetail Kilde() => new()
+    {
+        Id = AlsId,
+        Code = "K_ALS",
+        PreferredTerm = "Als registeret",
+        ShortName = "ALS",
+        Description = "Norsk register for ALS og andre motonevronsykdommer.",
+        Kildetype = "nasjonaltMedisinskKvalitetsregister",
+        LegalBasis = "Forskrift om medisinske kvalitetsregistre § 2-3.",
+        DataController = "St. Olavs hospital HF",
+        DataProcessor = "St. Olavs hospital HF",
+        PersonIdentificationLevel = "indirectlyIdentifiable",
+        ValidFrom = new DateTimeOffset(2023, 1, 1, 0, 0, 0, TimeSpan.Zero),
+        DataFrom = new DateTimeOffset(2010, 1, 1, 0, 0, 0, TimeSpan.Zero),
+        DataTo = new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero),
+        TotalVariables = 312,
+        Datasamlinger = [new() { Id = InklusjonId, Name = "Inklusjon" }],
+        Delkilder =
+        [
+            new()
+            {
+                Id = BiodataId,
+                Code = "K_ALS.BIODATA",
+                Name = "Biodata",
+                Datasamlinger = [new() { Id = ProverId, Name = "Prøver" }],
+                Children =
+                [
+                    new()
+                    {
+                        Id = Runde2Id,
+                        Code = "K_ALS.BIODATA.R2",
+                        Name = "Runde 2",
+                        Datasamlinger = [new() { Id = Runde2SkjemaId, Name = "Runde 2, skjema" }]
+                    }
+                ]
+            }
+        ]
+    };
+
+    /// <summary>
+    /// A datasamling payload shaped like the captured one.
+    /// </summary>
+    /// <remarks>
+    /// Every own value is left null and only the <c>Effective…</c> ones are filled, which is what
+    /// the real payload for this datasamling looks like: Munin curates dataansvarlig on the kilde
+    /// and the datasamling inherits it. A panel drawing the own values would report "Ikke oppgitt"
+    /// for all of them, which is why this fixture is shaped this way rather than fully populated.
+    /// </remarks>
+    private static DatasamlingDetail Datasamling() => new()
+    {
+        Id = InklusjonId,
+        Code = "K_ALS.INKLUSJON",
+        PreferredTerm = "Inklusjon",
+        Description = "Skjemaet inneholder opplysninger om utredning og oppstart av behandling.",
+        ParentKildeId = AlsId,
+        ParentKildeName = "Als registeret",
+        InclusionAndExclusionCriteria = "Alle pasienter som er 18 år eller eldre.",
+        EffectiveDataController = "St. Olavs hospital HF",
+        EffectiveDataProcessor = "St. Olavs hospital HF",
+        EffectivePersonIdentificationLevel = "indirectlyIdentifiable",
+        EffectiveLegalBasis = "Forskrift om medisinske kvalitetsregistre § 2-3.",
+        EffectiveValidFrom = new DateTimeOffset(2010, 1, 1, 0, 0, 0, TimeSpan.Zero),
+        EffectiveKildetype = "nasjonaltMedisinskKvalitetsregister",
+        Frequency = "Fortløpende",
+        // Observed as an empty string in the captured payload rather than as null, which is a
+        // different thing for the markup to get right than a missing field.
+        CountingUnit = "",
+        VariableCount = 99
+    };
+
+    /// <summary>The two owner toggles, in the order the panel draws them: kilde, then datasamling.</summary>
+    private static IReadOnlyList<AngleSharp.Dom.IElement> SourceToggles(IRenderedComponent<VariableExplorer> cut) =>
+        [.. cut.FindAll(".variable-explorer-detail > button")];
+
+    private static AngleSharp.Dom.IElement SourcePanel(IRenderedComponent<VariableExplorer> cut) =>
+        cut.Find(".variable-explorer-source");
+
+    private static IReadOnlyList<string> SourceLabels(IRenderedComponent<VariableExplorer> cut) =>
+        [.. SourcePanel(cut).QuerySelectorAll("dl > dt").Select(t => t.TextContent)];
+
+    private static IReadOnlyList<string> SourceValues(IRenderedComponent<VariableExplorer> cut) =>
+        [.. SourcePanel(cut).QuerySelectorAll("dl > dd").Select(d => d.TextContent)];
+
+    /// <summary>Open the first row's detail panel and then one of its two owners.</summary>
+    private IRenderedComponent<VariableExplorer> OpenOwner(DetailClient client, int index)
+    {
+        var cut = RenderWith(client);
+
+        Toggles(cut)[0].Click();
+        SourceToggles(cut)[index].Click();
+
+        return cut;
+    }
+
+    [Fact]
+    public void Source_WhenTheKildeIsOpened_ThenItsRecordIsShownFromTheApi()
+    {
+        // Half the acceptance criterion. The kilde arrives from GetKildeAsync — its own endpoint,
+        // not a field of the variable — into the panel the row already opened, with no navigation:
+        // the component holds no NavigationManager and nothing in a card is a link.
+        var client = TwoRows();
+        var cut = RenderWith(client);
+        var navigation = Services.GetRequiredService<NavigationManager>();
+        var before = navigation.Uri;
+
+        Toggles(cut)[0].Click();
+        SourceToggles(cut)[0].Click();
+
+        Assert.Equal(1, client.KildeCalls);
+        Assert.Equal(AlsId, client.LastSourceId);
+        Assert.Equal(before, navigation.Uri);
+
+        Assert.Equal(
+            ["Beskrivelse", "Type datakilde", "Dataansvarlig", "Databehandler",
+             "Grad av personidentifikasjon", "Lovverk", "Gyldighet", "Periode",
+             "Antall datasamlinger", "Antall variabler"],
+            SourceLabels(cut));
+
+        var values = SourceValues(cut);
+
+        Assert.Equal("Norsk register for ALS og andre motonevronsykdommer.", values[0]);
+        Assert.Equal("Nasjonalt medisinsk kvalitetsregister", values[1]);
+        Assert.Equal("St. Olavs hospital HF", values[2]);
+        Assert.Equal("Indirekte identifiserbar", values[4]);
+        Assert.Equal("2023–", values[6]);
+        Assert.Equal("2010–2025", values[7]);
+        Assert.Equal("312", values[9]);
+    }
+
+    [Fact]
+    public void Source_WhenTheKildeHasADelkildeTree_ThenTheDatasamlingerAreCountedThroughIt()
+    {
+        // A study series keeps its datasamlinger one per wave, under nested delkilder. Counting
+        // only the kilde's own would report 1 where the reader can reach 3, which reads as a small
+        // register rather than as a miscount.
+        var cut = OpenOwner(TwoRows(), 0);
+
+        Assert.Equal("3", SourceValues(cut)[8]);
+    }
+
+    [Fact]
+    public void Source_WhenTheDatasamlingIsOpened_ThenItsEffectiveValuesAreShownFromTheApi()
+    {
+        // The other half of the acceptance criterion, and the inheritance rule with it: this
+        // datasamling sets none of dataansvarlig, databehandler, lovverk or identification level
+        // itself. Drawing its own values would report "Ikke oppgitt" four times for a datasamling
+        // whose controller is perfectly well known one level up.
+        var client = TwoRows();
+
+        var cut = OpenOwner(client, 1);
+
+        Assert.Equal(1, client.DatasamlingCalls);
+        Assert.Equal(InklusjonId, client.LastSourceId);
+
+        Assert.Equal(
+            ["Beskrivelse", "Datakilde", "Inklusjons- og eksklusjonskriterier", "Dataansvarlig",
+             "Databehandler", "Grad av personidentifikasjon", "Lovverk", "Gyldighet", "Frekvens",
+             "Telleenhet", "Antall variabler"],
+            SourceLabels(cut));
+
+        var values = SourceValues(cut);
+
+        Assert.Equal("Als registeret", values[1]);
+        Assert.Equal("Alle pasienter som er 18 år eller eldre.", values[2]);
+        Assert.Equal("St. Olavs hospital HF", values[3]);
+        Assert.Equal("Indirekte identifiserbar", values[5]);
+        Assert.Equal("2010–", values[7]);
+        Assert.Equal("Fortløpende", values[8]);
+
+        // Empty rather than missing, and written out for everyone rather than drawn as a dash.
+        Assert.Equal("Ikke oppgitt", values[9]);
+        Assert.Equal("99", values[10]);
+    }
+
+    [Fact]
+    public void Source_WhenTheOtherOwnerIsOpened_ThenItReplacesTheFirstRatherThanStacking()
+    {
+        // One owner at a time, the rule the variable panels themselves follow. Two open at once
+        // inside one result card is a card nobody can find their way back out of.
+        var cut = OpenOwner(TwoRows(), 0);
+
+        SourceToggles(cut)[1].Click();
+
+        Assert.Single(cut.FindAll(".variable-explorer-source"));
+        Assert.Equal("false", SourceToggles(cut)[0].GetAttribute("aria-expanded"));
+        Assert.Equal("true", SourceToggles(cut)[1].GetAttribute("aria-expanded"));
+        Assert.Equal("Inklusjon", SourcePanel(cut).QuerySelector(".datasourcecard__heading")!.TextContent);
+        Assert.DoesNotContain("Antall datasamlinger", SourcePanel(cut).TextContent);
+    }
+
+    [Fact]
+    public void Source_WhenTheOpenOwnerIsPressedAgain_ThenItCloses()
+    {
+        // The toggle is how the panel is closed, which is why it is never disabled while its own
+        // fetch runs — the same rule the disclosure above it follows.
+        var client = TwoRows();
+        var cut = OpenOwner(client, 0);
+
+        SourceToggles(cut)[0].Click();
+
+        Assert.Empty(cut.FindAll(".variable-explorer-source"));
+        Assert.Equal("false", SourceToggles(cut)[0].GetAttribute("aria-expanded"));
+        Assert.Null(SourceToggles(cut)[0].GetAttribute("aria-controls"));
+
+        // Closing asks the API for nothing: it is the panel that is being dropped, not the answer.
+        Assert.Equal(1, client.KildeCalls);
+    }
+
+    [Fact]
+    public void Source_WhenOpened_ThenTheToggleAndTheRegionAreWiredToEachOther()
+    {
+        // aria-controls only on the toggle that opened it: both buttons point at the same panel, so
+        // the closed one carrying the reference too would be read as one region with two names.
+        var cut = OpenOwner(TwoRows(), 0);
+
+        var toggle = SourceToggles(cut)[0];
+        var panel = SourcePanel(cut);
+
+        Assert.Equal("true", toggle.GetAttribute("aria-expanded"));
+        Assert.Equal(panel.Id, toggle.GetAttribute("aria-controls"));
+        Assert.Null(SourceToggles(cut)[1].GetAttribute("aria-controls"));
+        Assert.Equal("region", panel.GetAttribute("role"));
+
+        // Named by a heading that is on screen from the moment the panel is, so the reference is
+        // never dangling — and it is the catalogue's Norwegian, marked as such.
+        var heading = cut.Find($"#{panel.GetAttribute("aria-labelledby")}");
+
+        Assert.Equal("Als registeret", heading.TextContent);
+        Assert.Equal("no", heading.GetAttribute("lang"));
+    }
+
+    [Fact]
+    public void Source_WhenTheFetchFails_ThenTheOwnerPanelSaysSoAndLeavesEverythingElseAlone()
+    {
+        // What failed is one panel inside one panel inside one card. Reporting it in the
+        // component's own alert region would say the whole list was stale, and reporting it in the
+        // variable's would say the variable was.
+        var client = TwoRows();
+        client.FailSource = true;
+
+        var cut = OpenOwner(client, 0);
+
+        Assert.Contains("Kunne ikke hente datakilden", SourcePanel(cut).TextContent);
+        Assert.Contains("infobox", SourcePanel(cut).QuerySelector("p")!.ClassName!);
+
+        // The variable above it is untouched, and so are the rows.
+        Assert.Contains("Angir pasientens grad av utfall", Panel(cut).TextContent);
+        Assert.Equal(2, cut.FindAll("ul.datasourcecard-list > li").Count);
+        Assert.Empty(cut.FindAll("div[role='alert'] p"));
+    }
+
+    [Fact]
+    public void Source_WhenTheCatalogueHasNoSuchDatasamling_ThenItSaysSoRatherThanAskingForARetry()
+    {
+        // Null is not a failure — the client answers it for something that is not published — so
+        // "try again in a moment" would be advice that never comes good.
+        var client = new DetailClient(OnePage(Row(TaleId, "1. Tale"))).Knows(Detail(TaleId));
+
+        var cut = OpenOwner(client, 1);
+
+        Assert.Contains("Fant ingen detaljer for denne datasamlingen", SourcePanel(cut).TextContent);
+        Assert.Empty(SourcePanel(cut).QuerySelectorAll("dl"));
+    }
+
+    [Fact]
+    public void Source_WhenAnotherVariableIsOpened_ThenTheOwnerPanelDoesNotFollowIt()
+    {
+        // The owner is drawn from the variable's own detail, so it cannot survive that detail being
+        // replaced: left behind, the first row's kilde would sit under the second row's name until
+        // its own fetch landed.
+        var cut = OpenOwner(TwoRows(), 0);
+
+        Toggles(cut)[1].Click();
+
+        Assert.Empty(cut.FindAll(".variable-explorer-source"));
+        Assert.Contains("2. Spyttsekresjon", Panel(cut).TextContent);
+        Assert.Equal("false", SourceToggles(cut)[0].GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void Source_WhenTheVariablePanelIsClosed_ThenTheOwnerPanelGoesWithIt()
+    {
+        // State the reader cannot see and cannot get rid of is what closing the variable panel
+        // exists to avoid one level up; an owner left set behind it would come back the moment the
+        // same row was opened again.
+        var cut = OpenOwner(TwoRows(), 0);
+
+        Toggles(cut)[0].Click();
+
+        Assert.Empty(cut.FindAll(".variable-explorer-detail"));
+        Assert.Empty(cut.FindAll(".variable-explorer-source"));
+
+        Toggles(cut)[0].Click();
+
+        Assert.Empty(cut.FindAll(".variable-explorer-source"));
+    }
+
+    [Fact]
+    public void Source_WhenASearchReplacesTheRows_ThenTheOwnerPanelGoesWithTheSelection()
+    {
+        // The selection is always a row on screen, and the owner hangs inside the selection — so a
+        // search that leaves the open row behind has to take both with it, not just the outer one.
+        var client = TwoRows();
+        var cut = OpenOwner(client, 0);
+
+        client.Then(OnePage(Row(SpyttId, "2. Spyttsekresjon")));
+        cut.Find("form").Submit();
+
+        Assert.Empty(cut.FindAll(".variable-explorer-detail"));
+        Assert.Empty(cut.FindAll(".variable-explorer-source"));
+    }
+
+    [Fact]
+    public void Source_WhenTheVariableNamesNoOwner_ThenNoButtonOffersOne()
+    {
+        // A button that could only ever report "not found" is worse than no button: the reader
+        // presses it, waits, and is told the catalogue is missing something it never claimed.
+        var bare = Detail(TaleId) with { KildeId = Guid.Empty, DatasamlingId = null };
+        var client = new DetailClient(OnePage(Row(TaleId, "1. Tale"))).Knows(bare);
+        var cut = RenderWith(client);
+
+        Toggles(cut)[0].Click();
+
+        Assert.Empty(SourceToggles(cut));
+        Assert.Equal(0, client.KildeCalls);
+        Assert.Equal(0, client.DatasamlingCalls);
+    }
+
+    [Fact]
+    public async Task Source_WhenTheOtherOwnerIsOpenedFirst_ThenTheAbandonedFetchIsNotShown()
+    {
+        // Two owners opened in quick succession are two requests in flight against two endpoints,
+        // and nothing says the first one answers first. Without the generation guard the slower
+        // answer paints itself over the panel the reader is actually looking at — which reads as
+        // correct rather than as broken.
+        var client = TwoRows();
+        var cut = RenderWith(client);
+
+        Toggles(cut)[0].Click();
+
+        client.StallKilde = true;
+        SourceToggles(cut)[0].Click();
+
+        SourceToggles(cut)[1].Click();
+
+        await cut.InvokeAsync(() => client.AnswerStalledKilde(Kilde()));
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Single(cut.FindAll(".variable-explorer-source"));
+            Assert.Equal("true", SourceToggles(cut)[1].GetAttribute("aria-expanded"));
+            Assert.Contains("Telleenhet", SourcePanel(cut).TextContent);
+            Assert.DoesNotContain("Antall datasamlinger", SourcePanel(cut).TextContent);
+        });
+    }
+
+    [Fact]
+    public void Source_WhenTheLanguageIsEn_ThenThePanelIsEnglishAndTheCatalogueStaysNorwegian()
+    {
+        // The same split the variable panel makes, one level in: our labels and our prose for the
+        // kildetype and the identification level follow Language, and Munin's own words do not.
+        var cut = RenderWith(TwoRows(), b => b.Add(c => c.Language, "en"));
+
+        Toggles(cut)[0].Click();
+
+        Assert.Equal(["Show data source", "Show data collection"],
+                     SourceToggles(cut).Select(t => t.TextContent));
+
+        SourceToggles(cut)[0].Click();
+
+        Assert.Equal("Hide data source", SourceToggles(cut)[0].TextContent);
+        Assert.Equal(
+            ["Description", "Type of data source", "Data controller", "Data processor",
+             "Level of personal identification", "Legal basis", "Validity", "Period",
+             "Number of data collections", "Number of variables"],
+            SourceLabels(cut));
+
+        var values = SourcePanel(cut).QuerySelectorAll("dl > dd");
+
+        // Our prose, so no lang of its own; the register's own name keeps one.
+        Assert.Equal("National medical quality registry", values[1].TextContent);
+        Assert.Null(values[1].QuerySelector("[lang]"));
+        Assert.Equal("Indirectly identifiable", values[4].TextContent);
+        Assert.Equal("no", values[0].QuerySelector("span")!.GetAttribute("lang"));
+    }
+
+    [Fact]
+    public void Source_WhenAPanelIsOpen_ThenItIsBuiltFromShapesRatherThanFromANewStyleName()
+    {
+        // The fourth handle, and the last name added: Stiler has no key/value block that can be
+        // read back off its compiled stylesheet, so the owner is a heading and a <dl> wearing
+        // Stiler's own datasourcecard__heading and form-element__label.
+        var cut = OpenOwner(TwoRows(), 0);
+
+        var invented = cut.FindAll("[class]")
+            .SelectMany(e => e.ClassName!.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            .Where(k => k.StartsWith("variable-explorer", StringComparison.Ordinal))
+            .Distinct()
+            .ToList();
+
+        Assert.Equal(
+            ["variable-explorer", "variable-explorer-filters", "variable-explorer-detail",
+             "variable-explorer-source"],
+            invented);
+
+        var panel = SourcePanel(cut);
+
+        Assert.All(panel.QuerySelectorAll("dl"), e => Assert.False(e.HasAttribute("class")));
+        Assert.All(panel.QuerySelectorAll("dl > dt"), e => Assert.Equal("form-element__label", e.ClassName));
+        Assert.Contains("hd-button-square", SourceToggles(cut)[0].ClassName!);
+    }
+
+    [Fact]
+    public void Source_WhenThePanelIsOpen_ThenItsHeadingSitsBelowTheCardsInTheOutline()
+    {
+        // A heading level the host cannot see is a broken outline, so it is derived rather than
+        // hard-coded: title, then card, then owner. Mounted at h1 that is h1 › h2 › h3.
+        var cut = RenderWith(TwoRows(), b => b.Add(c => c.HeadingLevel, 1));
+
+        Toggles(cut)[0].Click();
+        SourceToggles(cut)[0].Click();
+
+        Assert.Equal("H1", cut.Find(".variable-explorer > [class*='headline']").TagName);
+        Assert.Equal("H2", cut.Find(".datasourcecard > .datasourcecard__heading").TagName);
+        Assert.Equal("H3", SourcePanel(cut).QuerySelector(".datasourcecard__heading")!.TagName);
+    }
+
+    [Fact]
+    public void Source_WhenTwoExplorersAreOnOnePage_ThenTheirPanelsDoNotShareIds()
+    {
+        // Two instances of the component on one CMS page. Duplicate ids are a WCAG 4.1.1 failure
+        // and would point both toggles at whichever panel rendered first.
+        Services.AddSingleton<IMuninExplorerClient>(TwoRows());
+
+        var a = Render<VariableExplorer>();
+        var b = Render<VariableExplorer>();
+
+        Toggles(a)[0].Click();
+        SourceToggles(a)[0].Click();
+        Toggles(b)[0].Click();
+        SourceToggles(b)[0].Click();
+
+        Assert.NotEqual(SourcePanel(a).Id, SourcePanel(b).Id);
+        Assert.NotEqual(SourceToggles(a)[0].Id, SourceToggles(b)[0].Id);
     }
 }

@@ -354,6 +354,72 @@
                                         <dt class="form-element__label">@T.FieldKodeverk</dt>
                                         <dd>@KodeverkList(detail.KodeverkLinks)</dd>
                                     </dl>
+
+                                    @* The way on to the kilde and the datasamling the variable
+                                       belongs to. One press further in, in the same place and by
+                                       the same means as the panel around it — no routing, no
+                                       NavigationManager, nothing for the host's CMS to route.
+
+                                       Buttons under the trail rather than the trail's own steps
+                                       made clickable. A step here is a <li> in a bare <ol> that a
+                                       host draws as a path with chevrons between the steps, and
+                                       the only button Stiler gives this package is the square
+                                       button — which inside that flex row would break the path
+                                       into a stack of filled blocks. The trail keeps saying where
+                                       the variable sits; these two say what to press.
+
+                                       Rendered only for an owner the variable actually names, so
+                                       neither button can be one that could only ever report "not
+                                       found". Never disabled, including while its own fetch runs,
+                                       for the reason the disclosure above it is not: pressing it
+                                       again is how the panel closes, and disabling the element
+                                       that has focus drops focus to <body>. *@
+                                    @foreach (var kind in SourceTargets(detail))
+                                    {
+                                        <button class="hd-button-square button-square--ghost margin-right margin-bottom"
+                                                type="button"
+                                                id="@SourceToggleId(kind)"
+                                                aria-expanded="@SourceExpanded(kind)"
+                                                aria-controls="@SourceControls(kind)"
+                                                @onclick="() => ToggleSourceAsync(kind)">@SourceToggleText(kind)</button>
+                                    }
+
+                                    @* The owner's own record, drawn inside the variable's panel.
+                                       One at a time — pressing Datasamling with Datakilde open
+                                       swaps it — so this is at most one further region on the
+                                       page, named after the thing it describes rather than left
+                                       anonymous among the host page's own.
+
+                                       `variable-explorer-source` is a handle, the fourth of ours
+                                       in the DOM and the same kind of name as the three before it:
+                                       nothing in this package or in Stiler defines a rule for it.
+                                       What dresses the panel is base styling for <dl>, exactly as
+                                       for the variable's own panel above. *@
+                                    @if (_sourceKind is { } openKind)
+                                    {
+                                        <div class="variable-explorer-source"
+                                             id="@SourceId"
+                                             role="region"
+                                             aria-labelledby="@SourceHeadingId"
+                                             aria-busy="@SourceBusy">
+                                            @* Named from the variable's own record rather than
+                                               from the payload being fetched, so the region has a
+                                               name from the moment it exists — see SourceHeading. *@
+                                            @SourceHeading(detail, openKind)
+
+                                            @* One line, one message: loading, or why the panel is
+                                               empty. Its own region rather than the variable
+                                               panel's, for the reason that one is not the
+                                               component's: a kilde that failed to load has not
+                                               changed what the variable above it says. *@
+                                            <p class="@SourceStatusClass"
+                                               role="status"
+                                               aria-live="polite"
+                                               aria-atomic="true">@SourceStatus</p>
+
+                                            @SourceFields
+                                        </div>
+                                    }
                                 }
                             </div>
                         }

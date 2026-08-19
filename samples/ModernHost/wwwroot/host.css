@@ -423,6 +423,40 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   color: var(--grey60);
 }
 
+/* ---- not Stiler either: base element styling for the kilde and datasamling panel ----
+
+   One level in from the detail panel above, and the same reason a third time: what "Vis datakilde"
+   and "Vis datasamling" open is a heading and a <dl>, because Stiler has no key/value block whose
+   name can be read back off its compiled stylesheet. The package emits `variable-explorer-source`
+   as a handle and styles nothing itself.
+
+   A host that has styled the detail panel has very nearly styled this one too. What is left is the
+   inset: without it the kilde reads as a sibling of the variable rather than as something inside
+   it, which is the one thing the nesting is there to say. */
+
+.variable-explorer-source {
+  margin-top: 12px;
+  padding-left: 16px;
+  border-left: 2px solid var(--grey30);
+}
+
+/* Empty when there is nothing to report, and in the document either way — the same arrangement,
+   and the same reason, as the detail panel's own status line. */
+.variable-explorer-source > p:empty { display: none; }
+
+/* The panel's heading is rendered at whatever level keeps the host page's outline unbroken, so it
+   is matched by level rather than by element. Only the page margin is overridden: the size comes
+   from Stiler's own datasourcecard__heading. */
+.variable-explorer-source h2,
+.variable-explorer-source h3,
+.variable-explorer-source h4,
+.variable-explorer-source h5,
+.variable-explorer-source h6 { margin: 0 0 8px; }
+
+.variable-explorer-source dl { margin: 0; }
+.variable-explorer-source dt { margin-top: 12px; }
+.variable-explorer-source dd { margin: 0; }
+
 /* ---- not Stiler either: the two-column layout ----
 
    Stiler styles components, not the arrangement of them — it has no page layout at all, so where
