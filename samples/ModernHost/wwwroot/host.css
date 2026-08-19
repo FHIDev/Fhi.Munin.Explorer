@@ -422,3 +422,66 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   margin: 0 8px;
   color: var(--grey60);
 }
+
+/* ---- not Stiler either: the two-column layout ----
+
+   Stiler styles components, not the arrangement of them — it has no page layout at all, so where
+   the filter panel sits relative to the results is the host's decision and nobody else's. These
+   proportions are Runa's, measured off it: a 384px filter column, a 24px gutter, and a panel that
+   only starts scrolling once the viewport is wide enough to hold two columns in the first place.
+
+   Three things here are less obvious than they look, and any host that puts this panel in a
+   column will meet all three.
+
+   1. The panel is a <fieldset>, and a fieldset defaults to `min-inline-size: min-content`. Left
+      alone it flatly refuses to shrink into its track — 621px of content sitting in a 384px
+      column, overlapping the results. `min-inline-size: 0` is what lets it obey the grid at all.
+
+   2. It has to span every results row. The results are siblings rather than one wrapper, so each
+      lands in its own implicit row; a panel occupying only the first leaves the rest stacked
+      below it with the sidebar's full height as dead space. `span 99` and not `-1`, because -1
+      counts only the *explicit* grid lines and every results row here is implicit.
+
+   3. Stiler's buttons are `white-space: nowrap`, and the facet values are Norwegian register
+      names. "Nasjonalt kvalitetsregister for ..." asks for 565px inside a 384px column, which is
+      a horizontal scrollbar until the label is allowed to wrap.
+
+   Below 1024px none of it applies and the panel returns to the document flow above the results,
+   which is the right answer on a phone. */
+
+@media (min-width: 1024px) {
+  .hostmain { max-width: 1600px; }
+
+  .variable-explorer {
+    display: grid;
+    grid-template-columns: 384px minmax(0, 1fr);
+    grid-template-areas:
+      "head    head"
+      "search  search"
+      "filters results";
+    column-gap: 24px;
+    align-items: start;
+  }
+
+  .variable-explorer > h2 { grid-area: head; }
+  .variable-explorer > form { grid-area: search; }
+
+  .variable-explorer > .variable-explorer-filters {
+    grid-area: filters;
+    grid-row: 3 / span 99;
+    min-inline-size: 0;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+  }
+
+  .variable-explorer > *:not(h2):not(form):not(.variable-explorer-filters) {
+    grid-column: 2;
+    min-inline-size: 0;
+  }
+}
+
+.variable-explorer-filters .hd-button-square {
+  white-space: normal;
+  text-align: left;
+  height: auto;
+}
