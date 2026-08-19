@@ -289,6 +289,13 @@ public partial class VariableExplorer : ComponentBase
     private VariableDetail? _detail;
     private bool _detailLoading;
 
+    // Bumped by every open and every close, so a detail fetch can tell whether the panel it is
+    // about to write into is still the one it was started for. The id alone cannot say that: it
+    // names the variable, not the call, and closing a row and opening the same row again is two
+    // calls carrying one id — the abandoned first would otherwise be read as the answer to the
+    // second and report its failure into a panel that is still waiting.
+    private int _detailGeneration;
+
     // Set when the detail could not be fetched, or when the API says there is no such published
     // variable. Its own field rather than _error, because the rows on screen are unaffected: what
     // failed is one panel inside one card, and reporting it in the component's own alert region
@@ -1543,6 +1550,10 @@ public partial class VariableExplorer : ComponentBase
     /// </remarks>
     private async Task LoadDetailAsync(Guid id)
     {
+        // Claimed before anything is written, and never reused: ownership of the panel is per call,
+        // which is what the guards below compare against.
+        var generation = ++_detailGeneration;
+
         _detail = null;
         _detailError = null;
         _detailLoading = true;
@@ -1552,7 +1563,7 @@ public partial class VariableExplorer : ComponentBase
         {
             var detail = await Client.GetVariableAsync(id, includeHistorical: _filter.IncludeHistorical);
 
-            if (_selectedId != id)
+            if (_detailGeneration != generation)
             {
                 return;
             }
@@ -1562,7 +1573,7 @@ public partial class VariableExplorer : ComponentBase
         }
         catch (Exception)
         {
-            if (_selectedId == id)
+            if (_detailGeneration == generation)
             {
                 // Said in the panel, not in the component's alert region: the rows are unaffected.
                 _detailError = T.DetailError;
@@ -1572,7 +1583,7 @@ public partial class VariableExplorer : ComponentBase
         {
             // Only when this call still owns the panel. A later selection has already set the flag
             // for its own fetch, and clearing it here would report that one as finished.
-            if (_selectedId == id)
+            if (_detailGeneration == generation)
             {
                 _detailLoading = false;
             }
@@ -1586,8 +1597,12 @@ public partial class VariableExplorer : ComponentBase
         _detail = null;
         _detailError = null;
 
-        // Cleared as well, because a fetch may still be in flight for the row that was open. Its
-        // own guard keeps it from writing anything back, which also means it will not clear this.
+        // Closing is what disowns a fetch still in flight for the row that was open — the id it was
+        // made for can come back, but the generation it claimed cannot.
+        _detailGeneration++;
+
+        // Cleared as well, because that abandoned fetch will not clear it: its own guard keeps it
+        // from writing anything back at all.
         _detailLoading = false;
     }
 
@@ -1762,10 +1777,13 @@ public partial class VariableExplorer : ComponentBase
             return;
         }
 
-        // Both kept so a failed fetch can put them back. The result as well as the number, because
-        // the retreat below turns a second page and has to be able to undo both of them together.
+        // All three kept so a failed fetch can put them back. The result as well as the number,
+        // because the retreat below turns a second page and has to be able to undo both of them
+        // together — and the panel with them, because the retreat's route passes through an empty
+        // answer that closes it on the way.
         var previous = _page;
         var previousResult = _result;
+        var previousPanel = CapturePanel();
 
         // A pager button was pressed, so the pager stays until a search or a sort replaces the
         // result — including through a retreat that lands on a single-page answer.
@@ -1787,7 +1805,7 @@ public partial class VariableExplorer : ComponentBase
             return;
         }
 
-        await RetreatFromEmptyPageAsync(previous, previousResult);
+        await RetreatFromEmptyPageAsync(previous, previousResult, previousPanel);
     }
 
     /// <summary>
@@ -1812,16 +1830,20 @@ public partial class VariableExplorer : ComponentBase
     /// through the result a page at a time.
     /// </para>
     /// <para>
-    /// And its own fetch is checked like every other one. <paramref name="previous"/> and
-    /// <paramref name="previousResult"/> are the page turn's starting point — a page that had rows
-    /// on it — so a retreat that fails puts the reader back where they pressed the button instead
-    /// of leaving <c>_page</c> naming one page while the empty answer for another is still on
-    /// screen. That pairing is what would otherwise report "Ingen variabler passet søket" over a
-    /// search that matched hundreds and take the pager with it, which is the exact state this
-    /// method exists to prevent.
+    /// And its own fetch is checked like every other one. <paramref name="previous"/>,
+    /// <paramref name="previousResult"/> and <paramref name="previousPanel"/> are the page turn's
+    /// starting point — a page that had rows on it, and whatever was open among them — so a retreat
+    /// that fails puts the reader back where they pressed the button instead of leaving
+    /// <c>_page</c> naming one page while the empty answer for another is still on screen. That
+    /// pairing is what would otherwise report "Ingen variabler passet søket" over a search that
+    /// matched hundreds and take the pager with it, which is the exact state this method exists to
+    /// prevent. The panel is part of the same undo: the empty answer closed it on the way past, and
+    /// a rollback that put the rows back without it would leave the reader looking at the row they
+    /// opened, shut, with their URL no longer naming it.
     /// </para>
     /// </remarks>
-    private async Task RetreatFromEmptyPageAsync(int previous, Page<VariableSummary>? previousResult)
+    private async Task RetreatFromEmptyPageAsync(
+        int previous, Page<VariableSummary>? previousResult, PanelState previousPanel)
     {
         if (_page == 1 || _result is not { Items.Count: 0 })
         {
@@ -1844,6 +1866,48 @@ public partial class VariableExplorer : ComponentBase
         // the retreat, which is the one result that must not be the one left on screen.
         _page = previous;
         _result = previousResult;
+
+        // After the rows, so the row the panel is drawn inside is back before the panel is.
+        await RestorePanelAsync(previousPanel);
+    }
+
+    /// <summary>What is open in the panel and what was fetched into it.</summary>
+    private readonly record struct PanelState(Guid? Id, VariableDetail? Detail, string? Error);
+
+    private PanelState CapturePanel() => new(_selectedId, _detail, _detailError);
+
+    /// <summary>
+    /// Reopen a panel that a fetch closed on its way through, when that fetch then failed.
+    /// </summary>
+    /// <remarks>
+    /// The fetched detail goes back rather than being asked for again, for the reason the previous
+    /// result does: it is the answer that described these very rows, and putting a second request
+    /// in the way of a rollback would let one failure turn into two. The exception is a panel
+    /// captured while its own fetch was still running — it has no answer to put back, so that one
+    /// is fetched. The host is told, because it was told null on the way in.
+    /// </remarks>
+    private async Task RestorePanelAsync(PanelState panel)
+    {
+        if (panel.Id is not { } id || _selectedId == id)
+        {
+            return;
+        }
+
+        _selectedId = id;
+        _detail = panel.Detail;
+        _detailError = panel.Error;
+
+        // A new owner of the panel: whatever was in flight when it closed must not land in the one
+        // just put back.
+        _detailGeneration++;
+        _detailLoading = false;
+
+        if (panel.Detail is null && panel.Error is null)
+        {
+            await LoadDetailAsync(id);
+        }
+
+        await RaiseAsync<Guid?>(SelectedVariableIdChanged, id);
     }
 
     /// <summary>
@@ -1902,20 +1966,27 @@ public partial class VariableExplorer : ComponentBase
     /// rows mean for the open detail panel. True when the fetch succeeded.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// The panel is settled here rather than at the five call sites, which is what makes "the
     /// selection is always a row on screen" one rule instead of five. It is outside the fetch's own
     /// try/catch on purpose: the host's callback runs in it, and a host that navigates from its
     /// handler signals that with an exception the catch would otherwise swallow and report as a
     /// failed search.
+    /// </para>
+    /// <para>
+    /// Settled after a failure too, not only after an answer. A search or a sort that fails clears
+    /// the rows, so the panel leaves the document with them — and a selection left set behind it is
+    /// the invisible, unremovable state <see cref="DropSelectionIfGoneAsync"/> exists to prevent,
+    /// with the host's URL still naming a variable the page is not showing. A page turn fails with
+    /// <paramref name="keepResult"/>, so its rows and its panel are both still there and the check
+    /// finds nothing to drop.
+    /// </para>
     /// </remarks>
     private async Task<bool> FetchAsync(string? search, bool keepResult = false)
     {
         var fetched = await FetchRowsAsync(search, keepResult);
 
-        if (fetched)
-        {
-            await DropSelectionIfGoneAsync();
-        }
+        await DropSelectionIfGoneAsync();
 
         return fetched;
     }

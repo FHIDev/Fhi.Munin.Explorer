@@ -2408,13 +2408,22 @@ public class VariableExplorerTest : BunitContext
     {
         private readonly Dictionary<Guid, VariableDetail> _details = [];
 
-        // Never completed on its own, so a test can keep one detail in flight while it opens
-        // another row — the only way to reach the late-answer guard.
-        private readonly TaskCompletionSource<VariableDetail?> _stalled =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        // One source per stalled detail fetch, none of them completed on their own, so a test can
+        // keep a detail in flight while it opens another row — and can fault the first of two while
+        // the second is still hanging, which is the only way to reach the reopened-panel guard.
+        private readonly List<TaskCompletionSource<VariableDetail?>> _stalls = [];
+
+        // What the searches after the current Answer are answered with, in order: a page to hand
+        // back, or null to throw. Empty means every search is answered from Answer.
+        private readonly Queue<Page<VariableSummary>?> _nextAnswers = new();
 
         /// <summary>The rows the next search answers with — settable, so a search can replace them.</summary>
         public Page<VariableSummary> Answer { get; set; } = answer;
+
+        public int SearchCalls { get; private set; }
+
+        /// <summary>How many detail fetches have been left hanging.</summary>
+        public int Stalls => _stalls.Count;
 
         public int DetailCalls { get; private set; }
         public Guid LastDetailId { get; private set; }
@@ -2433,14 +2442,40 @@ public class VariableExplorerTest : BunitContext
             return this;
         }
 
-        public void AnswerStalled(VariableDetail detail) => _stalled.TrySetResult(detail);
+        /// <summary>Answer one search after the current <see cref="Answer"/>; null fails it outright.</summary>
+        public DetailClient Then(Page<VariableSummary>? next)
+        {
+            _nextAnswers.Enqueue(next);
+
+            return this;
+        }
+
+        /// <summary>Answer the oldest detail fetch still hanging.</summary>
+        public void AnswerStalled(VariableDetail detail) => Oldest().TrySetResult(detail);
+
+        /// <summary>Fail the oldest detail fetch still hanging.</summary>
+        public void FailStalled() => Oldest().TrySetException(new HttpRequestException("nede"));
+
+        private TaskCompletionSource<VariableDetail?> Oldest() =>
+            _stalls.First(stall => !stall.Task.IsCompleted);
 
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
             string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default,
             SortDirection direction = SortDirection.Ascending,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult(Answer);
+            CancellationToken cancellationToken = default)
+        {
+            SearchCalls++;
+
+            if (_nextAnswers.Count == 0)
+            {
+                return Task.FromResult(Answer);
+            }
+
+            return _nextAnswers.Dequeue() is { } next
+                ? Task.FromResult(next)
+                : throw new HttpRequestException("nede");
+        }
 
         public override Task<VariableDetail?> GetVariableAsync(
             Guid id, bool includeHistorical = false, CancellationToken cancellationToken = default)
@@ -2456,7 +2491,11 @@ public class VariableExplorerTest : BunitContext
 
             if (StallDetail)
             {
-                return _stalled.Task;
+                var stall = new TaskCompletionSource<VariableDetail?>(
+                    TaskCreationOptions.RunContinuationsAsynchronously);
+                _stalls.Add(stall);
+
+                return stall.Task;
             }
 
             // Explicit, because Task.FromResult would infer a non-nullable result and the whole
@@ -2707,6 +2746,192 @@ public class VariableExplorerTest : BunitContext
             Assert.Contains("2. Spyttsekresjon", Panel(cut).TextContent);
             Assert.DoesNotContain("«1. Tale»", Panel(cut).TextContent);
         });
+    }
+
+    [Fact]
+    public async Task Detail_WhenAReopenedRowsAbandonedFetchFails_ThenItIsNotReportedInTheNewPanel()
+    {
+        // Close-then-reopen is two fetches carrying one id, so a guard on the id alone would let the
+        // first — already thrown away — answer for the second. Its failure would be written into a
+        // panel that is still waiting and announced in the panel's own live region, then replaced
+        // when the request that is actually running lands.
+        var client = TwoRows();
+        var cut = RenderWith(client);
+
+        client.StallDetail = true;
+        Toggles(cut)[0].Click();
+        Toggles(cut)[0].Click();
+        Toggles(cut)[0].Click();
+
+        Assert.Equal(2, client.Stalls);
+
+        await cut.InvokeAsync(client.FailStalled);
+
+        Assert.Equal("true", Panel(cut).GetAttribute("aria-busy"));
+        Assert.Contains("Henter detaljer", Panel(cut).TextContent);
+        Assert.DoesNotContain("Kunne ikke hente detaljene", Panel(cut).TextContent);
+
+        // And the fetch that does own the panel still gets to fill it.
+        await cut.InvokeAsync(() => client.AnswerStalled(Detail(TaleId)));
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal("false", Panel(cut).GetAttribute("aria-busy"));
+            Assert.Contains("Angir pasientens grad av utfall", Panel(cut).TextContent);
+        });
+    }
+
+    [Fact]
+    public void Detail_WhenASearchFailsWithAPanelOpen_ThenTheSelectionGoesWithTheRows()
+    {
+        // A failed search clears the rows, so the panel leaves the document with them. The
+        // selection has to go too: left set it is state the reader can neither see nor get rid of,
+        // and the host's URL would keep naming a variable the page is no longer showing.
+        var client = TwoRows();
+        var reported = new List<Guid?>();
+        var cut = RenderWith(client, b => b.Add(c => c.SelectedVariableIdChanged, id => reported.Add(id)));
+
+        Toggles(cut)[0].Click();
+        client.Then(null);
+        cut.Find("button[type=submit]").Click();
+
+        Assert.Empty(cut.FindAll("ul.datasourcecard-list > li"));
+        Assert.Empty(cut.FindAll(".variable-explorer-detail"));
+        Assert.Equal([TaleId, null], reported);
+    }
+
+    [Fact]
+    public void Detail_WhenASearchRecoversFromAFailure_ThenTheClosedPanelDoesNotSpringBackOpen()
+    {
+        // The other half of the same rule. With the selection dropped there is nothing left to
+        // reopen from, so the rows come back closed rather than the panel re-rendering the payload
+        // fetched for the search before last — a detail nothing has confirmed is still current.
+        var client = TwoRows();
+        var cut = RenderWith(client);
+
+        Toggles(cut)[0].Click();
+        client.Then(null);
+        cut.Find("button[type=submit]").Click();
+        cut.Find("button[type=submit]").Click();
+
+        Assert.Equal(2, cut.FindAll("ul.datasourcecard-list > li").Count);
+        Assert.Empty(cut.FindAll(".variable-explorer-detail"));
+        Assert.Equal("false", Toggles(cut)[0].GetAttribute("aria-expanded"));
+
+        // Opening it again is a fetch, not a redraw of what was kept.
+        Toggles(cut)[0].Click();
+
+        Assert.Equal(2, client.DetailCalls);
+    }
+
+    [Fact]
+    public void Detail_WhenAFailedRetreatRollsThePageBack_ThenTheOpenPanelComesBackWithIt()
+    {
+        // The empty page 2 closes the panel on the way past, and then the retreat to page 1 fails.
+        // _page and _result are put back, and the panel is part of the same undo: without it the
+        // reader is left standing on the row they opened, shut, with their URL no longer naming it.
+        var page1 = new Page<VariableSummary>
+        {
+            Items = [Row(TaleId, "1. Tale")],
+            TotalCount = 30,
+            PageNumber = 1,
+            Size = 25,
+            TotalPages = 2
+        };
+        var client = new DetailClient(page1).Knows(Detail(TaleId));
+        var reported = new List<Guid?>();
+        var cut = RenderWith(client, b => b.Add(c => c.SelectedVariableIdChanged, id => reported.Add(id)));
+
+        Toggles(cut)[0].Click();
+
+        // Page 2 comes back empty the way a 404 does, and the retreat to page 1 throws.
+        client.Then(new Page<VariableSummary>()).Then(null);
+        Next(cut).Click();
+
+        Assert.Equal("Side 1 av 2", Position(cut));
+        Assert.Single(cut.FindAll("ul.datasourcecard-list > li"));
+        Assert.Equal("true", Toggles(cut)[0].GetAttribute("aria-expanded"));
+        Assert.Contains("Angir pasientens grad av utfall", Panel(cut).TextContent);
+
+        // Told null on the way through and told the id again on the way back, so the URL it ends up
+        // with is the row that is on screen.
+        Assert.Equal([TaleId, null, TaleId], reported);
+
+        // Rolled back, not re-fetched: the payload put back is the one that described these rows.
+        Assert.Equal(1, client.DetailCalls);
+    }
+
+    [Fact]
+    public void Detail_WhenTheVariableIsInSeveralVariabelgrupper_ThenEveryOneIsListed()
+    {
+        // The reason the panel reads the whole list rather than the primary name: a variable in
+        // three groups written up under one is a half-truth the payload already has the answer to.
+        var client = new DetailClient(OnePage(Row(TaleId, "1. Tale")))
+            .Knows(Detail(TaleId) with
+            {
+                VariabelgruppeName = "Funksjonsscore",
+                AllVariabelgrupper =
+                [
+                    new() { Id = Bakgrunn, Name = "Funksjonsscore" },
+                    new() { Id = Levekaar, Name = "ALSFRS-R" },
+                    new() { Id = Guid.NewGuid(), Name = "Pustefunksjon" }
+                ]
+            });
+        var cut = RenderWith(client);
+
+        Toggles(cut)[0].Click();
+
+        Assert.Equal(["Funksjonsscore", "ALSFRS-R", "Pustefunksjon"],
+                     Values(cut)[3].QuerySelectorAll("li").Select(l => l.TextContent));
+    }
+
+    [Fact]
+    public void Detail_WhenThePayloadCarriesNoVariabelgruppeList_ThenThePrimaryNameStandsIn()
+    {
+        // The documented fallback: a payload with the primary name and no list still says which
+        // group the variable is in, rather than dropping to "Ikke oppgitt".
+        var client = new DetailClient(OnePage(Row(TaleId, "1. Tale")))
+            .Knows(Detail(TaleId) with
+            {
+                VariabelgruppeName = "Funksjonsscore",
+                AllVariabelgrupper = []
+            });
+        var cut = RenderWith(client);
+
+        Toggles(cut)[0].Click();
+
+        Assert.Equal(["Funksjonsscore"],
+                     Values(cut)[3].QuerySelectorAll("li").Select(l => l.TextContent));
+    }
+
+    [Fact]
+    public void Detail_WhenTheKildeHasNoShortName_ThenTheTrailDrawsNoEmptyParentheses()
+    {
+        // The arm most payloads take: KildeShortName defaults to empty, and a kilde without an
+        // abbreviation must not be written up as "Als registeret ()".
+        var client = new DetailClient(OnePage(Row(TaleId, "1. Tale")))
+            .Knows(Detail(TaleId) with { KildeShortName = "" });
+        var cut = RenderWith(client);
+
+        Toggles(cut)[0].Click();
+
+        Assert.Equal(["Nasjonalt medisinsk kvalitetsregister", "Als registeret", "Inklusjon"],
+                     Values(cut)[2].QuerySelectorAll("ol > li").Select(l => l.TextContent));
+    }
+
+    [Fact]
+    public void Detail_WhenTheKildeShortNameOnlyRestatesTheFullName_ThenItIsWrittenOnce()
+    {
+        // Why the comparison ignores case: the catalogue writes the same name both ways, and
+        // "Als registeret (ALS REGISTERET)" is the register's name said twice in one breath.
+        var client = new DetailClient(OnePage(Row(TaleId, "1. Tale")))
+            .Knows(Detail(TaleId) with { KildeShortName = "ALS REGISTERET" });
+        var cut = RenderWith(client);
+
+        Toggles(cut)[0].Click();
+
+        Assert.Equal(["Nasjonalt medisinsk kvalitetsregister", "Als registeret", "Inklusjon"],
+                     Values(cut)[2].QuerySelectorAll("ol > li").Select(l => l.TextContent));
     }
 
     [Fact]
