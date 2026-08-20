@@ -87,6 +87,18 @@ internal enum PanelTab
 /// new is required of a host that has styled the panel above it.
 /// </para>
 /// <para>
+/// The panel's Data tab adds handles of its own — <c>variable-explorer-kodeverk</c> with its
+/// <c>__item</c>, <c>__name</c> and <c>__reference</c> parts, and <c>variable-explorer-codes</c>
+/// with its <c>__table</c> — and no style name, because neither Stiler nor helsedata's own
+/// variable page has a kodeverk section to borrow one from. What is worth spelling out is the
+/// <c>&lt;table&gt;</c> inside it, the only one this package emits. The results list is a
+/// <c>datasourcecard</c> list rather than a table because a card was an honest alternative shape
+/// for it; four columns of code values have no such alternative. The rule that keeps it safe is the
+/// one the <c>&lt;dl&gt;</c>, the <c>&lt;ol&gt;</c> and the <c>&lt;details&gt;</c> already rely on:
+/// an element degrades to its own browser default, which for a table is aligned columns, where a
+/// class name Stiler has never heard of degrades to nothing at all.
+/// </para>
+/// <para>
 /// A host outside helsedata's estate has to provide equivalents for those names, and two
 /// accessibility requirements the markup cannot meet on its own come with them. A host that
 /// skips either fails WCAG whatever this component does:
@@ -350,6 +362,33 @@ public partial class VariableExplorer : ComponentBase
     // inside one panel, and neither the rows nor the variable above it are stale because of it.
     private string? _sourceError;
 
+    // The kodeverk whose code lists the reader has opened, and what has been fetched for each.
+    //
+    // Keyed rather than single, unlike the owner panel above: the kodeverk are a list of peers
+    // under one heading and a reader comparing two of them is a thing the panel has room for,
+    // where the kilde and the datasamling answer the same question twice and do not.
+    //
+    // Nothing here is fetched with the variable. A kodeverk can run to hundreds of codes —
+    // Kommunenummer is 885 — and most readers open none of them, so putting the codes in the
+    // detail payload would make every opened row pay for a list almost nobody reads.
+    private readonly HashSet<KodeverkKey> _openCodes = [];
+
+    // What came back, kept after a list is collapsed so opening it again costs no second request.
+    // Emptied with the panel it hangs in, not before: a variable's codes are only ever drawn under
+    // that variable, so there is nothing for a cache that outlives it to be right about.
+    private readonly Dictionary<KodeverkKey, IReadOnlyList<KodeverkCode>> _codes = [];
+    private readonly HashSet<KodeverkKey> _codesLoading = [];
+
+    // Per link, for the reason the owner panel's error is its own field: one code list that could
+    // not be fetched leaves every other line on the panel describing exactly what it did before.
+    private readonly Dictionary<KodeverkKey, string> _codesError = [];
+
+    // One generation for all of them rather than one each, because they are only ever abandoned
+    // together: what disowns a code fetch is the variable panel closing, and that closes every list
+    // in it at once. Two lists open on one variable are not racing each other — they ask different
+    // questions of different references.
+    private int _codesGeneration;
+
     // The API's own default order, ascending, which is also where Runa starts — and the order the
     // API returns when it is asked for none, so the first render costs no extra query parameters.
     private SortField _sort = SortField.Default;
@@ -415,6 +454,18 @@ public partial class VariableExplorer : ComponentBase
     private string SourceHeadingId => $"variable-explorer-source-heading-{_instance}";
     private string SourceToggleId(SourceKind kind) =>
         $"variable-explorer-source-toggle-{_instance}-{kind.ToString().ToLowerInvariant()}";
+
+    // Per instance and per link. There is one open variable panel, so the variable does not need to
+    // be in the id, but the links inside it do: several code lists can be open together, and the
+    // table in each is named from the line above it.
+    //
+    // The link's position in the payload rather than its type and reference, which read better and
+    // cannot safely be used: a reference is the catalogue's own text — dotted OIDs for V-AK,
+    // hyphenated acronyms like NCMP-NCSP-NCRP for V-HK — and punctuation stripped to make it an id
+    // would let two different references mint the same one, which is a duplicate-id WCAG failure
+    // and an aria-controls naming the wrong table. The position is unique by construction.
+    private string KodeverkNameId(int index) => $"variable-explorer-kodeverk-{_instance}-{index}";
+    private string KodeverkCodesId(int index) => $"variable-explorer-codes-{_instance}-{index}";
 
     private Texts T => Texts.For(Language);
 
@@ -1653,38 +1704,399 @@ public partial class VariableExplorer : ComponentBase
         builder.CloseElement();
     };
 
-    /// <summary>
-    /// The kodeverk the variable's values are drawn from, one per line.
-    /// </summary>
+    /// <summary>Which kodeverk link a code list belongs to.</summary>
     /// <remarks>
-    /// Each line names the kind of kodeverk as well as the kodeverk itself, because "2336" on its
-    /// own says nothing: the same catalogue holds kildekodeverk defined by the kilde, national
-    /// administrative code systems and clinical classifications, and which one a code belongs to is
-    /// the point of the link. A link the API could not resolve a name for falls back to its
-    /// reference — the reference is what the reader can look up, where nothing at all would leave
-    /// the line saying only that a kodeverk exists.
+    /// The pair the endpoint is addressed by, and the only thing that identifies a link: a variable
+    /// can hold two links of one kind, and two variables can hold the same reference under
+    /// different kinds. Its position in the payload is not used, because the payload can be fetched
+    /// again — a list open on a reference has to stay open on that reference and not on whatever
+    /// ends up in its place.
     /// </remarks>
-    private RenderFragment KodeverkList(IReadOnlyList<KodeverkLink> links) => builder =>
+    private readonly record struct KodeverkKey(string Type, string Reference)
     {
-        if (links.Count == 0)
+        public static KodeverkKey Of(KodeverkLink link) => new(link.KodeverkType, link.KodeverkReference);
+    }
+
+    /// <summary>Open this link's code list, or close the one already open.</summary>
+    /// <remarks>
+    /// Several lists can be open at once, unlike the kilde and datasamling panels: those answer the
+    /// same question about the same variable twice, where two kodeverk are two different things a
+    /// reader may well want side by side.
+    /// <para>
+    /// A list closed and opened again is not fetched again — what came back is kept for as long as
+    /// the panel it hangs in. A list that <em>failed</em> is, because re-pressing the control is the
+    /// only retry a reader has and there is no answer being cached over.
+    /// </para>
+    /// </remarks>
+    private async Task ToggleCodesAsync(KodeverkLink link)
+    {
+        var key = KodeverkKey.Of(link);
+
+        if (!_openCodes.Add(key))
         {
-            builder.AddContent(0, T.NotSpecified);
+            _openCodes.Remove(key);
 
             return;
         }
 
-        builder.OpenElement(1, "ul");
-
-        foreach (var link in links)
+        if (_codes.ContainsKey(key) || _codesLoading.Contains(key))
         {
-            builder.OpenElement(2, "li");
-            builder.AddContent(3, $"{T.KodeverkTypeLabel(link.KodeverkType)}: ");
-            builder.AddContent(4, DetailValue(Trimmed(link.DisplayName) ?? link.KodeverkReference));
+            return;
+        }
+
+        await LoadCodesAsync(key);
+    }
+
+    /// <summary>Fetch one link's codes into the list that was just opened.</summary>
+    /// <remarks>
+    /// Guarded on the generation, the same as the detail and the owner panel, and for the reason
+    /// they are: the answer arrives after a yield, by which time the panel it was asked for can
+    /// have been closed and another variable's opened in its place.
+    /// <para>
+    /// Null is "the catalogue publishes no codes for this link" rather than a failure — see
+    /// <see cref="IMuninExplorerClient.GetKodeverkCodesAsync"/> — so it is cached as an empty list
+    /// and reported as one. Caching it is what keeps a link the register does not know from
+    /// re-asking on every expand.
+    /// </para>
+    /// </remarks>
+    private async Task LoadCodesAsync(KodeverkKey key)
+    {
+        if (_selectedId is not { } variableId)
+        {
+            return;
+        }
+
+        var generation = _codesGeneration;
+
+        _codesError.Remove(key);
+        _codesLoading.Add(key);
+        StateHasChanged();
+
+        try
+        {
+            var codes = await Client.GetKodeverkCodesAsync(variableId, key.Type, key.Reference);
+
+            if (_codesGeneration != generation)
+            {
+                return;
+            }
+
+            _codes[key] = codes?.Codes ?? [];
+        }
+        catch (Exception)
+        {
+            if (_codesGeneration == generation)
+            {
+                _codesError[key] = T.CodesError;
+            }
+        }
+        finally
+        {
+            if (_codesGeneration == generation)
+            {
+                _codesLoading.Remove(key);
+            }
+        }
+    }
+
+    /// <summary>Close every open code list and forget what was fetched for them.</summary>
+    /// <remarks>
+    /// Bumps the generation for the reason <see cref="ClearSource"/> does: closing disowns whatever
+    /// is still in flight, and the reference it was asked for can come back while the generation it
+    /// claimed cannot.
+    /// </remarks>
+    private void ClearCodes()
+    {
+        _openCodes.Clear();
+        _codes.Clear();
+        _codesLoading.Clear();
+        _codesError.Clear();
+
+        _codesGeneration++;
+    }
+
+    /// <summary>
+    /// The kodeverk the variable's values are drawn from, grouped by the kind of link they are.
+    /// </summary>
+    /// <remarks>
+    /// Runa's arrangement: a heading per kind — Kildekodeverk, Administrativt kodeverk, Helsefaglig
+    /// kodeverk — and under it one line per link, each carrying its own reference and, where the
+    /// codes can be had, the control that fetches them.
+    /// <para>
+    /// The kind is a heading rather than a prefix on every line because it is what a bare reference
+    /// is missing: "2336" says nothing on its own, and the same catalogue holds kildekodeverk
+    /// defined by the kilde, national administrative code systems and clinical classifications.
+    /// </para>
+    /// <para>
+    /// A link the API resolved no name for is drawn as "Ukjent navn" with its reference underneath,
+    /// labelled — <em>not</em> with the reference standing in for the name. That fallback is what
+    /// put "Kildekodeverk: 2336" on screen for the variable this panel was measured against, which
+    /// reads as the kodeverk being called 2336 rather than as its name being unknown. The reference
+    /// is on every line either way, because it is the thing a reader can look up.
+    /// </para>
+    /// <para>
+    /// Groups come out in the order the payload first mentions each kind, not in an order of ours:
+    /// the API decides which links a variable has and in what sequence, and a fixed order here
+    /// would be a second opinion about a list this component does not own.
+    /// </para>
+    /// </remarks>
+    private RenderFragment KodeverkGroups(VariableDetail detail) => builder =>
+    {
+        if (detail.KodeverkLinks.Count == 0)
+        {
+            builder.OpenElement(0, "p");
+            builder.AddAttribute(1, "class", "caption");
+            builder.AddContent(2, T.NoKodeverk);
             builder.CloseElement();
+
+            return;
+        }
+
+        // Numbered before grouping, so a line's number is its place in the payload rather than its
+        // place under a heading — which is what keeps the ids unique across the whole panel.
+        var links = detail.KodeverkLinks.Select((link, index) => (Link: link, Index: index));
+
+        var seq = 10;
+
+        foreach (var group in links.GroupBy(entry => entry.Link.KodeverkType, StringComparer.OrdinalIgnoreCase))
+        {
+            builder.OpenElement(seq, $"h{RowLevel}");
+            builder.AddAttribute(seq + 1, "class", "headline headline-xxs margin--none variable-explorer-group");
+            builder.AddContent(seq + 2, T.KodeverkTypeLabel(group.Key));
+            builder.CloseElement();
+
+            builder.OpenElement(seq + 3, "ul");
+            builder.AddAttribute(seq + 4, "class", "variable-explorer-kodeverk");
+            builder.AddContent(seq + 5, KodeverkItems(group));
+            builder.CloseElement();
+
+            seq += 10;
+        }
+    };
+
+    /// <summary>One line per link within a kind, with its reference and its codes.</summary>
+    private RenderFragment KodeverkItems(IEnumerable<(KodeverkLink Link, int Index)> links) => builder =>
+    {
+        var seq = 0;
+
+        foreach (var (link, index) in links)
+        {
+            var key = KodeverkKey.Of(link);
+
+            builder.OpenElement(seq, "li");
+            // Keyed on the link rather than left to positional diffing: each line owns an expanded
+            // or collapsed code list, and two links reordered under one heading would otherwise
+            // swap the lists open beneath them.
+            builder.SetKey(key);
+            builder.AddAttribute(seq + 1, "class", "variable-explorer-kodeverk__item");
+
+            builder.OpenElement(seq + 2, "p");
+            builder.AddAttribute(seq + 3, "class", "variable-explorer-kodeverk__name");
+            builder.AddAttribute(seq + 4, "id", KodeverkNameId(index));
+
+            if (Trimmed(link.DisplayName) is { } name)
+            {
+                // The catalogue's own name, so it stays Norwegian whatever the UI language is —
+                // the rule the kilde trail and the variable's own name already follow.
+                builder.AddAttribute(seq + 5, "lang", "no");
+                builder.AddContent(seq + 6, name);
+            }
+            else
+            {
+                builder.AddContent(seq + 7, T.KodeverkUnnamed);
+            }
+
+            builder.CloseElement();
+
+            builder.OpenElement(seq + 8, "p");
+            builder.AddAttribute(seq + 9, "class", "caption variable-explorer-kodeverk__reference");
+            builder.AddContent(seq + 10, $"{T.FieldKodeverkReference}: {link.KodeverkReference}");
+            builder.CloseElement();
+
+            // No button where the API serves no codes. HelsefagligKodeverk links are the case that
+            // matters — the endpoint answers 404 for every one of them — and a control that could
+            // only ever report "no codes" is worse than no control at all.
+            if (link.HasCodeValues)
+            {
+                builder.AddContent(seq + 11, KodeverkCodesToggle(link, key, index));
+            }
+
+            builder.CloseElement();
+
+            seq += 20;
+        }
+    };
+
+    /// <summary>The "Vis koder" control and, once it has been pressed, what came back.</summary>
+    /// <remarks>
+    /// The panel is rendered only while it is open, so <c>aria-controls</c> is set only then — the
+    /// rule the kilde and datasamling toggles follow, for the same reason: an id naming an element
+    /// that is not in the document is worse than no id.
+    /// </remarks>
+    private RenderFragment KodeverkCodesToggle(KodeverkLink link, KodeverkKey key, int index) => builder =>
+    {
+        var open = _openCodes.Contains(key);
+
+        builder.OpenElement(0, "button");
+        builder.AddAttribute(1, "class", "hd-button-square button-square--ghost margin-bottom");
+        builder.AddAttribute(2, "type", "button");
+        builder.AddAttribute(3, "aria-expanded", open ? "true" : "false");
+        builder.AddAttribute(4, "aria-controls", open ? KodeverkCodesId(index) : null);
+        builder.AddAttribute(5, "onclick", EventCallback.Factory.Create(this, () => ToggleCodesAsync(link)));
+        builder.AddContent(6, open ? T.HideCodes : T.ShowCodes);
+        builder.CloseElement();
+
+        if (!open)
+        {
+            return;
+        }
+
+        builder.OpenElement(7, "div");
+        builder.AddAttribute(8, "id", KodeverkCodesId(index));
+        builder.AddAttribute(9, "class", "variable-explorer-codes");
+        builder.AddContent(10, KodeverkCodesBody(key, index));
+        builder.CloseElement();
+    };
+
+    /// <summary>What the open code list shows: that it is loading, why it is empty, or the codes.</summary>
+    /// <remarks>
+    /// A failure is said here and nowhere else. One code list that could not be fetched leaves the
+    /// rest of the panel, the variable above it and the rows behind it all describing exactly what
+    /// they described before — the same reasoning that gives the kilde panel its own error field.
+    /// </remarks>
+    private RenderFragment KodeverkCodesBody(KodeverkKey key, int index) => builder =>
+    {
+        if (_codesLoading.Contains(key))
+        {
+            builder.OpenElement(0, "p");
+            builder.AddAttribute(1, "class", "caption");
+            builder.AddContent(2, T.CodesLoading);
+            builder.CloseElement();
+
+            return;
+        }
+
+        if (_codesError.TryGetValue(key, out var error))
+        {
+            builder.OpenElement(3, "p");
+            builder.AddAttribute(4, "class", "infobox infobox--bg-yellow");
+            builder.AddContent(5, error);
+            builder.CloseElement();
+
+            return;
+        }
+
+        var codes = _codes.GetValueOrDefault(key, []);
+
+        if (codes.Count == 0)
+        {
+            builder.OpenElement(6, "p");
+            builder.AddAttribute(7, "class", "caption");
+            builder.AddContent(8, T.NoCodes);
+            builder.CloseElement();
+
+            return;
+        }
+
+        builder.AddContent(9, CodesTable(index, codes));
+    };
+
+    /// <summary>
+    /// The codes as a table of Verdi, Navn, Gyldig fra and Gyldig til.
+    /// </summary>
+    /// <remarks>
+    /// A real <c>&lt;table&gt;</c>, and the only one this package emits. The results list is a
+    /// <c>datasourcecard</c> list rather than a table because Stiler styles no table and a card was
+    /// an honest alternative shape for it; four columns of code values have no such alternative —
+    /// a definition list per code would lose the alignment that makes a code list readable at all.
+    /// What makes it safe is that the fallback here is an element's own browser default rather than
+    /// an invented class name: an unstyled table still aligns its columns, where an unstyled
+    /// <c>kodeverk-table</c> would render as nothing.
+    /// <para>
+    /// <c>variable-explorer-codes</c> is a handle, the same kind of name as the four before it, and
+    /// carries no styling of ours. Named from the link's own line above it rather than given a
+    /// <c>&lt;caption&gt;</c>, which is what the results list does and for the same reason — the
+    /// name is already on screen, one line up.
+    /// </para>
+    /// </remarks>
+    private RenderFragment CodesTable(int index, IReadOnlyList<KodeverkCode> codes) => builder =>
+    {
+        builder.OpenElement(0, "table");
+        builder.AddAttribute(1, "class", "variable-explorer-codes__table");
+        builder.AddAttribute(2, "aria-labelledby", KodeverkNameId(index));
+
+        builder.OpenElement(3, "thead");
+        builder.OpenElement(4, "tr");
+
+        var head = 5;
+
+        foreach (var heading in new[] { T.ColumnCodeValue, T.ColumnCodeName, T.ColumnValidFrom, T.ColumnValidTo })
+        {
+            builder.OpenElement(head, "th");
+            builder.AddAttribute(head + 1, "scope", "col");
+            builder.AddContent(head + 2, heading);
+            builder.CloseElement();
+
+            head += 3;
         }
 
         builder.CloseElement();
+        builder.CloseElement();
+
+        builder.OpenElement(20, "tbody");
+
+        var seq = 30;
+
+        foreach (var code in codes)
+        {
+            builder.OpenElement(seq, "tr");
+
+            builder.OpenElement(seq + 1, "td");
+            builder.AddContent(seq + 2, code.Value);
+            builder.CloseElement();
+
+            builder.OpenElement(seq + 3, "td");
+            // The catalogue's own wording, Norwegian whatever the page is — the rule every other
+            // value out of the catalogue follows here.
+            builder.AddAttribute(seq + 4, "lang", "no");
+            builder.AddContent(seq + 5, Trimmed(code.Name) ?? T.NotSpecified);
+            builder.CloseElement();
+
+            builder.OpenElement(seq + 6, "td");
+            builder.AddContent(seq + 7, ValidityDate(code.ValidFrom));
+            builder.CloseElement();
+
+            builder.OpenElement(seq + 8, "td");
+            builder.AddContent(seq + 9, ValidityDate(code.ValidTo));
+            builder.CloseElement();
+
+            builder.CloseElement();
+
+            seq += 20;
+        }
+
+        builder.CloseElement();
+        builder.CloseElement();
     };
+
+    /// <summary>
+    /// A validity date as a day, or "Ikke oppgitt" when the kodeverk records none.
+    /// </summary>
+    /// <remarks>
+    /// The day and not the time. Every one of these arrives as midnight UTC or as the instant a
+    /// bulk import ran, neither of which is a fact about when a code applied — showing it would
+    /// dress an import timestamp up as precision the data does not have.
+    /// <para>
+    /// Written out rather than shown as an em dash, which is the rule the whole panel follows:
+    /// there is no visually-hidden helper to whisper the meaning of a dash into, so a missing value
+    /// says so in words for everyone.
+    /// </para>
+    /// </remarks>
+    private string ValidityDate(DateTimeOffset? date) =>
+        date is { } value
+            ? value.ToString("d", System.Globalization.CultureInfo.GetCultureInfo(
+                string.Equals(Language, "en", StringComparison.OrdinalIgnoreCase) ? "en" : "nb-NO"))
+            : T.NotSpecified;
 
     // ---------------------------------------------------------- the kilde and datasamling panel
 
@@ -2587,6 +2999,11 @@ public partial class VariableExplorer : ComponentBase
         // kilde under the new variable's name until its own fetch landed.
         ClearSource();
 
+        // Neither can the code lists, and the reason is sharper: the codes are fetched per variable
+        // as well as per reference, so a cache kept across the replacement would answer the new
+        // variable's kodeverk with the old one's codes rather than merely looking out of place.
+        ClearCodes();
+
         StateHasChanged();
 
         try
@@ -2640,6 +3057,11 @@ public partial class VariableExplorer : ComponentBase
         // The owner panel hangs inside the panel being closed, so it goes with it. Left behind it
         // would be a kilde nothing draws, and the next variable opened would inherit it.
         ClearSource();
+
+        // The code lists hang in it too, and for them "inherited by the next variable" is worse
+        // than a stray panel: two variables can share a reference, so a cache left behind would
+        // look right and be another variable's answer.
+        ClearCodes();
     }
 
     /// <summary>Close the kilde or datasamling panel and forget what was fetched for it.</summary>
@@ -3328,7 +3750,21 @@ public partial class VariableExplorer : ComponentBase
         string FieldVariableGroup,
         string FieldPeriod,
         string FieldDescription,
-        string FieldKodeverk,
+        // The Data tab's kodeverk section, Runa's words throughout. The reference is labelled
+        // rather than left to stand on its own, and a link the API resolved no name for says so
+        // instead of letting the reference impersonate the name.
+        string FieldKodeverkReference,
+        string KodeverkUnnamed,
+        string NoKodeverk,
+        string ShowCodes,
+        string HideCodes,
+        string CodesLoading,
+        string CodesError,
+        string NoCodes,
+        string ColumnCodeValue,
+        string ColumnCodeName,
+        string ColumnValidFrom,
+        string ColumnValidTo,
         // The detail panel. Its labels are the card's own words wherever it names the same thing —
         // Datakilde, Variabelgruppe, Periode — so opening a row renames nothing.
         string ShowDetails,
@@ -3540,7 +3976,18 @@ public partial class VariableExplorer : ComponentBase
             FieldVariableGroup: "Variabelgruppe",
             FieldPeriod: "Periode",
             FieldDescription: "Beskrivelse",
-            FieldKodeverk: "Kodeverk",
+            FieldKodeverkReference: "Referanse",
+            KodeverkUnnamed: "Ukjent navn",
+            NoKodeverk: "Ingen kodeverk registrert",
+            ShowCodes: "Vis koder",
+            HideCodes: "Skjul koder",
+            CodesLoading: "Henter koder …",
+            CodesError: "Kunne ikke hente kodene nå. Prøv igjen om litt.",
+            NoCodes: "Ingen kodeverdier tilgjengelig",
+            ColumnCodeValue: "Verdi",
+            ColumnCodeName: "Navn",
+            ColumnValidFrom: "Gyldig fra",
+            ColumnValidTo: "Gyldig til",
             ShowDetails: "Vis detaljer",
             HideDetails: "Skjul detaljer",
             DetailLoading: "Henter detaljer …",
@@ -3676,7 +4123,18 @@ public partial class VariableExplorer : ComponentBase
             FieldVariableGroup: "Variable group",
             FieldPeriod: "Period",
             FieldDescription: "Description",
-            FieldKodeverk: "Code systems",
+            FieldKodeverkReference: "Reference",
+            KodeverkUnnamed: "Unnamed",
+            NoKodeverk: "No code systems registered",
+            ShowCodes: "Show codes",
+            HideCodes: "Hide codes",
+            CodesLoading: "Loading codes …",
+            CodesError: "Could not load the codes right now. Please try again shortly.",
+            NoCodes: "No code values available",
+            ColumnCodeValue: "Value",
+            ColumnCodeName: "Name",
+            ColumnValidFrom: "Valid from",
+            ColumnValidTo: "Valid to",
             ShowDetails: "Show details",
             HideDetails: "Hide details",
             DetailLoading: "Loading details …",

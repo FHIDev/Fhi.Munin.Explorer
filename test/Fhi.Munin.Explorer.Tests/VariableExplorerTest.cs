@@ -2862,6 +2862,64 @@ public class VariableExplorerTest : BunitContext
 
             return Task.FromResult<DatasamlingDetail?>(_datasamlinger.GetValueOrDefault(id));
         }
+
+        // The codes endpoint, on the same fake for the reason the owners are: a code list is only
+        // ever reached from a variable panel that is already open.
+        private readonly Dictionary<(string Type, string Reference), KodeverkCodes> _codeLists = [];
+
+        /// <summary>Every codes fetch made, in order — which is how "not until asked" is tested.</summary>
+        public List<(Guid VariableId, string Type, string Reference)> CodeRequests { get; } = [];
+
+        /// <summary>Fail every codes fetch from the next one on.</summary>
+        public bool FailCodes { get; set; }
+
+        /// <summary>Never answer a codes fetch from the next one on.</summary>
+        /// <remarks>
+        /// The counterpart to <see cref="StallKilde"/>, and there for the same reason: the loading
+        /// line, the de-duplication of a request already in flight and the generation guard all
+        /// only exist between the ask and the answer, and a fetch that completes synchronously
+        /// never spends any time there.
+        /// </remarks>
+        public bool StallCodes { get; set; }
+
+        private readonly List<TaskCompletionSource<KodeverkCodes?>> _codeStalls = [];
+
+        public DetailClient Knows(KodeverkCodes codes)
+        {
+            _codeLists[(codes.KodeverkType, codes.KodeverkReference)] = codes;
+
+            return this;
+        }
+
+        /// <summary>Answer the oldest codes fetch still hanging.</summary>
+        public void AnswerStalledCodes(KodeverkCodes codes) =>
+            _codeStalls.First(stall => !stall.Task.IsCompleted).TrySetResult(codes);
+
+        public override Task<KodeverkCodes?> GetKodeverkCodesAsync(
+            Guid variableId, string kodeverkType, string kodeverkReference,
+            CancellationToken cancellationToken = default)
+        {
+            CodeRequests.Add((variableId, kodeverkType, kodeverkReference));
+
+            if (FailCodes)
+            {
+                throw new HttpRequestException("nede");
+            }
+
+            if (StallCodes)
+            {
+                var stall = new TaskCompletionSource<KodeverkCodes?>(
+                    TaskCreationOptions.RunContinuationsAsynchronously);
+                _codeStalls.Add(stall);
+
+                return stall.Task;
+            }
+
+            // Explicit for the reason the other two are: a link the register does not know answers
+            // null, and that has to survive the inference.
+            return Task.FromResult<KodeverkCodes?>(
+                _codeLists.GetValueOrDefault((kodeverkType, kodeverkReference)));
+        }
     }
 
     private static IReadOnlyList<AngleSharp.Dom.IElement> Toggles(IRenderedComponent<VariableExplorer> cut) =>
@@ -2915,7 +2973,9 @@ public class VariableExplorerTest : BunitContext
         TabButtons(cut)[1].Click();
 
         Assert.Equal(["false", "true"], TabButtons(cut).Select(b => b.GetAttribute("aria-selected")));
-        Assert.Contains("Kodeverk", Panel(cut).TextContent);
+
+        // The kind of kodeverk is the heading now, so it is the heading that says the tab arrived.
+        Assert.Contains("Kildekodeverk", Panel(cut).TextContent);
         Assert.DoesNotContain("Beskrivelse", Panel(cut).TextContent);
     }
 
@@ -2955,6 +3015,563 @@ public class VariableExplorerTest : BunitContext
         Toggles(cut)[1].Click();
 
         Assert.Equal("true", TabButtons(cut)[0].GetAttribute("aria-selected"));
+    }
+
+
+    // ---------------------------------------------------------------------------------
+    // The Data tab's kodeverk. What has to hold is the acceptance criterion: the links
+    // are grouped by kind with the reference visible, and "Vis koder" fetches and shows
+    // Verdi / Navn / Gyldig fra / Gyldig til for the one that was pressed. No bare
+    // reference is left standing as the only text on a line — which is what the old flat
+    // list did whenever the API resolved no name, and it did so for the very variable
+    // this panel was measured against.
+    // ---------------------------------------------------------------------------------
+
+    /// <summary>
+    /// A detail carrying one kodeverk link of every kind the API sends.
+    /// </summary>
+    /// <remarks>
+    /// Shaped like the live catalogue rather than tidied: the kildekodeverk has no resolved name,
+    /// which is the case the bead was written for, and the two kildekodeverk are not adjacent in
+    /// the payload — grouping that only worked on a sorted list would pass on a tidier fixture.
+    /// The helsefaglig link carries <c>HasCodeValues = false</c>, which is what every one of them
+    /// carries: the API serves no codes for that kind at all.
+    /// </remarks>
+    private static VariableDetail WithKodeverk(Guid id) => Detail(id) with
+    {
+        KodeverkLinks =
+        [
+            new() { KodeverkType = "Kildekodeverk", KodeverkReference = "2336", HasCodeValues = true },
+            new()
+            {
+                KodeverkType = "AdministrativtKodeverk",
+                KodeverkReference = "3402",
+                DisplayName = "Kommunenummer",
+                HasCodeValues = true
+            },
+            new()
+            {
+                KodeverkType = "Kildekodeverk",
+                KodeverkReference = "2337",
+                DisplayName = "Skjemastatus",
+                HasCodeValues = true
+            },
+            new()
+            {
+                KodeverkType = "HelsefagligKodeverk",
+                KodeverkReference = "ICD-10",
+                DisplayName = "Den internasjonale statistiske klassifikasjonen av sykdommer",
+                HasCodeValues = false
+            }
+        ]
+    };
+
+    /// <summary>The codes behind the nameless kildekodeverk, as the endpoint sends them.</summary>
+    private static KodeverkCodes Codes2336() => new()
+    {
+        KodeverkType = "Kildekodeverk",
+        KodeverkReference = "2336",
+        Codes =
+        [
+            new()
+            {
+                Value = "0",
+                Name = "Velg verdi",
+                ValidFrom = new DateTimeOffset(2010, 1, 1, 0, 0, 0, TimeSpan.Zero)
+            },
+            new()
+            {
+                Value = "1",
+                Name = "0: Tap av produktiv tale",
+                ValidFrom = new DateTimeOffset(2010, 1, 1, 0, 0, 0, TimeSpan.Zero),
+                ValidTo = new DateTimeOffset(2020, 3, 31, 0, 0, 0, TimeSpan.Zero)
+            }
+        ]
+    };
+
+    /// <summary>Kommunenummer's shape: a kodeverk that records no start dates at all.</summary>
+    private static KodeverkCodes Codes3402() => new()
+    {
+        KodeverkType = "AdministrativtKodeverk",
+        KodeverkReference = "3402",
+        Codes =
+        [
+            new()
+            {
+                Value = "0101",
+                Name = "Halden",
+                ValidTo = new DateTimeOffset(2023, 9, 6, 13, 13, 41, TimeSpan.Zero)
+            }
+        ]
+    };
+
+    private static DetailClient KodeverkRows() =>
+        new DetailClient(OnePage(Row(TaleId, "1. Tale"), Row(SpyttId, "2. Spyttsekresjon")))
+            .Knows(WithKodeverk(TaleId))
+            .Knows(WithKodeverk(SpyttId))
+            .Knows(Codes2336())
+            .Knows(Codes3402());
+
+    /// <summary>Open the first row and move to the Data tab, where the kodeverk live.</summary>
+    private IRenderedComponent<VariableExplorer> OpenData(
+        DetailClient client, Action<ComponentParameterCollectionBuilder<VariableExplorer>>? p = null)
+    {
+        var cut = RenderWith(client, p);
+
+        Toggles(cut)[0].Click();
+        TabButtons(cut)[1].Click();
+
+        return cut;
+    }
+
+    private static IReadOnlyList<string> KodeverkGroupHeadings(IRenderedComponent<VariableExplorer> cut) =>
+        [.. Panel(cut).QuerySelectorAll(".variable-explorer-group").Select(h => h.TextContent)];
+
+    private static IReadOnlyList<AngleSharp.Dom.IElement> KodeverkLines(
+        IRenderedComponent<VariableExplorer> cut) =>
+        [.. Panel(cut).QuerySelectorAll("li.variable-explorer-kodeverk__item")];
+
+    private static IReadOnlyList<AngleSharp.Dom.IElement> CodeToggles(
+        IRenderedComponent<VariableExplorer> cut) =>
+        [.. Panel(cut).QuerySelectorAll("li.variable-explorer-kodeverk__item > button")];
+
+    [Fact]
+    public void Kodeverk_WhenTheDataTabIsOpen_ThenTheLinksAreGroupedByKindInPayloadOrder()
+    {
+        var cut = OpenData(KodeverkRows());
+
+        // One heading per kind, in the order the payload first mentions each — not one heading per
+        // link, and not an order of ours. The two kildekodeverk are apart in the payload, so a
+        // grouping that only worked on adjacent links would show four headings here.
+        Assert.Equal(["Kildekodeverk", "Administrativt kodeverk", "Helsefaglig kodeverk"],
+                     KodeverkGroupHeadings(cut));
+
+        var groups = Panel(cut).QuerySelectorAll("ul.variable-explorer-kodeverk");
+
+        Assert.Equal([2, 1, 1], groups.Select(g => g.QuerySelectorAll("li").Length));
+    }
+
+    [Fact]
+    public void Kodeverk_WhenTheApiResolvedNoName_ThenTheReferenceIsLabelledRatherThanStandingIn()
+    {
+        // The bead's own case, measured against variable bc8a6515: displayName is null for its one
+        // link, and the flat list this replaces rendered that as "Kildekodeverk: 2336" — which
+        // reads as the kodeverk being called 2336. The name being unknown is said out loud, and the
+        // reference is labelled, so no bare code is the only text on a line.
+        var cut = OpenData(KodeverkRows());
+
+        var nameless = KodeverkLines(cut)[0];
+
+        Assert.Equal("Ukjent navn", nameless.QuerySelector(".variable-explorer-kodeverk__name")!.TextContent);
+        Assert.Equal("Referanse: 2336",
+                     nameless.QuerySelector(".variable-explorer-kodeverk__reference")!.TextContent);
+        Assert.DoesNotContain("Kildekodeverk: 2336", Panel(cut).TextContent);
+    }
+
+    [Fact]
+    public void Kodeverk_WhenTheApiResolvedAName_ThenBothTheNameAndTheReferenceAreShown()
+    {
+        // The reference is on every line, named one and nameless alike: it is the thing a reader
+        // can look the kodeverk up by, and a name alone cannot be typed into anything.
+        var cut = OpenData(KodeverkRows());
+
+        var named = KodeverkLines(cut)[1];
+
+        Assert.Equal("Skjemastatus", named.QuerySelector(".variable-explorer-kodeverk__name")!.TextContent);
+        Assert.Equal("Referanse: 2337",
+                     named.QuerySelector(".variable-explorer-kodeverk__reference")!.TextContent);
+
+        // The catalogue's own name, so a screen reader on an English page still says it in
+        // Norwegian rather than reading it with English phonetics.
+        Assert.Equal("no", named.QuerySelector(".variable-explorer-kodeverk__name")!.GetAttribute("lang"));
+    }
+
+    [Fact]
+    public void Kodeverk_WhenNoneAreRegistered_ThenTheTabSaysSoRatherThanBeingBlank()
+    {
+        var id = Guid.NewGuid();
+        var cut = OpenData(new DetailClient(OnePage(Row(id, "1. Tale")))
+            .Knows(Detail(id) with { KodeverkLinks = [] }));
+
+        Assert.Equal("Ingen kodeverk registrert", Panel(cut).QuerySelector("[role=tabpanel] > p")!.TextContent);
+    }
+
+    [Fact]
+    public void Codes_WhenTheTabIsOpened_ThenNothingIsFetchedUntilAReaderAsks()
+    {
+        // The reason the codes are their own endpoint at all. Kommunenummer is 885 codes and most
+        // readers open none of them, so opening a row must not pay for a list nobody reads.
+        var client = KodeverkRows();
+        var cut = OpenData(client);
+
+        Assert.Empty(client.CodeRequests);
+        Assert.Equal(["Vis koder", "Vis koder", "Vis koder"], CodeToggles(cut).Select(b => b.TextContent));
+        Assert.All(CodeToggles(cut), b => Assert.Equal("false", b.GetAttribute("aria-expanded")));
+    }
+
+    [Fact]
+    public void Codes_WhenTheLinkServesNone_ThenThereIsNoControlToPress()
+    {
+        // Every HelsefagligKodeverk link answers 404, which the payload says up front with
+        // harKodeverdier. A button that could only ever report "no code values" is worse than none.
+        var cut = OpenData(KodeverkRows());
+
+        Assert.Equal(4, KodeverkLines(cut).Count);
+        Assert.Equal(3, CodeToggles(cut).Count);
+        Assert.Empty(KodeverkLines(cut)[3].QuerySelectorAll("button"));
+    }
+
+    [Fact]
+    public void Codes_WhenVisKoderIsPressed_ThenOneRequestIsMadeAndTheFourColumnsAreShown()
+    {
+        // The rest of the acceptance criterion: the codes arrive from their own endpoint, for the
+        // link that was pressed, and read as Verdi / Navn / Gyldig fra / Gyldig til.
+        var client = KodeverkRows();
+        var cut = OpenData(client);
+
+        CodeToggles(cut)[0].Click();
+
+        Assert.Equal((TaleId, "Kildekodeverk", "2336"), Assert.Single(client.CodeRequests));
+
+        var table = Panel(cut).QuerySelector(".variable-explorer-codes table")!;
+
+        Assert.Equal(["Verdi", "Navn", "Gyldig fra", "Gyldig til"],
+                     table.QuerySelectorAll("thead th").Select(th => th.TextContent));
+
+        var rows = table.QuerySelectorAll("tbody tr");
+        var first = rows[0].QuerySelectorAll("td").Select(td => td.TextContent).ToArray();
+
+        Assert.Equal("0", first[0]);
+        Assert.Equal("Velg verdi", first[1]);
+
+        // The day and not the instant: every one of these dates is midnight UTC or the moment a
+        // bulk import ran, and neither is a fact about when the code applied. The separator is
+        // Norwegian; the zero padding is ICU's business, not this test's.
+        Assert.Matches(@"^\d{1,2}\.\d{1,2}\.2010$", first[2]);
+
+        // Written out rather than shown as a dash: there is no visually-hidden helper in this
+        // package to whisper the meaning of a dash into, so a missing value says so for everyone.
+        Assert.Equal("Ikke oppgitt", first[3]);
+
+        var second = rows[1].QuerySelectorAll("td").Select(td => td.TextContent).ToArray();
+
+        Assert.Equal("0: Tap av produktiv tale", second[1]);
+        Assert.Matches(@"^\d{1,2}\.\d{1,2}\.2020$", second[3]);
+    }
+
+    [Fact]
+    public void Codes_WhenAKodeverkRecordsNoStartDates_ThenTheCellSaysSoRatherThanShowingYearOne()
+    {
+        // Kommunenummer's shape. A non-nullable date would render every one of its 885 codes as
+        // starting on 01.01.0001, which reads as data rather than as an absence.
+        var client = KodeverkRows();
+        var cut = OpenData(client);
+
+        CodeToggles(cut)[2].Click();
+
+        var cells = Panel(cut).QuerySelectorAll(".variable-explorer-codes tbody td")
+            .Select(td => td.TextContent).ToArray();
+
+        Assert.Equal(["0101", "Halden"], cells[..2]);
+        Assert.Equal("Ikke oppgitt", cells[2]);
+
+        // The end date carries a time of day on the wire — the import ran at 13:13:41 — and the
+        // cell shows the day alone, because the import's clock is not when Halden stopped existing.
+        Assert.Matches(@"^\d{1,2}\.\d{1,2}\.2023$", cells[3]);
+    }
+
+    [Fact]
+    public void Codes_WhenTheListIsCollapsedAndOpenedAgain_ThenItIsNotFetchedTwice()
+    {
+        var client = KodeverkRows();
+        var cut = OpenData(client);
+
+        CodeToggles(cut)[0].Click();
+
+        Assert.Equal("Skjul koder", CodeToggles(cut)[0].TextContent);
+        Assert.Equal("true", CodeToggles(cut)[0].GetAttribute("aria-expanded"));
+
+        CodeToggles(cut)[0].Click();
+
+        Assert.Empty(Panel(cut).QuerySelectorAll(".variable-explorer-codes"));
+        Assert.Equal("Vis koder", CodeToggles(cut)[0].TextContent);
+
+        CodeToggles(cut)[0].Click();
+
+        // The answer was kept, so re-opening costs nothing. Without the cache a reader comparing
+        // two kodeverk pays for the same list every time they look back at it.
+        Assert.Single(client.CodeRequests);
+        Assert.NotNull(Panel(cut).QuerySelector(".variable-explorer-codes table"));
+    }
+
+    [Fact]
+    public void Codes_WhenTwoListsAreOpened_ThenBothStayOpenWithTheirOwnCodes()
+    {
+        // Unlike the kilde and datasamling panels, which are one at a time: those answer the same
+        // question about the same variable twice, where two kodeverk are two different things.
+        var client = KodeverkRows();
+        var cut = OpenData(client);
+
+        CodeToggles(cut)[0].Click();
+        CodeToggles(cut)[2].Click();
+
+        var tables = Panel(cut).QuerySelectorAll(".variable-explorer-codes table");
+
+        Assert.Equal(2, tables.Length);
+        Assert.Contains("Velg verdi", tables[0].TextContent);
+        Assert.Contains("Halden", tables[1].TextContent);
+        Assert.Equal(2, client.CodeRequests.Count);
+    }
+
+    [Fact]
+    public void Codes_WhenTheApiPublishesNoneForTheLink_ThenTheListSaysSoRatherThanFailing()
+    {
+        // A reference the upstream register does not know answers 404, which the client reports as
+        // null. That is not a fault and must not be dressed as one — nor asked for again on every
+        // expand, which is why the empty answer is cached like any other.
+        var client = KodeverkRows();
+        var cut = OpenData(client);
+
+        // 2337 is a link the fake knows nothing about, the same as an unpublished reference.
+        CodeToggles(cut)[1].Click();
+
+        Assert.Equal("Ingen kodeverdier tilgjengelig",
+                     Panel(cut).QuerySelector(".variable-explorer-codes p")!.TextContent);
+
+        CodeToggles(cut)[1].Click();
+        CodeToggles(cut)[1].Click();
+
+        Assert.Single(client.CodeRequests);
+    }
+
+    [Fact]
+    public void Codes_WhenTheFetchFails_ThenOnlyThatListSaysSoAndPressingAgainRetries()
+    {
+        // What failed is one collapsed list inside one panel. The rows behind it and every other
+        // line on the panel describe exactly what they described before, so the failure is reported
+        // where it happened rather than in the component's alert region.
+        var client = KodeverkRows();
+        client.FailCodes = true;
+
+        var cut = OpenData(client);
+
+        CodeToggles(cut)[0].Click();
+
+        var message = Panel(cut).QuerySelector(".variable-explorer-codes p")!;
+
+        Assert.Contains("Kunne ikke hente kodene", message.TextContent);
+        Assert.Contains("infobox", message.ClassName!);
+
+        // The panel around it is untouched: the other lines still offer their codes, and the rows
+        // are still the rows the search returned.
+        Assert.Equal(3, CodeToggles(cut).Count);
+        Assert.Equal(2, Toggles(cut).Count);
+        Assert.Empty(cut.Find("[role='alert']").TextContent.Trim());
+
+        // Pressing again is the only retry a reader has, and there is no answer being cached over.
+        client.FailCodes = false;
+        CodeToggles(cut)[0].Click();
+        CodeToggles(cut)[0].Click();
+
+        Assert.Equal(2, client.CodeRequests.Count);
+        Assert.NotNull(Panel(cut).QuerySelector(".variable-explorer-codes table"));
+    }
+
+    [Fact]
+    public void Codes_WhenAnotherVariableIsOpened_ThenTheFirstOnesCodesAreNotInherited()
+    {
+        // Two variables can share a reference, so a cache left behind would look right and be
+        // another variable's answer. The fetch is per variable as well as per reference.
+        var client = KodeverkRows();
+        var cut = OpenData(client);
+
+        CodeToggles(cut)[0].Click();
+
+        Assert.Single(client.CodeRequests);
+
+        Toggles(cut)[1].Click();
+        TabButtons(cut)[1].Click();
+
+        // Every list starts collapsed again, and opening one asks for the new variable's codes.
+        Assert.All(CodeToggles(cut), b => Assert.Equal("false", b.GetAttribute("aria-expanded")));
+
+        CodeToggles(cut)[0].Click();
+
+        Assert.Equal(2, client.CodeRequests.Count);
+        Assert.Equal(SpyttId, client.CodeRequests[1].VariableId);
+    }
+
+    [Fact]
+    public void Codes_WhileTheFetchIsStillOut_ThenTheListSaysItIsLoadingRatherThanEmpty()
+    {
+        // The window between the ask and the answer is a state of its own. Without it the open
+        // list falls through to the empty case and reads "Ingen kodeverdier tilgjengelig" — an
+        // answer, and the wrong one, about codes that are still on their way.
+        var client = KodeverkRows();
+        var cut = OpenData(client);
+
+        client.StallCodes = true;
+        CodeToggles(cut)[0].Click();
+
+        var message = Panel(cut).QuerySelector(".variable-explorer-codes p")!;
+
+        Assert.Equal("Henter koder \u2026", message.TextContent);
+        Assert.Equal("caption", message.ClassName);
+    }
+
+    [Fact]
+    public async Task Codes_WhenAStalledListIsOpenedAgain_ThenTheFetchAlreadyOutIsTheOneItWaitsFor()
+    {
+        // Collapsing and re-opening is what a reader does when a list is slow, and the request
+        // already in flight is the one that will fill it. Without the in-flight check each press
+        // starts another fetch of the same link — Kommunenummer's 885 codes, once per press.
+        var client = KodeverkRows();
+        var cut = OpenData(client);
+
+        client.StallCodes = true;
+        CodeToggles(cut)[0].Click();
+
+        CodeToggles(cut)[0].Click();
+        CodeToggles(cut)[0].Click();
+
+        Assert.Single(client.CodeRequests);
+        Assert.Equal("Henter koder \u2026",
+                     Panel(cut).QuerySelector(".variable-explorer-codes p")!.TextContent);
+
+        // And the one answer fills the list that was re-opened, rather than being orphaned by it.
+        await cut.InvokeAsync(() => client.AnswerStalledCodes(Codes2336()));
+
+        cut.WaitForAssertion(() =>
+            Assert.Contains("Velg verdi", Panel(cut).QuerySelector(".variable-explorer-codes table")!.TextContent));
+
+        Assert.Single(client.CodeRequests);
+    }
+
+    [Fact]
+    public async Task Codes_WhenAnotherVariableIsOpenedWhileTheFetchIsOut_ThenTheAbandonedAnswerIsNotShown()
+    {
+        // The generation guard, and the reason the kilde panel has one. Two variables in this very
+        // fixture link to reference 2336, so an answer that outlives the panel it was asked for
+        // lands in the next variable's list looking entirely correct — and is another variable's
+        // codes, never fetched for the one on screen.
+        var client = KodeverkRows();
+        var cut = OpenData(client);
+
+        client.StallCodes = true;
+        CodeToggles(cut)[0].Click();
+
+        // The reader gave up on the hanging list and opened the other variable instead.
+        Toggles(cut)[1].Click();
+        TabButtons(cut)[1].Click();
+
+        client.StallCodes = false;
+
+        await cut.InvokeAsync(() => client.AnswerStalledCodes(Codes2336() with
+        {
+            Codes = [new() { Value = "9", Name = "STALE" }]
+        }));
+
+        // One turn of the dispatcher, so the abandoned answer has landed if it is going to.
+        await cut.InvokeAsync(() => { });
+
+        CodeToggles(cut)[0].Click();
+
+        var table = Panel(cut).QuerySelector(".variable-explorer-codes table")!;
+
+        Assert.DoesNotContain("STALE", table.TextContent);
+        Assert.Contains("Velg verdi", table.TextContent);
+
+        // Nothing was cached under the new variable, so its list was fetched for it.
+        Assert.Equal(2, client.CodeRequests.Count);
+        Assert.Equal(SpyttId, client.CodeRequests[1].VariableId);
+    }
+
+    [Fact]
+    public void Codes_WhenTheListIsOpen_ThenTheControlAndTheTableSayWhatTheyBelongTo()
+    {
+        // aria-expanded and aria-controls on the control, and the table named from the line above
+        // it. Set only while the list is open, the rule the owner toggles follow: an aria-controls
+        // naming an element that is not in the document is worse than none.
+        var client = KodeverkRows();
+        var cut = OpenData(client);
+
+        Assert.Null(CodeToggles(cut)[0].GetAttribute("aria-controls"));
+
+        CodeToggles(cut)[0].Click();
+
+        var region = Panel(cut).QuerySelector(".variable-explorer-codes")!;
+
+        Assert.Equal(region.Id, CodeToggles(cut)[0].GetAttribute("aria-controls"));
+        Assert.Equal(KodeverkLines(cut)[0].QuerySelector(".variable-explorer-kodeverk__name")!.Id,
+                     region.QuerySelector("table")!.GetAttribute("aria-labelledby"));
+
+        // Column headers, so a screen reader can say which column a cell is in.
+        Assert.All(region.QuerySelectorAll("thead th"), th => Assert.Equal("col", th.GetAttribute("scope")));
+    }
+
+    [Fact]
+    public void Codes_WhenTheLanguageIsEn_ThenTheHeadingsColumnsAndControlFollowIt()
+    {
+        var client = KodeverkRows();
+        var cut = OpenData(client, b => b.Add(c => c.Language, "en"));
+
+        // The two facet words are the filter panel's own, deliberately: a helsefaglig kodeverk is
+        // the same thing whether it is being filtered on or read off a variable.
+        Assert.Equal(["Source code system", "Administrative code system", "Clinical code system"],
+                     KodeverkGroupHeadings(cut));
+        Assert.Equal("Unnamed",
+                     KodeverkLines(cut)[0].QuerySelector(".variable-explorer-kodeverk__name")!.TextContent);
+        Assert.Equal("Reference: 2336",
+                     KodeverkLines(cut)[0].QuerySelector(".variable-explorer-kodeverk__reference")!.TextContent);
+
+        CodeToggles(cut)[0].Click();
+
+        Assert.Equal("Hide codes", CodeToggles(cut)[0].TextContent);
+        Assert.Equal(["Value", "Name", "Valid from", "Valid to"],
+                     Panel(cut).QuerySelectorAll(".variable-explorer-codes thead th").Select(th => th.TextContent));
+
+        // The date follows the page too: an English reader gets slashes, not the dots a Norwegian
+        // reader gets. Pinned by separator rather than by exact string, which is ICU's to change.
+        Assert.Matches(@"^\d{1,2}/\d{1,2}/2010$",
+                       Panel(cut).QuerySelectorAll(".variable-explorer-codes tbody td")[2].TextContent);
+    }
+
+    [Fact]
+    public void Codes_WhenTheDataTabIsOpen_ThenItIsBuiltFromShapesRatherThanFromNewClassNames()
+    {
+        // The same rule the Details tab is held to. Four names of ours here, all handles that carry
+        // no styling anywhere, plus the group heading the Details tab already introduced — and
+        // Stiler's own ghost square button, infobox and caption for everything that has a name to
+        // borrow. The table is an element rather than a class: Stiler styles no table, and an
+        // unstyled table still aligns its columns where an invented class name renders as nothing.
+        var client = KodeverkRows();
+        var cut = OpenData(client);
+
+        CodeToggles(cut)[0].Click();
+
+        var invented = Panel(cut).QuerySelectorAll("[class]")
+            .SelectMany(e => e.ClassName!.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            .Where(k => k.StartsWith("variable-explorer", StringComparison.Ordinal))
+            .Distinct()
+            .ToList();
+
+        Assert.Equal(
+        [
+            "variable-explorer-group",                 // ours, already in use on the Details tab
+            "variable-explorer-kodeverk",              // ours, a handle — the list of links
+            "variable-explorer-kodeverk__item",
+            "variable-explorer-kodeverk__name",
+            "variable-explorer-kodeverk__reference",
+            "variable-explorer-codes",                 // ours, a handle — the open code list
+            "variable-explorer-codes__table",
+        ], invented);
+
+        var toggle = CodeToggles(cut)[0].ClassName!;
+
+        Assert.Contains("hd-button-square", toggle);
+        Assert.Contains("button-square--ghost", toggle);
+        Assert.Contains("caption",
+                        KodeverkLines(cut)[0].QuerySelector(".variable-explorer-kodeverk__reference")!.ClassName!);
     }
 
     private static IReadOnlyList<AngleSharp.Dom.IElement> Values(IRenderedComponent<VariableExplorer> cut) =>
@@ -3016,14 +3633,17 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Equal(["Funksjonsscore"], values[2].QuerySelectorAll("li").Select(l => l.TextContent));
 
-        // Each kodeverk says which kind it is: "2336" alone does not distinguish a kildekodeverk
-        // the register defined from a national classification.
         // Kodeverk moved to the Data tab — Runa splits the panel into what the variable IS and
-        // what its data holds, and the kodeverk is the latter.
+        // what its data holds, and the kodeverk is the latter. Which kind a link is says what
+        // "2336" alone cannot: a kildekodeverk the register defined is not a national
+        // classification. It is a heading over the links of that kind rather than a prefix on each.
         cut.Find("[role=tab][aria-selected=false]").Click();
 
-        Assert.Equal(["Kildekodeverk: 2336", "Administrativt kodeverk: ICD-10"],
-                     Values(cut)[0].QuerySelectorAll("li").Select(l => l.TextContent));
+        Assert.Equal(["Kildekodeverk", "Administrativt kodeverk"], KodeverkGroupHeadings(cut));
+        Assert.Equal(["Ukjent navn", "ICD-10"],
+                     KodeverkLines(cut).Select(l => l.QuerySelector(".variable-explorer-kodeverk__name")!.TextContent));
+        Assert.Equal(["Referanse: 2336", "Referanse: 2.16.578.1.12.4.1.1.7110"],
+                     KodeverkLines(cut).Select(l => l.QuerySelector(".variable-explorer-kodeverk__reference")!.TextContent));
     }
 
     [Fact]

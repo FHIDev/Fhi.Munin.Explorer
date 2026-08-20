@@ -48,6 +48,11 @@ internal abstract class EmptyMuninExplorerClient : IMuninExplorerClient
     public virtual Task<IReadOnlyList<VariableVersion>> GetVariableTimelineAsync(
         Guid id, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<VariableVersion>>([]);
+
+    public virtual Task<KodeverkCodes?> GetKodeverkCodesAsync(
+        Guid variableId, string kodeverkType, string kodeverkReference,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<KodeverkCodes?>(null);
 }
 
 /// <summary>

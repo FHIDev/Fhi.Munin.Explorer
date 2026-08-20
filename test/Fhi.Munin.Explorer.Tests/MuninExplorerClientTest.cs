@@ -208,6 +208,47 @@ public class MuninExplorerClientTest
         Assert.Equal("2", version.AdditionalProperties["DataType"]);
     }
 
+    [Fact]
+    public async Task GetKodeverkCodesAsync_WhenTheApiAnswersWithARealResponse_ThenTheEnvelopeAndItsCodesAreRead()
+    {
+        var codes = await WithResponse("kodeverk-codes.json", out _)
+            .GetKodeverkCodesAsync(Guid.NewGuid(), "Kildekodeverk", "2336");
+
+        Assert.NotNull(codes);
+
+        // The envelope names the link it was fetched for, which is what lets a caller match the
+        // answer to the line it asked from rather than trusting the order it came back in.
+        Assert.Equal("Kildekodeverk", codes.KodeverkType);
+        Assert.Equal("2336", codes.KodeverkReference);
+
+        Assert.Equal(6, codes.Codes.Count);
+        Assert.Equal("0", codes.Codes[0].Value);
+        Assert.Equal("Velg verdi", codes.Codes[0].Name);
+        Assert.Equal(2010, codes.Codes[0].ValidFrom?.Year);
+
+        // No end date is the normal state of a code still in use — the whole of this kodeverk is.
+        Assert.All(codes.Codes, code => Assert.Null(code.ValidTo));
+    }
+
+    [Fact]
+    public async Task GetKodeverkCodesAsync_WhenAKodeverkRecordsNoStartDates_ThenValidFromIsNullRatherThanADefault()
+    {
+        // Kommunenummer is the live case: every code carries a gyldigTil from the import that
+        // loaded it and no gyldigFra at all. A non-nullable ValidFrom would show all 885 of them as
+        // starting on 01.01.0001, which reads as data rather than as an absence.
+        var handler = StubHttpHandler.Ok("""
+            {"kodeverkType":"AdministrativtKodeverk","kodeverkReference":"3402",
+             "koder":[{"verdi":"0101","navn":"Halden","gyldigFra":null,
+                       "gyldigTil":"2023-09-06T13:13:41.000Z"}]}
+            """);
+
+        var codes = await Client(handler).GetKodeverkCodesAsync(Guid.NewGuid(), "AdministrativtKodeverk", "3402");
+
+        var code = Assert.Single(codes!.Codes);
+        Assert.Null(code.ValidFrom);
+        Assert.Equal(2023, code.ValidTo?.Year);
+    }
+
     // ---------------------------------------------------------------------------- 404 and failure
 
     [Fact]
@@ -238,6 +279,16 @@ public class MuninExplorerClientTest
     public async Task GetVariableTimelineAsync_WhenTheVariableDoesNotExist_ThenAnEmptyListRatherThanAThrow()
     {
         Assert.Empty(await WithStatus(HttpStatusCode.NotFound).GetVariableTimelineAsync(Guid.NewGuid()));
+    }
+
+    [Fact]
+    public async Task GetKodeverkCodesAsync_WhenTheLinkHasNoServableCodes_ThenNullRatherThanAThrow()
+    {
+        // Every HelsefagligKodeverk link answers 404 here, and so does a reference the upstream
+        // register does not know. Neither is a fault: the panel says "no code values" and carries
+        // on, where a throw would take the whole variable panel down over one collapsed list.
+        Assert.Null(await WithStatus(HttpStatusCode.NotFound)
+            .GetKodeverkCodesAsync(Guid.NewGuid(), "HelsefagligKodeverk", "ICD-10"));
     }
 
     [Fact]
@@ -450,5 +501,79 @@ public class MuninExplorerClientTest
         await Client(handler, "https://helsedata.no/munin/").GetKildeAsync(id);
 
         Assert.Equal($"https://helsedata.no/munin/api/explorer/kilder/{id}", handler.LastUri?.ToString());
+    }
+
+    [Fact]
+    public async Task GetKodeverkCodesAsync_WhenTheReferenceNeedsEscaping_ThenItStaysOnePathSegment()
+    {
+        // Both segments go into the path, and a reference is the catalogue's own text: V-AK sends
+        // dotted OIDs, V-HK sends things like NCMP-NCSP-NCRP. A slash in one would otherwise be
+        // read as a route separator, and the request would 404 for a link that does exist.
+        var handler = StubHttpHandler.Status(HttpStatusCode.NotFound);
+        var id = Guid.NewGuid();
+
+        await Client(handler).GetKodeverkCodesAsync(id, "AdministrativtKodeverk", "2.16.578/1 1");
+
+        Assert.Equal($"/api/explorer/variables/{id}/kodeverk/AdministrativtKodeverk/2.16.578%2F1%201/codes",
+                     handler.LastUri?.AbsolutePath);
+    }
+
+    [Theory]
+    [InlineData("..")]
+    [InlineData("../..")]
+    [InlineData("a/./b")]
+    [InlineData("..\\..")]
+    [InlineData("a\\..\\b")]
+    public async Task GetKodeverkCodesAsync_WhenAReferenceCarriesADotSegment_ThenNothingIsSentAtAll(
+        string reference)
+    {
+        // Escaping a slash is not enough on its own: a dot is unreserved, so EscapeDataString
+        // leaves it alone, and percent-encoding it by hand changes nothing either — Uri unescapes
+        // %2E and removes the dot segment afterwards. So a reference of ".." would walk out of the
+        // codes endpoint and address something else on the same host with the bearer token
+        // attached, and the only way to keep it from doing so is not to send it.
+        //
+        // The backslash forms are here for the same reason the guard splits on one: EscapeDataString
+        // writes "\" as %5C, and a server that decodes the target before normalising it can resolve
+        // that as a separator. The guard refuses any part that is nothing but dots, which is wider
+        // than the "." and ".." that actually normalise — deliberately so, since no real reference
+        // is all dots.
+        var handler = StubHttpHandler.Status(HttpStatusCode.NotFound);
+
+        var refused = await Assert.ThrowsAsync<ArgumentException>(() =>
+            Client(handler).GetKodeverkCodesAsync(Guid.NewGuid(), "AdministrativtKodeverk", reference));
+
+        Assert.Equal("kodeverkReference", refused.ParamName);
+        Assert.Null(handler.LastUri);
+    }
+
+    [Fact]
+    public async Task GetKodeverkCodesAsync_WhenTheTypeCarriesADotSegment_ThenItIsRefusedToo()
+    {
+        // The type is the API's own vocabulary and is three enum names today, but it is passed
+        // through verbatim in the same way — one rule for both segments, not a rule for the one
+        // that happens to be documented as free text.
+        var handler = StubHttpHandler.Status(HttpStatusCode.NotFound);
+
+        var refused = await Assert.ThrowsAsync<ArgumentException>(() =>
+            Client(handler).GetKodeverkCodesAsync(Guid.NewGuid(), "..", "2336"));
+
+        Assert.Equal("kodeverkType", refused.ParamName);
+        Assert.Null(handler.LastUri);
+    }
+
+    [Fact]
+    public async Task GetKodeverkCodesAsync_WhenAReferenceIsADottedOid_ThenItsDotsAreLeftReadable()
+    {
+        // The other half of the same rule. Only a segment that is nothing but dots normalises, so
+        // an OID — which is most of what V-AK sends — keeps the spelling the catalogue published
+        // rather than being turned into %2E noise in every log and network tab.
+        var handler = StubHttpHandler.Status(HttpStatusCode.NotFound);
+        var id = Guid.NewGuid();
+
+        await Client(handler).GetKodeverkCodesAsync(id, "AdministrativtKodeverk", "2.16.578.1.12.4.1.1.7113");
+
+        Assert.Equal($"/api/explorer/variables/{id}/kodeverk/AdministrativtKodeverk/2.16.578.1.12.4.1.1.7113/codes",
+                     handler.LastUri?.AbsolutePath);
     }
 }
