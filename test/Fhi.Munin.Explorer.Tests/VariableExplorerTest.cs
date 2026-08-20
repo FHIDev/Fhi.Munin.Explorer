@@ -4419,21 +4419,27 @@ public class VariableExplorerTest : BunitContext
         Assert.Equal(AlsId, client.LastSourceId);
         Assert.Equal(before, navigation.Uri);
 
+        // The sidebar, in Runa's order. Beskrivelse is not in it any more: it moved up to the
+        // ingress under the name, where a description belongs and where Runa puts it. The two
+        // counts left too — the variable count is under Statistikk, and the datasamling count is
+        // the table rather than a number.
         Assert.Equal(
-            ["Beskrivelse", "Type datakilde", "Dataansvarlig", "Databehandler",
-             "Grad av personidentifikasjon", "Lovverk", "Gyldighet", "Periode",
-             "Antall datasamlinger", "Antall variabler"],
+            ["Type datakilde", "Lovverk", "Dataansvarlig", "Databehandler",
+             "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i Munin",
+             "Totalt antall variabler", "Dataperiode"],
             SourceLabels(cut));
 
         var values = SourceValues(cut);
 
-        Assert.Equal("Norsk register for ALS og andre motonevronsykdommer.", values[0]);
-        Assert.Equal("Nasjonalt medisinsk kvalitetsregister", values[1]);
+        Assert.Equal("Nasjonalt medisinsk kvalitetsregister", values[0]);
         Assert.Equal("St. Olavs hospital HF", values[2]);
         Assert.Equal("Indirekte identifiserbar", values[4]);
-        Assert.Equal("2023–", values[6]);
-        Assert.Equal("2010–2025", values[7]);
-        Assert.Equal("312", values[9]);
+        Assert.Equal("312", values[7]);
+
+        // The description reads as prose above the metadata, not as a row in a record.
+        Assert.Equal(
+            "Norsk register for ALS og andre motonevronsykdommer.",
+            SourcePanel(cut).QuerySelector(".variable-explorer-kilde__description")!.TextContent.Trim());
     }
 
     [Fact]
@@ -4444,7 +4450,9 @@ public class VariableExplorerTest : BunitContext
         // register rather than as a miscount.
         var cut = OpenOwner(TwoRows(), 0);
 
-        Assert.Equal("3", SourceValues(cut)[8]);
+        // Once the table replaced the flat count, this got stricter rather than weaker: all three
+        // have to be reachable as rows, not merely add up to a number.
+        Assert.Equal(3, SourcePanel(cut).QuerySelectorAll("table tbody tr").Length);
     }
 
     [Fact]
@@ -4544,7 +4552,11 @@ public class VariableExplorerTest : BunitContext
         var heading = cut.Find($"#{panel.GetAttribute("aria-labelledby")}");
 
         Assert.Equal("Als registeret", heading.TextContent);
-        Assert.Equal("no", heading.GetAttribute("lang"));
+
+        // Unmarked here, and that is the point: the reader is already Norwegian, so lang="no" would
+        // assert something the page already says. It appears on an English page — see
+        // Source_WhenTheLanguageIsEn_ThenThePanelIsEnglishAndTheCatalogueStaysNorwegian.
+        Assert.Null(heading.GetAttribute("lang"));
 
         Back(cut);
 
@@ -4710,18 +4722,33 @@ public class VariableExplorerTest : BunitContext
         SourceToggles(cut)[0].Click();
 
         Assert.Equal(
-            ["Description", "Type of data source", "Data controller", "Data processor",
-             "Level of personal identification", "Legal basis", "Validity", "Period",
-             "Number of data collections", "Number of variables"],
+            ["Type of data source", "Legal basis", "Data controller", "Data processor",
+             "Level of personal identification", "Validity", "Last updated in Munin",
+             "Total number of variables", "Data period"],
             SourceLabels(cut));
 
         var values = SourcePanel(cut).QuerySelectorAll("dl dd");
 
         // Our prose, so no lang of its own; the register's own name keeps one.
-        Assert.Equal("National medical quality registry", values[1].TextContent);
-        Assert.Null(values[1].QuerySelector("[lang]"));
+        Assert.Equal("National medical quality registry", values[0].TextContent);
+
+        // The catalogue holds one name and one description, both Norwegian. On this page they are
+        // the only Norwegian left, and both say so.
+        var heading = SourcePanel(cut).QuerySelector(".headline-s")!;
+        var description = SourcePanel(cut).QuerySelector(".variable-explorer-kilde__description")!;
+
+        Assert.Equal("Als registeret", heading.TextContent);
+        Assert.Equal("no", heading.GetAttribute("lang"));
+        Assert.Equal("no", description.GetAttribute("lang"));
         Assert.Equal("Indirectly identifiable", values[4].TextContent);
-        Assert.Equal("no", values[0].QuerySelector("span")!.GetAttribute("lang"));
+
+        // The sidebar is mixed, and each cell says which it is: the kildetype and the identification
+        // level are vocabularies this package translates, so they are English here and unmarked. The
+        // legal basis and the controller are the catalogue's own words, stored once in Norwegian.
+        Assert.Null(values[0].GetAttribute("lang"));
+        Assert.Null(values[4].GetAttribute("lang"));
+        Assert.Equal("no", values[1].GetAttribute("lang"));
+        Assert.Equal("no", values[2].GetAttribute("lang"));
 
         Back(cut);
 
@@ -4743,14 +4770,33 @@ public class VariableExplorerTest : BunitContext
             .Distinct()
             .ToList();
 
+        // Every name this package invents, and the list is meant to stay short: each one is a class
+        // helsedata's stylesheet has never heard of, so it is inert until Stiler is asked for it.
+        // The kilde view adds a layout - a main column, a sidebar - that no existing helsedata class
+        // describes, which is why these exist at all. Anything inside that layout uses helsedata's
+        // own names.
         Assert.Equal(
-            ["variable-explorer", "variable-explorer-drilldown"],
+            [
+                "variable-explorer",
+                "variable-explorer-drilldown",
+                "variable-explorer-kilde",
+                "variable-explorer-kilde__header",
+                "variable-explorer-kilde__identifiers",
+                "variable-explorer-kilde__kildetype",
+                "variable-explorer-kilde__description",
+                "variable-explorer-kilde__body",
+                "variable-explorer-kilde__main",
+                "variable-explorer-kilde__datasamlinger",
+                "variable-explorer-kilde__aside",
+            ],
             invented);
 
         var panel = SourcePanel(cut);
 
-        Assert.All(panel.QuerySelectorAll("dl"), e => Assert.False(e.HasAttribute("class")));
-        Assert.All(panel.QuerySelectorAll("dl dt"), e => Assert.Equal("form-element__label", e.ClassName));
+        // The fact lists borrow the grid the detail panel already uses rather than a shape of their
+        // own — the same pairs of label and value, so the same class.
+        Assert.All(panel.QuerySelectorAll("dl"),
+                   e => Assert.Contains(e.ClassName, (string?[])[null, "variable-meta__grid"]));
 
         Back(cut);
 

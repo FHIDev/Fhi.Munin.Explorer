@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using Fhi.Munin.Explorer.Contracts;
 
@@ -40,6 +41,14 @@ internal static class CatalogueProperties
     /// <summary>The reader's language as a tag: <c>en</c> or <c>no</c>.</summary>
     internal static string Reader(string? language)
         => string.Equals(language, "en", StringComparison.OrdinalIgnoreCase) ? "en" : "no";
+
+    /// <summary>The culture to format dates and numbers in for this reader.</summary>
+    /// <remarks>
+    /// <c>nb-NO</c> rather than a bare <c>no</c>: the neutral culture gives ISO-ish dates, and the
+    /// point of formatting per reader is that a Norwegian one sees a Norwegian date.
+    /// </remarks>
+    internal static CultureInfo Culture(string? language)
+        => CultureInfo.GetCultureInfo(string.Equals(language, "en", StringComparison.OrdinalIgnoreCase) ? "en" : "nb-NO");
 
     /// <summary>
     /// A <c>lang</c> for text that is not in the reader's language, or null when it is.

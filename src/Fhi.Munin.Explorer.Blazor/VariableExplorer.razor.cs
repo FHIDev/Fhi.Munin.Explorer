@@ -912,8 +912,7 @@ public partial class VariableExplorer : ComponentBase
 
     /// <summary>A date as month and year, in the reader's language.</summary>
     private string MonthYear(DateTimeOffset date) =>
-        date.ToString("MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo(
-            string.Equals(Language, "en", StringComparison.OrdinalIgnoreCase) ? "en" : "nb-NO"));
+        date.ToString("MMM yyyy", CatalogueProperties.Culture(Language));
 
     /// <summary>
     /// The variable's curated properties, in the order the catalogue puts them.
