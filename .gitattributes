@@ -1,5 +1,13 @@
 # Normalise line endings so a Linux CI runner and a Windows dev machine agree.
-* text=auto
+#
+# eol=lf is the load-bearing half. .editorconfig pins end_of_line = lf for C#, and
+# dotnet format enforces it against the WORKING TREE, not against what git stores.
+# Plain 'text=auto' normalises to LF in the repository but hands each platform its
+# native ending on checkout - so a Windows checkout got CRLF and dotnet format
+# reported every line of every C# file as wrong, on main as much as on a branch.
+# That buried real findings under dozens of false ones. eol=lf makes the checkout
+# match the formatter everywhere.
+* text=auto eol=lf
 
 *.cs        text diff=csharp
 *.razor     text

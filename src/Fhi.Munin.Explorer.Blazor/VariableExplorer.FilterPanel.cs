@@ -1,0 +1,603 @@
+using Fhi.Munin.Explorer.Contracts;
+using Microsoft.AspNetCore.Components;
+namespace Fhi.Munin.Explorer.Blazor;
+
+/// <summary>The facet sidebar: what can be narrowed, and what narrowing it costs.</summary>
+public partial class VariableExplorer
+{
+    /// <summary>One facet, as the panel draws it: a disclosure holding a list of values.</summary>
+    /// <remarks>
+    /// <c>Key</c> is stable across renders, so the disclosure's open state stays with its own facet.
+    /// <c>EmptyText</c> is what to say when the facet has no values; null means the facet is left out
+    /// instead, which is the right answer for most of them, because a facet the API returned nothing
+    /// for is one there is nothing to choose from. Variabelgruppe is the exception: its emptiness is
+    /// a message.
+    /// </remarks>
+    private sealed record FacetGroup(
+        string Key,
+        string Label,
+        bool OpenByDefault,
+        IReadOnlyList<FacetValue> Values,
+        string? EmptyText = null)
+    {
+        /// <summary>How many values in this facet are selected, counting nested ones.</summary>
+        public int SelectedCount => Selected(Values);
+
+        private static int Selected(IReadOnlyList<FacetValue> values) =>
+            values.Sum(value => (value.Selected ? 1 : 0) + Selected(value.Children));
+    }
+
+    /// <summary>
+    /// One value inside a facet, and the values nested under it.
+    /// </summary>
+    /// <remarks>
+    /// <c>Count</c> is how many variables the value would leave, or null where there is no count to
+    /// show. <c>Toggle</c> is what pressing it does, or null for a value that is not selectable —
+    /// the kildetype headings the kilder are grouped under are labels rather than filters, because
+    /// kildetype has a facet of its own.
+    /// </remarks>
+    private sealed record FacetValue(
+        string Key,
+        string Label,
+        int? Count,
+        bool Selected,
+        Func<Task>? Toggle,
+        IReadOnlyList<FacetValue> Children);
+
+    /// <summary>A node on the way to becoming a <see cref="FacetValue"/> tree.</summary>
+    /// <remarks>
+    /// The delkilde, variabelgruppe and saved-filter facets all arrive as a flat list carrying a
+    /// parent id, and all three become a tree the same way. This is the shape <see cref="Tree"/>
+    /// works in so that rule lives in one place.
+    /// </remarks>
+    private sealed record TreeNode(Guid Id, Guid? ParentId, string Label, int Count);
+
+    /// <summary>The facets on screen, in the order they are drawn.</summary>
+    /// <remarks>
+    /// Built from the last answer rather than cached, so a facet's selected state and its count can
+    /// never describe two different moments. It is a few hundred records per render, which is the
+    /// same order as the rows the component already renders.
+    /// </remarks>
+    private IReadOnlyList<FacetGroup> FacetGroups
+    {
+        get
+        {
+            if (_facets is not { } facets)
+            {
+                return [];
+            }
+
+            // Kildetype first and kilde second, which is the order helsedata's own variable page
+            // puts them in; the rest follow Munin's explorer.
+            List<FacetGroup> groups =
+            [
+                KildeTypeGroup(facets),
+                KildeGroup(facets),
+                VariabelgruppeGroup(facets),
+                SavedFilterGroup(facets),
+                DataTypeGroup(facets),
+                HelsefagligKodeverkGroup(facets),
+                AdministrativtKodeverkGroup(facets),
+                InstrumentGroup(facets),
+                OtherGroup(facets)
+            ];
+
+            // A facet the API returned nothing for is left out rather than drawn as an empty
+            // disclosure — except where the emptiness is itself the message.
+            return [.. groups.Where(group => group.Values.Count > 0 || group.EmptyText is not null)];
+        }
+    }
+
+    /// <summary>The kildetype facet — one value each, and only one of them can be chosen.</summary>
+    private FacetGroup KildeTypeGroup(FilterOptions facets) =>
+        new("kildetype", T.FacetKildeType, OpenByDefault: true, [.. facets.KildeTyper.Select(KildeTypeValue)]);
+
+    private FacetValue KildeTypeValue(KildetypeFacet type) =>
+        new($"kildetype:{type.Value}",
+            // The facet's own displayName is the raw enum name (SentraltHelseregister), so the
+            // prose comes from the component's own translations and falls back to what the API said.
+            T.KildeTypeLabel(type.Value, type.DisplayName),
+            type.Count,
+            string.Equals(_filter.KildeType, type.Value, StringComparison.OrdinalIgnoreCase),
+            () => SetKildeTypeAsync(type.Value),
+            []);
+
+    /// <summary>
+    /// The kilde facet: kilder grouped under their kildetype, each with its own delkilde tree.
+    /// </summary>
+    /// <remarks>
+    /// The whole tree is built from the facet payload alone — <see cref="DelkildeFacet"/> carries
+    /// both its parent delkilde and its kilde precisely so this needs no second request. The level
+    /// below it, datasamling, is not in that payload at all and is therefore not drawn; reaching it
+    /// would mean a hierarchy request per kilde whose counts are the kilde's own totals rather than
+    /// counts cross-filtered against the current selection, which would put two kinds of number in
+    /// one tree. <see cref="VariableFilter.DatasamlingIds"/> still filters when a host sets it.
+    /// </remarks>
+    private FacetGroup KildeGroup(FilterOptions facets)
+    {
+        var delkilderByKilde = facets.Delkilder.ToLookup(delkilde => delkilde.KildeId);
+
+        // The order the kildetype facet is in, so the headings here and the facet above agree.
+        var kildeTypeOrder = facets.KildeTyper
+            .Select((type, index) => (type.Value, Index: index))
+            .ToDictionary(entry => entry.Value, entry => entry.Index, StringComparer.OrdinalIgnoreCase);
+
+        var grouped = facets.Kilder
+            .GroupBy(KildeTypeKey, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(group => kildeTypeOrder.TryGetValue(group.Key, out var index) ? index : int.MaxValue)
+            .ThenBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(group => KildeTypeHeading(group, delkilderByKilde))
+            .ToList();
+
+        // With one kildetype in the list its heading says nothing the facet above does not — and it
+        // is exactly one whenever a kildetype has been chosen, which is when the panel is most
+        // crowded. So the kilder are lifted out of it.
+        if (grouped.Count == 1)
+        {
+            return new FacetGroup("kilde", T.FieldSource, OpenByDefault: true, grouped[0].Children);
+        }
+
+        return new FacetGroup("kilde", T.FieldSource, OpenByDefault: true, grouped);
+    }
+
+    /// <summary>A kilde's kildetype, or the empty string when it has none — never null, so it can be a key.</summary>
+    private static string KildeTypeKey(KildeFacet kilde) =>
+        string.IsNullOrWhiteSpace(kilde.KildeType) ? "" : kilde.KildeType;
+
+    /// <summary>A kildetype heading: a label rather than a filter, because kildetype has its own facet.</summary>
+    private FacetValue KildeTypeHeading(
+        IGrouping<string, KildeFacet> kilder,
+        ILookup<Guid, DelkildeFacet> delkilderByKilde) =>
+        new($"kildetype-group:{kilder.Key}",
+            T.KildeTypeLabel(kilder.Key, kilder.Key),
+            Count: null,
+            Selected: false,
+            Toggle: null,
+            [.. kilder.Select(kilde => KildeValue(kilde, delkilderByKilde))]);
+
+    private FacetValue KildeValue(KildeFacet kilde, ILookup<Guid, DelkildeFacet> delkilderByKilde) =>
+        new($"kilde:{kilde.Id}",
+            kilde.Name,
+            kilde.Count,
+            _filter.KildeIds.Contains(kilde.Id),
+            () => ToggleAsync(_filter.KildeIds, kilde.Id, ids => _filter with { KildeIds = ids }),
+            DelkildeChildren(kilde.Id, delkilderByKilde));
+
+    private IReadOnlyList<FacetValue> DelkildeChildren(Guid kildeId, ILookup<Guid, DelkildeFacet> delkilderByKilde) =>
+        Tree(delkilderByKilde[kildeId].Select(d => new TreeNode(d.Id, d.ParentDelkildeId, d.Name, d.Count)),
+             "delkilde:",
+             IsDelkildeChosen,
+             ToggleDelkilde);
+
+    private bool IsDelkildeChosen(Guid id) => _filter.DelkildeIds.Contains(id);
+
+    private Func<Task> ToggleDelkilde(Guid id) =>
+        () => ToggleAsync(_filter.DelkildeIds, id, ids => _filter with { DelkildeIds = ids });
+
+    /// <summary>
+    /// The variabelgruppe facet, as a tree.
+    /// </summary>
+    /// <remarks>
+    /// Its empty state is a message rather than an omission. With nothing chosen in the source
+    /// hierarchy the API answers this facet with a curated shortlist — the whole catalogue is 930
+    /// per-kilde groups and useless as a starting point — and that shortlist is empty in every
+    /// environment probed so far. Saying "pick a datakilde" is what stops an empty list from
+    /// reading as a broken one.
+    /// </remarks>
+    private FacetGroup VariabelgruppeGroup(FilterOptions facets) =>
+        new("variabelgruppe",
+            T.FieldVariableGroup,
+            OpenByDefault: false,
+            Tree(facets.Variabelgrupper.Select(g => new TreeNode(g.Id, g.ParentId, g.Name, g.Count)),
+                 "variabelgruppe:",
+                 IsGruppeChosen,
+                 ToggleGruppe),
+            T.NoVariabelgrupper);
+
+    private bool IsGruppeChosen(Guid id) => _filter.VariabelgruppeIds.Contains(id);
+
+    private Func<Task> ToggleGruppe(Guid id) =>
+        () => ToggleAsync(_filter.VariabelgruppeIds, id, ids => _filter with { VariabelgruppeIds = ids });
+
+    /// <summary>The saved catalogue filters — see <see cref="FilterOptions.Filters"/> for why this is usually empty.</summary>
+    private FacetGroup SavedFilterGroup(FilterOptions facets) =>
+        new("filter",
+            T.FacetFilter,
+            OpenByDefault: false,
+            Tree(facets.Filters.Select(f => new TreeNode(f.Id, f.ParentId, f.Name, f.Count)),
+                 "filter:",
+                 IsSavedFilterChosen,
+                 ToggleSavedFilter));
+
+    private bool IsSavedFilterChosen(Guid id) => _filter.FilterIds.Contains(id);
+
+    private Func<Task> ToggleSavedFilter(Guid id) =>
+        () => ToggleAsync(_filter.FilterIds, id, ids => _filter with { FilterIds = ids });
+
+    private FacetGroup DataTypeGroup(FilterOptions facets) =>
+        new("datatype", T.FacetDataType, OpenByDefault: false, [.. facets.DataTypes.Select(DataTypeValue)]);
+
+    private FacetValue DataTypeValue(DataTypeFacet dataType) =>
+        new($"datatype:{dataType.Value}",
+            // The API returns the code with no label at all, so the prose is the component's own.
+            T.DataTypeLabel(dataType.Value),
+            dataType.Count,
+            _filter.DataTypes.Contains(dataType.Value),
+            () => ToggleAsync(_filter.DataTypes, dataType.Value, values => _filter with { DataTypes = values }),
+            []);
+
+    private FacetGroup HelsefagligKodeverkGroup(FilterOptions facets) =>
+        new("helsefaglig-kodeverk",
+            T.FacetHelsefagligKodeverk,
+            OpenByDefault: false,
+            [.. facets.HelsefagligKodeverk.Select(HelsefagligKodeverkValue)]);
+
+    private FacetValue HelsefagligKodeverkValue(HelsefagligKodeverkFacet kodeverk) =>
+        new($"hk:{kodeverk.ShortName}",
+            kodeverk.ShortName,
+            kodeverk.Count,
+            _filter.HelsefagligKodeverk.Contains(kodeverk.ShortName),
+            () => ToggleAsync(_filter.HelsefagligKodeverk, kodeverk.ShortName,
+                              values => _filter with { HelsefagligKodeverk = values }),
+            []);
+
+    private FacetGroup AdministrativtKodeverkGroup(FilterOptions facets) =>
+        new("administrativt-kodeverk",
+            T.FacetAdministrativtKodeverk,
+            OpenByDefault: false,
+            [.. facets.AdministrativtKodeverk.Select(AdministrativtKodeverkValue)]);
+
+    private FacetValue AdministrativtKodeverkValue(AdministrativtKodeverkFacet kodeverk) =>
+        new($"ak:{kodeverk.Oid}",
+            // The OID when fhi.kodeverk could not be reached, because a nameless button is worse
+            // than one labelled with the number the filter actually sends.
+            string.IsNullOrWhiteSpace(kodeverk.Name) ? kodeverk.Oid : kodeverk.Name,
+            kodeverk.Count,
+            _filter.AdministrativtKodeverk.Contains(kodeverk.Oid),
+            () => ToggleAsync(_filter.AdministrativtKodeverk, kodeverk.Oid,
+                              values => _filter with { AdministrativtKodeverk = values }),
+            []);
+
+    private FacetGroup InstrumentGroup(FilterOptions facets) =>
+        new("instrument", T.FacetInstrument, OpenByDefault: false, [.. facets.Instruments.Select(InstrumentValue)]);
+
+    private FacetValue InstrumentValue(InstrumentFacet instrument) =>
+        new($"instrument:{instrument.Id}",
+            string.IsNullOrWhiteSpace(instrument.Name) ? instrument.Code : instrument.Name,
+            instrument.Count,
+            _filter.InstrumentIds.Contains(instrument.Id),
+            () => ToggleAsync(_filter.InstrumentIds, instrument.Id, ids => _filter with { InstrumentIds = ids }),
+            []);
+
+    /// <summary>The two filters that are a yes/no rather than a choice of values.</summary>
+    private FacetGroup OtherGroup(FilterOptions facets) =>
+        new("other",
+            T.FacetOther,
+            OpenByDefault: false,
+            [
+                new FacetValue("has-kildekodeverk", T.HasKildekodeverk, facets.KildeKodeverkCount,
+                               _filter.HasKildekodeverk == true, ToggleKildekodeverkAsync, []),
+
+                // No count of its own: the API reports no facet for it, and the number it would
+                // change is the total, which the status line already states.
+                new FacetValue("include-historical", T.IncludeHistorical, null,
+                               _filter.IncludeHistorical, ToggleHistoricalAsync, [])
+            ]);
+
+    /// <summary>
+    /// Turn a flat list of parented nodes into the tree the panel draws.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A node whose parent is not in the list is treated as a root rather than dropped. That is not
+    /// a defensive flourish: the API cross-filters each facet, so a parent with no matching
+    /// variables of its own is genuinely absent from a payload its children are in, and a child
+    /// hung off a missing parent would be a filter the reader can neither see nor clear.
+    /// </para>
+    /// <para>
+    /// A parent chain that loops back on itself — a self-parented node, or two nodes naming each
+    /// other, neither of which the catalogue should ever produce — has no root to be reached from,
+    /// so the walk seeds itself with whatever the first pass did not reach. Without that second
+    /// pass a cycle and everything hanging off it vanishes from the panel silently, which is the
+    /// same failure the orphan rule above exists to prevent, arriving by the other door. The walk
+    /// remembers what it has already placed, so entering a cycle stops at the repeat rather than
+    /// recursing until the stack runs out; that memory also keeps a duplicated id from being drawn
+    /// twice.
+    /// </para>
+    /// </remarks>
+    private static IReadOnlyList<FacetValue> Tree(
+        IEnumerable<TreeNode> nodes,
+        string keyPrefix,
+        Func<Guid, bool> selected,
+        Func<Guid, Func<Task>> toggle)
+    {
+        var all = nodes.ToList();
+
+        if (all.Count == 0)
+        {
+            return [];
+        }
+
+        var known = all.Select(node => node.Id).ToHashSet();
+        var byParent = all.Where(node => node.ParentId is not null).ToLookup(node => node.ParentId!.Value);
+        HashSet<Guid> placed = [];
+
+        var rooted = all.Where(node => node.ParentId is not { } parent || !known.Contains(parent));
+
+        List<FacetValue> roots = [.. rooted.Select(Build)];
+
+        // Whatever the first pass could not reach: every member of a cycle has its parent present,
+        // so none of them is a root, and dropping them would take a filter off the panel with no
+        // error anywhere. Each one that is still unplaced becomes a root of its own, which places
+        // the rest of its cycle underneath it.
+        //
+        // A foreach rather than AddRange over a query, because the test is against a set the body
+        // mutates: for two nodes naming each other, building the first places the second, and the
+        // second must not then be built as a root as well. Written as a query that would hold only
+        // while nothing materialised it between the filter and the projection — and drawing one
+        // node twice means two <li> siblings with the same key, which the renderer throws on.
+        foreach (var node in all)
+        {
+            if (!placed.Contains(node.Id))
+            {
+                roots.Add(Build(node));
+            }
+        }
+
+        return roots;
+
+        FacetValue Build(TreeNode node)
+        {
+            placed.Add(node.Id);
+
+            // Same shape as the second pass above, and for the same reason: each child is tested
+            // against a set the recursion mutates, so building one sibling can place the next.
+            List<FacetValue> children = [];
+
+            foreach (var child in byParent[node.Id])
+            {
+                if (!placed.Contains(child.Id))
+                {
+                    children.Add(Build(child));
+                }
+            }
+
+            return new FacetValue($"{keyPrefix}{node.Id}", node.Label, node.Count, selected(node.Id), toggle(node.Id), children);
+        }
+    }
+
+    /// <summary>The legend over the whole panel, saying how many filters are in force.</summary>
+    private string FiltersLegend => _filter.IsEmpty ? T.FiltersTitle : $"{T.FiltersTitle} ({_filter.ActiveCount})";
+
+    /// <summary>A facet's own label, saying how many of its values are chosen.</summary>
+    /// <remarks>
+    /// On the summary line, so a collapsed facet still says that something inside it is narrowing
+    /// the list. Without it the only sign of a filter chosen three disclosures down is the number of
+    /// results changing.
+    /// </remarks>
+    private static string GroupLabel(FacetGroup group) =>
+        group.SelectedCount == 0 ? group.Label : $"{group.Label} ({group.SelectedCount})";
+
+    /// <summary>
+    /// A facet's values as a nested list of toggle buttons.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A plain <c>&lt;ul&gt;</c> with no class of its own, and buttons rather than checkboxes. Both
+    /// follow the rule the rest of this component follows: no class name goes into the markup that
+    /// cannot be read back off the host's stylesheet, and where there is nothing to read back the
+    /// shape changes rather than a stylesheet appearing. Stiler has a square button and this
+    /// component already renders one in two states, so a chosen value is a pressed button; a list
+    /// is an element every base stylesheet styles, and its indentation is what draws the hierarchy
+    /// without a class for a tree that nobody has verified.
+    /// </para>
+    /// <para>
+    /// Every value is keyed. Counts move as the reader filters, so the values reorder between
+    /// renders, and without keys the renderer would patch the button under the reader's finger into
+    /// a different filter — leaving focus on a control that is no longer the one they pressed.
+    /// </para>
+    /// </remarks>
+    private RenderFragment FacetList(IReadOnlyList<FacetValue> values) => builder =>
+    {
+        builder.OpenElement(0, "ul");
+
+        foreach (var value in values)
+        {
+            builder.OpenElement(1, "li");
+            builder.SetKey(value.Key);
+
+            // Held in a local so the null check below is one the compiler can carry into the branch.
+            var toggle = value.Toggle;
+
+            if (toggle is null)
+            {
+                builder.AddContent(2, value.Label);
+            }
+            else
+            {
+                builder.OpenElement(3, "button");
+                builder.AddAttribute(4, "class", FacetClass(value));
+                builder.AddAttribute(5, "type", "button");
+
+                // aria-pressed, and spelled out as "false" on the values that are not chosen —
+                // unlike the sort buttons' aria-current, which is left off. The attribute is what
+                // says these are toggles at all, so an unselected one carrying nothing would be
+                // announced as an ordinary button that gives no sign of having two states.
+                builder.AddAttribute(6, "aria-pressed", value.Selected ? "true" : "false");
+                builder.AddAttribute(7, "onclick", EventCallback.Factory.Create(this, toggle));
+                builder.AddContent(8, FacetText(value));
+                builder.CloseElement();
+            }
+
+            if (value.Children.Count > 0)
+            {
+                builder.AddContent(9, FacetList(value.Children));
+            }
+
+            builder.CloseElement();
+        }
+
+        builder.CloseElement();
+    };
+
+    /// <summary>A value's visible text — its label, and the count of what it would leave.</summary>
+    /// <remarks>
+    /// The count is in the button's own text rather than in a badge beside it, so it is part of the
+    /// accessible name: "Dødsårsaksregisteret (1 234)" is announced whole, where a separate element
+    /// would be read as a stray number or skipped.
+    /// </remarks>
+    private static string FacetText(FacetValue value) =>
+        value.Count is { } count ? $"{value.Label} ({count})" : value.Label;
+
+    /// <summary>A value's classes — filled when chosen, a ghost when not, the same pair the sort buttons use.</summary>
+    private static string FacetClass(FacetValue value)
+    {
+        var style = value.Selected ? "button-square--secondary" : "button-square--ghost";
+
+        return $"hd-button-square {style} margin-right margin-bottom";
+    }
+
+    /// <summary>Add or remove one value from a facet, and fetch what that leaves.</summary>
+    /// <remarks>
+    /// The type parameter is <c>TItem</c> and not <c>T</c>, which is the component's own
+    /// translations accessor: a <c>T</c> here would shadow it, and the first string this body ever
+    /// needs would fail to compile with an error pointing at the type parameter instead.
+    /// </remarks>
+    private Task ToggleAsync<TItem>(
+        IReadOnlyList<TItem> selected, TItem value, Func<IReadOnlyList<TItem>, VariableFilter> apply)
+    {
+        if (selected.Contains(value))
+        {
+            return ApplyFilterAsync(
+                apply([.. selected.Where(chosen => !EqualityComparer<TItem>.Default.Equals(chosen, value))]));
+        }
+
+        return ApplyFilterAsync(apply([.. selected, value]));
+    }
+
+    /// <summary>
+    /// Choose a kildetype, or clear it by choosing the one already chosen.
+    /// </summary>
+    /// <remarks>
+    /// One at a time, because the API takes one. Pressing the chosen one again clears it, which is
+    /// what the button's own aria-pressed promises — a radio group would say the choice cannot be
+    /// undone, and there is no "any kildetype" value to go back to.
+    /// </remarks>
+    private Task SetKildeTypeAsync(string value)
+    {
+        var chosen = string.Equals(_filter.KildeType, value, StringComparison.OrdinalIgnoreCase);
+
+        return ApplyFilterAsync(_filter with { KildeType = chosen ? null : value });
+    }
+
+    /// <summary>
+    /// Keep only variables that have a kildekodeverk link, or stop filtering on it.
+    /// </summary>
+    /// <remarks>
+    /// Two states, not three. The API's <c>false</c> — only variables *without* one — is a question
+    /// nobody asked of a catalogue browser, and offering it from one button would make a single
+    /// press mean "yes", "no" or "either depending on where you are in the cycle".
+    /// </remarks>
+    private Task ToggleKildekodeverkAsync() =>
+        ApplyFilterAsync(_filter with { HasKildekodeverk = _filter.HasKildekodeverk == true ? null : true });
+
+    private Task ToggleHistoricalAsync() =>
+        ApplyFilterAsync(_filter with { IncludeHistorical = !_filter.IncludeHistorical });
+
+    /// <summary>Drop every filter and fetch the whole search again.</summary>
+    /// <remarks>
+    /// Always on screen, and inert rather than absent when there is nothing to clear — the same
+    /// treatment the pager's buttons get, and for the same reason: taking the control the reader
+    /// just pressed out of the document drops focus to <c>&lt;body&gt;</c>. Pressing it with no
+    /// filters set asks for the filter already in force, which <see cref="ApplyFilterAsync"/>
+    /// returns from without a request.
+    /// </remarks>
+    private Task ClearFiltersAsync() => ApplyFilterAsync(VariableFilter.None);
+
+    /// <summary>
+    /// Apply <paramref name="next"/>: fetch what it leaves, and refresh the counts beside it.
+    /// </summary>
+    /// <remarks>
+    /// The one way the filter ever changes, so the rules that go with changing it — back to page
+    /// one, roll back a fetch that failed, tell the host what is actually in force — are written
+    /// once rather than once per facet.
+    /// </remarks>
+    private async Task ApplyFilterAsync(VariableFilter next)
+    {
+        // Dropped rather than queued while a fetch is in flight, the same as a second submit, a
+        // sort click and a page turn.
+        if (_loading)
+        {
+            return;
+        }
+
+        // Also what makes the clear button inert when there is nothing to clear. VariableFilter
+        // compares by what it narrows, not by the identity of its lists — see the note on it.
+        if (next == _filter)
+        {
+            return;
+        }
+
+        var previous = _filter;
+
+        _filter = next;
+
+        // Narrowing renumbers every page, so the page the reader is on is no longer the same rows.
+        _page = 1;
+        _keepPager = false;
+
+        // _executedSearch, not _search: a click blurs the search field first, so the box's contents
+        // have already been written to _search — text the reader may never have submitted. Same
+        // reason the sort buttons fetch with it.
+        if (await FetchAsync(_executedSearch))
+        {
+            // Only on success. The counts describe a selection, and after a rollback the selection
+            // they already describe is the one back in force.
+            await FetchFacetsAsync();
+        }
+        else
+        {
+            // The rows on screen are still the old ones, so the buttons have to say so — the same
+            // invariant the sort rollback protects.
+            _filter = previous;
+        }
+
+        // _filter and not next: what the host is told is what is in force, rolled back or not.
+        await RaiseAsync(FilterChanged, _filter);
+    }
+
+    /// <summary>
+    /// Refresh the facets and their counts for the current search and filter.
+    /// </summary>
+    /// <remarks>
+    /// Its own request, and its own failure. The counts are cross-filtered against the whole
+    /// selection, so they move whenever the search or the filter does — but not when the page or
+    /// the ordering does, which is why turning a page does not re-ask for them.
+    /// <para>
+    /// A failure keeps the facets already on screen rather than clearing them. They are the controls
+    /// the reader is using, and the numbers being briefly stale is a far smaller problem than the
+    /// panel emptying under a press.
+    /// </para>
+    /// </remarks>
+    private async Task FetchFacetsAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            // The component's own language, so the datatype names come back in the language the
+            // rest of the component is rendering in.
+            _facets = await Client.GetFiltersAsync(_executedSearch, _filter, Language);
+            _facetError = null;
+        }
+        catch (Exception)
+        {
+            _facetError = T.FilterError;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}
