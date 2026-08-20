@@ -1,8 +1,5 @@
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Rendering;
-using Microsoft.AspNetCore.Components.Web;
-
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>The panel that opens under a selected row: what the variable is, and what its data holds.</summary>
