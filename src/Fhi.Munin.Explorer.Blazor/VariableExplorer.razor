@@ -461,12 +461,22 @@ else
                                             }
                                             else
                                             {
-                                                <dl class="variable-meta__grid variable-meta__grid-1">
-                                                    <div>
-                                                        <dt class="headline headline-xxs margin--none">@T.FieldKodeverk</dt>
-                                                        <dd>@KodeverkList(detail.KodeverkLinks)</dd>
-                                                    </div>
-                                                </dl>
+                                                @* Runa's arrangement: the links grouped under a
+                                                   heading per kind of kodeverk, each line carrying
+                                                   its own reference and — where the API serves them
+                                                   — the control that fetches the codes.
+
+                                                   No <dl> around it any more. The kind was a label
+                                                   and the kodeverk its value while the panel showed
+                                                   one flat line each; grouped, the kind is a
+                                                   heading over a list, and a definition list whose
+                                                   value is another list of labelled things says
+                                                   less than the headings do.
+
+                                                   The codes themselves are not in this payload and
+                                                   are not asked for until a reader presses for
+                                                   them. Kommunenummer alone is 885 codes. *@
+                                                @KodeverkGroups(detail)
                                             }
                                         </div>
                                     </div>

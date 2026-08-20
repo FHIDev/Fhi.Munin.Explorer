@@ -65,4 +65,10 @@ public class ContractCoverageTest
     [Fact]
     public void Timeline_WhenReadFromARealResponse_ThenEveryFieldIsCovered() =>
         Covers<IReadOnlyList<VariableVersion>>("timeline.json");
+
+    [Fact]
+    public void KodeverkCodes_WhenReadFromARealResponse_ThenEveryFieldIsCovered() =>
+        // The endpoint answers with an envelope, not with the bare array of codes it is easy to
+        // assume from reading one — kodeverkType and kodeverkReference come back alongside them.
+        Covers<KodeverkCodes>("kodeverk-codes.json");
 }

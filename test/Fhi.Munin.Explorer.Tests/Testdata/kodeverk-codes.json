@@ -1,0 +1,42 @@
+{
+  "kodeverkType": "Kildekodeverk",
+  "kodeverkReference": "2336",
+  "koder": [
+    {
+      "verdi": "0",
+      "navn": "Velg verdi",
+      "gyldigFra": "2010-01-01T00:00:00.000Z",
+      "gyldigTil": null
+    },
+    {
+      "verdi": "1",
+      "navn": "0: Tap av produktiv tale",
+      "gyldigFra": "2010-01-01T00:00:00.000Z",
+      "gyldigTil": null
+    },
+    {
+      "verdi": "2",
+      "navn": "1: Tale kombinert med ikke-vokal kommunikasjon",
+      "gyldigFra": "2010-01-01T00:00:00.000Z",
+      "gyldigTil": null
+    },
+    {
+      "verdi": "3",
+      "navn": "2: Forståelig med gjentakelse",
+      "gyldigFra": "2010-01-01T00:00:00.000Z",
+      "gyldigTil": null
+    },
+    {
+      "verdi": "4",
+      "navn": "3: Merkbar taleforstyrrelse",
+      "gyldigFra": "2010-01-01T00:00:00.000Z",
+      "gyldigTil": null
+    },
+    {
+      "verdi": "5",
+      "navn": "4: Normale taleprosesser",
+      "gyldigFra": "2010-01-01T00:00:00.000Z",
+      "gyldigTil": null
+    }
+  ]
+}

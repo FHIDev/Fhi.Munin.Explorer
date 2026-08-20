@@ -119,4 +119,29 @@ public interface IMuninExplorerClient
     Task<IReadOnlyList<VariableVersion>> GetVariableTimelineAsync(
         Guid id,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Fetch the code values behind one of a variable's kodeverk links. Null when the catalogue
+    /// publishes none for it.
+    /// </summary>
+    /// <remarks>
+    /// Its own call rather than part of <see cref="GetVariableAsync"/>, because a kodeverk can run
+    /// to hundreds of codes and most readers never open one. Ask for it when a reader says so.
+    /// <para>
+    /// Null covers three cases the caller cannot usefully tell apart, and all of which read as "no
+    /// codes to show": a <c>HelsefagligKodeverk</c> link, whose values the API does not serve at all
+    /// — <see cref="KodeverkLink.HasCodeValues"/> is false on those, so a UI can keep from asking; a
+    /// reference the upstream code register does not know; and a variable that is not published.
+    /// A fault still throws, the same rule the rest of this interface follows.
+    /// </para>
+    /// </remarks>
+    /// <param name="variableId">The variable the link hangs off.</param>
+    /// <param name="kodeverkType">The link's <see cref="KodeverkLink.KodeverkType"/>, verbatim.</param>
+    /// <param name="kodeverkReference">The link's <see cref="KodeverkLink.KodeverkReference"/>, verbatim.</param>
+    /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
+    Task<KodeverkCodes?> GetKodeverkCodesAsync(
+        Guid variableId,
+        string kodeverkType,
+        string kodeverkReference,
+        CancellationToken cancellationToken = default);
 }

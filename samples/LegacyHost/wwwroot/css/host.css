@@ -952,3 +952,79 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .variable-explorer-drilldown {
   padding: 4px 0 24px;
 }
+
+/* ---- the Data tab's kodeverk ----
+
+   All five names below are ours, and every one is a handle: neither Stiler nor helsedata's
+   variables.css has a kodeverk section to borrow from, because their variable page has no such
+   panel at all. So the sample supplies what a host would — the arrangement, nothing more.
+
+   The list is a plain <ul> with its bullets off, because the group heading above it already says
+   these are kodeverk of one kind and a bullet per line adds nothing. */
+.variable-explorer-kodeverk {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 8px;
+}
+
+.variable-explorer-kodeverk__item {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--grey30, #e2e4ef);
+}
+
+.variable-explorer-kodeverk__item:last-child {
+  border-bottom: 0;
+}
+
+.variable-explorer-kodeverk__name {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* The reference is the thing a reader can look the kodeverk up by, so it is set in a monospace
+   face — a run of digits like 2336 or a dotted OID reads as an identifier rather than as prose. */
+.variable-explorer-kodeverk__reference {
+  margin: 2px 0 8px;
+  font-family: ui-monospace, "SFMono-Regular", "Consolas", monospace;
+}
+
+/* The open code list. Capped in height and scrolled rather than left to run: Kommunenummer is 885
+   codes, and a list that pushes the rest of the page out of reach is worse than one you scroll. */
+.variable-explorer-codes {
+  margin: 8px 0 4px;
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid var(--grey30, #e2e4ef);
+  border-radius: 4px;
+}
+
+/* The only table this component emits, and the reason it is a table at all: four columns of code
+   values have no honest alternative shape. What makes that safe is that an element has a browser
+   default to fall back on — a host that styles nothing still gets aligned columns, where an
+   invented class name would render as nothing. */
+.variable-explorer-codes__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.variable-explorer-codes__table th,
+.variable-explorer-codes__table td {
+  padding: 6px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--grey30, #e2e4ef);
+}
+
+/* Sticky, so the columns stay named while a long kodeverk is scrolled past them. */
+.variable-explorer-codes__table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--grey10, #f4f5fa);
+  color: var(--grey70, #5a5f78);
+  font-weight: 600;
+}
+
+.variable-explorer-codes__table td:first-child {
+  font-family: ui-monospace, "SFMono-Regular", "Consolas", monospace;
+  white-space: nowrap;
+}

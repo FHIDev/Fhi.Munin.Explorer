@@ -96,6 +96,24 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
         CancellationToken cancellationToken = default) =>
         await GetOrNullAsync<IReadOnlyList<VariableVersion>>($"api/explorer/variables/{id}/timeline", cancellationToken) ?? [];
 
+    public Task<KodeverkCodes?> GetKodeverkCodesAsync(
+        Guid variableId,
+        string kodeverkType,
+        string kodeverkReference,
+        CancellationToken cancellationToken = default)
+    {
+        // Both segments are escaped, and both need it for a different reason. The type is one of
+        // three enum names today and safe as it stands, but it is the API's vocabulary rather than
+        // ours and is passed through verbatim. The reference genuinely varies: V-AK sends dotted
+        // OIDs, V-KK sends integers, and helsefaglige references like "NCMP-NCSP-NCRP" are free
+        // text — a reference carrying a slash would otherwise be read as two path segments and
+        // answer 404 for a link the catalogue does publish.
+        var url = $"api/explorer/variables/{variableId}"
+                  + $"/kodeverk/{Uri.EscapeDataString(kodeverkType)}/{Uri.EscapeDataString(kodeverkReference)}/codes";
+
+        return GetOrNullAsync<KodeverkCodes>(url, cancellationToken);
+    }
+
     /// <summary>
     /// GET and deserialise, mapping 404 to null.
     /// </summary>
