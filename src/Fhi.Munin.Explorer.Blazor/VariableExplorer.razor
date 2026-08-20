@@ -264,6 +264,16 @@ else
        just pressed out of the document — the same reason the Søk button is never disabled. *@
     <div class="variable-explorer-container">
     <div class="variable-explorer-results">
+    @* The column picker, above the list and inside the results column — which is where
+       helsedata's own variable page puts it, in `variable-explorer-header__actions`. Not inside
+       `variable-data-list__header` where the bead expected it: that row is the columns themselves,
+       and it is the one element the picker must be able to empty without emptying itself. Not
+       `sortable-dropdown` either, though the bead named it — see the remarks on ColumnPicker: that
+       is their mobile sort control and it is `display: none` above 1280px.
+
+       Rendered whether or not anything was found, for the reason the header is: a control that
+       leaves the document when a search comes back empty takes the reader's place in it with it. *@
+    @ColumnPicker()
     <div class="variable-data-list__result">
     @ResultHeader()
 

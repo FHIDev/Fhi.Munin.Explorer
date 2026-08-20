@@ -69,6 +69,27 @@ internal enum PanelTab
 /// <c>variable-explorer</c> root.
 /// </para>
 /// <para>
+/// The column picker adds eight names, all of them helsedata's own and none of them ours. They come
+/// with the same dependency the pager does — they live in the <c>variables.css</c> that their
+/// variable page carries. <c>variable-explorer-header</c> with its <c>__actions</c> and
+/// <c>__actions-button</c> place the control above the list; <c>dropdown-choicepicker</c> with its
+/// <c>--right</c> and <c>__item</c> draw the open list, positioned against an inline
+/// <c>position: relative</c> exactly as their own markup does it; and the disclosure wears both
+/// <c>variable-explorer__dropdown</c>, which is the z-index, and the bare <c>dropdown</c>, which is
+/// the width their own actions row gives a trigger
+/// (<c>.variable-explorer-header__actions .dropdown { width: 100% }</c>). Each toggle's label is
+/// the button's own text rather than a span wearing a name, which is one name fewer to have to
+/// find in a stylesheet. A host that has none of them still
+/// gets a working disclosure — the shape is <c>&lt;details&gt;</c>, a <c>&lt;ul&gt;</c> and the
+/// square button in two states, the same three elements the filter panel leans on — it is drawn
+/// in the flow rather than over the list. What it must supply either way is
+/// <c>screenreader-only</c>, or the sentence explaining why the last column will not turn off is
+/// on screen for everyone — and two rules that take the browser's disclosure marker off the
+/// <c>&lt;summary&gt;</c>, which is <c>display: list-item</c> by default and would otherwise draw
+/// a triangle beside a button that has none. helsedata's own trigger is a <c>&lt;button&gt;</c>,
+/// so their stylesheet has no reason to carry those two.
+/// </para>
+/// <para>
 /// The detail panel adds no class name either, and for the same reason. It is a
 /// <c>&lt;dl&gt;</c> of labels and values, an <c>&lt;ol&gt;</c> for the kilde trail and a
 /// <c>&lt;ul&gt;</c> for the variabelgrupper and kodeverk, wearing Stiler's
@@ -455,18 +476,6 @@ public partial class VariableExplorer : ComponentBase
     // from a pager button, so a single-page result reached that way still costs no furniture.
     private bool _keepPager;
 
-    /// <summary>
-    /// The orders offered for sorting, in the order the buttons appear.
-    /// </summary>
-    /// <remarks>
-    /// Every member of <see cref="SortField"/>, in declaration order, rather than a list restating
-    /// it: that enum is already the closed set of orders the API implements, and its own remarks are
-    /// where the reason a field is missing from it is written down. Two copies of a list and of its
-    /// reason drift apart independently — a member added there would otherwise leave the button row
-    /// silently short.
-    /// </remarks>
-    private static readonly SortField[] Sortable = Enum.GetValues<SortField>();
-
     // The search text the visible result actually came from, which is not the same as the
     // text in the box: @bind writes _search on blur, so the box can hold an unsubmitted query
     // while the table below still shows the previous one. The announcement has to describe
@@ -668,22 +677,6 @@ public partial class VariableExplorer : ComponentBase
         : T.ResultSummary(FirstItemOnPage, LastItemOnPage, TotalCount, _executedSearch, _filter.ActiveCount,
                           T.FieldLabel(_sort), T.DirectionName(_direction));
 
-    /// <summary>A sort button's label — the field, plus the direction when it is the active one.</summary>
-    private string ButtonText(SortField sort) =>
-        sort == _sort ? T.ActiveLabel(T.FieldLabel(sort), T.DirectionName(_direction)) : T.FieldLabel(sort);
-
-    /// <summary>
-    /// A sort button's classes. The active field is filled, the rest are ghosts; the trailing
-    /// margins are Stiler's own modifiers, which the buttons need because nothing else separates
-    /// them — Razor drops the whitespace between elements.
-    /// </summary>
-    private string ButtonClass(SortField sort)
-    {
-        var style = sort == _sort ? "button-square--secondary" : "button-square--ghost";
-
-        return $"hd-button-square {style} margin-right margin-bottom";
-    }
-
     /// <summary><c>"true"</c> on the active field, and nothing at all on the others.</summary>
     /// <remarks>
     /// Null rather than <c>"false"</c>: Blazor leaves an attribute out when its value is null, and
@@ -767,15 +760,23 @@ public partial class VariableExplorer : ComponentBase
     /// to put the ordering in; now there is, and leaving both would give the same choice two
     /// controls.
     /// <para>
-    /// Four of the five columns map to a real <see cref="SortField"/>. Periode has none, so its
-    /// header is plain text rather than a button that would promise an ordering the API does not
-    /// offer. The variable column maps to <see cref="SortField.Default"/>, which is honest rather
-    /// than convenient: that member is documented as the API's own order and its wire token is
-    /// literally <c>name</c>.
+    /// Four of the eight columns map to a real <see cref="SortField"/>. Kode, Datatype, Status and
+    /// Dataperiode have none, so their headers are plain text rather than buttons that would
+    /// promise an ordering the API does not offer. The variable column maps to
+    /// <see cref="SortField.Default"/>, which is honest rather than convenient: that member is
+    /// documented as the API's own order and its wire token is literally <c>name</c>.
     /// </para>
     /// <para>
     /// aria-current, not aria-pressed, for the same reason the old buttons used it: a pressed
     /// toggle promises that pressing again releases it, and this one flips the direction instead.
+    /// </para>
+    /// <para>
+    /// Every cell but the first is drawn only while its column is on screen — see
+    /// <see cref="ColumnVisible"/>. The header and the rows read the same predicate, because a
+    /// header cell without the values under it puts every row out of line with its own column.
+    /// That is also why a sorted column does not keep its header when it is hidden: leaving the
+    /// cell behind for its <c>aria-sort</c> would be the misalignment this rule exists to prevent.
+    /// The ordering itself survives, deliberately and announced — see <see cref="ToggleColumn"/>.
     /// </para>
     /// </remarks>
     private RenderFragment ResultHeader() => builder =>
@@ -789,16 +790,43 @@ public partial class VariableExplorer : ComponentBase
         builder.OpenElement(4, "div");
         builder.AddAttribute(5, "class", "variable-dataitem-header");
 
+        // Navn is not in the picker and has no condition here: it is the row's disclosure as well
+        // as its first column.
         HeaderCell(builder, 100, "name", T.ColumnVariable, SortField.Default);
-        HeaderCell(builder, 200, "code", T.FieldCode, sort: null);
-        HeaderCell(builder, 300, "source", T.FieldSource, SortField.Kilde);
-        HeaderCell(builder, 400, "dataCollection", T.FieldDataCollection, SortField.Datasamling);
-        HeaderCell(builder, 500, "theme", T.FieldVariableGroup, SortField.Variabelgruppe);
-        HeaderCell(builder, 600, "dataType", T.FieldDataType, sort: null);
 
-        if (ShowStatusColumn)
+        if (ColumnVisible(ResultColumn.Code))
+        {
+            HeaderCell(builder, 200, "code", T.FieldCode, sort: null);
+        }
+
+        if (ColumnVisible(ResultColumn.Kilde))
+        {
+            HeaderCell(builder, 300, "source", T.FieldSource, SortField.Kilde);
+        }
+
+        if (ColumnVisible(ResultColumn.Datasamling))
+        {
+            HeaderCell(builder, 400, "dataCollection", T.FieldDataCollection, SortField.Datasamling);
+        }
+
+        if (ColumnVisible(ResultColumn.Variabelgruppe))
+        {
+            HeaderCell(builder, 500, "theme", T.FieldVariableGroup, SortField.Variabelgruppe);
+        }
+
+        if (ColumnVisible(ResultColumn.DataType))
+        {
+            HeaderCell(builder, 600, "dataType", T.FieldDataType, sort: null);
+        }
+
+        if (ColumnVisible(ResultColumn.Status))
         {
             HeaderCell(builder, 700, "status", T.FieldStatus, sort: null);
+        }
+
+        if (ColumnVisible(ResultColumn.DataPeriod))
+        {
+            HeaderCell(builder, 800, "period", T.FieldDataPeriod, sort: null);
         }
 
         builder.CloseElement();
@@ -1157,6 +1185,11 @@ public partial class VariableExplorer : ComponentBase
     /// <remarks>
     /// The API computes VersjonStatus from GyldigTil and filters expired versions out unless
     /// IncludeHistorical is asked for, so in the default view the column is a constant.
+    /// <para>
+    /// This is the column's default rather than the last word on it. The picker can turn Status on
+    /// against this and off with it, and once it has been pressed the reader's choice is what
+    /// counts — see <see cref="_statusColumnChosen"/>.
+    /// </para>
     /// </remarks>
     private bool ShowStatusColumn => _filter.IncludeHistorical;
 
@@ -1172,9 +1205,9 @@ public partial class VariableExplorer : ComponentBase
     /// </summary>
     /// <remarks>
     /// Each value is labelled. helsedata's datakildeutforsker runs its values together
-    /// unlabelled because there are only two of them and they are self-evident; ours are four,
-    /// and once the column headers of a table are gone "Inklusjon" on its own says nothing
-    /// about which field it is.
+    /// unlabelled because there are only two of them and they are self-evident; ours are up to
+    /// seven, and a reader who has turned half of them off has no header for the ones that are
+    /// left to line up against, so "Inklusjon" on its own would say nothing about which field it is.
     /// </remarks>
     private RenderFragment InfoLine(VariableSummary v) => builder =>
     {
@@ -1185,33 +1218,89 @@ public partial class VariableExplorer : ComponentBase
         // WITH, so it decides what a row says; helsedata decides what a row looks like. Taking the
         // column set from the page being retired would be copying the thing we are replacing.
         //
-        // Four of the seven modifiers exist in helsedata's stylesheet today. __code, __dataType
-        // and __status do not, and they are emitted anyway — deliberately. The arrangement with
-        // helsedata is that we supply class names and they write the rules, so these three ARE the
-        // request, and the sample host carries the widths they should be given. A column with no
-        // width rule sizes by content, which is what put Kode on two lines: a variable code is one
-        // unbreakable token and cannot give way, so everything else must.
-        Column(builder, 100, T.FieldCode, v.Code, "code");
+        // Four of the eight modifiers exist in helsedata's stylesheet today. __code, __dataType,
+        // __status and __period do not, and they are emitted anyway — deliberately. The arrangement
+        // with helsedata is that we supply class names and they write the rules, so these four ARE
+        // the request, and the sample host carries the widths they should be given. A column with
+        // no width rule sizes by content, which is what put Kode on two lines: a variable code is
+        // one unbreakable token and cannot give way, so everything else must. Their header row is
+        // further along: `variable-dataitem-header__period` is already in variables.css, because
+        // their own variable page has had a period column all along — it is only the cell modifier
+        // that is missing, since theirs draws a bar sized inline rather than a column of text.
+        //
+        // Each one is drawn only while its column is on screen. What decides that is the reader,
+        // through the column picker above the list — see ColumnVisible — except for Status, which
+        // follows the filter until they say otherwise.
+        if (ColumnVisible(ResultColumn.Code))
+        {
+            Column(builder, 100, T.FieldCode, v.Code, "code");
+        }
+
         // The short name, which is what Runa shows — "ALS" rather than "Als registeret" — with the
         // full name on hover, also as Runa does. A kilde name is long and repeats down every row of
         // a single register's variables, so the short form is what makes the column readable. It
         // falls back to the full name where a kilde has no short one.
-        Column(builder, 200, T.FieldSource, v.KildeShortName ?? v.KildeName, "source", tooltip: v.KildeName);
-        Column(builder, 300, T.FieldDataCollection, v.DatasamlingName, "dataCollection");
-        Column(builder, 400, T.FieldVariableGroup, v.VariabelgruppeName, "theme");
-        Column(builder, 500, T.FieldDataType, DataTypeName(v.DataType), "dataType");
+        if (ColumnVisible(ResultColumn.Kilde))
+        {
+            Column(builder, 200, T.FieldSource, v.KildeShortName ?? v.KildeName, "source", tooltip: v.KildeName);
+        }
 
-        // Status is drawn only when historical variables can be in the list at all. The API
+        if (ColumnVisible(ResultColumn.Datasamling))
+        {
+            Column(builder, 300, T.FieldDataCollection, v.DatasamlingName, "dataCollection");
+        }
+
+        if (ColumnVisible(ResultColumn.Variabelgruppe))
+        {
+            Column(builder, 400, T.FieldVariableGroup, v.VariabelgruppeName, "theme");
+        }
+
+        if (ColumnVisible(ResultColumn.DataType))
+        {
+            Column(builder, 500, T.FieldDataType, DataTypeName(v.DataType), "dataType");
+        }
+
+        // Status starts hidden unless historical variables can be in the list at all. The API
         // computes it from GyldigTil — Active unless the version has expired — and excludes
         // expired versions unless IncludeHistorical is set. In the default view every row is
         // therefore Active, and a column that says the same word on every row is not a column,
         // it is furniture. Verified against the live API: 100 rows sampled across five pages of
-        // the catalogue, all Active.
-        if (ShowStatusColumn)
+        // the catalogue, all Active. That is now a default rather than the whole rule: a reader
+        // who wants the column anyway can press it in the picker, and their choice sticks.
+        if (ColumnVisible(ResultColumn.Status))
         {
             Column(builder, 600, T.FieldStatus, v.VersionStatus, "status");
         }
+
+        // The dataperiode as text — the same two dates the panel draws under its bar, from the
+        // same fields. helsedata's own period cell is a bar and nothing else, with the dates on
+        // hover, but a bar is drawn entirely by rules this package does not ship: in a host that
+        // has not styled `variable-dataitem-period` the cell would be empty rather than plain, and
+        // an empty column is indistinguishable from a variable with no period recorded. The panel
+        // is where the bar is worth its dependency, because the row beside it says the dates.
+        // The only column whose value is not the catalogue's own words: the dates are formatted for
+        // the reader and the word between them is this component's, so it follows Language like a
+        // label rather than staying Norwegian like a variable name. Hence `catalogue: false` — an
+        // English reader hearing "Jan 2010 – Ongoing" announced by a Norwegian voice is the very
+        // thing lang="no" is there to prevent, applied backwards.
+        if (ColumnVisible(ResultColumn.DataPeriod))
+        {
+            Column(builder, 700, T.FieldDataPeriod, PeriodText(v.DataFrom, v.DataTo), "period", catalogue: false);
+        }
     };
+
+    /// <summary>The dataperiode in one line, or null where the catalogue has neither date.</summary>
+    /// <remarks>
+    /// Word for word what <see cref="PeriodBar"/> writes above its bar, including "?" for a missing
+    /// start and the word for a period still running, so the column and the open panel never
+    /// describe one variable's period two ways. Null rather than a dash when both dates are
+    /// missing: the cell then says "Ikke oppgitt" in plain sight, which is what every other column
+    /// does with a value the catalogue does not have.
+    /// </remarks>
+    private string? PeriodText(DateTimeOffset? from, DateTimeOffset? to) =>
+        from is null && to is null
+            ? null
+            : $"{(from is { } f ? MonthYear(f) : "?")} – {(to is { } t ? MonthYear(t) : T.Ongoing)}";
 
     /// <summary>
     /// One column of a result row, in helsedata's <c>variable-dataitem-main__column</c> shape.
@@ -1220,6 +1309,13 @@ public partial class VariableExplorer : ComponentBase
     /// The field name is not shown in the cell — the column header names it. It is still emitted
     /// for assistive technology, because a screen reader moving down a column has no header to
     /// glance up at.
+    /// <para>
+    /// <paramref name="catalogue"/> says whose words the value is. Nearly always the catalogue's,
+    /// which are Norwegian whatever the reader's language is, so they are marked <c>lang="no"</c>.
+    /// A column the component composes itself — the dataperiode — is in the reader's language
+    /// already and is left unmarked, exactly like the "Ikke oppgitt" beside it, so it inherits the
+    /// host page's language rather than claiming a language it is not in.
+    /// </para>
     /// </remarks>
     private void Column(
         RenderTreeBuilder builder,
@@ -1227,7 +1323,8 @@ public partial class VariableExplorer : ComponentBase
         string label,
         string? value,
         string? key,
-        string? tooltip = null)
+        string? tooltip = null,
+        bool catalogue = true)
     {
         // Sequence numbers ascend without gaps or repeats through every path below. Blazor uses
         // them positionally to diff one render against the next, so a number that goes backwards
@@ -1269,7 +1366,7 @@ public partial class VariableExplorer : ComponentBase
         {
             builder.AddContent(seq + 8, T.NotSpecified);
         }
-        else
+        else if (catalogue)
         {
             // The label follows Language; the value does not. Munin's metadata is Norwegian
             // whatever language the surrounding UI is in, and an English speech synthesiser
@@ -1278,6 +1375,12 @@ public partial class VariableExplorer : ComponentBase
             builder.AddAttribute(seq + 10, "lang", "no");
             builder.AddContent(seq + 11, value);
             builder.CloseElement();
+        }
+        else
+        {
+            // The component's own words, in the reader's language. Unmarked, so it inherits the
+            // host page's language the same way every other string this component composes does.
+            builder.AddContent(seq + 12, value);
         }
 
         builder.CloseElement();

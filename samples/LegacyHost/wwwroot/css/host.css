@@ -759,6 +759,14 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   flex: 98 1 0;
 }
 
+/* Dataperiode. The one width here that is not measured off Runa — its own column is a bar rather
+   than two dates, so there was nothing to measure. 150 is what "jan. 2001 – des. 2025" needs
+   without wrapping, and the column is the last one, so it is also the one with room to give. */
+.variable-dataitem-main__period,
+.variable-dataitem-header__period {
+  flex: 150 1 0;
+}
+
 
 .sortable-header {
   font-weight: 600;
@@ -1028,3 +1036,96 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   font-family: ui-monospace, "SFMono-Regular", "Consolas", monospace;
   white-space: nowrap;
 }
+
+/* ---- the column picker ----
+
+   helsedata's own names, and their own arrangement: a ghost button above the results, and the
+   choices drawn as a card that hangs off it. Their React sets `position: relative` inline on the
+   wrapper and the component emits the same inline style, so what is left for a host is the dress.
+
+   The component builds it from <details> and <summary> because it ships no script. That is the
+   one place the shape differs from theirs, and it costs two rules — the browser's disclosure
+   marker, which their button does not have. */
+.variable-explorer-header {
+  position: relative;
+  margin-bottom: 8px;
+}
+
+/* Right-aligned, where helsedata's own `__actions-button-search` puts the column picker: it acts
+   on the list below rather than introducing it, so it sits at the end of the row instead of at
+   the start. */
+.variable-explorer-header__actions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.variable-explorer-header__actions-button {
+  border: none;
+}
+
+.variable-explorer__dropdown > summary {
+  list-style: none;
+}
+
+.variable-explorer__dropdown > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* The open list, over the header rather than pushing it down: a picker that moved the columns
+   while you chose them would be aiming at a moving target. */
+.dropdown-choicepicker {
+  position: absolute;
+  top: 36px;
+  z-index: 10;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-radius: 0.5rem;
+  background-color: var(--dark, #262045);
+  color: #fff;
+}
+
+.dropdown-choicepicker--right {
+  right: 0;
+}
+
+.dropdown-choicepicker__item {
+  display: flex;
+  align-items: center;
+  padding: 4px 20px;
+  white-space: nowrap;
+}
+
+.dropdown-choicepicker__item:first-of-type { padding-top: 16px; }
+.dropdown-choicepicker__item:last-of-type { padding-bottom: 16px; }
+.dropdown-choicepicker__item:hover { background-color: #32378d; }
+
+/* A chosen column is a pressed button, the same two states the facet values use. The mark is
+   drawn in the ::before so the label text stays put whichever state it is in — a tick that
+   appeared and disappeared would shift every line beside it. */
+.dropdown-choicepicker__item .hd-button-reset {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 0;
+  color: inherit;
+}
+
+.dropdown-choicepicker__item .hd-button-reset::before {
+  content: "\2610";
+  margin-right: 8px;
+}
+
+.dropdown-choicepicker__item .hd-button-reset[aria-pressed="true"]::before {
+  content: "\2611";
+}
+
+/* The last column left. Inert rather than disabled, so it can still be reached and still says
+   why it will not move — the sentence is in the DOM, aria-describedby points at it, and this is
+   what says the same thing to everyone else. */
+.dropdown-choicepicker__item .hd-button-reset[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.6;
+}
+

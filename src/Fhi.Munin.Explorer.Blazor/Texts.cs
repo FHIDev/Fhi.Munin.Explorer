@@ -39,6 +39,13 @@ internal sealed record Texts(
     string GroupPlacement,
     string GroupProperties,
     string ColumnVariable,
+    // The column picker: Runa's own name for the control ("Kolonner", where helsedata's button
+    // says "Vis kolonner"), and the sentence the last column left points at to say why it refuses
+    // to go. Named ...Hint because it is a sentence rather than a column's name, which is what
+    // every other string around it is. Runa decides what the component says; helsedata decides
+    // what it looks like.
+    string Columns,
+    string LastColumnHint,
     string FieldDataType,
     string FieldStatus,
     string FieldCode,
@@ -141,8 +148,6 @@ internal sealed record Texts(
     string NextLabel,
     // (page, totalPages) — the pager's own "Side 2 av 13".
     Func<int, int, string> PageOf,
-    // (field, direction) — the active sort button's label.
-    Func<string, string, string> ActiveLabel,
     // (from, to, total, search, filters, field, direction) — the whole result sentence. The
     // ordering clause is part of it rather than appended by the caller, so a language whose
     // grammar puts the ordering first can say it that way instead of inheriting Norwegian's
@@ -275,6 +280,8 @@ internal sealed record Texts(
         GroupPlacement: "Plassering",
         GroupProperties: "Egenskaper",
         ColumnVariable: "Navn",
+        Columns: "Kolonner",
+        LastColumnHint: "Minst én kolonne må vises.",
         FieldDataType: "Datatype",
         FieldStatus: "Status",
         FieldCode: "Kode",
@@ -384,7 +391,6 @@ internal sealed record Texts(
         PreviousLabel: "Forrige side",
         NextLabel: "Neste side",
         PageOf: (page, totalPages) => $"Side {page} av {totalPages}",
-        ActiveLabel: (field, direction) => $"{field} ({direction})",
         // The whole sentence, ordering clause included, because the comma and where the clause
         // sits are this language's grammar and not something to fix in C#.
         ResultSummary: (from, to, total, search, filters, field, direction) =>
@@ -430,6 +436,8 @@ internal sealed record Texts(
         GroupPlacement: "Placement",
         GroupProperties: "Properties",
         ColumnVariable: "Name",
+        Columns: "Columns",
+        LastColumnHint: "At least one column has to stay visible.",
         FieldDataType: "Data type",
         FieldStatus: "Status",
         FieldCode: "Code",
@@ -538,7 +546,6 @@ internal sealed record Texts(
         PreviousLabel: "Previous page",
         NextLabel: "Next page",
         PageOf: (page, totalPages) => $"Page {page} of {totalPages}",
-        ActiveLabel: (field, direction) => $"{field} ({direction})",
         ResultSummary: (from, to, total, search, filters, field, direction) =>
         {
             var count = total == 1 ? "1 variable" : $"{total} variables";

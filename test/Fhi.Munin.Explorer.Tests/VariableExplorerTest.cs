@@ -303,9 +303,11 @@ public class VariableExplorerTest : BunitContext
     [Fact]
     public void Render_Always_ThenEverySortFieldTheContractOffersHasAButton()
     {
-        // The button row is Enum.GetValues rather than a list of its own, so it cannot fall behind
-        // the enum. Kode, datatype, status and dataperiode are absent because they are absent
-        // there — the API does not sort on them, and a fifth button would reorder nothing while
+        // ResultHeader writes each header cell out by hand with a literal SortField, so the row
+        // CAN fall behind the enum — this count is what catches it. A member added to SortField
+        // with no cell to press it fails here, and the fix is a cell rather than a longer list.
+        // Kode, datatype, status and dataperiode have no button because they are not in the enum
+        // at all — the API does not sort on them, and a button would reorder nothing while
         // claiming to have.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
@@ -611,6 +613,464 @@ public class VariableExplorerTest : BunitContext
     }
 
     // ---------------------------------------------------------------------------------
+    // The column picker. Runa's rules, not helsedata's: Navn is always on screen, the other
+    // seven can be turned off one at a time, and the last one left refuses. The choice is not
+    // persisted and is not in the host's URL — Runa loses it on a refresh too, and whether it
+    // should be remembered is a decision of its own.
+    // ---------------------------------------------------------------------------------
+
+    /// <summary>The picker's toggles, in the order it lists them.</summary>
+    private static IReadOnlyList<IElement> ColumnToggles(IRenderedComponent<VariableExplorer> cut) =>
+        cut.FindAll(".dropdown-choicepicker__item button");
+
+    /// <summary>The toggle for one named column, refetched so it is never a stale node.</summary>
+    private static IElement ColumnToggle(IRenderedComponent<VariableExplorer> cut, string label) =>
+        ColumnToggles(cut).Single(b => b.TextContent.Trim() == label);
+
+    private static void HideColumn(IRenderedComponent<VariableExplorer> cut, string label) =>
+        ColumnToggle(cut, label).Click();
+
+    [Fact]
+    public void Render_Always_ThenThePickerOffersRunasSevenColumnsAndNotTheName()
+    {
+        // Runa's set, in Runa's order. It is deliberately not helsedata's five: the variable page
+        // is the thing this component REPLACES, so it decides how a row looks and Runa decides
+        // what a row says. Navn is missing on purpose — it is the row's disclosure button as well
+        // as its first column, so turning it off would take the control that opens the panel away.
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        Assert.Equal(
+            ["Kode", "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Status", "Dataperiode"],
+            ColumnToggles(cut).Select(b => b.TextContent.Trim()));
+    }
+
+    [Fact]
+    public void Render_Always_ThenEveryColumnButStatusStartsOnScreen()
+    {
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        // Status is the one exception, and it is the filter's doing rather than the picker's:
+        // with historical variables excluded every row would say "Active", and a column that says
+        // the same word on every row is furniture. See ShowStatusColumn.
+        Assert.Equal(["true", "true", "true", "true", "true", "false", "true"],
+                     ColumnToggles(cut).Select(b => b.GetAttribute("aria-pressed")));
+    }
+
+    [Fact]
+    public void Columns_WhenAColumnIsTurnedOff_ThenBothItsHeaderAndItsCellsGo()
+    {
+        // Both, or neither. helsedata's row is a flex container and the header row is a second
+        // one beside it, so a header cell left behind by its values does not merely look odd —
+        // every column after it in every row sits under the wrong name.
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        HideColumn(cut, "Kode");
+
+        Assert.Empty(cut.FindAll(".variable-dataitem-header__code"));
+        Assert.Empty(cut.FindAll(".variable-dataitem-main__code"));
+        Assert.Equal("false", ColumnToggle(cut, "Kode").GetAttribute("aria-pressed"));
+    }
+
+    [Fact]
+    public void Columns_WhenAColumnIsTurnedOffAndOnAgain_ThenItComesBack()
+    {
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        HideColumn(cut, "Datasamling");
+        ColumnToggle(cut, "Datasamling").Click();
+
+        Assert.NotNull(cut.Find(".variable-dataitem-main__dataCollection"));
+        Assert.Equal("true", ColumnToggle(cut, "Datasamling").GetAttribute("aria-pressed"));
+    }
+
+    [Fact]
+    public void Columns_WhenOnlyOneIsLeft_ThenItRefusesToHideAndSaysWhy()
+    {
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        // Status is already off, so five presses leave Dataperiode alone.
+        foreach (var column in new[] { "Kode", "Kilde", "Datasamling", "Variabelgruppe", "Datatype" })
+        {
+            HideColumn(cut, column);
+        }
+
+        var last = ColumnToggle(cut, "Dataperiode");
+
+        // Inert rather than disabled, the same treatment the pager's buttons get: `disabled` would
+        // take it out of the tab order, so the one column a reader might ask about would be the
+        // one they could not reach.
+        Assert.Equal("true", last.GetAttribute("aria-disabled"));
+        Assert.False(last.HasAttribute("disabled"));
+
+        // And it says why, once, rather than on every button.
+        var hint = last.GetAttribute("aria-describedby");
+        Assert.Equal("Minst én kolonne må vises.", cut.Find($"#{hint}").TextContent);
+
+        last.Click();
+
+        Assert.Equal("true", ColumnToggle(cut, "Dataperiode").GetAttribute("aria-pressed"));
+        Assert.NotNull(cut.Find(".variable-dataitem-main__period"));
+    }
+
+    [Fact]
+    public void Columns_WhenEverythingElseIsOff_ThenTheNameColumnIsStillThere()
+    {
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        foreach (var column in new[] { "Kode", "Kilde", "Datasamling", "Variabelgruppe", "Datatype" })
+        {
+            HideColumn(cut, column);
+        }
+
+        Assert.NotNull(cut.Find(".variable-dataitem-main__name"));
+        Assert.NotNull(cut.Find(".variable-dataitem-header__name"));
+    }
+
+    [Fact]
+    public void Columns_WhenStatusIsTurnedOnByHand_ThenItIsDrawnDespiteTheFilter()
+    {
+        // The filter decides where Status STARTS, not where it stays. A reader who wants the
+        // column anyway can have it: otherwise the picker would show a choice that does nothing,
+        // which is worse than not offering it.
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        Assert.Empty(cut.FindAll(".variable-dataitem-main__status"));
+
+        ColumnToggle(cut, "Status").Click();
+
+        Assert.NotNull(cut.Find(".variable-dataitem-main__status"));
+        Assert.NotNull(cut.Find(".variable-dataitem-header__status"));
+    }
+
+    [Fact]
+    public void Columns_WhenStatusIsTurnedOffByHand_ThenTheFilterDoesNotPutItBack()
+    {
+        // The other direction of the same press, and the one the flag exists for: with historical
+        // variables in the list the filter is drawing Status, so turning it off has to record that
+        // the reader has chosen as well as hide it. Without the record the press is a visible
+        // no-op — aria-pressed goes to false over a column that is still on screen — and every
+        // later trip through the filter puts it back.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        ClickFacet(cut, "Vis historiske");
+
+        Assert.NotNull(cut.Find(".variable-dataitem-main__status"));
+
+        ColumnToggle(cut, "Status").Click();
+
+        Assert.Empty(cut.FindAll(".variable-dataitem-main__status"));
+        Assert.Empty(cut.FindAll(".variable-dataitem-header__status"));
+        Assert.Equal("false", ColumnToggle(cut, "Status").GetAttribute("aria-pressed"));
+
+        // And it stays off through the filter that used to own it: their choice wins from here.
+        ClickFacet(cut, "Vis historiske");
+        ClickFacet(cut, "Vis historiske");
+
+        Assert.Empty(cut.FindAll(".variable-dataitem-main__status"));
+        Assert.Equal("false", ColumnToggle(cut, "Status").GetAttribute("aria-pressed"));
+    }
+
+    [Fact]
+    public void Columns_WhenHistoricalVariablesAreIncluded_ThenStatusStartsOnScreen()
+    {
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
+                             b => b.Add(c => c.Filter, new VariableFilter { IncludeHistorical = true }));
+
+        Assert.Equal("true", ColumnToggle(cut, "Status").GetAttribute("aria-pressed"));
+        Assert.NotNull(cut.Find(".variable-dataitem-main__status"));
+    }
+
+    [Fact]
+    public void Columns_WhenTheListIsSearchedAgain_ThenTheChoiceSurvives()
+    {
+        // The choice belongs to the reader, not to the result. Rebuilding it on every search would
+        // put back the columns they had just cleared away, on the page where they cleared them.
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        HideColumn(cut, "Kilde");
+        cut.Find("form").Submit();
+
+        Assert.Empty(cut.FindAll(".variable-dataitem-main__source"));
+    }
+
+    [Fact]
+    public void Columns_WhenTheSortedColumnIsHidden_ThenTheOrderingStaysAndIsStillAnnounced()
+    {
+        // A decision rather than an oversight, and this is where it is written down. Hiding the
+        // column the list is ordered by takes its header cell away, and with it the aria-sort and
+        // the arrow — leaving the cell behind would put every row out of line with its own column,
+        // which is the rule the header already obeys. The ordering itself is left alone: sorting is
+        // server-side, so resetting it here would make a press in the picker fire a query and
+        // reorder the list underneath the reader. Excel keeps a sort on a hidden column too.
+        var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        ClickSort(cut, "Kilde");
+        ClickSort(cut, "Kilde");
+
+        var calls = client.Calls;
+
+        HideColumn(cut, "Kilde");
+
+        Assert.Empty(cut.FindAll(".variable-dataitem-header__source"));
+        Assert.Empty(cut.FindAll("[aria-sort]"));
+
+        // The list is still in that order, nothing was re-fetched to get there, and the live
+        // region still says so — which is what makes this survivable rather than silent.
+        Assert.Equal(calls, client.Calls);
+        Assert.Equal(SortField.Kilde, client.LastSort);
+        Assert.Equal(SortDirection.Descending, client.LastDirection);
+        Assert.Contains("sortert på Kilde, synkende", cut.Find("p[role='status']").TextContent);
+
+        // And the way back is the control that took it away.
+        ColumnToggle(cut, "Kilde").Click();
+
+        Assert.Equal("descending",
+                     cut.Find(".variable-dataitem-header__source").GetAttribute("aria-sort"));
+    }
+
+    [Fact]
+    public void Columns_WhenTheFilterWouldTakeTheLastColumnAway_ThenStatusStaysOnScreen()
+    {
+        // The one route around "the last column cannot be hidden" that does not go through the
+        // picker. Status is normally the filter's to give and take — it says the same word on every
+        // row unless historical variables are in the list — but a reader who has hidden the other
+        // six has made it the last column, and a filter nobody associates with columns must not
+        // then empty every row down to its name. Deleting this brings that state back, reachable in
+        // seven presses and explained by nothing on screen.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        ClickFacet(cut, "Vis historiske");
+
+        foreach (var column in new[] { "Kode", "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Dataperiode" })
+        {
+            HideColumn(cut, column);
+        }
+
+        Assert.Equal("true", ColumnToggle(cut, "Status").GetAttribute("aria-disabled"));
+
+        ClickFacet(cut, "Vis historiske");
+
+        Assert.NotNull(cut.Find(".variable-dataitem-main__status"));
+        Assert.NotNull(cut.Find(".variable-dataitem-header__status"));
+        Assert.Equal("true", ColumnToggle(cut, "Status").GetAttribute("aria-pressed"));
+    }
+
+    [Fact]
+    public void Columns_WhenAnotherColumnComesBack_ThenTheFilterTakesStatusAgain()
+    {
+        // The other half of the rule above: Status is held only for as long as it is all there is.
+        // Give the reader a real column back and Status returns to being the filter's, otherwise
+        // one trip through an empty picker would pin it on for the rest of the session.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        ClickFacet(cut, "Vis historiske");
+
+        foreach (var column in new[] { "Kode", "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Dataperiode" })
+        {
+            HideColumn(cut, column);
+        }
+
+        ClickFacet(cut, "Vis historiske");
+        ColumnToggle(cut, "Kode").Click();
+
+        Assert.NotNull(cut.Find(".variable-dataitem-main__code"));
+        Assert.Empty(cut.FindAll(".variable-dataitem-main__status"));
+    }
+
+    [Fact]
+    public void Render_WhenThereAreNoHits_ThenThePickerStaysAnyway()
+    {
+        // The same rule the sort control has, for the same reason: a control that leaves the
+        // document when a search comes back empty takes the reader's place in it with it, dropping
+        // focus to <body>. Moving @ColumnPicker() inside the "there are hits" block would break
+        // nothing else in this file, so the rule is asserted here rather than only in prose.
+        // A count and no more: which columns the picker offers is
+        // Render_Always_ThenThePickerOffersRunasSevenColumnsAndNotTheName's to say, and asserting
+        // the list twice would make a change to Runa's set fail here too, reading as "the picker
+        // vanished on an empty search" when it did nothing of the kind.
+        var cut = RenderWith(new FakeClient(OnePage()));
+
+        Assert.Equal(7, ColumnToggles(cut).Count);
+    }
+
+    [Fact]
+    public void Render_Always_ThenThePickerBorrowsItsClassNamesAndInventsNone()
+    {
+        // The companion to the variable-explorer guard further down, which only inspects names in
+        // that prefix — the picker wears eight names outside it, and an invented ninth would slip
+        // past that test unnoticed. Every name here was read back off helsedata's compiled
+        // stylesheets; one that is not renders as a raw browser default inside a styled page.
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        var picker = cut.Find(".variable-explorer-header");
+
+        var names = picker.QuerySelectorAll("[class]")
+            .Prepend(picker)
+            .SelectMany(e => e.ClassName!.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            .Where(k => !k.StartsWith("variable-explorer", StringComparison.Ordinal))
+            .Distinct()
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        Assert.Equal(
+        [
+            "button-square--ghost",           // Stiler, the ghost colour the sort and facet
+                                              //   buttons already wear
+            "dropdown",                       // helsedata, variables.css — the trigger's width:
+                                              //   `.variable-explorer-header__actions .dropdown
+                                              //   { width: 100% }`, unconditional
+            "dropdown-choicepicker",          // helsedata, variables.css — the open list
+            "dropdown-choicepicker--right",
+            "dropdown-choicepicker__item",
+            "hd-button-reset",                // Stiler, "a button that draws nothing"
+            "hd-button-square",               // Stiler, the square shape
+            "screenreader-only",              // Stiler, and load-bearing: it hides the sentence
+                                              //   saying why the last column will not turn off
+        ], names);
+
+        // The label is the button's own text, so it needs no name at all. An earlier draft wrapped
+        // it in a span wearing `form-control__label`, which nothing else here uses and which could
+        // not be found in Stiler's compiled stylesheet.
+        Assert.Empty(picker.QuerySelectorAll("button span"));
+    }
+
+    [Fact]
+    public void Render_Always_ThenThePickerCarriesHelsedatasOwnDropdownShape()
+    {
+        // Their names, read off the compiled variables.css and styles.css rather than guessed at,
+        // and their nesting — dropdown-choicepicker is position:absolute and anchors to the
+        // wrapper, which is why the inline position:relative below is emitted rather than left to
+        // a stylesheet this package does not ship.
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        // Both their names, and the exact pair: `dropdown` is the width their actions row gives a
+        // trigger, `variable-explorer__dropdown` the z-index over the rows below. Asserted as a
+        // set rather than with Contains, which `variable-explorer__dropdown` would satisfy on its
+        // own and so could not tell the two apart.
+        var dropdown = cut.Find(".variable-explorer-header__actions > details");
+        Assert.Equal(["dropdown", "variable-explorer__dropdown"],
+                     dropdown.ClassName!.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        Assert.Contains("relative", dropdown.GetAttribute("style")!);
+
+        // A <details>, because their dropdown opens and closes from React state and this package
+        // ships no script. Same reason the filter facets are disclosures.
+        var summary = cut.Find(".variable-explorer-header__actions > details > summary");
+        Assert.Contains("hd-button-square", summary.ClassName!);
+        Assert.Equal("Kolonner", summary.TextContent);
+
+        Assert.NotNull(cut.Find("ul.dropdown-choicepicker.dropdown-choicepicker--right"));
+        Assert.Equal(7, cut.FindAll("li.dropdown-choicepicker__item").Count);
+
+        // Not sortable-dropdown, which the bead named: that is their MOBILE sort control and it is
+        // display:none above 1280px, so a picker wearing it would vanish on every desktop.
+        Assert.Empty(cut.FindAll(".sortable-dropdown"));
+    }
+
+    [Fact]
+    public void Render_Always_ThenTheDataperiodeColumnSaysWhatThePanelSays()
+    {
+        // The same two dates the open panel draws above its bar, from the same fields. The column
+        // is text rather than helsedata's bar because a bar is drawn entirely by rules this
+        // package does not ship: unstyled it is an empty cell, which reads as a variable with no
+        // period recorded rather than as a host that has not styled it.
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        var cell = cut.Find(".variable-dataitem-main__period");
+
+        Assert.Equal("Dataperiode: ", cell.QuerySelector(".screenreader-only")!.TextContent);
+        Assert.Contains("2010", cell.TextContent);
+        Assert.Contains("2025", cell.TextContent);
+
+        // Unmarked, unlike every other column: see the English test below for why.
+        Assert.Empty(cell.QuerySelectorAll("span[lang]"));
+    }
+
+    [Fact]
+    public void Render_WhenTheLanguageIsEn_ThenTheDataperiodeColumnIsNotAnnouncedAsNorwegian()
+    {
+        // The one column whose value the component composes rather than repeats. Its month names
+        // are formatted for the reader and the word for a period still running is a UI string, so
+        // marking it lang="no" the way a variable name is marked would hand an English sentence to
+        // a Norwegian speech synthesiser — the WCAG 3.1.2 argument the marker exists for, running
+        // backwards. Left unmarked, it inherits the host page's language like every other string
+        // this component writes itself.
+        var stillRunning = new VariableSummary
+        {
+            Id = Guid.NewGuid(),
+            Code = "KODE",
+            PreferredTerm = "1. Tale",
+            KildeName = "Als registeret",
+            DataFrom = new DateTimeOffset(2010, 1, 1, 0, 0, 0, TimeSpan.Zero)
+        };
+
+        var cut = RenderWith(new FakeClient(OnePage(stillRunning)),
+                             b => b.Add(c => c.Language, "en"));
+
+        var cell = cut.Find(".variable-dataitem-main__period");
+
+        Assert.Contains("Ongoing", cell.TextContent, StringComparison.Ordinal);
+        Assert.Empty(cell.QuerySelectorAll("[lang]"));
+
+        // The neighbouring columns still are Norwegian, so this is a distinction the markup draws
+        // rather than a marker that went missing everywhere.
+        Assert.Equal("no", cut.Find(".variable-dataitem-main__source span[lang]").GetAttribute("lang"));
+    }
+
+    [Fact]
+    public void Render_WhenTheCatalogueRecordsNoPeriod_ThenTheCellSaysItIsNotGivenRatherThanOngoing()
+    {
+        // Neither date, which the two dates PeriodText is otherwise built from cannot express: an
+        // open-ended period and an unknown one are different claims, and running them together
+        // would print "? – Pågående" over a variable whose period nobody recorded — a statement
+        // that data collection is ongoing, made about a variable we know nothing about. Null from
+        // PeriodText instead, which the column writes out as "Ikke oppgitt" like every other
+        // missing value.
+        var noPeriod = new VariableSummary
+        {
+            Id = Guid.NewGuid(),
+            Code = "KODE",
+            PreferredTerm = "1. Tale",
+            KildeName = "Als registeret"
+        };
+
+        var cut = RenderWith(new FakeClient(OnePage(noPeriod)));
+
+        var cell = cut.Find(".variable-dataitem-main__period");
+
+        Assert.Equal("Dataperiode: Ikke oppgitt", cell.TextContent);
+        Assert.DoesNotContain("Pågående", cell.TextContent, StringComparison.Ordinal);
+
+        // "Ikke oppgitt" is this component's word, not the catalogue's, so it is unmarked for the
+        // reason the dates beside it are — see the English test above.
+        Assert.Empty(cell.QuerySelectorAll("[lang]"));
+    }
+
+    [Fact]
+    public void Render_WhenOnlyTheEndOfThePeriodIsKnown_ThenTheStartIsAQuestionMark()
+    {
+        // The substitute PeriodBar already writes above its bar, so the column and the open panel
+        // never describe one variable's period two ways. A blank where the start should be would
+        // read as a period that began at the left edge of the row.
+        var endedOnly = new VariableSummary
+        {
+            Id = Guid.NewGuid(),
+            Code = "KODE",
+            PreferredTerm = "1. Tale",
+            KildeName = "Als registeret",
+            DataTo = new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero)
+        };
+
+        var cut = RenderWith(new FakeClient(OnePage(endedOnly)));
+
+        var cell = cut.Find(".variable-dataitem-main__period");
+
+        Assert.StartsWith("Dataperiode: ? – ", cell.TextContent, StringComparison.Ordinal);
+        Assert.Contains("2025", cell.TextContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("Pågående", cell.TextContent, StringComparison.Ordinal);
+    }
+
+    // ---------------------------------------------------------------------------------
     // Styling contract. The package ships no CSS, so every class name it emits has to be
     // one Fhi.Helsedata.Stiler already defines — otherwise the host stylesheet has never
     // heard of it and the element renders as a raw browser default inside a styled page.
@@ -636,10 +1096,12 @@ public class VariableExplorerTest : BunitContext
     [Fact]
     public void Render_Always_ThenNoClassNamesAreInventedApartFromTheDomHandles()
     {
-        // Two names of our own, and both are DOM handles rather than style hooks — nothing in this
-        // package or in Stiler defines a rule for either. Everything else has to come from Stiler,
-        // and this is the guard that says so out loud. The list is exact on purpose: a third name
-        // appearing here is the failure this package exists to avoid, and it has happened twice.
+        // Eight names in the variable-explorer prefix: two of our own, and both DOM handles rather
+        // than style hooks — nothing in this package or in Stiler defines a rule for either — and
+        // six of helsedata's, every one read back off their compiled variables.css. This is the
+        // guard that says so out loud. The list is exact on purpose: a ninth name appearing here,
+        // or a name in it that cannot be pointed at in a stylesheet, is the failure this package
+        // exists to avoid, and it has happened twice.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
                             b => b.Add(c => c.Search, "tale"));
 
@@ -655,6 +1117,14 @@ public class VariableExplorerTest : BunitContext
             "variable-explorer-filters",    // ours, a handle
             "variable-explorer-container",  // theirs, variables.css (10 rules)
             "variable-explorer-results",    // theirs, variables.css (6 rules)
+            // The column picker, all four theirs, all four read off the compiled variables.css
+            // rather than guessed at. The one they do NOT include is `sortable-dropdown`, which
+            // the bead pointed at: that is their mobile sort control, `display: none` above
+            // 1280px, so a picker wearing it would be invisible on every desktop.
+            "variable-explorer-header",                  // theirs, variables.css
+            "variable-explorer-header__actions",         // theirs, variables.css
+            "variable-explorer__dropdown",               // theirs, variables.css (the z-index)
+            "variable-explorer-header__actions-button",  // theirs, variables.css
         ], invented);
         Assert.Equal("variable-explorer", cut.Find("section").ClassName);
 
@@ -4222,13 +4692,13 @@ public class VariableExplorerTest : BunitContext
     public void Render_WhenAPanelIsOpen_ThenItIsBuiltFromShapesRatherThanFromNewClassNames()
     {
         // The rule this guards has changed, and it is worth being precise about what it is now.
-        // The component wears helsedata's own variable-page vocabulary, which includes two names
-        // in this prefix that are THEIRS, not ours: variable-explorer-container (10 rules) and
-        // variable-explorer-results (6), both in variables.css and loaded on every page of their
-        // site. What must never grow is the list of names we INVENT — the three handles below,
-        // which carry no styling anywhere and exist only so a host can find the component in the
-        // DOM. A name in this prefix that is neither theirs nor one of the three is a name that
-        // renders as a raw browser default.
+        // The component wears helsedata's own variable-page vocabulary, which includes several
+        // names in this prefix that are THEIRS, not ours — variable-explorer-container (10 rules),
+        // variable-explorer-results (6), and the column picker's header trio plus its dropdown,
+        // all in variables.css and loaded on every page of their site. What must never grow is
+        // the list of names we INVENT — the handles below, which carry no styling anywhere and
+        // exist only so a host can find the component in the DOM. A name in this prefix that is
+        // neither theirs nor one of those is a name that renders as a raw browser default.
         var cut = RenderWith(TwoRows());
 
         Toggles(cut)[0].Click();
@@ -4245,6 +4715,10 @@ public class VariableExplorerTest : BunitContext
             "variable-explorer-filters",    // ours, a handle
             "variable-explorer-container",  // theirs, variables.css (10 rules)
             "variable-explorer-results",    // theirs, variables.css (6 rules)
+            "variable-explorer-header",     // theirs — the row their own variable page hangs the
+            "variable-explorer-header__actions",        // column picker in, and the ghost button
+            "variable-explorer__dropdown",              // that opens it. All four are variables.css.
+            "variable-explorer-header__actions-button",
             "variable-explorer-detail",     // ours, a handle
             "variable-explorer-group",      // ours — helsedata's panel is flat, so it has no
                                             // group heading to borrow a name from
