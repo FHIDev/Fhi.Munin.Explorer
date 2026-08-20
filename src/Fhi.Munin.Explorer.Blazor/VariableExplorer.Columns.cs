@@ -32,9 +32,9 @@ public partial class VariableExplorer
 
     /// <summary>The columns the picker offers, in the order it lists them.</summary>
     /// <remarks>
-    /// The enum itself rather than a list restating it, the same way <see cref="Sortable"/> is
-    /// every member of the API's own <c>SortField</c>: a column added there without a line here
-    /// would be one the reader could see but not turn off.
+    /// The enum itself rather than a list restating it: two copies of one list drift apart
+    /// independently, and a column added to <see cref="ResultColumn"/> without a line here would
+    /// be one the reader could see but not turn off.
     /// </remarks>
     private static readonly ResultColumn[] OptionalColumns = Enum.GetValues<ResultColumn>();
 
@@ -109,6 +109,18 @@ public partial class VariableExplorer
     private bool ColumnLocked(ResultColumn column) => ColumnVisible(column) && VisibleColumnCount == 1;
 
     /// <summary>Turns a column on or off, unless it is the last one left.</summary>
+    /// <remarks>
+    /// The ordering is deliberately left alone, including when the column being turned off is the
+    /// one the list is ordered by. Hiding Kilde while the list is sorted by it keeps the rows in
+    /// that order and takes the header cell carrying <c>aria-sort</c> and the arrow away with the
+    /// column, so the way back to reversing it is to show the column again — which is what Excel
+    /// does with a sort on a hidden column, and the alternative is worse: sorting is server-side,
+    /// so falling back to the default order here would mean a press on a column control firing a
+    /// query and reordering the list underneath the reader, with a failure path of its own.
+    /// Nothing is lost silently — <see cref="Summary"/> still names the ordering, and
+    /// it is a polite live region, so hiding the column does not stop the list from saying how it
+    /// is ordered.
+    /// </remarks>
     private void ToggleColumn(ResultColumn column)
     {
         if (ColumnLocked(column))
@@ -183,6 +195,25 @@ public partial class VariableExplorer
     /// what is lost is the outside click, which leaves the list open rather than broken.
     /// </para>
     /// <para>
+    /// It wears two names, not one, and both are theirs: <c>variable-explorer__dropdown</c> is the
+    /// z-index that lifts the open list over the rows below it
+    /// (<c>.variable-explorer__dropdown { z-index: 99 }</c>), and the bare <c>dropdown</c> is what
+    /// widens the trigger to its row — <c>variables.css</c> carries
+    /// <c>.variable-explorer-header__actions .dropdown { width: 100% }</c>, unconditionally, beside
+    /// the <c>dropdown-choicepicker</c> rule that puts the open list 36px down. Both were read back
+    /// off the compiled stylesheet; neither is ours.
+    /// </para>
+    /// <para>
+    /// Choosing <c>&lt;details&gt;</c> costs a host outside helsedata's estate two rules the
+    /// element itself makes necessary: a <c>&lt;summary&gt;</c> is <c>display: list-item</c>, so
+    /// without <c>list-style: none</c> and <c>::-webkit-details-marker { display: none }</c> the
+    /// trigger draws a browser disclosure triangle beside "Kolonner" that their own button does not
+    /// have. Both sample hosts carry them, and the host notes say so — helsedata's own control is a
+    /// button, so nothing in their <c>variables.css</c> has a reason to suppress a marker here.
+    /// The filter panel's <c>&lt;details&gt;</c> is not a precedent: its summary is not dressed as
+    /// a button, so its marker is wanted.
+    /// </para>
+    /// <para>
     /// Toggle buttons rather than checkboxes, which is what the facet values already are. Their own
     /// items are a visually-hidden <c>checkbox__input</c> with a label drawing the box, and that
     /// pattern needs the DOM's checked state and the component's to agree — a refusal to hide the
@@ -199,6 +230,9 @@ public partial class VariableExplorer
         builder.AddAttribute(3, "class", "variable-explorer-header__actions");
 
         builder.OpenElement(4, "details");
+        // Two of their names rather than one: `dropdown` is the width rule their own actions row
+        // applies to the trigger, `variable-explorer__dropdown` the z-index under the open list.
+        // Both are in the host contract — see the remarks above.
         builder.AddAttribute(5, "class", "dropdown variable-explorer__dropdown");
         // Their own inline style, not a stylesheet: the list below is absolutely positioned and
         // anchors to the nearest positioned ancestor, and helsedata's React sets exactly this on
@@ -206,6 +240,9 @@ public partial class VariableExplorer
         // positioned further up the host's page.
         builder.AddAttribute(6, "style", "position:relative");
 
+        // Dressed as their ghost square button, which is what their own trigger is. A <summary>
+        // is display: list-item, so a host has to take the disclosure marker off it — two rules,
+        // both in the host notes, and both sample hosts carry them.
         builder.OpenElement(7, "summary");
         builder.AddAttribute(8, "class",
             "hd-button-square button-square--ghost variable-explorer-header__actions-button");

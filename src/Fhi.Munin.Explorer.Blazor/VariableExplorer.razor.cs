@@ -69,20 +69,25 @@ internal enum PanelTab
 /// <c>variable-explorer</c> root.
 /// </para>
 /// <para>
-/// The column picker adds seven names, all of them helsedata's own and none of them ours. They come
+/// The column picker adds eight names, all of them helsedata's own and none of them ours. They come
 /// with the same dependency the pager does — they live in the <c>variables.css</c> that their
 /// variable page carries. <c>variable-explorer-header</c> with its <c>__actions</c> and
 /// <c>__actions-button</c> place the control above the list; <c>dropdown-choicepicker</c> with its
 /// <c>--right</c> and <c>__item</c> draw the open list, positioned against an inline
-/// <c>position: relative</c> exactly as their own markup does it; and
-/// <c>variable-explorer__dropdown</c> is the z-index. Each toggle's label is the button's own text
-/// rather than a span wearing a name, which is one name fewer to have to find in a stylesheet.
-/// A host that has none of them still
+/// <c>position: relative</c> exactly as their own markup does it; and the disclosure wears both
+/// <c>variable-explorer__dropdown</c>, which is the z-index, and the bare <c>dropdown</c>, which is
+/// the width their own actions row gives a trigger
+/// (<c>.variable-explorer-header__actions .dropdown { width: 100% }</c>). Each toggle's label is
+/// the button's own text rather than a span wearing a name, which is one name fewer to have to
+/// find in a stylesheet. A host that has none of them still
 /// gets a working disclosure — the shape is <c>&lt;details&gt;</c>, a <c>&lt;ul&gt;</c> and the
 /// square button in two states, the same three elements the filter panel leans on — it is drawn
 /// in the flow rather than over the list. What it must supply either way is
 /// <c>screenreader-only</c>, or the sentence explaining why the last column will not turn off is
-/// on screen for everyone.
+/// on screen for everyone — and two rules that take the browser's disclosure marker off the
+/// <c>&lt;summary&gt;</c>, which is <c>display: list-item</c> by default and would otherwise draw
+/// a triangle beside a button that has none. helsedata's own trigger is a <c>&lt;button&gt;</c>,
+/// so their stylesheet has no reason to carry those two.
 /// </para>
 /// <para>
 /// The detail panel adds no class name either, and for the same reason. It is a
@@ -431,18 +436,6 @@ public partial class VariableExplorer : ComponentBase
     // from a pager button, so a single-page result reached that way still costs no furniture.
     private bool _keepPager;
 
-    /// <summary>
-    /// The orders offered for sorting, in the order the buttons appear.
-    /// </summary>
-    /// <remarks>
-    /// Every member of <see cref="SortField"/>, in declaration order, rather than a list restating
-    /// it: that enum is already the closed set of orders the API implements, and its own remarks are
-    /// where the reason a field is missing from it is written down. Two copies of a list and of its
-    /// reason drift apart independently — a member added there would otherwise leave the button row
-    /// silently short.
-    /// </remarks>
-    private static readonly SortField[] Sortable = Enum.GetValues<SortField>();
-
     // The search text the visible result actually came from, which is not the same as the
     // text in the box: @bind writes _search on blur, so the box can hold an unsubmitted query
     // while the table below still shows the previous one. The announcement has to describe
@@ -644,22 +637,6 @@ public partial class VariableExplorer : ComponentBase
         : T.ResultSummary(FirstItemOnPage, LastItemOnPage, TotalCount, _executedSearch, _filter.ActiveCount,
                           T.FieldLabel(_sort), T.DirectionName(_direction));
 
-    /// <summary>A sort button's label — the field, plus the direction when it is the active one.</summary>
-    private string ButtonText(SortField sort) =>
-        sort == _sort ? T.ActiveLabel(T.FieldLabel(sort), T.DirectionName(_direction)) : T.FieldLabel(sort);
-
-    /// <summary>
-    /// A sort button's classes. The active field is filled, the rest are ghosts; the trailing
-    /// margins are Stiler's own modifiers, which the buttons need because nothing else separates
-    /// them — Razor drops the whitespace between elements.
-    /// </summary>
-    private string ButtonClass(SortField sort)
-    {
-        var style = sort == _sort ? "button-square--secondary" : "button-square--ghost";
-
-        return $"hd-button-square {style} margin-right margin-bottom";
-    }
-
     /// <summary><c>"true"</c> on the active field, and nothing at all on the others.</summary>
     /// <remarks>
     /// Null rather than <c>"false"</c>: Blazor leaves an attribute out when its value is null, and
@@ -757,6 +734,9 @@ public partial class VariableExplorer : ComponentBase
     /// Every cell but the first is drawn only while its column is on screen — see
     /// <see cref="ColumnVisible"/>. The header and the rows read the same predicate, because a
     /// header cell without the values under it puts every row out of line with its own column.
+    /// That is also why a sorted column does not keep its header when it is hidden: leaving the
+    /// cell behind for its <c>aria-sort</c> would be the misalignment this rule exists to prevent.
+    /// The ordering itself survives, deliberately and announced — see <see cref="ToggleColumn"/>.
     /// </para>
     /// </remarks>
     private RenderFragment ResultHeader() => builder =>

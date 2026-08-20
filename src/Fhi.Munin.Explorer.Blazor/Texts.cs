@@ -148,8 +148,6 @@ internal sealed record Texts(
     string NextLabel,
     // (page, totalPages) — the pager's own "Side 2 av 13".
     Func<int, int, string> PageOf,
-    // (field, direction) — the active sort button's label.
-    Func<string, string, string> ActiveLabel,
     // (from, to, total, search, filters, field, direction) — the whole result sentence. The
     // ordering clause is part of it rather than appended by the caller, so a language whose
     // grammar puts the ordering first can say it that way instead of inheriting Norwegian's
@@ -393,7 +391,6 @@ internal sealed record Texts(
         PreviousLabel: "Forrige side",
         NextLabel: "Neste side",
         PageOf: (page, totalPages) => $"Side {page} av {totalPages}",
-        ActiveLabel: (field, direction) => $"{field} ({direction})",
         // The whole sentence, ordering clause included, because the comma and where the clause
         // sits are this language's grammar and not something to fix in C#.
         ResultSummary: (from, to, total, search, filters, field, direction) =>
@@ -549,7 +546,6 @@ internal sealed record Texts(
         PreviousLabel: "Previous page",
         NextLabel: "Next page",
         PageOf: (page, totalPages) => $"Page {page} of {totalPages}",
-        ActiveLabel: (field, direction) => $"{field} ({direction})",
         ResultSummary: (from, to, total, search, filters, field, direction) =>
         {
             var count = total == 1 ? "1 variable" : $"{total} variables";

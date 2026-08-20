@@ -741,6 +741,34 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
+    public void Columns_WhenStatusIsTurnedOffByHand_ThenTheFilterDoesNotPutItBack()
+    {
+        // The other direction of the same press, and the one the flag exists for: with historical
+        // variables in the list the filter is drawing Status, so turning it off has to record that
+        // the reader has chosen as well as hide it. Without the record the press is a visible
+        // no-op — aria-pressed goes to false over a column that is still on screen — and every
+        // later trip through the filter puts it back.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        ClickFacet(cut, "Vis historiske");
+
+        Assert.NotNull(cut.Find(".variable-dataitem-main__status"));
+
+        ColumnToggle(cut, "Status").Click();
+
+        Assert.Empty(cut.FindAll(".variable-dataitem-main__status"));
+        Assert.Empty(cut.FindAll(".variable-dataitem-header__status"));
+        Assert.Equal("false", ColumnToggle(cut, "Status").GetAttribute("aria-pressed"));
+
+        // And it stays off through the filter that used to own it: their choice wins from here.
+        ClickFacet(cut, "Vis historiske");
+        ClickFacet(cut, "Vis historiske");
+
+        Assert.Empty(cut.FindAll(".variable-dataitem-main__status"));
+        Assert.Equal("false", ColumnToggle(cut, "Status").GetAttribute("aria-pressed"));
+    }
+
+    [Fact]
     public void Columns_WhenHistoricalVariablesAreIncluded_ThenStatusStartsOnScreen()
     {
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
@@ -761,6 +789,42 @@ public class VariableExplorerTest : BunitContext
         cut.Find("form").Submit();
 
         Assert.Empty(cut.FindAll(".variable-dataitem-main__source"));
+    }
+
+    [Fact]
+    public void Columns_WhenTheSortedColumnIsHidden_ThenTheOrderingStaysAndIsStillAnnounced()
+    {
+        // A decision rather than an oversight, and this is where it is written down. Hiding the
+        // column the list is ordered by takes its header cell away, and with it the aria-sort and
+        // the arrow — leaving the cell behind would put every row out of line with its own column,
+        // which is the rule the header already obeys. The ordering itself is left alone: sorting is
+        // server-side, so resetting it here would make a press in the picker fire a query and
+        // reorder the list underneath the reader. Excel keeps a sort on a hidden column too.
+        var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        ClickSort(cut, "Kilde");
+        ClickSort(cut, "Kilde");
+
+        var calls = client.Calls;
+
+        HideColumn(cut, "Kilde");
+
+        Assert.Empty(cut.FindAll(".variable-dataitem-header__source"));
+        Assert.Empty(cut.FindAll("[aria-sort]"));
+
+        // The list is still in that order, nothing was re-fetched to get there, and the live
+        // region still says so — which is what makes this survivable rather than silent.
+        Assert.Equal(calls, client.Calls);
+        Assert.Equal(SortField.Kilde, client.LastSort);
+        Assert.Equal(SortDirection.Descending, client.LastDirection);
+        Assert.Contains("sortert på Kilde, synkende", cut.Find("p[role='status']").TextContent);
+
+        // And the way back is the control that took it away.
+        ColumnToggle(cut, "Kilde").Click();
+
+        Assert.Equal("descending",
+                     cut.Find(".variable-dataitem-header__source").GetAttribute("aria-sort"));
     }
 
     [Fact]
@@ -813,6 +877,20 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
+    public void Render_WhenThereAreNoHits_ThenThePickerStaysAnyway()
+    {
+        // The same rule the sort control has, for the same reason: a control that leaves the
+        // document when a search comes back empty takes the reader's place in it with it, dropping
+        // focus to <body>. Moving @ColumnPicker() inside the "there are hits" block would break
+        // nothing else in this file, so the rule is asserted here rather than only in prose.
+        var cut = RenderWith(new FakeClient(OnePage()));
+
+        Assert.Equal(
+            ["Kode", "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Status", "Dataperiode"],
+            ColumnToggles(cut).Select(b => b.TextContent.Trim()));
+    }
+
+    [Fact]
     public void Render_Always_ThenThePickerBorrowsItsClassNamesAndInventsNone()
     {
         // The companion to the variable-explorer guard further down, which only inspects names in
@@ -834,7 +912,10 @@ public class VariableExplorerTest : BunitContext
         Assert.Equal(
         [
             "button-square--ghost",           // Stiler, the ghost colour the sort and facet
-            "dropdown",                       //   buttons already wear
+                                              //   buttons already wear
+            "dropdown",                       // helsedata, variables.css — the trigger's width:
+                                              //   `.variable-explorer-header__actions .dropdown
+                                              //   { width: 100% }`, unconditional
             "dropdown-choicepicker",          // helsedata, variables.css — the open list
             "dropdown-choicepicker--right",
             "dropdown-choicepicker__item",
@@ -859,8 +940,13 @@ public class VariableExplorerTest : BunitContext
         // a stylesheet this package does not ship.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
+        // Both their names, and the exact pair: `dropdown` is the width their actions row gives a
+        // trigger, `variable-explorer__dropdown` the z-index over the rows below. Asserted as a
+        // set rather than with Contains, which `variable-explorer__dropdown` would satisfy on its
+        // own and so could not tell the two apart.
         var dropdown = cut.Find(".variable-explorer-header__actions > details");
-        Assert.Contains("dropdown", dropdown.ClassName!);
+        Assert.Equal(["dropdown", "variable-explorer__dropdown"],
+                     dropdown.ClassName!.Split(' ', StringSplitOptions.RemoveEmptyEntries));
         Assert.Contains("relative", dropdown.GetAttribute("style")!);
 
         // A <details>, because their dropdown opens and closes from React state and this package
@@ -927,6 +1013,59 @@ public class VariableExplorerTest : BunitContext
         Assert.Equal("no", cut.Find(".variable-dataitem-main__source span[lang]").GetAttribute("lang"));
     }
 
+    [Fact]
+    public void Render_WhenTheCatalogueRecordsNoPeriod_ThenTheCellSaysItIsNotGivenRatherThanOngoing()
+    {
+        // Neither date, which the two dates PeriodText is otherwise built from cannot express: an
+        // open-ended period and an unknown one are different claims, and running them together
+        // would print "? – Pågående" over a variable whose period nobody recorded — a statement
+        // that data collection is ongoing, made about a variable we know nothing about. Null from
+        // PeriodText instead, which the column writes out as "Ikke oppgitt" like every other
+        // missing value.
+        var noPeriod = new VariableSummary
+        {
+            Id = Guid.NewGuid(),
+            Code = "KODE",
+            PreferredTerm = "1. Tale",
+            KildeName = "Als registeret"
+        };
+
+        var cut = RenderWith(new FakeClient(OnePage(noPeriod)));
+
+        var cell = cut.Find(".variable-dataitem-main__period");
+
+        Assert.Equal("Dataperiode: Ikke oppgitt", cell.TextContent);
+        Assert.DoesNotContain("Pågående", cell.TextContent, StringComparison.Ordinal);
+
+        // "Ikke oppgitt" is this component's word, not the catalogue's, so it is unmarked for the
+        // reason the dates beside it are — see the English test above.
+        Assert.Empty(cell.QuerySelectorAll("[lang]"));
+    }
+
+    [Fact]
+    public void Render_WhenOnlyTheEndOfThePeriodIsKnown_ThenTheStartIsAQuestionMark()
+    {
+        // The substitute PeriodBar already writes above its bar, so the column and the open panel
+        // never describe one variable's period two ways. A blank where the start should be would
+        // read as a period that began at the left edge of the row.
+        var endedOnly = new VariableSummary
+        {
+            Id = Guid.NewGuid(),
+            Code = "KODE",
+            PreferredTerm = "1. Tale",
+            KildeName = "Als registeret",
+            DataTo = new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero)
+        };
+
+        var cut = RenderWith(new FakeClient(OnePage(endedOnly)));
+
+        var cell = cut.Find(".variable-dataitem-main__period");
+
+        Assert.StartsWith("Dataperiode: ? – ", cell.TextContent, StringComparison.Ordinal);
+        Assert.Contains("2025", cell.TextContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("Pågående", cell.TextContent, StringComparison.Ordinal);
+    }
+
     // ---------------------------------------------------------------------------------
     // Styling contract. The package ships no CSS, so every class name it emits has to be
     // one Fhi.Helsedata.Stiler already defines — otherwise the host stylesheet has never
@@ -953,10 +1092,12 @@ public class VariableExplorerTest : BunitContext
     [Fact]
     public void Render_Always_ThenNoClassNamesAreInventedApartFromTheDomHandles()
     {
-        // Two names of our own, and both are DOM handles rather than style hooks — nothing in this
-        // package or in Stiler defines a rule for either. Everything else has to come from Stiler,
-        // and this is the guard that says so out loud. The list is exact on purpose: a third name
-        // appearing here is the failure this package exists to avoid, and it has happened twice.
+        // Eight names in the variable-explorer prefix: two of our own, and both DOM handles rather
+        // than style hooks — nothing in this package or in Stiler defines a rule for either — and
+        // six of helsedata's, every one read back off their compiled variables.css. This is the
+        // guard that says so out loud. The list is exact on purpose: a ninth name appearing here,
+        // or a name in it that cannot be pointed at in a stylesheet, is the failure this package
+        // exists to avoid, and it has happened twice.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
                             b => b.Add(c => c.Search, "tale"));
 
