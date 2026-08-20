@@ -1,3 +1,4 @@
+using AngleSharp.Dom;
 using Bunit;
 using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
@@ -2575,6 +2576,59 @@ public class VariableExplorerTest : BunitContext
         Toggles(cut)[0].Click();
 
         Assert.DoesNotContain("FlerkodetFelt", Panel(cut).TextContent);
+    }
+
+    /// <summary>The properties group's rows, as label/value element pairs.</summary>
+    private static (IElement Label, IElement Value)[] PropertyPairs(IRenderedComponent<VariableExplorer> cut)
+    {
+        var list = cut.Find(".variable-explorer-group ~ dl:last-of-type");
+
+        return [.. list.QuerySelectorAll("div").Select(d => (d.QuerySelector("dt")!, d.QuerySelector("dd")!))];
+    }
+
+    [Fact]
+    public void Properties_WhenAnEnglishPageFallsBackToNorwegian_ThenThatTextIsMarkedAsNorwegian()
+    {
+        // An English reader gets some Norwegian either way: labels nobody translated, and free text,
+        // which the catalogue only ever stores once. Marking it is what lets a screen reader switch
+        // voice instead of reading a Norwegian sentence with English phonetics.
+        var id = Guid.NewGuid();
+        var cut = RenderWith(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(WithProperties(id)),
+                             b => b.Add(c => c.Language, "en"));
+
+        Toggles(cut)[0].Click();
+
+        var rows = PropertyPairs(cut);
+
+        // Opprinnelse: label and coded value both exist in English, so both inherit the page.
+        Assert.Equal("Origin", rows[0].Label.TextContent);
+        Assert.Null(rows[0].Label.GetAttribute("lang"));
+        Assert.Null(rows[0].Value.GetAttribute("lang"));
+
+        // Kommentar: the label is translated, the free text underneath it never is.
+        Assert.Equal("Comment", rows[1].Label.TextContent);
+        Assert.Null(rows[1].Label.GetAttribute("lang"));
+        Assert.Equal("no", rows[1].Value.GetAttribute("lang"));
+
+        // Databasereferanse: no English label at all.
+        Assert.Equal("no", rows[2].Label.GetAttribute("lang"));
+    }
+
+    [Fact]
+    public void Properties_WhenThePageIsNorwegian_ThenNothingIsMarkedAtAll()
+    {
+        // Everything is already in the reader's language, so the attribute would say nothing. It
+        // appears only where it carries information, which is what keeps it meaning something.
+        var id = Guid.NewGuid();
+        var cut = RenderWith(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(WithProperties(id)));
+
+        Toggles(cut)[0].Click();
+
+        Assert.All(PropertyPairs(cut), row =>
+        {
+            Assert.Null(row.Label.GetAttribute("lang"));
+            Assert.Null(row.Value.GetAttribute("lang"));
+        });
     }
 
     [Fact]

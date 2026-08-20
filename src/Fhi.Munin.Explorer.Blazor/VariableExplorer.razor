@@ -403,12 +403,8 @@ else
                                              tabindex="0">
                                             @if (_tab is PanelTab.Details)
                                             {
-                                                @* Runa's groups. Egenskaper is the third and is
-                                                   deliberately absent: it is almost entirely
-                                                   enum-valued properties that the API returns as
-                                                   bare codes, so drawing it today would print
-                                                   "Opprinnelse: 5". See Fhi.Metadata-88tyl, which
-                                                   waits on Fhi.Metadata-b2lzd. *@
+                                                @* Runa's three groups: Identifikasjon, Plassering
+                                                   and Egenskaper, in that order. *@
                                                 <h3 class="headline headline-xxs margin--none variable-explorer-group">@T.GroupIdentification</h3>
 
                                                 <dl class="variable-meta__grid variable-meta__grid-1">
@@ -455,7 +451,12 @@ else
                                                    they are called, what order they come in and
                                                    what their coded values mean all arrive with the
                                                    payload, so a property added in Munin shows up
-                                                   here without this package being touched. *@
+                                                   here without this package being touched.
+
+                                                   The values arrive as codes — "Opprinnelse": "5" —
+                                                   and are resolved against the vocabulary that
+                                                   travels beside them. Nothing is resolved here
+                                                   against a table of our own; see PropertyValue. *@
                                                 @PropertiesGroup(detail)
                                             }
                                             else
