@@ -1,0 +1,131 @@
+@using System.Text
+@using Fhi.Munin.Explorer.Blazor
+@using Fhi.Munin.Explorer.Contracts
+@using Microsoft.AspNetCore.WebUtilities
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+
+@* The host half of the shareable-state contract, and the whole of it.
+
+   The package has no router and never touches the address bar — the host owns the URL, so
+   this is where a shared link is read and written. helsedata can copy this file nearly
+   verbatim; it is the reference implementation as much as it is the sample.
+
+   Everything is bound both ways. The component reports what is in force after each fetch,
+   including the corrections it makes on its own — a page past the end of a shrunken result
+   set comes back as the page that actually loaded. *@
+
+<VariableExplorer @bind-Search="_search"
+                  @bind-Filter="_filter"
+                  @bind-Sort="_sort"
+                  @bind-Direction="_direction"
+                  @bind-Page="_page"
+                  Language="@Language" />
+
+@code {
+    /// <summary>The query string the page was opened with, read server-side by the view.</summary>
+    [Parameter] public string? InitialQuery { get; set; }
+
+    [Parameter] public string Language { get; set; } = "no";
+
+    private string? _search;
+    private VariableFilter _filter = VariableFilter.None;
+    private SortField _sort = SortField.Default;
+    private SortDirection _direction = SortDirection.Ascending;
+    private int _page = 1;
+
+    // What the address bar already says. Without it every render would call into JS to write
+    // the URL it is already showing.
+    private string? _mirrored;
+
+    protected override void OnInitialized()
+    {
+        // The filter knows its own query format, both ways — this host does not restate it.
+        _filter = VariableFilter.Parse(InitialQuery);
+
+        var query = QueryHelpers.ParseQuery(InitialQuery ?? "");
+
+        if (query.TryGetValue("search", out var search))
+        {
+            _search = search.ToString();
+        }
+
+        if (query.TryGetValue("sort", out var sort)
+            && Enum.TryParse<SortField>(sort.ToString(), ignoreCase: true, out var parsedSort))
+        {
+            _sort = parsedSort;
+        }
+
+        if (query.TryGetValue("sortDir", out var direction)
+            && Enum.TryParse<SortDirection>(direction.ToString(), ignoreCase: true, out var parsedDirection))
+        {
+            _direction = parsedDirection;
+        }
+
+        // Not validated against the result set, deliberately: nothing here knows how many pages
+        // there are, and the component clamps it and reports back what it landed on.
+        if (query.TryGetValue("page", out var page) && int.TryParse(page.ToString(), out var parsedPage))
+        {
+            _page = Math.Max(parsedPage, 1);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        var query = BuildQuery();
+
+        if (query == _mirrored)
+        {
+            return;
+        }
+
+        _mirrored = query;
+
+        // replaceState, not pushState. Every keystroke-free interaction here — a sort, a page turn,
+        // a facet — would otherwise become a history entry, and Back would walk the reader through
+        // their own filtering one step at a time instead of leaving the site. Runa made the same
+        // call; its router writes these with replace: true.
+        await JS.InvokeVoidAsync("history.replaceState", null, "", query);
+    }
+
+    private string BuildQuery()
+    {
+        var query = new StringBuilder(_filter.ToQueryString());
+
+        Append(query, "search", _search);
+
+        // Only what differs from the default reaches the URL. A link should carry the parts of the
+        // view someone chose, not a transcript of every setting the component has.
+        if (_sort != SortField.Default)
+        {
+            Append(query, "sort", _sort.ToString());
+        }
+
+        if (_direction != SortDirection.Ascending)
+        {
+            Append(query, "sortDir", _direction.ToString());
+        }
+
+        if (_page > 1)
+        {
+            Append(query, "page", _page.ToString());
+        }
+
+        // "?x=1" to set, and a bare path to clear: assigning "" would leave the previous query
+        // string in place, so clearing every filter would not clear the URL.
+        return query.Length == 0 ? "/" : "?" + query;
+    }
+
+    private static void Append(StringBuilder query, string name, string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return;
+        }
+
+        query.Append(query.Length == 0 ? "" : "&")
+             .Append(name)
+             .Append('=')
+             .Append(Uri.EscapeDataString(value));
+    }
+}

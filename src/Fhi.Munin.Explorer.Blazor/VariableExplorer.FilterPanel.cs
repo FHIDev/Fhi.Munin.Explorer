@@ -564,6 +564,10 @@ public partial class VariableExplorer
 
         // _filter and not next: what the host is told is what is in force, rolled back or not.
         await RaiseAsync(FilterChanged, _filter);
+
+        // Narrowing renumbers the pages, so a host mirroring this into a URL has to drop the page
+        // it was holding. Same rule as the filter: whatever is in force, rolled back or not.
+        await NotifyPageChangedAsync();
     }
 
     /// <summary>

@@ -252,6 +252,44 @@ public partial class VariableExplorer : ComponentBase
     /// </remarks>
     [Parameter] public EventCallback<VariableFilter> FilterChanged { get; set; }
 
+    /// <summary>The column the list is ordered by, and the direction. Two-way.</summary>
+    /// <remarks>
+    /// Runa keeps both in the URL, so a colleague opening a shared link sees the same order. They
+    /// are two parameters rather than one because a host binds each with <c>@bind-Sort</c> and
+    /// <c>@bind-Direction</c>; they change together, and both callbacks fire on the same click.
+    /// <para>
+    /// Raised only after the reordered list has actually arrived. A failed fetch puts the old order
+    /// back — see <see cref="SortAsync"/> — and telling the host about an order the API never
+    /// delivered would leave a URL describing a list nobody can see.
+    /// </para>
+    /// </remarks>
+    [Parameter] public SortField Sort { get; set; } = SortField.Default;
+
+    /// <inheritdoc cref="Sort"/>
+    [Parameter] public EventCallback<SortField> SortChanged { get; set; }
+
+    /// <inheritdoc cref="Sort"/>
+    [Parameter] public SortDirection Direction { get; set; } = SortDirection.Ascending;
+
+    /// <inheritdoc cref="Sort"/>
+    [Parameter] public EventCallback<SortDirection> DirectionChanged { get; set; }
+
+    /// <summary>Which page of results is showing. Two-way, one-based.</summary>
+    /// <remarks>
+    /// Restored on first render, so a shared link opens on the page it was shared from. A page past
+    /// the end is not an error: the server clamps it and the component adopts the page that actually
+    /// arrived, so a stale link lands on the last page rather than on nothing.
+    /// <para>
+    /// Also raised when the page resets to 1 — a new search or a changed filter renumbers
+    /// everything, and a host that only heard about page turns would keep <c>page=7</c> in a URL
+    /// whose result set no longer has seven pages.
+    /// </para>
+    /// </remarks>
+    [Parameter] public int Page { get; set; } = 1;
+
+    /// <inheritdoc cref="Page"/>
+    [Parameter] public EventCallback<int> PageChanged { get; set; }
+
     /// <summary>
     /// The variable whose detail panel is open, or null when none is. Set by the host, typically
     /// from its own URL, the same way <see cref="Search"/> and <see cref="Filter"/> are.
