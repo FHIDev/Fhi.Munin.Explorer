@@ -58,9 +58,24 @@ public interface IMuninExplorerClient
     /// <param name="search">Same free-text search as <see cref="SearchVariablesAsync"/>.</param>
     /// <param name="filter">Same narrowing as <see cref="SearchVariablesAsync"/>.</param>
     /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
+    /// <param name="language">
+    /// The language to resolve facet display names in, as a two-letter code — <c>"nb"</c> or
+    /// <c>"en"</c>. Sent as <c>Accept-Language</c>. The datatype facet's name is resolved server
+    /// side from editable master data, so it follows this rather than being mapped by the caller.
+    /// Null leaves the header off and takes the API's own default.
+    /// <para>
+    /// A parameter rather than something configured once on the client, which was considered and
+    /// does not work here: the language is a <see cref="Fhi.Munin.Explorer.Contracts"/> consumer's
+    /// per-render state, not its per-application state. Two explorers can sit on one page in two
+    /// languages, and helsedata serves /no/ and /en/ from one application — a delegating handler or
+    /// a culture provider registered in DI cannot tell those apart, and would label one of them
+    /// wrongly. It has to travel with the call that asks.
+    /// </para>
+    /// </param>
     Task<FilterOptions> GetFiltersAsync(
         string? search = null,
         VariableFilter? filter = null,
+        string? language = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>List all kilder with summary metadata.</summary>

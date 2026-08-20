@@ -1,8 +1,23 @@
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
+using Microsoft.AspNetCore.Components.Web;
 
 namespace Fhi.Munin.Explorer.Blazor;
+
+/// <summary>
+/// The panel's tabs. Runa splits the open row into what the variable IS and what its data holds;
+/// this is that split, not helsedata's — their page is the one being replaced.
+/// </summary>
+internal enum PanelTab
+{
+    /// <summary>Description, placement and properties.</summary>
+    Details,
+
+    /// <summary>The kodeverk the values are drawn from.</summary>
+    Data,
+}
+
 
 /// <summary>
 /// Search and browse published variables from the Munin Explorer API.
@@ -768,6 +783,204 @@ public partial class VariableExplorer : ComponentBase
         builder.CloseElement();
     };
 
+    /// <summary>
+    /// The data period, drawn as Runa draws it: the two dates, and a bar beneath them.
+    /// </summary>
+    /// <remarks>
+    /// The bar's width is the share of the variable's own lifetime that its data covers —
+    /// <c>(to - from) / (now - from)</c> — so a register that stopped collecting years ago reads as
+    /// visibly short, and one still collecting fills the bar. That is Runa's rule, not an
+    /// invention: a period with no end is drawn full and in a different colour rather than as an
+    /// unknown, because "no end date" means still running.
+    /// <para>
+    /// Floored at 5% so a period of days is still a mark rather than nothing at all, and capped at
+    /// 100% because a <c>to</c> in the future would otherwise overflow the track.
+    /// </para>
+    /// <para>
+    /// <c>variable-explorer-period</c> is a handle of ours, like the other four: helsedata has no
+    /// period bar to borrow a name from. The host draws it; without a rule it degrades to the two
+    /// dates, which is the information, with the bar as the illustration.
+    /// </para>
+    /// </remarks>
+    private RenderFragment PeriodBar(DateTimeOffset? from, DateTimeOffset? to) => builder =>
+    {
+        if (from is null && to is null)
+        {
+            builder.AddContent(0, T.NotSpecified);
+            return;
+        }
+
+        var ongoing = to is null;
+
+        builder.OpenElement(1, "div");
+        builder.AddAttribute(2, "class", "variable-explorer-period");
+
+        builder.OpenElement(3, "p");
+        builder.AddAttribute(4, "class", "variable-explorer-period__range");
+        builder.AddContent(5, from is { } f ? MonthYear(f) : "?");
+        builder.AddContent(6, " – ");
+        builder.AddContent(7, to is { } t ? MonthYear(t) : T.Ongoing);
+        builder.CloseElement();
+
+        builder.OpenElement(8, "div");
+        builder.AddAttribute(9, "class",
+            ongoing
+                ? "variable-explorer-period__track variable-explorer-period__track--ongoing"
+                : "variable-explorer-period__track");
+        // Decorative: the dates above say the same thing, and a bar a screen reader announces as
+        // "94 percent" would describe a proportion nobody asked about.
+        builder.AddAttribute(10, "aria-hidden", "true");
+
+        builder.OpenElement(11, "div");
+        builder.AddAttribute(12, "class", "variable-explorer-period__fill");
+        builder.AddAttribute(13, "style", $"width:{PeriodShare(from, to)}%");
+        builder.CloseElement();
+
+        builder.CloseElement();
+        builder.CloseElement();
+    };
+
+    /// <summary>The share of the variable's lifetime its data covers, as a whole percent.</summary>
+    private static int PeriodShare(DateTimeOffset? from, DateTimeOffset? to)
+    {
+        if (from is not { } start || to is not { } end)
+        {
+            return 100;
+        }
+
+        var lifetime = DateTimeOffset.UtcNow - start;
+        var covered = end - start;
+
+        if (lifetime <= TimeSpan.Zero)
+        {
+            return 100;
+        }
+
+        return Math.Clamp((int)Math.Round(covered / lifetime * 100), 5, 100);
+    }
+
+    /// <summary>A date as month and year, in the reader's language.</summary>
+    private string MonthYear(DateTimeOffset date) =>
+        date.ToString("MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo(
+            string.Equals(Language, "en", StringComparison.OrdinalIgnoreCase) ? "en" : "nb-NO"));
+
+    /// <summary>Which tab of the open panel is showing.</summary>
+    /// <remarks>
+    /// Runa's panel has two: the metadata, and the data behind the variable. Reset whenever a
+    /// different row is opened — a reader who was on Data for one variable has not asked to be on
+    /// Data for the next, and arriving on a tab you did not choose is disorienting.
+    /// </remarks>
+    private PanelTab _tab = PanelTab.Details;
+
+    /// <summary>The panel's tabs, in the order they are drawn.</summary>
+    private static readonly PanelTab[] Tabs = Enum.GetValues<PanelTab>();
+
+    private string TabId(PanelTab tab) => $"variable-explorer-tab-{_instance}-{tab}";
+
+    /// <summary>
+    /// The one tab panel. Its id does not vary by tab: there is a single panel whose contents
+    /// change, so every tab points at it. An id per tab would leave the unselected tab's
+    /// aria-controls naming an element that is not rendered.
+    /// </summary>
+    private string TabPanelId() => $"variable-explorer-tabpanel-{_instance}";
+
+    private string TabLabel(PanelTab tab) => tab switch
+    {
+        PanelTab.Details => T.TabDetails,
+        PanelTab.Data => T.TabData,
+        _ => throw new ArgumentOutOfRangeException(nameof(tab), tab, "No label for this tab."),
+    };
+
+    private string TabClass(PanelTab tab) =>
+        tab == _tab
+            ? "variable-meta__tab variable-meta__tab--active"
+            : "variable-meta__tab";
+
+    private void SelectTab(PanelTab tab) => _tab = tab;
+
+    /// <summary>
+    /// Arrow-key movement between the tabs, as the APG tabs pattern prescribes.
+    /// </summary>
+    /// <remarks>
+    /// Without this a keyboard user tabs into the tablist and cannot change tab: the buttons carry
+    /// <c>tabindex="-1"</c> when not selected, which is what stops the tablist costing one tab stop
+    /// per tab. Arrow keys are what replaces those stops, so leaving them out makes the panel
+    /// unreachable rather than merely awkward.
+    /// </remarks>
+    private void TabKey(KeyboardEventArgs e)
+    {
+        var i = Array.IndexOf(Tabs, _tab);
+
+        var next = e.Key switch
+        {
+            "ArrowRight" or "ArrowDown" => (i + 1) % Tabs.Length,
+            "ArrowLeft" or "ArrowUp" => (i - 1 + Tabs.Length) % Tabs.Length,
+            "Home" => 0,
+            "End" => Tabs.Length - 1,
+            _ => i,
+        };
+
+        _tab = Tabs[next];
+    }
+
+    /// <summary>
+    /// A datatype code as its name, from the facets the filter panel has already loaded.
+    /// </summary>
+    /// <remarks>
+    /// The row endpoint sends the code — "2" — and nothing else. The filters endpoint sends the
+    /// same codes WITH their names, and the component fetches those anyway to draw the filter
+    /// panel, so the name is already in memory and costs no second request.
+    /// <para>
+    /// Falls back to the raw code when the facets have not arrived yet, or against an API that
+    /// predates the names. A code is poor, but it is true; a lookup table here would freeze a copy
+    /// of editable master data inside a package that ships to other people.
+    /// </para>
+    /// </remarks>
+    private string? DataTypeName(string? code)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            return code;
+        }
+
+        var named = _facets?.DataTypes.FirstOrDefault(d => d.Value == code)?.DisplayName;
+
+        return string.IsNullOrWhiteSpace(named) ? code : named;
+    }
+
+    /// <summary>The heading of the drill-in view, named after whatever was opened.</summary>
+    private RenderFragment DrilldownHeading => builder =>
+    {
+        var name = _kilde?.PreferredTerm ?? _datasamling?.PreferredTerm;
+
+        builder.OpenElement(0, $"h{RowLevel}");
+        builder.AddAttribute(1, "class", "headline headline-s margin--bottom");
+        builder.AddAttribute(2, "id", SourceHeadingId);
+
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            // The catalogue's own name, so it stays Norwegian whatever the UI language is.
+            builder.AddAttribute(3, "lang", "no");
+            builder.AddContent(4, name);
+        }
+        else
+        {
+            builder.AddContent(5, _sourceKind == SourceKind.Kilde ? T.ShowKilde : T.ShowDatasamling);
+        }
+
+        builder.CloseElement();
+    };
+
+    /// <summary>Leaves the drill-in view and returns to the list, which was never torn down.</summary>
+    private Task CloseSourceAsync()
+    {
+        _sourceKind = null;
+        _kilde = null;
+        _datasamling = null;
+
+        return Task.CompletedTask;
+    }
+
     /// <summary>Whether this field is the one the list is currently ordered by.</summary>
     private bool IsActiveSort(SortField field) => _sort == field;
 
@@ -826,7 +1039,7 @@ public partial class VariableExplorer : ComponentBase
         Column(builder, 200, T.FieldSource, v.KildeShortName ?? v.KildeName, "source", tooltip: v.KildeName);
         Column(builder, 300, T.FieldDataCollection, v.DatasamlingName, "dataCollection");
         Column(builder, 400, T.FieldVariableGroup, v.VariabelgruppeName, "theme");
-        Column(builder, 500, T.FieldDataType, v.DataType, "dataType");
+        Column(builder, 500, T.FieldDataType, DataTypeName(v.DataType), "dataType");
 
         // Status is drawn only when historical variables can be in the list at all. The API
         // computes it from GyldigTil — Active unless the version has expired — and excludes
@@ -1026,7 +1239,22 @@ public partial class VariableExplorer : ComponentBase
     private string DetailStatusClass => _detailError is null ? "caption" : "infobox infobox--bg-yellow";
 
     /// <summary>One step of the kilde trail, and whether it is Munin's Norwegian or our own prose.</summary>
-    private sealed record Crumb(string Text, bool Norwegian);
+    /// <summary>
+    /// One step of the kilde trail, and whether it is Munin's Norwegian or our own prose.
+    /// </summary>
+    /// <param name="Text">The step's own words.</param>
+    /// <param name="Norwegian">
+    /// Whether the words are Munin's Norwegian rather than our prose, which decides whether the
+    /// step is marked <c>lang="no"</c>.
+    /// </param>
+    /// <param name="OpensKilde">
+    /// Whether this step opens the kilde panel. Runa makes the kilde a link to its own kilde route;
+    /// this component has no routes — the host owns the URL — so the same affordance becomes the
+    /// control that discloses the kilde in place. A reader clicks the kilde and gets the kilde
+    /// either way; only the mechanism differs, and the mechanism is the one thing an embedded
+    /// component cannot borrow.
+    /// </param>
+    private sealed record Crumb(string Text, bool Norwegian, bool OpensKilde = false);
 
     /// <summary>
     /// The variable's place in the catalogue, widest first: kildetype, kilde, datasamling.
@@ -1054,7 +1282,9 @@ public partial class VariableExplorer : ComponentBase
                 || string.Equals(shortName, detail.KildeName, StringComparison.OrdinalIgnoreCase);
 
             crumbs.Add(new Crumb(
-                sameThingTwice ? detail.KildeName : $"{detail.KildeName} ({shortName})", Norwegian: true));
+                sameThingTwice ? detail.KildeName : $"{detail.KildeName} ({shortName})",
+                Norwegian: true,
+                OpensKilde: true));
         }
 
         if (!string.IsNullOrWhiteSpace(detail.DatasamlingName))
@@ -1143,7 +1373,33 @@ public partial class VariableExplorer : ComponentBase
                 builder.AddAttribute(3, "lang", "no");
             }
 
-            builder.AddContent(4, crumb.Text);
+            if (crumb.OpensKilde)
+            {
+                // Runa makes this step a link to its own kilde route. We have no routes — the host
+                // owns the URL — so the same affordance is the control that discloses the kilde
+                // below instead. Clicking the kilde gets you the kilde either way.
+                //
+                // It is the same control as the "Vis datakilde" button further down, deliberately:
+                // two ways to the same panel, one of them on the thing itself, which is where a
+                // reader looks first. aria-expanded and aria-controls say so, so a screen reader is
+                // not told about two unrelated buttons that happen to do the same thing.
+                builder.OpenElement(5, "button");
+                builder.AddAttribute(6, "class", "hd-button-reset variable-explorer-crumb");
+                builder.AddAttribute(7, "type", "button");
+                // No aria-expanded and no aria-controls. Both describe a control that discloses
+                // something on the same screen, and this one does not: it replaces the list with
+                // the kilde's own view. aria-controls would also dangle — the element it named
+                // does not exist while this button is the thing on screen.
+                builder.AddAttribute(10, "onclick",
+                    EventCallback.Factory.Create(this, () => ToggleSourceAsync(SourceKind.Kilde)));
+                builder.AddContent(11, crumb.Text);
+                builder.CloseElement();
+            }
+            else
+            {
+                builder.AddContent(4, crumb.Text);
+            }
+
             builder.CloseElement();
         }
 
@@ -2010,7 +2266,9 @@ public partial class VariableExplorer : ComponentBase
 
         try
         {
-            _facets = await Client.GetFiltersAsync(_executedSearch, _filter);
+            // The component's own language, so the datatype names come back in the language the
+            // rest of the component is rendering in.
+            _facets = await Client.GetFiltersAsync(_executedSearch, _filter, Language);
             _facetError = null;
         }
         catch (Exception)
@@ -2052,6 +2310,12 @@ public partial class VariableExplorer : ComponentBase
         }
 
         _selectedId = v.Id;
+
+        // Back to the first tab for the newly opened row. A reader who was on Data for one variable
+        // has not asked to be on Data for the next, and arriving on a tab you did not choose — with
+        // different content under it — reads as the panel having lost your place.
+        _tab = PanelTab.Details;
+
         await LoadDetailAsync(v.Id);
 
         // _selectedId rather than v.Id: the fetch above yields, so another row may have been opened
@@ -2135,6 +2399,8 @@ public partial class VariableExplorer : ComponentBase
     /// <summary>Close the panel and forget what was fetched for it.</summary>
     private void ClearSelection()
     {
+        _tab = PanelTab.Details;
+
         _selectedId = null;
         _detail = null;
         _detailError = null;
@@ -2813,6 +3079,21 @@ public partial class VariableExplorer : ComponentBase
         string SortDefault,
         // The first column's header. Runa calls it Navn; helsedata calls the same column
         // Variabel. Runa decides what the component says.
+        // The panel's two tabs and the groups inside the first, named as Runa names them.
+        // "still running" — a period with no end date.
+        // The way out of the kilde view, back to the list of variables.
+        string BackToVariables,
+        string Ongoing,
+
+        // Runa's own words for two fields we had named differently. The trail through the
+        // catalogue is a Kildesti, not a Datakilde: it is the path, not the source. And the
+        // period in the panel is the Dataperiode — "Periode" alone could be any period.
+        string FieldKildePath,
+        string FieldDataPeriod,
+        string TabDetails,
+        string TabData,
+        string GroupIdentification,
+        string GroupPlacement,
         string ColumnVariable,
         string FieldDataType,
         string FieldStatus,
@@ -3016,11 +3297,19 @@ public partial class VariableExplorer : ComponentBase
             Error: "Kunne ikke hente variabler nå. Prøv igjen om litt.",
             NotSpecified: "Ikke oppgitt",
             SortDefault: "Standard",
+            BackToVariables: "← Tilbake til variabler",
+            Ongoing: "Pågående",
+            FieldKildePath: "Kildesti",
+            FieldDataPeriod: "Dataperiode",
+            TabDetails: "Detaljer",
+            TabData: "Data",
+            GroupIdentification: "Identifikasjon",
+            GroupPlacement: "Plassering",
             ColumnVariable: "Navn",
             FieldDataType: "Datatype",
             FieldStatus: "Status",
             FieldCode: "Kode",
-            FieldSource: "Datakilde",
+            FieldSource: "Kilde",
             FieldDataCollection: "Datasamling",
             FieldVariableGroup: "Variabelgruppe",
             FieldPeriod: "Periode",
@@ -3143,11 +3432,19 @@ public partial class VariableExplorer : ComponentBase
             Error: "Could not load variables right now. Please try again shortly.",
             NotSpecified: "Not specified",
             SortDefault: "Default",
+            BackToVariables: "← Back to variables",
+            Ongoing: "Ongoing",
+            FieldKildePath: "Source path",
+            FieldDataPeriod: "Data period",
+            TabDetails: "Details",
+            TabData: "Data",
+            GroupIdentification: "Identification",
+            GroupPlacement: "Placement",
             ColumnVariable: "Name",
             FieldDataType: "Data type",
             FieldStatus: "Status",
             FieldCode: "Code",
-            FieldSource: "Data source",
+            FieldSource: "Source",
             FieldDataCollection: "Data collection",
             FieldVariableGroup: "Variable group",
             FieldPeriod: "Period",

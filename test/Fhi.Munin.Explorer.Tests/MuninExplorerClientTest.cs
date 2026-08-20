@@ -343,6 +343,44 @@ public class MuninExplorerClientTest
     }
 
     [Fact]
+    public async Task GetFiltersAsync_WhenALanguageIsGiven_ThenItIsAskedForInThatLanguage()
+    {
+        // The datatype facet's name is resolved server side from editable master data, in the
+        // request's culture. Without this header a component rendering in English is labelled in
+        // Norwegian — and because the API's output cache is keyed on the resolved culture, it can
+        // be served the other language's cached body outright.
+        var handler = StubHttpHandler.Ok("{}");
+
+        await Client(handler).GetFiltersAsync(language: "en");
+
+        Assert.Equal(["en"], handler.LastAcceptLanguage);
+    }
+
+    [Fact]
+    public async Task GetFiltersAsync_WhenNoLanguageIsGiven_ThenNoneIsAskedFor()
+    {
+        // No header rather than a guessed one: the API has its own default, and inventing a
+        // language here would override it with whatever the caller happened not to say.
+        var handler = StubHttpHandler.Ok("{}");
+
+        await Client(handler).GetFiltersAsync();
+
+        Assert.Empty(handler.LastAcceptLanguage);
+    }
+
+    [Fact]
+    public async Task GetFiltersAsync_WhenTheLanguageIsBlank_ThenNoneIsAskedFor()
+    {
+        // An empty string is not a language. Sending it would produce a malformed header rather
+        // than a default.
+        var handler = StubHttpHandler.Ok("{}");
+
+        await Client(handler).GetFiltersAsync(language: "   ");
+
+        Assert.Empty(handler.LastAcceptLanguage);
+    }
+
+    [Fact]
     public async Task GetFiltersAsync_WhenAFilterIsGiven_ThenTheCountsAreAskedForWithTheSameNarrowing()
     {
         // The counts are cross-filtered. Asking for them with different narrowing than the search

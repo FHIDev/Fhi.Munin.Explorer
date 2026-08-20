@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
@@ -48,6 +49,7 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
     public async Task<FilterOptions> GetFiltersAsync(
         string? search = null,
         VariableFilter? filter = null,
+        string? language = null,
         CancellationToken cancellationToken = default)
     {
         // The same narrowing the variable search was given, so the counts describe the list beside
@@ -55,7 +57,8 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
         var url = WithFilter("api/explorer/filters" + Query(("search", search)), filter);
 
         // No facets is a legitimate answer to a narrow search — same reasoning as an empty page.
-        return await GetOrNullAsync<FilterOptions>(url, cancellationToken) ?? new FilterOptions();
+        return await GetOrNullAsync<FilterOptions>(url, cancellationToken, language)
+               ?? new FilterOptions();
     }
 
     public async Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
@@ -101,9 +104,24 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
     /// been unpublished — or for an id someone typed — is an ordinary event the caller should be
     /// able to render as "not found". Every other failure still throws.
     /// </remarks>
-    private async Task<T?> GetOrNullAsync<T>(string url, CancellationToken cancellationToken)
+    private async Task<T?> GetOrNullAsync<T>(
+        string url,
+        CancellationToken cancellationToken,
+        string? language = null)
     {
-        using var response = await httpClient.GetAsync(url, cancellationToken);
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+
+        // Accept-Language, because some names are resolved server side from editable master data
+        // and follow the request culture — the datatype facet is the first. Without it a component
+        // rendering in English labels its datatype column in Norwegian. The API's output cache is
+        // keyed on the resolved culture too, so the header is also what stops the two languages
+        // serving each other's cached body.
+        if (!string.IsNullOrWhiteSpace(language))
+        {
+            request.Headers.AcceptLanguage.Add(new StringWithQualityHeaderValue(language));
+        }
+
+        using var response = await httpClient.SendAsync(request, cancellationToken);
 
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
