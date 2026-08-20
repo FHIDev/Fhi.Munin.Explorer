@@ -449,6 +449,14 @@ else
                                                         <dd>@PeriodBar(detail.DataFrom, detail.DataTo)</dd>
                                                     </div>
                                                 </dl>
+
+                                                @* Runa's third group. Its contents are entirely
+                                                   the catalogue's: which properties exist, what
+                                                   they are called, what order they come in and
+                                                   what their coded values mean all arrive with the
+                                                   payload, so a property added in Munin shows up
+                                                   here without this package being touched. *@
+                                                @PropertiesGroup(detail)
                                             }
                                             else
                                             {

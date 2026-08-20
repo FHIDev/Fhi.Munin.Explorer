@@ -2461,6 +2461,152 @@ public class VariableExplorerTest : BunitContext
         Description = description
     };
 
+    // ---------------------------------------------------------------------------------
+    // The catalogue's own properties. Nothing about them is known to this component: the
+    // keys, their labels, their order and the vocabularies their coded values come from
+    // all arrive with the payload. What has to hold is that a code is never shown where a
+    // word exists, and that a key the catalogue no longer curates is not drawn under its
+    // raw name.
+
+    /// <summary>A detail carrying curated properties, as the API sends them.</summary>
+    private static VariableDetail WithProperties(Guid id) => Detail(id) with
+    {
+        AdditionalProperties = new Dictionary<string, string?>
+        {
+            ["Opprinnelse"] = "5",
+            ["Kommentar"] = "Variabelen er gyldig fra 2019 og fremover.",
+            ["DatabaseReferanse"] = "ALSFRSR1Tale",
+            ["FlerkodetFelt"] = "1",
+        },
+        PropertyMetadata =
+        [
+            new()
+            {
+                Key = "Kommentar",
+                SortOrder = 50,
+                Type = "Text",
+                DisplayNameTranslations = new Dictionary<string, string> { ["no"] = "Kommentar", ["en"] = "Comment" },
+            },
+            new()
+            {
+                Key = "Opprinnelse",
+                SortOrder = 30,
+                Type = "SingleSelect",
+                DisplayNameTranslations = new Dictionary<string, string> { ["no"] = "Opprinnelse", ["en"] = "Origin" },
+                OptionsJson = """
+                    [{"value":"1","label":"Beregnet","labelEn":"Calculated"},
+                     {"value":"5","label":"Direkte fra skjema","labelEn":"Directly from the form"}]
+                    """,
+            },
+            new()
+            {
+                Key = "DatabaseReferanse",
+                SortOrder = 200,
+                Type = "Text",
+                DisplayNameTranslations = new Dictionary<string, string> { ["no"] = "Databasereferanse" },
+            },
+        ],
+    };
+
+    [Fact]
+    public void Properties_WhenTheDetailCarriesThem_ThenTheyAreShownInTheCataloguesOrder()
+    {
+        var id = Guid.NewGuid();
+        var cut = RenderWith(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(WithProperties(id)));
+
+        Toggles(cut)[0].Click();
+
+        var group = cut.Find(".variable-explorer-group ~ dl:last-of-type");
+
+        // SortOrder, not the order the bag happens to enumerate in.
+        Assert.Equal(["Opprinnelse", "Kommentar", "Databasereferanse"],
+                     group.QuerySelectorAll("dt").Select(d => d.TextContent));
+    }
+
+    [Fact]
+    public void Properties_WhenAValueIsCoded_ThenTheVocabularyIsUsedRatherThanTheCode()
+    {
+        // "Opprinnelse: 5" is the API's honest answer and a useless thing to read. The vocabulary
+        // arrives in the same payload precisely so a consumer never has to keep its own copy.
+        var id = Guid.NewGuid();
+        var cut = RenderWith(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(WithProperties(id)));
+
+        Toggles(cut)[0].Click();
+
+        Assert.Contains("Direkte fra skjema", Panel(cut).TextContent);
+        Assert.DoesNotContain("Opprinnelse: 5", Panel(cut).TextContent);
+    }
+
+    [Fact]
+    public void Properties_WhenTheLanguageIsEn_ThenBothTheLabelAndTheCodedValueFollowIt()
+    {
+        var id = Guid.NewGuid();
+        var cut = RenderWith(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(WithProperties(id)),
+                             b => b.Add(c => c.Language, "en"));
+
+        Toggles(cut)[0].Click();
+
+        Assert.Contains("Origin", Panel(cut).TextContent);
+        Assert.Contains("Directly from the form", Panel(cut).TextContent);
+    }
+
+    [Fact]
+    public void Properties_WhenALabelHasNoEnglish_ThenTheNorwegianStandsIn()
+    {
+        // Curation is uneven. A field with no English label is better shown in Norwegian than
+        // dropped from an English page, which would silently show a reader less than a colleague.
+        var id = Guid.NewGuid();
+        var cut = RenderWith(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(WithProperties(id)),
+                             b => b.Add(c => c.Language, "en"));
+
+        Toggles(cut)[0].Click();
+
+        Assert.Contains("Databasereferanse", Panel(cut).TextContent);
+    }
+
+    [Fact]
+    public void Properties_WhenTheCatalogueDoesNotCurateAKey_ThenItIsNotDrawn()
+    {
+        // The bag can carry keys the catalogue has stopped describing. "FlerkodetFelt: 1" under its
+        // raw name tells a reader nothing and looks like a bug.
+        var id = Guid.NewGuid();
+        var cut = RenderWith(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(WithProperties(id)));
+
+        Toggles(cut)[0].Click();
+
+        Assert.DoesNotContain("FlerkodetFelt", Panel(cut).TextContent);
+    }
+
+    [Fact]
+    public void Properties_WhenAVocabularyIsMalformed_ThenTheCodeIsShownAndThePanelSurvives()
+    {
+        // Curated data arriving over the wire. One bad definition should cost that field its label,
+        // not take the panel down with it.
+        var id = Guid.NewGuid();
+        var detail = Detail(id) with
+        {
+            AdditionalProperties = new Dictionary<string, string?> { ["Opprinnelse"] = "5" },
+            PropertyMetadata =
+            [
+                new()
+                {
+                    Key = "Opprinnelse",
+                    SortOrder = 30,
+                    Type = "SingleSelect",
+                    DisplayNameTranslations = new Dictionary<string, string> { ["no"] = "Opprinnelse" },
+                    OptionsJson = "{ not json at all",
+                },
+            ],
+        };
+
+        var cut = RenderWith(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(detail));
+
+        Toggles(cut)[0].Click();
+
+        Assert.Contains("Opprinnelse", Panel(cut).TextContent);
+        Assert.Contains("5", Panel(cut).TextContent);
+    }
+
     /// <summary>A detail payload shaped like the captured one, with every field the panel draws.</summary>
     private static VariableDetail Detail(Guid id, string name = "1. Tale") => new()
     {

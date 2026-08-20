@@ -864,6 +864,191 @@ public partial class VariableExplorer : ComponentBase
         date.ToString("MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo(
             string.Equals(Language, "en", StringComparison.OrdinalIgnoreCase) ? "en" : "nb-NO"));
 
+    /// <summary>
+    /// The variable's curated properties, in the order the catalogue puts them.
+    /// </summary>
+    /// <remarks>
+    /// Nothing here is known to this component. The keys, their labels, their order and the
+    /// vocabularies their coded values are drawn from all arrive with the payload, because they are
+    /// editable master data — a property added or renamed in Munin appears here without this
+    /// package being touched, and a copy of any of it would be stale the first time someone edited
+    /// a definition.
+    /// <para>
+    /// Runa gathers these under one heading in the inline panel and only splits them by their own
+    /// groups on the full detail page. This follows that: one group, catalogue order.
+    /// </para>
+    /// </remarks>
+    private RenderFragment PropertiesGroup(VariableDetail detail) => builder =>
+    {
+        var rows = PropertyRows(detail);
+
+        if (rows.Count == 0)
+        {
+            return;
+        }
+
+        builder.OpenElement(0, $"h{RowLevel}");
+        builder.AddAttribute(1, "class", "headline headline-xxs margin--none variable-explorer-group");
+        builder.AddContent(2, T.GroupProperties);
+        builder.CloseElement();
+
+        builder.OpenElement(3, "dl");
+        builder.AddAttribute(4, "class", "variable-meta__grid");
+
+        var seq = 10;
+
+        foreach (var (label, value) in rows)
+        {
+            builder.OpenElement(seq, "div");
+
+            builder.OpenElement(seq + 1, "dt");
+            builder.AddAttribute(seq + 2, "class", "headline headline-xxs margin--none");
+            builder.AddContent(seq + 3, label);
+            builder.CloseElement();
+
+            builder.OpenElement(seq + 4, "dd");
+            // The catalogue's own words, whatever language the surrounding UI is in.
+            builder.AddAttribute(seq + 5, "lang", "no");
+            builder.AddContent(seq + 6, value);
+            builder.CloseElement();
+
+            builder.CloseElement();
+            seq += 10;
+        }
+
+        builder.CloseElement();
+    };
+
+    /// <summary>
+    /// The properties worth drawing, as label and value, in the catalogue's order.
+    /// </summary>
+    /// <remarks>
+    /// A key with no metadata is skipped rather than drawn under its raw name: the bag can carry
+    /// keys the catalogue no longer curates, and "FlerkodetFelt: 1" tells a reader nothing.
+    /// </remarks>
+    private List<(string Label, string Value)> PropertyRows(VariableDetail detail)
+    {
+        var rows = new List<(string, string)>();
+
+        foreach (var entry in detail.PropertyMetadata.OrderBy(m => m.SortOrder).ThenBy(m => m.Key, StringComparer.Ordinal))
+        {
+            if (!detail.AdditionalProperties.TryGetValue(entry.Key, out var raw)
+                || string.IsNullOrWhiteSpace(raw))
+            {
+                continue;
+            }
+
+            var label = Localised(entry.DisplayNameTranslations);
+
+            if (string.IsNullOrWhiteSpace(label))
+            {
+                continue;
+            }
+
+            rows.Add((label, PropertyValue(entry, raw)));
+        }
+
+        return rows;
+    }
+
+    /// <summary>A coded value as its label, or the value itself when it is not coded.</summary>
+    private string PropertyValue(PropertyMetadataEntry entry, string raw)
+    {
+        if (string.IsNullOrWhiteSpace(entry.OptionsJson))
+        {
+            return raw;
+        }
+
+        foreach (var option in PropertyOptions(entry.OptionsJson))
+        {
+            if (string.Equals(option.Value, raw, StringComparison.OrdinalIgnoreCase))
+            {
+                return option.Label;
+            }
+        }
+
+        // A code the vocabulary does not list. Showing it beats showing nothing: it is what the
+        // catalogue holds, and a blank cell would hide that the two disagree.
+        return raw;
+    }
+
+    /// <summary>
+    /// The options in a vocabulary, as value and label in the reader's language.
+    /// </summary>
+    /// <remarks>
+    /// Malformed JSON yields nothing rather than throwing. This is curated data arriving over the
+    /// wire, and one bad definition should cost that one field its label, not take the panel down.
+    /// </remarks>
+    private IReadOnlyList<(string Value, string Label)> PropertyOptions(string optionsJson)
+    {
+        try
+        {
+            using var document = System.Text.Json.JsonDocument.Parse(optionsJson);
+
+            if (document.RootElement.ValueKind is not System.Text.Json.JsonValueKind.Array)
+            {
+                return [];
+            }
+
+            var options = new List<(string, string)>();
+
+            foreach (var element in document.RootElement.EnumerateArray())
+            {
+                if (element.ValueKind is not System.Text.Json.JsonValueKind.Object
+                    || !element.TryGetProperty("value", out var value))
+                {
+                    continue;
+                }
+
+                var code = value.ToString();
+
+                if (string.IsNullOrEmpty(code))
+                {
+                    continue;
+                }
+
+                var english = string.Equals(Language, "en", StringComparison.OrdinalIgnoreCase);
+                var preferred = english ? "labelEn" : "label";
+
+                var label = element.TryGetProperty(preferred, out var chosen) ? chosen.ToString() : null;
+
+                if (string.IsNullOrWhiteSpace(label) && element.TryGetProperty("label", out var fallback))
+                {
+                    label = fallback.ToString();
+                }
+
+                options.Add((code, string.IsNullOrWhiteSpace(label) ? code : label));
+            }
+
+            return options;
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return [];
+        }
+    }
+
+    /// <summary>A translation bag's entry for the reader's language, falling back to Norwegian.</summary>
+    private string? Localised(IReadOnlyDictionary<string, string> translations)
+    {
+        var english = string.Equals(Language, "en", StringComparison.OrdinalIgnoreCase);
+
+        if (english && translations.TryGetValue("en", out var en) && !string.IsNullOrWhiteSpace(en))
+        {
+            return en;
+        }
+
+        foreach (var key in new[] { "no", "nb" })
+        {
+            if (translations.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value))
+            {
+                return value;
+            }
+        }
+
+        return translations.Values.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v));
+    }
+
     /// <summary>Which tab of the open panel is showing.</summary>
     /// <remarks>
     /// Runa's panel has two: the metadata, and the data behind the variable. Reset whenever a
@@ -3094,6 +3279,7 @@ public partial class VariableExplorer : ComponentBase
         string TabData,
         string GroupIdentification,
         string GroupPlacement,
+        string GroupProperties,
         string ColumnVariable,
         string FieldDataType,
         string FieldStatus,
@@ -3305,6 +3491,7 @@ public partial class VariableExplorer : ComponentBase
             TabData: "Data",
             GroupIdentification: "Identifikasjon",
             GroupPlacement: "Plassering",
+            GroupProperties: "Egenskaper",
             ColumnVariable: "Navn",
             FieldDataType: "Datatype",
             FieldStatus: "Status",
@@ -3440,6 +3627,7 @@ public partial class VariableExplorer : ComponentBase
             TabData: "Data",
             GroupIdentification: "Identification",
             GroupPlacement: "Placement",
+            GroupProperties: "Properties",
             ColumnVariable: "Name",
             FieldDataType: "Data type",
             FieldStatus: "Status",
