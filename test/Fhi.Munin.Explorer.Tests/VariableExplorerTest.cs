@@ -4442,6 +4442,55 @@ public class VariableExplorerTest : BunitContext
             SourcePanel(cut).QuerySelector(".variable-explorer-kilde__description")!.TextContent.Trim());
     }
 
+    [Theory]
+    [InlineData(null, "1. januar 2023")]
+    [InlineData("en", "1 January 2023")]
+    public void Source_WhenADateIsShown_ThenItIsWrittenTheWayTheReadersLanguageWritesDates(
+        string? language,
+        string expected)
+    {
+        // The dot after the day is not punctuation, it is what makes the number an ordinal in
+        // Norwegian. English does not use it, so handing an English reader the Norwegian skeleton
+        // with English month names — "1. January 2023" — is neither language.
+        var cut = RenderWith(TwoRows(), b => b.Add(c => c.Language, language));
+
+        Toggles(cut)[0].Click();
+        SourceToggles(cut)[0].Click();
+
+        Assert.Contains(expected, SourceValues(cut)[5]);
+    }
+
+    [Fact]
+    public void Source_WhenDatasamlingerShareASortOrder_ThenTheyFallBackToNorwegianAlphabetical()
+    {
+        // The names being sorted are the catalogue's, stored once in Norwegian, so å sorts last
+        // whoever is reading. Sorting by the reader's culture would give an English reader a
+        // different order from a Norwegian colleague looking at the same source, and sorting by the
+        // thread's would make it depend on whatever the host happened to set.
+        var client = TwoRows().Knows(Kilde() with
+        {
+            Datasamlinger = [Datasamling("Ålesund"), Datasamling("Bergen"), Datasamling("Oslo")],
+            Delkilder = [],
+        });
+
+        var cut = RenderWith(client, b => b.Add(c => c.Language, "en"));
+
+        Toggles(cut)[0].Click();
+        SourceToggles(cut)[0].Click();
+
+        var names = SourcePanel(cut).QuerySelectorAll("table tbody th").Select(e => e.TextContent);
+
+        Assert.Equal(["Bergen", "Oslo", "Ålesund"], names);
+    }
+
+    private static KildeDatasamling Datasamling(string name) => new()
+    {
+        Id = Guid.NewGuid(),
+        Name = name,
+        Description = name,
+        VariableCount = 1,
+    };
+
     [Fact]
     public void Source_WhenTheKildeHasADelkildeTree_ThenTheDatasamlingerAreCountedThroughIt()
     {
@@ -4795,8 +4844,11 @@ public class VariableExplorerTest : BunitContext
 
         // The fact lists borrow the grid the detail panel already uses rather than a shape of their
         // own — the same pairs of label and value, so the same class.
+        // GetAttribute, not ClassName: AngleSharp reports a missing class attribute as "" rather
+        // than null, so the null branch of this list was unreachable and the assertion did not mean
+        // what it said.
         Assert.All(panel.QuerySelectorAll("dl"),
-                   e => Assert.Contains(e.ClassName, (string?[])[null, "variable-meta__grid"]));
+                   e => Assert.Contains(e.GetAttribute("class"), (string?[])[null, "variable-meta__grid"]));
 
         Back(cut);
 

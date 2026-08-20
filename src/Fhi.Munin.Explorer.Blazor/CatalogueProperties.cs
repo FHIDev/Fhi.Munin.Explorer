@@ -50,6 +50,17 @@ internal static class CatalogueProperties
     internal static CultureInfo Culture(string? language)
         => CultureInfo.GetCultureInfo(string.Equals(language, "en", StringComparison.OrdinalIgnoreCase) ? "en" : "nb-NO");
 
+    /// <summary>The order the catalogue's own names sort in.</summary>
+    /// <remarks>
+    /// Norwegian, always, and deliberately not the reader's language or the thread's. The strings
+    /// being sorted are names the catalogue stores once in Norwegian, so æ, ø and å belong at the
+    /// end of the alphabet whoever is reading. Sorting them by the reader's culture would put an
+    /// English reader's list in a different order from a Norwegian colleague's for the same source,
+    /// and sorting by the thread's would make the order depend on whatever the host happened to set.
+    /// </remarks>
+    internal static readonly StringComparer CatalogueOrder =
+        StringComparer.Create(CultureInfo.GetCultureInfo("nb-NO"), ignoreCase: false);
+
     /// <summary>
     /// A <c>lang</c> for text that is not in the reader's language, or null when it is.
     /// </summary>

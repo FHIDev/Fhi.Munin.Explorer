@@ -152,7 +152,7 @@ public sealed partial class KildeView : ComponentBase
     private IReadOnlyList<KildeDatasamling> DataCollections =>
         Kilde is { } kilde
             ? [.. Flatten(kilde).OrderBy(d => d.PresentationOrder ?? int.MaxValue)
-                                .ThenBy(d => d.Name, StringComparer.CurrentCulture)]
+                                .ThenBy(d => d.Name, CatalogueProperties.CatalogueOrder)]
             : [];
 
     private static IEnumerable<KildeDatasamling> Flatten(KildeDetail kilde) =>
@@ -319,8 +319,17 @@ public sealed partial class KildeView : ComponentBase
     };
 
     /// <summary>A date as the day it fell on, in the reader's language.</summary>
+    /// <remarks>
+    /// The dot is not a separator, it is what makes the number an ordinal in Norwegian — "1." is
+    /// "first". English writes the same date "1 January 2026" with no dot at all, so the pattern
+    /// has to follow the reader rather than the culture merely supplying month names to a Norwegian
+    /// skeleton. The culture's own long pattern is not usable here either: for English it leads with
+    /// the weekday, which is more than a metadata field needs.
+    /// </remarks>
     private string Day(DateTimeOffset value) =>
-        value.ToString("d. MMMM yyyy", CatalogueProperties.Culture(Language));
+        value.ToString(
+            string.Equals(Reader, "en", StringComparison.Ordinal) ? "d MMMM yyyy" : "d. MMMM yyyy",
+            CatalogueProperties.Culture(Language));
 
     /// <summary>
     /// A period, with an open end shown as ongoing rather than as a blank or a guessed date.
