@@ -44,9 +44,36 @@ public sealed record PropertyMetadataEntry
     /// <summary>
     /// For <c>SingleSelect</c> / <c>MultiSelect</c>: the allowed options as a *JSON-encoded string*,
     /// not as JSON — e.g. <c>[{"value":"sentraltHelseregister","label":"Sentralt helseregister",
-    /// "labelEn":"Central health registry"}]</c>. Usually the literal <c>"[]"</c>. Deliberately left
-    /// as the raw string: the option shape is not part of this contract, and a caller that needs it
-    /// parses it itself.
+    /// "labelEn":"Central health registry"}]</c>. Usually the literal <c>"[]"</c>.
     /// </summary>
+    /// <remarks>
+    /// Prefer <see cref="Options"/>, which is the same list already parsed and already resolved to
+    /// the request's language. This one is kept because the API still sends it, and because it is
+    /// the only place the untranslated labels survive.
+    /// </remarks>
     [JsonPropertyName("optionsJson")] public string? OptionsJson { get; init; }
+
+    /// <summary>
+    /// The allowed options for <c>SingleSelect</c> / <c>MultiSelect</c>, parsed by the API and
+    /// resolved to the language the request asked for. Empty for every other type.
+    /// </summary>
+    /// <remarks>
+    /// Empty against an API that predates the field, in which case a caller that needs the options
+    /// falls back to parsing <see cref="OptionsJson"/> itself — which is what this package used to
+    /// tell callers to do, before the API started sending the list in a shape worth having.
+    /// </remarks>
+    [JsonPropertyName("options")] public IReadOnlyList<PropertyOption> Options { get; init; } = [];
+}
+
+/// <summary>One allowed value of a <c>SingleSelect</c> or <c>MultiSelect</c> property.</summary>
+public sealed record PropertyOption
+{
+    /// <summary>The value as it is stored, e.g. <c>sentraltHelseregister</c>.</summary>
+    [JsonPropertyName("value")] public string Value { get; init; } = "";
+
+    /// <summary>
+    /// The label to show. Resolved server side from editable master data and following
+    /// <c>Accept-Language</c>, so it is not a caller's to map or to cache.
+    /// </summary>
+    [JsonPropertyName("displayName")] public string DisplayName { get; init; } = "";
 }
