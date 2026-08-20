@@ -627,6 +627,28 @@
       "count": 1
     }
   ],
+  "datakategorier": [
+    {
+      "value": "ehds-cat:biobanks",
+      "count": 2
+    },
+    {
+      "value": "ehds-cat:health-registries",
+      "count": 38
+    },
+    {
+      "value": "ehds-cat:population-health-surveys",
+      "count": 13
+    },
+    {
+      "value": "ehds-cat:provesamling",
+      "count": 4
+    },
+    {
+      "value": "ehds-cat:registries-quality-of-healthcare",
+      "count": 159
+    }
+  ],
   "kildeKodeverkCount": 3876,
   "dateRange": {
     "min": "1868-05-08T00:00:00.000Z",

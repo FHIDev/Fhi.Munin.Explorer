@@ -68,20 +68,28 @@ jobs:
         run: |
           set -uo pipefail
 
+          status=0
+
           # Retried once, and only once. A contract difference is deterministic and fails both
           # times; a gateway blip fails one. Without the retry the job cries drift over somebody
           # else's momentary 502, and a nightly job that is wrong sometimes gets muted, which
           # costs more than the two minutes this spends.
           for attempt in 1 2; do
+            # The exit code is captured through `&& ... || ...` rather than read from $? on the
+            # next line, because GitHub runs a `run` block under `bash -e`: a bare `dotnet test`
+            # that fails ends the step where it stands, and the retry, the code below it and the
+            # exit at the bottom would all be unreachable. A command in a `||` list is exempt from
+            # that, which is what keeps this loop a loop.
             dotnet test test/Fhi.Munin.Explorer.Tests \
               --configuration Release \
               --no-build \
               --filter 'Category=ContractDrift' \
               --logger 'trx;LogFileName=contract-drift.trx' \
-              --results-directory artifacts
-            status=$?
+              --results-directory artifacts && status=0 || status=$?
 
-            [ "$status" -eq 0 ] && break
+            if [ "$status" -eq 0 ]; then
+              break
+            fi
 
             if [ "$attempt" -eq 1 ]; then
               echo "::warning::First attempt failed. Retrying once — real drift fails again, a network blip does not."
@@ -146,8 +154,11 @@ jobs:
 
           # Matched on the exact title rather than on a label, so the alert does not depend on a
           # label existing in a repository whose issues are otherwise for external consumers.
-          existing=$(gh issue list --state open --search 'Contract drift in:title' --json number,title \
-            --jq ".[] | select(.title == \"$TITLE\") | .number" | head -1)
+          # Not piped through `head`: this block runs under `pipefail`, and a reader that closes
+          # the pipe early leaves `gh` killed by SIGPIPE, which would take the whole alert with it.
+          matches=$(gh issue list --state open --search 'Contract drift in:title' --json number,title \
+            --jq ".[] | select(.title == \"$TITLE\") | .number")
+          existing=${matches%%$'\n'*}
 
           if [ -n "$existing" ]; then
             gh issue comment "$existing" --body-file drift-report.md

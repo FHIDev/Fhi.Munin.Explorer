@@ -49,7 +49,7 @@ The second is only reported when the round trip wrote something there. Null, an 
 empty object are the three ways a contract says *nothing here*, and where it said that there is
 nothing to tell apart — an omitted field and a field sent as null, or as `[]`, produce exactly the
 same DTO. `filters.json` is the standing example: captured before the datatype facet gained
-`displayName` and before the datakategori facet existed, it carries neither, and neither is drift.
+`displayName`, it carries none, and that is not drift.
 
 That costs one thing, and it is worth knowing rather than discovering: a collection the API stops
 sending altogether reads exactly like one it sends empty, so a withdrawn `delkilder` would pass.

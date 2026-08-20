@@ -42,7 +42,8 @@
       "groupTranslations": {},
       "sortOrder": 5,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "NavnEngelsk",
@@ -56,7 +57,8 @@
       },
       "sortOrder": 10,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "KortNavn",
@@ -67,7 +69,8 @@
       "groupTranslations": {},
       "sortOrder": 10,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "PreferredTerm",
@@ -78,7 +81,8 @@
       "groupTranslations": {},
       "sortOrder": 20,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "BeskrivelseEngelsk",
@@ -92,7 +96,8 @@
       },
       "sortOrder": 20,
       "type": "Text",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "AnbefalteBruksomraader",
@@ -106,7 +111,8 @@
       },
       "sortOrder": 30,
       "type": "Text",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "Beskrivelse",
@@ -117,7 +123,8 @@
       "groupTranslations": {},
       "sortOrder": 30,
       "type": "Text",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "TelleEnhet",
@@ -128,7 +135,8 @@
       "groupTranslations": {},
       "sortOrder": 40,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "Emneord",
@@ -142,7 +150,8 @@
       },
       "sortOrder": 40,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "StatistikkType",
@@ -153,7 +162,17 @@
       "groupTranslations": {},
       "sortOrder": 50,
       "type": "SingleSelect",
-      "optionsJson": "[{\"value\":\"yearly\",\"label\":\"Årsbasert\",\"labelEn\":\"Yearly\"},{\"value\":\"accumulated\",\"label\":\"Akkumulert\",\"labelEn\":\"Accumulated\"}]"
+      "optionsJson": "[{\"value\":\"yearly\",\"label\":\"Årsbasert\",\"labelEn\":\"Yearly\"},{\"value\":\"accumulated\",\"label\":\"Akkumulert\",\"labelEn\":\"Accumulated\"}]",
+      "options": [
+        {
+          "value": "yearly",
+          "displayName": "Årsbasert"
+        },
+        {
+          "value": "accumulated",
+          "displayName": "Akkumulert"
+        }
+      ]
     },
     {
       "key": "Frekvens",
@@ -164,7 +183,41 @@
       "groupTranslations": {},
       "sortOrder": 60,
       "type": "SingleSelect",
-      "optionsJson": "[{\"value\":\"daily\",\"label\":\"Daglig\",\"labelEn\":\"Daily\"},{\"value\":\"weekly\",\"label\":\"Ukentlig\",\"labelEn\":\"Weekly\"},{\"value\":\"monthly\",\"label\":\"Månedlig\",\"labelEn\":\"Monthly\"},{\"value\":\"quarterly\",\"label\":\"Kvartalsvis\",\"labelEn\":\"Quarterly\"},{\"value\":\"yearly\",\"label\":\"Årlig\",\"labelEn\":\"Yearly\"},{\"value\":\"onDemand\",\"label\":\"På forespørsel\",\"labelEn\":\"On demand\"},{\"value\":\"continuous\",\"label\":\"Kontinuerlig\",\"labelEn\":\"Continuous\"},{\"value\":\"other\",\"label\":\"Annet\",\"labelEn\":\"Other\"}]"
+      "optionsJson": "[{\"value\":\"daily\",\"label\":\"Daglig\",\"labelEn\":\"Daily\"},{\"value\":\"weekly\",\"label\":\"Ukentlig\",\"labelEn\":\"Weekly\"},{\"value\":\"monthly\",\"label\":\"Månedlig\",\"labelEn\":\"Monthly\"},{\"value\":\"quarterly\",\"label\":\"Kvartalsvis\",\"labelEn\":\"Quarterly\"},{\"value\":\"yearly\",\"label\":\"Årlig\",\"labelEn\":\"Yearly\"},{\"value\":\"onDemand\",\"label\":\"På forespørsel\",\"labelEn\":\"On demand\"},{\"value\":\"continuous\",\"label\":\"Kontinuerlig\",\"labelEn\":\"Continuous\"},{\"value\":\"other\",\"label\":\"Annet\",\"labelEn\":\"Other\"}]",
+      "options": [
+        {
+          "value": "daily",
+          "displayName": "Daglig"
+        },
+        {
+          "value": "weekly",
+          "displayName": "Ukentlig"
+        },
+        {
+          "value": "monthly",
+          "displayName": "Månedlig"
+        },
+        {
+          "value": "quarterly",
+          "displayName": "Kvartalsvis"
+        },
+        {
+          "value": "yearly",
+          "displayName": "Årlig"
+        },
+        {
+          "value": "onDemand",
+          "displayName": "På forespørsel"
+        },
+        {
+          "value": "continuous",
+          "displayName": "Kontinuerlig"
+        },
+        {
+          "value": "other",
+          "displayName": "Annet"
+        }
+      ]
     },
     {
       "key": "GradAvPersonidentifikasjon",
@@ -175,7 +228,25 @@
       "groupTranslations": {},
       "sortOrder": 70,
       "type": "SingleSelect",
-      "optionsJson": "[{\"value\":\"directlyIdentifiable\",\"label\":\"Direkte personidentifiserbare data\",\"labelEn\":\"Directly identifiable data\"},{\"value\":\"indirectlyIdentifiable\",\"label\":\"Indirekte personidentifiserbare data\",\"labelEn\":\"Indirectly identifiable data\"},{\"value\":\"deIdentified\",\"label\":\"Avidentifiserte data\",\"labelEn\":\"De-identified data\"},{\"value\":\"anonymous\",\"label\":\"Anonyme data\",\"labelEn\":\"Anonymous data\"}]"
+      "optionsJson": "[{\"value\":\"directlyIdentifiable\",\"label\":\"Direkte personidentifiserbare data\",\"labelEn\":\"Directly identifiable data\"},{\"value\":\"indirectlyIdentifiable\",\"label\":\"Indirekte personidentifiserbare data\",\"labelEn\":\"Indirectly identifiable data\"},{\"value\":\"deIdentified\",\"label\":\"Avidentifiserte data\",\"labelEn\":\"De-identified data\"},{\"value\":\"anonymous\",\"label\":\"Anonyme data\",\"labelEn\":\"Anonymous data\"}]",
+      "options": [
+        {
+          "value": "directlyIdentifiable",
+          "displayName": "Direkte personidentifiserbare data"
+        },
+        {
+          "value": "indirectlyIdentifiable",
+          "displayName": "Indirekte personidentifiserbare data"
+        },
+        {
+          "value": "deIdentified",
+          "displayName": "Avidentifiserte data"
+        },
+        {
+          "value": "anonymous",
+          "displayName": "Anonyme data"
+        }
+      ]
     },
     {
       "key": "Lovverk",
@@ -186,7 +257,8 @@
       "groupTranslations": {},
       "sortOrder": 80,
       "type": "Url",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "Dataansvarlig",
@@ -197,7 +269,8 @@
       "groupTranslations": {},
       "sortOrder": 90,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "Databehandler",
@@ -208,7 +281,8 @@
       "groupTranslations": {},
       "sortOrder": 100,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "GyldigFra",
@@ -219,7 +293,8 @@
       "groupTranslations": {},
       "sortOrder": 110,
       "type": "Date",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "GyldigTil",
@@ -230,7 +305,8 @@
       "groupTranslations": {},
       "sortOrder": 120,
       "type": "Date",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "healthCategory",
@@ -244,7 +320,37 @@
       },
       "sortOrder": 330,
       "type": "MultiSelect",
-      "optionsJson": "[{\"value\":\"ehds-cat:health-registries\",\"label\":\"Helseregistre\",\"labelEn\":\"Health registries\"},{\"value\":\"ehds-cat:registries-quality-of-healthcare\",\"label\":\"Kvalitetsregistre\",\"labelEn\":\"Quality-of-healthcare registries\"},{\"value\":\"ehds-cat:population-health-surveys\",\"label\":\"Befolkningsbaserte helseundersøkelser\",\"labelEn\":\"Population health surveys\"},{\"value\":\"ehds-cat:provesamling\",\"label\":\"Prøvesamling\",\"labelEn\":\"Sample collection\"},{\"value\":\"ehds-cat:biodata\",\"label\":\"Biodata (DNA/omikk)\",\"labelEn\":\"Biodata (DNA/omics)\"},{\"value\":\"ehds-cat:biobanks\",\"label\":\"Biobanker\",\"labelEn\":\"Biobanks\"},{\"value\":\"ehds-cat:other\",\"label\":\"Annet\",\"labelEn\":\"Other\"}]"
+      "optionsJson": "[{\"value\":\"ehds-cat:health-registries\",\"label\":\"Helseregistre\",\"labelEn\":\"Health registries\"},{\"value\":\"ehds-cat:registries-quality-of-healthcare\",\"label\":\"Kvalitetsregistre\",\"labelEn\":\"Quality-of-healthcare registries\"},{\"value\":\"ehds-cat:population-health-surveys\",\"label\":\"Befolkningsbaserte helseundersøkelser\",\"labelEn\":\"Population health surveys\"},{\"value\":\"ehds-cat:provesamling\",\"label\":\"Prøvesamling\",\"labelEn\":\"Sample collection\"},{\"value\":\"ehds-cat:biodata\",\"label\":\"Biodata (DNA/omikk)\",\"labelEn\":\"Biodata (DNA/omics)\"},{\"value\":\"ehds-cat:biobanks\",\"label\":\"Biobanker\",\"labelEn\":\"Biobanks\"},{\"value\":\"ehds-cat:other\",\"label\":\"Annet\",\"labelEn\":\"Other\"}]",
+      "options": [
+        {
+          "value": "ehds-cat:health-registries",
+          "displayName": "Helseregistre"
+        },
+        {
+          "value": "ehds-cat:registries-quality-of-healthcare",
+          "displayName": "Kvalitetsregistre"
+        },
+        {
+          "value": "ehds-cat:population-health-surveys",
+          "displayName": "Befolkningsbaserte helseundersøkelser"
+        },
+        {
+          "value": "ehds-cat:provesamling",
+          "displayName": "Prøvesamling"
+        },
+        {
+          "value": "ehds-cat:biodata",
+          "displayName": "Biodata (DNA/omikk)"
+        },
+        {
+          "value": "ehds-cat:biobanks",
+          "displayName": "Biobanker"
+        },
+        {
+          "value": "ehds-cat:other",
+          "displayName": "Annet"
+        }
+      ]
     }
   ],
   "parentDelkildeId": null,

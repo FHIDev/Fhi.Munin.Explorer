@@ -41,41 +41,30 @@ public class ShapeDriftTest
         Assert.Empty(DriftIn<VariableDetail>(Load("variable.json")));
 
     [Fact]
-    public void Between_WhenTheApiHasNotCaughtUpWithTheContract_ThenNothingDrifts() =>
-        // filters.json was captured before the datatype facet gained displayName and before the
-        // datakategori facet existed at all, so the contract declares two things this payload does
-        // not carry — one null, one empty list. That is the case the comparison must let through:
-        // both are how a contract says "nothing here", and reporting them would make the job cry
-        // drift over an API that is merely older than the code reading it.
+    public void Between_WhenACapturedFilterSetIsUnchanged_ThenNothingDrifts() =>
+        // Including datakategorier, which the contracts gained because the first nightly run found
+        // the API already sending it. The capture was re-taken with it, so this is what proves the
+        // wire names and types were read off the live payload correctly rather than guessed.
         Assert.Empty(DriftIn<FilterOptions>(Load("filters.json")));
 
     [Fact]
-    public void Between_WhenTheApiSendsTheDatakategoriFacet_ThenNothingDrifts()
-    {
-        // datakategorier was added to the contracts because the nightly check found the API already
-        // sending it, and every capture under Testdata/ is older than that. Pasting the live shape
-        // back in is what proves the wire names and types were read off it correctly, instead of
-        // waiting a night to find out they were not.
-        var live = Load("filters.json");
-        live["datakategorier"] = JsonNode.Parse("""
-            [{ "value": "ehds-cat:health-registries", "count": 38 }]
-            """);
-
-        Assert.Empty(DriftIn<FilterOptions>(live));
-    }
+    public void Between_WhenACapturedKildeWithParsedOptionsIsUnchanged_ThenNothingDrifts() =>
+        // The other half of the same addition: options is the parsed, language-resolved twin of
+        // optionsJson, which this package used to tell callers to parse themselves.
+        Assert.Empty(DriftIn<KildeDetail>(Load("kilde.json")));
 
     [Fact]
-    public void Between_WhenTheApiSendsTheParsedPropertyOptions_ThenNothingDrifts()
+    public void Between_WhenTheApiHasNotCaughtUpWithTheContract_ThenNothingDrifts()
     {
-        // The other half of the same addition, and the same reasoning: options is the parsed,
-        // language-resolved twin of optionsJson, which this package used to tell callers to parse
-        // themselves.
-        var live = Load("kilde.json");
-        live["propertyMetadata"]![0]!["options"] = JsonNode.Parse("""
-            [{ "value": "sentraltHelseregister", "displayName": "Sentralt helseregister" }]
-            """);
+        // An API older than the code reading it: this capture's datatype facets carry no
+        // displayName, and here the datakategori facet is taken away as well, so the contract
+        // declares two things the payload does not — one null, one empty list. That is the case the
+        // comparison must let through, because both are how a contract says "nothing here" and
+        // reporting them would make the job cry drift over a deployment that is merely behind.
+        var live = Load("filters.json");
+        live.AsObject().Remove("datakategorier");
 
-        Assert.Empty(DriftIn<KildeDetail>(live));
+        Assert.Empty(DriftIn<FilterOptions>(live));
     }
 
     [Fact]
