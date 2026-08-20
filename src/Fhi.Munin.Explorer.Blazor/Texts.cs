@@ -39,6 +39,11 @@ internal sealed record Texts(
     string GroupPlacement,
     string GroupProperties,
     string ColumnVariable,
+    // The column picker: Runa's own name for the control ("Kolonner", where helsedata's button
+    // says "Vis kolonner"), and the reason the last column left refuses to go. Runa decides what
+    // the component says; helsedata decides what it looks like.
+    string Columns,
+    string LastColumn,
     string FieldDataType,
     string FieldStatus,
     string FieldCode,
@@ -275,6 +280,8 @@ internal sealed record Texts(
         GroupPlacement: "Plassering",
         GroupProperties: "Egenskaper",
         ColumnVariable: "Navn",
+        Columns: "Kolonner",
+        LastColumn: "Minst én kolonne må vises.",
         FieldDataType: "Datatype",
         FieldStatus: "Status",
         FieldCode: "Kode",
@@ -430,6 +437,8 @@ internal sealed record Texts(
         GroupPlacement: "Placement",
         GroupProperties: "Properties",
         ColumnVariable: "Name",
+        Columns: "Columns",
+        LastColumn: "At least one column has to stay visible.",
         FieldDataType: "Data type",
         FieldStatus: "Status",
         FieldCode: "Code",
