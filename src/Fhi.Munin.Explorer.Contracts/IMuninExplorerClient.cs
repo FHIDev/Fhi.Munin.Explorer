@@ -63,6 +63,14 @@ public interface IMuninExplorerClient
     /// <c>"en"</c>. Sent as <c>Accept-Language</c>. The datatype facet's name is resolved server
     /// side from editable master data, so it follows this rather than being mapped by the caller.
     /// Null leaves the header off and takes the API's own default.
+    /// <para>
+    /// A parameter rather than something configured once on the client, which was considered and
+    /// does not work here: the language is a <see cref="Fhi.Munin.Explorer.Contracts"/> consumer's
+    /// per-render state, not its per-application state. Two explorers can sit on one page in two
+    /// languages, and helsedata serves /no/ and /en/ from one application — a delegating handler or
+    /// a culture provider registered in DI cannot tell those apart, and would label one of them
+    /// wrongly. It has to travel with the call that asks.
+    /// </para>
     /// </param>
     Task<FilterOptions> GetFiltersAsync(
         string? search = null,

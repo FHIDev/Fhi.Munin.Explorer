@@ -840,8 +840,10 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   color: var(--dark);
 }
 
-/* The panel takes focus when a tab is chosen, so it needs a visible ring like anything else
-   focusable — but only from the keyboard, or clicking a tab would draw one nobody asked for. */
+/* The panel is focusable (tabindex=0) so a keyboard reader can move into the tab's content
+   directly rather than tabbing through it from the tablist. Nothing moves focus there
+   programmatically — choosing a tab leaves focus on the tab — so this is the style for when the
+   panel IS focused, and :focus-visible keeps it off a mouse click. */
 .variable-meta__tab-content:focus-visible {
   outline: 2px solid var(--primary, #4a3aff);
   outline-offset: 2px;

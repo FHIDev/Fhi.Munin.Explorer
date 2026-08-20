@@ -877,7 +877,12 @@ public partial class VariableExplorer : ComponentBase
 
     private string TabId(PanelTab tab) => $"variable-explorer-tab-{_instance}-{tab}";
 
-    private string TabPanelId(PanelTab tab) => $"variable-explorer-tabpanel-{_instance}-{tab}";
+    /// <summary>
+    /// The one tab panel. Its id does not vary by tab: there is a single panel whose contents
+    /// change, so every tab points at it. An id per tab would leave the unselected tab's
+    /// aria-controls naming an element that is not rendered.
+    /// </summary>
+    private string TabPanelId() => $"variable-explorer-tabpanel-{_instance}";
 
     private string TabLabel(PanelTab tab) => tab switch
     {
@@ -1381,8 +1386,10 @@ public partial class VariableExplorer : ComponentBase
                 builder.OpenElement(5, "button");
                 builder.AddAttribute(6, "class", "hd-button-reset variable-explorer-crumb");
                 builder.AddAttribute(7, "type", "button");
-                builder.AddAttribute(8, "aria-expanded", SourceOpen(SourceKind.Kilde) ? "true" : "false");
-                builder.AddAttribute(9, "aria-controls", SourceId);
+                // No aria-expanded and no aria-controls. Both describe a control that discloses
+                // something on the same screen, and this one does not: it replaces the list with
+                // the kilde's own view. aria-controls would also dangle — the element it named
+                // does not exist while this button is the thing on screen.
                 builder.AddAttribute(10, "onclick",
                     EventCallback.Factory.Create(this, () => ToggleSourceAsync(SourceKind.Kilde)));
                 builder.AddContent(11, crumb.Text);

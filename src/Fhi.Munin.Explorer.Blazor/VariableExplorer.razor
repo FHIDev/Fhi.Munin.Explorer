@@ -388,7 +388,7 @@ else
                                                         role="tab"
                                                         id="@TabId(tab)"
                                                         aria-selected="@(tab == _tab ? "true" : "false")"
-                                                        aria-controls="@TabPanelId(tab)"
+                                                        aria-controls="@TabPanelId()"
                                                         tabindex="@(tab == _tab ? 0 : -1)"
                                                         @onclick="() => SelectTab(tab)">@TabLabel(tab)</button>
                                             </div>
@@ -398,7 +398,7 @@ else
                                     <div class="variable-meta__body">
                                         <div class="variable-meta__tab-content"
                                              role="tabpanel"
-                                             id="@TabPanelId(_tab)"
+                                             id="@TabPanelId()"
                                              aria-labelledby="@TabId(_tab)"
                                              tabindex="0">
                                             @if (_tab is PanelTab.Details)

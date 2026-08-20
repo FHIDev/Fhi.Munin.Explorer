@@ -62,6 +62,9 @@ internal sealed class StubHttpHandler(Func<HttpRequestMessage, HttpResponseMessa
     public Uri? LastUri { get; private set; }
     public IReadOnlyList<string> LastClientHeader { get; private set; } = [];
     public AuthenticationHeaderValue? LastAuthorization { get; private set; }
+
+    /// <summary>The languages asked for, which decide what the API names its facets in.</summary>
+    public IReadOnlyList<string> LastAcceptLanguage { get; private set; } = [];
     public int Calls { get; private set; }
 
     /// <summary>Answers <c>200 OK</c> with the given JSON body to every request.</summary>
@@ -81,6 +84,7 @@ internal sealed class StubHttpHandler(Func<HttpRequestMessage, HttpResponseMessa
             ? [.. values]
             : [];
         LastAuthorization = request.Headers.Authorization;
+        LastAcceptLanguage = [.. request.Headers.AcceptLanguage.Select(v => v.Value)];
 
         return Task.FromResult(respond(request));
     }
