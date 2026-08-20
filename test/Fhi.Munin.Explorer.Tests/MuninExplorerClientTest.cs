@@ -522,6 +522,8 @@ public class MuninExplorerClientTest
     [InlineData("..")]
     [InlineData("../..")]
     [InlineData("a/./b")]
+    [InlineData("..\\..")]
+    [InlineData("a\\..\\b")]
     public async Task GetKodeverkCodesAsync_WhenAReferenceCarriesADotSegment_ThenNothingIsSentAtAll(
         string reference)
     {
@@ -530,6 +532,12 @@ public class MuninExplorerClientTest
         // %2E and removes the dot segment afterwards. So a reference of ".." would walk out of the
         // codes endpoint and address something else on the same host with the bearer token
         // attached, and the only way to keep it from doing so is not to send it.
+        //
+        // The backslash forms are here for the same reason the guard splits on one: EscapeDataString
+        // writes "\" as %5C, and a server that decodes the target before normalising it can resolve
+        // that as a separator. The guard refuses any part that is nothing but dots, which is wider
+        // than the "." and ".." that actually normalise — deliberately so, since no real reference
+        // is all dots.
         var handler = StubHttpHandler.Status(HttpStatusCode.NotFound);
 
         var refused = await Assert.ThrowsAsync<ArgumentException>(() =>

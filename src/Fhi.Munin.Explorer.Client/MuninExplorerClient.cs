@@ -128,7 +128,15 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
     /// Since it cannot be escaped it is refused, before any request is made. The check runs over
     /// the slash-separated parts rather than the whole value, because a server that percent-decodes
     /// the target before normalising it resolves an encoded separator the same as a plain one — so
-    /// <c>a/../b</c> is no safer for having its slashes escaped on the way out.
+    /// <c>a/../b</c> is no safer for having its slashes escaped on the way out. The backslash is in
+    /// the split for that same reason: <see cref="Uri.EscapeDataString(string)"/> writes it as
+    /// <c>%5C</c>, and a server that decodes before normalising can read it as a separator.
+    /// </para>
+    /// <para>
+    /// The rule is deliberately wider than the two segments that actually normalise. Only <c>.</c>
+    /// and <c>..</c> are dot segments — <see cref="Uri"/> leaves a longer run of dots alone — but a
+    /// kodeverk reference is never nothing but dots, so refusing every all-dot part costs the
+    /// caller nothing and does not depend on which normaliser the target server happens to run.
     /// </para>
     /// </remarks>
     private static string EscapePathSegment(string value, string parameterName)
@@ -138,7 +146,7 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
             if (part.Length > 0 && part.All(character => character == '.'))
             {
                 throw new ArgumentException(
-                    $"'{value}' cannot be sent as a path segment: '{part}' is a dot segment.",
+                    $"'{value}' cannot be sent as a path segment: '{part}' is nothing but dots.",
                     parameterName);
             }
         }

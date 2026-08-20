@@ -15,9 +15,11 @@ category: Added
   implements the interface itself has one more member to supply. It answers null where the
   catalogue publishes no codes — every `HelsefagligKodeverk` link, and any reference the upstream
   register does not know — and throws on a fault, the same split the rest of the interface follows.
-  A type or reference carrying a dot segment is refused with an `ArgumentException` instead of being
-  sent: no escaping survives one, because `Uri` unescapes `%2E` before it removes dot segments, so
-  the value would resolve against the base address as a different endpoint entirely.
+  A type or reference with a part that is nothing but dots is refused with an `ArgumentException`
+  instead of being sent: no escaping survives `..`, because `Uri` unescapes `%2E` before it removes
+  dot segments, so the value would resolve against the base address as a different endpoint
+  entirely. The rule covers any all-dot part rather than just the `.` and `..` that normalise, since
+  no real reference is all dots.
 - **Two more DOM handles, and the package's first `<table>`** - `variable-explorer-kodeverk` (with
   `__item`, `__name`, `__reference`) and `variable-explorer-codes` (with `__table`). Neither Stiler
   nor helsedata's variable page has a kodeverk section to borrow names from, so a host mounting the
