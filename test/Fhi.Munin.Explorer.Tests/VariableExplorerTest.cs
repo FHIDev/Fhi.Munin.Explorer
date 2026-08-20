@@ -303,9 +303,11 @@ public class VariableExplorerTest : BunitContext
     [Fact]
     public void Render_Always_ThenEverySortFieldTheContractOffersHasAButton()
     {
-        // The button row is Enum.GetValues rather than a list of its own, so it cannot fall behind
-        // the enum. Kode, datatype, status and dataperiode are absent because they are absent
-        // there — the API does not sort on them, and a fifth button would reorder nothing while
+        // ResultHeader writes each header cell out by hand with a literal SortField, so the row
+        // CAN fall behind the enum — this count is what catches it. A member added to SortField
+        // with no cell to press it fails here, and the fix is a cell rather than a longer list.
+        // Kode, datatype, status and dataperiode have no button because they are not in the enum
+        // at all — the API does not sort on them, and a button would reorder nothing while
         // claiming to have.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
@@ -883,18 +885,20 @@ public class VariableExplorerTest : BunitContext
         // document when a search comes back empty takes the reader's place in it with it, dropping
         // focus to <body>. Moving @ColumnPicker() inside the "there are hits" block would break
         // nothing else in this file, so the rule is asserted here rather than only in prose.
+        // A count and no more: which columns the picker offers is
+        // Render_Always_ThenThePickerOffersRunasSevenColumnsAndNotTheName's to say, and asserting
+        // the list twice would make a change to Runa's set fail here too, reading as "the picker
+        // vanished on an empty search" when it did nothing of the kind.
         var cut = RenderWith(new FakeClient(OnePage()));
 
-        Assert.Equal(
-            ["Kode", "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Status", "Dataperiode"],
-            ColumnToggles(cut).Select(b => b.TextContent.Trim()));
+        Assert.Equal(7, ColumnToggles(cut).Count);
     }
 
     [Fact]
     public void Render_Always_ThenThePickerBorrowsItsClassNamesAndInventsNone()
     {
         // The companion to the variable-explorer guard further down, which only inspects names in
-        // that prefix — the picker wears four names outside it, and an invented fifth would slip
+        // that prefix — the picker wears eight names outside it, and an invented ninth would slip
         // past that test unnoticed. Every name here was read back off helsedata's compiled
         // stylesheets; one that is not renders as a raw browser default inside a styled page.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
