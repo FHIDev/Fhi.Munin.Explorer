@@ -2873,12 +2873,27 @@ public class VariableExplorerTest : BunitContext
         /// <summary>Fail every codes fetch from the next one on.</summary>
         public bool FailCodes { get; set; }
 
+        /// <summary>Never answer a codes fetch from the next one on.</summary>
+        /// <remarks>
+        /// The counterpart to <see cref="StallKilde"/>, and there for the same reason: the loading
+        /// line, the de-duplication of a request already in flight and the generation guard all
+        /// only exist between the ask and the answer, and a fetch that completes synchronously
+        /// never spends any time there.
+        /// </remarks>
+        public bool StallCodes { get; set; }
+
+        private readonly List<TaskCompletionSource<KodeverkCodes?>> _codeStalls = [];
+
         public DetailClient Knows(KodeverkCodes codes)
         {
             _codeLists[(codes.KodeverkType, codes.KodeverkReference)] = codes;
 
             return this;
         }
+
+        /// <summary>Answer the oldest codes fetch still hanging.</summary>
+        public void AnswerStalledCodes(KodeverkCodes codes) =>
+            _codeStalls.First(stall => !stall.Task.IsCompleted).TrySetResult(codes);
 
         public override Task<KodeverkCodes?> GetKodeverkCodesAsync(
             Guid variableId, string kodeverkType, string kodeverkReference,
@@ -2889,6 +2904,15 @@ public class VariableExplorerTest : BunitContext
             if (FailCodes)
             {
                 throw new HttpRequestException("nede");
+            }
+
+            if (StallCodes)
+            {
+                var stall = new TaskCompletionSource<KodeverkCodes?>(
+                    TaskCreationOptions.RunContinuationsAsynchronously);
+                _codeStalls.Add(stall);
+
+                return stall.Task;
             }
 
             // Explicit for the reason the other two are: a link the register does not know answers
@@ -3373,6 +3397,91 @@ public class VariableExplorerTest : BunitContext
 
         CodeToggles(cut)[0].Click();
 
+        Assert.Equal(2, client.CodeRequests.Count);
+        Assert.Equal(SpyttId, client.CodeRequests[1].VariableId);
+    }
+
+    [Fact]
+    public void Codes_WhileTheFetchIsStillOut_ThenTheListSaysItIsLoadingRatherThanEmpty()
+    {
+        // The window between the ask and the answer is a state of its own. Without it the open
+        // list falls through to the empty case and reads "Ingen kodeverdier tilgjengelig" — an
+        // answer, and the wrong one, about codes that are still on their way.
+        var client = KodeverkRows();
+        var cut = OpenData(client);
+
+        client.StallCodes = true;
+        CodeToggles(cut)[0].Click();
+
+        var message = Panel(cut).QuerySelector(".variable-explorer-codes p")!;
+
+        Assert.Equal("Henter koder \u2026", message.TextContent);
+        Assert.Equal("caption", message.ClassName);
+    }
+
+    [Fact]
+    public async Task Codes_WhenAStalledListIsOpenedAgain_ThenTheFetchAlreadyOutIsTheOneItWaitsFor()
+    {
+        // Collapsing and re-opening is what a reader does when a list is slow, and the request
+        // already in flight is the one that will fill it. Without the in-flight check each press
+        // starts another fetch of the same link — Kommunenummer's 885 codes, once per press.
+        var client = KodeverkRows();
+        var cut = OpenData(client);
+
+        client.StallCodes = true;
+        CodeToggles(cut)[0].Click();
+
+        CodeToggles(cut)[0].Click();
+        CodeToggles(cut)[0].Click();
+
+        Assert.Single(client.CodeRequests);
+        Assert.Equal("Henter koder \u2026",
+                     Panel(cut).QuerySelector(".variable-explorer-codes p")!.TextContent);
+
+        // And the one answer fills the list that was re-opened, rather than being orphaned by it.
+        await cut.InvokeAsync(() => client.AnswerStalledCodes(Codes2336()));
+
+        cut.WaitForAssertion(() =>
+            Assert.Contains("Velg verdi", Panel(cut).QuerySelector(".variable-explorer-codes table")!.TextContent));
+
+        Assert.Single(client.CodeRequests);
+    }
+
+    [Fact]
+    public async Task Codes_WhenAnotherVariableIsOpenedWhileTheFetchIsOut_ThenTheAbandonedAnswerIsNotShown()
+    {
+        // The generation guard, and the reason the kilde panel has one. Two variables in this very
+        // fixture link to reference 2336, so an answer that outlives the panel it was asked for
+        // lands in the next variable's list looking entirely correct — and is another variable's
+        // codes, never fetched for the one on screen.
+        var client = KodeverkRows();
+        var cut = OpenData(client);
+
+        client.StallCodes = true;
+        CodeToggles(cut)[0].Click();
+
+        // The reader gave up on the hanging list and opened the other variable instead.
+        Toggles(cut)[1].Click();
+        TabButtons(cut)[1].Click();
+
+        client.StallCodes = false;
+
+        await cut.InvokeAsync(() => client.AnswerStalledCodes(Codes2336() with
+        {
+            Codes = [new() { Value = "9", Name = "STALE" }]
+        }));
+
+        // One turn of the dispatcher, so the abandoned answer has landed if it is going to.
+        await cut.InvokeAsync(() => { });
+
+        CodeToggles(cut)[0].Click();
+
+        var table = Panel(cut).QuerySelector(".variable-explorer-codes table")!;
+
+        Assert.DoesNotContain("STALE", table.TextContent);
+        Assert.Contains("Velg verdi", table.TextContent);
+
+        // Nothing was cached under the new variable, so its list was fetched for it.
         Assert.Equal(2, client.CodeRequests.Count);
         Assert.Equal(SpyttId, client.CodeRequests[1].VariableId);
     }

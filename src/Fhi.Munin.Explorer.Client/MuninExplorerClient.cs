@@ -107,11 +107,43 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
         // ours and is passed through verbatim. The reference genuinely varies: V-AK sends dotted
         // OIDs, V-KK sends integers, and helsefaglige references like "NCMP-NCSP-NCRP" are free
         // text — a reference carrying a slash would otherwise be read as two path segments and
-        // answer 404 for a link the catalogue does publish.
+        // answer 404 for a link the catalogue does publish. Escaping is not enough on its own for
+        // a dot segment, which no escaping survives; see EscapePathSegment.
         var url = $"api/explorer/variables/{variableId}"
-                  + $"/kodeverk/{Uri.EscapeDataString(kodeverkType)}/{Uri.EscapeDataString(kodeverkReference)}/codes";
+                  + $"/kodeverk/{EscapePathSegment(kodeverkType, nameof(kodeverkType))}"
+                  + $"/{EscapePathSegment(kodeverkReference, nameof(kodeverkReference))}/codes";
 
         return GetOrNullAsync<KodeverkCodes>(url, cancellationToken);
+    }
+
+    /// <summary>Escape one free-text value for the path, refusing one the path cannot carry.</summary>
+    /// <remarks>
+    /// <see cref="Uri.EscapeDataString(string)"/> escapes a slash but leaves a dot alone, because a
+    /// dot is unreserved — and percent-encoding it does not help: <see cref="Uri"/> unescapes
+    /// <c>%2E</c> while canonicalising and removes the dot segments afterwards, so <c>%2E%2E</c>
+    /// resolves exactly as <c>..</c> does. A reference of <c>..</c> would then climb out of the
+    /// codes endpoint and address a different one on the same host, carrying whatever the message
+    /// handlers attach.
+    /// <para>
+    /// Since it cannot be escaped it is refused, before any request is made. The check runs over
+    /// the slash-separated parts rather than the whole value, because a server that percent-decodes
+    /// the target before normalising it resolves an encoded separator the same as a plain one — so
+    /// <c>a/../b</c> is no safer for having its slashes escaped on the way out.
+    /// </para>
+    /// </remarks>
+    private static string EscapePathSegment(string value, string parameterName)
+    {
+        foreach (var part in value.Split('/', '\\'))
+        {
+            if (part.Length > 0 && part.All(character => character == '.'))
+            {
+                throw new ArgumentException(
+                    $"'{value}' cannot be sent as a path segment: '{part}' is a dot segment.",
+                    parameterName);
+            }
+        }
+
+        return Uri.EscapeDataString(value);
     }
 
     /// <summary>

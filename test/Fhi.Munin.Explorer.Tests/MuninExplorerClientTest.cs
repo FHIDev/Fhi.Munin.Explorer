@@ -517,4 +517,55 @@ public class MuninExplorerClientTest
         Assert.Equal($"/api/explorer/variables/{id}/kodeverk/AdministrativtKodeverk/2.16.578%2F1%201/codes",
                      handler.LastUri?.AbsolutePath);
     }
+
+    [Theory]
+    [InlineData("..")]
+    [InlineData("../..")]
+    [InlineData("a/./b")]
+    public async Task GetKodeverkCodesAsync_WhenAReferenceCarriesADotSegment_ThenNothingIsSentAtAll(
+        string reference)
+    {
+        // Escaping a slash is not enough on its own: a dot is unreserved, so EscapeDataString
+        // leaves it alone, and percent-encoding it by hand changes nothing either — Uri unescapes
+        // %2E and removes the dot segment afterwards. So a reference of ".." would walk out of the
+        // codes endpoint and address something else on the same host with the bearer token
+        // attached, and the only way to keep it from doing so is not to send it.
+        var handler = StubHttpHandler.Status(HttpStatusCode.NotFound);
+
+        var refused = await Assert.ThrowsAsync<ArgumentException>(() =>
+            Client(handler).GetKodeverkCodesAsync(Guid.NewGuid(), "AdministrativtKodeverk", reference));
+
+        Assert.Equal("kodeverkReference", refused.ParamName);
+        Assert.Null(handler.LastUri);
+    }
+
+    [Fact]
+    public async Task GetKodeverkCodesAsync_WhenTheTypeCarriesADotSegment_ThenItIsRefusedToo()
+    {
+        // The type is the API's own vocabulary and is three enum names today, but it is passed
+        // through verbatim in the same way — one rule for both segments, not a rule for the one
+        // that happens to be documented as free text.
+        var handler = StubHttpHandler.Status(HttpStatusCode.NotFound);
+
+        var refused = await Assert.ThrowsAsync<ArgumentException>(() =>
+            Client(handler).GetKodeverkCodesAsync(Guid.NewGuid(), "..", "2336"));
+
+        Assert.Equal("kodeverkType", refused.ParamName);
+        Assert.Null(handler.LastUri);
+    }
+
+    [Fact]
+    public async Task GetKodeverkCodesAsync_WhenAReferenceIsADottedOid_ThenItsDotsAreLeftReadable()
+    {
+        // The other half of the same rule. Only a segment that is nothing but dots normalises, so
+        // an OID — which is most of what V-AK sends — keeps the spelling the catalogue published
+        // rather than being turned into %2E noise in every log and network tab.
+        var handler = StubHttpHandler.Status(HttpStatusCode.NotFound);
+        var id = Guid.NewGuid();
+
+        await Client(handler).GetKodeverkCodesAsync(id, "AdministrativtKodeverk", "2.16.578.1.12.4.1.1.7113");
+
+        Assert.Equal($"/api/explorer/variables/{id}/kodeverk/AdministrativtKodeverk/2.16.578.1.12.4.1.1.7113/codes",
+                     handler.LastUri?.AbsolutePath);
+    }
 }
