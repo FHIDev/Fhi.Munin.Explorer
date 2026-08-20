@@ -539,6 +539,8 @@ public partial class VariableExplorer
         }
 
         var previous = _filter;
+        var previousPage = _page;
+        var previousKeepPager = _keepPager;
 
         _filter = next;
 
@@ -558,12 +560,20 @@ public partial class VariableExplorer
         else
         {
             // The rows on screen are still the old ones, so the buttons have to say so — the same
-            // invariant the sort rollback protects.
+            // invariant the sort rollback protects. The page with them: those rows are page 7 of the
+            // old selection, and leaving _page at 1 would report a page the reader is not on and
+            // take it out of the host's URL over a narrowing that never happened.
             _filter = previous;
+            _page = previousPage;
+            _keepPager = previousKeepPager;
         }
 
         // _filter and not next: what the host is told is what is in force, rolled back or not.
         await RaiseAsync(FilterChanged, _filter);
+
+        // Narrowing renumbers the pages, so a host mirroring this into a URL has to drop the page
+        // it was holding. Same rule as the filter: whatever is in force, rolled back or not.
+        await NotifyPageChangedAsync();
     }
 
     /// <summary>

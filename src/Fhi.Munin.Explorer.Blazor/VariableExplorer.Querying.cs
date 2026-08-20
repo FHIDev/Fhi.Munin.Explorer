@@ -13,7 +13,28 @@ public partial class VariableExplorer
         _search = Search;
         _filter = Filter ?? VariableFilter.None;
         _selectedId = SelectedVariableId;
-        await SearchAsync();
+        _sort = Sort;
+        _direction = Direction;
+        _page = Math.Max(Page, 1);
+
+        // Not SearchAsync: that is what a person pressing the search button does, and it starts by
+        // throwing away the page number because a new search renumbers everything. Restoring a
+        // shared link is the opposite — the page is the part worth keeping.
+        if (await FetchAsync(_search))
+        {
+            await FetchFacetsAsync();
+        }
+
+        await LandOnRealPageAsync();
+
+        // Both echoed back on mount, as SearchAsync did when it ran this path. The search echo is a
+        // no-op for a host that just supplied it, but it is existing behaviour and not this
+        // change's to remove. The page echo is not a no-op: LandOnRealPageAsync above may have moved
+        // the reader off a page the link asked for and the result set no longer has, and the host
+        // is holding the number from the link until it is told otherwise.
+        await NotifySearchChangedAsync();
+        await NotifyPageChangedAsync();
+
         await OpenInitialSelectionAsync();
     }
 
@@ -40,6 +61,7 @@ public partial class VariableExplorer
         }
 
         await NotifySearchChangedAsync();
+        await NotifyPageChangedAsync();
     }
 
     /// <summary>
@@ -56,9 +78,13 @@ public partial class VariableExplorer
             return;
         }
 
-        // Kept so a failed fetch can put them back — see below.
+        // Kept so a failed fetch can put them back — see below. The page and the pager as well as
+        // the order: reordering sends the reader to page one, and if the reorder never arrives they
+        // are still on the page they were on.
         var previousSort = _sort;
         var previousDirection = _direction;
+        var previousPage = _page;
+        var previousKeepPager = _keepPager;
 
         if (sort == _sort)
         {
@@ -90,7 +116,17 @@ public partial class VariableExplorer
             // ascending fetch that just failed short of cycling twice.
             _sort = previousSort;
             _direction = previousDirection;
+            _page = previousPage;
+            _keepPager = previousKeepPager;
+
+            return;
         }
+
+        await RaiseAsync(SortChanged, _sort);
+        await RaiseAsync(DirectionChanged, _direction);
+
+        // Reordering renumbered the pages and sent the reader back to the first one.
+        await NotifyPageChangedAsync();
     }
 
     /// <summary>
@@ -157,6 +193,10 @@ public partial class VariableExplorer
         }
 
         await RetreatFromEmptyPageAsync(previous, previousResult, previousPanel);
+
+        // After the retreat, not before: it can move the page again, and the host should be told
+        // where the reader ended up rather than where they were headed.
+        await NotifyPageChangedAsync();
     }
 
     /// <summary>
@@ -335,6 +375,40 @@ public partial class VariableExplorer
     /// link that reloads into a different search than the box on screen is showing.
     /// </remarks>
     private Task NotifySearchChangedAsync() => RaiseAsync(SearchChanged, _search);
+
+    /// <summary>
+    /// Move to the last real page when a restored link asks for one past the end.
+    /// </summary>
+    /// <remarks>
+    /// A link outlives the result set it was made from. Someone shares page 40, a filter is
+    /// tightened or rows are unpublished, and the link now points past the end.
+    /// <para>
+    /// The API does not clamp: asked for page 99999 of 734 it answers with page 99999 and no rows,
+    /// which is truthful and useless. The reader gets an empty list under "Side 99999 av 734" and
+    /// nothing to press, because the pager's Next is already at the end and Previous steps back one
+    /// page at a time from 99999. Found by opening such a link rather than by any test — the stub
+    /// in the suite had never been asked for a page it did not have.
+    /// </para>
+    /// <para>
+    /// Only on this path. A page turn cannot overshoot, because the pager clamps what it asks for,
+    /// and an emptied page reached by turning is <see cref="RetreatFromEmptyPageAsync"/>'s job —
+    /// that one has rollback state to unwind, which a first render does not.
+    /// </para>
+    /// </remarks>
+    private async Task LandOnRealPageAsync()
+    {
+        if (_result is not { TotalPages: > 0 } result || result.Items.Count > 0 || _page <= result.TotalPages)
+        {
+            return;
+        }
+
+        _page = result.TotalPages;
+
+        await FetchAsync(_executedSearch);
+    }
+
+    /// <summary>Tell the host which page is showing, whether it turned, reset or was clamped.</summary>
+    private Task NotifyPageChangedAsync() => RaiseAsync(PageChanged, _page);
 
     /// <summary>
     /// Hand a value to one of the host's callbacks without letting the host's own failure out.

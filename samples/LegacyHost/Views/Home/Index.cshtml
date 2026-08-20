@@ -1,4 +1,5 @@
 @using Fhi.Munin.Explorer.Blazor
+@using LegacyHost.Components
 @{
     ViewData["Title"] = "Legacy host";
 }
@@ -15,6 +16,14 @@
 <div class="hostframe">
     @* render-mode is set HERE, by the host. The component itself is render-mode free.
        Server (not ServerPrerendered) because the component fetches on initialise and
-       prerendering would run that twice. *@
-    <component type="typeof(VariableExplorer)" render-mode="Server" param-Language="@("no")" />
+       prerendering would run that twice.
+
+       The wrapper, not the explorer directly: the package has no router and never touches the
+       address bar, so mirroring state into the URL is the host's job. The query string is read
+       here, server-side, and handed in — which is what makes a shared link work on first paint
+       rather than after a round trip. *@
+    <component type="typeof(ExplorerWithUrlState)"
+               render-mode="Server"
+               param-Language="@("no")"
+               param-InitialQuery="@Context.Request.QueryString.Value" />
 </div>
