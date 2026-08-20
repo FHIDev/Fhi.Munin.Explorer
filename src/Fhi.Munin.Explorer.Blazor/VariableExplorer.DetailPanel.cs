@@ -653,7 +653,6 @@ public partial class VariableExplorer
     /// </remarks>
     private string ValidityDate(DateTimeOffset? date) =>
         date is { } value
-            ? value.ToString("d", System.Globalization.CultureInfo.GetCultureInfo(
-                string.Equals(Language, "en", StringComparison.OrdinalIgnoreCase) ? "en" : "nb-NO"))
+            ? value.ToString("d", CatalogueProperties.Culture(Language))
             : T.NotSpecified;
 }

@@ -94,6 +94,16 @@ internal sealed record Texts(
     string FieldCountingUnit,
     string FieldVariableCount,
     string FieldDataCollections,
+
+    // Headings and fields the kilde view needs, which the variable panel has no use for.
+    string HeadingMetadata,
+    string HeadingSourceInformation,
+    string HeadingStatistics,
+    string FieldLastUpdated,
+    string FieldTotalVariables,
+    string HeadingDataCollections,
+    string FieldName,
+    string VariableCountSuffix,
     // Prose for the identification level, which the API reports as a raw token the same way
     // kildetype is. A token missing from this falls back to what the API sent.
     IReadOnlyDictionary<string, string> PersonIdentificationNames,
@@ -311,6 +321,14 @@ internal sealed record Texts(
         FieldCountingUnit: "Telleenhet",
         FieldVariableCount: "Antall variabler",
         FieldDataCollections: "Antall datasamlinger",
+        HeadingMetadata: "Metadata",
+        HeadingSourceInformation: "Kildeinformasjon",
+        HeadingStatistics: "Statistikk",
+        FieldLastUpdated: "Sist oppdatert i Munin",
+        FieldTotalVariables: "Totalt antall variabler",
+        HeadingDataCollections: "Datasamlinger",
+        FieldName: "Navn",
+        VariableCountSuffix: "variabler",
         PersonIdentificationNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["directlyIdentifiable"] = "Direkte identifiserbar",
@@ -458,6 +476,14 @@ internal sealed record Texts(
         FieldCountingUnit: "Counting unit",
         FieldVariableCount: "Number of variables",
         FieldDataCollections: "Number of data collections",
+        HeadingMetadata: "Metadata",
+        HeadingSourceInformation: "Source information",
+        HeadingStatistics: "Statistics",
+        FieldLastUpdated: "Last updated in Munin",
+        FieldTotalVariables: "Total number of variables",
+        HeadingDataCollections: "Data collections",
+        FieldName: "Name",
+        VariableCountSuffix: "variables",
         PersonIdentificationNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["directlyIdentifiable"] = "Directly identifiable",
