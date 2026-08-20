@@ -1006,8 +1006,15 @@ public partial class VariableExplorer : ComponentBase
     /// The options in a vocabulary, as value and label in the reader's language.
     /// </summary>
     /// <remarks>
+    /// Read from <c>optionsJson</c> rather than from the parsed <c>options</c> the API also sends,
+    /// which the contract otherwise says to prefer: each <c>PropertyOption</c> there carries one
+    /// label, resolved to the <c>Accept-Language</c> the response was fetched under, and this
+    /// panel switches language per render without re-fetching. The raw string is the only place
+    /// both labels are still there to choose between.
+    /// <para>
     /// Malformed JSON yields nothing rather than throwing. This is curated data arriving over the
     /// wire, and one bad definition should cost that one field its label, not take the panel down.
+    /// </para>
     /// </remarks>
     private IReadOnlyList<(string Value, string Label, string Language)> PropertyOptions(string optionsJson)
     {

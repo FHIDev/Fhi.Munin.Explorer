@@ -80,12 +80,17 @@ jobs:
             # that fails ends the step where it stands, and the retry, the code below it and the
             # exit at the bottom would all be unreachable. A command in a `||` list is exempt from
             # that, which is what keeps this loop a loop.
+            #
+            # Both flags built from $TRX rather than spelled out again, so the file the tests
+            # write and the file the next step reads cannot drift apart. They did not have to: an
+            # assert step pointed at a path nothing writes reports "the drift tests did not run",
+            # which is loud, false, and about the wrong thing.
             dotnet test test/Fhi.Munin.Explorer.Tests \
               --configuration Release \
               --no-build \
               --filter 'Category=ContractDrift' \
-              --logger 'trx;LogFileName=contract-drift.trx' \
-              --results-directory artifacts && status=0 || status=$?
+              --logger "trx;LogFileName=$(basename "$TRX")" \
+              --results-directory "$(dirname "$TRX")" && status=0 || status=$?
 
             if [ "$status" -eq 0 ]; then
               break
@@ -110,7 +115,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: contract-drift-trx
-          path: artifacts/*.trx
+          path: ${{ env.TRX }}
           if-no-files-found: ignore
           retention-days: 30
 
@@ -154,10 +159,20 @@ jobs:
 
           # Matched on the exact title rather than on a label, so the alert does not depend on a
           # label existing in a repository whose issues are otherwise for external consumers.
+          #
+          # And on the author as well as the title, because that openness cuts both ways: anybody
+          # who can open an issue here can open one with this exact title first, and the alert
+          # would then spend every night appending maintainer-facing reports to a thread an
+          # outsider wrote and can keep editing. Nothing worse than that is reachable — the job
+          # holds `issues: write` and no more — but the channel should be one the workflow owns.
+          # Tested with is_bot rather than a literal login: gh has spelled this same identity
+          # `github-actions[bot]` and `app/github-actions` across versions, and no other bot has
+          # reason to open an issue by this title.
+          #
           # Not piped through `head`: this block runs under `pipefail`, and a reader that closes
           # the pipe early leaves `gh` killed by SIGPIPE, which would take the whole alert with it.
-          matches=$(gh issue list --state open --search 'Contract drift in:title' --json number,title \
-            --jq ".[] | select(.title == \"$TITLE\") | .number")
+          matches=$(gh issue list --state open --search 'Contract drift in:title' --json number,title,author \
+            --jq ".[] | select(.title == \"$TITLE\" and .author.is_bot) | .number")
           existing=${matches%%$'\n'*}
 
           if [ -n "$existing" ]; then

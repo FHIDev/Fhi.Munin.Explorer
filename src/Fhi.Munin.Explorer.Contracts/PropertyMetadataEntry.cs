@@ -48,8 +48,17 @@ public sealed record PropertyMetadataEntry
     /// </summary>
     /// <remarks>
     /// Prefer <see cref="Options"/>, which is the same list already parsed and already resolved to
-    /// the request's language. This one is kept because the API still sends it, and because it is
-    /// the only place the untranslated labels survive.
+    /// the request's language — unless the reader's language is not the request's. Each
+    /// <see cref="PropertyOption"/> carries one label, fixed at the <c>Accept-Language</c> the
+    /// response was fetched under, so a caller that renders one response to readers in more than
+    /// one language has nothing in <see cref="Options"/> to switch on and reads the labels from
+    /// here instead. That is the case this string is for, and it is why the field is kept rather
+    /// than deprecated: it is the only place both labels survive.
+    /// <para>
+    /// The component in <c>Fhi.Munin.Explorer.Blazor</c> is exactly that caller — it picks
+    /// <c>label</c> or <c>labelEn</c> per render, from the language the reader chose — so this
+    /// package's own reference implementation is on this side of the split, not the other.
+    /// </para>
     /// </remarks>
     [JsonPropertyName("optionsJson")] public string? OptionsJson { get; init; }
 
@@ -72,8 +81,11 @@ public sealed record PropertyOption
     [JsonPropertyName("value")] public string Value { get; init; } = "";
 
     /// <summary>
-    /// The label to show. Resolved server side from editable master data and following
-    /// <c>Accept-Language</c>, so it is not a caller's to map or to cache.
+    /// The label to show. Resolved server side from editable master data and following the
+    /// <c>Accept-Language</c> of the request that fetched it, so it is not a caller's to map or to
+    /// cache — and, for the same reason, not a caller's to re-language: rendering one response in
+    /// two languages means reading <see cref="PropertyMetadataEntry.OptionsJson"/>, where both
+    /// labels are still there.
     /// </summary>
     [JsonPropertyName("displayName")] public string DisplayName { get; init; } = "";
 }

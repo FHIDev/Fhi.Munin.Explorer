@@ -46,9 +46,16 @@ count_of() {
 
 total=$(count_of total)
 executed=$(count_of executed)
-not_executed=$(count_of notExecuted)
 
-: "${total:=0}" "${executed:=0}" "${not_executed:=0}"
+: "${total:=0}" "${executed:=0}"
+
+# Subtracted rather than read from the TRX's own notExecuted attribute, which is not the count it
+# looks like: xUnit's dynamic skips — a Skip= set at construction, which is exactly what
+# LiveApiFactAttribute does when MUNIN_EXPLORER_LIVE is unset — reach the VSTest TRX logger as
+# tests that were never handed over to be run, so they land in total and nowhere else.
+# notExecuted stays 0 through an all-skipped run, which would make this the guard that never fires
+# and the diagnostic below a line that says "0 skipped" about eight skipped tests.
+not_executed=$((total - executed))
 
 echo "Drift tests: $total found, $executed executed, $not_executed skipped."
 
@@ -64,6 +71,8 @@ fi
 
 if [ "$not_executed" -ne 0 ]; then
   echo "::error::$not_executed of $total contract-drift tests were skipped. A skipped test checked nothing." >&2
+  echo "  * A [LiveApiFact] skips itself when MUNIN_EXPLORER_LIVE is unset — check it reached this job." >&2
+  echo "  * A test skipped for any other reason is a Skip= somebody left on a [Fact]." >&2
   failures=1
 fi
 

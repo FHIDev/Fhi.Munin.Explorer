@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Fhi.Munin.Explorer.Client;
@@ -16,8 +17,8 @@ namespace Fhi.Munin.Explorer.Tests;
 /// renamed, a field withdrawn — with the untouched payload as the control.
 /// <para>
 /// These run on every commit. Nothing here leaves the machine: they are what keeps
-/// <see cref="ShapeDrift"/> honest between nights, and the last test drives the whole nightly
-/// path — the real client, the recording, the comparison, the failure — against a stub.
+/// <see cref="ShapeDrift"/> honest between nights, and the last two drive the whole nightly path —
+/// the real client, the recording, the comparison, the failure — against a stub.
 /// </para>
 /// </remarks>
 public class ShapeDriftTest
@@ -52,6 +53,25 @@ public class ShapeDriftTest
         // The other half of the same addition: options is the parsed, language-resolved twin of
         // optionsJson, which this package used to tell callers to parse themselves.
         Assert.Empty(DriftIn<KildeDetail>(Load("kilde.json")));
+
+    [Fact]
+    public void Between_WhenACapturedKildeHierarchyIsUnchanged_ThenNothingDrifts() =>
+        Assert.Empty(DriftIn<KildeHierarchy>(Load("hierarchy.json")));
+
+    [Fact]
+    public void Between_WhenACapturedDatasamlingIsUnchanged_ThenNothingDrifts() =>
+        Assert.Empty(DriftIn<DatasamlingDetail>(Load("datasamling.json")));
+
+    [Fact]
+    public void Between_WhenACapturedTimelineIsUnchanged_ThenNothingDrifts() =>
+        // The eighth and last shape. One control for every endpoint ContractDriftTest checks
+        // nightly, and that is the count to keep: a shape with no control here can only be found
+        // to be a false positive at 04:17 UTC, as a red scheduled run that files an issue telling
+        // somebody to go and fix a DTO that was never wrong — and a nightly job people stop
+        // believing is a nightly job people stop reading. ContractCoverageTest does not stand in
+        // for these: it asks whether every wire field has somewhere to land, not whether the
+        // contract declares anything the payload does not, or reads a field as the wrong kind.
+        Assert.Empty(DriftIn<IReadOnlyList<VariableVersion>>(Load("timeline.json")));
 
     [Fact]
     public void Between_WhenTheApiHasNotCaughtUpWithTheContract_ThenNothingDrifts()
@@ -162,6 +182,21 @@ public class ShapeDriftTest
             () => api.RoundTripAsync(client => client.GetKilderAsync()));
 
         Assert.Contains("nyttFelt", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RoundTripAsync_WhenTheEndpointAnswers404_ThenTheNightlyJobFails()
+    {
+        using var api = LiveApiConnection.Open(StubHttpHandler.Status(HttpStatusCode.NotFound));
+
+        // The quietest failure the whole job exists to catch: an endpoint that moves answers with
+        // no body, the body deserialises to a default DTO, and a default DTO round-trips against
+        // nothing perfectly. Without the status check above the comparison, a moved endpoint is a
+        // green run. This is the test that keeps that check from being deleted as redundant.
+        var failure = await Assert.ThrowsAnyAsync<XunitException>(
+            () => api.RoundTripAsync(client => client.GetKilderAsync()));
+
+        Assert.Contains("404", failure.Message, StringComparison.Ordinal);
     }
 
     private static JsonNode Load(string fixture) =>

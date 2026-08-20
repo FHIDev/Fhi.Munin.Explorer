@@ -50,10 +50,12 @@ internal static class LiveApi
 /// A <see cref="FactAttribute"/> that skips itself unless <see cref="LiveApi.EnabledVariable"/> is set.
 /// </summary>
 /// <remarks>
-/// Public because xUnit instantiates it during discovery, and skipped rather than filtered out so
-/// the reason is written where somebody reading the test output can see it.
+/// Skipped rather than filtered out, so the reason is written where somebody reading the test
+/// output can see it — a filter that excluded them would leave a run that looks like it covered
+/// everything. Internal like every other helper here: xUnit discovers and honours the attribute
+/// from inside the test assembly, so there is nothing for it to be public for.
 /// </remarks>
-public sealed class LiveApiFactAttribute : FactAttribute
+internal sealed class LiveApiFactAttribute : FactAttribute
 {
     public LiveApiFactAttribute()
     {
