@@ -69,13 +69,15 @@ internal enum PanelTab
 /// <c>variable-explorer</c> root.
 /// </para>
 /// <para>
-/// The column picker adds seven names of helsedata's own and one of Stiler's. The seven come with
-/// the same dependency the pager does — they live in the <c>variables.css</c> that their variable
-/// page carries. <c>variable-explorer-header</c> with its <c>__actions</c> and
+/// The column picker adds seven names, all of them helsedata's own and none of them ours. They come
+/// with the same dependency the pager does — they live in the <c>variables.css</c> that their
+/// variable page carries. <c>variable-explorer-header</c> with its <c>__actions</c> and
 /// <c>__actions-button</c> place the control above the list; <c>dropdown-choicepicker</c> with its
 /// <c>--right</c> and <c>__item</c> draw the open list, positioned against an inline
-/// <c>position: relative</c> exactly as their own markup does it; <c>variable-explorer__dropdown</c>
-/// is the z-index; and <c>form-control__label</c> is Stiler's. A host that has none of them still
+/// <c>position: relative</c> exactly as their own markup does it; and
+/// <c>variable-explorer__dropdown</c> is the z-index. Each toggle's label is the button's own text
+/// rather than a span wearing a name, which is one name fewer to have to find in a stylesheet.
+/// A host that has none of them still
 /// gets a working disclosure — the shape is <c>&lt;details&gt;</c>, a <c>&lt;ul&gt;</c> and the
 /// square button in two states, the same three elements the filter panel leans on — it is drawn
 /// in the flow rather than over the list. What it must supply either way is
@@ -1256,9 +1258,14 @@ public partial class VariableExplorer : ComponentBase
         // has not styled `variable-dataitem-period` the cell would be empty rather than plain, and
         // an empty column is indistinguishable from a variable with no period recorded. The panel
         // is where the bar is worth its dependency, because the row beside it says the dates.
+        // The only column whose value is not the catalogue's own words: the dates are formatted for
+        // the reader and the word between them is this component's, so it follows Language like a
+        // label rather than staying Norwegian like a variable name. Hence `catalogue: false` — an
+        // English reader hearing "Jan 2010 – Ongoing" announced by a Norwegian voice is the very
+        // thing lang="no" is there to prevent, applied backwards.
         if (ColumnVisible(ResultColumn.DataPeriod))
         {
-            Column(builder, 700, T.FieldDataPeriod, PeriodText(v.DataFrom, v.DataTo), "period");
+            Column(builder, 700, T.FieldDataPeriod, PeriodText(v.DataFrom, v.DataTo), "period", catalogue: false);
         }
     };
 
@@ -1282,6 +1289,13 @@ public partial class VariableExplorer : ComponentBase
     /// The field name is not shown in the cell — the column header names it. It is still emitted
     /// for assistive technology, because a screen reader moving down a column has no header to
     /// glance up at.
+    /// <para>
+    /// <paramref name="catalogue"/> says whose words the value is. Nearly always the catalogue's,
+    /// which are Norwegian whatever the reader's language is, so they are marked <c>lang="no"</c>.
+    /// A column the component composes itself — the dataperiode — is in the reader's language
+    /// already and is left unmarked, exactly like the "Ikke oppgitt" beside it, so it inherits the
+    /// host page's language rather than claiming a language it is not in.
+    /// </para>
     /// </remarks>
     private void Column(
         RenderTreeBuilder builder,
@@ -1289,7 +1303,8 @@ public partial class VariableExplorer : ComponentBase
         string label,
         string? value,
         string? key,
-        string? tooltip = null)
+        string? tooltip = null,
+        bool catalogue = true)
     {
         // Sequence numbers ascend without gaps or repeats through every path below. Blazor uses
         // them positionally to diff one render against the next, so a number that goes backwards
@@ -1331,7 +1346,7 @@ public partial class VariableExplorer : ComponentBase
         {
             builder.AddContent(seq + 8, T.NotSpecified);
         }
-        else
+        else if (catalogue)
         {
             // The label follows Language; the value does not. Munin's metadata is Norwegian
             // whatever language the surrounding UI is in, and an English speech synthesiser
@@ -1340,6 +1355,12 @@ public partial class VariableExplorer : ComponentBase
             builder.AddAttribute(seq + 10, "lang", "no");
             builder.AddContent(seq + 11, value);
             builder.CloseElement();
+        }
+        else
+        {
+            // The component's own words, in the reader's language. Unmarked, so it inherits the
+            // host page's language the same way every other string this component composes does.
+            builder.AddContent(seq + 12, value);
         }
 
         builder.CloseElement();

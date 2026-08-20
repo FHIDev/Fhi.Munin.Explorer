@@ -10,5 +10,6 @@ category: Added
   above its bar, so the column set is Runa's full seven. It is text rather than helsedata's bar,
   which is drawn entirely by rules this package does not ship. (Fhi.Metadata-35oil)
 - **Status can now be shown even with historical variables filtered out** - the filter still decides
-  where the column starts, and from the first press the reader's choice is what counts.
-  (Fhi.Metadata-35oil)
+  where the column starts, and from the first press the reader's choice is what counts. Where Status
+  is the only column left, turning "Vis historiske" back off no longer takes it away as well, so no
+  combination of picker and filter can reduce a row to nothing but its name. (Fhi.Metadata-35oil)

@@ -1,12 +1,13 @@
 category: Notes for hosts
-- The column picker adds eight class names a host outside helsedata's estate has to provide. Seven
-  are helsedata's own, from the `variables.css` their variable page carries —
+- The column picker adds seven class names a host outside helsedata's estate has to provide, all
+  seven helsedata's own, from the `variables.css` their variable page carries —
   `variable-explorer-header` with `__actions` and `__actions-button`,
-  `variable-explorer__dropdown`, and `dropdown-choicepicker` with `--right` and `__item` — and
-  `form-control__label` is Stiler's. All of them were read back off the compiled stylesheets rather
-  than off a list of names. `sortable-dropdown` is deliberately *not* among them, although it looks
-  like the obvious fit: it is helsedata's mobile sort control, `display: none` above 1280px, so a
-  picker wearing it would be invisible on every desktop.
+  `variable-explorer__dropdown`, and `dropdown-choicepicker` with `--right` and `__item`. All of
+  them were read back off the compiled stylesheets rather than off a list of names, and each
+  toggle's label is the button's own text so that no eighth name is needed to style it.
+  `sortable-dropdown` is deliberately *not* among them, although it looks like the obvious fit: it
+  is helsedata's mobile sort control, `display: none` above 1280px, so a picker wearing it would be
+  invisible on every desktop.
 - The open list is `position: absolute`, and the wrapper carries an inline `position: relative` so
   it anchors to the picker rather than to whatever the host page happens to have positioned above
   it. That is what helsedata's own markup does inline too. A host that styles none of these names

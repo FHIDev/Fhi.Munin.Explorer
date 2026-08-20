@@ -764,6 +764,93 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
+    public void Columns_WhenTheFilterWouldTakeTheLastColumnAway_ThenStatusStaysOnScreen()
+    {
+        // The one route around "the last column cannot be hidden" that does not go through the
+        // picker. Status is normally the filter's to give and take — it says the same word on every
+        // row unless historical variables are in the list — but a reader who has hidden the other
+        // six has made it the last column, and a filter nobody associates with columns must not
+        // then empty every row down to its name. Deleting this brings that state back, reachable in
+        // seven presses and explained by nothing on screen.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        ClickFacet(cut, "Vis historiske");
+
+        foreach (var column in new[] { "Kode", "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Dataperiode" })
+        {
+            HideColumn(cut, column);
+        }
+
+        Assert.Equal("true", ColumnToggle(cut, "Status").GetAttribute("aria-disabled"));
+
+        ClickFacet(cut, "Vis historiske");
+
+        Assert.NotNull(cut.Find(".variable-dataitem-main__status"));
+        Assert.NotNull(cut.Find(".variable-dataitem-header__status"));
+        Assert.Equal("true", ColumnToggle(cut, "Status").GetAttribute("aria-pressed"));
+    }
+
+    [Fact]
+    public void Columns_WhenAnotherColumnComesBack_ThenTheFilterTakesStatusAgain()
+    {
+        // The other half of the rule above: Status is held only for as long as it is all there is.
+        // Give the reader a real column back and Status returns to being the filter's, otherwise
+        // one trip through an empty picker would pin it on for the rest of the session.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        ClickFacet(cut, "Vis historiske");
+
+        foreach (var column in new[] { "Kode", "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Dataperiode" })
+        {
+            HideColumn(cut, column);
+        }
+
+        ClickFacet(cut, "Vis historiske");
+        ColumnToggle(cut, "Kode").Click();
+
+        Assert.NotNull(cut.Find(".variable-dataitem-main__code"));
+        Assert.Empty(cut.FindAll(".variable-dataitem-main__status"));
+    }
+
+    [Fact]
+    public void Render_Always_ThenThePickerBorrowsItsClassNamesAndInventsNone()
+    {
+        // The companion to the variable-explorer guard further down, which only inspects names in
+        // that prefix — the picker wears four names outside it, and an invented fifth would slip
+        // past that test unnoticed. Every name here was read back off helsedata's compiled
+        // stylesheets; one that is not renders as a raw browser default inside a styled page.
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        var picker = cut.Find(".variable-explorer-header");
+
+        var names = picker.QuerySelectorAll("[class]")
+            .Prepend(picker)
+            .SelectMany(e => e.ClassName!.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            .Where(k => !k.StartsWith("variable-explorer", StringComparison.Ordinal))
+            .Distinct()
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        Assert.Equal(
+        [
+            "button-square--ghost",           // Stiler, the ghost colour the sort and facet
+            "dropdown",                       //   buttons already wear
+            "dropdown-choicepicker",          // helsedata, variables.css — the open list
+            "dropdown-choicepicker--right",
+            "dropdown-choicepicker__item",
+            "hd-button-reset",                // Stiler, "a button that draws nothing"
+            "hd-button-square",               // Stiler, the square shape
+            "screenreader-only",              // Stiler, and load-bearing: it hides the sentence
+                                              //   saying why the last column will not turn off
+        ], names);
+
+        // The label is the button's own text, so it needs no name at all. An earlier draft wrapped
+        // it in a span wearing `form-control__label`, which nothing else here uses and which could
+        // not be found in Stiler's compiled stylesheet.
+        Assert.Empty(picker.QuerySelectorAll("button span"));
+    }
+
+    [Fact]
     public void Render_Always_ThenThePickerCarriesHelsedatasOwnDropdownShape()
     {
         // Their names, read off the compiled variables.css and styles.css rather than guessed at,
@@ -804,6 +891,40 @@ public class VariableExplorerTest : BunitContext
         Assert.Equal("Dataperiode: ", cell.QuerySelector(".screenreader-only")!.TextContent);
         Assert.Contains("2010", cell.TextContent);
         Assert.Contains("2025", cell.TextContent);
+
+        // Unmarked, unlike every other column: see the English test below for why.
+        Assert.Empty(cell.QuerySelectorAll("span[lang]"));
+    }
+
+    [Fact]
+    public void Render_WhenTheLanguageIsEn_ThenTheDataperiodeColumnIsNotAnnouncedAsNorwegian()
+    {
+        // The one column whose value the component composes rather than repeats. Its month names
+        // are formatted for the reader and the word for a period still running is a UI string, so
+        // marking it lang="no" the way a variable name is marked would hand an English sentence to
+        // a Norwegian speech synthesiser — the WCAG 3.1.2 argument the marker exists for, running
+        // backwards. Left unmarked, it inherits the host page's language like every other string
+        // this component writes itself.
+        var stillRunning = new VariableSummary
+        {
+            Id = Guid.NewGuid(),
+            Code = "KODE",
+            PreferredTerm = "1. Tale",
+            KildeName = "Als registeret",
+            DataFrom = new DateTimeOffset(2010, 1, 1, 0, 0, 0, TimeSpan.Zero)
+        };
+
+        var cut = RenderWith(new FakeClient(OnePage(stillRunning)),
+                             b => b.Add(c => c.Language, "en"));
+
+        var cell = cut.Find(".variable-dataitem-main__period");
+
+        Assert.Contains("Ongoing", cell.TextContent, StringComparison.Ordinal);
+        Assert.Empty(cell.QuerySelectorAll("[lang]"));
+
+        // The neighbouring columns still are Norwegian, so this is a distinction the markup draws
+        // rather than a marker that went missing everywhere.
+        Assert.Equal("no", cut.Find(".variable-dataitem-main__source span[lang]").GetAttribute("lang"));
     }
 
     // ---------------------------------------------------------------------------------

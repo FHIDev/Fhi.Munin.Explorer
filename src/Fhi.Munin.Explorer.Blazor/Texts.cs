@@ -40,10 +40,12 @@ internal sealed record Texts(
     string GroupProperties,
     string ColumnVariable,
     // The column picker: Runa's own name for the control ("Kolonner", where helsedata's button
-    // says "Vis kolonner"), and the reason the last column left refuses to go. Runa decides what
-    // the component says; helsedata decides what it looks like.
+    // says "Vis kolonner"), and the sentence the last column left points at to say why it refuses
+    // to go. Named ...Hint because it is a sentence rather than a column's name, which is what
+    // every other string around it is. Runa decides what the component says; helsedata decides
+    // what it looks like.
     string Columns,
-    string LastColumn,
+    string LastColumnHint,
     string FieldDataType,
     string FieldStatus,
     string FieldCode,
@@ -281,7 +283,7 @@ internal sealed record Texts(
         GroupProperties: "Egenskaper",
         ColumnVariable: "Navn",
         Columns: "Kolonner",
-        LastColumn: "Minst én kolonne må vises.",
+        LastColumnHint: "Minst én kolonne må vises.",
         FieldDataType: "Datatype",
         FieldStatus: "Status",
         FieldCode: "Kode",
@@ -438,7 +440,7 @@ internal sealed record Texts(
         GroupProperties: "Properties",
         ColumnVariable: "Name",
         Columns: "Columns",
-        LastColumn: "At least one column has to stay visible.",
+        LastColumnHint: "At least one column has to stay visible.",
         FieldDataType: "Data type",
         FieldStatus: "Status",
         FieldCode: "Code",

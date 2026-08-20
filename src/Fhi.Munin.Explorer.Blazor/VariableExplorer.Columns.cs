@@ -54,8 +54,9 @@ public partial class VariableExplorer
     /// <remarks>
     /// Until they have, Status follows <see cref="ShowStatusColumn"/> — drawn only when historical
     /// variables can be in the list at all, because otherwise every row says the same word and a
-    /// column that says the same word on every row is furniture rather than information. Once the
-    /// reader has pressed it, their choice wins and the filter stops moving it: a column that
+    /// column that says the same word on every row is furniture rather than information. The one
+    /// exception is <see cref="StatusIsAllThatIsLeft"/>, where furniture beats an empty row. Once
+    /// the reader has pressed it, their choice wins and the filter stops moving it: a column that
     /// reappeared on its own after being turned off would be the picker undoing itself.
     /// </remarks>
     private bool _statusColumnChosen;
@@ -63,8 +64,28 @@ public partial class VariableExplorer
     /// <summary>Whether a column is on screen.</summary>
     private bool ColumnVisible(ResultColumn column) =>
         column == ResultColumn.Status && !_statusColumnChosen
-            ? ShowStatusColumn
+            ? ShowStatusColumn || StatusIsAllThatIsLeft
             : !_hiddenColumns.Contains(column);
+
+    /// <summary>
+    /// Whether Status is the only optional column the reader has not turned off.
+    /// </summary>
+    /// <remarks>
+    /// The one case where an untouched Status column stays on screen against the filter, and it is
+    /// there to keep the filter from doing what <see cref="ColumnLocked"/> forbids the picker to
+    /// do. A reader browsing historical variables can hide the other six, at which point Status is
+    /// locked as the last one left; turning "Vis historiske" off again would otherwise take it too
+    /// and leave rows of nothing but names — the exact state the lock exists to prevent, reached
+    /// through a control that says nothing about columns. Holding Status instead means the filter
+    /// changes what is in the list without changing what a row says about it.
+    /// <para>
+    /// Reads <see cref="_hiddenColumns"/> directly rather than asking
+    /// <see cref="ColumnVisible(ResultColumn)"/>, which would call back into this. For every column
+    /// but Status the two say the same thing.
+    /// </para>
+    /// </remarks>
+    private bool StatusIsAllThatIsLeft =>
+        OptionalColumns.All(c => c == ResultColumn.Status || _hiddenColumns.Contains(c));
 
     /// <summary>How many of the optional columns are on screen.</summary>
     private int VisibleColumnCount => OptionalColumns.Count(ColumnVisible);
@@ -78,9 +99,11 @@ public partial class VariableExplorer
     /// the picker could talk the reader into and not out of, since the way back is the same control
     /// that emptied it.
     /// <para>
-    /// Note this constrains what the READER can turn off, not what the filter does. Turning
-    /// "Vis historiske" back off can still take an untouched Status column away — that is the
-    /// filter's own doing, and Navn is still there.
+    /// This constrains what the READER can turn off, and the filter cannot get around it. Turning
+    /// "Vis historiske" back off normally takes an untouched Status column away, which is the
+    /// filter's own doing and fine — unless Status is the only column left, in which case it stays.
+    /// See <see cref="StatusIsAllThatIsLeft"/>: without that, six presses in the picker and one on
+    /// a filter nobody associates with columns would together empty every row down to its name.
     /// </para>
     /// </remarks>
     private bool ColumnLocked(ResultColumn column) => ColumnVisible(column) && VisibleColumnCount == 1;
@@ -211,10 +234,14 @@ public partial class VariableExplorer
             builder.AddAttribute(19, "aria-describedby", locked ? ColumnsHintId : null);
             builder.AddAttribute(20, "onclick", EventCallback.Factory.Create(this, () => ToggleColumn(column)));
 
-            builder.OpenElement(21, "span");
-            builder.AddAttribute(22, "class", "form-control__label");
-            builder.AddContent(23, ColumnLabel(column));
-            builder.CloseElement();
+            // The label as the button's own text, with no element and so no class name around it.
+            // An earlier draft wrapped it in a span wearing `form-control__label`, which is a name
+            // nothing else in this component uses and which could not be read back off Stiler's
+            // compiled stylesheet — the one thing AGENTS.md says must never be guessed at, because
+            // a name Stiler has never heard of renders as a raw browser default. The wrapper bought
+            // nothing either: the item is a flex row and the button an inline-flex box, so a bare
+            // text node is centred by the rules already on them.
+            builder.AddContent(21, ColumnLabel(column));
 
             builder.CloseElement();
             builder.CloseElement();
@@ -226,10 +253,10 @@ public partial class VariableExplorer
         // Always in the DOM so the reference is never dangling: aria-describedby resolves against
         // hidden text, and a paragraph that appeared only when a column locked would be one more
         // node arriving in the same update as the attribute naming it.
-        builder.OpenElement(24, "p");
-        builder.AddAttribute(25, "class", "screenreader-only");
-        builder.AddAttribute(26, "id", ColumnsHintId);
-        builder.AddContent(27, T.LastColumn);
+        builder.OpenElement(22, "p");
+        builder.AddAttribute(23, "class", "screenreader-only");
+        builder.AddAttribute(24, "id", ColumnsHintId);
+        builder.AddContent(25, T.LastColumnHint);
         builder.CloseElement();
 
         builder.CloseElement();
