@@ -4426,13 +4426,13 @@ public class VariableExplorerTest : BunitContext
     public void Render_WhenAPanelIsOpen_ThenItIsBuiltFromShapesRatherThanFromNewClassNames()
     {
         // The rule this guards has changed, and it is worth being precise about what it is now.
-        // The component wears helsedata's own variable-page vocabulary, which includes two names
-        // in this prefix that are THEIRS, not ours: variable-explorer-container (10 rules) and
-        // variable-explorer-results (6), both in variables.css and loaded on every page of their
-        // site. What must never grow is the list of names we INVENT — the three handles below,
-        // which carry no styling anywhere and exist only so a host can find the component in the
-        // DOM. A name in this prefix that is neither theirs nor one of the three is a name that
-        // renders as a raw browser default.
+        // The component wears helsedata's own variable-page vocabulary, which includes several
+        // names in this prefix that are THEIRS, not ours — variable-explorer-container (10 rules),
+        // variable-explorer-results (6), and the column picker's header trio plus its dropdown,
+        // all in variables.css and loaded on every page of their site. What must never grow is
+        // the list of names we INVENT — the handles below, which carry no styling anywhere and
+        // exist only so a host can find the component in the DOM. A name in this prefix that is
+        // neither theirs nor one of those is a name that renders as a raw browser default.
         var cut = RenderWith(TwoRows());
 
         Toggles(cut)[0].Click();
@@ -4449,6 +4449,10 @@ public class VariableExplorerTest : BunitContext
             "variable-explorer-filters",    // ours, a handle
             "variable-explorer-container",  // theirs, variables.css (10 rules)
             "variable-explorer-results",    // theirs, variables.css (6 rules)
+            "variable-explorer-header",     // theirs — the row their own variable page hangs the
+            "variable-explorer-header__actions",        // column picker in, and the ghost button
+            "variable-explorer__dropdown",              // that opens it. All four are variables.css.
+            "variable-explorer-header__actions-button",
             "variable-explorer-detail",     // ours, a handle
             "variable-explorer-group",      // ours — helsedata's panel is flat, so it has no
                                             // group heading to borrow a name from
