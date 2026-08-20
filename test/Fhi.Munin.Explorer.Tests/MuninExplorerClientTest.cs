@@ -51,6 +51,11 @@ public class MuninExplorerClientTest
         // Datatypes arrive as bare codes with no label — the point of the note on DataTypeFacet.
         Assert.Equal(["1", "10", "2", "3", "4", "6", "7"], filters.DataTypes.Select(d => d.Value));
 
+        // Datakategorier are raw EHDS tokens, label and all, so a caller matches whole tokens
+        // rather than stripping the prefix off them.
+        Assert.Equal("ehds-cat:biobanks", filters.DataCategories[0].Value);
+        Assert.Equal(38, filters.DataCategories[1].Count);
+
         // A root-level variabelgruppe has no parent; the delkilde facet carries its kilde.
         Assert.Null(filters.Variabelgrupper[0].ParentId);
         Assert.NotEqual(Guid.Empty, filters.Delkilder[0].KildeId);
@@ -106,6 +111,14 @@ public class MuninExplorerClientTest
         // Property metadata is what makes the free-form bag renderable.
         var code = kilde.PropertyMetadata.First(p => p.Key == "Code");
         Assert.Equal("Kode", code.DisplayNameTranslations["no"]);
+        Assert.Empty(code.Options); // a String property has no options to choose between
+
+        // A SingleSelect does, and they arrive parsed and language-resolved, which is why a caller
+        // is told to prefer them over picking OptionsJson apart itself.
+        var kildetype = kilde.PropertyMetadata.First(p => p.Key == "Kildetype");
+        Assert.Equal(8, kildetype.Options.Count);
+        Assert.Equal("sentraltHelseregister", kildetype.Options[0].Value);
+        Assert.Equal("Sentralt helseregister", kildetype.Options[0].DisplayName);
     }
 
     [Fact]

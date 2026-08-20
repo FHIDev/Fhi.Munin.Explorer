@@ -36,6 +36,16 @@ public sealed record FilterOptions
     [JsonPropertyName("instrumenter")] public IReadOnlyList<InstrumentFacet> Instruments { get; init; } = [];
 
     /// <summary>
+    /// Datakategori facet — the same EHDS tokens a datasamling carries in
+    /// <see cref="HierarchyDatasamling.Categories"/>, counted across the current selection.
+    /// </summary>
+    /// <remarks>
+    /// Empty against an API that predates the facet, in which case there is nothing to offer and a
+    /// caller shows no datakategori filter.
+    /// </remarks>
+    [JsonPropertyName("datakategorier")] public IReadOnlyList<DataCategoryFacet> DataCategories { get; init; } = [];
+
+    /// <summary>
     /// Number of variables that have at least one kildekodeverk (V-KK) link. A single count rather
     /// than a facet list because the filter is a yes/no toggle, not a choice of values.
     /// </summary>
@@ -166,6 +176,22 @@ public sealed record InstrumentFacet
     [JsonPropertyName("code")] public string Code { get; init; } = "";
 
     [JsonPropertyName("navn")] public string Name { get; init; } = "";
+    [JsonPropertyName("count")] public int Count { get; init; }
+}
+
+/// <summary>A datakategori facet.</summary>
+/// <remarks>
+/// The value is a token, normally an EHDS CURIE such as <c>ehds-cat:health-registries</c>, and
+/// carries no label — the same raw tokens <see cref="HierarchyDatasamling.Categories"/> holds, so
+/// a caller that renders both renders them the same way. Match whole tokens rather than on the
+/// <c>ehds-cat:</c> prefix; one authored with another prefix is passed through unchanged.
+/// </remarks>
+public sealed record DataCategoryFacet
+{
+    /// <summary>The value to filter on, e.g. <c>ehds-cat:population-health-surveys</c>.</summary>
+    [JsonPropertyName("value")] public string Value { get; init; } = "";
+
+    /// <summary>How many variables sit under a datasamling carrying this datakategori.</summary>
     [JsonPropertyName("count")] public int Count { get; init; }
 }
 

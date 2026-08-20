@@ -17,6 +17,11 @@ namespace Fhi.Munin.Explorer.Tests;
 /// Re-capture the files under <c>Testdata/</c> from the live API when Munin's explorer changes;
 /// this test is what tells you the contracts have to change too.
 /// </para>
+/// <para>
+/// What it cannot tell you is whether those captures are still what the API serves — they are a
+/// snapshot, and the API is in another repository. <see cref="ContractDriftTest"/> is the nightly
+/// half that asks the live API the same question.
+/// </para>
 /// </remarks>
 public class ContractCoverageTest
 {

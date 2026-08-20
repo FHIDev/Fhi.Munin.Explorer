@@ -80,7 +80,8 @@
       "groupTranslations": {},
       "sortOrder": 5,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "NavnEngelsk",
@@ -94,7 +95,8 @@
       },
       "sortOrder": 10,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "BeskrivelseEngelsk",
@@ -108,7 +110,8 @@
       },
       "sortOrder": 20,
       "type": "Text",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "PreferredTerm",
@@ -119,7 +122,8 @@
       "groupTranslations": {},
       "sortOrder": 20,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "Beskrivelse",
@@ -130,7 +134,8 @@
       "groupTranslations": {},
       "sortOrder": 30,
       "type": "Text",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "Opprinnelse",
@@ -144,7 +149,33 @@
       },
       "sortOrder": 30,
       "type": "SingleSelect",
-      "optionsJson": "[{\"value\":\"1\",\"label\":\"Beregnet\",\"labelEn\":\"Calculated\"},{\"value\":\"2\",\"label\":\"Avledet\",\"labelEn\":\"Derived\"},{\"value\":\"3\",\"label\":\"Kodet\",\"labelEn\":\"Coded\"},{\"value\":\"4\",\"label\":\"Direkte fra fagsystem/EPJ\",\"labelEn\":\"Directly from clinical system/EHR\"},{\"value\":\"5\",\"label\":\"Direkte fra skjema\",\"labelEn\":\"Directly from form\"},{\"value\":\"6\",\"label\":\"Annet\",\"labelEn\":\"Other\"}]"
+      "optionsJson": "[{\"value\":\"1\",\"label\":\"Beregnet\",\"labelEn\":\"Calculated\"},{\"value\":\"2\",\"label\":\"Avledet\",\"labelEn\":\"Derived\"},{\"value\":\"3\",\"label\":\"Kodet\",\"labelEn\":\"Coded\"},{\"value\":\"4\",\"label\":\"Direkte fra fagsystem/EPJ\",\"labelEn\":\"Directly from clinical system/EHR\"},{\"value\":\"5\",\"label\":\"Direkte fra skjema\",\"labelEn\":\"Directly from form\"},{\"value\":\"6\",\"label\":\"Annet\",\"labelEn\":\"Other\"}]",
+      "options": [
+        {
+          "value": "1",
+          "displayName": "Beregnet"
+        },
+        {
+          "value": "2",
+          "displayName": "Avledet"
+        },
+        {
+          "value": "3",
+          "displayName": "Kodet"
+        },
+        {
+          "value": "4",
+          "displayName": "Direkte fra fagsystem/EPJ"
+        },
+        {
+          "value": "5",
+          "displayName": "Direkte fra skjema"
+        },
+        {
+          "value": "6",
+          "displayName": "Annet"
+        }
+      ]
     },
     {
       "key": "OpprinnelseUtledning",
@@ -158,7 +189,8 @@
       },
       "sortOrder": 40,
       "type": "Text",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "Kommentar",
@@ -172,7 +204,8 @@
       },
       "sortOrder": 50,
       "type": "Text",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "KommentarEngelsk",
@@ -186,7 +219,8 @@
       },
       "sortOrder": 60,
       "type": "Text",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "KvalitetsnoteEngelsk",
@@ -200,7 +234,8 @@
       },
       "sortOrder": 80,
       "type": "Text",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "MaaleType",
@@ -214,7 +249,8 @@
       },
       "sortOrder": 90,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "MaaleEnhet",
@@ -228,7 +264,8 @@
       },
       "sortOrder": 100,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "DataType",
@@ -242,7 +279,49 @@
       },
       "sortOrder": 110,
       "type": "SingleSelect",
-      "optionsJson": "[{\"value\":\"1\",\"label\":\"String\",\"labelEn\":\"String\"},{\"value\":\"2\",\"label\":\"Integer\",\"labelEn\":\"Integer\"},{\"value\":\"3\",\"label\":\"Decimal\",\"labelEn\":\"Decimal\"},{\"value\":\"4\",\"label\":\"Boolean\",\"labelEn\":\"Boolean\"},{\"value\":\"5\",\"label\":\"Time\",\"labelEn\":\"Time\"},{\"value\":\"6\",\"label\":\"Date\",\"labelEn\":\"Date\"},{\"value\":\"7\",\"label\":\"Datetime\",\"labelEn\":\"Datetime\"},{\"value\":\"8\",\"label\":\"Uri\",\"labelEn\":\"Uri\"},{\"value\":\"9\",\"label\":\"Base64binary\",\"labelEn\":\"Base64binary\"},{\"value\":\"10\",\"label\":\"F\\u00F8dselsnummer (11 siffer)\",\"labelEn\":\"National identity number (11 digits)\"}]"
+      "optionsJson": "[{\"value\":\"1\",\"label\":\"String\",\"labelEn\":\"String\"},{\"value\":\"2\",\"label\":\"Integer\",\"labelEn\":\"Integer\"},{\"value\":\"3\",\"label\":\"Decimal\",\"labelEn\":\"Decimal\"},{\"value\":\"4\",\"label\":\"Boolean\",\"labelEn\":\"Boolean\"},{\"value\":\"5\",\"label\":\"Time\",\"labelEn\":\"Time\"},{\"value\":\"6\",\"label\":\"Date\",\"labelEn\":\"Date\"},{\"value\":\"7\",\"label\":\"Datetime\",\"labelEn\":\"Datetime\"},{\"value\":\"8\",\"label\":\"Uri\",\"labelEn\":\"Uri\"},{\"value\":\"9\",\"label\":\"Base64binary\",\"labelEn\":\"Base64binary\"},{\"value\":\"10\",\"label\":\"F\\u00F8dselsnummer (11 siffer)\",\"labelEn\":\"National identity number (11 digits)\"}]",
+      "options": [
+        {
+          "value": "1",
+          "displayName": "String"
+        },
+        {
+          "value": "2",
+          "displayName": "Integer"
+        },
+        {
+          "value": "3",
+          "displayName": "Decimal"
+        },
+        {
+          "value": "4",
+          "displayName": "Boolean"
+        },
+        {
+          "value": "5",
+          "displayName": "Time"
+        },
+        {
+          "value": "6",
+          "displayName": "Date"
+        },
+        {
+          "value": "7",
+          "displayName": "Datetime"
+        },
+        {
+          "value": "8",
+          "displayName": "Uri"
+        },
+        {
+          "value": "9",
+          "displayName": "Base64binary"
+        },
+        {
+          "value": "10",
+          "displayName": "Fødselsnummer (11 siffer)"
+        }
+      ]
     },
     {
       "key": "GyldigFra",
@@ -253,7 +332,8 @@
       "groupTranslations": {},
       "sortOrder": 110,
       "type": "Date",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "Lengde",
@@ -267,7 +347,8 @@
       },
       "sortOrder": 120,
       "type": "Number",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "Kvalitetsnote",
@@ -281,7 +362,8 @@
       },
       "sortOrder": 120,
       "type": "Text",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "GyldigTil",
@@ -292,7 +374,8 @@
       "groupTranslations": {},
       "sortOrder": 120,
       "type": "Date",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "Presisjon",
@@ -306,7 +389,8 @@
       },
       "sortOrder": 130,
       "type": "Number",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "GrenseLav",
@@ -320,7 +404,8 @@
       },
       "sortOrder": 140,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "GrenseHoy",
@@ -334,7 +419,8 @@
       },
       "sortOrder": 150,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "Identifiseringsgrad",
@@ -348,7 +434,29 @@
       },
       "sortOrder": 160,
       "type": "SingleSelect",
-      "optionsJson": "[{\"value\":\"1\",\"label\":\"Ikke vurdert\",\"labelEn\":\"Not assessed\"},{\"value\":\"2\",\"label\":\"Ingen\",\"labelEn\":\"None\"},{\"value\":\"3\",\"label\":\"Lav\",\"labelEn\":\"Low\"},{\"value\":\"4\",\"label\":\"Middels\",\"labelEn\":\"Medium\"},{\"value\":\"5\",\"label\":\"H\\u00F8y\",\"labelEn\":\"High\"}]"
+      "optionsJson": "[{\"value\":\"1\",\"label\":\"Ikke vurdert\",\"labelEn\":\"Not assessed\"},{\"value\":\"2\",\"label\":\"Ingen\",\"labelEn\":\"None\"},{\"value\":\"3\",\"label\":\"Lav\",\"labelEn\":\"Low\"},{\"value\":\"4\",\"label\":\"Middels\",\"labelEn\":\"Medium\"},{\"value\":\"5\",\"label\":\"H\\u00F8y\",\"labelEn\":\"High\"}]",
+      "options": [
+        {
+          "value": "1",
+          "displayName": "Ikke vurdert"
+        },
+        {
+          "value": "2",
+          "displayName": "Ingen"
+        },
+        {
+          "value": "3",
+          "displayName": "Lav"
+        },
+        {
+          "value": "4",
+          "displayName": "Middels"
+        },
+        {
+          "value": "5",
+          "displayName": "Høy"
+        }
+      ]
     },
     {
       "key": "Ledetekst",
@@ -362,7 +470,8 @@
       },
       "sortOrder": 170,
       "type": "Text",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "LedetekstEngelsk",
@@ -376,7 +485,8 @@
       },
       "sortOrder": 180,
       "type": "Text",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "LedetekstFlerspraklig",
@@ -390,7 +500,8 @@
       },
       "sortOrder": 185,
       "type": "MultilingualText",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "AnbefaltForDigitaltInnsyn",
@@ -404,7 +515,17 @@
       },
       "sortOrder": 210,
       "type": "SingleSelect",
-      "optionsJson": "[{\"value\":\"1\",\"label\":\"Ja\",\"labelEn\":\"Yes\"},{\"value\":\"2\",\"label\":\"Nei\",\"labelEn\":\"No\"}]"
+      "optionsJson": "[{\"value\":\"1\",\"label\":\"Ja\",\"labelEn\":\"Yes\"},{\"value\":\"2\",\"label\":\"Nei\",\"labelEn\":\"No\"}]",
+      "options": [
+        {
+          "value": "1",
+          "displayName": "Ja"
+        },
+        {
+          "value": "2",
+          "displayName": "Nei"
+        }
+      ]
     },
     {
       "key": "FlerkodetFelt",
@@ -418,7 +539,8 @@
       },
       "sortOrder": 215,
       "type": "Boolean",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "TabellvennligNavn",
@@ -432,7 +554,8 @@
       },
       "sortOrder": 220,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "TabellvennligNavnEngelsk",
@@ -446,7 +569,8 @@
       },
       "sortOrder": 230,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "DatabaseReferanse",
@@ -460,7 +584,8 @@
       },
       "sortOrder": 240,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "Erstatter",
@@ -474,7 +599,8 @@
       },
       "sortOrder": 250,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "ErstattesAv",
@@ -488,7 +614,8 @@
       },
       "sortOrder": 260,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "StartdatoHistorikk",
@@ -502,7 +629,8 @@
       },
       "sortOrder": 270,
       "type": "Date",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "Synlig",
@@ -516,7 +644,17 @@
       },
       "sortOrder": 280,
       "type": "SingleSelect",
-      "optionsJson": "[{\"value\":\"1\",\"label\":\"Ja\",\"labelEn\":\"Yes\"},{\"value\":\"2\",\"label\":\"Nei\",\"labelEn\":\"No\"}]"
+      "optionsJson": "[{\"value\":\"1\",\"label\":\"Ja\",\"labelEn\":\"Yes\"},{\"value\":\"2\",\"label\":\"Nei\",\"labelEn\":\"No\"}]",
+      "options": [
+        {
+          "value": "1",
+          "displayName": "Ja"
+        },
+        {
+          "value": "2",
+          "displayName": "Nei"
+        }
+      ]
     }
   ]
 }

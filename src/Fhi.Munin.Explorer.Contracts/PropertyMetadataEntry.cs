@@ -44,9 +44,48 @@ public sealed record PropertyMetadataEntry
     /// <summary>
     /// For <c>SingleSelect</c> / <c>MultiSelect</c>: the allowed options as a *JSON-encoded string*,
     /// not as JSON — e.g. <c>[{"value":"sentraltHelseregister","label":"Sentralt helseregister",
-    /// "labelEn":"Central health registry"}]</c>. Usually the literal <c>"[]"</c>. Deliberately left
-    /// as the raw string: the option shape is not part of this contract, and a caller that needs it
-    /// parses it itself.
+    /// "labelEn":"Central health registry"}]</c>. Usually the literal <c>"[]"</c>.
     /// </summary>
+    /// <remarks>
+    /// Prefer <see cref="Options"/>, which is the same list already parsed and already resolved to
+    /// the request's language — unless the reader's language is not the request's. Each
+    /// <see cref="PropertyOption"/> carries one label, fixed at the <c>Accept-Language</c> the
+    /// response was fetched under, so a caller that renders one response to readers in more than
+    /// one language has nothing in <see cref="Options"/> to switch on and reads the labels from
+    /// here instead. That is the case this string is for, and it is why the field is kept rather
+    /// than deprecated: it is the only place both labels survive.
+    /// <para>
+    /// The component in <c>Fhi.Munin.Explorer.Blazor</c> is exactly that caller — it picks
+    /// <c>label</c> or <c>labelEn</c> per render, from the language the reader chose — so this
+    /// package's own reference implementation is on this side of the split, not the other.
+    /// </para>
+    /// </remarks>
     [JsonPropertyName("optionsJson")] public string? OptionsJson { get; init; }
+
+    /// <summary>
+    /// The allowed options for <c>SingleSelect</c> / <c>MultiSelect</c>, parsed by the API and
+    /// resolved to the language the request asked for. Empty for every other type.
+    /// </summary>
+    /// <remarks>
+    /// Empty against an API that predates the field, in which case a caller that needs the options
+    /// falls back to parsing <see cref="OptionsJson"/> itself — which is what this package used to
+    /// tell callers to do, before the API started sending the list in a shape worth having.
+    /// </remarks>
+    [JsonPropertyName("options")] public IReadOnlyList<PropertyOption> Options { get; init; } = [];
+}
+
+/// <summary>One allowed value of a <c>SingleSelect</c> or <c>MultiSelect</c> property.</summary>
+public sealed record PropertyOption
+{
+    /// <summary>The value as it is stored, e.g. <c>sentraltHelseregister</c>.</summary>
+    [JsonPropertyName("value")] public string Value { get; init; } = "";
+
+    /// <summary>
+    /// The label to show. Resolved server side from editable master data and following the
+    /// <c>Accept-Language</c> of the request that fetched it, so it is not a caller's to map or to
+    /// cache — and, for the same reason, not a caller's to re-language: rendering one response in
+    /// two languages means reading <see cref="PropertyMetadataEntry.OptionsJson"/>, where both
+    /// labels are still there.
+    /// </summary>
+    [JsonPropertyName("displayName")] public string DisplayName { get; init; } = "";
 }

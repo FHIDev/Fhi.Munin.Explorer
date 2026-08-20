@@ -1,0 +1,182 @@
+name: Contract drift
+
+# The Explorer API and this package live in different repositories.
+#
+# In one repository, a change to /api/explorer/* and the code that reads it are the same pull
+# request and the same CI run: break one and the other goes red before anybody merges. Split
+# across two, nothing connects them. The API can rename a field on a Tuesday and the first sign of
+# it is a heading with no text in it on helsedata.no, seen by a visitor, weeks later — because
+# deserialisation does not complain about a field it does not recognise, it just leaves the
+# property at its default.
+#
+# This job is what stands in for that missing CI run. It fetches a representative response from
+# every endpoint the component calls, round-trips each through the contracts, and fails on any
+# difference in shape. It runs nightly rather than on push because the change that breaks us is
+# not one of ours: there is nothing here to trigger on.
+#
+# Splitting the repositories was the decision; this is the thing that makes it safe. Turning it
+# off puts back exactly the gap it was written to close. See docs/contract-drift.md.
+on:
+  schedule:
+    # 04:17 UTC. Off the hour on purpose — the top of the hour is when every scheduled workflow on
+    # GitHub starts at once, and the queue behind it is minutes long.
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+    inputs:
+      api-base-url:
+        description: Which Munin API to check the contracts against
+        required: false
+        default: https://munin.skytest.fhi.no
+
+permissions:
+  contents: read
+  issues: write # files the drift report where somebody will see it
+
+concurrency:
+  # Never cancel a run in flight. Two of these overlapping is harmless, and a cancelled run is
+  # indistinguishable from a clean night in the Actions list.
+  group: contract-drift
+  cancel-in-progress: false
+
+jobs:
+  drift:
+    name: contracts vs. the live API
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      # The gate the tests read. Without it every one of them skips itself, which is what keeps
+      # them out of `dotnet test` on a laptop and out of the pull-request build.
+      MUNIN_EXPLORER_LIVE: '1'
+      # Spelled the way a host spells it in configuration. The public test API is anonymous and
+      # read-only, so this job needs no secret and no token provider.
+      MuninExplorer__ApiBaseUrl: ${{ inputs.api-base-url || 'https://munin.skytest.fhi.no' }}
+      TRX: artifacts/contract-drift.trx
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Build
+        run: dotnet build test/Fhi.Munin.Explorer.Tests --configuration Release
+
+      - name: Check the contracts against the live API
+        id: drift
+        run: |
+          set -uo pipefail
+
+          status=0
+
+          # Retried once, and only once. A contract difference is deterministic and fails both
+          # times; a gateway blip fails one. Without the retry the job cries drift over somebody
+          # else's momentary 502, and a nightly job that is wrong sometimes gets muted, which
+          # costs more than the two minutes this spends.
+          for attempt in 1 2; do
+            # The exit code is captured through `&& ... || ...` rather than read from $? on the
+            # next line, because GitHub runs a `run` block under `bash -e`: a bare `dotnet test`
+            # that fails ends the step where it stands, and the retry, the code below it and the
+            # exit at the bottom would all be unreachable. A command in a `||` list is exempt from
+            # that, which is what keeps this loop a loop.
+            #
+            # Both flags built from $TRX rather than spelled out again, so the file the tests
+            # write and the file the next step reads cannot drift apart. They did not have to: an
+            # assert step pointed at a path nothing writes reports "the drift tests did not run",
+            # which is loud, false, and about the wrong thing.
+            dotnet test test/Fhi.Munin.Explorer.Tests \
+              --configuration Release \
+              --no-build \
+              --filter 'Category=ContractDrift' \
+              --logger "trx;LogFileName=$(basename "$TRX")" \
+              --results-directory "$(dirname "$TRX")" && status=0 || status=$?
+
+            if [ "$status" -eq 0 ]; then
+              break
+            fi
+
+            if [ "$attempt" -eq 1 ]; then
+              echo "::warning::First attempt failed. Retrying once — real drift fails again, a network blip does not."
+              sleep 60
+            fi
+          done
+
+          exit "$status"
+
+      - name: Prove the drift tests actually ran
+        if: always() && steps.drift.conclusion != 'skipped'
+        # A job that skipped every test would otherwise report success for as long as nobody
+        # looked. The number is one test per endpoint the component calls.
+        run: ./scripts/assert-drift-ran.sh "$TRX" 8
+
+      - name: Upload the test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: contract-drift-trx
+          path: ${{ env.TRX }}
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Say so where somebody will see it
+        if: failure() && github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+
+          # A red square in the Actions tab is not a mitigation. GitHub mails a scheduled failure
+          # to whoever last touched the cron line, which is nobody in particular. Work for this
+          # repository is tracked as beads in FHIDev/Munin, which a workflow has no credentials to
+          # write to, so the alert lands in this repository's issues and says to raise one. One
+          # issue, commented on each night it stays broken, rather than a new one every morning.
+          TITLE='Contract drift: the Explorer API no longer matches Fhi.Munin.Explorer.Contracts'
+
+          {
+            echo "The nightly contract check failed against \`$MuninExplorer__ApiBaseUrl\`."
+            echo ""
+            echo "**Run:** $RUN_URL"
+            echo ""
+            echo "Either a response no longer round-trips through \`Fhi.Munin.Explorer.Contracts\` —"
+            echo "the failure message names the field and the path it sits at — or the check did not"
+            echo "run at all, which the run log says outright."
+            echo ""
+            echo "What to do:"
+            echo ""
+            echo "1. Read the failing test's message. It names each difference and which way it goes."
+            echo "2. Update the DTO under \`src/Fhi.Munin.Explorer.Contracts\`."
+            echo "3. Re-capture the matching file under \`test/Fhi.Munin.Explorer.Tests/Testdata/\` so"
+            echo "   the offline \`ContractCoverageTest\` is reading the same payload."
+            echo "4. Write a changelog fragment — a contract change is one every host sees."
+            echo "5. Raise a bead in the Munin workspace (\`--label=helsedata --label=rcl\`) and close"
+            echo "   this issue with the pull request that fixes it."
+            echo ""
+            echo "Until then the component renders that field's default — usually an empty string —"
+            echo "as though it were data."
+          } > drift-report.md
+
+          # Matched on the exact title rather than on a label, so the alert does not depend on a
+          # label existing in a repository whose issues are otherwise for external consumers.
+          #
+          # And on the author as well as the title, because that openness cuts both ways: anybody
+          # who can open an issue here can open one with this exact title first, and the alert
+          # would then spend every night appending maintainer-facing reports to a thread an
+          # outsider wrote and can keep editing. Nothing worse than that is reachable — the job
+          # holds `issues: write` and no more — but the channel should be one the workflow owns.
+          # Tested with is_bot rather than a literal login: gh has spelled this same identity
+          # `github-actions[bot]` and `app/github-actions` across versions, and no other bot has
+          # reason to open an issue by this title.
+          #
+          # Not piped through `head`: this block runs under `pipefail`, and a reader that closes
+          # the pipe early leaves `gh` killed by SIGPIPE, which would take the whole alert with it.
+          matches=$(gh issue list --state open --search 'Contract drift in:title' --json number,title,author \
+            --jq ".[] | select(.title == \"$TITLE\" and .author.is_bot) | .number")
+          existing=${matches%%$'\n'*}
+
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file drift-report.md
+          else
+            gh issue create --title "$TITLE" --body-file drift-report.md
+          fi

@@ -89,6 +89,18 @@ dotnet test
 Requires the .NET 10 SDK. The target framework is set once in `Directory.Build.props`, never in
 the individual project files.
 
+`dotnet test` never leaves the machine. One suite is the exception and skips itself unless asked:
+a nightly job round-trips live API responses through the contracts and fails on any change in
+shape, because the API lives in another repository and can rename a field without anything here
+noticing. Run it yourself with
+
+```bash
+MUNIN_EXPLORER_LIVE=1 dotnet test --filter Category=ContractDrift
+```
+
+See [`docs/contract-drift.md`](docs/contract-drift.md) for what it checks and what to do when it
+goes red.
+
 ## Installing
 
 A host needs **two** packages. The component and its data source are separate so a host can

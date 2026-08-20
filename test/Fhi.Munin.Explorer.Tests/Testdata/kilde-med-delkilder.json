@@ -39,7 +39,8 @@
       "groupTranslations": {},
       "sortOrder": 5,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "NavnEngelsk",
@@ -53,7 +54,8 @@
       },
       "sortOrder": 10,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "KortNavn",
@@ -64,7 +66,8 @@
       "groupTranslations": {},
       "sortOrder": 10,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "PreferredTerm",
@@ -75,7 +78,8 @@
       "groupTranslations": {},
       "sortOrder": 20,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "BeskrivelseEngelsk",
@@ -89,7 +93,8 @@
       },
       "sortOrder": 20,
       "type": "Text",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "AnbefalteBruksomraader",
@@ -103,7 +108,8 @@
       },
       "sortOrder": 30,
       "type": "Text",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "Beskrivelse",
@@ -114,7 +120,8 @@
       "groupTranslations": {},
       "sortOrder": 30,
       "type": "Text",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "Emneord",
@@ -128,7 +135,8 @@
       },
       "sortOrder": 40,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "Kildetype",
@@ -139,7 +147,41 @@
       "groupTranslations": {},
       "sortOrder": 40,
       "type": "SingleSelect",
-      "optionsJson": "[{\"value\":\"sentraltHelseregister\",\"label\":\"Sentralt helseregister\",\"labelEn\":\"Central health registry\"},{\"value\":\"nasjonaltMedisinskKvalitetsregister\",\"label\":\"Nasjonalt medisinsk kvalitetsregister\",\"labelEn\":\"National medical quality registry\"},{\"value\":\"annetMedisinskKvalitetsregister\",\"label\":\"Annet medisinsk kvalitetsregister\",\"labelEn\":\"Other medical quality registry\"},{\"value\":\"befolkningsbasertHelseundersokelse\",\"label\":\"Befolkningsbasert helseundersøkelse\",\"labelEn\":\"Population-based health survey\"},{\"value\":\"biobank\",\"label\":\"Biobank\",\"labelEn\":\"Biobank\"},{\"value\":\"annenDatakilde\",\"label\":\"Annen datakilde\",\"labelEn\":\"Other data source\"},{\"value\":\"forskningsprosjekt\",\"label\":\"Forskningsprosjekt\",\"labelEn\":\"Research project\"},{\"value\":\"manueltOpprettet\",\"label\":\"Manuelt opprettet\",\"labelEn\":\"Manually created\"}]"
+      "optionsJson": "[{\"value\":\"sentraltHelseregister\",\"label\":\"Sentralt helseregister\",\"labelEn\":\"Central health registry\"},{\"value\":\"nasjonaltMedisinskKvalitetsregister\",\"label\":\"Nasjonalt medisinsk kvalitetsregister\",\"labelEn\":\"National medical quality registry\"},{\"value\":\"annetMedisinskKvalitetsregister\",\"label\":\"Annet medisinsk kvalitetsregister\",\"labelEn\":\"Other medical quality registry\"},{\"value\":\"befolkningsbasertHelseundersokelse\",\"label\":\"Befolkningsbasert helseundersøkelse\",\"labelEn\":\"Population-based health survey\"},{\"value\":\"biobank\",\"label\":\"Biobank\",\"labelEn\":\"Biobank\"},{\"value\":\"annenDatakilde\",\"label\":\"Annen datakilde\",\"labelEn\":\"Other data source\"},{\"value\":\"forskningsprosjekt\",\"label\":\"Forskningsprosjekt\",\"labelEn\":\"Research project\"},{\"value\":\"manueltOpprettet\",\"label\":\"Manuelt opprettet\",\"labelEn\":\"Manually created\"}]",
+      "options": [
+        {
+          "value": "sentraltHelseregister",
+          "displayName": "Sentralt helseregister"
+        },
+        {
+          "value": "nasjonaltMedisinskKvalitetsregister",
+          "displayName": "Nasjonalt medisinsk kvalitetsregister"
+        },
+        {
+          "value": "annetMedisinskKvalitetsregister",
+          "displayName": "Annet medisinsk kvalitetsregister"
+        },
+        {
+          "value": "befolkningsbasertHelseundersokelse",
+          "displayName": "Befolkningsbasert helseundersøkelse"
+        },
+        {
+          "value": "biobank",
+          "displayName": "Biobank"
+        },
+        {
+          "value": "annenDatakilde",
+          "displayName": "Annen datakilde"
+        },
+        {
+          "value": "forskningsprosjekt",
+          "displayName": "Forskningsprosjekt"
+        },
+        {
+          "value": "manueltOpprettet",
+          "displayName": "Manuelt opprettet"
+        }
+      ]
     },
     {
       "key": "EmneordFlerspraklig",
@@ -153,7 +195,8 @@
       },
       "sortOrder": 41,
       "type": "LangTaggedList",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "Innsamlingsmetode",
@@ -167,7 +210,8 @@
       },
       "sortOrder": 50,
       "type": "Text",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "InklusjonsOgEksklusjonskriterier",
@@ -181,7 +225,8 @@
       },
       "sortOrder": 60,
       "type": "Text",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "GeografiskAvgrensning",
@@ -195,7 +240,8 @@
       },
       "sortOrder": 70,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "GradAvPersonidentifikasjon",
@@ -206,7 +252,25 @@
       "groupTranslations": {},
       "sortOrder": 70,
       "type": "SingleSelect",
-      "optionsJson": "[{\"value\":\"directlyIdentifiable\",\"label\":\"Direkte personidentifiserbare data\",\"labelEn\":\"Directly identifiable data\"},{\"value\":\"indirectlyIdentifiable\",\"label\":\"Indirekte personidentifiserbare data\",\"labelEn\":\"Indirectly identifiable data\"},{\"value\":\"deIdentified\",\"label\":\"Avidentifiserte data\",\"labelEn\":\"De-identified data\"},{\"value\":\"anonymous\",\"label\":\"Anonyme data\",\"labelEn\":\"Anonymous data\"}]"
+      "optionsJson": "[{\"value\":\"directlyIdentifiable\",\"label\":\"Direkte personidentifiserbare data\",\"labelEn\":\"Directly identifiable data\"},{\"value\":\"indirectlyIdentifiable\",\"label\":\"Indirekte personidentifiserbare data\",\"labelEn\":\"Indirectly identifiable data\"},{\"value\":\"deIdentified\",\"label\":\"Avidentifiserte data\",\"labelEn\":\"De-identified data\"},{\"value\":\"anonymous\",\"label\":\"Anonyme data\",\"labelEn\":\"Anonymous data\"}]",
+      "options": [
+        {
+          "value": "directlyIdentifiable",
+          "displayName": "Direkte personidentifiserbare data"
+        },
+        {
+          "value": "indirectlyIdentifiable",
+          "displayName": "Indirekte personidentifiserbare data"
+        },
+        {
+          "value": "deIdentified",
+          "displayName": "Avidentifiserte data"
+        },
+        {
+          "value": "anonymous",
+          "displayName": "Anonyme data"
+        }
+      ]
     },
     {
       "key": "Lovverk",
@@ -217,7 +281,8 @@
       "groupTranslations": {},
       "sortOrder": 80,
       "type": "Url",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "Tilslutningsgrad",
@@ -231,7 +296,8 @@
       },
       "sortOrder": 80,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "BeregningTilslutningsgrad",
@@ -245,7 +311,8 @@
       },
       "sortOrder": 90,
       "type": "Text",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "Dataansvarlig",
@@ -256,7 +323,8 @@
       "groupTranslations": {},
       "sortOrder": 90,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "Databehandler",
@@ -267,7 +335,8 @@
       "groupTranslations": {},
       "sortOrder": 100,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "Dekningsgrad",
@@ -281,7 +350,8 @@
       },
       "sortOrder": 100,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "GyldigFra",
@@ -292,7 +362,8 @@
       "groupTranslations": {},
       "sortOrder": 110,
       "type": "Date",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "BeregningDekningsgrad",
@@ -306,7 +377,8 @@
       },
       "sortOrder": 110,
       "type": "Text",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "Kvalitetsnote",
@@ -320,7 +392,8 @@
       },
       "sortOrder": 120,
       "type": "Text",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "GyldigTil",
@@ -331,7 +404,8 @@
       "groupTranslations": {},
       "sortOrder": 120,
       "type": "Date",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "Formaal",
@@ -345,7 +419,8 @@
       },
       "sortOrder": 130,
       "type": "Text",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "FormaalFlerspraklig",
@@ -359,7 +434,8 @@
       },
       "sortOrder": 131,
       "type": "LangTaggedList",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "Forskrift",
@@ -373,7 +449,8 @@
       },
       "sortOrder": 140,
       "type": "Text",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "HjemmelTilgjengeliggjoring",
@@ -387,7 +464,8 @@
       },
       "sortOrder": 150,
       "type": "Text",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "JuridiskNote",
@@ -401,7 +479,8 @@
       },
       "sortOrder": 160,
       "type": "Text",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "Hjemmeside",
@@ -415,7 +494,8 @@
       },
       "sortOrder": 170,
       "type": "Url",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "Epost",
@@ -429,7 +509,8 @@
       },
       "sortOrder": 180,
       "type": "Email",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "Telefonnummer",
@@ -443,7 +524,8 @@
       },
       "sortOrder": 190,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "OrgnrDataansvarlig",
@@ -457,7 +539,8 @@
       },
       "sortOrder": 200,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "HERidDatakilde",
@@ -471,7 +554,8 @@
       },
       "sortOrder": 210,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "HERidDataansvarlig",
@@ -485,7 +569,8 @@
       },
       "sortOrder": 220,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "ErISamsvarMed",
@@ -499,7 +584,8 @@
       },
       "sortOrder": 230,
       "type": "Text",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "accessRights",
@@ -513,7 +599,21 @@
       },
       "sortOrder": 300,
       "type": "SingleSelect",
-      "optionsJson": "[{\"value\":\"eu-access:NON_PUBLIC\",\"label\":\"Ikke-offentlig\",\"labelEn\":\"Non-public\"},{\"value\":\"eu-access:RESTRICTED\",\"label\":\"Begrenset\",\"labelEn\":\"Restricted\"},{\"value\":\"eu-access:PUBLIC\",\"label\":\"Offentlig\",\"labelEn\":\"Public\"}]"
+      "optionsJson": "[{\"value\":\"eu-access:NON_PUBLIC\",\"label\":\"Ikke-offentlig\",\"labelEn\":\"Non-public\"},{\"value\":\"eu-access:RESTRICTED\",\"label\":\"Begrenset\",\"labelEn\":\"Restricted\"},{\"value\":\"eu-access:PUBLIC\",\"label\":\"Offentlig\",\"labelEn\":\"Public\"}]",
+      "options": [
+        {
+          "value": "eu-access:NON_PUBLIC",
+          "displayName": "Ikke-offentlig"
+        },
+        {
+          "value": "eu-access:RESTRICTED",
+          "displayName": "Begrenset"
+        },
+        {
+          "value": "eu-access:PUBLIC",
+          "displayName": "Offentlig"
+        }
+      ]
     },
     {
       "key": "healthDataAccessBodyName",
@@ -527,7 +627,8 @@
       },
       "sortOrder": 311,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "healthDataAccessBodyPhone",
@@ -541,7 +642,8 @@
       },
       "sortOrder": 312,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "healthDataAccessBodyEmail",
@@ -555,7 +657,8 @@
       },
       "sortOrder": 313,
       "type": "Email",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "healthDataAccessBodyHomepage",
@@ -569,7 +672,8 @@
       },
       "sortOrder": 314,
       "type": "Url",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "applicableLegislation",
@@ -583,7 +687,8 @@
       },
       "sortOrder": 320,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "hasLegalBasis",
@@ -597,7 +702,8 @@
       },
       "sortOrder": 325,
       "type": "LangTaggedList",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "healthCategory",
@@ -611,7 +717,37 @@
       },
       "sortOrder": 330,
       "type": "MultiSelect",
-      "optionsJson": "[{\"value\":\"ehds-cat:health-registries\",\"label\":\"Helseregistre\",\"labelEn\":\"Health registries\"},{\"value\":\"ehds-cat:registries-quality-of-healthcare\",\"label\":\"Kvalitetsregistre\",\"labelEn\":\"Quality-of-healthcare registries\"},{\"value\":\"ehds-cat:population-health-surveys\",\"label\":\"Befolkningsbaserte helseundersøkelser\",\"labelEn\":\"Population health surveys\"},{\"value\":\"ehds-cat:provesamling\",\"label\":\"Prøvesamling\",\"labelEn\":\"Sample collection\"},{\"value\":\"ehds-cat:biodata\",\"label\":\"Biodata (DNA/omikk)\",\"labelEn\":\"Biodata (DNA/omics)\"},{\"value\":\"ehds-cat:biobanks\",\"label\":\"Biobanker\",\"labelEn\":\"Biobanks\"},{\"value\":\"ehds-cat:other\",\"label\":\"Annet\",\"labelEn\":\"Other\"}]"
+      "optionsJson": "[{\"value\":\"ehds-cat:health-registries\",\"label\":\"Helseregistre\",\"labelEn\":\"Health registries\"},{\"value\":\"ehds-cat:registries-quality-of-healthcare\",\"label\":\"Kvalitetsregistre\",\"labelEn\":\"Quality-of-healthcare registries\"},{\"value\":\"ehds-cat:population-health-surveys\",\"label\":\"Befolkningsbaserte helseundersøkelser\",\"labelEn\":\"Population health surveys\"},{\"value\":\"ehds-cat:provesamling\",\"label\":\"Prøvesamling\",\"labelEn\":\"Sample collection\"},{\"value\":\"ehds-cat:biodata\",\"label\":\"Biodata (DNA/omikk)\",\"labelEn\":\"Biodata (DNA/omics)\"},{\"value\":\"ehds-cat:biobanks\",\"label\":\"Biobanker\",\"labelEn\":\"Biobanks\"},{\"value\":\"ehds-cat:other\",\"label\":\"Annet\",\"labelEn\":\"Other\"}]",
+      "options": [
+        {
+          "value": "ehds-cat:health-registries",
+          "displayName": "Helseregistre"
+        },
+        {
+          "value": "ehds-cat:registries-quality-of-healthcare",
+          "displayName": "Kvalitetsregistre"
+        },
+        {
+          "value": "ehds-cat:population-health-surveys",
+          "displayName": "Befolkningsbaserte helseundersøkelser"
+        },
+        {
+          "value": "ehds-cat:provesamling",
+          "displayName": "Prøvesamling"
+        },
+        {
+          "value": "ehds-cat:biodata",
+          "displayName": "Biodata (DNA/omikk)"
+        },
+        {
+          "value": "ehds-cat:biobanks",
+          "displayName": "Biobanker"
+        },
+        {
+          "value": "ehds-cat:other",
+          "displayName": "Annet"
+        }
+      ]
     },
     {
       "key": "healthTheme",
@@ -625,7 +761,49 @@
       },
       "sortOrder": 340,
       "type": "MultiSelect",
-      "optionsJson": "[{\"value\":\"healthdcatap:communicable-diseases\",\"label\":\"Smittsomme sykdommer\",\"labelEn\":\"Communicable diseases\"},{\"value\":\"healthdcatap:non-communicable-diseases\",\"label\":\"Ikke-smittsomme sykdommer\",\"labelEn\":\"Non-communicable diseases\"},{\"value\":\"healthdcatap:rare-diseases\",\"label\":\"Sjeldne sykdommer\",\"labelEn\":\"Rare diseases\"},{\"value\":\"healthdcatap:mental-health\",\"label\":\"Psykisk helse\",\"labelEn\":\"Mental health\"},{\"value\":\"healthdcatap:reproductive-health\",\"label\":\"Reproduktiv helse\",\"labelEn\":\"Reproductive health\"},{\"value\":\"healthdcatap:environmental-health\",\"label\":\"Milj\\u00f8helse\",\"labelEn\":\"Environmental health\"},{\"value\":\"healthdcatap:public-health-surveillance\",\"label\":\"Folkehelseoverv\\u00e5king\",\"labelEn\":\"Public health surveillance\"},{\"value\":\"healthdcatap:health-services\",\"label\":\"Helsetjenester\",\"labelEn\":\"Health services\"},{\"value\":\"healthdcatap:pharmaceuticals\",\"label\":\"Legemidler\",\"labelEn\":\"Pharmaceuticals\"},{\"value\":\"healthdcatap:genomics\",\"label\":\"Genomikk\",\"labelEn\":\"Genomics\"}]"
+      "optionsJson": "[{\"value\":\"healthdcatap:communicable-diseases\",\"label\":\"Smittsomme sykdommer\",\"labelEn\":\"Communicable diseases\"},{\"value\":\"healthdcatap:non-communicable-diseases\",\"label\":\"Ikke-smittsomme sykdommer\",\"labelEn\":\"Non-communicable diseases\"},{\"value\":\"healthdcatap:rare-diseases\",\"label\":\"Sjeldne sykdommer\",\"labelEn\":\"Rare diseases\"},{\"value\":\"healthdcatap:mental-health\",\"label\":\"Psykisk helse\",\"labelEn\":\"Mental health\"},{\"value\":\"healthdcatap:reproductive-health\",\"label\":\"Reproduktiv helse\",\"labelEn\":\"Reproductive health\"},{\"value\":\"healthdcatap:environmental-health\",\"label\":\"Milj\\u00f8helse\",\"labelEn\":\"Environmental health\"},{\"value\":\"healthdcatap:public-health-surveillance\",\"label\":\"Folkehelseoverv\\u00e5king\",\"labelEn\":\"Public health surveillance\"},{\"value\":\"healthdcatap:health-services\",\"label\":\"Helsetjenester\",\"labelEn\":\"Health services\"},{\"value\":\"healthdcatap:pharmaceuticals\",\"label\":\"Legemidler\",\"labelEn\":\"Pharmaceuticals\"},{\"value\":\"healthdcatap:genomics\",\"label\":\"Genomikk\",\"labelEn\":\"Genomics\"}]",
+      "options": [
+        {
+          "value": "healthdcatap:communicable-diseases",
+          "displayName": "Smittsomme sykdommer"
+        },
+        {
+          "value": "healthdcatap:non-communicable-diseases",
+          "displayName": "Ikke-smittsomme sykdommer"
+        },
+        {
+          "value": "healthdcatap:rare-diseases",
+          "displayName": "Sjeldne sykdommer"
+        },
+        {
+          "value": "healthdcatap:mental-health",
+          "displayName": "Psykisk helse"
+        },
+        {
+          "value": "healthdcatap:reproductive-health",
+          "displayName": "Reproduktiv helse"
+        },
+        {
+          "value": "healthdcatap:environmental-health",
+          "displayName": "Miljøhelse"
+        },
+        {
+          "value": "healthdcatap:public-health-surveillance",
+          "displayName": "Folkehelseovervåking"
+        },
+        {
+          "value": "healthdcatap:health-services",
+          "displayName": "Helsetjenester"
+        },
+        {
+          "value": "healthdcatap:pharmaceuticals",
+          "displayName": "Legemidler"
+        },
+        {
+          "value": "healthdcatap:genomics",
+          "displayName": "Genomikk"
+        }
+      ]
     },
     {
       "key": "numberOfRecords",
@@ -639,7 +817,8 @@
       },
       "sortOrder": 350,
       "type": "Number",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "numberOfUniqueIndividuals",
@@ -653,7 +832,8 @@
       },
       "sortOrder": 360,
       "type": "Number",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "retentionPeriod",
@@ -667,7 +847,8 @@
       },
       "sortOrder": 370,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "populationCoverage",
@@ -681,7 +862,8 @@
       },
       "sortOrder": 380,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "PopulationCoverageFlerspraklig",
@@ -695,7 +877,8 @@
       },
       "sortOrder": 381,
       "type": "MultilingualText",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "spatialResolutionInMeters",
@@ -709,7 +892,8 @@
       },
       "sortOrder": 400,
       "type": "Number",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "temporalResolution",
@@ -723,7 +907,8 @@
       },
       "sortOrder": 410,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "creator",
@@ -737,7 +922,8 @@
       },
       "sortOrder": 420,
       "type": "Object",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "CreatorNavnFlerspraklig",
@@ -751,7 +937,8 @@
       },
       "sortOrder": 425,
       "type": "MultilingualText",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "contactPoint",
@@ -765,7 +952,8 @@
       },
       "sortOrder": 430,
       "type": "Object",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "webPage",
@@ -779,7 +967,8 @@
       },
       "sortOrder": 440,
       "type": "Url",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "landingPage",
@@ -793,7 +982,8 @@
       },
       "sortOrder": 450,
       "type": "Url",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "isReferencedBy",
@@ -807,7 +997,8 @@
       },
       "sortOrder": 460,
       "type": "Url",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "relation",
@@ -821,7 +1012,8 @@
       },
       "sortOrder": 470,
       "type": "Url",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "source",
@@ -835,7 +1027,8 @@
       },
       "sortOrder": 480,
       "type": "Url",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "hasQualityAnnotation",
@@ -849,7 +1042,8 @@
       },
       "sortOrder": 490,
       "type": "Url",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "qualifiedAttribution",
@@ -863,7 +1057,8 @@
       },
       "sortOrder": 500,
       "type": "Object",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "otherIdentifiers",
@@ -877,7 +1072,8 @@
       },
       "sortOrder": 510,
       "type": "String",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "typicalAge",
@@ -891,7 +1087,8 @@
       },
       "sortOrder": 520,
       "type": "Number",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "maxTypicalAge",
@@ -905,7 +1102,8 @@
       },
       "sortOrder": 530,
       "type": "Number",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "TittelFlerspraklig",
@@ -919,7 +1117,8 @@
       },
       "sortOrder": 540,
       "type": "MultilingualText",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "AlternativtTittelFlerspraklig",
@@ -933,7 +1132,8 @@
       },
       "sortOrder": 545,
       "type": "MultilingualText",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "BeskrivelseFlerspraklig",
@@ -947,7 +1147,8 @@
       },
       "sortOrder": 550,
       "type": "MultilingualText",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "VersjonsnotaterFlerspraklig",
@@ -961,7 +1162,8 @@
       },
       "sortOrder": 555,
       "type": "LangTaggedList",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "PublisherNavnFlerspraklig",
@@ -975,7 +1177,8 @@
       },
       "sortOrder": 556,
       "type": "MultilingualText",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "PublisherNoteFlerspraklig",
@@ -989,7 +1192,8 @@
       },
       "sortOrder": 557,
       "type": "MultilingualText",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     },
     {
       "key": "HealthDataAccessBodyNameFlerspraklig",
@@ -1003,7 +1207,8 @@
       },
       "sortOrder": 558,
       "type": "MultilingualText",
-      "optionsJson": "[]"
+      "optionsJson": "[]",
+      "options": []
     }
   ],
   "datasamlinger": [
