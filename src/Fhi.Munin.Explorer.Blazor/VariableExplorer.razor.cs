@@ -277,8 +277,10 @@ public partial class VariableExplorer : ComponentBase
     /// <summary>Which page of results is showing. Two-way, one-based.</summary>
     /// <remarks>
     /// Restored on first render, so a shared link opens on the page it was shared from. A page past
-    /// the end is not an error: the server clamps it and the component adopts the page that actually
-    /// arrived, so a stale link lands on the last page rather than on nothing.
+    /// the end is not an error either: the API does not clamp — asked for a page it does not have it
+    /// answers with that page and no rows — so the component moves to the last real page itself and
+    /// reports it here. A host mirroring this into a URL therefore gets a corrected number back, and
+    /// should write what it is told rather than what it sent.
     /// <para>
     /// Also raised when the page resets to 1 — a new search or a changed filter renumbers
     /// everything, and a host that only heard about page turns would keep <c>page=7</c> in a URL

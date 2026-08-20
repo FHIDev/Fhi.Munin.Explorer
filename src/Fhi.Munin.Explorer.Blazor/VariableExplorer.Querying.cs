@@ -29,8 +29,9 @@ public partial class VariableExplorer
 
         // Both echoed back on mount, as SearchAsync did when it ran this path. The search echo is a
         // no-op for a host that just supplied it, but it is existing behaviour and not this
-        // change's to remove. The page echo is not a no-op: the server may have clamped a page past
-        // the end of a result set that has since shrunk, and whatever came back is the truth.
+        // change's to remove. The page echo is not a no-op: LandOnRealPageAsync above may have moved
+        // the reader off a page the link asked for and the result set no longer has, and the host
+        // is holding the number from the link until it is told otherwise.
         await NotifySearchChangedAsync();
         await NotifyPageChangedAsync();
 
@@ -77,9 +78,13 @@ public partial class VariableExplorer
             return;
         }
 
-        // Kept so a failed fetch can put them back — see below.
+        // Kept so a failed fetch can put them back — see below. The page and the pager as well as
+        // the order: reordering sends the reader to page one, and if the reorder never arrives they
+        // are still on the page they were on.
         var previousSort = _sort;
         var previousDirection = _direction;
+        var previousPage = _page;
+        var previousKeepPager = _keepPager;
 
         if (sort == _sort)
         {
@@ -111,6 +116,8 @@ public partial class VariableExplorer
             // ascending fetch that just failed short of cycling twice.
             _sort = previousSort;
             _direction = previousDirection;
+            _page = previousPage;
+            _keepPager = previousKeepPager;
 
             return;
         }

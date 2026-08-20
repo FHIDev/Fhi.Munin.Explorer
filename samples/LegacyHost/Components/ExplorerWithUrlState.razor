@@ -50,14 +50,13 @@
             _search = search.ToString();
         }
 
-        if (query.TryGetValue("sort", out var sort)
-            && Enum.TryParse<SortField>(sort.ToString(), ignoreCase: true, out var parsedSort))
+        if (query.TryGetValue("sort", out var sort) && Named<SortField>(sort.ToString()) is { } parsedSort)
         {
             _sort = parsedSort;
         }
 
         if (query.TryGetValue("sortDir", out var direction)
-            && Enum.TryParse<SortDirection>(direction.ToString(), ignoreCase: true, out var parsedDirection))
+            && Named<SortDirection>(direction.ToString()) is { } parsedDirection)
         {
             _direction = parsedDirection;
         }
@@ -115,6 +114,20 @@
         // string in place, so clearing every filter would not clear the URL.
         return query.Length == 0 ? "/" : "?" + query;
     }
+
+    /// <summary>
+    /// An enum value the query string actually names, or null.
+    /// </summary>
+    /// <remarks>
+    /// <c>Enum.TryParse</c> alone is not enough: it accepts any number, so <c>?sort=999</c> succeeds
+    /// and yields a <c>SortField</c> with value 999 that no case in the enum covers. That then
+    /// travels into the component and out to the API as a sort nobody defined. A query string is
+    /// whatever a stranger typed, so the value has to be one the enum actually declares.
+    /// </remarks>
+    private static TEnum? Named<TEnum>(string? value) where TEnum : struct, Enum
+        => Enum.TryParse<TEnum>(value, ignoreCase: true, out var parsed) && Enum.IsDefined(parsed)
+            ? parsed
+            : null;
 
     private static void Append(StringBuilder query, string name, string? value)
     {

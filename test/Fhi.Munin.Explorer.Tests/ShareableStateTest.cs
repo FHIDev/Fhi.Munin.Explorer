@@ -145,6 +145,94 @@ public class ShareableStateTest : BunitContext
         Assert.Equal(SortDirection.Ascending, direction);
     }
 
+    /// <summary>Answers every fetch, except the ones it is told to refuse.</summary>
+    private sealed class FlakyClient(int pages, int perPage = 2) : EmptyMuninExplorerClient
+    {
+        /// <summary>Set to make the next single fetch fail, then clear itself.</summary>
+        public bool FailNext { get; set; }
+
+        public int LastPage { get; private set; }
+
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
+            SortField sort = SortField.Default,
+            SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default)
+        {
+            if (FailNext)
+            {
+                FailNext = false;
+
+                throw new HttpRequestException("nede");
+            }
+
+            LastPage = page;
+
+            return Task.FromResult(new Page<VariableSummary>
+            {
+                Items = [.. Enumerable.Range(1, perPage).Select(i => Row($"p{page}v{i}"))],
+                TotalCount = pages * perPage,
+                PageNumber = page,
+                Size = perPage,
+                TotalPages = pages,
+            });
+        }
+
+        // One facet, so there is something in the sidebar to tick. Without it the filter panel has
+        // no controls and the narrowing cannot be attempted at all.
+        public override Task<FilterOptions> GetFiltersAsync(
+            string? search = null, VariableFilter? filter = null, string? language = null,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(new FilterOptions { DataTypes = [new() { Value = "1", Count = 9 }] });
+    }
+
+    [Fact]
+    public void Sort_WhenTheReorderNeverArrives_ThenTheHostIsNotToldThePageMoved()
+    {
+        // What this pins is the host-facing half: a failed sort reports nothing, so a mirrored URL
+        // still points at the page whose rows are still on screen.
+        //
+        // The component also rolls its own page back, and that part is deliberately not asserted
+        // here, because it has no consequence this test could observe. A failed fetch takes the
+        // pager out of the document, so there is no page turn to try and no caption to read; and
+        // every route back out — searching, sorting again, narrowing — resets the page to 1 anyway,
+        // so the internal divergence converges before anything can see it. The rollback stays
+        // because the file's own invariant is that internal state describes what is on screen, and
+        // an untested invariant is still worth holding. Claiming a test for it would not be.
+        var client = new FlakyClient(pages: 5);
+        var reported = new List<int>();
+
+        var cut = Render(client, b => b
+            .Add(c => c.Page, 3)
+            .Add(c => c.PageChanged, reported.Add));
+
+        client.FailNext = true;
+        cut.FindAll("button").First(b => b.TextContent.Contains("Kilde")).Click();
+
+        Assert.Equal([3], reported);
+    }
+
+    [Fact]
+    public void Filter_WhenTheNarrowingNeverArrives_ThenThePageStaysWhereTheRowsAre()
+    {
+        // Same invariant from the other side. The filter is rolled back, so the rows on screen are
+        // still page 3 of the unnarrowed set; reporting page 1 would take the page out of the host's
+        // URL over a narrowing that never happened.
+        var client = new FlakyClient(pages: 5);
+        var reported = new List<int>();
+
+        var cut = Render(client, b => b
+            .Add(c => c.Page, 3)
+            .Add(c => c.PageChanged, reported.Add));
+
+        client.FailNext = true;
+
+        // A facet is a button here, not a checkbox — the one carrying its count.
+        cut.FindAll(".variable-explorer-filters button").First(b => b.TextContent.Contains("(9)")).Click();
+
+        Assert.Equal(3, reported[^1]);
+    }
+
     [Fact]
     public void Page_WhenASearchRenumbersTheResults_ThenTheHostIsToldThePageWentBackToOne()
     {
