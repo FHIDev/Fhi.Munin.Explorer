@@ -20,11 +20,21 @@
     <VersionPrefix>0.1.0</VersionPrefix>
     <Authors>Folkehelseinstituttet (FHI)</Authors>
     <Company>Folkehelseinstituttet</Company>
+
+    <!-- Required of a public FHI package, and the one piece of provenance a consumer sees on
+         nuget.org without opening anything: it names who stands behind the package beside the
+         author and the licence. -->
+    <Copyright>Copyright 2026 Folkehelseinstituttet (FHI)</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/FHIDev/Fhi.Munin.Explorer</PackageProjectUrl>
     <RepositoryUrl>https://github.com/FHIDev/Fhi.Munin.Explorer</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+
+    <!-- Not the notes themselves: nuget.org renders this per version, and pasting a version's
+         entry in at pack time would mean the props file had to be edited for every release and
+         would be wrong the moment someone forgot. A pointer stays true. -->
+    <PackageReleaseNotes>See the changelog for what changed in this version: https://github.com/FHIDev/Fhi.Munin.Explorer/blob/main/CHANGELOG.md</PackageReleaseNotes>
   </PropertyGroup>
 
   <!-- Ship the XML docs. The point of this package is that a helsedata developer does not
