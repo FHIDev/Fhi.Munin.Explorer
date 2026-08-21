@@ -2921,6 +2921,372 @@ public class VariableExplorerTest : BunitContext
     }
 
     // ---------------------------------------------------------------------------------
+    // The hierarchy trail over the results. What has to hold is what the panel alone cannot
+    // do: say WHERE in kilde → delkilde → datasamling → variabelgruppe the selection stands,
+    // and let a reader step back up it. The panel holds the same selection as pressed buttons
+    // inside collapsed disclosures, so without the trail a kilde chosen three levels down is
+    // visible only as the result count changing.
+    // ---------------------------------------------------------------------------------
+
+    private static readonly Guid Inklusjon2 = new("cccccccc-0000-0000-0000-000000000003");
+
+    private static IReadOnlyList<IElement> Crumbs(IRenderedComponent<VariableExplorer> cut) =>
+        cut.FindAll(".variable-explorer-breadcrumb ol li button");
+
+    private static IElement Crumb(IRenderedComponent<VariableExplorer> cut, string label) =>
+        Crumbs(cut).Single(b => b.TextContent.StartsWith(label, StringComparison.Ordinal));
+
+    /// <summary>
+    /// The lang a step's text is announced in, or null where the step carries no marking at all.
+    /// </summary>
+    /// <remarks>
+    /// It reads the span inside the button rather than the button itself, which is the whole point:
+    /// the button owns the aria-label, and that label is this component's prose in the UI's
+    /// language, so a lang on the button would announce an English name in a Norwegian voice.
+    /// Anything langed above the text would be the bug, so the button is checked for one too.
+    /// </remarks>
+    private static string? CrumbLang(IElement step)
+    {
+        Assert.False(step.HasAttribute("lang"));
+        return step.QuerySelector("[lang]")?.GetAttribute("lang");
+    }
+
+    /// <summary>The component rendered with a hierarchy already chosen, as a shared link would.</summary>
+    private IRenderedComponent<VariableExplorer> RenderFiltered(
+        FilteringClient client, VariableFilter filter) =>
+        RenderWith(client, b => b.Add(c => c.Filter, filter));
+
+    [Fact]
+    public void Render_WhenNothingInTheHierarchyIsChosen_ThenNoTrailIsDrawn()
+    {
+        // There is no trail to a selection nobody has made, and a permanent empty one would be the
+        // same furniture as "Side 1 av 1" between two dead pager buttons.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        Assert.Empty(cut.FindAll(".variable-explorer-breadcrumb"));
+    }
+
+    [Fact]
+    public void Render_WhenOnlyADatatypeIsChosen_ThenStillNoTrailIsDrawn()
+    {
+        // The trail is the four hierarchy levels, not "any filter". A datatype is not a place in
+        // the catalogue, so it has no step and cannot summon a trail on its own.
+        var cut = RenderFiltered(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))),
+                                 new VariableFilter { DataTypes = ["1"] });
+
+        Assert.Empty(cut.FindAll(".variable-explorer-breadcrumb"));
+    }
+
+    [Fact]
+    public void Render_WhenTheHierarchyIsChosen_ThenThereIsAStepPerChosenLevelInOrder()
+    {
+        // Outermost first, and only the levels that have a selection: a kilde and a variabelgruppe
+        // with no delkilde or datasamling between them is an ordinary thing to pick, and a step
+        // saying nothing would be worse than a shorter path.
+        var cut = RenderFiltered(
+            new FilteringClient(OnePage(Variable("1. Tale", "KODE"))),
+            new VariableFilter
+            {
+                KildeIds = [Tromso],
+                DelkildeIds = [Tromso4],
+                VariabelgruppeIds = [Bakgrunn]
+            });
+
+        Assert.Equal(["Tromsøundersøkelsen", "Tromsø 4", "Bakgrunn"],
+                     Crumbs(cut).Select(b => b.TextContent));
+    }
+
+    [Fact]
+    public void Render_WhenALevelHasSeveralValues_ThenTheStepNamesTheFirstAndCountsTheRest()
+    {
+        // Runa's rule. The alternative is a step whose width grows with the selection; the number
+        // is the part a reader needs, and the names are all still in the panel one press away.
+        var cut = RenderFiltered(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))),
+                                 new VariableFilter { KildeIds = [Dodsarsak, Tromso] });
+
+        Assert.Equal("Dødsårsaksregisteret (+1)", Crumbs(cut).Single().TextContent);
+    }
+
+    [Fact]
+    public void Render_WhenADatasamlingIsChosen_ThenItsNameComesFromTheRowsItLeft()
+    {
+        // Nothing in FilterOptions offers datasamlinger as a facet, so the rows are the only place
+        // the name can come from — and every row a datasamling filter leaves belongs to it.
+        var row = Variable("1. Tale", "KODE") with { DatasamlingId = Inklusjon2, DatasamlingName = "Inklusjon" };
+
+        var cut = RenderFiltered(new FilteringClient(OnePage(row)),
+                                 new VariableFilter { DatasamlingIds = [Inklusjon2] });
+
+        Assert.Equal("Inklusjon", Crumbs(cut).Single().TextContent);
+    }
+
+    [Fact]
+    public void Render_WhenTheFacetsDoNotCarryTheChosenKilde_ThenItsNameComesFromTheRowsItLeft()
+    {
+        // The facets are the first source but they can miss: they are cross-filtered, so a value
+        // the reader selected can be absent from the payload describing what that selection
+        // leaves, and a failed refresh leaves them missing altogether while the rows stay on
+        // screen. Every row a kilde filter leaves belongs to that kilde and names it.
+        var row = Variable("1. Tale", "KODE") with { KildeId = Tromso, KildeName = "Tromsøundersøkelsen" };
+        var client = new FilteringClient(OnePage(row)) { FailFacets = true };
+
+        var cut = RenderFiltered(client, new VariableFilter { KildeIds = [Tromso] });
+
+        var crumb = Crumbs(cut).Single();
+
+        Assert.Equal("Tromsøundersøkelsen", crumb.TextContent);
+        // A name out of the catalogue whichever source supplied it, so it is still Norwegian.
+        Assert.Equal("no", CrumbLang(crumb));
+    }
+
+    [Fact]
+    public void Render_WhenTheFacetsDoNotCarryTheChosenVariabelgruppe_ThenItsNameComesFromTheRows()
+    {
+        // The variabelgruppe falls back the same way the kilde does, and off its own pair of row
+        // fields — a step reading "Variabelgruppe" where the rows knew the name would be the
+        // trail's most prominent levels degrading with the suite still green.
+        var row = Variable("1. Tale", "KODE") with
+        {
+            VariabelgruppeId = Bakgrunn,
+            VariabelgruppeName = "Bakgrunn"
+        };
+        var client = new FilteringClient(OnePage(row)) { FailFacets = true };
+
+        var cut = RenderFiltered(client, new VariableFilter { VariabelgruppeIds = [Bakgrunn] });
+
+        var crumb = Crumbs(cut).Single();
+
+        Assert.Equal("Bakgrunn", crumb.TextContent);
+        Assert.Equal("no", CrumbLang(crumb));
+    }
+
+    [Fact]
+    public void Render_WhenNothingOnScreenKnowsAValuesName_ThenTheStepFallsBackToTheLevelsOwnWord()
+    {
+        // A guid in a trail is not information, and the step still has to be pressable to clear
+        // what is under it — so an unknown value is drawn as its level rather than dropped.
+        var cut = RenderFiltered(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))),
+                                 new VariableFilter { DatasamlingIds = [Inklusjon2] });
+
+        var crumb = Crumbs(cut).Single();
+
+        Assert.Equal("Datasamling", crumb.TextContent);
+        // Our prose rather than a name out of the catalogue, so it must not be announced as
+        // Norwegian — the same rule the variable panel's kildetype step follows. Nothing inside
+        // the step is langed either: the marking lives on a span around catalogue words alone.
+        Assert.Null(CrumbLang(crumb));
+    }
+
+    [Fact]
+    public void Breadcrumb_WhenAStepIsPressed_ThenEveryLevelUnderItIsCleared()
+    {
+        // The acceptance criterion: a step removes what is below it and keeps itself.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderFiltered(client, new VariableFilter
+        {
+            KildeIds = [Tromso],
+            DelkildeIds = [Tromso4],
+            DatasamlingIds = [Inklusjon2],
+            VariabelgruppeIds = [Bakgrunn]
+        });
+
+        Crumb(cut, "Tromsø 4").Click();
+
+        Assert.Equal([Tromso], client.SearchFilter?.KildeIds);
+        Assert.Equal([Tromso4], client.SearchFilter?.DelkildeIds);
+        Assert.Empty(client.SearchFilter!.DatasamlingIds);
+        Assert.Empty(client.SearchFilter!.VariabelgruppeIds);
+
+        // And the trail itself shortens to the step that was pressed, which is the re-render the
+        // press exists to produce: two steps go from the end, and the step left last takes on
+        // being current — which is what drops its aria-label, since pressing it now does nothing.
+        // Not a guard on SetKey(crumb.Level), which nothing here can see: a press only ever drops
+        // steps off the end, which positional patching lands on identically. What the key is for
+        // is a level appearing in the middle, from the panel rather than from here.
+        Assert.Equal(["Tromsøundersøkelsen", "Tromsø 4"], Crumbs(cut).Select(b => b.TextContent));
+        Assert.Equal("true", Crumbs(cut)[^1].GetAttribute("aria-current"));
+        Assert.False(Crumbs(cut)[^1].HasAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void Breadcrumb_WhenAStepIsPressed_ThenTheFiltersThatAreNotPartOfThePathSurvive()
+    {
+        // A datatype is not a place in the catalogue. Taking it out because the reader stepped
+        // back up the hierarchy would be a filter disappearing with no control having said so.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderFiltered(client, new VariableFilter
+        {
+            KildeIds = [Tromso],
+            VariabelgruppeIds = [Bakgrunn],
+            DataTypes = ["1"],
+            IncludeHistorical = true
+        });
+
+        Crumb(cut, "Tromsøundersøkelsen").Click();
+
+        Assert.Empty(client.SearchFilter!.VariabelgruppeIds);
+        Assert.Equal(["1"], client.SearchFilter?.DataTypes);
+        Assert.True(client.SearchFilter?.IncludeHistorical);
+    }
+
+    [Fact]
+    public void Breadcrumb_WhenTheClearIsPressed_ThenTheWholeHierarchyGoesAndNothingElseDoes()
+    {
+        // The other half of the acceptance criterion, and the difference between this and
+        // "Fjern alle filtre": the reader who narrowed deep into one kilde keeps the datatype,
+        // the kodeverk and the dates they also chose.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderFiltered(client, new VariableFilter
+        {
+            KildeIds = [Tromso],
+            DelkildeIds = [Tromso4],
+            VariabelgruppeIds = [Bakgrunn],
+            DataTypes = ["1"],
+            KildeType = "biobank"
+        });
+
+        cut.Find(".variable-explorer-breadcrumb__clear").Click();
+
+        Assert.Empty(client.SearchFilter!.KildeIds);
+        Assert.Empty(client.SearchFilter!.DelkildeIds);
+        Assert.Empty(client.SearchFilter!.VariabelgruppeIds);
+        Assert.Equal(["1"], client.SearchFilter?.DataTypes);
+        // Kildetype is a facet of its own rather than a step on the way to a kilde, so it is not
+        // part of what the trail owns and does not go with it.
+        Assert.Equal("biobank", client.SearchFilter?.KildeType);
+    }
+
+    [Fact]
+    public void Breadcrumb_WhenTheClearIsPressed_ThenTheTrailItselfIsGone()
+    {
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderFiltered(client, new VariableFilter { KildeIds = [Tromso] });
+
+        cut.Find(".variable-explorer-breadcrumb__clear").Click();
+
+        Assert.Empty(cut.FindAll(".variable-explorer-breadcrumb"));
+    }
+
+    [Fact]
+    public void Breadcrumb_WhenTheDeepestStepIsPressed_ThenNothingIsFetched()
+    {
+        // It has nothing under it to clear, so ApplyFilterAsync is handed the filter already in
+        // force and returns without a request. That is what makes it safe for it to stay a button.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderFiltered(client, new VariableFilter { KildeIds = [Tromso], DelkildeIds = [Tromso4] });
+
+        Crumb(cut, "Tromsø 4").Click();
+
+        Assert.Equal(1, client.SearchCalls); // the initial load, and nothing since
+    }
+
+    [Fact]
+    public void Render_WhenTheTrailIsDrawn_ThenEveryStepIsAButtonAndTheDeepestSaysItIsWhereYouAre()
+    {
+        // Every step is a button, including the last. Pressing a step makes it the last step, so a
+        // last step drawn as plain text would take the control the reader just pressed out of the
+        // document and drop focus to <body> — the failure the pager's aria-disabled and the
+        // ever-present clear button both exist to avoid.
+        var cut = RenderFiltered(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))),
+                                 new VariableFilter { KildeIds = [Tromso], DelkildeIds = [Tromso4] });
+
+        var steps = Crumbs(cut);
+
+        Assert.All(steps, b => Assert.Equal("button", b.GetAttribute("type")));
+        Assert.False(steps[0].HasAttribute("aria-current"));
+        Assert.Equal("true", steps[1].GetAttribute("aria-current"));
+
+        // What pressing it does, which the name on its own does not say — and starting with the
+        // visible text, so speech input can still reach it (WCAG 2.5.3). The step you are already
+        // on has none, because pressing it does nothing.
+        Assert.Equal("Tromsøundersøkelsen – fjern nivåene under", steps[0].GetAttribute("aria-label"));
+        Assert.False(steps[1].HasAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void Render_WhenTheTrailIsDrawn_ThenItIsBuiltFromShapesRatherThanFromNewClassNames()
+    {
+        // Stiler has no breadcrumb rule that can be read back off its compiled stylesheet, so the
+        // trail is an <ol> of buttons and the chevrons are a host's to draw. The two names it does
+        // wear are handles, and the steps reuse the panel's own crumb name rather than minting a
+        // second one for the same affordance.
+        var cut = RenderFiltered(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))),
+                                 new VariableFilter { KildeIds = [Tromso] });
+
+        var trail = cut.Find(".variable-explorer-breadcrumb");
+
+        // The span the Norwegian marking hangs on is invisible to a stylesheet too — it exists for
+        // the synthesiser, not for a rule.
+        Assert.All(trail.QuerySelectorAll("ol, li, span"), e => Assert.False(e.HasAttribute("class")));
+        Assert.All(Crumbs(cut), b => Assert.Equal("hd-button-reset variable-explorer-crumb", b.ClassName));
+
+        // The list carries the name rather than a <nav> landmark: two explorers on one page would
+        // otherwise put two identically named navs in the landmark list with nothing to tell them
+        // apart, which the search form avoids by naming itself after its own instance's title.
+        Assert.Equal("Valgt hierarki", trail.QuerySelector("ol")!.GetAttribute("aria-label"));
+        Assert.Empty(cut.FindAll("nav"));
+
+        // The × is decoration, so the control that empties the hierarchy says what it does in its
+        // accessible name instead — and it sits outside the list, so "list, 1 item" is not counting
+        // the button that empties it.
+        var clear = cut.Find(".variable-explorer-breadcrumb__clear");
+
+        Assert.Equal("Fjern hierarkifilteret", clear.GetAttribute("aria-label"));
+        Assert.Null(clear.Closest("ol"));
+    }
+
+    [Fact]
+    public void Render_WhenTheLanguageIsEn_ThenTheTrailIsEnglishAndTheCatalogueStaysNorwegian()
+    {
+        // The same split the panel's kilde trail makes: the names are Munin's whatever the UI is,
+        // and only the prose around them follows Language.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))),
+                             b => b.Add(c => c.Language, "en")
+                                   .Add(c => c.Filter, new VariableFilter
+                                   {
+                                       KildeIds = [Tromso],
+                                       DatasamlingIds = [Inklusjon2]
+                                   }));
+
+        var steps = Crumbs(cut);
+
+        Assert.Equal("Tromsøundersøkelsen", steps[0].TextContent);
+        // The lang wraps the catalogue's words only. It cannot go on the button, because the
+        // button carries the aria-label below — English prose, which a Norwegian voice would
+        // mangle, and which is exactly the mistake the period column's remarks name.
+        Assert.Equal("no", CrumbLang(steps[0]));
+        Assert.Equal("Tromsøundersøkelsen – remove the levels below", steps[0].GetAttribute("aria-label"));
+
+        // The unknown datasamling falls back to the level's own word, which is ours and therefore
+        // English here — and carries no lang for exactly that reason.
+        Assert.Equal("Data collection", steps[1].TextContent);
+        Assert.Null(CrumbLang(steps[1]));
+
+        Assert.Equal("Selected hierarchy",
+                     cut.Find(".variable-explorer-breadcrumb ol").GetAttribute("aria-label"));
+        Assert.Equal("Clear the hierarchy filter",
+                     cut.Find(".variable-explorer-breadcrumb__clear").GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void Breadcrumb_WhenAStepIsPressed_ThenTheHostIsToldWhatIsNowInForce()
+    {
+        // The trail changes the filter, so it owes the host the same callback every facet button
+        // does — otherwise a shared link keeps a hierarchy the page has already stepped out of.
+        VariableFilter? reported = null;
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+
+        var cut = RenderWith(client, b => b
+            .Add(c => c.Filter, new VariableFilter { KildeIds = [Tromso], DelkildeIds = [Tromso4] })
+            .Add(c => c.FilterChanged, f => reported = f));
+
+        Crumb(cut, "Tromsøundersøkelsen").Click();
+
+        Assert.Equal([Tromso], reported?.KildeIds);
+        Assert.Empty(reported!.DelkildeIds);
+    }
+
+    // ---------------------------------------------------------------------------------
     // The detail panel. The one thing that has to hold is the acceptance criterion itself:
     // selecting a variable shows its detail without a page navigation. Everything else here
     // follows from the panel living inside the row — the selection can only ever be a row on
@@ -4713,7 +5079,11 @@ public class VariableExplorerTest : BunitContext
         // the list of names we INVENT — the handles below, which carry no styling anywhere and
         // exist only so a host can find the component in the DOM. A name in this prefix that is
         // neither theirs nor one of those is a name that renders as a raw browser default.
-        var cut = RenderWith(TwoRows());
+        //
+        // Rendered with a hierarchy chosen as well as a panel open, so the trail over the results
+        // is on screen: this list is the central registry, and names that only appear under a
+        // filter would otherwise be invisible to it and pinned only by their own feature's tests.
+        var cut = RenderWith(TwoRows(), b => b.Add(c => c.Filter, new VariableFilter { KildeIds = [Tromso] }));
 
         Toggles(cut)[0].Click();
 
@@ -4727,6 +5097,15 @@ public class VariableExplorerTest : BunitContext
         [
             "variable-explorer",            // ours, a handle
             "variable-explorer-filters",    // ours, a handle
+            "variable-explorer-breadcrumb", // ours — the trail over the results, which Stiler has
+                                            // no breadcrumb rule of any kind to borrow
+            "variable-explorer-crumb",      // ours — one step of a trail, and the same name in
+                                            // both of them: the panel's kilde step, which Runa
+                                            // makes a link and we make the control that discloses
+                                            // the kilde, and each step of the hierarchy trail,
+                                            // which reuses it rather than minting a second name
+                                            // for the same affordance
+            "variable-explorer-breadcrumb__clear",      // ours — the × that empties the hierarchy
             "variable-explorer-container",  // theirs, variables.css (10 rules)
             "variable-explorer-results",    // theirs, variables.css (6 rules)
             "variable-explorer-header",     // theirs — the row their own variable page hangs the
@@ -4736,8 +5115,6 @@ public class VariableExplorerTest : BunitContext
             "variable-explorer-detail",     // ours, a handle
             "variable-explorer-group",      // ours — helsedata's panel is flat, so it has no
                                             // group heading to borrow a name from
-            "variable-explorer-crumb",      // ours — the kilde step, which Runa makes a link and
-                                            // we make the control that discloses the kilde
             "variable-explorer-period",     // ours — neither explorer's stylesheet has a period bar
             "variable-explorer-period__range",
             "variable-explorer-period__track",
