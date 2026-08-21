@@ -2685,6 +2685,34 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
+    public void Render_WhenNothingMatchesForAnEnglishReader_ThenTheEmptyStateIsEnglishToo()
+    {
+        // NoResults is a delegate, so the parity test cannot compare it without arguments — and
+        // unlike the other two delegates nothing asserted it where it is rendered either, which
+        // left the English empty state as the one user-facing string in the package with no
+        // guard at all. A completely routine path: an English reader whose search matches nothing.
+        var cut = RenderWith(new FakeClient(OnePage()), b => b.Add(c => c.Language, "en"));
+
+        Assert.Equal("No variables matched your search.", StatusLine(cut));
+    }
+
+    [Fact]
+    public void Filter_WhenNothingMatchesForAnEnglishReader_ThenBothClausesAreEnglishToo()
+    {
+        // The search and filter clauses are built separately from the sentence around them, so
+        // either could stay Norwegian on its own.
+        var cut = RenderWith(
+            new FilteringClient(OnePage()),
+            b => b.Add(c => c.Language, "en")
+                  .Add(c => c.Search, "svelging")
+                  .Add(c => c.Filter, new VariableFilter { KildeIds = [Dodsarsak] }));
+
+        Assert.Equal(
+            "No variables matched your search for \u201csvelging\u201d with the filters you have chosen.",
+            StatusLine(cut));
+    }
+
+    [Fact]
     public void Filter_WhenAPageIsTurned_ThenTheCountsAreNotRefetched()
     {
         // Paging does not change what the counts describe, and the facet endpoint is the expensive

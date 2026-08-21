@@ -38,17 +38,62 @@ internal sealed record PropertyGroup(
 /// </remarks>
 internal static class CatalogueProperties
 {
-    /// <summary>The reader's language as a tag: <c>en</c> or <c>no</c>.</summary>
-    internal static string Reader(string? language)
-        => string.Equals(language, "en", StringComparison.OrdinalIgnoreCase) ? "en" : "no";
+    /// <summary>Norwegian as a culture name, which is neither of the tags we render with.</summary>
+    private const string NorwegianCulture = "nb-NO";
+
+    /// <summary>The only two cultures this package ever formats in, resolved once.</summary>
+    /// <remarks>
+    /// Once rather than per call, because <see cref="Formatting"/> is a caught throw on exactly the
+    /// host it was written for: with <c>InvariantGlobalization</c> every name fails. The date
+    /// helpers run twice per period cell, so a page of results would construct, throw and catch a
+    /// <see cref="CultureNotFoundException"/> some fifty times per render, and the degraded host
+    /// would be the one paying for it. Resolved here it costs two throws at type load, once.
+    /// </remarks>
+    private static readonly CultureInfo NorwegianFormatting = Formatting(NorwegianCulture);
+
+    /// <inheritdoc cref="NorwegianFormatting"/>
+    private static readonly CultureInfo EnglishFormatting = Formatting(ReaderLanguage.English);
 
     /// <summary>The culture to format dates and numbers in for this reader.</summary>
     /// <remarks>
     /// <c>nb-NO</c> rather than a bare <c>no</c>: the neutral culture gives ISO-ish dates, and the
-    /// point of formatting per reader is that a Norwegian one sees a Norwegian date.
+    /// point of formatting per reader is that a Norwegian one sees a Norwegian date. English is
+    /// content with the neutral <c>en</c> because the reasoning does not carry over — the neutral
+    /// English culture already formats the way an English reader expects, and picking a region for
+    /// them would be picking one the host never asked for, with <c>en-GB</c> and <c>en-US</c>
+    /// disagreeing about which way round a numeric date goes.
     /// </remarks>
     internal static CultureInfo Culture(string? language)
-        => CultureInfo.GetCultureInfo(string.Equals(language, "en", StringComparison.OrdinalIgnoreCase) ? "en" : "nb-NO");
+        => ReaderLanguage.IsEnglish(language) ? EnglishFormatting : NorwegianFormatting;
+
+    /// <summary>A culture by name, or the invariant one where the host has none.</summary>
+    /// <remarks>
+    /// A host built with <c>InvariantGlobalization</c> has <c>PredefinedCulturesOnly</c> on, and
+    /// there <see cref="CultureInfo.GetCultureInfo(string)"/> throws rather than returning
+    /// anything. Thrown from the initialiser of <see cref="NorwegianFormatting"/> or
+    /// <see cref="CatalogueOrder"/> it becomes a <c>TypeInitializationException</c> that takes
+    /// every property row with it and cannot be retried once thrown. The same reasoning the type's
+    /// own remarks give for not parsing tokens as cultures applies here: a host we cannot format
+    /// for should cost us the formatting, not the page.
+    /// <para>
+    /// <see cref="CultureNotFoundException"/> alone is the whole surface, checked rather than
+    /// assumed: with <c>PredefinedCulturesOnly</c> on, every name fails that way — including
+    /// <c>nb-NO</c> and <c>en</c> — and with it off the only failures are names ICU will not
+    /// fabricate a culture for, which fail the same way. Internal rather than private so a test can
+    /// reach the branch, which no host running the suite can otherwise take.
+    /// </para>
+    /// </remarks>
+    internal static CultureInfo Formatting(string name)
+    {
+        try
+        {
+            return CultureInfo.GetCultureInfo(name);
+        }
+        catch (CultureNotFoundException)
+        {
+            return CultureInfo.InvariantCulture;
+        }
+    }
 
     /// <summary>The order the catalogue's own names sort in.</summary>
     /// <remarks>
@@ -59,7 +104,7 @@ internal static class CatalogueProperties
     /// and sorting by the thread's would make the order depend on whatever the host happened to set.
     /// </remarks>
     internal static readonly StringComparer CatalogueOrder =
-        StringComparer.Create(CultureInfo.GetCultureInfo("nb-NO"), ignoreCase: false);
+        StringComparer.Create(NorwegianFormatting, ignoreCase: false);
 
     /// <summary>
     /// A <c>lang</c> for text that is not in the reader's language, or null when it is.

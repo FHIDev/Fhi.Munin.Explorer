@@ -657,6 +657,11 @@ internal sealed record Texts(
             return filters == 0 ? $"{forSearch}." : $"{forSearch} with the filters you have chosen.";
         });
 
-    public static Texts For(string? language) =>
-        string.Equals(language, "en", StringComparison.OrdinalIgnoreCase) ? En : No;
+    /// <summary>The words for a reader, defaulting to Norwegian for anything that is not English.</summary>
+    /// <remarks>
+    /// Norwegian rather than a throw for an unrecognised token: the catalogue is Norwegian and the
+    /// readers are, so falling back to it leaves a page someone can still use, where a component
+    /// that refused to render would take the whole host page down with it.
+    /// </remarks>
+    public static Texts For(string? language) => ReaderLanguage.IsEnglish(language) ? En : No;
 }
