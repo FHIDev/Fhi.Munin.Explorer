@@ -14,9 +14,9 @@ saved variable lists follow later.
 
 | Project | What it is |
 | --- | --- |
-| `src/Fhi.Munin.Explorer.Contracts` | DTOs and the client interface. No dependencies. |
-| `src/Fhi.Munin.Explorer.Blazor` | The RCL — the components a host renders. |
-| `src/Fhi.Munin.Explorer.Client` | Typed `HttpClient` implementation + `AddMuninExplorer()`. |
+| `src/Fhi.Munin.Explorer` | The one package: the components a host renders, and everything behind them. |
+| `src/Fhi.Munin.Explorer/Contracts` | DTOs and the client interface. |
+| `src/Fhi.Munin.Explorer/Client` | Typed `HttpClient` implementation + `AddMuninExplorer()`. |
 | `samples/ModernHost` | Blazor Web App — the everyday development host. |
 | `samples/LegacyHost` | Legacy Blazor Server + MVC — mirrors helsedata's Optimizely host. |
 | `test/Fhi.Munin.Explorer.Tests` | bUnit + xUnit. |
@@ -171,17 +171,18 @@ goes red.
 
 ## Installing
 
-A host needs **two** packages. The component and its data source are separate so a host can
-supply its own `IMuninExplorerClient` — but install only the first and the component renders
-with nothing behind it.
+One package. The component, the client that feeds it and the types they share all ship together.
 
 ```bash
-dotnet add package Fhi.Munin.Explorer.Blazor   # the component
-dotnet add package Fhi.Munin.Explorer.Client   # the data client + AddMuninExplorer()
+dotnet add package Fhi.Munin.Explorer
 ```
 
-`Fhi.Munin.Explorer.Contracts` comes along as a dependency of both; install it directly only if
-you are implementing one of the interfaces without taking the rest.
+It was three for a while — component, client and contracts — so that the component need not
+depend on an HTTP stack and a host could substitute its own `IMuninExplorerClient`. That seam is
+still here: `IMuninExplorerClient` is an interface, and a host that registers its own
+implementation never touches ours. What went away is the part nobody used — three versions that
+had to move in lockstep, and a state where the component was installed and the client was not, so
+it rendered with nothing behind it.
 
 ```csharp
 // Registration order matters. To call Munin as the signed-in user, register the token provider
