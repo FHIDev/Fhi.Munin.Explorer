@@ -65,7 +65,10 @@ Heavier, and only worth it when the question is styling or authentication.
 
 ### Wiring our component in
 
-Add project references from their `Fhi.Helsedata.Optimizely.csproj` to `src/Fhi.Munin.Explorer.Blazor` and `src/Fhi.Munin.Explorer.Client`, register it in `Startup.cs` before the CMS registrations:
+Add a project reference from their `Fhi.Helsedata.Optimizely.csproj` to `src/Fhi.Munin.Explorer`, register it in `Startup.cs` before the CMS registrations:
+
+> Until 2026-08-21 this was **two** references, to `src/Fhi.Munin.Explorer.Blazor` and `src/Fhi.Munin.Explorer.Client`. The three projects were merged into one that day. A checkout of theirs still carrying the old pair fails to build with `CS0234: The type or namespace name 'Munin' does not exist in the namespace 'Fhi'`, which reads like a missing package and is really a path that no longer exists.
+
 
 ```csharp
 services.AddMuninExplorer(o => o.ApiBaseUrl = "https://munin.skytest.fhi.no");
@@ -81,7 +84,40 @@ and mount it in a view with the tag helper — `render-mode="Server"`, **not** `
 SQL_SA_PASSWORD=<password> dotnet run --project Helsedata.AppHost
 ```
 
-The site comes up on `https://localhost:5000`.
+Their own docs say `aspire run`, which is the same thing when the Aspire CLI is installed. It often is not on `PATH`, and `aspire: command not found` is the whole error — use the `dotnet run` form above and nothing is lost.
+
+The Aspire dashboard prints a URL with a one-time token in it:
+
+```
+Login to the dashboard at https://localhost:17124/login?t=<token>
+```
+
+Open **that** link, not the bare port. Without the token the dashboard just asks for one, and the token only appears in the startup output.
+
+The site comes up on **`https://localhost:5001`** — title "Finn helsedata". `:5000` is bound too and answers 404, so it looks like the site is broken when you have the wrong one of the pair; the backend API is on `:5064`/`:7245` (Scalar) and `:7150` answers 401 by design. Read the dashboard's resource list rather than guessing, since Aspire assigns these.
+
+It does not come up quickly: Optimizely's CMS boot plus the database migrations take minutes on a cold container, during which the port is already bound and simply never answers. That is not a hang.
+
+To prove the local Stiler actually reached the page, compare what the site serves against the file on disk:
+
+```bash
+curl -sk https://localhost:5000/_content/Fhi.Helsedata.Stiler/css/main.css | sha256sum
+sha256sum ../Fhi.Helsedata.Stiler/wwwroot/css/main.css
+```
+
+Matching hashes mean the ProjectReference won. Different ones mean the PackageReference did and the flag did not take — the published package is a different build.
+
+Grepping for a class name does not answer this. Any name you would think to grep for is either in both copies, or is one you have only just added locally and have not published, in which case the count is zero whichever reference won.
+
+### Working against a local Stiler
+
+Styling questions need our stylesheet changes in the page, not the published package. Their `Fhi.Helsedata.Optimizely.csproj` has a switch for exactly this:
+
+```bash
+UseLocalStiler=true dotnet run --project Helsedata.AppHost
+```
+
+It swaps the `Fhi.Helsedata.Stiler` PackageReference for a ProjectReference against the Stiler repo in the umbrella, so `_content/Fhi.Helsedata.Stiler/css/main.css` is served straight from that repo's `wwwroot/` on disk. Run `npm run watch` there and edits show up on refresh, with no pack and no restore. CI never sets the flag.
 
 ### Two things that will waste your afternoon
 
@@ -94,6 +130,25 @@ netsh interface ipv4 show excludedportrange protocol=tcp
 If the pinned port falls in a listed range, change it in `Helsedata.AppHost/Program.cs`. The ranges are reassigned on reboot and differ per machine, so this can appear from one day to the next.
 
 **The SA password.** There is no default. It lives in the environment or in the AppHost's user secrets (`Parameters:helsedata-sql-password`). If a SQL container already exists from an earlier run, it was created with a specific password and a different one will not open it.
+
+That combination is a dead end the first time you meet it: the container is declared `ContainerLifetime.Persistent`, so it is reused rather than recreated, and nobody wrote the password down. It is not lost — the container carries it in its own environment:
+
+```bash
+podman inspect HelsedataSql-<hash> --format '{{range .Config.Env}}{{println .}}{{end}}' | grep SA_PASSWORD
+```
+
+Put it straight into the user secret so the next run needs no environment variable at all. Keep it in a variable rather than typing it — a password given as a command-line argument is visible to anything reading the process list, and lands in shell history:
+
+```bash
+PW=$(podman inspect HelsedataSql-<hash> --format '{{range .Config.Env}}{{println .}}{{end}}' \
+     | sed -n 's/^MSSQL_SA_PASSWORD=//p')
+dotnet user-secrets --project Helsedata.AppHost set "Parameters:helsedata-sql-password" "$PW"
+unset PW
+```
+
+Deleting the container to get a fresh password works too, and costs a full legacy restore from the `.bak` — do that only when the database is disposable.
+
+**The container runtime may be asleep.** `podman machine list` shows the VM; if it has not run for a while it is stopped, and every `podman` command answers `Cannot connect to Podman ... target machine actively refused it` rather than saying so. `podman machine start` fixes it. On Windows the binary is often not on `PATH` — it lives at `C:\Program Files\RedHat\Podman\podman.exe`.
 
 ---
 

@@ -433,3 +433,8 @@ samples/LegacyHost/wwwroot/lib/
 
 # Build output
 artifacts/
+
+# A local copy of helsedata's Stiler stylesheet, staged under _content to render the component
+# against the real thing. It is theirs, it is 300 kB, and it changes every time they publish -
+# see docs/running-locally.md for how to put it there when you need it.
+samples/*/wwwroot/_content/
