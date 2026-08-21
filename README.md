@@ -66,22 +66,46 @@ These are not style preferences — each one is a host that breaks otherwise.
   `<details>` plus a nested `<ul>` rather than an accordion and a tree, and the detail panel is a
   `<dl>` with an `<ol>` for the kilde trail, because neither stylesheet names any of those. What a
   host supplies for them is base element styling — list indentation in particular, which is what
-  shows a delkilde sitting under its kilde. The one `<table>` in the package is the kodeverk code
-  list, for the same reason: an element degrades to its own browser default, where an unknown
-  class name degrades to nothing.
+  shows a delkilde sitting under its kilde. The package emits two `<table>`s, for the same reason:
+  the kodeverk code list in an opened panel, and the datasamlinger of a kilde in `KildeView`. An
+  element degrades to its own browser default, where an unknown class name degrades to nothing.
 
-  A `variable-explorer` prefix does not mean the name is ours: `variable-explorer-container`,
-  `variable-explorer-results`, `variable-explorer-header*` and `variable-explorer__dropdown` are
-  all helsedata's. The names this package does invent are DOM handles that carry no styling
-  anywhere: `variable-explorer` and `variable-explorer-filters`, plus `variable-explorer-detail`,
-  `variable-explorer-source`, `variable-explorer-kodeverk*` and `variable-explorer-codes*` inside
-  an opened panel. They exist so a host — or a test — can find a part of the component in the
-  page, and a host that defines none of them loses nothing visual.
+  A `variable-explorer` prefix does not mean the name is ours. Six of them are helsedata's, every
+  one read back off their compiled `variables.css`: `variable-explorer-container`,
+  `variable-explorer-results`, `variable-explorer-header` with its `__actions` and
+  `__actions-button`, and `variable-explorer__dropdown`. Every other class name in the prefix is
+  ours, and the one thing true of all of them is narrow: **neither helsedata stylesheet has a rule
+  for any of them**. A host in their estate gets nothing for free here, and a host outside has to
+  draw whatever it wants drawn. What differs between them is how much drawing nothing costs.
+
+  - Handles, where something else already dresses the element — a Stiler class it also wears, or
+    its own browser default — and the name is there so a host or a test can find that part of the
+    component in the page: `variable-explorer` (the root `<section>`), `variable-explorer-filters`,
+    `variable-explorer-detail`, `variable-explorer-drilldown`, `variable-explorer-kodeverk*`,
+    `variable-explorer-codes*`, and the nine `variable-explorer-kilde*` names in `KildeView`. The
+    samples do style most of these, but only for arrangement — spacing, indentation, a rule between
+    rows. A host that defines none of them loses no information.
+  - Names a host outside helsedata has to draw itself, because nothing else draws them:
+    `variable-explorer-group` is an eyebrow above each group of fields and degrades to an ordinary
+    `<h3>`; `variable-explorer-crumb` carries the link affordance for the kilde step of the trail,
+    which is a `<button>`, and without it the trail reads as plain text with no sign it can be
+    pressed; and inside the `variable-explorer-period*` wrapper, `__track`, `__fill` and
+    `__track--ongoing` are the period bar itself — only its width comes from an inline style, so an
+    undrawn bar renders as nothing at all. The period is still legible without it, because the
+    dates are next to it in words, in `__range`.
+
+  Ids are a separate family, each suffixed with a per-instance discriminator so two mounts on one
+  page cannot collide: `variable-explorer-title-*`, `-search-*`, `-heading-*`, `-toggle-*`,
+  `-detail-*`, `-tab-*`, `-source-*` and the rest. `variable-explorer-source-*` is worth naming,
+  because it reads like a class and is not one: the drill-in region it identifies wears the class
+  `variable-explorer-drilldown`, so a host or a test reaching for `.variable-explorer-source` comes
+  up empty.
+
   `Render_Always_ThenNoClassNamesAreInventedApartFromTheDomHandles` pins that prefix for a closed
-  result list, spelling out which of its eight names are ours and which are theirs; the panel
-  handles are past its reach, because nothing is expanded there. For seeing the whole thing
-  dressed, the sample hosts' `host.css` stands in for both stylesheets, divided by comment into
-  which rules stand in for which.
+  result list, spelling out which of its eight names are ours and which are theirs; the panel,
+  drill-in and kilde names are past its reach, because nothing is expanded there. For seeing the
+  whole thing dressed, the sample hosts' `host.css` stands in for both stylesheets, divided by
+  comment into which rules stand in for which.
 - **No `HeadOutlet`.** Not available in the Optimizely host — the component cannot set the page
   title or inject meta tags.
 - **Nothing host-specific.** `IHttpContextAccessor`, `Microsoft.AspNetCore.Components.Server.*`,

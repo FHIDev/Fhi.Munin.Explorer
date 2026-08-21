@@ -30,9 +30,16 @@ internal enum PanelTab
 /// styled by the site it is embedded in rather than by whatever we guessed. The families used
 /// are <c>form-element__label</c>, <c>form-fieldset</c>, <c>searchbox__freetext*</c>,
 /// <c>hd-button-square</c> with <c>button-square--primary</c>, <c>button-square--secondary</c>,
-/// <c>button-square--ghost</c>, <c>margin-right</c> and <c>margin-bottom</c>, <c>headline</c>,
-/// <c>caption</c>, <c>infobox</c> and <c>datasourcecard*</c> — the last of these is the same card
-/// list helsedata's own datakildeutforsker renders its results with.
+/// <c>button-square--ghost</c>, <c>hd-button-reset</c>, <c>margin-right</c>, <c>margin-bottom</c>,
+/// <c>margin--bottom</c> and <c>margin--none</c>, <c>headline</c> with <c>headline-3</c>,
+/// <c>headline-s</c> and <c>headline-xxs</c>, <c>caption</c>, <c>ingress</c>, <c>tag</c>,
+/// <c>dot</c>, <c>infobox</c> with <c>infobox--bg-yellow</c>, and <c>screenreader-only</c>.
+/// </para>
+/// <para>
+/// That list used to include <c>datasourcecard*</c>, the card list helsedata's own
+/// datakildeutforsker renders its results with. Since <c>Fhi.Metadata-zs56s</c> the results are
+/// their variable page's own rows instead — see the paragraph on <c>variables.css</c> below — and
+/// the markup emits no <c>datasourcecard</c> name at all.
 /// </para>
 /// <para>
 /// The pager is the exception, and it is worth spelling out because it is a dependency rather
@@ -101,21 +108,34 @@ internal enum PanelTab
 /// <c>variable-explorer-filters</c>, and carries no styling.
 /// </para>
 /// <para>
-/// The kilde and datasamling panel inside it adds a fourth handle,
-/// <c>variable-explorer-source</c>, and again no style name. It is a <c>&lt;dl&gt;</c> under a
-/// <c>datasourcecard__heading</c>, opened by the same ghost square button, so what a host supplies
-/// for it is the base <c>&lt;dl&gt;</c> styling the variable's own panel already needed. Nothing
-/// new is required of a host that has styled the panel above it.
+/// The kilde and datasamling do not open inside that panel: they take over the component's own
+/// area as a drill-in, wearing the handle <c>variable-explorer-drilldown</c> and again no style
+/// name. What it holds is a heading in Stiler's <c>headline headline-s</c> and a
+/// <c>&lt;dl&gt;</c>, or — for a kilde — the whole of <c>KildeView</c>, so what a host supplies
+/// for it is the base <c>&lt;dl&gt;</c> styling the variable's own panel already needed.
+/// <c>variable-explorer-source</c> is not a class and never has been: it is the prefix of the
+/// element id that names the region (<c>variable-explorer-source-{instance}</c>), so a host or a
+/// test reaching for <c>.variable-explorer-source</c> finds nothing.
+/// </para>
+/// <para>
+/// <c>KildeView</c> adds nine handles of its own — <c>variable-explorer-kilde</c> with its
+/// <c>__header</c>, <c>__identifiers</c>, <c>__kildetype</c>, <c>__description</c>, <c>__body</c>,
+/// <c>__main</c>, <c>__aside</c> and <c>__datasamlinger</c> parts — and no style name, because
+/// neither stylesheet has a kilde record to borrow one from. Every element wearing them also wears
+/// a Stiler class or is dressed by its own browser default, so a host that defines none of them
+/// loses no information.
 /// </para>
 /// <para>
 /// The panel's Data tab adds handles of its own — <c>variable-explorer-kodeverk</c> with its
 /// <c>__item</c>, <c>__name</c> and <c>__reference</c> parts, and <c>variable-explorer-codes</c>
 /// with its <c>__table</c> — and no style name, because neither Stiler nor helsedata's own
 /// variable page has a kodeverk section to borrow one from. What is worth spelling out is the
-/// <c>&lt;table&gt;</c> inside it, the only one this package emits. The results list is a
-/// <c>datasourcecard</c> list rather than a table because a card was an honest alternative shape
-/// for it; four columns of code values have no such alternative. The rule that keeps it safe is the
-/// one the <c>&lt;dl&gt;</c>, the <c>&lt;ol&gt;</c> and the <c>&lt;details&gt;</c> already rely on:
+/// <c>&lt;table&gt;</c> inside it, one of the two this package emits — the other is the
+/// datasamlinger list in <c>KildeView</c>. The results list is not one of them: it is helsedata's
+/// own <c>variable-data-list</c>, a <c>&lt;ul&gt;</c> with a header row of <c>&lt;div&gt;</c>s,
+/// because that is the shape their stylesheet dresses. Four columns of code values have no such
+/// alternative shape. The rule that keeps it safe is the one the <c>&lt;dl&gt;</c>, the
+/// <c>&lt;ol&gt;</c> and the <c>&lt;details&gt;</c> already rely on:
 /// an element degrades to its own browser default, which for a table is aligned columns, where a
 /// class name Stiler has never heard of degrades to nothing at all.
 /// </para>
@@ -729,8 +749,8 @@ public partial class VariableExplorer : ComponentBase
 
         // The name IS the disclosure — helsedata's own pattern, and the APG accordion pattern.
         // It replaces a separate "Vis detaljer" button that sat under the metadata line, and with
-        // it the dead affordance: .datasourcecard carries a pointer cursor because on their
-        // datakilde page the whole card is a link, which ours never was.
+        // it the dead affordance the old card shape had: .datasourcecard carried a pointer cursor,
+        // because on their datakilde page the whole card is a link, which ours never was.
         builder.OpenElement(2, "button");
         builder.AddAttribute(3, "class", "variable-dataitem-main__name");
         builder.AddAttribute(4, "type", "button");
@@ -1200,8 +1220,8 @@ public partial class VariableExplorer : ComponentBase
             : "variable-data-list__item";
 
     /// <summary>
-    /// The card's metadata line: code, source, data collection and period, in Stiler's
-    /// <c>datasourcecard__info</c> shape.
+    /// The row's metadata line: code, source, data collection and period, in helsedata's own
+    /// <c>variable-dataitem-main__column</c> shape.
     /// </summary>
     /// <remarks>
     /// Each value is labelled. helsedata's datakildeutforsker runs its values together

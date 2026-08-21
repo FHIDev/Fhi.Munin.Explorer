@@ -5282,9 +5282,9 @@ public class VariableExplorerTest : BunitContext
     [Fact]
     public void Source_WhenAPanelIsOpen_ThenItIsBuiltFromShapesRatherThanFromANewStyleName()
     {
-        // The fourth handle, and the last name added: Stiler has no key/value block that can be
-        // read back off its compiled stylesheet, so the owner is a heading and a <dl> wearing
-        // Stiler's own datasourcecard__heading and form-element__label.
+        // Neither stylesheet has a key/value block that can be read back off it, so the owner is a
+        // heading wearing Stiler's own headline classes and a <dl> that borrows helsedata's
+        // variable-meta__grid, rather than a new style name of ours.
         var cut = OpenOwner(TwoRows(), 0);
 
         var invented = cut.FindAll("[class]")
