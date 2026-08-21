@@ -47,6 +47,39 @@ fragments=$(git diff --name-only --diff-filter=AM "$MERGE_BASE" "$HEAD_REF" \
 if [ -n "$fragments" ]; then
   echo "Changelog fragment found:"
   printf '%s\n' "$fragments" | sed 's/^/  /'
+
+  # Existing is not the same as usable. assemble-changelog.ps1 reads the category from LINE 1 and
+  # copies every other non-blank line into that section verbatim, so a fragment with a second
+  # "category:" in it publishes that line as a bullet under the first category. That shipped once
+  # already - xbynn-variable-view.md reached main with two, and this check waved it through
+  # because it only ever asked whether a file existed.
+  bad=0
+
+  for fragment in $fragments; do
+    # Deleted in this branch, or otherwise not on disk: nothing to read, and nothing to complain
+    # about either.
+    [ -f "$fragment" ] || continue
+
+    first=$(head -n 1 "$fragment")
+    count=$(grep -c '^category:' "$fragment" || true)
+
+    case "$first" in
+      "category: Added"|"category: Changed"|"category: Fixed"|"category: Security"|\
+      "category: Deprecated"|"category: Removed"|"category: Notes for hosts") ;;
+      *)
+        echo "::error file=$fragment::Line 1 must be a category line, one of: Added, Changed, Fixed, Security, Deprecated, Removed, Notes for hosts. Found: $first"
+        bad=1
+        ;;
+    esac
+
+    if [ "$count" -gt 1 ]; then
+      echo "::error file=$fragment::$count category lines. A fragment holds one category; the extra ones are published as literal bullets under the first. Split it into one file per category."
+      bad=1
+    fi
+  done
+
+  [ "$bad" = "0" ] || exit 1
+
   exit 0
 fi
 
