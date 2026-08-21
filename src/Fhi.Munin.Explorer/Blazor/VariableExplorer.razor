@@ -155,13 +155,14 @@ else
 
        A stack of disclosures above the results, not a sidebar beside them. A sidebar is a layout,
        and a layout is a class name — helsedata's own variable page styles one from
-       `filter-search-explorer` in its page-specific variables.css, which is not a stylesheet this
-       repository can read back. The standing rule is that a class name goes into this markup only
-       once it has been read off the host's compiled CSS, so the panel is built out of names that
-       have been: `form-fieldset` and `form-element__label` from the sort control, `hd-button-square`
-       with the same filled/ghost pair, `caption` and `infobox`. When those sidebar names can be
-       verified, this block is what moves into it — the markup below is already a list of facets and
-       nothing about it assumes it is stacked.
+       `filter-search-explorer` in its page-specific variables.css, a rule this repository has not
+       read back — the result vocabulary below comes from that same stylesheet, so what is
+       unverified here is the one name and not the file. The standing rule is that a class name
+       goes into this markup only once it has been read off the host's compiled CSS, so the panel
+       is built out of names that have been: `form-fieldset` and `form-element__label` from the
+       sort control, `hd-button-square` with the same filled/ghost pair, `caption` and `infobox`.
+       When those sidebar names can be verified, this block is what moves into it — the markup
+       below is already a list of facets and nothing about it assumes it is stacked.
 
        Two shapes here are elements rather than classes, for the same reason:
 
