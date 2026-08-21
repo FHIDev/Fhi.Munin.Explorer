@@ -15,4 +15,6 @@ category: Fixed
 - **A host built with `InvariantGlobalization` no longer takes the property rows down.** Dates and
   the catalogue's sort order fall back to the invariant culture where `nb-NO` is unavailable,
   rather than throwing mid-render — and, for the sort order, throwing once from a static
-  initialiser that cannot be retried. (Fhi.Metadata-l9l2n.16)
+  initialiser that cannot be retried. Both cultures resolve once at type load rather than per call,
+  so such a host does not construct and catch an exception for every date it draws.
+  (Fhi.Metadata-l9l2n.16)

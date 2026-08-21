@@ -143,7 +143,7 @@ public class LanguageTest : BunitContext
     [InlineData("nb-NO", "nb")]
     [InlineData("no", "nb")]
     [InlineData("de", "nb")]
-    public void Render_WhenTheTokenCarriesARegion_ThenTheFacetCallAsksForTheSameLanguage(
+    public void Render_WhenGivenALanguageToken_ThenTheFacetCallAsksForTheApisSpellingOfIt(
         string language, string expected)
     {
         // The datatype facet's names are resolved server side, so they follow Accept-Language
