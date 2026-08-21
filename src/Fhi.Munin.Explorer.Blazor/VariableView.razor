@@ -1,0 +1,95 @@
+@namespace Fhi.Munin.Explorer.Blazor
+
+@if (Variable is { } variable)
+{
+    <div class="variable-explorer-whole">
+
+        <div class="variable-explorer-whole__header">
+            @* The catalogue holds one name, in Norwegian, so it is marked when the reader is not. *@
+            @Heading(HeadingLevel, variable.PreferredTerm, "headline headline-s margin--bottom",
+                     HeadingId, CatalogueProperties.Foreign("no", Reader))
+
+            @if (!string.IsNullOrWhiteSpace(variable.Code))
+            {
+                <p class="caption margin--none variable-explorer-whole__code">@variable.Code</p>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(variable.Description))
+            {
+                <p class="ingress variable-explorer-whole__description"
+                   lang="@CatalogueProperties.Foreign("no", Reader)">@variable.Description</p>
+            }
+        </div>
+
+        <div class="variable-explorer-whole__body">
+            <div class="variable-explorer-whole__main">
+
+                @* Resolved from the payload, exactly as the kilde view resolves a source's. *@
+                @if (Groups.Count > 0)
+                {
+                    @Heading(BlockLevel, T.HeadingMetadata, "headline headline-sm")
+
+                    foreach (var group in Groups)
+                    {
+                        @Group(group)
+                    }
+                }
+
+                @* Kodeverk arrives from the explorer that already draws it, rather than being
+                   rebuilt here. *@
+                @Sections
+
+                @if (variable.Statistics.Count > 0)
+                {
+                    @Heading(BlockLevel, StatisticsHeading, "headline headline-sm")
+                    @StatisticsTable
+                }
+            </div>
+
+            <aside class="variable-explorer-whole__aside">
+                @Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-sm")
+                @Facts(SourceInformation)
+
+                @if (Period(variable.DataFrom, variable.DataTo) is { } period)
+                {
+                    @Heading(BlockLevel, T.FieldDataPeriod, "headline headline-sm")
+                    <p class="margin--none">@period</p>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(variable.DataType))
+                {
+                    @Heading(BlockLevel, T.FieldDataType, "headline headline-sm")
+                    <p class="margin--none">@T.DataTypeLabel(variable.DataType)</p>
+                }
+
+                @if (variable.AllVariabelgrupper.Count > 0)
+                {
+                    @Heading(BlockLevel, T.FieldVariableGroups, "headline headline-sm")
+                    <ul class="variable-explorer-whole__list">
+                        @foreach (var group in variable.AllVariabelgrupper)
+                        {
+                            <li lang="@CatalogueProperties.Foreign("no", Reader)">@group.Name</li>
+                        }
+                    </ul>
+                }
+
+                @if (variable.AllDatasamlinger.Count > 0)
+                {
+                    @Heading(BlockLevel, T.HeadingDataCollections, "headline headline-sm")
+                    <ul class="variable-explorer-whole__list">
+                        @foreach (var datasamling in variable.AllDatasamlinger)
+                        {
+                            <li>
+                                <span lang="@CatalogueProperties.Foreign("no", Reader)">@datasamling.Name</span>
+                                @if (Period(datasamling.ValidFrom, datasamling.ValidTo) is { } validity)
+                                {
+                                    <span class="caption"> (@validity)</span>
+                                }
+                            </li>
+                        }
+                    </ul>
+                }
+            </aside>
+        </div>
+    </div>
+}

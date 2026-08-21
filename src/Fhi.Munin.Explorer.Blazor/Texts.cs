@@ -111,6 +111,20 @@ internal sealed record Texts(
     string HeadingDataCollections,
     string FieldName,
     string VariableCountSuffix,
+
+    // The variable detail view: its sidebar, and the statistics table's columns.
+    string FieldKildeName,
+    string FieldKildeShortName,
+    string FieldVariableGroups,
+    string FieldYear,
+    string FieldMinimum,
+    string FieldMaximum,
+    string FieldMean,
+    string FieldStandardDeviation,
+    string StatisticsYearly,
+    string StatisticsAccumulated,
+    string ShowWholeVariable,
+    string HeadingKodeverk,
     // Prose for the identification level, which the API reports as a raw token the same way
     // kildetype is. A token missing from this falls back to what the API sent.
     IReadOnlyDictionary<string, string> PersonIdentificationNames,
@@ -189,6 +203,22 @@ internal sealed record Texts(
     /// component. "SentraltHelseregister" on a button is poor prose but it is the truth, where
     /// dropping the value would take a filter off the screen that the API is still counting.
     /// </remarks>
+    /// <summary>
+    /// The kind of statistics a datasamling keeps, as a word rather than an API token.
+    /// </summary>
+    /// <remarks>
+    /// Only <c>yearly</c> has ever been observed on the test API — 140 variables sampled on
+    /// 2026-08-21 — so an unrecognised kind is shown as it arrived rather than hidden. A heading
+    /// reading "Statistikk (accumulated)" is ugly and honest; one silently reading "Statistikk"
+    /// would tell a reader these numbers mean something they may not.
+    /// </remarks>
+    public string StatisticsTypeLabel(string type) => type.ToLowerInvariant() switch
+    {
+        "yearly" => StatisticsYearly,
+        "accumulated" or "akkumulert" => StatisticsAccumulated,
+        _ => type
+    };
+
     public string KildeTypeLabel(string? value, string? fallback)
     {
         if (value is not null && KildeTypeNames.TryGetValue(value, out var name))
@@ -336,6 +366,18 @@ internal sealed record Texts(
         HeadingDataCollections: "Datasamlinger",
         FieldName: "Navn",
         VariableCountSuffix: "variabler",
+        FieldKildeName: "Kildenavn",
+        FieldKildeShortName: "Kortnavn",
+        FieldVariableGroups: "Variabelgrupper",
+        FieldYear: "\u00c5r",
+        FieldMinimum: "Minimum",
+        FieldMaximum: "Maksimum",
+        FieldMean: "Gjennomsnitt",
+        FieldStandardDeviation: "Standardavvik",
+        StatisticsYearly: "\u00c5rsbasert",
+        StatisticsAccumulated: "Akkumulert",
+        ShowWholeVariable: "Vis hele variabelen",
+        HeadingKodeverk: "Kodeverk",
         PersonIdentificationNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["directlyIdentifiable"] = "Direkte identifiserbar",
@@ -492,6 +534,18 @@ internal sealed record Texts(
         HeadingDataCollections: "Data collections",
         FieldName: "Name",
         VariableCountSuffix: "variables",
+        FieldKildeName: "Source name",
+        FieldKildeShortName: "Short name",
+        FieldVariableGroups: "Variable groups",
+        FieldYear: "Year",
+        FieldMinimum: "Minimum",
+        FieldMaximum: "Maximum",
+        FieldMean: "Mean",
+        FieldStandardDeviation: "Standard deviation",
+        StatisticsYearly: "Yearly",
+        StatisticsAccumulated: "Accumulated",
+        ShowWholeVariable: "Show the whole variable",
+        HeadingKodeverk: "Code lists",
         PersonIdentificationNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["directlyIdentifiable"] = "Directly identifiable",
