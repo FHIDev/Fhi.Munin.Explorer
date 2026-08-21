@@ -417,7 +417,11 @@ else
                                         }
                                     </div>
 
-                                    <div class="variable-meta__body">
+                                    @* Unnamed on purpose. This wrapper wore `variable-meta__body`, which reads as one of
+                                         helsedata's `variable-meta` family but is not — they define the
+                                         family, not this member, so the name promised styling that never
+                                         existed anywhere. *@
+                                      <div>
                                         <div class="variable-meta__tab-content"
                                              role="tabpanel"
                                              id="@TabPanelId()"

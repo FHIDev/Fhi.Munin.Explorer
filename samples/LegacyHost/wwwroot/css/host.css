@@ -1036,8 +1036,10 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   font-size: 0.8125rem;
 }
 
-/* The kildetype is a category, not part of the name — Stiler's `tag` says so on helsedata, and
-   this stands in for it so the sample says the same thing. */
+/* The kildetype is a category, not part of the name. This said "Stiler's `tag` says so on
+   helsedata, and this stands in for it" until the day someone read helsedata's stylesheets
+   instead of assuming: there is no `.tag` there, in any of their seven bundles or in Stiler.
+   So this is not a stand-in for a host rule — it is the only rule the badge has ever had. */
 .variable-explorer-kilde__kildetype {
   display: inline-block;
   margin: 8px 0 0;

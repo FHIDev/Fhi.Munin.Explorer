@@ -171,4 +171,77 @@ if [ ${#missing[@]} -gt 0 ]; then
   exit 1
 fi
 
-echo "Sample host stylesheets are in step ($(wc -l < "$MODERN" | tr -d ' ') lines), and style every name the package invents."
+# Clause three: the names the package BORROWS.
+#
+# Clauses one and two between them check every name we invent. They checked nothing at all about
+# the names we take from helsedata's design system, because those carry no `variable-explorer`
+# prefix to find them by — and a borrowed name is only free styling if a host stylesheet really
+# defines it. `headline-sm` sat in VariableView for months looking exactly like a borrowed name.
+# It was a typo for `headline-s`; nothing anywhere defines it; nine block headings rendered at the
+# browser's own `<h*>` size inside helsedata and every check in this repo stayed green, because
+# each one was busy verifying the names we made up.
+#
+# So: a name the package writes into a class attribute must be styled by the sample stylesheet
+# (ours) or listed in the fixture (theirs). A name in neither is an orphan.
+#
+# THIS CLAUSE IS THE WEAKER HALF, and knowing where it stops matters more than what it catches.
+# It reads class ATTRIBUTES out of the markup, and the views also pass class names to helpers as
+# arguments — `@Heading(BlockLevel, T.HeadingMetadata, "headline headline-s")`. A name arriving in
+# the DOM that way is invisible here. `headline-sm` arrived exactly that way, which is why adding
+# this clause did not catch it: the first version of it was written, run against the reintroduced
+# typo, and reported success.
+#
+# The check that does catch it is HostClassNames in the test project, which renders the component
+# and reads the DOM. This clause survives because it needs no build and fails faster, not because
+# it is sufficient. Do not read a pass here as "every borrowed name is styled".
+HOST_NAMES=test/host-class-names.txt
+if [ ! -f "$HOST_NAMES" ]; then
+  echo "::error::'$HOST_NAMES' is missing, so the borrowed names below cannot be checked." >&2
+  echo "It lists the class names helsedata's own stylesheets define; the header in the file says" >&2
+  echo "how it was captured and how to capture it again." >&2
+  exit 2
+fi
+
+# Every whitespace-separated token in a literal class attribute, from both the .razor `class="…"`
+# form and the .cs `AddAttribute(n, "class", "…")` one. Tokens carrying `@` or `{` are Razor
+# expressions rather than names — the value is decided at runtime and there is nothing to look up.
+emitted=()
+while read -r name; do
+  emitted+=("$name")
+done < <(
+  {
+    grep -rhoE 'class="[^"@{]*"' src/ --include='*.razor' | sed 's/^class="//; s/"$//'
+    grep -rhoE '"class", *"[^"@{]*"' src/ --include='*.cs' | sed 's/^"class", *"//; s/"$//'
+  } | tr ' ' '\n' | grep -vE '^$' | sort -u
+)
+
+MIN_EMITTED=20
+if [ "${#emitted[@]}" -lt "$MIN_EMITTED" ]; then
+  echo "::error::Found only ${#emitted[@]} class name(s) in class attributes under src/, below the" >&2
+  echo "floor of $MIN_EMITTED. The extraction has gone stale against the markup, so the check below" >&2
+  echo "would pass having looked at almost nothing. Fix the extraction, not the floor." >&2
+  exit 2
+fi
+
+orphans=()
+for name in "${emitted[@]}"; do
+  grep -qE "\.${name}([^A-Za-z0-9_-]|\$)" "$MODERN" && continue
+  grep -qxF "$name" "$HOST_NAMES" && continue
+  orphans+=("$name")
+done
+
+if [ ${#orphans[@]} -gt 0 ]; then
+  echo "::error::${#orphans[@]} class name(s) the package emits are styled by nothing — not the" >&2
+  echo "sample stylesheet, and not helsedata's:" >&2
+  printf '  %s\n' "${orphans[@]}" >&2
+  echo "" >&2
+  echo "Each renders unstyled on helsedata.no. Either it is a typo for a real host name — check" >&2
+  echo "$HOST_NAMES for what they actually define — or it is a name of ours that still needs a" >&2
+  echo "rule in $LEGACY, copied over $MODERN." >&2
+  exit 1
+fi
+
+echo "Sample host stylesheets are in step ($(wc -l < "$MODERN" | tr -d ' ') lines), style every name"
+echo "the package invents, and every borrowed name in a class attribute is one a host stylesheet"
+echo "defines. Names reaching the DOM through helper arguments are checked by HostClassNames in the"
+echo "test project, not here."

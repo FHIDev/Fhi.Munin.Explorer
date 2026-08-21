@@ -50,6 +50,22 @@ public class VariableViewTest : BunitContext
             .Add(c => c.Language, language));
 
     [Fact]
+    public void EveryClassNameItRenders_IsOneSomeStylesheetActuallyDefines()
+    {
+        // This view is where `headline-sm` lived: a typo for `headline-s` on nine block headings,
+        // undefined in all seven of helsedata's bundles and in Stiler, so every one of them rendered
+        // at the browser's own <h*> size on helsedata.no. It survived because the class name reaches
+        // the DOM as an argument to @Heading rather than as a class attribute, which put it out of
+        // reach of the CSS check in scripts/, and because that check only looked at names in the
+        // variable-explorer prefix anyway — the ones we invent, never the ones we borrow.
+        var cut = Render(Detail());
+
+        // Compared against an empty list rather than asserted empty, so a failure names the classes
+        // instead of saying only that there were some.
+        Assert.Equal([], HostClassNames.Orphans(HostClassNames.Of(cut.FindAll("[class]"))));
+    }
+
+    [Fact]
     public void Metadata_WhenAKeyIsAlreadyInTheSidebar_ThenItIsNotRepeatedInTheGroups()
     {
         // The bug this was written for. DataType is drawn in the sidebar from the typed field, and
