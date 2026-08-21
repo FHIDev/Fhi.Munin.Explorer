@@ -10,7 +10,7 @@ conventions a compiler cannot check. This file adds the Claude-Code-specific wor
 
 ## The rules that bite
 
-Three things here fail *silently* when broken — no build error, no failing test, just wrong
+Four things here fail *silently* when broken — no build error, no failing test, just wrong
 behaviour found later by someone else.
 
 1. **Identifiers are English.** Norwegian is for user-facing strings and untranslatable domain
@@ -29,6 +29,14 @@ behaviour found later by someone else.
    styling because they have no Stiler; the package must not.
    `scripts/assert-package-contents.sh` enforces it and runs in CI on every PR.
 
+4. **The two sample stylesheets are one file, copied — and they style every name we invent.**
+   `samples/ModernHost/wwwroot/host.css` and `samples/LegacyHost/wwwroot/css/host.css` must be
+   byte-identical, and between them must have a rule for every `variable-explorer*` class the
+   package invents. Edit one, copy it over the other. Both halves have already failed quietly:
+   the kodeverk block reached LegacyHost only, and the kilde view shipped with rules for none of
+   its nine names in either copy. `scripts/assert-sample-css-in-step.sh` enforces both and runs
+   in CI on every PR.
+
 ---
 
 ## Before opening a PR
@@ -36,6 +44,7 @@ behaviour found later by someone else.
 ```bash
 dotnet build && dotnet test
 dotnet pack -c Release -o artifacts && ./scripts/assert-package-contents.sh artifacts
+./scripts/assert-sample-css-in-step.sh          # only if you touched samples/ or a class name
 ```
 
 - **A `src/` change needs a changelog fragment** in `changelog.d/`. CI fails without one.

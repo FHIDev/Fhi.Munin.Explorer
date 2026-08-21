@@ -77,3 +77,13 @@ Class names emitted by the components are **not** ours to choose: they are
 it, rather than against a list or another component's markup. A name Stiler has never heard of
 renders as a raw browser default inside an otherwise styled page, which is the failure the
 whole approach exists to avoid — see the history behind `Fhi.Metadata-l9l2n.29`.
+
+Where a name genuinely has to be invented — a layout Stiler has no vocabulary for, like the
+kilde view's main column and sidebar — it is inert until some host supplies a rule for it. The
+two sample hosts are that host here, and they are one stylesheet copied:
+`samples/ModernHost/wwwroot/host.css` and `samples/LegacyHost/wwwroot/css/host.css` must stay
+**byte-identical**, and between them must style every `variable-explorer*` name the package
+invents. Both halves fail silently — a block landing in one copy only shows the component broken
+in that sample alone, and a name with no rule anywhere shows it broken in both — so
+`scripts/assert-sample-css-in-step.sh` checks each and runs in CI. Edit one copy, copy it over
+the other, and run the script.

@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 
+using static Fhi.Munin.Explorer.Tests.SortHeader;
+
 namespace Fhi.Munin.Explorer.Tests;
 
 public class VariableExplorerTest : BunitContext
@@ -246,25 +248,9 @@ public class VariableExplorerTest : BunitContext
     // to page one.
     // ---------------------------------------------------------------------------------
 
-    /// <summary>
-    /// The sort control's own fieldset.
-    /// </summary>
-    /// <remarks>
-    /// Both the sort control and the filter panel are <c>form-fieldset</c> — Stiler's name for a
-    /// fieldset with its border off — so a selector for one has to say it is not the other. Without
-    /// the exclusion these tests would silently start asserting about the filters.
-    /// </remarks>
-    // The ordering lives in the column header now, not in a fieldset of its own.
-    private const string SortControl = ".variable-data-list__header";
-
-    /// <summary>The sort buttons, in the order they are rendered.</summary>
-    private static IReadOnlyList<AngleSharp.Dom.IElement> SortButtons(
-        IRenderedComponent<VariableExplorer> cut) =>
-        cut.FindAll($"{SortControl} button");
-
-    /// <summary>Clicks the sort button with the given label, whatever direction suffix it carries.</summary>
-    private static void ClickSort(IRenderedComponent<VariableExplorer> cut, string label) =>
-        SortButtons(cut).Single(k => k.TextContent.StartsWith(label, StringComparison.Ordinal)).Click();
+    // SortControl, SortButtons and ClickSort come from SortHeader, which ShareableStateTest
+    // presses sorts through too. The selector and the "whatever direction suffix it carries"
+    // matching live there, once, with the note on why both are scoped to the header.
 
     [Fact]
     public void Render_WhenNoSortIsChosen_ThenTheApisOwnOrderIsAskedForAscending()

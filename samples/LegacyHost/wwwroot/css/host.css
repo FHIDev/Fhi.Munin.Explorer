@@ -22,12 +22,31 @@
    how the pager's names turned out not to be Stiler's at all but the variable page's own; they
    are stood in for at the bottom of this file, under their own heading.
 
-   Kept byte-for-byte in step with samples/ModernHost/wwwroot/host.css on purpose: if the two
-   hosts style the component identically, any difference you see between them is a difference
-   in the *hosting model*, not in the CSS. */
+   samples/ModernHost/wwwroot/host.css and samples/LegacyHost/wwwroot/css/host.css are this same
+   file twice, byte for byte, on purpose: if the two hosts style the component identically, any
+   difference you see between them is a difference in the *hosting model*, not in the CSS. That is
+   why neither copy names the other — a self-reference is the one line that cannot be identical in
+   both, and the claim is worth more as something a machine can check.
+
+   scripts/assert-sample-css-in-step.sh does the checking and runs in CI, because the copies did
+   drift once: the kodeverk block below reached LegacyHost's copy only, and ModernHost showed an
+   unstyled list that read as a component bug. Change one copy, copy it over the other.
+
+   The same script asks a second question, because the first one alone reads as "the samples are
+   right" and does not say that: does this file have a rule for every class name the package
+   invents? Two copies can agree about a block neither of them has. They did — the kilde view
+   shipped with nine names of its own and no rules for any of them here, so both samples drew it
+   at raw browser defaults while the files matched perfectly. */
 
 :root {
-  /* Stiler's palette — abstracts/_variables.scss */
+  /* Stiler's palette — abstracts/_variables.scss.
+
+     Every rule below reads these bare, as `var(--grey30)` rather than `var(--grey30, #e6e6ed)`.
+     The declarations are in this same file, so a fallback can never fire; what it can do is
+     disagree. Five rules used to paint `var(--grey70, #5a5f78)` — a token nothing declares, so
+     every one of them rendered a colour that is not in the palette this file claims to
+     reproduce, and read as if it were. They ask for --grey60 now. Bare uses cannot drift that
+     way: a token that is not declared here renders as nothing at all, which is visible. */
   --primary: #521eff;
   --primary-dark: #32378d;
   --dark: #262045;
@@ -78,10 +97,10 @@ body {
   padding: 12px 16px;
   margin: 0 0 12px;
 }
-/* Kept in step with ModernHost's copy: the two samples style the component with the
-   same rules, so any visible difference between them is a difference in the HOSTING
-   MODEL rather than in CSS. With a single note — as here — :last-child resolves to the
-   same 24px this previously hard-coded, so nothing changes visually. */
+/* Both samples style the component with the same rules — see the file header — so any
+   visible difference between them is a difference in the HOSTING MODEL rather than in
+   CSS. With a single note — as here — :last-child resolves to the same 24px this
+   previously hard-coded, so nothing changes visually. */
 .hostchrome-note:last-child { margin-bottom: 24px; }
 .hostchrome-note code { font-size: 13px; }
 
@@ -551,7 +570,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 }
 
 .variable-data-list__item {
-  border-bottom: 1px solid var(--grey30, #e2e4ef);
+  border-bottom: 1px solid var(--grey30);
 }
 
 .variable-data-list__item__row {
@@ -568,7 +587,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .variable-dataitem-main__expand-icon {
   display: inline-block;
   width: 16px;
-  color: var(--primary, #4a3aff);
+  color: var(--primary);
   transition: transform 120ms ease;
 }
 
@@ -593,7 +612,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   font: inherit;
   font-weight: 600;
   text-align: left;
-  color: var(--primary-dark, #2a1fb8);
+  color: var(--primary-dark);
   cursor: pointer;
 }
 
@@ -622,7 +641,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 .variable-dataitem-main__column--description p {
   margin: 0;
-  color: var(--grey70, #5a5f78);
+  color: var(--grey60);
   font-size: 0.9375rem;
 }
 
@@ -672,7 +691,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 /* dt/dd inside the grid: the label sits on the value rather than beside it, which is what their
    h4-over-value blocks do. */
 .variable-meta dl > dt {
-  color: var(--grey70, #5a5f78);
+  color: var(--grey60);
 }
 
 .variable-meta dl > dd {
@@ -688,7 +707,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    like before the header existed. */
 
 .variable-data-list__header {
-  border-bottom: 2px solid var(--grey30, #e2e4ef);
+  border-bottom: 2px solid var(--grey30);
 }
 
 .variable-data-list__item__row--header {
@@ -783,7 +802,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .sortable-header {
   font-weight: 600;
   font-size: 0.875rem;
-  color: var(--grey70, #5a5f78);
+  color: var(--grey60);
 }
 
 /* Stiler's "this is a button, draw nothing" class — 12 rules in their site-wide stylesheet. */
@@ -804,7 +823,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 }
 
 .variable-dataitem-header__button[aria-current="true"] {
-  color: var(--primary-dark, #2a1fb8);
+  color: var(--primary-dark);
 }
 
 /* A code is an identifier, not prose: broken across two lines it stops being readable and
@@ -841,19 +860,19 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   display: flex;
   gap: 4px;
   margin: 0 0 16px;
-  border-bottom: 1px solid var(--grey30, #e2e4ef);
+  border-bottom: 1px solid var(--grey30);
 }
 
 .variable-meta__tab > .hd-button-reset {
   padding: 8px 16px;
-  color: var(--grey70, #5a5f78);
+  color: var(--grey60);
   border-bottom: 2px solid transparent;
 }
 
 .variable-meta__tab--active > .hd-button-reset {
-  color: var(--primary-dark, #2a1fb8);
+  color: var(--primary-dark);
   font-weight: 600;
-  border-bottom-color: var(--primary, #4a3aff);
+  border-bottom-color: var(--primary);
 }
 
 .variable-meta__tab > .hd-button-reset:hover {
@@ -865,7 +884,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    programmatically — choosing a tab leaves focus on the tab — so this is the style for when the
    panel IS focused, and :focus-visible keeps it off a mouse click. */
 .variable-meta__tab-content:focus-visible {
-  outline: 2px solid var(--primary, #4a3aff);
+  outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
 
@@ -891,7 +910,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--primary-dark, #2a1fb8);
+  color: var(--primary-dark);
 }
 
 .variable-meta [role="tabpanel"] > .variable-explorer-group:first-child {
@@ -900,6 +919,10 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 /* The period. The dates are the information; the bar is the illustration, so a host that styles
    neither still shows the period as words. */
+.variable-explorer-period {
+  margin-bottom: 8px;
+}
+
 .variable-explorer-period__range {
   margin: 0 0 6px;
 }
@@ -907,7 +930,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .variable-explorer-period__track {
   height: 8px;
   border-radius: 999px;
-  background: var(--grey30, #e2e4ef);
+  background: var(--grey30);
   overflow: hidden;
   max-width: 420px;
 }
@@ -915,7 +938,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .variable-explorer-period__fill {
   height: 100%;
   border-radius: 999px;
-  background: var(--primary, #4a3aff);
+  background: var(--primary);
 }
 
 /* A period with no end is still running, which is a different fact from a short one — Runa marks
@@ -928,13 +951,13 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    discloses the kilde in place instead of navigating to it. Drawn as a link anyway, because that
    is what it behaves like from the reader's side. */
 .variable-explorer-crumb {
-  color: var(--primary-dark, #2a1fb8);
+  color: var(--primary-dark);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 .variable-explorer-crumb:hover {
-  color: var(--primary, #4a3aff);
+  color: var(--primary);
 }
 
 /* helsedata's panel grid is `1fr 1fr` above 1280px and one column below. The sample carries a
@@ -975,6 +998,116 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   padding: 4px 0 24px;
 }
 
+/* ---- the kilde view ----
+
+   Nine names, all ours, and the only block in this file that exists because no other name would
+   have done. Runa gives a kilde a page of its own; a component with no router gives it the
+   component's own area instead, and the arrangement it needs — a name block above, then a main
+   column and a sidebar — is a page layout. Stiler has no page layout, and helsedata's
+   variables.css has no kilde section, so there was nothing to borrow and these had to be
+   invented. Everything *inside* the layout wears helsedata's own names: the headings are
+   `headline`, the fact lists are `variable-meta__grid`, the kildetype is Stiler's `tag`.
+
+   They arrived unstyled. The view shipped in #43 and neither sample had a rule for any of these
+   nine until now, so both rendered it at raw browser defaults — a sidebar stacked under a main
+   column, a tag reading as a paragraph — while `assert-sample-css-in-step.sh` said the samples
+   were in step, which they were. That is why the script has a second clause: the names are read
+   out of src/ and each one is asked for a rule. */
+/* The name is rendered at whatever heading level keeps the host page's outline unbroken, so it is
+   matched by level rather than by element — and its top margin comes off, because the drilldown
+   above already supplies the gap and `.headline` would add a second one. */
+.variable-explorer-kilde > * > :is(h2, h3, h4, h5, h6):first-child {
+  margin-top: 0;
+}
+
+.variable-explorer-kilde__header {
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--grey30);
+}
+
+/* The identifiers are what a reader looks the kilde up by elsewhere, so they are set the way the
+   kodeverk reference is: a run of digits reads as an identifier rather than as prose. */
+.variable-explorer-kilde__identifiers {
+  font-family: ui-monospace, "SFMono-Regular", "Consolas", monospace;
+  font-size: 0.8125rem;
+}
+
+/* The kildetype is a category, not part of the name — Stiler's `tag` says so on helsedata, and
+   this stands in for it so the sample says the same thing. */
+.variable-explorer-kilde__kildetype {
+  display: inline-block;
+  margin: 8px 0 0;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--grey20);
+  color: var(--grey60);
+  font-size: 0.8125rem;
+}
+
+.variable-explorer-kilde__description {
+  margin: 12px 0 0;
+  max-width: 65ch;   /* prose, and prose the full width of a wide window is unreadable */
+  color: var(--grey60);
+}
+
+/* Main column and sidebar, and only once there is room for two of them. Below 1024px the aside
+   returns to the flow under the main column, which is where a phone wants it — the same
+   threshold and the same reasoning as the filter panel above. */
+.variable-explorer-kilde__body {
+  display: grid;
+  gap: 24px;
+}
+
+@media (min-width: 1024px) {
+  .variable-explorer-kilde__body {
+    grid-template-columns: minmax(0, 1fr) 320px;
+    align-items: start;
+  }
+}
+
+/* A grid track is `min-width: auto` by default, so the widest thing in the column sets the floor.
+   The datasamlinger table has four columns of Norwegian names in it and would push the sidebar
+   off the right edge rather than shrink. Same trap the filter panel meets, same fix. */
+.variable-explorer-kilde__main {
+  min-inline-size: 0;
+}
+
+.variable-explorer-kilde__aside {
+  padding: 16px;
+  border-radius: 4px;
+  background: var(--grey10);
+}
+
+/* The datasamlinger table. Same shape as the Data tab's code table — the two are the same kind of
+   thing, a list of rows with a heading each — with the name column left to wrap, because a
+   datasamling name is a Norwegian sentence and nowrap on it is a horizontal scrollbar. */
+.variable-explorer-kilde__datasamlinger {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.variable-explorer-kilde__datasamlinger th,
+.variable-explorer-kilde__datasamlinger td {
+  padding: 8px 12px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--grey30);
+}
+
+.variable-explorer-kilde__datasamlinger thead th {
+  background: var(--grey10);
+  color: var(--grey60);
+  font-weight: 600;
+}
+
+/* The name is a <th scope="row">, which browsers centre and bold by default. It is a label for
+   the row, not a heading over it. */
+.variable-explorer-kilde__datasamlinger tbody th {
+  font-weight: 600;
+}
+
 /* ---- the Data tab's kodeverk ----
 
    All five names below are ours, and every one is a handle: neither Stiler nor helsedata's
@@ -991,7 +1124,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 .variable-explorer-kodeverk__item {
   padding: 12px 0;
-  border-bottom: 1px solid var(--grey30, #e2e4ef);
+  border-bottom: 1px solid var(--grey30);
 }
 
 .variable-explorer-kodeverk__item:last-child {
@@ -1016,7 +1149,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   margin: 8px 0 4px;
   max-height: 320px;
   overflow: auto;
-  border: 1px solid var(--grey30, #e2e4ef);
+  border: 1px solid var(--grey30);
   border-radius: 4px;
 }
 
@@ -1035,15 +1168,15 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .variable-explorer-codes__table td {
   padding: 6px 12px;
   text-align: left;
-  border-bottom: 1px solid var(--grey30, #e2e4ef);
+  border-bottom: 1px solid var(--grey30);
 }
 
 /* Sticky, so the columns stay named while a long kodeverk is scrolled past them. */
 .variable-explorer-codes__table thead th {
   position: sticky;
   top: 0;
-  background: var(--grey10, #f4f5fa);
-  color: var(--grey70, #5a5f78);
+  background: var(--grey10);
+  color: var(--grey60);
   font-weight: 600;
 }
 
@@ -1098,7 +1231,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   padding: 0;
   list-style: none;
   border-radius: 0.5rem;
-  background-color: var(--dark, #262045);
+  background-color: var(--dark);
   color: #fff;
 }
 

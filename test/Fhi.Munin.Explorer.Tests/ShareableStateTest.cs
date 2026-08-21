@@ -3,6 +3,8 @@ using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 
+using static Fhi.Munin.Explorer.Tests.SortHeader;
+
 namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
@@ -128,18 +130,6 @@ public class ShareableStateTest : BunitContext
         Assert.Equal(1, client.Calls);
     }
 
-    /// <summary>Presses the Kilde column header, which is what reorders the list.</summary>
-    /// <remarks>
-    /// Scoped to the header row rather than picked out of every button on the page. The column
-    /// picker offers a Kilde toggle of its own and renders above the table, so the first button
-    /// whose text says "Kilde" is the one that HIDES the column — a press that reorders nothing and
-    /// leaves a sort test asserting about a control it never touched.
-    /// </remarks>
-    private static void ClickSortByKilde(IRenderedComponent<VariableExplorer> cut) =>
-        cut.FindAll(".variable-data-list__header button")
-           .Single(b => b.TextContent.StartsWith("Kilde", StringComparison.Ordinal))
-           .Click();
-
     [Fact]
     public void Sort_WhenTheReaderReordersTheList_ThenTheHostIsToldBothHalves()
     {
@@ -151,7 +141,7 @@ public class ShareableStateTest : BunitContext
             .Add(c => c.SortChanged, f => sort = f)
             .Add(c => c.DirectionChanged, d => direction = d));
 
-        ClickSortByKilde(cut);
+        ClickSort(cut, "Kilde");
 
         Assert.Equal(SortField.Kilde, sort);
         Assert.Equal(SortDirection.Ascending, direction);
@@ -219,7 +209,7 @@ public class ShareableStateTest : BunitContext
             .Add(c => c.PageChanged, reported.Add));
 
         client.FailNext = true;
-        ClickSortByKilde(cut);
+        ClickSort(cut, "Kilde");
 
         Assert.Equal([3], reported);
     }
