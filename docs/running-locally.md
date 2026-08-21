@@ -98,13 +98,16 @@ The site comes up on **`https://localhost:5001`** — title "Finn helsedata". `:
 
 It does not come up quickly: Optimizely's CMS boot plus the database migrations take minutes on a cold container, during which the port is already bound and simply never answers. That is not a hang.
 
-To prove the local Stiler actually reached the page, ask their site for it rather than trusting the flag:
+To prove the local Stiler actually reached the page, compare what the site serves against the file on disk:
 
 ```bash
-curl -sk https://localhost:5001/_content/Fhi.Helsedata.Stiler/css/main.css | grep -c munin-explorer
+curl -sk https://localhost:5000/_content/Fhi.Helsedata.Stiler/css/main.css | sha256sum
+sha256sum ../Fhi.Helsedata.Stiler/wwwroot/css/main.css
 ```
 
-A non-zero count means the ProjectReference won. Zero means the PackageReference did, and the flag did not take.
+Matching hashes mean the ProjectReference won. Different ones mean the PackageReference did and the flag did not take — the published package is a different build.
+
+Grepping for a class name does not answer this. Any name you would think to grep for is either in both copies, or is one you have only just added locally and have not published, in which case the count is zero whichever reference won.
 
 ### Working against a local Stiler
 
@@ -134,10 +137,13 @@ That combination is a dead end the first time you meet it: the container is decl
 podman inspect HelsedataSql-<hash> --format '{{range .Config.Env}}{{println .}}{{end}}' | grep SA_PASSWORD
 ```
 
-Put what comes back into the user secret so the next run needs no environment variable at all:
+Put it straight into the user secret so the next run needs no environment variable at all. Keep it in a variable rather than typing it — a password given as a command-line argument is visible to anything reading the process list, and lands in shell history:
 
 ```bash
-dotnet user-secrets --project Helsedata.AppHost set "Parameters:helsedata-sql-password" '<password>'
+PW=$(podman inspect HelsedataSql-<hash> --format '{{range .Config.Env}}{{println .}}{{end}}' \
+     | sed -n 's/^MSSQL_SA_PASSWORD=//p')
+dotnet user-secrets --project Helsedata.AppHost set "Parameters:helsedata-sql-password" "$PW"
+unset PW
 ```
 
 Deleting the container to get a fresh password works too, and costs a full legacy restore from the `.bak` — do that only when the database is disposable.
