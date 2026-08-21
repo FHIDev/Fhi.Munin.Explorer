@@ -125,12 +125,19 @@ jobs:
         # than by hand. A genuinely reused tag still stops the run. See the script's header.
         run: ./scripts/push-packages.sh artifacts "${{ steps.version.outputs.version }}"
 
+      # The release records that a version went out and what changed in it. It carries no
+      # .nupkg, and that is the point: this repository is public, so an attached package would be
+      # downloadable by anyone, from outside the feed and outside whatever access the feed
+      # controls. Two places to get a package is also one place to get the wrong one.
+      #
+      # The packages live in exactly one place, which is what "internal" has to mean to be worth
+      # anything. Nothing here is secret - the source is public and the licence is MIT - but where
+      # a consumer is meant to get a build from is a decision, and it should have one answer.
       - name: Create the GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: v${{ steps.version.outputs.version }}
           generate_release_notes: true
-          files: artifacts/*.nupkg
           # A prerelease tag (v0.2.0-beta.1) is marked as one on GitHub too, so the release
           # list says the same thing the feed does.
           prerelease: ${{ contains(steps.version.outputs.version, '-') }}
