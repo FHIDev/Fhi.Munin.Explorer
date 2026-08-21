@@ -105,9 +105,13 @@ These are not style preferences — each one is a host that breaks otherwise.
     by the `headline headline-xxs` they wear, so what an undefined `variable-explorer-group` costs
     is the eyebrow's look, not the fact that it is a heading.
   - Names a host outside helsedata has to draw itself, because nothing else draws them:
-    `variable-explorer-crumb` carries the link affordance for the kilde step of the trail,
-    which is a `<button>`, and without it the trail reads as plain text with no sign it can be
-    pressed; and inside the `variable-explorer-period*` wrapper, `__track`, `__fill` and
+    `variable-explorer-crumb` carries the link affordance for a trail step, which is a `<button>`
+    — the kilde step of the panel's kilde trail, and every step of the hierarchy trail over the
+    results — and without it a trail reads as plain text with no sign it can be pressed;
+    `variable-explorer-breadcrumb` with its `__clear` is that hierarchy trail's own wrapper, where
+    the chevrons between the steps come from and where the × that empties the hierarchy sits, and
+    an undrawn one is a numbered list with a stray × after it; and inside the
+    `variable-explorer-period*` wrapper, `__track`, `__fill` and
     `__track--ongoing` are the period bar itself — only its width comes from an inline style, so an
     undrawn bar renders as nothing at all. The period is still legible without it, because the
     dates are next to it in words, in `__range`.

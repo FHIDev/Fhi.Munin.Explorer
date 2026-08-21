@@ -76,6 +76,15 @@ internal enum PanelTab
 /// <c>variable-explorer</c> root.
 /// </para>
 /// <para>
+/// The hierarchy trail over the results adds two names of ours — <c>variable-explorer-breadcrumb</c>
+/// and its <c>__clear</c> — and reuses <c>variable-explorer-crumb</c>, which the variable panel's
+/// kilde trail already wears, for the steps themselves. It is an <c>&lt;ol&gt;</c> of
+/// <c>&lt;button&gt;</c>s for the reason that trail is one: Stiler has no breadcrumb rule that can
+/// be read back off its compiled stylesheet, so the chevrons between the steps are a host's to
+/// draw and a host that draws nothing gets a numbered list that still reads correctly, in order,
+/// with the right names.
+/// </para>
+/// <para>
 /// The column picker adds eight names, all of them helsedata's own and none of them ours. They come
 /// with the same dependency the pager does — they live in the <c>variables.css</c> that their
 /// variable page carries. <c>variable-explorer-header</c> with its <c>__actions</c> and

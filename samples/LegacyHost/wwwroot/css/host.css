@@ -960,6 +960,63 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   color: var(--primary);
 }
 
+/* ---- the hierarchy trail over the results ----
+
+   The same shape as the kilde trail in the panel above, and for the same reason: Stiler has no
+   breadcrumb rule that can be read back off its compiled stylesheet, so the steps are an <ol> and
+   the chevrons between them are generated content — decoration, not announced, and not copied out
+   with the text. The steps wear `variable-explorer-crumb` too, so the two trails on one screen
+   cannot end up looking like different kinds of thing.
+
+   A host that draws none of this still gets a working trail: a numbered list of buttons and a ×
+   after it, in the right order, with the right names. What it loses is the shape that says "path"
+   rather than "list". */
+.variable-explorer-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+
+.variable-explorer-breadcrumb ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.variable-explorer-breadcrumb li + li::before {
+  content: "\203A";
+  margin: 0 8px;
+  color: var(--grey60);
+}
+
+/* The step the selection actually stands on. It is still a button — pressing the step above it
+   makes THIS one the last, and a last step drawn as plain text would take the pressed control out
+   of the document — so what says it is inert is aria-current, exactly as aria-disabled says it for
+   the pager's ends. */
+.variable-explorer-breadcrumb [aria-current="true"] {
+  color: var(--dark);
+  text-decoration: none;
+  cursor: default;
+}
+
+/* The × that empties the hierarchy and leaves every other filter alone. Muted until hovered: it
+   is the trail's escape hatch, not the thing the trail is for. */
+.variable-explorer-breadcrumb__clear {
+  color: var(--grey60);
+  font-size: 1.25rem;
+  line-height: 1;
+  padding: 0 4px;
+}
+
+.variable-explorer-breadcrumb__clear:hover {
+  color: var(--dark);
+}
+
 /* helsedata's panel grid is `1fr 1fr` above 1280px and one column below. The sample carries a
    stand-in so the fields sit in lanes here too — stacked, they read as a long column of labels
    and the group headings stop meaning anything. */

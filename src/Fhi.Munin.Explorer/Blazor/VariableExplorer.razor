@@ -211,6 +211,20 @@ else
         </fieldset>
     }
 
+    @* The hierarchy trail, above the results and below the filters — which is where Runa puts it,
+       and the only place it can say "these rows are what is left of that kilde".
+
+       Drawn only while something in the hierarchy is chosen. There is no trail to a selection
+       nobody has made, and a permanent empty one would be furniture in the same way "Side 1 av 1"
+       between two dead pager buttons is. It is built from the filter rather than from a second
+       piece of state, so it cannot describe a selection the rows below it did not come from — see
+       the remarks in the codebehind for why every step is a button and why the × is not one of
+       them. *@
+    @if (HierarchyCrumbs is { Count: > 0 } crumbs)
+    {
+        @Breadcrumb(crumbs)
+    }
+
     @* The ordering used to live in a "Sorter etter" fieldset here. It moved into the column
        header, which is where helsedata and Runa both put it, and where a reader looks for it:
        the header cell is the button, and it carries the aria-sort. Keeping both would offer the
