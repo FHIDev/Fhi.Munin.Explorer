@@ -5,30 +5,41 @@
    component render under legacy Blazor Server and under a modern Blazor Web App.
    No CSS ships from this package.
 
-   Every class name below is one Fhi.Helsedata.Stiler already defines, and the shapes are
-   lifted from helsedata's own datakildeutforsker (Features/DataSources/DataSourceComponent):
-   a searchbox with the submit button inside the field, and results as a card list. Inventing
-   `variabelutforsker-*` names — which is what this used to do, twice — meant the host stylesheet
-   had never heard of them, so the Søk button, the search field and the table headers rendered as
-   raw browser defaults inside an otherwise styled page. Matching helsedata without guessing is
-   the entire reason this ships as a component, so the names have to be theirs. (The historical
-   spelling is deliberate: it records the mistake as it was made. The root `variable-explorer`
-   class below, and the `variable-explorer-*` DOM ids the codebehind mints, are not that mistake
-   — they carry no styling at all; see the comment above the `<section>`.)
+   Every class name below is one helsedata already defines, off one of their two compiled
+   stylesheets: Fhi.Helsedata.Stiler site-wide for the ordinary page furniture, and the
+   page-specific `variables.css` for the whole result vocabulary. Since `Fhi.Metadata-zs56s` the
+   results are their own variable page's rows (`variable-data-list*`, `variable-dataitem-*`) in
+   the list that page builds around them (`variable-explorer-container`,
+   `variable-explorer-results`, `variable-explorer-header*`), with `variable-meta*` for the panel
+   an open row shows and `variables-pagination*` plus `skiplink-pagination` for the pager. The
+   pager was the first name borrowed from that file, because Stiler has no pagination rule at all,
+   but it is one borrowed family among many now rather than the one exception it used to be. The
+   searchbox shape — submit button inside the field — is still lifted from helsedata's own
+   datakildeutforsker (Features/DataSources/DataSourceComponent); its `datasourcecard*` card list
+   is not, and no `datasourcecard` name is emitted here any more.
 
-   The pager is the one exception, and it is still helsedata's names rather than ours: Stiler has
-   no pagination rule at all, so `variables-pagination*` and `skiplink-pagination` come from the
-   stylesheet helsedata's own variable page carries. That is a dependency a host outside that page
-   has to meet, and the component class's remarks say so.
+   Inventing `variabelutforsker-*` names — which is what this used to do, twice — meant the host
+   stylesheet had never heard of them, so the Søk button, the search field and the table headers
+   rendered as raw browser defaults inside an otherwise styled page. Matching helsedata without
+   guessing is the entire reason this ships as a component, so the names have to be theirs. (The
+   historical spelling is deliberate: it records the mistake as it was made. The root
+   `variable-explorer` class below, and the `variable-explorer-*` DOM ids the codebehind mints,
+   are not that mistake — they carry no styling at all; see the comment above the `<section>`.)
+
+   `variables.css` is a dependency a host outside helsedata's estate has to meet in full, and the
+   component class's remarks say so — including the rule that keeps `skiplink-pagination` out of
+   sight until it is focused.
 
    Accessibility: helsedata.no is a public-sector site, so WCAG 2.1 AA is a legal
    requirement — and this is our markup on their page. The choices below are the ones
    markup can make. Visible focus and contrast are the host stylesheet's to get right, and
    are spelled out for hosts in the doc comment on the component class in the codebehind. *@
 
-@* The one name here that is not Stiler's. It carries no styling — nothing in this package or
-   in Stiler defines a rule for it — and exists so the component can be found in the DOM of a
-   CMS page that renders a hundred other things. *@
+@* One of the few names here that is ours rather than helsedata's — the others are
+   `variable-explorer-filters`, `-detail`, `-drilldown` and `-group` further down. None of them
+   carry styling: nothing in this package, in Stiler or in helsedata's `variables.css` defines a
+   rule for any of them. They exist so the component, and the parts of it a host or a test wants
+   to reach, can be found in the DOM of a CMS page that renders a hundred other things. *@
 <section class="variable-explorer" aria-labelledby="@TitleId">
     @* Rendered from HeadingLevel rather than hard-coded to h2: the level that keeps the
        document outline unbroken is only knowable at the mount site. *@
@@ -155,13 +166,14 @@ else
 
        A stack of disclosures above the results, not a sidebar beside them. A sidebar is a layout,
        and a layout is a class name — helsedata's own variable page styles one from
-       `filter-search-explorer` in its page-specific variables.css, which is not a stylesheet this
-       repository can read back. The standing rule is that a class name goes into this markup only
-       once it has been read off the host's compiled CSS, so the panel is built out of names that
-       have been: `form-fieldset` and `form-element__label` from the sort control, `hd-button-square`
-       with the same filled/ghost pair, `caption` and `infobox`. When those sidebar names can be
-       verified, this block is what moves into it — the markup below is already a list of facets and
-       nothing about it assumes it is stacked.
+       `filter-search-explorer` in its page-specific variables.css, a rule this repository has not
+       read back — the result vocabulary below comes from that same stylesheet, so what is
+       unverified here is the one name and not the file. The standing rule is that a class name
+       goes into this markup only once it has been read off the host's compiled CSS, so the panel
+       is built out of names that have been: `form-fieldset` and `form-element__label` from the
+       sort control, `hd-button-square` with the same filled/ghost pair, `caption` and `infobox`.
+       When those sidebar names can be verified, this block is what moves into it — the markup
+       below is already a list of facets and nothing about it assumes it is stacked.
 
        Two shapes here are elements rather than classes, for the same reason:
 
