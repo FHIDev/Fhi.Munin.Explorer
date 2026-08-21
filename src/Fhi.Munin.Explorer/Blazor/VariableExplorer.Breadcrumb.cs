@@ -156,23 +156,36 @@ public partial class VariableExplorer
             builder.AddAttribute(6, "class", "hd-button-reset variable-explorer-crumb");
             builder.AddAttribute(7, "type", "button");
 
-            if (crumb.Norwegian)
-            {
-                builder.AddAttribute(8, "lang", "no");
-            }
-
             // Null on every step but the last, so the attribute is left out rather than spelled
             // "false" — the same treatment the sort headers' aria-current gets.
-            builder.AddAttribute(9, "aria-current", current ? "true" : null);
+            builder.AddAttribute(8, "aria-current", current ? "true" : null);
 
             // What pressing it does, which the name on its own does not say. It starts with the
             // visible text so a speech-input user saying what they can see still hits the button
             // (WCAG 2.5.3), and the last step has none because pressing it does nothing.
-            builder.AddAttribute(10, "aria-label", current ? null : T.CrumbLabel(crumb.Text));
+            builder.AddAttribute(9, "aria-label", current ? null : T.CrumbLabel(crumb.Text));
 
-            builder.AddAttribute(11, "onclick",
+            builder.AddAttribute(10, "onclick",
                 EventCallback.Factory.Create(this, () => NarrowToAsync(crumb.Level)));
-            builder.AddContent(12, crumb.Text);
+
+            if (crumb.Norwegian)
+            {
+                // The lang goes on a span around the catalogue's words alone, never on the
+                // button — the result row's name does the same. The button owns the aria-label
+                // above, which is this component's prose in the UI's language, and an accessible
+                // name is announced in the computed language of the element that owns it: a
+                // langed button would have an English reader hear "Tromsøundersøkelsen – remove
+                // the levels below" in a Norwegian voice, which is lang="no" applied backwards.
+                builder.OpenElement(11, "span");
+                builder.AddAttribute(12, "lang", "no");
+                builder.AddContent(13, crumb.Text);
+                builder.CloseElement();
+            }
+            else
+            {
+                builder.AddContent(14, crumb.Text);
+            }
+
             builder.CloseElement();
 
             builder.CloseElement();

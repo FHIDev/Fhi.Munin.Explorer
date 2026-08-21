@@ -2908,6 +2908,21 @@ public class VariableExplorerTest : BunitContext
     private static IElement Crumb(IRenderedComponent<VariableExplorer> cut, string label) =>
         Crumbs(cut).Single(b => b.TextContent.StartsWith(label, StringComparison.Ordinal));
 
+    /// <summary>
+    /// The lang a step's text is announced in, or null where the step carries no marking at all.
+    /// </summary>
+    /// <remarks>
+    /// It reads the span inside the button rather than the button itself, which is the whole point:
+    /// the button owns the aria-label, and that label is this component's prose in the UI's
+    /// language, so a lang on the button would announce an English name in a Norwegian voice.
+    /// Anything langed above the text would be the bug, so the button is checked for one too.
+    /// </remarks>
+    private static string? CrumbLang(IElement step)
+    {
+        Assert.False(step.HasAttribute("lang"));
+        return step.QuerySelector("[lang]")?.GetAttribute("lang");
+    }
+
     /// <summary>The component rendered with a hierarchy already chosen, as a shared link would.</summary>
     private IRenderedComponent<VariableExplorer> RenderFiltered(
         FilteringClient client, VariableFilter filter) =>
@@ -2978,6 +2993,46 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
+    public void Render_WhenTheFacetsDoNotCarryTheChosenKilde_ThenItsNameComesFromTheRowsItLeft()
+    {
+        // The facets are the first source but they can miss: they are cross-filtered, so a value
+        // the reader selected can be absent from the payload describing what that selection
+        // leaves, and a failed refresh leaves them missing altogether while the rows stay on
+        // screen. Every row a kilde filter leaves belongs to that kilde and names it.
+        var row = Variable("1. Tale", "KODE") with { KildeId = Tromso, KildeName = "Tromsøundersøkelsen" };
+        var client = new FilteringClient(OnePage(row)) { FailFacets = true };
+
+        var cut = RenderFiltered(client, new VariableFilter { KildeIds = [Tromso] });
+
+        var crumb = Crumbs(cut).Single();
+
+        Assert.Equal("Tromsøundersøkelsen", crumb.TextContent);
+        // A name out of the catalogue whichever source supplied it, so it is still Norwegian.
+        Assert.Equal("no", CrumbLang(crumb));
+    }
+
+    [Fact]
+    public void Render_WhenTheFacetsDoNotCarryTheChosenVariabelgruppe_ThenItsNameComesFromTheRows()
+    {
+        // The variabelgruppe falls back the same way the kilde does, and off its own pair of row
+        // fields — a step reading "Variabelgruppe" where the rows knew the name would be the
+        // trail's most prominent levels degrading with the suite still green.
+        var row = Variable("1. Tale", "KODE") with
+        {
+            VariabelgruppeId = Bakgrunn,
+            VariabelgruppeName = "Bakgrunn"
+        };
+        var client = new FilteringClient(OnePage(row)) { FailFacets = true };
+
+        var cut = RenderFiltered(client, new VariableFilter { VariabelgruppeIds = [Bakgrunn] });
+
+        var crumb = Crumbs(cut).Single();
+
+        Assert.Equal("Bakgrunn", crumb.TextContent);
+        Assert.Equal("no", CrumbLang(crumb));
+    }
+
+    [Fact]
     public void Render_WhenNothingOnScreenKnowsAValuesName_ThenTheStepFallsBackToTheLevelsOwnWord()
     {
         // A guid in a trail is not information, and the step still has to be pressable to clear
@@ -2989,8 +3044,9 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Equal("Datasamling", crumb.TextContent);
         // Our prose rather than a name out of the catalogue, so it must not be announced as
-        // Norwegian — the same rule the variable panel's kildetype step follows.
-        Assert.False(crumb.HasAttribute("lang"));
+        // Norwegian — the same rule the variable panel's kildetype step follows. Nothing inside
+        // the step is langed either: the marking lives on a span around catalogue words alone.
+        Assert.Null(CrumbLang(crumb));
     }
 
     [Fact]
@@ -3012,6 +3068,14 @@ public class VariableExplorerTest : BunitContext
         Assert.Equal([Tromso4], client.SearchFilter?.DelkildeIds);
         Assert.Empty(client.SearchFilter!.DatasamlingIds);
         Assert.Empty(client.SearchFilter!.VariabelgruppeIds);
+
+        // And the trail itself shortens to the step that was pressed, which is the re-render the
+        // press exists to produce and the one place SetKey(crumb.Level) matters: the list loses
+        // two steps from its end, and positional keying would patch the button under the reader's
+        // finger into the step that took its place.
+        Assert.Equal(["Tromsøundersøkelsen", "Tromsø 4"], Crumbs(cut).Select(b => b.TextContent));
+        Assert.Equal("true", Crumbs(cut)[^1].GetAttribute("aria-current"));
+        Assert.False(Crumbs(cut)[^1].HasAttribute("aria-label"));
     }
 
     [Fact]
@@ -3121,7 +3185,9 @@ public class VariableExplorerTest : BunitContext
 
         var trail = cut.Find(".variable-explorer-breadcrumb");
 
-        Assert.All(trail.QuerySelectorAll("ol, li"), e => Assert.False(e.HasAttribute("class")));
+        // The span the Norwegian marking hangs on is invisible to a stylesheet too — it exists for
+        // the synthesiser, not for a rule.
+        Assert.All(trail.QuerySelectorAll("ol, li, span"), e => Assert.False(e.HasAttribute("class")));
         Assert.All(Crumbs(cut), b => Assert.Equal("hd-button-reset variable-explorer-crumb", b.ClassName));
 
         // The list carries the name rather than a <nav> landmark: two explorers on one page would
@@ -3155,13 +3221,16 @@ public class VariableExplorerTest : BunitContext
         var steps = Crumbs(cut);
 
         Assert.Equal("Tromsøundersøkelsen", steps[0].TextContent);
-        Assert.Equal("no", steps[0].GetAttribute("lang"));
+        // The lang wraps the catalogue's words only. It cannot go on the button, because the
+        // button carries the aria-label below — English prose, which a Norwegian voice would
+        // mangle, and which is exactly the mistake the period column's remarks name.
+        Assert.Equal("no", CrumbLang(steps[0]));
         Assert.Equal("Tromsøundersøkelsen – remove the levels below", steps[0].GetAttribute("aria-label"));
 
         // The unknown datasamling falls back to the level's own word, which is ours and therefore
         // English here — and carries no lang for exactly that reason.
         Assert.Equal("Data collection", steps[1].TextContent);
-        Assert.False(steps[1].HasAttribute("lang"));
+        Assert.Null(CrumbLang(steps[1]));
 
         Assert.Equal("Selected hierarchy",
                      cut.Find(".variable-explorer-breadcrumb ol").GetAttribute("aria-label"));
@@ -4980,7 +5049,11 @@ public class VariableExplorerTest : BunitContext
         // the list of names we INVENT — the handles below, which carry no styling anywhere and
         // exist only so a host can find the component in the DOM. A name in this prefix that is
         // neither theirs nor one of those is a name that renders as a raw browser default.
-        var cut = RenderWith(TwoRows());
+        //
+        // Rendered with a hierarchy chosen as well as a panel open, so the trail over the results
+        // is on screen: this list is the central registry, and names that only appear under a
+        // filter would otherwise be invisible to it and pinned only by their own feature's tests.
+        var cut = RenderWith(TwoRows(), b => b.Add(c => c.Filter, new VariableFilter { KildeIds = [Tromso] }));
 
         Toggles(cut)[0].Click();
 
@@ -4994,6 +5067,15 @@ public class VariableExplorerTest : BunitContext
         [
             "variable-explorer",            // ours, a handle
             "variable-explorer-filters",    // ours, a handle
+            "variable-explorer-breadcrumb", // ours — the trail over the results, which Stiler has
+                                            // no breadcrumb rule of any kind to borrow
+            "variable-explorer-crumb",      // ours — one step of a trail, and the same name in
+                                            // both of them: the panel's kilde step, which Runa
+                                            // makes a link and we make the control that discloses
+                                            // the kilde, and each step of the hierarchy trail,
+                                            // which reuses it rather than minting a second name
+                                            // for the same affordance
+            "variable-explorer-breadcrumb__clear",      // ours — the × that empties the hierarchy
             "variable-explorer-container",  // theirs, variables.css (10 rules)
             "variable-explorer-results",    // theirs, variables.css (6 rules)
             "variable-explorer-header",     // theirs — the row their own variable page hangs the
@@ -5003,8 +5085,6 @@ public class VariableExplorerTest : BunitContext
             "variable-explorer-detail",     // ours, a handle
             "variable-explorer-group",      // ours — helsedata's panel is flat, so it has no
                                             // group heading to borrow a name from
-            "variable-explorer-crumb",      // ours — the kilde step, which Runa makes a link and
-                                            // we make the control that discloses the kilde
             "variable-explorer-period",     // ours — neither explorer's stylesheet has a period bar
             "variable-explorer-period__range",
             "variable-explorer-period__track",
