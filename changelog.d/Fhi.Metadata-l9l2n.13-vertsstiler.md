@@ -4,8 +4,9 @@ category: Notes for hosts
   `form-element__label`, `caption` and the same `hd-button-square` / `button-square--secondary` /
   `button-square--ghost` pair the sort control already uses. That is deliberate: helsedata's own
   variable page styles its sidebar from `filter-search-explorer` in the page-specific
-  `variables.css`, which is not a stylesheet this repository can read back, and the standing rule is
-  that a class name goes into the markup only once it has been read off the host's compiled CSS.
+  `variables.css`, a rule this repository has not read back — the result vocabulary comes off that
+  same stylesheet, so what is unverified is the one name and not the file — and the standing rule
+  is that a class name goes into the markup only once it has been read off the host's compiled CSS.
   What a host has to supply is therefore base styling for those three elements — in particular list
   indentation, which is what shows a delkilde sitting under its kilde. Without it the panel still
   works and the hierarchy is still announced correctly; it just reads flat. Both sample hosts show a

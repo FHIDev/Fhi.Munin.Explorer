@@ -44,20 +44,19 @@ internal enum PanelTab
 /// <para>
 /// The result vocabulary is not Stiler's at all, and that is a dependency rather than an oversight.
 /// Since <c>Fhi.Metadata-zs56s</c> the component renders helsedata's own variable page rather than
-/// a shape of its own, so the list they sit in (<c>variable-explorer-container</c>,
-/// <c>variable-explorer-results</c>), the rows (<c>variable-data-list*</c>,
-/// <c>variable-dataitem-*</c>), the opened panel (<c>variable-meta*</c>), the column picker's names
-/// listed below and the pager (<c>variables-pagination</c>, <c>variables-pagination-content</c>,
-/// <c>skiplink-pagination</c>) all come from the page-specific <c>variables.css</c> that page
-/// carries rather than from the site-wide stylesheet. The pager would have needed borrowing
-/// whatever the results looked like — Stiler defines no pagination rule at all, its compiled
-/// stylesheet has no <c>pagination</c>, <c>pager</c>, <c>paging</c>, <c>page-link</c> or
-/// <c>page-item</c> — but it is one borrowed family among many now rather than the single exception
-/// it used to be. Despite its name <c>variables.css</c> is served on every page of helsedata.no, so
-/// a host inside their estate has it wherever the component is mounted; a host outside has to
-/// supply the whole vocabulary itself, including the rule that keeps <c>skiplink-pagination</c> out
-/// of sight until it is focused, which is the whole point of a skip link. <c>README.md</c> has the
-/// full split.
+/// a shape of its own, so the rows (<c>variable-data-list*</c>, <c>variable-dataitem-*</c>), the
+/// list they sit in (<c>variable-explorer-container</c>, <c>variable-explorer-results</c>), the
+/// opened panel (<c>variable-meta*</c>), the column picker's names listed below and the pager
+/// (<c>variables-pagination</c>, <c>variables-pagination-content</c>, <c>skiplink-pagination</c>)
+/// all come from the page-specific <c>variables.css</c> that page carries rather than from the
+/// site-wide stylesheet. The pager would have needed borrowing whatever the results looked like —
+/// Stiler defines no pagination rule at all, its compiled stylesheet has no <c>pagination</c>,
+/// <c>pager</c>, <c>paging</c>, <c>page-link</c> or <c>page-item</c> — but it is one borrowed
+/// family among many now rather than the single exception it used to be. Despite its name
+/// <c>variables.css</c> is served on every page of helsedata.no, so a host inside their estate has
+/// it wherever the component is mounted; a host outside has to supply the whole vocabulary itself,
+/// including the rule that keeps <c>skiplink-pagination</c> out of sight until it is focused, which
+/// is the whole point of a skip link. <c>README.md</c> has the full split.
 /// </para>
 /// <para>
 /// Two names from <c>variables.css</c> are deliberately left unused.
@@ -71,14 +70,15 @@ internal enum PanelTab
 /// <para>
 /// The filter panel adds no class name to that list. Stiler has no accordion, no tree and no
 /// checkbox whose names can be read back off its compiled stylesheet — and helsedata's own sidebar
-/// is styled from <c>filter-search-explorer</c> in the same page-specific <c>variables.css</c> the
-/// result vocabulary comes from, a rule this repository has not read back the way it has read
-/// those. So the panel is <c>&lt;details&gt;</c> for the disclosure, a nested <c>&lt;ul&gt;</c> for
-/// the kilde/delkilde hierarchy and the square button in its two states for the values, and what a
-/// host supplies is base styling for those three elements rather than three more names. List
-/// indentation is the part that matters: without it the hierarchy still nests in the accessibility
-/// tree but reads flat on screen. <c>variable-explorer-filters</c> is a DOM handle for placing the
-/// panel, and carries no styling, exactly like the <c>variable-explorer</c> root.
+/// is styled from <c>filter-search-explorer</c> in its page-specific <c>variables.css</c>, a rule
+/// this repository has not read back — the result vocabulary comes from that same stylesheet, so
+/// what is unverified here is the one name and not the file. So the panel is <c>&lt;details&gt;</c>
+/// for the disclosure, a nested <c>&lt;ul&gt;</c> for the kilde/delkilde hierarchy and the square
+/// button in its two states for the values, and what a host supplies is base styling for those
+/// three elements rather than three more names. List indentation is the part that matters: without
+/// it the hierarchy still nests in the accessibility tree but reads flat on screen.
+/// <c>variable-explorer-filters</c> is a DOM handle for placing the panel, and carries no styling,
+/// exactly like the <c>variable-explorer</c> root.
 /// </para>
 /// <para>
 /// The column picker adds eight names, all of them helsedata's own and none of them ours. They
