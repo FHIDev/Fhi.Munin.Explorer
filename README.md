@@ -51,12 +51,14 @@ These are not style preferences — each one is a host that breaks otherwise.
   - `variables.css`, which helsedata's own variable page carries, for the whole result vocabulary.
     Since `Fhi.Metadata-zs56s` the component renders that page's DOM rather than a shape of its
     own: rows are `variable-data-list` / `variable-data-list__item*` / `variable-dataitem-main*`,
-    the opened panel is `variable-meta*`, the pager is `variables-pagination*` plus
-    `skiplink-pagination`, and the column picker is `variable-explorer-header__actions*` with
-    `dropdown-choicepicker*`. Despite the name it is served on every page of helsedata.no, so a
-    host in their estate has it wherever the component is mounted — a host outside has to supply
-    all of it, including the rule that keeps `skiplink-pagination` out of sight until it is
-    focused.
+    the opened panel is `variable-meta*`, the list around them is `variable-explorer-container` /
+    `variable-explorer-results` / `variable-explorer-header*`, the pager is `variables-pagination*`
+    plus `skiplink-pagination`, and the column picker is `variable-explorer-header__actions*` with
+    `dropdown-choicepicker*`. Despite the name it is served on every page of helsedata.no —
+    verified on `/no/`, `/no/variabler/` and `/no/datakilder/`, which load an identical seven
+    bundles — so a host in their estate has it wherever the component is mounted. A host outside
+    has to supply all of it, including the rule that keeps `skiplink-pagination` out of sight
+    until it is focused.
 
   A name neither stylesheet has heard of renders as a raw browser default inside an otherwise
   styled page, which defeats the point of shipping this as a component at all. So where neither
@@ -68,13 +70,18 @@ These are not style preferences — each one is a host that breaks otherwise.
   list, for the same reason: an element degrades to its own browser default, where an unknown
   class name degrades to nothing.
 
-  The only names this package invents are DOM handles that carry no styling anywhere —
-  `variable-explorer`, `variable-explorer-filters`, `variable-explorer-detail` and a few more — so
-  a host can find the component in the page. The doc comment on `VariableExplorer` has the full
-  inventory and says where each name was verified;
-  `Render_Always_ThenNoClassNamesAreInventedApartFromTheDomHandles` fails if that set grows. The
-  sample hosts' `host.css` is a working stand-in for both stylesheets, marked up with which is
-  which.
+  A `variable-explorer` prefix does not mean the name is ours: `variable-explorer-container`,
+  `variable-explorer-results`, `variable-explorer-header*` and `variable-explorer__dropdown` are
+  all helsedata's. The names this package does invent are DOM handles that carry no styling
+  anywhere: `variable-explorer` and `variable-explorer-filters`, plus `variable-explorer-detail`,
+  `variable-explorer-source`, `variable-explorer-kodeverk*` and `variable-explorer-codes*` inside
+  an opened panel. They exist so a host — or a test — can find a part of the component in the
+  page, and a host that defines none of them loses nothing visual.
+  `Render_Always_ThenNoClassNamesAreInventedApartFromTheDomHandles` pins that prefix for a closed
+  result list, spelling out which of its eight names are ours and which are theirs; the panel
+  handles are past its reach, because nothing is expanded there. For seeing the whole thing
+  dressed, the sample hosts' `host.css` stands in for both stylesheets, divided by comment into
+  which rules stand in for which.
 - **No `HeadOutlet`.** Not available in the Optimizely host — the component cannot set the page
   title or inject meta tags.
 - **Nothing host-specific.** `IHttpContextAccessor`, `Microsoft.AspNetCore.Components.Server.*`,
