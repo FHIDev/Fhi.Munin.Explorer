@@ -3070,9 +3070,11 @@ public class VariableExplorerTest : BunitContext
         Assert.Empty(client.SearchFilter!.VariabelgruppeIds);
 
         // And the trail itself shortens to the step that was pressed, which is the re-render the
-        // press exists to produce and the one place SetKey(crumb.Level) matters: the list loses
-        // two steps from its end, and positional keying would patch the button under the reader's
-        // finger into the step that took its place.
+        // press exists to produce: two steps go from the end, and the step left last takes on
+        // being current — which is what drops its aria-label, since pressing it now does nothing.
+        // Not a guard on SetKey(crumb.Level), which nothing here can see: a press only ever drops
+        // steps off the end, which positional patching lands on identically. What the key is for
+        // is a level appearing in the middle, from the panel rather than from here.
         Assert.Equal(["Tromsøundersøkelsen", "Tromsø 4"], Crumbs(cut).Select(b => b.TextContent));
         Assert.Equal("true", Crumbs(cut)[^1].GetAttribute("aria-current"));
         Assert.False(Crumbs(cut)[^1].HasAttribute("aria-label"));

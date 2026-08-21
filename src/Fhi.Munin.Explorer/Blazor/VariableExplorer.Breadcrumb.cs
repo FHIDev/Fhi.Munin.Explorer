@@ -147,9 +147,12 @@ public partial class VariableExplorer
             var current = index == crumbs.Count - 1;
 
             builder.OpenElement(4, "li");
-            // Keyed by the level rather than by position: clearing a middle level shortens the
-            // trail, and without a key the renderer would patch the button under the reader's
-            // finger into the step that took its place.
+            // Keyed by the level rather than by position. Not for a press on a step, which only
+            // ever drops steps off the end and patches the same either way — for a level
+            // appearing in the middle, which the trail allows: a selection may skip a level, so
+            // choosing a delkilde under a kilde and variabelgruppe already picked inserts a step
+            // at index 1 and shifts the rest along. Positionally that patches the button under
+            // the reader's finger into the step that took its place; by level it moves instead.
             builder.SetKey(crumb.Level);
 
             builder.OpenElement(5, "button");
@@ -195,15 +198,19 @@ public partial class VariableExplorer
 
         // Outside the list: it is not a step on the path, and a screen reader counting "list, 4
         // items" must not be counting the control that empties it.
-        builder.OpenElement(13, "button");
-        builder.AddAttribute(14, "class", "hd-button-reset variable-explorer-breadcrumb__clear");
-        builder.AddAttribute(15, "type", "button");
+        // Numbered above the crumb loop's highest, not from where the loop's outer element left
+        // off: the numbers inside the loop's span reach 14, and a fragment that reads as one
+        // ascending run is the only cue a later reader has that nothing collides. The two ranges
+        // are diffed apart today, so a collision here would be silent until the markup is renested.
+        builder.OpenElement(15, "button");
+        builder.AddAttribute(16, "class", "hd-button-reset variable-explorer-breadcrumb__clear");
+        builder.AddAttribute(17, "type", "button");
         // The visible glyph is a multiplication sign, which is decoration rather than a word, so
         // the accessible name is spelled out. It is the whole name and not a suffix, because there
         // is no visible text for it to have to start with.
-        builder.AddAttribute(16, "aria-label", T.ClearHierarchy);
-        builder.AddAttribute(17, "onclick", EventCallback.Factory.Create(this, ClearHierarchyAsync));
-        builder.AddContent(18, "×");
+        builder.AddAttribute(18, "aria-label", T.ClearHierarchy);
+        builder.AddAttribute(19, "onclick", EventCallback.Factory.Create(this, ClearHierarchyAsync));
+        builder.AddContent(20, "×");
         builder.CloseElement();
 
         builder.CloseElement();
