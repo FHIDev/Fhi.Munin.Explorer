@@ -114,9 +114,10 @@ body {
 /* ======================================================================
    Stiler stand-in — everything from here down to the first "not Stiler"
    divider is Fhi.Helsedata.Stiler's job in the real host. Past that
-   divider is the second stylesheet: `variables.css`, which helsedata's
-   own variable page carries and which the whole result vocabulary is
-   read back off, plus the base element styling neither stylesheet gives.
+   divider is the second stylesheet: `variables.css`, which despite the
+   name every page of helsedata.no loads and which the whole result
+   vocabulary is read back off, plus the base element styling neither
+   stylesheet gives.
    README.md, under "Rules the components follow", is the authoritative
    account of which name belongs to which — this file is the same
    division laid out as rules you can see.
@@ -299,15 +300,17 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   .datasourcecard__info .dot { margin-left: 0; margin-bottom: 0; position: relative; bottom: 2.5px; }
 }
 
-/* ---- not Stiler: helsedata's own variable page ----
+/* ---- not Stiler: helsedata's variable-page vocabulary ----
 
    Everything above is a stand-in for Stiler, which every helsedata page loads. Everything from
-   here on is the second stylesheet: `variables.css`, which helsedata's own variable page carries
-   and which Stiler knows nothing about — its compiled stylesheet has no pagination rule of any
-   kind, and none of the result vocabulary either. This block is the pager; the rows, the opened
-   panel and the column picker are further down, under their own heading. The component emits
-   these names so that mounting it on that page needs nothing new, which means any host mounting
-   it anywhere else has to supply them itself, exactly as this sample does. */
+   here on is the second stylesheet: `variables.css`, which Stiler knows nothing about — its
+   compiled stylesheet has no pagination rule of any kind, and none of the result vocabulary
+   either. Despite the name, `variables.css` is loaded on every page of helsedata.no too
+   (verified on /no/, /no/variabler/ and /no/datakilder/: identical seven bundles), so a host in
+   their estate has these names wherever the component is mounted, not only on the variable page.
+   A host outside has to supply the whole vocabulary itself, exactly as this sample does. This
+   block is the pager; the rows, the opened panel and the column picker are further down, under
+   their own heading. */
 
 .variables-pagination {
   margin-top: 24px;
