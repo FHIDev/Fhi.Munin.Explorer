@@ -5282,9 +5282,9 @@ public class VariableExplorerTest : BunitContext
     [Fact]
     public void Source_WhenAPanelIsOpen_ThenItIsBuiltFromShapesRatherThanFromANewStyleName()
     {
-        // The fourth handle, and the last name added: Stiler has no key/value block that can be
-        // read back off its compiled stylesheet, so the owner is a heading and a <dl> wearing
-        // Stiler's own datasourcecard__heading and form-element__label.
+        // Neither stylesheet has a key/value block that can be read back off it, so the owner is a
+        // heading wearing Stiler's own headline classes and a <dl> that borrows helsedata's
+        // variable-meta__grid, rather than a new style name of ours.
         var cut = OpenOwner(TwoRows(), 0);
 
         var invented = cut.FindAll("[class]")
@@ -5315,6 +5315,17 @@ public class VariableExplorerTest : BunitContext
             invented);
 
         var panel = SourcePanel(cut);
+
+        // The prefix above is only half the guard: a borrowed name that no stylesheet defines is
+        // just as inert as an invented one, and harder to notice, because it sits in a family that
+        // does exist. headline-sm did exactly that on the four block headings until
+        // Fhi.Metadata-e4bj2 — the family is real, that member of it is not. So the headline scale
+        // is pinned to the three names the samples stand in for and the repository can point at.
+        Assert.All(panel.QuerySelectorAll("[class]")
+                        .SelectMany(e => e.ClassName!.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+                        .Where(k => k.StartsWith("headline-", StringComparison.Ordinal))
+                        .Distinct(),
+                   k => Assert.Contains(k, (string[])["headline-3", "headline-s", "headline-xxs"]));
 
         // The fact lists borrow the grid the detail panel already uses rather than a shape of their
         // own — the same pairs of label and value, so the same class.

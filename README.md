@@ -41,20 +41,77 @@ These are not style preferences — each one is a host that breaks otherwise.
   is a single parameterised root component.
 - **No `@rendermode`.** The host decides, at the mount site. This is what lets one package serve
   both a legacy and a modern host.
-- **No CSS, no `wwwroot`, no `.razor.css`.** Styling comes from the host's
-  `Fhi.Helsedata.Stiler` stylesheet — and the class names the markup emits are Stiler's own
-  (`searchbox__freetext`, `hd-button-square`, `datasourcecard*`, …), not names of our own
-  invention. A name Stiler has never heard of renders as a raw browser default inside an
-  otherwise styled page, which defeats the point of shipping this as a component at all. Where
-  Stiler has no rule for a shape, change the shape rather than adding a stylesheet: results are
-  a `datasourcecard` list, not a table, because Stiler styles no table this package could use, and
-  the filter panel is `<details>` plus a nested `<ul>` rather than an accordion and a tree, because
-  Stiler has names for neither. What a host supplies for those is base element styling — list
-  indentation in particular, which is what shows a delkilde sitting under its kilde.
-  The pager is the one place that rule ran out — Stiler has no pagination rule at all — so it
-  emits the names helsedata's own variable page uses (`variables-pagination*`,
-  `skiplink-pagination`) from a stylesheet only that page carries. Still their names rather than
-  ours, but a host mounting the component elsewhere has to supply those three itself.
+- **No CSS, no `wwwroot`, no `.razor.css`.** Styling comes from the host, and the class names the
+  markup emits are not ours to invent — they are read back off helsedata's own compiled
+  stylesheets. Two of them, and the difference matters to a host outside helsedata:
+  - `Fhi.Helsedata.Stiler`, the site-wide stylesheet, for the parts that are ordinary page
+    furniture: `searchbox__freetext*`, `hd-button-square` with its `button-square--*` modifiers,
+    `form-element__label`, `form-fieldset`, `headline`, `caption`, `infobox`, `hd-button-reset`,
+    `screenreader-only`.
+  - `variables.css`, which helsedata's own variable page carries, for the whole result vocabulary.
+    Since `Fhi.Metadata-zs56s` the component renders that page's DOM rather than a shape of its
+    own: rows are `variable-data-list` / `variable-data-list__item*` / `variable-dataitem-main*`,
+    the opened panel is `variable-meta*`, the list around them is `variable-explorer-container` /
+    `variable-explorer-results` / `variable-explorer-header*`, the pager is `variables-pagination*`
+    plus `skiplink-pagination`, and the column picker is `variable-explorer-header__actions*` with
+    `dropdown-choicepicker*`. Despite the name it is served on every page of helsedata.no —
+    verified on `/no/`, `/no/variabler/` and `/no/datakilder/`, which load an identical seven
+    bundles — so a host in their estate has it wherever the component is mounted. A host outside
+    has to supply all of it, including the rule that keeps `skiplink-pagination` out of sight
+    until it is focused.
+
+  A name neither stylesheet has heard of renders as a raw browser default inside an otherwise
+  styled page, which defeats the point of shipping this as a component at all. So where neither
+  has a rule for a shape, change the shape rather than adding a stylesheet: the filter panel is
+  `<details>` plus a nested `<ul>` rather than an accordion and a tree, and the detail panel is a
+  `<dl>` with an `<ol>` for the kilde trail, because neither stylesheet names any of those. What a
+  host supplies for them is base element styling — list indentation in particular, which is what
+  shows a delkilde sitting under its kilde. The package emits two `<table>`s, for the same reason:
+  the kodeverk code list in an opened panel, and the datasamlinger of a kilde in `KildeView`. An
+  element degrades to its own browser default, where an unknown class name degrades to nothing.
+
+  A `variable-explorer` prefix does not mean the name is ours. Six of them are helsedata's, every
+  one read back off their compiled `variables.css`: `variable-explorer-container`,
+  `variable-explorer-results`, `variable-explorer-header` with its `__actions` and
+  `__actions-button`, and `variable-explorer__dropdown`. Every other class name in the prefix is
+  ours, and the one thing true of all of them is narrow: **neither helsedata stylesheet has a rule
+  for any of them**. A host in their estate gets nothing for free here, and a host outside has to
+  draw whatever it wants drawn. What differs between them is how much drawing nothing costs.
+
+  - Handles, where something else already dresses the element — a Stiler class it also wears, or
+    its own browser default — and the name is there so a host or a test can find that part of the
+    component in the page: `variable-explorer` (the root `<section>`), `variable-explorer-filters`,
+    `variable-explorer-detail`, `variable-explorer-drilldown`, `variable-explorer-kodeverk*`,
+    `variable-explorer-codes*`, `variable-explorer-group`, and the nine `variable-explorer-kilde*`
+    names in `KildeView`. What the samples do with them is uneven, and worth knowing before
+    following the pointer below: they style the panel handles for arrangement — the root as a grid
+    at desktop width, `-filters`, `-detail`, `-drilldown`, `-kodeverk*` and `-codes*` for spacing,
+    indentation and a rule between rows — and they draw `variable-explorer-group` as Runa's blue
+    uppercase eyebrow. The nine `KildeView` names have no rule in either sample; that view is left
+    to its base element styling and the Stiler class each of its parts also wears. A host that
+    defines none of them loses no information: the group headings, for instance, are already sized
+    by the `headline headline-xxs` they wear, so what an undefined `variable-explorer-group` costs
+    is the eyebrow's look, not the fact that it is a heading.
+  - Names a host outside helsedata has to draw itself, because nothing else draws them:
+    `variable-explorer-crumb` carries the link affordance for the kilde step of the trail,
+    which is a `<button>`, and without it the trail reads as plain text with no sign it can be
+    pressed; and inside the `variable-explorer-period*` wrapper, `__track`, `__fill` and
+    `__track--ongoing` are the period bar itself — only its width comes from an inline style, so an
+    undrawn bar renders as nothing at all. The period is still legible without it, because the
+    dates are next to it in words, in `__range`.
+
+  Ids are a separate family, each suffixed with a per-instance discriminator so two mounts on one
+  page cannot collide: `variable-explorer-title-*`, `-search-*`, `-heading-*`, `-toggle-*`,
+  `-detail-*`, `-tab-*`, `-source-*` and the rest. `variable-explorer-source-*` is worth naming,
+  because it reads like a class and is not one: the drill-in region it identifies wears the class
+  `variable-explorer-drilldown`, so a host or a test reaching for `.variable-explorer-source` comes
+  up empty.
+
+  `Render_Always_ThenNoClassNamesAreInventedApartFromTheDomHandles` pins that prefix for a closed
+  result list, spelling out which of its eight names are ours and which are theirs; the panel,
+  drill-in and kilde names are past its reach, because nothing is expanded there. For seeing the
+  whole thing dressed, the sample hosts' `host.css` stands in for both stylesheets, divided by
+  comment into which rules stand in for which.
 - **No `HeadOutlet`.** Not available in the Optimizely host — the component cannot set the page
   title or inject meta tags.
 - **Nothing host-specific.** `IHttpContextAccessor`, `Microsoft.AspNetCore.Components.Server.*`,

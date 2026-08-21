@@ -191,24 +191,10 @@ else
         </fieldset>
     }
 
-    @* Ordering, as its own control rather than as clickable column headers.
-
-       Runa sorts by clicking a <th>, with aria-sort on the header saying which way. There are no
-       headers here — results are a datasourcecard list, because Stiler styles no table this
-       package can reach — so neither the affordance nor aria-sort exists to copy. What the user
-       actually needs is the ORDER, so it gets a control of its own above the list, and the chosen
-       order is announced through the status line below instead of through aria-sort.
-
-       fieldset + legend rather than a div with a label: the buttons are one choice made of several
-       controls, and a legend is what names that group for a screen reader without inventing ARIA.
-       `form-fieldset` (border and padding off) and `form-element__label` are both Stiler's.
-
-       Always rendered, including when the search found nothing. Hiding it would take the button
-       the user just pressed out of the document mid-interaction, dropping focus to <body> — the
-       same reason the Søk button is never disabled. *@
     @* The ordering used to live in a "Sorter etter" fieldset here. It moved into the column
-       header, which is where helsedata and Runa both put it, and where a reader looks for it.
-       Keeping both would offer the same choice twice. *@
+       header, which is where helsedata and Runa both put it, and where a reader looks for it:
+       the header cell is the button, and it carries the aria-sort. Keeping both would offer the
+       same choice twice. *@
 
     @* One polite status line, holding one message at a time: loading, the result summary,
        or "no matches". aria-atomic makes a screen reader read the whole new sentence rather
@@ -291,17 +277,6 @@ else
             <a class="skiplink-pagination" href="#@PaginationId">@T.SkipToPagination</a>
         }
 
-        @* A card list, not a table. Stiler styles no table this package could use — the only
-           table rules it has are scoped to `article.registerOwnerListPage` — so a <table> here
-           renders with 400-weight headers and no rules at all, which is exactly the raw-default
-           look this change exists to remove. helsedata's own datakildeutforsker lists results as
-           datasourcecards, so that is the shape adopted here: it needs no CSS from us, it wraps
-           instead of scrolling sideways (which retires the focusable scroll box the table needed),
-           and it drops the clipped <caption> in favour of a plain aria-label on the list.
-
-           aria-label rather than aria-labelledby: the name is the same sentence the status line
-           above shows, and pointing at that element would make the list's name change under a
-           screen reader every time the status line does. *@
         @* helsedata's own variable page builds its result grid from a <ul> and a header row of
            <div>s, not a <table> — there is not a single <table> element on the page. The column
            layout is theirs; what this markup has to get right is the nesting, because 132 of the
@@ -543,9 +518,11 @@ else
                                        page, named after the thing it describes rather than left
                                        anonymous among the host page's own.
 
-                                       `variable-explorer-source` is a handle, the fourth of ours
-                                       in the DOM and the same kind of name as the three before it:
-                                       nothing in this package or in Stiler defines a rule for it.
+                                       The drill-in that opens is named by the id
+                                       `variable-explorer-source-<instance>` and wears the class
+                                       `variable-explorer-drilldown` — a handle like the others,
+                                       and like them nothing in this package, in Stiler or in
+                                       helsedata's variables.css defines a rule for it.
                                        What dresses the panel is base styling for <dl class="variable-meta__grid variable-meta__grid-2">, exactly as
                                        for the variable's own panel above. *@
                                 }

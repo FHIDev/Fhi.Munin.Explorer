@@ -93,9 +93,14 @@ body {
 }
 
 /* ======================================================================
-   Stiler stand-in — everything below here is Fhi.Helsedata.Stiler's job
-   in the real host, with one exception marked out at the very bottom:
-   the pager's three class names, which Stiler does not define at all.
+   Stiler stand-in — everything from here down to the first "not Stiler"
+   divider is Fhi.Helsedata.Stiler's job in the real host. Past that
+   divider is the second stylesheet: `variables.css`, which helsedata's
+   own variable page carries and which the whole result vocabulary is
+   read back off, plus the base element styling neither stylesheet gives.
+   README.md, under "Rules the components follow", is the authoritative
+   account of which name belongs to which — this file is the same
+   division laid out as rules you can see.
    ====================================================================== */
 
 /* base/_headings.scss */
@@ -213,9 +218,11 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 }
 .infobox--bg-yellow { background-color: var(--warning-light); }
 
-/* components/_datasourcecard.scss — helsedata's own datakildeutforsker lists its results as
-   these cards, so the variabelutforsker does too rather than shipping a table Stiler has no
-   rules for. */
+/* components/_datasourcecard.scss — the shape the results had until `Fhi.Metadata-zs56s`, when
+   they became helsedata's own variable-page rows instead (`variable-data-list`, far below). The
+   component emits none of these names any more; they are kept because a real helsedata page loads
+   the whole of Stiler either way, and a stand-in that only carries what one component happens to
+   wear stops being a stand-in for Stiler. */
 .datasourcecard-list { padding: 0; margin: 0; }
 .datasourcecard-list__item { position: relative; display: block; list-style: none; }
 
@@ -275,11 +282,13 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 /* ---- not Stiler: helsedata's own variable page ----
 
-   Everything above is a stand-in for Stiler, which every helsedata page loads. These three are
-   not in Stiler at all — its compiled stylesheet has no pagination rule of any kind — they come
-   from the page-specific `variables.css` that helsedata's own variable page carries. The
-   component emits their names so that mounting it on that page needs nothing new, which means
-   any host mounting it anywhere else has to supply these itself, exactly as this sample does. */
+   Everything above is a stand-in for Stiler, which every helsedata page loads. Everything from
+   here on is the second stylesheet: `variables.css`, which helsedata's own variable page carries
+   and which Stiler knows nothing about — its compiled stylesheet has no pagination rule of any
+   kind, and none of the result vocabulary either. This block is the pager; the rows, the opened
+   panel and the column picker are further down, under their own heading. The component emits
+   these names so that mounting it on that page needs nothing new, which means any host mounting
+   it anywhere else has to supply them itself, exactly as this sample does. */
 
 .variables-pagination {
   margin-top: 24px;
@@ -344,7 +353,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    A host that provides none of this still gets a working panel — the nesting is what carries the
    hierarchy, and the values are Stiler's own square buttons either way. What it loses is the
    indentation that makes a delkilde look like it sits under its kilde. Scoped to the panel so none
-   of it can reach the results list, which is Stiler's datasourcecard-list. */
+   of it can reach the results list, which is helsedata's own variable-data-list. */
 
 .variable-explorer-filters { margin-bottom: 24px; }
 
@@ -423,39 +432,42 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   color: var(--grey60);
 }
 
-/* ---- not Stiler either: base element styling for the kilde and datasamling panel ----
+/* ---- not Stiler either: base element styling for the kilde and datasamling drill-in ----
 
-   One level in from the detail panel above, and the same reason a third time: what "Vis datakilde"
-   and "Vis datasamling" open is a heading and a <dl>, because Stiler has no key/value block whose
-   name can be read back off its compiled stylesheet. The package emits `variable-explorer-source`
-   as a handle and styles nothing itself.
+   The same reason a third time: what "Vis datakilde" and "Vis datasamling" open is a heading and a
+   <dl>, because Stiler has no key/value block whose name can be read back off its compiled
+   stylesheet. The package emits `variable-explorer-drilldown` as a handle and styles nothing
+   itself. Selecting on `variable-explorer-source` would match nothing — that name is an element id
+   (`variable-explorer-source-<instance>`, which is what names the region) and not a class. It was
+   a class while the kilde opened inside the variable's panel; the rules written against it then
+   sat here dead from the day that panel became a drill-in until this was noticed.
 
-   A host that has styled the detail panel has very nearly styled this one too. What is left is the
-   inset: without it the kilde reads as a sibling of the variable rather than as something inside
-   it, which is the one thing the nesting is there to say. */
-
-.variable-explorer-source {
-  margin-top: 12px;
-  padding-left: 16px;
-  border-left: 2px solid var(--grey30);
-}
+   A host that has styled the detail panel has very nearly styled this one too, and the rest of the
+   drill-in — the padding that separates it from the chrome above — is at the bottom of this file
+   with the other names of ours. There is no inset, because the drill-in is not nested: it takes
+   over the component's own area rather than opening inside the row. */
 
 /* Empty when there is nothing to report, and in the document either way — the same arrangement,
    and the same reason, as the detail panel's own status line. */
-.variable-explorer-source > p:empty { display: none; }
+.variable-explorer-drilldown > p:empty { display: none; }
 
-/* The panel's heading is rendered at whatever level keeps the host page's outline unbroken, so it
-   is matched by level rather than by element. Only the page margin is overridden: the size comes
-   from Stiler's own datasourcecard__heading. */
-.variable-explorer-source h2,
-.variable-explorer-source h3,
-.variable-explorer-source h4,
-.variable-explorer-source h5,
-.variable-explorer-source h6 { margin: 0 0 8px; }
+/* The drill-in's own heading — the datasamling case; a kilde is drawn by KildeView, which brings
+   its own. Rendered at whatever level keeps the host page's outline unbroken, so it is matched by
+   level rather than by element. Only the page margin is overridden: the size comes from Stiler's
+   own headline classes, which the heading also wears.
 
-.variable-explorer-source dl { margin: 0; }
-.variable-explorer-source dt { margin-top: 12px; }
-.variable-explorer-source dd { margin: 0; }
+   Direct children throughout, so none of this reaches into KildeView: its <dl>s wear helsedata's
+   variable-meta__grid and are styled by that further down, and a descendant selector here would
+   out-specify it and take its spacing away. */
+.variable-explorer-drilldown > h2,
+.variable-explorer-drilldown > h3,
+.variable-explorer-drilldown > h4,
+.variable-explorer-drilldown > h5,
+.variable-explorer-drilldown > h6 { margin: 0 0 8px; }
+
+.variable-explorer-drilldown > dl { margin: 0; }
+.variable-explorer-drilldown > dl > dt { margin-top: 12px; }
+.variable-explorer-drilldown > dl > dd { margin: 0; }
 
 /* ---- not Stiler either: the two-column layout ----
 
@@ -956,9 +968,88 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 /* The drill-in view. A kilde or datasamling takes over the component's area rather than nesting
    a third panel inside an open row — Runa navigates to a page for this, and a component with no
-   router gets closest by giving the reader the full width and a way back. */
+   router gets closest by giving the reader the full width and a way back. The base element styling
+   for what it holds — the heading, the status line, the <dl> — is up under "base element styling
+   for the kilde and datasamling drill-in"; this is the separation from the chrome above it. */
 .variable-explorer-drilldown {
   padding: 4px 0 24px;
+}
+
+/* ---- the Data tab's kodeverk ----
+
+   All five names below are ours, and every one is a handle: neither Stiler nor helsedata's
+   variables.css has a kodeverk section to borrow from, because their variable page has no such
+   panel at all. So the sample supplies what a host would — the arrangement, nothing more.
+
+   The list is a plain <ul> with its bullets off, because the group heading above it already says
+   these are kodeverk of one kind and a bullet per line adds nothing. */
+.variable-explorer-kodeverk {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 8px;
+}
+
+.variable-explorer-kodeverk__item {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--grey30, #e2e4ef);
+}
+
+.variable-explorer-kodeverk__item:last-child {
+  border-bottom: 0;
+}
+
+.variable-explorer-kodeverk__name {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* The reference is the thing a reader can look the kodeverk up by, so it is set in a monospace
+   face — a run of digits like 2336 or a dotted OID reads as an identifier rather than as prose. */
+.variable-explorer-kodeverk__reference {
+  margin: 2px 0 8px;
+  font-family: ui-monospace, "SFMono-Regular", "Consolas", monospace;
+}
+
+/* The open code list. Capped in height and scrolled rather than left to run: Kommunenummer is 885
+   codes, and a list that pushes the rest of the page out of reach is worse than one you scroll. */
+.variable-explorer-codes {
+  margin: 8px 0 4px;
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid var(--grey30, #e2e4ef);
+  border-radius: 4px;
+}
+
+/* One of the two tables this component emits — the other is the datasamlinger list in KildeView —
+   and the reason it is a table at all: four columns of code values have no honest alternative
+   shape. What makes that safe is that an element has a browser
+   default to fall back on — a host that styles nothing still gets aligned columns, where an
+   invented class name would render as nothing. */
+.variable-explorer-codes__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.variable-explorer-codes__table th,
+.variable-explorer-codes__table td {
+  padding: 6px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--grey30, #e2e4ef);
+}
+
+/* Sticky, so the columns stay named while a long kodeverk is scrolled past them. */
+.variable-explorer-codes__table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--grey10, #f4f5fa);
+  color: var(--grey70, #5a5f78);
+  font-weight: 600;
+}
+
+.variable-explorer-codes__table td:first-child {
+  font-family: ui-monospace, "SFMono-Regular", "Consolas", monospace;
+  white-space: nowrap;
 }
 
 /* ---- the column picker ----

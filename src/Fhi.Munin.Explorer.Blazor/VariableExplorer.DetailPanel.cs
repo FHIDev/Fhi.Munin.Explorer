@@ -564,18 +564,20 @@ public partial class VariableExplorer
     /// The codes as a table of Verdi, Navn, Gyldig fra and Gyldig til.
     /// </summary>
     /// <remarks>
-    /// A real <c>&lt;table&gt;</c>, and the only one this package emits. The results list is a
-    /// <c>datasourcecard</c> list rather than a table because Stiler styles no table and a card was
-    /// an honest alternative shape for it; four columns of code values have no such alternative —
+    /// A real <c>&lt;table&gt;</c>, one of the two this package emits — the other is the
+    /// datasamlinger list in <c>KildeView</c>. The results list is not one of them: it is
+    /// helsedata's own <c>variable-data-list</c>, a <c>&lt;ul&gt;</c> with a header row of
+    /// <c>&lt;div&gt;</c>s, because that is the shape their stylesheet dresses. Four columns of
+    /// code values have no such alternative shape —
     /// a definition list per code would lose the alignment that makes a code list readable at all.
     /// What makes it safe is that the fallback here is an element's own browser default rather than
     /// an invented class name: an unstyled table still aligns its columns, where an unstyled
     /// <c>kodeverk-table</c> would render as nothing.
     /// <para>
-    /// <c>variable-explorer-codes</c> is a handle, the same kind of name as the four before it, and
-    /// carries no styling of ours. Named from the link's own line above it rather than given a
-    /// <c>&lt;caption&gt;</c>, which is what the results list does and for the same reason — the
-    /// name is already on screen, one line up.
+    /// <c>variable-explorer-codes</c> is a handle, the same kind of name as the others in that
+    /// prefix, and carries no rule in either helsedata stylesheet. Named from the link's own line
+    /// above it rather than given a <c>&lt;caption&gt;</c>, which is what the results list does and
+    /// for the same reason — the name is already on screen, one line up.
     /// </para>
     /// </remarks>
     private RenderFragment CodesTable(int index, IReadOnlyList<KodeverkCode> codes) => builder =>
