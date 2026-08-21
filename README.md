@@ -14,7 +14,8 @@ saved variable lists follow later.
 
 | Project | What it is |
 | --- | --- |
-| `src/Fhi.Munin.Explorer` | The one package: the components a host renders, and everything behind them. |
+| `src/Fhi.Munin.Explorer` | The one package. Three folders, one per namespace. |
+| `src/Fhi.Munin.Explorer/Blazor` | The components a host renders. |
 | `src/Fhi.Munin.Explorer/Contracts` | DTOs and the client interface. |
 | `src/Fhi.Munin.Explorer/Client` | Typed `HttpClient` implementation + `AddMuninExplorer()`. |
 | `samples/ModernHost` | Blazor Web App — the everyday development host. |
