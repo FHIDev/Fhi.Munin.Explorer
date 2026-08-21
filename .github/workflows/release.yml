@@ -12,7 +12,8 @@ on:
       - 'v*'
 
 permissions:
-  contents: write # create the GitHub Release for the tag
+  contents: write  # create the GitHub Release for the tag
+  id-token: write  # mint the OIDC token Entra exchanges for a feed credential
 
 concurrency:
   # Deliberately not cancel-in-progress. Cancelling a publish halfway leaves some packages on
@@ -106,16 +107,35 @@ jobs:
         # tag and what actually got packed.
         run: ./scripts/assert-package-contents.sh artifacts "${{ steps.version.outputs.version }}"
 
+      # No stored credential. GitHub mints a short-lived OIDC token, Entra exchanges it for an
+      # access token, and the feed takes that as the password - the same way every other FHI repo
+      # that touches Azure already authenticates. Nothing here belongs to a person, so publishing
+      # does not stop when someone's PAT expires or their account is closed.
+      - name: Sign in to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
       - name: Push to the internal feed
-        env:
-          # A PAT today. The script does not care which kind of credential this is - the feed
-          # takes either a PAT or an Entra access token as the basic-auth password - so moving to
-          # federated OIDC later is a change to how this line is filled, not to the script.
-          NUGET_PUBLISH_TOKEN: ${{ secrets.ADO_PACKAGING_TOKEN }}
-        # Pushes in dependency order, retries a failed push, and skips anything a previous run
-        # already published — so a network blip halfway through is fixed by re-running rather
-        # than by hand. A genuinely reused tag still stops the run. See the script's header.
-        run: ./scripts/push-packages.sh artifacts "${{ steps.version.outputs.version }}"
+        # 499b84ac-1321-427f-aa17-267ca6975798 is Azure DevOps' own resource id, the same one every
+        # ADO client asks for. The token it returns is what the feed reads as the basic-auth
+        # password - verified against Fhi.Helsedata.no, which accepts it exactly as it accepts a PAT.
+        #
+        # If adding the service principal to the Azure DevOps organisation turns out to need rights
+        # we have not got, the fallback is one line: drop the two steps above and set
+        # NUGET_PUBLISH_TOKEN from a PAT secret instead. The script does not care which it gets.
+        run: |
+          NUGET_PUBLISH_TOKEN=$(az account get-access-token \
+            --resource 499b84ac-1321-427f-aa17-267ca6975798 \
+            --query accessToken -o tsv)
+          export NUGET_PUBLISH_TOKEN
+
+          # Pushes in dependency order, retries a failed push, and skips anything a previous run
+          # already published - so a network blip halfway through is fixed by re-running rather
+          # than by hand. A genuinely reused tag still stops the run. See the script's header.
+          ./scripts/push-packages.sh artifacts "${{ steps.version.outputs.version }}"
 
       - name: Create the GitHub Release
         uses: softprops/action-gh-release@v2
