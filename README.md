@@ -60,9 +60,9 @@ These are not style preferences — each one is a host that breaks otherwise.
     furniture: `searchbox__freetext*`, `hd-button-square` with its `button-square--*` modifiers,
     `form-element__label`, `form-fieldset`, `headline`, `caption`, `infobox`, `hd-button-reset`,
     `screenreader-only`.
-  - `variables.css`, which helsedata's own variable page carries, for the whole result vocabulary.
-    Since `Fhi.Metadata-zs56s` the component renders that page's DOM rather than a shape of its
-    own: rows are `variable-data-list` / `variable-data-list__item*` / `variable-dataitem-main*`,
+  - `variables.css`, the second stylesheet, for the whole result vocabulary. Since
+    `Fhi.Metadata-zs56s` the component renders that page's DOM rather than a shape of its own:
+    rows are `variable-data-list` / `variable-data-list__item*` / `variable-dataitem-main*`,
     the opened panel is `variable-meta*`, the list around them is `variable-explorer-container` /
     `variable-explorer-results` / `variable-explorer-header*`, the pager is `variables-pagination*`
     plus `skiplink-pagination`, and the column picker is `variable-explorer-header__actions*` with

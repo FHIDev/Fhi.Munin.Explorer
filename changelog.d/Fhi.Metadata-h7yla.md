@@ -5,6 +5,4 @@ category: Notes for hosts
   helsedata.no — `/no/`, `/no/variabler/` and `/no/datakilder/` load an identical seven bundles —
   so a host inside their estate has the result vocabulary wherever the component is mounted, not
   only on the variable page; and a host outside has to supply the whole of that vocabulary, the
-  rows and the opened panel and the column picker as well as the pager. Both sample stylesheets
-  carried the same stale claim beside a note recording the verified one, and now agree with it.
-  (Fhi.Metadata-h7yla)
+  rows and the opened panel and the column picker as well as the pager. (Fhi.Metadata-h7yla)
