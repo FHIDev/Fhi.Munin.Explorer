@@ -18,9 +18,13 @@ namespace Fhi.Munin.Explorer.Tests;
 /// <see cref="KildeView.DataCollectionsHeading"/> are the whole reason this is a shared core rather
 /// than two views, and no explorer in this repository wires either: Kelda is what will.
 /// <see cref="KildeView.HeadingLevel"/> and <see cref="KildeView.HeadingId"/> are wired — the
-/// explorer passes both at VariableExplorer.razor:104-107 — but its own tests assert nothing about
-/// what comes out, so the levels the blocks land on and the id the landmark is named by went
-/// unchecked either way.
+/// explorer passes both at VariableExplorer.razor:104-107 — and the explorer's tests already follow
+/// two of the things that come out: the title's level, mounted at h1 and asserted h2
+/// (<c>Source_WhenThePanelIsOpen_ThenItsHeadingSitsBelowTheCardsInTheOutline</c>,
+/// VariableExplorerTest.cs:5763), and the id the landmark is named by, resolved back to this view's
+/// name heading (<c>Source_WhenOpened_ThenTheToggleAndTheRegionAreWiredToEachOther</c>, :5478).
+/// What no test covered is narrower: the levels the blocks under the title land on, and either
+/// parameter with the view rendered whole rather than reached through the drill-in.
 /// <para>
 /// The class-name check is the one thing here that was already hanging somewhere: the explorer's
 /// own <c>Source_WhenAPanelIsOpen_ThenItIsBuiltFromShapesRatherThanFromANewStyleName</c>
@@ -143,28 +147,38 @@ public class KildeViewTest : BunitContext
         });
 
     /// <summary>The sidebar's first box — the facts every source has.</summary>
-    private static IElement SourceInformation(IRenderedComponent<KildeView> cut) => Box(cut, 0, "source information");
+    private static IElement SourceInformation(IRenderedComponent<KildeView> cut) =>
+        Box(cut, T => T.HeadingSourceInformation);
 
     /// <summary>The sidebar's second box — the counts and dates.</summary>
-    private static IElement Statistics(IRenderedComponent<KildeView> cut) => Box(cut, 1, "statistics");
+    private static IElement Statistics(IRenderedComponent<KildeView> cut) =>
+        Box(cut, T => T.HeadingStatistics);
 
     /// <summary>
-    /// One sidebar box, by position, saying which one is missing when it is.
+    /// One sidebar box, found by the heading over it rather than by its position.
     /// </summary>
     /// <remarks>
-    /// A box whose every fact is blank draws no <c>dl</c> at all, so the positions shift: a source
-    /// with nothing typed in would hand back the statistics box for a call asking after the source
-    /// information, and an index error naming neither for the call after that. Reported by name
-    /// instead, because a box that stopped drawing is the finding rather than the accident.
+    /// A box whose every fact is blank draws no <c>dl</c> at all, while its heading is drawn
+    /// unconditionally — so the boxes slide up under headings that stay put, and a position would
+    /// hand back the statistics for a call asking after the source information without being able
+    /// to say it had. The heading can say it: the lookup starts there, and a box that stopped
+    /// drawing is reported as itself rather than as whatever the next call misreads.
     /// </remarks>
-    private static IElement Box(IRenderedComponent<KildeView> cut, int index, string name)
+    private static IElement Box(IRenderedComponent<KildeView> cut, Func<Texts, string> boxHeading)
     {
-        var boxes = cut.FindAll(".variable-explorer-kilde__aside dl");
+        var aside = cut.Find(".variable-explorer-kilde__aside");
+        var name = boxHeading(Texts.For(cut.Instance.Language));
 
-        return index < boxes.Count
-            ? boxes[index]
+        var heading = aside.Children.FirstOrDefault(e => e.TextContent == name)
+                      ?? throw new InvalidOperationException(
+                          $"No '{name}' heading in the sidebar, only: "
+                          + $"{string.Join(", ", aside.Children.Select(e => e.TextContent))}.");
+
+        return heading.NextElementSibling is { TagName: "DL" } box
+            ? box
             : throw new InvalidOperationException(
-                $"The sidebar drew {boxes.Count} box(es), so there is no {name} box to read.");
+                $"The '{name}' heading is followed by {heading.NextElementSibling?.TagName ?? "nothing"} "
+                + "rather than by its own box, so that box drew no facts at all.");
     }
 
     private static IReadOnlyList<string> Labels(IElement list) =>
