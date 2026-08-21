@@ -94,7 +94,17 @@ Login to the dashboard at https://localhost:17124/login?t=<token>
 
 Open **that** link, not the bare port. Without the token the dashboard just asks for one, and the token only appears in the startup output.
 
-The site comes up on `https://localhost:5000`, but not quickly: Optimizely's CMS boot plus the database migrations take minutes on a cold container, during which the port is bound and simply never answers. That is not a hang.
+The site comes up on **`https://localhost:5001`** — title "Finn helsedata". `:5000` is bound too and answers 404, so it looks like the site is broken when you have the wrong one of the pair; the backend API is on `:5064`/`:7245` (Scalar) and `:7150` answers 401 by design. Read the dashboard's resource list rather than guessing, since Aspire assigns these.
+
+It does not come up quickly: Optimizely's CMS boot plus the database migrations take minutes on a cold container, during which the port is already bound and simply never answers. That is not a hang.
+
+To prove the local Stiler actually reached the page, ask their site for it rather than trusting the flag:
+
+```bash
+curl -sk https://localhost:5001/_content/Fhi.Helsedata.Stiler/css/main.css | grep -c munin-explorer
+```
+
+A non-zero count means the ProjectReference won. Zero means the PackageReference did, and the flag did not take.
 
 ### Working against a local Stiler
 
