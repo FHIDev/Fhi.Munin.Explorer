@@ -4497,6 +4497,33 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
+    public void Kodeverk_WhenTheWholeVariableIsOpen_ThenItsHeadingWearsANameAStylesheetDefines()
+    {
+        // The kodeverk section is the one block heading the package builds in C# rather than in
+        // markup, and it kept headline-sm through the round that swept KildeView. That name is a
+        // plausible-looking member of a family that exists and is defined by no stylesheet, so the
+        // heading rendered at the browser's own <h*> size inside an otherwise styled page — the
+        // failure the whole no-CSS approach exists to avoid.
+        var cut = RenderWith(KodeverkRows());
+
+        Toggles(cut)[0].Click();
+        cut.FindAll("button").First(b => b.TextContent == "Vis hele variabelen").Click();
+
+        var heading = SourcePanel(cut).QuerySelectorAll("h1, h2, h3, h4, h5, h6")
+                                      .First(h => h.TextContent == "Kodeverk");
+
+        Assert.Equal("headline headline-s", heading.ClassName);
+
+        // And nothing else in the view wears a name from outside the verified scale either, since
+        // the eight markup headings above it carried the same one.
+        Assert.All(SourcePanel(cut).QuerySelectorAll("[class]")
+                        .SelectMany(e => e.ClassName!.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+                        .Where(k => k.StartsWith("headline-", StringComparison.Ordinal))
+                        .Distinct(),
+                   k => Assert.Contains(k, (string[])["headline-s", "headline-xxs"]));
+    }
+
+    [Fact]
     public void Detail_WhenAValueIsMissing_ThenTheRowStillDrawsAndSaysSo()
     {
         // A variable with nothing but a name is a normal row in this catalogue, and a panel that

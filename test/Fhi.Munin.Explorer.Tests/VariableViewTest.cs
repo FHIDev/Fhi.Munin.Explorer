@@ -331,6 +331,38 @@ public class VariableViewTest : BunitContext
     }
 
     [Fact]
+    public void Headings_WhenEveryBlockIsShowing_ThenNoneWearsANameOutsideStilersScale()
+    {
+        // The bug this was written for. A borrowed name no stylesheet defines is every bit as inert
+        // as an invented one and far harder to notice, because it sits in a family that does exist:
+        // headline-sm wore that disguise on all eight block headings here until Fhi.Metadata-nkqzw,
+        // so they rendered at the browser's own <h*> size inside an otherwise styled page. The same
+        // name was swept out of KildeView one round earlier and this view was missed, which is why
+        // the scale is pinned here too rather than only where the first sighting was.
+        var detail = Detail() with
+        {
+            DataFrom = new DateTimeOffset(2019, 1, 1, 0, 0, 0, TimeSpan.Zero),
+            DataTo = new DateTimeOffset(2023, 1, 1, 0, 0, 0, TimeSpan.Zero),
+            Versions = [Version(Guid.NewGuid())],
+            Statistics = [new Statistic { Id = Guid.NewGuid(), Code = "1", PreferredTerm = "Ja" }],
+            AllVariabelgrupper = [new VariabelgruppeReference { Id = Guid.NewGuid(), Name = "Funksjon" }],
+            AllDatasamlinger = [new DatasamlingReference { Id = Guid.NewGuid(), Name = "ALS 2019" }],
+        };
+
+        var cut = Render(detail);
+
+        Assert.All(cut.FindAll("[class]")
+                      .SelectMany(e => e.ClassName!.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+                      .Where(k => k.StartsWith("headline-", StringComparison.Ordinal))
+                      .Distinct(),
+                   k => Assert.Contains(k, (string[])["headline-s", "headline-xxs"]));
+
+        // A name is only pinned if it rendered at all, and every one of these blocks is optional
+        // bar the sidebar's own heading: the view's name plus its eight blocks.
+        Assert.Equal(9, cut.FindAll(".headline-s").Count);
+    }
+
+    [Fact]
     public void Heading_WhenTheReaderIsEnglish_ThenTheCataloguesOwnNameIsMarkedNorwegian()
     {
         var cut = Render(Detail(), "en");

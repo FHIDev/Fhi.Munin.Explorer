@@ -390,7 +390,7 @@ public partial class VariableExplorer
         }
 
         builder.OpenElement(0, $"h{Math.Min(RowLevel + 1, 6)}");
-        builder.AddAttribute(1, "class", "headline headline-sm");
+        builder.AddAttribute(1, "class", "headline headline-s");
         builder.AddContent(2, T.HeadingKodeverk);
         builder.CloseElement();
 
