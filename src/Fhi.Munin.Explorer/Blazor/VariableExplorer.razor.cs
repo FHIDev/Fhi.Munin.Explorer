@@ -81,6 +81,15 @@ internal enum PanelTab
 /// exactly like the <c>variable-explorer</c> root.
 /// </para>
 /// <para>
+/// The hierarchy trail over the results adds two names of ours — <c>variable-explorer-breadcrumb</c>
+/// and its <c>__clear</c> — and reuses <c>variable-explorer-crumb</c>, which the variable panel's
+/// kilde trail already wears, for the steps themselves. It is an <c>&lt;ol&gt;</c> of
+/// <c>&lt;button&gt;</c>s for the reason that trail is one: Stiler has no breadcrumb rule that can
+/// be read back off its compiled stylesheet, so the chevrons between the steps are a host's to
+/// draw and a host that draws nothing gets a numbered list that still reads correctly, in order,
+/// with the right names.
+/// </para>
+/// <para>
 /// The column picker adds eight names, all of them helsedata's own and none of them ours. They
 /// come from the same <c>variables.css</c> as the rest of the result vocabulary.
 /// <c>variable-explorer-header</c> with its <c>__actions</c> and <c>__actions-button</c> place
@@ -226,10 +235,28 @@ public partial class VariableExplorer : ComponentBase
     /// <c>AddLocalization()</c>, so injecting IStringLocalizer would throw at render time.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Set this to match the host page's own <c>lang</c>. The component deliberately does
     /// not put a <c>lang</c> on its root: the UI strings follow this parameter, but the
     /// variable names and descriptions coming from Munin are Norwegian either way, and the
     /// result rows are marked as Norwegian for exactly that reason.
+    /// </para>
+    /// <para>
+    /// A region is allowed and ignored: <c>en-GB</c> and <c>en-US</c> read as English, <c>nb-NO</c>
+    /// as Norwegian. That is not decoration — helsedata's solution holds two representations of the
+    /// same choice, the CMS branch name (<c>no</c>/<c>en</c>) and a full culture from
+    /// <c>LanguageExtensions</c> (<c>nb-NO</c>/<c>en-GB</c>), and which one reaches the mount point
+    /// is the host's to decide. Anything else, including nothing, is Norwegian.
+    /// </para>
+    /// <para>
+    /// Read once per render rather than watched: changing it on a component already on screen
+    /// re-renders every string this package owns, but not the datatype facet names, which the API
+    /// resolves server side and this component only asks for when it fetches counts. A host that
+    /// wants a live switch should re-mount the component rather than swap the parameter under it.
+    /// That is not a limitation anyone in helsedata's estate meets today — both sample hosts set
+    /// this once, and the CMS language switch is a full page load — and widening it means deciding
+    /// where the mount point is first.
+    /// </para>
     /// </remarks>
     [Parameter] public string Language { get; set; } = "no";
 
@@ -1065,18 +1092,26 @@ public partial class VariableExplorer : ComponentBase
 
     /// <summary>The reader's language as a tag, and the marker for text that is not in it.</summary>
     /// <remarks>
-    /// These and the property resolution below delegate to <see cref="CatalogueProperties"/>, which
-    /// is where the catalogue's own properties are resolved for every explorer in this package
-    /// rather than once per component. The kildeutforsker draws properties the same way, and a
-    /// second copy of this would drift from the first the moment either was edited.
+    /// <c>Reader</c> rather than <c>ReaderLanguage</c>: the type that resolves it is
+    /// <see cref="ReaderLanguage"/>, and a member of that name shadows the type inside every
+    /// <c>VariableExplorer</c> partial, so <c>ReaderLanguage.Of(...)</c> would not compile in any
+    /// of them. <see cref="VariableView"/> and <see cref="KildeView"/> already call it
+    /// <c>Reader</c>; all three agree now.
+    /// <para>
+    /// The marking and the property resolution below delegate to
+    /// <see cref="CatalogueProperties"/>, which is where the catalogue's own properties are
+    /// resolved for every explorer in this package rather than once per component. The
+    /// kildeutforsker draws properties the same way, and a second copy of this would drift from
+    /// the first the moment either was edited.
+    /// </para>
     /// </remarks>
-    private string ReaderLanguage => CatalogueProperties.Reader(Language);
+    private string Reader => ReaderLanguage.Of(Language);
 
-    private string? Foreign(string language) => CatalogueProperties.Foreign(language, ReaderLanguage);
+    private string? Foreign(string language) => CatalogueProperties.Foreign(language, Reader);
 
     /// <summary>The variable's curated properties, resolved for this reader.</summary>
     private List<PropertyRow> PropertyRows(VariableDetail detail) =>
-        CatalogueProperties.Rows(detail.PropertyMetadata, detail.AdditionalProperties, ReaderLanguage);
+        CatalogueProperties.Rows(detail.PropertyMetadata, detail.AdditionalProperties, Reader);
 
     /// <summary>Which tab of the open panel is showing.</summary>
     /// <remarks>

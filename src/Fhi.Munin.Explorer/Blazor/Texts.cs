@@ -152,6 +152,14 @@ internal sealed record Texts(
     string HasKildekodeverk,
     string IncludeHistorical,
     string NoVariabelgrupper,
+    // The hierarchy trail over the results. FieldSource, FieldDataCollection and
+    // FieldVariableGroup name three of its four levels already — the same word for the same thing
+    // as in the facets and the columns — so only the delkilde needs one of its own, and it is
+    // needed as the step's own fallback label rather than as a facet: the panel nests delkilder
+    // under their kilde instead of giving them a facet to head.
+    string FieldDelkilde,
+    string HierarchyTrail,
+    string ClearHierarchy,
     // Prose for the two facets the API reports as raw tokens: kildetype as its enum name, and
     // datatype as a bare code with no label at all. Both are Munin's own explorer wording, so
     // the two UIs name the same value the same way. A token missing from either falls back to
@@ -177,6 +185,15 @@ internal sealed record Texts(
     // clause order. The filter count is in it for the same reason the ordering is: with the
     // facets collapsed, the sentence is the only place that says the list is narrowed at all.
     Func<int, int, int, string?, int, string, string, string> ResultSummary,
+    // (text, others) — a trail step standing for more than one selected value on its level, e.g.
+    // "Dødsårsaksregisteret (+2)". Assembled here rather than in C# because where the count goes,
+    // and whether a language writes it as a suffix at all, is that language's business.
+    Func<string, int, string> CrumbMore,
+    // (text) — a trail step's accessible name, which has to say what pressing it does. It starts
+    // with the step's visible text so a speech-input user saying what they can see still hits the
+    // control (WCAG 2.5.3), which is a constraint on the whole sentence and therefore belongs in
+    // the sentence rather than in the caller.
+    Func<string, string> CrumbLabel,
     // (search, filters) — the empty state. It names the filters because a search that matches
     // nothing *with three filters on* is a different thing to be told than one that matches
     // nothing at all, and the second reads as "this catalogue does not have it".
@@ -429,6 +446,9 @@ internal sealed record Texts(
         HasKildekodeverk: "Har kildekodeverk",
         IncludeHistorical: "Vis historiske",
         NoVariabelgrupper: "Velg en datakilde for å se variabelgrupper.",
+        FieldDelkilde: "Delkilde",
+        HierarchyTrail: "Valgt hierarki",
+        ClearHierarchy: "Fjern hierarkifilteret",
         KildeTypeNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["sentraltHelseregister"] = "Sentralt helseregister",
@@ -481,6 +501,8 @@ internal sealed record Texts(
             };
             return $"{found}{forSearch}{narrowed}, sortert på {field}, {direction}";
         },
+        CrumbMore: (text, others) => $"{text} (+{others})",
+        CrumbLabel: text => $"{text} – fjern nivåene under",
         NoResults: (search, filters) =>
         {
             var forSearch = search is null ? "Ingen variabler passet søket" : $"Ingen variabler passet søket «{search}»";
@@ -603,6 +625,9 @@ internal sealed record Texts(
         HasKildekodeverk: "Has source code system",
         IncludeHistorical: "Show historical",
         NoVariabelgrupper: "Select a data source to see variable groups.",
+        FieldDelkilde: "Sub-source",
+        HierarchyTrail: "Selected hierarchy",
+        ClearHierarchy: "Clear the hierarchy filter",
         KildeTypeNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["sentraltHelseregister"] = "Central health registry",
@@ -651,12 +676,19 @@ internal sealed record Texts(
             };
             return $"{found}{forSearch}{narrowed}, sorted by {field}, {direction}";
         },
+        CrumbMore: (text, others) => $"{text} (+{others})",
+        CrumbLabel: text => $"{text} – remove the levels below",
         NoResults: (search, filters) =>
         {
             var forSearch = search is null ? "No variables matched your search" : $"No variables matched your search for “{search}”";
             return filters == 0 ? $"{forSearch}." : $"{forSearch} with the filters you have chosen.";
         });
 
-    public static Texts For(string? language) =>
-        string.Equals(language, "en", StringComparison.OrdinalIgnoreCase) ? En : No;
+    /// <summary>The words for a reader, defaulting to Norwegian for anything that is not English.</summary>
+    /// <remarks>
+    /// Norwegian rather than a throw for an unrecognised token: the catalogue is Norwegian and the
+    /// readers are, so falling back to it leaves a page someone can still use, where a component
+    /// that refused to render would take the whole host page down with it.
+    /// </remarks>
+    public static Texts For(string? language) => ReaderLanguage.IsEnglish(language) ? En : No;
 }

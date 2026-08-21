@@ -1,3 +1,4 @@
+using System.Globalization;
 using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
 
@@ -162,5 +163,27 @@ public class CataloguePropertiesTest
         var groups = CatalogueProperties.Groups(metadata, values, "no");
 
         Assert.Equal(["Datainnsamling"], groups.Select(g => g.Name));
+    }
+
+    [Fact]
+    public void Formatting_WhenTheHostHasNoCultureOfThatName_ThenItIsTheInvariantOneRatherThanAThrow()
+    {
+        // The branch no host running this suite can otherwise take. It exists for a host built with
+        // InvariantGlobalization, where PredefinedCulturesOnly makes every name fail — including
+        // "nb-NO" and "en" — and that switch is set at build time, so it cannot be turned on
+        // in-process. Reached the other way round instead, with a name no host resolves either way.
+        // Left unreached, the fix ships unverified in both directions, and the failure it prevents
+        // is a TypeInitializationException, which cannot be retried once thrown.
+        Assert.Same(CultureInfo.InvariantCulture, CatalogueProperties.Formatting("not a culture name"));
+    }
+
+    [Fact]
+    public void CatalogueOrder_WhenACultureHasFailedToResolve_ThenTheTypeStillInitialises()
+    {
+        // The second direction. A throw out of the initialiser above takes this field with it and
+        // every property row on the page, so the assertion worth making is not what it sorts but
+        // that touching it at all comes back.
+        Assert.NotNull(CatalogueProperties.CatalogueOrder);
+        Assert.Equal(0, CatalogueProperties.CatalogueOrder.Compare("Ås", "Ås"));
     }
 }

@@ -29,7 +29,7 @@ public sealed partial class KildeView : ComponentBase
     [Parameter, EditorRequired]
     public KildeDetail? Kilde { get; set; }
 
-    /// <summary>The reader's language: <c>no</c> (default) or <c>en</c>.</summary>
+    /// <inheritdoc cref="VariableExplorer.Language"/>
     [Parameter]
     public string? Language { get; set; }
 
@@ -68,7 +68,7 @@ public sealed partial class KildeView : ComponentBase
 
     private Texts T => Texts.For(Language);
 
-    private string Reader => CatalogueProperties.Reader(Language);
+    private string Reader => ReaderLanguage.Of(Language);
 
     /// <summary>The level for the two block headings, and for each metadata group under them.</summary>
     private int BlockLevel => Math.Min(HeadingLevel + 1, 6);
