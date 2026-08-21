@@ -125,6 +125,15 @@ internal sealed record Texts(
     string StatisticsAccumulated,
     string ShowWholeVariable,
     string HeadingKodeverk,
+
+    // The version history in the whole-variable view.
+    string HeadingVersionHistory,
+    string VersionUnnamed,
+    string VersionCurrent,
+    string VersionActive,
+    string VersionHistorical,
+    string FieldValidFrom,
+    string FieldValidTo,
     // Prose for the identification level, which the API reports as a raw token the same way
     // kildetype is. A token missing from this falls back to what the API sent.
     IReadOnlyDictionary<string, string> PersonIdentificationNames,
@@ -212,6 +221,19 @@ internal sealed record Texts(
     /// reading "Statistikk (accumulated)" is ugly and honest; one silently reading "Statistikk"
     /// would tell a reader these numbers mean something they may not.
     /// </remarks>
+    /// <summary>A version's status as a word, or as it arrived when we have not seen it before.</summary>
+    /// <remarks>
+    /// Only <c>Active</c> has come back from the test API - every version on every variable
+    /// sampled, including ones long superseded. Historical is in the vocabulary and is handled, but
+    /// has never been observed, so anything else is shown raw rather than guessed at or hidden.
+    /// </remarks>
+    public string VersionStatusLabel(string status) => status.ToLowerInvariant() switch
+    {
+        "active" => VersionActive,
+        "historical" or "historisk" => VersionHistorical,
+        _ => status
+    };
+
     public string StatisticsTypeLabel(string type) => type.ToLowerInvariant() switch
     {
         "yearly" => StatisticsYearly,
@@ -378,6 +400,13 @@ internal sealed record Texts(
         StatisticsAccumulated: "Akkumulert",
         ShowWholeVariable: "Vis hele variabelen",
         HeadingKodeverk: "Kodeverk",
+        HeadingVersionHistory: "Versjonshistorikk",
+        VersionUnnamed: "Versjon uten navn",
+        VersionCurrent: "Gjeldende",
+        VersionActive: "Aktiv",
+        VersionHistorical: "Historisk",
+        FieldValidFrom: "Gyldig fra",
+        FieldValidTo: "Gyldig til",
         PersonIdentificationNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["directlyIdentifiable"] = "Direkte identifiserbar",
@@ -546,6 +575,13 @@ internal sealed record Texts(
         StatisticsAccumulated: "Accumulated",
         ShowWholeVariable: "Show the whole variable",
         HeadingKodeverk: "Code lists",
+        HeadingVersionHistory: "Version history",
+        VersionUnnamed: "Version without a name",
+        VersionCurrent: "Current",
+        VersionActive: "Active",
+        VersionHistorical: "Historical",
+        FieldValidFrom: "Valid from",
+        FieldValidTo: "Valid to",
         PersonIdentificationNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["directlyIdentifiable"] = "Directly identifiable",

@@ -77,13 +77,18 @@ public sealed partial class VariableView : ComponentBase
     private static readonly HashSet<string> DrawnInTheSidebar = new(StringComparer.Ordinal) { "DataType" };
 
     /// <summary>Where the variable lives: which source, under which name.</summary>
-    private IReadOnlyList<(string Label, string? Value)> SourceInformation =>
+    /// <remarks>
+    /// The third element says whether the value is the catalogue's own words, the same as the kilde
+    /// view. The source's name and short name are stored once, in Norwegian; the kildetype is a
+    /// vocabulary this package translates. Marking all three, or none, would be wrong either way.
+    /// </remarks>
+    private IReadOnlyList<(string Label, string? Value, bool Norwegian)> SourceInformation =>
         Variable is not { } variable
             ? []
             : [
-                (T.FieldKildeName, variable.KildeName),
-                (T.FieldKildeShortName, variable.KildeShortName),
-                (T.FacetKildeType, T.KildeTypeLabel(variable.KildeType, variable.KildeType)),
+                (T.FieldKildeName, variable.KildeName, true),
+                (T.FieldKildeShortName, variable.KildeShortName, true),
+                (T.FacetKildeType, T.KildeTypeLabel(variable.KildeType, variable.KildeType), false),
             ];
 
     /// <summary>
@@ -149,7 +154,7 @@ public sealed partial class VariableView : ComponentBase
     };
 
     /// <summary>A definition list of label and value, skipping what the variable has not filled in.</summary>
-    private RenderFragment Facts(IReadOnlyList<(string Label, string? Value)> facts) => builder =>
+    private RenderFragment Facts(IReadOnlyList<(string Label, string? Value, bool Norwegian)> facts) => builder =>
     {
         var shown = facts.Where(f => !string.IsNullOrWhiteSpace(f.Value)).ToList();
 
@@ -163,7 +168,7 @@ public sealed partial class VariableView : ComponentBase
 
         var seq = 10;
 
-        foreach (var (label, value) in shown)
+        foreach (var (label, value, norwegian) in shown)
         {
             builder.OpenElement(seq, "div");
 
@@ -173,7 +178,8 @@ public sealed partial class VariableView : ComponentBase
             builder.CloseElement();
 
             builder.OpenElement(seq + 4, "dd");
-            builder.AddContent(seq + 5, value);
+            builder.AddAttribute(seq + 5, "lang", norwegian ? CatalogueProperties.Foreign("no", Reader) : null);
+            builder.AddContent(seq + 6, value);
             builder.CloseElement();
 
             builder.CloseElement();

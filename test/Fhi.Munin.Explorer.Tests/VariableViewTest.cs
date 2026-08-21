@@ -160,6 +160,130 @@ public class VariableViewTest : BunitContext
         Assert.DoesNotContain("Statistikk", Render(Detail()).Markup, StringComparison.Ordinal);
     }
 
+    private static VariableVersion Version(
+        Guid id, string name = "Basaldose", string status = "Active",
+        DateTimeOffset? from = null, DateTimeOffset? to = null, string description = "Avlest basaldose") =>
+        new()
+        {
+            VersionId = id,
+            PreferredTerm = name,
+            Description = description,
+            Status = status,
+            ValidFrom = from,
+            ValidTo = to,
+        };
+
+    private static string[] VersionRows(IRenderedComponent<VariableView> cut) =>
+        [.. cut.FindAll(".variable-explorer-versions > li > button")
+               .Select(b => b.TextContent.Replace("\n", " ").Trim())];
+
+    [Fact]
+    public void Versions_WhenOneIsTheVersionOnScreen_ThenItIsCurrentByIdRatherThanByPosition()
+    {
+        // The one that matters. Every version of every variable sampled on the test API comes back
+        // Active - including four superseded ones on a single variable - so a badge read off the
+        // status would call them all active and none of them current. It has to be an identity.
+        //
+        // The current version is deliberately NOT first here: taking position would pass on the
+        // real payload, where it happens to be, and be wrong the first time it is not.
+        var older = Guid.NewGuid();
+        var current = Guid.NewGuid();
+
+        var detail = Detail() with
+        {
+            VersionId = current,
+            Versions = [Version(older), Version(current)],
+        };
+
+        var rows = VersionRows(Render(detail));
+
+        Assert.Contains("Aktiv", rows[0], StringComparison.Ordinal);
+        Assert.DoesNotContain("Gjeldende", rows[0], StringComparison.Ordinal);
+        Assert.Contains("Gjeldende", rows[1], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Versions_WhenOneHasNoName_ThenItSaysSoRatherThanRenderingBlank()
+    {
+        // Three of five versions on a real variable have no preferred term. A blank row reads as
+        // something failing to draw; this says what is true — there is a version here, unnamed.
+        var detail = Detail() with { Versions = [Version(Guid.NewGuid(), name: "")] };
+
+        Assert.Contains("Versjon uten navn", VersionRows(Render(detail))[0], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Versions_WhenOneHasNoStartDate_ThenTheCellSaysSoAndDoesNotCollideWithTheEnd()
+    {
+        // Rendered as two cells, not one string. Joined, a version with no start reads
+        // "— – Pågående" — a dash immediately followed by a dash, which is a puzzle, not a date.
+        var detail = Detail() with { Versions = [Version(Guid.NewGuid(), from: null)] };
+        var cut = Render(detail);
+
+        Assert.Equal("—", cut.Find(".variable-explorer-versions__from").TextContent);
+        Assert.Equal("Pågående", cut.Find(".variable-explorer-versions__to").TextContent);
+    }
+
+    [Fact]
+    public void Versions_WhenAStatusIsOneWeHaveNeverSeen_ThenItIsShownRatherThanHidden()
+    {
+        // Only Active has ever come back. Historical is in the vocabulary and handled; anything
+        // else is shown as it arrived rather than silently dropped or guessed at.
+        var detail = Detail() with { Versions = [Version(Guid.NewGuid(), status: "Superseded")] };
+
+        Assert.Contains("Superseded", VersionRows(Render(detail))[0], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Versions_WhenTwoAreOpened_ThenBothStayOpen()
+    {
+        // Disclosures, not tabs. Comparing two versions is the reason to open the history at all,
+        // so closing one to read the next would remove the one thing it is for.
+        var detail = Detail() with
+        {
+            Versions = [Version(Guid.NewGuid()), Version(Guid.NewGuid(), name: "Basaldose eldre")],
+        };
+
+        var cut = Render(detail);
+        var toggles = cut.FindAll(".variable-explorer-versions > li > button");
+
+        toggles[0].Click();
+        cut.FindAll(".variable-explorer-versions > li > button")[1].Click();
+
+        Assert.All(cut.FindAll(".variable-explorer-versions > li > button"),
+                   b => Assert.Equal("true", b.GetAttribute("aria-expanded")));
+
+        Assert.All(cut.FindAll(".variable-explorer-versions__detail"),
+                   d => Assert.False(d.HasAttribute("hidden")));
+    }
+
+    [Fact]
+    public void Versions_WhenOneIsOpened_ThenItShowsWhatRunaShows()
+    {
+        var detail = Detail() with
+        {
+            Versions =
+            [
+                Version(Guid.NewGuid(), from: new DateTimeOffset(2021, 8, 24, 0, 0, 0, TimeSpan.Zero)),
+            ],
+        };
+
+        var cut = Render(detail);
+        cut.Find(".variable-explorer-versions > li > button").Click();
+
+        var panel = cut.Find(".variable-explorer-versions__detail").TextContent;
+
+        Assert.Contains("Avlest basaldose", panel, StringComparison.Ordinal);
+        Assert.Contains("Gyldig fra", panel, StringComparison.Ordinal);
+        Assert.Contains("Gyldig til", panel, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Versions_WhenThereAreNone_ThenNoHeadingPromisesAHistory()
+    {
+        Assert.DoesNotContain("Versjonshistorikk", Render(Detail()).Markup, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void Heading_WhenTheReaderIsEnglish_ThenTheCataloguesOwnNameIsMarkedNorwegian()
     {

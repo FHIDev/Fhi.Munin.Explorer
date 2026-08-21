@@ -39,6 +39,12 @@
                    rebuilt here. *@
                 @Sections
 
+                @if (Versions.Count > 0)
+                {
+                    @Heading(BlockLevel, T.HeadingVersionHistory, "headline headline-sm")
+                    @VersionHistory
+                }
+
                 @if (variable.Statistics.Count > 0)
                 {
                     @Heading(BlockLevel, StatisticsHeading, "headline headline-sm")
