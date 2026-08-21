@@ -35,6 +35,10 @@
 # go looking for in a stylesheet, and the cost of a false positive is one line — a rule, or an
 # entry in THEIRS. A false negative costs an unstyled component nobody notices.
 #
+# Which is why an extraction that finds nothing is an error rather than a pass: it is the false
+# negative applied to every name at once, and the clause that would report success having checked
+# none of them.
+#
 # Usage:
 #   scripts/assert-sample-css-in-step.sh
 #
@@ -106,8 +110,46 @@ if ! cmp -s "$MODERN" "$LEGACY"; then
 fi
 
 # Clause two, on either copy — they are identical by the time we get here.
-missing=()
+#
+# The extraction below IS clause two: a name it does not produce is a name nothing checks. So it
+# is checked before it is used, the way a missing stylesheet is checked above, rather than left to
+# a `while read` loop that runs zero times. There is no `-e` in the `set` line, the pipeline would
+# sit inside a process substitution where its exit status is discarded anyway, and grep's "No such
+# file or directory" is one stderr line scrolling past in a job that stays green — so an extraction
+# returning nothing would leave `missing` empty and print that every name is styled, having looked
+# at none of them. src/ moving, and the prefix being renamed away from `variable-explorer`, are
+# exactly the changes that need this clause most.
+if [ ! -d src ]; then
+  echo "::error::No src/ directory to read class names out of, so the check below would pass" >&2
+  echo "without checking anything. Has the solution layout moved? Run this from the checkout." >&2
+  exit 2
+fi
+
+names=()
 while read -r name; do
+  names+=("$name")
+done < <(
+  grep -rhoE 'variable-explorer[A-Za-z0-9_-]*' src/ \
+    | grep -vE -- '-$' \
+    | sort -u
+)
+
+# A floor, not a count. Names come and go with the component, so a check that had to be updated
+# every time one was added would be updated without being read. This one only has to tell "the
+# extraction works" from "the extraction found nothing" — 10 is far below the 33 the package
+# invents today and far above anything a stale regex returns.
+MIN_NAMES=10
+if [ "${#names[@]}" -lt "$MIN_NAMES" ]; then
+  echo "::error::Found only ${#names[@]} class name(s) under src/, below the floor of $MIN_NAMES." >&2
+  echo "Either the naming convention moved off the 'variable-explorer' prefix or the regex in this" >&2
+  echo "script went stale against it. Either way the check below cannot see what it is meant to" >&2
+  echo "check, which is an error rather than a pass — fix the extraction, and the floor with it if" >&2
+  echo "the package really does invent fewer than $MIN_NAMES names now." >&2
+  exit 2
+fi
+
+missing=()
+for name in "${names[@]}"; do
   case " ${THEIRS[*]} ${IDS[*]} " in
     *" $name "*) continue ;;
   esac
@@ -115,11 +157,7 @@ while read -r name; do
   # Anchored on both sides so `.variable-explorer-period__fill` does not answer for
   # `.variable-explorer-period`: a rule for the part is not a rule for the whole.
   grep -qE "\.${name}([^A-Za-z0-9_-]|\$)" "$MODERN" || missing+=("$name")
-done < <(
-  grep -rhoE 'variable-explorer[A-Za-z0-9_-]*' src/ \
-    | grep -vE -- '-$' \
-    | sort -u
-)
+done
 
 if [ ${#missing[@]} -gt 0 ]; then
   echo "::error::The sample stylesheet has no rule for ${#missing[@]} class name(s) the package invents:" >&2
