@@ -2,19 +2,19 @@
 
 @if (Kilde is { } kilde)
 {
-    <div class="variable-explorer-kilde">
+    <div class="munin-explorer-kilde">
 
         @* The name block. Runa puts the identifiers under the name rather than beside it, and the
            kildetype as a tag away from both — it is a category, not part of what this source is
            called. *@
-        <div class="variable-explorer-kilde__header">
+        <div class="munin-explorer-kilde__header">
             @* The catalogue holds one name, in Norwegian, so it is marked when the reader is not. *@
             @Heading(HeadingLevel, kilde.PreferredTerm, "headline headline-s margin--bottom",
                      HeadingId, CatalogueProperties.Foreign("no", Reader))
 
             @if (Identifiers is { } identifiers)
             {
-                <p class="caption margin--none variable-explorer-kilde__identifiers">@identifiers</p>
+                <p class="caption margin--none munin-explorer-kilde__identifiers">@identifiers</p>
             }
 
             @if (!string.IsNullOrWhiteSpace(kilde.Kildetype))
@@ -23,20 +23,20 @@
                    no `.tag` at all — their badges are `taglist`/`taglistitem`, and even those are
                    only styled inside `.listcontainer .listitemholder .taglist`, which never matches
                    this markup. The kildetype class below is ours and carries the whole badge. *@
-                <p class="variable-explorer-kilde__kildetype">@T.KildeTypeLabel(kilde.Kildetype, kilde.Kildetype)</p>
+                <p class="munin-explorer-kilde__kildetype">@T.KildeTypeLabel(kilde.Kildetype, kilde.Kildetype)</p>
             }
 
             @if (!string.IsNullOrWhiteSpace(kilde.Description))
             {
                 @* Norwegian whatever the reader's language: the catalogue stores one description. *@
-                <p class="ingress variable-explorer-kilde__description" lang="@CatalogueProperties.Foreign("no", Reader)">
+                <p class="ingress munin-explorer-kilde__description" lang="@CatalogueProperties.Foreign("no", Reader)">
                     @kilde.Description
                 </p>
             }
         </div>
 
-        <div class="variable-explorer-kilde__body">
-            <div class="variable-explorer-kilde__main">
+        <div class="munin-explorer-kilde__body">
+            <div class="munin-explorer-kilde__main">
 
                 @* The catalogue's own metadata. Which groups exist, what they are called and what
                    order they come in all arrive with the payload — see CatalogueProperties.Groups
@@ -70,7 +70,7 @@
                 @Sections
             </div>
 
-            <aside class="variable-explorer-kilde__aside">
+            <aside class="munin-explorer-kilde__aside">
                 @Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
                 @Facts(SourceInformation)
 

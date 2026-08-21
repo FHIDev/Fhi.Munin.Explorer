@@ -136,7 +136,7 @@ public partial class VariableExplorer
     private RenderFragment Breadcrumb(IReadOnlyList<HierarchyCrumb> crumbs) => builder =>
     {
         builder.OpenElement(0, "div");
-        builder.AddAttribute(1, "class", "variable-explorer-breadcrumb");
+        builder.AddAttribute(1, "class", "munin-explorer-breadcrumb");
 
         builder.OpenElement(2, "ol");
         builder.AddAttribute(3, "aria-label", T.HierarchyTrail);
@@ -156,7 +156,7 @@ public partial class VariableExplorer
             builder.SetKey(crumb.Level);
 
             builder.OpenElement(5, "button");
-            builder.AddAttribute(6, "class", "hd-button-reset variable-explorer-crumb");
+            builder.AddAttribute(6, "class", "hd-button-reset munin-explorer-crumb");
             builder.AddAttribute(7, "type", "button");
 
             // Null on every step but the last, so the attribute is left out rather than spelled
@@ -203,7 +203,7 @@ public partial class VariableExplorer
         // ascending run is the only cue a later reader has that nothing collides. The two ranges
         // are diffed apart today, so a collision here would be silent until the markup is renested.
         builder.OpenElement(15, "button");
-        builder.AddAttribute(16, "class", "hd-button-reset variable-explorer-breadcrumb__clear");
+        builder.AddAttribute(16, "class", "hd-button-reset munin-explorer-breadcrumb__clear");
         builder.AddAttribute(17, "type", "button");
         // The visible glyph is a multiplication sign, which is decoration rather than a word, so
         // the accessible name is spelled out. It is the whole name and not a suffix, because there

@@ -9,9 +9,9 @@
    their two compiled stylesheets: Fhi.Helsedata.Stiler site-wide for the ordinary page furniture,
    and `variables.css` — which despite the name every page of helsedata.no loads — for the whole
    result vocabulary. Since `Fhi.Metadata-zs56s` the results are their own variable page's rows
-   (`variable-data-list*`, `variable-dataitem-*`) in the list that page builds around them
-   (`variable-explorer-container`, `variable-explorer-results`, `variable-explorer-header*`), with
-   `variable-meta*` for the panel an open row shows and `variables-pagination*` plus
+   (`munin-explorer-data-list*`, `munin-explorer-dataitem-*`) in the list that page builds around them
+   (`munin-explorer-container`, `munin-explorer-results`, `munin-explorer-header*`), with
+   `munin-explorer-meta*` for the panel an open row shows and `variables-pagination*` plus
    `skiplink-pagination` for the pager. The
    pager was the first name borrowed from that file, because Stiler has no pagination rule at all,
    but it is one borrowed family among many now rather than the one exception it used to be. The
@@ -25,14 +25,14 @@
    guessing is the entire reason this ships as a component, so the names that carry styling have
    to be theirs. (The historical spelling is deliberate: it records the mistake as it was made.)
 
-   The rest of the `variable-explorer-*` prefix is ours and is not that mistake, because neither
+   The rest of the `munin-explorer-*` prefix is ours and is not that mistake, because neither
    stylesheet is expected to have a rule for it. Most of those names are handles — the root
-   `variable-explorer` class below, the DOM ids the codebehind mints, and `-filters`, `-detail`,
+   `munin-explorer` class below, the DOM ids the codebehind mints, and `-filters`, `-detail`,
    `-drilldown`, `-kodeverk*`, `-codes*`, `-group` and the nine `-kilde*` names in KildeView — on
    elements something else already dresses, a Stiler class they also wear or their own browser
    default, so an undefined one costs look and not information. Two are not handles and a host
-   outside helsedata has to draw them itself: `variable-explorer-crumb`, which is the only sign
-   the kilde step of the trail can be pressed, and `variable-explorer-period__track` / `__fill` /
+   outside helsedata has to draw them itself: `munin-explorer-crumb`, which is the only sign
+   the kilde step of the trail can be pressed, and `munin-explorer-period__track` / `__fill` /
    `__track--ongoing`, which are the period bar itself. README lists every one of them; see also
    the comment above the `<section>`.
 
@@ -46,11 +46,11 @@
    are spelled out for hosts in the doc comment on the component class in the codebehind. *@
 
 @* One of the few names here that is ours rather than helsedata's — the others are
-   `variable-explorer-filters`, `-detail`, `-drilldown` and `-group` further down. None of them
+   `munin-explorer-filters`, `-detail`, `-drilldown` and `-group` further down. None of them
    carry styling: nothing in this package, in Stiler or in helsedata's `variables.css` defines a
    rule for any of them. They exist so the component, and the parts of it a host or a test wants
    to reach, can be found in the DOM of a CMS page that renders a hundred other things. *@
-<section class="variable-explorer" aria-labelledby="@TitleId">
+<section class="munin-explorer" aria-labelledby="@TitleId">
     @* Rendered from HeadingLevel rather than hard-coded to h2: the level that keeps the
        document outline unbroken is only knowable at the mount site. *@
     @Heading
@@ -66,7 +66,7 @@
     @* The whole variable, in place. Same shape as the kilde drill-in beneath it, and for the same
        reason: with no router, a detail page is a view this component swaps to rather than a route
        the host has to own. *@
-    <div class="variable-explorer-drilldown"
+    <div class="munin-explorer-drilldown"
          id="@WholeVariableId"
          role="region"
          aria-labelledby="@WholeVariableHeadingId">
@@ -86,7 +86,7 @@ else if (_sourceKind is not null)
     @* A region named after what it shows, so a screen reader moving by landmark finds it and hears
        which kilde it landed in. The old nested panel carried these; taking them off when it became
        a view would have quietly removed it from the landmark list. *@
-    <div class="variable-explorer-drilldown"
+    <div class="munin-explorer-drilldown"
          id="@SourceId"
          role="region"
          aria-labelledby="@SourceHeadingId"
@@ -198,12 +198,12 @@ else
          raw browser default. Values are toggle buttons rather than checkboxes for the same reason:
          Stiler has a square button and this component already draws one in two states.
 
-       `variable-explorer-filters` carries no styling, in this package or in Stiler. It is the same
-       kind of name as the `variable-explorer` root above it: a hook for a host that wants to place
+       `munin-explorer-filters` carries no styling, in this package or in Stiler. It is the same
+       kind of name as the `munin-explorer` root above it: a hook for a host that wants to place
        the panel, and nothing this markup relies on. *@
     @if (_facets is not null)
     {
-        <fieldset class="form-fieldset variable-explorer-filters" aria-busy="@Busy">
+        <fieldset class="form-fieldset munin-explorer-filters" aria-busy="@Busy">
             <legend class="form-element__label">@FiltersLegend</legend>
 
             @foreach (var group in FacetGroups)
@@ -304,11 +304,11 @@ else
     @* The container and its header render whether or not anything was found. The ordering lives
        in that header, and hiding it when a search comes back empty would take the button the reader
        just pressed out of the document — the same reason the Søk button is never disabled. *@
-    <div class="variable-explorer-container">
-    <div class="variable-explorer-results">
+    <div class="munin-explorer-container">
+    <div class="munin-explorer-results">
     @* The column picker, above the list and inside the results column — which is where
-       helsedata's own variable page puts it, in `variable-explorer-header__actions`. Not inside
-       `variable-data-list__header` where the bead expected it: that row is the columns themselves,
+       helsedata's own variable page puts it, in `munin-explorer-header__actions`. Not inside
+       `munin-explorer-data-list__header` where the bead expected it: that row is the columns themselves,
        and it is the one element the picker must be able to empty without emptying itself. Not
        `sortable-dropdown` either, though the bead named it — see the remarks on ColumnPicker: that
        is their mobile sort control and it is `display: none` above 1280px.
@@ -316,7 +316,7 @@ else
        Rendered whether or not anything was found, for the reason the header is: a control that
        leaves the document when a search comes back empty takes the reader's place in it with it. *@
     @ColumnPicker()
-    <div class="variable-data-list__result">
+    <div class="munin-explorer-data-list__result">
     @ResultHeader()
 
     @if (_result is { Items.Count: > 0 })
@@ -343,7 +343,7 @@ else
            aria-label rather than aria-labelledby: the name is the same sentence the status line
            above shows, and pointing at that element would make the list's name change under a
            screen reader every time the status line does. *@
-        <ul class="variable-data-list" aria-label="@Summary" aria-busy="@Busy">
+        <ul class="munin-explorer-data-list" aria-label="@Summary" aria-busy="@Busy">
             @foreach (var v in _result.Items)
             {
                 @* Keyed by the variable's own id, the same reason the facet values are keyed: a row
@@ -353,7 +353,7 @@ else
                    moving it. *@
                 <li class="@RowItemClass(v)" @key="v.Id">
                     @* The row is the disclosure. helsedata makes the variable's own name the
-                       button — button.variable-dataitem-main__name carrying aria-expanded — which
+                       button — button.munin-explorer-dataitem-main__name carrying aria-expanded — which
                        is the APG accordion pattern, and it is what removes the dead affordance the
                        old card had: a pointer cursor inherited from .datasourcecard, which is a
                        link on their datakilde page and was never a link here.
@@ -361,23 +361,23 @@ else
                        There is no heading around it. One was tried, so results could be walked
                        with a screen reader's heading rotor — their selectors all match by descent,
                        so an element in between styles fine. But their row is a flex container and
-                       the name cell is sized by `variable-dataitem-main__name`, so a heading
+                       the name cell is sized by `munin-explorer-dataitem-main__name`, so a heading
                        becomes the flex item and the column stops lining up with its header.
                        Neither reference wraps it. *@
-                    <div class="variable-data-list__item__row">
-                        <div class="variable-dataitem-main">
+                    <div class="munin-explorer-data-list__item__row">
+                        <div class="munin-explorer-dataitem-main">
                         @RowChevron(v)
                         @RowHeading(v)
                         @InfoLine(v)
-                        </div>@* variable-dataitem-main — the columns end here *@
+                        </div>@* munin-explorer-dataitem-main — the columns end here *@
 
                     @* No description in the row. Neither reference has one: Runa's rows are a
                        single table row, and helsedata's are explicitly one line —
-                       `.variable-dataitem-main { height: 3.5rem; overflow: hidden; text-overflow:
+                       `.munin-explorer-dataitem-main { height: 3.5rem; overflow: hidden; text-overflow:
                        ellipsis }`. A paragraph under the columns fights both. The description is
                        the first field in the panel, one click away. *@
 
-                    </div>@* variable-data-list__item__row — the panel below is its SIBLING,
+                    </div>@* munin-explorer-data-list__item__row — the panel below is its SIBLING,
                               not its child, which is how helsedata nests it *@
 
                         @* The panel itself, drawn inside the row it belongs to — no routing, no
@@ -386,9 +386,9 @@ else
                            it is named after the variable rather than left anonymous among the host
                            page's own.
 
-                           `variable-explorer-detail` is a handle, like `variable-explorer` and
-                           `variable-explorer-filters`: nothing in this package or in Stiler defines
-                           a rule for it. What dresses the panel is base styling for <dl class="variable-meta__grid variable-meta__grid-2">, <ol> and
+                           `munin-explorer-detail` is a handle, like `munin-explorer` and
+                           `munin-explorer-filters`: nothing in this package or in Stiler defines
+                           a rule for it. What dresses the panel is base styling for <dl class="munin-explorer-meta__grid munin-explorer-meta__grid-2">, <ol> and
                            <ul>, for the reason the filter panel is built from <details> and <ul> —
                            Stiler has no definition list, no breadcrumb and no key/value block whose
                            names can be read back off its compiled stylesheet, and a name it has
@@ -403,7 +403,7 @@ else
                                InvalidCharacterError from setAttribute - the panel then never opens.
                                bUnit renders it without complaint, so the suite stays green and only
                                a real browser shows the failure. Comments go above the element. *@
-                            <div class="variable-meta variable-explorer-detail"
+                            <div class="munin-explorer-meta munin-explorer-detail"
                                  id="@DetailId(v)"
                                  role="region"
                                  aria-labelledby="@DetailToggleId(v)"
@@ -424,8 +424,8 @@ else
                                        Runa's — what the variable IS, and what its data holds —
                                        because Runa is what replaces helsedata's variable page, so
                                        it decides the content. helsedata decides the dress:
-                                       variable-meta__tabs, __tab, __tab--active, __body and
-                                       Stiler's hd-button-reset are all theirs, and variable-meta
+                                       munin-explorer-meta__tabs, __tab, __tab--active, __body and
+                                       Stiler's hd-button-reset are all theirs, and munin-explorer-meta
                                        carries 204 rules.
 
                                        Only the selected tab's button is in the tab order — the
@@ -434,7 +434,7 @@ else
                                        which is what the APG tabs pattern replaces those stops
                                        with; without it the panel would be unreachable by keyboard
                                        rather than merely awkward. *@
-                                    <div class="variable-meta__tabs"
+                                    <div class="munin-explorer-meta__tabs"
                                          role="tablist"
                                          aria-label="@T.TabDetails"
                                          @onkeydown="TabKey">
@@ -453,12 +453,17 @@ else
                                         }
                                     </div>
 
-                                    @* Unnamed on purpose. This wrapper wore `variable-meta__body`, which reads as one of
-                                         helsedata's `variable-meta` family but is not — they define the
-                                         family, not this member, so the name promised styling that never
-                                         existed anywhere. *@
+                                    @* Unnamed on purpose. This wrapper carried a name in helsedata's own meta family
+                                         that they never defined a rule for, so it promised styling that
+                                         existed nowhere. Removed rather than renamed: after the
+                                         munin-explorer rename it would be ours, and we would then owe it
+                                         a rule it does not need.
+
+                                         The name is deliberately not written here. The CSS check reads
+                                         prose as well as markup, on purpose, so a name mentioned in a
+                                         comment is a name it goes looking for a rule for. *@
                                       <div>
-                                        <div class="variable-meta__tab-content"
+                                        <div class="munin-explorer-meta__tab-content"
                                              role="tabpanel"
                                              id="@TabPanelId()"
                                              aria-labelledby="@TabId(_tab)"
@@ -467,16 +472,16 @@ else
                                             {
                                                 @* Runa's three groups: Identifikasjon, Plassering
                                                    and Egenskaper, in that order. *@
-                                                <h3 class="headline headline-xxs margin--none variable-explorer-group">@T.GroupIdentification</h3>
+                                                <h3 class="headline headline-xxs margin--none munin-explorer-group">@T.GroupIdentification</h3>
 
-                                                <dl class="variable-meta__grid variable-meta__grid-1">
+                                                <dl class="munin-explorer-meta__grid munin-explorer-meta__grid-1">
                                                     <div>
                                                         <dt class="headline headline-xxs margin--none">@T.FieldDescription</dt>
                                                         <dd>@DetailValue(detail.Description)</dd>
                                                     </div>
                                                 </dl>
 
-                                                <h3 class="headline headline-xxs margin--none variable-explorer-group">@T.GroupPlacement</h3>
+                                                <h3 class="headline headline-xxs margin--none munin-explorer-group">@T.GroupPlacement</h3>
 
                                                 @* Side by side rather than stacked, which is how
                                                    Runa lays these three out — she uses three lanes,
@@ -491,7 +496,7 @@ else
                                                    Without the wrapper the grid would take dt and dd
                                                    as separate cells and lay out label | value
                                                    across, instead of label-over-value in a lane. *@
-                                                <dl class="variable-meta__grid">
+                                                <dl class="munin-explorer-meta__grid">
                                                     <div>
                                                         <dt class="headline headline-xxs margin--none">@T.FieldKildePath</dt>
                                                         <dd>@KildeTrail(detail)</dd>
@@ -590,11 +595,11 @@ else
                                        anonymous among the host page's own.
 
                                        The drill-in that opens is named by the id
-                                       `variable-explorer-source-<instance>` and wears the class
-                                       `variable-explorer-drilldown` — a handle like the others,
+                                       `munin-explorer-source-<instance>` and wears the class
+                                       `munin-explorer-drilldown` — a handle like the others,
                                        and like them nothing in this package, in Stiler or in
                                        helsedata's variables.css defines a rule for it.
-                                       What dresses the panel is base styling for <dl class="variable-meta__grid variable-meta__grid-2">, exactly as
+                                       What dresses the panel is base styling for <dl class="munin-explorer-meta__grid munin-explorer-meta__grid-2">, exactly as
                                        for the variable's own panel above. *@
                                 }
                             </div>
@@ -603,9 +608,9 @@ else
             }
         </ul>
     }
-    </div>@* variable-data-list__result *@
-    </div>@* variable-explorer-results *@
-    </div>@* variable-explorer-container *@
+    </div>@* munin-explorer-data-list__result *@
+    </div>@* munin-explorer-results *@
+    </div>@* munin-explorer-container *@
 
     @* The pager. Forrige / Neste with the position between them, and no infinite scrolling —
        Munin's own explorer pages the same way, and a list that grows as you scroll has no end

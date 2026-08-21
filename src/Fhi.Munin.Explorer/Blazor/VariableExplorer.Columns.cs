@@ -168,7 +168,7 @@ public partial class VariableExplorer
     };
 
     /// <summary>The hint the locked column points at, minted per instance like the other ids.</summary>
-    private string ColumnsHintId => $"variable-explorer-columns-hint-{_instance}";
+    private string ColumnsHintId => $"munin-explorer-columns-hint-{_instance}";
 
     /// <summary>
     /// The column picker: a disclosure holding one toggle per optional column.
@@ -177,7 +177,7 @@ public partial class VariableExplorer
     /// <para>
     /// helsedata's own shape, read off their compiled stylesheets rather than guessed at.
     /// Their variable page hangs this above the results in
-    /// <c>variable-explorer-header__actions</c> and draws the open list as
+    /// <c>munin-explorer-header__actions</c> and draws the open list as
     /// <c>ul.dropdown-choicepicker</c> with one <c>li.dropdown-choicepicker__item</c> per choice —
     /// the list is <c>position: absolute</c> under a trigger whose container is relative, which is
     /// what the inline style below supplies, exactly as their own React does inline.
@@ -195,11 +195,11 @@ public partial class VariableExplorer
     /// what is lost is the outside click, which leaves the list open rather than broken.
     /// </para>
     /// <para>
-    /// It wears two names, not one, and both are theirs: <c>variable-explorer__dropdown</c> is the
+    /// It wears two names, not one, and both are theirs: <c>munin-explorer__dropdown</c> is the
     /// z-index that lifts the open list over the rows below it
-    /// (<c>.variable-explorer__dropdown { z-index: 99 }</c>), and the bare <c>dropdown</c> is what
+    /// (<c>.munin-explorer__dropdown { z-index: 99 }</c>), and the bare <c>dropdown</c> is what
     /// widens the trigger to its row — <c>variables.css</c> carries
-    /// <c>.variable-explorer-header__actions .dropdown { width: 100% }</c>, unconditionally, beside
+    /// <c>.munin-explorer-header__actions .dropdown { width: 100% }</c>, unconditionally, beside
     /// the <c>dropdown-choicepicker</c> rule that puts the open list 36px down. Both were read back
     /// off the compiled stylesheet; neither is ours.
     /// </para>
@@ -224,16 +224,16 @@ public partial class VariableExplorer
     private RenderFragment ColumnPicker() => builder =>
     {
         builder.OpenElement(0, "div");
-        builder.AddAttribute(1, "class", "variable-explorer-header");
+        builder.AddAttribute(1, "class", "munin-explorer-header");
 
         builder.OpenElement(2, "div");
-        builder.AddAttribute(3, "class", "variable-explorer-header__actions");
+        builder.AddAttribute(3, "class", "munin-explorer-header__actions");
 
         builder.OpenElement(4, "details");
         // Two of their names rather than one: `dropdown` is the width rule their own actions row
-        // applies to the trigger, `variable-explorer__dropdown` the z-index under the open list.
+        // applies to the trigger, `munin-explorer__dropdown` the z-index under the open list.
         // Both are in the host contract — see the remarks above.
-        builder.AddAttribute(5, "class", "dropdown variable-explorer__dropdown");
+        builder.AddAttribute(5, "class", "dropdown munin-explorer__dropdown");
         // Their own inline style, not a stylesheet: the list below is absolutely positioned and
         // anchors to the nearest positioned ancestor, and helsedata's React sets exactly this on
         // the same element. Without it an open list would hang off whatever happens to be
@@ -245,7 +245,7 @@ public partial class VariableExplorer
         // both in the host notes, and both sample hosts carry them.
         builder.OpenElement(7, "summary");
         builder.AddAttribute(8, "class",
-            "hd-button-square button-square--ghost variable-explorer-header__actions-button");
+            "hd-button-square button-square--ghost munin-explorer-header__actions-button");
         builder.AddContent(9, T.Columns);
         builder.CloseElement();
 

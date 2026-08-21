@@ -75,8 +75,8 @@ internal static class HostClassNames
                     .Order(StringComparer.Ordinal)];
 
     /// <summary>
-    /// Anchored on the right so a rule for <c>.variable-explorer-period__fill</c> does not answer for
-    /// <c>.variable-explorer-period</c> — a rule for the part is not a rule for the whole.
+    /// Anchored on the right so a rule for <c>.munin-explorer-period__fill</c> does not answer for
+    /// <c>.munin-explorer-period</c> — a rule for the part is not a rule for the whole.
     /// </summary>
     private static bool SampleStyles(string name)
     {

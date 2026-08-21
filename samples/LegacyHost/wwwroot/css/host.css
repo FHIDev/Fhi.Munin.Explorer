@@ -239,7 +239,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .infobox--bg-yellow { background-color: var(--warning-light); }
 
 /* components/_datasourcecard.scss — the shape the results had until `Fhi.Metadata-zs56s`, when
-   they became helsedata's own variable-page rows instead (`variable-data-list`, far below). The
+   they became helsedata's own variable-page rows instead (`munin-explorer-data-list`, far below). The
    component emits none of these names any more; they are kept because a real helsedata page loads
    the whole of Stiler either way, and a stand-in that only carries what one component happens to
    wear stops being a stand-in for Stiler. */
@@ -369,38 +369,38 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    names, because Stiler has no accordion, no tree and no checkbox that can be read back off its
    compiled stylesheet — and a name it has never heard of renders as a raw browser default, which is
    the failure the whole approach exists to avoid. On helsedata.no what dresses those elements is
-   that site's own base rules; here it is this block. The package emits `variable-explorer-filters`
+   that site's own base rules; here it is this block. The package emits `munin-explorer-filters`
    as a handle for exactly this, and styles nothing itself.
 
    A host that provides none of this still gets a working panel — the nesting is what carries the
    hierarchy, and the values are Stiler's own square buttons either way. What it loses is the
    indentation that makes a delkilde look like it sits under its kilde. Scoped to the panel so none
-   of it can reach the results list, which is helsedata's own variable-data-list. */
+   of it can reach the results list, which is helsedata's own munin-explorer-data-list. */
 
-.variable-explorer-filters { margin-bottom: 24px; }
+.munin-explorer-filters { margin-bottom: 24px; }
 
-.variable-explorer-filters details {
+.munin-explorer-filters details {
   border-bottom: 1px solid var(--grey30);
   padding: 8px 0;
 }
-.variable-explorer-filters summary { cursor: pointer; }
-.variable-explorer-filters summary .form-element__label { margin-top: 0; cursor: pointer; }
-.variable-explorer-filters summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.munin-explorer-filters summary { cursor: pointer; }
+.munin-explorer-filters summary .form-element__label { margin-top: 0; cursor: pointer; }
+.munin-explorer-filters summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
-.variable-explorer-filters ul {
+.munin-explorer-filters ul {
   margin: 8px 0 0;
   padding-left: 20px;
   list-style: none;
 }
-.variable-explorer-filters > details > ul { padding-left: 0; }
+.munin-explorer-filters > details > ul { padding-left: 0; }
 
 /* The clear button is never `disabled` — the same focus reason as the pager's — so its unavailable
    state has to be drawn from aria-disabled. */
-.variable-explorer-filters [aria-disabled="true"] {
+.munin-explorer-filters [aria-disabled="true"] {
   color: var(--grey40);
   cursor: default;
 }
-.variable-explorer-filters [aria-disabled="true"]:hover {
+.munin-explorer-filters [aria-disabled="true"]:hover {
   background: none;
   color: var(--grey40);
 }
@@ -412,13 +412,13 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    no definition list, no breadcrumb and no key/value block that can be read back off its compiled
    stylesheet — and a name it has never heard of renders as a raw browser default. On helsedata.no
    what dresses those elements is that site's own base rules; here it is this block. The package
-   emits `variable-explorer-detail` as a handle for exactly this, and styles nothing itself.
+   emits `munin-explorer-detail` as a handle for exactly this, and styles nothing itself.
 
    A host that supplies none of this still gets a panel that reads correctly: the labels are
    Stiler's own and each value sits under the label that names it. What it loses is the trail
    reading as a trail rather than as a numbered list. */
 
-.variable-explorer-detail {
+.munin-explorer-detail {
   margin-top: 8px;
   padding-top: 16px;
   border-top: 1px solid var(--grey30);
@@ -427,13 +427,13 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 /* The panel's status line holds one message at a time and is empty when there is nothing to
    report — it stays in the document so a failure replaces text in a region that is already
    there, which is what makes it announced. Empty, it should take up no room. */
-.variable-explorer-detail > p:empty { display: none; }
+.munin-explorer-detail > p:empty { display: none; }
 
-.variable-explorer-detail dl { margin: 0; }
-.variable-explorer-detail dt { margin-top: 12px; }
-.variable-explorer-detail dd { margin: 0; }
+.munin-explorer-detail dl { margin: 0; }
+.munin-explorer-detail dt { margin-top: 12px; }
+.munin-explorer-detail dd { margin: 0; }
 
-.variable-explorer-detail dd ul {
+.munin-explorer-detail dd ul {
   margin: 0;
   padding-left: 20px;
 }
@@ -441,14 +441,14 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 /* The kilde trail, drawn as one: a chevron between the steps rather than the numbers a bare <ol>
    would carry. Generated content, so the separator is decoration — not announced, and not copied
    out with the text. */
-.variable-explorer-detail dd ol {
+.munin-explorer-detail dd ol {
   display: flex;
   flex-wrap: wrap;
   margin: 0;
   padding: 0;
   list-style: none;
 }
-.variable-explorer-detail dd ol li + li::before {
+.munin-explorer-detail dd ol li + li::before {
   content: "\203A";
   margin: 0 8px;
   color: var(--grey60);
@@ -458,9 +458,9 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
    The same reason a third time: what "Vis datakilde" and "Vis datasamling" open is a heading and a
    <dl>, because Stiler has no key/value block whose name can be read back off its compiled
-   stylesheet. The package emits `variable-explorer-drilldown` as a handle and styles nothing
-   itself. Selecting on `variable-explorer-source` would match nothing — that name is an element id
-   (`variable-explorer-source-<instance>`, which is what names the region) and not a class. It was
+   stylesheet. The package emits `munin-explorer-drilldown` as a handle and styles nothing
+   itself. Selecting on `munin-explorer-source` would match nothing — that name is an element id
+   (`munin-explorer-source-<instance>`, which is what names the region) and not a class. It was
    a class while the kilde opened inside the variable's panel; the rules written against it then
    sat here dead from the day that panel became a drill-in until this was noticed.
 
@@ -471,7 +471,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 /* Empty when there is nothing to report, and in the document either way — the same arrangement,
    and the same reason, as the detail panel's own status line. */
-.variable-explorer-drilldown > p:empty { display: none; }
+.munin-explorer-drilldown > p:empty { display: none; }
 
 /* The drill-in's own heading — the datasamling case; a kilde is drawn by KildeView, which brings
    its own. Rendered at whatever level keeps the host page's outline unbroken, so it is matched by
@@ -479,17 +479,17 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    own headline classes, which the heading also wears.
 
    Direct children throughout, so none of this reaches into KildeView: its <dl>s wear helsedata's
-   variable-meta__grid and are styled by that further down, and a descendant selector here would
+   munin-explorer-meta__grid and are styled by that further down, and a descendant selector here would
    out-specify it and take its spacing away. */
-.variable-explorer-drilldown > h2,
-.variable-explorer-drilldown > h3,
-.variable-explorer-drilldown > h4,
-.variable-explorer-drilldown > h5,
-.variable-explorer-drilldown > h6 { margin: 0 0 8px; }
+.munin-explorer-drilldown > h2,
+.munin-explorer-drilldown > h3,
+.munin-explorer-drilldown > h4,
+.munin-explorer-drilldown > h5,
+.munin-explorer-drilldown > h6 { margin: 0 0 8px; }
 
-.variable-explorer-drilldown > dl { margin: 0; }
-.variable-explorer-drilldown > dl > dt { margin-top: 12px; }
-.variable-explorer-drilldown > dl > dd { margin: 0; }
+.munin-explorer-drilldown > dl { margin: 0; }
+.munin-explorer-drilldown > dl > dt { margin-top: 12px; }
+.munin-explorer-drilldown > dl > dd { margin: 0; }
 
 /* ---- not Stiler either: the two-column layout ----
 
@@ -520,7 +520,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 @media (min-width: 1024px) {
   .hostmain { max-width: none; }   /* helsedata sets no cap; the page fills the window */
 
-  .variable-explorer {
+  .munin-explorer {
     display: grid;
     grid-template-columns: 384px minmax(0, 1fr);
     grid-template-areas:
@@ -531,10 +531,10 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
     align-items: start;
   }
 
-  .variable-explorer > h2 { grid-area: head; }
-  .variable-explorer > form { grid-area: search; }
+  .munin-explorer > h2 { grid-area: head; }
+  .munin-explorer > form { grid-area: search; }
 
-  .variable-explorer > .variable-explorer-filters {
+  .munin-explorer > .munin-explorer-filters {
     grid-area: filters;
     grid-row: 3 / span 99;
     min-inline-size: 0;
@@ -542,13 +542,13 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
     overflow-y: auto;
   }
 
-  .variable-explorer > *:not(h2):not(form):not(.variable-explorer-filters) {
+  .munin-explorer > *:not(h2):not(form):not(.munin-explorer-filters) {
     grid-column: 2;
     min-inline-size: 0;
   }
 }
 
-.variable-explorer-filters .hd-button-square {
+.munin-explorer-filters .hd-button-square {
   white-space: normal;
   text-align: left;
   height: auto;
@@ -562,51 +562,51 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    component wears them because it replaces the variable page, and this is an approximation of what
    they do so the sample shows the right shape.
 
-   The real rules are far richer — variable-meta alone carries 204, and there are 292 selectors
+   The real rules are far richer — munin-explorer-meta alone carries 204, and there are 292 selectors
    across this family. What matters for a sample is the arrangement: rows with columns, a name that
    is a button, a chevron, and a panel that opens underneath. */
 
-.variable-data-list {
+.munin-explorer-data-list {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.variable-data-list__item {
+.munin-explorer-data-list__item {
   border-bottom: 1px solid var(--grey30);
 }
 
-.variable-data-list__item__row {
+.munin-explorer-data-list__item__row {
   padding: 14px 8px;
 }
 
-.variable-data-list__item__row:hover {
+.munin-explorer-data-list__item__row:hover {
   background: var(--grey10);
 }
 
 /* helsedata ships an icon font for this — .icon alone carries 466 rules across five of their
    bundles. A sample host has no such font, so the chevron is drawn from a character instead.
    It rotates rather than swapping glyphs, which is what makes the state change read as motion. */
-.variable-dataitem-main__expand-icon {
+.munin-explorer-dataitem-main__expand-icon {
   display: inline-block;
   width: 16px;
   color: var(--primary);
   transition: transform 120ms ease;
 }
 
-.variable-dataitem-main__expand-icon::before {
+.munin-explorer-dataitem-main__expand-icon::before {
   content: "\203A";           /* › */
   font-size: 1.25rem;
   line-height: 1;
 }
 
-.icon-keyboard-arrow-down.variable-dataitem-main__expand-icon {
+.icon-keyboard-arrow-down.munin-explorer-dataitem-main__expand-icon {
   transform: rotate(90deg);
 }
 
 /* The name is the disclosure, so it has to look like the control it is without wearing a button
    box: helsedata draws it as a link, left-aligned, and lets the row's hover carry the affordance. */
-.variable-dataitem-main__name {
+.munin-explorer-dataitem-main__name {
   appearance: none;
   background: none;
   border: 0;
@@ -619,30 +619,30 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   cursor: pointer;
 }
 
-.variable-dataitem-main__name:hover {
+.munin-explorer-dataitem-main__name:hover {
   text-decoration: underline;
 }
 
-.variable-data-list__item__row:hover .variable-dataitem-main__name {
+.munin-explorer-data-list__item__row:hover .munin-explorer-dataitem-main__name {
   text-decoration: underline;
 }
 
-.variable-dataitem-main__column {
+.munin-explorer-dataitem-main__column {
   min-width: 0;
 }
 
-.variable-dataitem-main__column__text {
+.munin-explorer-dataitem-main__column__text {
   display: block;
   font-size: 0.9375rem;
   color: var(--dark);
   overflow-wrap: break-word;
 }
 
-.variable-dataitem-main__column--description {
+.munin-explorer-dataitem-main__column--description {
   padding: 4px 8px 0 44px;
 }
 
-.variable-dataitem-main__column--description p {
+.munin-explorer-dataitem-main__column--description p {
   margin: 0;
   color: var(--grey60);
   font-size: 0.9375rem;
@@ -650,22 +650,22 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 /* The panel is a sibling of the row, not a child of it — that is how helsedata nests it, and
    several of their rules select on exactly that relationship. */
-.variable-meta {
+.munin-explorer-meta {
   padding: 4px 8px 20px 44px;
   background: var(--grey10);
 }
 
-.variable-data-list__item--expanded {
+.munin-explorer-data-list__item--expanded {
   background: var(--grey10);
 }
 
 /* ---- the opened panel ----
 
-   variable-meta is the biggest single thing we borrow: 204 rules on their side, 176 selectors
+   munin-explorer-meta is the biggest single thing we borrow: 204 rules on their side, 176 selectors
    under that prefix. This is the arrangement only.
 
    The definition list keeps being a definition list. Their grid is class-based — the whole of
-   `.variable-meta__grid` is `display: grid; gap: 40px 24px`, and the only rule in the family that
+   `.munin-explorer-meta__grid` is `display: grid; gap: 40px 24px`, and the only rule in the family that
    names an element is `p { margin: 0 }` — so it lays out dt/dd exactly as it lays out their own
    spans. We get their layout without giving up the semantics of labels and the values they name.
 
@@ -677,70 +677,70 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .margin--none { margin: 0; }
 .margin--bottom { margin: 0 0 12px; }
 
-.variable-meta__grid {
+.munin-explorer-meta__grid {
   display: grid;
   gap: 16px 24px;
 }
 
-.variable-meta__grid-1,
-.variable-meta__grid-2 {
+.munin-explorer-meta__grid-1,
+.munin-explorer-meta__grid-2 {
   grid-template-columns: auto;
 }
 
-.variable-meta__grid p {
+.munin-explorer-meta__grid p {
   margin: 0;
 }
 
 /* dt/dd inside the grid: the label sits on the value rather than beside it, which is what their
    h4-over-value blocks do. */
-.variable-meta dl > dt {
+.munin-explorer-meta dl > dt {
   color: var(--grey60);
 }
 
-.variable-meta dl > dd {
+.munin-explorer-meta dl > dd {
   margin: 2px 0 0;
 }
 
 /* ---- the column header ----
 
    The header and the rows have to share one grid template, or the columns line up with nothing.
-   helsedata solves it by giving variable-dataitem-header and variable-dataitem-main the same
+   helsedata solves it by giving munin-explorer-dataitem-header and munin-explorer-dataitem-main the same
    track list; the header has no chevron, so its first cell starts in track 2 and the rest flow
    after it. Get this wrong and every row sizes its own columns, which is what the sample looked
    like before the header existed. */
 
-.variable-data-list__header {
+.munin-explorer-data-list__header {
   border-bottom: 2px solid var(--grey30);
 }
 
-.variable-data-list__item__row--header {
+.munin-explorer-data-list__item__row--header {
   padding-bottom: 8px;
 }
 
-/* helsedata lays these out with flex, not grid — `.variable-dataitem-header, .variable-dataitem-main
+/* helsedata lays these out with flex, not grid — `.munin-explorer-dataitem-header, .munin-explorer-dataitem-main
    { display: flex; width: 100% }` — and each column is an inline-flex box that takes its width from
    its own modifier. That is why extra columns are possible at all: flex distributes what is left
    rather than needing a track declared up front.
 
    The header carries `padding-left: 56px` on their side to clear the chevron, which is how the two
    rows line up without the header having a chevron cell of its own. */
-.variable-dataitem-header,
-.variable-dataitem-main {
+.munin-explorer-dataitem-header,
+.munin-explorer-dataitem-main {
   display: flex;
   align-items: center;
   width: 100%;
   gap: 12px;
 }
 
-.variable-dataitem-header {
+.munin-explorer-dataitem-header {
   padding-left: 36px;   /* clears the chevron column, as theirs does */
 }
 
-.variable-dataitem-main__expand-icon {
+.munin-explorer-dataitem-main__expand-icon {
   flex: 0 0 24px;
 }
 
-.variable-dataitem-main__column,
+.munin-explorer-dataitem-main__column,
 .sortable-header {
   flex: 1 1 0;
   min-width: 0;
@@ -758,46 +758,46 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
    `flex: <width> 1 0` makes grow proportional to those numbers, so the ratios hold at any
    container width rather than only at Runa's. */
-.variable-dataitem-main__name,
-.variable-dataitem-header__name {
+.munin-explorer-dataitem-main__name,
+.munin-explorer-dataitem-header__name {
   flex: 210 1 0;
 }
 
-.variable-dataitem-main__code,
-.variable-dataitem-header__code {
+.munin-explorer-dataitem-main__code,
+.munin-explorer-dataitem-header__code {
   flex: 246 1 0;
 }
 
-.variable-dataitem-main__source,
-.variable-dataitem-header__source {
+.munin-explorer-dataitem-main__source,
+.munin-explorer-dataitem-header__source {
   flex: 96 1 0;
 }
 
-.variable-dataitem-main__dataCollection,
-.variable-dataitem-header__dataCollection {
+.munin-explorer-dataitem-main__dataCollection,
+.munin-explorer-dataitem-header__dataCollection {
   flex: 212 1 0;
 }
 
-.variable-dataitem-main__theme,
-.variable-dataitem-header__theme {
+.munin-explorer-dataitem-main__theme,
+.munin-explorer-dataitem-header__theme {
   flex: 160 1 0;
 }
 
-.variable-dataitem-main__dataType,
-.variable-dataitem-header__dataType {
+.munin-explorer-dataitem-main__dataType,
+.munin-explorer-dataitem-header__dataType {
   flex: 114 1 0;
 }
 
-.variable-dataitem-main__status,
-.variable-dataitem-header__status {
+.munin-explorer-dataitem-main__status,
+.munin-explorer-dataitem-header__status {
   flex: 98 1 0;
 }
 
 /* Dataperiode. The one width here that is not measured off Runa — its own column is a bar rather
    than two dates, so there was nothing to measure. 150 is what "jan. 2001 – des. 2025" needs
    without wrapping, and the column is the last one, so it is also the one with room to give. */
-.variable-dataitem-main__period,
-.variable-dataitem-header__period {
+.munin-explorer-dataitem-main__period,
+.munin-explorer-dataitem-header__period {
   flex: 150 1 0;
 }
 
@@ -821,11 +821,11 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   text-align: left;
 }
 
-.variable-dataitem-header__button:hover {
+.munin-explorer-dataitem-header__button:hover {
   text-decoration: underline;
 }
 
-.variable-dataitem-header__button[aria-current="true"] {
+.munin-explorer-dataitem-header__button[aria-current="true"] {
   color: var(--primary-dark);
 }
 
@@ -833,7 +833,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    stops being copyable as one token. So the code column never wraps — it truncates with an
    ellipsis and keeps the whole value in the DOM, where assistive technology and the title
    tooltip still get it in full. Names, kilder and datasamlinger are words and wrap happily. */
-.variable-dataitem-main__code .variable-dataitem-main__column__text {
+.munin-explorer-dataitem-main__code .munin-explorer-dataitem-main__column__text {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -855,30 +855,30 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 /* ---- the panel's tabs ----
 
-   variable-meta__tabs / __tab / __tab--active / __body / __tab-content are helsedata's, and
-   variable-meta carries 204 rules on their side. This is the arrangement only: a row of tabs
+   munin-explorer-meta__tabs / __tab / __tab--active / __body / __tab-content are helsedata's, and
+   munin-explorer-meta carries 204 rules on their side. This is the arrangement only: a row of tabs
    with the selected one marked, and the panel beneath it. */
 
-.variable-meta__tabs {
+.munin-explorer-meta__tabs {
   display: flex;
   gap: 4px;
   margin: 0 0 16px;
   border-bottom: 1px solid var(--grey30);
 }
 
-.variable-meta__tab > .hd-button-reset {
+.munin-explorer-meta__tab > .hd-button-reset {
   padding: 8px 16px;
   color: var(--grey60);
   border-bottom: 2px solid transparent;
 }
 
-.variable-meta__tab--active > .hd-button-reset {
+.munin-explorer-meta__tab--active > .hd-button-reset {
   color: var(--primary-dark);
   font-weight: 600;
   border-bottom-color: var(--primary);
 }
 
-.variable-meta__tab > .hd-button-reset:hover {
+.munin-explorer-meta__tab > .hd-button-reset:hover {
   color: var(--dark);
 }
 
@@ -886,16 +886,16 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    directly rather than tabbing through it from the tablist. Nothing moves focus there
    programmatically — choosing a tab leaves focus on the tab — so this is the style for when the
    panel IS focused, and :focus-visible keeps it off a mouse click. */
-.variable-meta__tab-content:focus-visible {
+.munin-explorer-meta__tab-content:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
 
-.variable-meta h3 {
+.munin-explorer-meta h3 {
   margin-top: 20px;
 }
 
-.variable-meta h3:first-child {
+.munin-explorer-meta h3:first-child {
   margin-top: 0;
 }
 
@@ -907,7 +907,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    The group heading is an eyebrow, not a heading-sized heading: 11px, bold, uppercase, wide
    tracking. Runa draws it in blue. It stays a real <h3> so the panel has an outline. */
 
-.variable-explorer-group {
+.munin-explorer-group {
   margin: 20px 0 8px;
   font-size: 0.6875rem;      /* 11px, as Runa */
   font-weight: 700;
@@ -916,21 +916,21 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   color: var(--primary-dark);
 }
 
-.variable-meta [role="tabpanel"] > .variable-explorer-group:first-child {
+.munin-explorer-meta [role="tabpanel"] > .munin-explorer-group:first-child {
   margin-top: 0;
 }
 
 /* The period. The dates are the information; the bar is the illustration, so a host that styles
    neither still shows the period as words. */
-.variable-explorer-period {
+.munin-explorer-period {
   margin-bottom: 8px;
 }
 
-.variable-explorer-period__range {
+.munin-explorer-period__range {
   margin: 0 0 6px;
 }
 
-.variable-explorer-period__track {
+.munin-explorer-period__track {
   height: 8px;
   border-radius: 999px;
   background: var(--grey30);
@@ -938,7 +938,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   max-width: 420px;
 }
 
-.variable-explorer-period__fill {
+.munin-explorer-period__fill {
   height: 100%;
   border-radius: 999px;
   background: var(--primary);
@@ -946,20 +946,20 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 /* A period with no end is still running, which is a different fact from a short one — Runa marks
    it with colour rather than leaving it to look like a full bar that happens to be full. */
-.variable-explorer-period__track--ongoing .variable-explorer-period__fill {
+.munin-explorer-period__track--ongoing .munin-explorer-period__fill {
   background: #1f8a4c;
 }
 
 /* The kilde step of the trail is a control, not a link — this component has no routes, so it
    discloses the kilde in place instead of navigating to it. Drawn as a link anyway, because that
    is what it behaves like from the reader's side. */
-.variable-explorer-crumb {
+.munin-explorer-crumb {
   color: var(--primary-dark);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
-.variable-explorer-crumb:hover {
+.munin-explorer-crumb:hover {
   color: var(--primary);
 }
 
@@ -968,13 +968,13 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    The same shape as the kilde trail in the panel above, and for the same reason: Stiler has no
    breadcrumb rule that can be read back off its compiled stylesheet, so the steps are an <ol> and
    the chevrons between them are generated content — decoration, not announced, and not copied out
-   with the text. The steps wear `variable-explorer-crumb` too, so the two trails on one screen
+   with the text. The steps wear `munin-explorer-crumb` too, so the two trails on one screen
    cannot end up looking like different kinds of thing.
 
    A host that draws none of this still gets a working trail: a numbered list of buttons and a ×
    after it, in the right order, with the right names. What it loses is the shape that says "path"
    rather than "list". */
-.variable-explorer-breadcrumb {
+.munin-explorer-breadcrumb {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -982,7 +982,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   margin: 0 0 16px;
 }
 
-.variable-explorer-breadcrumb ol {
+.munin-explorer-breadcrumb ol {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -991,7 +991,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   list-style: none;
 }
 
-.variable-explorer-breadcrumb li + li::before {
+.munin-explorer-breadcrumb li + li::before {
   content: "\203A";
   margin: 0 8px;
   color: var(--grey60);
@@ -1001,7 +1001,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    makes THIS one the last, and a last step drawn as plain text would take the pressed control out
    of the document — so what says it is inert is aria-current, exactly as aria-disabled says it for
    the pager's ends. */
-.variable-explorer-breadcrumb [aria-current="true"] {
+.munin-explorer-breadcrumb [aria-current="true"] {
   color: var(--dark);
   text-decoration: none;
   cursor: default;
@@ -1009,43 +1009,43 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 /* The × that empties the hierarchy and leaves every other filter alone. Muted until hovered: it
    is the trail's escape hatch, not the thing the trail is for. */
-.variable-explorer-breadcrumb__clear {
+.munin-explorer-breadcrumb__clear {
   color: var(--grey60);
   font-size: 1.25rem;
   line-height: 1;
   padding: 0 4px;
 }
 
-.variable-explorer-breadcrumb__clear:hover {
+.munin-explorer-breadcrumb__clear:hover {
   color: var(--dark);
 }
 
 /* helsedata's panel grid is `1fr 1fr` above 1280px and one column below. The sample carries a
    stand-in so the fields sit in lanes here too — stacked, they read as a long column of labels
    and the group headings stop meaning anything. */
-.variable-meta__grid {
+.munin-explorer-meta__grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 24px 24px;
   margin-bottom: 20px;
 }
 
-.variable-meta__grid-1 {
+.munin-explorer-meta__grid-1 {
   grid-template-columns: auto;
 }
 
 @media (max-width: 1280px) {
-  .variable-meta__grid {
+  .munin-explorer-meta__grid {
     grid-template-columns: auto;
     gap: 16px;
   }
 }
 
-.variable-meta__grid dt {
+.munin-explorer-meta__grid dt {
   margin-bottom: 4px;
 }
 
-.variable-meta__grid dd {
+.munin-explorer-meta__grid dd {
   margin: 0;
 }
 
@@ -1054,7 +1054,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    router gets closest by giving the reader the full width and a way back. The base element styling
    for what it holds — the heading, the status line, the <dl> — is up under "base element styling
    for the kilde and datasamling drill-in"; this is the separation from the chrome above it. */
-.variable-explorer-drilldown {
+.munin-explorer-drilldown {
   padding: 4px 0 24px;
 }
 
@@ -1066,7 +1066,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    column and a sidebar — is a page layout. Stiler has no page layout, and helsedata's
    variables.css has no kilde section, so there was nothing to borrow and these had to be
    invented. Everything *inside* the layout wears helsedata's own names: the headings are
-   `headline`, the fact lists are `variable-meta__grid`, the kildetype is Stiler's `tag`.
+   `headline`, the fact lists are `munin-explorer-meta__grid`, the kildetype is Stiler's `tag`.
 
    They arrived unstyled. The view shipped in #43 and neither sample had a rule for any of these
    nine until now, so both rendered it at raw browser defaults — a sidebar stacked under a main
@@ -1076,13 +1076,13 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 /* The name is rendered at whatever heading level keeps the host page's outline unbroken, so it is
    matched by level rather than by element — and its top margin comes off, because the drilldown
    above already supplies the gap and `.headline` would add a second one. */
-.variable-explorer-kilde > * > :is(h2, h3, h4, h5, h6):first-child,
-.variable-explorer-whole > * > :is(h2, h3, h4, h5, h6):first-child {
+.munin-explorer-kilde > * > :is(h2, h3, h4, h5, h6):first-child,
+.munin-explorer-whole > * > :is(h2, h3, h4, h5, h6):first-child {
   margin-top: 0;
 }
 
-.variable-explorer-kilde__header,
-.variable-explorer-whole__header {
+.munin-explorer-kilde__header,
+.munin-explorer-whole__header {
   padding-bottom: 16px;
   margin-bottom: 16px;
   border-bottom: 1px solid var(--grey30);
@@ -1090,8 +1090,8 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 /* The identifiers are what a reader looks the kilde up by elsewhere, so they are set the way the
    kodeverk reference is: a run of digits reads as an identifier rather than as prose. */
-.variable-explorer-kilde__identifiers,
-.variable-explorer-whole__code {
+.munin-explorer-kilde__identifiers,
+.munin-explorer-whole__code {
   font-family: ui-monospace, "SFMono-Regular", "Consolas", monospace;
   font-size: 0.8125rem;
 }
@@ -1104,7 +1104,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    Written without a leading dot on purpose. The checks that read this file ask whether it
    mentions a selector, and prose naming one reads exactly like a rule declaring one. They strip
    comments before looking now, so this is belt as well as braces. */
-.variable-explorer-kilde__kildetype {
+.munin-explorer-kilde__kildetype {
   display: inline-block;
   margin: 8px 0 0;
   padding: 2px 10px;
@@ -1114,8 +1114,8 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   font-size: 0.8125rem;
 }
 
-.variable-explorer-kilde__description,
-.variable-explorer-whole__description {
+.munin-explorer-kilde__description,
+.munin-explorer-whole__description {
   margin: 12px 0 0;
   max-width: 65ch;   /* prose, and prose the full width of a wide window is unreadable */
   color: var(--grey60);
@@ -1124,15 +1124,15 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 /* Main column and sidebar, and only once there is room for two of them. Below 1024px the aside
    returns to the flow under the main column, which is where a phone wants it — the same
    threshold and the same reasoning as the filter panel above. */
-.variable-explorer-kilde__body,
-.variable-explorer-whole__body {
+.munin-explorer-kilde__body,
+.munin-explorer-whole__body {
   display: grid;
   gap: 24px;
 }
 
 @media (min-width: 1024px) {
-  .variable-explorer-kilde__body,
-  .variable-explorer-whole__body {
+  .munin-explorer-kilde__body,
+  .munin-explorer-whole__body {
     grid-template-columns: minmax(0, 1fr) 320px;
     align-items: start;
   }
@@ -1141,13 +1141,13 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 /* A grid track is `min-width: auto` by default, so the widest thing in the column sets the floor.
    The datasamlinger table has four columns of Norwegian names in it and would push the sidebar
    off the right edge rather than shrink. Same trap the filter panel meets, same fix. */
-.variable-explorer-kilde__main,
-.variable-explorer-whole__main {
+.munin-explorer-kilde__main,
+.munin-explorer-whole__main {
   min-inline-size: 0;
 }
 
-.variable-explorer-kilde__aside,
-.variable-explorer-whole__aside {
+.munin-explorer-kilde__aside,
+.munin-explorer-whole__aside {
   padding: 16px;
   border-radius: 4px;
   background: var(--grey10);
@@ -1156,21 +1156,21 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 /* The datasamlinger table. Same shape as the Data tab's code table — the two are the same kind of
    thing, a list of rows with a heading each — with the name column left to wrap, because a
    datasamling name is a Norwegian sentence and nowrap on it is a horizontal scrollbar. */
-.variable-explorer-kilde__datasamlinger {
+.munin-explorer-kilde__datasamlinger {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
 }
 
-.variable-explorer-kilde__datasamlinger th,
-.variable-explorer-kilde__datasamlinger td {
+.munin-explorer-kilde__datasamlinger th,
+.munin-explorer-kilde__datasamlinger td {
   padding: 8px 12px;
   text-align: left;
   vertical-align: top;
   border-bottom: 1px solid var(--grey30);
 }
 
-.variable-explorer-kilde__datasamlinger thead th {
+.munin-explorer-kilde__datasamlinger thead th {
   background: var(--grey10);
   color: var(--grey60);
   font-weight: 600;
@@ -1178,7 +1178,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 /* The name is a <th scope="row">, which browsers centre and bold by default. It is a label for
    the row, not a heading over it. */
-.variable-explorer-kilde__datasamlinger tbody th {
+.munin-explorer-kilde__datasamlinger tbody th {
   font-weight: 600;
 }
 
@@ -1190,36 +1190,36 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
    The list is a plain <ul> with its bullets off, because the group heading above it already says
    these are kodeverk of one kind and a bullet per line adds nothing. */
-.variable-explorer-kodeverk {
+.munin-explorer-kodeverk {
   list-style: none;
   padding: 0;
   margin: 0 0 8px;
 }
 
-.variable-explorer-kodeverk__item {
+.munin-explorer-kodeverk__item {
   padding: 12px 0;
   border-bottom: 1px solid var(--grey30);
 }
 
-.variable-explorer-kodeverk__item:last-child {
+.munin-explorer-kodeverk__item:last-child {
   border-bottom: 0;
 }
 
-.variable-explorer-kodeverk__name {
+.munin-explorer-kodeverk__name {
   margin: 0;
   font-weight: 600;
 }
 
 /* The reference is the thing a reader can look the kodeverk up by, so it is set in a monospace
    face — a run of digits like 2336 or a dotted OID reads as an identifier rather than as prose. */
-.variable-explorer-kodeverk__reference {
+.munin-explorer-kodeverk__reference {
   margin: 2px 0 8px;
   font-family: ui-monospace, "SFMono-Regular", "Consolas", monospace;
 }
 
 /* The open code list. Capped in height and scrolled rather than left to run: Kommunenummer is 885
    codes, and a list that pushes the rest of the page out of reach is worse than one you scroll. */
-.variable-explorer-codes {
+.munin-explorer-codes {
   margin: 8px 0 4px;
   max-height: 320px;
   overflow: auto;
@@ -1232,21 +1232,21 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    shape. What makes that safe is that an element has a browser
    default to fall back on — a host that styles nothing still gets aligned columns, where an
    invented class name would render as nothing. */
-.variable-explorer-codes__table {
+.munin-explorer-codes__table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
 }
 
-.variable-explorer-codes__table th,
-.variable-explorer-codes__table td {
+.munin-explorer-codes__table th,
+.munin-explorer-codes__table td {
   padding: 6px 12px;
   text-align: left;
   border-bottom: 1px solid var(--grey30);
 }
 
 /* Sticky, so the columns stay named while a long kodeverk is scrolled past them. */
-.variable-explorer-codes__table thead th {
+.munin-explorer-codes__table thead th {
   position: sticky;
   top: 0;
   background: var(--grey10);
@@ -1254,7 +1254,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   font-weight: 600;
 }
 
-.variable-explorer-codes__table td:first-child {
+.munin-explorer-codes__table td:first-child {
   font-family: ui-monospace, "SFMono-Regular", "Consolas", monospace;
   white-space: nowrap;
 }
@@ -1268,7 +1268,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    The component builds it from <details> and <summary> because it ships no script. That is the
    one place the shape differs from theirs, and it costs two rules — the browser's disclosure
    marker, which their button does not have. */
-.variable-explorer-header {
+.munin-explorer-header {
   position: relative;
   margin-bottom: 8px;
 }
@@ -1276,22 +1276,22 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 /* Right-aligned, where helsedata's own `__actions-button-search` puts the column picker: it acts
    on the list below rather than introducing it, so it sits at the end of the row instead of at
    the start. */
-.variable-explorer-header__actions {
+.munin-explorer-header__actions {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
   justify-content: flex-end;
 }
 
-.variable-explorer-header__actions-button {
+.munin-explorer-header__actions-button {
   border: none;
 }
 
-.variable-explorer__dropdown > summary {
+.munin-explorer__dropdown > summary {
   list-style: none;
 }
 
-.variable-explorer__dropdown > summary::-webkit-details-marker {
+.munin-explorer__dropdown > summary::-webkit-details-marker {
   display: none;
 }
 
@@ -1354,58 +1354,58 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 /* The sidebar's lists — variabelgrupper and datasamlinger. Bulletless because each is one fact
    about the variable rather than an enumeration a reader counts, and tight because the sidebar is
    320px and a hanging indent wastes a fifth of it. */
-.variable-explorer-whole__list {
+.munin-explorer-whole__list {
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.variable-explorer-whole__list li + li {
+.munin-explorer-whole__list li + li {
   margin-top: 6px;
 }
 
 /* The statistics table. Same shape as the datasamlinger table above it, with the numbers right
    aligned and tabular: these columns are read down, comparing magnitudes, and proportional digits
    put the same number in two different widths on two rows. */
-.variable-explorer-statistics {
+.munin-explorer-statistics {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
 }
 
-.variable-explorer-statistics th,
-.variable-explorer-statistics td {
+.munin-explorer-statistics th,
+.munin-explorer-statistics td {
   padding: 8px 12px;
   text-align: left;
   vertical-align: top;
   border-bottom: 1px solid var(--grey30);
 }
 
-.variable-explorer-statistics thead th {
+.munin-explorer-statistics thead th {
   background: var(--grey10);
 }
 
-.variable-explorer-statistics td {
+.munin-explorer-statistics td {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
 /* The version history. A list of disclosures rather than a table: each row is one version and the
    thing under it is that version's own record, which is a shape a table cell cannot hold. */
-.variable-explorer-versions {
+.munin-explorer-versions {
   margin: 0;
   padding: 0;
   list-style: none;
   border-top: 1px solid var(--grey30);
 }
 
-.variable-explorer-versions > li {
+.munin-explorer-versions > li {
   border-bottom: 1px solid var(--grey30);
 }
 
 /* Name, badge and period on one line, with the name taking the slack. The period is pushed to the
    end so the dates line up down the list and can be read as a column. */
-.variable-explorer-versions__toggle {
+.munin-explorer-versions__toggle {
   display: flex;
   align-items: baseline;
   gap: 12px;
@@ -1418,18 +1418,18 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   cursor: pointer;
 }
 
-.variable-explorer-versions__toggle:hover {
+.munin-explorer-versions__toggle:hover {
   background: var(--grey10);
 }
 
-.variable-explorer-versions__name {
+.munin-explorer-versions__name {
   flex: 1 1 auto;
   min-inline-size: 0;
   font-weight: 600;
 }
 
 /* Reads as a state, not as part of the name — the same move the kildetype tag makes. */
-.variable-explorer-versions__badge {
+.munin-explorer-versions__badge {
   flex: 0 0 auto;
   padding: 1px 9px;
   border-radius: 999px;
@@ -1441,8 +1441,8 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 /* Fixed widths so the two dates make columns down the list rather than drifting with the length
    of each name. tabular-nums for the same reason: proportional digits put "24." and "9." in
    different widths and the column stops being one. */
-.variable-explorer-versions__from,
-.variable-explorer-versions__to {
+.munin-explorer-versions__from,
+.munin-explorer-versions__to {
   flex: 0 0 auto;
   inline-size: 7.5rem;
   color: var(--grey60);
@@ -1450,6 +1450,76 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   font-variant-numeric: tabular-nums;
 }
 
-.variable-explorer-versions__detail {
+.munin-explorer-versions__detail {
   padding: 0 4px 14px;
 }
+
+/* ======================================================================
+   Resultatlista — samme regler som Stiler, portert fra helsedatas
+   variables.css og hentet herfra ut av det bygde stilarket.
+   ======================================================================
+
+   Da komponenten laante helsedatas klassenavn kom disse reglene gratis paa
+   helsedata.no, og eksempelverten klarte seg uten dem. Etter omdoepinga til
+   munin-explorer-prefikset er det ingen som leverer dem lenger enn Stiler, saa
+   eksempelet maa staa for det samme settet. Generert fra Stilers bygde main.css
+   for at de to ikke skal gli fra hverandre. */
+
+.munin-explorer-results {
+  display: flex;
+  flex-direction: column;
+  padding-right: 16px;
+  position: relative;
+  width: 100%;
+}
+
+@media (max-width: 767px) {
+  .munin-explorer-results {
+    margin-left: 0 !important;
+    max-width: none !important;
+    padding-right: 0;
+    width: 100%;
+  }
+
+}
+
+.munin-explorer-container {
+  display: flex;
+  flex-direction: row;
+  padding-top: 40px;
+}
+
+@media (max-width: 767px) {
+  .munin-explorer-container {
+    flex-direction: column-reverse;
+    padding: 24px 16px 0;
+  }
+
+}
+
+.munin-explorer-data-list__result {
+  position: relative;
+}
+
+@media (max-width: 767px) {
+  .munin-explorer-data-list__result {
+    border-left: none;
+    padding-left: 0;
+  }
+
+}
+
+.munin-explorer-dataitem-period {
+  background-color: rgb(187, 184, 201);
+  height: 8px;
+  position: relative;
+  width: 100%;
+}
+
+@media (max-width: 1280px) {
+  .munin-explorer-dataitem-period {
+    margin: 4px 0;
+  }
+
+}
+

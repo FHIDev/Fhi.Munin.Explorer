@@ -90,7 +90,7 @@ public sealed partial class VariableView
         }
 
         builder.OpenElement(0, "ul");
-        builder.AddAttribute(1, "class", "variable-explorer-versions");
+        builder.AddAttribute(1, "class", "munin-explorer-versions");
 
         var seq = 100;
 
@@ -103,7 +103,7 @@ public sealed partial class VariableView
 
             builder.OpenElement(seq + 1, "button");
             builder.AddAttribute(seq + 2, "type", "button");
-            builder.AddAttribute(seq + 3, "class", "variable-explorer-versions__toggle");
+            builder.AddAttribute(seq + 3, "class", "munin-explorer-versions__toggle");
             builder.AddAttribute(seq + 4, "aria-expanded", open ? "true" : "false");
             builder.AddAttribute(seq + 5, "aria-controls", panelId);
             builder.AddAttribute(seq + 6, "onclick",
@@ -113,14 +113,14 @@ public sealed partial class VariableView
             var (name, nameIsNorwegian) = VersionName(version);
 
             builder.OpenElement(seq + 7, "span");
-            builder.AddAttribute(seq + 8, "class", "variable-explorer-versions__name");
+            builder.AddAttribute(seq + 8, "class", "munin-explorer-versions__name");
             builder.AddAttribute(seq + 9, "lang",
                 nameIsNorwegian ? CatalogueProperties.Foreign("no", Reader) : null);
             builder.AddContent(seq + 10, name);
             builder.CloseElement();
 
             builder.OpenElement(seq + 11, "span");
-            builder.AddAttribute(seq + 12, "class", "variable-explorer-versions__badge");
+            builder.AddAttribute(seq + 12, "class", "munin-explorer-versions__badge");
             builder.AddContent(seq + 13, VersionBadge(version));
             builder.CloseElement();
 
@@ -129,12 +129,12 @@ public sealed partial class VariableView
             // a date. Kept apart they also line up down the list and can be read as two columns,
             // which is how Runa lays them out.
             builder.OpenElement(seq + 14, "span");
-            builder.AddAttribute(seq + 15, "class", "variable-explorer-versions__from");
+            builder.AddAttribute(seq + 15, "class", "munin-explorer-versions__from");
             builder.AddContent(seq + 16, version.ValidFrom is { } from ? Day(from) : "—");
             builder.CloseElement();
 
             builder.OpenElement(seq + 17, "span");
-            builder.AddAttribute(seq + 18, "class", "variable-explorer-versions__to");
+            builder.AddAttribute(seq + 18, "class", "munin-explorer-versions__to");
             builder.AddContent(seq + 19, version.ValidTo is { } to ? Day(to) : T.Ongoing);
             builder.CloseElement();
 
@@ -142,7 +142,7 @@ public sealed partial class VariableView
 
             builder.OpenElement(seq + 20, "div");
             builder.AddAttribute(seq + 21, "id", panelId);
-            builder.AddAttribute(seq + 22, "class", "variable-explorer-versions__detail");
+            builder.AddAttribute(seq + 22, "class", "munin-explorer-versions__detail");
 
             // Hidden rather than absent, so the control it is named by always points at something.
             if (!open)

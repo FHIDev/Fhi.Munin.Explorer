@@ -172,7 +172,7 @@ public sealed partial class KildeView : ComponentBase
         }
 
         builder.OpenElement(0, "table");
-        builder.AddAttribute(1, "class", "variable-explorer-kilde__datasamlinger");
+        builder.AddAttribute(1, "class", "munin-explorer-kilde__datasamlinger");
 
         builder.OpenElement(2, "thead");
         builder.OpenElement(3, "tr");
@@ -257,7 +257,7 @@ public sealed partial class KildeView : ComponentBase
         }
 
         builder.OpenElement(0, "dl");
-        builder.AddAttribute(1, "class", "variable-meta__grid");
+        builder.AddAttribute(1, "class", "munin-explorer-meta__grid");
 
         var seq = 10;
 
@@ -286,13 +286,13 @@ public sealed partial class KildeView : ComponentBase
     private RenderFragment Group(PropertyGroup group) => builder =>
     {
         builder.OpenElement(0, $"h{GroupLevel}");
-        builder.AddAttribute(1, "class", "headline headline-xxs margin--none variable-explorer-group");
+        builder.AddAttribute(1, "class", "headline headline-xxs margin--none munin-explorer-group");
         builder.AddAttribute(2, "lang", CatalogueProperties.Foreign(group.NameLanguage, Reader));
         builder.AddContent(3, group.Name);
         builder.CloseElement();
 
         builder.OpenElement(4, "dl");
-        builder.AddAttribute(5, "class", "variable-meta__grid");
+        builder.AddAttribute(5, "class", "munin-explorer-meta__grid");
 
         var seq = 10;
 

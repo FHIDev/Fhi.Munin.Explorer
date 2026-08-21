@@ -68,12 +68,10 @@ LEGACY="samples/LegacyHost/wwwroot/css/host.css"
 # is not a missing rule anywhere that matters. The list is the same one VariableExplorerTest's
 # `invented` assertions annotate name by name; keep the two in step.
 THEIRS=(
-  variable-explorer-container
-  variable-explorer-results
-  variable-explorer-header
-  variable-explorer-header__actions
-  variable-explorer-header__actions-button
-  variable-explorer__dropdown
+  # Empty since the munin-explorer rename. The package used to write helsedata's own class
+  # names and inherit their rules for free; every name it emits is now its own, so there is
+  # no longer a category of "styled by someone else" to skip. Kept as a list rather than
+  # deleted because the concept comes back the moment we borrow a name again.
 )
 
 # Names in the prefix that are ours but are not classes: element ids the package writes down in
@@ -89,7 +87,7 @@ THEIRS=(
 # costs nothing"; this means "no rule is possible". Filing one under the other would say the name
 # is on helsedata.no, which it is not.
 IDS=(
-  variable-explorer-source
+  munin-explorer-source
 )
 
 fail=0
@@ -148,8 +146,9 @@ names=()
 while read -r name; do
   names+=("$name")
 done < <(
-  grep -rhoE 'variable-explorer[A-Za-z0-9_-]*' src/ \
-    | grep -vE -- '-$' \
+  grep -rhoE --include='*.cs' --include='*.razor' --exclude-dir=bin --exclude-dir=obj \
+         'munin-explorer[A-Za-z0-9_-]*' src/ \
+    | grep -vE -- '(-|__)$' \
     | sort -u
 )
 
@@ -234,8 +233,8 @@ while read -r name; do
   emitted+=("$name")
 done < <(
   {
-    grep -rhoE 'class="[^"@{]*"' src/ --include='*.razor' | sed 's/^class="//; s/"$//'
-    grep -rhoE '"class", *"[^"@{]*"' src/ --include='*.cs' | sed 's/^"class", *"//; s/"$//'
+    grep -rhoE 'class="[^"@{]*"' src/ --include='*.razor' --exclude-dir=bin --exclude-dir=obj | sed 's/^class="//; s/"$//'
+    grep -rhoE '"class", *"[^"@{]*"' src/ --include='*.cs' --exclude-dir=bin --exclude-dir=obj | sed 's/^"class", *"//; s/"$//'
   } | tr ' ' '\n' | grep -vE '^$' | sort -u
 )
 

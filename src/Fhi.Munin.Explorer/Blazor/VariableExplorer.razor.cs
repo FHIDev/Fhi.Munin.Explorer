@@ -44,9 +44,9 @@ internal enum PanelTab
 /// <para>
 /// The result vocabulary is not Stiler's at all, and that is a dependency rather than an oversight.
 /// Since <c>Fhi.Metadata-zs56s</c> the component renders helsedata's own variable page rather than
-/// a shape of its own, so the rows (<c>variable-data-list*</c>, <c>variable-dataitem-*</c>), the
-/// list they sit in (<c>variable-explorer-container</c>, <c>variable-explorer-results</c>), the
-/// opened panel (<c>variable-meta*</c>), the column picker's names listed below and the pager
+/// a shape of its own, so the rows (<c>munin-explorer-data-list*</c>, <c>munin-explorer-dataitem-*</c>), the
+/// list they sit in (<c>munin-explorer-container</c>, <c>munin-explorer-results</c>), the
+/// opened panel (<c>munin-explorer-meta*</c>), the column picker's names listed below and the pager
 /// (<c>variables-pagination</c>, <c>variables-pagination-content</c>, <c>skiplink-pagination</c>)
 /// all come from the page-specific <c>variables.css</c> that page carries rather than from the
 /// site-wide stylesheet. The pager would have needed borrowing whatever the results looked like —
@@ -77,12 +77,12 @@ internal enum PanelTab
 /// button in its two states for the values, and what a host supplies is base styling for those
 /// three elements rather than three more names. List indentation is the part that matters: without
 /// it the hierarchy still nests in the accessibility tree but reads flat on screen.
-/// <c>variable-explorer-filters</c> is a DOM handle for placing the panel, and carries no styling,
-/// exactly like the <c>variable-explorer</c> root.
+/// <c>munin-explorer-filters</c> is a DOM handle for placing the panel, and carries no styling,
+/// exactly like the <c>munin-explorer</c> root.
 /// </para>
 /// <para>
-/// The hierarchy trail over the results adds two names of ours — <c>variable-explorer-breadcrumb</c>
-/// and its <c>__clear</c> — and reuses <c>variable-explorer-crumb</c>, which the variable panel's
+/// The hierarchy trail over the results adds two names of ours — <c>munin-explorer-breadcrumb</c>
+/// and its <c>__clear</c> — and reuses <c>munin-explorer-crumb</c>, which the variable panel's
 /// kilde trail already wears, for the steps themselves. It is an <c>&lt;ol&gt;</c> of
 /// <c>&lt;button&gt;</c>s for the reason that trail is one: Stiler has no breadcrumb rule that can
 /// be read back off its compiled stylesheet, so the chevrons between the steps are a host's to
@@ -92,13 +92,13 @@ internal enum PanelTab
 /// <para>
 /// The column picker adds eight names, all of them helsedata's own and none of them ours. They
 /// come from the same <c>variables.css</c> as the rest of the result vocabulary.
-/// <c>variable-explorer-header</c> with its <c>__actions</c> and <c>__actions-button</c> place
+/// <c>munin-explorer-header</c> with its <c>__actions</c> and <c>__actions-button</c> place
 /// the control above the list; <c>dropdown-choicepicker</c> with its
 /// <c>--right</c> and <c>__item</c> draw the open list, positioned against an inline
 /// <c>position: relative</c> exactly as their own markup does it; and the disclosure wears both
-/// <c>variable-explorer__dropdown</c>, which is the z-index, and the bare <c>dropdown</c>, which is
+/// <c>munin-explorer__dropdown</c>, which is the z-index, and the bare <c>dropdown</c>, which is
 /// the width their own actions row gives a trigger
-/// (<c>.variable-explorer-header__actions .dropdown { width: 100% }</c>). Each toggle's label is
+/// (<c>.munin-explorer-header__actions .dropdown { width: 100% }</c>). Each toggle's label is
 /// the button's own text rather than a span wearing a name, which is one name fewer to have to
 /// find in a stylesheet. A host that has none of them still
 /// gets a working disclosure — the shape is <c>&lt;details&gt;</c>, a <c>&lt;ul&gt;</c> and the
@@ -118,22 +118,22 @@ internal enum PanelTab
 /// disclosure that opens it. Stiler has no definition list, no breadcrumb and no key/value block
 /// that can be read back off its compiled stylesheet, so what a host supplies is base styling for
 /// those three elements — a host that supplies none still gets a panel that reads correctly, just
-/// an unindented one. <c>variable-explorer-detail</c> is a DOM handle like
-/// <c>variable-explorer-filters</c>, and carries no styling.
+/// an unindented one. <c>munin-explorer-detail</c> is a DOM handle like
+/// <c>munin-explorer-filters</c>, and carries no styling.
 /// </para>
 /// <para>
 /// The kilde and datasamling do not open inside that panel: they take over the component's own
-/// area as a drill-in, wearing the handle <c>variable-explorer-drilldown</c> and again no style
+/// area as a drill-in, wearing the handle <c>munin-explorer-drilldown</c> and again no style
 /// name. What it holds is a heading in Stiler's <c>headline headline-s</c> and a
 /// <c>&lt;dl&gt;</c>, or — for a kilde — the whole of <c>KildeView</c>, so what a host supplies
 /// for it is the base <c>&lt;dl&gt;</c> styling the variable's own panel already needed.
-/// <c>variable-explorer-source</c> is not a class: it is the prefix of the element id that names
-/// the region (<c>variable-explorer-source-{instance}</c>), so a host or a test reaching for
-/// <c>.variable-explorer-source</c> finds nothing. It was a class, back when the kilde opened
+/// <c>munin-explorer-source</c> is not a class: it is the prefix of the element id that names
+/// the region (<c>munin-explorer-source-{instance}</c>), so a host or a test reaching for
+/// <c>.munin-explorer-source</c> finds nothing. It was a class, back when the kilde opened
 /// inside the variable's panel, and stopped being one when that panel became this drill-in.
 /// </para>
 /// <para>
-/// <c>KildeView</c> adds nine handles of its own — <c>variable-explorer-kilde</c> with its
+/// <c>KildeView</c> adds nine handles of its own — <c>munin-explorer-kilde</c> with its
 /// <c>__header</c>, <c>__identifiers</c>, <c>__kildetype</c>, <c>__description</c>, <c>__body</c>,
 /// <c>__main</c>, <c>__aside</c> and <c>__datasamlinger</c> parts — and no style name, because
 /// neither stylesheet has a kilde record to borrow one from. Every element wearing them also wears
@@ -141,13 +141,13 @@ internal enum PanelTab
 /// loses no information.
 /// </para>
 /// <para>
-/// The panel's Data tab adds handles of its own — <c>variable-explorer-kodeverk</c> with its
-/// <c>__item</c>, <c>__name</c> and <c>__reference</c> parts, and <c>variable-explorer-codes</c>
+/// The panel's Data tab adds handles of its own — <c>munin-explorer-kodeverk</c> with its
+/// <c>__item</c>, <c>__name</c> and <c>__reference</c> parts, and <c>munin-explorer-codes</c>
 /// with its <c>__table</c> — and no style name, because neither Stiler nor helsedata's own
 /// variable page has a kodeverk section to borrow one from. What is worth spelling out is the
 /// <c>&lt;table&gt;</c> inside it, one of the two this package emits — the other is the
 /// datasamlinger list in <c>KildeView</c>. The results list is not one of them: it is helsedata's
-/// own <c>variable-data-list</c>, a <c>&lt;ul&gt;</c> with a header row of <c>&lt;div&gt;</c>s,
+/// own <c>munin-explorer-data-list</c>, a <c>&lt;ul&gt;</c> with a header row of <c>&lt;div&gt;</c>s,
 /// because that is the shape their stylesheet dresses. Four columns of code values have no such
 /// alternative shape. The rule that keeps it safe is the one the <c>&lt;dl&gt;</c>, the
 /// <c>&lt;ol&gt;</c> and the <c>&lt;details&gt;</c> already rely on:
@@ -538,24 +538,24 @@ public partial class VariableExplorer : ComponentBase
     // Unique per instance so two explorers on one page cannot collide on DOM ids,
     // which would be a WCAG 4.1.1 failure as well as breaking label association.
     private readonly string _instance = Guid.NewGuid().ToString("N")[..8];
-    private string SearchId => $"variable-explorer-search-{_instance}";
-    private string TitleId => $"variable-explorer-title-{_instance}";
-    private string PaginationId => $"variable-explorer-pagination-{_instance}";
+    private string SearchId => $"munin-explorer-search-{_instance}";
+    private string TitleId => $"munin-explorer-title-{_instance}";
+    private string PaginationId => $"munin-explorer-pagination-{_instance}";
 
     // Per row as well as per instance: the detail panel is wired to its own row with
     // aria-controls and aria-labelledby, and two explorers listing the same variable would
     // otherwise mint the same id twice on one page.
-    private string RowHeadingId(VariableSummary v) => $"variable-explorer-heading-{_instance}-{v.Id:N}";
-    private string DetailToggleId(VariableSummary v) => $"variable-explorer-toggle-{_instance}-{v.Id:N}";
-    private string DetailId(VariableSummary v) => $"variable-explorer-detail-{_instance}-{v.Id:N}";
+    private string RowHeadingId(VariableSummary v) => $"munin-explorer-heading-{_instance}-{v.Id:N}";
+    private string DetailToggleId(VariableSummary v) => $"munin-explorer-toggle-{_instance}-{v.Id:N}";
+    private string DetailId(VariableSummary v) => $"munin-explorer-detail-{_instance}-{v.Id:N}";
 
     // Per instance and not per row: the owner panel hangs inside the one open variable panel, so
     // there is never more than one of it in this component's DOM. The kind is in the toggle's id
     // because the two toggles are on screen together.
-    private string SourceId => $"variable-explorer-source-{_instance}";
-    private string SourceHeadingId => $"variable-explorer-source-heading-{_instance}";
+    private string SourceId => $"munin-explorer-source-{_instance}";
+    private string SourceHeadingId => $"munin-explorer-source-heading-{_instance}";
     private string SourceToggleId(SourceKind kind) =>
-        $"variable-explorer-source-toggle-{_instance}-{kind.ToString().ToLowerInvariant()}";
+        $"munin-explorer-source-toggle-{_instance}-{kind.ToString().ToLowerInvariant()}";
 
     // Per instance and per link. There is one open variable panel, so the variable does not need to
     // be in the id, but the links inside it do: several code lists can be open together, and the
@@ -566,8 +566,8 @@ public partial class VariableExplorer : ComponentBase
     // hyphenated acronyms like NCMP-NCSP-NCRP for V-HK — and punctuation stripped to make it an id
     // would let two different references mint the same one, which is a duplicate-id WCAG failure
     // and an aria-controls naming the wrong table. The position is unique by construction.
-    private string KodeverkNameId(int index) => $"variable-explorer-kodeverk-{_instance}-{index}";
-    private string KodeverkCodesId(int index) => $"variable-explorer-codes-{_instance}-{index}";
+    private string KodeverkNameId(int index) => $"munin-explorer-kodeverk-{_instance}-{index}";
+    private string KodeverkCodesId(int index) => $"munin-explorer-codes-{_instance}-{index}";
 
     private Texts T => Texts.For(Language);
 
@@ -761,7 +761,7 @@ public partial class VariableExplorer : ComponentBase
     /// <remarks>
     /// No heading element. An earlier version wrapped this in one so results could be walked with
     /// a screen reader's heading rotor, but helsedata's row is <c>display: flex</c> and
-    /// <c>variable-dataitem-main__name</c> sizes the flex ITEM — a heading in between becomes the
+    /// <c>munin-explorer-dataitem-main__name</c> sizes the flex ITEM — a heading in between becomes the
     /// item and the name column falls out of line with its header. Neither reference wraps it:
     /// helsedata puts the button straight in the row, and Runa's rows are table rows. The results
     /// are a list of list items, each with a named disclosure carrying <c>aria-expanded</c>.
@@ -772,7 +772,7 @@ public partial class VariableExplorer : ComponentBase
         // could be walked with a screen reader's heading rotor, having checked that none of
         // helsedata's selectors for these names uses a child combinator — descendant styling
         // survives an extra element in between. But flex sizing does not: their row is
-        // `display: flex` and `.variable-dataitem-main__name` sizes the NAME CELL, so a heading
+        // `display: flex` and `.munin-explorer-dataitem-main__name` sizes the NAME CELL, so a heading
         // in between becomes the flex item and the column collapses to its content, throwing every
         // row out of line with the header. Neither reference wraps it — helsedata puts the button
         // straight in the row, and Runa's rows are table rows with no per-row heading either.
@@ -785,7 +785,7 @@ public partial class VariableExplorer : ComponentBase
         // it the dead affordance the old card shape had: .datasourcecard carried a pointer cursor,
         // because on their datakilde page the whole card is a link, which ours never was.
         builder.OpenElement(2, "button");
-        builder.AddAttribute(3, "class", "variable-dataitem-main__name");
+        builder.AddAttribute(3, "class", "munin-explorer-dataitem-main__name");
         builder.AddAttribute(4, "type", "button");
         builder.AddAttribute(5, "id", DetailToggleId(v));
         builder.AddAttribute(6, "aria-expanded", DetailExpanded(v));
@@ -795,7 +795,7 @@ public partial class VariableExplorer : ComponentBase
         builder.AddAttribute(8, "onclick", EventCallback.Factory.Create(this, () => ToggleDetailAsync(v)));
 
         builder.OpenElement(9, "span");
-        builder.AddAttribute(10, "class", "variable-dataitem-main__column__text");
+        builder.AddAttribute(10, "class", "munin-explorer-dataitem-main__column__text");
         // Munin's variable names are Norwegian whatever language the surrounding UI is in.
         builder.AddAttribute(11, "lang", "no");
         builder.AddContent(12, v.PreferredTerm);
@@ -835,13 +835,13 @@ public partial class VariableExplorer : ComponentBase
     private RenderFragment ResultHeader() => builder =>
     {
         builder.OpenElement(0, "div");
-        builder.AddAttribute(1, "class", "variable-data-list__header");
+        builder.AddAttribute(1, "class", "munin-explorer-data-list__header");
 
         builder.OpenElement(2, "div");
-        builder.AddAttribute(3, "class", "variable-data-list__item__row variable-data-list__item__row--header");
+        builder.AddAttribute(3, "class", "munin-explorer-data-list__item__row munin-explorer-data-list__item__row--header");
 
         builder.OpenElement(4, "div");
-        builder.AddAttribute(5, "class", "variable-dataitem-header");
+        builder.AddAttribute(5, "class", "munin-explorer-dataitem-header");
 
         // Navn is not in the picker and has no condition here: it is the row's disclosure as well
         // as its first column.
@@ -892,7 +892,7 @@ public partial class VariableExplorer : ComponentBase
     {
         builder.OpenElement(seq, "div");
         builder.AddAttribute(seq + 1, "class",
-            key is null ? "sortable-header" : $"sortable-header variable-dataitem-header__{key}");
+            key is null ? "sortable-header" : $"sortable-header munin-explorer-dataitem-header__{key}");
 
         if (sort is not { } field)
         {
@@ -912,7 +912,7 @@ public partial class VariableExplorer : ComponentBase
         builder.OpenElement(seq + 3, "button");
         // hd-button-reset is Stiler's own "this is a button but draw nothing" class, which is what
         // their header buttons wear — 12 rules, in the site-wide stylesheet.
-        builder.AddAttribute(seq + 4, "class", "hd-button-reset variable-dataitem-header__button");
+        builder.AddAttribute(seq + 4, "class", "hd-button-reset munin-explorer-dataitem-header__button");
         builder.AddAttribute(seq + 5, "type", "button");
         builder.AddAttribute(seq + 6, "aria-current", AriaCurrent(field));
         builder.AddAttribute(seq + 7, "onclick", EventCallback.Factory.Create(this, () => SortAsync(field)));
@@ -949,8 +949,8 @@ public partial class VariableExplorer : ComponentBase
         builder.OpenElement(0, "span");
         builder.AddAttribute(1, "class",
             IsSelected(v)
-                ? "icon icon-keyboard-arrow-down variable-dataitem-main__expand-icon"
-                : "icon icon-keyboard-arrow-right variable-dataitem-main__expand-icon");
+                ? "icon icon-keyboard-arrow-down munin-explorer-dataitem-main__expand-icon"
+                : "icon icon-keyboard-arrow-right munin-explorer-dataitem-main__expand-icon");
         builder.AddAttribute(2, "aria-hidden", "true");
         builder.CloseElement();
     };
@@ -969,7 +969,7 @@ public partial class VariableExplorer : ComponentBase
     /// 100% because a <c>to</c> in the future would otherwise overflow the track.
     /// </para>
     /// <para>
-    /// <c>variable-explorer-period</c> is a handle of ours, like the other four: helsedata has no
+    /// <c>munin-explorer-period</c> is a handle of ours, like the other four: helsedata has no
     /// period bar to borrow a name from. The host draws it; without a rule it degrades to the two
     /// dates, which is the information, with the bar as the illustration.
     /// </para>
@@ -985,10 +985,10 @@ public partial class VariableExplorer : ComponentBase
         var ongoing = to is null;
 
         builder.OpenElement(1, "div");
-        builder.AddAttribute(2, "class", "variable-explorer-period");
+        builder.AddAttribute(2, "class", "munin-explorer-period");
 
         builder.OpenElement(3, "p");
-        builder.AddAttribute(4, "class", "variable-explorer-period__range");
+        builder.AddAttribute(4, "class", "munin-explorer-period__range");
         builder.AddContent(5, from is { } f ? MonthYear(f) : "?");
         builder.AddContent(6, " – ");
         builder.AddContent(7, to is { } t ? MonthYear(t) : T.Ongoing);
@@ -997,14 +997,14 @@ public partial class VariableExplorer : ComponentBase
         builder.OpenElement(8, "div");
         builder.AddAttribute(9, "class",
             ongoing
-                ? "variable-explorer-period__track variable-explorer-period__track--ongoing"
-                : "variable-explorer-period__track");
+                ? "munin-explorer-period__track munin-explorer-period__track--ongoing"
+                : "munin-explorer-period__track");
         // Decorative: the dates above say the same thing, and a bar a screen reader announces as
         // "94 percent" would describe a proportion nobody asked about.
         builder.AddAttribute(10, "aria-hidden", "true");
 
         builder.OpenElement(11, "div");
-        builder.AddAttribute(12, "class", "variable-explorer-period__fill");
+        builder.AddAttribute(12, "class", "munin-explorer-period__fill");
         builder.AddAttribute(13, "style", $"width:{PeriodShare(from, to)}%");
         builder.CloseElement();
 
@@ -1059,12 +1059,12 @@ public partial class VariableExplorer : ComponentBase
         }
 
         builder.OpenElement(0, $"h{RowLevel}");
-        builder.AddAttribute(1, "class", "headline headline-xxs margin--none variable-explorer-group");
+        builder.AddAttribute(1, "class", "headline headline-xxs margin--none munin-explorer-group");
         builder.AddContent(2, T.GroupProperties);
         builder.CloseElement();
 
         builder.OpenElement(3, "dl");
-        builder.AddAttribute(4, "class", "variable-meta__grid");
+        builder.AddAttribute(4, "class", "munin-explorer-meta__grid");
 
         var seq = 10;
 
@@ -1124,14 +1124,14 @@ public partial class VariableExplorer : ComponentBase
     /// <summary>The panel's tabs, in the order they are drawn.</summary>
     private static readonly PanelTab[] Tabs = Enum.GetValues<PanelTab>();
 
-    private string TabId(PanelTab tab) => $"variable-explorer-tab-{_instance}-{tab}";
+    private string TabId(PanelTab tab) => $"munin-explorer-tab-{_instance}-{tab}";
 
     /// <summary>
     /// The one tab panel. Its id does not vary by tab: there is a single panel whose contents
     /// change, so every tab points at it. An id per tab would leave the unselected tab's
     /// aria-controls naming an element that is not rendered.
     /// </summary>
-    private string TabPanelId() => $"variable-explorer-tabpanel-{_instance}";
+    private string TabPanelId() => $"munin-explorer-tabpanel-{_instance}";
 
     private string TabLabel(PanelTab tab) => tab switch
     {
@@ -1142,8 +1142,8 @@ public partial class VariableExplorer : ComponentBase
 
     private string TabClass(PanelTab tab) =>
         tab == _tab
-            ? "variable-meta__tab variable-meta__tab--active"
-            : "variable-meta__tab";
+            ? "munin-explorer-meta__tab munin-explorer-meta__tab--active"
+            : "munin-explorer-meta__tab";
 
     private void SelectTab(PanelTab tab) => _tab = tab;
 
@@ -1257,12 +1257,12 @@ public partial class VariableExplorer : ComponentBase
     /// <summary>The list item's class, carrying helsedata's expanded state.</summary>
     private string RowItemClass(VariableSummary v) =>
         IsSelected(v)
-            ? "variable-data-list__item variable-data-list__item--expanded"
-            : "variable-data-list__item";
+            ? "munin-explorer-data-list__item munin-explorer-data-list__item--expanded"
+            : "munin-explorer-data-list__item";
 
     /// <summary>
     /// The row's metadata line: code, source, data collection and period, in helsedata's own
-    /// <c>variable-dataitem-main__column</c> shape.
+    /// <c>munin-explorer-dataitem-main__column</c> shape.
     /// </summary>
     /// <remarks>
     /// Each value is labelled. helsedata's datakildeutforsker runs its values together
@@ -1273,7 +1273,7 @@ public partial class VariableExplorer : ComponentBase
     private RenderFragment InfoLine(VariableSummary v) => builder =>
     {
         // One div per column, each holding a span, which is exactly helsedata's shape. Their grid
-        // is on .variable-dataitem-main, so the columns line up only if they are its direct
+        // is on .munin-explorer-dataitem-main, so the columns line up only if they are its direct
         // children — the row's own layout comes from CSS we do not own.
         // Runa's columns, in Runa's order. Runa is what this replaces helsedata's variable page
         // WITH, so it decides what a row says; helsedata decides what a row looks like. Taking the
@@ -1285,7 +1285,7 @@ public partial class VariableExplorer : ComponentBase
         // the request, and the sample host carries the widths they should be given. A column with
         // no width rule sizes by content, which is what put Kode on two lines: a variable code is
         // one unbreakable token and cannot give way, so everything else must. Their header row is
-        // further along: `variable-dataitem-header__period` is already in variables.css, because
+        // further along: `munin-explorer-dataitem-header__period` is already in variables.css, because
         // their own variable page has had a period column all along — it is only the cell modifier
         // that is missing, since theirs draws a bar sized inline rather than a column of text.
         //
@@ -1336,7 +1336,7 @@ public partial class VariableExplorer : ComponentBase
         // The dataperiode as text — the same two dates the panel draws under its bar, from the
         // same fields. helsedata's own period cell is a bar and nothing else, with the dates on
         // hover, but a bar is drawn entirely by rules this package does not ship: in a host that
-        // has not styled `variable-dataitem-period` the cell would be empty rather than plain, and
+        // has not styled `munin-explorer-dataitem-period` the cell would be empty rather than plain, and
         // an empty column is indistinguishable from a variable with no period recorded. The panel
         // is where the bar is worth its dependency, because the row beside it says the dates.
         // The only column whose value is not the catalogue's own words: the dates are formatted for
@@ -1364,7 +1364,7 @@ public partial class VariableExplorer : ComponentBase
             : $"{(from is { } f ? MonthYear(f) : "?")} – {(to is { } t ? MonthYear(t) : T.Ongoing)}";
 
     /// <summary>
-    /// One column of a result row, in helsedata's <c>variable-dataitem-main__column</c> shape.
+    /// One column of a result row, in helsedata's <c>munin-explorer-dataitem-main__column</c> shape.
     /// </summary>
     /// <remarks>
     /// The field name is not shown in the cell — the column header names it. It is still emitted
@@ -1394,8 +1394,8 @@ public partial class VariableExplorer : ComponentBase
         builder.OpenElement(seq, "div");
         builder.AddAttribute(seq + 1, "class",
             key is null
-                ? "variable-dataitem-main__column"
-                : $"variable-dataitem-main__column variable-dataitem-main__{key}");
+                ? "munin-explorer-dataitem-main__column"
+                : $"munin-explorer-dataitem-main__column munin-explorer-dataitem-main__{key}");
 
         // The full value as a tooltip on the CELL, because a cell can be clipped — the code column
         // truncates rather than wraps, since a broken identifier is neither readable nor copyable.
@@ -1421,7 +1421,7 @@ public partial class VariableExplorer : ComponentBase
         builder.CloseElement();
 
         builder.OpenElement(seq + 6, "span");
-        builder.AddAttribute(seq + 7, "class", "variable-dataitem-main__column__text");
+        builder.AddAttribute(seq + 7, "class", "munin-explorer-dataitem-main__column__text");
 
         if (string.IsNullOrWhiteSpace(value))
         {
@@ -1462,7 +1462,7 @@ public partial class VariableExplorer : ComponentBase
     private void Field(RenderTreeBuilder builder, int seq, string label, string? value, bool first)
     {
         builder.OpenElement(seq, "span");
-        builder.AddAttribute(seq + 1, "class", "variable-dataitem-main__column__text");
+        builder.AddAttribute(seq + 1, "class", "munin-explorer-dataitem-main__column__text");
 
         if (!first)
         {
