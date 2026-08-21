@@ -61,16 +61,16 @@ These are not style preferences — each one is a host that breaks otherwise.
     `form-element__label`, `form-fieldset`, `headline`, `caption`, `infobox`, `hd-button-reset`,
     `screenreader-only`.
   - `variables.css`, the second stylesheet, for the whole result vocabulary. Since
-    `Fhi.Metadata-zs56s` the component renders that page's DOM rather than a shape of its own:
-    rows are `variable-data-list` / `variable-data-list__item*` / `variable-dataitem-main*`,
-    the opened panel is `variable-meta*`, the list around them is `variable-explorer-container` /
-    `variable-explorer-results` / `variable-explorer-header*`, the pager is `variables-pagination*`
-    plus `skiplink-pagination`, and the column picker is `variable-explorer-header__actions*` with
-    `dropdown-choicepicker*`. Despite the name it is served on every page of helsedata.no —
-    verified on `/no/`, `/no/variabler/` and `/no/datakilder/`, which load an identical seven
-    bundles — so a host in their estate has it wherever the component is mounted. A host outside
-    has to supply all of it, including the rule that keeps `skiplink-pagination` out of sight
-    until it is focused.
+    `Fhi.Metadata-zs56s` the component renders helsedata's own variable page's DOM rather than a
+    shape of its own: rows are `variable-data-list` / `variable-data-list__item*` /
+    `variable-dataitem-main*`, the opened panel is `variable-meta*`, the list around them is
+    `variable-explorer-container` / `variable-explorer-results` / `variable-explorer-header*`, the
+    pager is `variables-pagination*` plus `skiplink-pagination`, and the column picker is
+    `variable-explorer-header__actions*` with `dropdown-choicepicker*`. Despite the name it is
+    served on every page of helsedata.no — verified on `/no/`, `/no/variabler/` and
+    `/no/datakilder/`, which load an identical seven bundles — so a host in their estate has it
+    wherever the component is mounted. A host outside has to supply all of it, including the rule
+    that keeps `skiplink-pagination` out of sight until it is focused.
 
   A name neither stylesheet has heard of renders as a raw browser default inside an otherwise
   styled page, which defeats the point of shipping this as a component at all. So where neither

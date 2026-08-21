@@ -5,13 +5,14 @@
    component render under legacy Blazor Server and under a modern Blazor Web App.
    No CSS ships from this package.
 
-   Every class name below is one helsedata already defines, off one of their two compiled
-   stylesheets: Fhi.Helsedata.Stiler site-wide for the ordinary page furniture, and the
-   page-specific `variables.css` for the whole result vocabulary. Since `Fhi.Metadata-zs56s` the
-   results are their own variable page's rows (`variable-data-list*`, `variable-dataitem-*`) in
-   the list that page builds around them (`variable-explorer-container`,
-   `variable-explorer-results`, `variable-explorer-header*`), with `variable-meta*` for the panel
-   an open row shows and `variables-pagination*` plus `skiplink-pagination` for the pager. The
+   Every class name below that is meant to be styled is one helsedata already defines, off one of
+   their two compiled stylesheets: Fhi.Helsedata.Stiler site-wide for the ordinary page furniture,
+   and `variables.css` — which despite the name every page of helsedata.no loads — for the whole
+   result vocabulary. Since `Fhi.Metadata-zs56s` the results are their own variable page's rows
+   (`variable-data-list*`, `variable-dataitem-*`) in the list that page builds around them
+   (`variable-explorer-container`, `variable-explorer-results`, `variable-explorer-header*`), with
+   `variable-meta*` for the panel an open row shows and `variables-pagination*` plus
+   `skiplink-pagination` for the pager. The
    pager was the first name borrowed from that file, because Stiler has no pagination rule at all,
    but it is one borrowed family among many now rather than the one exception it used to be. The
    searchbox shape — submit button inside the field — is still lifted from helsedata's own
@@ -21,10 +22,19 @@
    Inventing `variabelutforsker-*` names — which is what this used to do, twice — meant the host
    stylesheet had never heard of them, so the Søk button, the search field and the table headers
    rendered as raw browser defaults inside an otherwise styled page. Matching helsedata without
-   guessing is the entire reason this ships as a component, so the names have to be theirs. (The
-   historical spelling is deliberate: it records the mistake as it was made. The root
-   `variable-explorer` class below, and the `variable-explorer-*` DOM ids the codebehind mints,
-   are not that mistake — they carry no styling at all; see the comment above the `<section>`.)
+   guessing is the entire reason this ships as a component, so the names that carry styling have
+   to be theirs. (The historical spelling is deliberate: it records the mistake as it was made.)
+
+   The rest of the `variable-explorer-*` prefix is ours and is not that mistake, because neither
+   stylesheet is expected to have a rule for it. Most of those names are handles — the root
+   `variable-explorer` class below, the DOM ids the codebehind mints, and `-filters`, `-detail`,
+   `-drilldown`, `-kodeverk*`, `-codes*`, `-group` and the nine `-kilde*` names in KildeView — on
+   elements something else already dresses, a Stiler class they also wear or their own browser
+   default, so an undefined one costs look and not information. Two are not handles and a host
+   outside helsedata has to draw them itself: `variable-explorer-crumb`, which is the only sign
+   the kilde step of the trail can be pressed, and `variable-explorer-period__track` / `__fill` /
+   `__track--ongoing`, which are the period bar itself. README lists every one of them; see also
+   the comment above the `<section>`.
 
    `variables.css` is a dependency a host outside helsedata's estate has to meet in full, and the
    component class's remarks say so — including the rule that keeps `skiplink-pagination` out of
@@ -612,8 +622,10 @@ else
        it survivable while it does.
 
        `variables-pagination` and `variables-pagination-content` are helsedata's own names from
-       the variable page's own stylesheet — Stiler has no pagination rule at all. The component
-       class's remarks say what that costs a host mounted anywhere else.
+       `variables.css` — Stiler has no pagination rule at all. Despite the name, every page of
+       helsedata.no loads that stylesheet, so the names are there wherever the component is
+       mounted inside their estate; the component class's remarks say what supplying them costs
+       a host outside it.
 
        A div with role="navigation" rather than a <nav>: the landmark is worth having, and it
        is named so it does not sit anonymously among the host page's own, but the element has
