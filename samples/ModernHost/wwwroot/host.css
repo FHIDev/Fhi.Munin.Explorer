@@ -1323,3 +1323,67 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+/* The version history. A list of disclosures rather than a table: each row is one version and the
+   thing under it is that version's own record, which is a shape a table cell cannot hold. */
+.variable-explorer-versions {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--grey30);
+}
+
+.variable-explorer-versions > li {
+  border-bottom: 1px solid var(--grey30);
+}
+
+/* Name, badge and period on one line, with the name taking the slack. The period is pushed to the
+   end so the dates line up down the list and can be read as a column. */
+.variable-explorer-versions__toggle {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 4px;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.variable-explorer-versions__toggle:hover {
+  background: var(--grey10);
+}
+
+.variable-explorer-versions__name {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  font-weight: 600;
+}
+
+/* Reads as a state, not as part of the name — the same move the kildetype tag makes. */
+.variable-explorer-versions__badge {
+  flex: 0 0 auto;
+  padding: 1px 9px;
+  border-radius: 999px;
+  background: var(--grey20);
+  color: var(--grey60);
+  font-size: 0.75rem;
+}
+
+/* Fixed widths so the two dates make columns down the list rather than drifting with the length
+   of each name. tabular-nums for the same reason: proportional digits put "24." and "9." in
+   different widths and the column stops being one. */
+.variable-explorer-versions__from,
+.variable-explorer-versions__to {
+  flex: 0 0 auto;
+  inline-size: 7.5rem;
+  color: var(--grey60);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.variable-explorer-versions__detail {
+  padding: 0 4px 14px;
+}

@@ -125,6 +125,15 @@ internal sealed record Texts(
     string StatisticsAccumulated,
     string ShowWholeVariable,
     string HeadingKodeverk,
+
+    // The version history in the whole-variable view.
+    string HeadingVersionHistory,
+    string VersionUnnamed,
+    string VersionCurrent,
+    string VersionActive,
+    string VersionHistorical,
+    string FieldValidFrom,
+    string FieldValidTo,
     // Prose for the identification level, which the API reports as a raw token the same way
     // kildetype is. A token missing from this falls back to what the API sent.
     IReadOnlyDictionary<string, string> PersonIdentificationNames,
@@ -195,15 +204,6 @@ internal sealed record Texts(
     };
 
     /// <summary>
-    /// Prose for a kildetype token, falling back to what the API called it.
-    /// </summary>
-    /// <remarks>
-    /// A fallback rather than a throw, unlike <see cref="FieldLabel"/>: the tokens are Munin's
-    /// kildetype enum and a new member appearing there is a catalogue change, not a bug in this
-    /// component. "SentraltHelseregister" on a button is poor prose but it is the truth, where
-    /// dropping the value would take a filter off the screen that the API is still counting.
-    /// </remarks>
-    /// <summary>
     /// The kind of statistics a datasamling keeps, as a word rather than an API token.
     /// </summary>
     /// <remarks>
@@ -219,6 +219,28 @@ internal sealed record Texts(
         _ => type
     };
 
+    /// <summary>A version's status as a word, or as it arrived when we have not seen it before.</summary>
+    /// <remarks>
+    /// Only <c>Active</c> has come back from the test API - every version on every variable
+    /// sampled, including ones long superseded. Historical is in the vocabulary and is handled, but
+    /// has never been observed, so anything else is shown raw rather than guessed at or hidden.
+    /// </remarks>
+    public string VersionStatusLabel(string status) => status.ToLowerInvariant() switch
+    {
+        "active" => VersionActive,
+        "historical" or "historisk" => VersionHistorical,
+        _ => status
+    };
+
+    /// <summary>
+    /// Prose for a kildetype token, falling back to what the API called it.
+    /// </summary>
+    /// <remarks>
+    /// A fallback rather than a throw, unlike <see cref="FieldLabel"/>: the tokens are Munin's
+    /// kildetype enum and a new member appearing there is a catalogue change, not a bug in this
+    /// component. "SentraltHelseregister" on a button is poor prose but it is the truth, where
+    /// dropping the value would take a filter off the screen that the API is still counting.
+    /// </remarks>
     public string KildeTypeLabel(string? value, string? fallback)
     {
         if (value is not null && KildeTypeNames.TryGetValue(value, out var name))
@@ -378,6 +400,13 @@ internal sealed record Texts(
         StatisticsAccumulated: "Akkumulert",
         ShowWholeVariable: "Vis hele variabelen",
         HeadingKodeverk: "Kodeverk",
+        HeadingVersionHistory: "Versjonshistorikk",
+        VersionUnnamed: "Versjon uten navn",
+        VersionCurrent: "Gjeldende",
+        VersionActive: "Aktiv",
+        VersionHistorical: "Historisk",
+        FieldValidFrom: "Gyldig fra",
+        FieldValidTo: "Gyldig til",
         PersonIdentificationNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["directlyIdentifiable"] = "Direkte identifiserbar",
@@ -546,6 +575,13 @@ internal sealed record Texts(
         StatisticsAccumulated: "Accumulated",
         ShowWholeVariable: "Show the whole variable",
         HeadingKodeverk: "Code lists",
+        HeadingVersionHistory: "Version history",
+        VersionUnnamed: "Version without a name",
+        VersionCurrent: "Current",
+        VersionActive: "Active",
+        VersionHistorical: "Historical",
+        FieldValidFrom: "Valid from",
+        FieldValidTo: "Valid to",
         PersonIdentificationNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["directlyIdentifiable"] = "Directly identifiable",
