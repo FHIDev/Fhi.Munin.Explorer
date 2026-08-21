@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <Description>Munin's variable explorer as an embeddable Blazor component, with the typed client that feeds it. Renders inside a modern Blazor Web App and inside legacy Blazor Server (AddServerSideBlazor + MapBlazorHub, as used by Optimizely) alike — no router, no @page, no @rendermode of its own. Ships no CSS: it emits the host's own class names so it inherits the surrounding site's styling instead of fighting it. Call AddMuninExplorer to register the client; calls are anonymous unless an IMuninExplorerTokenProvider is registered first, in which case the user's access token is forwarded on every request.</Description>
+    <PackageTags>munin;fhi;helsedata;blazor;razor-class-library;metadata;variabler</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The client, its handlers and CatalogueProperties are internal on purpose: a host renders a
+         component and talks to IMuninExplorerClient, and does not resolve the catalogue's
+         properties itself. The tests drive all three directly - the client against a stub
+         HttpMessageHandler, and the property rules head-on, because those rules were measured
+         rather than designed and are worth testing as rules instead of inferring from markup. -->
+    <InternalsVisibleTo Include="Fhi.Munin.Explorer.Tests" />
+  </ItemGroup>
+
+</Project>

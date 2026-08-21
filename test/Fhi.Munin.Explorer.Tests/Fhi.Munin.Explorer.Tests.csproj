@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <IsPackable>false</IsPackable>
@@ -23,9 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Fhi.Munin.Explorer.Blazor\Fhi.Munin.Explorer.Blazor.csproj" />
-    <ProjectReference Include="..\..\src\Fhi.Munin.Explorer.Client\Fhi.Munin.Explorer.Client.csproj" />
-    <ProjectReference Include="..\..\src\Fhi.Munin.Explorer.Contracts\Fhi.Munin.Explorer.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Fhi.Munin.Explorer\Fhi.Munin.Explorer.csproj" />
     <!-- The legacy sample host is referenced so its circuit token provider is covered by tests
          rather than only by having compiled. It is the pattern helsedata has to copy, and the
          property that matters — one user's token never reaching another user's request — is not

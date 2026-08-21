@@ -1,8 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Fhi.Munin.Explorer.Blazor\Fhi.Munin.Explorer.Blazor.csproj" />
-    <ProjectReference Include="..\..\src\Fhi.Munin.Explorer.Client\Fhi.Munin.Explorer.Client.csproj" />
+    <ProjectReference Include="..\..\src\Fhi.Munin.Explorer\Fhi.Munin.Explorer.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

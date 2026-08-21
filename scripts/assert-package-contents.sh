@@ -33,9 +33,7 @@ EXPECTED_VERSION="${2:-}"
 # Every package we publish, and the framework they all target. Adding a package here is the
 # deliberate act that makes the check aware of it — a new .nupkg nobody listed is an error.
 PACKAGES=(
-  Fhi.Munin.Explorer.Contracts
-  Fhi.Munin.Explorer.Client
-  Fhi.Munin.Explorer.Blazor
+  Fhi.Munin.Explorer
 )
 TFM=net10.0
 
