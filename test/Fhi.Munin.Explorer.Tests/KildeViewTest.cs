@@ -11,14 +11,24 @@ namespace Fhi.Munin.Explorer.Tests;
 /// own metadata, the datasamlinger it holds and the two sidebar boxes.
 /// </summary>
 /// <remarks>
-/// Written because nothing rendered this component at all. The suite had a class for the explorer,
+/// Written because this component had no test class of its own. The suite had one for the explorer,
 /// one for the variable view and one for the filter panel, and the kilde view was only ever reached
-/// sideways, through the explorer's drill-in — so the parameters it exists for had no coverage at
-/// all, and the class-name check that catches a name no stylesheet defines had nowhere to hang for
-/// this view. The parameters are the point: <see cref="KildeView.Sections"/>,
-/// <see cref="KildeView.HeadingLevel"/>, <see cref="KildeView.HeadingId"/> and
-/// <see cref="KildeView.DataCollectionsHeading"/> are the whole reason this is a shared component
-/// rather than two views, and none of them is exercised by rendering the explorer.
+/// sideways, through the explorer's drill-in — so the parameters it exists for had no coverage.
+/// The parameters are the point, in two different ways. <see cref="KildeView.Sections"/> and
+/// <see cref="KildeView.DataCollectionsHeading"/> are the whole reason this is a shared core rather
+/// than two views, and no explorer in this repository wires either: Kelda is what will.
+/// <see cref="KildeView.HeadingLevel"/> and <see cref="KildeView.HeadingId"/> are wired — the
+/// explorer passes both at VariableExplorer.razor:104-107 — but its own tests assert nothing about
+/// what comes out, so the levels the blocks land on and the id the landmark is named by went
+/// unchecked either way.
+/// <para>
+/// The class-name check is the one thing here that was already hanging somewhere: the explorer's
+/// own <c>Source_WhenAPanelIsOpen_ThenItIsBuiltFromShapesRatherThanFromANewStyleName</c>
+/// (VariableExplorerTest.cs:5701) opens the drill-in and pins nine of the ten names this view
+/// emits. Both lists are worth keeping — that one guards the path a reader actually takes, this one
+/// guards the view rendered whole — but they are two hand-maintained lists in two files, so a name
+/// added or renamed here has to be answered in both.
+/// </para>
 /// </remarks>
 public class KildeViewTest : BunitContext
 {
@@ -41,8 +51,11 @@ public class KildeViewTest : BunitContext
         Description = "Norsk register for ALS og andre motonevronsykdommer.",
         Kildetype = "nasjonaltMedisinskKvalitetsregister",
         LegalBasis = "Forskrift om medisinske kvalitetsregistre § 2-3.",
+        // Two organisations rather than one twice: with the same string in both, a component
+        // reading DataProcessor into the dataansvarlig row would satisfy every assertion here while
+        // attributing the data to the wrong body.
         DataController = "St. Olavs hospital HF",
-        DataProcessor = "St. Olavs hospital HF",
+        DataProcessor = "Hemit HF",
         PersonIdentificationLevel = "indirectlyIdentifiable",
         ValidFrom = new DateTimeOffset(2023, 1, 1, 0, 0, 0, TimeSpan.Zero),
         LastUpdated = new DateTimeOffset(2026, 3, 4, 9, 30, 0, TimeSpan.Zero),
@@ -71,6 +84,7 @@ public class KildeViewTest : BunitContext
         string? shortName = null,
         string description = "",
         DateTimeOffset? from = null,
+        DateTimeOffset? to = null,
         int variables = 1) =>
         new()
         {
@@ -80,6 +94,7 @@ public class KildeViewTest : BunitContext
             Description = description,
             PresentationOrder = order,
             EffectiveValidFrom = from,
+            EffectiveValidTo = to,
             VariableCount = variables,
         };
 
@@ -128,18 +143,52 @@ public class KildeViewTest : BunitContext
         });
 
     /// <summary>The sidebar's first box — the facts every source has.</summary>
-    private static IElement SourceInformation(IRenderedComponent<KildeView> cut) =>
-        cut.FindAll(".variable-explorer-kilde__aside dl")[0];
+    private static IElement SourceInformation(IRenderedComponent<KildeView> cut) => Box(cut, 0, "source information");
 
     /// <summary>The sidebar's second box — the counts and dates.</summary>
-    private static IElement Statistics(IRenderedComponent<KildeView> cut) =>
-        cut.FindAll(".variable-explorer-kilde__aside dl")[1];
+    private static IElement Statistics(IRenderedComponent<KildeView> cut) => Box(cut, 1, "statistics");
+
+    /// <summary>
+    /// One sidebar box, by position, saying which one is missing when it is.
+    /// </summary>
+    /// <remarks>
+    /// A box whose every fact is blank draws no <c>dl</c> at all, so the positions shift: a source
+    /// with nothing typed in would hand back the statistics box for a call asking after the source
+    /// information, and an index error naming neither for the call after that. Reported by name
+    /// instead, because a box that stopped drawing is the finding rather than the accident.
+    /// </remarks>
+    private static IElement Box(IRenderedComponent<KildeView> cut, int index, string name)
+    {
+        var boxes = cut.FindAll(".variable-explorer-kilde__aside dl");
+
+        return index < boxes.Count
+            ? boxes[index]
+            : throw new InvalidOperationException(
+                $"The sidebar drew {boxes.Count} box(es), so there is no {name} box to read.");
+    }
 
     private static IReadOnlyList<string> Labels(IElement list) =>
         [.. list.QuerySelectorAll("dt").Select(e => e.TextContent)];
 
     private static IReadOnlyList<string> Values(IElement list) =>
         [.. list.QuerySelectorAll("dd").Select(e => e.TextContent)];
+
+    /// <summary>One row's value cell, found by the label beside it rather than by its position.</summary>
+    /// <remarks>
+    /// A row's index is a function of both the order the component lists its fields in and which of
+    /// them the fixture filled in, since a blank value draws no row — so an index in a test that
+    /// does not also assert the labels names a row that a field inserted upstream silently moves.
+    /// Asking by label makes the assertion self-locating, and makes the failure say which row went
+    /// missing rather than reading the wrong one's text back.
+    /// </remarks>
+    private static IElement Fact(IElement list, string label) =>
+        list.QuerySelectorAll("div").FirstOrDefault(row => row.QuerySelector("dt")?.TextContent == label)
+            ?.QuerySelector("dd")
+        ?? throw new InvalidOperationException(
+            $"No '{label}' row in this box, only: {string.Join(", ", Labels(list))}.");
+
+    /// <inheritdoc cref="Fact"/>
+    private static string Value(IElement list, string label) => Fact(list, label).TextContent;
 
     /// <summary>The datasamling rows, by the name each is headed with.</summary>
     private static IReadOnlyList<string> CollectionNames(IRenderedComponent<KildeView> cut) =>
@@ -178,10 +227,14 @@ public class KildeViewTest : BunitContext
         // it ships. None of these is helsedata's — the six of theirs in the variable-explorer prefix
         // are all on the explorer, none on this view — so every one is a promise only the sample
         // stylesheet keeps.
+        //
+        // It is the second such list: VariableExplorerTest.cs:5719 pins nine of these ten down the
+        // drill-in path, all but variable-explorer-group, which that fixture's kilde has no metadata
+        // groups to produce. Renaming a handle means editing both, and the other one fails with a
+        // message about the explorer rather than about this view.
         var cut = Render(Kilde());
 
-        var invented = cut.FindAll("[class]")
-            .SelectMany(e => e.ClassList)
+        var invented = HostClassNames.Of(cut.FindAll("[class]"))
             .Where(k => k.StartsWith("variable-explorer", StringComparison.Ordinal))
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal);
@@ -265,7 +318,7 @@ public class KildeViewTest : BunitContext
         var cut = Render(Kilde() with { Kildetype = "" });
 
         Assert.Empty(cut.FindAll(".variable-explorer-kilde__kildetype"));
-        Assert.Equal("Ikke oppgitt", Values(SourceInformation(cut))[0]);
+        Assert.Equal("Ikke oppgitt", Value(SourceInformation(cut), "Type datakilde"));
     }
 
     [Fact]
@@ -366,7 +419,10 @@ public class KildeViewTest : BunitContext
     {
         var cut = Render(Kilde() with { AdditionalProperties = new Dictionary<string, string?>() });
 
-        Assert.DoesNotContain("Metadata", cut.Markup, StringComparison.Ordinal);
+        // Asked of the block headings rather than of the whole markup, which anything satisfies: a
+        // data-metadata handle or a PropertyMetadata key in an attribute would fail a substring
+        // check for a reason that has nothing to do with a heading promising a block.
+        Assert.DoesNotContain("Metadata", BlockHeadings(cut));
         Assert.Empty(cut.FindAll(".variable-explorer-group"));
     }
 
@@ -401,18 +457,27 @@ public class KildeViewTest : BunitContext
         // Two rules in one list. A curated order is what Munin's own views follow, so it wins; the
         // ones nobody has ordered fall back to the alphabet — the Norwegian one, because the names
         // are the catalogue's and stored once in Norwegian, so å sorts last whoever is reading.
+        //
+        // Two pairs, because "Norwegian" is two claims and Ålesund only carries one of them. Å above
+        // Alta is what an English reader's collation would get wrong, since English folds Å to A —
+        // but it is also what a plain byte comparison gets right by accident, U+00C5 being above
+        // every ASCII letter, so a comparer with no collation at all would pass on that pair alone.
+        // Élan before Fana is the other half: Norwegian sorts É with E, ordinal puts U+00C9 after F.
         var kilde = Kilde() with
         {
             Datasamlinger =
             [
                 Collection("Ålesund"),
                 Collection("Bergen", order: 2),
+                Collection("Fana"),
                 Collection("Alta"),
+                Collection("Élan"),
                 Collection("Oslo", order: 1),
             ],
         };
 
-        Assert.Equal(["Oslo", "Bergen", "Alta", "Ålesund"], CollectionNames(Render(kilde, language: "en")));
+        Assert.Equal(["Oslo", "Bergen", "Alta", "Élan", "Fana", "Ålesund"],
+                     CollectionNames(Render(kilde, language: "en")));
     }
 
     [Fact]
@@ -441,6 +506,27 @@ public class KildeViewTest : BunitContext
 
         Assert.Equal(["Alle pasienter ved inklusjon.", "1. januar 2010 – Pågående", "12 variabler"],
                      cut.FindAll("table.variable-explorer-kilde__datasamlinger tbody td").Select(e => e.TextContent));
+    }
+
+    [Fact]
+    public void DataCollections_WhenARowStoppedCollecting_ThenTheRowSaysWhenRatherThanOngoing()
+    {
+        // The same open/closed pair as the sidebar's, asked of the table, because the row's period
+        // is the cell a reader uses to tell a wave that has closed from one still running.
+        var kilde = Kilde() with
+        {
+            Datasamlinger =
+            [
+                Collection("Inklusjon", description: "Alle pasienter ved inklusjon.",
+                           from: new DateTimeOffset(2010, 1, 1, 0, 0, 0, TimeSpan.Zero),
+                           to: new DateTimeOffset(2019, 9, 30, 0, 0, 0, TimeSpan.Zero), variables: 12),
+            ],
+        };
+
+        // The whole row rather than one cell of it, so the assertion says which column it is reading.
+        Assert.Equal(["Alle pasienter ved inklusjon.", "1. januar 2010 – 30. september 2019", "12 variabler"],
+                     Render(kilde).FindAll("table.variable-explorer-kilde__datasamlinger tbody td")
+                                  .Select(e => e.TextContent));
     }
 
     [Fact]
@@ -508,12 +594,18 @@ public class KildeViewTest : BunitContext
              "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i Munin"],
             Labels(SourceInformation(cut)));
 
-        var values = Values(SourceInformation(cut));
+        var facts = SourceInformation(cut);
 
-        Assert.Equal("Nasjonalt medisinsk kvalitetsregister", values[0]);
-        Assert.Equal("St. Olavs hospital HF", values[2]);
-        Assert.Equal("Indirekte identifiserbar", values[4]);
-        Assert.Equal("4. mars 2026", values[6]);
+        Assert.Equal("Nasjonalt medisinsk kvalitetsregister", Value(facts, "Type datakilde"));
+
+        // Separately, and from two different fields in the fixture: the dataansvarlig and the
+        // databehandler are adjacent tuples reading adjacent properties, which is where a
+        // copy-paste slip attributes a register's data to the wrong organisation.
+        Assert.Equal("St. Olavs hospital HF", Value(facts, "Dataansvarlig"));
+        Assert.Equal("Hemit HF", Value(facts, "Databehandler"));
+
+        Assert.Equal("Indirekte identifiserbar", Value(facts, "Grad av personidentifikasjon"));
+        Assert.Equal("4. mars 2026", Value(facts, "Sist oppdatert i Munin"));
     }
 
     [Fact]
@@ -541,7 +633,7 @@ public class KildeViewTest : BunitContext
         var cut = Render(Kilde());
 
         Assert.Equal(["Totalt antall variabler", "Dataperiode"], Labels(Statistics(cut)));
-        Assert.Equal("312", Values(Statistics(cut))[0]);
+        Assert.Equal("312", Value(Statistics(cut), "Totalt antall variabler"));
     }
 
     [Fact]
@@ -557,9 +649,48 @@ public class KildeViewTest : BunitContext
     {
         // An open end is the normal case for a register that is still collecting. A blank half reads
         // as a missing value, and a guessed date would be a claim the catalogue never made.
-        var values = Values(SourceInformation(Render(Kilde())));
+        Assert.Equal("1. januar 2023 – Pågående",
+                     Value(SourceInformation(Render(Kilde())), "Gyldighet"));
+    }
 
-        Assert.Equal("1. januar 2023 – Pågående", values[5]);
+    [Fact]
+    public void Period_WhenTheEndIsClosed_ThenBothDatesAreShownTheWayTheReadersLanguageWritesThem()
+    {
+        // A register that stopped collecting is a normal catalogue state, and it was the untested
+        // half of this view's own Period: every other fixture here leaves the end open, so the end
+        // date, the en-dash that joins the two and the English form of the closing date never ran.
+        var closed = Kilde() with
+        {
+            ValidTo = new DateTimeOffset(2024, 12, 31, 0, 0, 0, TimeSpan.Zero),
+            DataTo = new DateTimeOffset(2024, 6, 30, 0, 0, 0, TimeSpan.Zero),
+        };
+
+        var norwegian = Render(closed);
+
+        Assert.Equal("1. januar 2023 – 31. desember 2024", Value(SourceInformation(norwegian), "Gyldighet"));
+        Assert.Equal("1. januar 2010 – 30. juni 2024", Value(Statistics(norwegian), "Dataperiode"));
+
+        var english = Render(closed, language: "en");
+
+        Assert.Equal("1 January 2023 – 31 December 2024", Value(SourceInformation(english), "Validity"));
+        Assert.Equal("1 January 2010 – 30 June 2024", Value(Statistics(english), "Data period"));
+    }
+
+    [Fact]
+    public void Period_WhenOnlyTheEndIsKnown_ThenTheDateStandsAloneRatherThanBesideABlankHalf()
+    {
+        // The third shape, and the one with no good answer: an en-dash with nothing before it reads
+        // as a value that failed to draw, and a start date the catalogue never gave would be an
+        // invention. So the end stands alone — which does read as a start, and is pinned here
+        // because it is a decision rather than an accident. VariableView's own copy of Period does
+        // the same, so changing it is a change to both.
+        var kilde = Kilde() with
+        {
+            ValidFrom = null,
+            ValidTo = new DateTimeOffset(2024, 12, 31, 0, 0, 0, TimeSpan.Zero),
+        };
+
+        Assert.Equal("31. desember 2024", Value(SourceInformation(Render(kilde)), "Gyldighet"));
     }
 
     // ---------------------------------------------------------------------------------
@@ -579,7 +710,8 @@ public class KildeViewTest : BunitContext
         // they follow the reader too — unlike everything the catalogue wrote, which does not.
         Assert.Equal("National medical quality registry",
                      cut.Find(".variable-explorer-kilde__kildetype").TextContent);
-        Assert.Equal("Indirectly identifiable", Values(SourceInformation(cut))[4]);
+        Assert.Equal("Indirectly identifiable",
+                     Value(SourceInformation(cut), "Level of personal identification"));
         Assert.Equal(["Total number of variables", "Data period"], Labels(Statistics(cut)));
     }
 
@@ -605,10 +737,10 @@ public class KildeViewTest : BunitContext
         // prose, and so is the identification level beside it in the sidebar.
         Assert.False(cut.Find(".variable-explorer-kilde__kildetype").HasAttribute("lang"));
 
-        var facts = SourceInformation(cut).QuerySelectorAll("dd");
+        var facts = SourceInformation(cut);
 
-        Assert.False(facts[0].HasAttribute("lang"));      // type of data source — ours
-        Assert.Equal("no", facts[1].GetAttribute("lang"));  // legal basis — the catalogue's
+        Assert.False(Fact(facts, "Type of data source").HasAttribute("lang"));   // ours
+        Assert.Equal("no", Fact(facts, "Legal basis").GetAttribute("lang"));     // the catalogue's
     }
 
     [Fact]
@@ -627,8 +759,7 @@ public class KildeViewTest : BunitContext
         // The dot after the day is not punctuation, it is what makes the number an ordinal in
         // Norwegian. English does not use it, so an English page carrying the Norwegian skeleton
         // with English month names — "1. January 2023" — is neither language.
-        var values = Values(SourceInformation(Render(Kilde(), language: "en")));
-
-        Assert.Equal("1 January 2023 – Ongoing", values[5]);
+        Assert.Equal("1 January 2023 – Ongoing",
+                     Value(SourceInformation(Render(Kilde(), language: "en")), "Validity"));
     }
 }
