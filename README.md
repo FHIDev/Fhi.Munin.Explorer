@@ -31,6 +31,12 @@ The two hosts share one stylesheet, copied — `samples/ModernHost/wwwroot/host.
 between the samples is a difference in the hosting model rather than in the CSS. Change one and
 copy it over the other; `scripts/assert-sample-css-in-step.sh` fails CI when they drift.
 
+That script also checks the thing "the two agree" does not say: that between them the samples
+style **every** `variable-explorer*` class name the package invents. Those names are inert until
+some host supplies a rule, so a name with no rule renders at raw browser defaults in both samples
+at once — which reads as a bug in the component. Agreeing and being right are different claims,
+and the second clause is the one that checks the second.
+
 ## Conventions
 
 Code identifiers here are **English**; Norwegian is for user-facing strings and domain terms

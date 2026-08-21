@@ -184,10 +184,16 @@ jobs:
 
   # The two sample hosts share one stylesheet, copied. Nothing about a build notices when the
   # copies stop agreeing — the drift shows up as a component that looks broken in one sample and
-  # fine in the other, which is the reading it least deserves. See the script's header.
+  # fine in the other, which is the reading it least deserves. Nor does anything notice when both
+  # copies are missing the same rules, which looks broken in both. The script checks for each in
+  # turn; see its header.
   #
   # Its own job, like the changelog check and for the same reason: "build + test" is a required
   # status check whose name must not move, and sample CSS drift is not a broken build.
+  # And with the same consequence: for this to *block* a merge rather than just show red, add
+  # "sample stylesheets in step" to the branch-protection required checks. Until it is added,
+  # a drifted PR shows this job red and merges anyway — which is weaker than the script header
+  # and the README both imply.
   sample-css:
     name: sample stylesheets in step
     runs-on: ubuntu-latest
@@ -195,7 +201,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Assert the sample hosts' stylesheets are identical
+      - name: Assert the sample hosts' stylesheets are identical and complete
         # The same script developers can run locally before pushing, so a red check here is
         # never a surprise that only CI knows how to reproduce.
         run: ./scripts/assert-sample-css-in-step.sh
