@@ -265,8 +265,19 @@ public sealed partial class VariableView : ComponentBase
         builder.CloseElement();
     }
 
-    /// <summary>A date as month and year, matching how the panel writes a period.</summary>
-    private string MonthYear(DateTimeOffset date) =>
+    /// <summary>A date as the day it fell on, with the month abbreviated.</summary>
+    /// <remarks>
+    /// Not the panel's <c>MonthYear</c>, whose name this borrowed while changing the format under
+    /// it. The two are answering different questions and Runa writes them differently: the panel's
+    /// period bar spans years and is drawn to be compared across rows, so a month and a year is as
+    /// much as it can use; this is one variable's validity window, where the day is the point.
+    /// <para>
+    /// The month is abbreviated rather than spelled out as the kilde view spells it, which is what
+    /// Runa does here too — this sidebar is 320px, and "20. september 2022 – 9. november 2022" wraps
+    /// in it where the short form does not.
+    /// </para>
+    /// </remarks>
+    private string Day(DateTimeOffset date) =>
         date.ToString("d. MMM yyyy", CatalogueProperties.Culture(Language));
 
     private string? Period(DateTimeOffset? from, DateTimeOffset? to)
@@ -276,8 +287,8 @@ public sealed partial class VariableView : ComponentBase
             return null;
         }
 
-        var start = from is { } f ? MonthYear(f) : "";
-        var end = to is { } t ? MonthYear(t) : T.Ongoing;
+        var start = from is { } f ? Day(f) : "";
+        var end = to is { } t ? Day(t) : T.Ongoing;
 
         return string.IsNullOrEmpty(start) ? end : $"{start} – {end}";
     }

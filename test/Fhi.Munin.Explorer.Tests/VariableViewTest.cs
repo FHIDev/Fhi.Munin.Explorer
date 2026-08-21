@@ -49,9 +49,6 @@ public class VariableViewTest : BunitContext
             .Add(c => c.Variable, detail)
             .Add(c => c.Language, language));
 
-    private static string[] Headings(IRenderedComponent<VariableView> cut) =>
-        [.. cut.FindAll("h2, h3, h4, h5, h6").Select(h => h.TextContent.Trim())];
-
     [Fact]
     public void Metadata_WhenAKeyIsAlreadyInTheSidebar_ThenItIsNotRepeatedInTheGroups()
     {
@@ -65,7 +62,12 @@ public class VariableViewTest : BunitContext
 
         // And the group goes with it, because nothing else in it was filled in — which is exactly
         // the five groups Runa draws where the payload offers six.
-        Assert.DoesNotContain(Headings(cut), h => h == "Datatype" && h != "Datatype");
+        //
+        // Scoped to the group headings on purpose. The sidebar has a Datatype heading of its own and
+        // is meant to: that is where this fact belongs. Asserting no "Datatype" heading anywhere
+        // would fail on the very thing the fix keeps.
+        Assert.DoesNotContain(cut.FindAll(".variable-explorer-group").Select(e => e.TextContent),
+                              text => text == "Datatype");
         Assert.Single(cut.FindAll(".variable-explorer-group"));
     }
 
