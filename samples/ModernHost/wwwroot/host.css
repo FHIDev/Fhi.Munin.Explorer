@@ -22,9 +22,15 @@
    how the pager's names turned out not to be Stiler's at all but the variable page's own; they
    are stood in for at the bottom of this file, under their own heading.
 
-   Kept byte-for-byte in step with samples/LegacyHost/wwwroot/css/host.css on purpose: if the two
-   hosts style the component identically, any difference you see between them is a difference
-   in the *hosting model*, not in the CSS. */
+   samples/ModernHost/wwwroot/host.css and samples/LegacyHost/wwwroot/css/host.css are this same
+   file twice, byte for byte, on purpose: if the two hosts style the component identically, any
+   difference you see between them is a difference in the *hosting model*, not in the CSS. That is
+   why neither copy names the other — a self-reference is the one line that cannot be identical in
+   both, and the claim is worth more as something a machine can check.
+
+   scripts/assert-sample-css-in-step.sh does the checking and runs in CI, because the copies did
+   drift once: the kodeverk block below reached LegacyHost's copy only, and ModernHost showed an
+   unstyled list that read as a component bug. Change one copy, copy it over the other. */
 
 :root {
   /* Stiler's palette — abstracts/_variables.scss */
@@ -78,10 +84,10 @@ body {
   padding: 12px 16px;
   margin: 0 0 12px;
 }
-/* Kept in step with LegacyHost's copy: the two samples style the component with the
-   same rules, so any visible difference between them is a difference in the HOSTING
-   MODEL rather than in CSS. With a single note — as here — :last-child resolves to the
-   same 24px this previously hard-coded, so nothing changes visually. */
+/* Both samples style the component with the same rules — see the file header — so any
+   visible difference between them is a difference in the HOSTING MODEL rather than in
+   CSS. With a single note — as here — :last-child resolves to the same 24px this
+   previously hard-coded, so nothing changes visually. */
 .hostchrome-note:last-child { margin-bottom: 24px; }
 .hostchrome-note code { font-size: 13px; }
 

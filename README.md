@@ -26,6 +26,11 @@ Both sample hosts exist on purpose. helsedata's production site runs **legacy** 
 `<component>` tag helper. A component that only ever ran in a modern Blazor Web App can break
 there in ways that never show up in development.
 
+The two hosts share one stylesheet, copied — `samples/ModernHost/wwwroot/host.css` and
+`samples/LegacyHost/wwwroot/css/host.css` are byte-for-byte identical, so a difference you see
+between the samples is a difference in the hosting model rather than in the CSS. Change one and
+copy it over the other; `scripts/assert-sample-css-in-step.sh` fails CI when they drift.
+
 ## Conventions
 
 Code identifiers here are **English**; Norwegian is for user-facing strings and domain terms
