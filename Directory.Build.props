@@ -32,9 +32,15 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
 
     <!-- Not the notes themselves: nuget.org renders this per version, and pasting a version's
-         entry in at pack time would mean the props file had to be edited for every release and
-         would be wrong the moment someone forgot. A pointer stays true. -->
-    <PackageReleaseNotes>See the changelog for what changed in this version: https://github.com/FHIDev/Fhi.Munin.Explorer/blob/main/CHANGELOG.md</PackageReleaseNotes>
+         entry in here would mean editing this file every release and being wrong the first time
+         someone forgot.
+
+         This default is for local and CI builds, which are not published. The release workflow
+         overrides it with the GitHub release for the tag being packed - see the Pack step. That
+         matters because nuget.org shows this string forever against that one version: a link to
+         the changelog on main would, after the next release, point an old package at notes that
+         no longer describe it and may not mention it at all. -->
+    <PackageReleaseNotes>Unreleased build. Release notes for published versions: https://github.com/FHIDev/Fhi.Munin.Explorer/releases</PackageReleaseNotes>
   </PropertyGroup>
 
   <!-- Ship the XML docs. The point of this package is that a helsedata developer does not
