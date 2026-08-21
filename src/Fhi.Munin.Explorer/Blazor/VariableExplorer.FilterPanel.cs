@@ -596,12 +596,14 @@ public partial class VariableExplorer
 
         try
         {
-            // The component's own resolved language rather than the host's raw token, so the
-            // datatype names come back in the language the rest of the component is rendering in.
-            // A host sending "en-GB" gets English words everywhere else, and a facet panel that
-            // asked the API for a tag it does not know would be the one Norwegian block on an
-            // otherwise English page.
-            _facets = await Client.GetFiltersAsync(_executedSearch, _filter, ReaderLanguage);
+            // The API's own spelling of the resolved language rather than the host's raw token or
+            // the tag we render with. A host sending "en-GB" gets English words everywhere else,
+            // and a facet panel that asked the API for a tag it does not know would be the one
+            // Norwegian block on an otherwise English page. Norwegian goes out as "nb" and not our
+            // "no" for the same reason in reverse: "no" has no parent culture the API's request
+            // localization can fall back from, so it would silently take the API's default.
+            _facets = await Client.GetFiltersAsync(
+                _executedSearch, _filter, ReaderLanguage.ForApi(Language));
             _facetError = null;
         }
         catch (Exception)

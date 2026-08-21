@@ -32,7 +32,19 @@ internal static class ReaderLanguage
     /// <summary>The default. helsedata's own token, which is <c>no</c> rather than <c>nb</c>.</summary>
     internal const string Norwegian = "no";
 
+    /// <summary>English, which every representation in play spells the same way.</summary>
     internal const string English = "en";
+
+    /// <summary>
+    /// Norwegian as the API spells it, which is <c>nb</c> and not helsedata's <c>no</c>.
+    /// </summary>
+    /// <remarks>
+    /// The two are not interchangeable where a header is concerned. <c>no</c> has the invariant
+    /// culture as its parent, so ASP.NET request localization on the API side does not fall back
+    /// from it to a supported <c>nb</c>/<c>nb-NO</c> — it serves the API's own default culture
+    /// instead, and the caller gets facet names in whatever language that happens to be.
+    /// </remarks>
+    internal const string ApiNorwegian = "nb";
 
     /// <summary>Whether this token asks for English. Anything else — including nothing — does not.</summary>
     internal static bool IsEnglish(string? language) =>
@@ -40,6 +52,18 @@ internal static class ReaderLanguage
 
     /// <summary>The reader's language as the tag this package uses: <c>en</c> or <c>no</c>.</summary>
     internal static string Of(string? language) => IsEnglish(language) ? English : Norwegian;
+
+    /// <summary>
+    /// The reader's language as the tag the API asks for: <c>en</c> or <c>nb</c>.
+    /// </summary>
+    /// <remarks>
+    /// Separate from <see cref="Of"/> because the two vocabularies genuinely differ on Norwegian:
+    /// <see cref="Contracts.IMuninExplorerClient.GetFiltersAsync"/> documents <c>nb</c> or
+    /// <c>en</c> and sends the value verbatim as <c>Accept-Language</c>, while everything rendered
+    /// here is tagged with helsedata's <c>no</c>. Mapping at the boundary is what keeps a host's
+    /// <c>nb-NO</c> from arriving at the API as a tag it cannot match.
+    /// </remarks>
+    internal static string ForApi(string? language) => IsEnglish(language) ? English : ApiNorwegian;
 
     /// <summary>
     /// The part of a language tag before its first subtag separator, trimmed.

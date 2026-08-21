@@ -134,17 +134,27 @@ public class LanguageTest : BunitContext
         Assert.DoesNotContain("Variabelutforsker", cut.Markup);
     }
 
-    [Fact]
-    public void Render_WhenTheTokenCarriesARegion_ThenTheFacetCallAsksForTheSameLanguage()
+    [Theory]
+    // The API's own two tags, not ours: it documents "nb" or "en" and sends the value verbatim as
+    // Accept-Language. Our "no" is not one of them, and it has no parent culture the API's request
+    // localization can fall back from, so it would quietly take the API's default culture instead.
+    [InlineData("en-GB", "en")]
+    [InlineData("en", "en")]
+    [InlineData("nb-NO", "nb")]
+    [InlineData("no", "nb")]
+    [InlineData("de", "nb")]
+    public void Render_WhenTheTokenCarriesARegion_ThenTheFacetCallAsksForTheSameLanguage(
+        string language, string expected)
     {
         // The datatype facet's names are resolved server side, so they follow Accept-Language
         // rather than the texts here. Passing the host's raw token through would leave the filter
         // panel as the one Norwegian block on an English page if the API did not know "en-GB".
         var client = new RecordingClient();
 
-        RenderWith(client, "en-GB");
+        RenderWith(client, language);
 
-        Assert.Equal("en", client.FacetLanguage);
+        Assert.Equal(expected, client.FacetLanguage);
+        Assert.Equal(expected, ReaderLanguage.ForApi(language));
     }
 
     [Fact]
@@ -209,8 +219,19 @@ public class LanguageTest : BunitContext
 
                 default:
                     // The sentence-building delegates. There is nothing to compare without
-                    // arguments, and each is asserted where it is rendered.
+                    // arguments, and each is asserted where it is rendered — PageOf and
+                    // ResultSummary by the English pager test, NoResults by the English empty
+                    // state. The type assertion is what keeps that comment true: a member added
+                    // later in some other shape — a list of strings, a nested record — would
+                    // otherwise fall through here and be reported as checked with nothing about
+                    // its translation compared, which is the half-translated release this test
+                    // exists to catch.
+                    Assert.True(
+                        typeof(Delegate).IsAssignableFrom(property.PropertyType),
+                        $"{property.Name} is a {property.PropertyType.Name}, which no arm here "
+                        + "compares. Give it an arm rather than letting it pass unchecked.");
                     Assert.NotNull(property.GetValue(en));
+                    Assert.NotNull(property.GetValue(no));
                     break;
             }
         }

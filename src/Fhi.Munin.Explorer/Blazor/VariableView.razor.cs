@@ -54,7 +54,7 @@ public sealed partial class VariableView : ComponentBase
 
     private Texts T => Texts.For(Language);
 
-    private string Reader => CatalogueProperties.Reader(Language);
+    private string Reader => ReaderLanguage.Of(Language);
 
     private int BlockLevel => Math.Min(HeadingLevel + 1, 6);
 

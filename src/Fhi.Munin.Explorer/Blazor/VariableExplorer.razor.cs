@@ -234,6 +234,15 @@ public partial class VariableExplorer : ComponentBase
     /// <c>LanguageExtensions</c> (<c>nb-NO</c>/<c>en-GB</c>), and which one reaches the mount point
     /// is the host's to decide. Anything else, including nothing, is Norwegian.
     /// </para>
+    /// <para>
+    /// Read once per render rather than watched: changing it on a component already on screen
+    /// re-renders every string this package owns, but not the datatype facet names, which the API
+    /// resolves server side and this component only asks for when it fetches counts. A host that
+    /// wants a live switch should re-mount the component rather than swap the parameter under it.
+    /// That is not a limitation anyone in helsedata's estate meets today — both sample hosts set
+    /// this once, and the CMS language switch is a full page load — and widening it means deciding
+    /// where the mount point is first.
+    /// </para>
     /// </remarks>
     [Parameter] public string Language { get; set; } = "no";
 
@@ -1069,18 +1078,26 @@ public partial class VariableExplorer : ComponentBase
 
     /// <summary>The reader's language as a tag, and the marker for text that is not in it.</summary>
     /// <remarks>
-    /// These and the property resolution below delegate to <see cref="CatalogueProperties"/>, which
-    /// is where the catalogue's own properties are resolved for every explorer in this package
-    /// rather than once per component. The kildeutforsker draws properties the same way, and a
-    /// second copy of this would drift from the first the moment either was edited.
+    /// <c>Reader</c> rather than <c>ReaderLanguage</c>: the type that resolves it is
+    /// <see cref="ReaderLanguage"/>, and a member of that name shadows the type inside every
+    /// <c>VariableExplorer</c> partial, so <c>ReaderLanguage.Of(...)</c> would not compile in any
+    /// of them. <see cref="VariableView"/> and <see cref="KildeView"/> already call it
+    /// <c>Reader</c>; all three agree now.
+    /// <para>
+    /// The marking and the property resolution below delegate to
+    /// <see cref="CatalogueProperties"/>, which is where the catalogue's own properties are
+    /// resolved for every explorer in this package rather than once per component. The
+    /// kildeutforsker draws properties the same way, and a second copy of this would drift from
+    /// the first the moment either was edited.
+    /// </para>
     /// </remarks>
-    private string ReaderLanguage => CatalogueProperties.Reader(Language);
+    private string Reader => ReaderLanguage.Of(Language);
 
-    private string? Foreign(string language) => CatalogueProperties.Foreign(language, ReaderLanguage);
+    private string? Foreign(string language) => CatalogueProperties.Foreign(language, Reader);
 
     /// <summary>The variable's curated properties, resolved for this reader.</summary>
     private List<PropertyRow> PropertyRows(VariableDetail detail) =>
-        CatalogueProperties.Rows(detail.PropertyMetadata, detail.AdditionalProperties, ReaderLanguage);
+        CatalogueProperties.Rows(detail.PropertyMetadata, detail.AdditionalProperties, Reader);
 
     /// <summary>Which tab of the open panel is showing.</summary>
     /// <remarks>
