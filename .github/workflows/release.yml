@@ -2,10 +2,10 @@ name: Release
 
 # Publishing is triggered by a tag, not by a merge to main.
 #
-# nuget.org is append-only: a published version can be unlisted but never replaced or removed,
-# and a package id can never be reclaimed. Publishing on every merge would make that permanent
-# act a side effect of ordinary work. A tag is somebody deciding "this one goes out", which is
-# the right weight for something that cannot be taken back.
+# A version that has gone out is spent. The feed does allow one to be deleted, but anyone who
+# restored it in the meantime keeps what they got, so re-using the number gives two different
+# builds the same name. Publishing on every merge would make that a side effect of ordinary work.
+# A tag is somebody deciding "this one goes out", which is the right weight for it.
 on:
   push:
     tags:
@@ -16,13 +16,13 @@ permissions:
 
 concurrency:
   # Deliberately not cancel-in-progress. Cancelling a publish halfway leaves some packages on
-  # nuget.org and some not, and the missing ones cannot be filled in under the same version.
+  # the feed and some not, and finishing the job later is the only clean way out of that.
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   publish:
-    name: publish to nuget.org
+    name: publish to the internal feed
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -43,7 +43,7 @@ jobs:
 
           # A tag like "v0.2" or "vlatest" would otherwise pack as some surprising version and
           # claim it forever. Prerelease suffixes are allowed; build metadata (+foo) is not,
-          # because nuget.org ignores it and two tags would resolve to one version.
+          # because NuGet ignores it and two tags would resolve to one version.
           # Leading zeros are rejected too: NuGet normalises 01.2.3 to 1.2.3, so the tag and the
           # version people can actually install would disagree from the day it shipped.
           if ! echo "$VERSION" | grep -Eq '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.]+)?$'; then
@@ -66,16 +66,12 @@ jobs:
 
       - name: Check the push credential is present
         env:
-          NUGET_ORG_FHI_PUBLISH: ${{ secrets.NUGET_ORG_FHI_PUBLISH }}
+          ADO_PACKAGING_TOKEN: ${{ secrets.ADO_PACKAGING_TOKEN }}
         run: |
           # Checked before building rather than after: failing at the push step means a green
           # build, a created tag, and nothing published — the confusing half-done state.
-          #
-          # The name matches the one FHI already publishes with in FHIDev/Fhi.HelseId, so if it
-          # exists as an organisation secret this repository only needs to be given access to
-          # it rather than a new key being minted.
-          if [ -z "$NUGET_ORG_FHI_PUBLISH" ]; then
-            echo "::error::Secret NUGET_ORG_FHI_PUBLISH is not available to this repository. If it exists as an FHIDev organisation secret, add this repository to its access list; otherwise create an API key on nuget.org scoped to the Fhi.Munin.Explorer.* ids and add it under Settings → Secrets and variables → Actions."
+          if [ -z "$ADO_PACKAGING_TOKEN" ]; then
+            echo "::error::Secret ADO_PACKAGING_TOKEN is not available to this repository. Create a personal access token in Azure DevOps for the fhi organisation with Packaging (Read & write), and add it under Settings → Secrets and variables → Actions."
             exit 1
           fi
 
@@ -92,7 +88,7 @@ jobs:
 
       - name: Pack
         # PackageReleaseNotes is stamped with THIS tag's release rather than left at the default.
-        # nuget.org shows the string forever against the version it was packed with, so a link to
+        # A feed shows the string against the version it was packed with, so a link to
         # the changelog on main would age into pointing an old package at notes describing a later
         # one. The release for a tag never changes after it is cut, and the workflow creates it
         # below, so the link is valid by the time anyone can install the package.
@@ -106,20 +102,42 @@ jobs:
         # tag and what actually got packed.
         run: ./scripts/assert-package-contents.sh artifacts "${{ steps.version.outputs.version }}"
 
-      - name: Push to nuget.org
+      - name: Push to the internal feed
         env:
-          NUGET_ORG_FHI_PUBLISH: ${{ secrets.NUGET_ORG_FHI_PUBLISH }}
+          # A PAT, because that is the paved road at FHI for this particular leg. It was not the
+          # obvious answer, so the reasoning is worth keeping.
+          #
+          # An Entra token authenticates against this feed - verified - so OIDC would work in
+          # principle, and it is what every FHI repo uses for Azure RESOURCES. But the feed is
+          # Azure DevOps, not Azure, and reaching it that way needs the app's service principal to
+          # be a MEMBER of the ADO organisation. That organisation has none today.
+          #
+          # Fhi.Grossiststatistikken is the one other FHIDev repo that talks to an ADO feed, and it
+          # settles it: the same repo signs in to Azure with OIDC in one workflow and reaches the
+          # feed with AZURE_DEVOPS_PAT_LMR_NUGET in another. They had OIDC in hand and still used a
+          # PAT here.
+          #
+          # The script takes whatever this is and does not inspect it, so moving to OIDC later is
+          # this block swapped for an azure/login step - see Fhi.Metadata-l9l2n.5.
+          NUGET_PUBLISH_TOKEN: ${{ secrets.ADO_PACKAGING_TOKEN }}
         # Pushes in dependency order, retries a failed push, and skips anything a previous run
         # already published — so a network blip halfway through is fixed by re-running rather
         # than by hand. A genuinely reused tag still stops the run. See the script's header.
         run: ./scripts/push-packages.sh artifacts "${{ steps.version.outputs.version }}"
 
+      # The release records that a version went out and what changed in it. It carries no
+      # .nupkg, and that is the point: this repository is public, so an attached package would be
+      # downloadable by anyone, from outside the feed and outside whatever access the feed
+      # controls. Two places to get a package is also one place to get the wrong one.
+      #
+      # The packages live in exactly one place, which is what "internal" has to mean to be worth
+      # anything. Nothing here is secret - the source is public and the licence is MIT - but where
+      # a consumer is meant to get a build from is a decision, and it should have one answer.
       - name: Create the GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: v${{ steps.version.outputs.version }}
           generate_release_notes: true
-          files: artifacts/*.nupkg
           # A prerelease tag (v0.2.0-beta.1) is marked as one on GitHub too, so the release
-          # list says the same thing nuget.org does.
+          # list says the same thing the feed does.
           prerelease: ${{ contains(steps.version.outputs.version, '-') }}
