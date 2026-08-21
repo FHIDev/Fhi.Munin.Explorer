@@ -1080,6 +1080,23 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
+    public void Render_Always_ThenEveryClassNameIsOneSomeStylesheetActuallyDefines()
+    {
+        // The companion to the assertion below, and the wider of the two. That one pins the names in
+        // the variable-explorer prefix exactly, which is the right shape for names we invent — a
+        // ninth appearing is news. This one asks the different question, of every class in the DOM
+        // and not just that prefix: does any stylesheet, ours or helsedata's, define it at all?
+        //
+        // Borrowed names needed their own check because nothing was watching them. `variable-meta__body`
+        // came off this view: it wears the look of helsedata's `variable-meta` family, they define the
+        // family but not that member, and so it promised a rule that has never existed anywhere.
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
+                            b => b.Add(c => c.Search, "tale"));
+
+        Assert.Equal([], HostClassNames.Orphans(HostClassNames.Of(cut.FindAll("[class]"))));
+    }
+
+    [Fact]
     public void Render_Always_ThenNoClassNamesAreInventedApartFromTheDomHandles()
     {
         // Eight names in the variable-explorer prefix: two of our own, and both DOM handles rather

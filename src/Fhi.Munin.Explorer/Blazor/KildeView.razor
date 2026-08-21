@@ -19,7 +19,11 @@
 
             @if (!string.IsNullOrWhiteSpace(kilde.Kildetype))
             {
-                <p class="tag variable-explorer-kilde__kildetype">@T.KildeTypeLabel(kilde.Kildetype, kilde.Kildetype)</p>
+                @* `tag` was here, on the theory that it was Stiler's badge class. helsedata defines
+                   no `.tag` at all — their badges are `taglist`/`taglistitem`, and even those are
+                   only styled inside `.listcontainer .listitemholder .taglist`, which never matches
+                   this markup. The kildetype class below is ours and carries the whole badge. *@
+                <p class="variable-explorer-kilde__kildetype">@T.KildeTypeLabel(kilde.Kildetype, kilde.Kildetype)</p>
             }
 
             @if (!string.IsNullOrWhiteSpace(kilde.Description))
