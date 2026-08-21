@@ -47,6 +47,11 @@ public sealed partial class VariableView : ComponentBase
     [Parameter]
     public RenderFragment? Sections { get; set; }
 
+    // Unique per instance so two of these views on one page cannot collide on DOM ids, the same
+    // reason VariableExplorer carries one. A host mounting a variable beside the one it replaced
+    // is the case that makes it real: both views hold the same version ids.
+    private readonly string _instance = Guid.NewGuid().ToString("N")[..8];
+
     private Texts T => Texts.For(Language);
 
     private string Reader => CatalogueProperties.Reader(Language);

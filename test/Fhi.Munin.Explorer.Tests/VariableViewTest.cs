@@ -285,6 +285,52 @@ public class VariableViewTest : BunitContext
     }
 
     [Fact]
+    public void Versions_WhenAnEnglishReaderMeetsAnUnnamedOne_ThenTheFallbackIsNotMarkedNorwegian()
+    {
+        // Two texts in one span, and only one of them is the catalogue's. A preferred term is
+        // Norwegian whoever reads it; "Version without a name" is this package's own English, and
+        // lang="no" on it tells a screen reader to pronounce English by Norwegian rules — the
+        // attribute's only job is to pick the voice, so a wrong one is worse than none.
+        var named = Render(Detail() with { Versions = [Version(Guid.NewGuid(), name: "Basaldose")] }, "en");
+        var unnamed = Render(Detail() with { Versions = [Version(Guid.NewGuid(), name: "")] }, "en");
+
+        Assert.Equal("no", named.Find(".variable-explorer-versions__name").GetAttribute("lang"));
+
+        var fallback = unnamed.Find(".variable-explorer-versions__name");
+
+        Assert.Equal("Version without a name", fallback.TextContent);
+        Assert.False(fallback.HasAttribute("lang"));
+    }
+
+    [Fact]
+    public void Versions_WhenTwoViewsShowTheSameVersion_ThenTheirPanelIdsDiffer()
+    {
+        // A version id is unique in the catalogue but not on a page. A host is free to mount two of
+        // these — a variable beside the one it replaced is the obvious case — and an id derived
+        // from the version alone would then appear twice in one document: a duplicate id, and an
+        // aria-controls on the second view's toggle resolving to the first view's panel.
+        var detail = Detail() with { Versions = [Version(Guid.NewGuid())] };
+
+        var first = Render(detail).Find(".variable-explorer-versions__detail").GetAttribute("id");
+        var second = Render(detail).Find(".variable-explorer-versions__detail").GetAttribute("id");
+
+        Assert.False(string.IsNullOrWhiteSpace(first));
+        Assert.NotEqual(first, second);
+    }
+
+    [Fact]
+    public void Versions_WhenAToggleNamesAPanel_ThenThatPanelIsInTheSameView()
+    {
+        // The other half of the id rule: unique is not enough, it also has to still match.
+        var detail = Detail() with { Versions = [Version(Guid.NewGuid())] };
+        var cut = Render(detail);
+
+        var controls = cut.Find(".variable-explorer-versions__toggle").GetAttribute("aria-controls");
+
+        Assert.Equal(cut.Find(".variable-explorer-versions__detail").GetAttribute("id"), controls);
+    }
+
+    [Fact]
     public void Heading_WhenTheReaderIsEnglish_ThenTheCataloguesOwnNameIsMarkedNorwegian()
     {
         var cut = Render(Detail(), "en");

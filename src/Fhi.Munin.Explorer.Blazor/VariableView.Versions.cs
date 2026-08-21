@@ -16,7 +16,16 @@ public sealed partial class VariableView
     /// </remarks>
     private readonly HashSet<Guid> _openVersions = [];
 
-    private string VersionPanelId(Guid versionId) => $"munin-version-{versionId:N}";
+    /// <summary>The id of one version's disclosure panel, unique to this view and that version.</summary>
+    /// <remarks>
+    /// Per instance as well as per version, the same rule the explorer's own ids follow. The
+    /// version id alone is unique in the catalogue but not on the page: a host is free to mount
+    /// two of these — a variable beside the one it replaced is the obvious case — and both would
+    /// then mint the same id for the same version. That is a duplicate <c>id</c>, so a WCAG 4.1.1
+    /// failure, and <c>aria-controls</c> on the second toggle would resolve to the first view's
+    /// panel.
+    /// </remarks>
+    private string VersionPanelId(Guid versionId) => $"munin-version-{_instance}-{versionId:N}";
 
     /// <summary>
     /// The versions, as they arrived.
@@ -43,14 +52,24 @@ public sealed partial class VariableView
             ? T.VersionCurrent
             : T.VersionStatusLabel(version.Status);
 
-    /// <summary>A version's name, or that it has not got one.</summary>
+    /// <summary>A version's name, or that it has not got one — and which language that is in.</summary>
     /// <remarks>
     /// Empty names are real and not rare: three of five versions on one sampled variable have no
     /// preferred term at all. A blank row would read as a rendering fault, so it says what is
     /// actually true — the catalogue holds a version here and no name for it.
+    /// <para>
+    /// The language travels with the text because the two texts are not in the same one. A
+    /// preferred term is the catalogue's own Norwegian and stays Norwegian whoever is reading it;
+    /// the fallback is this package's own prose, already translated into the reader's language.
+    /// Marking that one <c>lang="no"</c> would hand an English reader's screen reader "Version
+    /// without a name" to pronounce by Norwegian rules — the flag is there to say which voice to
+    /// use, so setting it on text that is not Norwegian is worse than leaving it off.
+    /// </para>
     /// </remarks>
-    private string VersionName(VariableVersion version) =>
-        string.IsNullOrWhiteSpace(version.PreferredTerm) ? T.VersionUnnamed : version.PreferredTerm;
+    private (string Text, bool Norwegian) VersionName(VariableVersion version) =>
+        string.IsNullOrWhiteSpace(version.PreferredTerm)
+            ? (T.VersionUnnamed, false)
+            : (version.PreferredTerm, true);
 
     private Task ToggleVersionAsync(Guid versionId)
     {
@@ -90,11 +109,14 @@ public sealed partial class VariableView
             builder.AddAttribute(seq + 6, "onclick",
                 EventCallback.Factory.Create(this, () => ToggleVersionAsync(version.VersionId)));
 
-            // The catalogue's own name, so it stays Norwegian whoever is reading.
+            // Marked Norwegian only when the text IS the catalogue's — see VersionName.
+            var (name, nameIsNorwegian) = VersionName(version);
+
             builder.OpenElement(seq + 7, "span");
             builder.AddAttribute(seq + 8, "class", "variable-explorer-versions__name");
-            builder.AddAttribute(seq + 9, "lang", CatalogueProperties.Foreign("no", Reader));
-            builder.AddContent(seq + 10, VersionName(version));
+            builder.AddAttribute(seq + 9, "lang",
+                nameIsNorwegian ? CatalogueProperties.Foreign("no", Reader) : null);
+            builder.AddContent(seq + 10, name);
             builder.CloseElement();
 
             builder.OpenElement(seq + 11, "span");

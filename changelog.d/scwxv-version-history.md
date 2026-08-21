@@ -1,10 +1,7 @@
 category: Added
 
-- **Versjonshistorikk i variabelvisningen** - én rad per versjon med navn, status og gyldighet, og
-  hver rad kan foldes ut for beskrivelsen og datoene. Den gjeldende versjonen merkes som gjeldende.
-  (Fhi.Metadata-scwxv)
-
-category: Fixed
-
-- **Kildenavn og kortnavn i variabelvisningen merkes nå som norsk** når siden leses på engelsk, slik
-  kildevisningen allerede gjorde.
+- The whole-variable view now shows the variable's version history: one row per version with its
+  name, status and validity period, each expanding to that version's description and dates. It is
+  built from the detail payload the host already has, so it costs no extra request and needs no
+  host wiring — mount `VariableView` as before and the section appears when the variable has
+  versions.

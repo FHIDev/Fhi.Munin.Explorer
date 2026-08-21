@@ -204,15 +204,6 @@ internal sealed record Texts(
     };
 
     /// <summary>
-    /// Prose for a kildetype token, falling back to what the API called it.
-    /// </summary>
-    /// <remarks>
-    /// A fallback rather than a throw, unlike <see cref="FieldLabel"/>: the tokens are Munin's
-    /// kildetype enum and a new member appearing there is a catalogue change, not a bug in this
-    /// component. "SentraltHelseregister" on a button is poor prose but it is the truth, where
-    /// dropping the value would take a filter off the screen that the API is still counting.
-    /// </remarks>
-    /// <summary>
     /// The kind of statistics a datasamling keeps, as a word rather than an API token.
     /// </summary>
     /// <remarks>
@@ -221,6 +212,13 @@ internal sealed record Texts(
     /// reading "Statistikk (accumulated)" is ugly and honest; one silently reading "Statistikk"
     /// would tell a reader these numbers mean something they may not.
     /// </remarks>
+    public string StatisticsTypeLabel(string type) => type.ToLowerInvariant() switch
+    {
+        "yearly" => StatisticsYearly,
+        "accumulated" or "akkumulert" => StatisticsAccumulated,
+        _ => type
+    };
+
     /// <summary>A version's status as a word, or as it arrived when we have not seen it before.</summary>
     /// <remarks>
     /// Only <c>Active</c> has come back from the test API - every version on every variable
@@ -234,13 +232,15 @@ internal sealed record Texts(
         _ => status
     };
 
-    public string StatisticsTypeLabel(string type) => type.ToLowerInvariant() switch
-    {
-        "yearly" => StatisticsYearly,
-        "accumulated" or "akkumulert" => StatisticsAccumulated,
-        _ => type
-    };
-
+    /// <summary>
+    /// Prose for a kildetype token, falling back to what the API called it.
+    /// </summary>
+    /// <remarks>
+    /// A fallback rather than a throw, unlike <see cref="FieldLabel"/>: the tokens are Munin's
+    /// kildetype enum and a new member appearing there is a catalogue change, not a bug in this
+    /// component. "SentraltHelseregister" on a button is poor prose but it is the truth, where
+    /// dropping the value would take a filter off the screen that the API is still counting.
+    /// </remarks>
     public string KildeTypeLabel(string? value, string? fallback)
     {
         if (value is not null && KildeTypeNames.TryGetValue(value, out var name))
