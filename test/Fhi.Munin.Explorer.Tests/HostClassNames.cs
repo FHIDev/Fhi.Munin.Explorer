@@ -46,12 +46,24 @@ internal static class HostClassNames
         [.. File.ReadLines(Path.Combine(RepoRoot.Value, "test", "host-class-names.txt"))
                 .Where(l => l.Length > 0 && !l.StartsWith('#'))]);
 
+    private static readonly System.Text.RegularExpressions.Regex CssComment =
+        new(@"/\*.*?\*/", System.Text.RegularExpressions.RegexOptions.Singleline);
+
     /// <summary>
     /// The sample stylesheet, read as text rather than parsed: the question here is only whether a
     /// rule mentions the name, not what the rule does.
+    ///
+    /// Comments are stripped first, and that is load-bearing rather than tidy. This file is heavily
+    /// commented, and a comment naming a selector reads to a substring search exactly like a rule
+    /// declaring one. The comment a few lines below the badge rule says there is no `tag` class in
+    /// helsedata's stylesheets — written with a leading dot, it made this check answer "styled" for
+    /// the very name it was documenting as unstyled. A check that a comment can satisfy is a check
+    /// that prose can switch off.
     /// </summary>
     private static readonly Lazy<string> SampleStylesheet = new(() =>
-        File.ReadAllText(Path.Combine(RepoRoot.Value, "samples", "LegacyHost", "wwwroot", "css", "host.css")));
+        CssComment.Replace(
+            File.ReadAllText(Path.Combine(RepoRoot.Value, "samples", "LegacyHost", "wwwroot", "css", "host.css")),
+            " "));
 
     /// <summary>
     /// The names among <paramref name="rendered"/> that no stylesheet defines. Empty is the passing
@@ -83,9 +95,13 @@ internal static class HostClassNames
     }
 
     /// <summary>
-    /// Every class name in a rendered fragment, split out of the class attributes.
+    /// Every class name in a rendered fragment.
+    ///
+    /// Taken from <c>ClassList</c> rather than split off <c>ClassName</c>: the attribute separates
+    /// tokens with any ASCII whitespace, not only spaces, and a class attribute broken across lines
+    /// in the markup would otherwise arrive here as one long token that no stylesheet defines — a
+    /// false orphan, reported against a name nobody wrote.
     /// </summary>
     internal static IEnumerable<string> Of(IEnumerable<AngleSharp.Dom.IElement> elements) =>
-        elements.SelectMany(e => (e.ClassName ?? string.Empty)
-            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        elements.SelectMany(e => e.ClassList);
 }

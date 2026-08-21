@@ -50,7 +50,7 @@ public class VariableViewTest : BunitContext
             .Add(c => c.Language, language));
 
     [Fact]
-    public void EveryClassNameItRenders_IsOneSomeStylesheetActuallyDefines()
+    public void Render_Always_ThenEveryClassNameIsOneSomeStylesheetActuallyDefines()
     {
         // This view is where `headline-sm` lived: a typo for `headline-s` on nine block headings,
         // undefined in all seven of helsedata's bundles and in Stiler, so every one of them rendered

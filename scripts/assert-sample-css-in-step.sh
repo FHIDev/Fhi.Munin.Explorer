@@ -109,6 +109,25 @@ if ! cmp -s "$MODERN" "$LEGACY"; then
   exit 1
 fi
 
+# Both clauses below ask whether the stylesheet mentions a selector, by searching its text. That
+# question has to be put to the RULES only. This file carries more prose than CSS, and a comment
+# naming a selector is indistinguishable from a rule declaring one to a substring search — the
+# comment above the kildetype badge, which exists to record that helsedata has no `tag` class,
+# was written with a leading dot and made this check answer "styled" for that very name. A check
+# a comment can satisfy is a check prose can switch off, so strip them first.
+STRIPPED=$(mktemp)
+trap 'rm -f "$STRIPPED"' EXIT
+perl -0pe 's{/\*.*?\*/}{ }gs' "$MODERN" > "$STRIPPED"
+
+# An empty result would report every name as unstyled, which is loud rather than silent — but it
+# would be loud about the wrong thing, and a reader would go looking for missing rules that are
+# all still there. Say what actually broke instead.
+if [ ! -s "$STRIPPED" ]; then
+  echo "::error::Stripping comments from '$MODERN' produced nothing, so the checks below would" >&2
+  echo "report every class name as unstyled. Is perl on PATH?" >&2
+  exit 2
+fi
+
 # Clause two, on either copy — they are identical by the time we get here.
 #
 # The extraction below IS clause two: a name it does not produce is a name nothing checks. So it
@@ -156,7 +175,7 @@ for name in "${names[@]}"; do
 
   # Anchored on both sides so `.variable-explorer-period__fill` does not answer for
   # `.variable-explorer-period`: a rule for the part is not a rule for the whole.
-  grep -qE "\.${name}([^A-Za-z0-9_-]|\$)" "$MODERN" || missing+=("$name")
+  grep -qE "\.${name}([^A-Za-z0-9_-]|\$)" "$STRIPPED" || missing+=("$name")
 done
 
 if [ ${#missing[@]} -gt 0 ]; then
@@ -184,16 +203,21 @@ fi
 # So: a name the package writes into a class attribute must be styled by the sample stylesheet
 # (ours) or listed in the fixture (theirs). A name in neither is an orphan.
 #
-# THIS CLAUSE IS THE WEAKER HALF, and knowing where it stops matters more than what it catches.
-# It reads class ATTRIBUTES out of the markup, and the views also pass class names to helpers as
-# arguments — `@Heading(BlockLevel, T.HeadingMetadata, "headline headline-s")`. A name arriving in
-# the DOM that way is invisible here. `headline-sm` arrived exactly that way, which is why adding
-# this clause did not catch it: the first version of it was written, run against the reintroduced
+# THE TWO HALVES COVER DIFFERENT GROUND, and knowing where each stops matters more than knowing
+# what each catches.
+#
+# This half reads every file under src/, whether or not a test renders it. KildeView has no test
+# at all today, so the badge class on it is checked here and nowhere else.
+#
+# Where this half stops: it reads class ATTRIBUTES, and the views also pass class names to helpers
+# as arguments — `@Heading(BlockLevel, T.HeadingMetadata, "headline headline-s")`. A name arriving
+# in the DOM that way is invisible to grep. `headline-sm` arrived exactly that way, which is why
+# adding this clause did not catch it: the first version was written, run against the reintroduced
 # typo, and reported success.
 #
-# The check that does catch it is HostClassNames in the test project, which renders the component
-# and reads the DOM. This clause survives because it needs no build and fails faster, not because
-# it is sufficient. Do not read a pass here as "every borrowed name is styled".
+# The half that catches those is HostClassNames in the test project, which renders the component
+# and reads the DOM. Neither is sufficient alone. Do not read a pass here as "every borrowed name
+# is styled".
 HOST_NAMES=test/host-class-names.txt
 if [ ! -f "$HOST_NAMES" ]; then
   echo "::error::'$HOST_NAMES' is missing, so the borrowed names below cannot be checked." >&2
@@ -225,7 +249,7 @@ fi
 
 orphans=()
 for name in "${emitted[@]}"; do
-  grep -qE "\.${name}([^A-Za-z0-9_-]|\$)" "$MODERN" && continue
+  grep -qE "\.${name}([^A-Za-z0-9_-]|\$)" "$STRIPPED" && continue
   grep -qxF "$name" "$HOST_NAMES" && continue
   orphans+=("$name")
 done
