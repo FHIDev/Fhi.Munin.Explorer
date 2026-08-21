@@ -106,9 +106,12 @@ jobs:
         # tag and what actually got packed.
         run: ./scripts/assert-package-contents.sh artifacts "${{ steps.version.outputs.version }}"
 
-      - name: Push to nuget.org
+      - name: Push to the internal feed
         env:
-          NUGET_ORG_FHI_PUBLISH: ${{ secrets.NUGET_ORG_FHI_PUBLISH }}
+          # A PAT today. The script does not care which kind of credential this is - the feed
+          # takes either a PAT or an Entra access token as the basic-auth password - so moving to
+          # federated OIDC later is a change to how this line is filled, not to the script.
+          NUGET_PUBLISH_TOKEN: ${{ secrets.ADO_PACKAGING_TOKEN }}
         # Pushes in dependency order, retries a failed push, and skips anything a previous run
         # already published — so a network blip halfway through is fixed by re-running rather
         # than by hand. A genuinely reused tag still stops the run. See the script's header.
