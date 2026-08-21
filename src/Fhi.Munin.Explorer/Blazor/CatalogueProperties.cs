@@ -39,8 +39,7 @@ internal sealed record PropertyGroup(
 internal static class CatalogueProperties
 {
     /// <summary>The reader's language as a tag: <c>en</c> or <c>no</c>.</summary>
-    internal static string Reader(string? language)
-        => string.Equals(language, "en", StringComparison.OrdinalIgnoreCase) ? "en" : "no";
+    internal static string Reader(string? language) => ReaderLanguage.Of(language);
 
     /// <summary>The culture to format dates and numbers in for this reader.</summary>
     /// <remarks>
@@ -48,7 +47,7 @@ internal static class CatalogueProperties
     /// point of formatting per reader is that a Norwegian one sees a Norwegian date.
     /// </remarks>
     internal static CultureInfo Culture(string? language)
-        => CultureInfo.GetCultureInfo(string.Equals(language, "en", StringComparison.OrdinalIgnoreCase) ? "en" : "nb-NO");
+        => CultureInfo.GetCultureInfo(ReaderLanguage.IsEnglish(language) ? "en" : "nb-NO");
 
     /// <summary>The order the catalogue's own names sort in.</summary>
     /// <remarks>

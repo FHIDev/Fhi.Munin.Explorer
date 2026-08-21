@@ -221,10 +221,19 @@ public partial class VariableExplorer : ComponentBase
     /// <c>AddLocalization()</c>, so injecting IStringLocalizer would throw at render time.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Set this to match the host page's own <c>lang</c>. The component deliberately does
     /// not put a <c>lang</c> on its root: the UI strings follow this parameter, but the
     /// variable names and descriptions coming from Munin are Norwegian either way, and the
     /// result rows are marked as Norwegian for exactly that reason.
+    /// </para>
+    /// <para>
+    /// A region is allowed and ignored: <c>en-GB</c> and <c>en-US</c> read as English, <c>nb-NO</c>
+    /// as Norwegian. That is not decoration — helsedata's solution holds two representations of the
+    /// same choice, the CMS branch name (<c>no</c>/<c>en</c>) and a full culture from
+    /// <c>LanguageExtensions</c> (<c>nb-NO</c>/<c>en-GB</c>), and which one reaches the mount point
+    /// is the host's to decide. Anything else, including nothing, is Norwegian.
+    /// </para>
     /// </remarks>
     [Parameter] public string Language { get; set; } = "no";
 

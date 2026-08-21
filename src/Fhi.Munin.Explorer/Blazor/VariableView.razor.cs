@@ -25,7 +25,7 @@ public sealed partial class VariableView : ComponentBase
     [Parameter, EditorRequired]
     public VariableDetail? Variable { get; set; }
 
-    /// <summary>The reader's language: <c>no</c> (default) or <c>en</c>.</summary>
+    /// <inheritdoc cref="VariableExplorer.Language"/>
     [Parameter]
     public string? Language { get; set; }
 

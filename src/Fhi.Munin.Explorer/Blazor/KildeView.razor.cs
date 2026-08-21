@@ -29,7 +29,7 @@ public sealed partial class KildeView : ComponentBase
     [Parameter, EditorRequired]
     public KildeDetail? Kilde { get; set; }
 
-    /// <summary>The reader's language: <c>no</c> (default) or <c>en</c>.</summary>
+    /// <inheritdoc cref="VariableExplorer.Language"/>
     [Parameter]
     public string? Language { get; set; }
 

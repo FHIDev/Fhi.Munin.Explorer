@@ -597,8 +597,10 @@ public partial class VariableExplorer
         try
         {
             // The component's own language, so the datatype names come back in the language the
-            // rest of the component is rendering in.
-            _facets = await Client.GetFiltersAsync(_executedSearch, _filter, Language);
+            // rest of the component is rendering in. Resolved rather than passed through: a host
+            // sending "en-GB" gets English words everywhere else, and a facet panel that asked the
+            // API for a tag it does not know would be the one Norwegian block on an English page.
+            _facets = await Client.GetFiltersAsync(_executedSearch, _filter, ReaderLanguage.Of(Language));
             _facetError = null;
         }
         catch (Exception)
