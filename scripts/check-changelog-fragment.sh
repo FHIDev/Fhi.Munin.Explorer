@@ -55,7 +55,14 @@ if [ -n "$fragments" ]; then
   # because it only ever asked whether a file existed.
   bad=0
 
-  for fragment in $fragments; do
+  # read, not `for ... in $fragments`. Unquoted, the shell splits that string on IFS and then globs
+  # it, so a fragment named "release notes.md" - which the [^/]+ filter above allows, and which the
+  # README's "anything unique" invites - would arrive as two words, neither of which is a file.
+  # Both would fail the -f test below, be skipped, and the check would report success having
+  # inspected nothing. A validator that silently validates nothing is worse than no validator.
+  while IFS= read -r fragment; do
+    [ -n "$fragment" ] || continue
+
     # Deleted in this branch, or otherwise not on disk: nothing to read, and nothing to complain
     # about either.
     [ -f "$fragment" ] || continue
@@ -76,8 +83,12 @@ if [ -n "$fragments" ]; then
       echo "::error file=$fragment::$count category lines. A fragment holds one category; the extra ones are published as literal bullets under the first. Split it into one file per category."
       bad=1
     fi
-  done
+  done <<EOF
+$fragments
+EOF
 
+  # A here-document rather than a pipe: a pipe runs the loop in a subshell, so every bad=1 inside
+  # it would be set on a copy and thrown away, and the check would pass no matter what it found.
   [ "$bad" = "0" ] || exit 1
 
   exit 0
