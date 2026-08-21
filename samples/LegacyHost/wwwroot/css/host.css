@@ -437,9 +437,10 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    The same reason a third time: what "Vis datakilde" and "Vis datasamling" open is a heading and a
    <dl>, because Stiler has no key/value block whose name can be read back off its compiled
    stylesheet. The package emits `variable-explorer-drilldown` as a handle and styles nothing
-   itself. Selecting on `variable-explorer-source` would match nothing — that name is only ever an
-   element id (`variable-explorer-source-<instance>`, which is what names the region), never a
-   class, and rules written against it sat here dead until this was noticed.
+   itself. Selecting on `variable-explorer-source` would match nothing — that name is an element id
+   (`variable-explorer-source-<instance>`, which is what names the region) and not a class. It was
+   a class while the kilde opened inside the variable's panel; the rules written against it then
+   sat here dead from the day that panel became a drill-in until this was noticed.
 
    A host that has styled the detail panel has very nearly styled this one too, and the rest of the
    drill-in — the padding that separates it from the chrome above — is at the bottom of this file
@@ -1019,8 +1020,9 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   border-radius: 4px;
 }
 
-/* The only table this component emits, and the reason it is a table at all: four columns of code
-   values have no honest alternative shape. What makes that safe is that an element has a browser
+/* One of the two tables this component emits — the other is the datasamlinger list in KildeView —
+   and the reason it is a table at all: four columns of code values have no honest alternative
+   shape. What makes that safe is that an element has a browser
    default to fall back on — a host that styles nothing still gets aligned columns, where an
    invented class name would render as nothing. */
 .variable-explorer-codes__table {

@@ -437,9 +437,10 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    The same reason a third time: what "Vis datakilde" and "Vis datasamling" open is a heading and a
    <dl>, because Stiler has no key/value block whose name can be read back off its compiled
    stylesheet. The package emits `variable-explorer-drilldown` as a handle and styles nothing
-   itself. Selecting on `variable-explorer-source` would match nothing — that name is only ever an
-   element id (`variable-explorer-source-<instance>`, which is what names the region), never a
-   class, and rules written against it sat here dead until this was noticed.
+   itself. Selecting on `variable-explorer-source` would match nothing — that name is an element id
+   (`variable-explorer-source-<instance>`, which is what names the region) and not a class. It was
+   a class while the kilde opened inside the variable's panel; the rules written against it then
+   sat here dead from the day that panel became a drill-in until this was noticed.
 
    A host that has styled the detail panel has very nearly styled this one too, and the rest of the
    drill-in — the padding that separates it from the chrome above — is at the bottom of this file
@@ -972,6 +973,83 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    for the kilde and datasamling drill-in"; this is the separation from the chrome above it. */
 .variable-explorer-drilldown {
   padding: 4px 0 24px;
+}
+
+/* ---- the Data tab's kodeverk ----
+
+   All five names below are ours, and every one is a handle: neither Stiler nor helsedata's
+   variables.css has a kodeverk section to borrow from, because their variable page has no such
+   panel at all. So the sample supplies what a host would — the arrangement, nothing more.
+
+   The list is a plain <ul> with its bullets off, because the group heading above it already says
+   these are kodeverk of one kind and a bullet per line adds nothing. */
+.variable-explorer-kodeverk {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 8px;
+}
+
+.variable-explorer-kodeverk__item {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--grey30, #e2e4ef);
+}
+
+.variable-explorer-kodeverk__item:last-child {
+  border-bottom: 0;
+}
+
+.variable-explorer-kodeverk__name {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* The reference is the thing a reader can look the kodeverk up by, so it is set in a monospace
+   face — a run of digits like 2336 or a dotted OID reads as an identifier rather than as prose. */
+.variable-explorer-kodeverk__reference {
+  margin: 2px 0 8px;
+  font-family: ui-monospace, "SFMono-Regular", "Consolas", monospace;
+}
+
+/* The open code list. Capped in height and scrolled rather than left to run: Kommunenummer is 885
+   codes, and a list that pushes the rest of the page out of reach is worse than one you scroll. */
+.variable-explorer-codes {
+  margin: 8px 0 4px;
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid var(--grey30, #e2e4ef);
+  border-radius: 4px;
+}
+
+/* One of the two tables this component emits — the other is the datasamlinger list in KildeView —
+   and the reason it is a table at all: four columns of code values have no honest alternative
+   shape. What makes that safe is that an element has a browser
+   default to fall back on — a host that styles nothing still gets aligned columns, where an
+   invented class name would render as nothing. */
+.variable-explorer-codes__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.variable-explorer-codes__table th,
+.variable-explorer-codes__table td {
+  padding: 6px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--grey30, #e2e4ef);
+}
+
+/* Sticky, so the columns stay named while a long kodeverk is scrolled past them. */
+.variable-explorer-codes__table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--grey10, #f4f5fa);
+  color: var(--grey70, #5a5f78);
+  font-weight: 600;
+}
+
+.variable-explorer-codes__table td:first-child {
+  font-family: ui-monospace, "SFMono-Regular", "Consolas", monospace;
+  white-space: nowrap;
 }
 
 /* ---- the column picker ----

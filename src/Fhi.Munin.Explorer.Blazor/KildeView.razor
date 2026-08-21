@@ -36,10 +36,16 @@
 
                 @* The catalogue's own metadata. Which groups exist, what they are called and what
                    order they come in all arrive with the payload — see CatalogueProperties.Groups
-                   for the two rules that decide which of them a reader actually sees. *@
+                   for the two rules that decide which of them a reader actually sees.
+
+                   The four block headings below wear headline-s, the same size as the name above
+                   them, because Stiler's scale has nothing verified between it and the headline-xxs
+                   the field labels wear. A smaller-sounding name invented to sit in that gap —
+                   headline-sm was here until Fhi.Metadata-e4bj2 — is a name no stylesheet defines,
+                   so it renders as a bare <h*> at the browser's own size instead. *@
                 @if (Groups.Count > 0)
                 {
-                    @Heading(BlockLevel, T.HeadingMetadata, "headline headline-sm")
+                    @Heading(BlockLevel, T.HeadingMetadata, "headline headline-s")
 
                     foreach (var group in Groups)
                     {
@@ -51,7 +57,7 @@
                    ones hanging directly off it. *@
                 @if (DataCollections.Count > 0)
                 {
-                    @Heading(BlockLevel, DataCollectionsHeading ?? T.HeadingDataCollections, "headline headline-sm")
+                    @Heading(BlockLevel, DataCollectionsHeading ?? T.HeadingDataCollections, "headline headline-s")
                     @DataCollectionTable
                 }
 
@@ -61,10 +67,10 @@
             </div>
 
             <aside class="variable-explorer-kilde__aside">
-                @Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-sm")
+                @Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
                 @Facts(SourceInformation)
 
-                @Heading(BlockLevel, T.HeadingStatistics, "headline headline-sm")
+                @Heading(BlockLevel, T.HeadingStatistics, "headline headline-s")
                 @Facts(Statistics)
             </aside>
         </div>

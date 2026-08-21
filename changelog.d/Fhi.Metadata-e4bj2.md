@@ -5,10 +5,11 @@ category: Notes for hosts
   with `__actions` and `__actions-button`, and `variable-explorer__dropdown`. Everything else in
   the prefix is this package's, and no helsedata stylesheet has a rule for any of it. Most are
   handles the element does not need — the root `variable-explorer`, `variable-explorer-filters`,
-  `-detail`, `-drilldown`, `-kodeverk*`, `-codes*` and the nine `variable-explorer-kilde*` names in
-  `KildeView` — because a Stiler class or a browser default already dresses it. Three are not:
-  `variable-explorer-group` is the eyebrow above each group of fields and degrades to an ordinary
-  `<h3>`, `variable-explorer-crumb` is the link affordance on the kilde step of the trail (which is
+  `-detail`, `-drilldown`, `-kodeverk*`, `-codes*`, `-group` and the nine `variable-explorer-kilde*`
+  names in `KildeView` — because a Stiler class or a browser default already dresses it. The group
+  headings, for one, are sized by the `headline headline-xxs` they also wear, so leaving
+  `variable-explorer-group` undefined costs the eyebrow's look and nothing more. Two are not
+  handles: `variable-explorer-crumb` is the link affordance on the kilde step of the trail (which is
   a `<button>`), and `variable-explorer-period__track` / `__fill` / `__track--ongoing` are the
   period bar itself — only its width comes from an inline style, so an undrawn bar renders as
   nothing at all. Earlier notes listed six invented names and said a host that defined none of them
@@ -23,3 +24,12 @@ category: Notes for hosts
 - The XML doc comments that ship with the package, which are what IntelliSense shows a consuming
   developer, still described the `datasourcecard` result shape that `Fhi.Metadata-zs56s` replaced.
   They now describe the DOM the components actually emit.
+- `KildeView`'s four block headings wore `headline-sm`, a name neither Stiler nor helsedata's
+  `variables.css` defines and the only class name in the package that appeared nowhere else — so
+  the headings fell back to the browser's own `<h*>` size inside an otherwise styled page. They now
+  wear `headline-s`, the same size the view's own name wears, because Stiler's scale has nothing
+  verified between it and the `headline-xxs` the field labels wear.
+- Both sample hosts now carry the Data tab's kodeverk rules. `ModernHost`'s `host.css` was missing
+  the whole block, so opening a variable's Data tab there showed an unstyled kodeverk list and an
+  uncapped code table — Kommunenummer's 885 rows pushed the rest of the page out of reach — and it
+  read as a difference in the hosting model rather than the missing 76 lines it was.

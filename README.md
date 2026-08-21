@@ -82,12 +82,18 @@ These are not style preferences — each one is a host that breaks otherwise.
     its own browser default — and the name is there so a host or a test can find that part of the
     component in the page: `variable-explorer` (the root `<section>`), `variable-explorer-filters`,
     `variable-explorer-detail`, `variable-explorer-drilldown`, `variable-explorer-kodeverk*`,
-    `variable-explorer-codes*`, and the nine `variable-explorer-kilde*` names in `KildeView`. The
-    samples do style most of these, but only for arrangement — spacing, indentation, a rule between
-    rows. A host that defines none of them loses no information.
+    `variable-explorer-codes*`, `variable-explorer-group`, and the nine `variable-explorer-kilde*`
+    names in `KildeView`. What the samples do with them is uneven, and worth knowing before
+    following the pointer below: they style the panel handles for arrangement — the root as a grid
+    at desktop width, `-filters`, `-detail`, `-drilldown`, `-kodeverk*` and `-codes*` for spacing,
+    indentation and a rule between rows — and they draw `variable-explorer-group` as Runa's blue
+    uppercase eyebrow. The nine `KildeView` names have no rule in either sample; that view is left
+    to its base element styling and the Stiler class each of its parts also wears. A host that
+    defines none of them loses no information: the group headings, for instance, are already sized
+    by the `headline headline-xxs` they wear, so what an undefined `variable-explorer-group` costs
+    is the eyebrow's look, not the fact that it is a heading.
   - Names a host outside helsedata has to draw itself, because nothing else draws them:
-    `variable-explorer-group` is an eyebrow above each group of fields and degrades to an ordinary
-    `<h3>`; `variable-explorer-crumb` carries the link affordance for the kilde step of the trail,
+    `variable-explorer-crumb` carries the link affordance for the kilde step of the trail,
     which is a `<button>`, and without it the trail reads as plain text with no sign it can be
     pressed; and inside the `variable-explorer-period*` wrapper, `__track`, `__fill` and
     `__track--ongoing` are the period bar itself — only its width comes from an inline style, so an

@@ -113,9 +113,10 @@ internal enum PanelTab
 /// name. What it holds is a heading in Stiler's <c>headline headline-s</c> and a
 /// <c>&lt;dl&gt;</c>, or — for a kilde — the whole of <c>KildeView</c>, so what a host supplies
 /// for it is the base <c>&lt;dl&gt;</c> styling the variable's own panel already needed.
-/// <c>variable-explorer-source</c> is not a class and never has been: it is the prefix of the
-/// element id that names the region (<c>variable-explorer-source-{instance}</c>), so a host or a
-/// test reaching for <c>.variable-explorer-source</c> finds nothing.
+/// <c>variable-explorer-source</c> is not a class: it is the prefix of the element id that names
+/// the region (<c>variable-explorer-source-{instance}</c>), so a host or a test reaching for
+/// <c>.variable-explorer-source</c> finds nothing. It was a class, back when the kilde opened
+/// inside the variable's panel, and stopped being one when that panel became this drill-in.
 /// </para>
 /// <para>
 /// <c>KildeView</c> adds nine handles of its own — <c>variable-explorer-kilde</c> with its
