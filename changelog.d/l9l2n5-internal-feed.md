@@ -1,9 +1,5 @@
 category: Changed
 
-- **Publiseringen gaar til helsedatas interne feed** i stedet for nuget.org. Det er feeden deres
-  Optimizely-prosjekt allerede restorer fra, og der deres egne pakker - inkludert Stiler - ligger.
-- **Credentialen er ikke laast til én form**: feeden tar imot baade en PAT og et Entra-token som
-  passord, saa skriptet bryr seg ikke om hvilken, og en senere overgang til federert OIDC endrer
-  bare hvordan hemmeligheten fylles inn. (Fhi.Metadata-l9l2n.5)
-
-
+- **The packages are published to helsedata's internal feed** rather than nuget.org. It is the feed
+  their Optimizely project already restores from, and where their own packages live, so consuming
+  the explorer needs no change to their configuration.

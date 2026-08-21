@@ -235,21 +235,28 @@ git tag v0.2.0 && git push origin v0.2.0
 ```
 
 `.github/workflows/release.yml` derives the version from the tag, builds, tests, packs, asserts
-the package shape and pushes all three packages to nuget.org in dependency order.
+the package shape and pushes all three packages in dependency order to
+`Fhi.Helsedata.no`, the Azure Artifacts feed helsedata's own projects already restore from. The
+packages are internal, not public: nothing goes to nuget.org.
 
 The workflow refuses to publish a tag whose commit is not on `main`, a tag that is not a clean
-`vMAJOR.MINOR.PATCH`, and a build whose packed version disagrees with the tag. Those refusals
-exist because nuget.org is append-only: a version can be unlisted but never replaced, and a
-package id can never be reclaimed.
+`vMAJOR.MINOR.PATCH`, and a build whose packed version disagrees with the tag. The feed does allow
+a version to be deleted, but that is not a way back: anyone who restored it keeps what they got,
+so a version number that has gone out is spent whether or not the artefact is still there.
 
-If a push fails partway through, **re-run the workflow** — it asks nuget.org what already went
-out and pushes only what is missing. It stops only if *every* package is already published,
-which means the tag is being reused rather than a run needing to finish.
+If a push fails partway through, **re-run the workflow** — it asks the feed what already went out
+and pushes only what is missing. It stops only if *every* package is already published, which
+means the tag is being reused rather than a run needing to finish.
 
-Requires the secret `NUGET_ORG_FHI_PUBLISH` — the same name FHI already publishes with in
-`FHIDev/Fhi.HelseId`. If that exists as an organisation secret, this repository only needs to be
-granted access to it; otherwise it is an API key from nuget.org scoped to the
-`Fhi.Munin.Explorer.*` ids.
+Requires the secret `ADO_PACKAGING_TOKEN`: an Azure DevOps personal access token for the `fhi`
+organisation, scoped to Packaging (Read & write) and nothing more. Add it under
+Settings → Secrets and variables → Actions.
+
+A token carries the identity of whoever created it, so publishing stops when it expires or that
+account closes — worth knowing when it is time to rotate. An Entra token authenticates against the
+feed just as well, so this can move to federated OIDC once a service principal is a member of the
+Azure DevOps organisation; the push script takes whatever credential it is given and does not
+inspect it.
 
 To check the package shape yourself before tagging:
 
@@ -259,7 +266,8 @@ dotnet pack -c Release -o artifacts
 ```
 
 Versions stay on `0.x` until the helsedata POC is wired up and the API surface has stopped
-moving — `1.0.0` is a stability promise, and on nuget.org it cannot be walked back.
+moving — `1.0.0` is a stability promise, and a version that consumers have restored cannot be
+walked back.
 
 ## Changelog
 

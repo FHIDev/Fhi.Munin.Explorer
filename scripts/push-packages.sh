@@ -5,9 +5,11 @@
 #
 # The problem this solves. The three packages are published together under one version. A plain
 # loop over `dotnet nuget push` aborts on the first failure, so a network blip while pushing the
-# second package leaves the first one live on the feed and the other two missing — and since
-# published versions cannot be replaced or deleted, that state cannot be cleaned up, only
-# completed. Re-running a plain loop does not complete it either: the first package now exists,
+# second package leaves the first one live on the feed and the other two missing — and while
+# this feed does allow a version to be deleted, deleting is not the way out: anyone who restored
+# the first package in the meantime keeps it, and pushing a different build under the same version
+# leaves two things claiming to be it. The half-done state is finished, not undone.
+# Re-running a plain loop does not finish it either: the first package now exists,
 # its push fails with a 409, and the run stops again before reaching the ones that are actually
 # missing.
 #
@@ -56,13 +58,34 @@ PACKAGES=(
   Fhi.Munin.Explorer.Blazor
 )
 
-# Registered once rather than passed per push: dotnet nuget push takes credentials only from a
-# configured source, not on the command line.
+# A config file of our own, and both commands are pointed at it.
+#
+# Registering into the default user config does not work here: this repository's own nuget.config
+# starts with <clear />, so a source defined further up the chain is discarded before the push
+# ever sees it, and --source helsedata-internal fails to resolve from the repository root. That is
+# also why the dry run did not catch it - it stopped at the pre-flight, before any push.
+#
+# Temporary rather than in the tree, because this file holds the credential in clear text. It is
+# written outside the checkout so it cannot be committed by accident, and removed on the way out
+# whether the run succeeded or not.
+CONFIG=$(mktemp -t nuget-push-XXXXXX.config)
+trap 'rm -f "$CONFIG"' EXIT
+
+cat > "$CONFIG" <<'XML'
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <packageSources>
+    <clear />
+  </packageSources>
+</configuration>
+XML
+
 dotnet nuget add source "$SOURCE" \
   --name "$SOURCE_NAME" \
   --username unused \
   --password "$NUGET_PUBLISH_TOKEN" \
-  --store-password-in-clear-text >/dev/null
+  --store-password-in-clear-text \
+  --configfile "$CONFIG" >/dev/null
 
 MAX_ATTEMPTS=5
 
@@ -98,7 +121,7 @@ push_one() {
 
   while :; do
     set +e
-    output=$(dotnet nuget push "$file" --source "$SOURCE_NAME" --api-key az 2>&1)
+    output=$(dotnet nuget push "$file" --source "$SOURCE_NAME" --api-key az --configfile "$CONFIG" 2>&1)
     status=$?
     set -e
     printf '%s\n' "$output"
