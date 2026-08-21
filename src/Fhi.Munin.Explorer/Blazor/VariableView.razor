@@ -27,7 +27,7 @@
                 @* Resolved from the payload, exactly as the kilde view resolves a source's. *@
                 @if (Groups.Count > 0)
                 {
-                    @Heading(BlockLevel, T.HeadingMetadata, "headline headline-sm")
+                    @Heading(BlockLevel, T.HeadingMetadata, "headline headline-s")
 
                     foreach (var group in Groups)
                     {
@@ -41,36 +41,36 @@
 
                 @if (Versions.Count > 0)
                 {
-                    @Heading(BlockLevel, T.HeadingVersionHistory, "headline headline-sm")
+                    @Heading(BlockLevel, T.HeadingVersionHistory, "headline headline-s")
                     @VersionHistory
                 }
 
                 @if (variable.Statistics.Count > 0)
                 {
-                    @Heading(BlockLevel, StatisticsHeading, "headline headline-sm")
+                    @Heading(BlockLevel, StatisticsHeading, "headline headline-s")
                     @StatisticsTable
                 }
             </div>
 
             <aside class="variable-explorer-whole__aside">
-                @Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-sm")
+                @Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
                 @Facts(SourceInformation)
 
                 @if (Period(variable.DataFrom, variable.DataTo) is { } period)
                 {
-                    @Heading(BlockLevel, T.FieldDataPeriod, "headline headline-sm")
+                    @Heading(BlockLevel, T.FieldDataPeriod, "headline headline-s")
                     <p class="margin--none">@period</p>
                 }
 
                 @if (!string.IsNullOrWhiteSpace(variable.DataType))
                 {
-                    @Heading(BlockLevel, T.FieldDataType, "headline headline-sm")
+                    @Heading(BlockLevel, T.FieldDataType, "headline headline-s")
                     <p class="margin--none">@T.DataTypeLabel(variable.DataType)</p>
                 }
 
                 @if (variable.AllVariabelgrupper.Count > 0)
                 {
-                    @Heading(BlockLevel, T.FieldVariableGroups, "headline headline-sm")
+                    @Heading(BlockLevel, T.FieldVariableGroups, "headline headline-s")
                     <ul class="variable-explorer-whole__list">
                         @foreach (var group in variable.AllVariabelgrupper)
                         {
@@ -81,7 +81,7 @@
 
                 @if (variable.AllDatasamlinger.Count > 0)
                 {
-                    @Heading(BlockLevel, T.HeadingDataCollections, "headline headline-sm")
+                    @Heading(BlockLevel, T.HeadingDataCollections, "headline headline-s")
                     <ul class="variable-explorer-whole__list">
                         @foreach (var datasamling in variable.AllDatasamlinger)
                         {
