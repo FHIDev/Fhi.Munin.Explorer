@@ -129,16 +129,31 @@ internal static class CatalogueProperties
     /// arbitrary. Counting only the populated ones separates them and matches what Runa shows.
     /// </item>
     /// </list>
+    /// <para>
+    /// <paramref name="drawnElsewhere"/> names keys the caller renders itself, so the same fact does
+    /// not appear twice on one page. A variable's <c>DataType</c> is the case this was written for:
+    /// the sidebar shows it, and left in the groups it also appeared there — under the same label,
+    /// with a different word, because the sidebar translates the code and the group resolves it
+    /// through the catalogue's own vocabulary, whose Norwegian labels for this field are English.
+    /// Dropping the key drops the group with it whenever nothing else in that group is filled in,
+    /// which is exactly what Runa shows.
+    /// </para>
     /// </remarks>
     internal static List<PropertyGroup> Groups(
         IReadOnlyList<PropertyMetadataEntry> metadata,
         IReadOnlyDictionary<string, string?> values,
-        string reader)
+        string reader,
+        IReadOnlySet<string>? drawnElsewhere = null)
     {
         var groups = new List<(string Name, string Language, int Order, List<PropertyMetadataEntry> Entries)>();
 
         foreach (var entry in metadata)
         {
+            if (drawnElsewhere is not null && drawnElsewhere.Contains(entry.Key))
+            {
+                continue;
+            }
+
             var (name, language) = Localised(entry.GroupTranslations, reader);
 
             if (string.IsNullOrWhiteSpace(name))

@@ -40,7 +40,27 @@
    reader gets a full width to read in, which three levels of nesting cannot give, and the
    search, filters, page and open row are all still there on return because none of it was
    torn down. *@
-@if (_sourceKind is not null)
+@if (_wholeVariable && _detail is { } whole)
+{
+    @* The whole variable, in place. Same shape as the kilde drill-in beneath it, and for the same
+       reason: with no router, a detail page is a view this component swaps to rather than a route
+       the host has to own. *@
+    <div class="variable-explorer-drilldown"
+         id="@WholeVariableId"
+         role="region"
+         aria-labelledby="@WholeVariableHeadingId">
+        <button class="hd-button-square button-square--ghost margin-bottom"
+                type="button"
+                @onclick="ToggleWholeVariableAsync">@T.BackToVariables</button>
+
+        <VariableView Variable="whole"
+                      Language="@Language"
+                      HeadingLevel="@RowLevel"
+                      HeadingId="@WholeVariableHeadingId"
+                      Sections="@KodeverkSection(whole)" />
+    </div>
+}
+else if (_sourceKind is not null)
 {
     @* A region named after what it shows, so a screen reader moving by landmark finds it and hears
        which kilde it landed in. The old nested panel carried these; taking them off when it became
@@ -511,6 +531,17 @@ else
                                                 aria-controls="@SourceControls(kind)"
                                                 @onclick="() => ToggleSourceAsync(kind)">@SourceToggleText(kind)</button>
                                     }
+
+                                    @* After the owner buttons, not before. Those two are the
+                                       narrower move — one part of this variable's surroundings —
+                                       and going to the whole variable is the wider one, so it reads
+                                       last. It also keeps the owner buttons where they have always
+                                       been, which the tests that count them rely on. *@
+                                    <button class="hd-button-square button-square--ghost margin-right margin-bottom"
+                                            type="button"
+                                            aria-expanded="false"
+                                            aria-controls="@WholeVariableId"
+                                            @onclick="ToggleWholeVariableAsync">@T.ShowWholeVariable</button>
 
                                     @* The owner's own record, drawn inside the variable's panel.
                                        One at a time — pressing Datasamling with Datakilde open

@@ -4834,8 +4834,14 @@ public class VariableExplorerTest : BunitContext
     private static void Back(IRenderedComponent<VariableExplorer> cut) =>
         cut.Find(".variable-explorer-drilldown button").Click();
 
+    /// <summary>The buttons that open an owner — the kilde and the datasamling.</summary>
+    /// <remarks>
+    /// <c>button[id]</c>, not every button in the panel: the whole-variable button sits beside these
+    /// and is not one of them. Selecting all of them made this helper mean "every button in the
+    /// panel" the moment a third arrived, which is not what its name says or what its callers want.
+    /// </remarks>
     private static IReadOnlyList<AngleSharp.Dom.IElement> SourceToggles(IRenderedComponent<VariableExplorer> cut) =>
-        [.. cut.FindAll(".variable-explorer-detail > button")];
+        [.. cut.FindAll(".variable-explorer-detail > button[id]")];
 
     /// <summary>
     /// The kilde or datasamling view. It is no longer a panel inside the open row — it takes over
@@ -5182,6 +5188,11 @@ public class VariableExplorerTest : BunitContext
         Toggles(cut)[0].Click();
 
         Assert.Empty(SourceToggles(cut));
+
+        // The whole variable is still reachable: it is about this row, not about an owner the row
+        // does not name, so it does not disappear with them.
+        Assert.Contains(cut.FindAll(".variable-explorer-detail > button"),
+                        b => b.TextContent.Contains("hele variabelen", StringComparison.Ordinal));
         Assert.Equal(0, client.KildeCalls);
         Assert.Equal(0, client.DatasamlingCalls);
     }

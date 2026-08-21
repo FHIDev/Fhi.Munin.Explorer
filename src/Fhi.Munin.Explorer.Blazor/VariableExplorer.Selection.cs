@@ -9,6 +9,30 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </summary>
 public partial class VariableExplorer
 {
+    /// <summary>Whether the whole variable is showing, rather than the panel's summary of it.</summary>
+    /// <remarks>
+    /// A view, not a route. The package has no router, so "the full detail page" opens in place —
+    /// the same move the kilde drill-in makes, and the answer to the open question on
+    /// Fhi.Metadata-xbynn about how a host reaches a detail without one.
+    /// </remarks>
+    private bool _wholeVariable;
+
+    private string WholeVariableId => $"munin-variable-{_instance}";
+
+    private string WholeVariableHeadingId => $"munin-variable-heading-{_instance}";
+
+    /// <summary>Open the whole variable, or close it and put the reader back in the list.</summary>
+    /// <remarks>
+    /// Nothing is fetched: the panel already holds the detail this view draws, because opening the
+    /// row fetched it. Going deeper should not cost a round trip for something already in hand.
+    /// </remarks>
+    private Task ToggleWholeVariableAsync()
+    {
+        _wholeVariable = !_wholeVariable;
+
+        return Task.CompletedTask;
+    }
+
     /// <summary>
     /// Open this row's detail panel, or close it when it is the one already open.
     /// </summary>
@@ -132,6 +156,10 @@ public partial class VariableExplorer
     /// <summary>Close the panel and forget what was fetched for it.</summary>
     private void ClearSelection()
     {
+        // The whole-variable view belongs to the row that opened it. Left set, it would reappear
+        // over whichever variable was opened next.
+        _wholeVariable = false;
+
         _tab = PanelTab.Details;
 
         _selectedId = null;

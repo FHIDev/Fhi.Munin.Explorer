@@ -1016,11 +1016,13 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 /* The name is rendered at whatever heading level keeps the host page's outline unbroken, so it is
    matched by level rather than by element — and its top margin comes off, because the drilldown
    above already supplies the gap and `.headline` would add a second one. */
-.variable-explorer-kilde > * > :is(h2, h3, h4, h5, h6):first-child {
+.variable-explorer-kilde > * > :is(h2, h3, h4, h5, h6):first-child,
+.variable-explorer-whole > * > :is(h2, h3, h4, h5, h6):first-child {
   margin-top: 0;
 }
 
-.variable-explorer-kilde__header {
+.variable-explorer-kilde__header,
+.variable-explorer-whole__header {
   padding-bottom: 16px;
   margin-bottom: 16px;
   border-bottom: 1px solid var(--grey30);
@@ -1028,7 +1030,8 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 /* The identifiers are what a reader looks the kilde up by elsewhere, so they are set the way the
    kodeverk reference is: a run of digits reads as an identifier rather than as prose. */
-.variable-explorer-kilde__identifiers {
+.variable-explorer-kilde__identifiers,
+.variable-explorer-whole__code {
   font-family: ui-monospace, "SFMono-Regular", "Consolas", monospace;
   font-size: 0.8125rem;
 }
@@ -1045,7 +1048,8 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   font-size: 0.8125rem;
 }
 
-.variable-explorer-kilde__description {
+.variable-explorer-kilde__description,
+.variable-explorer-whole__description {
   margin: 12px 0 0;
   max-width: 65ch;   /* prose, and prose the full width of a wide window is unreadable */
   color: var(--grey60);
@@ -1054,13 +1058,15 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 /* Main column and sidebar, and only once there is room for two of them. Below 1024px the aside
    returns to the flow under the main column, which is where a phone wants it — the same
    threshold and the same reasoning as the filter panel above. */
-.variable-explorer-kilde__body {
+.variable-explorer-kilde__body,
+.variable-explorer-whole__body {
   display: grid;
   gap: 24px;
 }
 
 @media (min-width: 1024px) {
-  .variable-explorer-kilde__body {
+  .variable-explorer-kilde__body,
+  .variable-explorer-whole__body {
     grid-template-columns: minmax(0, 1fr) 320px;
     align-items: start;
   }
@@ -1069,11 +1075,13 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 /* A grid track is `min-width: auto` by default, so the widest thing in the column sets the floor.
    The datasamlinger table has four columns of Norwegian names in it and would push the sidebar
    off the right edge rather than shrink. Same trap the filter panel meets, same fix. */
-.variable-explorer-kilde__main {
+.variable-explorer-kilde__main,
+.variable-explorer-whole__main {
   min-inline-size: 0;
 }
 
-.variable-explorer-kilde__aside {
+.variable-explorer-kilde__aside,
+.variable-explorer-whole__aside {
   padding: 16px;
   border-radius: 4px;
   background: var(--grey10);
@@ -1277,3 +1285,41 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   opacity: 0.6;
 }
 
+/* The sidebar's lists — variabelgrupper and datasamlinger. Bulletless because each is one fact
+   about the variable rather than an enumeration a reader counts, and tight because the sidebar is
+   320px and a hanging indent wastes a fifth of it. */
+.variable-explorer-whole__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.variable-explorer-whole__list li + li {
+  margin-top: 6px;
+}
+
+/* The statistics table. Same shape as the datasamlinger table above it, with the numbers right
+   aligned and tabular: these columns are read down, comparing magnitudes, and proportional digits
+   put the same number in two different widths on two rows. */
+.variable-explorer-statistics {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.variable-explorer-statistics th,
+.variable-explorer-statistics td {
+  padding: 8px 12px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--grey30);
+}
+
+.variable-explorer-statistics thead th {
+  background: var(--grey10);
+}
+
+.variable-explorer-statistics td {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
