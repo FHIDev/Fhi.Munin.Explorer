@@ -91,7 +91,15 @@ jobs:
         run: dotnet test --configuration Release --no-build --verbosity quiet
 
       - name: Pack
-        run: dotnet pack --configuration Release --no-build --output artifacts -p:Version=${{ steps.version.outputs.version }}
+        # PackageReleaseNotes is stamped with THIS tag's release rather than left at the default.
+        # nuget.org shows the string forever against the version it was packed with, so a link to
+        # the changelog on main would age into pointing an old package at notes describing a later
+        # one. The release for a tag never changes after it is cut, and the workflow creates it
+        # below, so the link is valid by the time anyone can install the package.
+        run: |
+          dotnet pack --configuration Release --no-build --output artifacts \
+            -p:Version=${{ steps.version.outputs.version }} \
+            -p:PackageReleaseNotes="Release notes for ${{ github.ref_name }}: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}"
 
       - name: Assert package contents
         # Last gate before the irreversible step. Also catches a version mismatch between the

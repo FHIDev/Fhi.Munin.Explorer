@@ -20,11 +20,27 @@
     <VersionPrefix>0.1.0</VersionPrefix>
     <Authors>Folkehelseinstituttet (FHI)</Authors>
     <Company>Folkehelseinstituttet</Company>
+
+    <!-- Required of a public FHI package, and the one piece of provenance a consumer sees on
+         nuget.org without opening anything: it names who stands behind the package beside the
+         author and the licence. -->
+    <Copyright>Copyright 2026 Folkehelseinstituttet (FHI)</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/FHIDev/Fhi.Munin.Explorer</PackageProjectUrl>
     <RepositoryUrl>https://github.com/FHIDev/Fhi.Munin.Explorer</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+
+    <!-- Not the notes themselves: nuget.org renders this per version, and pasting a version's
+         entry in here would mean editing this file every release and being wrong the first time
+         someone forgot.
+
+         This default is for local and CI builds, which are not published. The release workflow
+         overrides it with the GitHub release for the tag being packed - see the Pack step. That
+         matters because nuget.org shows this string forever against that one version: a link to
+         the changelog on main would, after the next release, point an old package at notes that
+         no longer describe it and may not mention it at all. -->
+    <PackageReleaseNotes>Unreleased build. Release notes for published versions: https://github.com/FHIDev/Fhi.Munin.Explorer/releases</PackageReleaseNotes>
   </PropertyGroup>
 
   <!-- Ship the XML docs. The point of this package is that a helsedata developer does not
