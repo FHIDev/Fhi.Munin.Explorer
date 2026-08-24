@@ -1,11 +1,11 @@
 category: Notes for hosts
-- **The pager's skip link needs a class name that is not in Stiler** - `skiplink-pagination`, read
-  back off the compiled stylesheets. Stiler has no pagination rule of any kind — no `pagination`,
-  `pager`, `paging`, `page-link` or `page-item` — while helsedata's own variable page styles its
-  pager from a `variables.css` the site-wide stylesheet does not carry. The pager itself wears our
-  own `munin-explorer-pagination*` names and Stiler carries their rules; the skip link still wears
-  helsedata's, so a host outside their estate has to supply it, including the rule that keeps it
-  out of sight until it is focused. Both sample hosts show a working approximation.
+- **The pager and its skip link both wear our own class names, and Stiler carries their rules from
+  0.1.14** - `munin-explorer-pagination*` and `munin-explorer-skiplink-pagination`. Neither was in
+  Stiler to begin with: it has no pagination rule of its own — no `pagination`, `pager`, `paging`,
+  `page-link` or `page-item` — while helsedata's own variable page styles both from a
+  `variables.css` the site-wide stylesheet does not carry. The skip link's rule is the one to
+  supply first on an older Stiler, because it is what keeps the link out of sight until it is
+  focused rather than what gives it a look. Both sample hosts show a working approximation.
   (Fhi.Metadata-l9l2n.12)
 - **The pager's buttons are never `disabled`** - at the first and last page they carry
   `aria-disabled="true"` and do nothing when pressed. A host stylesheet has to draw the

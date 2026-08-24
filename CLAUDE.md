@@ -28,9 +28,13 @@ behaviour found later by someone else.
    explorer's own structure and result vocabulary is the other half: it used to write helsedata's
    `variable-*` names and inherit rules from their `variables.css`, and now writes
    `munin-explorer*`, whose rules ship in Stiler under `components/munin-explorer/` — in 0.1.13,
-   except the pager's, which are in the first release after it. Don't write a new `variable-*`
+   except the pager's and its skip link's, which are in 0.1.14. Don't write a new `variable-*`
    name — Stiler still defines `.variable-explorer-header`, so that namespace is helsedata's.
-   Reasoning in `AGENTS.md`.
+   And a name Stiler *has* heard of is not the same as a rule that reaches our markup: 0.1.13
+   carried the skip link's as `.munin-explorer-header .skiplink-pagination`, which both guards
+   here counted as covered and which never matched anything, because that header opens and closes
+   entirely inside `ColumnPicker()`. Check the selector, not just the name. Reasoning in
+   `AGENTS.md`.
 
 3. **The package ships no CSS.** No `wwwroot`, no `.razor.css`. Sample hosts carry their own
    styling because they have no Stiler; the package must not.

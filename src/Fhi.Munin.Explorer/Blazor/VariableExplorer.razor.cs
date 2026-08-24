@@ -56,11 +56,19 @@ internal enum PanelTab
 /// served on every page of helsedata.no, so borrowing cost nothing inside their estate and left
 /// every host outside it drawing a pager at browser defaults. The rules for the whole prefix,
 /// pager included, ship in <c>Fhi.Helsedata.Stiler</c> under <c>components/munin-explorer/</c> —
-/// the pager's from the first release after 0.1.13, which shipped before this rename, so on 0.1.13
-/// itself the pager and nothing else renders at browser defaults.
-/// One borrowed name is left: <c>skiplink-pagination</c>, which is helsedata's, and with it the
-/// rule that keeps the skip link out of sight until it is focused — the whole point of a skip
-/// link. <c>README.md</c> has the full split.
+/// the pager's from 0.1.14, which is also where the skip link into it landed under
+/// <c>Fhi.Metadata-ja2qu</c>, so on 0.1.13 the pager and nothing else renders at browser defaults.
+/// The skip link was the last borrowed name of all, helsedata's <c>skiplink-pagination</c>, and it
+/// failed backwards from every other missing rule: what was missing was the rule that HIDES the
+/// link until it is focused, so a Stiler-only host drew a permanently visible "Hopp til
+/// paginering" over every multi-page result list rather than an unstyled anything. It is
+/// <c>munin-explorer-skiplink-pagination</c> now, and its Stiler rule is deliberately unscoped.
+/// 0.1.13 did carry one for the old name, scoped as
+/// <c>.munin-explorer-header .skiplink-pagination</c> — and that selector can never match: the
+/// header opens and closes entirely inside <c>ColumnPicker()</c>, while this anchor is rendered
+/// beside the result list. Both guards in this repository counted the name as covered anyway,
+/// because each asks whether a name has a rule and neither asks whether the selector matches.
+/// <c>README.md</c> has the full split.
 /// </para>
 /// <para>
 /// Two parts of helsedata's own pager were deliberately not carried across when its shape was read

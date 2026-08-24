@@ -1854,7 +1854,7 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(new PagedClient(3));
 
         Assert.Empty(cut.FindAll("div.munin-explorer-pagination"));
-        Assert.Empty(cut.FindAll("a.skiplink-pagination"));
+        Assert.Empty(cut.FindAll("a.munin-explorer-skiplink-pagination"));
     }
 
     [Fact]
@@ -2077,7 +2077,7 @@ public class VariableExplorerTest : BunitContext
         Next(cut).Click();
 
         Assert.NotEmpty(cut.FindAll("div.munin-explorer-pagination"));
-        Assert.NotEmpty(cut.FindAll("a.skiplink-pagination"));
+        Assert.NotEmpty(cut.FindAll("a.munin-explorer-skiplink-pagination"));
         Assert.Equal("Side 1 av 1", Position(cut));
         Assert.Contains("10 variabler funnet", StatusLine(cut)); // the whole result, so no range
         Assert.Equal(10, cut.FindAll("ul.munin-explorer-data-list > li").Count);
@@ -2102,7 +2102,7 @@ public class VariableExplorerTest : BunitContext
         cut.Find("form").Submit();
 
         Assert.Empty(cut.FindAll("div.munin-explorer-pagination"));
-        Assert.Empty(cut.FindAll("a.skiplink-pagination"));
+        Assert.Empty(cut.FindAll("a.munin-explorer-skiplink-pagination"));
     }
 
     [Fact]
@@ -2224,7 +2224,7 @@ public class VariableExplorerTest : BunitContext
         Assert.Equal("Previous", Previous(cut).TextContent);
         Assert.Equal("Next", Next(cut).TextContent);
         Assert.Equal("Page 1 of 13", Position(cut));
-        Assert.Equal("Skip to pagination", cut.Find("a.skiplink-pagination").TextContent);
+        Assert.Equal("Skip to pagination", cut.Find("a.munin-explorer-skiplink-pagination").TextContent);
         Assert.Contains("Showing 1–25 of 312 variables found", StatusLine(cut));
     }
 
@@ -2291,9 +2291,9 @@ public class VariableExplorerTest : BunitContext
         // renders at raw browser defaults inside an otherwise styled page.
         //
         // The whole render rather than the pager subtree, because the pager is not the only thing
-        // gated on more than one page: `skiplink-pagination` is too, and it sits outside
-        // div.munin-explorer-pagination, so a subtree check would leave the one other name in this
-        // branch unread — as would anything a later >1-page branch adds.
+        // gated on more than one page: `munin-explorer-skiplink-pagination` is too, and it sits
+        // outside div.munin-explorer-pagination, so a subtree check would leave the one other name
+        // in this branch unread — as would anything a later >1-page branch adds.
         var cut = RenderWith(new PagedClient(312));
 
         // The pager has to actually be in this render, or the check below passes on an empty set.
@@ -2310,7 +2310,7 @@ public class VariableExplorerTest : BunitContext
         // following it moves the viewport while focus stays behind.
         var cut = RenderWith(new PagedClient(312));
 
-        var skiplink = cut.Find("a.skiplink-pagination");
+        var skiplink = cut.Find("a.munin-explorer-skiplink-pagination");
         var pager = cut.Find("div.munin-explorer-pagination");
 
         Assert.Equal($"#{pager.Id}", skiplink.GetAttribute("href"));
@@ -2321,8 +2321,37 @@ public class VariableExplorerTest : BunitContext
         var markup = cut.Markup;
         // Ahead of the ROWS, not ahead of the header: the header holds four sort buttons and is
         // worth tabbing through. It is the twenty-five variables the link exists to skip.
-        Assert.True(markup.IndexOf("skiplink-pagination", StringComparison.Ordinal)
+        Assert.True(markup.IndexOf("munin-explorer-skiplink-pagination", StringComparison.Ordinal)
                     < markup.IndexOf("<ul class=\"munin-explorer-data-list\"", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Render_WhenThereIsMoreThanOnePage_ThenTheSkipLinkIsOursAndSitsOutsideTheColumnPickerHeader()
+    {
+        // The two facts Stiler's rule for this link stands on, neither of which any other check
+        // here can see. Both guards in this repository ask whether a NAME has a rule; neither asks
+        // whether the selector matches. Stiler 0.1.13 carried this link's rule as
+        // `.munin-explorer-header .skiplink-pagination`, which counted as covered and matched
+        // nothing — so a host on Stiler alone drew a permanently visible "Hopp til paginering"
+        // over every multi-page result list. The failure runs backwards from an ordinary missing
+        // rule: what was missing was the rule that HIDES the link, so it showed up as an extra
+        // link rather than as an unstyled one, and neither sample host revealed it because both
+        // style the name themselves.
+        //
+        // So: the name is ours, whole, under our prefix — a borrowed name here means a host
+        // outside helsedata has nowhere to get the rule from. And the anchor is no descendant of
+        // munin-explorer-header, which opens and closes entirely inside ColumnPicker() well before
+        // this link is rendered, which is why the rule that replaced the dead one is unscoped.
+        var cut = RenderWith(new PagedClient(312));
+
+        var skiplink = cut.Find("a.munin-explorer-skiplink-pagination");
+
+        Assert.Equal("munin-explorer-skiplink-pagination", skiplink.GetAttribute("class"));
+
+        // The header is in this render — so the check below is about where the anchor sits, not
+        // about an element that happens to be absent.
+        Assert.NotEmpty(cut.FindAll("div.munin-explorer-header"));
+        Assert.Empty(cut.FindAll(".munin-explorer-header a.munin-explorer-skiplink-pagination"));
     }
 
     [Fact]
@@ -2353,7 +2382,7 @@ public class VariableExplorerTest : BunitContext
 
         Assert.NotEqual(a.Find("div.munin-explorer-pagination").Id, b.Find("div.munin-explorer-pagination").Id);
         Assert.Equal($"#{a.Find("div.munin-explorer-pagination").Id}",
-                     a.Find("a.skiplink-pagination").GetAttribute("href"));
+                     a.Find("a.munin-explorer-skiplink-pagination").GetAttribute("href"));
     }
 
     // ---------------------------------------------------------------------------------
