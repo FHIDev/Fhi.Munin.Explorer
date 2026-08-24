@@ -84,7 +84,7 @@ whole approach exists to avoid — see the history behind `Fhi.Metadata-l9l2n.29
 which read as a borrowed name for months and was a typo for `headline-s`.
 
 **The explorer's own vocabulary is ours, under the `munin-explorer` prefix.** Structure, results,
-panel, drill-in and kilde view all live there, and the package owns the whole prefix. It did not
+panel, drill-in, pager and kilde view all live there, and the package owns the whole prefix. It did not
 always: the component used to write helsedata's own `variable-explorer*`, `variable-data-list*`,
 `variable-dataitem*` and `variable-meta*` and inherit their rules for free from `variables.css` —
 the stylesheet of the very page it replaces — which meant it only looked right inside helsedata's

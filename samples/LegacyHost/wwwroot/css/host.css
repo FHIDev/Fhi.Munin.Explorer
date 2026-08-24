@@ -4,9 +4,10 @@
    Stiler stylesheet; here it is this file. Every rule below the "Stiler stand-in" divider
    is a class name *Stiler* defines: one of its own components, or one of ours that Stiler
    took in, because `Fhi.Helsedata.Stiler` 0.1.13 ships the whole `munin-explorer` prefix
-   under `Static/scss/components/munin-explorer/`. The pager is the one exception below, and it
-   is helsedata's rather than ours or Stiler's — it has its own heading. What no rule below is,
-   is a name only this repository has heard of. That was tried: inventing
+   under `Static/scss/components/munin-explorer/`. The pager joined that prefix last, under
+   `Fhi.Metadata-hyyxl`; the skip link above it is the one name below that is still helsedata's
+   own, and it has its own heading. What no rule below is, is a name only this repository has
+   heard of. That was tried: inventing
    `variabelutforsker-*` names meant helsedata's stylesheet had never heard of them and the
    search box, the Søk button and the results rendered as raw browser defaults inside an
    otherwise styled page.
@@ -23,8 +24,9 @@
    off a list of names, which is the only way to be sure a class exists and is not scoped under
    an ancestor an embedded component is never inside — Stiler's sort-header rules, for one, live
    under `article.registerOwnerListPage` and are unreachable from here. Reading it back is also
-   how the pager's names turned out not to be Stiler's at all but the variable page's own; they
-   are stood in for at the bottom of this file, under their own heading.
+   how the pager's names turned out not to be Stiler's at all but the variable page's own, which
+   is why they were renamed into our prefix rather than left borrowed; the shape they carry is
+   still theirs, and it is stood in for further down under its own heading.
 
    samples/ModernHost/wwwroot/host.css and samples/LegacyHost/wwwroot/css/host.css are this same
    file twice, byte for byte, on purpose: if the two hosts style the component identically, any
@@ -120,9 +122,10 @@ body {
    divider is one of Fhi.Helsedata.Stiler's own components, and Stiler's
    job in the real host. Past that divider comes the rest of what a host
    owes the component: the result vocabulary, which is ours and which
-   Stiler 0.1.13 carries under components/munin-explorer/ — it was read
+   Stiler carries under components/munin-explorer/ — it was read
    back off helsedata's `variables.css` while the component still wore
-   their `variable-*` names; the pager, which is still helsedata's and
+   their `variable-*` names, the pager included since
+   `Fhi.Metadata-hyyxl`; the skip link, which is still helsedata's and
    which no version of Stiler has a rule for; and the base element
    styling neither stylesheet gives.
    README.md, under "Rules the components follow", is the authoritative
@@ -308,47 +311,24 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   .datasourcecard__info .dot { margin-left: 0; margin-bottom: 0; position: relative; bottom: 2.5px; }
 }
 
-/* ---- not Stiler: the pager, which is still helsedata's ----
+/* ---- not Stiler: the pager's skip link, which is still helsedata's ----
 
-   Everything above is a stand-in for Stiler, which every helsedata page loads. The two names
-   below are the one family the component still takes from helsedata's own `variables.css`, which
-   Stiler knows nothing about: its compiled stylesheet has no pagination rule of any kind, in
+   Everything above is a stand-in for Stiler, which every helsedata page loads. The one name below
+   is what is left of the family the component used to take from helsedata's own `variables.css`,
+   which Stiler knows nothing about: its compiled stylesheet has no pagination rule of any kind, in
    0.1.13 or in any version before it. Despite the name, `variables.css` is loaded on every page
    of helsedata.no too (verified on /no/, /no/variabler/ and /no/datakilder/: identical seven
-   bundles), so a host in their estate has the pager wherever the component is mounted, not only
-   on the variable page. A host outside has to supply these two itself, exactly as this sample
-   does — they are the only names the component emits that Stiler 0.1.13 does not cover, and
-   `Fhi.Metadata-hyyxl` tracks moving them into the prefix with the rest. The rows, the opened
-   panel and the column picker are further down, under their own heading; those are ours, and a
-   host on Stiler 0.1.13 has them without doing anything. */
+   bundles), so a host in their estate has the skip link's rule wherever the component is mounted,
+   not only on the variable page. A host outside has to supply it itself, exactly as this sample
+   does — and it is load-bearing rather than decorative, because it is what keeps the link out of
+   sight until it is focused.
 
-.variables-pagination {
-  margin-top: 24px;
-  padding-top: 16px;
-  border-top: 1px solid var(--grey30);
-}
-/* The skip link's target, focused programmatically. Without an outline of its own the jump is
-   invisible to a sighted keyboard user, who has no other sign that focus moved. */
-.variables-pagination:focus { outline: 2px solid var(--focus); outline-offset: 4px; }
-
-.variables-pagination-content {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 16px;
-}
-
-/* The pager buttons are never `disabled` — that would drop focus to <body> at the ends of the
-   list — so the unavailable state has to be drawn from aria-disabled instead. */
-.variables-pagination-content [aria-disabled="true"] {
-  background-color: var(--grey30);
-  color: var(--grey60);
-  cursor: default;
-}
-.variables-pagination-content [aria-disabled="true"]:hover {
-  background-color: var(--grey30);
-  color: var(--grey60);
-}
+   The pager itself used to be here too, as `variables-pagination` and
+   `variables-pagination-content`. `Fhi.Metadata-hyyxl` moved it into the prefix with everything
+   else: those two were the last names the component emitted that Stiler did not cover, so a host
+   on Stiler alone drew the pager at browser defaults while the rest of the component came out
+   right. Their rules are further down, under the munin-explorer heading with the rows, the opened
+   panel and the column picker. */
 
 /* Out of sight until focused, which is the whole point of a skip link: it is there for the
    keyboard user who would otherwise tab through every card to reach the next page, and for
@@ -1479,6 +1459,49 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 .munin-explorer-versions__detail {
   padding: 0 4px 14px;
+}
+
+/* ---- the pager ----
+
+   Ours since `Fhi.Metadata-hyyxl`, and the last part of the component to become so. It wore
+   helsedata's `variables-pagination` and `variables-pagination-content` long after the rest of the
+   vocabulary was renamed, because the argument for borrowing looked strongest here: Stiler has no
+   pagination rule of any kind — no `pagination`, `pager`, `paging`, `page-link` or `page-item` —
+   while `variables.css`, which has one, loads on every page of helsedata.no. That covered every
+   host inside their estate and no host outside it, which is the promise the rename exists to keep,
+   so the names moved into the prefix and the rules go to Stiler under `components/munin-explorer/`
+   with the rest of them.
+
+   The declarations are unchanged from when they stood in for helsedata's: an arrangement, not a
+   design. Two of them are not spacing and are worth keeping whatever a host does with the look —
+   each says why in its own comment. */
+
+.munin-explorer-pagination {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--grey30);
+}
+/* The skip link's target, focused programmatically. Without an outline of its own the jump is
+   invisible to a sighted keyboard user, who has no other sign that focus moved. */
+.munin-explorer-pagination:focus { outline: 2px solid var(--focus); outline-offset: 4px; }
+
+.munin-explorer-pagination-content {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+
+/* The pager buttons are never `disabled` — that would drop focus to <body> at the ends of the
+   list — so the unavailable state has to be drawn from aria-disabled instead. */
+.munin-explorer-pagination-content [aria-disabled="true"] {
+  background-color: var(--grey30);
+  color: var(--grey60);
+  cursor: default;
+}
+.munin-explorer-pagination-content [aria-disabled="true"]:hover {
+  background-color: var(--grey30);
+  color: var(--grey60);
 }
 
 /* ======================================================================
