@@ -212,16 +212,81 @@ goes red.
 
 One package. The component, the client that feeds it and the types they share all ship together.
 
-```bash
-dotnet add package Fhi.Munin.Explorer
-```
-
 It was three for a while — component, client and contracts — so that the component need not
 depend on an HTTP stack and a host could substitute its own `IMuninExplorerClient`. That seam is
 still here: `IMuninExplorerClient` is an interface, and a host that registers its own
 implementation never touches ours. What went away is the part nobody used — three versions that
 had to move in lockstep, and a state where the component was installed and the client was not, so
 it rendered with nothing behind it.
+
+### Getting it from `Fhi.Helsedata.no`
+
+It goes to `Fhi.Helsedata.no`, helsedata's internal Azure Artifacts feed, and never to nuget.org
+— so `dotnet add package` reports the package as not existing until that feed is a source the
+restore can see. A host inside helsedata's estate already restores from it. Anyone else adds it to
+the **consuming repository's own** `nuget.config`, beside the solution:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <packageSources>
+    <clear />
+    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" protocolVersion="3" />
+    <add key="Fhi.Helsedata.no"
+         value="https://pkgs.dev.azure.com/fhi/Fhi.Helsedata/_packaging/Fhi.Helsedata.no/nuget/v3/index.json" />
+  </packageSources>
+
+  <packageSourceMapping>
+    <packageSource key="nuget.org">
+      <package pattern="*" />
+    </packageSource>
+    <packageSource key="Fhi.Helsedata.no">
+      <package pattern="Fhi.Munin.Explorer" />
+      <package pattern="Fhi.Helsedata.*" />
+    </packageSource>
+  </packageSourceMapping>
+
+  <auditSources>
+    <clear />
+    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+  </auditSources>
+</configuration>
+```
+
+Then `dotnet add package Fhi.Munin.Explorer`, with credentials in place — see below.
+
+`dotnet nuget add source` looks like the shorter way to the same place and is not. It writes the
+*user-level* config, so an authenticated feed becomes a source for every build on the machine —
+which [`docs/running-locally.md`](docs/running-locally.md) warns against for this same feed, and
+which `scripts/push-packages.sh` goes out of its way to avoid by writing a config of its own. It
+also lands in the wrong file whenever the consuming solution's `nuget.config` opens with
+`<clear />`, as this repository's does: that discards every source defined further up the chain,
+so the restore still fails with the same "package not found" this section exists to prevent, now
+with a stale machine-wide source to explain it away.
+
+Three traps come with the feed, and this repository's own [`nuget.config`](nuget.config) spells
+all three out:
+
+- **Pin the ids with `packageSourceMapping`.** With two unmapped sources NuGet queries both and
+  takes the highest version, not the nearest source. `Fhi.Munin.Explorer` is published only
+  internally, so the id is unclaimed on nuget.org — without the mapping above, anyone who
+  registers it there at a higher version wins the next restore, and the same goes for
+  `Fhi.Helsedata.*`.
+- **Keep `<auditSources>` clamped to nuget.org.** NuGet's vulnerability audit queries every
+  configured source whatever `packageSourceMapping` says, so a token-less restore against the
+  private feed raises NU1900 — which `TreatWarningsAsErrors` then escalates into a build failure.
+  helsedata hit exactly this.
+- **Keep the token out of config files.** The feed is private, so restore needs an Azure DevOps
+  personal access token for the `fhi` organisation, scoped to Packaging (Read). Supply it through
+  the [Azure Artifacts Credential Provider](https://github.com/microsoft/artifacts-credprovider) —
+  interactively on a developer machine, or via `VSS_NUGET_EXTERNAL_FEED_ENDPOINTS` in CI — so it
+  never reaches a file. `dotnet nuget add source --username … --password …` is the path to avoid:
+  NuGet can only encrypt that password on Windows, so elsewhere `--store-password-in-clear-text`
+  is mandatory and the PAT sits in plain text in a config readable by every process running as
+  you, one paste away from being committed. A container build takes it as a BuildKit secret, never
+  as a build argument, which persists in image history.
+
+### Registering it
 
 ```csharp
 // Registration order matters. To call Munin as the signed-in user, register the token provider
