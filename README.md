@@ -146,7 +146,10 @@ These are not style preferences — each one is a host that breaks otherwise.
   title or inject meta tags.
 - **Nothing host-specific.** `IHttpContextAccessor`, `Microsoft.AspNetCore.Components.Server.*`,
   EF Core, `EPiServer.*` / `Optimizely.*` and `System.IO` file access are **build errors** in the
-  RCL, enforced by `BannedSymbols.txt` and `Microsoft.CodeAnalysis.BannedApiAnalyzers`.
+  RCL, enforced by `BannedSymbols.txt` and `Microsoft.CodeAnalysis.BannedApiAnalyzers`. That
+  enforcement was silently off once, so it has a check of its own:
+  `scripts/assert-portability-guard-armed.sh` builds the RCL against a banned symbol and fails
+  unless RS0030 is reported. CI runs it on every PR as "portability guard armed".
 
 If a callback parameter is added, note that an `EventCallback` silently serialises to an empty
 delegate across a static-SSR to interactive-island boundary — such a mount point has to be fully
@@ -274,9 +277,13 @@ run's push landed but the job died after it — the `Create the GitHub Release` 
 20-minute `timeout-minutes` fired, the runner dropped — then there is nothing left to publish, and
 the re-run still stops and still says to tag a new version. Read that message rather than obeying
 it: look at what is on the feed first, and spend a new version number only if what is there is not
-the build you meant to ship. The forgiveness only reaches within one run, where a push coming back
-"already exists" is our own attempt landing unseen and is reported as a success. Across runs the
-pre-flight has no way to distinguish that from a genuine reuse, so it refuses either way.
+the build you meant to ship. A push coming back "already exists" is treated as our own attempt
+landing unseen and reported as a success, and the pre-flight is what keeps that from excusing a
+reused tag — it refuses a version the feed says is there, unless it cannot reach the feed to ask.
+A query that errors or times out answers "not published", because a failed query must never be
+able to skip a push; the run then pushes, is told "already exists", and exits green. So a green
+re-run is not by itself proof that *this* run's push landed — check the run log for whether the
+pre-flight got an answer, and check the feed for which build is on it.
 
 Requires the secret `ADO_PACKAGING_TOKEN`: an Azure DevOps personal access token for the `fhi`
 organisation, scoped to Packaging (Read & write) and nothing more. Add it under

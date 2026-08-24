@@ -52,6 +52,7 @@ behaviour found later by someone else.
 dotnet build && dotnet test
 dotnet pack -c Release -o artifacts && ./scripts/assert-package-contents.sh artifacts
 ./scripts/assert-sample-css-in-step.sh          # only if you touched samples/ or a class name
+./scripts/assert-portability-guard-armed.sh     # only if you touched Directory.Build.props
 ```
 
 - **A `src/` change needs a changelog fragment** in `changelog.d/`. CI fails without one.
@@ -125,7 +126,9 @@ back from anyone who restored it. See "Releasing" in `README.md` for the rest.
 The component must render inside helsedata's **legacy** Blazor Server (`AddServerSideBlazor` +
 `MapBlazorHub`, mounted with the `<component>` tag helper) as well as a modern Blazor Web App.
 So: no `@page`, no `@rendermode`, no `HeadOutlet`, nothing host-specific. `BannedSymbols.txt`
-turns the last one into a build error.
+turns the last one into a build error — and `scripts/assert-portability-guard-armed.sh` is what
+keeps that true, because it was quietly not for a while: the ItemGroup wiring the analyzer up is
+conditioned on the RCL's project name, and the name it held was one project rename out of date.
 
 There is **no `HttpContext` during circuit activity**. Anything reaching for
 `IHttpContextAccessor` finds nothing and fails quietly rather than loudly — see

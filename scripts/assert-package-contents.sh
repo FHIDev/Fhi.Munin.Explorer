@@ -47,9 +47,13 @@ if [ ! -d "$DIR" ]; then
 fi
 
 # ---------------------------------------------------------------------------------------------
-# Nothing unlisted may be published. A package produced by accident (a sample host that lost its
-# IsPackable=false, say) would otherwise be pushed alongside the real one and appear on the feed
-# under a name nobody decided to ship — and deleting it afterwards does not un-restore it.
+# Nothing unlisted may be packed. A stray .nupkg cannot reach the feed by itself any more —
+# push-packages.sh names the one file it pushes and release.yml has no wildcard push — so this is
+# not the last line of defence it once was, when a set of packages went out together. It is still
+# the earliest sign that packing did something nobody asked for: a sample host that lost its
+# IsPackable=false, a project that gained one, a rename that produced two ids where there is meant
+# to be one. Whatever produced it, the answer to "which package are we shipping" stopped being
+# obvious, and that is worth failing a PR over before it is worth reasoning about at tag time.
 # ---------------------------------------------------------------------------------------------
 shopt -s nullglob
 for path in "$DIR"/*.nupkg; do

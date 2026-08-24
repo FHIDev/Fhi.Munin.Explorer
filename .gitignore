@@ -438,3 +438,8 @@ artifacts/
 # against the real thing. It is theirs, it is 300 kB, and it changes every time they publish -
 # see docs/running-locally.md for how to put it there when you need it.
 samples/*/wwwroot/_content/
+
+# The probe scripts/assert-portability-guard-armed.sh writes into the RCL and deletes again. It is
+# ignored so an interrupted run cannot leave it to be committed by accident; a leftover copy still
+# fails the next build loudly, with the RS0030 that is the whole point of it.
+src/Fhi.Munin.Explorer/PortabilityGuardProbe.g.cs

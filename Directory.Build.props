@@ -86,7 +86,14 @@
        matched nothing afterwards — so the analyzer was never referenced, BannedSymbols.txt was
        never an AdditionalFile, and RS0030 could not fire. The guard was off for as long as that
        lasted, silently, which is the failure mode it exists to prevent. If the RCL is ever
-       renamed again, this line moves with it. -->
+       renamed again, this line moves with it.
+
+       That last sentence is a request, and a request is what failed the first time, so it is no
+       longer the only thing holding this up: scripts/assert-portability-guard-armed.sh builds the
+       RCL against a file using a banned symbol and fails unless RS0030 is reported. It runs on
+       every PR as the "portability guard armed" job. Break any part of this ItemGroup and that
+       check goes red — which is the whole difference between this guard and the one that was
+       quietly off. -->
   <ItemGroup Condition="'$(MSBuildProjectName)' == 'Fhi.Munin.Explorer'">
     <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="5.6.0">
       <PrivateAssets>all</PrivateAssets>
