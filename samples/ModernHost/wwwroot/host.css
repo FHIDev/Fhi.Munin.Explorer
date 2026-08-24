@@ -4,10 +4,12 @@
    Stiler stylesheet; here it is this file. Every rule below the "Stiler stand-in" divider
    is a class name *Stiler* defines: one of its own components, or one of ours that Stiler
    took in, because `Fhi.Helsedata.Stiler` 0.1.13 ships the whole `munin-explorer` prefix
-   under `Static/scss/components/munin-explorer/`. What no rule below is, is a name only this
-   repository has heard of. That was tried: inventing `variabelutforsker-*` names meant
-   helsedata's stylesheet had never heard of them and the search box, the Søk button and the
-   results rendered as raw browser defaults inside an otherwise styled page.
+   under `Static/scss/components/munin-explorer/`. The pager is the one exception below, and it
+   is helsedata's rather than ours or Stiler's — it has its own heading. What no rule below is,
+   is a name only this repository has heard of. That was tried: inventing
+   `variabelutforsker-*` names meant helsedata's stylesheet had never heard of them and the
+   search box, the Søk button and the results rendered as raw browser defaults inside an
+   otherwise styled page.
 
    So this file is an approximation of Stiler, not a design of its own. Values are copied from
    `Fhi.Helsedata.Stiler/Static/scss` — the palette and the 4px spacing scale from
@@ -1119,7 +1121,9 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 /* The kildetype is a category, not part of the name. This said "Stiler's tag class says so on
    helsedata, and this stands in for it" until the day someone read helsedata's stylesheets
    instead of assuming: no such class exists there, in any of their seven bundles or in Stiler.
-   So this is not a stand-in for a host rule — it is the only rule the badge has ever had.
+   So there is no `tag` rule anywhere for this to stand in for. The badge wears a munin-explorer
+   name of its own instead, which puts it in Stiler 0.1.13 with the rest of the prefix; what
+   follows is this sample's rule for it, and it was the badge's only rule until then.
 
    Written without a leading dot on purpose. The checks that read this file ask whether it
    mentions a selector, and prose naming one reads exactly like a rule declaring one. They strip
@@ -1206,8 +1210,8 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
    All five names below are ours, and every one is a handle: there was no kodeverk section
    anywhere to read a shape back off, because helsedata's variable page has no such panel at all.
-   Their rules reached Stiler 0.1.13 with the rest of the prefix; the sample supplies what a host
-   would — the arrangement, nothing more.
+   Rules for them reached Stiler 0.1.13 with the rest of the prefix; the sample supplies what a
+   host would — the arrangement, nothing more.
 
    The list is a plain <ul> with its bullets off, because the group heading above it already says
    these are kodeverk of one kind and a bullet per line adds nothing. */

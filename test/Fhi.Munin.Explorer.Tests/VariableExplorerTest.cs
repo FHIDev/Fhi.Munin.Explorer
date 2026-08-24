@@ -1126,11 +1126,11 @@ public class VariableExplorerTest : BunitContext
     [Fact]
     public void Render_Always_ThenNoClassNamesAreInventedApartFromTheDomHandles()
     {
-            // Eight names in the munin-explorer prefix. Two are DOM handles rather than style hooks -
-            // nothing in this package or in Stiler defines a rule for either, and nothing should. The
-            // other six were helsedata's until the rename, were read back off their compiled
-            // variables.css, and now live in Stiler under components/munin-explorer/. This is the
-            // guard that says so out loud.
+        // Eight names in the munin-explorer prefix. Two are DOM handles rather than style hooks -
+        // nothing in this package or in Stiler defines a rule for either, and nothing should. The
+        // other six were helsedata's until the rename, were read back off their compiled
+        // variables.css, and now live in Stiler under components/munin-explorer/. This is the
+        // guard that says so out loud.
         // or a name in it that cannot be pointed at in a stylesheet, is the failure this package
         // exists to avoid, and it has happened twice.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
@@ -5116,18 +5116,18 @@ public class VariableExplorerTest : BunitContext
     [Fact]
     public void Render_WhenAPanelIsOpen_ThenItIsBuiltFromShapesRatherThanFromNewClassNames()
     {
-            // The rule this guards has changed, and it is worth being precise about what it is now.
-            // The component used to wear helsedata's variable-page vocabulary, so several names in
-            // this prefix were THEIRS rather than ours - what are now munin-explorer-container
-            // (10 rules), munin-explorer-results (6), and the column picker's header trio plus its
-            // dropdown all sat in their variables.css, loaded on every page of their site. After the
-            // rename they are ours, and their rules live in Stiler under components/munin-explorer/.
-            //
-            // That collapses the old two-way split, but not the thing it protected. What must never
-            // grow is the list of names we INVENT and never style - the handles below, which carry
-            // no rule anywhere by design and exist only so a host can find the component in the DOM.
-            // A name in this prefix that is neither styled in Stiler nor one of those handles is a
-            // name that renders as a raw browser default.
+        // The rule this guards has changed, and it is worth being precise about what it is now.
+        // The component used to wear helsedata's variable-page vocabulary, so several names in
+        // this prefix were THEIRS rather than ours - what are now munin-explorer-container
+        // (10 rules), munin-explorer-results (6), and the column picker's header trio plus its
+        // dropdown all sat in their variables.css, loaded on every page of their site. After the
+        // rename they are ours, and their rules live in Stiler under components/munin-explorer/.
+        //
+        // That collapses the old two-way split, but not the thing it protected. What must never
+        // grow is the list of names we INVENT and never style - the handles below, which carry
+        // no rule anywhere by design and exist only so a host can find the component in the DOM.
+        // A name in this prefix that is neither styled in Stiler nor one of those handles is a
+        // name that renders as a raw browser default.
         //
         // Rendered with a hierarchy chosen as well as a panel open, so the trail over the results
         // is on screen: this list is the central registry, and names that only appear under a
