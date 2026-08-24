@@ -12,9 +12,10 @@
    (`munin-explorer-data-list*`, `munin-explorer-dataitem-*`) in the list that page builds around them
    (`munin-explorer-container`, `munin-explorer-results`, `munin-explorer-header*`), with
    `munin-explorer-meta*` for the panel an open row shows and `munin-explorer-pagination*` for the
-   pager. `skiplink-pagination` is the one name left from that file: the pager itself was the last
-   thing still wearing helsedata's own, because Stiler had no pagination rule at all and their
-   stylesheet did, and `Fhi.Metadata-hyyxl` moved it into the prefix with everything else. The
+   pager. Nothing is left wearing a name from that file. The pager and the skip link into it held
+   out longest, because Stiler had no pagination rule at all and their stylesheet did:
+   `Fhi.Metadata-hyyxl` moved the pager into the prefix with everything else and
+   `Fhi.Metadata-ja2qu` moved the link, as `munin-explorer-skiplink-pagination`. The
    searchbox shape — submit button inside the field — is still lifted from helsedata's own
    datakildeutforsker (Features/DataSources/DataSourceComponent); its `datasourcecard*` card list
    is not, and no `datasourcecard` name is emitted here any more.
@@ -36,9 +37,10 @@
    `__track--ongoing`, which are the period bar itself. README lists every one of them; see also
    the comment above the `<section>`.
 
-   `variables.css` is a dependency a host outside helsedata's estate has to meet in full, and the
-   component class's remarks say so — including the rule that keeps `skiplink-pagination` out of
-   sight until it is focused.
+   The result vocabulary is a dependency a host outside helsedata's estate has to meet in full,
+   and the component class's remarks say so — including the rule that keeps
+   `munin-explorer-skiplink-pagination` out of sight until it is focused, which ships in Stiler
+   0.1.14.
 
    Accessibility: helsedata.no is a public-sector site, so WCAG 2.1 AA is a legal
    requirement — and this is our markup on their page. The choices below are the ones
@@ -324,13 +326,16 @@ else
         @if (ShowPager)
         {
             @* Without this a keyboard user reaches Neste by tabbing past every card on the page —
-               25 stops to move one page. `skiplink-pagination` is helsedata's own class and their
-               own rule keeps it out of sight until it is focused, which is the one place this
-               markup depends on the host hiding something: see the note on the component class.
+               25 stops to move one page. The rule the host supplies for
+               `munin-explorer-skiplink-pagination` keeps it out of sight until it is focused, which
+               is the one place this markup depends on the host hiding something: see the note on
+               the component class. The name was helsedata's `skiplink-pagination` until
+               `Fhi.Metadata-ja2qu`, and no released Stiler ever had a rule that hid it, so on a
+               Stiler-only host the link sat permanently visible over every multi-page result list.
 
                Rendered only alongside a pager, because with a single page there is nothing to skip
                to and the link would be a tab stop leading nowhere. *@
-            <a class="skiplink-pagination" href="#@PaginationId">@T.SkipToPagination</a>
+            <a class="munin-explorer-skiplink-pagination" href="#@PaginationId">@T.SkipToPagination</a>
         }
 
         @* helsedata's own variable page builds its result grid from a <ul> and a header row of

@@ -89,8 +89,8 @@ always: the component used to write helsedata's own `variable-explorer*`, `varia
 `variable-dataitem*` and `variable-meta*` and inherit their rules for free from `variables.css` —
 the stylesheet of the very page it replaces — which meant it only looked right inside helsedata's
 estate. The rules ship in `Fhi.Helsedata.Stiler` under `components/munin-explorer/` — most of them
-in 0.1.13 and later, the pager's in the first release after it, since 0.1.13 shipped before that
-name was renamed — so any host with Stiler can style the component. Do not move a name back into
+in 0.1.13 and later, the pager's and its skip link's in 0.1.14, since 0.1.13 shipped before those
+names were renamed — so any host with Stiler can style the component. Do not move a name back into
 the old prefix: Stiler still defines `.variable-explorer-header`, so `variable-*` is helsedata's
 namespace and writing in it is either borrowing or colliding.
 

@@ -61,22 +61,20 @@ These are not style preferences — each one is a host that breaks otherwise.
     than guessed at: `searchbox__freetext*`, `hd-button-square` with its `button-square--*`
     modifiers, `form-element__label`, `form-fieldset`, `headline`, `caption`, `infobox`,
     `hd-button-reset`, `screenreader-only`, and `dropdown-choicepicker*` for the column picker's
-    open list. These are not ours to rename: a change to one of them is a change to Stiler. One
-    borrowed name is not Stiler's and has no rule there: `skiplink-pagination`, which comes from
-    helsedata's own `variables.css` — despite the name that stylesheet is served on every page of
-    helsedata.no (verified on `/no/`, `/no/variabler/` and `/no/datakilder/`, which load an
-    identical seven bundles), so a host in their estate has it wherever the component is mounted
-    and a host outside has to supply it, including the part that keeps the link out of sight until
-    it is focused. The pager itself was borrowed the same way until `Fhi.Metadata-hyyxl` and is
-    ours now — see below.
+    open list. These are not ours to rename: a change to one of them is a change to Stiler. Every
+    borrowed name is now one Stiler really defines. Three were not — the pager's two names and its
+    skip link's, all read off helsedata's own page-specific `variables.css` — and all three are
+    ours now: the pager under `Fhi.Metadata-hyyxl` and the skip link into it under
+    `Fhi.Metadata-ja2qu` — see below.
   - **Ours.** Everything the explorer is actually built out of — its structure and its whole result
     vocabulary — is under the `munin-explorer` prefix, which this package owns. Since
     `Fhi.Metadata-zs56s` that vocabulary is shaped like helsedata's variable page rather than like
     something of its own: rows are `munin-explorer-data-list` / `munin-explorer-data-list__item*` /
     `munin-explorer-dataitem-main*`, the opened panel is `munin-explorer-meta*`, the list around
     them is `munin-explorer-container` / `munin-explorer-results` / `munin-explorer-header*`, the
-    column picker hangs in `munin-explorer-header__actions*`, and the pager is
-    `munin-explorer-pagination` / `munin-explorer-pagination-content`.
+    column picker hangs in `munin-explorer-header__actions*`, the pager is
+    `munin-explorer-pagination` / `munin-explorer-pagination-content`, and the link that jumps past
+    the results to it is `munin-explorer-skiplink-pagination`.
 
     It was not ours until recently, and the change is the reason a host outside helsedata can style
     this component at all. The package used to write helsedata's own names — `variable-data-list*`,
@@ -98,11 +96,29 @@ These are not style preferences — each one is a host that breaks otherwise.
     `variables-pagination-content` became `munin-explorer-pagination` and
     `munin-explorer-pagination-content`, and their rules join the rest of the prefix in Stiler
     under `components/munin-explorer/`. They are not in 0.1.13, which shipped before this rename:
-    the floor for a fully styled pager is the first Stiler release carrying them, and on 0.1.13
-    itself the pager renders at browser defaults exactly as it did before. Inside helsedata nothing
-    changes either way — their `variables-pagination` rules are still in `variables.css`, now
-    unused. The third of those 95 names is `skiplink-pagination` above, which stays borrowed: a
-    Stiler-only host is down to that one rule, not down to none.
+    they ship in **0.1.14**, and on 0.1.13 itself the pager renders at browser defaults exactly as
+    it did before. Inside helsedata nothing changes either way — their `variables-pagination` rules
+    are still in `variables.css`, now unused.
+
+    The third of those 95 names was the pager's skip link, and it went the same way under
+    `Fhi.Metadata-ja2qu`. It is worth spelling out because it failed backwards from every other
+    missing rule here: what was missing was the rule that **hides** the link until it is focused,
+    so a Stiler-only host drew a permanently visible "Hopp til paginering" over every
+    multi-page result list rather than an unstyled anything. Neither sample host showed it — both
+    styled the borrowed name in their own `host.css` — and neither guard could, because neither
+    guard reads Stiler. Both ask only whether a name has *a* rule, in the capture of helsedata's
+    live page (`test/host-class-names.txt`, where `skiplink-pagination` sits at line 2064 because
+    helsedata styles it) or in the sample stylesheet. The name was in both sources the whole time
+    it was broken, and neither source says anything about the host that has neither of them.
+    `skiplink-pagination` is `munin-explorer-skiplink-pagination` now, and Stiler **0.1.14**
+    carries its rule unscoped. A Stiler-only host is down to no rules of its own, not to one.
+
+    Unscoped is the load-bearing word. The first attempt at a Stiler rule for this link — on the
+    `feature/munin-explorer-scss` branch, which was never released under that shape — was scoped
+    `.munin-explorer-header .skiplink-pagination`, and that selector cannot match: the header opens
+    and closes entirely inside the column picker, while the anchor is rendered beside the result
+    list. A rule naming the right class under the wrong ancestor draws exactly nothing, which is
+    the same outcome as no rule at all and reads as coverage to any check that searches for names.
 
   A name no stylesheet has heard of renders as a raw browser default inside an otherwise styled
   page, which defeats the point of shipping this as a component at all. That is why owning the
@@ -121,8 +137,9 @@ These are not style preferences — each one is a host that breaks otherwise.
   no guide to which was which, so a reader had to check each one against a list. There is no longer
   a category to check against. The `THEIRS` allowlist in `scripts/assert-sample-css-in-step.sh` is
   empty by construction, and what these names cost a host is now the same question everywhere: a
-  host on Stiler 0.1.13 or later has rules for them, any other host draws whatever it wants drawn,
-  and the sub-lists below are about how much drawing nothing costs.
+  host on Stiler 0.1.13 or later has rules for them — 0.1.14 for the pager and its skip link, which
+  were renamed after 0.1.13 shipped — any other host draws whatever it wants drawn, and the
+  sub-lists below are about how much drawing nothing costs.
 
   - Handles, where something else already dresses the element — a Stiler class it also wears, or
     its own browser default — and the name is there so a host or a test can find that part of the

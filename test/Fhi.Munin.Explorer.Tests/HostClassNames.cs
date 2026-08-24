@@ -50,8 +50,19 @@ internal static class HostClassNames
         new(@"/\*.*?\*/", System.Text.RegularExpressions.RegexOptions.Singleline);
 
     /// <summary>
-    /// The sample stylesheet, read as text rather than parsed: the question here is only whether a
-    /// rule mentions the name, not what the rule does.
+    /// Innermost blocks only — <c>[^{}]</c> on both sides — so the rules inside an
+    /// <c>@media</c> are matched as themselves rather than swallowed whole by the at-rule.
+    ///
+    /// No <c>Singleline</c>, unlike its neighbour above: the flag only widens what <c>.</c>
+    /// matches, and there is no <c>.</c> here. A negated class crosses newlines on its own.
+    /// </summary>
+    private static readonly System.Text.RegularExpressions.Regex CssRule =
+        new(@"(?<selector>[^{}]*)\{(?<declarations>[^{}]*)\}");
+
+    /// <summary>
+    /// The sample stylesheet, read as text rather than parsed: nearly every question here is only
+    /// whether a rule mentions the name — <see cref="SampleDeclarationsFor"/> is the one that reads
+    /// a declaration block, and it cuts the blocks out of the same text.
     ///
     /// Comments are stripped first, and that is load-bearing rather than tidy. This file is heavily
     /// commented, and a comment naming a selector reads to a substring search exactly like a rule
@@ -91,12 +102,35 @@ internal static class HostClassNames
         && !cls.StartsWith("munin-explorer-meta", StringComparison.Ordinal);
 
     /// <summary>
-    /// Anchored on the right so a rule for <c>.munin-explorer-period__fill</c> does not answer for
-    /// <c>.munin-explorer-period</c> — a rule for the part is not a rule for the whole.
+    /// The declaration block of every rule in the sample stylesheet whose selector names
+    /// <paramref name="name"/> — <c>.munin-explorer-skiplink-pagination</c> and its <c>:focus</c>
+    /// twin come back as two entries, in the order the file writes them.
+    ///
+    /// Everything else here asks whether a name has <em>a</em> rule, which is the question that
+    /// catches a name nobody styles. It is the wrong question for a rule whose job is to hide
+    /// something: the skip link shipped with a rule under every check this repository owns and
+    /// still drew a permanently visible "Hopp til paginering" on a Stiler-only host, because what
+    /// was missing was the declaration that takes it off screen, not the selector. Reading the
+    /// block is how an assertion can be about what a rule does.
     /// </summary>
-    private static bool SampleStyles(string name)
+    internal static IReadOnlyList<(string Selector, string Declarations)> SampleDeclarationsFor(string name) =>
+        [.. CssRule.Matches(SampleStylesheet.Value)
+                   .Where(m => Mentions(m.Groups["selector"].Value, name))
+                   .Select(m => (m.Groups["selector"].Value.Trim(), m.Groups["declarations"].Value))];
+
+    private static bool SampleStyles(string name) => Mentions(SampleStylesheet.Value, name);
+
+    /// <summary>
+    /// Hard-anchored on the left — the search is for <c>'.' + name</c>, so nothing with a prefix
+    /// in front of the name answers for it. What the right-hand check does is accept any
+    /// character that cannot continue a class name, which is how the two things that can follow
+    /// a name are told apart: <c>_</c> continues it, so a rule for
+    /// <c>.munin-explorer-period__fill</c> does not answer for <c>.munin-explorer-period</c> — a
+    /// rule for the part is not a rule for the whole — while <c>:</c> ends it, so
+    /// <c>.munin-explorer-skiplink-pagination:focus</c> does answer for the name it qualifies.
+    /// </summary>
+    private static bool Mentions(string css, string name)
     {
-        var css = SampleStylesheet.Value;
         for (var i = css.IndexOf('.' + name, StringComparison.Ordinal); i >= 0;
              i = css.IndexOf('.' + name, i + 1, StringComparison.Ordinal))
         {
