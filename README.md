@@ -227,27 +227,30 @@ restore can see. A host inside helsedata's estate already restores from it. Anyo
 the **consuming repository's own** `nuget.config`, beside the solution:
 
 ```xml
-<packageSources>
-  <clear />
-  <add key="nuget.org" value="https://api.nuget.org/v3/index.json" protocolVersion="3" />
-  <add key="Fhi.Helsedata.no"
-       value="https://pkgs.dev.azure.com/fhi/Fhi.Helsedata/_packaging/Fhi.Helsedata.no/nuget/v3/index.json" />
-</packageSources>
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <packageSources>
+    <clear />
+    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" protocolVersion="3" />
+    <add key="Fhi.Helsedata.no"
+         value="https://pkgs.dev.azure.com/fhi/Fhi.Helsedata/_packaging/Fhi.Helsedata.no/nuget/v3/index.json" />
+  </packageSources>
 
-<packageSourceMapping>
-  <packageSource key="nuget.org">
-    <package pattern="*" />
-  </packageSource>
-  <packageSource key="Fhi.Helsedata.no">
-    <package pattern="Fhi.Munin.Explorer" />
-    <package pattern="Fhi.Helsedata.*" />
-  </packageSource>
-</packageSourceMapping>
+  <packageSourceMapping>
+    <packageSource key="nuget.org">
+      <package pattern="*" />
+    </packageSource>
+    <packageSource key="Fhi.Helsedata.no">
+      <package pattern="Fhi.Munin.Explorer" />
+      <package pattern="Fhi.Helsedata.*" />
+    </packageSource>
+  </packageSourceMapping>
 
-<auditSources>
-  <clear />
-  <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
-</auditSources>
+  <auditSources>
+    <clear />
+    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+  </auditSources>
+</configuration>
 ```
 
 Then `dotnet add package Fhi.Munin.Explorer`, with credentials in place — see below.
