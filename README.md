@@ -146,7 +146,10 @@ These are not style preferences — each one is a host that breaks otherwise.
   title or inject meta tags.
 - **Nothing host-specific.** `IHttpContextAccessor`, `Microsoft.AspNetCore.Components.Server.*`,
   EF Core, `EPiServer.*` / `Optimizely.*` and `System.IO` file access are **build errors** in the
-  RCL, enforced by `BannedSymbols.txt` and `Microsoft.CodeAnalysis.BannedApiAnalyzers`.
+  RCL, enforced by `BannedSymbols.txt` and `Microsoft.CodeAnalysis.BannedApiAnalyzers`. That
+  enforcement was silently off once, so it has a check of its own:
+  `scripts/assert-portability-guard-armed.sh` builds the RCL against a banned symbol and fails
+  unless RS0030 is reported. CI runs it on every PR as "portability guard armed".
 
 If a callback parameter is added, note that an `EventCallback` silently serialises to an empty
 delegate across a static-SSR to interactive-island boundary — such a mount point has to be fully
@@ -255,18 +258,32 @@ git tag v0.2.0 && git push origin v0.2.0
 ```
 
 `.github/workflows/release.yml` derives the version from the tag, builds, tests, packs, asserts
-the package shape and pushes all three packages in dependency order to
-`Fhi.Helsedata.no`, the Azure Artifacts feed helsedata's own projects already restore from. The
-packages are internal, not public: nothing goes to nuget.org.
+the package shape and pushes the one package, `Fhi.Munin.Explorer`, to `Fhi.Helsedata.no`, the
+Azure Artifacts feed helsedata's own projects already restore from. The package is internal, not
+public: nothing goes to nuget.org.
 
 The workflow refuses to publish a tag whose commit is not on `main`, a tag that is not a clean
 `vMAJOR.MINOR.PATCH`, and a build whose packed version disagrees with the tag. The feed does allow
 a version to be deleted, but that is not a way back: anyone who restored it keeps what they got,
 so a version number that has gone out is spent whether or not the artefact is still there.
 
-If a push fails partway through, **re-run the workflow** — it asks the feed what already went out
-and pushes only what is missing. It stops only if *every* package is already published, which
-means the tag is being reused rather than a run needing to finish.
+`scripts/push-packages.sh` retries a push that fails for reasons of its own — five attempts, then
+it gives up — so **re-running the workflow** is the answer when one does. The re-run asks the feed
+first whether this version is already there and refuses to push over it, so it either completes
+the push that never landed or stops because the version is already out.
+
+"Already out" is not always a reused tag, and the run cannot tell the difference. If the first
+run's push landed but the job died after it — the `Create the GitHub Release` step failed, the
+20-minute `timeout-minutes` fired, the runner dropped — then there is nothing left to publish, and
+the re-run still stops and still says to tag a new version. Read that message rather than obeying
+it: look at what is on the feed first, and spend a new version number only if what is there is not
+the build you meant to ship. A push coming back "already exists" is treated as our own attempt
+landing unseen and reported as a success, and the pre-flight is what keeps that from excusing a
+reused tag — it refuses a version the feed says is there, unless it cannot reach the feed to ask.
+A query that errors or times out answers "not published", because a failed query must never be
+able to skip a push; the run then pushes, is told "already exists", and exits green. So a green
+re-run is not by itself proof that *this* run's push landed — check the run log for whether the
+pre-flight got an answer, and check the feed for which build is on it.
 
 Requires the secret `ADO_PACKAGING_TOKEN`: an Azure DevOps personal access token for the `fhi`
 organisation, scoped to Packaging (Read & write) and nothing more. Add it under

@@ -1,8 +1,10 @@
 # Changelog
 
-Notable changes to the published packages. This file is for **consumers** — what changed in
-`Fhi.Munin.Explorer.Blazor`, `.Client` and `.Contracts`, and what a host has to do about it.
-Internal repository housekeeping belongs in commit messages, not here.
+Notable changes to the published package. This file is for **consumers** — what changed in
+`Fhi.Munin.Explorer`, which carries the component, the client that feeds it and the types they
+share, and what a host has to do about it. (`.Blazor`, `.Client` and `.Contracts` are namespaces
+inside it, not separate packages.) Internal repository housekeeping belongs in commit messages,
+not here.
 
 Versions follow [semver](https://semver.org/). While on `0.x` the API surface may still move;
 we stay below `1.0.0` until a consuming host is live and the surface has settled. Once at
@@ -14,6 +16,8 @@ service embeds cannot move under them without warning.
 a version heading at release time. One file per change means two PRs in flight never conflict
 over this one. To see what is queued for the next release, read `changelog.d/`.
 
-Nothing has been published to nuget.org yet, so there are no released versions below.
+The package is published to `Fhi.Helsedata.no`, helsedata's internal Azure Artifacts feed, and
+not to nuget.org — restore it from there. Nothing has been published yet, so there are no released
+versions below.
 
 <!-- assemble-changelog: new version sections are inserted directly below this line, newest first. -->

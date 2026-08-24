@@ -16,7 +16,7 @@ behaviour found later by someone else.
 1. **Identifiers are English.** Norwegian is for user-facing strings and untranslatable domain
    terms (`kilde`, `datasamling`, `variabelgruppe`, `kildetype`, `kodeverk`). The Norwegian
    names the package started with were renamed under `Fhi.Metadata-osxfx`, before the first
-   nuget.org publish, so there is no Norwegian half left to add to. A DTO property's C# name is
+   publish to the feed, so there is no Norwegian half left to add to. A DTO property's C# name is
    free to differ from its wire name — every one carries a `[JsonPropertyName]`, so the JSON
    keeps Munin's spelling whatever the property is called. Reasoning in `AGENTS.md`.
 
@@ -52,6 +52,7 @@ behaviour found later by someone else.
 dotnet build && dotnet test
 dotnet pack -c Release -o artifacts && ./scripts/assert-package-contents.sh artifacts
 ./scripts/assert-sample-css-in-step.sh          # only if you touched samples/ or a class name
+./scripts/assert-portability-guard-armed.sh     # only if you touched Directory.Build.props
 ```
 
 - **A `src/` change needs a changelog fragment** in `changelog.d/`. CI fails without one.
@@ -113,17 +114,21 @@ Label directly with `bd create --label X` or `bd update <id> --add-label X`.
 
 ## Publishing
 
-Tag-triggered: `git tag v0.2.0 && git push origin v0.2.0`. The workflow refuses a tag whose
-commit is not on `main`, a malformed version, and a packed version that disagrees with the tag,
-because nuget.org is append-only — a version can be unlisted but never replaced. Requires the
-`NUGET_ORG_FHI_PUBLISH` secret. See "Releasing" in `README.md`.
+Tag-triggered: `git tag v0.2.0 && git push origin v0.2.0`. The one package, `Fhi.Munin.Explorer`,
+goes to `Fhi.Helsedata.no`, the Azure Artifacts feed helsedata restores from — **not** nuget.org,
+which this package has never been published to. Requires the `ADO_PACKAGING_TOKEN` secret. The
+workflow refuses a tag whose commit is not on `main`, a malformed version, a packed version that
+disagrees with the tag, and a version already on the feed: deleting one there does not take it
+back from anyone who restored it. See "Releasing" in `README.md` for the rest.
 
 ## Host constraints worth remembering
 
 The component must render inside helsedata's **legacy** Blazor Server (`AddServerSideBlazor` +
 `MapBlazorHub`, mounted with the `<component>` tag helper) as well as a modern Blazor Web App.
 So: no `@page`, no `@rendermode`, no `HeadOutlet`, nothing host-specific. `BannedSymbols.txt`
-turns the last one into a build error.
+turns the last one into a build error — and `scripts/assert-portability-guard-armed.sh` is what
+keeps that true, because it was quietly not for a while: the ItemGroup wiring the analyzer up is
+conditioned on the RCL's project name, and the name it held was one project rename out of date.
 
 There is **no `HttpContext` during circuit activity**. Anything reaching for
 `IHttpContextAccessor` finds nothing and fails quietly rather than loudly — see

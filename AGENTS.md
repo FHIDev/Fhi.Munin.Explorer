@@ -22,15 +22,16 @@ private async Task SorterAsync(Sorteringsfelt felt)
 
 Early work here used Norwegian identifiers, following Munin's own client code —
 `Variabelutforsker`, `SokVariablerAsync`, `HentTokenAsync`, `Side<VariabelSammendrag>`. They
-were all renamed under `Fhi.Metadata-osxfx`, before the first nuget.org publish, because
+were all renamed under `Fhi.Metadata-osxfx`, before the first publish to the feed, because
 several of them were public API: renaming was free then and a breaking change for helsedata
 afterwards. **There is no Norwegian half left to add to.**
 
 The reason is narrow and specific to this package rather than a general preference. This is a
-library published to nuget.org and consumed by teams outside FHI's Norwegian-speaking core —
-its public surface is the API other people program against, and `SokVariablerAsync(sok:)` is
-not a signature a consumer can guess at. Munin's own code has no such audience, which is why
-the convention differs there and why copying it across was a reasonable mistake to make.
+library published to `Fhi.Helsedata.no`, helsedata's Azure Artifacts feed, and consumed by
+teams outside FHI's Norwegian-speaking core — its public surface is the API other people
+program against, and `SokVariablerAsync(sok:)` is not a signature a consumer can guess at.
+Munin's own code has no such audience, which is why the convention differs there and why
+copying it across was a reasonable mistake to make.
 
 ## Norwegian stays where it is read, not called
 

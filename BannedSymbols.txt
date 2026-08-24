@@ -1,4 +1,4 @@
-; Host-independence guard for Fhi.Munin.Explorer.Blazor (RS0030 build errors).
+; Host-independence guard for Fhi.Munin.Explorer, the RCL (RS0030 build errors).
 ; Format: T:Type or N:Namespace ; message
 ;
 ; The RCL renders inside helsedata.no's Optimizely CMS (legacy Blazor Server) and inside

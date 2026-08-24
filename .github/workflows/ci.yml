@@ -79,7 +79,7 @@ jobs:
         continue-on-error: true
         run: |
           S=$SECONDS
-          # Packaging is the deliverable and a nuget.org publish cannot be undone,
+          # Packaging is the deliverable and a publish to the feed cannot be walked back,
           # so prove the package still builds on every change, not just at tag time.
           dotnet pack --configuration Release --no-build --output artifacts
           # Same check the release workflow runs before pushing. Here it is only red on a PR;
@@ -205,3 +205,35 @@ jobs:
         # The same script developers can run locally before pushing, so a red check here is
         # never a surprise that only CI knows how to reproduce.
         run: ./scripts/assert-sample-css-in-step.sh
+
+  # BannedSymbols.txt is the only thing keeping host-specific types out of a component that has to
+  # render in two hosts, and it is wired up by a condition on the RCL's project name. That
+  # condition was stale for the whole time the merged project had a different name than it named:
+  # no analyzer, no RS0030, every build green. A guard that fails open cannot report its own
+  # absence, so the guard gets a check of its own.
+  #
+  # Its own job for the same reason as the two above — "build + test" is a required status check
+  # whose name must not move — and with the same consequence: add "portability guard armed" to the
+  # branch-protection required checks for this to block a merge rather than only show red.
+  portability-guard:
+    name: portability guard armed
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet
+        uses: actions/cache@v5
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Assert a banned symbol still fails the RCL build
+        # The same script developers can run locally before pushing, so a red check here is
+        # never a surprise that only CI knows how to reproduce.
+        run: ./scripts/assert-portability-guard-armed.sh

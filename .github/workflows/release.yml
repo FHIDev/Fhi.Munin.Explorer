@@ -15,8 +15,8 @@ permissions:
   contents: write # create the GitHub Release for the tag
 
 concurrency:
-  # Deliberately not cancel-in-progress. Cancelling a publish halfway leaves some packages on
-  # the feed and some not, and finishing the job later is the only clean way out of that.
+  # Deliberately not cancel-in-progress. Cancelling a run mid-push leaves nobody able to say
+  # whether the package reached the feed, and letting the job finish is the only clean way out.
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
@@ -57,7 +57,7 @@ jobs:
       - name: Refuse to publish a commit that is not on main
         run: |
           # Without this, a tag pushed from any branch would publish code that never passed
-          # review. The package is public and permanent; the bar for what goes in it is the
+          # review. A published version is permanent; the bar for what goes in it is the
           # same bar as main.
           if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
             echo "::error::Tag '$GITHUB_REF_NAME' points at a commit that is not on origin/main. Merge it first, then tag the merge commit."
@@ -120,9 +120,9 @@ jobs:
           # The script takes whatever this is and does not inspect it, so moving to OIDC later is
           # this block swapped for an azure/login step - see Fhi.Metadata-l9l2n.5.
           NUGET_PUBLISH_TOKEN: ${{ secrets.ADO_PACKAGING_TOKEN }}
-        # Pushes in dependency order, retries a failed push, and skips anything a previous run
-        # already published — so a network blip halfway through is fixed by re-running rather
-        # than by hand. A genuinely reused tag still stops the run. See the script's header.
+        # Retries a failed push, and refuses a version the feed already has — so a network blip
+        # is fixed by re-running rather than by hand, while a genuinely reused tag stops the run.
+        # See the script's header.
         run: ./scripts/push-packages.sh artifacts "${{ steps.version.outputs.version }}"
 
       # The release records that a version went out and what changed in it. It carries no
@@ -130,7 +130,7 @@ jobs:
       # downloadable by anyone, from outside the feed and outside whatever access the feed
       # controls. Two places to get a package is also one place to get the wrong one.
       #
-      # The packages live in exactly one place, which is what "internal" has to mean to be worth
+      # The package lives in exactly one place, which is what "internal" has to mean to be worth
       # anything. Nothing here is secret - the source is public and the licence is MIT - but where
       # a consumer is meant to get a build from is a decision, and it should have one answer.
       - name: Create the GitHub Release

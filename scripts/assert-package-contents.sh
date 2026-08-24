@@ -2,10 +2,10 @@
 #
 # Fails if a built package does not have exactly the shape we intend to publish.
 #
-# nuget.org is append-only. A version cannot be replaced or deleted, only unlisted, and by the
-# time anyone notices that 0.4.0 shipped a stray stylesheet the wrong bytes are already on
-# helsedata's build server. So the check runs before the push, and on every PR, rather than
-# after someone reports it.
+# A published version cannot be taken back. The internal feed does allow one to be deleted, but
+# that does not reach anyone who already restored it, and by the time anyone notices that 0.4.0
+# shipped a stray stylesheet the wrong bytes are already on helsedata's build server. So the
+# check runs before the push, and on every PR, rather than after someone reports it.
 #
 # The rule is "exactly this set", not "at least this set". A missing file and an unexpected one
 # are both packaging bugs, and the unexpected one is the more dangerous of the two:
@@ -47,9 +47,13 @@ if [ ! -d "$DIR" ]; then
 fi
 
 # ---------------------------------------------------------------------------------------------
-# Nothing unlisted may be published. A package produced by accident (a sample host that lost its
-# IsPackable=false, say) would otherwise be pushed with everything else and claim its name on
-# nuget.org permanently — package ids cannot be renamed or reclaimed.
+# Nothing unlisted may be packed. A stray .nupkg cannot reach the feed by itself any more —
+# push-packages.sh names the one file it pushes and release.yml has no wildcard push — so this is
+# not the last line of defence it once was, when a set of packages went out together. It is still
+# the earliest sign that packing did something nobody asked for: a sample host that lost its
+# IsPackable=false, a project that gained one, a rename that produced two ids where there is meant
+# to be one. Whatever produced it, the answer to "which package are we shipping" stopped being
+# obvious, and that is worth failing a PR over before it is worth reasoning about at tag time.
 # ---------------------------------------------------------------------------------------------
 shopt -s nullglob
 for path in "$DIR"/*.nupkg; do
@@ -104,7 +108,7 @@ for pkg in "${PACKAGES[@]}"; do
 
   # ------------------------------------------------------------------------------------------
   # Metadata that a stranger sees before they trust the package. An empty description is not a
-  # cosmetic problem: it is the whole of what nuget.org shows next to the name, and for this
+  # cosmetic problem: it is the whole of what the feed shows next to the name, and for this
   # version it can never be corrected.
   # ------------------------------------------------------------------------------------------
   nuspec=$(unzip -p "$nupkg" "$pkg.nuspec")
@@ -113,7 +117,7 @@ for pkg in "${PACKAGES[@]}"; do
   # Note what this compares against. When no <Description> property is set, dotnet pack does not
   # leave the element empty — it substitutes the literal string "Package Description". Checking
   # only for emptiness therefore passes happily on exactly the package this check exists to
-  # stop, and "Package Description" would be the permanent headline text on nuget.org.
+  # stop, and "Package Description" would be the headline text on the feed for good.
   # The `|| true` matters. grep exits 1 when it matches nothing, and under `set -e` a bare
   # assignment from a failing pipeline kills the script — so a nuspec with no <description> at
   # all would abort the run with a bare exit code instead of reporting which package is wrong
@@ -121,7 +125,7 @@ for pkg in "${PACKAGES[@]}"; do
   description=$(echo "$flat" | grep -o '<description>.*</description>' | sed 's/<[^>]*>//g' | tr -d ' \t' || true)
   case "$description" in
     "")
-      bad "empty <description> — this is the text nuget.org shows, and it cannot be edited after publish"
+      bad "empty <description> — this is the text the feed shows, and it cannot be edited after publish"
       ;;
     "PackageDescription")
       bad "<description> is still dotnet pack's placeholder 'Package Description' — set <Description> in $pkg.csproj"

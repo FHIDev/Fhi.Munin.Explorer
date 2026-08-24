@@ -2,8 +2,8 @@
 
 `Fhi.Munin.Explorer` is built and maintained by Folkehelseinstituttet (FHI).
 
-FHI's package guidelines ask every public package to name who made it, so that a consumer looking
-at a package on nuget.org can tell who stands behind it.
+FHI's package guidelines ask every package to name who made it, so that a consumer looking at it
+on the feed can tell who stands behind it.
 
 ## Maintainers
 

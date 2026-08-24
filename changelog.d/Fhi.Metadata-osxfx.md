@@ -1,6 +1,6 @@
 category: Changed
 - **The public API is now English throughout** - the package started out following Munin's own
-  Norwegian identifiers, and this renames the lot before the first nuget.org publish, while it
+  Norwegian identifiers, and this renames the lot before the first publish to the feed, while it
   still costs nothing. The component is `VariableExplorer` with `Search`, `SearchChanged`,
   `PageSize` and `Language` parameters; `IMuninExplorerClient` answers `SearchVariablesAsync`,
   `GetFiltersAsync`, `GetKilderAsync`, `GetKildeAsync`, `GetKildeHierarchyAsync`,

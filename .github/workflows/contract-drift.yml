@@ -146,7 +146,7 @@ jobs:
             echo "What to do:"
             echo ""
             echo "1. Read the failing test's message. It names each difference and which way it goes."
-            echo "2. Update the DTO under \`src/Fhi.Munin.Explorer.Contracts\`."
+            echo "2. Update the DTO under \`src/Fhi.Munin.Explorer/Contracts/\`."
             echo "3. Re-capture the matching file under \`test/Fhi.Munin.Explorer.Tests/Testdata/\` so"
             echo "   the offline \`ContractCoverageTest\` is reading the same payload."
             echo "4. Write a changelog fragment — a contract change is one every host sees."

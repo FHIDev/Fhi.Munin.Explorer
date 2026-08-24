@@ -14,9 +14,12 @@
 # Team ownership rather than an individual's, so a package other services depend on does not
 # hang off one person's account.
 
-# Publishing is the irreversible one: a version pushed to nuget.org can be unlisted, never
-# withdrawn. That covers the workflow that publishes, the scripts that guard what goes into
-# the package, and the version and metadata the package is stamped with.
+# Publishing is the irreversible one. The internal feed does allow a version to be deleted, so
+# the artefact is not what is permanent — the restore is: whoever already pulled 0.4.0 keeps the
+# bytes they got, and no deletion reaches them. A version number that has gone out is therefore
+# spent whether or not it is still on the feed. That covers the workflow that publishes, the
+# scripts that guard what goes into the package, and the version and metadata the package is
+# stamped with.
 /.github/workflows/       @FHIDev/fhi-munin-maintainer
 /scripts/                 @FHIDev/fhi-munin-maintainer
 /Directory.Build.props    @FHIDev/fhi-munin-maintainer
