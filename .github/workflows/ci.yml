@@ -79,7 +79,7 @@ jobs:
         continue-on-error: true
         run: |
           S=$SECONDS
-          # Packaging is the deliverable and a nuget.org publish cannot be undone,
+          # Packaging is the deliverable and a publish to the feed cannot be walked back,
           # so prove the package still builds on every change, not just at tag time.
           dotnet pack --configuration Release --no-build --output artifacts
           # Same check the release workflow runs before pushing. Here it is only red on a PR;

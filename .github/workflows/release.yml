@@ -130,7 +130,7 @@ jobs:
       # downloadable by anyone, from outside the feed and outside whatever access the feed
       # controls. Two places to get a package is also one place to get the wrong one.
       #
-      # The packages live in exactly one place, which is what "internal" has to mean to be worth
+      # The package lives in exactly one place, which is what "internal" has to mean to be worth
       # anything. Nothing here is secret - the source is public and the licence is MIT - but where
       # a consumer is meant to get a build from is a decision, and it should have one answer.
       - name: Create the GitHub Release

@@ -16,7 +16,7 @@ behaviour found later by someone else.
 1. **Identifiers are English.** Norwegian is for user-facing strings and untranslatable domain
    terms (`kilde`, `datasamling`, `variabelgruppe`, `kildetype`, `kodeverk`). The Norwegian
    names the package started with were renamed under `Fhi.Metadata-osxfx`, before the first
-   nuget.org publish, so there is no Norwegian half left to add to. A DTO property's C# name is
+   publish to the feed, so there is no Norwegian half left to add to. A DTO property's C# name is
    free to differ from its wire name — every one carries a `[JsonPropertyName]`, so the JSON
    keeps Munin's spelling whatever the property is called. Reasoning in `AGENTS.md`.
 
