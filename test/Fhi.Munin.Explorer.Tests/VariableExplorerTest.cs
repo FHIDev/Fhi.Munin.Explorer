@@ -2265,9 +2265,7 @@ public class VariableExplorerTest : BunitContext
 
         var pager = cut.Find("div.munin-explorer-pagination");
 
-        var names = pager.QuerySelectorAll("[class]")
-            .Prepend(pager)
-            .SelectMany(e => e.ClassName!.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        var names = HostClassNames.Of(pager.QuerySelectorAll("[class]").Prepend(pager))
             .Distinct()
             .Order(StringComparer.Ordinal)
             .ToList();
@@ -2291,12 +2289,17 @@ public class VariableExplorerTest : BunitContext
         // host-class-names.txt: they were defined whatever this repository did. They are ours now,
         // the sample stylesheet is the only thing here that defines them, and a name with no rule
         // renders at raw browser defaults inside an otherwise styled page.
+        //
+        // The whole render rather than the pager subtree, because the pager is not the only thing
+        // gated on more than one page: `skiplink-pagination` is too, and it sits outside
+        // div.munin-explorer-pagination, so a subtree check would leave the one other name in this
+        // branch unread — as would anything a later >1-page branch adds.
         var cut = RenderWith(new PagedClient(312));
 
-        var pager = cut.Find("div.munin-explorer-pagination");
+        // The pager has to actually be in this render, or the check below passes on an empty set.
+        cut.Find("div.munin-explorer-pagination");
 
-        Assert.Equal([], HostClassNames.Orphans(
-            HostClassNames.Of(pager.QuerySelectorAll("[class]").Prepend(pager))));
+        Assert.Equal([], HostClassNames.Orphans(HostClassNames.Of(cut.FindAll("[class]"))));
     }
 
     [Fact]

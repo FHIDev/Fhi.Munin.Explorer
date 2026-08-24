@@ -3,14 +3,14 @@
    The RCL ships no CSS — the host provides it. In helsedata's Optimizely site that is the
    Stiler stylesheet; here it is this file. Every rule below the "Stiler stand-in" divider
    is a class name *Stiler* defines: one of its own components, or one of ours that Stiler
-   took in, because `Fhi.Helsedata.Stiler` 0.1.13 ships the whole `munin-explorer` prefix
-   under `Static/scss/components/munin-explorer/`. The pager joined that prefix last, under
-   `Fhi.Metadata-hyyxl`; the skip link above it is the one name below that is still helsedata's
-   own, and it has its own heading. What no rule below is, is a name only this repository has
-   heard of. That was tried: inventing
-   `variabelutforsker-*` names meant helsedata's stylesheet had never heard of them and the
-   search box, the Søk button and the results rendered as raw browser defaults inside an
-   otherwise styled page.
+   took in, because `Fhi.Helsedata.Stiler` ships the whole `munin-explorer` prefix under
+   `Static/scss/components/munin-explorer/`. The pager joined that prefix last, under
+   `Fhi.Metadata-hyyxl`, so its rules are in the first Stiler release after 0.1.13 and not in
+   0.1.13 itself; the skip link above it is the one name below that is still helsedata's own,
+   and it has its own heading. What no rule below is, is a name only this repository has heard
+   of. That was tried: inventing `variabelutforsker-*` names meant helsedata's stylesheet had
+   never heard of them and the search box, the Søk button and the results rendered as raw
+   browser defaults inside an otherwise styled page.
 
    So this file is an approximation of Stiler, not a design of its own. Values are copied from
    `Fhi.Helsedata.Stiler/Static/scss` — the palette and the 4px spacing scale from
@@ -327,9 +327,9 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    `variables-pagination-content`. `Fhi.Metadata-hyyxl` moved it into the prefix with everything
    else: with the skip link above they were the three names the component emitted that Stiler had
    no rule for, so a host on Stiler alone drew the pager at browser defaults while the rest of the
-   component came out right. The skip link is the one still in that position. Their rules are further down, under the munin-explorer heading with
-   the rows, the opened panel and the column picker; the skip link's stays here, because that name
-   is still helsedata's. */
+   component came out right. Their rules are further down, under the munin-explorer heading with
+   the rows, the opened panel and the column picker. The skip link is the one still in that
+   position, and its rule stays here, because that name is still helsedata's. */
 
 /* Out of sight until focused, which is the whole point of a skip link: it is there for the
    keyboard user who would otherwise tab through every card to reach the next page, and for
@@ -1471,7 +1471,9 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    while `variables.css`, which has one, loads on every page of helsedata.no. That covered every
    host inside their estate and no host outside it, which is the promise the rename exists to keep,
    so the names moved into the prefix and the rules go to Stiler under `components/munin-explorer/`
-   with the rest of them.
+   with the rest of them. They arrive there in the first Stiler release after 0.1.13, unlike the
+   rest of this section: 0.1.13 shipped before this rename, so a host on it has every other
+   `munin-explorer` rule and none of the pager's.
 
    The declarations are unchanged from when they stood in for helsedata's: an arrangement, not a
    design. Two of them are not spacing and are worth keeping whatever a host does with the look —

@@ -88,10 +88,11 @@ panel, drill-in, pager and kilde view all live there, and the package owns the w
 always: the component used to write helsedata's own `variable-explorer*`, `variable-data-list*`,
 `variable-dataitem*` and `variable-meta*` and inherit their rules for free from `variables.css` —
 the stylesheet of the very page it replaces — which meant it only looked right inside helsedata's
-estate. The rules ship in `Fhi.Helsedata.Stiler` 0.1.13 and later, under
-`components/munin-explorer/`, so any host with Stiler can style the component. Do not move a name
-back into the old prefix: Stiler still defines `.variable-explorer-header`, so `variable-*` is
-helsedata's namespace and writing in it is either borrowing or colliding.
+estate. The rules ship in `Fhi.Helsedata.Stiler` under `components/munin-explorer/` — most of them
+in 0.1.13 and later, the pager's in the first release after it, since 0.1.13 shipped before that
+name was renamed — so any host with Stiler can style the component. Do not move a name back into
+the old prefix: Stiler still defines `.variable-explorer-header`, so `variable-*` is helsedata's
+namespace and writing in it is either borrowing or colliding.
 
 A name under our prefix is still inert until some stylesheet supplies a rule for it, and the two
 sample hosts carry no Stiler — they are that stylesheet here, and they are one file copied:

@@ -27,9 +27,10 @@ behaviour found later by someone else.
    styled page — the exact failure this package exists to avoid, and it has happened twice. The
    explorer's own structure and result vocabulary is the other half: it used to write helsedata's
    `variable-*` names and inherit rules from their `variables.css`, and now writes
-   `munin-explorer*`, whose rules ship in Stiler 0.1.13 under `components/munin-explorer/`. Don't
-   write a new `variable-*` name — Stiler still defines `.variable-explorer-header`, so that
-   namespace is helsedata's. Reasoning in `AGENTS.md`.
+   `munin-explorer*`, whose rules ship in Stiler under `components/munin-explorer/` — in 0.1.13,
+   except the pager's, which are in the first release after it. Don't write a new `variable-*`
+   name — Stiler still defines `.variable-explorer-header`, so that namespace is helsedata's.
+   Reasoning in `AGENTS.md`.
 
 3. **The package ships no CSS.** No `wwwroot`, no `.razor.css`. Sample hosts carry their own
    styling because they have no Stiler; the package must not.
