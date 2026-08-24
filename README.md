@@ -212,9 +212,24 @@ goes red.
 
 One package. The component, the client that feeds it and the types they share all ship together.
 
+It goes to `Fhi.Helsedata.no`, helsedata's internal Azure Artifacts feed, and never to nuget.org
+— so `dotnet add package` reports the package as not existing until that feed is a source the
+restore can see. A host inside helsedata's estate already restores from it; anyone else adds it
+once:
+
 ```bash
+dotnet nuget add source \
+  https://pkgs.dev.azure.com/fhi/Fhi.Helsedata/_packaging/Fhi.Helsedata.no/nuget/v3/index.json \
+  -n Fhi.Helsedata.no
 dotnet add package Fhi.Munin.Explorer
 ```
+
+The feed is private, so the restore needs credentials — an Azure DevOps personal access token for
+the `fhi` organisation, scoped to Packaging (Read), is enough. Two traps come with adding it to a
+`nuget.config`, and this repository's own [`nuget.config`](nuget.config) spells both out: keep
+`<auditSources>` clamped to nuget.org, because NuGet's vulnerability audit queries every
+configured source whatever `packageSourceMapping` says, and pass the token to a container build as
+a BuildKit secret rather than a build argument, which persists in image history.
 
 It was three for a while — component, client and contracts — so that the component need not
 depend on an HTTP stack and a host could substitute its own `IMuninExplorerClient`. That seam is
