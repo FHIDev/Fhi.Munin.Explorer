@@ -510,7 +510,9 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    ours — the `munin-explorer` prefix this package owns — and their rules ship in
    `Fhi.Helsedata.Stiler` 0.1.13 and later under `Static/scss/components/munin-explorer/`, so a
    host on that version gets them the same way it gets the searchbox above, and a host on an older
-   one gets nothing.
+   one gets nothing. Two of the subsections below are a version behind the rest: the pager's rules
+   and its skip link's were renamed after 0.1.13 was cut and arrive in 0.1.14, so a host on 0.1.13
+   has every other name here and neither of those — see their own heading further down.
 
    They were not ours to begin with. The component wore helsedata's `variable-data-list*`,
    `variable-dataitem*` and `variable-meta*`, because it replaces the variable page and inheriting
@@ -1452,7 +1454,12 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 /* Out of sight until focused, which is the whole point of a skip link: it is there for the
    keyboard user who would otherwise tab through every card to reach the next page, and for
    nobody else. Never `display: none` — that would take it out of the tab order too, and a link
-   that is gone looks exactly like a link that is hidden to anyone reading the page.
+   that is gone looks exactly like a link that is hidden to anyone reading the page. That last
+   sentence is the one thing here a test enforces rather than merely states: the offset below, and
+   the absence of `display: none` from this rule and from the `:focus` one, are read out of this
+   block by SkipLink_WhenTheSampleStylesheetHidesIt_ThenItGoesOffScreenRatherThanOutOfTheTabOrder.
+   Every other check in the repository asks only whether the name has a rule at all, which is the
+   question this link satisfied throughout the release it was broken in.
 
    Unscoped, and Stiler's copy is too. An early attempt at the Stiler rule — on the
    `feature/munin-explorer-scss` branch, never released in that shape — scoped it under

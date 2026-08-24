@@ -2355,6 +2355,41 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
+    public void SkipLink_WhenTheSampleStylesheetHidesIt_ThenItGoesOffScreenRatherThanOutOfTheTabOrder()
+    {
+        // The half of the bug no other check in this repository can see. Every one of them asks
+        // whether a NAME has a rule — HostClassNames.SampleStyles searches for `.<name>`,
+        // scripts/assert-sample-css-in-step.sh greps for `\.<name>` — and the skip link satisfied
+        // both the whole time it was broken. What was missing on a Stiler-only host was a
+        // DECLARATION: the one that takes the link off screen until it is focused. So this reads
+        // the block rather than the selector.
+        //
+        // `display: none` is the way the invariant gets broken, and it is the tempting way: it
+        // looks like hiding, and it reads as tidier than a negative offset. It also takes the
+        // anchor out of the tab order, which deletes the link for exactly the reader it exists for
+        // — the keyboard user who would otherwise tab through twenty-five cards to reach the next
+        // page. That is a WCAG 2.1 AA regression on a site where AA is a legal requirement, and it
+        // is invisible to anyone using a mouse.
+        //
+        // Whitespace is squeezed out first, so `position:absolute` answers for `position: absolute`
+        // and a reformat of the samples does not read as a regression.
+        var rules = HostClassNames.SampleDeclarationsFor("munin-explorer-skiplink-pagination");
+        static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
+
+        // The resting rule, picked by its selector rather than by position: the :focus twin beside
+        // it is the one that brings the link back, and `display: inline-block` belongs there.
+        var resting = Squeezed(Assert.Single(
+            rules.Where(r => r.Selector == ".munin-explorer-skiplink-pagination").Select(r => r.Declarations)));
+
+        Assert.Contains("position:absolute", resting, StringComparison.Ordinal);
+        Assert.Contains("left:-10000px", resting, StringComparison.Ordinal);
+
+        // Across both rules: hiding it on focus would be the same regression arriving one keypress
+        // later.
+        Assert.All(rules, r => Assert.DoesNotContain("display:none", Squeezed(r.Declarations), StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Render_WhenThereIsMoreThanOnePage_ThenThePagerIsANamedLandmarkWithLabelledButtons()
     {
         // A second navigation landmark on the host's page has to say what it navigates, and
