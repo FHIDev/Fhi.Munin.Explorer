@@ -62,13 +62,15 @@ internal enum PanelTab
 /// failed backwards from every other missing rule: what was missing was the rule that HIDES the
 /// link until it is focused, so a Stiler-only host drew a permanently visible "Hopp til
 /// paginering" over every multi-page result list rather than an unstyled anything. It is
-/// <c>munin-explorer-skiplink-pagination</c> now, and its Stiler rule is deliberately unscoped.
-/// 0.1.13 did carry one for the old name, scoped as
-/// <c>.munin-explorer-header .skiplink-pagination</c> — and that selector can never match: the
-/// header opens and closes entirely inside <c>ColumnPicker()</c>, while this anchor is rendered
-/// beside the result list. Both guards in this repository counted the name as covered anyway,
-/// because each asks whether a name has a rule and neither asks whether the selector matches.
-/// <c>README.md</c> has the full split.
+/// <c>munin-explorer-skiplink-pagination</c> now, and its Stiler rule is deliberately unscoped, so
+/// it matches this anchor wherever the markup puts it — a rule scoped under
+/// <c>munin-explorer-header</c> would not, since that header opens and closes entirely inside
+/// <c>ColumnPicker()</c> while this anchor is rendered beside the result list. The gap survived
+/// as long as it did because nothing here could see it: the two guards in this repository ask
+/// whether a name has a rule in the capture of helsedata's live page or in the sample stylesheet,
+/// and helsedata's <c>variables.css</c> styled the borrowed name while both samples styled it
+/// themselves. Neither guard reads Stiler, so neither had anything to say about the one host that
+/// has only Stiler. <c>README.md</c> has the full split.
 /// </para>
 /// <para>
 /// Two parts of helsedata's own pager were deliberately not carried across when its shape was read

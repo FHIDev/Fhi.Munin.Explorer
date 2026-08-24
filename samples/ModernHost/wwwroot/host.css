@@ -1435,11 +1435,13 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    the pager's.
 
    The skip link into it followed under `Fhi.Metadata-ja2qu`, and was the last borrowed name of
-   all. It wore helsedata's `skiplink-pagination`, off the same `variables.css`, and no rule Stiler
-   carried for it ever matched the anchor — but that gap failed backwards from every other one in
+   all. It wore helsedata's `skiplink-pagination`, off the same `variables.css`, and no released
+   Stiler had a rule that hid it — but that gap failed backwards from every other one in
    this file. What was missing was the rule that HIDES the link, so a host on Stiler alone drew a
    permanently visible "Hopp til paginering" above every multi-page result list, and neither sample
-   showed it, because both styled the borrowed name right here. It is
+   showed it, because both styled the borrowed name right here. The repository's guards were blind
+   to it for the same reason: they ask whether a name has a rule in the capture of helsedata's live
+   page or in this stylesheet, and it had one in both. Neither reads Stiler. It is
    `munin-explorer-skiplink-pagination` now, and its Stiler rule is in 0.1.14 with the pager's,
    unscoped for the reason spelled out on the rule below.
 
@@ -1452,9 +1454,10 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    nobody else. Never `display: none` — that would take it out of the tab order too, and a link
    that is gone looks exactly like a link that is hidden to anyone reading the page.
 
-   Unscoped, and Stiler's copy is too. Scoping it under `.munin-explorer-header` is what the
-   first attempt did, and that selector can never match: the header opens and closes entirely
-   inside the column picker, while this anchor is rendered beside the result list. */
+   Unscoped, and Stiler's copy is too. An early attempt at the Stiler rule — on the
+   `feature/munin-explorer-scss` branch, never released in that shape — scoped it under
+   `.munin-explorer-header`, and that selector can never match: the header opens and closes
+   entirely inside the column picker, while this anchor is rendered beside the result list. */
 .munin-explorer-skiplink-pagination {
   position: absolute;
   left: -10000px;

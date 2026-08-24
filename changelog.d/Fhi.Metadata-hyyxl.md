@@ -20,8 +20,8 @@ category: Notes for hosts
 - **The third name was the skip link, and this rename did not close that gap.**
   `skiplink-pagination`, on the link that jumps past the result list to the pager, stayed
   helsedata's here: what it needs is not a look but a single visually-hidden-until-focused rule,
-  and `variables.css` — served on every page of helsedata.no, despite the name — has it, while
-  Stiler had none that reached the link. `Fhi.Metadata-ja2qu` is where it is closed.
+  and `variables.css` — served on every page of helsedata.no, despite the name — has it, while no
+  released Stiler had a rule that hid the link. `Fhi.Metadata-ja2qu` is where it is closed.
   (Fhi.Metadata-hyyxl)
 - **Inside helsedata.no nothing changes.** Their `variables-pagination` rules are still in
   `variables.css` on every page; the component simply no longer asks for them. (Fhi.Metadata-hyyxl)

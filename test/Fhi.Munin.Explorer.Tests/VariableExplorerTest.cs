@@ -2329,19 +2329,19 @@ public class VariableExplorerTest : BunitContext
     public void Render_WhenThereIsMoreThanOnePage_ThenTheSkipLinkIsOursAndSitsOutsideTheColumnPickerHeader()
     {
         // The two facts Stiler's rule for this link stands on, neither of which any other check
-        // here can see. Both guards in this repository ask whether a NAME has a rule; neither asks
-        // whether the selector matches. Stiler 0.1.13 carried this link's rule as
-        // `.munin-explorer-header .skiplink-pagination`, which counted as covered and matched
-        // nothing — so a host on Stiler alone drew a permanently visible "Hopp til paginering"
-        // over every multi-page result list. The failure runs backwards from an ordinary missing
-        // rule: what was missing was the rule that HIDES the link, so it showed up as an extra
-        // link rather than as an unstyled one, and neither sample host revealed it because both
-        // style the name themselves.
+        // here can see. Both guards in this repository ask whether a NAME has a rule, and both
+        // look in the same two places: the capture of helsedata's live page and the sample
+        // stylesheet. Neither reads Stiler. The borrowed `skiplink-pagination` was in both — it is
+        // helsedata's own name and both samples style it themselves — while a host on Stiler alone
+        // drew a permanently visible "Hopp til paginering" over every multi-page result list, and
+        // nothing here could tell. The failure runs backwards from an ordinary missing rule: what
+        // was missing was the rule that HIDES the link, so it showed up as an extra link rather
+        // than as an unstyled one.
         //
         // So: the name is ours, whole, under our prefix — a borrowed name here means a host
         // outside helsedata has nowhere to get the rule from. And the anchor is no descendant of
         // munin-explorer-header, which opens and closes entirely inside ColumnPicker() well before
-        // this link is rendered, which is why the rule that replaced the dead one is unscoped.
+        // this link is rendered, which is why Stiler's rule for it is unscoped.
         var cut = RenderWith(new PagedClient(312));
 
         var skiplink = cut.Find("a.munin-explorer-skiplink-pagination");

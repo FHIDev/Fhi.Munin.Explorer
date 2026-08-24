@@ -30,11 +30,16 @@ behaviour found later by someone else.
    `munin-explorer*`, whose rules ship in Stiler under `components/munin-explorer/` — in 0.1.13,
    except the pager's and its skip link's, which are in 0.1.14. Don't write a new `variable-*`
    name — Stiler still defines `.variable-explorer-header`, so that namespace is helsedata's.
-   And a name Stiler *has* heard of is not the same as a rule that reaches our markup: 0.1.13
-   carried the skip link's as `.munin-explorer-header .skiplink-pagination`, which both guards
-   here counted as covered and which never matched anything, because that header opens and closes
-   entirely inside `ColumnPicker()`. Check the selector, not just the name. Reasoning in
-   `AGENTS.md`.
+   And know what the guards here can see: both ask whether a name has *a* rule, in
+   `test/host-class-names.txt` — a capture of the live helsedata page, their own page-specific
+   stylesheets included — or in the sample stylesheet. Neither reads Stiler at all.
+   `skiplink-pagination` was in both sources the whole time it was broken, because helsedata
+   styles it and so do the samples, while a Stiler-only host got nothing; a rule somewhere is not
+   a rule where it is needed, and that host is the one the prefix exists for. Separately: when
+   Stiler does carry a rule, read the selector and not just the name. The first attempt at this
+   link's rule, on Stiler's unpublished `feature/munin-explorer-scss` branch, was scoped
+   `.munin-explorer-header .skiplink-pagination` and could never have matched, since that header
+   opens and closes entirely inside `ColumnPicker()`. Reasoning in `AGENTS.md`.
 
 3. **The package ships no CSS.** No `wwwroot`, no `.razor.css`. Sample hosts carry their own
    styling because they have no Stiler; the package must not.
