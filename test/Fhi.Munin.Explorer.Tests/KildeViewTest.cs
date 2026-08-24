@@ -37,22 +37,6 @@ namespace Fhi.Munin.Explorer.Tests;
 public class KildeViewTest : BunitContext
 {
 
-    /// <summary>
-    /// The names these assertions were written about: the ones the package invents for its own
-    /// structure, as opposed to the result vocabulary it took from helsedata's variable page.
-    ///
-    /// Before the munin-explorer rename that distinction was carried by the prefix itself —
-    /// `variable-explorer*` was ours, `variable-data-list*` / `variable-dataitem*` / `variable-meta*`
-    /// were theirs — so a filter on the prefix was enough. Everything now sits under one prefix we
-    /// own, which is the point of the rename, and the same filter would sweep in the whole
-    /// vocabulary. These assertions are exact lists on purpose, so they say what they mean only if
-    /// the scope stays what it was.
-    /// </summary>
-    private static bool IsOwnStructureName(string cls) =>
-        cls.StartsWith("munin-explorer", StringComparison.Ordinal)
-        && !cls.StartsWith("munin-explorer-data-list", StringComparison.Ordinal)
-        && !cls.StartsWith("munin-explorer-dataitem", StringComparison.Ordinal)
-        && !cls.StartsWith("munin-explorer-meta", StringComparison.Ordinal);
     private static PropertyMetadataEntry Entry(string key, int sortOrder, string group, string? displayName = null) =>
         new()
         {
@@ -255,7 +239,7 @@ public class KildeViewTest : BunitContext
     {
         // The exact list, for the reason the explorer's own version of this is exact: a tenth name
         // appearing here is news, and news that has to be answered in both sample stylesheets before
-        // it ships. None of these is helsedata's — the six of theirs in the munin-explorer prefix
+        // it ships. None of these was ever helsedata's — the six that used to be theirs in this prefix
         // are all on the explorer, none on this view — so every one is a promise only the sample
         // stylesheet keeps.
         //
@@ -266,7 +250,7 @@ public class KildeViewTest : BunitContext
         var cut = Render(Kilde());
 
         var invented = HostClassNames.Of(cut.FindAll("[class]"))
-            .Where(IsOwnStructureName)
+            .Where(HostClassNames.IsOwnStructureName)
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal);
 

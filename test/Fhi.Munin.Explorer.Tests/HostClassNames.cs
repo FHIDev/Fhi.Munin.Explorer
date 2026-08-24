@@ -75,6 +75,22 @@ internal static class HostClassNames
                     .Order(StringComparer.Ordinal)];
 
     /// <summary>
+    /// True for the structural names this package invented, as opposed to the ones it took over from
+    /// helsedata's variable page.
+    ///
+    /// Before the rename the split was legible in the prefix itself: `variable-explorer*` was ours,
+    /// `variable-data-list*` / `variable-dataitem*` / `variable-meta*` were theirs. Everything now
+    /// sits under one prefix we own - the point of the rename - so the distinction has to be spelled
+    /// out, and it is still worth drawing: the assertions that use it are exact lists, and they say
+    /// what they mean only while the scope stays what it was.
+    /// </summary>
+    internal static bool IsOwnStructureName(string cls) =>
+        cls.StartsWith("munin-explorer", StringComparison.Ordinal)
+        && !cls.StartsWith("munin-explorer-data-list", StringComparison.Ordinal)
+        && !cls.StartsWith("munin-explorer-dataitem", StringComparison.Ordinal)
+        && !cls.StartsWith("munin-explorer-meta", StringComparison.Ordinal);
+
+    /// <summary>
     /// Anchored on the right so a rule for <c>.munin-explorer-period__fill</c> does not answer for
     /// <c>.munin-explorer-period</c> — a rule for the part is not a rule for the whole.
     /// </summary>

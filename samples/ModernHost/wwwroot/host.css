@@ -2,10 +2,12 @@
 
    The RCL ships no CSS — the host provides it. In helsedata's Optimizely site that is the
    Stiler stylesheet; here it is this file. Every rule below the "Stiler stand-in" divider
-   is a class name *Stiler* defines, not one we invented, because that is what the component
-   now emits: inventing `variabelutforsker-*` names meant helsedata's stylesheet had never
-   heard of them and the search box, the Søk button and the results rendered as raw browser
-   defaults inside an otherwise styled page.
+   is a class name *Stiler* defines: one of its own components, or one of ours that Stiler
+   took in, because `Fhi.Helsedata.Stiler` 0.1.13 ships the whole `munin-explorer` prefix
+   under `Static/scss/components/munin-explorer/`. What no rule below is, is a name only this
+   repository has heard of. That was tried: inventing `variabelutforsker-*` names meant
+   helsedata's stylesheet had never heard of them and the search box, the Søk button and the
+   results rendered as raw browser defaults inside an otherwise styled page.
 
    So this file is an approximation of Stiler, not a design of its own. Values are copied from
    `Fhi.Helsedata.Stiler/Static/scss` — the palette and the 4px spacing scale from
@@ -113,11 +115,14 @@ body {
 
 /* ======================================================================
    Stiler stand-in — everything from here down to the first "not Stiler"
-   divider is Fhi.Helsedata.Stiler's job in the real host. Past that
-   divider is the second stylesheet: `variables.css`, which despite the
-   name every page of helsedata.no loads and which the whole result
-   vocabulary is read back off, plus the base element styling neither
-   stylesheet gives.
+   divider is one of Fhi.Helsedata.Stiler's own components, and Stiler's
+   job in the real host. Past that divider comes the rest of what a host
+   owes the component: the result vocabulary, which is ours and which
+   Stiler 0.1.13 carries under components/munin-explorer/ — it was read
+   back off helsedata's `variables.css` while the component still wore
+   their `variable-*` names; the pager, which is still helsedata's and
+   which no version of Stiler has a rule for; and the base element
+   styling neither stylesheet gives.
    README.md, under "Rules the components follow", is the authoritative
    account of which name belongs to which — this file is the same
    division laid out as rules you can see.
@@ -239,7 +244,8 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .infobox--bg-yellow { background-color: var(--warning-light); }
 
 /* components/_datasourcecard.scss — the shape the results had until `Fhi.Metadata-zs56s`, when
-   they became helsedata's own variable-page rows instead (`munin-explorer-data-list`, far below). The
+   they took the shape of helsedata's variable-page rows instead (`munin-explorer-data-list`, far
+   below — their `variable-data-list` at the time, ours since the rename). The
    component emits none of these names any more; they are kept because a real helsedata page loads
    the whole of Stiler either way, and a stand-in that only carries what one component happens to
    wear stops being a stand-in for Stiler. */
@@ -300,17 +306,19 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   .datasourcecard__info .dot { margin-left: 0; margin-bottom: 0; position: relative; bottom: 2.5px; }
 }
 
-/* ---- not Stiler: helsedata's variable-page vocabulary ----
+/* ---- not Stiler: the pager, which is still helsedata's ----
 
-   Everything above is a stand-in for Stiler, which every helsedata page loads. Everything from
-   here on is the second stylesheet: `variables.css`, which Stiler knows nothing about — its
-   compiled stylesheet has no pagination rule of any kind, and none of the result vocabulary
-   either. Despite the name, `variables.css` is loaded on every page of helsedata.no too
-   (verified on /no/, /no/variabler/ and /no/datakilder/: identical seven bundles), so a host in
-   their estate has these names wherever the component is mounted, not only on the variable page.
-   A host outside has to supply the whole vocabulary itself, exactly as this sample does. This
-   block is the pager; the rows, the opened panel and the column picker are further down, under
-   their own heading. */
+   Everything above is a stand-in for Stiler, which every helsedata page loads. The two names
+   below are the one family the component still takes from helsedata's own `variables.css`, which
+   Stiler knows nothing about: its compiled stylesheet has no pagination rule of any kind, in
+   0.1.13 or in any version before it. Despite the name, `variables.css` is loaded on every page
+   of helsedata.no too (verified on /no/, /no/variabler/ and /no/datakilder/: identical seven
+   bundles), so a host in their estate has the pager wherever the component is mounted, not only
+   on the variable page. A host outside has to supply these two itself, exactly as this sample
+   does — they are the only names the component emits that Stiler 0.1.13 does not cover, and
+   `Fhi.Metadata-hyyxl` tracks moving them into the prefix with the rest. The rows, the opened
+   panel and the column picker are further down, under their own heading; those are ours, and a
+   host on Stiler 0.1.13 has them without doing anything. */
 
 .variables-pagination {
   margin-top: 24px;
@@ -375,7 +383,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    A host that provides none of this still gets a working panel — the nesting is what carries the
    hierarchy, and the values are Stiler's own square buttons either way. What it loses is the
    indentation that makes a delkilde look like it sits under its kilde. Scoped to the panel so none
-   of it can reach the results list, which is helsedata's own munin-explorer-data-list. */
+   of it can reach the results list, which is our own munin-explorer-data-list. */
 
 .munin-explorer-filters { margin-bottom: 24px; }
 
@@ -478,9 +486,9 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    level rather than by element. Only the page margin is overridden: the size comes from Stiler's
    own headline classes, which the heading also wears.
 
-   Direct children throughout, so none of this reaches into KildeView: its <dl>s wear helsedata's
-   munin-explorer-meta__grid and are styled by that further down, and a descendant selector here would
-   out-specify it and take its spacing away. */
+   Direct children throughout, so none of this reaches into KildeView: its <dl>s wear the result
+   vocabulary's munin-explorer-meta__grid and are styled by that further down, and a descendant
+   selector here would out-specify it and take its spacing away. */
 .munin-explorer-drilldown > h2,
 .munin-explorer-drilldown > h3,
 .munin-explorer-drilldown > h4,
@@ -554,13 +562,19 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   height: auto;
 }
 
-/* ---- not Stiler either: helsedata's variable-page vocabulary ----
+/* ---- Stiler 0.1.13, under components/munin-explorer: the result vocabulary ----
 
-   Everything above stands in for Stiler, which every helsedata page loads. These names are not in
-   Stiler at all — they come from variables.css, which despite the name is loaded on every page of
-   their site (verified on /no/, /no/variabler/ and /no/datakilder/: identical seven bundles). The
-   component wears them because it replaces the variable page, and this is an approximation of what
-   they do so the sample shows the right shape.
+   Everything above stands in for a Stiler component every helsedata page loads. These names are
+   ours — the `munin-explorer` prefix this package owns — and their rules ship in
+   `Fhi.Helsedata.Stiler` 0.1.13 and later under `Static/scss/components/munin-explorer/`, so a
+   host on that version gets them the same way it gets the searchbox above, and a host on an older
+   one gets nothing.
+
+   They were not ours to begin with. The component wore helsedata's `variable-data-list*`,
+   `variable-dataitem*` and `variable-meta*`, because it replaces the variable page and inheriting
+   that page's rules off `variables.css` cost nothing — nothing inside their estate, and
+   everything outside it, which is what the rename fixed. The shape below is still read off theirs;
+   the names are not theirs any more.
 
    The real rules are far richer — munin-explorer-meta alone carries 204, and there are 292 selectors
    across this family. What matters for a sample is the arrangement: rows with columns, a name that
@@ -661,13 +675,15 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 /* ---- the opened panel ----
 
-   munin-explorer-meta is the biggest single thing we borrow: 204 rules on their side, 176 selectors
-   under that prefix. This is the arrangement only.
+   munin-explorer-meta is the biggest single family here, and the biggest single thing the
+   component took off the variable page: 204 rules under helsedata's `variable-meta` when it was
+   read back off theirs, 176 selectors under the prefix. This is the arrangement only.
 
-   The definition list keeps being a definition list. Their grid is class-based — the whole of
-   `.munin-explorer-meta__grid` is `display: grid; gap: 40px 24px`, and the only rule in the family that
-   names an element is `p { margin: 0 }` — so it lays out dt/dd exactly as it lays out their own
-   spans. We get their layout without giving up the semantics of labels and the values they name.
+   The definition list keeps being a definition list. The grid is class-based — the whole of
+   `munin-explorer-meta__grid` is `display: grid; gap: 40px 24px`, and the only rule in the family that
+   names an element is `p { margin: 0 }` — so it lays out dt/dd exactly as the variable page lays out
+   its own spans. We get that layout without giving up the semantics of labels and the values they
+   name.
 
    headline-s / headline-xxs / margin--none are Stiler's own headline scale, from the site-wide
    styles.css, and are what their h4 field labels wear. The sample carries stand-ins. */
@@ -704,9 +720,10 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 /* ---- the column header ----
 
    The header and the rows have to share one grid template, or the columns line up with nothing.
-   helsedata solves it by giving munin-explorer-dataitem-header and munin-explorer-dataitem-main the same
-   track list; the header has no chevron, so its first cell starts in track 2 and the rest flow
-   after it. Get this wrong and every row sizes its own columns, which is what the sample looked
+   helsedata solved it by giving `variable-dataitem-header` and `variable-dataitem-main` the same
+   track list, and munin-explorer-dataitem-header and munin-explorer-dataitem-main carry that
+   over; the header has no chevron, so its first cell starts in track 2 and the rest flow after
+   it. Get this wrong and every row sizes its own columns, which is what the sample looked
    like before the header existed. */
 
 .munin-explorer-data-list__header {
@@ -717,10 +734,10 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   padding-bottom: 8px;
 }
 
-/* helsedata lays these out with flex, not grid — `.munin-explorer-dataitem-header, .munin-explorer-dataitem-main
-   { display: flex; width: 100% }` — and each column is an inline-flex box that takes its width from
-   its own modifier. That is why extra columns are possible at all: flex distributes what is left
-   rather than needing a track declared up front.
+/* helsedata lays these out with flex, not grid — `variable-dataitem-header, variable-dataitem-main
+   { display: flex; width: 100% }` in the stylesheet this shape was read back off — and each column
+   is an inline-flex box that takes its width from its own modifier. That is why extra columns are
+   possible at all: flex distributes what is left rather than needing a track declared up front.
 
    The header carries `padding-left: 56px` on their side to clear the chevron, which is how the two
    rows line up without the header having a chevron cell of its own. */
@@ -855,9 +872,10 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 /* ---- the panel's tabs ----
 
-   munin-explorer-meta__tabs / __tab / __tab--active / __body / __tab-content are helsedata's, and
-   munin-explorer-meta carries 204 rules on their side. This is the arrangement only: a row of tabs
-   with the selected one marked, and the panel beneath it. */
+   munin-explorer-meta__tabs / __tab / __tab--active / __body / __tab-content are ours, and ship in
+   Stiler 0.1.13 with the rest of the prefix. The shape came off helsedata's `variable-meta` tabs,
+   which carry 204 rules on their side. This is the arrangement only: a row of tabs with the
+   selected one marked, and the panel beneath it. */
 
 .munin-explorer-meta__tabs {
   display: flex;
@@ -1060,13 +1078,15 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 /* ---- the kilde view ----
 
-   Nine names, all ours, and the only block in this file that exists because no other name would
-   have done. Runa gives a kilde a page of its own; a component with no router gives it the
+   Nine names, and the only block in this file that exists because no other name would have
+   done. Runa gives a kilde a page of its own; a component with no router gives it the
    component's own area instead, and the arrangement it needs — a name block above, then a main
-   column and a sidebar — is a page layout. Stiler has no page layout, and helsedata's
-   variables.css has no kilde section, so there was nothing to borrow and these had to be
-   invented. Everything *inside* the layout wears helsedata's own names: the headings are
-   `headline`, the fact lists are `munin-explorer-meta__grid`, the kildetype is Stiler's `tag`.
+   column and a sidebar — is a page layout. Stiler had no page layout to take, and helsedata's
+   variables.css had no kilde section to read one back off, so there was nothing to copy and
+   these had to be invented outright. What the layout HOLDS is named from elsewhere: the headings
+   are Stiler's `headline`, the fact lists are `munin-explorer-meta__grid` from the result
+   vocabulary above, and the kildetype badge is named by nobody but us — see the rule for it
+   below.
 
    They arrived unstyled. The view shipped in #43 and neither sample had a rule for any of these
    nine until now, so both rendered it at raw browser defaults — a sidebar stacked under a main
@@ -1184,9 +1204,10 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 /* ---- the Data tab's kodeverk ----
 
-   All five names below are ours, and every one is a handle: neither Stiler nor helsedata's
-   variables.css has a kodeverk section to borrow from, because their variable page has no such
-   panel at all. So the sample supplies what a host would — the arrangement, nothing more.
+   All five names below are ours, and every one is a handle: there was no kodeverk section
+   anywhere to read a shape back off, because helsedata's variable page has no such panel at all.
+   Their rules reached Stiler 0.1.13 with the rest of the prefix; the sample supplies what a host
+   would — the arrangement, nothing more.
 
    The list is a plain <ul> with its bullets off, because the group heading above it already says
    these are kodeverk of one kind and a bullet per line adds nothing. */
@@ -1261,9 +1282,11 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 /* ---- the column picker ----
 
-   helsedata's own names, and their own arrangement: a ghost button above the results, and the
-   choices drawn as a card that hangs off it. Their React sets `position: relative` inline on the
-   wrapper and the component emits the same inline style, so what is left for a host is the dress.
+   Our names now — they were helsedata's `variable-explorer-header*` until the rename — and their
+   arrangement throughout: a ghost button above the results, and the choices drawn as a card that
+   hangs off it. Their React sets `position: relative` inline on the wrapper and the component
+   emits the same inline style, so what is left for a host is the dress. The open list is
+   `dropdown-choicepicker`, which is Stiler's own name and stays that way.
 
    The component builds it from <details> and <summary> because it ships no script. That is the
    one place the shape differs from theirs, and it costs two rules — the browser's disclosure
@@ -1455,15 +1478,15 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 }
 
 /* ======================================================================
-   Resultatlista — samme regler som Stiler, portert fra helsedatas
-   variables.css og hentet herfra ut av det bygde stilarket.
+   Resultatlista — de samme reglene som Stiler, hentet ut av det bygde
+   stilarket. Stiler porterte dem i sin tur fra helsedatas variables.css.
    ======================================================================
 
-   Da komponenten laante helsedatas klassenavn kom disse reglene gratis paa
-   helsedata.no, og eksempelverten klarte seg uten dem. Etter omdoepinga til
-   munin-explorer-prefikset er det ingen som leverer dem lenger enn Stiler, saa
-   eksempelet maa staa for det samme settet. Generert fra Stilers bygde main.css
-   for at de to ikke skal gli fra hverandre. */
+   Da komponenten lånte helsedatas klassenavn, kom disse reglene gratis på
+   helsedata.no, og eksempelverten klarte seg uten dem. Etter omdøpinga til
+   munin-explorer-prefikset er det ingen andre enn Stiler 0.1.13 som leverer
+   dem, så eksempelet må stå for det samme settet selv. Generert fra Stilers
+   bygde main.css for at de to ikke skal gli fra hverandre. */
 
 .munin-explorer-results {
   display: flex;

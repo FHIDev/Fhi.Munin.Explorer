@@ -195,7 +195,7 @@ public partial class VariableExplorer
     /// what is lost is the outside click, which leaves the list open rather than broken.
     /// </para>
     /// <para>
-    /// It wears two names, not one, and both are theirs: <c>munin-explorer__dropdown</c> is the
+    /// It wears two names, not one, and both are borrowed from Stiler: <c>munin-explorer__dropdown</c> is the
     /// z-index that lifts the open list over the rows below it
     /// (<c>.munin-explorer__dropdown { z-index: 99 }</c>), and the bare <c>dropdown</c> is what
     /// widens the trigger to its row — <c>variables.css</c> carries

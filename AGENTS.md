@@ -72,18 +72,31 @@ which explains why this repository deliberately differs from Munin's bilingual p
 
 ## Class names in markup
 
-Class names emitted by the components are **not** ours to choose: they are
-`Fhi.Helsedata.Stiler`'s. Verify every one against Stiler's compiled `main.css` before using
-it, rather than against a list or another component's markup. A name Stiler has never heard of
-renders as a raw browser default inside an otherwise styled page, which is the failure the
-whole approach exists to avoid — see the history behind `Fhi.Metadata-l9l2n.29`.
+Two kinds of name reach the DOM, and the rule differs between them.
 
-Where a name genuinely has to be invented — a layout Stiler has no vocabulary for, like the
-kilde view's main column and sidebar — it is inert until some host supplies a rule for it. The
-two sample hosts are that host here, and they are one stylesheet copied:
+**Borrowed names are not ours to choose.** Where a part of the component is ordinary page
+furniture — the search field, the buttons, the headings, the infobox, the choicepicker — it wears
+`Fhi.Helsedata.Stiler`'s own name. Verify every one against Stiler's compiled `main.css` before
+using it, rather than against a list or another component's markup. A name Stiler has never heard
+of renders as a raw browser default inside an otherwise styled page, which is the failure the
+whole approach exists to avoid — see the history behind `Fhi.Metadata-l9l2n.29`, and `headline-sm`,
+which read as a borrowed name for months and was a typo for `headline-s`.
+
+**The explorer's own vocabulary is ours, under the `munin-explorer` prefix.** Structure, results,
+panel, drill-in and kilde view all live there, and the package owns the whole prefix. It did not
+always: the component used to write helsedata's own `variable-explorer*`, `variable-data-list*`,
+`variable-dataitem*` and `variable-meta*` and inherit their rules for free from `variables.css` —
+the stylesheet of the very page it replaces — which meant it only looked right inside helsedata's
+estate. The rules ship in `Fhi.Helsedata.Stiler` 0.1.13 and later, under
+`components/munin-explorer/`, so any host with Stiler can style the component. Do not move a name
+back into the old prefix: Stiler still defines `.variable-explorer-header`, so `variable-*` is
+helsedata's namespace and writing in it is either borrowing or colliding.
+
+A name under our prefix is still inert until some stylesheet supplies a rule for it, and the two
+sample hosts carry no Stiler — they are that stylesheet here, and they are one file copied:
 `samples/ModernHost/wwwroot/host.css` and `samples/LegacyHost/wwwroot/css/host.css` must stay
-**byte-identical**, and between them must style every `variable-explorer*` name the package
-invents. Both halves fail silently — a block landing in one copy only shows the component broken
-in that sample alone, and a name with no rule anywhere shows it broken in both — so
+**byte-identical**, and between them must style every `munin-explorer*` name the package invents.
+Both halves fail silently — a block landing in one copy only shows the component broken in that
+sample alone, and a name with no rule anywhere shows it broken in both — so
 `scripts/assert-sample-css-in-step.sh` checks each and runs in CI. Edit one copy, copy it over
 the other, and run the script.

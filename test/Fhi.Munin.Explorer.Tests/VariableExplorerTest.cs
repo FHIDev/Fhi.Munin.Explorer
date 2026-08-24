@@ -13,22 +13,6 @@ namespace Fhi.Munin.Explorer.Tests;
 public class VariableExplorerTest : BunitContext
 {
 
-    /// <summary>
-    /// The names these assertions were written about: the ones the package invents for its own
-    /// structure, as opposed to the result vocabulary it took from helsedata's variable page.
-    ///
-    /// Before the munin-explorer rename that distinction was carried by the prefix itself —
-    /// `variable-explorer*` was ours, `variable-data-list*` / `variable-dataitem*` / `variable-meta*`
-    /// were theirs — so a filter on the prefix was enough. Everything now sits under one prefix we
-    /// own, which is the point of the rename, and the same filter would sweep in the whole
-    /// vocabulary. These assertions are exact lists on purpose, so they say what they mean only if
-    /// the scope stays what it was.
-    /// </summary>
-    private static bool IsOwnStructureName(string cls) =>
-        cls.StartsWith("munin-explorer", StringComparison.Ordinal)
-        && !cls.StartsWith("munin-explorer-data-list", StringComparison.Ordinal)
-        && !cls.StartsWith("munin-explorer-dataitem", StringComparison.Ordinal)
-        && !cls.StartsWith("munin-explorer-meta", StringComparison.Ordinal);
     private static Page<VariableSummary> OnePage(params VariableSummary[] rows) =>
         new() { Items = rows, TotalCount = rows.Length, PageNumber = 1, Size = 25, TotalPages = 1 };
 
@@ -730,6 +714,32 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
+    public void Columns_WhenEveryOptionalOneIsOn_ThenEveryCellNameIsOneSomeStylesheetDefines()
+    {
+        // The column cells are the only class names the package composes at runtime -
+        // $"munin-explorer-dataitem-main__{key}" and $"sortable-header
+        // munin-explorer-dataitem-header__{key}" - and neither guard could see them.
+        //
+        // The shell guard reads literals out of src/, finds only the
+        // munin-explorer-dataitem-main__ stem, and drops it, correctly: a stem is not a name. And
+        // the Orphans call further down renders the DEFAULT column set, which leaves Status out
+        // until a reader turns it on. So the composed names went unchecked from both directions.
+        //
+        // That was harmless while they were helsedata's names, listed in host-class-names.txt and
+        // styled by their stylesheet. After the rename they are ours, the sample stylesheet is the
+        // only thing that defines them, and an unstyled name is the failure this repo has now hit
+        // twice. Rendering with every optional column on is what makes them exist to be checked.
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        foreach (var column in new[] { "Status" })
+        {
+            ColumnToggle(cut, column).Click();
+        }
+
+        Assert.Equal([], HostClassNames.Orphans(HostClassNames.Of(cut.FindAll("[class]"))));
+    }
+
+    [Fact]
     public void Columns_WhenStatusIsTurnedOnByHand_ThenItIsDrawnDespiteTheFilter()
     {
         // The filter decides where Status STARTS, not where it stays. A reader who wants the
@@ -911,7 +921,7 @@ public class VariableExplorerTest : BunitContext
         var names = picker.QuerySelectorAll("[class]")
             .Prepend(picker)
             .SelectMany(e => e.ClassName!.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-            .Where(k => !IsOwnStructureName(k))
+            .Where(k => !HostClassNames.IsOwnStructureName(k))
             .Distinct()
             .Order(StringComparer.Ordinal)
             .ToList();
@@ -1104,8 +1114,8 @@ public class VariableExplorerTest : BunitContext
         // ninth appearing is news. This one asks the different question, of every class in the DOM
         // and not just that prefix: does any stylesheet, ours or helsedata's, define it at all?
         //
-        // Borrowed names needed their own check because nothing was watching them. `munin-explorer-meta__body`
-        // came off this view: it wears the look of helsedata's `munin-explorer-meta` family, they define the
+        // Borrowed names needed their own check because nothing was watching them. Their `variable-meta__body`
+        // came off this view: it wore the look of helsedata's `variable-meta` family, they define the
         // family but not that member, and so it promised a rule that has never existed anywhere.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
                             b => b.Add(c => c.Search, "tale"));
@@ -1116,10 +1126,11 @@ public class VariableExplorerTest : BunitContext
     [Fact]
     public void Render_Always_ThenNoClassNamesAreInventedApartFromTheDomHandles()
     {
-        // Eight names in the munin-explorer prefix: two of our own, and both DOM handles rather
-        // than style hooks — nothing in this package or in Stiler defines a rule for either — and
-        // six of helsedata's, every one read back off their compiled variables.css. This is the
-        // guard that says so out loud. The list is exact on purpose: a ninth name appearing here,
+            // Eight names in the munin-explorer prefix. Two are DOM handles rather than style hooks -
+            // nothing in this package or in Stiler defines a rule for either, and nothing should. The
+            // other six were helsedata's until the rename, were read back off their compiled
+            // variables.css, and now live in Stiler under components/munin-explorer/. This is the
+            // guard that says so out loud.
         // or a name in it that cannot be pointed at in a stylesheet, is the failure this package
         // exists to avoid, and it has happened twice.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
@@ -1127,7 +1138,7 @@ public class VariableExplorerTest : BunitContext
 
         var invented = cut.FindAll("[class]")
             .SelectMany(e => e.ClassName!.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-            .Where(IsOwnStructureName)
+            .Where(HostClassNames.IsOwnStructureName)
             .Distinct()
             .ToList();
 
@@ -1135,16 +1146,16 @@ public class VariableExplorerTest : BunitContext
         [
             "munin-explorer",            // ours, a handle
             "munin-explorer-filters",    // ours, a handle
-            "munin-explorer-container",  // theirs, variables.css (10 rules)
-            "munin-explorer-results",    // theirs, variables.css (6 rules)
+            "munin-explorer-container",  // ours, Stiler components/munin-explorer/
+            "munin-explorer-results",    // ours, Stiler components/munin-explorer/
             // The column picker, all four theirs, all four read off the compiled variables.css
             // rather than guessed at. The one they do NOT include is `sortable-dropdown`, which
             // the bead pointed at: that is their mobile sort control, `display: none` above
             // 1280px, so a picker wearing it would be invisible on every desktop.
-            "munin-explorer-header",                  // theirs, variables.css
-            "munin-explorer-header__actions",         // theirs, variables.css
-            "munin-explorer__dropdown",               // theirs, variables.css (the z-index)
-            "munin-explorer-header__actions-button",  // theirs, variables.css
+            "munin-explorer-header",                  // ours, Stiler components/munin-explorer/
+            "munin-explorer-header__actions",         // ours, Stiler components/munin-explorer/
+            "munin-explorer__dropdown",               // ours, Stiler (the z-index)
+            "munin-explorer-header__actions-button",  // ours, Stiler components/munin-explorer/
         ], invented);
         Assert.Equal("munin-explorer", cut.Find("section").ClassName);
 
@@ -4435,7 +4446,7 @@ public class VariableExplorerTest : BunitContext
 
         var invented = Panel(cut).QuerySelectorAll("[class]")
             .SelectMany(e => e.ClassName!.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-            .Where(IsOwnStructureName)
+            .Where(HostClassNames.IsOwnStructureName)
             .Distinct()
             .ToList();
 
@@ -5105,14 +5116,18 @@ public class VariableExplorerTest : BunitContext
     [Fact]
     public void Render_WhenAPanelIsOpen_ThenItIsBuiltFromShapesRatherThanFromNewClassNames()
     {
-        // The rule this guards has changed, and it is worth being precise about what it is now.
-        // The component wears helsedata's own variable-page vocabulary, which includes several
-        // names in this prefix that are THEIRS, not ours — munin-explorer-container (10 rules),
-        // munin-explorer-results (6), and the column picker's header trio plus its dropdown,
-        // all in variables.css and loaded on every page of their site. What must never grow is
-        // the list of names we INVENT — the handles below, which carry no styling anywhere and
-        // exist only so a host can find the component in the DOM. A name in this prefix that is
-        // neither theirs nor one of those is a name that renders as a raw browser default.
+            // The rule this guards has changed, and it is worth being precise about what it is now.
+            // The component used to wear helsedata's variable-page vocabulary, so several names in
+            // this prefix were THEIRS rather than ours - what are now munin-explorer-container
+            // (10 rules), munin-explorer-results (6), and the column picker's header trio plus its
+            // dropdown all sat in their variables.css, loaded on every page of their site. After the
+            // rename they are ours, and their rules live in Stiler under components/munin-explorer/.
+            //
+            // That collapses the old two-way split, but not the thing it protected. What must never
+            // grow is the list of names we INVENT and never style - the handles below, which carry
+            // no rule anywhere by design and exist only so a host can find the component in the DOM.
+            // A name in this prefix that is neither styled in Stiler nor one of those handles is a
+            // name that renders as a raw browser default.
         //
         // Rendered with a hierarchy chosen as well as a panel open, so the trail over the results
         // is on screen: this list is the central registry, and names that only appear under a
@@ -5123,7 +5138,7 @@ public class VariableExplorerTest : BunitContext
 
         var invented = cut.FindAll("[class]")
             .SelectMany(e => e.ClassName!.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-            .Where(IsOwnStructureName)
+            .Where(HostClassNames.IsOwnStructureName)
             .Distinct()
             .ToList();
 
@@ -5140,11 +5155,11 @@ public class VariableExplorerTest : BunitContext
                                             // which reuses it rather than minting a second name
                                             // for the same affordance
             "munin-explorer-breadcrumb__clear",      // ours — the × that empties the hierarchy
-            "munin-explorer-container",  // theirs, variables.css (10 rules)
-            "munin-explorer-results",    // theirs, variables.css (6 rules)
-            "munin-explorer-header",     // theirs — the row their own variable page hangs the
+            "munin-explorer-container",  // ours, Stiler components/munin-explorer/
+            "munin-explorer-results",    // ours, Stiler components/munin-explorer/
+            "munin-explorer-header",     // ours now; their own variable page hangs the
             "munin-explorer-header__actions",        // column picker in, and the ghost button
-            "munin-explorer__dropdown",              // that opens it. All four are variables.css.
+            "munin-explorer__dropdown",              // that opens it. All four came from variables.css.
             "munin-explorer-header__actions-button",
             "munin-explorer-detail",     // ours, a handle
             "munin-explorer-group",      // ours — helsedata's panel is flat, so it has no
@@ -5158,7 +5173,7 @@ public class VariableExplorerTest : BunitContext
         var panel = Panel(cut);
 
         // The definition list stays a definition list — it is labels and the values they name, and
-        // helsedata's grid is class-based (`.munin-explorer-meta__grid { display: grid }`, with only a
+        // helsedata's grid is class-based (`.variable-meta__grid { display: grid }`, with only a
         // `p { margin: 0 }` rule touching an element name), so their layout applies to dt/dd just
         // as it applies to their own spans. Semantics kept, styling borrowed.
         // Both of helsedata's grid variants are in use: -1 for a group with one field, -2 for the
@@ -5725,7 +5740,7 @@ public class VariableExplorerTest : BunitContext
 
         var invented = cut.FindAll("[class]")
             .SelectMany(e => e.ClassName!.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-            .Where(IsOwnStructureName)
+            .Where(HostClassNames.IsOwnStructureName)
             .Distinct()
             .ToList();
 

@@ -589,7 +589,7 @@ public partial class VariableExplorer
     /// <remarks>
     /// A real <c>&lt;table&gt;</c>, one of the two this package emits — the other is the
     /// datasamlinger list in <c>KildeView</c>. The results list is not one of them: it is
-    /// helsedata's own <c>munin-explorer-data-list</c>, a <c>&lt;ul&gt;</c> with a header row of
+    /// our <c>munin-explorer-data-list</c>, a <c>&lt;ul&gt;</c> with a header row of
     /// <c>&lt;div&gt;</c>s, because that is the shape their stylesheet dresses. Four columns of
     /// code values have no such alternative shape —
     /// a definition list per code would lose the alignment that makes a code list readable at all.

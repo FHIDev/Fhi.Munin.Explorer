@@ -1285,7 +1285,7 @@ public partial class VariableExplorer : ComponentBase
         // the request, and the sample host carries the widths they should be given. A column with
         // no width rule sizes by content, which is what put Kode on two lines: a variable code is
         // one unbreakable token and cannot give way, so everything else must. Their header row is
-        // further along: `munin-explorer-dataitem-header__period` is already in variables.css, because
+        // further along: `variable-dataitem-header__period` is already in helsedata's variables.css, because
         // their own variable page has had a period column all along — it is only the cell modifier
         // that is missing, since theirs draws a bar sized inline rather than a column of text.
         //
@@ -1364,7 +1364,7 @@ public partial class VariableExplorer : ComponentBase
             : $"{(from is { } f ? MonthYear(f) : "?")} – {(to is { } t ? MonthYear(t) : T.Ongoing)}";
 
     /// <summary>
-    /// One column of a result row, in helsedata's <c>munin-explorer-dataitem-main__column</c> shape.
+    /// One column of a result row, in <c>munin-explorer-dataitem-main__column</c> shape.
     /// </summary>
     /// <remarks>
     /// The field name is not shown in the cell — the column header names it. It is still emitted

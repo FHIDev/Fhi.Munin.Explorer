@@ -24,16 +24,19 @@
 # copy, and a check that only compared the two files called that green.
 #
 # So the second clause reads the names out of src/ and asks the stylesheet for a rule for each.
-# A name in the `variable-explorer` prefix is one of two things: OURS, invented here, which
-# helsedata's stylesheet has never heard of and only a host can style — or THEIRS, read back off
-# helsedata's compiled variables.css and already styled on every page of their site. Only ours
-# need a rule here; theirs are listed below and skipped.
+# Every name in the `munin-explorer` prefix is OURS: the package owns that prefix, and nothing
+# outside this repository is obliged to style any of it. There used to be a second category —
+# names in the old `variable-explorer` prefix that were helsedata's, read back off their compiled
+# variables.css and already styled on every page of their site, which this script skipped. The
+# rename to `munin-explorer` emptied it; THEIRS below is what is left of the idea.
 #
-# The extraction is deliberately over-inclusive: every `variable-explorer*` token in src/, prose
-# and all, minus the ones ending in `-` (those are id prefixes completed at runtime, like
-# `variable-explorer-toggle-`). A name the package writes down anywhere is a name a reader will
-# go looking for in a stylesheet, and the cost of a false positive is one line — a rule, or an
-# entry in THEIRS. A false negative costs an unstyled component nobody notices.
+# The extraction is deliberately over-inclusive: every `munin-explorer*` token in src/, prose and
+# all, minus the ones ending in `-` or `__`. Both are stems completed elsewhere and neither is a
+# name: `-` is an id prefix finished at runtime (`munin-explorer-toggle-`), and `__` is an
+# interpolated modifier stem a line of C# builds the rest of. A name the package writes down
+# anywhere is a name a reader will go looking for in a stylesheet, and the cost of a false
+# positive is one line — a rule, or an entry in THEIRS. A false negative costs an unstyled
+# component nobody notices.
 #
 # Which is why an extraction that finds nothing is an error rather than a pass: it is the false
 # negative applied to every name at once, and the clause that would report success having checked
@@ -61,31 +64,34 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 2
 MODERN="samples/ModernHost/wwwroot/host.css"
 LEGACY="samples/LegacyHost/wwwroot/css/host.css"
 
-# Names in the `variable-explorer` prefix that belong to helsedata, not to us. Every one was read
-# back off their compiled variables.css — the container and the results column their variable page
-# is built from, plus the header row their own column picker hangs in and the dropdown it opens.
-# They are styled on helsedata.no whether or not this sample styles them, so a missing rule here
-# is not a missing rule anywhere that matters. The list is the same one VariableExplorerTest's
-# `invented` assertions annotate name by name; keep the two in step.
+# Names in the prefix that belong to someone else, not to us — styled wherever the component is
+# mounted whether or not this sample styles them, so a missing rule here is not a missing rule
+# anywhere that matters.
+#
+# It held six names until the munin-explorer rename: the container and the results column
+# helsedata's variable page is built from, plus the header row their column picker hangs in and
+# the dropdown it opens, every one read back off their compiled variables.css. The package
+# borrowed their prefix and inherited their rules for free, which worked on helsedata.no and
+# nowhere else. It now writes its own `munin-explorer` names, so there is nothing left to skip.
 THEIRS=(
-  # Empty since the munin-explorer rename. The package used to write helsedata's own class
-  # names and inherit their rules for free; every name it emits is now its own, so there is
-  # no longer a category of "styled by someone else" to skip. Kept as a list rather than
-  # deleted because the concept comes back the moment we borrow a name again.
+  # Empty by construction, and a list rather than a deletion: the category comes back the moment
+  # the package borrows a prefixed name again. Anything added here needs a note saying which
+  # stylesheet it was read back off, the way the six used to — and the same note in
+  # VariableExplorerTest's `invented` assertions, which annotate the prefix name by name.
 )
 
 # Names in the prefix that are ours but are not classes: element ids the package writes down in
 # prose without the `-{instance}` suffix that completes them at runtime. A stylesheet cannot have
-# a rule for them, because `.variable-explorer-source` selects nothing — the attribute is `id`.
+# a rule for them, because `.munin-explorer-source` selects nothing — the attribute is `id`.
 #
 # The `-$` filter below catches the ones written with their trailing hyphen; these are the ones
-# written bare, in a sentence explaining what they are. `variable-explorer-source` is the whole
+# written bare, in a sentence explaining what they are. `munin-explorer-source` is the whole
 # list and arrived that way: it was a class while the kilde opened inside the variable's panel,
 # and became an id prefix when the panel became a drill-in, leaving prose that still names it.
 #
-# Kept apart from THEIRS on purpose. THEIRS means "helsedata styles this, so a missing rule here
-# costs nothing"; this means "no rule is possible". Filing one under the other would say the name
-# is on helsedata.no, which it is not.
+# Kept apart from THEIRS on purpose. THEIRS means "something else styles this, so a missing rule
+# here costs nothing"; this means "no rule is possible". Filing one under the other would claim
+# the name is styled somewhere, which it is not — it is not a class at all.
 IDS=(
   munin-explorer-source
 )
@@ -134,8 +140,9 @@ fi
 # sit inside a process substitution where its exit status is discarded anyway, and grep's "No such
 # file or directory" is one stderr line scrolling past in a job that stays green — so an extraction
 # returning nothing would leave `missing` empty and print that every name is styled, having looked
-# at none of them. src/ moving, and the prefix being renamed away from `variable-explorer`, are
-# exactly the changes that need this clause most.
+# at none of them. src/ moving, and the prefix being renamed, are exactly the changes that need
+# this guard most — the rename from `variable-explorer` to `munin-explorer` has already happened
+# once, and a grep still spelling the old prefix would have gone quiet rather than red.
 if [ ! -d src ]; then
   echo "::error::No src/ directory to read class names out of, so the check below would pass" >&2
   echo "without checking anything. Has the solution layout moved? Run this from the checkout." >&2
@@ -154,12 +161,12 @@ done < <(
 
 # A floor, not a count. Names come and go with the component, so a check that had to be updated
 # every time one was added would be updated without being read. This one only has to tell "the
-# extraction works" from "the extraction found nothing" — 10 is far below the 33 the package
-# invents today and far above anything a stale regex returns.
+# extraction works" from "the extraction found nothing" — 10 is far below the 75 the extraction
+# yields today and far above anything a stale regex returns.
 MIN_NAMES=10
 if [ "${#names[@]}" -lt "$MIN_NAMES" ]; then
   echo "::error::Found only ${#names[@]} class name(s) under src/, below the floor of $MIN_NAMES." >&2
-  echo "Either the naming convention moved off the 'variable-explorer' prefix or the regex in this" >&2
+  echo "Either the naming convention moved off the 'munin-explorer' prefix or the regex in this" >&2
   echo "script went stale against it. Either way the check below cannot see what it is meant to" >&2
   echo "check, which is an error rather than a pass — fix the extraction, and the floor with it if" >&2
   echo "the package really does invent fewer than $MIN_NAMES names now." >&2
@@ -172,8 +179,8 @@ for name in "${names[@]}"; do
     *" $name "*) continue ;;
   esac
 
-  # Anchored on both sides so `.variable-explorer-period__fill` does not answer for
-  # `.variable-explorer-period`: a rule for the part is not a rule for the whole.
+  # Anchored on both sides so `.munin-explorer-period__fill` does not answer for
+  # `.munin-explorer-period`: a rule for the part is not a rule for the whole.
   grep -qE "\.${name}([^A-Za-z0-9_-]|\$)" "$STRIPPED" || missing+=("$name")
 done
 
@@ -183,16 +190,16 @@ if [ ${#missing[@]} -gt 0 ]; then
   echo "" >&2
   echo "Each renders at raw browser defaults in both samples, which reads as a bug in the" >&2
   echo "component rather than as a host that has not been asked for the rule. Add a rule to" >&2
-  echo "$LEGACY, copy it over $MODERN — or, if the name is helsedata's" >&2
-  echo "rather than ours, add it to THEIRS at the top of this script and say where you read it" >&2
-  echo "back from." >&2
+  echo "$LEGACY, copy it over $MODERN — or, if the name turns out" >&2
+  echo "to be borrowed rather than ours, add it to THEIRS at the top of this script and say which" >&2
+  echo "stylesheet you read it back off." >&2
   exit 1
 fi
 
 # Clause three: the names the package BORROWS.
 #
 # Clauses one and two between them check every name we invent. They checked nothing at all about
-# the names we take from helsedata's design system, because those carry no `variable-explorer`
+# the names we take from helsedata's design system, because those carry no `munin-explorer`
 # prefix to find them by — and a borrowed name is only free styling if a host stylesheet really
 # defines it. `headline-sm` sat in VariableView for months looking exactly like a borrowed name.
 # It was a typo for `headline-s`; nothing anywhere defines it; nine block headings rendered at the

@@ -3,7 +3,14 @@ category: Notes for hosts
 - **The component now writes `munin-explorer-*` class names instead of helsedata's own.** It used to
   borrow `variable-explorer`, `variable-data-list`, `variable-dataitem` and `variable-meta`, and
   inherit their rules for free from the variable page's stylesheet — the page it exists to replace.
-  **Hosts need `Fhi.Helsedata.Stiler` 0.1.13 or later**, which is where the rules now live; on an
+  **Hosts need `Fhi.Helsedata.Stiler` 0.1.13 or later**, which is where those rules now live; on an
   older Stiler the component renders at browser defaults.
-- **A host outside helsedata.no can style the component for the first time.** The rules it needs no
-  longer sit in a bundle only that one site carries.
+- **A host outside helsedata.no can now style all but the pager.** 93 of the 95 class names the
+  component emits are in Stiler 0.1.13. The two that are not are `variables-pagination` and
+  `variables-pagination-content`, which are still helsedata's own and live only in their
+  `variables.css` — Stiler has no pagination rule at all. Inside helsedata that stylesheet loads on
+  every page, so nothing changes there; a Stiler-only host must supply those two itself until they
+  move too.
+- **Design-system names are unaffected.** `hd-button-square`, `searchbox__freetext`, `headline`,
+  `caption`, `infobox` and the rest are Stiler's, are still borrowed deliberately, and are not part
+  of this rename.
