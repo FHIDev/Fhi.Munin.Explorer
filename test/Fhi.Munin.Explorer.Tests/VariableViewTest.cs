@@ -57,7 +57,7 @@ public class VariableViewTest : BunitContext
         // at the browser's own <h*> size on helsedata.no. It survived because the class name reaches
         // the DOM as an argument to @Heading rather than as a class attribute, which put it out of
         // reach of the CSS check in scripts/, and because that check only looked at names in the
-        // variable-explorer prefix anyway — the ones we invent, never the ones we borrow.
+        // munin-explorer prefix anyway — the ones we invent, never the ones we borrow.
         var cut = Render(Detail());
 
         // Compared against an empty list rather than asserted empty, so a failure names the classes
@@ -82,9 +82,9 @@ public class VariableViewTest : BunitContext
         // Scoped to the group headings on purpose. The sidebar has a Datatype heading of its own and
         // is meant to: that is where this fact belongs. Asserting no "Datatype" heading anywhere
         // would fail on the very thing the fix keeps.
-        Assert.DoesNotContain(cut.FindAll(".variable-explorer-group").Select(e => e.TextContent),
+        Assert.DoesNotContain(cut.FindAll(".munin-explorer-group").Select(e => e.TextContent),
                               text => text == "Datatype");
-        Assert.Single(cut.FindAll(".variable-explorer-group"));
+        Assert.Single(cut.FindAll(".munin-explorer-group"));
     }
 
     [Fact]
@@ -116,10 +116,10 @@ public class VariableViewTest : BunitContext
         var cut = Render(detail);
 
         Assert.Equal(["År", "Minimum", "Maksimum", "Gjennomsnitt", "Standardavvik"],
-                     cut.FindAll("table.variable-explorer-statistics thead th").Select(t => t.TextContent));
+                     cut.FindAll("table.munin-explorer-statistics thead th").Select(t => t.TextContent));
 
         Assert.Equal(["2022", "1", "9", "4", "2"],
-                     cut.FindAll("table.variable-explorer-statistics tbody tr:first-child > *")
+                     cut.FindAll("table.munin-explorer-statistics tbody tr:first-child > *")
                         .Select(c => c.TextContent));
 
         // The median and the case counts are in the payload and stay out of the table.
@@ -165,7 +165,7 @@ public class VariableViewTest : BunitContext
             Statistics = [new() { AdditionalProperties = new Dictionary<string, string?> { ["SisteOppdaterteAarssett"] = "2022" } }],
         };
 
-        var cells = Render(detail).FindAll("table.variable-explorer-statistics tbody td");
+        var cells = Render(detail).FindAll("table.munin-explorer-statistics tbody td");
 
         Assert.All(cells, c => Assert.Equal("—", c.TextContent));
     }
@@ -190,7 +190,7 @@ public class VariableViewTest : BunitContext
         };
 
     private static string[] VersionRows(IRenderedComponent<VariableView> cut) =>
-        [.. cut.FindAll(".variable-explorer-versions > li > button")
+        [.. cut.FindAll(".munin-explorer-versions > li > button")
                .Select(b => b.TextContent.Replace("\n", " ").Trim())];
 
     [Fact]
@@ -236,8 +236,8 @@ public class VariableViewTest : BunitContext
         var detail = Detail() with { Versions = [Version(Guid.NewGuid(), from: null)] };
         var cut = Render(detail);
 
-        Assert.Equal("—", cut.Find(".variable-explorer-versions__from").TextContent);
-        Assert.Equal("Pågående", cut.Find(".variable-explorer-versions__to").TextContent);
+        Assert.Equal("—", cut.Find(".munin-explorer-versions__from").TextContent);
+        Assert.Equal("Pågående", cut.Find(".munin-explorer-versions__to").TextContent);
     }
 
     [Fact]
@@ -261,15 +261,15 @@ public class VariableViewTest : BunitContext
         };
 
         var cut = Render(detail);
-        var toggles = cut.FindAll(".variable-explorer-versions > li > button");
+        var toggles = cut.FindAll(".munin-explorer-versions > li > button");
 
         toggles[0].Click();
-        cut.FindAll(".variable-explorer-versions > li > button")[1].Click();
+        cut.FindAll(".munin-explorer-versions > li > button")[1].Click();
 
-        Assert.All(cut.FindAll(".variable-explorer-versions > li > button"),
+        Assert.All(cut.FindAll(".munin-explorer-versions > li > button"),
                    b => Assert.Equal("true", b.GetAttribute("aria-expanded")));
 
-        Assert.All(cut.FindAll(".variable-explorer-versions__detail"),
+        Assert.All(cut.FindAll(".munin-explorer-versions__detail"),
                    d => Assert.False(d.HasAttribute("hidden")));
     }
 
@@ -285,9 +285,9 @@ public class VariableViewTest : BunitContext
         };
 
         var cut = Render(detail);
-        cut.Find(".variable-explorer-versions > li > button").Click();
+        cut.Find(".munin-explorer-versions > li > button").Click();
 
-        var panel = cut.Find(".variable-explorer-versions__detail").TextContent;
+        var panel = cut.Find(".munin-explorer-versions__detail").TextContent;
 
         Assert.Contains("Avlest basaldose", panel, StringComparison.Ordinal);
         Assert.Contains("Gyldig fra", panel, StringComparison.Ordinal);
@@ -310,9 +310,9 @@ public class VariableViewTest : BunitContext
         var named = Render(Detail() with { Versions = [Version(Guid.NewGuid(), name: "Basaldose")] }, "en");
         var unnamed = Render(Detail() with { Versions = [Version(Guid.NewGuid(), name: "")] }, "en");
 
-        Assert.Equal("no", named.Find(".variable-explorer-versions__name").GetAttribute("lang"));
+        Assert.Equal("no", named.Find(".munin-explorer-versions__name").GetAttribute("lang"));
 
-        var fallback = unnamed.Find(".variable-explorer-versions__name");
+        var fallback = unnamed.Find(".munin-explorer-versions__name");
 
         Assert.Equal("Version without a name", fallback.TextContent);
         Assert.False(fallback.HasAttribute("lang"));
@@ -327,8 +327,8 @@ public class VariableViewTest : BunitContext
         // aria-controls on the second view's toggle resolving to the first view's panel.
         var detail = Detail() with { Versions = [Version(Guid.NewGuid())] };
 
-        var first = Render(detail).Find(".variable-explorer-versions__detail").GetAttribute("id");
-        var second = Render(detail).Find(".variable-explorer-versions__detail").GetAttribute("id");
+        var first = Render(detail).Find(".munin-explorer-versions__detail").GetAttribute("id");
+        var second = Render(detail).Find(".munin-explorer-versions__detail").GetAttribute("id");
 
         Assert.False(string.IsNullOrWhiteSpace(first));
         Assert.NotEqual(first, second);
@@ -341,9 +341,9 @@ public class VariableViewTest : BunitContext
         var detail = Detail() with { Versions = [Version(Guid.NewGuid())] };
         var cut = Render(detail);
 
-        var controls = cut.Find(".variable-explorer-versions__toggle").GetAttribute("aria-controls");
+        var controls = cut.Find(".munin-explorer-versions__toggle").GetAttribute("aria-controls");
 
-        Assert.Equal(cut.Find(".variable-explorer-versions__detail").GetAttribute("id"), controls);
+        Assert.Equal(cut.Find(".munin-explorer-versions__detail").GetAttribute("id"), controls);
     }
 
     [Fact]

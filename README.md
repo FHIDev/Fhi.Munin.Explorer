@@ -33,10 +33,11 @@ between the samples is a difference in the hosting model rather than in the CSS.
 copy it over the other; `scripts/assert-sample-css-in-step.sh` fails CI when they drift.
 
 That script also checks the thing "the two agree" does not say: that between them the samples
-style **every** `variable-explorer*` class name the package invents. Those names are inert until
-some host supplies a rule, so a name with no rule renders at raw browser defaults in both samples
-at once — which reads as a bug in the component. Agreeing and being right are different claims,
-and the second clause is the one that checks the second.
+style **every** `munin-explorer*` class name the package invents. Neither sample carries
+`Fhi.Helsedata.Stiler`, so those names are inert until this one stylesheet supplies a rule, and a
+name with no rule renders at raw browser defaults in both samples at once — which reads as a bug in
+the component. Agreeing and being right are different claims, and the second clause is the one that
+checks the second.
 
 ## Conventions
 
@@ -53,81 +54,94 @@ These are not style preferences — each one is a host that breaks otherwise.
   is a single parameterised root component.
 - **No `@rendermode`.** The host decides, at the mount site. This is what lets one package serve
   both a legacy and a modern host.
-- **No CSS, no `wwwroot`, no `.razor.css`.** Styling comes from the host, and the class names the
-  markup emits are not ours to invent — they are read back off helsedata's own compiled
-  stylesheets. Two of them, and the difference matters to a host outside helsedata:
-  - `Fhi.Helsedata.Stiler`, the site-wide stylesheet, for the parts that are ordinary page
-    furniture: `searchbox__freetext*`, `hd-button-square` with its `button-square--*` modifiers,
-    `form-element__label`, `form-fieldset`, `headline`, `caption`, `infobox`, `hd-button-reset`,
-    `screenreader-only`.
-  - `variables.css`, the second stylesheet, for the whole result vocabulary. Since
-    `Fhi.Metadata-zs56s` the component renders helsedata's own variable page's DOM rather than a
-    shape of its own: rows are `variable-data-list` / `variable-data-list__item*` /
-    `variable-dataitem-main*`, the opened panel is `variable-meta*`, the list around them is
-    `variable-explorer-container` / `variable-explorer-results` / `variable-explorer-header*`, the
-    pager is `variables-pagination*` plus `skiplink-pagination`, and the column picker is
-    `variable-explorer-header__actions*` with `dropdown-choicepicker*`. Despite the name it is
-    served on every page of helsedata.no — verified on `/no/`, `/no/variabler/` and
-    `/no/datakilder/`, which load an identical seven bundles — so a host in their estate has it
-    wherever the component is mounted. A host outside has to supply all of it, including the rule
-    that keeps `skiplink-pagination` out of sight until it is focused.
+- **No CSS, no `wwwroot`, no `.razor.css`.** Styling comes from the host. The names the markup
+  emits split in two, and the difference matters to whoever is writing the rules:
+  - **Borrowed.** Where a part of the component is ordinary page furniture, it wears
+    `Fhi.Helsedata.Stiler`'s own name, every one read back off Stiler's compiled stylesheet rather
+    than guessed at: `searchbox__freetext*`, `hd-button-square` with its `button-square--*`
+    modifiers, `form-element__label`, `form-fieldset`, `headline`, `caption`, `infobox`,
+    `hd-button-reset`, `screenreader-only`, and `dropdown-choicepicker*` for the column picker's
+    open list. These are not ours to rename: a change to one of them is a change to Stiler. The
+    pager is the one borrowed family Stiler has no rule for — `variables-pagination` and
+    `variables-pagination-content` come from helsedata's own `variables.css`, which despite the
+    name is served on every page of helsedata.no (verified on `/no/`, `/no/variabler/` and
+    `/no/datakilder/`, which load an identical seven bundles), so a host in their estate has them
+    wherever the component is mounted and a host outside has to supply them.
+  - **Ours.** Everything the explorer is actually built out of — its structure and its whole result
+    vocabulary — is under the `munin-explorer` prefix, which this package owns. Since
+    `Fhi.Metadata-zs56s` that vocabulary is shaped like helsedata's variable page rather than like
+    something of its own: rows are `munin-explorer-data-list` / `munin-explorer-data-list__item*` /
+    `munin-explorer-dataitem-main*`, the opened panel is `munin-explorer-meta*`, the list around
+    them is `munin-explorer-container` / `munin-explorer-results` / `munin-explorer-header*`, and
+    the column picker hangs in `munin-explorer-header__actions*`.
 
-  A name neither stylesheet has heard of renders as a raw browser default inside an otherwise
-  styled page, which defeats the point of shipping this as a component at all. So where neither
-  has a rule for a shape, change the shape rather than adding a stylesheet: the filter panel is
-  `<details>` plus a nested `<ul>` rather than an accordion and a tree, and the detail panel is a
-  `<dl>` with an `<ol>` for the kilde trail, because neither stylesheet names any of those. What a
-  host supplies for them is base element styling — list indentation in particular, which is what
-  shows a delkilde sitting under its kilde. The package emits two `<table>`s, for the same reason:
-  the kodeverk code list in an opened panel, and the datasamlinger of a kilde in `KildeView`. An
-  element degrades to its own browser default, where an unknown class name degrades to nothing.
+    It was not ours until recently, and the change is the reason a host outside helsedata can style
+    this component at all. The package used to write helsedata's own names — `variable-data-list*`,
+    `variable-dataitem*`, `variable-meta*` and six `variable-explorer-*` — and inherit their rules
+    for free off `variables.css`, the stylesheet of the very page this component replaces. Free
+    only inside their estate: everywhere else those names meant nothing, and there was nowhere to
+    put a rule for them that would not be overwritten by the next build of somebody else's site.
+    The rules ship in **`Fhi.Helsedata.Stiler` 0.1.13** and later, under
+    `components/munin-explorer/`. **A host on an older Stiler renders the component at browser
+    defaults**, which is why the changelog states the floor as a version rather than as advice.
+    Note that the old prefix is not free either: Stiler still defines `.variable-explorer-header`,
+    so writing a `variable-*` name here is either borrowing helsedata's or colliding with it.
 
-  A `variable-explorer` prefix does not mean the name is ours. Six of them are helsedata's, every
-  one read back off their compiled `variables.css`: `variable-explorer-container`,
-  `variable-explorer-results`, `variable-explorer-header` with its `__actions` and
-  `__actions-button`, and `variable-explorer__dropdown`. Every other class name in the prefix is
-  ours, and the one thing true of all of them is narrow: **neither helsedata stylesheet has a rule
-  for any of them**. A host in their estate gets nothing for free here, and a host outside has to
-  draw whatever it wants drawn. What differs between them is how much drawing nothing costs.
+  A name no stylesheet has heard of renders as a raw browser default inside an otherwise styled
+  page, which defeats the point of shipping this as a component at all. That is why owning the
+  prefix does not mean inventing freely: where there is no rule for a shape, change the shape
+  rather than adding a stylesheet. The filter panel is `<details>` plus a nested `<ul>` rather than
+  an accordion and a tree, and the detail panel is a `<dl>` with an `<ol>` for the kilde trail,
+  because no host stylesheet names any of those. What a host supplies for them is base element
+  styling — list indentation in particular, which is what shows a delkilde sitting under its kilde.
+  The package emits two `<table>`s, for the same reason: the kodeverk code list in an opened panel,
+  and the datasamlinger of a kilde in `KildeView`. An element degrades to its own browser default,
+  where an unknown class name degrades to nothing.
+
+  Every name in the `munin-explorer` prefix is ours. That is worth saying because it used not to
+  be: under the old prefix six names were helsedata's — the container, the results column, the
+  header with its `__actions` and `__actions-button`, and the dropdown — and the prefix itself was
+  no guide to which was which, so a reader had to check each one against a list. There is no longer
+  a category to check against. The `THEIRS` allowlist in `scripts/assert-sample-css-in-step.sh` is
+  empty by construction, and what these names cost a host is now the same question everywhere: a
+  host on Stiler 0.1.13 or later has rules for them, any other host draws whatever it wants drawn,
+  and the sub-lists below are about how much drawing nothing costs.
 
   - Handles, where something else already dresses the element — a Stiler class it also wears, or
     its own browser default — and the name is there so a host or a test can find that part of the
-    component in the page: `variable-explorer` (the root `<section>`), `variable-explorer-filters`,
-    `variable-explorer-detail`, `variable-explorer-drilldown`, `variable-explorer-kodeverk*`,
-    `variable-explorer-codes*`, `variable-explorer-group`, and the nine `variable-explorer-kilde*`
-    names in `KildeView`. What the samples do with them is uneven, and worth knowing before
-    following the pointer below: they style the panel handles for arrangement — the root as a grid
-    at desktop width, `-filters`, `-detail`, `-drilldown`, `-kodeverk*` and `-codes*` for spacing,
-    indentation and a rule between rows — and they draw `variable-explorer-group` as Runa's blue
-    uppercase eyebrow. The nine `KildeView` names have no rule in either sample; that view is left
-    to its base element styling and the Stiler class each of its parts also wears. A host that
-    defines none of them loses no information: the group headings, for instance, are already sized
-    by the `headline headline-xxs` they wear, so what an undefined `variable-explorer-group` costs
-    is the eyebrow's look, not the fact that it is a heading.
-  - Names a host outside helsedata has to draw itself, because nothing else draws them:
-    `variable-explorer-crumb` carries the link affordance for a trail step, which is a `<button>`
-    — the kilde step of the panel's kilde trail, and every step of the hierarchy trail over the
-    results — and without it a trail reads as plain text with no sign it can be pressed;
-    `variable-explorer-breadcrumb` with its `__clear` is that hierarchy trail's own wrapper, where
-    the chevrons between the steps come from and where the × that empties the hierarchy sits, and
-    an undrawn one is a numbered list with a stray × after it; and inside the
-    `variable-explorer-period*` wrapper, `__track`, `__fill` and
-    `__track--ongoing` are the period bar itself — only its width comes from an inline style, so an
-    undrawn bar renders as nothing at all. The period is still legible without it, because the
-    dates are next to it in words, in `__range`.
+    component in the page: `munin-explorer` (the root `<section>`), `munin-explorer-filters`,
+    `munin-explorer-detail`, `munin-explorer-drilldown`, `munin-explorer-kodeverk*`,
+    `munin-explorer-codes*`, `munin-explorer-group`, and the nine `munin-explorer-kilde*` names in
+    `KildeView`. The samples style them for arrangement — the root as a grid at desktop width,
+    `-filters`, `-detail`, `-drilldown`, `-kodeverk*` and `-codes*` for spacing, indentation and a
+    rule between rows, the kilde view's name block, main column and sidebar as a page layout — and
+    they draw `munin-explorer-group` as Runa's blue uppercase eyebrow. A host that defines none of
+    them loses no information: the group headings, for instance, are already sized by the `headline
+    headline-xxs` they wear, so what an undefined `munin-explorer-group` costs is the eyebrow's
+    look, not the fact that it is a heading.
+  - Names that carry meaning nothing else carries, so a host without Stiler's rules has to draw
+    them itself: `munin-explorer-crumb` carries the link affordance for a trail step, which is a
+    `<button>` — the kilde step of the panel's kilde trail, and every step of the hierarchy trail
+    over the results — and without it a trail reads as plain text with no sign it can be pressed;
+    `munin-explorer-breadcrumb` with its `__clear` is that hierarchy trail's own wrapper, where the
+    chevrons between the steps come from and where the × that empties the hierarchy sits, and an
+    undrawn one is a numbered list with a stray × after it; and inside the `munin-explorer-period*`
+    wrapper, `__track`, `__fill` and `__track--ongoing` are the period bar itself — only its width
+    comes from an inline style, so an undrawn bar renders as nothing at all. The period is still
+    legible without it, because the dates are next to it in words, in `__range`.
 
   Ids are a separate family, each suffixed with a per-instance discriminator so two mounts on one
-  page cannot collide: `variable-explorer-title-*`, `-search-*`, `-heading-*`, `-toggle-*`,
-  `-detail-*`, `-tab-*`, `-source-*` and the rest. `variable-explorer-source-*` is worth naming,
+  page cannot collide: `munin-explorer-title-*`, `-search-*`, `-heading-*`, `-toggle-*`,
+  `-detail-*`, `-tab-*`, `-source-*` and the rest. `munin-explorer-source-*` is worth naming,
   because it reads like a class and is not one: the drill-in region it identifies wears the class
-  `variable-explorer-drilldown`, so a host or a test reaching for `.variable-explorer-source` comes
-  up empty.
+  `munin-explorer-drilldown`, so a host or a test reaching for `.munin-explorer-source` comes up
+  empty.
 
   `Render_Always_ThenNoClassNamesAreInventedApartFromTheDomHandles` pins that prefix for a closed
-  result list, spelling out which of its eight names are ours and which are theirs; the panel,
-  drill-in and kilde names are past its reach, because nothing is expanded there. For seeing the
-  whole thing dressed, the sample hosts' `host.css` stands in for both stylesheets, divided by
-  comment into which rules stand in for which.
+  result list, spelling out its eight names exactly; the panel, drill-in and kilde names are past
+  its reach, because nothing is expanded there. For seeing the whole thing dressed, the sample
+  hosts' `host.css` stands in for the host stylesheets, divided by comment into which rules stand
+  in for which.
 - **No `HeadOutlet`.** Not available in the Optimizely host — the component cannot set the page
   title or inject meta tags.
 - **Nothing host-specific.** `IHttpContextAccessor`, `Microsoft.AspNetCore.Components.Server.*`,

@@ -218,7 +218,7 @@ public partial class VariableExplorer
                 // reader looks first. aria-expanded and aria-controls say so, so a screen reader is
                 // not told about two unrelated buttons that happen to do the same thing.
                 builder.OpenElement(5, "button");
-                builder.AddAttribute(6, "class", "hd-button-reset variable-explorer-crumb");
+                builder.AddAttribute(6, "class", "hd-button-reset munin-explorer-crumb");
                 builder.AddAttribute(7, "type", "button");
                 // No aria-expanded and no aria-controls. Both describe a control that discloses
                 // something on the same screen, and this one does not: it replaces the list with
@@ -443,12 +443,12 @@ public partial class VariableExplorer
         foreach (var group in links.GroupBy(entry => entry.Link.KodeverkType, StringComparer.OrdinalIgnoreCase))
         {
             builder.OpenElement(seq, $"h{RowLevel}");
-            builder.AddAttribute(seq + 1, "class", "headline headline-xxs margin--none variable-explorer-group");
+            builder.AddAttribute(seq + 1, "class", "headline headline-xxs margin--none munin-explorer-group");
             builder.AddContent(seq + 2, T.KodeverkTypeLabel(group.Key));
             builder.CloseElement();
 
             builder.OpenElement(seq + 3, "ul");
-            builder.AddAttribute(seq + 4, "class", "variable-explorer-kodeverk");
+            builder.AddAttribute(seq + 4, "class", "munin-explorer-kodeverk");
             builder.AddContent(seq + 5, KodeverkItems(group));
             builder.CloseElement();
 
@@ -470,10 +470,10 @@ public partial class VariableExplorer
             // or collapsed code list, and two links reordered under one heading would otherwise
             // swap the lists open beneath them.
             builder.SetKey(key);
-            builder.AddAttribute(seq + 1, "class", "variable-explorer-kodeverk__item");
+            builder.AddAttribute(seq + 1, "class", "munin-explorer-kodeverk__item");
 
             builder.OpenElement(seq + 2, "p");
-            builder.AddAttribute(seq + 3, "class", "variable-explorer-kodeverk__name");
+            builder.AddAttribute(seq + 3, "class", "munin-explorer-kodeverk__name");
             builder.AddAttribute(seq + 4, "id", KodeverkNameId(index));
 
             if (Trimmed(link.DisplayName) is { } name)
@@ -491,7 +491,7 @@ public partial class VariableExplorer
             builder.CloseElement();
 
             builder.OpenElement(seq + 8, "p");
-            builder.AddAttribute(seq + 9, "class", "caption variable-explorer-kodeverk__reference");
+            builder.AddAttribute(seq + 9, "class", "caption munin-explorer-kodeverk__reference");
             builder.AddContent(seq + 10, $"{T.FieldKodeverkReference}: {link.KodeverkReference}");
             builder.CloseElement();
 
@@ -535,7 +535,7 @@ public partial class VariableExplorer
 
         builder.OpenElement(7, "div");
         builder.AddAttribute(8, "id", KodeverkCodesId(index));
-        builder.AddAttribute(9, "class", "variable-explorer-codes");
+        builder.AddAttribute(9, "class", "munin-explorer-codes");
         builder.AddContent(10, KodeverkCodesBody(key, index));
         builder.CloseElement();
     };
@@ -589,7 +589,7 @@ public partial class VariableExplorer
     /// <remarks>
     /// A real <c>&lt;table&gt;</c>, one of the two this package emits — the other is the
     /// datasamlinger list in <c>KildeView</c>. The results list is not one of them: it is
-    /// helsedata's own <c>variable-data-list</c>, a <c>&lt;ul&gt;</c> with a header row of
+    /// our <c>munin-explorer-data-list</c>, a <c>&lt;ul&gt;</c> with a header row of
     /// <c>&lt;div&gt;</c>s, because that is the shape their stylesheet dresses. Four columns of
     /// code values have no such alternative shape —
     /// a definition list per code would lose the alignment that makes a code list readable at all.
@@ -597,7 +597,7 @@ public partial class VariableExplorer
     /// an invented class name: an unstyled table still aligns its columns, where an unstyled
     /// <c>kodeverk-table</c> would render as nothing.
     /// <para>
-    /// <c>variable-explorer-codes</c> is a handle, the same kind of name as the others in that
+    /// <c>munin-explorer-codes</c> is a handle, the same kind of name as the others in that
     /// prefix, and carries no rule in either helsedata stylesheet. Named from the link's own line
     /// above it rather than given a <c>&lt;caption&gt;</c>, which is what the results list does and
     /// for the same reason — the name is already on screen, one line up.
@@ -606,7 +606,7 @@ public partial class VariableExplorer
     private RenderFragment CodesTable(int index, IReadOnlyList<KodeverkCode> codes) => builder =>
     {
         builder.OpenElement(0, "table");
-        builder.AddAttribute(1, "class", "variable-explorer-codes__table");
+        builder.AddAttribute(1, "class", "munin-explorer-codes__table");
         builder.AddAttribute(2, "aria-labelledby", KodeverkNameId(index));
 
         builder.OpenElement(3, "thead");

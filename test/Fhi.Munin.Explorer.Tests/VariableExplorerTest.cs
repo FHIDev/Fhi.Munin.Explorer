@@ -12,6 +12,7 @@ namespace Fhi.Munin.Explorer.Tests;
 
 public class VariableExplorerTest : BunitContext
 {
+
     private static Page<VariableSummary> OnePage(params VariableSummary[] rows) =>
         new() { Items = rows, TotalCount = rows.Length, PageNumber = 1, Size = 25, TotalPages = 1 };
 
@@ -116,7 +117,7 @@ public class VariableExplorerTest : BunitContext
 
         var cut = RenderWith(client);
 
-        Assert.Equal(2, cut.FindAll("ul.variable-data-list > li").Count);
+        Assert.Equal(2, cut.FindAll("ul.munin-explorer-data-list > li").Count);
         Assert.Contains("1. Tale", cut.Markup);
         Assert.Contains("V_ALS.F1.ALSFRSR1TALE", cut.Markup);
         Assert.Contains("2 variabler", cut.Markup);
@@ -127,7 +128,7 @@ public class VariableExplorerTest : BunitContext
     {
         var cut = RenderWith(new FakeClient(OnePage()));
 
-        Assert.Empty(cut.FindAll("ul.variable-data-list > li"));
+        Assert.Empty(cut.FindAll("ul.munin-explorer-data-list > li"));
         Assert.Contains("Ingen variabler passet søket", cut.Markup);
     }
 
@@ -137,7 +138,7 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(new FailingClient());
 
         Assert.Contains("Kunne ikke hente variabler", cut.Markup);
-        Assert.Empty(cut.FindAll("ul.variable-data-list > li"));
+        Assert.Empty(cut.FindAll("ul.munin-explorer-data-list > li"));
     }
 
     [Fact]
@@ -448,7 +449,7 @@ public class VariableExplorerTest : BunitContext
         var labels = SortButtons(cut).Select(k => k.TextContent).ToList();
 
         Assert.Equal(["Name ↑", "Source", "Data collection", "Variable group"], labels);
-        Assert.NotNull(cut.Find($"{SortControl} .variable-data-list__item__row--header"));
+        Assert.NotNull(cut.Find($"{SortControl} .munin-explorer-data-list__item__row--header"));
     }
 
     // ---------------------------------------------------------------------------------
@@ -508,7 +509,7 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Equal("svelging", client.LastSearch);
         Assert.DoesNotContain("Kunne ikke hente variabler", cut.Markup);
-        Assert.Single(cut.FindAll("ul.variable-data-list > li"));
+        Assert.Single(cut.FindAll("ul.munin-explorer-data-list > li"));
     }
 
     // ---------------------------------------------------------------------------------
@@ -544,7 +545,7 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
         Assert.Contains("sortert på Standard, stigende",
-                        cut.Find("ul.variable-data-list").GetAttribute("aria-label")!);
+                        cut.Find("ul.munin-explorer-data-list").GetAttribute("aria-label")!);
     }
 
     [Fact]
@@ -580,7 +581,7 @@ public class VariableExplorerTest : BunitContext
         // real buttons and that the header sits above the list rather than floating beside it.
         var cut = RenderWith(new FakeClient(OnePage()));
 
-        Assert.NotNull(cut.Find($"{SortControl} .variable-data-list__item__row--header"));
+        Assert.NotNull(cut.Find($"{SortControl} .munin-explorer-data-list__item__row--header"));
         Assert.All(SortButtons(cut), k => Assert.Equal("button", k.GetAttribute("type")));
     }
 
@@ -652,8 +653,8 @@ public class VariableExplorerTest : BunitContext
 
         HideColumn(cut, "Kode");
 
-        Assert.Empty(cut.FindAll(".variable-dataitem-header__code"));
-        Assert.Empty(cut.FindAll(".variable-dataitem-main__code"));
+        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__code"));
+        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main__code"));
         Assert.Equal("false", ColumnToggle(cut, "Kode").GetAttribute("aria-pressed"));
     }
 
@@ -665,7 +666,7 @@ public class VariableExplorerTest : BunitContext
         HideColumn(cut, "Datasamling");
         ColumnToggle(cut, "Datasamling").Click();
 
-        Assert.NotNull(cut.Find(".variable-dataitem-main__dataCollection"));
+        Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__dataCollection"));
         Assert.Equal("true", ColumnToggle(cut, "Datasamling").GetAttribute("aria-pressed"));
     }
 
@@ -695,7 +696,7 @@ public class VariableExplorerTest : BunitContext
         last.Click();
 
         Assert.Equal("true", ColumnToggle(cut, "Dataperiode").GetAttribute("aria-pressed"));
-        Assert.NotNull(cut.Find(".variable-dataitem-main__period"));
+        Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__period"));
     }
 
     [Fact]
@@ -708,8 +709,34 @@ public class VariableExplorerTest : BunitContext
             HideColumn(cut, column);
         }
 
-        Assert.NotNull(cut.Find(".variable-dataitem-main__name"));
-        Assert.NotNull(cut.Find(".variable-dataitem-header__name"));
+        Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__name"));
+        Assert.NotNull(cut.Find(".munin-explorer-dataitem-header__name"));
+    }
+
+    [Fact]
+    public void Columns_WhenEveryOptionalOneIsOn_ThenEveryCellNameIsOneSomeStylesheetDefines()
+    {
+        // The column cells are the only class names the package composes at runtime -
+        // $"munin-explorer-dataitem-main__{key}" and $"sortable-header
+        // munin-explorer-dataitem-header__{key}" - and neither guard could see them.
+        //
+        // The shell guard reads literals out of src/, finds only the
+        // munin-explorer-dataitem-main__ stem, and drops it, correctly: a stem is not a name. And
+        // the Orphans call further down renders the DEFAULT column set, which leaves Status out
+        // until a reader turns it on. So the composed names went unchecked from both directions.
+        //
+        // That was harmless while they were helsedata's names, listed in host-class-names.txt and
+        // styled by their stylesheet. After the rename they are ours, the sample stylesheet is the
+        // only thing that defines them, and an unstyled name is the failure this repo has now hit
+        // twice. Rendering with every optional column on is what makes them exist to be checked.
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        foreach (var column in new[] { "Status" })
+        {
+            ColumnToggle(cut, column).Click();
+        }
+
+        Assert.Equal([], HostClassNames.Orphans(HostClassNames.Of(cut.FindAll("[class]"))));
     }
 
     [Fact]
@@ -720,12 +747,12 @@ public class VariableExplorerTest : BunitContext
         // which is worse than not offering it.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        Assert.Empty(cut.FindAll(".variable-dataitem-main__status"));
+        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main__status"));
 
         ColumnToggle(cut, "Status").Click();
 
-        Assert.NotNull(cut.Find(".variable-dataitem-main__status"));
-        Assert.NotNull(cut.Find(".variable-dataitem-header__status"));
+        Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__status"));
+        Assert.NotNull(cut.Find(".munin-explorer-dataitem-header__status"));
     }
 
     [Fact]
@@ -740,19 +767,19 @@ public class VariableExplorerTest : BunitContext
 
         ClickFacet(cut, "Vis historiske");
 
-        Assert.NotNull(cut.Find(".variable-dataitem-main__status"));
+        Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__status"));
 
         ColumnToggle(cut, "Status").Click();
 
-        Assert.Empty(cut.FindAll(".variable-dataitem-main__status"));
-        Assert.Empty(cut.FindAll(".variable-dataitem-header__status"));
+        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main__status"));
+        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__status"));
         Assert.Equal("false", ColumnToggle(cut, "Status").GetAttribute("aria-pressed"));
 
         // And it stays off through the filter that used to own it: their choice wins from here.
         ClickFacet(cut, "Vis historiske");
         ClickFacet(cut, "Vis historiske");
 
-        Assert.Empty(cut.FindAll(".variable-dataitem-main__status"));
+        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main__status"));
         Assert.Equal("false", ColumnToggle(cut, "Status").GetAttribute("aria-pressed"));
     }
 
@@ -763,7 +790,7 @@ public class VariableExplorerTest : BunitContext
                              b => b.Add(c => c.Filter, new VariableFilter { IncludeHistorical = true }));
 
         Assert.Equal("true", ColumnToggle(cut, "Status").GetAttribute("aria-pressed"));
-        Assert.NotNull(cut.Find(".variable-dataitem-main__status"));
+        Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__status"));
     }
 
     [Fact]
@@ -776,7 +803,7 @@ public class VariableExplorerTest : BunitContext
         HideColumn(cut, "Kilde");
         cut.Find("form").Submit();
 
-        Assert.Empty(cut.FindAll(".variable-dataitem-main__source"));
+        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main__source"));
     }
 
     [Fact]
@@ -798,7 +825,7 @@ public class VariableExplorerTest : BunitContext
 
         HideColumn(cut, "Kilde");
 
-        Assert.Empty(cut.FindAll(".variable-dataitem-header__source"));
+        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__source"));
         Assert.Empty(cut.FindAll("[aria-sort]"));
 
         // The list is still in that order, nothing was re-fetched to get there, and the live
@@ -812,7 +839,7 @@ public class VariableExplorerTest : BunitContext
         ColumnToggle(cut, "Kilde").Click();
 
         Assert.Equal("descending",
-                     cut.Find(".variable-dataitem-header__source").GetAttribute("aria-sort"));
+                     cut.Find(".munin-explorer-dataitem-header__source").GetAttribute("aria-sort"));
     }
 
     [Fact]
@@ -837,8 +864,8 @@ public class VariableExplorerTest : BunitContext
 
         ClickFacet(cut, "Vis historiske");
 
-        Assert.NotNull(cut.Find(".variable-dataitem-main__status"));
-        Assert.NotNull(cut.Find(".variable-dataitem-header__status"));
+        Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__status"));
+        Assert.NotNull(cut.Find(".munin-explorer-dataitem-header__status"));
         Assert.Equal("true", ColumnToggle(cut, "Status").GetAttribute("aria-pressed"));
     }
 
@@ -860,8 +887,8 @@ public class VariableExplorerTest : BunitContext
         ClickFacet(cut, "Vis historiske");
         ColumnToggle(cut, "Kode").Click();
 
-        Assert.NotNull(cut.Find(".variable-dataitem-main__code"));
-        Assert.Empty(cut.FindAll(".variable-dataitem-main__status"));
+        Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__code"));
+        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main__status"));
     }
 
     [Fact]
@@ -883,18 +910,18 @@ public class VariableExplorerTest : BunitContext
     [Fact]
     public void Render_Always_ThenThePickerBorrowsItsClassNamesAndInventsNone()
     {
-        // The companion to the variable-explorer guard further down, which only inspects names in
+        // The companion to the munin-explorer guard further down, which only inspects names in
         // that prefix — the picker wears eight names outside it, and an invented ninth would slip
         // past that test unnoticed. Every name here was read back off helsedata's compiled
         // stylesheets; one that is not renders as a raw browser default inside a styled page.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        var picker = cut.Find(".variable-explorer-header");
+        var picker = cut.Find(".munin-explorer-header");
 
         var names = picker.QuerySelectorAll("[class]")
             .Prepend(picker)
             .SelectMany(e => e.ClassName!.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-            .Where(k => !k.StartsWith("variable-explorer", StringComparison.Ordinal))
+            .Where(k => !HostClassNames.IsOwnStructureName(k))
             .Distinct()
             .Order(StringComparer.Ordinal)
             .ToList();
@@ -904,7 +931,7 @@ public class VariableExplorerTest : BunitContext
             "button-square--ghost",           // Stiler, the ghost colour the sort and facet
                                               //   buttons already wear
             "dropdown",                       // helsedata, variables.css — the trigger's width:
-                                              //   `.variable-explorer-header__actions .dropdown
+                                              //   `.munin-explorer-header__actions .dropdown
                                               //   { width: 100% }`, unconditional
             "dropdown-choicepicker",          // helsedata, variables.css — the open list
             "dropdown-choicepicker--right",
@@ -931,17 +958,17 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
         // Both their names, and the exact pair: `dropdown` is the width their actions row gives a
-        // trigger, `variable-explorer__dropdown` the z-index over the rows below. Asserted as a
-        // set rather than with Contains, which `variable-explorer__dropdown` would satisfy on its
+        // trigger, `munin-explorer__dropdown` the z-index over the rows below. Asserted as a
+        // set rather than with Contains, which `munin-explorer__dropdown` would satisfy on its
         // own and so could not tell the two apart.
-        var dropdown = cut.Find(".variable-explorer-header__actions > details");
-        Assert.Equal(["dropdown", "variable-explorer__dropdown"],
+        var dropdown = cut.Find(".munin-explorer-header__actions > details");
+        Assert.Equal(["dropdown", "munin-explorer__dropdown"],
                      dropdown.ClassName!.Split(' ', StringSplitOptions.RemoveEmptyEntries));
         Assert.Contains("relative", dropdown.GetAttribute("style")!);
 
         // A <details>, because their dropdown opens and closes from React state and this package
         // ships no script. Same reason the filter facets are disclosures.
-        var summary = cut.Find(".variable-explorer-header__actions > details > summary");
+        var summary = cut.Find(".munin-explorer-header__actions > details > summary");
         Assert.Contains("hd-button-square", summary.ClassName!);
         Assert.Equal("Kolonner", summary.TextContent);
 
@@ -962,7 +989,7 @@ public class VariableExplorerTest : BunitContext
         // period recorded rather than as a host that has not styled it.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        var cell = cut.Find(".variable-dataitem-main__period");
+        var cell = cut.Find(".munin-explorer-dataitem-main__period");
 
         Assert.Equal("Dataperiode: ", cell.QuerySelector(".screenreader-only")!.TextContent);
         Assert.Contains("2010", cell.TextContent);
@@ -993,14 +1020,14 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(new FakeClient(OnePage(stillRunning)),
                              b => b.Add(c => c.Language, "en"));
 
-        var cell = cut.Find(".variable-dataitem-main__period");
+        var cell = cut.Find(".munin-explorer-dataitem-main__period");
 
         Assert.Contains("Ongoing", cell.TextContent, StringComparison.Ordinal);
         Assert.Empty(cell.QuerySelectorAll("[lang]"));
 
         // The neighbouring columns still are Norwegian, so this is a distinction the markup draws
         // rather than a marker that went missing everywhere.
-        Assert.Equal("no", cut.Find(".variable-dataitem-main__source span[lang]").GetAttribute("lang"));
+        Assert.Equal("no", cut.Find(".munin-explorer-dataitem-main__source span[lang]").GetAttribute("lang"));
     }
 
     [Fact]
@@ -1022,7 +1049,7 @@ public class VariableExplorerTest : BunitContext
 
         var cut = RenderWith(new FakeClient(OnePage(noPeriod)));
 
-        var cell = cut.Find(".variable-dataitem-main__period");
+        var cell = cut.Find(".munin-explorer-dataitem-main__period");
 
         Assert.Equal("Dataperiode: Ikke oppgitt", cell.TextContent);
         Assert.DoesNotContain("Pågående", cell.TextContent, StringComparison.Ordinal);
@@ -1049,7 +1076,7 @@ public class VariableExplorerTest : BunitContext
 
         var cut = RenderWith(new FakeClient(OnePage(endedOnly)));
 
-        var cell = cut.Find(".variable-dataitem-main__period");
+        var cell = cut.Find(".munin-explorer-dataitem-main__period");
 
         Assert.StartsWith("Dataperiode: ? – ", cell.TextContent, StringComparison.Ordinal);
         Assert.Contains("2025", cell.TextContent, StringComparison.Ordinal);
@@ -1083,12 +1110,12 @@ public class VariableExplorerTest : BunitContext
     public void Render_Always_ThenEveryClassNameIsOneSomeStylesheetActuallyDefines()
     {
         // The companion to the assertion below, and the wider of the two. That one pins the names in
-        // the variable-explorer prefix exactly, which is the right shape for names we invent — a
+        // the munin-explorer prefix exactly, which is the right shape for names we invent — a
         // ninth appearing is news. This one asks the different question, of every class in the DOM
         // and not just that prefix: does any stylesheet, ours or helsedata's, define it at all?
         //
-        // Borrowed names needed their own check because nothing was watching them. `variable-meta__body`
-        // came off this view: it wears the look of helsedata's `variable-meta` family, they define the
+        // Borrowed names needed their own check because nothing was watching them. Their `variable-meta__body`
+        // came off this view: it wore the look of helsedata's `variable-meta` family, they define the
         // family but not that member, and so it promised a rule that has never existed anywhere.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
                             b => b.Add(c => c.Search, "tale"));
@@ -1099,10 +1126,11 @@ public class VariableExplorerTest : BunitContext
     [Fact]
     public void Render_Always_ThenNoClassNamesAreInventedApartFromTheDomHandles()
     {
-        // Eight names in the variable-explorer prefix: two of our own, and both DOM handles rather
-        // than style hooks — nothing in this package or in Stiler defines a rule for either — and
-        // six of helsedata's, every one read back off their compiled variables.css. This is the
-        // guard that says so out loud. The list is exact on purpose: a ninth name appearing here,
+        // Eight names in the munin-explorer prefix. Two are DOM handles rather than style hooks -
+        // nothing in this package or in Stiler defines a rule for either, and nothing should. The
+        // other six were helsedata's until the rename, were read back off their compiled
+        // variables.css, and now live in Stiler under components/munin-explorer/. This is the
+        // guard that says so out loud.
         // or a name in it that cannot be pointed at in a stylesheet, is the failure this package
         // exists to avoid, and it has happened twice.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
@@ -1110,30 +1138,30 @@ public class VariableExplorerTest : BunitContext
 
         var invented = cut.FindAll("[class]")
             .SelectMany(e => e.ClassName!.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-            .Where(k => k.StartsWith("variable-explorer", StringComparison.Ordinal))
+            .Where(HostClassNames.IsOwnStructureName)
             .Distinct()
             .ToList();
 
         Assert.Equal(
         [
-            "variable-explorer",            // ours, a handle
-            "variable-explorer-filters",    // ours, a handle
-            "variable-explorer-container",  // theirs, variables.css (10 rules)
-            "variable-explorer-results",    // theirs, variables.css (6 rules)
+            "munin-explorer",            // ours, a handle
+            "munin-explorer-filters",    // ours, a handle
+            "munin-explorer-container",  // ours, Stiler components/munin-explorer/
+            "munin-explorer-results",    // ours, Stiler components/munin-explorer/
             // The column picker, all four theirs, all four read off the compiled variables.css
             // rather than guessed at. The one they do NOT include is `sortable-dropdown`, which
             // the bead pointed at: that is their mobile sort control, `display: none` above
             // 1280px, so a picker wearing it would be invisible on every desktop.
-            "variable-explorer-header",                  // theirs, variables.css
-            "variable-explorer-header__actions",         // theirs, variables.css
-            "variable-explorer__dropdown",               // theirs, variables.css (the z-index)
-            "variable-explorer-header__actions-button",  // theirs, variables.css
+            "munin-explorer-header",                  // ours, Stiler components/munin-explorer/
+            "munin-explorer-header__actions",         // ours, Stiler components/munin-explorer/
+            "munin-explorer__dropdown",               // ours, Stiler (the z-index)
+            "munin-explorer-header__actions-button",  // ours, Stiler components/munin-explorer/
         ], invented);
-        Assert.Equal("variable-explorer", cut.Find("section").ClassName);
+        Assert.Equal("munin-explorer", cut.Find("section").ClassName);
 
         // The filter panel wears Stiler's fieldset alongside the handle, so a host that styles
         // nothing still gets the fieldset the sort control gets.
-        Assert.Contains("form-fieldset", cut.Find(".variable-explorer-filters").ClassName!);
+        Assert.Contains("form-fieldset", cut.Find(".munin-explorer-filters").ClassName!);
     }
 
     [Fact]
@@ -1141,9 +1169,9 @@ public class VariableExplorerTest : BunitContext
     {
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        Assert.NotNull(cut.Find("ul.variable-data-list > li.variable-data-list__item > div.variable-data-list__item__row"));
-        Assert.NotNull(cut.Find(".variable-dataitem-main__name"));
-        Assert.NotNull(cut.Find(".variable-dataitem-main__column > .variable-dataitem-main__column__text"));
+        Assert.NotNull(cut.Find("ul.munin-explorer-data-list > li.munin-explorer-data-list__item > div.munin-explorer-data-list__item__row"));
+        Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__name"));
+        Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__column > .munin-explorer-dataitem-main__column__text"));
     }
 
     [Fact]
@@ -1252,7 +1280,7 @@ public class VariableExplorerTest : BunitContext
 
         // aria-label rather than a clipped <caption>: Stiler has no visually-hidden rule, so
         // markup that needs one is markup that shows its scaffolding on helsedata's page.
-        var name = cut.Find("ul.variable-data-list").GetAttribute("aria-label")!;
+        var name = cut.Find("ul.munin-explorer-data-list").GetAttribute("aria-label")!;
 
         Assert.Contains("1 variabel funnet", name);
         Assert.Contains("«tale»", name);
@@ -1263,20 +1291,20 @@ public class VariableExplorerTest : BunitContext
     {
         // This guarded the opposite until the row became a flex container. A heading per result
         // would let a screen-reader user move between them with the heading rotor, which is why it
-        // was there — but helsedata sizes the name cell with `variable-dataitem-main__name`, and a
+        // was there — but helsedata sizes the name cell with `munin-explorer-dataitem-main__name`, and a
         // heading in between becomes the flex item, so the column stops lining up with its header.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
                             b => b.Add(c => c.HeadingLevel, 3));
 
         // No heading per result. An earlier version wrapped the name in one so results could be
         // walked with a heading rotor, but their row is `display: flex` and the name cell is sized
-        // by `.variable-dataitem-main__name` — a heading in between becomes the flex item and the
+        // by `.munin-explorer-dataitem-main__name` — a heading in between becomes the flex item and the
         // column falls out of line with its header. Neither reference wraps it: helsedata puts the
         // button straight in the row, and Runa's rows are table rows. The rows are a list of list
         // items, each with a named disclosure carrying aria-expanded.
         Assert.Empty(cut.FindAll("li h1, li h2, li h3, li h4, li h5, li h6"));
 
-        var name = cut.Find("li .variable-dataitem-main__name");
+        var name = cut.Find("li .munin-explorer-dataitem-main__name");
 
         Assert.Equal("1. Tale", name.TextContent);
         Assert.Equal("BUTTON", name.TagName);
@@ -1289,7 +1317,7 @@ public class VariableExplorerTest : BunitContext
         // its own does not say which field it is.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "V_ALS.F1.TALE"))));
 
-        var info = cut.Find(".variable-dataitem-main").TextContent;
+        var info = cut.Find(".munin-explorer-dataitem-main").TextContent;
 
         // The column header names the field on screen, so no cell shows its own label. The label
         // is still in the DOM for a screen reader moving down a column, inside Stiler's
@@ -1298,11 +1326,11 @@ public class VariableExplorerTest : BunitContext
         Assert.Contains("Als registeret", info);
         Assert.Contains("Inklusjon", info);
 
-        var cell = cut.Find(".variable-dataitem-main__code");
+        var cell = cut.Find(".munin-explorer-dataitem-main__code");
 
         Assert.Equal("Kode: ", cell.QuerySelector(".screenreader-only")!.TextContent);
         Assert.Equal("V_ALS.F1.TALE",
-                     cell.QuerySelector(".variable-dataitem-main__column__text")!.TextContent);
+                     cell.QuerySelector(".munin-explorer-dataitem-main__column__text")!.TextContent);
         // Periode is not a Runa column, so it is not a row column here either — it is in the panel.
         Assert.DoesNotContain("Periode:", info);
     }
@@ -1315,7 +1343,7 @@ public class VariableExplorerTest : BunitContext
         // wrap instead of scrolling, so that tab stop is gone rather than merely moved.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        var list = cut.Find("ul.variable-data-list");
+        var list = cut.Find("ul.munin-explorer-data-list");
 
         Assert.Equal("false", list.GetAttribute("aria-busy"));
         Assert.False(list.HasAttribute("tabindex"));
@@ -1337,9 +1365,9 @@ public class VariableExplorerTest : BunitContext
             KildeShortName = "ALS",
         })));
 
-        var cell = cut.Find(".variable-dataitem-main__source");
+        var cell = cut.Find(".munin-explorer-dataitem-main__source");
 
-        Assert.Equal("ALS", cell.QuerySelector(".variable-dataitem-main__column__text")!.TextContent);
+        Assert.Equal("ALS", cell.QuerySelector(".munin-explorer-dataitem-main__column__text")!.TextContent);
         Assert.Equal("Als registeret", cell.GetAttribute("title"));
     }
 
@@ -1355,10 +1383,10 @@ public class VariableExplorerTest : BunitContext
             KildeName = "Et register uten kortnavn",
         })));
 
-        var cell = cut.Find(".variable-dataitem-main__source");
+        var cell = cut.Find(".munin-explorer-dataitem-main__source");
 
         Assert.Equal("Et register uten kortnavn",
-                     cell.QuerySelector(".variable-dataitem-main__column__text")!.TextContent);
+                     cell.QuerySelector(".munin-explorer-dataitem-main__column__text")!.TextContent);
     }
 
     [Fact]
@@ -1372,12 +1400,12 @@ public class VariableExplorerTest : BunitContext
 
         var cut = RenderWith(new FakeClient(OnePage(withoutKilde)));
 
-        var info = cut.Find(".variable-dataitem-main");
+        var info = cut.Find(".munin-explorer-dataitem-main");
 
         Assert.Contains("Ikke oppgitt", info.TextContent);
         // The field name is present for assistive technology, hidden from the eye.
         Assert.Equal("Kilde: ",
-                     cut.Find(".variable-dataitem-main__source .screenreader-only").TextContent);
+                     cut.Find(".munin-explorer-dataitem-main__source .screenreader-only").TextContent);
         Assert.DoesNotContain("—", info.TextContent);
     }
 
@@ -1397,7 +1425,7 @@ public class VariableExplorerTest : BunitContext
 
         var cut = RenderWith(new FakeClient(OnePage(withDescription)));
         // The description is not in the row any more — see the panel.
-        Assert.DoesNotContain("Hvordan er talen?", cut.Find(".variable-dataitem-main").TextContent);
+        Assert.DoesNotContain("Hvordan er talen?", cut.Find(".munin-explorer-dataitem-main").TextContent);
     }
 
     [Fact]
@@ -1410,9 +1438,9 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
                             b => b.Add(c => c.Language, "en"));
 
-        Assert.Equal("no", cut.Find(".variable-dataitem-main__name .variable-dataitem-main__column__text").GetAttribute("lang"));
-        Assert.Equal("no", cut.Find(".variable-dataitem-main__column__text span[lang]").GetAttribute("lang"));
-        Assert.False(cut.Find("ul.variable-data-list").HasAttribute("lang"));
+        Assert.Equal("no", cut.Find(".munin-explorer-dataitem-main__name .munin-explorer-dataitem-main__column__text").GetAttribute("lang"));
+        Assert.Equal("no", cut.Find(".munin-explorer-dataitem-main__column__text span[lang]").GetAttribute("lang"));
+        Assert.False(cut.Find("ul.munin-explorer-data-list").HasAttribute("lang"));
     }
 
     [Fact]
@@ -1508,16 +1536,16 @@ public class VariableExplorerTest : BunitContext
         var client = new SlowClient(hits);
         var cut = RenderWith(client);
 
-        Assert.Equal("false", cut.Find("ul.variable-data-list").GetAttribute("aria-busy"));
+        Assert.Equal("false", cut.Find("ul.munin-explorer-data-list").GetAttribute("aria-busy"));
 
         cut.Find("form").Submit(); // second search, still in flight
 
-        Assert.Equal("true", cut.Find("ul.variable-data-list").GetAttribute("aria-busy"));
+        Assert.Equal("true", cut.Find("ul.munin-explorer-data-list").GetAttribute("aria-busy"));
 
         await cut.InvokeAsync(() => client.Answer(hits));
 
         cut.WaitForAssertion(() =>
-            Assert.Equal("false", cut.Find("ul.variable-data-list").GetAttribute("aria-busy")));
+            Assert.Equal("false", cut.Find("ul.munin-explorer-data-list").GetAttribute("aria-busy")));
     }
 
     [Fact]
@@ -1933,7 +1961,7 @@ public class VariableExplorerTest : BunitContext
         cut.Find("form").Submit();
 
         Assert.Contains("Kunne ikke hente variabler", cut.Markup);
-        Assert.Empty(cut.FindAll("ul.variable-data-list > li"));
+        Assert.Empty(cut.FindAll("ul.munin-explorer-data-list > li"));
         Assert.Empty(cut.FindAll("div.variables-pagination"));
     }
 
@@ -1957,7 +1985,7 @@ public class VariableExplorerTest : BunitContext
         Assert.Equal(8, client.LastPage); // asked for 12, told it was gone, went to the last real one
         Assert.Equal("Side 8 av 8", Position(cut));
         Assert.Contains("Viser 176–200 av 200 variabler funnet", StatusLine(cut));
-        Assert.Equal(25, cut.FindAll("ul.variable-data-list > li").Count);
+        Assert.Equal(25, cut.FindAll("ul.munin-explorer-data-list > li").Count);
     }
 
     [Fact]
@@ -2052,7 +2080,7 @@ public class VariableExplorerTest : BunitContext
         Assert.NotEmpty(cut.FindAll("a.skiplink-pagination"));
         Assert.Equal("Side 1 av 1", Position(cut));
         Assert.Contains("10 variabler funnet", StatusLine(cut)); // the whole result, so no range
-        Assert.Equal(10, cut.FindAll("ul.variable-data-list > li").Count);
+        Assert.Equal(10, cut.FindAll("ul.munin-explorer-data-list > li").Count);
 
         // Both ends of a one-page result: neither button can go anywhere, and both say so without
         // being taken away.
@@ -2146,7 +2174,7 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Equal("Side 13 av 13", Position(cut));
         Assert.Contains("Viser 301–312 av 312 variabler funnet", StatusLine(cut));
-        Assert.Equal(12, cut.FindAll("ul.variable-data-list > li").Count);
+        Assert.Equal(12, cut.FindAll("ul.munin-explorer-data-list > li").Count);
     }
 
     [Theory]
@@ -2239,7 +2267,7 @@ public class VariableExplorerTest : BunitContext
         // Ahead of the ROWS, not ahead of the header: the header holds four sort buttons and is
         // worth tabbing through. It is the twenty-five variables the link exists to skip.
         Assert.True(markup.IndexOf("skiplink-pagination", StringComparison.Ordinal)
-                    < markup.IndexOf("<ul class=\"variable-data-list\"", StringComparison.Ordinal));
+                    < markup.IndexOf("<ul class=\"munin-explorer-data-list\"", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -2379,7 +2407,7 @@ public class VariableExplorerTest : BunitContext
 
     private static IReadOnlyList<AngleSharp.Dom.IElement> FacetButtons(
         IRenderedComponent<VariableExplorer> cut) =>
-        cut.FindAll(".variable-explorer-filters button");
+        cut.FindAll(".munin-explorer-filters button");
 
     /// <summary>The facet button whose visible text starts with <paramref name="label"/>.</summary>
     private static AngleSharp.Dom.IElement Facet(IRenderedComponent<VariableExplorer> cut, string label) =>
@@ -2407,7 +2435,7 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(new FilteringClient(OnePage()));
 
         Assert.NotNull(Facet(cut, "Sentralt helseregister"));
-        Assert.DoesNotContain("SentraltHelseregister", cut.Find(".variable-explorer-filters").TextContent);
+        Assert.DoesNotContain("SentraltHelseregister", cut.Find(".munin-explorer-filters").TextContent);
     }
 
     [Fact]
@@ -2652,7 +2680,7 @@ public class VariableExplorerTest : BunitContext
 
         Assert.NotNull(Facet(cut, "Dødsårsaksregisteret"));
         Assert.Contains("Tallene kan være utdaterte", cut.Find("[role='alert']").TextContent);
-        Assert.Single(cut.FindAll("ul.variable-data-list > li"));
+        Assert.Single(cut.FindAll("ul.munin-explorer-data-list > li"));
     }
 
     [Fact]
@@ -2662,7 +2690,7 @@ public class VariableExplorerTest : BunitContext
         // button over nothing is furniture.
         var cut = RenderWith(new FailingClient());
 
-        Assert.Empty(cut.FindAll(".variable-explorer-filters"));
+        Assert.Empty(cut.FindAll(".munin-explorer-filters"));
     }
 
     [Fact]
@@ -2672,7 +2700,7 @@ public class VariableExplorerTest : BunitContext
         // answers with a curated shortlist, and an empty list would otherwise read as a broken one.
         var cut = RenderWith(new FilteringClient(OnePage(), new FilterOptions()));
 
-        var panel = cut.Find(".variable-explorer-filters").TextContent;
+        var panel = cut.Find(".munin-explorer-filters").TextContent;
 
         Assert.DoesNotContain("Instrument", panel, StringComparison.Ordinal);
         Assert.Contains("Velg en datakilde for å se variabelgrupper", panel, StringComparison.Ordinal);
@@ -2928,7 +2956,7 @@ public class VariableExplorerTest : BunitContext
         // stylesheet has never heard of.
         var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        var panel = cut.Find(".variable-explorer-filters");
+        var panel = cut.Find(".munin-explorer-filters");
 
         Assert.NotEmpty(panel.QuerySelectorAll("details > summary"));
         Assert.NotEmpty(panel.QuerySelectorAll("ul li button"));
@@ -2948,7 +2976,7 @@ public class VariableExplorerTest : BunitContext
     private static readonly Guid Inklusjon2 = new("cccccccc-0000-0000-0000-000000000003");
 
     private static IReadOnlyList<IElement> Crumbs(IRenderedComponent<VariableExplorer> cut) =>
-        cut.FindAll(".variable-explorer-breadcrumb ol li button");
+        cut.FindAll(".munin-explorer-breadcrumb ol li button");
 
     private static IElement Crumb(IRenderedComponent<VariableExplorer> cut, string label) =>
         Crumbs(cut).Single(b => b.TextContent.StartsWith(label, StringComparison.Ordinal));
@@ -2980,7 +3008,7 @@ public class VariableExplorerTest : BunitContext
         // same furniture as "Side 1 av 1" between two dead pager buttons.
         var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        Assert.Empty(cut.FindAll(".variable-explorer-breadcrumb"));
+        Assert.Empty(cut.FindAll(".munin-explorer-breadcrumb"));
     }
 
     [Fact]
@@ -2991,7 +3019,7 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderFiltered(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))),
                                  new VariableFilter { DataTypes = ["1"] });
 
-        Assert.Empty(cut.FindAll(".variable-explorer-breadcrumb"));
+        Assert.Empty(cut.FindAll(".munin-explorer-breadcrumb"));
     }
 
     [Fact]
@@ -3162,7 +3190,7 @@ public class VariableExplorerTest : BunitContext
             KildeType = "biobank"
         });
 
-        cut.Find(".variable-explorer-breadcrumb__clear").Click();
+        cut.Find(".munin-explorer-breadcrumb__clear").Click();
 
         Assert.Empty(client.SearchFilter!.KildeIds);
         Assert.Empty(client.SearchFilter!.DelkildeIds);
@@ -3179,9 +3207,9 @@ public class VariableExplorerTest : BunitContext
         var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
         var cut = RenderFiltered(client, new VariableFilter { KildeIds = [Tromso] });
 
-        cut.Find(".variable-explorer-breadcrumb__clear").Click();
+        cut.Find(".munin-explorer-breadcrumb__clear").Click();
 
-        Assert.Empty(cut.FindAll(".variable-explorer-breadcrumb"));
+        Assert.Empty(cut.FindAll(".munin-explorer-breadcrumb"));
     }
 
     [Fact]
@@ -3230,12 +3258,12 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderFiltered(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))),
                                  new VariableFilter { KildeIds = [Tromso] });
 
-        var trail = cut.Find(".variable-explorer-breadcrumb");
+        var trail = cut.Find(".munin-explorer-breadcrumb");
 
         // The span the Norwegian marking hangs on is invisible to a stylesheet too — it exists for
         // the synthesiser, not for a rule.
         Assert.All(trail.QuerySelectorAll("ol, li, span"), e => Assert.False(e.HasAttribute("class")));
-        Assert.All(Crumbs(cut), b => Assert.Equal("hd-button-reset variable-explorer-crumb", b.ClassName));
+        Assert.All(Crumbs(cut), b => Assert.Equal("hd-button-reset munin-explorer-crumb", b.ClassName));
 
         // The list carries the name rather than a <nav> landmark: two explorers on one page would
         // otherwise put two identically named navs in the landmark list with nothing to tell them
@@ -3246,7 +3274,7 @@ public class VariableExplorerTest : BunitContext
         // The × is decoration, so the control that empties the hierarchy says what it does in its
         // accessible name instead — and it sits outside the list, so "list, 1 item" is not counting
         // the button that empties it.
-        var clear = cut.Find(".variable-explorer-breadcrumb__clear");
+        var clear = cut.Find(".munin-explorer-breadcrumb__clear");
 
         Assert.Equal("Fjern hierarkifilteret", clear.GetAttribute("aria-label"));
         Assert.Null(clear.Closest("ol"));
@@ -3280,9 +3308,9 @@ public class VariableExplorerTest : BunitContext
         Assert.Null(CrumbLang(steps[1]));
 
         Assert.Equal("Selected hierarchy",
-                     cut.Find(".variable-explorer-breadcrumb ol").GetAttribute("aria-label"));
+                     cut.Find(".munin-explorer-breadcrumb ol").GetAttribute("aria-label"));
         Assert.Equal("Clear the hierarchy filter",
-                     cut.Find(".variable-explorer-breadcrumb__clear").GetAttribute("aria-label"));
+                     cut.Find(".munin-explorer-breadcrumb__clear").GetAttribute("aria-label"));
     }
 
     [Fact]
@@ -3384,7 +3412,7 @@ public class VariableExplorerTest : BunitContext
 
         Toggles(cut)[0].Click();
 
-        var group = cut.Find(".variable-explorer-group ~ dl:last-of-type");
+        var group = cut.Find(".munin-explorer-group ~ dl:last-of-type");
 
         // SortOrder, not the order the bag happens to enumerate in.
         Assert.Equal(["Opprinnelse", "Kommentar", "Databasereferanse"],
@@ -3448,7 +3476,7 @@ public class VariableExplorerTest : BunitContext
     /// <summary>The properties group's rows, as label/value element pairs.</summary>
     private static (IElement Label, IElement Value)[] PropertyPairs(IRenderedComponent<VariableExplorer> cut)
     {
-        var list = cut.Find(".variable-explorer-group ~ dl:last-of-type");
+        var list = cut.Find(".munin-explorer-group ~ dl:last-of-type");
 
         return [.. list.QuerySelectorAll("div").Select(d => (d.QuerySelector("dt")!, d.QuerySelector("dd")!))];
     }
@@ -3790,12 +3818,12 @@ public class VariableExplorerTest : BunitContext
     }
 
     private static IReadOnlyList<AngleSharp.Dom.IElement> Toggles(IRenderedComponent<VariableExplorer> cut) =>
-        cut.FindAll("ul.variable-data-list .variable-dataitem-main__name");
+        cut.FindAll("ul.munin-explorer-data-list .munin-explorer-dataitem-main__name");
     // The variable's own name is the disclosure — helsedata's pattern. There is no longer a
     // separate "Vis detaljer" button under the metadata line.
 
     private static AngleSharp.Dom.IElement Panel(IRenderedComponent<VariableExplorer> cut) =>
-        cut.Find(".variable-explorer-detail");
+        cut.Find(".munin-explorer-detail");
 
     /// <summary>The panel's values, in the order the definition list draws them.</summary>
     // ---------------------------------------------------------------------------------
@@ -3806,7 +3834,7 @@ public class VariableExplorerTest : BunitContext
 
     private static IReadOnlyList<AngleSharp.Dom.IElement> TabButtons(
         IRenderedComponent<VariableExplorer> cut) =>
-        cut.FindAll(".variable-meta__tabs [role=tab]");
+        cut.FindAll(".munin-explorer-meta__tabs [role=tab]");
 
     [Fact]
     public void Panel_WhenOpened_ThenItHasRunasTwoTabsWithDetailsSelected()
@@ -3854,16 +3882,16 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(TwoRows());
 
         Toggles(cut)[0].Click();
-        cut.Find(".variable-meta__tabs").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
+        cut.Find(".munin-explorer-meta__tabs").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
 
         Assert.Equal("true", TabButtons(cut)[1].GetAttribute("aria-selected"));
 
-        cut.Find(".variable-meta__tabs").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
+        cut.Find(".munin-explorer-meta__tabs").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
 
         // Wraps rather than stopping, so the movement has no dead end.
         Assert.Equal("true", TabButtons(cut)[0].GetAttribute("aria-selected"));
 
-        cut.Find(".variable-meta__tabs").KeyDown(new KeyboardEventArgs { Key = "End" });
+        cut.Find(".munin-explorer-meta__tabs").KeyDown(new KeyboardEventArgs { Key = "End" });
 
         Assert.Equal("true", TabButtons(cut)[1].GetAttribute("aria-selected"));
     }
@@ -3992,15 +4020,15 @@ public class VariableExplorerTest : BunitContext
     }
 
     private static IReadOnlyList<string> KodeverkGroupHeadings(IRenderedComponent<VariableExplorer> cut) =>
-        [.. Panel(cut).QuerySelectorAll(".variable-explorer-group").Select(h => h.TextContent)];
+        [.. Panel(cut).QuerySelectorAll(".munin-explorer-group").Select(h => h.TextContent)];
 
     private static IReadOnlyList<AngleSharp.Dom.IElement> KodeverkLines(
         IRenderedComponent<VariableExplorer> cut) =>
-        [.. Panel(cut).QuerySelectorAll("li.variable-explorer-kodeverk__item")];
+        [.. Panel(cut).QuerySelectorAll("li.munin-explorer-kodeverk__item")];
 
     private static IReadOnlyList<AngleSharp.Dom.IElement> CodeToggles(
         IRenderedComponent<VariableExplorer> cut) =>
-        [.. Panel(cut).QuerySelectorAll("li.variable-explorer-kodeverk__item > button")];
+        [.. Panel(cut).QuerySelectorAll("li.munin-explorer-kodeverk__item > button")];
 
     [Fact]
     public void Kodeverk_WhenTheDataTabIsOpen_ThenTheLinksAreGroupedByKindInPayloadOrder()
@@ -4013,7 +4041,7 @@ public class VariableExplorerTest : BunitContext
         Assert.Equal(["Kildekodeverk", "Administrativt kodeverk", "Helsefaglig kodeverk"],
                      KodeverkGroupHeadings(cut));
 
-        var groups = Panel(cut).QuerySelectorAll("ul.variable-explorer-kodeverk");
+        var groups = Panel(cut).QuerySelectorAll("ul.munin-explorer-kodeverk");
 
         Assert.Equal([2, 1, 1], groups.Select(g => g.QuerySelectorAll("li").Length));
     }
@@ -4029,9 +4057,9 @@ public class VariableExplorerTest : BunitContext
 
         var nameless = KodeverkLines(cut)[0];
 
-        Assert.Equal("Ukjent navn", nameless.QuerySelector(".variable-explorer-kodeverk__name")!.TextContent);
+        Assert.Equal("Ukjent navn", nameless.QuerySelector(".munin-explorer-kodeverk__name")!.TextContent);
         Assert.Equal("Referanse: 2336",
-                     nameless.QuerySelector(".variable-explorer-kodeverk__reference")!.TextContent);
+                     nameless.QuerySelector(".munin-explorer-kodeverk__reference")!.TextContent);
         Assert.DoesNotContain("Kildekodeverk: 2336", Panel(cut).TextContent);
     }
 
@@ -4044,13 +4072,13 @@ public class VariableExplorerTest : BunitContext
 
         var named = KodeverkLines(cut)[1];
 
-        Assert.Equal("Skjemastatus", named.QuerySelector(".variable-explorer-kodeverk__name")!.TextContent);
+        Assert.Equal("Skjemastatus", named.QuerySelector(".munin-explorer-kodeverk__name")!.TextContent);
         Assert.Equal("Referanse: 2337",
-                     named.QuerySelector(".variable-explorer-kodeverk__reference")!.TextContent);
+                     named.QuerySelector(".munin-explorer-kodeverk__reference")!.TextContent);
 
         // The catalogue's own name, so a screen reader on an English page still says it in
         // Norwegian rather than reading it with English phonetics.
-        Assert.Equal("no", named.QuerySelector(".variable-explorer-kodeverk__name")!.GetAttribute("lang"));
+        Assert.Equal("no", named.QuerySelector(".munin-explorer-kodeverk__name")!.GetAttribute("lang"));
     }
 
     [Fact]
@@ -4100,7 +4128,7 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Equal((TaleId, "Kildekodeverk", "2336"), Assert.Single(client.CodeRequests));
 
-        var table = Panel(cut).QuerySelector(".variable-explorer-codes table")!;
+        var table = Panel(cut).QuerySelector(".munin-explorer-codes table")!;
 
         Assert.Equal(["Verdi", "Navn", "Gyldig fra", "Gyldig til"],
                      table.QuerySelectorAll("thead th").Select(th => th.TextContent));
@@ -4136,7 +4164,7 @@ public class VariableExplorerTest : BunitContext
 
         CodeToggles(cut)[2].Click();
 
-        var cells = Panel(cut).QuerySelectorAll(".variable-explorer-codes tbody td")
+        var cells = Panel(cut).QuerySelectorAll(".munin-explorer-codes tbody td")
             .Select(td => td.TextContent).ToArray();
 
         Assert.Equal(["0101", "Halden"], cells[..2]);
@@ -4160,7 +4188,7 @@ public class VariableExplorerTest : BunitContext
 
         CodeToggles(cut)[0].Click();
 
-        Assert.Empty(Panel(cut).QuerySelectorAll(".variable-explorer-codes"));
+        Assert.Empty(Panel(cut).QuerySelectorAll(".munin-explorer-codes"));
         Assert.Equal("Vis koder", CodeToggles(cut)[0].TextContent);
 
         CodeToggles(cut)[0].Click();
@@ -4168,7 +4196,7 @@ public class VariableExplorerTest : BunitContext
         // The answer was kept, so re-opening costs nothing. Without the cache a reader comparing
         // two kodeverk pays for the same list every time they look back at it.
         Assert.Single(client.CodeRequests);
-        Assert.NotNull(Panel(cut).QuerySelector(".variable-explorer-codes table"));
+        Assert.NotNull(Panel(cut).QuerySelector(".munin-explorer-codes table"));
     }
 
     [Fact]
@@ -4182,7 +4210,7 @@ public class VariableExplorerTest : BunitContext
         CodeToggles(cut)[0].Click();
         CodeToggles(cut)[2].Click();
 
-        var tables = Panel(cut).QuerySelectorAll(".variable-explorer-codes table");
+        var tables = Panel(cut).QuerySelectorAll(".munin-explorer-codes table");
 
         Assert.Equal(2, tables.Length);
         Assert.Contains("Velg verdi", tables[0].TextContent);
@@ -4203,7 +4231,7 @@ public class VariableExplorerTest : BunitContext
         CodeToggles(cut)[1].Click();
 
         Assert.Equal("Ingen kodeverdier tilgjengelig",
-                     Panel(cut).QuerySelector(".variable-explorer-codes p")!.TextContent);
+                     Panel(cut).QuerySelector(".munin-explorer-codes p")!.TextContent);
 
         CodeToggles(cut)[1].Click();
         CodeToggles(cut)[1].Click();
@@ -4224,7 +4252,7 @@ public class VariableExplorerTest : BunitContext
 
         CodeToggles(cut)[0].Click();
 
-        var message = Panel(cut).QuerySelector(".variable-explorer-codes p")!;
+        var message = Panel(cut).QuerySelector(".munin-explorer-codes p")!;
 
         Assert.Contains("Kunne ikke hente kodene", message.TextContent);
         Assert.Contains("infobox", message.ClassName!);
@@ -4241,7 +4269,7 @@ public class VariableExplorerTest : BunitContext
         CodeToggles(cut)[0].Click();
 
         Assert.Equal(2, client.CodeRequests.Count);
-        Assert.NotNull(Panel(cut).QuerySelector(".variable-explorer-codes table"));
+        Assert.NotNull(Panel(cut).QuerySelector(".munin-explorer-codes table"));
     }
 
     [Fact]
@@ -4280,7 +4308,7 @@ public class VariableExplorerTest : BunitContext
         client.StallCodes = true;
         CodeToggles(cut)[0].Click();
 
-        var message = Panel(cut).QuerySelector(".variable-explorer-codes p")!;
+        var message = Panel(cut).QuerySelector(".munin-explorer-codes p")!;
 
         Assert.Equal("Henter koder \u2026", message.TextContent);
         Assert.Equal("caption", message.ClassName);
@@ -4303,13 +4331,13 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Single(client.CodeRequests);
         Assert.Equal("Henter koder \u2026",
-                     Panel(cut).QuerySelector(".variable-explorer-codes p")!.TextContent);
+                     Panel(cut).QuerySelector(".munin-explorer-codes p")!.TextContent);
 
         // And the one answer fills the list that was re-opened, rather than being orphaned by it.
         await cut.InvokeAsync(() => client.AnswerStalledCodes(Codes2336()));
 
         cut.WaitForAssertion(() =>
-            Assert.Contains("Velg verdi", Panel(cut).QuerySelector(".variable-explorer-codes table")!.TextContent));
+            Assert.Contains("Velg verdi", Panel(cut).QuerySelector(".munin-explorer-codes table")!.TextContent));
 
         Assert.Single(client.CodeRequests);
     }
@@ -4343,7 +4371,7 @@ public class VariableExplorerTest : BunitContext
 
         CodeToggles(cut)[0].Click();
 
-        var table = Panel(cut).QuerySelector(".variable-explorer-codes table")!;
+        var table = Panel(cut).QuerySelector(".munin-explorer-codes table")!;
 
         Assert.DoesNotContain("STALE", table.TextContent);
         Assert.Contains("Velg verdi", table.TextContent);
@@ -4366,10 +4394,10 @@ public class VariableExplorerTest : BunitContext
 
         CodeToggles(cut)[0].Click();
 
-        var region = Panel(cut).QuerySelector(".variable-explorer-codes")!;
+        var region = Panel(cut).QuerySelector(".munin-explorer-codes")!;
 
         Assert.Equal(region.Id, CodeToggles(cut)[0].GetAttribute("aria-controls"));
-        Assert.Equal(KodeverkLines(cut)[0].QuerySelector(".variable-explorer-kodeverk__name")!.Id,
+        Assert.Equal(KodeverkLines(cut)[0].QuerySelector(".munin-explorer-kodeverk__name")!.Id,
                      region.QuerySelector("table")!.GetAttribute("aria-labelledby"));
 
         // Column headers, so a screen reader can say which column a cell is in.
@@ -4387,20 +4415,20 @@ public class VariableExplorerTest : BunitContext
         Assert.Equal(["Source code system", "Administrative code system", "Clinical code system"],
                      KodeverkGroupHeadings(cut));
         Assert.Equal("Unnamed",
-                     KodeverkLines(cut)[0].QuerySelector(".variable-explorer-kodeverk__name")!.TextContent);
+                     KodeverkLines(cut)[0].QuerySelector(".munin-explorer-kodeverk__name")!.TextContent);
         Assert.Equal("Reference: 2336",
-                     KodeverkLines(cut)[0].QuerySelector(".variable-explorer-kodeverk__reference")!.TextContent);
+                     KodeverkLines(cut)[0].QuerySelector(".munin-explorer-kodeverk__reference")!.TextContent);
 
         CodeToggles(cut)[0].Click();
 
         Assert.Equal("Hide codes", CodeToggles(cut)[0].TextContent);
         Assert.Equal(["Value", "Name", "Valid from", "Valid to"],
-                     Panel(cut).QuerySelectorAll(".variable-explorer-codes thead th").Select(th => th.TextContent));
+                     Panel(cut).QuerySelectorAll(".munin-explorer-codes thead th").Select(th => th.TextContent));
 
         // The date follows the page too: an English reader gets slashes, not the dots a Norwegian
         // reader gets. Pinned by separator rather than by exact string, which is ICU's to change.
         Assert.Matches(@"^\d{1,2}/\d{1,2}/2010$",
-                       Panel(cut).QuerySelectorAll(".variable-explorer-codes tbody td")[2].TextContent);
+                       Panel(cut).QuerySelectorAll(".munin-explorer-codes tbody td")[2].TextContent);
     }
 
     [Fact]
@@ -4418,19 +4446,19 @@ public class VariableExplorerTest : BunitContext
 
         var invented = Panel(cut).QuerySelectorAll("[class]")
             .SelectMany(e => e.ClassName!.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-            .Where(k => k.StartsWith("variable-explorer", StringComparison.Ordinal))
+            .Where(HostClassNames.IsOwnStructureName)
             .Distinct()
             .ToList();
 
         Assert.Equal(
         [
-            "variable-explorer-group",                 // ours, already in use on the Details tab
-            "variable-explorer-kodeverk",              // ours, a handle — the list of links
-            "variable-explorer-kodeverk__item",
-            "variable-explorer-kodeverk__name",
-            "variable-explorer-kodeverk__reference",
-            "variable-explorer-codes",                 // ours, a handle — the open code list
-            "variable-explorer-codes__table",
+            "munin-explorer-group",                 // ours, already in use on the Details tab
+            "munin-explorer-kodeverk",              // ours, a handle — the list of links
+            "munin-explorer-kodeverk__item",
+            "munin-explorer-kodeverk__name",
+            "munin-explorer-kodeverk__reference",
+            "munin-explorer-codes",                 // ours, a handle — the open code list
+            "munin-explorer-codes__table",
         ], invented);
 
         var toggle = CodeToggles(cut)[0].ClassName!;
@@ -4438,7 +4466,7 @@ public class VariableExplorerTest : BunitContext
         Assert.Contains("hd-button-square", toggle);
         Assert.Contains("button-square--ghost", toggle);
         Assert.Contains("caption",
-                        KodeverkLines(cut)[0].QuerySelector(".variable-explorer-kodeverk__reference")!.ClassName!);
+                        KodeverkLines(cut)[0].QuerySelector(".munin-explorer-kodeverk__reference")!.ClassName!);
     }
 
     private static IReadOnlyList<AngleSharp.Dom.IElement> Values(IRenderedComponent<VariableExplorer> cut) =>
@@ -4467,7 +4495,7 @@ public class VariableExplorerTest : BunitContext
         Toggles(cut)[0].Click();
 
         Assert.Equal(before, navigation.Uri);
-        Assert.Empty(cut.FindAll("ul.variable-data-list a"));
+        Assert.Empty(cut.FindAll("ul.munin-explorer-data-list a"));
         Assert.Equal(TaleId, client.LastDetailId);
         Assert.Contains("Angir pasientens grad av utfall", Panel(cut).TextContent);
         Assert.Equal("true", Toggles(cut)[0].GetAttribute("aria-expanded"));
@@ -4491,7 +4519,7 @@ public class VariableExplorerTest : BunitContext
         // The period reads as month and year now, and carries a bar beneath it. Runa's format.
         Assert.Contains("2010", values[3].TextContent);
         Assert.Contains("2025", values[3].TextContent);
-        Assert.NotNull(values[3].QuerySelector(".variable-explorer-period__fill"));
+        Assert.NotNull(values[3].QuerySelector(".munin-explorer-period__fill"));
 
         // Widest first, and the kilde's short name alongside its full one — the card has room for
         // neither the kildetype above it nor the abbreviation the register is known by.
@@ -4508,9 +4536,9 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Equal(["Kildekodeverk", "Administrativt kodeverk"], KodeverkGroupHeadings(cut));
         Assert.Equal(["Ukjent navn", "ICD-10"],
-                     KodeverkLines(cut).Select(l => l.QuerySelector(".variable-explorer-kodeverk__name")!.TextContent));
+                     KodeverkLines(cut).Select(l => l.QuerySelector(".munin-explorer-kodeverk__name")!.TextContent));
         Assert.Equal(["Referanse: 2336", "Referanse: 2.16.578.1.12.4.1.1.7110"],
-                     KodeverkLines(cut).Select(l => l.QuerySelector(".variable-explorer-kodeverk__reference")!.TextContent));
+                     KodeverkLines(cut).Select(l => l.QuerySelector(".munin-explorer-kodeverk__reference")!.TextContent));
     }
 
     [Fact]
@@ -4536,7 +4564,7 @@ public class VariableExplorerTest : BunitContext
         Toggles(cut)[0].Click();
         Toggles(cut)[0].Click();
 
-        Assert.Empty(cut.FindAll(".variable-explorer-detail"));
+        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
         Assert.Equal("false", Toggles(cut)[0].GetAttribute("aria-expanded"));
         Assert.Equal("1. Tale", Toggles(cut)[0].TextContent);
     }
@@ -4551,7 +4579,7 @@ public class VariableExplorerTest : BunitContext
         Toggles(cut)[0].Click();
         Toggles(cut)[1].Click();
 
-        Assert.Single(cut.FindAll(".variable-explorer-detail"));
+        Assert.Single(cut.FindAll(".munin-explorer-detail"));
         Assert.Equal("false", Toggles(cut)[0].GetAttribute("aria-expanded"));
         Assert.Equal("true", Toggles(cut)[1].GetAttribute("aria-expanded"));
         Assert.Contains("2. Spyttsekresjon", Panel(cut).TextContent);
@@ -4571,7 +4599,7 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Contains("Kunne ikke hente detaljene nå", Panel(cut).TextContent);
         Assert.Contains("infobox", Panel(cut).QuerySelector("p")!.ClassName!);
-        Assert.Equal(2, cut.FindAll("ul.variable-data-list > li").Count);
+        Assert.Equal(2, cut.FindAll("ul.munin-explorer-data-list > li").Count);
         Assert.Equal("true", Toggles(cut)[0].GetAttribute("aria-expanded"));
 
         // The component's own alert region is for the list, and the list is fine.
@@ -4662,7 +4690,7 @@ public class VariableExplorerTest : BunitContext
         client.Answer = OnePage(Row(Guid.NewGuid(), "3. Svelging"));
         cut.Find("button[type=submit]").Click();
 
-        Assert.Empty(cut.FindAll(".variable-explorer-detail"));
+        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
         Assert.Equal([TaleId, null], reported);
     }
 
@@ -4686,7 +4714,7 @@ public class VariableExplorerTest : BunitContext
 
         cut.WaitForAssertion(() =>
         {
-            Assert.Single(cut.FindAll(".variable-explorer-detail"));
+            Assert.Single(cut.FindAll(".munin-explorer-detail"));
             Assert.Contains("2. Spyttsekresjon", Panel(cut).TextContent);
             Assert.DoesNotContain("«1. Tale»", Panel(cut).TextContent);
         });
@@ -4739,8 +4767,8 @@ public class VariableExplorerTest : BunitContext
         client.Then(null);
         cut.Find("button[type=submit]").Click();
 
-        Assert.Empty(cut.FindAll("ul.variable-data-list > li"));
-        Assert.Empty(cut.FindAll(".variable-explorer-detail"));
+        Assert.Empty(cut.FindAll("ul.munin-explorer-data-list > li"));
+        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
         Assert.Equal([TaleId, null], reported);
     }
 
@@ -4758,8 +4786,8 @@ public class VariableExplorerTest : BunitContext
         cut.Find("button[type=submit]").Click();
         cut.Find("button[type=submit]").Click();
 
-        Assert.Equal(2, cut.FindAll("ul.variable-data-list > li").Count);
-        Assert.Empty(cut.FindAll(".variable-explorer-detail"));
+        Assert.Equal(2, cut.FindAll("ul.munin-explorer-data-list > li").Count);
+        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
         Assert.Equal("false", Toggles(cut)[0].GetAttribute("aria-expanded"));
 
         // Opening it again is a fetch, not a redraw of what was kept.
@@ -4793,7 +4821,7 @@ public class VariableExplorerTest : BunitContext
         Next(cut).Click();
 
         Assert.Equal("Side 1 av 2", Position(cut));
-        Assert.Single(cut.FindAll("ul.variable-data-list > li"));
+        Assert.Single(cut.FindAll("ul.munin-explorer-data-list > li"));
         Assert.Equal("true", Toggles(cut)[0].GetAttribute("aria-expanded"));
         Assert.Contains("Angir pasientens grad av utfall", Panel(cut).TextContent);
 
@@ -4894,7 +4922,7 @@ public class VariableExplorerTest : BunitContext
         // Reopened by the rollback and shut again by the reader while its fetch hangs.
         Toggles(cut)[0].Click();
 
-        Assert.Empty(cut.FindAll(".variable-explorer-detail"));
+        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
 
         // Oldest first: the page turn's abandoned fetch, then the rollback's, which is the one
         // whose continuation reports to the host.
@@ -4903,7 +4931,7 @@ public class VariableExplorerTest : BunitContext
 
         cut.WaitForAssertion(() => Assert.Equal(4, reported.Count));
 
-        Assert.Empty(cut.FindAll(".variable-explorer-detail"));
+        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
         Assert.All(reported, Assert.Null);
     }
 
@@ -5024,7 +5052,7 @@ public class VariableExplorerTest : BunitContext
         // The heading wraps the button; the panel points at the heading, which is what holds
         // the row's name in the document outline.
         // The name button is the row's name — there is no heading wrapping it any more.
-        var heading = cut.FindAll("ul.variable-data-list .variable-dataitem-main__name")[0];
+        var heading = cut.FindAll("ul.munin-explorer-data-list .munin-explorer-dataitem-main__name")[0];
 
         // Closed: nothing to control yet, and aria-controls pointing at an element that is not in
         // the document is a dangling reference.
@@ -5089,13 +5117,17 @@ public class VariableExplorerTest : BunitContext
     public void Render_WhenAPanelIsOpen_ThenItIsBuiltFromShapesRatherThanFromNewClassNames()
     {
         // The rule this guards has changed, and it is worth being precise about what it is now.
-        // The component wears helsedata's own variable-page vocabulary, which includes several
-        // names in this prefix that are THEIRS, not ours — variable-explorer-container (10 rules),
-        // variable-explorer-results (6), and the column picker's header trio plus its dropdown,
-        // all in variables.css and loaded on every page of their site. What must never grow is
-        // the list of names we INVENT — the handles below, which carry no styling anywhere and
-        // exist only so a host can find the component in the DOM. A name in this prefix that is
-        // neither theirs nor one of those is a name that renders as a raw browser default.
+        // The component used to wear helsedata's variable-page vocabulary, so several names in
+        // this prefix were THEIRS rather than ours - what are now munin-explorer-container
+        // (10 rules), munin-explorer-results (6), and the column picker's header trio plus its
+        // dropdown all sat in their variables.css, loaded on every page of their site. After the
+        // rename they are ours, and their rules live in Stiler under components/munin-explorer/.
+        //
+        // That collapses the old two-way split, but not the thing it protected. What must never
+        // grow is the list of names we INVENT and never style - the handles below, which carry
+        // no rule anywhere by design and exist only so a host can find the component in the DOM.
+        // A name in this prefix that is neither styled in Stiler nor one of those handles is a
+        // name that renders as a raw browser default.
         //
         // Rendered with a hierarchy chosen as well as a panel open, so the trail over the results
         // is on screen: this list is the central registry, and names that only appear under a
@@ -5106,36 +5138,36 @@ public class VariableExplorerTest : BunitContext
 
         var invented = cut.FindAll("[class]")
             .SelectMany(e => e.ClassName!.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-            .Where(k => k.StartsWith("variable-explorer", StringComparison.Ordinal))
+            .Where(HostClassNames.IsOwnStructureName)
             .Distinct()
             .ToList();
 
         Assert.Equal(
         [
-            "variable-explorer",            // ours, a handle
-            "variable-explorer-filters",    // ours, a handle
-            "variable-explorer-breadcrumb", // ours — the trail over the results, which Stiler has
+            "munin-explorer",            // ours, a handle
+            "munin-explorer-filters",    // ours, a handle
+            "munin-explorer-breadcrumb", // ours — the trail over the results, which Stiler has
                                             // no breadcrumb rule of any kind to borrow
-            "variable-explorer-crumb",      // ours — one step of a trail, and the same name in
+            "munin-explorer-crumb",      // ours — one step of a trail, and the same name in
                                             // both of them: the panel's kilde step, which Runa
                                             // makes a link and we make the control that discloses
                                             // the kilde, and each step of the hierarchy trail,
                                             // which reuses it rather than minting a second name
                                             // for the same affordance
-            "variable-explorer-breadcrumb__clear",      // ours — the × that empties the hierarchy
-            "variable-explorer-container",  // theirs, variables.css (10 rules)
-            "variable-explorer-results",    // theirs, variables.css (6 rules)
-            "variable-explorer-header",     // theirs — the row their own variable page hangs the
-            "variable-explorer-header__actions",        // column picker in, and the ghost button
-            "variable-explorer__dropdown",              // that opens it. All four are variables.css.
-            "variable-explorer-header__actions-button",
-            "variable-explorer-detail",     // ours, a handle
-            "variable-explorer-group",      // ours — helsedata's panel is flat, so it has no
+            "munin-explorer-breadcrumb__clear",      // ours — the × that empties the hierarchy
+            "munin-explorer-container",  // ours, Stiler components/munin-explorer/
+            "munin-explorer-results",    // ours, Stiler components/munin-explorer/
+            "munin-explorer-header",     // ours now; their own variable page hangs the
+            "munin-explorer-header__actions",        // column picker in, and the ghost button
+            "munin-explorer__dropdown",              // that opens it. All four came from variables.css.
+            "munin-explorer-header__actions-button",
+            "munin-explorer-detail",     // ours, a handle
+            "munin-explorer-group",      // ours — helsedata's panel is flat, so it has no
                                             // group heading to borrow a name from
-            "variable-explorer-period",     // ours — neither explorer's stylesheet has a period bar
-            "variable-explorer-period__range",
-            "variable-explorer-period__track",
-            "variable-explorer-period__fill",
+            "munin-explorer-period",     // ours — neither explorer's stylesheet has a period bar
+            "munin-explorer-period__range",
+            "munin-explorer-period__track",
+            "munin-explorer-period__fill",
         ], invented);
 
         var panel = Panel(cut);
@@ -5147,15 +5179,15 @@ public class VariableExplorerTest : BunitContext
         // Both of helsedata's grid variants are in use: -1 for a group with one field, -2 for the
         // ones with several. Runa's panel does the same.
         Assert.All(panel.QuerySelectorAll("dl"),
-                   e => Assert.Contains("variable-meta__grid", e.ClassName!));
+                   e => Assert.Contains("munin-explorer-meta__grid", e.ClassName!));
         // The multi-field group wears the plain grid, which is helsedata's two-lane one; a group
         // with a single field wears -1, their single-column variant. Both are theirs.
         Assert.All(panel.QuerySelectorAll("dl"),
-                   e => Assert.Matches(@"^variable-meta__grid( variable-meta__grid-1)?$", e.ClassName!));
+                   e => Assert.Matches(@"^munin-explorer-meta__grid( munin-explorer-meta__grid-1)?$", e.ClassName!));
         Assert.All(panel.QuerySelectorAll("ol, ul"), e => Assert.False(e.HasAttribute("class")));
         Assert.All(panel.QuerySelectorAll("dl dt"),
                    e => Assert.Equal("headline headline-xxs margin--none", e.ClassName));
-        Assert.Equal("variable-dataitem-main__name", Toggles(cut)[0].ClassName);
+        Assert.Equal("munin-explorer-dataitem-main__name", Toggles(cut)[0].ClassName);
     }
 
     // ---------------------------------------------------------------------------------
@@ -5254,7 +5286,7 @@ public class VariableExplorerTest : BunitContext
     /// <summary>The two owner toggles, in the order the panel draws them: kilde, then datasamling.</summary>
     /// <summary>Leaves the kilde view and returns to the list.</summary>
     private static void Back(IRenderedComponent<VariableExplorer> cut) =>
-        cut.Find(".variable-explorer-drilldown button").Click();
+        cut.Find(".munin-explorer-drilldown button").Click();
 
     /// <summary>The buttons that open an owner — the kilde and the datasamling.</summary>
     /// <remarks>
@@ -5263,14 +5295,14 @@ public class VariableExplorerTest : BunitContext
     /// panel" the moment a third arrived, which is not what its name says or what its callers want.
     /// </remarks>
     private static IReadOnlyList<AngleSharp.Dom.IElement> SourceToggles(IRenderedComponent<VariableExplorer> cut) =>
-        [.. cut.FindAll(".variable-explorer-detail > button[id]")];
+        [.. cut.FindAll(".munin-explorer-detail > button[id]")];
 
     /// <summary>
     /// The kilde or datasamling view. It is no longer a panel inside the open row — it takes over
     /// the component's area, so the list is not on screen while it is.
     /// </summary>
     private static AngleSharp.Dom.IElement SourcePanel(IRenderedComponent<VariableExplorer> cut) =>
-        cut.Find(".variable-explorer-drilldown");
+        cut.Find(".munin-explorer-drilldown");
 
     private static IReadOnlyList<string> SourceLabels(IRenderedComponent<VariableExplorer> cut) =>
         [.. SourcePanel(cut).QuerySelectorAll("dl dt").Select(t => t.TextContent)];
@@ -5327,7 +5359,7 @@ public class VariableExplorerTest : BunitContext
         // The description reads as prose above the metadata, not as a row in a record.
         Assert.Equal(
             "Norsk register for ALS og andre motonevronsykdommer.",
-            SourcePanel(cut).QuerySelector(".variable-explorer-kilde__description")!.TextContent.Trim());
+            SourcePanel(cut).QuerySelector(".munin-explorer-kilde__description")!.TextContent.Trim());
     }
 
     [Theory]
@@ -5438,7 +5470,7 @@ public class VariableExplorerTest : BunitContext
         Back(cut);
         SourceToggles(cut)[1].Click();
 
-        Assert.Single(cut.FindAll(".variable-explorer-drilldown"));
+        Assert.Single(cut.FindAll(".munin-explorer-drilldown"));
         Assert.Equal("Inklusjon", SourcePanel(cut).QuerySelector(".headline-s")!.TextContent);
 
         // The datasamling view shows the datasamling, not a count that belongs to the kilde.
@@ -5463,10 +5495,10 @@ public class VariableExplorerTest : BunitContext
         // than pressing a toggle that is no longer on screen.
         Back(cut);
 
-        Assert.Empty(cut.FindAll(".variable-explorer-drilldown"));
+        Assert.Empty(cut.FindAll(".munin-explorer-drilldown"));
 
         // The list comes back as it was — the row is still open, because nothing was torn down.
-        Assert.Equal(2, cut.FindAll("ul.variable-data-list > li").Count);
+        Assert.Equal(2, cut.FindAll("ul.munin-explorer-data-list > li").Count);
         Assert.Equal("true", Toggles(cut)[0].GetAttribute("aria-expanded"));
         Assert.Equal("false", SourceToggles(cut)[0].GetAttribute("aria-expanded"));
 
@@ -5523,7 +5555,7 @@ public class VariableExplorerTest : BunitContext
         Back(cut);
 
         Assert.Contains("Angir pasientens grad av utfall", Panel(cut).TextContent);
-        Assert.Equal(2, cut.FindAll("ul.variable-data-list > li").Count);
+        Assert.Equal(2, cut.FindAll("ul.munin-explorer-data-list > li").Count);
         Assert.Empty(cut.FindAll("div[role='alert'] p"));
     }
 
@@ -5552,7 +5584,7 @@ public class VariableExplorerTest : BunitContext
         Back(cut);
         Toggles(cut)[1].Click();
 
-        Assert.Empty(cut.FindAll(".variable-explorer-drilldown"));
+        Assert.Empty(cut.FindAll(".munin-explorer-drilldown"));
         Assert.Contains("2. Spyttsekresjon", Panel(cut).TextContent);
         Assert.Equal("false", SourceToggles(cut)[0].GetAttribute("aria-expanded"));
     }
@@ -5566,19 +5598,19 @@ public class VariableExplorerTest : BunitContext
         var cut = OpenOwner(TwoRows(), 0);
 
         // While the kilde view is showing, the row and its panel are not on screen at all.
-        Assert.Empty(cut.FindAll(".variable-explorer-detail"));
+        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
 
         Back(cut);
         Toggles(cut)[0].Click();
 
         // Closing the row takes its owner buttons with it, so there is no way back into the kilde
         // view from a row that is shut.
-        Assert.Empty(cut.FindAll(".variable-explorer-detail"));
-        Assert.Empty(cut.FindAll(".variable-explorer-drilldown"));
+        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
+        Assert.Empty(cut.FindAll(".munin-explorer-drilldown"));
 
         Toggles(cut)[0].Click();
 
-        Assert.Empty(cut.FindAll(".variable-explorer-drilldown"));
+        Assert.Empty(cut.FindAll(".munin-explorer-drilldown"));
     }
 
     [Fact]
@@ -5594,8 +5626,8 @@ public class VariableExplorerTest : BunitContext
         Back(cut);
         cut.Find("form").Submit();
 
-        Assert.Empty(cut.FindAll(".variable-explorer-detail"));
-        Assert.Empty(cut.FindAll(".variable-explorer-drilldown"));
+        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
+        Assert.Empty(cut.FindAll(".munin-explorer-drilldown"));
     }
 
     [Fact]
@@ -5613,7 +5645,7 @@ public class VariableExplorerTest : BunitContext
 
         // The whole variable is still reachable: it is about this row, not about an owner the row
         // does not name, so it does not disappear with them.
-        Assert.Contains(cut.FindAll(".variable-explorer-detail > button"),
+        Assert.Contains(cut.FindAll(".munin-explorer-detail > button"),
                         b => b.TextContent.Contains("hele variabelen", StringComparison.Ordinal));
         Assert.Equal(0, client.KildeCalls);
         Assert.Equal(0, client.DatasamlingCalls);
@@ -5643,7 +5675,7 @@ public class VariableExplorerTest : BunitContext
 
         cut.WaitForAssertion(() =>
         {
-            Assert.Single(cut.FindAll(".variable-explorer-drilldown"));
+            Assert.Single(cut.FindAll(".munin-explorer-drilldown"));
             Assert.Contains("Telleenhet", SourcePanel(cut).TextContent);
             Assert.DoesNotContain("Antall datasamlinger", SourcePanel(cut).TextContent);
         });
@@ -5677,7 +5709,7 @@ public class VariableExplorerTest : BunitContext
         // The catalogue holds one name and one description, both Norwegian. On this page they are
         // the only Norwegian left, and both say so.
         var heading = SourcePanel(cut).QuerySelector(".headline-s")!;
-        var description = SourcePanel(cut).QuerySelector(".variable-explorer-kilde__description")!;
+        var description = SourcePanel(cut).QuerySelector(".munin-explorer-kilde__description")!;
 
         Assert.Equal("Als registeret", heading.TextContent);
         Assert.Equal("no", heading.GetAttribute("lang"));
@@ -5703,12 +5735,12 @@ public class VariableExplorerTest : BunitContext
     {
         // Neither stylesheet has a key/value block that can be read back off it, so the owner is a
         // heading wearing Stiler's own headline classes and a <dl> that borrows helsedata's
-        // variable-meta__grid, rather than a new style name of ours.
+        // munin-explorer-meta__grid, rather than a new style name of ours.
         var cut = OpenOwner(TwoRows(), 0);
 
         var invented = cut.FindAll("[class]")
             .SelectMany(e => e.ClassName!.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-            .Where(k => k.StartsWith("variable-explorer", StringComparison.Ordinal))
+            .Where(HostClassNames.IsOwnStructureName)
             .Distinct()
             .ToList();
 
@@ -5719,17 +5751,17 @@ public class VariableExplorerTest : BunitContext
         // own names.
         Assert.Equal(
             [
-                "variable-explorer",
-                "variable-explorer-drilldown",
-                "variable-explorer-kilde",
-                "variable-explorer-kilde__header",
-                "variable-explorer-kilde__identifiers",
-                "variable-explorer-kilde__kildetype",
-                "variable-explorer-kilde__description",
-                "variable-explorer-kilde__body",
-                "variable-explorer-kilde__main",
-                "variable-explorer-kilde__datasamlinger",
-                "variable-explorer-kilde__aside",
+                "munin-explorer",
+                "munin-explorer-drilldown",
+                "munin-explorer-kilde",
+                "munin-explorer-kilde__header",
+                "munin-explorer-kilde__identifiers",
+                "munin-explorer-kilde__kildetype",
+                "munin-explorer-kilde__description",
+                "munin-explorer-kilde__body",
+                "munin-explorer-kilde__main",
+                "munin-explorer-kilde__datasamlinger",
+                "munin-explorer-kilde__aside",
             ],
             invented);
 
@@ -5752,7 +5784,7 @@ public class VariableExplorerTest : BunitContext
         // than null, so the null branch of this list was unreachable and the assertion did not mean
         // what it said.
         Assert.All(panel.QuerySelectorAll("dl"),
-                   e => Assert.Contains(e.GetAttribute("class"), (string?[])[null, "variable-meta__grid"]));
+                   e => Assert.Contains(e.GetAttribute("class"), (string?[])[null, "munin-explorer-meta__grid"]));
 
         Back(cut);
 
@@ -5779,8 +5811,8 @@ public class VariableExplorerTest : BunitContext
 
         Back(cut);
 
-        Assert.Equal("H1", cut.Find(".variable-explorer > [class*='headline']").TagName);
-        Assert.Equal("BUTTON", cut.Find(".variable-data-list__item__row .variable-dataitem-main__name").TagName);
+        Assert.Equal("H1", cut.Find(".munin-explorer > [class*='headline']").TagName);
+        Assert.Equal("BUTTON", cut.Find(".munin-explorer-data-list__item__row .munin-explorer-dataitem-main__name").TagName);
     }
 
     [Fact]

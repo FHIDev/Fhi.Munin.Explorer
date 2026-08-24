@@ -20,10 +20,16 @@ behaviour found later by someone else.
    free to differ from its wire name — every one carries a `[JsonPropertyName]`, so the JSON
    keeps Munin's spelling whatever the property is called. Reasoning in `AGENTS.md`.
 
-2. **Class names in markup belong to `Fhi.Helsedata.Stiler`, not to us.** Verify every one
-   against Stiler's compiled `main.css` before using it. A name Stiler has never heard of
-   renders as a raw browser default inside an otherwise styled page — the exact failure this
-   package exists to avoid, and it has happened twice.
+2. **Borrowed class names belong to `Fhi.Helsedata.Stiler`; the `munin-explorer` prefix is
+   ours.** Ordinary page furniture — search field, buttons, headings, infobox, choicepicker —
+   wears Stiler's own name, and you verify every one against Stiler's compiled `main.css` before
+   using it. A name Stiler has never heard of renders as a raw browser default inside an otherwise
+   styled page — the exact failure this package exists to avoid, and it has happened twice. The
+   explorer's own structure and result vocabulary is the other half: it used to write helsedata's
+   `variable-*` names and inherit rules from their `variables.css`, and now writes
+   `munin-explorer*`, whose rules ship in Stiler 0.1.13 under `components/munin-explorer/`. Don't
+   write a new `variable-*` name — Stiler still defines `.variable-explorer-header`, so that
+   namespace is helsedata's. Reasoning in `AGENTS.md`.
 
 3. **The package ships no CSS.** No `wwwroot`, no `.razor.css`. Sample hosts carry their own
    styling because they have no Stiler; the package must not.
@@ -31,11 +37,12 @@ behaviour found later by someone else.
 
 4. **The two sample stylesheets are one file, copied — and they style every name we invent.**
    `samples/ModernHost/wwwroot/host.css` and `samples/LegacyHost/wwwroot/css/host.css` must be
-   byte-identical, and between them must have a rule for every `variable-explorer*` class the
-   package invents. Edit one, copy it over the other. Both halves have already failed quietly:
-   the kodeverk block reached LegacyHost only, and the kilde view shipped with rules for none of
-   its nine names in either copy. `scripts/assert-sample-css-in-step.sh` enforces both and runs
-   in CI on every PR.
+   byte-identical, and between them must have a rule for every `munin-explorer*` class the
+   package invents. The samples carry no Stiler, so they are the only stylesheet those names have
+   here. Edit one, copy it over the other. Both halves have already failed quietly: the kodeverk
+   block reached LegacyHost only, and the kilde view shipped with rules for none of its nine names
+   in either copy. `scripts/assert-sample-css-in-step.sh` enforces both and runs in CI on every
+   PR.
 
 ---
 

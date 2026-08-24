@@ -36,6 +36,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </remarks>
 public class KildeViewTest : BunitContext
 {
+
     private static PropertyMetadataEntry Entry(string key, int sortOrder, string group, string? displayName = null) =>
         new()
         {
@@ -166,7 +167,7 @@ public class KildeViewTest : BunitContext
     /// </remarks>
     private static IElement Box(IRenderedComponent<KildeView> cut, Func<Texts, string> boxHeading)
     {
-        var aside = cut.Find(".variable-explorer-kilde__aside");
+        var aside = cut.Find(".munin-explorer-kilde__aside");
         var name = boxHeading(Texts.For(cut.Instance.Language));
 
         var heading = aside.Children.FirstOrDefault(e => e.TextContent == name)
@@ -206,10 +207,10 @@ public class KildeViewTest : BunitContext
 
     /// <summary>The datasamling rows, by the name each is headed with.</summary>
     private static IReadOnlyList<string> CollectionNames(IRenderedComponent<KildeView> cut) =>
-        [.. cut.FindAll("table.variable-explorer-kilde__datasamlinger tbody th").Select(e => e.TextContent)];
+        [.. cut.FindAll("table.munin-explorer-kilde__datasamlinger tbody th").Select(e => e.TextContent)];
 
     private static IReadOnlyList<string> BlockHeadings(IRenderedComponent<KildeView> cut) =>
-        [.. cut.FindAll(".variable-explorer-kilde__body .headline-s").Select(e => e.TextContent)];
+        [.. cut.FindAll(".munin-explorer-kilde__body .headline-s").Select(e => e.TextContent)];
 
     // ---------------------------------------------------------------------------------
     // Styling contract. The package ships no CSS, so every class name this view emits is
@@ -238,33 +239,33 @@ public class KildeViewTest : BunitContext
     {
         // The exact list, for the reason the explorer's own version of this is exact: a tenth name
         // appearing here is news, and news that has to be answered in both sample stylesheets before
-        // it ships. None of these is helsedata's — the six of theirs in the variable-explorer prefix
+        // it ships. None of these was ever helsedata's — the six that used to be theirs in this prefix
         // are all on the explorer, none on this view — so every one is a promise only the sample
         // stylesheet keeps.
         //
         // It is the second such list: VariableExplorerTest.cs:5719 pins nine of these ten down the
-        // drill-in path, all but variable-explorer-group, which that fixture's kilde has no metadata
+        // drill-in path, all but munin-explorer-group, which that fixture's kilde has no metadata
         // groups to produce. Renaming a handle means editing both, and the other one fails with a
         // message about the explorer rather than about this view.
         var cut = Render(Kilde());
 
         var invented = HostClassNames.Of(cut.FindAll("[class]"))
-            .Where(k => k.StartsWith("variable-explorer", StringComparison.Ordinal))
+            .Where(HostClassNames.IsOwnStructureName)
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal);
 
         Assert.Equal(
         [
-            "variable-explorer-group",                  // shared with the variable view
-            "variable-explorer-kilde",
-            "variable-explorer-kilde__aside",
-            "variable-explorer-kilde__body",
-            "variable-explorer-kilde__datasamlinger",
-            "variable-explorer-kilde__description",
-            "variable-explorer-kilde__header",
-            "variable-explorer-kilde__identifiers",
-            "variable-explorer-kilde__kildetype",
-            "variable-explorer-kilde__main",
+            "munin-explorer-group",                  // shared with the variable view
+            "munin-explorer-kilde",
+            "munin-explorer-kilde__aside",
+            "munin-explorer-kilde__body",
+            "munin-explorer-kilde__datasamlinger",
+            "munin-explorer-kilde__description",
+            "munin-explorer-kilde__header",
+            "munin-explorer-kilde__identifiers",
+            "munin-explorer-kilde__kildetype",
+            "munin-explorer-kilde__main",
         ], invented);
     }
 
@@ -284,7 +285,7 @@ public class KildeViewTest : BunitContext
     [Fact]
     public void Identifiers_WhenTheKildeHasAShortName_ThenItSitsBesideTheCode()
     {
-        Assert.Equal("K_ALS (ALS)", Render(Kilde()).Find(".variable-explorer-kilde__identifiers").TextContent);
+        Assert.Equal("K_ALS (ALS)", Render(Kilde()).Find(".munin-explorer-kilde__identifiers").TextContent);
     }
 
     [Fact]
@@ -292,7 +293,7 @@ public class KildeViewTest : BunitContext
     {
         var cut = Render(Kilde() with { ShortName = "" });
 
-        Assert.Equal("K_ALS", cut.Find(".variable-explorer-kilde__identifiers").TextContent);
+        Assert.Equal("K_ALS", cut.Find(".munin-explorer-kilde__identifiers").TextContent);
     }
 
     [Fact]
@@ -302,14 +303,14 @@ public class KildeViewTest : BunitContext
         // than as a catalogue that has not been given a code.
         var cut = Render(Kilde() with { Code = "" });
 
-        Assert.Empty(cut.FindAll(".variable-explorer-kilde__identifiers"));
+        Assert.Empty(cut.FindAll(".munin-explorer-kilde__identifiers"));
     }
 
     [Fact]
     public void Kildetype_WhenTheCatalogueSendsItsEnumName_ThenTheBadgeSaysItInProse()
     {
         Assert.Equal("Nasjonalt medisinsk kvalitetsregister",
-                     Render(Kilde()).Find(".variable-explorer-kilde__kildetype").TextContent);
+                     Render(Kilde()).Find(".munin-explorer-kilde__kildetype").TextContent);
     }
 
     [Fact]
@@ -320,7 +321,7 @@ public class KildeViewTest : BunitContext
         // take the source's category off the screen entirely.
         var cut = Render(Kilde() with { Kildetype = "pasientregister" });
 
-        Assert.Equal("pasientregister", cut.Find(".variable-explorer-kilde__kildetype").TextContent);
+        Assert.Equal("pasientregister", cut.Find(".munin-explorer-kilde__kildetype").TextContent);
     }
 
     [Fact]
@@ -331,14 +332,14 @@ public class KildeViewTest : BunitContext
         // there, and a missing row would leave a reader wondering whether it was asked.
         var cut = Render(Kilde() with { Kildetype = "" });
 
-        Assert.Empty(cut.FindAll(".variable-explorer-kilde__kildetype"));
+        Assert.Empty(cut.FindAll(".munin-explorer-kilde__kildetype"));
         Assert.Equal("Ikke oppgitt", Value(SourceInformation(cut), "Type datakilde"));
     }
 
     [Fact]
     public void Description_WhenTheKildeHasNone_ThenNoEmptyIngressIsDrawn()
     {
-        Assert.Empty(Render(Kilde() with { Description = null }).FindAll(".variable-explorer-kilde__description"));
+        Assert.Empty(Render(Kilde() with { Description = null }).FindAll(".munin-explorer-kilde__description"));
     }
 
     // ---------------------------------------------------------------------------------
@@ -354,12 +355,12 @@ public class KildeViewTest : BunitContext
         // moved only its own name would leave the blocks under it at a level above their heading.
         var cut = Render(Kilde(), headingLevel: 3);
 
-        Assert.Equal("h3", cut.Find(".variable-explorer-kilde__header .headline-s").TagName, ignoreCase: true);
+        Assert.Equal("h3", cut.Find(".munin-explorer-kilde__header .headline-s").TagName, ignoreCase: true);
 
         // Counted as well as checked: Assert.All passes over an empty collection, so a selector
         // that stopped matching would leave this test green while checking nothing.
-        var blocks = cut.FindAll(".variable-explorer-kilde__body .headline-s");
-        var groups = cut.FindAll(".variable-explorer-group");
+        var blocks = cut.FindAll(".munin-explorer-kilde__body .headline-s");
+        var groups = cut.FindAll(".munin-explorer-group");
 
         Assert.Equal(4, blocks.Count);
         Assert.Equal(2, groups.Count);
@@ -375,7 +376,7 @@ public class KildeViewTest : BunitContext
         var cut = Render(Kilde(), headingLevel: 6);
 
         var headings = cut.FindAll(".headline-s");
-        var groups = cut.FindAll(".variable-explorer-group");
+        var groups = cut.FindAll(".munin-explorer-group");
 
         Assert.Equal(5, headings.Count);
         Assert.Equal(2, groups.Count);
@@ -419,10 +420,10 @@ public class KildeViewTest : BunitContext
         var cut = Render(Kilde());
 
         Assert.Equal(["Formål", "Beskrivelse"],
-                     cut.FindAll(".variable-explorer-group").Select(e => e.TextContent));
+                     cut.FindAll(".munin-explorer-group").Select(e => e.TextContent));
         Assert.DoesNotContain("Datakvalitet", cut.Markup, StringComparison.Ordinal);
 
-        var first = cut.FindAll(".variable-explorer-kilde__main dl")[0];
+        var first = cut.FindAll(".munin-explorer-kilde__main dl")[0];
 
         Assert.Equal(["Formål med registeret"], Labels(first));
         Assert.Equal(["Kvalitetssikring av behandlingen."], Values(first));
@@ -437,7 +438,7 @@ public class KildeViewTest : BunitContext
         // data-metadata handle or a PropertyMetadata key in an attribute would fail a substring
         // check for a reason that has nothing to do with a heading promising a block.
         Assert.DoesNotContain("Metadata", BlockHeadings(cut));
-        Assert.Empty(cut.FindAll(".variable-explorer-group"));
+        Assert.Empty(cut.FindAll(".munin-explorer-group"));
     }
 
     // ---------------------------------------------------------------------------------
@@ -509,17 +510,17 @@ public class KildeViewTest : BunitContext
         var cut = Render(kilde);
 
         Assert.Equal(["Navn", "Beskrivelse", "Gyldighet", "Totalt antall variabler"],
-                     cut.FindAll("table.variable-explorer-kilde__datasamlinger thead th").Select(e => e.TextContent));
+                     cut.FindAll("table.munin-explorer-kilde__datasamlinger thead th").Select(e => e.TextContent));
 
         // A th rather than a td, and scoped to its row: a screen reader reading a cell out of
         // context has to be able to hear which datasamling the number belongs to.
-        var name = cut.Find("table.variable-explorer-kilde__datasamlinger tbody th");
+        var name = cut.Find("table.munin-explorer-kilde__datasamlinger tbody th");
 
         Assert.Equal("row", name.GetAttribute("scope"));
         Assert.Equal("Inklusjon (INK)", name.TextContent);
 
         Assert.Equal(["Alle pasienter ved inklusjon.", "1. januar 2010 – Pågående", "12 variabler"],
-                     cut.FindAll("table.variable-explorer-kilde__datasamlinger tbody td").Select(e => e.TextContent));
+                     cut.FindAll("table.munin-explorer-kilde__datasamlinger tbody td").Select(e => e.TextContent));
     }
 
     [Fact]
@@ -539,7 +540,7 @@ public class KildeViewTest : BunitContext
 
         // The whole row rather than one cell of it, so the assertion says which column it is reading.
         Assert.Equal(["Alle pasienter ved inklusjon.", "1. januar 2010 – 30. september 2019", "12 variabler"],
-                     Render(kilde).FindAll("table.variable-explorer-kilde__datasamlinger tbody td")
+                     Render(kilde).FindAll("table.munin-explorer-kilde__datasamlinger tbody td")
                                   .Select(e => e.TextContent));
     }
 
@@ -548,7 +549,7 @@ public class KildeViewTest : BunitContext
     {
         var cut = Render(Kilde() with { Datasamlinger = [], Delkilder = [] });
 
-        Assert.Empty(cut.FindAll("table.variable-explorer-kilde__datasamlinger"));
+        Assert.Empty(cut.FindAll("table.munin-explorer-kilde__datasamlinger"));
         Assert.DoesNotContain("Datasamlinger", BlockHeadings(cut));
     }
 
@@ -576,10 +577,10 @@ public class KildeViewTest : BunitContext
         // main column, because the sidebar is the facts every source has and nothing else.
         var cut = Render(Kilde(), sections: KeldaSections);
 
-        var main = cut.Find(".variable-explorer-kilde__main");
+        var main = cut.Find(".munin-explorer-kilde__main");
 
         Assert.Equal("kelda-sections", main.Children.Last().Id);
-        Assert.Empty(cut.FindAll(".variable-explorer-kilde__aside #kelda-sections"));
+        Assert.Empty(cut.FindAll(".munin-explorer-kilde__aside #kelda-sections"));
     }
 
     [Fact]
@@ -589,7 +590,7 @@ public class KildeViewTest : BunitContext
         // wrapper, which would be a stray margin under every source Runa shows.
         var cut = Render(Kilde());
 
-        Assert.Equal("table", cut.Find(".variable-explorer-kilde__main").Children.Last().TagName,
+        Assert.Equal("table", cut.Find(".munin-explorer-kilde__main").Children.Last().TagName,
                      ignoreCase: true);
     }
 
@@ -723,7 +724,7 @@ public class KildeViewTest : BunitContext
         // The kildetype and the identification level are vocabularies this package translates, so
         // they follow the reader too — unlike everything the catalogue wrote, which does not.
         Assert.Equal("National medical quality registry",
-                     cut.Find(".variable-explorer-kilde__kildetype").TextContent);
+                     cut.Find(".munin-explorer-kilde__kildetype").TextContent);
         Assert.Equal("Indirectly identifiable",
                      Value(SourceInformation(cut), "Level of personal identification"));
         Assert.Equal(["Total number of variables", "Data period"], Labels(Statistics(cut)));
@@ -743,13 +744,13 @@ public class KildeViewTest : BunitContext
 
         var cut = Render(kilde, language: "en");
 
-        Assert.Equal("no", cut.Find(".variable-explorer-kilde__header .headline-s").GetAttribute("lang"));
-        Assert.Equal("no", cut.Find(".variable-explorer-kilde__description").GetAttribute("lang"));
-        Assert.Equal("no", cut.Find("table.variable-explorer-kilde__datasamlinger tbody th").GetAttribute("lang"));
+        Assert.Equal("no", cut.Find(".munin-explorer-kilde__header .headline-s").GetAttribute("lang"));
+        Assert.Equal("no", cut.Find(".munin-explorer-kilde__description").GetAttribute("lang"));
+        Assert.Equal("no", cut.Find("table.munin-explorer-kilde__datasamlinger tbody th").GetAttribute("lang"));
 
         // Ours: the kildetype badge is this package's translation of an enum, not the catalogue's
         // prose, and so is the identification level beside it in the sidebar.
-        Assert.False(cut.Find(".variable-explorer-kilde__kildetype").HasAttribute("lang"));
+        Assert.False(cut.Find(".munin-explorer-kilde__kildetype").HasAttribute("lang"));
 
         var facts = SourceInformation(cut);
 

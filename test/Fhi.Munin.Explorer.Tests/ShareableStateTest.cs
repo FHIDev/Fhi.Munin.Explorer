@@ -112,7 +112,7 @@ public class ShareableStateTest : BunitContext
             .Add(c => c.PageChanged, reported.Add));
 
         Assert.Equal(3, client.LastPage);
-        Assert.NotEmpty(cut.FindAll(".variable-data-list__item"));
+        Assert.NotEmpty(cut.FindAll(".munin-explorer-data-list__item"));
 
         // And the host is told, so a URL still saying 40 is corrected rather than left to mislead
         // the next person it is sent to.
@@ -230,7 +230,7 @@ public class ShareableStateTest : BunitContext
         client.FailNext = true;
 
         // A facet is a button here, not a checkbox — the one carrying its count.
-        cut.FindAll(".variable-explorer-filters button").First(b => b.TextContent.Contains("(9)")).Click();
+        cut.FindAll(".munin-explorer-filters button").First(b => b.TextContent.Contains("(9)")).Click();
 
         Assert.Equal(3, reported[^1]);
     }

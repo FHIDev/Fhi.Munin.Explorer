@@ -28,7 +28,7 @@ namespace Fhi.Munin.Explorer.Tests;
 internal static class SortHeader
 {
     /// <summary>The header row the sort buttons live in.</summary>
-    public const string SortControl = ".variable-data-list__header";
+    public const string SortControl = ".munin-explorer-data-list__header";
 
     /// <summary>The sort buttons, in the order they are rendered.</summary>
     public static IReadOnlyList<IElement> SortButtons(IRenderedComponent<VariableExplorer> cut) =>
