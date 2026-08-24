@@ -1514,9 +1514,9 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
    While the component borrowed helsedata's class names these rules came for
    free on helsedata.no, and the sample host managed without them. After the
-   rename to the munin-explorer prefix nobody but Stiler 0.1.13 supplies
-   them, so the sample has to stand for the same set itself. Generated from
-   Stiler's built main.css so the two do not drift apart. */
+   rename to the munin-explorer prefix nobody but Stiler 0.1.13 and later
+   supplies them, so the sample has to stand for the same set itself.
+   Generated from Stiler's built main.css so the two do not drift apart. */
 
 .munin-explorer-results {
   display: flex;
