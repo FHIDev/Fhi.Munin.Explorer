@@ -267,8 +267,16 @@ so a version number that has gone out is spent whether or not the artefact is st
 `scripts/push-packages.sh` retries a push that fails for reasons of its own — five attempts, then
 it gives up — so **re-running the workflow** is the answer when one does. The re-run asks the feed
 first whether this version is already there and refuses to push over it, so it either completes
-the push that never landed or stops because the tag is being reused. A push that comes back
-"already exists" is reported as an earlier attempt having landed, not as a failure.
+the push that never landed or stops because the version is already out.
+
+"Already out" is not always a reused tag, and the run cannot tell the difference. If the first
+run's push landed but the job died after it — the `Create the GitHub Release` step failed, the
+20-minute `timeout-minutes` fired, the runner dropped — then there is nothing left to publish, and
+the re-run still stops and still says to tag a new version. Read that message rather than obeying
+it: look at what is on the feed first, and spend a new version number only if what is there is not
+the build you meant to ship. The forgiveness only reaches within one run, where a push coming back
+"already exists" is our own attempt landing unseen and is reported as a success. Across runs the
+pre-flight has no way to distinguish that from a genuine reuse, so it refuses either way.
 
 Requires the secret `ADO_PACKAGING_TOKEN`: an Azure DevOps personal access token for the `fhi`
 organisation, scoped to Packaging (Read & write) and nothing more. Add it under

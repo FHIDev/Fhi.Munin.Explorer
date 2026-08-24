@@ -12,8 +12,9 @@
 
   <!-- Package identity and version.
 
-       Deliberately 0.x. A 1.0.0 on nuget.org is a stability promise, and published
-       versions cannot be withdrawn — only unlisted. We stay below 1.0 until a real
+       Deliberately 0.x. A 1.0.0 is a stability promise, and a published version cannot be
+       walked back: the feed does allow one to be deleted, but whoever already restored it keeps
+       what they got. We stay below 1.0 until a real
        consumer (the helsedata POC) is wired up and the API surface has stopped moving.
        The publish pipeline overrides this from the release tag with -p:Version=. -->
   <PropertyGroup>
@@ -21,8 +22,8 @@
     <Authors>Folkehelseinstituttet (FHI)</Authors>
     <Company>Folkehelseinstituttet</Company>
 
-    <!-- Required of a public FHI package, and the one piece of provenance a consumer sees on
-         nuget.org without opening anything: it names who stands behind the package beside the
+    <!-- Required of an FHI package, and the one piece of provenance a consumer sees on the
+         feed without opening anything: it names who stands behind the package beside the
          author and the licence. -->
     <Copyright>Copyright 2026 Folkehelseinstituttet (FHI)</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -31,13 +32,13 @@
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>README.md</PackageReadmeFile>
 
-    <!-- Not the notes themselves: nuget.org renders this per version, and pasting a version's
+    <!-- Not the notes themselves: the feed renders this per version, and pasting a version's
          entry in here would mean editing this file every release and being wrong the first time
          someone forgot.
 
          This default is for local and CI builds, which are not published. The release workflow
          overrides it with the GitHub release for the tag being packed - see the Pack step. That
-         matters because nuget.org shows this string forever against that one version: a link to
+         matters because the string stays attached to that one version: a link to
          the changelog on main would, after the next release, point an old package at notes that
          no longer describe it and may not mention it at all. -->
     <PackageReleaseNotes>Unreleased build. Release notes for published versions: https://github.com/FHIDev/Fhi.Munin.Explorer/releases</PackageReleaseNotes>
@@ -78,8 +79,15 @@
        usually only for some users.
 
        BannedApiAnalyzers turns that from a review question into a build error (RS0030).
-       Scoped to the RCL: the sample hosts are *supposed* to use host-specific types. -->
-  <ItemGroup Condition="'$(MSBuildProjectName)' == 'Fhi.Munin.Explorer.Blazor'">
+       Scoped to the RCL: the sample hosts are *supposed* to use host-specific types.
+
+       The name in the condition is load-bearing and has been wrong once. It read
+       'Fhi.Munin.Explorer.Blazor' from before the three projects were merged into one, and
+       matched nothing afterwards — so the analyzer was never referenced, BannedSymbols.txt was
+       never an AdditionalFile, and RS0030 could not fire. The guard was off for as long as that
+       lasted, silently, which is the failure mode it exists to prevent. If the RCL is ever
+       renamed again, this line moves with it. -->
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'Fhi.Munin.Explorer'">
     <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="5.6.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
