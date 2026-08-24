@@ -255,18 +255,20 @@ git tag v0.2.0 && git push origin v0.2.0
 ```
 
 `.github/workflows/release.yml` derives the version from the tag, builds, tests, packs, asserts
-the package shape and pushes all three packages in dependency order to
-`Fhi.Helsedata.no`, the Azure Artifacts feed helsedata's own projects already restore from. The
-packages are internal, not public: nothing goes to nuget.org.
+the package shape and pushes the one package, `Fhi.Munin.Explorer`, to `Fhi.Helsedata.no`, the
+Azure Artifacts feed helsedata's own projects already restore from. The package is internal, not
+public: nothing goes to nuget.org.
 
 The workflow refuses to publish a tag whose commit is not on `main`, a tag that is not a clean
 `vMAJOR.MINOR.PATCH`, and a build whose packed version disagrees with the tag. The feed does allow
 a version to be deleted, but that is not a way back: anyone who restored it keeps what they got,
 so a version number that has gone out is spent whether or not the artefact is still there.
 
-If a push fails partway through, **re-run the workflow** — it asks the feed what already went out
-and pushes only what is missing. It stops only if *every* package is already published, which
-means the tag is being reused rather than a run needing to finish.
+`scripts/push-packages.sh` retries a push that fails for reasons of its own — five attempts, then
+it gives up — so **re-running the workflow** is the answer when one does. The re-run asks the feed
+first whether this version is already there and refuses to push over it, so it either completes
+the push that never landed or stops because the tag is being reused. A push that comes back
+"already exists" is reported as an earlier attempt having landed, not as a failure.
 
 Requires the secret `ADO_PACKAGING_TOKEN`: an Azure DevOps personal access token for the `fhi`
 organisation, scoped to Packaging (Read & write) and nothing more. Add it under

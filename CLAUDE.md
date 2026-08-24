@@ -113,10 +113,12 @@ Label directly with `bd create --label X` or `bd update <id> --add-label X`.
 
 ## Publishing
 
-Tag-triggered: `git tag v0.2.0 && git push origin v0.2.0`. The workflow refuses a tag whose
-commit is not on `main`, a malformed version, and a packed version that disagrees with the tag,
-because nuget.org is append-only — a version can be unlisted but never replaced. Requires the
-`NUGET_ORG_FHI_PUBLISH` secret. See "Releasing" in `README.md`.
+Tag-triggered: `git tag v0.2.0 && git push origin v0.2.0`. The one package, `Fhi.Munin.Explorer`,
+goes to `Fhi.Helsedata.no`, the Azure Artifacts feed helsedata restores from — **not** nuget.org,
+which this package has never been published to. Requires the `ADO_PACKAGING_TOKEN` secret. The
+workflow refuses a tag whose commit is not on `main`, a malformed version, a packed version that
+disagrees with the tag, and a version already on the feed: deleting one there does not take it
+back from anyone who restored it. See "Releasing" in `README.md` for the rest.
 
 ## Host constraints worth remembering
 
