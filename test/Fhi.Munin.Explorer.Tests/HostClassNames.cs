@@ -50,6 +50,16 @@ internal static class HostClassNames
         new(@"/\*.*?\*/", System.Text.RegularExpressions.RegexOptions.Singleline);
 
     /// <summary>
+    /// Innermost blocks only — <c>[^{}]</c> on both sides — so the rules inside an
+    /// <c>@media</c> are matched as themselves rather than swallowed whole by the at-rule.
+    ///
+    /// No <c>Singleline</c>, unlike its neighbour above: the flag only widens what <c>.</c>
+    /// matches, and there is no <c>.</c> here. A negated class crosses newlines on its own.
+    /// </summary>
+    private static readonly System.Text.RegularExpressions.Regex CssRule =
+        new(@"(?<selector>[^{}]*)\{(?<declarations>[^{}]*)\}");
+
+    /// <summary>
     /// The sample stylesheet, read as text rather than parsed: nearly every question here is only
     /// whether a rule mentions the name — <see cref="SampleDeclarationsFor"/> is the one that reads
     /// a declaration block, and it cuts the blocks out of the same text.
@@ -108,21 +118,16 @@ internal static class HostClassNames
                    .Where(m => Mentions(m.Groups["selector"].Value, name))
                    .Select(m => (m.Groups["selector"].Value.Trim(), m.Groups["declarations"].Value))];
 
-    /// <summary>
-    /// Innermost blocks only — <c>[^{}]</c> on both sides — so the rules inside an
-    /// <c>@media</c> are matched as themselves rather than swallowed whole by the at-rule.
-    /// </summary>
-    private static readonly System.Text.RegularExpressions.Regex CssRule =
-        new(@"(?<selector>[^{}]*)\{(?<declarations>[^{}]*)\}",
-            System.Text.RegularExpressions.RegexOptions.Singleline);
-
     private static bool SampleStyles(string name) => Mentions(SampleStylesheet.Value, name);
 
     /// <summary>
-    /// Anchored on the right so a rule for <c>.munin-explorer-period__fill</c> does not answer for
-    /// <c>.munin-explorer-period</c> — a rule for the part is not a rule for the whole. Left open
-    /// on the other side, so <c>.munin-explorer-skiplink-pagination:focus</c> does answer for the
-    /// name it qualifies.
+    /// Hard-anchored on the left — the search is for <c>'.' + name</c>, so nothing with a prefix
+    /// in front of the name answers for it. What the right-hand check does is accept any
+    /// character that cannot continue a class name, which is how the two things that can follow
+    /// a name are told apart: <c>_</c> continues it, so a rule for
+    /// <c>.munin-explorer-period__fill</c> does not answer for <c>.munin-explorer-period</c> — a
+    /// rule for the part is not a rule for the whole — while <c>:</c> ends it, so
+    /// <c>.munin-explorer-skiplink-pagination:focus</c> does answer for the name it qualifies.
     /// </summary>
     private static bool Mentions(string css, string name)
     {

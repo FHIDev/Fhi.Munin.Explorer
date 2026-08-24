@@ -2376,15 +2376,31 @@ public class VariableExplorerTest : BunitContext
         var rules = HostClassNames.SampleDeclarationsFor("munin-explorer-skiplink-pagination");
         static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
 
-        // The resting rule, picked by its selector rather than by position: the :focus twin beside
-        // it is the one that brings the link back, and `display: inline-block` belongs there.
-        var resting = Squeezed(Assert.Single(
-            rules.Where(r => r.Selector == ".munin-explorer-skiplink-pagination").Select(r => r.Declarations)));
+        // Each rule is picked by its exact selector and then read in file order, and the first is
+        // the base one. Not `Assert.Single`: this file writes responsive overrides under the
+        // identical selector inside an `@media`, and those come back as rules of their own — three
+        // names already appear twice that way. Adding such an override here breaks nothing, and it
+        // must not report as "the collection contained 2 matching elements" against an invariant
+        // it leaves intact.
+        IReadOnlyList<string> BlocksFor(string selector) =>
+            [.. rules.Where(r => r.Selector == selector).Select(r => Squeezed(r.Declarations))];
 
-        Assert.Contains("position:absolute", resting, StringComparison.Ordinal);
-        Assert.Contains("left:-10000px", resting, StringComparison.Ordinal);
+        var resting = BlocksFor(".munin-explorer-skiplink-pagination");
+        var focused = BlocksFor(".munin-explorer-skiplink-pagination:focus");
 
-        // Across both rules: hiding it on focus would be the same regression arriving one keypress
+        Assert.NotEmpty(resting);
+        Assert.Contains("position:absolute", resting[0], StringComparison.Ordinal);
+        Assert.Contains("left:-10000px", resting[0], StringComparison.Ordinal);
+
+        // The twin has to exist and has to undo the offset, which is the half an assertion about
+        // the resting rule alone cannot see. Delete the `:focus` block and everything above still
+        // passes, while the link stays at -10000px forever: the keyboard reader tabs onto a
+        // focused link they can neither see nor read. That is the mirror image of the shipped bug
+        // and the same WCAG 2.1 AA failure, 2.4.7 Focus Visible instead of a link nobody wanted.
+        Assert.NotEmpty(focused);
+        Assert.Contains("position:static", focused[0], StringComparison.Ordinal);
+
+        // Across every rule: hiding it on focus would be the same regression arriving one keypress
         // later.
         Assert.All(rules, r => Assert.DoesNotContain("display:none", Squeezed(r.Declarations), StringComparison.Ordinal));
     }
