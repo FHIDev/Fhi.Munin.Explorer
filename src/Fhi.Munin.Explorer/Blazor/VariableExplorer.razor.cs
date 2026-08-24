@@ -47,25 +47,30 @@ internal enum PanelTab
 /// a shape of its own, so the rows (<c>munin-explorer-data-list*</c>, <c>munin-explorer-dataitem-*</c>), the
 /// list they sit in (<c>munin-explorer-container</c>, <c>munin-explorer-results</c>), the
 /// opened panel (<c>munin-explorer-meta*</c>), the column picker's names listed below and the pager
-/// (<c>variables-pagination</c>, <c>variables-pagination-content</c>, <c>skiplink-pagination</c>)
-/// all come from the page-specific <c>variables.css</c> that page carries rather than from the
-/// site-wide stylesheet. The pager would have needed borrowing whatever the results looked like —
-/// Stiler defines no pagination rule at all, its compiled stylesheet has no <c>pagination</c>,
-/// <c>pager</c>, <c>paging</c>, <c>page-link</c> or <c>page-item</c> — but it is one borrowed
-/// family among many now rather than the single exception it used to be. Despite its name
-/// <c>variables.css</c> is served on every page of helsedata.no, so a host inside their estate has
-/// it wherever the component is mounted; a host outside has to supply the whole vocabulary itself,
-/// including the rule that keeps <c>skiplink-pagination</c> out of sight until it is focused, which
-/// is the whole point of a skip link. <c>README.md</c> has the full split.
+/// (<c>munin-explorer-pagination</c>, <c>munin-explorer-pagination-content</c>) were read off the
+/// page-specific <c>variables.css</c> that page carries rather than off the site-wide stylesheet.
+/// The shape is still theirs; the names are not. The pager was the last of them to be renamed,
+/// under <c>Fhi.Metadata-hyyxl</c>: Stiler defines no pagination rule of its own — its compiled
+/// stylesheet has no <c>pagination</c>, <c>pager</c>, <c>paging</c>, <c>page-link</c> or
+/// <c>page-item</c> — while <c>variables.css</c> does, and despite its name that stylesheet is
+/// served on every page of helsedata.no, so borrowing cost nothing inside their estate and left
+/// every host outside it drawing a pager at browser defaults. The rules for the whole prefix,
+/// pager included, ship in <c>Fhi.Helsedata.Stiler</c> under <c>components/munin-explorer/</c> —
+/// the pager's from the first release after 0.1.13, which shipped before this rename, so on 0.1.13
+/// itself the pager and nothing else renders at browser defaults.
+/// One borrowed name is left: <c>skiplink-pagination</c>, which is helsedata's, and with it the
+/// rule that keeps the skip link out of sight until it is focused — the whole point of a skip
+/// link. <c>README.md</c> has the full split.
 /// </para>
 /// <para>
-/// Two names from <c>variables.css</c> are deliberately left unused.
-/// <c>variables-pagination-mobile</c> is a second copy of the controls that helsedata's own media
-/// queries swap in; rendering it too would put two "Neste" buttons for one list in the tab order
-/// and in the accessibility tree, so this renders the one pager at every width. The
-/// <c>__expired</c> modifiers describe a state this component does not have — it never lists
-/// expired variables — and a modifier whose meaning cannot be read back off the stylesheet is
-/// exactly the guess this package exists to avoid.
+/// Two parts of helsedata's own pager were deliberately not carried across when its shape was read
+/// off <c>variables.css</c>, and the prefix has no equivalent of either.
+/// <c>variables-pagination-mobile</c> is a second copy of the controls that their media queries
+/// swap in; rendering it too would put two "Neste" buttons for one list in the tab order and in the
+/// accessibility tree, so this renders the one pager at every width. The <c>__expired</c> modifiers
+/// describe a state this component does not have — it never lists expired variables — and a
+/// modifier whose meaning cannot be read back off the stylesheet is exactly the guess this package
+/// exists to avoid.
 /// </para>
 /// <para>
 /// The filter panel adds no class name to that list. Stiler has no accordion, no tree and no

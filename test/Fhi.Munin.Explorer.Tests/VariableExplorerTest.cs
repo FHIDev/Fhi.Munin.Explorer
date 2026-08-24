@@ -1741,7 +1741,7 @@ public class VariableExplorerTest : BunitContext
 
     private static IReadOnlyList<AngleSharp.Dom.IElement> PagerButtons(
         IRenderedComponent<VariableExplorer> cut) =>
-        cut.FindAll("div.variables-pagination .variables-pagination-content button");
+        cut.FindAll("div.munin-explorer-pagination .munin-explorer-pagination-content button");
 
     private static AngleSharp.Dom.IElement Previous(IRenderedComponent<VariableExplorer> cut) =>
         PagerButtons(cut)[0];
@@ -1751,7 +1751,7 @@ public class VariableExplorerTest : BunitContext
 
     /// <summary>The "Side 2 av 13" between the two buttons.</summary>
     private static string Position(IRenderedComponent<VariableExplorer> cut) =>
-        cut.Find(".variables-pagination-content span.caption").TextContent;
+        cut.Find(".munin-explorer-pagination-content span.caption").TextContent;
 
     private static string StatusLine(IRenderedComponent<VariableExplorer> cut) =>
         cut.Find("p[role='status']").TextContent;
@@ -1853,7 +1853,7 @@ public class VariableExplorerTest : BunitContext
         // link would be a tab stop leading nowhere.
         var cut = RenderWith(new PagedClient(3));
 
-        Assert.Empty(cut.FindAll("div.variables-pagination"));
+        Assert.Empty(cut.FindAll("div.munin-explorer-pagination"));
         Assert.Empty(cut.FindAll("a.skiplink-pagination"));
     }
 
@@ -1862,7 +1862,7 @@ public class VariableExplorerTest : BunitContext
     {
         var cut = RenderWith(new PagedClient(0));
 
-        Assert.Empty(cut.FindAll("div.variables-pagination"));
+        Assert.Empty(cut.FindAll("div.munin-explorer-pagination"));
         Assert.DoesNotContain("Viser", StatusLine(cut));
         Assert.Contains("Ingen variabler passet søket", StatusLine(cut));
     }
@@ -1942,7 +1942,7 @@ public class VariableExplorerTest : BunitContext
 
         Next(cut).Click();
 
-        Assert.NotEmpty(cut.FindAll("div.variables-pagination"));
+        Assert.NotEmpty(cut.FindAll("div.munin-explorer-pagination"));
         Assert.Equal("Side 1 av 13", Position(cut)); // rolled back, and still describing real rows
         Assert.Contains("Variabel 1", cut.Markup);
         Assert.Contains("Viser 1–25 av 312 variabler funnet", StatusLine(cut));
@@ -1962,7 +1962,7 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Contains("Kunne ikke hente variabler", cut.Markup);
         Assert.Empty(cut.FindAll("ul.munin-explorer-data-list > li"));
-        Assert.Empty(cut.FindAll("div.variables-pagination"));
+        Assert.Empty(cut.FindAll("div.munin-explorer-pagination"));
     }
 
     [Fact]
@@ -2021,7 +2021,7 @@ public class VariableExplorerTest : BunitContext
             TotalPages = 13
         }));
 
-        Assert.NotEmpty(cut.FindAll("div.variables-pagination"));
+        Assert.NotEmpty(cut.FindAll("div.munin-explorer-pagination"));
         Assert.Equal("Side 1 av 13", Position(cut));
         Assert.Null(Next(cut).GetAttribute("aria-disabled"));
     }
@@ -2076,7 +2076,7 @@ public class VariableExplorerTest : BunitContext
 
         Next(cut).Click();
 
-        Assert.NotEmpty(cut.FindAll("div.variables-pagination"));
+        Assert.NotEmpty(cut.FindAll("div.munin-explorer-pagination"));
         Assert.NotEmpty(cut.FindAll("a.skiplink-pagination"));
         Assert.Equal("Side 1 av 1", Position(cut));
         Assert.Contains("10 variabler funnet", StatusLine(cut)); // the whole result, so no range
@@ -2101,7 +2101,7 @@ public class VariableExplorerTest : BunitContext
         cut.Find("input[type=search]").Change("svelging");
         cut.Find("form").Submit();
 
-        Assert.Empty(cut.FindAll("div.variables-pagination"));
+        Assert.Empty(cut.FindAll("div.munin-explorer-pagination"));
         Assert.Empty(cut.FindAll("a.skiplink-pagination"));
     }
 
@@ -2121,7 +2121,7 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Equal(3, client.Calls); // the initial load, the missing page 2, and the failed way back
         Assert.Contains("Kunne ikke hente variabler", cut.Markup);
-        Assert.NotEmpty(cut.FindAll("div.variables-pagination"));
+        Assert.NotEmpty(cut.FindAll("div.munin-explorer-pagination"));
         Assert.Equal("Side 1 av 13", Position(cut));
         Assert.Contains("Viser 1–25 av 312 variabler funnet", StatusLine(cut));
         Assert.Contains("Variabel 1", cut.Markup);
@@ -2229,22 +2229,77 @@ public class VariableExplorerTest : BunitContext
     }
 
     // ---------------------------------------------------------------------------------
-    // The pager's own accessibility and styling contract. The class names here are NOT
-    // Stiler's: Stiler defines no pagination rule of any kind, so these are helsedata's
-    // own, from the stylesheet their variable page carries. Pinning them is what keeps
-    // someone from "tidying" them into names no host has ever heard of.
+    // The pager's own accessibility and styling contract. The class names here are ours,
+    // under the munin-explorer prefix, and were helsedata's `variables-pagination*` until
+    // Fhi.Metadata-hyyxl: Stiler defines no pagination rule of its own, their variable
+    // page's stylesheet does, and borrowing it left every host outside their estate with an
+    // unstyled pager. Pinning the names is what keeps someone from "tidying" them into
+    // names no stylesheet has ever heard of — back into helsedata's prefix included.
     // ---------------------------------------------------------------------------------
 
     [Fact]
-    public void Render_WhenThereIsMoreThanOnePage_ThenThePagerUsesHelsedatasOwnClassNames()
+    public void Render_WhenThereIsMoreThanOnePage_ThenThePagerWearsOurOwnPrefixedClassNames()
     {
         var cut = RenderWith(new PagedClient(312));
 
-        var pager = cut.Find("div.variables-pagination > div.variables-pagination-content");
+        var content = cut.Find("div.munin-explorer-pagination > div.munin-explorer-pagination-content");
 
-        Assert.NotNull(pager);
+        Assert.NotNull(content);
         Assert.Equal(2, PagerButtons(cut).Count);
         Assert.All(PagerButtons(cut), button => Assert.Contains("hd-button-square", button.ClassName!));
+    }
+
+    [Fact]
+    public void Render_WhenThereIsMoreThanOnePage_ThenThePagerBorrowsNothingFromHelsedatasOwnStylesheet()
+    {
+        // The whole subtree, not just the two names above, because what this guards against is a
+        // helsedata name creeping back in beside them. That is not hypothetical: the pager wore
+        // `variables-pagination*` for as long as it did precisely because their variables.css had
+        // the rule and Stiler had none, and the argument for borrowing reads as sound right up
+        // until the component is mounted somewhere that stylesheet is not.
+        //
+        // An exact list rather than a prefix check: the buttons are deliberately Stiler's own, so
+        // "everything here is ours" would be false, and "nothing here is helsedata's" is only
+        // checkable by naming what is here.
+        var cut = RenderWith(new PagedClient(312));
+
+        var pager = cut.Find("div.munin-explorer-pagination");
+
+        var names = HostClassNames.Of(pager.QuerySelectorAll("[class]").Prepend(pager))
+            .Distinct()
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        Assert.Equal(
+        [
+            "button-square--secondary",           // Stiler, the buttons' colour
+            "caption",                            // Stiler, the "Side 2 av 13" between them
+            "hd-button-square",                   // Stiler, the square shape
+            "munin-explorer-pagination",          // ours, Stiler components/munin-explorer/
+            "munin-explorer-pagination-content",  // ours, Stiler components/munin-explorer/
+        ], names);
+    }
+
+    [Fact]
+    public void Render_WhenThereIsMoreThanOnePage_ThenEveryClassNameInThePagerIsOneSomeStylesheetDefines()
+    {
+        // The pager is drawn only when there is more than one page, so it slips past every other
+        // Orphans check in this file — each of those renders a single page and the pager is not in
+        // the DOM to be read. That mattered less while its names were helsedata's, listed in
+        // host-class-names.txt: they were defined whatever this repository did. They are ours now,
+        // the sample stylesheet is the only thing here that defines them, and a name with no rule
+        // renders at raw browser defaults inside an otherwise styled page.
+        //
+        // The whole render rather than the pager subtree, because the pager is not the only thing
+        // gated on more than one page: `skiplink-pagination` is too, and it sits outside
+        // div.munin-explorer-pagination, so a subtree check would leave the one other name in this
+        // branch unread — as would anything a later >1-page branch adds.
+        var cut = RenderWith(new PagedClient(312));
+
+        // The pager has to actually be in this render, or the check below passes on an empty set.
+        cut.Find("div.munin-explorer-pagination");
+
+        Assert.Equal([], HostClassNames.Orphans(HostClassNames.Of(cut.FindAll("[class]"))));
     }
 
     [Fact]
@@ -2256,7 +2311,7 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(new PagedClient(312));
 
         var skiplink = cut.Find("a.skiplink-pagination");
-        var pager = cut.Find("div.variables-pagination");
+        var pager = cut.Find("div.munin-explorer-pagination");
 
         Assert.Equal($"#{pager.Id}", skiplink.GetAttribute("href"));
         Assert.Equal("-1", pager.GetAttribute("tabindex"));
@@ -2278,7 +2333,7 @@ public class VariableExplorerTest : BunitContext
         // word on the button, so a speech-input user saying what they see still hits it (2.5.3).
         var cut = RenderWith(new PagedClient(312));
 
-        var pager = cut.Find("div.variables-pagination");
+        var pager = cut.Find("div.munin-explorer-pagination");
 
         Assert.Equal("navigation", pager.GetAttribute("role"));
         Assert.Equal("Paginering", pager.GetAttribute("aria-label"));
@@ -2296,8 +2351,8 @@ public class VariableExplorerTest : BunitContext
         var a = Render<VariableExplorer>();
         var b = Render<VariableExplorer>();
 
-        Assert.NotEqual(a.Find("div.variables-pagination").Id, b.Find("div.variables-pagination").Id);
-        Assert.Equal($"#{a.Find("div.variables-pagination").Id}",
+        Assert.NotEqual(a.Find("div.munin-explorer-pagination").Id, b.Find("div.munin-explorer-pagination").Id);
+        Assert.Equal($"#{a.Find("div.munin-explorer-pagination").Id}",
                      a.Find("a.skiplink-pagination").GetAttribute("href"));
     }
 
@@ -2558,7 +2613,7 @@ public class VariableExplorerTest : BunitContext
         });
         var cut = RenderWith(client);
 
-        cut.FindAll("div.variables-pagination button")[1].Click(); // Neste
+        cut.FindAll("div.munin-explorer-pagination button")[1].Click(); // Neste
         ClickFacet(cut, "Dødsårsaksregisteret");
 
         Assert.Equal(1, client.LastPage);
@@ -2772,7 +2827,7 @@ public class VariableExplorerTest : BunitContext
         });
         var cut = RenderWith(client);
 
-        cut.FindAll("div.variables-pagination button")[1].Click(); // Neste
+        cut.FindAll("div.munin-explorer-pagination button")[1].Click(); // Neste
         ClickSort(cut, "Kilde");
 
         Assert.Equal(1, client.FacetCalls);

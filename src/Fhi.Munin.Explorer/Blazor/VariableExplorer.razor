@@ -11,10 +11,10 @@
    result vocabulary. Since `Fhi.Metadata-zs56s` the results are their own variable page's rows
    (`munin-explorer-data-list*`, `munin-explorer-dataitem-*`) in the list that page builds around them
    (`munin-explorer-container`, `munin-explorer-results`, `munin-explorer-header*`), with
-   `munin-explorer-meta*` for the panel an open row shows and `variables-pagination*` plus
-   `skiplink-pagination` for the pager. The
-   pager was the first name borrowed from that file, because Stiler has no pagination rule at all,
-   but it is one borrowed family among many now rather than the one exception it used to be. The
+   `munin-explorer-meta*` for the panel an open row shows and `munin-explorer-pagination*` for the
+   pager. `skiplink-pagination` is the one name left from that file: the pager itself was the last
+   thing still wearing helsedata's own, because Stiler had no pagination rule at all and their
+   stylesheet did, and `Fhi.Metadata-hyyxl` moved it into the prefix with everything else. The
    searchbox shape — submit button inside the field — is still lifted from helsedata's own
    datakildeutforsker (Features/DataSources/DataSourceComponent); its `datasourcecard*` card list
    is not, and no `datasourcecard` name is emitted here any more.
@@ -630,24 +630,26 @@ else
        with it. RetreatFromEmptyPageAsync is what stops that state from lasting; this is what makes
        it survivable while it does.
 
-       `variables-pagination` and `variables-pagination-content` are helsedata's own names from
-       `variables.css` — Stiler has no pagination rule at all. Despite the name, every page of
-       helsedata.no loads that stylesheet, so the names are there wherever the component is
-       mounted inside their estate; the component class's remarks say what supplying them costs
-       a host outside it.
+       `munin-explorer-pagination` and `munin-explorer-pagination-content` are ours, like the rest
+       of the prefix. They were helsedata's `variables-pagination*` until `Fhi.Metadata-hyyxl`,
+       kept back when the rest of the vocabulary was renamed because Stiler had no pagination rule
+       of any kind and helsedata's own `variables.css` — loaded on every page of their site,
+       despite the name — did. That reasoning only ever covered hosts inside their estate: a host
+       with Stiler alone drew the pager at browser defaults, which is the whole failure the rename
+       exists to end. The rules ship in Stiler under `components/munin-explorer/` with the rest.
+       The skip link above is the one name from that file left over, and still helsedata's.
 
        A div with role="navigation" rather than a <nav>: the landmark is worth having, and it
-       is named so it does not sit anonymously among the host page's own, but the element has
-       to be the one helsedata's selectors expect. tabindex="-1" makes it the skip link's
-       target — focusable programmatically, and still not a tab stop. *@
+       is named so it does not sit anonymously among the host page's own. tabindex="-1" makes it
+       the skip link's target — focusable programmatically, and still not a tab stop. *@
     @if (ShowPager)
     {
-        <div class="variables-pagination"
+        <div class="munin-explorer-pagination"
              id="@PaginationId"
              tabindex="-1"
              role="navigation"
              aria-label="@T.Pagination">
-            <div class="variables-pagination-content">
+            <div class="munin-explorer-pagination-content">
                 @* aria-disabled, not disabled — see AriaDisabled in the codebehind. Both
                    buttons ask for a page that does not exist at the ends of the list; the
                    clamp in GoToPageAsync is what makes that inert, so the boundary is one

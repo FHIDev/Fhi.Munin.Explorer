@@ -61,19 +61,22 @@ These are not style preferences — each one is a host that breaks otherwise.
     than guessed at: `searchbox__freetext*`, `hd-button-square` with its `button-square--*`
     modifiers, `form-element__label`, `form-fieldset`, `headline`, `caption`, `infobox`,
     `hd-button-reset`, `screenreader-only`, and `dropdown-choicepicker*` for the column picker's
-    open list. These are not ours to rename: a change to one of them is a change to Stiler. The
-    pager is the one borrowed family Stiler has no rule for — `variables-pagination` and
-    `variables-pagination-content` come from helsedata's own `variables.css`, which despite the
-    name is served on every page of helsedata.no (verified on `/no/`, `/no/variabler/` and
-    `/no/datakilder/`, which load an identical seven bundles), so a host in their estate has them
-    wherever the component is mounted and a host outside has to supply them.
+    open list. These are not ours to rename: a change to one of them is a change to Stiler. One
+    borrowed name is not Stiler's and has no rule there: `skiplink-pagination`, which comes from
+    helsedata's own `variables.css` — despite the name that stylesheet is served on every page of
+    helsedata.no (verified on `/no/`, `/no/variabler/` and `/no/datakilder/`, which load an
+    identical seven bundles), so a host in their estate has it wherever the component is mounted
+    and a host outside has to supply it, including the part that keeps the link out of sight until
+    it is focused. The pager itself was borrowed the same way until `Fhi.Metadata-hyyxl` and is
+    ours now — see below.
   - **Ours.** Everything the explorer is actually built out of — its structure and its whole result
     vocabulary — is under the `munin-explorer` prefix, which this package owns. Since
     `Fhi.Metadata-zs56s` that vocabulary is shaped like helsedata's variable page rather than like
     something of its own: rows are `munin-explorer-data-list` / `munin-explorer-data-list__item*` /
     `munin-explorer-dataitem-main*`, the opened panel is `munin-explorer-meta*`, the list around
-    them is `munin-explorer-container` / `munin-explorer-results` / `munin-explorer-header*`, and
-    the column picker hangs in `munin-explorer-header__actions*`.
+    them is `munin-explorer-container` / `munin-explorer-results` / `munin-explorer-header*`, the
+    column picker hangs in `munin-explorer-header__actions*`, and the pager is
+    `munin-explorer-pagination` / `munin-explorer-pagination-content`.
 
     It was not ours until recently, and the change is the reason a host outside helsedata can style
     this component at all. The package used to write helsedata's own names — `variable-data-list*`,
@@ -86,6 +89,20 @@ These are not style preferences — each one is a host that breaks otherwise.
     defaults**, which is why the changelog states the floor as a version rather than as advice.
     Note that the old prefix is not free either: Stiler still defines `.variable-explorer-header`,
     so writing a `variable-*` name here is either borrowing helsedata's or colliding with it.
+
+    The pager was held back from that rename and moved under `Fhi.Metadata-hyyxl`, because the
+    case for borrowing looked strongest there: Stiler has no pagination rule of any kind, while
+    `variables.css` has one and loads on every page of helsedata.no. That is an argument about
+    their estate and not about anyone else's — a host with Stiler alone drew 92 of the 95 names
+    correctly and the pager at browser defaults — so `variables-pagination` and
+    `variables-pagination-content` became `munin-explorer-pagination` and
+    `munin-explorer-pagination-content`, and their rules join the rest of the prefix in Stiler
+    under `components/munin-explorer/`. They are not in 0.1.13, which shipped before this rename:
+    the floor for a fully styled pager is the first Stiler release carrying them, and on 0.1.13
+    itself the pager renders at browser defaults exactly as it did before. Inside helsedata nothing
+    changes either way — their `variables-pagination` rules are still in `variables.css`, now
+    unused. The third of those 95 names is `skiplink-pagination` above, which stays borrowed: a
+    Stiler-only host is down to that one rule, not down to none.
 
   A name no stylesheet has heard of renders as a raw browser default inside an otherwise styled
   page, which defeats the point of shipping this as a component at all. That is why owning the
