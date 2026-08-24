@@ -325,10 +325,11 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
    The pager itself used to be here too, as `variables-pagination` and
    `variables-pagination-content`. `Fhi.Metadata-hyyxl` moved it into the prefix with everything
-   else: those two were the last names the component emitted that Stiler did not cover, so a host
-   on Stiler alone drew the pager at browser defaults while the rest of the component came out
-   right. Their rules are further down, under the munin-explorer heading with the rows, the opened
-   panel and the column picker. */
+   else: with the skip link above they were the three names the component emitted that Stiler had
+   no rule for, so a host on Stiler alone drew the pager at browser defaults while the rest of the
+   component came out right. The skip link is the one still in that position. Their rules are further down, under the munin-explorer heading with
+   the rows, the opened panel and the column picker; the skip link's stays here, because that name
+   is still helsedata's. */
 
 /* Out of sight until focused, which is the whole point of a skip link: it is there for the
    keyboard user who would otherwise tab through every card to reach the next page, and for
