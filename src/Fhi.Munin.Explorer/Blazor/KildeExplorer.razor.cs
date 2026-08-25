@@ -35,9 +35,10 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <para>
 /// Selecting a kilde swaps the list for <see cref="KildeView"/> — the same component the variable
 /// explorer drills into, so the two cannot render the same source differently. Kelda's own
-/// sections reach it through <c>KildeView.Sections</c> and its own heading for the datasamling
-/// table through <c>DataCollectionsHeading</c>; nothing Kelda-specific is added to that component
-/// itself, which is the whole reason it is a core with slots rather than one view with flags.
+/// sections reach it through <see cref="KildeView.Sections"/> and its own heading for the
+/// datasamling table through <see cref="KildeView.DataCollectionsHeading"/>; nothing
+/// Kelda-specific is added to that component itself, which is the whole reason it is a core with
+/// slots rather than one view with flags.
 /// </para>
 /// <para>
 /// The sections are the measured difference between the two explorers rather than an invention
@@ -119,9 +120,9 @@ public sealed partial class KildeExplorer : ComponentBase
     /// variables, its access criteria, its prices — are markup that goes <em>into</em> that
     /// component rather than markup added to it, and this parameter is the same door held open for
     /// whoever embedded the explorer. It is not passed straight through: what reaches
-    /// <c>KildeView.Sections</c> is Kelda's three sections and then this, in that order, because a
-    /// host's section is an addition to the page it embedded rather than a replacement for what the
-    /// component is.
+    /// <see cref="KildeView.Sections"/> is Kelda's three sections and then this, in that order,
+    /// because a host's section is an addition to the page it embedded rather than a replacement
+    /// for what the component is.
     /// </remarks>
     [Parameter] public RenderFragment? Sections { get; set; }
 

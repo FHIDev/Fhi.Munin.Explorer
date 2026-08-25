@@ -101,12 +101,17 @@
                        and fhi.no — is Fhi.Metadata-ay3zz, together with the question of whether they
                        belong at all in a component embedded on helsedata.no. One plain sentence
                        each until that is answered: a heading with nothing under it reads as a
-                       rendering fault. *@
+                       rendering fault.
+
+                       `caption` for the same reason the variable count above it wears it, and not
+                       bare: a classless <p> is the one text block in this package that picks no
+                       size at all, so on a host carrying Stiler and nothing else these two would
+                       land at the browser's own paragraph size beside a sibling that is dressed. *@
                     @SectionHeading(T.HeadingAccessCriteria)
-                    <p>@T.AccessCriteria</p>
+                    <p class="caption">@T.BodyAccessCriteria</p>
 
                     @SectionHeading(T.HeadingPrices)
-                    <p>@T.Prices</p>
+                    <p class="caption">@T.BodyPrices</p>
 
                     @* Last, and outside Kelda's own: whatever the host hung on this explorer. A
                        host's sections are additions to the page it embedded, so they come after the

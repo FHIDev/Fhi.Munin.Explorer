@@ -244,8 +244,13 @@ internal sealed record Texts(
     // component embedded on helsedata.no, which is where their links point. A heading with nothing
     // under it reads as a rendering fault, so the sections say the one thing that is true either way
     // and name no URL this package would then own.
-    string AccessCriteria,
-    string Prices,
+    //
+    // Body... rather than the bare noun, for the reason ColumnVariableCount above carries its role:
+    // these two sit three positions from the headings of the very sections they are the body of and
+    // have the same type, so a bare `Prices` reads as a heading and swaps for HeadingPrices in
+    // silence. The prefix is what makes the transposition visible at the construction site.
+    string BodyAccessCriteria,
+    string BodyPrices,
     // (count) — the variable section's one line. Assembled here rather than at the call site for the
     // reason KildeCount is: the singular is this language's business and not C#'s.
     Func<int, string> KildeVariableCount,
@@ -584,9 +589,9 @@ internal sealed record Texts(
         HeadingVariables: "Variabler",
         HeadingAccessCriteria: "Kriterier for tilgang til data",
         HeadingPrices: "Priser",
-        AccessCriteria: "Kriteriene for tilgang til data fra denne kilden, og hvordan du søker, "
+        BodyAccessCriteria: "Kriteriene for tilgang til data fra denne kilden, og hvordan du søker, "
                         + "er beskrevet på helsedata.no.",
-        Prices: "Prisene for utlevering av data fra denne kilden er beskrevet på helsedata.no.",
+        BodyPrices: "Prisene for utlevering av data fra denne kilden er beskrevet på helsedata.no.",
         KildeVariableCount: count => count == 1
             ? "1 publisert variabel i denne kilden."
             : $"{count} publiserte variabler i denne kilden.",
@@ -785,9 +790,9 @@ internal sealed record Texts(
         HeadingVariables: "Variables",
         HeadingAccessCriteria: "Criteria for access to data",
         HeadingPrices: "Prices",
-        AccessCriteria: "The criteria for access to data from this source, and how to apply for it, "
+        BodyAccessCriteria: "The criteria for access to data from this source, and how to apply for it, "
                         + "are described at helsedata.no.",
-        Prices: "The prices for having data from this source released are described at helsedata.no.",
+        BodyPrices: "The prices for having data from this source released are described at helsedata.no.",
         KildeVariableCount: count => count == 1
             ? "1 published variable in this source."
             : $"{count} published variables in this source.",
