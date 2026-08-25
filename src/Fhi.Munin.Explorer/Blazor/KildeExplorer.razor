@@ -184,10 +184,14 @@ else
        the OR-within/AND-across rule are all in KildeExplorer.Filters.cs.
 
        `munin-explorer-filters` is the explorer's existing handle for a facet panel, reused rather
-       than reinvented — the sample stylesheets already place it in a column beside the results, and
-       Stiler carries its rules. Two names under it are this panel's own, and both exist because a
-       narrow screen needs the panel folded away while a wide one does not: `__toggle` is the button
-       that unfolds it, hidden once there is room for a sidebar, and `__facets` is what it unfolds.
+       than reinvented — the sample stylesheets place it in a column beside the results. It is a
+       hook and nothing more: neither this package nor Stiler defines a rule for it, which is what
+       the variable explorer's own remarks say of it, so a host on Stiler that wants the panel
+       placed writes that rule itself. Two names under it are this panel's own, and both exist
+       because a narrow screen needs the panel folded away while a wide one does not: `__toggle` is
+       the button that unfolds it, hidden once there is room for a sidebar, and `__facets` is what
+       it unfolds. Those two are new here, so a Stiler host needs rules for them as well — the
+       samples are the only stylesheet in this repository that has any.
 
        The folding itself is the `hidden` attribute rather than a class, so the panel works on a host
        that styles none of this: `hidden` is the browser's own, the button toggles it, and a host
@@ -232,7 +236,13 @@ else
                                    off the unfiltered list so they never move, and the key is what
                                    keeps that true if they ever do. *@
                                 <li @key="option.Value">
-                                    <label title="@option.Title">
+                                    @* lang where the choice is drawn in the catalogue's own words
+                                       rather than in this package's — databehandler, which is free
+                                       text, and any token no vocabulary had a word for. It is the
+                                       same marking the table's cells carry for the same strings,
+                                       and it covers the title as well as the text. See
+                                       KildeExplorer.Filters.cs for which labels are which. *@
+                                    <label title="@option.Title" lang="@option.Language">
                                         <input type="checkbox"
                                                checked="@IsChosen(facet.Key, option.Value)"
                                                @onchange="e => Choose(facet.Key, option.Value, e.Value is true)" />

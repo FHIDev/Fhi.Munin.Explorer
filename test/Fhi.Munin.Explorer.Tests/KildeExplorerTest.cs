@@ -257,6 +257,13 @@ public class KildeExplorerTest : BunitContext
         [.. facet.QuerySelectorAll("label").Select(label => label.TextContent.Trim())];
 
     /// <summary>
+    /// The <c>lang</c> on every choice in a facet, in the order they are drawn, with null for a
+    /// choice carrying none.
+    /// </summary>
+    private static IReadOnlyList<string?> Languages(IElement facet) =>
+        [.. facet.QuerySelectorAll("label").Select(label => label.GetAttribute("lang"))];
+
+    /// <summary>
     /// Tick the choice whose visible text begins with <paramref name="choice"/>.
     /// </summary>
     /// <remarks>
@@ -1315,6 +1322,117 @@ public class KildeExplorerTest : BunitContext
         var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS", category: "Helseregistre")));
 
         Assert.Equal(["Helseregistre (1)"], Choices(Facet(cut, "Kategori")));
+    }
+
+    [Fact]
+    public void Facets_WhenTheHostChangesLanguage_ThenTheHeadingsChangeWithIt()
+    {
+        // The four definitions are held between renders rather than rebuilt per read, because the
+        // filtering reads them once per kilde — see Definitions. A heading is fixed at the moment
+        // its definition is made, so the held list belongs to one reader and a host that switches
+        // language has to be given a new one; a cache without that rule leaves Norwegian headings
+        // over English choices, and nothing else in this suite would notice.
+        var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
+
+        Assert.Equal(["Kildetype", "Databehandler"], FacetHeadings(cut));
+
+        cut.Render(b => b.Add(c => c.Language, "en"));
+
+        Assert.Equal(["Source type", "Data processor"], FacetHeadings(cut));
+    }
+
+    [Fact]
+    public void Facets_WhenAKategoriIsASingleJsonString_ThenItIsTheSameChoiceAsTheArrayWouldBe()
+    {
+        // The bag's values are strings that happen to hold JSON, so a kilde carrying one category
+        // can plausibly arrive as a bare string where its neighbour arrives as an array of one.
+        // Parsing succeeds either way, so nothing throws and the fall-through is silent: taken as
+        // raw text the quoted form would be a *second* choice, six characters longer, whose label
+        // lookup misses on the trailing quote and which counts a disjoint set of kilder. One
+        // category, one checkbox, however the catalogue wrote it.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", category: """["ehds-cat:biobanks"]"""),
+            Kilde("Dødsårsaksregisteret", "K_DAR", category: """ "ehds-cat:biobanks" """)));
+
+        Assert.Equal(["Biobanker (2)"], Choices(Facet(cut, "Kategori")));
+
+        Tick(cut, "Kategori", "Biobanker");
+
+        Assert.Equal(["Als registeret", "Dødsårsaksregisteret"], RowNames(cut));
+    }
+
+    [Fact]
+    public void Facets_WhenAKategoriIsJsonNull_ThenTheKildeCarriesNoCategoryAtAll()
+    {
+        // A JSON null is the catalogue saying it has nothing here, and it says so in a field whose
+        // other values are text. Taken as text it would draw a checkbox named "null" — this package
+        // inventing a catalogue value — and with one kilde in the list it would be the whole facet.
+        var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS", category: "null")));
+
+        Assert.DoesNotContain("Kategori", FacetHeadings(cut));
+    }
+
+    [Fact]
+    public void Facets_WhenAKategoriIsJsonWithNoTokenInIt_ThenItIsShownAsTheCatalogueWroteIt()
+    {
+        // An object parses and holds no token to prefer, so there is nothing to unwrap and the rule
+        // the not-JSON-at-all case follows applies: show what the catalogue holds rather than drop
+        // the kilde out of a facet it belongs in.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", category: """{"id":"ehds-cat:biobanks"}""")));
+
+        Assert.Equal(["""{"id":"ehds-cat:biobanks"} (1)"""], Choices(Facet(cut, "Kategori")));
+    }
+
+    [Fact]
+    public void Facets_WhenAKildeHasNoPropertyBagAtAll_ThenTheOtherFacetsStillDraw()
+    {
+        // AdditionalProperties is declared non-nullable and initialised to an empty dictionary, and
+        // that initialiser only survives a key the payload leaves *out*: System.Text.Json writes
+        // null straight over it for an explicit "additionalProperties": null. Two of the four
+        // facets read the bag for every kilde on every render, so one such entry would take the
+        // whole panel down at render time — past the try/catch around the fetch, which finished
+        // long before.
+        var kilde = Kilde("Als registeret", "K_ALS", kildetype: "biobank");
+
+        var cut = RenderWith(new FakeClient(kilde with { AdditionalProperties = null! }));
+
+        Assert.Equal(["Als registeret"], RowNames(cut));
+        Assert.Equal(["Kildetype", "Databehandler"], FacetHeadings(cut));
+    }
+
+    [Fact]
+    public void Facets_WhenAChoiceIsDrawnInTheCataloguesOwnWords_ThenItIsMarkedWithTheCataloguesLanguage()
+    {
+        // The same marking the table's cells carry for the same strings: an unmarked Norwegian
+        // organisation name inside an English page is read out with English phonetics (WCAG 3.1.2).
+        // Which choices need it is not a property of the facet — three of the four look their values
+        // up and every one of those falls back to the catalogue's token — so it follows the answer:
+        // a label that came back as the value itself is the catalogue's text.
+        var cut = RenderWith(
+            new FakeClient(
+                Kilde("Als registeret", "K_ALS",
+                    kildetype: "biobank", dataProcessor: "Folkehelseinstituttet"),
+                Kilde("Dødsårsaksregisteret", "K_DAR",
+                    kildetype: "noeHeltNytt", dataProcessor: "Folkehelseinstituttet")),
+            b => b.Add(c => c.Language, "en"));
+
+        Assert.Equal(["no"], Languages(Facet(cut, "Data processor")));
+
+        // Biobank is this package's own English word for the token; noeHeltNytt is a token it has
+        // no word for, so what is on screen is the catalogue's.
+        Assert.Equal([null, "no"], Languages(Facet(cut, "Source type")));
+    }
+
+    [Fact]
+    public void Facets_WhenTheReaderIsNorwegian_ThenNoChoiceIsMarkedAtAll()
+    {
+        // A lang saying what the surrounding page already says is noise, and the package's rule is
+        // that a value is marked only where it is foreign to the reader — CatalogueProperties.Foreign.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", dataProcessor: "Folkehelseinstituttet")));
+
+        Assert.Equal([null], Languages(Facet(cut, "Databehandler")));
     }
 
     [Fact]

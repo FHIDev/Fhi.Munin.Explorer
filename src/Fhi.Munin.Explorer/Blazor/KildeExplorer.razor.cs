@@ -55,8 +55,11 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <c>munin-explorer</c> prefix this package owns. <c>munin-explorer</c>,
 /// <c>munin-explorer-container</c>, <c>munin-explorer-results</c>, <c>munin-explorer-filters</c>
 /// and <c>munin-explorer-drilldown</c> are the explorer's existing ones, reused rather than
-/// reinvented. Five are new and belong to this view: <c>munin-explorer-kilder</c> for the result
-/// table, <c>munin-explorer-kilder__name</c> for the control that opens a kilde,
+/// reinvented — two of which, <c>munin-explorer</c> and <c>munin-explorer-filters</c>, are handles
+/// nothing defines a rule for, in this package or in Stiler, so a host that wants the panel placed
+/// beside the results writes that rule itself. Five are new and belong to this view:
+/// <c>munin-explorer-kilder</c> for the result table,
+/// <c>munin-explorer-kilder__name</c> for the control that opens a kilde,
 /// <c>munin-explorer-kilder__count</c> for the three columns that hold a number, and
 /// <c>munin-explorer-filters__toggle</c> and <c>munin-explorer-filters__facets</c> for the facet
 /// panel's disclosure — see <c>KildeExplorer.Filters.cs</c> for what those two are for. A host that
@@ -229,7 +232,7 @@ public sealed partial class KildeExplorer : ComponentBase
     {
         get
         {
-            var searched = Searched(_search?.Trim());
+            var searched = Searched(SearchText);
 
             return _chosen.Values.All(values => values.Count == 0)
                 ? searched
@@ -239,9 +242,9 @@ public sealed partial class KildeExplorer : ComponentBase
 
     /// <summary>The kilder the search leaves, before the facets have had their turn.</summary>
     /// <remarks>
-    /// Its own method so the list it returns is typed by a signature rather than by a local
-    /// declaration: a collection expression takes its type from the target, and there is no target
-    /// in <c>var x = …</c>.
+    /// It takes <see cref="SearchText"/> rather than trimming <c>_search</c> itself, so there is
+    /// one definition of the search as it counts: a field holding only spaces is no search, and two
+    /// places deciding that separately is how they come to disagree.
     /// </remarks>
     private IReadOnlyList<KildeSummary> Searched(string? term) =>
         string.IsNullOrEmpty(term) ? _kilder : [.. _kilder.Where(kilde => Matches(kilde, term))];

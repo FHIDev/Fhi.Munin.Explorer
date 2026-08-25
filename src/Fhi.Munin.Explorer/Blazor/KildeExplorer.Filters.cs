@@ -94,7 +94,11 @@ public sealed partial class KildeExplorer
     /// How many kilder in the whole list carry this value — see the remarks on the class for why
     /// that is not the same number Runa would show.
     /// </param>
-    private sealed record FacetOption(string Value, string Label, int Count)
+    /// <param name="Language">
+    /// The catalogue's own language where <paramref name="Label"/> holds the catalogue's words, and
+    /// nothing at all where it holds this package's — see <see cref="Option"/> for which is which.
+    /// </param>
+    private sealed record FacetOption(string Value, string Label, int Count, string? Language)
     {
         /// <summary>The choice's visible text: its label, cut to length, and its count.</summary>
         /// <remarks>
@@ -128,6 +132,12 @@ public sealed partial class KildeExplorer
     /// <summary>Whether the panel is unfolded. See the markup for why the reader can still see it while this is false.</summary>
     private bool _filtersOpen;
 
+    /// <summary>The four definitions, built once — see <see cref="Definitions"/> for why they are held at all.</summary>
+    private IReadOnlyList<FacetDefinition>? _definitions;
+
+    /// <summary>Which reader <see cref="_definitions"/> was built for, so a host that changes language gets new headings.</summary>
+    private string? _definitionsReader;
+
     private string FacetsId => $"munin-explorer-filters-{_instance}";
 
     private string FacetHeadingId(string key) => $"munin-explorer-facet-{key}-{_instance}";
@@ -154,18 +164,41 @@ public sealed partial class KildeExplorer
     /// — the labels live on the detail endpoint, one request per kilde — so the words come from
     /// this package's own translations where it has them and from the catalogue's token where it
     /// does not.
+    /// <para>
+    /// Held rather than rebuilt per read, which is the one place in this file where that is worth
+    /// doing: <see cref="Facets"/> reads it once per render, but <see cref="MatchesFacets"/> reads
+    /// it once per <em>kilde</em>, so a collection expression here would allocate an array and its
+    /// eight closures for every row the filter is asked about. Nothing in it goes stale between
+    /// renders — the label functions read <c>T</c> when they are called, not when they are built —
+    /// except the four headings, which are the strings they were when the list was made. So the
+    /// held list belongs to a reader, and a host that changes <see cref="Language"/> gets a new one.
+    /// </para>
     /// </remarks>
-    private IReadOnlyList<FacetDefinition> Definitions =>
-    [
-        new("kildetype", T.ColumnKildetype, kilde => One(kilde.Kildetype), value => T.KildeTypeLabel(value, value)),
-        new("kategori", T.FacetCategory, Categories, value => T.HealthCategoryLabel(value)),
-        new("tilgangsniva", T.FacetAccessLevel,
-            kilde => One(Property(kilde, AccessRightsKey)), value => T.AccessRightsLabel(value)),
+    private IReadOnlyList<FacetDefinition> Definitions
+    {
+        get
+        {
+            if (_definitions is not null && string.Equals(_definitionsReader, Reader, StringComparison.Ordinal))
+            {
+                return _definitions;
+            }
 
-        // No label function of its own: databehandler is free text the catalogue stores as somebody
-        // typed it, so there is nothing to look it up in and the value is the word.
-        new("databehandler", T.FieldDataProcessor, kilde => One(kilde.DataProcessor), value => value)
-    ];
+            _definitionsReader = Reader;
+
+            return _definitions =
+            [
+                new("kildetype", T.ColumnKildetype,
+                    kilde => One(kilde.Kildetype), value => T.KildeTypeLabel(value, value)),
+                new("kategori", T.FacetCategory, Categories, value => T.HealthCategoryLabel(value)),
+                new("tilgangsniva", T.FacetAccessLevel,
+                    kilde => One(Property(kilde, AccessRightsKey)), value => T.AccessRightsLabel(value)),
+
+                // No label function of its own: databehandler is free text the catalogue stores as
+                // somebody typed it, so there is nothing to look it up in and the value is the word.
+                new("databehandler", T.FieldDataProcessor, kilde => One(kilde.DataProcessor), value => value)
+            ];
+        }
+    }
 
     /// <summary>The facets worth drawing, counted over the whole list.</summary>
     /// <remarks>
@@ -200,12 +233,36 @@ public sealed partial class KildeExplorer
         }
 
         var options = counts
-            .Select(entry => new FacetOption(entry.Key, definition.Label(entry.Key), entry.Value))
+            .Select(entry => Option(definition, entry.Key, entry.Value))
             .OrderBy(option => option.Label, CatalogueProperties.CatalogueOrder)
             .ThenBy(option => option.Value, StringComparer.Ordinal)
             .ToList();
 
         return new Facet(definition.Key, definition.Heading, options);
+    }
+
+    /// <summary>One choice, with the language of the words it is drawn in.</summary>
+    /// <remarks>
+    /// A label the catalogue wrote is marked as the catalogue's language, exactly as the same
+    /// string is in the table's cells: a Norwegian organisation's name inside an English page is
+    /// read out with English phonetics otherwise, which is WCAG 3.1.2. A label this package
+    /// supplied is not marked, because it is already in the reader's language and a <c>lang</c> it
+    /// is not in is the same failure the other way round.
+    /// <para>
+    /// Which of the two it is, is not a property of the facet: three of the four look their values
+    /// up in a vocabulary, and every one of those falls back to the catalogue's own token where the
+    /// vocabulary has no word for it. So the question is asked of the answer — a label that came
+    /// back as the value itself is the catalogue's text, whether because the facet has no
+    /// vocabulary at all (databehandler, which is free text) or because the lookup missed
+    /// (a kildetype, CURIE or category added after this package's copy was taken).
+    /// </para>
+    /// </remarks>
+    private FacetOption Option(FacetDefinition definition, string value, int count)
+    {
+        var label = definition.Label(value);
+        var language = string.Equals(label, value, StringComparison.Ordinal) ? CatalogueLang(value) : null;
+
+        return new FacetOption(value, label, count, language);
     }
 
     /// <summary>Whether <paramref name="kilde"/> survives every facet the reader has chosen in.</summary>
@@ -270,6 +327,18 @@ public sealed partial class KildeExplorer
     /// catalogue holds beats showing nothing, and a facet quietly missing its values is exactly the
     /// empty Kategori this component was written not to draw.
     /// <para>
+    /// "Taken as a single token" means the value the catalogue holds, not the text it wrote it in,
+    /// and the two differ for exactly one shape. A bare <c>"ehds-cat:biobanks"</c> — one JSON
+    /// string where the array case proves the field usually holds several — parses without
+    /// throwing, so the raw text would come back through with its quote marks still on: a second
+    /// checkbox reading <c>"ehds-cat:biobanks"</c> beside the properly-labelled Biobanker, whose
+    /// label lookup misses on the trailing quote and which filters a disjoint set of kilder. It is
+    /// unwrapped instead, so one category is one choice however the catalogue wrote it. A JSON
+    /// <c>null</c> is the catalogue saying it has no kategori, and drawing a checkbox named "null"
+    /// would be this package inventing a value; everything else — an object, a number — has no
+    /// token inside it to prefer, so it falls through as written.
+    /// </para>
+    /// <para>
     /// The tokens are what the facet groups and filters on, whole; what a reader sees is
     /// <see cref="Texts.HealthCategoryLabel"/>, which is the catalogue's own word for the token
     /// where it has one and the token itself where it has not. The list endpoint sends no
@@ -292,15 +361,22 @@ public sealed partial class KildeExplorer
         {
             using var document = JsonDocument.Parse(raw);
 
-            if (document.RootElement.ValueKind is JsonValueKind.Array)
+            switch (document.RootElement.ValueKind)
             {
-                return
-                [
-                    .. document.RootElement.EnumerateArray()
-                        .Where(element => element.ValueKind is JsonValueKind.String)
-                        .Select(element => element.GetString()!.Trim())
-                        .Where(token => token.Length > 0)
-                ];
+                case JsonValueKind.Array:
+                    return
+                    [
+                        .. document.RootElement.EnumerateArray()
+                            .Where(element => element.ValueKind is JsonValueKind.String)
+                            .Select(element => element.GetString()!.Trim())
+                            .Where(token => token.Length > 0)
+                    ];
+
+                case JsonValueKind.String:
+                    return One(document.RootElement.GetString());
+
+                case JsonValueKind.Null:
+                    return [];
             }
         }
         catch (JsonException)
@@ -313,8 +389,17 @@ public sealed partial class KildeExplorer
     }
 
     /// <summary>One of the curated properties, or null where the kilde has not got it.</summary>
+    /// <remarks>
+    /// Null-conditional although <see cref="KildeSummary.AdditionalProperties"/> is declared
+    /// non-nullable: its initialiser only survives a key that is <em>absent</em> from the payload,
+    /// and <c>System.Text.Json</c> writes null straight over it for an explicit
+    /// <c>"additionalProperties": null</c>. This runs for every kilde on every render, from the
+    /// counting and from the filtering both, so one malformed entry in the list would otherwise
+    /// take the whole panel down at render time — where the try/catch around the fetch is long
+    /// since finished and cannot catch it.
+    /// </remarks>
     private static string? Property(KildeSummary kilde, string key) =>
-        kilde.AdditionalProperties.TryGetValue(key, out var value) ? value : null;
+        kilde.AdditionalProperties?.TryGetValue(key, out var value) == true ? value : null;
 
     /// <summary>A single value as a facet's list of them, and nothing at all when it is blank.</summary>
     /// <remarks>

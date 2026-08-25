@@ -21,7 +21,15 @@ category: Added
   whether a reader of this catalogue is expected to read EHDS. Being a copy, it can fall behind:
   a token the catalogue adds later keeps its checkbox and its count and shows its CURIE, which is
   unlovely and still filterable. The facet groups and filters on the whole token throughout, so
-  what a choice is called never changes what it selects. (Fhi.Metadata-2fomm.3)
+  what a choice is called never changes what it selects. One category is one checkbox however the
+  catalogue wrote it — an array, a bare JSON string, or text that is not JSON at all — and a JSON
+  null is no category rather than a checkbox named "null". (Fhi.Metadata-2fomm.3)
+- **A choice drawn in the catalogue's own words is marked as being in them** - databehandler is
+  free text, and the other three facets fall back to the catalogue's token wherever this package
+  has no word for it. Those choices carry `lang`, exactly as the same strings do in the table's
+  cells, so an English page does not have a Norwegian organisation's name read out with English
+  phonetics (WCAG 3.1.2); a choice this package supplied the words for carries none, because a
+  `lang` the text is not in is the same failure the other way round. (Fhi.Metadata-2fomm.3)
 - **A long free-text facet value no longer decides the layout** - databehandler is free text, and
   one value on the live catalogue runs to 212 characters. The choice is cut to 60 characters on
   screen with the whole value on its `title`, and the value it filters on is untouched. Variants

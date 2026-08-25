@@ -398,18 +398,7 @@ internal sealed record Texts(
     /// two values in the catalogue whatever they are called on screen.
     /// </para>
     /// </remarks>
-    public string AccessRightsLabel(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return NotSpecified;
-        }
-
-        // LastIndexOf answers -1 for a token with no prefix, which +1 turns into the whole string.
-        var token = value[(value.LastIndexOf(':') + 1)..];
-
-        return AccessRightsNames.TryGetValue(token, out var name) ? name : value;
-    }
+    public string AccessRightsLabel(string? value) => Prose(AccessRightsNames, value);
 
     /// <summary>
     /// Prose for a kategori token, falling back to the token the API sent.
@@ -427,16 +416,30 @@ internal sealed record Texts(
     /// its checkbox and shows its CURIE rather than disappearing out of the panel.
     /// </para>
     /// </remarks>
-    public string HealthCategoryLabel(string? value)
+    public string HealthCategoryLabel(string? value) => Prose(HealthCategoryNames, value);
+
+    /// <summary>
+    /// A CURIE as the vocabulary's own word for it, or as it arrived where the vocabulary has none.
+    /// </summary>
+    /// <remarks>
+    /// The one copy of a rule two facets state twice in prose: blank reads as
+    /// <see cref="NotSpecified"/>, the lookup is on the part after the last colon so a token
+    /// authored with another prefix or with none still finds its word, and a token no word was
+    /// found for is shown whole rather than renamed into something it is not. The two public
+    /// methods stay, because which vocabulary a value belongs to is the thing a caller knows and
+    /// this method does not.
+    /// </remarks>
+    private string Prose(IReadOnlyDictionary<string, string> names, string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
             return NotSpecified;
         }
 
+        // LastIndexOf answers -1 for a token with no prefix, which +1 turns into the whole string.
         var token = value[(value.LastIndexOf(':') + 1)..];
 
-        return HealthCategoryNames.TryGetValue(token, out var name) ? name : value;
+        return names.TryGetValue(token, out var name) ? name : value;
     }
 
     /// <summary>
