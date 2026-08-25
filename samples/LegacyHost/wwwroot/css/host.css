@@ -355,6 +355,34 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   color: var(--grey40);
 }
 
+/* Kelda's facet panel, which is the same handle holding a different shape: a heading per facet and
+   a checkbox per value, with no <details> anywhere. Its two names below are the package's own.
+
+   The folding is the browser's `hidden` attribute rather than a class, so a host that supplies none
+   of these rules still gets a panel that opens and closes — what it does not get is the sidebar,
+   and the media query further down is where a host that has room for one takes the folding away
+   again. The toggle goes with it: a button reading "Vis filtre" over an unfoldable panel is a
+   control that does nothing. */
+
+.munin-explorer-filters__toggle { margin-bottom: 8px; }
+
+.munin-explorer-filters__facets > [role="group"] { margin-bottom: 16px; }
+
+/* Wrapping is the point of this rule rather than a detail of it: one databehandler on the live
+   catalogue is a 200-character sentence, and the component cuts the label at 60 characters
+   precisely because no host is obliged to supply a rule like this one. Both belts are worn. */
+.munin-explorer-filters__facets label {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 2px 0;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+  line-height: 150%;
+}
+
+.munin-explorer-filters__facets input[type="checkbox"] { margin-top: 4px; flex: none; }
+
 /* ---- not Stiler either: base element styling for the detail panel ----
 
    The same reason as the filter panel above. The panel a row opens is a <dl> of labels and values,
@@ -496,6 +524,13 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
     grid-column: 2;
     min-inline-size: 0;
   }
+
+  /* Room for a sidebar, so the facets are simply there. `[hidden]` is an author-overridable rule in
+     the browser's own stylesheet, which is what lets one line here undo the folding — and the
+     button that does the folding goes off screen with it, so its aria-expanded is never read while
+     it disagrees with what the reader can see. */
+  .munin-explorer-filters__toggle { display: none; }
+  .munin-explorer-filters__facets[hidden] { display: block; }
 }
 
 .munin-explorer-filters .hd-button-square {

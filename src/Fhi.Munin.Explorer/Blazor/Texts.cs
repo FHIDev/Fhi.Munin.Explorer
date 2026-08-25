@@ -225,6 +225,24 @@ internal sealed record Texts(
     // column of numbers. The counts elsewhere in this file say so in their names for the same
     // reason: FieldTotalVariables, FieldVariableCount, VariableCountSuffix.
     string ColumnVariableCount,
+    // Kelda's filter panel. Its heading is FiltersTitle, and two of its four facet headings are
+    // strings this record already holds: the kildetype facet is headed with ColumnKildetype and
+    // the databehandler facet with FieldDataProcessor, because each facet is a filter over the
+    // very column beside it — renaming the column has to rename the facet, and two strings could
+    // not promise that. The two below name nothing else in this package.
+    string FacetCategory,
+    string FacetAccessLevel,
+    // The panel's own disclosure, which is one control saying two things: the panel is folded away
+    // on a narrow screen and this is what unfolds it. Both wordings are needed because a button
+    // still reading "Vis filtre" over an open panel tells the reader the opposite of what pressing
+    // it does.
+    string ShowFilters,
+    string HideFilters,
+    // Prose for an access-rights token, which arrives as a CURIE into the EU's own access-right
+    // vocabulary — `eu-access:NON_PUBLIC`. Keyed on the bare token rather than the whole CURIE, so
+    // a value authored with another prefix, or with none, still finds its word; a token missing
+    // from this falls back to what the API sent, the same way kildetype does.
+    IReadOnlyDictionary<string, string> AccessRightsNames,
     // Runa says "Datasamlinger" over a kilde's datasamling table; Kelda says "Delkilder og
     // datasamlinger" over the same rows. One word of difference is not worth a second table — see
     // KildeView.DataCollectionsHeading.
@@ -259,10 +277,12 @@ internal sealed record Texts(
     // never sorted. Assembled here rather than glued together at the call site for the reason
     // ResultSummary is: the plural is this language's business and not C#'s.
     Func<int, string> KildeCount,
-    // (search) — the kilde list's empty state, for a search that matched none of them. A catalogue
-    // holding no kilder at all says NoKilder instead: the two ask the reader to do different
-    // things.
-    Func<string?, string> NoKilderMatch)
+    // (search, filters) — the kilde list's empty state, for a search or a set of facets that
+    // matched none of them. A catalogue holding no kilder at all says NoKilder instead: the two ask
+    // the reader to do different things. The facet count is in the sentence for the reason it is in
+    // NoResults above — nothing matching *with two facets ticked* is a different thing to be told
+    // than nothing matching at all, and the second reads as "this catalogue does not have it".
+    Func<string?, int, string> NoKilderMatch)
 {
     /// <summary>
     /// The label for a sort order. The three that name one field use the same words the result
@@ -351,6 +371,34 @@ internal sealed record Texts(
         }
 
         return string.IsNullOrWhiteSpace(value) ? NotSpecified : value;
+    }
+
+    /// <summary>
+    /// Prose for an access-rights token, falling back to the token the API sent.
+    /// </summary>
+    /// <remarks>
+    /// The catalogue writes these as CURIEs into the EU's own access-right vocabulary, and only
+    /// <c>eu-access:NON_PUBLIC</c> has been observed — every kilde in the payloads this repository
+    /// holds carries it. The other two below are the vocabulary's, spelled the way it spells them;
+    /// anything else is shown as it arrived rather than renamed into something it is not.
+    /// <para>
+    /// The lookup is on the part after the last colon, so a token authored with another prefix or
+    /// with none still finds its word. That is a decision about the <em>label</em> only: the facet
+    /// itself groups and filters on the whole token, because two prefixes over one bare token are
+    /// two values in the catalogue whatever they are called on screen.
+    /// </para>
+    /// </remarks>
+    public string AccessRightsLabel(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return NotSpecified;
+        }
+
+        // LastIndexOf answers -1 for a token with no prefix, which +1 turns into the whole string.
+        var token = value[(value.LastIndexOf(':') + 1)..];
+
+        return AccessRightsNames.TryGetValue(token, out var name) ? name : value;
     }
 
     /// <summary>
@@ -585,6 +633,16 @@ internal sealed record Texts(
         ColumnKildetype: "Kildetype",
         ColumnDelkilder: "Delkilder",
         ColumnVariableCount: "Variabler",
+        FacetCategory: "Kategori",
+        FacetAccessLevel: "Tilgangsnivå",
+        ShowFilters: "Vis filtre",
+        HideFilters: "Skjul filtre",
+        AccessRightsNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["NON_PUBLIC"] = "Ikke-offentlig",
+            ["PUBLIC"] = "Offentlig",
+            ["RESTRICTED"] = "Begrenset"
+        },
         HeadingDelkilderAndDataCollections: "Delkilder og datasamlinger",
         HeadingVariables: "Variabler",
         HeadingAccessCriteria: "Kriterier for tilgang til data",
@@ -596,9 +654,17 @@ internal sealed record Texts(
             ? "1 publisert variabel i denne kilden."
             : $"{count} publiserte variabler i denne kilden.",
         KildeCount: count => count == 1 ? "1 kilde" : $"{count} kilder",
-        NoKilderMatch: search => search is null
-            ? "Ingen kilder samsvarer med søket."
-            : $"Ingen kilder samsvarer med søket «{search}».");
+        NoKilderMatch: (search, filters) =>
+        {
+            if (search is null)
+            {
+                return "Ingen kilder samsvarer med filtrene som er valgt.";
+            }
+
+            var forSearch = $"Ingen kilder samsvarer med søket «{search}»";
+
+            return filters == 0 ? $"{forSearch}." : $"{forSearch} og filtrene som er valgt.";
+        });
 
     private static readonly Texts En = new(
         Title: "Variable explorer",
@@ -786,6 +852,16 @@ internal sealed record Texts(
         ColumnKildetype: "Source type",
         ColumnDelkilder: "Sub-sources",
         ColumnVariableCount: "Variables",
+        FacetCategory: "Category",
+        FacetAccessLevel: "Access level",
+        ShowFilters: "Show filters",
+        HideFilters: "Hide filters",
+        AccessRightsNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["NON_PUBLIC"] = "Non-public",
+            ["PUBLIC"] = "Public",
+            ["RESTRICTED"] = "Restricted"
+        },
         HeadingDelkilderAndDataCollections: "Sub-sources and data collections",
         HeadingVariables: "Variables",
         HeadingAccessCriteria: "Criteria for access to data",
@@ -797,9 +873,17 @@ internal sealed record Texts(
             ? "1 published variable in this source."
             : $"{count} published variables in this source.",
         KildeCount: count => count == 1 ? "1 source" : $"{count} sources",
-        NoKilderMatch: search => search is null
-            ? "No sources match your search."
-            : $"No sources match your search for “{search}”.");
+        NoKilderMatch: (search, filters) =>
+        {
+            if (search is null)
+            {
+                return "No sources match the filters you have chosen.";
+            }
+
+            var forSearch = $"No sources match your search for “{search}”";
+
+            return filters == 0 ? $"{forSearch}." : $"{forSearch} and the filters you have chosen.";
+        });
 
     /// <summary>The words for a reader, defaulting to Norwegian for anything that is not English.</summary>
     /// <remarks>

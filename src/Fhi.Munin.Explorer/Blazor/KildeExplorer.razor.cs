@@ -20,8 +20,8 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// array — 72 active kilder measured on 2026-08-25, against tens of thousands of variables — and
 /// the API returns it ordered by name. So the list is fetched <em>once</em>, on initialisation,
 /// with no search and no kildetype, and everything the reader does afterwards happens over the
-/// list already in hand. That is also why the facets in the bead that follows this one are counted
-/// client-side and are not cross-filtered the way Runa's are.
+/// list already in hand. That is also why the facets are counted client-side and are not
+/// cross-filtered the way Runa's are — see <c>KildeExplorer.Filters.cs</c>.
 /// </para>
 /// <para>
 /// Searching is therefore a filter over that list rather than a request: name, code and short
@@ -53,11 +53,13 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <c>headline</c>, <c>caption</c>, <c>form-element__label</c>, <c>searchbox__freetext*</c>,
 /// <c>hd-button-square</c> with its modifiers, <c>infobox</c> — and the structure wears the
 /// <c>munin-explorer</c> prefix this package owns. <c>munin-explorer</c>,
-/// <c>munin-explorer-container</c>, <c>munin-explorer-results</c> and
-/// <c>munin-explorer-drilldown</c> are the explorer's existing ones, reused rather than reinvented.
-/// Three are new and belong to this view: <c>munin-explorer-kilder</c> for the result table,
-/// <c>munin-explorer-kilder__name</c> for the control that opens a kilde and
-/// <c>munin-explorer-kilder__count</c> for the three columns that hold a number. A host that
+/// <c>munin-explorer-container</c>, <c>munin-explorer-results</c>, <c>munin-explorer-filters</c>
+/// and <c>munin-explorer-drilldown</c> are the explorer's existing ones, reused rather than
+/// reinvented. Five are new and belong to this view: <c>munin-explorer-kilder</c> for the result
+/// table, <c>munin-explorer-kilder__name</c> for the control that opens a kilde,
+/// <c>munin-explorer-kilder__count</c> for the three columns that hold a number, and
+/// <c>munin-explorer-filters__toggle</c> and <c>munin-explorer-filters__facets</c> for the facet
+/// panel's disclosure — see <c>KildeExplorer.Filters.cs</c> for what those two are for. A host that
 /// styles none of them still gets a usable list, which is why the results are a
 /// <c>&lt;table&gt;</c> and the name is a <c>&lt;button&gt;</c>: an element degrades to its own
 /// browser default — aligned columns, a control that visibly is one — where a class name no
@@ -197,7 +199,7 @@ public sealed partial class KildeExplorer : ComponentBase
     private string DetailBusy => _detailLoading ? "true" : "false";
 
     /// <summary>
-    /// The kilder the search leaves, in the order the API sent them.
+    /// The kilder the search and the facets leave, in the order the API sent them.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -212,6 +214,12 @@ public sealed partial class KildeExplorer : ComponentBase
     /// fields is Latin, including æ, ø and å, which ordinal case folding handles.
     /// </para>
     /// <para>
+    /// The facets narrow the same list, after the search and by the same client-side reading of it
+    /// — see <c>KildeExplorer.Filters.cs</c> for what they are and why none of them is a request.
+    /// Search and facets are AND: a reader who has typed a word and ticked a box is asking for
+    /// kilder that answer both.
+    /// </para>
+    /// <para>
     /// No re-ordering. The API returns the list ordered by name and Kelda offers no sort control,
     /// so the sequence on screen is the sequence that arrived — which is what makes a row's
     /// position stable while the reader types.
@@ -223,9 +231,13 @@ public sealed partial class KildeExplorer : ComponentBase
         {
             var term = _search?.Trim();
 
-            return string.IsNullOrEmpty(term)
+            IReadOnlyList<KildeSummary> searched = string.IsNullOrEmpty(term)
                 ? _kilder
                 : [.. _kilder.Where(kilde => Matches(kilde, term))];
+
+            return _chosen.Values.All(values => values.Count == 0)
+                ? searched
+                : [.. searched.Where(MatchesFacets)];
         }
     }
 
@@ -284,8 +296,8 @@ public sealed partial class KildeExplorer : ComponentBase
     /// No search parameter and no kildetype, though the endpoint takes both. Everything the reader
     /// narrows with is applied to the list already in hand — see the remarks on the class — so
     /// sending either would fetch a second, smaller list that the client-side filter would then
-    /// filter again, and the counts beside the facets in the bead that follows would be counted
-    /// over a set the reader cannot get back to without another request.
+    /// filter again, and the counts beside the facets would be counted over a set the reader cannot
+    /// get back to without another request.
     /// </remarks>
     private async Task LoadAsync()
     {

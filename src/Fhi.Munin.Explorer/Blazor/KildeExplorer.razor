@@ -10,12 +10,14 @@
    The names below split the way they do everywhere in this package. The page furniture wears
    Fhi.Helsedata.Stiler's own names — `headline`, `caption`, `form-element__label`,
    `searchbox__freetext*`, `hd-button-square` with its modifiers, `infobox` — and the structure
-   wears the `munin-explorer` prefix this package owns. Four of those are the explorer's existing
+   wears the `munin-explorer` prefix this package owns. Five of those are the explorer's existing
    ones, reused rather than reinvented: the root `munin-explorer`, the `munin-explorer-container`
-   and `munin-explorer-results` the list sits in, and `munin-explorer-drilldown` for the view an
-   opened kilde takes over. Three are this view's own — `munin-explorer-kilder` for the table,
-   `munin-explorer-kilder__name` for the control that opens a row and
-   `munin-explorer-kilder__count` for the columns holding a number.
+   and `munin-explorer-results` the list sits in, `munin-explorer-filters` for the facet panel and
+   `munin-explorer-drilldown` for the view an opened kilde takes over. Five are this view's own —
+   `munin-explorer-kilder` for the table, `munin-explorer-kilder__name` for the control that opens a
+   row, `munin-explorer-kilder__count` for the columns holding a number, and
+   `munin-explorer-filters__toggle` and `munin-explorer-filters__facets` for the panel that folds
+   away on a narrow screen.
 
    The result list is a <table>, unlike the variable explorer's, and that is the shape rule rather
    than an inconsistency. Runa's rows are helsedata's own `munin-explorer-data-list`, a <ul> with a
@@ -176,6 +178,75 @@ else
         </div>
     </form>
 
+    @* The facets. Four of them at most — kildetype, kategori, tilgangsnivå and databehandler — and
+       only the ones the catalogue actually has values for: a facet with no choices is not drawn at
+       all, which is the one thing Munin's own Kelda gets wrong here. The counting, the ordering and
+       the OR-within/AND-across rule are all in KildeExplorer.Filters.cs.
+
+       `munin-explorer-filters` is the explorer's existing handle for a facet panel, reused rather
+       than reinvented — the sample stylesheets already place it in a column beside the results, and
+       Stiler carries its rules. Two names under it are this panel's own, and both exist because a
+       narrow screen needs the panel folded away while a wide one does not: `__toggle` is the button
+       that unfolds it, hidden once there is room for a sidebar, and `__facets` is what it unfolds.
+
+       The folding itself is the `hidden` attribute rather than a class, so the panel works on a host
+       that styles none of this: `hidden` is the browser's own, the button toggles it, and a host
+       with a sidebar overrides it back to visible in one rule. That is the same trade the rest of
+       this component makes — an element degrades to its own browser default, where a class name no
+       stylesheet has heard of degrades to nothing.
+
+       Checkboxes, not the toggle buttons the variable explorer's facets use. Kelda's are checkboxes,
+       and a bare <input type="checkbox"> inside its own <label> is an element pair every stylesheet
+       already dresses, so there is no class to invent for them either. *@
+    @if (Facets is { Count: > 0 } facets)
+    {
+        <div class="munin-explorer-filters">
+            @FiltersHeading
+
+            @* aria-expanded describes the attribute below it and nothing else. On a screen wide
+               enough for a sidebar this button is display:none and the panel is shown regardless, so
+               the pair is never read while it disagrees with what is on screen. *@
+            <button class="hd-button-square button-square--ghost margin-bottom munin-explorer-filters__toggle"
+                    type="button"
+                    aria-expanded="@(_filtersOpen ? "true" : "false")"
+                    aria-controls="@FacetsId"
+                    @onclick="ToggleFilters">@(_filtersOpen ? T.HideFilters : T.ShowFilters)</button>
+
+            <div class="munin-explorer-filters__facets" id="@FacetsId" hidden="@(!_filtersOpen)">
+                @foreach (var facet in facets)
+                {
+                    @* role="group" with the heading as its name, rather than a fieldset and a
+                       legend: the heading has to be a heading, because a reader moving by heading is
+                       how a facet panel is navigated, and a legend is not one. Keyed so a facet that
+                       is not drawn cannot hand its checkboxes to whichever facet takes its place. *@
+                    <div @key="facet.Key" role="group" aria-labelledby="@FacetHeadingId(facet.Key)">
+                        @FacetHeading(facet)
+
+                        <ul>
+                            @foreach (var option in facet.Options)
+                            {
+                                @* The whole value in title, and only where the text on screen was
+                                   cut — one databehandler on the live catalogue is over 200
+                                   characters of free text, and a reader who wants to know which one
+                                   it is has nowhere else to read it. Keyed on the value: the options are built
+                                   off the unfiltered list so they never move, and the key is what
+                                   keeps that true if they ever do. *@
+                                <li @key="option.Value">
+                                    <label title="@option.Title">
+                                        <input type="checkbox"
+                                               checked="@IsChosen(facet.Key, option.Value)"
+                                               @onchange="e => Choose(facet.Key, option.Value, e.Value is true)" />
+                                        @option.Text
+                                    </label>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
     @* One polite status line, holding one message at a time: loading, the count, or the empty
        state. aria-atomic makes a screen reader read the whole new sentence rather than only the
        words that changed — "12" on its own is not information.
@@ -196,8 +267,10 @@ else
         else if (_loaded && _error is null)
         {
             @* Two sentences rather than one: a catalogue with nothing in it and a search that
-               matched nothing ask the reader to do different things. *@
-            @(_kilder.Count == 0 ? T.NoKilder : T.NoKilderMatch(searchText))
+               matched nothing ask the reader to do different things. The second names the facets
+               as well, because with a facet ticked the reader has narrowed the list twice and a
+               sentence blaming only the search would send them to fix the wrong thing. *@
+            @(_kilder.Count == 0 ? T.NoKilder : T.NoKilderMatch(searchText, ChosenCount))
         }
     </p>
 
