@@ -35,9 +35,17 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <para>
 /// Selecting a kilde swaps the list for <see cref="KildeView"/> — the same component the variable
 /// explorer drills into, so the two cannot render the same source differently. Kelda's own
-/// sections reach it through <see cref="Sections"/> and its own heading for the datasamling table
-/// through <c>DataCollectionsHeading</c>; nothing Kelda-specific is added to that component
+/// sections reach it through <c>KildeView.Sections</c> and its own heading for the datasamling
+/// table through <c>DataCollectionsHeading</c>; nothing Kelda-specific is added to that component
 /// itself, which is the whole reason it is a core with slots rather than one view with flags.
+/// </para>
+/// <para>
+/// The sections are the measured difference between the two explorers rather than an invention
+/// here. On 2026-08-20 the same kilde in both drew the same name block, the same eight metadata
+/// groups in the same order and the same two sidebar boxes; the datasamling section was the same
+/// rows under a different word, and Kelda had three sections Runa has not — Variabler, Kriterier
+/// for tilgang til data and Priser. Those three are markup in this component's own file, passed
+/// into the shared core. What a host passes as <see cref="Sections"/> follows them.
 /// </para>
 /// <para>
 /// Class names: the ordinary page furniture wears <c>Fhi.Helsedata.Stiler</c>'s own names —
@@ -104,15 +112,16 @@ public sealed partial class KildeExplorer : ComponentBase
     [Parameter] public EventCallback<Guid?> SelectedKildeIdChanged { get; set; }
 
     /// <summary>
-    /// Sections to place after the open kilde's metadata, passed straight through to
-    /// <see cref="KildeView.Sections"/>.
+    /// The host's own sections for an open kilde, placed after Kelda's.
     /// </summary>
     /// <remarks>
     /// The seam that keeps <see cref="KildeView"/> a shared core: Kelda's own sections — its
-    /// delkilde and datasamling structure, its access criteria, its prices — are markup that goes
-    /// <em>into</em> that component rather than markup added to it. A parameter rather than a
-    /// fragment built in here, because the sections are the next bead's and a host embedding this
-    /// explorer is entitled to its own besides.
+    /// variables, its access criteria, its prices — are markup that goes <em>into</em> that
+    /// component rather than markup added to it, and this parameter is the same door held open for
+    /// whoever embedded the explorer. It is not passed straight through: what reaches
+    /// <c>KildeView.Sections</c> is Kelda's three sections and then this, in that order, because a
+    /// host's section is an addition to the page it embedded rather than a replacement for what the
+    /// component is.
     /// </remarks>
     [Parameter] public RenderFragment? Sections { get; set; }
 
@@ -170,6 +179,19 @@ public sealed partial class KildeExplorer : ComponentBase
     /// breaking, for the reason <see cref="VariableExplorer.HeadingLevel"/> spells out.
     /// </summary>
     private int KildeLevel => Math.Clamp(TitleLevel + 1, 1, 6);
+
+    /// <summary>
+    /// The heading level for Kelda's own sections: one step below the open kilde's name, which is
+    /// where <see cref="KildeView"/> puts the blocks it draws itself.
+    /// </summary>
+    /// <remarks>
+    /// The two have to agree, and the value they agree on is private to that component — so this
+    /// mirrors its arithmetic rather than reading it, and a test asserts that Kelda's sections come
+    /// out on the same level as the core's own headings. Without that, "Variabler" would read as a
+    /// part of the datasamlinger above it rather than as a section beside them, which is a claim
+    /// about the document made to everyone navigating it by heading.
+    /// </remarks>
+    private int SectionLevel => Math.Clamp(KildeLevel + 1, 1, 6);
 
     private string DetailBusy => _detailLoading ? "true" : "false";
 
@@ -439,6 +461,23 @@ public sealed partial class KildeExplorer : ComponentBase
         builder.AddAttribute(2, "id", DetailHeadingId);
         builder.AddAttribute(3, "lang", CatalogueLang(_selectedName));
         builder.AddContent(4, _selectedName ?? DetailStatus ?? T.KildeLoading);
+        builder.CloseElement();
+    };
+
+    /// <summary>
+    /// The heading over one of Kelda's own sections, at <see cref="SectionLevel"/>.
+    /// </summary>
+    /// <remarks>
+    /// Built by hand for the reason <see cref="Heading"/> is: Razor has no syntax for a computed
+    /// element name, and the level is the host's choice rather than this component's. It wears
+    /// <c>headline-s</c>, which is what <see cref="KildeView"/> gives the blocks it draws itself,
+    /// so a reader cannot see which side of the seam a section came from.
+    /// </remarks>
+    private RenderFragment SectionHeading(string text) => builder =>
+    {
+        builder.OpenElement(0, $"h{SectionLevel}");
+        builder.AddAttribute(1, "class", "headline headline-s");
+        builder.AddContent(2, text);
         builder.CloseElement();
     };
 

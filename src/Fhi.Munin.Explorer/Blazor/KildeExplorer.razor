@@ -76,13 +76,44 @@
             @* Kelda's own sections go in through Sections, and Kelda's own word for the
                datasamling table goes in through DataCollectionsHeading — Runa says
                "Datasamlinger" over the same rows. Neither is markup added to KildeView, which is
-               the whole reason that component is a core with slots. *@
+               the whole reason that component is a core with slots: a boolean per Kelda section
+               would make that component the one place where the two explorers leak into each
+               other, and every later difference would add another flag.
+
+               Measured on the same kilde in both explorers on 2026-08-20: the name block, the
+               eight metadata groups and the two sidebar boxes are identical, the datasamling
+               section is the same rows under a different word, and the three below are Kelda's
+               alone. They are written here, in Kelda's own markup, so KildeView never learns which
+               explorer is calling it. *@
             <KildeView Kilde="kilde"
                        Language="@Language"
                        HeadingLevel="@KildeLevel"
                        HeadingId="@DetailHeadingId"
-                       DataCollectionsHeading="@T.HeadingDelkilderAndDataCollections"
-                       Sections="@Sections" />
+                       DataCollectionsHeading="@T.HeadingDelkilderAndDataCollections">
+                <Sections>
+                    @* At SectionLevel rather than a literal h2: these have to land on the level
+                       KildeView gives its own block headings, or "Variabler" reads as part of the
+                       datasamlinger above it rather than as a section beside them. *@
+                    @SectionHeading(T.HeadingVariables)
+                    <p class="caption">@T.KildeVariableCount(kilde.TotalVariables)</p>
+
+                    @* Two static blocks, whose real text — markdown, with links out to helsedata.no
+                       and fhi.no — is Fhi.Metadata-ay3zz, together with the question of whether they
+                       belong at all in a component embedded on helsedata.no. One plain sentence
+                       each until that is answered: a heading with nothing under it reads as a
+                       rendering fault. *@
+                    @SectionHeading(T.HeadingAccessCriteria)
+                    <p>@T.AccessCriteria</p>
+
+                    @SectionHeading(T.HeadingPrices)
+                    <p>@T.Prices</p>
+
+                    @* Last, and outside Kelda's own: whatever the host hung on this explorer. A
+                       host's sections are additions to the page it embedded, so they come after the
+                       sections the component itself is. *@
+                    @Sections
+                </Sections>
+            </KildeView>
         }
     </div>
 }

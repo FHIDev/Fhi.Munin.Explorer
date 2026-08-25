@@ -24,7 +24,9 @@ namespace Fhi.Munin.Explorer.Tests;
 /// The second is <see cref="KildeView.Sections"/>. Kelda's own sections have to reach that
 /// component through its parameter, because it is a shared core with slots and not a view with
 /// flags; an implementation that instead put Kelda-specific markup inside it would pass any
-/// assertion that only looks for the text on screen. The assertion here is on the parameter.
+/// assertion that only looks for the text on screen. The assertion here is on the parameter, and
+/// what those sections actually are — and that Runa's view of the same kilde has none of them —
+/// is <c>KildeSectionsTest</c>'s.
 /// </para>
 /// <para>
 /// The third is the class names. Both sample hosts style every name this component writes, so
@@ -552,11 +554,16 @@ public class KildeExplorerTest : BunitContext
         // Kelda's own sections go INTO it rather than being added to it — an implementation that
         // put Kelda-specific markup inside that component would satisfy any assertion that only
         // looked for text on screen, and would take down the separation the component is built to
-        // hold up. So the assertion is on the parameter, not on the output.
+        // hold up. So the assertion is on the parameter as well as on the output.
+        //
+        // It is no longer the host's fragment by reference: Kelda's own three sections are markup
+        // in this component, and what reaches the core is those plus whatever the host passed. The
+        // host's own is still asserted, because a composition that dropped it would otherwise read
+        // exactly like one that never had it.
         var als = Kilde("Als registeret", "K_ALS");
         var client = new FakeClient(als).Publishing(als);
 
-        RenderFragment sections = builder => builder.AddMarkupContent(0, "<p>Kriterier for tilgang</p>");
+        RenderFragment sections = builder => builder.AddMarkupContent(0, "<p>Fra verten</p>");
 
         var cut = RenderWith(client, b => b.Add(c => c.Sections, sections));
 
@@ -564,8 +571,31 @@ public class KildeExplorerTest : BunitContext
 
         var view = cut.FindComponent<KildeView>();
 
-        Assert.Same(sections, view.Instance.Sections);
-        Assert.Contains("Kriterier for tilgang", cut.Markup);
+        Assert.NotNull(view.Instance.Sections);
+        Assert.Contains("Fra verten", cut.Markup);
+
+        // Kelda's own, in the same slot. The datasamling heading is the fourth section and arrives
+        // the other way, as DataCollectionsHeading over the core's own table.
+        Assert.Contains("Kriterier for tilgang til data", cut.Markup);
+        Assert.Contains("Priser", cut.Markup);
+    }
+
+    [Fact]
+    public void Select_WhenTheHostPassesNoSections_ThenKeldasOwnAreStillThere()
+    {
+        // The sections are the component's, not the host's: an embedding that passes nothing gets
+        // the same kilde page as one that passes something. Worth its own test because the natural
+        // way to write the composition — pass the host's fragment when there is one — reads as
+        // correct and leaves a kilde with three sections missing whenever a host stays silent.
+        var als = Kilde("Als registeret", "K_ALS");
+        var client = new FakeClient(als).Publishing(als);
+
+        var cut = RenderWith(client);
+
+        cut.Find(".munin-explorer-kilder tbody th button").Click();
+
+        Assert.NotNull(cut.FindComponent<KildeView>().Instance.Sections);
+        Assert.Contains("Kriterier for tilgang til data", cut.Markup);
     }
 
     [Fact]
