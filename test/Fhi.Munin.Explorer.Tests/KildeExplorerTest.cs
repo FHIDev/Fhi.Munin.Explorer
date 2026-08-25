@@ -164,6 +164,24 @@ public class KildeExplorerTest : BunitContext
         }
     }
 
+    /// <summary>
+    /// Never answers the list call, so a test can see the render before the list arrives.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="FakeClient"/> answers from <see cref="Task.FromResult{TResult}"/>, so its await
+    /// never yields and no test using it renders while the list is in flight. An unresolved task is
+    /// the shape a real HttpClient call has, and the state behind it — a host-named kilde whose
+    /// detail fetch has not started yet — is one the drilldown is already on screen for.
+    /// </remarks>
+    private sealed class StallingListClient : EmptyMuninExplorerClient
+    {
+        private readonly TaskCompletionSource<IReadOnlyList<KildeSummary>> _never = new();
+
+        public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
+            string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
+            _never.Task;
+    }
+
     /// <summary>Fails the list call, which is the API being down rather than the catalogue being empty.</summary>
     private sealed class FailingClient : EmptyMuninExplorerClient
     {
@@ -689,9 +707,15 @@ public class KildeExplorerTest : BunitContext
     public async Task Select_WhenAReopenedKildesAbandonedFetchFails_ThenItsFailureIsNotReportedInTheNewView()
     {
         // The same guard on the other path out of the fetch. A failure belonging to a request the
-        // reader has already left would be written into a view that is still loading, and
-        // announced in its live region, only to be replaced when the request that owns the view
-        // lands — a warning box for a fetch that never had anything to do with what is on screen.
+        // reader has already left is a warning box for a fetch that never had anything to do with
+        // what is on screen — here, over a kilde that loaded perfectly.
+        //
+        // The abandoned fetch is failed *after* the one that owns the view has landed, and that
+        // ordering is the whole test. Failing it while the owning fetch is still in flight proves
+        // nothing about this guard: DetailStatus reads the loading flag before the error, so a
+        // stale _detailError sits behind "Henter datakilden …" where no assertion on the rendered
+        // view can see it, and the guard can be deleted with the suite still green. Only with the
+        // loading flag down does the error reach the status line and its warning class.
         var als = Kilde("Als registeret", "K_ALS");
         var client = new FakeClient(als).Publishing(als);
 
@@ -700,15 +724,22 @@ public class KildeExplorerTest : BunitContext
         client.StallDetail = true;
         cut.Find(".munin-explorer-kilder tbody th button").Click();
         cut.Find(".munin-explorer-drilldown button").Click();
+
+        // Reopened, and answered straight away this time, so the view is settled and not loading.
+        client.StallDetail = false;
         cut.Find(".munin-explorer-kilder tbody th button").Click();
+
+        Assert.Equal(als.Id, cut.FindComponent<KildeView>().Instance.Kilde?.Id);
 
         await cut.InvokeAsync(client.FailStalled);
 
         var status = cut.Find(".munin-explorer-drilldown p[role=status]");
 
-        Assert.Equal("Henter datakilden …", status.TextContent.Trim());
+        Assert.Equal(string.Empty, status.TextContent.Trim());
         Assert.Equal("caption", status.GetAttribute("class"));
         Assert.DoesNotContain("Kunne ikke hente datakilden", cut.Markup);
+        Assert.Equal("false", cut.Find(".munin-explorer-drilldown").GetAttribute("aria-busy"));
+        Assert.Equal(als.Id, cut.FindComponent<KildeView>().Instance.Kilde?.Id);
     }
 
     [Fact]
@@ -783,6 +814,75 @@ public class KildeExplorerTest : BunitContext
 
         // The package's own words, so not marked as the catalogue's language.
         Assert.Null(heading.GetAttribute("lang"));
+    }
+
+    [Fact]
+    public void Render_WhenTheHostNamesAKildeTheListCannotNameAndTheFetchFails_ThenTheHeadingCarriesTheFailure()
+    {
+        // The second of the three states this heading has to follow, and the one the test above
+        // cannot tell apart: with the list unable to name the kilde, dropping DetailStatus from the
+        // fallback chain leaves "Fant ingen detaljer for denne datakilden." — which that test still
+        // passes on, while a screen reader entering the landmark hears the fetch found nothing over
+        // a status line saying it failed and is worth retrying. The two sentences ask the reader to
+        // do different things, so the landmark's name has to be the one the status line carries.
+        var client = new FakeClient(Kilde("Als registeret", "K_ALS")) { FailDetail = true };
+
+        var cut = RenderWith(client, b => b.Add(c => c.SelectedKildeId, Guid.NewGuid()));
+
+        var region = cut.Find(".munin-explorer-drilldown");
+        var heading = cut.Find($"#{region.GetAttribute("aria-labelledby")}");
+        var status = cut.Find(".munin-explorer-drilldown p[role=status]");
+
+        Assert.Equal("false", region.GetAttribute("aria-busy"));
+        Assert.Equal("Kunne ikke hente datakilden nå. Prøv igjen om litt.", heading.TextContent.Trim());
+        Assert.Equal(heading.TextContent.Trim(), status.TextContent.Trim());
+        Assert.DoesNotContain("Fant ingen detaljer", cut.Markup);
+
+        // The package's own words, so not marked as the catalogue's language.
+        Assert.Null(heading.GetAttribute("lang"));
+    }
+
+    [Fact]
+    public void Render_WhenTheHostNamesAKildeTheListCannotNameAndTheFetchIsStillRunning_ThenTheHeadingSaysItIsLoading()
+    {
+        // The third state, and the one the heading is allowed to say "Henter datakilden …" in: the
+        // fetch really is in flight. The fix above is "stop standing on loading forever", so this
+        // is what keeps it from becoming "never say loading at all".
+        var client = new FakeClient(Kilde("Als registeret", "K_ALS")) { StallDetail = true };
+
+        var cut = RenderWith(client, b => b.Add(c => c.SelectedKildeId, Guid.NewGuid()));
+
+        var region = cut.Find(".munin-explorer-drilldown");
+        var heading = cut.Find($"#{region.GetAttribute("aria-labelledby")}");
+
+        Assert.Equal("true", region.GetAttribute("aria-busy"));
+        Assert.Equal("Henter datakilden …", heading.TextContent.Trim());
+        Assert.Equal(1, client.Stalls);
+    }
+
+    [Fact]
+    public void Render_WhenTheHostNamesAKildeAndTheListHasNotAnsweredYet_ThenTheViewAlreadyReadsAsLoading()
+    {
+        // The render before all three of those: the detail fetch cannot start until the list has
+        // answered, because the list is what knows the kilde's name, and ComponentBase draws the
+        // drilldown as soon as OnInitializedAsync yields on the list. For that render the view held
+        // no name, no detail and no error, so it reported a finished, empty fetch that had not been
+        // made — aria-busy "false", an empty status line, and a heading reading "Fant ingen
+        // detaljer for denne datakilden." to a screen reader entering the landmark.
+        //
+        // No other test here reaches this render at all: FakeClient answers the list synchronously,
+        // so its await never yields. An unresolved task is the shape a real HttpClient call has.
+        var cut = RenderWith(
+            new StallingListClient(), b => b.Add(c => c.SelectedKildeId, Guid.NewGuid()));
+
+        var region = cut.Find(".munin-explorer-drilldown");
+        var heading = cut.Find($"#{region.GetAttribute("aria-labelledby")}");
+        var status = cut.Find(".munin-explorer-drilldown p[role=status]");
+
+        Assert.Equal("true", region.GetAttribute("aria-busy"));
+        Assert.Equal("Henter datakilden …", heading.TextContent.Trim());
+        Assert.Equal("Henter datakilden …", status.TextContent.Trim());
+        Assert.DoesNotContain("Fant ingen detaljer", cut.Markup);
     }
 
     // ---------------------------------------------------------------------------------

@@ -236,6 +236,13 @@ public sealed partial class KildeExplorer : ComponentBase
         _search = Search;
         _selectedId = SelectedKildeId;
 
+        // Raised here rather than in LoadKildeAsync, which cannot start until the list has
+        // answered. The drilldown is on screen from the first render, and ComponentBase draws it
+        // as soon as the await below yields — so without this the reader arrives at a view whose
+        // aria-busy says false, whose status line is empty and whose heading reports a finished,
+        // empty fetch that has not been made.
+        _detailLoading = _selectedId is not null;
+
         await LoadAsync();
 
         // After the list, not before: the list is what knows the kilde's name, which is what the
@@ -414,6 +421,16 @@ public sealed partial class KildeExplorer : ComponentBase
     /// it, so the landmark's name cannot contradict the status underneath it — which is exactly
     /// what a permanent "loading" over a finished, failed fetch did.
     /// </para>
+    /// <para>
+    /// The third fallback is defensive only, and its wording is chosen for that:
+    /// <see cref="DetailStatus"/> is null exactly when nothing is loading and nothing went wrong,
+    /// which for an open view means the detail arrived — and then <see cref="KildeView"/> owns the
+    /// heading and this fragment is not drawn at all. The one state that did reach it was the very
+    /// first render of a host-named kilde, before the list had answered and the detail fetch had
+    /// begun, where it announced "no details found" for a fetch nobody had made yet;
+    /// <see cref="OnInitializedAsync"/> raises the loading flag there instead, so the status line
+    /// now carries the same sentence this would.
+    /// </para>
     /// </remarks>
     private RenderFragment DrilldownHeading => builder =>
     {
@@ -421,7 +438,7 @@ public sealed partial class KildeExplorer : ComponentBase
         builder.AddAttribute(1, "class", "headline headline-s");
         builder.AddAttribute(2, "id", DetailHeadingId);
         builder.AddAttribute(3, "lang", CatalogueLang(_selectedName));
-        builder.AddContent(4, _selectedName ?? DetailStatus ?? T.KildeMissing);
+        builder.AddContent(4, _selectedName ?? DetailStatus ?? T.KildeLoading);
         builder.CloseElement();
     };
 
