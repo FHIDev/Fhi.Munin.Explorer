@@ -16,7 +16,10 @@ namespace Fhi.Munin.Explorer.Tests;
 /// sideways, through the explorer's drill-in — so the parameters it exists for had no coverage.
 /// The parameters are the point, in two different ways. <see cref="KildeView.Sections"/> and
 /// <see cref="KildeView.DataCollectionsHeading"/> are the whole reason this is a shared core rather
-/// than two views, and no explorer in this repository wires either: Kelda is what will.
+/// than two views. Kelda wires both now — <c>KildeExplorer.razor</c> hands it three sections of its
+/// own and its own word for the datasamling table — and Runa still wires neither, which is why they
+/// are exercised here directly as well: the assertions below are about what the core does with them,
+/// and <c>KildeSectionsTest</c> is about the difference they make between the two explorers.
 /// <see cref="KildeView.HeadingLevel"/> and <see cref="KildeView.HeadingId"/> are wired — the
 /// explorer passes both at VariableExplorer.razor:104-107 — and the explorer's tests already follow
 /// two of the things that come out: the title's level, mounted at h1 and asserted h2

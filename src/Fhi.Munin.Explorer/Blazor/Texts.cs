@@ -229,6 +229,31 @@ internal sealed record Texts(
     // datasamlinger" over the same rows. One word of difference is not worth a second table — see
     // KildeView.DataCollectionsHeading.
     string HeadingDelkilderAndDataCollections,
+    // The sections Kelda has over a kilde and Runa has not, measured on the same source in both on
+    // 2026-08-20. They are markup Kelda hands to KildeView.Sections rather than markup inside that
+    // component, so their words sit here beside the rest of Kelda's rather than in the shared core.
+    // Its own member rather than ColumnVariableCount reused, though both read "Variabler": that one
+    // heads a column of numbers in the kilde list and is named for it, so a column that becomes
+    // "Antall variabler" must not rename a section heading on its way past.
+    string HeadingVariables,
+    string HeadingAccessCriteria,
+    string HeadingPrices,
+    // The bodies of the two static blocks. Munin's Kelda writes them as markdown with links out to
+    // helsedata.no and fhi.no; what stands here is one plain sentence each, because the blocks
+    // themselves are Fhi.Metadata-ay3zz — where the open question is whether they belong at all in a
+    // component embedded on helsedata.no, which is where their links point. A heading with nothing
+    // under it reads as a rendering fault, so the sections say the one thing that is true either way
+    // and name no URL this package would then own.
+    //
+    // Body... rather than the bare noun, for the reason ColumnVariableCount above carries its role:
+    // these two sit three positions from the headings of the very sections they are the body of and
+    // have the same type, so a bare `Prices` reads as a heading and swaps for HeadingPrices in
+    // silence. The prefix is what makes the transposition visible at the construction site.
+    string BodyAccessCriteria,
+    string BodyPrices,
+    // (count) — the variable section's one line. Assembled here rather than at the call site for the
+    // reason KildeCount is: the singular is this language's business and not C#'s.
+    Func<int, string> KildeVariableCount,
     // (count) — the kilde list's own "{n} kilder", which is the whole of what it says about its
     // result set: no row range, because the list is never paged, and no ordering, because it is
     // never sorted. Assembled here rather than glued together at the call site for the reason
@@ -561,6 +586,15 @@ internal sealed record Texts(
         ColumnDelkilder: "Delkilder",
         ColumnVariableCount: "Variabler",
         HeadingDelkilderAndDataCollections: "Delkilder og datasamlinger",
+        HeadingVariables: "Variabler",
+        HeadingAccessCriteria: "Kriterier for tilgang til data",
+        HeadingPrices: "Priser",
+        BodyAccessCriteria: "Kriteriene for tilgang til data fra denne kilden, og hvordan du søker, "
+                        + "er beskrevet på helsedata.no.",
+        BodyPrices: "Prisene for utlevering av data fra denne kilden er beskrevet på helsedata.no.",
+        KildeVariableCount: count => count == 1
+            ? "1 publisert variabel i denne kilden."
+            : $"{count} publiserte variabler i denne kilden.",
         KildeCount: count => count == 1 ? "1 kilde" : $"{count} kilder",
         NoKilderMatch: search => search is null
             ? "Ingen kilder samsvarer med søket."
@@ -753,6 +787,15 @@ internal sealed record Texts(
         ColumnDelkilder: "Sub-sources",
         ColumnVariableCount: "Variables",
         HeadingDelkilderAndDataCollections: "Sub-sources and data collections",
+        HeadingVariables: "Variables",
+        HeadingAccessCriteria: "Criteria for access to data",
+        HeadingPrices: "Prices",
+        BodyAccessCriteria: "The criteria for access to data from this source, and how to apply for it, "
+                        + "are described at helsedata.no.",
+        BodyPrices: "The prices for having data from this source released are described at helsedata.no.",
+        KildeVariableCount: count => count == 1
+            ? "1 published variable in this source."
+            : $"{count} published variables in this source.",
         KildeCount: count => count == 1 ? "1 source" : $"{count} sources",
         NoKilderMatch: search => search is null
             ? "No sources match your search."
