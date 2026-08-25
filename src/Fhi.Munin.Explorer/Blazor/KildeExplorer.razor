@@ -1,0 +1,254 @@
+@namespace Fhi.Munin.Explorer.Blazor
+
+@* Kelda, the kildeutforsker.
+
+   No @page — the host owns routing; in helsedata's Optimizely CMS there is no router at all.
+   No @rendermode — the host decides at the mount site, which is what lets this same component
+   render under legacy Blazor Server and under a modern Blazor Web App.
+   No CSS ships from this package.
+
+   The names below split the way they do everywhere in this package. The page furniture wears
+   Fhi.Helsedata.Stiler's own names — `headline`, `caption`, `form-element__label`,
+   `searchbox__freetext*`, `hd-button-square` with its modifiers, `infobox` — and the structure
+   wears the `munin-explorer` prefix this package owns. Four of those are the explorer's existing
+   ones, reused rather than reinvented: the root `munin-explorer`, the `munin-explorer-container`
+   and `munin-explorer-results` the list sits in, and `munin-explorer-drilldown` for the view an
+   opened kilde takes over. Three are this view's own — `munin-explorer-kilder` for the table,
+   `munin-explorer-kilder__name` for the control that opens a row and
+   `munin-explorer-kilder__count` for the columns holding a number.
+
+   The result list is a <table>, unlike the variable explorer's, and that is the shape rule rather
+   than an inconsistency. Runa's rows are helsedata's own `munin-explorer-data-list`, a <ul> with a
+   header row of <div>s, because that is the shape their stylesheet dresses and this component
+   replaces their variable page. There is no equivalent to copy for a list of kilder, and eight
+   columns of counts and names have to line up — so it is the element that already does that, for
+   the reason the kodeverk code list and KildeView's datasamlinger are tables too: an element
+   degrades to its own browser default where an unknown class name degrades to nothing. The name
+   is a <button> for the same reason.
+
+   No pager, no sortable headers and no URL state. All three are Kelda parity decisions recorded
+   under the epic, not omissions — the endpoint is not paged, the API returns the list ordered by
+   name, and the only shareable thing here is which kilde is open. See the component class.
+
+   Accessibility: helsedata.no is a public-sector site, so WCAG 2.1 AA is a legal requirement, and
+   this is our markup on their page. Visible focus and contrast are the host stylesheet's to get
+   right; what markup can decide is decided here. *@
+
+<section class="munin-explorer" aria-labelledby="@TitleId">
+    @* Rendered from HeadingLevel rather than hard-coded to h2: the level that keeps the document
+       outline unbroken is only knowable at the mount site. *@
+    @Heading
+
+@if (_selectedId is not null)
+{
+    @* A kilde opens as its own view, not as a panel inside a row. Runa navigates to a page for
+       this; this component has no router, so instead it takes over its own area and offers a way
+       back. The search text and the list are all still there on return because none of it was torn
+       down — the list was never refetched to begin with.
+
+       A region named after what it shows, so a screen reader moving by landmark hears which kilde
+       it landed in. *@
+    <div class="munin-explorer-drilldown"
+         id="@DetailId"
+         role="region"
+         aria-labelledby="@DetailHeadingId"
+         aria-busy="@DetailBusy">
+        <button class="hd-button-square button-square--ghost margin-bottom"
+                type="button"
+                @onclick="CloseAsync">@T.BackToKilder</button>
+
+        @* Once the kilde has arrived, KildeView owns the heading — the same component the variable
+           explorer drills into, so the two cannot render one source two ways. Until then the view
+           keeps its own: the region points at that id, and a landmark whose label does not exist
+           yet is worse than a plain one. *@
+        @if (_kilde is null)
+        {
+            @DrilldownHeading
+        }
+
+        <p class="@DetailStatusClass"
+           role="status"
+           aria-live="polite"
+           aria-atomic="true">@DetailStatus</p>
+
+        @if (_kilde is { } kilde)
+        {
+            @* Kelda's own sections go in through Sections, and Kelda's own word for the
+               datasamling table goes in through DataCollectionsHeading — Runa says
+               "Datasamlinger" over the same rows. Neither is markup added to KildeView, which is
+               the whole reason that component is a core with slots. *@
+            <KildeView Kilde="kilde"
+                       Language="@Language"
+                       HeadingLevel="@KildeLevel"
+                       HeadingId="@DetailHeadingId"
+                       DataCollectionsHeading="@T.HeadingDelkilderAndDataCollections"
+                       Sections="@Sections" />
+        }
+    </div>
+}
+else
+{
+    @* The filter, read once for the whole render. Four things below want it — the count, the empty
+       state, the table's own name and its rows — and the getter re-runs the Where and materialises
+       a new list on every one of them. Nothing changes between them, so this is shape rather than
+       correctness: it is how KildeView.DataCollectionTable opens (`var rows = DataCollections;`)
+       and what the variable explorer's `@if (HierarchyCrumbs is { Count: > 0 } crumbs)` does. *@
+    var visible = Visible;
+    var summary = Summary(visible);
+    var searchText = SearchText;
+
+    @* role="search" makes this a search landmark, and aria-labelledby names it after this
+       instance's title so two explorers on one page are told apart in a landmark list.
+
+       There is nothing behind the submit — the filtering is done over a list already in hand — but
+       the form is still a form: implicit submit on Enter is how a keyboard user finishes a search,
+       and preventing the default is what keeps that from reloading the host's page. *@
+    <form role="search"
+          aria-labelledby="@TitleId"
+          @onsubmit="Submit"
+          @onsubmit:preventDefault="true">
+        @* A visible label rather than a bare aria-label: `form-element__label` is Stiler's own
+           label style, so keeping the text on screen costs nothing and serves far more people. *@
+        <label class="form-element__label" for="@SearchId">@T.KildeSearchLabel</label>
+
+        @* searchbox__freetext reserves the right-hand padding for a button sitting inside the
+           field, which is what searchbox__freetext-submit-button positions there. Both are
+           Stiler's; this is the arrangement their own search box uses. *@
+        <div class="searchbox__freetext-container">
+            @* @bind (onchange), deliberately NOT value + @oninput.
+
+               This renders inside helsedata.no's Blazor Server circuit, so @oninput means one
+               round-trip per keystroke — traffic for nothing, multiplied by every visitor on a
+               public site, and worse than nothing because each round-trip re-renders and rewrites
+               the input while more input is still arriving: a fast paste or a programmatic fill
+               loses characters. That the filtering itself is client-side does not change any of
+               it; the round-trip is the event reaching the circuit at all. The event is spelled
+               out rather than left implicit so nobody "helpfully" restores oninput. *@
+            <input class="searchbox__freetext"
+                   id="@SearchId"
+                   type="search"
+                   @bind="_search"
+                   @bind:event="onchange"
+                   placeholder="@T.KildeSearchPlaceholder"
+                   autocomplete="off"
+                   maxlength="200" />
+            @* Deliberately NOT disabled. Disabling the element that currently has focus drops
+               focus to <body>, and this button's real job is the blur it causes: clicking it from
+               inside the field is what fires the change event that applies the search. *@
+            <button class="hd-button-square button-square--primary searchbox__freetext-submit-button"
+                    type="submit">@T.SearchButton</button>
+        </div>
+    </form>
+
+    @* One polite status line, holding one message at a time: loading, the count, or the empty
+       state. aria-atomic makes a screen reader read the whole new sentence rather than only the
+       words that changed — "12" on its own is not information.
+
+       `caption` is Stiler's muted secondary-text style. It carries the empty state too: a
+       full-page emptystate block would be out of proportion inside a component that is one section
+       of somebody else's page, and repeating the sentence outside the live region would put it on
+       screen twice. *@
+    <p class="caption" role="status" aria-live="polite" aria-atomic="true">
+        @if (_loading)
+        {
+            @T.KildeListLoading
+        }
+        else if (visible.Count > 0)
+        {
+            @summary
+        }
+        else if (_loaded && _error is null)
+        {
+            @* Two sentences rather than one: a catalogue with nothing in it and a search that
+               matched nothing ask the reader to do different things. *@
+            @(_kilder.Count == 0 ? T.NoKilder : T.NoKilderMatch(searchText))
+        }
+    </p>
+
+    @* The failure is worth interrupting for, so it is an alert rather than a polite update. The
+       container is always rendered, empty when there is nothing wrong: a role="alert" element that
+       is inserted and filled in the same DOM update is announced unreliably, while one that is
+       already there when its text arrives is not. It carries no class of its own precisely because
+       it is always present — an `infobox` here would draw an empty coloured box on every page that
+       has nothing to report. *@
+    <div role="alert" aria-live="assertive" aria-atomic="true">
+        @if (_error is not null)
+        {
+            <p class="infobox infobox--bg-yellow">@_error</p>
+        }
+    </div>
+
+    @if (visible.Count > 0)
+    {
+    <div class="munin-explorer-container">
+    <div class="munin-explorer-results">
+        @* aria-label rather than aria-labelledby: the name is the same sentence the status line
+           above shows, and pointing at that element would make the table's name change under a
+           screen reader every time the status line does.
+
+           The eight columns, in the order Munin's own Kelda renders them. Its table has two more
+           control columns in front — a row checkbox and an expand toggle — and four more of these
+           behind a column picker; the checkbox is Fhi.Metadata-5ghur, the picker Fhi.Metadata-ay3zz,
+           and neither is this bead's.
+
+           No aria-busy, unlike the variable explorer's list: there is nothing to be busy with.
+           The list is fetched once, on initialisation, and while that fetch is running this table
+           is not in the DOM at all — so the attribute could only ever have said "false". It is the
+           drilldown, which does refetch on every kilde opened, that carries one. *@
+        <table class="munin-explorer-kilder" aria-label="@summary">
+            <thead>
+                <tr>
+                    <th scope="col">@T.FieldName</th>
+                    <th scope="col">@T.ColumnKildetype</th>
+                    <th scope="col">@T.FieldStatus</th>
+                    <th scope="col">@T.FieldDataController</th>
+                    <th scope="col">@T.FieldDataProcessor</th>
+                    <th scope="col" class="munin-explorer-kilder__count">@T.ColumnDelkilder</th>
+                    <th scope="col" class="munin-explorer-kilder__count">@T.HeadingDataCollections</th>
+                    <th scope="col" class="munin-explorer-kilder__count">@T.ColumnVariableCount</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var kilde in visible)
+                {
+                    @* Keyed by the kilde's own id: the rows come and go as the reader types, and
+                       one of them holds the control the reader is standing on. Without a key the
+                       renderer would patch that button into a different kilde's rather than moving
+                       it. *@
+                    <tr @key="kilde.Id">
+                        @* The name is a th, not a td: it is what the rest of the row is about, and
+                           a screen reader reading a cell out of context should hear which kilde it
+                           belongs to. The catalogue holds one name, in Norwegian, so it is marked
+                           when the reader is not. *@
+                        <th scope="row">
+                            <button class="munin-explorer-kilder__name"
+                                    type="button"
+                                    lang="@CatalogueProperties.Foreign("no", Reader)"
+                                    @onclick="() => SelectAsync(kilde)">@kilde.Name</button>
+
+                            @* The code under the name, the way Kelda puts it there — it is how a
+                               reader who knows K_ALS finds the row whose name they do not know. *@
+                            <p class="caption margin--none">@kilde.Code</p>
+                        </th>
+                        <td>@T.KildeTypeLabel(kilde.Kildetype, kilde.Kildetype)</td>
+                        <td>@(kilde.IsActive ? T.StatusActive : T.StatusPassive)</td>
+                        @* Marked as the catalogue's language only when the cell really holds the
+                           catalogue's words. Where it left the field empty the cell holds this
+                           package's own "Ikke oppgitt", in the reader's language — lang="no" over
+                           an English sentence switches a screen reader to a Norwegian voice for it
+                           (WCAG 3.1.2). KildeView avoids this by dropping blank facts before it
+                           renders them; a table has to keep the cell, so it drops the attribute. *@
+                        <td lang="@CatalogueLang(kilde.DataController)">@Value(kilde.DataController)</td>
+                        <td lang="@CatalogueLang(kilde.DataProcessor)">@Value(kilde.DataProcessor)</td>
+                        <td class="munin-explorer-kilder__count">@kilde.DelkildeCount</td>
+                        <td class="munin-explorer-kilder__count">@kilde.DatasamlingCount</td>
+                        <td class="munin-explorer-kilder__count">@kilde.TotalVariables</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    </div>
+    }
+}
+</section>

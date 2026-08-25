@@ -1148,6 +1148,80 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   font-weight: 600;
 }
 
+/* ---- the kilde list ----
+
+   Kelda's result table, and three more names of ours. The shape rule is the one the datasamlinger
+   table above follows: there was nothing to copy for a list of kilder — Stiler has no table
+   component, and helsedata's own variable page lists variables rather than sources — so the shape
+   is a <table> and these three dress it rather than carry it. A host that defines none of them
+   still gets eight columns that line up and a name that visibly is a control, which is what an
+   element's own browser default buys and an undefined class name does not.
+
+   Kelda's own table has two control columns in front of these eight, a checkbox and an expand
+   toggle, and four more behind a column picker. Neither belongs to the component yet, so neither
+   is named here. */
+.munin-explorer-kilder {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.munin-explorer-kilder th,
+.munin-explorer-kilder td {
+  padding: 8px 12px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--grey30);
+}
+
+.munin-explorer-kilder thead th {
+  background: var(--grey10);
+  color: var(--grey60);
+  font-weight: 600;
+}
+
+/* The name cell is a <th scope="row">, which browsers centre and bold by default. It is a label
+   for the row, not a heading over it, and the button inside it carries the weight. */
+.munin-explorer-kilder tbody th {
+  font-weight: 400;
+}
+
+/* The three columns holding a number, right-aligned and tabular: they are read down the page,
+   comparing magnitudes, and proportional digits put the same number in two different widths on
+   two rows. Scoped under the table because the rule it has to beat is the shared cell rule above,
+   which carries a class and an element — a bare class name would lose to it and the numbers would
+   silently stay left. */
+.munin-explorer-kilder .munin-explorer-kilder__count {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The name opens the kilde, so it has to look like the control it is without wearing a button
+   box — the same treatment the variable rows' name button gets above, and for the same reason.
+   What a host that skips this loses is the look and not the affordance: the element underneath is
+   a <button>, so it stays operable and stays obviously operable. */
+.munin-explorer-kilder__name {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  color: var(--primary-dark);
+  cursor: pointer;
+}
+
+.munin-explorer-kilder__name:hover {
+  text-decoration: underline;
+}
+
+.munin-explorer-kilder__name:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
 /* ---- the Data tab's kodeverk ----
 
    All five names below are ours, and every one is a handle: there was no kodeverk section
