@@ -197,7 +197,42 @@ internal sealed record Texts(
     // (search, filters) — the empty state. It names the filters because a search that matches
     // nothing *with three filters on* is a different thing to be told than one that matches
     // nothing at all, and the second reads as "this catalogue does not have it".
-    Func<string?, int, string> NoResults)
+    Func<string?, int, string> NoResults,
+
+    // Kelda, the kildeutforsker, which ships from this package beside Runa. The wording is read
+    // off Munin's own Kelda rather than translated afresh, so the two UIs name the same thing the
+    // same way — down to "Kildetype" for a column whose facet on the variable page helsedata calls
+    // "Type datakilde". Where Kelda names something the strings above already name — Navn, Status,
+    // Dataansvarlig, Databehandler, Datasamlinger, Søk — the existing one is reused rather than
+    // duplicated under a second name that could drift from it.
+    string KildeTitle,
+    string KildeSearchLabel,
+    string KildeSearchPlaceholder,
+    string KildeListLoading,
+    string KildeListError,
+    string NoKilder,
+    // The way out of an opened kilde, back to the list.
+    string BackToKilder,
+    // The status column's two values. A kilde that is no longer collecting data is kept for
+    // historical reference rather than removed, so this says which it is rather than hiding one.
+    string StatusActive,
+    string StatusPassive,
+    string ColumnKildetype,
+    string ColumnDelkilder,
+    string ColumnVariables,
+    // Runa says "Datasamlinger" over a kilde's datasamling table; Kelda says "Delkilder og
+    // datasamlinger" over the same rows. One word of difference is not worth a second table — see
+    // KildeView.DataCollectionsHeading.
+    string HeadingDelkilderAndDataCollections,
+    // (count) — the kilde list's own "{n} kilder", which is the whole of what it says about its
+    // result set: no row range, because the list is never paged, and no ordering, because it is
+    // never sorted. Assembled here rather than glued together at the call site for the reason
+    // ResultSummary is: the plural is this language's business and not C#'s.
+    Func<int, string> KildeCount,
+    // (search) — the kilde list's empty state, for a search that matched none of them. A catalogue
+    // holding no kilder at all says NoKilder instead: the two ask the reader to do different
+    // things.
+    Func<string?, string> NoKilderMatch)
 {
     /// <summary>
     /// The label for a sort order. The three that name one field use the same words the result
@@ -507,7 +542,24 @@ internal sealed record Texts(
         {
             var forSearch = search is null ? "Ingen variabler passet søket" : $"Ingen variabler passet søket «{search}»";
             return filters == 0 ? $"{forSearch}." : $"{forSearch} med filtrene som er valgt.";
-        });
+        },
+        KildeTitle: "Kildeutforsker",
+        KildeSearchLabel: "Søk i kilder",
+        KildeSearchPlaceholder: "Søk etter navn, kode eller kortnavn",
+        KildeListLoading: "Laster kilder …",
+        KildeListError: "Kunne ikke laste kilder nå. Prøv igjen om litt.",
+        NoKilder: "Ingen kilder er registrert ennå.",
+        BackToKilder: "← Tilbake til kildeutforsker",
+        StatusActive: "Aktiv",
+        StatusPassive: "Passiv",
+        ColumnKildetype: "Kildetype",
+        ColumnDelkilder: "Delkilder",
+        ColumnVariables: "Variabler",
+        HeadingDelkilderAndDataCollections: "Delkilder og datasamlinger",
+        KildeCount: count => count == 1 ? "1 kilde" : $"{count} kilder",
+        NoKilderMatch: search => search is null
+            ? "Ingen kilder samsvarer med søket."
+            : $"Ingen kilder samsvarer med søket «{search}».");
 
     private static readonly Texts En = new(
         Title: "Variable explorer",
@@ -682,7 +734,24 @@ internal sealed record Texts(
         {
             var forSearch = search is null ? "No variables matched your search" : $"No variables matched your search for “{search}”";
             return filters == 0 ? $"{forSearch}." : $"{forSearch} with the filters you have chosen.";
-        });
+        },
+        KildeTitle: "Source explorer",
+        KildeSearchLabel: "Search sources",
+        KildeSearchPlaceholder: "Search by name, code or short name",
+        KildeListLoading: "Loading sources …",
+        KildeListError: "Could not load the sources right now. Please try again shortly.",
+        NoKilder: "No sources have been registered yet.",
+        BackToKilder: "← Back to the source explorer",
+        StatusActive: "Active",
+        StatusPassive: "Passive",
+        ColumnKildetype: "Source type",
+        ColumnDelkilder: "Sub-sources",
+        ColumnVariables: "Variables",
+        HeadingDelkilderAndDataCollections: "Sub-sources and data collections",
+        KildeCount: count => count == 1 ? "1 source" : $"{count} sources",
+        NoKilderMatch: search => search is null
+            ? "No sources match your search."
+            : $"No sources match your search for “{search}”.");
 
     /// <summary>The words for a reader, defaulting to Norwegian for anything that is not English.</summary>
     /// <remarks>

@@ -145,14 +145,18 @@ These are not style preferences — each one is a host that breaks otherwise.
     its own browser default — and the name is there so a host or a test can find that part of the
     component in the page: `munin-explorer` (the root `<section>`), `munin-explorer-filters`,
     `munin-explorer-detail`, `munin-explorer-drilldown`, `munin-explorer-kodeverk*`,
-    `munin-explorer-codes*`, `munin-explorer-group`, and the nine `munin-explorer-kilde*` names in
-    `KildeView`. The samples style them for arrangement — the root as a grid at desktop width,
-    `-filters`, `-detail`, `-drilldown`, `-kodeverk*` and `-codes*` for spacing, indentation and a
-    rule between rows, the kilde view's name block, main column and sidebar as a page layout — and
-    they draw `munin-explorer-group` as Runa's blue uppercase eyebrow. A host that defines none of
-    them loses no information: the group headings, for instance, are already sized by the `headline
-    headline-xxs` they wear, so what an undefined `munin-explorer-group` costs is the eyebrow's
-    look, not the fact that it is a heading.
+    `munin-explorer-codes*`, `munin-explorer-group`, the nine `munin-explorer-kilde*` names in
+    `KildeView`, and the three `munin-explorer-kilder*` names in `KildeExplorer` — the kilde list's
+    table, the button that opens a row and the three columns that hold a number. The samples style
+    them for arrangement — the root as a grid at desktop width, `-filters`, `-detail`,
+    `-drilldown`, `-kodeverk*` and `-codes*` for spacing, indentation and a rule between rows, the
+    kilde view's name block, main column and sidebar as a page layout, the kilde list as a table
+    with its counts right-aligned — and they draw `munin-explorer-group` as Runa's blue uppercase
+    eyebrow. A host that defines none of them loses no information: the group headings, for
+    instance, are already sized by the `headline headline-xxs` they wear, so what an undefined
+    `munin-explorer-group` costs is the eyebrow's look, not the fact that it is a heading. The
+    kilde list is the same bargain twice over, which is why it is a `<table>` of `<button>`s — an
+    undrawn table still lines its columns up and an undrawn button is still visibly a control.
   - Names that carry meaning nothing else carries, so a host without Stiler's rules has to draw
     them itself: `munin-explorer-crumb` carries the link affordance for a trail step, which is a
     `<button>` — the kilde step of the panel's kilde trail, and every step of the hierarchy trail
