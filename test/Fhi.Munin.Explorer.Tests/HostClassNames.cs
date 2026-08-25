@@ -22,28 +22,12 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </summary>
 internal static class HostClassNames
 {
-    private static readonly Lazy<string> RepoRoot = new(() =>
-    {
-        // Walk up from the test binary rather than trusting the working directory, which differs
-        // between `dotnet test`, the IDE runner and CI.
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "Fhi.Munin.Explorer.slnx")))
-        {
-            dir = dir.Parent;
-        }
-
-        return dir?.FullName
-            ?? throw new InvalidOperationException(
-                $"No Fhi.Munin.Explorer.slnx above '{AppContext.BaseDirectory}', so the stylesheets this " +
-                "check reads cannot be found. Running the tests from outside the checkout?");
-    });
-
     /// <summary>
     /// Class names helsedata's own stylesheets define, captured from the live site. See the header
     /// in the file itself for how, and for how to capture it again.
     /// </summary>
     private static readonly Lazy<HashSet<string>> TheirNames = new(() =>
-        [.. File.ReadLines(Path.Combine(RepoRoot.Value, "test", "host-class-names.txt"))
+        [.. File.ReadLines(Repo.In("test", "host-class-names.txt"))
                 .Where(l => l.Length > 0 && !l.StartsWith('#'))]);
 
     private static readonly System.Text.RegularExpressions.Regex CssComment =
@@ -73,7 +57,7 @@ internal static class HostClassNames
     /// </summary>
     private static readonly Lazy<string> SampleStylesheet = new(() =>
         CssComment.Replace(
-            File.ReadAllText(Path.Combine(RepoRoot.Value, "samples", "LegacyHost", "wwwroot", "css", "host.css")),
+            File.ReadAllText(Repo.In("samples", "LegacyHost", "wwwroot", "css", "host.css")),
             " "));
 
     /// <summary>

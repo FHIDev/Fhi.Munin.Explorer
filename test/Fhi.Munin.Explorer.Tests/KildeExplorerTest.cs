@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using Bunit;
 using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
@@ -88,11 +87,29 @@ public class KildeExplorerTest : BunitContext
     private sealed class FakeClient(params KildeSummary[] kilder) : EmptyMuninExplorerClient
     {
         private readonly Dictionary<Guid, KildeDetail> _details = [];
+        private readonly List<TaskCompletionSource<KildeDetail?>> _stalls = [];
 
         public string? LastSearch { get; private set; }
         public string? LastKildeType { get; private set; }
         public int Calls { get; private set; }
         public int DetailCalls { get; private set; }
+
+        /// <summary>How many detail fetches have been left hanging.</summary>
+        public int Stalls => _stalls.Count;
+
+        /// <summary>Fail every detail fetch from the next one on — the API being down, not an id it does not know.</summary>
+        public bool FailDetail { get; set; }
+
+        /// <summary>
+        /// Never answer a detail fetch from the next one on, so a test can decide when — and
+        /// whether — it lands.
+        /// </summary>
+        /// <remarks>
+        /// Without this every fetch here completes before the click handler returns, so no fetch is
+        /// ever in flight across an open or a close and the component's generation guard is never
+        /// reached. It was possible to delete that guard and keep the whole suite green.
+        /// </remarks>
+        public bool StallDetail { get; set; }
 
         /// <summary>Publish a detail for a kilde; anything not published answers null, as the API does.</summary>
         public FakeClient Publishing(params KildeSummary[] summaries)
@@ -104,6 +121,15 @@ public class KildeExplorerTest : BunitContext
 
             return this;
         }
+
+        /// <summary>Answer the oldest detail fetch still hanging.</summary>
+        public void AnswerStalled(KildeDetail detail) => Oldest().TrySetResult(detail);
+
+        /// <summary>Fail the oldest detail fetch still hanging.</summary>
+        public void FailStalled() => Oldest().TrySetException(new HttpRequestException("the API is down"));
+
+        private TaskCompletionSource<KildeDetail?> Oldest() =>
+            _stalls.First(stall => !stall.Task.IsCompleted);
 
         public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
             string? search = null, string? kildeType = null, CancellationToken cancellationToken = default)
@@ -118,6 +144,21 @@ public class KildeExplorerTest : BunitContext
         public override Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default)
         {
             DetailCalls++;
+
+            if (FailDetail)
+            {
+                // A faulted task rather than a throw from the call itself: that is the shape an
+                // HttpClient failure arrives in, and it is the await that has to catch it.
+                return Task.FromException<KildeDetail?>(new HttpRequestException("the API is down"));
+            }
+
+            if (StallDetail)
+            {
+                var stall = new TaskCompletionSource<KildeDetail?>();
+                _stalls.Add(stall);
+
+                return stall.Task;
+            }
 
             return Task.FromResult(_details.TryGetValue(id, out var detail) ? detail : null);
         }
@@ -562,6 +603,115 @@ public class KildeExplorerTest : BunitContext
     }
 
     [Fact]
+    public void Select_WhenTheDetailFetchFails_ThenItSaysSoRatherThanEscapingTheHandler()
+    {
+        // Two things at once. An exception out of a Blazor Server event handler tears down the
+        // circuit for helsedata's whole CMS page rather than for this component, so the fetch has
+        // to be caught where it is awaited. And the sentence has to stay the API's rather than the
+        // catalogue's: "kunne ikke hente" is a fault worth trying again after, where "fant ingen
+        // detaljer" tells the reader there is nothing to come back for. Only the second of those
+        // had a test, so swapping the two — or collapsing them onto one — was invisible.
+        var als = Kilde("Als registeret", "K_ALS");
+        var client = new FakeClient(als).Publishing(als);
+
+        var cut = RenderWith(client);
+
+        client.FailDetail = true;
+        cut.Find(".munin-explorer-kilder tbody th button").Click();
+
+        var status = cut.Find(".munin-explorer-drilldown p[role=status]");
+
+        Assert.Equal("Kunne ikke hente datakilden nå. Prøv igjen om litt.", status.TextContent.Trim());
+        Assert.Equal("infobox infobox--bg-yellow", status.GetAttribute("class"));
+        Assert.DoesNotContain("Fant ingen detaljer", cut.Markup);
+        Assert.Empty(cut.FindComponents<KildeView>());
+    }
+
+    [Fact]
+    public async Task Select_WhenTheReaderGoesBackBeforeTheDetailArrives_ThenTheLateAnswerIsDropped()
+    {
+        // What the fetch's generation counter is for. Without it the answer to a fetch nobody is
+        // waiting for any more writes itself into a component that is showing the list again —
+        // on helsedata, a drilldown re-opening itself over the list after the reader pressed Back.
+        var als = Kilde("Als registeret", "K_ALS");
+        var client = new FakeClient(als).Publishing(als);
+
+        var cut = RenderWith(client);
+
+        client.StallDetail = true;
+        cut.Find(".munin-explorer-kilder tbody th button").Click();
+        cut.Find(".munin-explorer-drilldown button").Click();
+
+        Assert.Equal(1, client.Stalls);
+
+        await cut.InvokeAsync(() => client.AnswerStalled(Detail(als)));
+
+        Assert.Empty(cut.FindAll(".munin-explorer-drilldown"));
+        Assert.Empty(cut.FindComponents<KildeView>());
+        Assert.Equal(["Als registeret"], RowNames(cut));
+    }
+
+    [Fact]
+    public async Task Select_WhenAReopenedKildesAbandonedFetchAnswers_ThenItDoesNotStandInForTheNewOne()
+    {
+        // Closing a kilde and opening the same one again is two fetches carrying one id, so a guard
+        // written on the id rather than on the generation would let the first — already thrown
+        // away — answer for the second: the view would stop saying it was loading, and show a
+        // detail fetched before the reader's second click, while the fetch that owns it runs on.
+        var als = Kilde("Als registeret", "K_ALS");
+        var client = new FakeClient(als).Publishing(als);
+
+        var cut = RenderWith(client);
+
+        client.StallDetail = true;
+        cut.Find(".munin-explorer-kilder tbody th button").Click();
+        cut.Find(".munin-explorer-drilldown button").Click();
+        cut.Find(".munin-explorer-kilder tbody th button").Click();
+
+        Assert.Equal(2, client.Stalls);
+
+        await cut.InvokeAsync(() => client.AnswerStalled(Detail(als)));
+
+        Assert.Equal("true", cut.Find(".munin-explorer-drilldown").GetAttribute("aria-busy"));
+        Assert.Empty(cut.FindComponents<KildeView>());
+
+        // And the fetch that does own the view still gets to fill it.
+        await cut.InvokeAsync(() => client.AnswerStalled(Detail(als)));
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal("false", cut.Find(".munin-explorer-drilldown").GetAttribute("aria-busy"));
+            Assert.Equal(als.Id, cut.FindComponent<KildeView>().Instance.Kilde?.Id);
+        });
+    }
+
+    [Fact]
+    public async Task Select_WhenAReopenedKildesAbandonedFetchFails_ThenItsFailureIsNotReportedInTheNewView()
+    {
+        // The same guard on the other path out of the fetch. A failure belonging to a request the
+        // reader has already left would be written into a view that is still loading, and
+        // announced in its live region, only to be replaced when the request that owns the view
+        // lands — a warning box for a fetch that never had anything to do with what is on screen.
+        var als = Kilde("Als registeret", "K_ALS");
+        var client = new FakeClient(als).Publishing(als);
+
+        var cut = RenderWith(client);
+
+        client.StallDetail = true;
+        cut.Find(".munin-explorer-kilder tbody th button").Click();
+        cut.Find(".munin-explorer-drilldown button").Click();
+        cut.Find(".munin-explorer-kilder tbody th button").Click();
+
+        await cut.InvokeAsync(client.FailStalled);
+
+        var status = cut.Find(".munin-explorer-drilldown p[role=status]");
+
+        Assert.Equal("Henter datakilden …", status.TextContent.Trim());
+        Assert.Equal("caption", status.GetAttribute("class"));
+        Assert.DoesNotContain("Kunne ikke hente datakilden", cut.Markup);
+    }
+
+    [Fact]
     public void Select_WhenTheHostBindsTheSelection_ThenItIsToldWhichKildeIsOpenAndWhenItCloses()
     {
         var als = Kilde("Als registeret", "K_ALS");
@@ -612,6 +762,29 @@ public class KildeExplorerTest : BunitContext
         Assert.Equal("Als registeret", cut.Find($"#{labelledBy}").TextContent.Trim());
     }
 
+    [Fact]
+    public void Render_WhenTheHostNamesAKildeTheListCannotName_ThenTheHeadingStopsSayingItIsLoading()
+    {
+        // The list is what knows a kilde's name, so an id it does not carry — one the catalogue
+        // does not publish, or any id at all when the list itself failed to load — leaves the
+        // view's own heading with nothing of the catalogue's to say. That heading is what
+        // aria-labelledby points at, so one left on "Henter datakilden …" tells a screen reader
+        // entering the landmark that the source is still loading, for as long as the reader stays
+        // in it, while the status line underneath says the fetch is finished and found nothing.
+        var client = new FakeClient(Kilde("Als registeret", "K_ALS"));
+
+        var cut = RenderWith(client, b => b.Add(c => c.SelectedKildeId, Guid.NewGuid()));
+
+        var region = cut.Find(".munin-explorer-drilldown");
+        var heading = cut.Find($"#{region.GetAttribute("aria-labelledby")}");
+
+        Assert.Equal("false", region.GetAttribute("aria-busy"));
+        Assert.Equal("Fant ingen detaljer for denne datakilden.", heading.TextContent.Trim());
+
+        // The package's own words, so not marked as the catalogue's language.
+        Assert.Null(heading.GetAttribute("lang"));
+    }
+
     // ---------------------------------------------------------------------------------
     // Heading levels, language, and the host contract.
     // ---------------------------------------------------------------------------------
@@ -646,32 +819,39 @@ public class KildeExplorerTest : BunitContext
     }
 
     [Fact]
-    public void Component_WhenItsSourceIsRead_ThenItHasNoPageNoRenderModeAndNoRouter()
+    public void Render_WhenTheCatalogueLeftAFieldEmpty_ThenTheCellIsNotMarkedAsTheCataloguesLanguage()
     {
-        // A one-off check that costs nothing and catches the one edit that makes this package
-        // unmountable in helsedata's Optimizely host, where there is no router at all and the host
-        // decides the render mode at the mount site. Neither shows up as a failing render here:
-        // bUnit supplies both.
-        //
-        // Razor comments are stripped first, because this file explains in prose why it has no
-        // @page and no @rendermode — a check that a comment can break is one that gets deleted the
-        // first time somebody documents the rule it enforces.
-        var markup = Regex.Replace(ComponentSource(), @"@\*.*?\*@", " ", RegexOptions.Singleline);
+        // The cell holds the package's own "Not specified" then, in the reader's own language, so
+        // a lang="no" left on it switches a screen reader to a Norwegian voice for an English
+        // sentence — WCAG 3.1.2, Language of Parts. KildeView never hits this because it drops
+        // blank facts before rendering them; a table has to keep the cell, so it drops the
+        // attribute instead.
+        var cut = RenderWith(
+            new FakeClient(Kilde("Als registeret", "K_ALS", dataController: null, dataProcessor: null)),
+            b => b.Add(c => c.Language, "en"));
 
-        Assert.DoesNotContain("@page", markup, StringComparison.Ordinal);
-        Assert.DoesNotContain("@rendermode", markup, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("@attribute [Route", markup, StringComparison.Ordinal);
-        Assert.DoesNotContain("<Router", markup, StringComparison.Ordinal);
-        Assert.DoesNotContain("HeadOutlet", markup, StringComparison.Ordinal);
+        var cells = cut.FindAll(".munin-explorer-kilder tbody td");
+
+        Assert.Equal("Not specified", cells[2].TextContent.Trim());
+        Assert.Null(cells[2].GetAttribute("lang"));
+        Assert.Equal("Not specified", cells[3].TextContent.Trim());
+        Assert.Null(cells[3].GetAttribute("lang"));
     }
 
     [Fact]
-    public void Component_WhenItsSourceIsRead_ThenItShipsNoStylesheetOfItsOwn()
+    public void Render_WhenTheCatalogueSuppliedTheField_ThenTheCellIsMarkedAsTheCataloguesLanguage()
     {
-        // The package ships no CSS, and a scoped `.razor.css` beside a component is the one way to
-        // add some without touching the project file — scripts/assert-package-contents.sh catches
-        // it in the packed artefact, and this catches it in the checkout.
-        Assert.False(File.Exists(ComponentPath() + ".css"));
+        // The other half, so the fix above cannot be "stop marking anything": the catalogue holds
+        // these two in Norwegian whatever the reader is reading in.
+        var cut = RenderWith(
+            new FakeClient(Kilde("Als registeret", "K_ALS")),
+            b => b.Add(c => c.Language, "en"));
+
+        var cells = cut.FindAll(".munin-explorer-kilder tbody td");
+
+        Assert.Equal("Folkehelseinstituttet", cells[2].TextContent.Trim());
+        Assert.Equal("no", cells[2].GetAttribute("lang"));
+        Assert.Equal("no", cells[3].GetAttribute("lang"));
     }
 
     // ---------------------------------------------------------------------------------
@@ -730,29 +910,5 @@ public class KildeExplorerTest : BunitContext
             "munin-explorer-kilder__name",
             "munin-explorer-results",            // shared
         ], invented);
-    }
-
-    private static string ComponentPath() =>
-        Path.Combine(RepoRoot(), "src", "Fhi.Munin.Explorer", "Blazor", "KildeExplorer.razor");
-
-    private static string ComponentSource() => File.ReadAllText(ComponentPath());
-
-    /// <summary>
-    /// The checkout root, walked up to from the test binary rather than taken from the working
-    /// directory, which differs between <c>dotnet test</c>, the IDE runner and CI.
-    /// </summary>
-    private static string RepoRoot()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-
-        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "Fhi.Munin.Explorer.slnx")))
-        {
-            dir = dir.Parent;
-        }
-
-        return dir?.FullName
-            ?? throw new InvalidOperationException(
-                $"No Fhi.Munin.Explorer.slnx above '{AppContext.BaseDirectory}', so the component source "
-                + "this check reads cannot be found. Running the tests from outside the checkout?");
     }
 }

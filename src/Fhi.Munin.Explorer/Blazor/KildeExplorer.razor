@@ -88,6 +88,15 @@
 }
 else
 {
+    @* The filter, read once for the whole render. Four things below want it — the count, the empty
+       state, the table's own name and its rows — and the getter re-runs the Where and materialises
+       a new list on every one of them. Nothing changes between them, so this is shape rather than
+       correctness: it is how KildeView.DataCollectionTable opens (`var rows = DataCollections;`)
+       and what the variable explorer's `@if (HierarchyCrumbs is { Count: > 0 } crumbs)` does. *@
+    var visible = Visible;
+    var summary = Summary(visible);
+    var searchText = SearchText;
+
     @* role="search" makes this a search landmark, and aria-labelledby names it after this
        instance's title so two explorers on one page are told apart in a landmark list.
 
@@ -144,15 +153,15 @@ else
         {
             @T.KildeListLoading
         }
-        else if (Visible.Count > 0)
+        else if (visible.Count > 0)
         {
-            @Summary
+            @summary
         }
         else if (_loaded && _error is null)
         {
             @* Two sentences rather than one: a catalogue with nothing in it and a search that
                matched nothing ask the reader to do different things. *@
-            @(_kilder.Count == 0 ? T.NoKilder : T.NoKilderMatch(SearchText))
+            @(_kilder.Count == 0 ? T.NoKilder : T.NoKilderMatch(searchText))
         }
     </p>
 
@@ -169,7 +178,7 @@ else
         }
     </div>
 
-    @if (Visible.Count > 0)
+    @if (visible.Count > 0)
     {
     <div class="munin-explorer-container">
     <div class="munin-explorer-results">
@@ -180,8 +189,13 @@ else
            The eight columns, in the order Munin's own Kelda renders them. Its table has two more
            control columns in front — a row checkbox and an expand toggle — and four more of these
            behind a column picker; the checkbox is Fhi.Metadata-5ghur, the picker Fhi.Metadata-ay3zz,
-           and neither is this bead's. *@
-        <table class="munin-explorer-kilder" aria-label="@Summary" aria-busy="@Busy">
+           and neither is this bead's.
+
+           No aria-busy, unlike the variable explorer's list: there is nothing to be busy with.
+           The list is fetched once, on initialisation, and while that fetch is running this table
+           is not in the DOM at all — so the attribute could only ever have said "false". It is the
+           drilldown, which does refetch on every kilde opened, that carries one. *@
+        <table class="munin-explorer-kilder" aria-label="@summary">
             <thead>
                 <tr>
                     <th scope="col">@T.FieldName</th>
@@ -191,11 +205,11 @@ else
                     <th scope="col">@T.FieldDataProcessor</th>
                     <th scope="col" class="munin-explorer-kilder__count">@T.ColumnDelkilder</th>
                     <th scope="col" class="munin-explorer-kilder__count">@T.HeadingDataCollections</th>
-                    <th scope="col" class="munin-explorer-kilder__count">@T.ColumnVariables</th>
+                    <th scope="col" class="munin-explorer-kilder__count">@T.ColumnVariableCount</th>
                 </tr>
             </thead>
             <tbody>
-                @foreach (var kilde in Visible)
+                @foreach (var kilde in visible)
                 {
                     @* Keyed by the kilde's own id: the rows come and go as the reader types, and
                        one of them holds the control the reader is standing on. Without a key the
@@ -218,8 +232,14 @@ else
                         </th>
                         <td>@T.KildeTypeLabel(kilde.Kildetype, kilde.Kildetype)</td>
                         <td>@(kilde.IsActive ? T.StatusActive : T.StatusPassive)</td>
-                        <td lang="@CatalogueProperties.Foreign("no", Reader)">@Value(kilde.DataController)</td>
-                        <td lang="@CatalogueProperties.Foreign("no", Reader)">@Value(kilde.DataProcessor)</td>
+                        @* Marked as the catalogue's language only when the cell really holds the
+                           catalogue's words. Where it left the field empty the cell holds this
+                           package's own "Ikke oppgitt", in the reader's language — lang="no" over
+                           an English sentence switches a screen reader to a Norwegian voice for it
+                           (WCAG 3.1.2). KildeView avoids this by dropping blank facts before it
+                           renders them; a table has to keep the cell, so it drops the attribute. *@
+                        <td lang="@CatalogueLang(kilde.DataController)">@Value(kilde.DataController)</td>
+                        <td lang="@CatalogueLang(kilde.DataProcessor)">@Value(kilde.DataProcessor)</td>
                         <td class="munin-explorer-kilder__count">@kilde.DelkildeCount</td>
                         <td class="munin-explorer-kilder__count">@kilde.DatasamlingCount</td>
                         <td class="munin-explorer-kilder__count">@kilde.TotalVariables</td>

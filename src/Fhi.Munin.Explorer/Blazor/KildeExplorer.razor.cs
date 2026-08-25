@@ -171,8 +171,6 @@ public sealed partial class KildeExplorer : ComponentBase
     /// </summary>
     private int KildeLevel => Math.Clamp(TitleLevel + 1, 1, 6);
 
-    private string Busy => _loading ? "true" : "false";
-
     private string DetailBusy => _detailLoading ? "true" : "false";
 
     /// <summary>
@@ -222,8 +220,13 @@ public sealed partial class KildeExplorer : ComponentBase
     /// It is a count and nothing else. The variable explorer's equivalent names the row range and
     /// the ordering as well, because it has a pager and sortable headers; this list has neither, so
     /// there is nothing further to say and a sentence claiming otherwise would be furniture.
+    /// <para>
+    /// It takes the list rather than reading <see cref="Visible"/> itself, so that the sentence and
+    /// the rows underneath it are counted off one read of the filter — see the capture at the top
+    /// of the markup's list branch.
+    /// </para>
     /// </remarks>
-    private string Summary => T.KildeCount(Visible.Count);
+    private string Summary(IReadOnlyList<KildeSummary> visible) => T.KildeCount(visible.Count);
 
     /// <summary>The search text as it is worth reporting back, which is nothing when it is blank.</summary>
     private string? SearchText => string.IsNullOrWhiteSpace(_search) ? null : _search.Trim();
@@ -397,20 +400,44 @@ public sealed partial class KildeExplorer : ComponentBase
     /// its own.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// The region points at this id, and a landmark whose label does not exist yet is worse than a
     /// plain one — so something has to carry it from the first render. The list already knew the
     /// kilde's name, so the reader is told which kilde they opened while it loads rather than
     /// after.
+    /// </para>
+    /// <para>
+    /// When it did not, the heading follows the load state instead of standing on "Henter
+    /// datakilden …" forever: the list cannot name a kilde whose id the catalogue does not publish,
+    /// nor any kilde at all when the list itself failed to load, and both are states this heading
+    /// outlives. It falls back to the status line's own sentence rather than a second wording of
+    /// it, so the landmark's name cannot contradict the status underneath it — which is exactly
+    /// what a permanent "loading" over a finished, failed fetch did.
+    /// </para>
     /// </remarks>
     private RenderFragment DrilldownHeading => builder =>
     {
         builder.OpenElement(0, $"h{KildeLevel}");
         builder.AddAttribute(1, "class", "headline headline-s");
         builder.AddAttribute(2, "id", DetailHeadingId);
-        builder.AddAttribute(3, "lang", _selectedName is null ? null : CatalogueProperties.Foreign("no", Reader));
-        builder.AddContent(4, _selectedName ?? T.KildeLoading);
+        builder.AddAttribute(3, "lang", CatalogueLang(_selectedName));
+        builder.AddContent(4, _selectedName ?? DetailStatus ?? T.KildeMissing);
         builder.CloseElement();
     };
+
+    /// <summary>
+    /// The catalogue's own language for a value that really is the catalogue's, and nothing at all
+    /// for one this package supplied.
+    /// </summary>
+    /// <remarks>
+    /// A <c>lang</c> the content is not in is worse than none: it switches a screen reader to a
+    /// Norwegian voice for an English sentence, which is WCAG 3.1.2. So the empty values — where
+    /// what is on screen is <see cref="Texts.NotSpecified"/>, in the reader's language — are
+    /// marked as nothing, and <see cref="CatalogueProperties.Foreign(string, string)"/> answers
+    /// null for a reader already reading Norwegian.
+    /// </remarks>
+    private string? CatalogueLang(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : CatalogueProperties.Foreign("no", Reader);
 
     /// <summary>A cell's value, with the package's own words for one the catalogue left empty.</summary>
     private string Value(string? value) => string.IsNullOrWhiteSpace(value) ? T.NotSpecified : value;

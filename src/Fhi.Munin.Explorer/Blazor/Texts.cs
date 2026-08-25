@@ -219,7 +219,12 @@ internal sealed record Texts(
     string StatusPassive,
     string ColumnKildetype,
     string ColumnDelkilder,
-    string ColumnVariables,
+    // ...VariableCount rather than ...Variables, though the column is headed "Variabler": every
+    // member of this record is a string, so a name one letter from ColumnVariable above — the
+    // variable list's first column, "Navn" — would swap for it silently and put "Navn" over a
+    // column of numbers. The counts elsewhere in this file say so in their names for the same
+    // reason: FieldTotalVariables, FieldVariableCount, VariableCountSuffix.
+    string ColumnVariableCount,
     // Runa says "Datasamlinger" over a kilde's datasamling table; Kelda says "Delkilder og
     // datasamlinger" over the same rows. One word of difference is not worth a second table — see
     // KildeView.DataCollectionsHeading.
@@ -554,7 +559,7 @@ internal sealed record Texts(
         StatusPassive: "Passiv",
         ColumnKildetype: "Kildetype",
         ColumnDelkilder: "Delkilder",
-        ColumnVariables: "Variabler",
+        ColumnVariableCount: "Variabler",
         HeadingDelkilderAndDataCollections: "Delkilder og datasamlinger",
         KildeCount: count => count == 1 ? "1 kilde" : $"{count} kilder",
         NoKilderMatch: search => search is null
@@ -746,7 +751,7 @@ internal sealed record Texts(
         StatusPassive: "Passive",
         ColumnKildetype: "Source type",
         ColumnDelkilder: "Sub-sources",
-        ColumnVariables: "Variables",
+        ColumnVariableCount: "Variables",
         HeadingDelkilderAndDataCollections: "Sub-sources and data collections",
         KildeCount: count => count == 1 ? "1 source" : $"{count} sources",
         NoKilderMatch: search => search is null
