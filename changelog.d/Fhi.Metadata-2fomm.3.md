@@ -13,6 +13,15 @@ category: Added
   Kelda renders Kategori as a heading with nothing under it, which reads as a broken panel rather
   than as a field nobody has filled in; leaving the facet out makes "is the data there?" a question
   about the catalogue, which this component then answers correctly either way. (Fhi.Metadata-2fomm.3)
+- **Kategori's choices read as words rather than as EHDS tokens** - the catalogue stores a kilde's
+  kategori as a CURIE — `ehds-cat:registries-quality-of-healthcare` — and the list endpoint sends
+  no vocabulary beside it, so the panel labels them from a copy of the vocabulary the kilde detail
+  endpoint carries: "Kvalitetsregistre", in both languages the catalogue writes it in. The same
+  treatment tilgangsnivå gets, and for the same reason — one panel cannot be in two minds about
+  whether a reader of this catalogue is expected to read EHDS. Being a copy, it can fall behind:
+  a token the catalogue adds later keeps its checkbox and its count and shows its CURIE, which is
+  unlovely and still filterable. The facet groups and filters on the whole token throughout, so
+  what a choice is called never changes what it selects. (Fhi.Metadata-2fomm.3)
 - **A long free-text facet value no longer decides the layout** - databehandler is free text, and
   one value on the live catalogue runs to 212 characters. The choice is cut to 60 characters on
   screen with the whole value on its `title`, and the value it filters on is untouched. Variants

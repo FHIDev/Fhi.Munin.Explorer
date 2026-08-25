@@ -158,7 +158,7 @@ public sealed partial class KildeExplorer
     private IReadOnlyList<FacetDefinition> Definitions =>
     [
         new("kildetype", T.ColumnKildetype, kilde => One(kilde.Kildetype), value => T.KildeTypeLabel(value, value)),
-        new("kategori", T.FacetCategory, Categories, value => value),
+        new("kategori", T.FacetCategory, Categories, value => T.HealthCategoryLabel(value)),
         new("tilgangsniva", T.FacetAccessLevel,
             kilde => One(Property(kilde, AccessRightsKey)), value => T.AccessRightsLabel(value)),
 
@@ -270,10 +270,13 @@ public sealed partial class KildeExplorer
     /// catalogue holds beats showing nothing, and a facet quietly missing its values is exactly the
     /// empty Kategori this component was written not to draw.
     /// <para>
-    /// The tokens are passed through as they arrive. They are EHDS CURIEs and the package has no
-    /// vocabulary for them — the list endpoint sends none — so the choice is the raw token or a
-    /// translation invented here, and an invented one would be a claim about a controlled
-    /// vocabulary that this package is not the author of.
+    /// The tokens are what the facet groups and filters on, whole; what a reader sees is
+    /// <see cref="Texts.HealthCategoryLabel"/>, which is the catalogue's own word for the token
+    /// where it has one and the token itself where it has not. The list endpoint sends no
+    /// vocabulary, so the words are a copy of the one the detail endpoint sends — see that method
+    /// for why a copy, and why the alternative was not raw CURIEs on screen: tilgangsnivå sits in
+    /// the same panel with its tokens spelled out, and one panel cannot be in two minds about
+    /// whether a reader of this catalogue is expected to read EHDS.
     /// </para>
     /// </remarks>
     private static IReadOnlyList<string> Categories(KildeSummary kilde)

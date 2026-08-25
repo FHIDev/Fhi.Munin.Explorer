@@ -1272,19 +1272,38 @@ public class KildeExplorerTest : BunitContext
             Kilde("Dødsårsaksregisteret", "K_DAR",
                 category: """["ehds-cat:health-registries"]""")));
 
-        // Raw tokens, deliberately: they are EHDS CURIEs from a controlled vocabulary this package
-        // is not the author of, and the list endpoint sends no labels for them. Inventing words here
-        // would put a translation on screen that nothing in the catalogue backs.
+        // Words rather than CURIEs, and the catalogue's own words at that — the labels its
+        // healthCategory vocabulary carries. A reader of a Norwegian health catalogue is not
+        // expected to read EHDS, and the tilgangsnivå facet two headings away spells its tokens out
+        // for exactly that reason. In label order, which is not token order.
         Assert.Equal(
         [
-            "ehds-cat:biobanks (1)",
-            "ehds-cat:health-registries (1)",
-            "ehds-cat:population-health-surveys (1)"
+            "Befolkningsbaserte helseundersøkelser (1)",
+            "Biobanker (1)",
+            "Helseregistre (1)"
         ], Choices(Facet(cut, "Kategori")));
 
-        Tick(cut, "Kategori", "ehds-cat:biobanks");
+        Tick(cut, "Kategori", "Biobanker");
 
         Assert.Equal(["Den norske mor, far og barn-undersøkelsen"], RowNames(cut));
+    }
+
+    [Fact]
+    public void Facets_WhenAKategoriIsOutsideTheKnownVocabulary_ThenItsTokenIsTheChoice()
+    {
+        // The vocabulary is copied into this package, so it is a copy that can fall behind the
+        // catalogue. A token added after the copy was taken has to keep its checkbox and show what
+        // the catalogue sent: a facet that dropped it would filter over less than the list holds,
+        // silently, and the kilder carrying it would be unreachable through the panel.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", category: """["ehds-cat:biobanks"]"""),
+            Kilde("Dødsårsaksregisteret", "K_DAR", category: """["ehds-cat:something-new"]""")));
+
+        Assert.Equal(["Biobanker (1)", "ehds-cat:something-new (1)"], Choices(Facet(cut, "Kategori")));
+
+        Tick(cut, "Kategori", "ehds-cat:something-new");
+
+        Assert.Equal(["Dødsårsaksregisteret"], RowNames(cut));
     }
 
     [Fact]

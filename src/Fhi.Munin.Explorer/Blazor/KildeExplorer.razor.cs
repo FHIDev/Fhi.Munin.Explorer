@@ -229,17 +229,22 @@ public sealed partial class KildeExplorer : ComponentBase
     {
         get
         {
-            var term = _search?.Trim();
-
-            IReadOnlyList<KildeSummary> searched = string.IsNullOrEmpty(term)
-                ? _kilder
-                : [.. _kilder.Where(kilde => Matches(kilde, term))];
+            var searched = Searched(_search?.Trim());
 
             return _chosen.Values.All(values => values.Count == 0)
                 ? searched
                 : [.. searched.Where(MatchesFacets)];
         }
     }
+
+    /// <summary>The kilder the search leaves, before the facets have had their turn.</summary>
+    /// <remarks>
+    /// Its own method so the list it returns is typed by a signature rather than by a local
+    /// declaration: a collection expression takes its type from the target, and there is no target
+    /// in <c>var x = …</c>.
+    /// </remarks>
+    private IReadOnlyList<KildeSummary> Searched(string? term) =>
+        string.IsNullOrEmpty(term) ? _kilder : [.. _kilder.Where(kilde => Matches(kilde, term))];
 
     private static bool Matches(KildeSummary kilde, string term) =>
         Contains(kilde.Name, term) || Contains(kilde.Code, term) || Contains(kilde.ShortName, term);

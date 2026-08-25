@@ -243,6 +243,16 @@ internal sealed record Texts(
     // a value authored with another prefix, or with none, still finds its word; a token missing
     // from this falls back to what the API sent, the same way kildetype does.
     IReadOnlyDictionary<string, string> AccessRightsNames,
+    // Prose for a kategori token, which arrives the same way — a CURIE, `ehds-cat:biobanks`, into
+    // the EHDS health-category vocabulary. Not invented here: the words are the catalogue's own,
+    // transcribed off the `healthCategory` vocabulary the kilde detail endpoint sends with every
+    // source (`optionsJson`, captured in test/Testdata/kilde-med-delkilder.json), in both the
+    // languages it carries. They are copied rather than read because the *list* endpoint sends no
+    // vocabulary and the facets are built off the list alone — one detail request per kilde to
+    // label a checkbox is not a trade this panel makes. Keyed on the bare token and falling back to
+    // what the API sent, exactly like AccessRightsNames above: a token the catalogue adds after
+    // this copy was taken shows as its CURIE, which is ugly and true, rather than as nothing.
+    IReadOnlyDictionary<string, string> HealthCategoryNames,
     // Runa says "Datasamlinger" over a kilde's datasamling table; Kelda says "Delkilder og
     // datasamlinger" over the same rows. One word of difference is not worth a second table — see
     // KildeView.DataCollectionsHeading.
@@ -399,6 +409,34 @@ internal sealed record Texts(
         var token = value[(value.LastIndexOf(':') + 1)..];
 
         return AccessRightsNames.TryGetValue(token, out var name) ? name : value;
+    }
+
+    /// <summary>
+    /// Prose for a kategori token, falling back to the token the API sent.
+    /// </summary>
+    /// <remarks>
+    /// The same treatment its sibling facet gets, deliberately: two facets side by side, one
+    /// reading "Ikke-offentlig" and the other "ehds-cat:registries-quality-of-healthcare", would be
+    /// one panel speaking two languages, and the CURIE is the one no reader of this catalogue is
+    /// meant to see. The words are not invented for it — see <see cref="HealthCategoryNames"/> for
+    /// where they are copied from and why they are copied rather than read.
+    /// <para>
+    /// Keyed on the part after the last colon and falling back to the whole value, for the reasons
+    /// <see cref="AccessRightsLabel"/> gives: the label is looked up prefix-blind, while the facet
+    /// still groups and filters on the whole token, so a kategori the catalogue adds tomorrow keeps
+    /// its checkbox and shows its CURIE rather than disappearing out of the panel.
+    /// </para>
+    /// </remarks>
+    public string HealthCategoryLabel(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return NotSpecified;
+        }
+
+        var token = value[(value.LastIndexOf(':') + 1)..];
+
+        return HealthCategoryNames.TryGetValue(token, out var name) ? name : value;
     }
 
     /// <summary>
@@ -643,6 +681,16 @@ internal sealed record Texts(
             ["PUBLIC"] = "Offentlig",
             ["RESTRICTED"] = "Begrenset"
         },
+        HealthCategoryNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["health-registries"] = "Helseregistre",
+            ["registries-quality-of-healthcare"] = "Kvalitetsregistre",
+            ["population-health-surveys"] = "Befolkningsbaserte helseundersøkelser",
+            ["provesamling"] = "Prøvesamling",
+            ["biodata"] = "Biodata (DNA/omikk)",
+            ["biobanks"] = "Biobanker",
+            ["other"] = "Annet"
+        },
         HeadingDelkilderAndDataCollections: "Delkilder og datasamlinger",
         HeadingVariables: "Variabler",
         HeadingAccessCriteria: "Kriterier for tilgang til data",
@@ -861,6 +909,16 @@ internal sealed record Texts(
             ["NON_PUBLIC"] = "Non-public",
             ["PUBLIC"] = "Public",
             ["RESTRICTED"] = "Restricted"
+        },
+        HealthCategoryNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["health-registries"] = "Health registries",
+            ["registries-quality-of-healthcare"] = "Quality-of-healthcare registries",
+            ["population-health-surveys"] = "Population health surveys",
+            ["provesamling"] = "Sample collection",
+            ["biodata"] = "Biodata (DNA/omics)",
+            ["biobanks"] = "Biobanks",
+            ["other"] = "Other"
         },
         HeadingDelkilderAndDataCollections: "Sub-sources and data collections",
         HeadingVariables: "Variables",
