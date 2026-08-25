@@ -227,14 +227,27 @@ public class KildeSectionsTest : BunitContext
         // Kelda's own sections have bodies rather than being bare headings: a heading with nothing
         // under it reads as a rendering fault to a reader who cannot know a section is unfinished.
         //
-        // One substring per body, each unique to it, rather than the tail all three happen to
-        // share. Both static sentences end "…er beskrevet på helsedata.no.", so a single Contains
-        // over that tail is satisfied by either one alone — delete the prices paragraph and the
-        // assertion still passes, leaving a "Priser" heading with nothing under it, which is the
-        // exact fault these three lines exist to catch.
-        Assert.Contains("5752 publiserte variabler i denne kilden.", cut.Markup);
-        Assert.Contains("Kriteriene for tilgang til data fra denne kilden", cut.Markup);
-        Assert.Contains("Prisene for utlevering av data fra denne kilden", cut.Markup);
+        // Read pairwise out of the paragraph under each heading, for the reason the English test
+        // states and this language needs more: Norwegian is what a host that names no language
+        // gets, so it is the page most readers see. Two Contains over the markup are satisfied
+        // just as happily by two bodies that have swapped places — transpose the two sentences at
+        // the Norwegian construction site and the page shows the prices sentence under "Kriterier
+        // for tilgang til data" with the whole suite still green. Named arguments do not catch it
+        // either: the wrong string against the right name compiles and reads correctly.
+        //
+        // One substring per body, each unique to it, rather than the tail the two static sentences
+        // happen to share — both end "…er beskrevet på helsedata.no.".
+        Assert.Equal(
+            "5752 publiserte variabler i denne kilden.",
+            BodyUnder(cut, "Variabler"));
+        Assert.StartsWith(
+            "Kriteriene for tilgang til data fra denne kilden",
+            BodyUnder(cut, "Kriterier for tilgang til data"),
+            StringComparison.Ordinal);
+        Assert.StartsWith(
+            "Prisene for utlevering av data fra denne kilden",
+            BodyUnder(cut, "Priser"),
+            StringComparison.Ordinal);
     }
 
     [Fact]
