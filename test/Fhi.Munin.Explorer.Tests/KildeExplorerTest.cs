@@ -1436,6 +1436,47 @@ public class KildeExplorerTest : BunitContext
     }
 
     [Fact]
+    public void Facets_WhenAVocabularyMissLeavesACurieOnScreen_ThenItIsNotMarkedAsTheCataloguesLanguage()
+    {
+        // The other half of the rule, and the half a plain label == value comparison gets wrong on
+        // its own: these two facets fall back to the catalogue's *token*, and the token is a CURIE
+        // into an EU or EHDS vocabulary — English-authored, and prose in no language at all. Marked
+        // "no" it is handed to an English reader's screen reader in a Norwegian voice, which is the
+        // WCAG 3.1.2 failure the marking exists to avoid, only inverted. Unmarked it is read in the
+        // page's own language, which is as close as this component can get for an identifier.
+        var cut = RenderWith(
+            new FakeClient(
+                Kilde("Als registeret", "K_ALS",
+                    accessRights: "eu-access:OP_DATPRO",
+                    category: """["ehds-cat:noeHeltNytt"]""")),
+            b => b.Add(c => c.Language, "en"));
+
+        Assert.Equal(["eu-access:OP_DATPRO (1)"], Choices(Facet(cut, "Access level")));
+        Assert.Equal([null], Languages(Facet(cut, "Access level")));
+
+        Assert.Equal(["ehds-cat:noeHeltNytt (1)"], Choices(Facet(cut, "Category")));
+        Assert.Equal([null], Languages(Facet(cut, "Category")));
+    }
+
+    [Fact]
+    public void Facets_WhenAVocabularyKnowsTheTokenInBothFacets_ThenTheWordsAreLeftUnmarkedToo()
+    {
+        // The unremarkable side of the same branch, pinned so that a change to the fallback rule
+        // cannot start marking the words this package supplied: "Non-public" and "Biobanks" are
+        // English on an English page, and a lang="no" over either is the failure the CURIE case
+        // describes, this time on prose a reader can actually hear the difference in.
+        var cut = RenderWith(
+            new FakeClient(
+                Kilde("Als registeret", "K_ALS",
+                    accessRights: "eu-access:NON_PUBLIC",
+                    category: """["ehds-cat:biobanks"]""")),
+            b => b.Add(c => c.Language, "en"));
+
+        Assert.Equal([null], Languages(Facet(cut, "Access level")));
+        Assert.Equal([null], Languages(Facet(cut, "Category")));
+    }
+
+    [Fact]
     public void Facets_WhenAnAccessRightsTokenIsKnown_ThenItIsDrawnAsAWordInTheReadersLanguage()
     {
         // The catalogue writes eu-access:NON_PUBLIC; Kelda says "Ikke-offentlig". The token is what

@@ -24,12 +24,14 @@ category: Added
   what a choice is called never changes what it selects. One category is one checkbox however the
   catalogue wrote it — an array, a bare JSON string, or text that is not JSON at all — and a JSON
   null is no category rather than a checkbox named "null". (Fhi.Metadata-2fomm.3)
-- **A choice drawn in the catalogue's own words is marked as being in them** - databehandler is
-  free text, and the other three facets fall back to the catalogue's token wherever this package
-  has no word for it. Those choices carry `lang`, exactly as the same strings do in the table's
-  cells, so an English page does not have a Norwegian organisation's name read out with English
-  phonetics (WCAG 3.1.2); a choice this package supplied the words for carries none, because a
-  `lang` the text is not in is the same failure the other way round. (Fhi.Metadata-2fomm.3)
+- **A choice drawn in the catalogue's own Norwegian is marked as being in it** - databehandler is
+  free text, and kildetype falls back to Munin's own token wherever this package has no word for
+  it. Those choices carry `lang`, exactly as the same strings do in the table's cells, so an
+  English page does not have a Norwegian organisation's name read out with English phonetics
+  (WCAG 3.1.2). A choice this package supplied the words for carries none, because a `lang` the
+  text is not in is the same failure the other way round — and so does a kategori or tilgangsnivå
+  the vocabularies had no word for, because what is left on screen there is an EHDS or EU CURIE,
+  English-authored and prose in no language at all. (Fhi.Metadata-2fomm.3)
 - **A long free-text facet value no longer decides the layout** - databehandler is free text, and
   one value on the live catalogue runs to 212 characters. The choice is cut to 60 characters on
   screen with the whole value on its `title`, and the value it filters on is untouched. Variants

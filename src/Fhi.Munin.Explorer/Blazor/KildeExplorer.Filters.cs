@@ -73,11 +73,20 @@ public sealed partial class KildeExplorer
     /// kilder out of a filter they belong in.
     /// </param>
     /// <param name="Label">A value as a word, where the catalogue's token is not one.</param>
+    /// <param name="FallbackIsProse">
+    /// Whether a value this facet found no word for is text in the catalogue's own language, or an
+    /// identifier in no language at all. Kildetype and databehandler are the first: Munin's enum
+    /// members and whatever a Norwegian caseworker typed. Kategori and tilgangsnivå are the second
+    /// — a missed lookup there leaves an EHDS or EU CURIE on screen, English-authored and not prose
+    /// in any language, which a <c>lang="no"</c> would hand to a screen reader as Norwegian. See
+    /// <see cref="Option"/> for what is done with the answer.
+    /// </param>
     private sealed record FacetDefinition(
         string Key,
         string Heading,
         Func<KildeSummary, IReadOnlyList<string>> Values,
-        Func<string, string> Label);
+        Func<string, string> Label,
+        bool FallbackIsProse);
 
     /// <summary>A facet as the panel draws it: a heading and the choices under it.</summary>
     private sealed record Facet(string Key, string Heading, IReadOnlyList<FacetOption> Options);
@@ -188,14 +197,18 @@ public sealed partial class KildeExplorer
             return _definitions =
             [
                 new("kildetype", T.ColumnKildetype,
-                    kilde => One(kilde.Kildetype), value => T.KildeTypeLabel(value, value)),
-                new("kategori", T.FacetCategory, Categories, value => T.HealthCategoryLabel(value)),
+                    kilde => One(kilde.Kildetype), value => T.KildeTypeLabel(value, value),
+                    FallbackIsProse: true),
+                new("kategori", T.FacetCategory, Categories, value => T.HealthCategoryLabel(value),
+                    FallbackIsProse: false),
                 new("tilgangsniva", T.FacetAccessLevel,
-                    kilde => One(Property(kilde, AccessRightsKey)), value => T.AccessRightsLabel(value)),
+                    kilde => One(Property(kilde, AccessRightsKey)), value => T.AccessRightsLabel(value),
+                    FallbackIsProse: false),
 
                 // No label function of its own: databehandler is free text the catalogue stores as
                 // somebody typed it, so there is nothing to look it up in and the value is the word.
-                new("databehandler", T.FieldDataProcessor, kilde => One(kilde.DataProcessor), value => value)
+                new("databehandler", T.FieldDataProcessor, kilde => One(kilde.DataProcessor), value => value,
+                    FallbackIsProse: true)
             ];
         }
     }
@@ -249,20 +262,30 @@ public sealed partial class KildeExplorer
     /// supplied is not marked, because it is already in the reader's language and a <c>lang</c> it
     /// is not in is the same failure the other way round.
     /// <para>
-    /// Which of the two it is, is not a property of the facet: three of the four look their values
-    /// up in a vocabulary, and every one of those falls back to the catalogue's own token where the
-    /// vocabulary has no word for it. So the question is asked of the answer — a label that came
-    /// back as the value itself is the catalogue's text, whether because the facet has no
-    /// vocabulary at all (databehandler, which is free text) or because the lookup missed
-    /// (a kildetype, CURIE or category added after this package's copy was taken).
+    /// Whether the label came from the catalogue is not a property of the facet: three of the four
+    /// look their values up in a vocabulary, and every one of those falls back to the catalogue's
+    /// own token where the vocabulary has no word for it. So the question is asked of the answer —
+    /// a label that came back as the value itself is what the catalogue holds, whether because the
+    /// facet has no vocabulary at all (databehandler, which is free text) or because the lookup
+    /// missed (a kildetype, CURIE or category added after this package's copy was taken).
+    /// </para>
+    /// <para>
+    /// What language <em>that</em> is in is a property of the facet, and the two answers differ:
+    /// kildetype and databehandler fall back to Norwegian words, while kategori and tilgangsnivå
+    /// fall back to a CURIE — <c>eu-access:OP_DATPRO</c>, <c>ehds-cat:biobanks</c> — which is an
+    /// English-authored identifier and not prose in any language. Marking one of those as Norwegian
+    /// is the same WCAG 3.1.2 failure this method exists to avoid, only inverted, so an unmatched
+    /// CURIE is left unmarked and read in the page's own language. See
+    /// <see cref="FacetDefinition.FallbackIsProse"/>.
     /// </para>
     /// </remarks>
     private FacetOption Option(FacetDefinition definition, string value, int count)
     {
         var label = definition.Label(value);
-        var language = string.Equals(label, value, StringComparison.Ordinal) ? CatalogueLang(value) : null;
+        var catalogueProse =
+            string.Equals(label, value, StringComparison.Ordinal) && definition.FallbackIsProse;
 
-        return new FacetOption(value, label, count, language);
+        return new FacetOption(value, label, count, catalogueProse ? CatalogueLang(value) : null);
     }
 
     /// <summary>Whether <paramref name="kilde"/> survives every facet the reader has chosen in.</summary>
