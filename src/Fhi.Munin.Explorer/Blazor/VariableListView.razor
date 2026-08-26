@@ -1,0 +1,161 @@
+@namespace Fhi.Munin.Explorer.Blazor
+
+@* Signed out there is nothing here at all — not an empty frame, not a sign-in prompt this package
+   has no business wording. The host knows how its readers sign in; the package does not. *@
+@if (State?.IsAuthenticated == true)
+{
+    <div class="munin-explorer munin-explorer-container">
+
+        @* No class on the heading: the package ships no CSS, and the other components leave
+           theirs bare too. A name here would be one with no rule behind it. *@
+        @((MarkupString)$"<h{TitleLevel}>{T.MyListsHeading}</h{TitleLevel}>")
+
+        @* The picker is only a choice when there is one to make. With a single list it would be a
+           control whose every option is already selected. *@
+        @if (Lists.Count > 1)
+        {
+            <label class="munin-explorer-filters__facets">
+                @T.ChooseList
+                <select value="@_shownList" @onchange="ChooseListAsync">
+                    @foreach (var list in Lists)
+                    {
+                        <option value="@list.Id" selected="@(list.Id == _shownList)">@list.Name</option>
+                    }
+                </select>
+            </label>
+        }
+
+        @* @bind with onchange, deliberately NOT value + @oninput: this renders inside a Blazor
+           Server circuit, where oninput is one round trip per keystroke and drops characters on a
+           fast paste. The search field says the same thing at VariableExplorer.razor:146.
+
+           aria-disabled rather than disabled on the button: it becomes unavailable the moment a
+           successful create clears the name, and disabling the element that has focus drops focus
+           to <body>. CreateListAsync already refuses an empty name, so the press is inert. *@
+        <div>
+            <input type="text"
+                   placeholder="@T.NewListName"
+                   @bind="_newName"
+                   @bind:event="onchange" />
+            <button class="hd-button-square button-square--ghost"
+                    type="button"
+                    aria-disabled="@AriaDisabled(_newName.Trim().Length > 0)"
+                    @onclick="CreateListAsync">@T.CreateList</button>
+        </div>
+
+        @* Always in the DOM, empty when nothing is wrong — a role="alert" inserted and filled in the
+           same update is announced unreliably. Same shape as the explorer's own alert region. *@
+        <div role="alert" aria-live="assertive" aria-atomic="true">
+            @(_failed ? T.ListLoadError : null)
+        </div>
+
+        @if (Lists.Count == 0)
+        {
+            <p>@T.NoListsYet</p>
+        }
+        else if (_page is not null && _page.Items.Count == 0 && !_loading)
+        {
+            <p>@T.EmptyList</p>
+        }
+        else if (_page is not null)
+        {
+            <div class="munin-explorer-data-list">
+
+                <div class="munin-explorer-data-list__item__row munin-explorer-data-list__item__row--header">
+                    <div class="munin-explorer-dataitem-header">
+                        <span class="munin-explorer-dataitem-header__name">@T.ColumnVariable</span>
+                        <span class="munin-explorer-dataitem-header__code">@T.FieldCode</span>
+                        <span class="munin-explorer-dataitem-header__source">@T.FieldSource</span>
+                        <span class="munin-explorer-dataitem-header__dataCollection">@T.FieldDataCollection</span>
+                        <span class="munin-explorer-dataitem-header__theme">@T.FieldVariableGroup</span>
+                        <span class="munin-explorer-dataitem-header__dataType">@T.FieldDataType</span>
+                        <span class="munin-explorer-dataitem-header__period">@T.FieldDataPeriod</span>
+                    </div>
+                </div>
+
+                @foreach (var item in _page.Items)
+                {
+                    <div class="munin-explorer-data-list__item">
+                        <div class="munin-explorer-data-list__item__row">
+                            <div class="munin-explorer-dataitem-main">
+
+                                @* An entry whose variable has no row in the read model keeps its place
+                                   rather than being filtered out: the API returns it on purpose so the
+                                   paging totals stay honest, and a list of 247 that answered with 246
+                                   would hide that something went. It says so instead. *@
+                                @if (string.IsNullOrWhiteSpace(item.VariableName))
+                                {
+                                    <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__name">
+                                        <span class="munin-explorer-dataitem-main__column__text">@T.VariableNoLongerAvailable</span>
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__name">
+                                        <span class="munin-explorer-dataitem-main__column__text" lang="no">@item.VariableName</span>
+                                    </span>
+                                }
+
+                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__code">
+                                    <span class="munin-explorer-dataitem-main__column__text" lang="no">@item.VariableCode</span>
+                                </span>
+                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__source">
+                                    <span class="munin-explorer-dataitem-main__column__text" lang="no">@(item.KildeShortName ?? item.KildeName)</span>
+                                </span>
+                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__dataCollection">
+                                    <span class="munin-explorer-dataitem-main__column__text" lang="no">@item.DatasamlingName</span>
+                                </span>
+                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__theme">
+                                    <span class="munin-explorer-dataitem-main__column__text" lang="no">@item.VariabelgruppeName</span>
+                                </span>
+                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__dataType">
+                                    <span class="munin-explorer-dataitem-main__column__text">@item.DataType</span>
+                                </span>
+                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__period">
+                                    <span class="munin-explorer-dataitem-main__column__text">@Period(item)</span>
+                                </span>
+
+                                <button class="hd-button-square button-square--ghost"
+                                        type="button"
+                                        @onclick="() => RemoveAsync(item.VariableId)">@T.RemoveFromThisList</button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @* The list is as long as the reader made it, and the endpoint is paged. A view that
+               fetched page one and called it the list would show the first 25 and hide the rest
+               without saying so. *@
+            @if (TotalPages > 1)
+            {
+                <div class="munin-explorer-pagination"
+                     role="navigation"
+                     aria-label="@T.Pagination">
+                    @* The content wrapper is where the layout lives (host.css:1609), and the
+                       disabled styling is scoped to it. Without it the buttons get no flex row and
+                       the unavailable state draws nothing.
+
+                       aria-disabled, not disabled: a disabled button at the end of the list drops
+                       focus to <body>, which a sighted keyboard user has no sign of. The clamp in
+                       GoToPageAsync is what makes the press inert. Same rule as the result list. *@
+                    <div class="munin-explorer-pagination-content">
+                        <button class="hd-button-square button-square--secondary"
+                                type="button"
+                                aria-label="@T.PreviousLabel"
+                                aria-disabled="@AriaDisabled(_pageNumber > 1)"
+                                @onclick="() => GoToPageAsync(_pageNumber - 1)">@T.Previous</button>
+
+                        <span class="caption">@T.PageOf(_pageNumber, TotalPages)</span>
+
+                        <button class="hd-button-square button-square--secondary"
+                                type="button"
+                                aria-label="@T.NextLabel"
+                                aria-disabled="@AriaDisabled(_pageNumber < TotalPages)"
+                                @onclick="() => GoToPageAsync(_pageNumber + 1)">@T.Next</button>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+}
