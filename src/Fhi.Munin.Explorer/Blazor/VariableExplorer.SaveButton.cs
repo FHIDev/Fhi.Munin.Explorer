@@ -24,6 +24,9 @@ public partial class VariableExplorer
 {
     private bool ShowSaveButton => ListState?.IsAuthenticated == true;
 
+    /// <summary>Rows whose last save attempt threw. Cleared when that row is tried again.</summary>
+    private readonly HashSet<Guid> _saveError = [];
+
     private RenderFragment RowSaveButton(VariableSummary v) => builder =>
     {
         if (!ShowSaveButton)
@@ -32,6 +35,7 @@ public partial class VariableExplorer
         }
 
         var saved = ListState!.IsSaved(v.Id);
+        var failed = _saveError.Contains(v.Id);
 
         // Stiler's own square-button classes and nothing else, the same pair the detail panel's
         // toggles wear. No `munin-explorer-*` name of its own on purpose: the package ships no CSS,
@@ -47,6 +51,16 @@ public partial class VariableExplorer
         builder.AddAttribute(4, "onclick", EventCallback.Factory.Create(this, () => ToggleSavedAsync(v)));
         builder.AddContent(5, saved ? T.RemoveFromList : T.SaveToList);
         builder.CloseElement();
+
+        // Said in the row rather than the component's alert region: the other rows are unaffected,
+        // and the reader needs it beside the control that did not do what they asked.
+        if (failed)
+        {
+            builder.OpenElement(6, "span");
+            builder.AddAttribute(7, "role", "alert");
+            builder.AddContent(8, T.SaveError);
+            builder.CloseElement();
+        }
     };
 
     private async Task ToggleSavedAsync(VariableSummary v)
@@ -56,7 +70,19 @@ public partial class VariableExplorer
             return;
         }
 
-        await ListState.ToggleSavedAsync(v.Id, T.FirstListName);
+        // Caught here the way every other await in this component catches: an unhandled exception
+        // out of an EventCallback takes the whole circuit down, which is a far worse answer to a
+        // failed save than a line of text beside the button.
+        try
+        {
+            _saveError.Remove(v.Id);
+            await ListState.ToggleSavedAsync(v.Id, T.FirstListName);
+        }
+        catch (Exception)
+        {
+            _saveError.Add(v.Id);
+        }
+
         StateHasChanged();
     }
 }

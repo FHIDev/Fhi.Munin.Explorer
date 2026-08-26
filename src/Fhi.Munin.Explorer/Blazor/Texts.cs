@@ -130,6 +130,8 @@ internal sealed record Texts(
     string RemoveFromList,
     // The list made for a reader who saves before they have made one themselves.
     string FirstListName,
+    // Said in the row, beside the button that failed - the rest of the results are unaffected.
+    string SaveError,
     string HeadingKodeverk,
 
     // The version history in the whole-variable view.
@@ -512,6 +514,7 @@ internal sealed record Texts(
         SaveToList: "Lagre i liste",
         RemoveFromList: "Fjern fra liste",
         FirstListName: "Min variabelliste",
+        SaveError: "Kunne ikke lagre nå. Prøv igjen om litt.",
         HeadingKodeverk: "Kodeverk",
         HeadingVersionHistory: "Versjonshistorikk",
         VersionUnnamed: "Versjon uten navn",
@@ -733,6 +736,7 @@ internal sealed record Texts(
         SaveToList: "Save to list",
         RemoveFromList: "Remove from list",
         FirstListName: "My variable list",
+        SaveError: "Could not save just now. Try again shortly.",
         HeadingKodeverk: "Code lists",
         HeadingVersionHistory: "Version history",
         VersionUnnamed: "Version without a name",

@@ -25,6 +25,27 @@ public class SaveToListTest : BunitContext
     private sealed class ListClient(Page<VariableSummary> answer) : EmptyMuninExplorerClient
     {
         public int SearchCalls { get; private set; }
+
+        /// <summary>
+        /// Rebuilds the rows as fresh objects with the same ids, the way a real refetch does. A fake
+        /// that handed back the same instances would let a row that stashed "saved" on the DTO pass
+        /// the survival test below.
+        /// </summary>
+        private Page<VariableSummary> FreshCopy() =>
+            new()
+            {
+                Items = [.. answer.Items.Select(v => new VariableSummary
+                {
+                    Id = v.Id,
+                    Code = v.Code,
+                    PreferredTerm = v.PreferredTerm,
+                    KildeName = v.KildeName
+                })],
+                TotalCount = answer.TotalCount,
+                PageNumber = answer.PageNumber,
+                Size = answer.Size,
+                TotalPages = answer.TotalPages
+            };
         public int AddCalls { get; private set; }
         public int RemoveCalls { get; private set; }
         public int MyListsCalls { get; private set; }
@@ -40,7 +61,7 @@ public class SaveToListTest : BunitContext
             CancellationToken cancellationToken = default)
         {
             SearchCalls++;
-            return Task.FromResult(answer);
+            return Task.FromResult(FreshCopy());
         }
 
         public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default)
@@ -182,7 +203,12 @@ public class SaveToListTest : BunitContext
         SaveButton(cut).Click();
         Assert.Equal("true", SaveButton(cut).GetAttribute("aria-pressed"));
 
-        cut.Render();
+        // A real refetch, not just a re-render: the rows come back as new objects with the same
+        // ids, which is what a refiltering does. A row that had stashed "saved" on the summary it
+        // was handed would lose it exactly here.
+        var before = client.SearchCalls;
+        cut.Find("button[type=submit]").Click();
+        Assert.True(client.SearchCalls > before, "the search did not refetch, so nothing was rebuilt");
 
         Assert.Equal("true", SaveButton(cut).GetAttribute("aria-pressed"));
         Assert.Equal(1, client.AddCalls);

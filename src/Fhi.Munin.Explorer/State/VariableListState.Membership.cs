@@ -57,7 +57,17 @@ public sealed partial class VariableListState
             return false;
         }
 
+        // Same guard the list methods use: every await below is a point at which the reader can
+        // sign out, and a continuation that wrote to _saved afterwards would put the previous
+        // reader's variable back into the set the sign-out just cleared.
+        var startedAt = _generation;
+
         await EnsureLoadedAsync(cancellationToken).ConfigureAwait(false);
+
+        if (!StillCurrent(startedAt))
+        {
+            return false;
+        }
 
         if (_activeListId is null)
         {
@@ -74,20 +84,38 @@ public sealed partial class VariableListState
             }
 
             await SetActiveListAsync(target.Id, cancellationToken).ConfigureAwait(false);
+
+            if (!StillCurrent(startedAt))
+            {
+                return false;
+            }
         }
 
         var listId = _activeListId!.Value;
+        var wasSaved = _saved.Contains(variableId);
 
-        if (_saved.Contains(variableId))
+        var accepted = wasSaved
+            ? await RemoveVariablesAsync(listId, [variableId], cancellationToken).ConfigureAwait(false)
+            : await AddVariablesAsync(listId, [variableId], cancellationToken).ConfigureAwait(false);
+
+        // The call may well have succeeded on the server — it went out under the old token. It is
+        // this circuit's copy that must not keep the answer, because the reader it belongs to is no
+        // longer the one at the screen.
+        if (!StillCurrent(startedAt))
         {
-            if (await RemoveVariablesAsync(listId, [variableId], cancellationToken).ConfigureAwait(false))
+            return false;
+        }
+
+        if (accepted)
+        {
+            if (wasSaved)
             {
                 _saved.Remove(variableId);
             }
-        }
-        else if (await AddVariablesAsync(listId, [variableId], cancellationToken).ConfigureAwait(false))
-        {
-            _saved.Add(variableId);
+            else
+            {
+                _saved.Add(variableId);
+            }
         }
 
         Changed?.Invoke();
@@ -107,12 +135,20 @@ public sealed partial class VariableListState
 
         const int pageSize = 1000; // The API's own ceiling — fewer round trips for a long list.
         var page = 1;
+        var startedAt = _generation;
+        var listId = _activeListId.Value;
 
         while (true)
         {
             var result = await _client
-                .GetMyListVariablesAsync(_activeListId.Value, page, pageSize, cancellationToken)
+                .GetMyListVariablesAsync(listId, page, pageSize, cancellationToken)
                 .ConfigureAwait(false);
+
+            // A sign-out between pages ends the read: the rest of this list is not this reader's.
+            if (!StillCurrent(startedAt))
+            {
+                return;
+            }
 
             // Null is "no such list of yours" — the list went away in another tab. Stop rather than
             // loop, and leave membership empty rather than half-read.

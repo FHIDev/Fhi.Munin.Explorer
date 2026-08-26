@@ -8,8 +8,7 @@ category: Added
 - **Whether a variable is saved is read from the circuit's state holder on every render, never
   remembered by the row.** The results are rebuilt whenever the facet counts change, so a button
   that kept its own answer would forget it at the next refiltering and then show "Lagre i liste" for
-  a variable that is in the list. The test presses save, forces a re-render, and asserts the button
-  still reads saved — the click alone would pass either way.
+  a variable that is in the list.
 - **A reader who has no list yet gets one when they first save**, named "Min variabelliste". That is
   helsedata's 118497, and it is the same action as 118721 rather than a separate one: refusing to
   save until the reader had made a list somewhere else would make the button lie about what it does.
