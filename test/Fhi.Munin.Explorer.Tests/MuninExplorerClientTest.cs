@@ -122,6 +122,60 @@ public class MuninExplorerClientTest
     }
 
     [Fact]
+    public async Task GetKildePropertyMetadataAsync_WhenTheApiAnswersWithAVocabulary_ThenBothLabelsSurvive()
+    {
+        // The two entries are copied verbatim out of the propertyMetadata a real kilde detail
+        // carries — Testdata/kilde-med-delkilder.json — because the sibling endpoint serves the
+        // very same DTO, built by the same helper on the API side. What matters here is that
+        // optionsJson arrives as a *string* holding JSON rather than as JSON, and that both labels
+        // are still inside it: the list is fetched language-agnostically, so the component picks
+        // label or labelEn per render and cannot use a label the request already resolved.
+        const string vocabulary = """
+            [
+              {
+                "key": "accessRights",
+                "displayNameTranslations": { "no": "Tilgangsrettigheter", "en": "Access rights" },
+                "groupTranslations": { "no": "EHDS / HealthDCAT-AP", "en": "EHDS / HealthDCAT-AP" },
+                "sortOrder": 300,
+                "type": "SingleSelect",
+                "optionsJson": "[{\"value\":\"eu-access:NON_PUBLIC\",\"label\":\"Ikke-offentlig\",\"labelEn\":\"Non-public\"}]",
+                "options": [ { "value": "eu-access:NON_PUBLIC", "displayName": "Ikke-offentlig" } ]
+              },
+              {
+                "key": "healthCategory",
+                "displayNameTranslations": { "no": "Helsedatakategori", "en": "Health data category" },
+                "groupTranslations": { "no": "EHDS / HealthDCAT-AP", "en": "EHDS / HealthDCAT-AP" },
+                "sortOrder": 330,
+                "type": "MultiSelect",
+                "optionsJson": "[{\"value\":\"ehds-cat:biobanks\",\"label\":\"Biobanker\",\"labelEn\":\"Biobanks\"}]",
+                "options": [ { "value": "ehds-cat:biobanks", "displayName": "Biobanker" } ]
+              }
+            ]
+            """;
+
+        var handler = StubHttpHandler.Ok(vocabulary);
+
+        var entries = await Client(handler).GetKildePropertyMetadataAsync();
+
+        Assert.Equal("/api/explorer/kilder/egenskaper", handler.LastUri?.AbsolutePath);
+
+        // No Accept-Language, deliberately: see the remarks on the interface method.
+        Assert.Equal("", handler.LastUri?.Query);
+
+        Assert.Equal(["accessRights", "healthCategory"], entries.Select(entry => entry.Key));
+        Assert.Contains("\"labelEn\":\"Biobanks\"", entries[1].OptionsJson);
+        Assert.Equal("Biobanker", entries[1].Options[0].DisplayName);
+    }
+
+    [Fact]
+    public async Task GetKildePropertyMetadataAsync_WhenTheApiServesNoVocabulary_ThenAnEmptyListRatherThanAThrow()
+    {
+        // An API that predates the endpoint answers 404, and a facet without labels is a facet
+        // showing the catalogue's own tokens — worse to read, and not a reason to fail the page.
+        Assert.Empty(await WithStatus(HttpStatusCode.NotFound).GetKildePropertyMetadataAsync());
+    }
+
+    [Fact]
     public async Task GetKildeAsync_WhenTheKildeHasDelkilder_ThenTheDelkildeTreeAndItsDatasamlingerAreRead()
     {
         var kilde = await WithResponse("kilde-med-delkilder.json", out _).GetKildeAsync(Guid.NewGuid());

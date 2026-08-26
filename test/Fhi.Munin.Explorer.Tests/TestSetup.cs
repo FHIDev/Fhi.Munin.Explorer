@@ -33,6 +33,10 @@ internal abstract class EmptyMuninExplorerClient : IMuninExplorerClient
         string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<KildeSummary>>([]);
 
+    public virtual Task<IReadOnlyList<PropertyMetadataEntry>> GetKildePropertyMetadataAsync(
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<PropertyMetadataEntry>>([]);
+
     public virtual Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default) =>
         Task.FromResult<KildeDetail?>(null);
 
@@ -81,6 +85,98 @@ internal abstract class EmptyMuninExplorerClient : IMuninExplorerClient
         Task.FromResult(false);
 
     public virtual Task<bool> RemoveVariablesFromMyListAsync(
+        Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default) =>
+        Task.FromResult(false);
+}
+
+/// <summary>
+/// A host's own client as it stands before it has caught up: it implements
+/// <see cref="IMuninExplorerClient"/> itself, and it does not implement
+/// <see cref="IMuninExplorerClient.GetKildePropertyMetadataAsync"/>.
+/// </summary>
+/// <remarks>
+/// The one type here that must not derive from <see cref="EmptyMuninExplorerClient"/>, and the one
+/// whose value is in what it leaves out. <c>GetKildePropertyMetadataAsync</c> is the first member
+/// on that interface with a body, and the body exists for exactly one reader: a host that
+/// implements the contract rather than consuming <c>MuninExplorerClient</c>, whose build would
+/// otherwise stop on the upgrade. The interface is already on the feed, and a version there cannot
+/// be taken back from whoever restored it — so that promise is worth a type rather than a
+/// paragraph.
+/// <para>
+/// Every other fake in this suite overrides the member, which leaves the default body dead as far
+/// as the tests are concerned: it could be deleted with the whole suite green and the breakage
+/// would land on a host at the next publish. Here it is the only implementation there is, so
+/// deleting it stops this build instead — as does adding any further member without a default,
+/// which is the same promise made to the same reader.
+/// </para>
+/// <para>
+/// Deliberately hand-written rather than derived: inheriting the empty fake would inherit that
+/// member too, and the guard would assert nothing while looking like it did.
+/// </para>
+/// </remarks>
+internal sealed class UnupgradedHostClient(params KildeSummary[] kilder) : IMuninExplorerClient
+{
+    public Task<Page<VariableSummary>> SearchVariablesAsync(
+        string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
+        SortField sort = SortField.Default,
+        SortDirection direction = SortDirection.Ascending,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(new Page<VariableSummary>());
+
+    public Task<FilterOptions> GetFiltersAsync(
+        string? search = null,
+        VariableFilter? filter = null,
+        string? language = null,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(new FilterOptions());
+
+    public Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
+        string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<KildeSummary>>(kilder);
+
+    public Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default) =>
+        Task.FromResult<KildeDetail?>(null);
+
+    public Task<KildeHierarchy?> GetKildeHierarchyAsync(Guid id, CancellationToken cancellationToken = default) =>
+        Task.FromResult<KildeHierarchy?>(null);
+
+    public Task<DatasamlingDetail?> GetDatasamlingAsync(Guid id, CancellationToken cancellationToken = default) =>
+        Task.FromResult<DatasamlingDetail?>(null);
+
+    public Task<VariableDetail?> GetVariableAsync(
+        Guid id, bool includeHistorical = false, CancellationToken cancellationToken = default) =>
+        Task.FromResult<VariableDetail?>(null);
+
+    public Task<IReadOnlyList<VariableVersion>> GetVariableTimelineAsync(
+        Guid id, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<VariableVersion>>([]);
+
+    public Task<KodeverkCodes?> GetKodeverkCodesAsync(
+        Guid variableId, string kodeverkType, string kodeverkReference,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<KodeverkCodes?>(null);
+
+    public Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<VariableList>>([]);
+
+    public Task<VariableList> CreateMyListAsync(string name, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException($"{nameof(UnupgradedHostClient)} has no list to create.");
+
+    public Task<bool> RenameMyListAsync(Guid id, string name, CancellationToken cancellationToken = default) =>
+        Task.FromResult(false);
+
+    public Task<bool> DeleteMyListAsync(Guid id, CancellationToken cancellationToken = default) =>
+        Task.FromResult(false);
+
+    public Task<Page<VariableListItem>?> GetMyListVariablesAsync(
+        Guid id, int page = 1, int pageSize = 100, CancellationToken cancellationToken = default) =>
+        Task.FromResult<Page<VariableListItem>?>(null);
+
+    public Task<bool> AddVariablesToMyListAsync(
+        Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default) =>
+        Task.FromResult(false);
+
+    public Task<bool> RemoveVariablesFromMyListAsync(
         Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default) =>
         Task.FromResult(false);
 }

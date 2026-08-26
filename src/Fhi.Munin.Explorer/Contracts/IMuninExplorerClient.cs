@@ -97,6 +97,43 @@ public interface IMuninExplorerClient
         string? kildeType = null,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// The vocabulary behind the curated properties the kilde list carries: one entry per key its
+    /// <see cref="KildeSummary.AdditionalProperties"/> bag can hold. Empty when the API serves none.
+    /// </summary>
+    /// <remarks>
+    /// The same shape as <see cref="KildeDetail.PropertyMetadata"/>, and for the same reason —
+    /// <c>additionalProperties</c> is a bag of stored codes with no dictionary beside it, so a
+    /// caller drawing a word for one of those codes needs the vocabulary that defines it. The
+    /// detail endpoints ship theirs with the record; the list does not, because the vocabulary is
+    /// global rather than per kilde and repeating it on every row would send it some sixty times.
+    /// This is the list's half, served as a sibling of it.
+    /// <para>
+    /// No language parameter, deliberately, and it is the one thing that would look like an
+    /// omission: <see cref="GetKilderAsync"/> is fetched language-agnostically and its rows are
+    /// rendered to whichever reader is looking, so a caller switching language without refetching
+    /// has to be able to switch the words too. That means reading
+    /// <see cref="PropertyMetadataEntry.OptionsJson"/>, which carries both labels, rather than
+    /// <see cref="PropertyMetadataEntry.Options"/>, which carries the one the request asked for.
+    /// </para>
+    /// <para>
+    /// The one member here with a body, and it answers nothing. This interface is already on the
+    /// feed, and a version there cannot be taken back from whoever restored it — so it is a
+    /// contract with hosts rather than a seam inside this package, and anything implementing it
+    /// instead of consuming <c>MuninExplorerClient</c> stops compiling on upgrade when a member
+    /// arrives without a default. Empty is a working answer rather than a placeholder: it is the
+    /// state a caller reaches anyway when the endpoint is unreachable, and
+    /// <c>KildeExplorer</c> already treats that as labels lost and nothing else — the coded facets
+    /// show the catalogue's own tokens. What it costs is that a host which never overrides it gets
+    /// CURIEs on two facets silently, which is the price of not breaking the ones that have not
+    /// caught up; anything louder would be a page-level failure over a label.
+    /// </para>
+    /// </remarks>
+    /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
+    Task<IReadOnlyList<PropertyMetadataEntry>> GetKildePropertyMetadataAsync(
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<PropertyMetadataEntry>>([]);
+
     /// <summary>Fetch one kilde with its delkilde/datasamling tree. Null when no such kilde is published.</summary>
     Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default);
 

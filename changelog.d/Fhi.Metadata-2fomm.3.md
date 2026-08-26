@@ -14,16 +14,15 @@ category: Added
   than as a field nobody has filled in; leaving the facet out makes "is the data there?" a question
   about the catalogue, which this component then answers correctly either way. (Fhi.Metadata-2fomm.3)
 - **Kategori's choices read as words rather than as EHDS tokens** - the catalogue stores a kilde's
-  kategori as a CURIE — `ehds-cat:registries-quality-of-healthcare` — and the list endpoint sends
-  no vocabulary beside it, so the panel labels them from a copy of the vocabulary the kilde detail
-  endpoint carries: "Kvalitetsregistre", in both languages the catalogue writes it in. The same
-  treatment tilgangsnivå gets, and for the same reason — one panel cannot be in two minds about
-  whether a reader of this catalogue is expected to read EHDS. Being a copy, it can fall behind:
-  a token the catalogue adds later keeps its checkbox and its count and shows its CURIE, which is
-  unlovely and still filterable. The facet groups and filters on the whole token throughout, so
-  what a choice is called never changes what it selects. One category is one checkbox however the
-  catalogue wrote it — an array, a bare JSON string, or text that is not JSON at all — and a JSON
-  null is no category rather than a checkbox named "null". (Fhi.Metadata-2fomm.3)
+  kategori as a CURIE — `ehds-cat:registries-quality-of-healthcare` — and the panel labels them from
+  the catalogue's own vocabulary: "Kvalitetsregistre", in whichever of the two languages the reader
+  is reading. The same treatment tilgangsnivå gets, and for the same reason — one panel cannot be in
+  two minds about whether a reader of this catalogue is expected to read EHDS. A value that
+  vocabulary does not list keeps its checkbox and its count and shows its CURIE, which is unlovely
+  and still filterable. The facet groups and filters on the whole token throughout, so what a choice
+  is called never changes what it selects. One category is one checkbox however the catalogue wrote
+  it — an array, a bare JSON string, or text that is not JSON at all — and a JSON null is no
+  category rather than a checkbox named "null". (Fhi.Metadata-2fomm.3)
 - **A choice drawn in the catalogue's own Norwegian is marked as being in it** - databehandler is
   free text, and kildetype falls back to Munin's own token wherever this package has no word for
   it. Those choices carry `lang`, exactly as the same strings do in the table's cells, so an

@@ -137,6 +137,12 @@ public sealed partial class KildeExplorer : ComponentBase
     // asks the API a different question, which is the point of an endpoint that is not paged.
     private IReadOnlyList<KildeSummary> _kilder = [];
 
+    // The catalogue's own words for the coded properties the list carries, keyed by property. Two
+    // of the facets draw their choices out of it — see KildeExplorer.Filters.cs — and it stays
+    // empty when the fetch for it fails, which costs those choices their labels and nothing else.
+    private IReadOnlyDictionary<string, PropertyMetadataEntry> _vocabulary =
+        new Dictionary<string, PropertyMetadataEntry>(StringComparer.OrdinalIgnoreCase);
+
     // Whether that one fetch has answered, however it answered. The empty state and the count both
     // hang off it, so an empty list before the answer arrives does not read as "no kilder".
     private bool _loaded;
@@ -274,6 +280,33 @@ public sealed partial class KildeExplorer : ComponentBase
     /// <summary>The search text as it is worth reporting back, which is nothing when it is blank.</summary>
     private string? SearchText => string.IsNullOrWhiteSpace(_search) ? null : _search.Trim();
 
+    /// <summary>
+    /// Everything the view is initialised from: the list, the vocabulary its coded properties are
+    /// read with, and — when the host mounts with a kilde already chosen — that kilde as well.
+    /// </summary>
+    /// <remarks>
+    /// Three round trips, and the order they are started, awaited and drawn in is the whole of what
+    /// the reader spends waiting. Two of them are what somebody is here for: the list is what the
+    /// component is for, and an open kilde's detail is why a deep link was followed at all. The
+    /// third is not: the vocabulary only decides whether two facets read as words or as CURIEs, and
+    /// it fails silently into the second of those. So it is started first, awaited last, and
+    /// nothing above that await waits on it.
+    /// <para>
+    /// The renders in between are not optional, and each one is a state somebody would otherwise
+    /// sit in front of. This component asks for its own renders nowhere else, and
+    /// <see cref="ComponentBase"/> draws when this method first yields and again when it returns
+    /// and nothing in between — so without them the finished list sits behind
+    /// <c>Laster kilder …</c>, and a landed kilde behind <c>Henter datakilden …</c>, until the
+    /// vocabulary's round trip ends, up to <c>HttpClient</c>'s hundred-second default.
+    /// </para>
+    /// <para>
+    /// Both halves of that have been wrong here, in the same way and one after the other: first the
+    /// list was awaited before the vocabulary but drawn after it, and then the deep-linked kilde's
+    /// fetch was not merely left undrawn but never issued at all until the vocabulary landed,
+    /// because the await sat inside <see cref="LoadAsync"/> and this method could not reach
+    /// <see cref="LoadKildeAsync"/> until it returned.
+    /// </para>
+    /// </remarks>
     protected override async Task OnInitializedAsync()
     {
         _search = Search;
@@ -286,19 +319,49 @@ public sealed partial class KildeExplorer : ComponentBase
         // empty fetch that has not been made.
         _detailLoading = _selectedId is not null;
 
+        // Started here and awaited at the bottom, so its round trip overlaps the two below rather
+        // than queueing with them. Starting it cannot throw where the list's call can — it catches
+        // its own, and an implementation that throws from the call rather than the await is caught
+        // there too — which is why there is no try around this line and there is one around that.
+        var vocabulary = LoadVocabularyAsync();
+
         await LoadAsync();
 
         // After the list, not before: the list is what knows the kilde's name, which is what the
-        // open view's region is labelled by while its own fetch is still running.
+        // open view's region is labelled by while its own fetch is still running. Read before the
+        // render below rather than after it, so that render is the one that carries the name.
+        _selectedName = _selectedId is { } named
+            ? _kilder.FirstOrDefault(kilde => kilde.Id == named)?.Name
+            : null;
+
+        // The render that puts the list on screen — or, on a deep link, the named drilldown that
+        // has replaced it.
+        StateHasChanged();
+
         if (_selectedId is { } id)
         {
-            _selectedName = _kilder.FirstOrDefault(kilde => kilde.Id == id)?.Name;
             await LoadKildeAsync(id);
+
+            // And the render that puts the kilde on screen. The drilldown draws from the detail
+            // record alone, so it owes the vocabulary nothing and must not wait behind it.
+            StateHasChanged();
         }
+
+        // Awaited here and not left running: a task nobody awaits would write the vocabulary in
+        // after the render that needed it, with nothing to redraw the panel it labels.
+        await vocabulary;
+
+        // And the render that labels the panel. This is the last statement of the method, so
+        // ComponentBase's own post-initialisation render draws the same thing today and deleting
+        // this line breaks no test. It is kept because what the words depend on is the vocabulary
+        // arriving, not this method ending: anything awaited below it — a second fetch, a callback
+        // raised at the host — would take them off the panel again with nothing on screen saying
+        // so. A render nobody needed costs a diff over some tens of rows.
+        StateHasChanged();
     }
 
     /// <summary>
-    /// The one request this component makes: the whole list, unfiltered.
+    /// The whole list, unfiltered.
     /// </summary>
     /// <remarks>
     /// No search parameter and no kildetype, though the endpoint takes both. Everything the reader
@@ -306,6 +369,13 @@ public sealed partial class KildeExplorer : ComponentBase
     /// sending either would fetch a second, smaller list that the client-side filter would then
     /// filter again, and the counts beside the facets would be counted over a set the reader cannot
     /// get back to without another request.
+    /// <para>
+    /// The list and nothing else: the vocabulary its coded properties are read with is fetched
+    /// beside it rather than in it, and neither the render that draws the list nor the one that
+    /// draws an opened kilde belongs to this method. Both of those are orderings between the three
+    /// calls rather than steps of any one of them — see <see cref="OnInitializedAsync"/>, where
+    /// they are, and where they can be read in one place.
+    /// </para>
     /// </remarks>
     private async Task LoadAsync()
     {
@@ -327,6 +397,61 @@ public sealed partial class KildeExplorer : ComponentBase
         {
             _loading = false;
             _loaded = true;
+        }
+    }
+
+    /// <summary>
+    /// The catalogue's own vocabulary for the curated properties the list sends as bare codes.
+    /// </summary>
+    /// <remarks>
+    /// A sibling of the list rather than part of it, because the vocabulary is one definition per
+    /// property and not one per kilde — see <see cref="IMuninExplorerClient.GetKildePropertyMetadataAsync"/>.
+    /// It is fetched at all so that the facets and the kilde view a click away cannot disagree
+    /// about what a token is called: both read the words the catalogue holds now, rather than one
+    /// of them reading a table transcribed into this package on some earlier day.
+    /// <para>
+    /// A failure costs labels, not the list, so it is caught here rather than reported: the facets
+    /// fall back to showing the catalogue's own tokens, which is what they show for a value the
+    /// vocabulary does not list either way. A sentence about a vocabulary is not something a reader
+    /// of a kilde list can act on, and it would sit beside a panel that is still usable.
+    /// </para>
+    /// <para>
+    /// One entry per key is what the endpoint promises; the grouping is what keeps a second entry
+    /// for one key from throwing at the reader instead of losing a label. It matters more than the
+    /// usual defensive line because of the catch below: a throw here is swallowed whole and leaves
+    /// the vocabulary empty, so one repeated key would cost every facet its words rather than one.
+    /// The blank-key filter is not that guard by another route, and reading it as one overstates
+    /// it: the grouping runs first and collapses two blank keys as readily as two real ones, so
+    /// nothing there can throw whether the filter is present or not. What it does is keep a key
+    /// that is not a key out of the dictionary at all — every lookup here is by a property name, so
+    /// such an entry could only ever sit unread. Tidiness, and no test can tell it apart from its
+    /// own absence.
+    /// </para>
+    /// <para>
+    /// No cancellation token, and the omission is deliberate rather than overlooked: this component
+    /// holds none to pass — it is not disposable and opens no token source — so like every other
+    /// call it makes, the fetch runs to completion and its result is dropped when the reader has
+    /// already left. That is one abandoned request per abandoned circuit, for a call made once per
+    /// component. It follows that the catch below never sees a disposal cancellation; what it can
+    /// see is <c>HttpClient</c>'s own timeout, which arrives as a cancellation and is a vocabulary
+    /// that did not answer, which is exactly how it is treated. Should a token ever be threaded
+    /// through here, the two stop being the same thing and the cancellation has to be let out.
+    /// </para>
+    /// </remarks>
+    private async Task LoadVocabularyAsync()
+    {
+        try
+        {
+            var entries = await Client.GetKildePropertyMetadataAsync();
+
+            _vocabulary = entries
+                .Where(entry => !string.IsNullOrWhiteSpace(entry.Key))
+                .GroupBy(entry => entry.Key, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+        }
+        catch (Exception)
+        {
+            // Left as it was, which on the first load is empty.
         }
     }
 
