@@ -16,3 +16,9 @@ category: Fixed
   token**, unmarked by `lang` because a CURIE is prose in no language. So is what happens when the
   vocabulary cannot be fetched at all - the facets fall back to the catalogue's tokens and the list
   itself is unaffected, since the two are separate calls that fail apart. (Fhi.Metadata-tbpbr)
+- **Nothing on screen waits for that vocabulary** - it is fetched beside the list rather than before
+  it, and awaited after both the list and, when the host mounts with a kilde already chosen, that
+  kilde's own fetch. A slow or undeployed `api/explorer/kilder/egenskaper` therefore costs the two
+  facets their words until it lands and nothing else: not the list, held behind "Laster kilder …",
+  and not a kilde deep-linked from the host's URL, whose request would otherwise not have been made
+  yet. (Fhi.Metadata-tbpbr)

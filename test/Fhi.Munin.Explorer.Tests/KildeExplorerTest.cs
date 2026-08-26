@@ -313,6 +313,15 @@ public class KildeExplorerTest : BunitContext
     {
         private readonly TaskCompletionSource<IReadOnlyList<KildeSummary>> _list = new();
         private readonly TaskCompletionSource<IReadOnlyList<PropertyMetadataEntry>> _vocabulary = new();
+        private readonly TaskCompletionSource<KildeDetail?> _detail = new();
+
+        /// <summary>
+        /// How many detail fetches have been issued, which is the point of this counter rather
+        /// than a detail of it: the question a deep link asks is whether the fetch was made at
+        /// all while the vocabulary was still outstanding, and an unmade one and a made one that
+        /// has not answered look identical on screen.
+        /// </summary>
+        public int DetailCalls { get; private set; }
 
         public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
             string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
@@ -322,11 +331,21 @@ public class KildeExplorerTest : BunitContext
             CancellationToken cancellationToken = default) =>
             _vocabulary.Task;
 
+        public override Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            DetailCalls++;
+
+            return _detail.Task;
+        }
+
         /// <summary>Land the list.</summary>
         public void AnswerList() => _list.TrySetResult(kilder);
 
         /// <summary>Land the vocabulary the catalogue serves today.</summary>
         public void AnswerVocabulary() => _vocabulary.TrySetResult(CatalogueVocabulary());
+
+        /// <summary>Land the detail for the first kilde, which is the one a deep link opens here.</summary>
+        public void AnswerDetail() => _detail.TrySetResult(Detail(kilder[0]));
     }
 
     /// <summary>Fails the list call, which is the API being down rather than the catalogue being empty.</summary>
@@ -1728,15 +1747,83 @@ public class KildeExplorerTest : BunitContext
     }
 
     [Fact]
+    public async Task Render_WhenAKildeIsDeepLinkedAndTheVocabularyIsStillOutstanding_ThenItIsFetchedAndDrawnAnyway()
+    {
+        // The other half of the same rule, and the half that costs more: a host mounting with
+        // SelectedKildeId set is a reader who came for the kilde, and the vocabulary decides
+        // nothing the drilldown draws. The fetch used to be issued only after the vocabulary
+        // landed — OnInitializedAsync could not reach it until LoadAsync returned — so the region
+        // sat on "Henter datakilden …" for a request nobody had made, for up to HttpClient's
+        // hundred-second default. Then, once it was issued, the answer used to sit undrawn behind
+        // the same await.
+        var als = Kilde("Als registeret", "K_ALS", category: """["ehds-cat:biobanks"]""");
+        var client = new StagedClient(als);
+
+        var cut = RenderWith(client, b => b.Add(c => c.SelectedKildeId, als.Id));
+
+        // Nothing can be fetched before the list answers, because the list is what names the kilde.
+        Assert.Equal(0, client.DetailCalls);
+
+        await cut.InvokeAsync(client.AnswerList);
+
+        // The list has landed and the vocabulary has not, and the kilde is already being fetched.
+        Assert.Equal(1, client.DetailCalls);
+        Assert.Equal("Als registeret", cut.Find(".munin-explorer-drilldown h3").TextContent.Trim());
+        Assert.Equal("true", cut.Find(".munin-explorer-drilldown").GetAttribute("aria-busy"));
+
+        await cut.InvokeAsync(client.AnswerDetail);
+
+        // And on screen as soon as it lands, with the vocabulary still outstanding.
+        Assert.Equal(als.Id, cut.FindComponent<KildeView>().Instance.Kilde?.Id);
+        Assert.Equal("false", cut.Find(".munin-explorer-drilldown").GetAttribute("aria-busy"));
+
+        await cut.InvokeAsync(client.AnswerVocabulary);
+
+        // The vocabulary was the last thing waited for, and the facets it labels are back on
+        // screen the moment the reader closes the kilde.
+        cut.Find(".munin-explorer-drilldown button").Click();
+
+        Assert.Equal(["Biobanker (1)"], Choices(Facet(cut, "Kategori")));
+    }
+
+    [Fact]
+    public void Facets_WhenTheHostsOwnClientPredatesTheVocabularyEndpoint_ThenTheChoicesKeepTheirTokens()
+    {
+        // The default body on IMuninExplorerClient.GetKildePropertyMetadataAsync, exercised by the
+        // one kind of caller it exists for. The interface is on the feed and a version there cannot
+        // be taken back, so a host that implements it rather than consuming MuninExplorerClient has
+        // to keep compiling across the upgrade — and every other fake in this suite overrides the
+        // member, which leaves that promise resting on nothing. UnupgradedHostClient is the guard:
+        // it does not derive from EmptyMuninExplorerClient and does not implement this member, so a
+        // member added here without a default stops the test build before it reaches a host.
+        //
+        // What the default costs is asserted rather than described: the coded facets show the
+        // catalogue's own tokens, the same as a vocabulary that failed to arrive, and the list is
+        // unharmed.
+        var cut = RenderWith(new UnupgradedHostClient(
+            Kilde("Als registeret", "K_ALS", category: """["ehds-cat:biobanks"]""",
+                accessRights: "eu-access:NON_PUBLIC")));
+
+        Assert.Equal(["Als registeret"], RowNames(cut));
+        Assert.Equal(["ehds-cat:biobanks (1)"], Choices(Facet(cut, "Kategori")));
+        Assert.Equal(["eu-access:NON_PUBLIC (1)"], Choices(Facet(cut, "Tilgangsnivå")));
+    }
+
+    [Fact]
     public void Facets_WhenTheVocabularyRepeatsAKeyOrCarriesBlankOnes_ThenTheChoicesStillReadAsWords()
     {
-        // Two guards that can only fail quietly, which is why they are worth a test of their own:
-        // the fetch is wrapped in a catch, so a ToDictionary throwing on a repeated key would be
+        // The repeated key is the guard that can only fail quietly, which is why it is worth a test
+        // of its own: the fetch is wrapped in a catch, so a ToDictionary throwing on it would be
         // swallowed whole and *every* coded facet would fall back to raw CURIEs — the endpoint
-        // being down and the grouping being dropped look identical on screen. The blank keys are
-        // the same throw by another route, since two of them collide as surely as two real ones.
+        // being down and the grouping being dropped look identical on screen.
         //
         // First entry wins, so the repeat's label is the one that must not appear.
+        //
+        // The blank keys are not a second route to that throw, and this test does not claim they
+        // are: the grouping would collapse them as readily as two real ones. They are here because
+        // they are what a key-less entry does to the facets, which is nothing — no property is
+        // named "" or "   ", so an entry filed under one is unreachable whether the filter that
+        // drops it is there or not. Deleting that filter leaves this test green, and should.
         var cut = RenderWith(new FakeClient(
                 Kilde("Als registeret", "K_ALS", category: """["ehds-cat:biobanks"]""",
                     accessRights: "eu-access:NON_PUBLIC"))

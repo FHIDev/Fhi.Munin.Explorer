@@ -280,6 +280,33 @@ public sealed partial class KildeExplorer : ComponentBase
     /// <summary>The search text as it is worth reporting back, which is nothing when it is blank.</summary>
     private string? SearchText => string.IsNullOrWhiteSpace(_search) ? null : _search.Trim();
 
+    /// <summary>
+    /// Everything the view is initialised from: the list, the vocabulary its coded properties are
+    /// read with, and — when the host mounts with a kilde already chosen — that kilde as well.
+    /// </summary>
+    /// <remarks>
+    /// Three round trips, and the order they are started, awaited and drawn in is the whole of what
+    /// the reader spends waiting. Two of them are what somebody is here for: the list is what the
+    /// component is for, and an open kilde's detail is why a deep link was followed at all. The
+    /// third is not: the vocabulary only decides whether two facets read as words or as CURIEs, and
+    /// it fails silently into the second of those. So it is started first, awaited last, and
+    /// nothing above that await waits on it.
+    /// <para>
+    /// The renders in between are not optional, and each one is a state somebody would otherwise
+    /// sit in front of. This component asks for its own renders nowhere else, and
+    /// <see cref="ComponentBase"/> draws when this method first yields and again when it returns
+    /// and nothing in between — so without them the finished list sits behind
+    /// <c>Laster kilder …</c>, and a landed kilde behind <c>Henter datakilden …</c>, until the
+    /// vocabulary's round trip ends, up to <c>HttpClient</c>'s hundred-second default.
+    /// </para>
+    /// <para>
+    /// Both halves of that have been wrong here, in the same way and one after the other: first the
+    /// list was awaited before the vocabulary but drawn after it, and then the deep-linked kilde's
+    /// fetch was not merely left undrawn but never issued at all until the vocabulary landed,
+    /// because the await sat inside <see cref="LoadAsync"/> and this method could not reach
+    /// <see cref="LoadKildeAsync"/> until it returned.
+    /// </para>
+    /// </remarks>
     protected override async Task OnInitializedAsync()
     {
         _search = Search;
@@ -292,19 +319,49 @@ public sealed partial class KildeExplorer : ComponentBase
         // empty fetch that has not been made.
         _detailLoading = _selectedId is not null;
 
+        // Started here and awaited at the bottom, so its round trip overlaps the two below rather
+        // than queueing with them. Starting it cannot throw where the list's call can — it catches
+        // its own, and an implementation that throws from the call rather than the await is caught
+        // there too — which is why there is no try around this line and there is one around that.
+        var vocabulary = LoadVocabularyAsync();
+
         await LoadAsync();
 
         // After the list, not before: the list is what knows the kilde's name, which is what the
-        // open view's region is labelled by while its own fetch is still running.
+        // open view's region is labelled by while its own fetch is still running. Read before the
+        // render below rather than after it, so that render is the one that carries the name.
+        _selectedName = _selectedId is { } named
+            ? _kilder.FirstOrDefault(kilde => kilde.Id == named)?.Name
+            : null;
+
+        // The render that puts the list on screen — or, on a deep link, the named drilldown that
+        // has replaced it.
+        StateHasChanged();
+
         if (_selectedId is { } id)
         {
-            _selectedName = _kilder.FirstOrDefault(kilde => kilde.Id == id)?.Name;
             await LoadKildeAsync(id);
+
+            // And the render that puts the kilde on screen. The drilldown draws from the detail
+            // record alone, so it owes the vocabulary nothing and must not wait behind it.
+            StateHasChanged();
         }
+
+        // Awaited here and not left running: a task nobody awaits would write the vocabulary in
+        // after the render that needed it, with nothing to redraw the panel it labels.
+        await vocabulary;
+
+        // And the render that labels the panel. This is the last statement of the method, so
+        // ComponentBase's own post-initialisation render draws the same thing today and deleting
+        // this line breaks no test. It is kept because what the words depend on is the vocabulary
+        // arriving, not this method ending: anything awaited below it — a second fetch, a callback
+        // raised at the host — would take them off the panel again with nothing on screen saying
+        // so. A render nobody needed costs a diff over some tens of rows.
+        StateHasChanged();
     }
 
     /// <summary>
-    /// The whole list, unfiltered, and the vocabulary its coded properties are read with.
+    /// The whole list, unfiltered.
     /// </summary>
     /// <remarks>
     /// No search parameter and no kildetype, though the endpoint takes both. Everything the reader
@@ -313,31 +370,17 @@ public sealed partial class KildeExplorer : ComponentBase
     /// filter again, and the counts beside the facets would be counted over a set the reader cannot
     /// get back to without another request.
     /// <para>
-    /// Two calls rather than one, in flight together and awaited apart. They answer different
-    /// questions and fail independently: the list is what the component is for, while the
-    /// vocabulary only decides whether two facets read as words or as CURIEs. Started together so
-    /// the two round trips overlap rather than queue; awaited apart because a vocabulary that never
-    /// came back must not leave the page saying the catalogue could not be reached.
-    /// </para>
-    /// <para>
-    /// The render between the two awaits is what makes a reader waiting for the list not also wait
-    /// for a round trip that has nothing to do with them, and it is not optional. This component
-    /// asks for its own renders nowhere else: <see cref="ComponentBase"/> draws when
-    /// <see cref="OnInitializedAsync"/> first yields and again when it returns, and nothing in
-    /// between — so without it, starting both together would overlap the network and nothing else,
-    /// and the finished list would sit behind <c>Laster kilder …</c> until the slower of the two
-    /// landed, up to <c>HttpClient</c>'s hundred-second default.
+    /// The list and nothing else: the vocabulary its coded properties are read with is fetched
+    /// beside it rather than in it, and neither the render that draws the list nor the one that
+    /// draws an opened kilde belongs to this method. Both of those are orderings between the three
+    /// calls rather than steps of any one of them — see <see cref="OnInitializedAsync"/>, where
+    /// they are, and where they can be read in one place.
     /// </para>
     /// </remarks>
     private async Task LoadAsync()
     {
         _loading = true;
         _error = null;
-
-        // Started first and awaited last, so both calls are in flight at once. It cannot throw
-        // where the list can — it catches its own — which is why the list's own call stays inside
-        // the try: a client implementation is free to throw from the call rather than the await.
-        var vocabulary = LoadVocabularyAsync();
 
         try
         {
@@ -355,23 +398,6 @@ public sealed partial class KildeExplorer : ComponentBase
             _loading = false;
             _loaded = true;
         }
-
-        // The render that puts the list on screen. Asked for here rather than left to the one
-        // ComponentBase performs when OnInitializedAsync returns, because that one comes after the
-        // await below — see the remarks: without this the list is held off screen for exactly as
-        // long as the vocabulary takes.
-        StateHasChanged();
-
-        // Awaited here and not left running: a task nobody awaits would write the vocabulary in
-        // after the render that needed it, with nothing to redraw the panel it labels.
-        await vocabulary;
-
-        // And the render that labels the panel. Redundant as this is called today — the sole caller
-        // is OnInitializedAsync, which returns straight afterwards and gets ComponentBase's own
-        // render — but the arrival of a vocabulary is what draws the words for it, and leaving that
-        // to whatever the caller happens to do next is how a second caller loses them silently.
-        // A render nobody needed costs a diff over some tens of rows.
-        StateHasChanged();
     }
 
     /// <summary>
@@ -391,11 +417,15 @@ public sealed partial class KildeExplorer : ComponentBase
     /// </para>
     /// <para>
     /// One entry per key is what the endpoint promises; the grouping is what keeps a second entry
-    /// for one key from throwing at the reader instead of losing a label. The blank-key filter is
-    /// the same guard by another route — a key that is not a key looks up nothing either way, but
-    /// two of them collide as surely as two real ones. Both matter more than the usual defensive
-    /// line because of the catch below: a throw here is swallowed whole and leaves the vocabulary
-    /// empty, so one repeated key would cost every facet its words rather than one.
+    /// for one key from throwing at the reader instead of losing a label. It matters more than the
+    /// usual defensive line because of the catch below: a throw here is swallowed whole and leaves
+    /// the vocabulary empty, so one repeated key would cost every facet its words rather than one.
+    /// The blank-key filter is not that guard by another route, and reading it as one overstates
+    /// it: the grouping runs first and collapses two blank keys as readily as two real ones, so
+    /// nothing there can throw whether the filter is present or not. What it does is keep a key
+    /// that is not a key out of the dictionary at all — every lookup here is by a property name, so
+    /// such an entry could only ever sit unread. Tidiness, and no test can tell it apart from its
+    /// own absence.
     /// </para>
     /// <para>
     /// No cancellation token, and the omission is deliberate rather than overlooked: this component
