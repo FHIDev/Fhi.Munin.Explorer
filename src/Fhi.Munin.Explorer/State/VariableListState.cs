@@ -22,7 +22,7 @@ namespace Fhi.Munin.Explorer.State;
 /// forgets the parameter gets no lists rather than unauthorised calls.
 /// </para>
 /// </remarks>
-public sealed class VariableListState(IMuninExplorerClient client)
+public sealed partial class VariableListState(IMuninExplorerClient client)
 {
     private readonly IMuninExplorerClient _client = client;
 
@@ -63,6 +63,9 @@ public sealed class VariableListState(IMuninExplorerClient client)
         if (!isAuthenticated)
         {
             _lists = [];
+            _saved.Clear();
+            _activeListId = null;
+            _membershipLoaded = false;
         }
 
         _loaded = false;
