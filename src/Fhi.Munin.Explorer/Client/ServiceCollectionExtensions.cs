@@ -1,4 +1,5 @@
 using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.State;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -51,6 +52,10 @@ public static class ServiceCollectionExtensions
 
         services.AddTransient<ClientHeaderHandler>();
         services.AddTransient<BearerTokenHandler>();
+
+        // Scoped, so the surfaces sharing a circuit share one copy of the user's lists. Never
+        // singleton: that would be one user's lists served to every circuit on the server.
+        services.TryAddScoped<VariableListState>();
 
         services.AddHttpClient<IMuninExplorerClient, MuninExplorerClient>(client =>
         {
