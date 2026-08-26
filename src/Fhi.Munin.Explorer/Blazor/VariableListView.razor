@@ -8,7 +8,7 @@
 
         @* No class on the heading: the package ships no CSS, and the other components leave
            theirs bare too. A name here would be one with no rule behind it. *@
-        @((MarkupString)$"<h{HeadingLevel}>{T.MyListsHeading}</h{HeadingLevel}>")
+        @((MarkupString)$"<h{TitleLevel}>{T.MyListsHeading}</h{TitleLevel}>")
 
         @* The picker is only a choice when there is one to make. With a single list it would be a
            control whose every option is already selected. *@
@@ -25,14 +25,21 @@
             </label>
         }
 
+        @* @bind with onchange, deliberately NOT value + @oninput: this renders inside a Blazor
+           Server circuit, where oninput is one round trip per keystroke and drops characters on a
+           fast paste. The search field says the same thing at VariableExplorer.razor:146.
+
+           aria-disabled rather than disabled on the button: it becomes unavailable the moment a
+           successful create clears the name, and disabling the element that has focus drops focus
+           to <body>. CreateListAsync already refuses an empty name, so the press is inert. *@
         <div>
             <input type="text"
                    placeholder="@T.NewListName"
-                   value="@_newName"
-                   @oninput="e => _newName = e.Value?.ToString() ?? string.Empty" />
+                   @bind="_newName"
+                   @bind:event="onchange" />
             <button class="hd-button-square button-square--ghost"
                     type="button"
-                    disabled="@(_newName.Trim().Length == 0)"
+                    aria-disabled="@AriaDisabled(_newName.Trim().Length > 0)"
                     @onclick="CreateListAsync">@T.CreateList</button>
         </div>
 

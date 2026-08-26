@@ -42,6 +42,13 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// <summary>Entries per page. The API clamps to 1000; its own default is 100.</summary>
     [Parameter] public int PageSize { get; set; } = 25;
 
+    /// <summary>
+    /// Clamped, the way the explorer clamps its own: the parameter is documented as 1-6, and a host
+    /// that passes 0 or 7 would otherwise get an &lt;h0&gt; - not a heading at all, and invisible to the
+    /// heading navigation the level exists to keep intact.
+    /// </summary>
+    private int TitleLevel => Math.Clamp(HeadingLevel, 1, 6);
+
     private Texts T => Texts.For(Language);
 
     private Page<VariableListItem>? _page;

@@ -77,17 +77,19 @@ public class VariableListViewTest : BunitContext
             VariablesCalls++;
             LastPageAsked = page;
 
-            var slice = _items.Skip((page - 1) * PageSize).Take(PageSize).ToList();
+            // Honours the size the component asked for, not the fake's own: slicing by an
+            // internal number would hide a component that sent an unexpected page size.
+            var slice = _items.Skip((page - 1) * pageSize).Take(pageSize).ToList();
 
             return Task.FromResult<Page<VariableListItem>?>(new Page<VariableListItem>
             {
                 Items = slice,
                 TotalCount = _items.Count,
                 PageNumber = page,
-                Size = PageSize,
+                Size = pageSize,
                 // Computed, not hardcoded: a fake that always said one page let a component
                 // ignoring the field pass its own paging test.
-                TotalPages = Math.Max(1, (int)Math.Ceiling(_items.Count / (double)PageSize))
+                TotalPages = Math.Max(1, (int)Math.Ceiling(_items.Count / (double)pageSize))
             });
         }
 
@@ -205,8 +207,10 @@ public class VariableListViewTest : BunitContext
         var client = new ListClient { HasList = false };
         var cut = RenderView(client);
 
-        cut.Find("input[type=text]").Input("Hjerte og kar");
-        cut.Find("button:not([disabled])").Click();
+        // Change, not Input: the field binds on onchange rather than oninput, because one
+        // round trip per keystroke drops characters on a paste inside a Blazor Server circuit.
+        cut.Find("input[type=text]").Change("Hjerte og kar");
+        cut.Find(".munin-explorer-container button").Click();
 
         Assert.Equal(1, client.CreateCalls);
     }
