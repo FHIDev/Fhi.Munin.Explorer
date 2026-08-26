@@ -226,7 +226,7 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
     /// carry the Norwegian stem, and an anonymous object puts that spelling out of reach of review.
     /// </summary>
     private sealed record ExportRequestBody(
-        [property: JsonPropertyName("variabelIds")] IReadOnlyCollection<Guid> VariabelIds,
+        [property: JsonPropertyName("variabelIds")] IReadOnlyCollection<Guid> VariableIds,
         [property: JsonPropertyName("format")] string Format,
         [property: JsonPropertyName("includeKodeverk")] bool IncludeKodeverk,
         [property: JsonPropertyName("kildeIdFilter")] Guid? KildeIdFilter);

@@ -48,7 +48,9 @@
            produce a file with a header row and nothing under it. *@
         @if (_page is not null && _page.TotalCount > 0)
         {
-            <div>
+            @* A named group, not just a visual one: three controls that only make sense together,
+               and a screen reader moving between them otherwise hears three unrelated widgets. *@
+            <div role="group" aria-label="@T.DownloadList">
                 <label>
                     <input type="checkbox"
                            checked="@_includeKodeverk"
