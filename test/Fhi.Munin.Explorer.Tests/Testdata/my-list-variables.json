@@ -2,11 +2,33 @@
   "items": [
     {
       "variabelId": "b7c1f4a2-5d38-4e6b-9c02-8a1e3f7d5b90",
-      "addedAt": "2026-08-19T11:03:55.008+00:00"
+      "addedAt": "2026-08-19T11:03:55.008+00:00",
+      "variabelCode": "V_BDR.F2.ALDER_VED_DIAGNOSE",
+      "variabelName": "Alder ved diagnose",
+      "kildeId": "9f2c7e14-6a8b-4d31-b5e0-2c7a91f4d8e6",
+      "kildeName": "Norsk register for arvelige og medfødte nevromuskulære sykdommer",
+      "kildeKortNavn": "BDR",
+      "datasamlingName": "Førstegangsregistrering",
+      "variabelgruppeName": "Ikke oppgitt",
+      "dataType": "Integer",
+      "dataFrom": "2021-08-01T00:00:00",
+      "dataTo": null,
+      "versjonStatus": "Gjeldende"
     },
     {
       "variabelId": "3e5a8c11-7b42-49df-a6c8-1d904f2e6b73",
-      "addedAt": "2026-08-19T11:04:12.774+00:00"
+      "addedAt": "2026-08-19T11:04:12.774+00:00",
+      "variabelCode": null,
+      "variabelName": null,
+      "kildeId": null,
+      "kildeName": null,
+      "kildeKortNavn": null,
+      "datasamlingName": null,
+      "variabelgruppeName": null,
+      "dataType": null,
+      "dataFrom": null,
+      "dataTo": null,
+      "versjonStatus": null
     }
   ],
   "totalCount": 247,

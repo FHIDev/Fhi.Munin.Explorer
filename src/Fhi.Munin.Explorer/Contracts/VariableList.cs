@@ -30,12 +30,18 @@ public sealed record VariableList
 /// One variable in a saved list, as returned by <c>GET /api/explorer/my/lists/{id}/variables</c>.
 /// </summary>
 /// <remarks>
-/// The id and the time it was added are all the list itself holds — the API stores no copy of the
-/// variable's name, code or kilde, and does not join to the catalogue when it answers. A caller
-/// showing more than a date therefore fetches the variables it wants to show, with
-/// <see cref="IMuninExplorerClient.GetVariableAsync"/> or by searching for the ids. That is a
-/// deliberate property of the store rather than an omission: a saved list survives a variable
-/// being unpublished, and a stale copy of a name would be shown as though it were current.
+/// <para>
+/// The list itself still stores only the id and the time it was added — a saved list survives a
+/// variable being unpublished, and a stored copy of a name would be shown as though it were
+/// current. The display fields below are not stored: the API resolves them from the read model as
+/// it answers, for the page it is answering with.
+/// </para>
+/// <para>
+/// They are all optional and may be <see langword="null"/> together, which means that id has no row
+/// in the read model — retracted, unpublished, or not yet projected. Such an entry is still
+/// returned rather than dropped, so the paging totals stay honest, and a caller decides what to
+/// draw for it.
+/// </para>
 /// </remarks>
 public sealed record VariableListItem
 {
@@ -47,4 +53,34 @@ public sealed record VariableListItem
 
     /// <summary>When the variable was put in the list.</summary>
     [JsonPropertyName("addedAt")] public DateTimeOffset AddedAt { get; init; }
+
+    // The display fields, resolved by the API as it answers. Named as they are on the wire, which
+    // keeps the Norwegian stem the rest of this contract already uses — variabelId, not variableId.
+
+    [JsonPropertyName("variabelCode")] public string? VariableCode { get; init; }
+
+    [JsonPropertyName("variabelName")] public string? VariableName { get; init; }
+
+    [JsonPropertyName("kildeId")] public Guid? KildeId { get; init; }
+
+    [JsonPropertyName("kildeName")] public string? KildeName { get; init; }
+
+    [JsonPropertyName("kildeKortNavn")] public string? KildeShortName { get; init; }
+
+    [JsonPropertyName("datasamlingName")] public string? DatasamlingName { get; init; }
+
+    [JsonPropertyName("variabelgruppeName")] public string? VariabelgruppeName { get; init; }
+
+    [JsonPropertyName("dataType")] public string? DataType { get; init; }
+
+    [JsonPropertyName("dataFrom")] public DateTimeOffset? DataFrom { get; init; }
+
+    [JsonPropertyName("dataTo")] public DateTimeOffset? DataTo { get; init; }
+
+    /// <summary>
+    /// Spelled as a string rather than an enum, the same way <see cref="VariableSummary.VersionStatus"/>
+    /// is: the package deserialises with <c>JsonSerializerDefaults.Web</c>, which carries no
+    /// string-enum converter, so an enum here would need one registered by every host.
+    /// </summary>
+    [JsonPropertyName("versjonStatus")] public string? VersionStatus { get; init; }
 }
