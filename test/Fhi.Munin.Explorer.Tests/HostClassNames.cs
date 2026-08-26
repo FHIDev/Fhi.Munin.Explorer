@@ -1,12 +1,17 @@
 namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
-/// Answers one question about a rendered class name: is there a stylesheet anywhere that defines it?
+/// Answers one question about a rendered class name: is there a stylesheet anywhere that draws it?
 ///
 /// The package ships no CSS, so every name it renders is a promise that someone else styles it —
 /// either the host, for a name borrowed off helsedata's design system, or the sample stylesheet, for
 /// a name this package invented and expects a host to copy. A name in neither is a promise nobody
 /// keeps: it renders at raw browser defaults on helsedata.no and looks like a bug in the component.
+///
+/// "Draws it" rather than "names it", because a rule with an empty block draws exactly what no rule
+/// draws. Every question here goes through <see cref="RulesIn"/>, which cuts each rule's selector
+/// apart from its declarations, rather than searching the stylesheet as one string — a substring
+/// search cannot tell a rule that does something from a rule that does nothing.
 ///
 /// <c>headline-sm</c> was exactly that for months. It reads like one of helsedata's heading classes,
 /// it sat beside <c>headline</c> where a real one would, and it is a typo for <c>headline-s</c> that
@@ -39,14 +44,24 @@ internal static class HostClassNames
     ///
     /// No <c>Singleline</c>, unlike its neighbour above: the flag only widens what <c>.</c>
     /// matches, and there is no <c>.</c> here. A negated class crosses newlines on its own.
+    ///
+    /// Where that stops: an <c>@media</c> is not the only thing shaped like a block holding a
+    /// block. A NESTED rule is the same shape and is not handled the same way. Given
+    /// <c>.a { color: red; &amp; .b { color: blue; } }</c> the only innermost block is <c>.b</c>'s,
+    /// so the recorded selector is <c>color: red; &amp; .b</c> — <c>.a</c> never reaches a selector
+    /// at all and its own declarations arrive on the selector side. A name styled only by such a
+    /// rule is reported as having no rule, which is loud rather than silent, and points the reader
+    /// at a rule sitting right there with declarations in it. Nothing in the sample stylesheet
+    /// nests today; the day something does, this cut has to learn about it rather than the reader
+    /// having to.
     /// </summary>
     private static readonly System.Text.RegularExpressions.Regex CssRule =
         new(@"(?<selector>[^{}]*)\{(?<declarations>[^{}]*)\}");
 
     /// <summary>
-    /// The sample stylesheet, read as text rather than parsed: nearly every question here is only
-    /// whether a rule mentions the name — <see cref="SampleDeclarationsFor"/> is the one that reads
-    /// a declaration block, and it cuts the blocks out of the same text.
+    /// The sample stylesheet, held as text rather than parsed: <see cref="RulesIn"/> cuts the rules
+    /// out of it with <see cref="CssRule"/>, and every question here is asked of those rules rather
+    /// than of this string.
     ///
     /// Comments are stripped first, and that is load-bearing rather than tidy. This file is heavily
     /// commented, and a comment naming a selector reads to a substring search exactly like a rule
@@ -61,13 +76,68 @@ internal static class HostClassNames
             " "));
 
     /// <summary>
-    /// The names among <paramref name="rendered"/> that no stylesheet defines. Empty is the passing
+    /// The sample stylesheet as the checks here see it, comments already gone. Exposed so a test
+    /// can ask what this file answers for a stylesheet that is the sample one with one rule
+    /// emptied — the mutation the guard exists to catch, which cannot be staged any other way
+    /// without editing a file the rest of the suite reads.
+    /// </summary>
+    internal static string SampleCss => SampleStylesheet.Value;
+
+    /// <summary>
+    /// The names among <paramref name="rendered"/> that no stylesheet draws — the ones no rule
+    /// names at all, and the ones a rule names and then says nothing about. Empty is the passing
     /// answer; anything else names a class that will render unstyled on helsedata.no.
+    ///
+    /// The second case is the reason this asks <see cref="RulesIn"/> for the rules and reads their
+    /// blocks, instead of searching the stylesheet for the name. An empty block draws what no block
+    /// draws, so a check that stops at the selector calls it styled: the facet fold is the standing
+    /// example of that shape — the selector was never the missing half, the declaration that undoes
+    /// the fold was.
+    /// Nothing in the sample stylesheet fails this today, which is the point of adding it now
+    /// rather than after the next empty rule ships.
+    ///
+    /// An entry says which of the two failures it is, because "unstyled" alone sends the reader
+    /// looking for a rule that is sitting right there with nothing in it.
     /// </summary>
     internal static IReadOnlyList<string> Orphans(IEnumerable<string> rendered) =>
-        [.. rendered.Distinct(StringComparer.Ordinal)
-                    .Where(name => !TheirNames.Value.Contains(name) && !SampleStyles(name))
-                    .Order(StringComparer.Ordinal)];
+        OrphansIn(SampleStylesheet.Value, rendered);
+
+    /// <summary>
+    /// <see cref="Orphans"/> asked of any stylesheet rather than of the sample one. The seam is
+    /// there for the test that proves this check bites: emptying a rule in
+    /// <c>samples/LegacyHost/wwwroot/css/host.css</c> is the experiment, and doing it in memory is
+    /// the only way to run the experiment inside the suite instead of by hand.
+    ///
+    /// The rules are cut once here rather than once per name, so the names arriving from a render
+    /// are all answered off one parse.
+    /// </summary>
+    internal static IReadOnlyList<string> OrphansIn(string stylesheet, IEnumerable<string> rendered)
+    {
+        var rules = RulesIn(stylesheet);
+
+        return [.. rendered.Distinct(StringComparer.Ordinal)
+                           .Where(name => !TheirNames.Value.Contains(name))
+                           .Select(name => Verdict(rules, name))
+                           .OfType<string>()
+                           .Order(StringComparer.Ordinal)];
+    }
+
+    /// <summary>
+    /// Every rule in a stylesheet, selector cut from declarations. Every question this file answers
+    /// comes through here — <see cref="Orphans"/> by way of <see cref="Verdict"/>, and
+    /// <see cref="SampleDeclarationsFor"/> directly — and none of them is put to the stylesheet as
+    /// one string. That is deliberate: a search for a name alone answers "styled" for a rule with
+    /// nothing in it, and a rule with nothing in it draws nothing. <see cref="SampleCss"/> is the
+    /// one thing that hands the text out whole, and it is for a test to MUTATE rather than to
+    /// search; anything that searches it has stepped around this method.
+    ///
+    /// Comments go first, for the reason <see cref="SampleStylesheet"/> gives — stripping text
+    /// already stripped costs a pass and changes nothing, which is the price of letting a test hand
+    /// in a stylesheet of its own.
+    /// </summary>
+    private static IReadOnlyList<(string Selector, string Declarations)> RulesIn(string stylesheet) =>
+        [.. CssRule.Matches(CssComment.Replace(stylesheet, " "))
+                   .Select(m => (m.Groups["selector"].Value.Trim(), m.Groups["declarations"].Value))];
 
     /// <summary>
     /// True for the structural names this package invented, as opposed to the ones it took over from
@@ -90,36 +160,66 @@ internal static class HostClassNames
     /// <paramref name="name"/> — <c>.munin-explorer-skiplink-pagination</c> and its <c>:focus</c>
     /// twin come back as two entries, in the order the file writes them.
     ///
-    /// Everything else here asks whether a name has <em>a</em> rule, which is the question that
-    /// catches a name nobody styles. It is the wrong question for a rule whose job is to hide
-    /// something: the skip link shipped with a rule under every check this repository owns and
-    /// still drew a permanently visible "Hopp til paginering" on a Stiler-only host, because what
-    /// was missing was the declaration that takes it off screen, not the selector. Reading the
-    /// block is how an assertion can be about what a rule does.
+    /// Through <see cref="RulesIn"/> like everything else here, and for the reason given there: a
+    /// search for the name alone answers "styled" for a rule with nothing in it. What this adds is
+    /// the blocks themselves, for the two named regression tests that assert a particular
+    /// declaration — the skip link's offset, and the pair that undoes the facet fold on a host with
+    /// room for a sidebar. <see cref="Orphans"/> does not come this way; it asks
+    /// <see cref="Verdict"/> the coarser question, "does any rule naming this declare anything",
+    /// of every rendered name at once. Both halves of the facet fold's failure are the same shape:
+    /// the selector was there, and the declaration that made it mean something was not.
     /// </summary>
     internal static IReadOnlyList<(string Selector, string Declarations)> SampleDeclarationsFor(string name) =>
-        [.. CssRule.Matches(SampleStylesheet.Value)
-                   .Where(m => Mentions(m.Groups["selector"].Value, name))
-                   .Select(m => (m.Groups["selector"].Value.Trim(), m.Groups["declarations"].Value))];
-
-    private static bool SampleStyles(string name) => Mentions(SampleStylesheet.Value, name);
+        [.. RulesIn(SampleStylesheet.Value).Where(rule => Mentions(rule.Selector, name))];
 
     /// <summary>
-    /// Hard-anchored on the left — the search is for <c>'.' + name</c>, so nothing with a prefix
-    /// in front of the name answers for it. What the right-hand check does is accept any
-    /// character that cannot continue a class name, which is how the two things that can follow
-    /// a name are told apart: <c>_</c> continues it, so a rule for
+    /// Null when <paramref name="rules"/> really draw <paramref name="name"/>; otherwise the line
+    /// <see cref="Orphans"/> reports for it.
+    /// </summary>
+    private static string? Verdict(IReadOnlyList<(string Selector, string Declarations)> rules, string name)
+    {
+        var naming = rules.Where(rule => Mentions(rule.Selector, name)).ToList();
+
+        if (naming.Count == 0)
+        {
+            return name;
+        }
+
+        return naming.Any(rule => Declares(rule.Declarations))
+            ? null
+            : $"{name} (named by {naming.Count} rule(s) in the stylesheet, every one of them empty)";
+    }
+
+    /// <summary>
+    /// Whether a declaration block says anything at all. Comments are gone from the text these
+    /// blocks are cut out of before <see cref="CssRule"/> ever sees it, so what is left to discount
+    /// is whitespace and stray semicolons — <c>{ ; }</c> is as silent as <c>{}</c>.
+    ///
+    /// Deliberately not a check of WHICH declarations: that question belongs to a named regression
+    /// test for the one invariant it is about, the way the skip link's offset and the facet fold's
+    /// two rules each have one. This one is asked of all ~75 names, so it can only ask the question
+    /// that is the same for every name.
+    /// </summary>
+    private static bool Declares(string declarations) =>
+        declarations.Any(c => !char.IsWhiteSpace(c) && c != ';');
+
+    /// <summary>
+    /// Whether a selector names this class. Hard-anchored on the left — the search is for
+    /// <c>'.' + name</c>, so nothing with a prefix in front of the name answers for it. What the
+    /// right-hand check does is accept any character that cannot continue a class name, which is
+    /// how the two things that can follow a name are told apart: <c>_</c> continues it, so a rule for
     /// <c>.munin-explorer-period__fill</c> does not answer for <c>.munin-explorer-period</c> — a
     /// rule for the part is not a rule for the whole — while <c>:</c> ends it, so
     /// <c>.munin-explorer-skiplink-pagination:focus</c> does answer for the name it qualifies.
     /// </summary>
-    private static bool Mentions(string css, string name)
+    private static bool Mentions(string selector, string name)
     {
-        for (var i = css.IndexOf('.' + name, StringComparison.Ordinal); i >= 0;
-             i = css.IndexOf('.' + name, i + 1, StringComparison.Ordinal))
+        for (var i = selector.IndexOf('.' + name, StringComparison.Ordinal); i >= 0;
+             i = selector.IndexOf('.' + name, i + 1, StringComparison.Ordinal))
         {
             var after = i + 1 + name.Length;
-            if (after >= css.Length || !(char.IsAsciiLetterOrDigit(css[after]) || css[after] is '-' or '_'))
+            if (after >= selector.Length
+                || !(char.IsAsciiLetterOrDigit(selector[after]) || selector[after] is '-' or '_'))
             {
                 return true;
             }
