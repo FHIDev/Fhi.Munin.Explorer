@@ -75,11 +75,13 @@ public sealed partial class KildeExplorer
     /// <param name="Label">
     /// A value as a word, where the catalogue's token is not one — and which language those words
     /// turned out to be in, because that is not a property of the facet. Three of the four look
-    /// their values up, and every one of those can miss: kildetype and databehandler fall back to
-    /// text in the catalogue's own language, while kategori and tilgangsnivå fall back to an EHDS
-    /// or EU CURIE, which is English-authored and prose in no language at all. A <c>lang="no"</c>
-    /// over one of those hands it to a screen reader as Norwegian, which is WCAG 3.1.2 — so a
-    /// label says which of the two it is rather than leaving <see cref="Option"/> to guess.
+    /// their values up — kildetype, kategori and tilgangsnivå — and every one of those can miss:
+    /// kildetype falls back to text in the catalogue's own language, while kategori and
+    /// tilgangsnivå fall back to an EHDS or EU CURIE, which is English-authored and prose in no
+    /// language at all. A <c>lang="no"</c> over one of those hands it to a screen reader as
+    /// Norwegian, which is WCAG 3.1.2 — so a label says which of the two it is rather than leaving
+    /// <see cref="Option"/> to guess. The fourth, databehandler, looks nothing up and cannot miss:
+    /// its value is already the catalogue's own words.
     /// </param>
     private sealed record FacetDefinition(
         string Key,
@@ -113,7 +115,10 @@ public sealed partial class KildeExplorer
     /// </param>
     /// <param name="Language">
     /// The catalogue's own language where <paramref name="Label"/> holds the catalogue's words, and
-    /// nothing at all where it holds this package's — see <see cref="Option"/> for which is which.
+    /// nothing at all where it does not — which is two cases rather than one, and both are marked
+    /// the same way on purpose: this package's own wording, already in the reader's language, and
+    /// the catalogue's own token, a CURIE belonging to no language at all. Null means "do not mark
+    /// this"; it does not mean "this package wrote it". See <see cref="Option"/> for which is which.
     /// </param>
     private sealed record FacetOption(string Value, string Label, int Count, string? Language)
     {
@@ -313,6 +318,10 @@ public sealed partial class KildeExplorer
     /// unmarked rather than called Norwegian, because a CURIE is prose in no language. An option
     /// the vocabulary lists but has curated no label for counts as not listed here, for the same
     /// reason: what ends up on screen is the token either way, and only the marking would differ.
+    /// That comparison ignores case because the lookup it is checking the result of does —
+    /// <see cref="CatalogueProperties.Word"/> matches ordinal-insensitively, and for a label-less
+    /// option it hands back the vocabulary's spelling of the code. An ordinal check here would read
+    /// the two spellings as a curated word and mark a bare CURIE <c>lang="no"</c>.
     /// </para>
     /// <para>
     /// The match is on the whole value — <see cref="CatalogueProperties.Word"/> — and not on the
@@ -326,7 +335,7 @@ public sealed partial class KildeExplorer
     {
         if (_vocabulary.TryGetValue(key, out var entry)
             && CatalogueProperties.Word(entry, value, Reader) is { } word
-            && !string.Equals(word.Label, value, StringComparison.Ordinal))
+            && !string.Equals(word.Label, value, StringComparison.OrdinalIgnoreCase))
         {
             return new FacetLabel(word.Label, word.Language);
         }

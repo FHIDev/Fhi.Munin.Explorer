@@ -315,10 +315,18 @@ public sealed partial class KildeExplorer : ComponentBase
     /// <para>
     /// Two calls rather than one, in flight together and awaited apart. They answer different
     /// questions and fail independently: the list is what the component is for, while the
-    /// vocabulary only decides whether two facets read as words or as CURIEs. Started together
-    /// because a reader waiting for the list should not also be waiting for a round trip that has
-    /// nothing to do with it; awaited apart because a vocabulary that never came back must not
-    /// leave the page saying the catalogue could not be reached.
+    /// vocabulary only decides whether two facets read as words or as CURIEs. Started together so
+    /// the two round trips overlap rather than queue; awaited apart because a vocabulary that never
+    /// came back must not leave the page saying the catalogue could not be reached.
+    /// </para>
+    /// <para>
+    /// The render between the two awaits is what makes a reader waiting for the list not also wait
+    /// for a round trip that has nothing to do with them, and it is not optional. This component
+    /// asks for its own renders nowhere else: <see cref="ComponentBase"/> draws when
+    /// <see cref="OnInitializedAsync"/> first yields and again when it returns, and nothing in
+    /// between — so without it, starting both together would overlap the network and nothing else,
+    /// and the finished list would sit behind <c>Laster kilder …</c> until the slower of the two
+    /// landed, up to <c>HttpClient</c>'s hundred-second default.
     /// </para>
     /// </remarks>
     private async Task LoadAsync()
@@ -348,9 +356,22 @@ public sealed partial class KildeExplorer : ComponentBase
             _loaded = true;
         }
 
+        // The render that puts the list on screen. Asked for here rather than left to the one
+        // ComponentBase performs when OnInitializedAsync returns, because that one comes after the
+        // await below — see the remarks: without this the list is held off screen for exactly as
+        // long as the vocabulary takes.
+        StateHasChanged();
+
         // Awaited here and not left running: a task nobody awaits would write the vocabulary in
         // after the render that needed it, with nothing to redraw the panel it labels.
         await vocabulary;
+
+        // And the render that labels the panel. Redundant as this is called today — the sole caller
+        // is OnInitializedAsync, which returns straight afterwards and gets ComponentBase's own
+        // render — but the arrival of a vocabulary is what draws the words for it, and leaving that
+        // to whatever the caller happens to do next is how a second caller loses them silently.
+        // A render nobody needed costs a diff over some tens of rows.
+        StateHasChanged();
     }
 
     /// <summary>
@@ -370,7 +391,21 @@ public sealed partial class KildeExplorer : ComponentBase
     /// </para>
     /// <para>
     /// One entry per key is what the endpoint promises; the grouping is what keeps a second entry
-    /// for one key from throwing at the reader instead of losing a label.
+    /// for one key from throwing at the reader instead of losing a label. The blank-key filter is
+    /// the same guard by another route — a key that is not a key looks up nothing either way, but
+    /// two of them collide as surely as two real ones. Both matter more than the usual defensive
+    /// line because of the catch below: a throw here is swallowed whole and leaves the vocabulary
+    /// empty, so one repeated key would cost every facet its words rather than one.
+    /// </para>
+    /// <para>
+    /// No cancellation token, and the omission is deliberate rather than overlooked: this component
+    /// holds none to pass — it is not disposable and opens no token source — so like every other
+    /// call it makes, the fetch runs to completion and its result is dropped when the reader has
+    /// already left. That is one abandoned request per abandoned circuit, for a call made once per
+    /// component. It follows that the catch below never sees a disposal cancellation; what it can
+    /// see is <c>HttpClient</c>'s own timeout, which arrives as a cancellation and is a vocabulary
+    /// that did not answer, which is exactly how it is treated. Should a token ever be threaded
+    /// through here, the two stop being the same thing and the cancellation has to be let out.
     /// </para>
     /// </remarks>
     private async Task LoadVocabularyAsync()
