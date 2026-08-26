@@ -185,7 +185,7 @@ public interface IMuninExplorerClient
     /// tell the user.
     /// </para>
     /// </remarks>
-    public const int MaxVariablesPerBatch = 2000;
+    const int MaxVariablesPerBatch = 2000;
 
     /// <summary>The signed-in user's saved variable lists, newest changes and all. Empty when they have none.</summary>
     /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
