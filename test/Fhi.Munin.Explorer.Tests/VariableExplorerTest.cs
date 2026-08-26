@@ -2357,12 +2357,14 @@ public class VariableExplorerTest : BunitContext
     [Fact]
     public void SkipLink_WhenTheSampleStylesheetHidesIt_ThenItGoesOffScreenRatherThanOutOfTheTabOrder()
     {
-        // The half of the bug no other check in this repository can see. Every one of them asks
-        // whether a NAME has a rule — HostClassNames.SampleStyles searches for `.<name>`,
-        // scripts/assert-sample-css-in-step.sh greps for `\.<name>` — and the skip link satisfied
-        // both the whole time it was broken. What was missing on a Stiler-only host was a
-        // DECLARATION: the one that takes the link off screen until it is focused. So this reads
-        // the block rather than the selector.
+        // The half of the bug no other check in this repository can see. The guards ask whether a
+        // name has a rule that declares SOMETHING — HostClassNames.Orphans and
+        // scripts/assert-sample-css-in-step.sh both read the block now, so an empty one no longer
+        // reads as coverage — but neither can ask WHICH declarations, because they are asked of all
+        // ~75 names at once and the answer differs for every one. The skip link satisfied them the
+        // whole time it was broken and would satisfy them still: its resting rule was never empty.
+        // What was missing on a Stiler-only host was one particular DECLARATION, the one that takes
+        // the link off screen until it is focused, and only a test about this link can name it.
         //
         // `display: none` is the way the invariant gets broken, and it is the tempting way: it
         // looks like hiding, and it reads as tidier than a negative offset. It also takes the
@@ -5924,6 +5926,46 @@ public class VariableExplorerTest : BunitContext
         Back(cut);
 
         Assert.Contains("hd-button-square", SourceToggles(cut)[0].ClassName!);
+    }
+
+    [Fact]
+    public void Source_WhenTheDrillInIsOpen_ThenTheNameIsAnIdPrefixAndStaysExemptFromTheStylesheetGuards()
+    {
+        // The trap that comes with asking every name for a declaration rather than for a mention.
+        //
+        // `munin-explorer-source` is not a class. It is the prefix of the id that names the
+        // drill-in region — `munin-explorer-source-{instance}`, so two mounts on one page cannot
+        // collide — and the region itself wears `munin-explorer-drilldown`. So
+        // `.munin-explorer-source` selects nothing, no stylesheet can have a rule for it, and no
+        // amount of adding CSS would satisfy a guard that demanded one.
+        //
+        // scripts/assert-sample-css-in-step.sh reads names statically out of src/, prose and all,
+        // so it does see the name — in the very paragraph explaining that it is an id — and IDS is
+        // why it skips it. Under the old mention-only check that exemption looked like a rule
+        // somebody had not got round to writing; under the stricter one it is the only thing
+        // standing between the guard and a failure that cannot be fixed. The lazy repair is to
+        // delete the entry, so this test asserts both halves: that the name really is an id prefix,
+        // and that the entry survives.
+        var cut = OpenOwner(TwoRows(), 0);
+
+        // Nothing wears it. Rendered, not read off the source, because the question is what the
+        // DOM contains — which is also why the C# guard is immune to this trap and the shell one
+        // is not: HostClassNames only ever sees names in a rendered class attribute.
+        Assert.Empty(cut.FindAll(".munin-explorer-source"));
+
+        // What does carry the name is an id, on an element whose class is the drill-in handle.
+        var panel = SourcePanel(cut);
+
+        Assert.StartsWith("munin-explorer-source-", panel.Id, StringComparison.Ordinal);
+        Assert.Equal("munin-explorer-drilldown", panel.GetAttribute("class"));
+
+        // And the shell guard still lets it through. An `IDS=(` block that has lost this entry is
+        // a guard that will go red on the next run against a name no rule can ever satisfy.
+        var guard = File.ReadAllText(Repo.In("scripts", "assert-sample-css-in-step.sh"));
+        var ids = guard[guard.IndexOf("\nIDS=(", StringComparison.Ordinal)..];
+        ids = ids[..ids.IndexOf("\n)", StringComparison.Ordinal)];
+
+        Assert.Contains("munin-explorer-source", ids, StringComparison.Ordinal);
     }
 
     [Fact]

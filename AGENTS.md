@@ -94,7 +94,8 @@ names were renamed — so any host with Stiler can style the component. Do not m
 the old prefix: Stiler still defines `.variable-explorer-header`, so `variable-*` is helsedata's
 namespace and writing in it is either borrowing or colliding.
 
-A name under our prefix is still inert until some stylesheet supplies a rule for it, and the two
+A name under our prefix is still inert until some stylesheet supplies a rule that declares
+something for it — an empty block draws what no block draws — and the two
 sample hosts carry no Stiler — they are that stylesheet here, and they are one file copied:
 `samples/ModernHost/wwwroot/host.css` and `samples/LegacyHost/wwwroot/css/host.css` must stay
 **byte-identical**, and between them must style every `munin-explorer*` name the package invents.

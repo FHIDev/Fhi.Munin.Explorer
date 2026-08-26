@@ -2087,9 +2087,10 @@ public class KildeExplorerTest : BunitContext
     [Fact]
     public void Facets_WhenTheHostHasRoomForASidebar_ThenTheFoldIsUndoneByADeclaration()
     {
-        // Same half of the bug the skip link had: every other check asks whether a NAME has a rule,
-        // and the fold satisfies all of them while broken. What a host must actually supply is a
-        // DECLARATION - one that hides the toggle and undoes [hidden] once there is room for a
+        // Same half of the bug the skip link had. The general guards ask whether a name has a rule
+        // that declares something, which the fold's rules do - so they pass whether or not the rule
+        // says the one thing that matters. What a host must actually supply is a PARTICULAR
+        // DECLARATION: one that hides the toggle and undoes [hidden] once there is room for a
         // sidebar. Without it the panel stays folded behind "Vis filtre" on a desktop.
         var rules = HostClassNames.SampleDeclarationsFor("munin-explorer-filters__toggle")
             .Concat(HostClassNames.SampleDeclarationsFor("munin-explorer-filters__facets"))

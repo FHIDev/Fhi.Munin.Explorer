@@ -113,10 +113,12 @@ These are not style preferences — each one is a host that breaks otherwise.
     so a Stiler-only host drew a permanently visible "Hopp til paginering" over every
     multi-page result list rather than an unstyled anything. Neither sample host showed it — both
     styled the borrowed name in their own `host.css` — and neither guard could, because neither
-    guard reads Stiler. Both ask only whether a name has *a* rule, in the capture of helsedata's
-    live page (`test/host-class-names.txt`, where `skiplink-pagination` sits at line 2064 because
-    helsedata styles it) or in the sample stylesheet. The name was in both sources the whole time
-    it was broken, and neither source says anything about the host that has neither of them.
+    guard reads Stiler. Both ask only whether a name has a rule that declares something, in the
+    capture of helsedata's live page (`test/host-class-names.txt`, where `skiplink-pagination` sits
+    at line 2064 because helsedata styles it) or in the sample stylesheet — and neither can say
+    which declarations the rule needs to carry, which is the question this link turned on. The
+    name was in both sources the whole time it was broken, and neither source says anything about
+    the host that has neither of them.
     `skiplink-pagination` is `munin-explorer-skiplink-pagination` now, and Stiler **0.1.14**
     carries its rule unscoped. A Stiler-only host is down to no rules of its own, not to one.
 
@@ -126,6 +128,9 @@ These are not style preferences — each one is a host that breaks otherwise.
     and closes entirely inside the column picker, while the anchor is rendered beside the result
     list. A rule naming the right class under the wrong ancestor draws exactly nothing, which is
     the same outcome as no rule at all and reads as coverage to any check that searches for names.
+    An empty block is that failure with the ancestor taken away, and it is the one the guards do
+    catch: a name whose every rule declares nothing is reported, and reported apart from a name
+    with no rule, so the reader is not sent looking for a rule that is sitting right there.
 
   A name no stylesheet has heard of renders as a raw browser default inside an otherwise styled
   page, which defeats the point of shipping this as a component at all. That is why owning the
