@@ -1,3 +1,4 @@
+using AngleSharp.Dom;
 using Bunit;
 using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
@@ -47,7 +48,9 @@ public class KildeExplorerTest : BunitContext
         string? dataProcessor = "Folkehelseinstituttet",
         int delkilder = 0,
         int datasamlinger = 3,
-        int variables = 42) =>
+        int variables = 42,
+        string? category = null,
+        string? accessRights = null) =>
         new()
         {
             Id = Guid.NewGuid(),
@@ -61,7 +64,35 @@ public class KildeExplorerTest : BunitContext
             DelkildeCount = delkilder,
             DatasamlingCount = datasamlinger,
             TotalVariables = variables,
+            AdditionalProperties = Properties(category, accessRights),
         };
+
+    /// <summary>
+    /// The curated bag two of the facets read from, holding only the keys a test asked for.
+    /// </summary>
+    /// <remarks>
+    /// A key is left out entirely rather than set to null or to an empty string, because that is
+    /// what the API does for a kilde nobody filled the field in on — and "the key is absent" is the
+    /// state the empty-facet rule has to survive. <paramref name="category"/> is passed as the API
+    /// writes it, a JSON array inside a string, so a test can hand over a malformed one as easily
+    /// as a good one.
+    /// </remarks>
+    private static IReadOnlyDictionary<string, string?> Properties(string? category, string? accessRights)
+    {
+        var properties = new Dictionary<string, string?>(StringComparer.Ordinal);
+
+        if (category is not null)
+        {
+            properties["healthCategory"] = category;
+        }
+
+        if (accessRights is not null)
+        {
+            properties["accessRights"] = accessRights;
+        }
+
+        return properties;
+    }
 
     private static KildeDetail Detail(KildeSummary summary) =>
         new()
@@ -204,6 +235,53 @@ public class KildeExplorerTest : BunitContext
     private static IReadOnlyList<string> RowNames(IRenderedComponent<KildeExplorer> cut) =>
         [.. cut.FindAll(".munin-explorer-kilder tbody th button").Select(b => b.TextContent.Trim())];
 
+    /// <summary>
+    /// The facet headings on screen, in the order the panel draws them.
+    /// </summary>
+    /// <remarks>
+    /// <c>h4</c> because the component's own title defaults to <c>h2</c>: the panel's heading is one
+    /// level below it and a facet's is one below that. Selected as an element rather than by a class
+    /// on purpose — the empty-facet assertions are about what is in the DOM, and a heading with no
+    /// class would slip past a selector that asked for one.
+    /// </remarks>
+    private static IReadOnlyList<string> FacetHeadings(IRenderedComponent<KildeExplorer> cut) =>
+        [.. cut.FindAll(".munin-explorer-filters__facets [role=group] h4").Select(h => h.TextContent.Trim())];
+
+    /// <summary>One facet's group, found by the heading over it.</summary>
+    private static IElement Facet(IRenderedComponent<KildeExplorer> cut, string heading) =>
+        cut.FindAll(".munin-explorer-filters__facets [role=group]")
+           .Single(group => group.QuerySelector("h4")!.TextContent.Trim() == heading);
+
+    /// <summary>The visible text of every choice in a facet, count and all.</summary>
+    private static IReadOnlyList<string> Choices(IElement facet) =>
+        [.. facet.QuerySelectorAll("label").Select(label => label.TextContent.Trim())];
+
+    /// <summary>
+    /// The <c>lang</c> on every choice in a facet, in the order they are drawn, with null for a
+    /// choice carrying none.
+    /// </summary>
+    private static IReadOnlyList<string?> Languages(IElement facet) =>
+        [.. facet.QuerySelectorAll("label").Select(label => label.GetAttribute("lang"))];
+
+    /// <summary>
+    /// Tick the choice whose visible text begins with <paramref name="choice"/>.
+    /// </summary>
+    /// <remarks>
+    /// By prefix rather than by whole text because every choice carries its count — a test naming
+    /// the value would otherwise have to name the number beside it, and would then break whenever a
+    /// fixture gained a row that has nothing to do with what it is asserting.
+    /// <para>
+    /// The facet is looked up again on every call rather than held: ticking re-renders, and an
+    /// element found before that belongs to the markup as it was.
+    /// </para>
+    /// </remarks>
+    private static void Tick(IRenderedComponent<KildeExplorer> cut, string heading, string choice) =>
+        Facet(cut, heading)
+            .QuerySelectorAll("label")
+            .First(label => label.TextContent.Trim().StartsWith(choice, StringComparison.Ordinal))
+            .QuerySelector("input")!
+            .Change(true);
+
     // ---------------------------------------------------------------------------------
     // The list.
     // ---------------------------------------------------------------------------------
@@ -261,7 +339,7 @@ public class KildeExplorerTest : BunitContext
         // The endpoint is not paged and the list is small, so it is fetched whole and everything the
         // reader does afterwards happens over what is already in hand. Sending a search or a
         // kildetype would fetch a narrower list that the client-side filter would then narrow
-        // again — and the facets in the bead that follows count over this list.
+        // again — and the facets count over this list.
         var client = new FakeClient(Kilde("Als registeret", "K_ALS"));
 
         RenderWith(client);
@@ -985,6 +1063,569 @@ public class KildeExplorerTest : BunitContext
     }
 
     // ---------------------------------------------------------------------------------
+    // The facets.
+    // ---------------------------------------------------------------------------------
+
+    /// <summary>
+    /// A databehandler as the live catalogue really holds one: 212 characters of free text
+    /// describing an arrangement rather than naming an organisation.
+    /// </summary>
+    /// <remarks>
+    /// Measured on Kelda on 2026-08-20, where it is one of 39 values in that facet. It is here
+    /// because a fixture of short tidy names passes against a component that puts the whole value
+    /// on screen — and the panel it goes in is 384 pixels wide.
+    /// </remarks>
+    private const string LongDataProcessor =
+        "Daglig drift av registeret, budsjett, ledelse og driftsrapportering gjennomføres av NKIR "
+        + "ledergruppe, som består av registerleder, fagleder, kvalitetsrådgiver og controller, i nært "
+        + "samarbeid med referansegruppen.";
+
+    [Fact]
+    public void Facets_WhenTheListHoldsThreeKildetyper_ThenTickingOneNarrowsTheListToThoseKilder()
+    {
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", kildetype: "nasjonaltMedisinskKvalitetsregister"),
+            Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister"),
+            Kilde("Reseptregisteret", "K_NORPD", kildetype: "sentraltHelseregister"),
+            Kilde("Den norske mor, far og barn-undersøkelsen", "K_MOBA", kildetype: "biobank")));
+
+        var kildetype = Facet(cut, "Kildetype");
+
+        // Ordered by the label in the catalogue's own collation, and counted over the whole list.
+        Assert.Equal(
+        [
+            "Biobank (1)",
+            "Nasjonalt medisinsk kvalitetsregister (1)",
+            "Sentralt helseregister (2)"
+        ], Choices(kildetype));
+
+        Tick(cut, "Kildetype", "Sentralt helseregister");
+
+        Assert.Equal(["Dødsårsaksregisteret", "Reseptregisteret"], RowNames(cut));
+    }
+
+    [Fact]
+    public void Facets_WhenAFacetHasNoValuesAtAll_ThenItIsNotRenderedRatherThanRenderedEmpty()
+    {
+        // THE TRAP, and the whole reason this bead exists. Munin's own Kelda draws Kategori as a
+        // heading with nothing under it, which reads as a broken panel rather than as a field
+        // nobody filled in — and a fixture of well-populated kilder passes against exactly that
+        // implementation, because every facet it has values for looks right.
+        //
+        // So this fixture has one facet where every kilde carries the SAME value, which must still
+        // be drawn with its one choice, and one where no kilde carries any, which must not be drawn
+        // at all. Asserted on the headings and on the group count rather than on the markup as a
+        // string: an empty <div role="group"> with an empty heading in it is what a component that
+        // renders every facet unconditionally produces, and it contains no text to search for.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", accessRights: "eu-access:NON_PUBLIC"),
+            Kilde("Dødsårsaksregisteret", "K_DAR", accessRights: "eu-access:NON_PUBLIC")));
+
+        Assert.Equal(["Kildetype", "Tilgangsnivå", "Databehandler"], FacetHeadings(cut));
+        Assert.Equal(3, cut.FindAll(".munin-explorer-filters__facets [role=group]").Count);
+        Assert.DoesNotContain("Kategori", cut.Markup);
+
+        // The other half, so "drop the empty one" cannot become "drop the one with a single value":
+        // one choice is a choice, and it is the only thing telling the reader what these kilder are.
+        Assert.Equal(["Ikke-offentlig (2)"], Choices(Facet(cut, "Tilgangsnivå")));
+    }
+
+    [Fact]
+    public void Facets_WhenNoKildeHasAnyValueForAnything_ThenThereIsNoPanelAtAll()
+    {
+        // The rule taken to its end: with every facet empty there is no panel, not an empty one
+        // with a heading and a toggle over nothing.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", kildetype: "", dataProcessor: null)));
+
+        Assert.Empty(cut.FindAll(".munin-explorer-filters"));
+        Assert.DoesNotContain("Vis filtre", cut.Markup);
+    }
+
+    [Fact]
+    public void Facets_WhenADataProcessorRunsToTwoHundredCharacters_ThenItIsCutShortWithTheWholeValueInTitle()
+    {
+        // A real value from the catalogue rather than a constructed extreme — see LongDataProcessor.
+        // The component is not allowed to hide it, tidy it or let it out at full length into a
+        // 384-pixel column, so what it does is cut the text and put the whole thing in the title.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Norsk hjerteinfarktregister", "K_NKIR", dataProcessor: LongDataProcessor),
+            Kilde("Dødsårsaksregisteret", "K_DAR", dataProcessor: "Folkehelseinstituttet")));
+
+        var choice = Facet(cut, "Databehandler")
+            .QuerySelectorAll("label")
+            .Single(label => label.GetAttribute("title") is not null);
+
+        Assert.Equal(LongDataProcessor, choice.GetAttribute("title"));
+        Assert.StartsWith("Daglig drift av registeret", choice.TextContent.Trim(), StringComparison.Ordinal);
+        Assert.DoesNotContain(LongDataProcessor, choice.TextContent, StringComparison.Ordinal);
+        Assert.Contains("…", choice.TextContent, StringComparison.Ordinal);
+        Assert.True(
+            choice.TextContent.Trim().Length < 80,
+            $"The choice is still {choice.TextContent.Trim().Length} characters long on screen.");
+
+        // The value itself is untouched: the cut is cosmetic, and filtering on a truncated value
+        // would match nothing.
+        Tick(cut, "Databehandler", "Daglig drift av registeret");
+
+        Assert.Equal(["Norsk hjerteinfarktregister"], RowNames(cut));
+    }
+
+    [Fact]
+    public void Facets_WhenAChoiceIsShortEnoughToDrawWhole_ThenItCarriesNoTitle()
+    {
+        // The other half of the rule above. A title repeating what is already on screen is read out
+        // twice by some screen readers and hovers a tooltip over every option for nothing.
+        var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
+
+        var choice = Facet(cut, "Databehandler").QuerySelector("label")!;
+
+        Assert.Null(choice.GetAttribute("title"));
+        Assert.Equal("Folkehelseinstituttet (1)", choice.TextContent.Trim());
+    }
+
+    [Fact]
+    public void Facets_WhenTwoValuesInOneFacetAreTicked_ThenTheListShowsKilderMatchingEither()
+    {
+        // OR within a facet. An implementation that ANDs them answers two ticked boxes with an empty
+        // list, which on screen reads as "the catalogue has nothing like that" rather than as a bug
+        // — the failure is invisible unless a test ticks two boxes in one facet, which is why this
+        // one does.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", kildetype: "nasjonaltMedisinskKvalitetsregister"),
+            Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister"),
+            Kilde("Den norske mor, far og barn-undersøkelsen", "K_MOBA", kildetype: "biobank")));
+
+        Tick(cut, "Kildetype", "Biobank");
+        Tick(cut, "Kildetype", "Sentralt helseregister");
+
+        Assert.Equal(["Dødsårsaksregisteret", "Den norske mor, far og barn-undersøkelsen"], RowNames(cut));
+    }
+
+    [Fact]
+    public void Facets_WhenTwoFacetsAreTicked_ThenTheListShowsOnlyKilderMatchingBoth()
+    {
+        // AND across facets, which is the other half of the rule above: one facet narrowing and the
+        // next widening again would make the panel unusable in the case it exists for.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS",
+                kildetype: "nasjonaltMedisinskKvalitetsregister", dataProcessor: "St. Olavs hospital HF"),
+            Kilde("Barnediabetes", "K_BDR",
+                kildetype: "nasjonaltMedisinskKvalitetsregister", dataProcessor: "Oslo universitetssykehus HF"),
+            Kilde("Dødsårsaksregisteret", "K_DAR",
+                kildetype: "sentraltHelseregister", dataProcessor: "St. Olavs hospital HF")));
+
+        Tick(cut, "Kildetype", "Nasjonalt medisinsk kvalitetsregister");
+        Tick(cut, "Databehandler", "St. Olavs hospital HF");
+
+        Assert.Equal(["Als registeret"], RowNames(cut));
+    }
+
+    [Fact]
+    public void Facets_WhenAValueIsTicked_ThenTheCountsStayWholeListAndNothingIsRefetched()
+    {
+        // Two claims that belong together, because they are the same decision seen from two sides:
+        // the list is fetched once and the facets are counted over it, so a ticked box narrows the
+        // rows and leaves every count where it was. Runa's counts cross-filter because its facets
+        // come from an endpoint that recounts them per request; this list has no such endpoint
+        // behind it, and a component that recounted anyway would have to ask the API again.
+        var client = new FakeClient(
+            Kilde("Als registeret", "K_ALS", kildetype: "nasjonaltMedisinskKvalitetsregister",
+                dataProcessor: "St. Olavs hospital HF"),
+            Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister",
+                dataProcessor: "Folkehelseinstituttet"));
+
+        var cut = RenderWith(client);
+
+        Tick(cut, "Kildetype", "Sentralt helseregister");
+
+        Assert.Equal(["Dødsårsaksregisteret"], RowNames(cut));
+        Assert.Equal(
+            ["Folkehelseinstituttet (1)", "St. Olavs hospital HF (1)"],
+            Choices(Facet(cut, "Databehandler")));
+        Assert.Equal(1, client.Calls);
+    }
+
+    [Fact]
+    public void Facets_WhenTheReaderUnticksAValue_ThenTheRowsComeBack()
+    {
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", kildetype: "nasjonaltMedisinskKvalitetsregister"),
+            Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister")));
+
+        Tick(cut, "Kildetype", "Sentralt helseregister");
+
+        Assert.Equal(["Dødsårsaksregisteret"], RowNames(cut));
+
+        Facet(cut, "Kildetype")
+            .QuerySelectorAll("label")
+            .First(label => label.TextContent.Trim().StartsWith("Sentralt", StringComparison.Ordinal))
+            .QuerySelector("input")!
+            .Change(false);
+
+        Assert.Equal(["Als registeret", "Dødsårsaksregisteret"], RowNames(cut));
+    }
+
+    [Fact]
+    public void Facets_WhenAKildeCarriesSeveralKategorier_ThenEachOneIsItsOwnChoice()
+    {
+        // Kategori is the one facet a kilde can be in more than one of, and the catalogue writes it
+        // as a JSON array inside a string. A component that took the value as one token would draw a
+        // single choice named ["ehds-cat:biobanks","ehds-cat:health-registries"], which nothing
+        // matches and nobody wants to read.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Den norske mor, far og barn-undersøkelsen", "K_MOBA",
+                category: """["ehds-cat:biobanks","ehds-cat:population-health-surveys"]"""),
+            Kilde("Dødsårsaksregisteret", "K_DAR",
+                category: """["ehds-cat:health-registries"]""")));
+
+        // Words rather than CURIEs, and the catalogue's own words at that — the labels its
+        // healthCategory vocabulary carries. A reader of a Norwegian health catalogue is not
+        // expected to read EHDS, and the tilgangsnivå facet two headings away spells its tokens out
+        // for exactly that reason. In label order, which is not token order.
+        Assert.Equal(
+        [
+            "Befolkningsbaserte helseundersøkelser (1)",
+            "Biobanker (1)",
+            "Helseregistre (1)"
+        ], Choices(Facet(cut, "Kategori")));
+
+        Tick(cut, "Kategori", "Biobanker");
+
+        Assert.Equal(["Den norske mor, far og barn-undersøkelsen"], RowNames(cut));
+    }
+
+    [Fact]
+    public void Facets_WhenAKategoriIsOutsideTheKnownVocabulary_ThenItsTokenIsTheChoice()
+    {
+        // The vocabulary is copied into this package, so it is a copy that can fall behind the
+        // catalogue. A token added after the copy was taken has to keep its checkbox and show what
+        // the catalogue sent: a facet that dropped it would filter over less than the list holds,
+        // silently, and the kilder carrying it would be unreachable through the panel.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", category: """["ehds-cat:biobanks"]"""),
+            Kilde("Dødsårsaksregisteret", "K_DAR", category: """["ehds-cat:something-new"]""")));
+
+        Assert.Equal(["Biobanker (1)", "ehds-cat:something-new (1)"], Choices(Facet(cut, "Kategori")));
+
+        Tick(cut, "Kategori", "ehds-cat:something-new");
+
+        Assert.Equal(["Dødsårsaksregisteret"], RowNames(cut));
+    }
+
+    [Fact]
+    public void Facets_WhenAKategoriIsNotJsonAtAll_ThenItIsShownAsTheCatalogueWroteIt()
+    {
+        // Every value in the bag is a string, and this one is usually JSON. A parse failure must not
+        // cost the facet its value: a kilde that silently left the panel would be the empty Kategori
+        // this component exists not to draw, arrived at by a different route.
+        var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS", category: "Helseregistre")));
+
+        Assert.Equal(["Helseregistre (1)"], Choices(Facet(cut, "Kategori")));
+    }
+
+    [Fact]
+    public void Facets_WhenTheHostChangesLanguage_ThenTheHeadingsChangeWithIt()
+    {
+        // The four definitions are held between renders rather than rebuilt per read, because the
+        // filtering reads them once per kilde — see Definitions. A heading is fixed at the moment
+        // its definition is made, so the held list belongs to one reader and a host that switches
+        // language has to be given a new one; a cache without that rule leaves Norwegian headings
+        // over English choices, and nothing else in this suite would notice.
+        var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
+
+        Assert.Equal(["Kildetype", "Databehandler"], FacetHeadings(cut));
+
+        cut.Render(b => b.Add(c => c.Language, "en"));
+
+        Assert.Equal(["Source type", "Data processor"], FacetHeadings(cut));
+    }
+
+    [Fact]
+    public void Facets_WhenAKategoriIsASingleJsonString_ThenItIsTheSameChoiceAsTheArrayWouldBe()
+    {
+        // The bag's values are strings that happen to hold JSON, so a kilde carrying one category
+        // can plausibly arrive as a bare string where its neighbour arrives as an array of one.
+        // Parsing succeeds either way, so nothing throws and the fall-through is silent: taken as
+        // raw text the quoted form would be a *second* choice, six characters longer, whose label
+        // lookup misses on the trailing quote and which counts a disjoint set of kilder. One
+        // category, one checkbox, however the catalogue wrote it.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", category: """["ehds-cat:biobanks"]"""),
+            Kilde("Dødsårsaksregisteret", "K_DAR", category: """ "ehds-cat:biobanks" """)));
+
+        Assert.Equal(["Biobanker (2)"], Choices(Facet(cut, "Kategori")));
+
+        Tick(cut, "Kategori", "Biobanker");
+
+        Assert.Equal(["Als registeret", "Dødsårsaksregisteret"], RowNames(cut));
+    }
+
+    [Fact]
+    public void Facets_WhenAKategoriIsJsonNull_ThenTheKildeCarriesNoCategoryAtAll()
+    {
+        // A JSON null is the catalogue saying it has nothing here, and it says so in a field whose
+        // other values are text. Taken as text it would draw a checkbox named "null" — this package
+        // inventing a catalogue value — and with one kilde in the list it would be the whole facet.
+        var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS", category: "null")));
+
+        Assert.DoesNotContain("Kategori", FacetHeadings(cut));
+    }
+
+    [Fact]
+    public void Facets_WhenAKategoriIsJsonWithNoTokenInIt_ThenItIsShownAsTheCatalogueWroteIt()
+    {
+        // An object parses and holds no token to prefer, so there is nothing to unwrap and the rule
+        // the not-JSON-at-all case follows applies: show what the catalogue holds rather than drop
+        // the kilde out of a facet it belongs in.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", category: """{"id":"ehds-cat:biobanks"}""")));
+
+        Assert.Equal(["""{"id":"ehds-cat:biobanks"} (1)"""], Choices(Facet(cut, "Kategori")));
+    }
+
+    [Fact]
+    public void Facets_WhenAKildeHasNoPropertyBagAtAll_ThenTheOtherFacetsStillDraw()
+    {
+        // AdditionalProperties is declared non-nullable and initialised to an empty dictionary, and
+        // that initialiser only survives a key the payload leaves *out*: System.Text.Json writes
+        // null straight over it for an explicit "additionalProperties": null. Two of the four
+        // facets read the bag for every kilde on every render, so one such entry would take the
+        // whole panel down at render time — past the try/catch around the fetch, which finished
+        // long before.
+        var kilde = Kilde("Als registeret", "K_ALS", kildetype: "biobank");
+
+        var cut = RenderWith(new FakeClient(kilde with { AdditionalProperties = null! }));
+
+        Assert.Equal(["Als registeret"], RowNames(cut));
+        Assert.Equal(["Kildetype", "Databehandler"], FacetHeadings(cut));
+    }
+
+    [Fact]
+    public void Facets_WhenAChoiceIsDrawnInTheCataloguesOwnWords_ThenItIsMarkedWithTheCataloguesLanguage()
+    {
+        // The same marking the table's cells carry for the same strings: an unmarked Norwegian
+        // organisation name inside an English page is read out with English phonetics (WCAG 3.1.2).
+        // Which choices need it is not a property of the facet — three of the four look their values
+        // up and every one of those falls back to the catalogue's token — so it follows the answer:
+        // a label that came back as the value itself is the catalogue's text.
+        var cut = RenderWith(
+            new FakeClient(
+                Kilde("Als registeret", "K_ALS",
+                    kildetype: "biobank", dataProcessor: "Folkehelseinstituttet"),
+                Kilde("Dødsårsaksregisteret", "K_DAR",
+                    kildetype: "noeHeltNytt", dataProcessor: "Folkehelseinstituttet")),
+            b => b.Add(c => c.Language, "en"));
+
+        Assert.Equal(["no"], Languages(Facet(cut, "Data processor")));
+
+        // Biobank is this package's own English word for the token; noeHeltNytt is a token it has
+        // no word for, so what is on screen is the catalogue's.
+        Assert.Equal([null, "no"], Languages(Facet(cut, "Source type")));
+    }
+
+    [Fact]
+    public void Facets_WhenTheReaderIsNorwegian_ThenNoChoiceIsMarkedAtAll()
+    {
+        // A lang saying what the surrounding page already says is noise, and the package's rule is
+        // that a value is marked only where it is foreign to the reader — CatalogueProperties.Foreign.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", dataProcessor: "Folkehelseinstituttet")));
+
+        Assert.Equal([null], Languages(Facet(cut, "Databehandler")));
+    }
+
+    [Fact]
+    public void Facets_WhenAVocabularyMissLeavesACurieOnScreen_ThenItIsNotMarkedAsTheCataloguesLanguage()
+    {
+        // The other half of the rule, and the half a plain label == value comparison gets wrong on
+        // its own: these two facets fall back to the catalogue's *token*, and the token is a CURIE
+        // into an EU or EHDS vocabulary — English-authored, and prose in no language at all. Marked
+        // "no" it is handed to an English reader's screen reader in a Norwegian voice, which is the
+        // WCAG 3.1.2 failure the marking exists to avoid, only inverted. Unmarked it is read in the
+        // page's own language, which is as close as this component can get for an identifier.
+        var cut = RenderWith(
+            new FakeClient(
+                Kilde("Als registeret", "K_ALS",
+                    accessRights: "eu-access:OP_DATPRO",
+                    category: """["ehds-cat:noeHeltNytt"]""")),
+            b => b.Add(c => c.Language, "en"));
+
+        Assert.Equal(["eu-access:OP_DATPRO (1)"], Choices(Facet(cut, "Access level")));
+        Assert.Equal([null], Languages(Facet(cut, "Access level")));
+
+        Assert.Equal(["ehds-cat:noeHeltNytt (1)"], Choices(Facet(cut, "Category")));
+        Assert.Equal([null], Languages(Facet(cut, "Category")));
+    }
+
+    [Fact]
+    public void Facets_WhenAVocabularyKnowsTheTokenInBothFacets_ThenTheWordsAreLeftUnmarkedToo()
+    {
+        // The unremarkable side of the same branch, pinned so that a change to the fallback rule
+        // cannot start marking the words this package supplied: "Non-public" and "Biobanks" are
+        // English on an English page, and a lang="no" over either is the failure the CURIE case
+        // describes, this time on prose a reader can actually hear the difference in.
+        var cut = RenderWith(
+            new FakeClient(
+                Kilde("Als registeret", "K_ALS",
+                    accessRights: "eu-access:NON_PUBLIC",
+                    category: """["ehds-cat:biobanks"]""")),
+            b => b.Add(c => c.Language, "en"));
+
+        Assert.Equal([null], Languages(Facet(cut, "Access level")));
+        Assert.Equal([null], Languages(Facet(cut, "Category")));
+    }
+
+    [Fact]
+    public void Facets_WhenAnAccessRightsTokenIsKnown_ThenItIsDrawnAsAWordInTheReadersLanguage()
+    {
+        // The catalogue writes eu-access:NON_PUBLIC; Kelda says "Ikke-offentlig". The token is what
+        // the facet filters on either way — the word is only what the reader sees.
+        var cut = RenderWith(
+            new FakeClient(Kilde("Als registeret", "K_ALS", accessRights: "eu-access:NON_PUBLIC")),
+            b => b.Add(c => c.Language, "en"));
+
+        Assert.Equal(["Non-public (1)"], Choices(Facet(cut, "Access level")));
+    }
+
+    [Fact]
+    public void Facets_WhenAnAccessRightsTokenIsUnknown_ThenItIsShownAsItArrived()
+    {
+        // A fallback rather than a blank or a throw, for the reason kildetype has one: a new token
+        // in the vocabulary is a catalogue change, not a bug here, and a facet that dropped it would
+        // hide kilder the reader can see in the list.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", accessRights: "eu-access:OP_DATPRO")));
+
+        Assert.Equal(["eu-access:OP_DATPRO (1)"], Choices(Facet(cut, "Tilgangsnivå")));
+    }
+
+    [Fact]
+    public void Facets_WhenNothingIsTicked_ThenThePanelIsFoldedAwayAndSaysSo()
+    {
+        // The panel is folded on a narrow screen, and a host with room for a sidebar unfolds it in
+        // one CSS rule — see the sample stylesheet. What the markup owes is the pair: `hidden` for
+        // the browser, aria-expanded for a screen reader, and one control moving both.
+        var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
+
+        var toggle = cut.Find(".munin-explorer-filters__toggle");
+        var facets = cut.Find(".munin-explorer-filters__facets");
+
+        Assert.Equal("Vis filtre", toggle.TextContent.Trim());
+        Assert.Equal("false", toggle.GetAttribute("aria-expanded"));
+        Assert.Equal(facets.Id, toggle.GetAttribute("aria-controls"));
+        Assert.True(facets.HasAttribute("hidden"));
+
+        toggle.Click();
+
+        Assert.Equal("Skjul filtre", cut.Find(".munin-explorer-filters__toggle").TextContent.Trim());
+        Assert.Equal("true", cut.Find(".munin-explorer-filters__toggle").GetAttribute("aria-expanded"));
+        Assert.False(cut.Find(".munin-explorer-filters__facets").HasAttribute("hidden"));
+    }
+
+    [Fact]
+    public void Facets_WhenValuesAreTicked_ThenTheHeadingSaysHowMany()
+    {
+        // With the panel folded on a phone, the heading is the only thing on screen saying the list
+        // is narrowed at all — the same reason the variable explorer's collapsed facets carry their
+        // count.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", kildetype: "nasjonaltMedisinskKvalitetsregister"),
+            Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister")));
+
+        Assert.Equal("Filtre", cut.Find(".munin-explorer-filters h3").TextContent.Trim());
+
+        Tick(cut, "Kildetype", "Sentralt helseregister");
+        Tick(cut, "Databehandler", "Folkehelseinstituttet");
+
+        Assert.Equal("Filtre (2)", cut.Find(".munin-explorer-filters h3").TextContent.Trim());
+    }
+
+    [Fact]
+    public void Facets_WhenNothingMatches_ThenTheEmptyStateNamesTheFiltersAndNotOnlyTheSearch()
+    {
+        // Two ways of narrowing the list and one sentence about the result: a reader who has ticked
+        // a box and typed a word is told both, or they go and edit the wrong one.
+        //
+        // Two facets rather than one, because one facet can never empty the list — every choice it
+        // offers came from a kilde that has it. It takes two facets that no kilde satisfies at once,
+        // which is exactly the state a reader lands in and cannot explain.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS",
+                kildetype: "nasjonaltMedisinskKvalitetsregister", dataProcessor: "St. Olavs hospital HF"),
+            Kilde("Dødsårsaksregisteret", "K_DAR",
+                kildetype: "sentraltHelseregister", dataProcessor: "Folkehelseinstituttet")));
+
+        Tick(cut, "Kildetype", "Sentralt helseregister");
+        Tick(cut, "Databehandler", "St. Olavs hospital HF");
+
+        Assert.Empty(RowNames(cut));
+        Assert.Contains("Ingen kilder samsvarer med filtrene som er valgt.", cut.Markup);
+
+        cut.Find("input[type=search]").Change("als");
+
+        Assert.Contains(
+            "Ingen kilder samsvarer med søket «als» og filtrene som er valgt.", cut.Markup);
+    }
+
+    [Fact]
+    public void Facets_WhenTheSearchAndAFacetBothNarrow_ThenTheListAnswersBoth()
+    {
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", kildetype: "nasjonaltMedisinskKvalitetsregister"),
+            Kilde("Als-biobanken", "K_ALSB", kildetype: "biobank"),
+            Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "biobank")));
+
+        cut.Find("input[type=search]").Change("als");
+        Tick(cut, "Kildetype", "Biobank");
+
+        Assert.Equal(["Als-biobanken"], RowNames(cut));
+    }
+
+    [Fact]
+    public void Facets_WhenTheReaderIsReadingEnglish_ThenTheHeadingsAndTheToggleAreEnglish()
+    {
+        var cut = RenderWith(
+            new FakeClient(Kilde("Als registeret", "K_ALS", accessRights: "eu-access:NON_PUBLIC")),
+            b => b.Add(c => c.Language, "en"));
+
+        Assert.Equal(["Source type", "Access level", "Data processor"], FacetHeadings(cut));
+        Assert.Equal("Filters", cut.Find(".munin-explorer-filters h3").TextContent.Trim());
+        Assert.Equal("Show filters", cut.Find(".munin-explorer-filters__toggle").TextContent.Trim());
+    }
+
+    [Fact]
+    public void Facets_WhenTheHostMountsUsDeeper_ThenTheHeadingsFollowItsLevel()
+    {
+        // The panel's heading sits one below the component's title and a facet's one below that, so
+        // the outline stays unbroken wherever the host mounted us. A panel hard-coded to h2/h3 would
+        // claim a place in the host's document that it has not got.
+        var cut = RenderWith(
+            new FakeClient(Kilde("Als registeret", "K_ALS")),
+            b => b.Add(c => c.HeadingLevel, 3));
+
+        Assert.Equal("Filtre", cut.Find(".munin-explorer-filters h4").TextContent.Trim());
+        Assert.Equal("Kildetype", cut.Find(".munin-explorer-filters__facets h5").TextContent.Trim());
+    }
+
+    [Fact]
+    public void Facets_Always_ThenEachGroupIsNamedByItsOwnHeading()
+    {
+        // role="group" with no accessible name is a group of nothing in particular. The id is what
+        // ties the heading to it, and it carries this instance's discriminator so two explorers on
+        // one page cannot point at each other's headings.
+        var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
+
+        foreach (var group in cut.FindAll(".munin-explorer-filters__facets [role=group]"))
+        {
+            var heading = group.QuerySelector("h4")!;
+
+            Assert.Equal(heading.Id, group.GetAttribute("aria-labelledby"));
+            Assert.False(string.IsNullOrWhiteSpace(heading.Id));
+        }
+    }
+
+    // ---------------------------------------------------------------------------------
     // Class names.
     // ---------------------------------------------------------------------------------
 
@@ -1020,10 +1661,11 @@ public class KildeExplorerTest : BunitContext
     [Fact]
     public void Render_WhenTheListIsOnScreen_ThenNoClassNamesAreInventedApartFromTheDomHandles()
     {
-        // The exact list, for the reason the other two of these are exact: a seventh name appearing
+        // The exact list, for the reason the other two of these are exact: a tenth name appearing
         // here is news, and news that has to be answered in both sample stylesheets before it
-        // ships. Three of these six are the explorer's existing structure, reused rather than
-        // reinvented; the three under `munin-explorer-kilder` are this view's own.
+        // ships. Four of these nine are the explorer's existing structure, reused rather than
+        // reinvented; the three under `munin-explorer-kilder` and the two under
+        // `munin-explorer-filters__` are this view's own.
         var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
         var invented = HostClassNames.Of(cut.FindAll("[class]"))
@@ -1035,10 +1677,30 @@ public class KildeExplorerTest : BunitContext
         [
             "munin-explorer",                    // shared with the variable explorer
             "munin-explorer-container",          // shared
+            "munin-explorer-filters",            // shared
+            "munin-explorer-filters__facets",
+            "munin-explorer-filters__toggle",
             "munin-explorer-kilder",
             "munin-explorer-kilder__count",
             "munin-explorer-kilder__name",
             "munin-explorer-results",            // shared
         ], invented);
+    }
+
+    [Fact]
+    public void Render_WhenThePanelIsOpenWithChoicesTicked_ThenEveryClassNameIsOneSomeStylesheetDefines()
+    {
+        // The panel's own state, which the two guards above cannot reach: folded away, the facets
+        // are still in the DOM, but the toggle's second wording and a ticked choice are markup
+        // nothing has rendered until something presses them.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", kildetype: "nasjonaltMedisinskKvalitetsregister",
+                accessRights: "eu-access:NON_PUBLIC", category: """["ehds-cat:biobanks"]"""),
+            Kilde("Dødsårsaksregisteret", "K_DAR", accessRights: "eu-access:NON_PUBLIC")));
+
+        cut.Find(".munin-explorer-filters__toggle").Click();
+        Tick(cut, "Kildetype", "Sentralt helseregister");
+
+        Assert.Equal([], HostClassNames.Orphans(HostClassNames.Of(cut.FindAll("[class]"))));
     }
 }

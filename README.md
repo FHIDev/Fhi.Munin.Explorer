@@ -157,6 +157,12 @@ These are not style preferences — each one is a host that breaks otherwise.
     `munin-explorer-group` costs is the eyebrow's look, not the fact that it is a heading. The
     kilde list is the same bargain twice over, which is why it is a `<table>` of `<button>`s — an
     undrawn table still lines its columns up and an undrawn button is still visibly a control.
+    Kelda's facet panel adds two more, `munin-explorer-filters__toggle` and
+    `munin-explorer-filters__facets`, and they are handles for the same reason: the folding itself
+    is the browser's `hidden` attribute, so a host that defines neither gets a panel that opens and
+    closes at every width. What the rules buy is the sidebar — at desktop the samples take the
+    folding away and put the toggle off screen, because a button offering to unfold a panel that is
+    already open is a control that does nothing.
   - Names that carry meaning nothing else carries, so a host without Stiler's rules has to draw
     them itself: `munin-explorer-crumb` carries the link affordance for a trail step, which is a
     `<button>` — the kilde step of the panel's kilde trail, and every step of the hierarchy trail
