@@ -386,6 +386,12 @@ public sealed partial class KildeExplorer : ComponentBase
         {
             _kilder = await Client.GetKilderAsync();
         }
+        catch (MuninExplorerRateLimitedException)
+        {
+            // Throttled, not down — and the difference is the whole point of saying so: the text
+            // below invites the reader to try again, which is what the limiter is counting.
+            _error = T.RateLimitError;
+        }
         catch (Exception)
         {
             // What went wrong is the API's business and the host's logs'; what the reader needs is
@@ -521,6 +527,17 @@ public sealed partial class KildeExplorer : ComponentBase
             // see the remarks on IMuninExplorerClient — so it says so rather than reporting an error
             // the API never had.
             _detailError = detail is null ? T.KildeMissing : null;
+        }
+        catch (MuninExplorerRateLimitedException)
+        {
+            if (generation != _detailGeneration)
+            {
+                return;
+            }
+
+            // Same generation check as below, and the same panel: only the sentence differs, because
+            // a kilde that did not arrive because we asked too often is not a kilde that is missing.
+            _detailError = T.RateLimitError;
         }
         catch (Exception)
         {

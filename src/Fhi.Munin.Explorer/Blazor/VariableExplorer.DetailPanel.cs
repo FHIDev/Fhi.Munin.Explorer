@@ -342,6 +342,16 @@ public partial class VariableExplorer
 
             _codes[key] = codes?.Codes ?? [];
         }
+        catch (MuninExplorerRateLimitedException)
+        {
+            if (_codesGeneration == generation)
+            {
+                // Expanding one kodeverk after another is exactly the rhythm that meets the
+                // limiter, so this is the branch a throttled reader is most likely to see. Saying
+                // "could not load the codes" here would have them press the next one immediately.
+                _codesError[key] = T.RateLimitError;
+            }
+        }
         catch (Exception)
         {
             if (_codesGeneration == generation)

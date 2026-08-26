@@ -78,6 +78,30 @@ public class VariableExplorerTest : BunitContext
     }
 
     /// <summary>
+    /// Answers every search with the API's 429, the way a reader who asked too often meets it.
+    /// </summary>
+    /// <remarks>
+    /// Separate from <see cref="FailingClient"/> on purpose: the point of the tests using it is
+    /// that the component tells the two apart. A fake that threw
+    /// <see cref="HttpRequestException"/> for both would pass whatever the component said.
+    /// </remarks>
+    private sealed class RateLimitedClient : EmptyMuninExplorerClient
+    {
+        public int Calls { get; private set; }
+
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
+            SortField sort = SortField.Default,
+            SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default)
+        {
+            Calls++;
+
+            throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+        }
+    }
+
+    /// <summary>
     /// A client that never answers until the test lets it, so the loading state can be inspected.
     /// Given a <paramref name="firstAnswer"/> it answers the first call at once and stalls only on
     /// the next one — the case where a second search is in flight over rows already on screen.
@@ -139,6 +163,54 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Contains("Kunne ikke hente variabler", cut.Markup);
         Assert.Empty(cut.FindAll("ul.munin-explorer-data-list > li"));
+    }
+
+    [Fact]
+    public void Render_WhenTheApiRateLimits_ThenTheReaderIsToldTheyAskedTooOftenRatherThanThatItFailed()
+    {
+        // "Prøv igjen om litt" is the wrong advice for a throttled reader — trying again is what
+        // the limiter counts. The two failures have to read differently or the reader cannot act.
+        var cut = RenderWith(new RateLimitedClient());
+
+        var alert = cut.Find("[role='alert']");
+
+        Assert.Contains("for mange forespørsler", alert.TextContent);
+        Assert.DoesNotContain("Kunne ikke hente variabler", alert.TextContent);
+    }
+
+    [Fact]
+    public void Render_WhenTheApiRateLimits_ThenItIsNotShownAsASearchWithNoHits()
+    {
+        // The trap, seen from the page: a throttled search must never read as "ingen variabler
+        // passet søket". That sentence is a claim about the catalogue, and no search was run.
+        var cut = RenderWith(new RateLimitedClient(), b => b.Add(c => c.Search, "tale"));
+
+        Assert.DoesNotContain("Ingen variabler passet søket", cut.Markup);
+        Assert.Empty(cut.FindAll("ul.munin-explorer-data-list > li"));
+    }
+
+    [Fact]
+    public void Render_WhenTheApiRateLimitsAndTheLanguageIsEn_ThenTheEnglishRateLimitTextIsUsed()
+    {
+        var cut = RenderWith(new RateLimitedClient(), b => b.Add(c => c.Language, "en"));
+
+        var alert = cut.Find("[role='alert']");
+
+        Assert.Contains("too many requests", alert.TextContent);
+        Assert.DoesNotContain("Could not load variables", alert.TextContent);
+    }
+
+    [Fact]
+    public void Render_WhenTheApiRateLimits_ThenTheComponentDoesNotAskAgainByItself()
+    {
+        // No retry anywhere in the package, and the component is the other place one could hide.
+        // helsedata's cluster shares one address bucket, so every reader's component retrying on
+        // the same Retry-After would rebuild the burst that caused the 429.
+        var client = new RateLimitedClient();
+
+        RenderWith(client);
+
+        Assert.Equal(1, client.Calls);
     }
 
     [Fact]

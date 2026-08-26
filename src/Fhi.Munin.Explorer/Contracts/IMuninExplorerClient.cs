@@ -15,6 +15,13 @@ namespace Fhi.Munin.Explorer.Contracts;
 /// the caller has to be able to tell the two apart.
 /// </para>
 /// <para>
+/// One of those throws has a type of its own. The API rate-limits per address, and a refusal on
+/// that count comes back as <see cref="MuninExplorerRateLimitedException"/> rather than as the
+/// general failure: it is neither a fault nor a "not published", and the only thing that helps is
+/// waiting — which is why an implementation must not answer it with null, with an empty
+/// collection, or with a retry of its own. The reasoning is on the exception.
+/// </para>
+/// <para>
 /// The variable-list methods at the bottom follow the same rule in the shape a write can take it:
 /// one that names a list the signed-in user does not have answers <c>false</c> rather than throwing,
 /// because a list deleted in another tab is the same ordinary event as an edited id. They are the

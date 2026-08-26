@@ -525,6 +525,26 @@ public partial class VariableExplorer
 
             return true;
         }
+        catch (MuninExplorerRateLimitedException)
+        {
+            // Its own sentence, because the answer differs: the catalogue is up and the reader has
+            // asked too often, so pressing Søk again at once is the one thing that cannot help.
+            // Caught ahead of the branch below rather than folded into it — the generic text sends
+            // exactly that reader straight back at the limiter.
+            //
+            // The rows are cleared the same way. Leaving the previous page under a throttled search
+            // would caption somebody else's result with this search's terms; clearing them says
+            // nothing about hits, because the summary line only speaks when there is a result at
+            // all (VariableExplorer.razor:275).
+            if (!keepResult)
+            {
+                _result = null;
+            }
+
+            _error = T.RateLimitError;
+
+            return false;
+        }
         catch (Exception)
         {
             // Say what the reader can do about it; the detail belongs in the host's logs,

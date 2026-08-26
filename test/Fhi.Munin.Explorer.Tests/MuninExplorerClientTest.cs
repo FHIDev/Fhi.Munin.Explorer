@@ -382,6 +382,78 @@ public class MuninExplorerClientTest
         await Assert.ThrowsAsync<HttpRequestException>(() => client.GetKildeAsync(Guid.NewGuid()));
     }
 
+    // ------------------------------------------------------------------------------------ 429
+
+    [Fact]
+    public async Task GetKildeAsync_WhenTheApiRateLimits_ThenItsOwnExceptionCarriesTheRetryAfter()
+    {
+        var client = Client(StubHttpHandler.RateLimited(TimeSpan.FromSeconds(30)));
+
+        var refused = await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(
+            () => client.GetKildeAsync(Guid.NewGuid()));
+
+        Assert.Equal(TimeSpan.FromSeconds(30), refused.RetryAfter);
+    }
+
+    [Fact]
+    public async Task GetKildeAsync_WhenARateLimitCarriesNoRetryAfter_ThenTheWaitIsUnknownRatherThanZero()
+    {
+        // The header is optional and a proxy can drop it. Null says "we were not told"; a zero
+        // would say "go now", which is the one thing a throttled caller must not read.
+        var client = Client(StubHttpHandler.RateLimited());
+
+        var refused = await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(
+            () => client.GetKildeAsync(Guid.NewGuid()));
+
+        Assert.Null(refused.RetryAfter);
+    }
+
+    [Fact]
+    public async Task SearchVariablesAsync_WhenTheApiRateLimits_ThenItThrowsInsteadOfReturningAnEmptyPage()
+    {
+        // The trap this whole change is about. A 404 maps to null and this method maps that null
+        // on to an empty page, because a search with no hits is a normal answer — so the empty-page
+        // branch is sitting right there, one status away, and it is the wrong answer for a 429: it
+        // would tell the reader their search found nothing for a search that was never run, and
+        // hide the throttling from everything that logs on exceptions.
+        var client = Client(StubHttpHandler.RateLimited(TimeSpan.FromSeconds(5)));
+
+        await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(() => client.SearchVariablesAsync("tale"));
+    }
+
+    [Fact]
+    public async Task GetKilderAsync_WhenTheApiRateLimits_ThenItThrowsInsteadOfReturningAnEmptyList()
+    {
+        // The same trap in the shape the collection endpoints take it: 404 comes back as [], which
+        // reads as "the catalogue has no kilder" rather than "we were not allowed to ask".
+        var client = Client(StubHttpHandler.RateLimited());
+
+        await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(() => client.GetKilderAsync());
+    }
+
+    [Fact]
+    public async Task GetFiltersAsync_WhenTheApiRateLimits_ThenItThrowsInsteadOfReturningEmptyFacets()
+    {
+        var client = Client(StubHttpHandler.RateLimited());
+
+        await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(() => client.GetFiltersAsync());
+    }
+
+    [Fact]
+    public async Task SearchVariablesAsync_WhenTheApiRateLimits_ThenTheCallIsNotRetried()
+    {
+        // No resilience handler, no wait-and-try-again loop. The limit is counted per address and
+        // helsedata's cluster reaches Munin as one, so retrying on a Retry-After would fire every
+        // reader's component at the same instant and rebuild the same burst against the same
+        // window. Exactly one request leaves for one call, whatever the API answered.
+        var handler = StubHttpHandler.RateLimited(TimeSpan.FromSeconds(30));
+
+        await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(
+            () => Client(handler).SearchVariablesAsync(null));
+
+        Assert.Equal(1, handler.Calls);
+    }
+
     // ------------------------------------------------------------------------------ URL building
 
     [Fact]

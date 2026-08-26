@@ -356,6 +356,23 @@ public class KildeExplorerTest : BunitContext
             throw new HttpRequestException("the API is down");
     }
 
+    /// <summary>
+    /// Refuses the list call with the API's 429, which is neither the API being down nor the
+    /// catalogue being empty — it is this reader having asked too often.
+    /// </summary>
+    private sealed class RateLimitedClient : EmptyMuninExplorerClient
+    {
+        public int Calls { get; private set; }
+
+        public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
+            string? search = null, string? kildeType = null, CancellationToken cancellationToken = default)
+        {
+            Calls++;
+
+            throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+        }
+    }
+
     private IRenderedComponent<KildeExplorer> RenderWith(
         IMuninExplorerClient client,
         Action<ComponentParameterCollectionBuilder<KildeExplorer>>? parameters = null)
@@ -493,6 +510,25 @@ public class KildeExplorerTest : BunitContext
         // Not the empty state as well: the catalogue is not empty, it is unreachable, and saying
         // both would tell the reader two different things about the same blank screen.
         Assert.DoesNotContain("Ingen kilder er registrert", cut.Markup);
+    }
+
+    [Fact]
+    public void Render_WhenTheApiRateLimits_ThenTheReaderIsToldTheyAskedTooOftenAndNothingIsRetried()
+    {
+        // The kilde list is one call on load, so a reader meets the limiter here through the site
+        // rather than through their own clicking — helsedata's cluster shares one address bucket.
+        // Telling them the sources could not be loaded, and inviting a retry, aims them straight
+        // back at it.
+        var client = new RateLimitedClient();
+
+        var cut = RenderWith(client);
+
+        var alert = cut.Find("[role=alert]");
+
+        Assert.Contains("for mange forespørsler", alert.TextContent);
+        Assert.DoesNotContain("Kunne ikke laste kilder", alert.TextContent);
+        Assert.DoesNotContain("Ingen kilder er registrert", cut.Markup);
+        Assert.Equal(1, client.Calls);
     }
 
     [Fact]
