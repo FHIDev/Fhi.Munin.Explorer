@@ -1,4 +1,4 @@
-using AngleSharp.Dom;
+﻿using AngleSharp.Dom;
 using Bunit;
 using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
@@ -1702,5 +1702,34 @@ public class KildeExplorerTest : BunitContext
         Tick(cut, "Kildetype", "Sentralt helseregister");
 
         Assert.Equal([], HostClassNames.Orphans(HostClassNames.Of(cut.FindAll("[class]"))));
+    }
+
+    [Fact]
+    public void Fasettpanelet_NaarVertenHarPlass_ThenTheFoldIsUndoneByADeclaration()
+    {
+        // Same half of the bug the skip link had: every other check asks whether a NAME has a rule,
+        // and the fold satisfies all of them while broken. What a host must actually supply is a
+        // DECLARATION - one that hides the toggle and undoes [hidden] once there is room for a
+        // sidebar. Without it the panel stays folded behind "Vis filtre" on a desktop.
+        var rules = HostClassNames.SampleDeclarationsFor("munin-explorer-filters__toggle")
+            .Concat(HostClassNames.SampleDeclarationsFor("munin-explorer-filters__facets"))
+            .ToList();
+
+        static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
+
+        IReadOnlyList<string> BlocksFor(string selector) =>
+            [.. rules.Where(r => r.Selector == selector).Select(r => Squeezed(r.Declarations))];
+
+        // Both are needed. Hiding the button while the facets stay folded leaves no way to open
+        // them at all, which is worse than the fold.
+        Assert.True(
+            BlocksFor(".munin-explorer-filters__toggle")
+                .Any(d => d.Contains("display:none", StringComparison.Ordinal)),
+            "Ingen regel tar toggle-knappen av skjermen når verten har plass.");
+
+        Assert.True(
+            BlocksFor(".munin-explorer-filters__facets[hidden]")
+                .Any(d => d.Contains("display:block", StringComparison.Ordinal)),
+            "Ingen regel opphever [hidden] på fasettene når verten har plass.");
     }
 }
