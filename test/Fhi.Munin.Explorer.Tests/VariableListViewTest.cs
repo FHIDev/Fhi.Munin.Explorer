@@ -50,6 +50,11 @@ public class VariableListViewTest : BunitContext
 
         public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default)
         {
+            if (ListsThrow)
+            {
+                throw new InvalidOperationException("too many requests");
+            }
+
             if (!HasList)
             {
                 return Task.FromResult<IReadOnlyList<VariableList>>([]);
@@ -91,6 +96,29 @@ public class VariableListViewTest : BunitContext
                 // ignoring the field pass its own paging test.
                 TotalPages = Math.Max(1, (int)Math.Ceiling(_items.Count / (double)pageSize))
             });
+        }
+
+        /// <summary>The ids the export was asked for, so a test can see what would be in the file.</summary>
+        public IReadOnlyCollection<Guid>? ExportedIds { get; private set; }
+
+        /// <summary>Set when the reader's lists cannot be read - a throttled call, for instance.</summary>
+        public bool ListsThrow { get; init; }
+
+        /// <summary>Set when the test wants the export to fail the way a blocked browser would.</summary>
+        public bool ExportThrows { get; init; }
+
+        public override Task<ExportedList> ExportListAsync(
+            IReadOnlyCollection<Guid> variableIds,
+            ExportFormat format = ExportFormat.Xlsx,
+            bool includeKodeverk = false,
+            Guid? kildeIdFilter = null,
+            CancellationToken cancellationToken = default)
+        {
+            ExportedIds = variableIds;
+
+            return ExportThrows
+                ? throw new InvalidOperationException("the browser refused")
+                : Task.FromResult(new ExportedList([1, 2, 3], "text/csv", "variabelliste.csv"));
         }
 
         public override Task<bool> RemoveVariablesFromMyListAsync(
@@ -261,6 +289,50 @@ public class VariableListViewTest : BunitContext
         await cut.InvokeAsync(() => cut.Find("select").Change(ListClient.SecondListId.ToString()));
 
         Assert.True(client.VariablesCalls > before, "switching list did not read the other list");
+    }
+
+    [Fact]
+    public async Task View_WhenTheListIsDownloaded_ThenEveryPageOfIdsIsSentNotJustTheOneOnScreen()
+    {
+        // The reader asked for their list. A file holding only the 25 rows they happened to be
+        // looking at would be wrong in a way nobody notices until they open it.
+        var many = Enumerable.Range(1, 30).Select(i => Item($"Variabel {i}", $"V_{i}")).ToArray();
+        var client = new ListClient(many) { PageSize = 25 };
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => cut.FindAll("button")
+            .First(b => b.TextContent.Contains("Excel", StringComparison.Ordinal)).Click());
+
+        Assert.NotNull(client.ExportedIds);
+        Assert.Equal(30, client.ExportedIds!.Count);
+    }
+
+    [Fact]
+    public async Task View_WhenTheDownloadIsRefused_ThenTheReaderIsToldRatherThanLeftWithADeadButton()
+    {
+        // A Content-Security-Policy without blob: lands here. Silence would leave a button that
+        // looks like it works and does nothing.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ExportThrows = true };
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => cut.FindAll("button")
+            .First(b => b.TextContent.Contains("Excel", StringComparison.Ordinal)).Click());
+
+        Assert.Contains("Kunne ikke laste ned", cut.Markup);
+    }
+
+    [Fact]
+    public void View_WhenTheListsCannotBeRead_ThenItSaysSoRatherThanTakingTheCircuitDown()
+    {
+        // The read happens in a lifecycle method, and an exception out of one of those takes the
+        // whole circuit with it - in helsedata's legacy host, the entire CMS page. The mount fires
+        // this alongside the search and the facet refresh, which is the burst the rate limiter
+        // counts, so a refusal here is ordinary rather than rare.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListsThrow = true };
+
+        var cut = RenderView(client);
+
+        Assert.Contains("Kunne ikke hente listen", cut.Markup);
     }
 
     [Fact]

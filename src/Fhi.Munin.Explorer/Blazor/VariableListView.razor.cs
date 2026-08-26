@@ -2,6 +2,7 @@ using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -26,6 +27,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 {
     [Inject] private IServiceProvider ServiceProvider { get; set; } = null!;
     [Inject] private IMuninExplorerClient Client { get; set; } = null!;
+    [Inject] private IJSRuntime Js { get; set; } = null!;
 
     private VariableListState? _state;
     private VariableListState? State => _state ??= ServiceProvider.GetService<VariableListState>();
@@ -57,6 +59,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private bool _loading;
     private bool _failed;
     private string _newName = "";
+    private bool _includeKodeverk;
+    private bool _downloading;
+    private bool _downloadFailed;
 
     private IReadOnlyList<VariableList> Lists => State?.Lists ?? [];
 
@@ -107,8 +112,26 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         State.SetAuthenticated(IsAuthenticated);
-        await State.EnsureActiveListAsync();
-        await ShowActiveListAsync();
+
+        // Caught here, like the save button's own read in VariableExplorer.Lists.cs:38. An exception
+        // out of a lifecycle method takes the whole circuit down with it, which in helsedata's
+        // legacy host means the entire CMS page — and the mount fires this read alongside the search
+        // and the facet refresh, which is exactly the burst the per-address limiter counts. A 429
+        // here is an ordinary event, not a rare one.
+        //
+        // Said on screen rather than swallowed: unlike the save button, this component has nothing
+        // to show if the read failed, so silence would be an empty list that looks like an empty
+        // list.
+        try
+        {
+            await State.EnsureActiveListAsync();
+            await ShowActiveListAsync();
+        }
+        catch (Exception)
+        {
+            _page = null;
+            _failed = true;
+        }
     }
 
     /// <summary>
@@ -173,9 +196,21 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             return;
         }
 
-        await State.SetActiveListAsync(id);
         _shownList = id;
         _pageNumber = 1;
+
+        try
+        {
+            await State.SetActiveListAsync(id);
+        }
+        catch (Exception)
+        {
+            // Same reason as the lifecycle read above: an uncaught throw out of an event handler
+            // takes the circuit with it. LoadPageAsync below has its own catch and will say so.
+            _failed = true;
+            return;
+        }
+
         await LoadPageAsync();
     }
 
@@ -242,6 +277,83 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             _pageNumber--;
             await LoadPageAsync();
         }
+    }
+
+    /// <summary>
+    /// Fetches the whole list from the API and hands it to the browser.
+    /// </summary>
+    /// <remarks>
+    /// Every id, not the page on screen: the reader asked for their list, and a download that
+    /// quietly contained only the 25 rows they happened to be looking at would be wrong in a way
+    /// nobody would notice until they opened the file.
+    /// </remarks>
+    private async Task DownloadAsync(ExportFormat format)
+    {
+        if (_shownList is null || _downloading)
+        {
+            return;
+        }
+
+        _downloading = true;
+        _downloadFailed = false;
+
+        try
+        {
+            var ids = await AllVariableIdsAsync();
+
+            if (ids.Count == 0)
+            {
+                return;
+            }
+
+            var file = await Client.ExportListAsync(ids, format, _includeKodeverk);
+            await BrowserDownload.OfferAsync(Js, file);
+        }
+        catch (Exception)
+        {
+            // Includes the browser refusing the blob — a Content-Security-Policy without blob:
+            // would land here. Said out loud rather than left as a button that does nothing.
+            _downloadFailed = true;
+        }
+        finally
+        {
+            _downloading = false;
+        }
+    }
+
+    /// <summary>Every id in the list, read a page at a time.</summary>
+    private async Task<List<Guid>> AllVariableIdsAsync()
+    {
+        // A set, not a list, for the reason LoadMembershipAsync uses one: the list can be changed
+        // in another tab while these pages are being read, and an entry that drifts across a page
+        // boundary would otherwise appear twice in the downloaded file.
+        var ids = new HashSet<Guid>();
+        var page = 1;
+
+        while (true)
+        {
+            // The API's own ceiling per page, so a long list costs few round trips.
+            var slice = await Client.GetMyListVariablesAsync(_shownList!.Value, page, 1000);
+
+            if (slice is null || slice.Items.Count == 0)
+            {
+                break;
+            }
+
+            foreach (var item in slice.Items)
+            {
+                ids.Add(item.VariableId);
+            }
+
+            if (ids.Count >= slice.TotalCount)
+            {
+                break;
+            }
+
+            page++;
+        }
+
+        return [.. ids];
     }
 
     public void Dispose()

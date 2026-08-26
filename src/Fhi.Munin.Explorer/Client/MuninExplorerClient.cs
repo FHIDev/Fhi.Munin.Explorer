@@ -221,6 +221,16 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
     /// a body whose one property is unrecognised binds to null — which the API answers as
     /// "request body is required", a message that says nothing about the spelling that caused it.
     /// </remarks>
+    /// <summary>
+    /// The export request. Named rather than anonymous, like the bodies beside it: the wire names
+    /// carry the Norwegian stem, and an anonymous object puts that spelling out of reach of review.
+    /// </summary>
+    private sealed record ExportRequestBody(
+        [property: JsonPropertyName("variabelIds")] IReadOnlyCollection<Guid> VariableIds,
+        [property: JsonPropertyName("format")] string Format,
+        [property: JsonPropertyName("includeKodeverk")] bool IncludeKodeverk,
+        [property: JsonPropertyName("kildeIdFilter")] Guid? KildeIdFilter);
+
     private sealed record VariableIdsBody(
         [property: JsonPropertyName("variabelIds")] IReadOnlyCollection<Guid> VariableIds);
 
@@ -542,5 +552,49 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
         }
 
         return query.ToString();
+    }
+    public async Task<ExportedList> ExportListAsync(
+        IReadOnlyCollection<Guid> variableIds,
+        ExportFormat format = ExportFormat.Xlsx,
+        bool includeKodeverk = false,
+        Guid? kildeIdFilter = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(variableIds);
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "api/explorer/lists/export")
+        {
+            Content = JsonContent.Create(
+                new ExportRequestBody(
+                    variableIds,
+                    // The name, not the number. The API reads enums as PascalCase strings
+                    // (EnumJsonConverterFactory), and this package serialises with
+                    // JsonSerializerDefaults.Web, which has no string-enum converter — so an enum
+                    // passed as itself goes out as 0 or 1. VariableList.cs:78 spells out the same
+                    // hazard from the reading side.
+                    format.ToString(),
+                    includeKodeverk,
+                    kildeIdFilter),
+                options: Json)
+        };
+
+        using var response = await httpClient
+            .SendAsync(request, cancellationToken)
+            .ConfigureAwait(false);
+
+        // Not mapped to null the way a missing variable is: a failed export is a failure, and a
+        // caller that showed "nothing to download" for a 500 would be lying about why.
+        response.EnsureSuccessStatusCode();
+
+        var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+
+        // The API's own name and type. Composing them here would get CSV-with-codebooks wrong: it
+        // answers with a zip of two files, not a csv.
+        var contentType = response.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
+        var fileName = response.Content.Headers.ContentDisposition?.FileNameStar
+            ?? response.Content.Headers.ContentDisposition?.FileName?.Trim('"')
+            ?? "variabelliste";
+
+        return new ExportedList(bytes, contentType, fileName);
     }
 }

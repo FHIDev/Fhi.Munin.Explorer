@@ -15,6 +15,18 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </remarks>
 internal abstract class EmptyMuninExplorerClient : IMuninExplorerClient
 {
+    /// <summary>
+    /// Refuses, like the interface's own default. A fake that answered with an empty file would
+    /// let a test pass while the reader got nothing openable.
+    /// </summary>
+    public virtual Task<ExportedList> ExportListAsync(
+        IReadOnlyCollection<Guid> variableIds,
+        ExportFormat format = ExportFormat.Xlsx,
+        bool includeKodeverk = false,
+        Guid? kildeIdFilter = null,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This fake does not export.");
+
     public virtual Task<Page<VariableSummary>> SearchVariablesAsync(
         string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
         SortField sort = SortField.Default,
