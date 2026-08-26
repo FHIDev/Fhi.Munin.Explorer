@@ -66,6 +66,11 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
             _saved.Clear();
             _activeListId = null;
             _membershipLoaded = false;
+
+            // Dropped rather than awaited: a read still walking pages belongs to the reader who
+            // has just left, and the generation guard already stops it writing anything. Keeping
+            // the task would let the next reader join it and take its silence for an answer.
+            _membershipRead = null;
         }
 
         _loaded = false;

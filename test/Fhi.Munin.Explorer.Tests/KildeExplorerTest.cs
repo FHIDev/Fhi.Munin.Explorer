@@ -197,6 +197,16 @@ public class KildeExplorerTest : BunitContext
         public bool FailDetail { get; set; }
 
         /// <summary>
+        /// Refuse every detail fetch from the next one on with the API's 429 — the API being up and
+        /// this reader having asked too often.
+        /// </summary>
+        /// <remarks>
+        /// Its own switch beside <see cref="FailDetail"/>, because the point of the tests using it
+        /// is that the view tells the three answers apart: refused, down, and not published.
+        /// </remarks>
+        public bool RateLimitDetail { get; set; }
+
+        /// <summary>
         /// Never answer a detail fetch from the next one on, so a test can decide when — and
         /// whether — it lands.
         /// </summary>
@@ -232,6 +242,10 @@ public class KildeExplorerTest : BunitContext
         /// <summary>Fail the oldest detail fetch still hanging.</summary>
         public void FailStalled() => Oldest().TrySetException(new HttpRequestException("the API is down"));
 
+        /// <summary>Refuse the oldest detail fetch still hanging with the API's 429.</summary>
+        public void RateLimitStalled() =>
+            Oldest().TrySetException(new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30)));
+
         private TaskCompletionSource<KildeDetail?> Oldest() =>
             _stalls.First(stall => !stall.Task.IsCompleted);
 
@@ -259,6 +273,12 @@ public class KildeExplorerTest : BunitContext
         public override Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default)
         {
             DetailCalls++;
+
+            if (RateLimitDetail)
+            {
+                return Task.FromException<KildeDetail?>(
+                    new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30)));
+            }
 
             if (FailDetail)
             {
@@ -354,6 +374,23 @@ public class KildeExplorerTest : BunitContext
         public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
             string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
             throw new HttpRequestException("the API is down");
+    }
+
+    /// <summary>
+    /// Refuses the list call with the API's 429, which is neither the API being down nor the
+    /// catalogue being empty — it is this reader having asked too often.
+    /// </summary>
+    private sealed class RateLimitedClient : EmptyMuninExplorerClient
+    {
+        public int Calls { get; private set; }
+
+        public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
+            string? search = null, string? kildeType = null, CancellationToken cancellationToken = default)
+        {
+            Calls++;
+
+            throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+        }
     }
 
     private IRenderedComponent<KildeExplorer> RenderWith(
@@ -493,6 +530,25 @@ public class KildeExplorerTest : BunitContext
         // Not the empty state as well: the catalogue is not empty, it is unreachable, and saying
         // both would tell the reader two different things about the same blank screen.
         Assert.DoesNotContain("Ingen kilder er registrert", cut.Markup);
+    }
+
+    [Fact]
+    public void Render_WhenTheApiRateLimits_ThenTheReaderIsToldTheyAskedTooOftenAndNothingIsRetried()
+    {
+        // The kilde list is one call on load, so a reader meets the limiter here through the site
+        // rather than through their own clicking — helsedata's cluster shares one address bucket.
+        // Telling them the sources could not be loaded, and inviting a retry, aims them straight
+        // back at it.
+        var client = new RateLimitedClient();
+
+        var cut = RenderWith(client);
+
+        var alert = cut.Find("[role=alert]");
+
+        Assert.Contains("for mange forespørsler", alert.TextContent);
+        Assert.DoesNotContain("Kunne ikke laste kilder", alert.TextContent);
+        Assert.DoesNotContain("Ingen kilder er registrert", cut.Markup);
+        Assert.Equal(1, client.Calls);
     }
 
     [Fact]
@@ -884,6 +940,68 @@ public class KildeExplorerTest : BunitContext
         Assert.Equal("infobox infobox--bg-yellow", status.GetAttribute("class"));
         Assert.DoesNotContain("Fant ingen detaljer", cut.Markup);
         Assert.Empty(cut.FindComponents<KildeView>());
+    }
+
+    [Fact]
+    public void Select_WhenTheDetailFetchIsRateLimited_ThenItSaysTheReaderAskedTooOften()
+    {
+        // The list arrives and the detail is refused, which is what a reader opening one kilde after
+        // another meets: the catalogue is up, and they have asked too often. All three answers this
+        // status line can carry have to stay apart — "kunne ikke hente" invites the retry the
+        // limiter is counting, and "fant ingen detaljer" says there is nothing to come back for.
+        var als = Kilde("Als registeret", "K_ALS");
+        var client = new FakeClient(als).Publishing(als);
+
+        var cut = RenderWith(client);
+
+        client.RateLimitDetail = true;
+        cut.Find(".munin-explorer-kilder tbody th button").Click();
+
+        var status = cut.Find(".munin-explorer-drilldown p[role=status]");
+
+        Assert.Contains("for mange forespørsler", status.TextContent);
+        Assert.Equal("infobox infobox--bg-yellow", status.GetAttribute("class"));
+        Assert.DoesNotContain("Kunne ikke hente datakilden", cut.Markup);
+        Assert.DoesNotContain("Fant ingen detaljer", cut.Markup);
+        Assert.Empty(cut.FindComponents<KildeView>());
+
+        // Nothing asks again by itself: one click, one request.
+        Assert.Equal(1, client.DetailCalls);
+    }
+
+    [Fact]
+    public async Task Select_WhenAReopenedKildesAbandonedFetchIsRateLimited_ThenItIsNotReportedInTheNewView()
+    {
+        // The generation guard on the 429 path. It is written once for both failures now, but this
+        // pins the throttled sentence specifically: a fetch the reader has already left must not put
+        // a warning box over a kilde that loaded perfectly.
+        //
+        // Ordering as in the generic test below: the abandoned fetch is refused only after the
+        // owning fetch has landed, because DetailStatus reads the loading flag before the error and
+        // a stale error behind "Henter datakilden …" is invisible to any assertion on the view.
+        var als = Kilde("Als registeret", "K_ALS");
+        var client = new FakeClient(als).Publishing(als);
+
+        var cut = RenderWith(client);
+
+        client.StallDetail = true;
+        cut.Find(".munin-explorer-kilder tbody th button").Click();
+        cut.Find(".munin-explorer-drilldown button").Click();
+
+        client.StallDetail = false;
+        cut.Find(".munin-explorer-kilder tbody th button").Click();
+
+        Assert.Equal(als.Id, cut.FindComponent<KildeView>().Instance.Kilde?.Id);
+
+        await cut.InvokeAsync(client.RateLimitStalled);
+
+        var status = cut.Find(".munin-explorer-drilldown p[role=status]");
+
+        Assert.Equal(string.Empty, status.TextContent.Trim());
+        Assert.Equal("caption", status.GetAttribute("class"));
+        Assert.DoesNotContain("for mange forespørsler", cut.Markup);
+        Assert.Equal("false", cut.Find(".munin-explorer-drilldown").GetAttribute("aria-busy"));
+        Assert.Equal(als.Id, cut.FindComponent<KildeView>().Instance.Kilde?.Id);
     }
 
     [Fact]

@@ -18,6 +18,14 @@ internal sealed record Texts(
     string SortBy,
     string Loading,
     string Error,
+
+    // The 429 answer, which is a different thing from the API being unreachable and has to read
+    // as one: the catalogue is up, and it is this reader — or, on a shared address, this whole
+    // site — that has asked too often. One string for every call that can be throttled, because
+    // the cause and the remedy are the same whichever request the limiter refused. No number and
+    // no countdown: Retry-After is read and carried on the exception for a host that logs it, and
+    // never shown. Decision Robin 2026-08-26.
+    string RateLimitError,
     string NotSpecified,
     string SortDefault,
     // The first column's header. Runa calls it Navn; helsedata calls the same column
@@ -445,6 +453,7 @@ internal sealed record Texts(
         SortBy: "Sorter etter",
         Loading: "Henter variabler …",
         Error: "Kunne ikke hente variabler nå. Prøv igjen om litt.",
+        RateLimitError: "Du har gjort for mange forespørsler. Vent litt før du prøver igjen.",
         NotSpecified: "Ikke oppgitt",
         SortDefault: "Standard",
         BackToVariables: "← Tilbake til variabler",
@@ -676,6 +685,7 @@ internal sealed record Texts(
         SortBy: "Sort by",
         Loading: "Loading variables …",
         Error: "Could not load variables right now. Please try again shortly.",
+        RateLimitError: "You have made too many requests. Please wait a little before trying again.",
         NotSpecified: "Not specified",
         SortDefault: "Default",
         BackToVariables: "← Back to variables",

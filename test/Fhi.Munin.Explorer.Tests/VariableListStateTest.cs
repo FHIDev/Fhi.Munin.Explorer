@@ -69,7 +69,7 @@ public class VariableListStateTest : BunitContext
         }
     }
 
-    private static VariableListState SignedIn(CountingClient client)
+    private static VariableListState SignedIn(IMuninExplorerClient client)
     {
         var state = new VariableListState(client);
         state.SetAuthenticated(true);
@@ -334,6 +334,313 @@ public class VariableListStateTest : BunitContext
         await Task.WhenAll(state.EnsureLoadedAsync(), state.EnsureLoadedAsync(), state.EnsureLoadedAsync());
 
         Assert.Equal(1, client.GetMyListsCalls);
+    }
+
+    // -----------------------------------------------------------------------
+    // The trap: a membership read that was refused has to be readable again —
+    // without retrying at every render, and without the press that repairs it
+    // acting on anything but the state the reader saw.
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Serves one list, and refuses the membership read until the test relents.
+    /// </summary>
+    /// <remarks>
+    /// A 429 rather than a generic failure because that is the refusal the reader is told to wait
+    /// out — and waiting is only good advice if the wait actually repairs anything.
+    /// </remarks>
+    private sealed class RefusingMembershipClient : EmptyMuninExplorerClient
+    {
+        private readonly Guid _listId = Guid.NewGuid();
+
+        /// <summary>Refuse every membership read while set.</summary>
+        public bool RateLimitMembership { get; set; } = true;
+
+        public int MembershipCalls { get; private set; }
+
+        /// <summary>What the list holds — written by the adds and reads, as the API's would be.</summary>
+        public List<Guid> Contents { get; } = [];
+
+        public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<VariableList>>([new VariableList { Id = _listId, Name = "Mine" }]);
+
+        public override Task<Page<VariableListItem>?> GetMyListVariablesAsync(
+            Guid id, int page = 1, int pageSize = 100, CancellationToken cancellationToken = default)
+        {
+            MembershipCalls++;
+
+            if (RateLimitMembership)
+            {
+                throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+            }
+
+            return Task.FromResult<Page<VariableListItem>?>(new Page<VariableListItem>
+            {
+                Items = [.. Contents.Select(v => new VariableListItem { VariableId = v })],
+                TotalCount = Contents.Count,
+                PageNumber = 1,
+                Size = pageSize,
+                TotalPages = 1
+            });
+        }
+
+        public override Task<bool> AddVariablesToMyListAsync(
+            Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default)
+        {
+            Contents.AddRange(variableIds.Where(v => !Contents.Contains(v)));
+
+            return Task.FromResult(true);
+        }
+
+        /// <summary>
+        /// Written rather than left to the base's <see langword="false"/>, because the trap below is
+        /// a delete nobody asked for: a fake that could not lose anything could not show it.
+        /// </summary>
+        public override Task<bool> RemoveVariablesFromMyListAsync(
+            Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default)
+        {
+            Contents.RemoveAll(variableIds.Contains);
+
+            return Task.FromResult(true);
+        }
+    }
+
+    [Fact]
+    public async Task State_WhenTheMembershipReadIsRefused_ThenAReaderInitiatedAskReadsItAgain()
+    {
+        // The reason "wait and try again" is honest advice. Picking the active list assigns the id
+        // before the membership read runs, so a read that throws leaves the id set and the set
+        // empty. A guard on the id alone would return from every later ask, and every variable the
+        // reader had saved would render unsaved for the rest of the circuit — the label and the
+        // stored list disagreeing, with nothing left that could put them right.
+        var client = new RefusingMembershipClient();
+        var state = SignedIn(client);
+        var saved = Guid.NewGuid();
+
+        client.Contents.Add(saved);
+
+        await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(() => state.EnsureActiveListAsync());
+
+        Assert.False(state.IsSaved(saved));
+        Assert.Equal(1, client.MembershipCalls);
+
+        // And the render that follows does not try again, however many of them there are.
+        // OnParametersSetAsync runs on every parameter change, so a retry here would put a
+        // multi-page membership read alongside every search and every page turn — the burst that
+        // earned the 429, rebuilt by the path that is supposed to recover from it.
+        client.RateLimitMembership = false;
+
+        await state.EnsureActiveListAsync();
+        await state.EnsureActiveListAsync();
+
+        Assert.Equal(1, client.MembershipCalls);
+        Assert.False(state.IsSaved(saved));
+
+        // The reader pressing something is the ask that does read again.
+        await state.ToggleSavedAsync(Guid.NewGuid(), "Min variabelliste");
+
+        Assert.True(state.IsSaved(saved));
+        Assert.Equal(2, client.MembershipCalls);
+
+        // And once it has arrived it is not read again: the retry is for a read that failed, not a
+        // read on every press.
+        await state.ToggleSavedAsync(Guid.NewGuid(), "Min variabelliste");
+
+        Assert.Equal(2, client.MembershipCalls);
+    }
+
+    [Fact]
+    public async Task State_WhenASaveFollowsARefusedMembershipRead_ThenTheSaveHappensAndTheOtherRowsAreRightAgain()
+    {
+        // The same repair seen from the button, which is where the reader meets it. Two things have
+        // to hold: the refused read must not cost the reader the save they actually asked for — the
+        // list id is known, the write is one request, and losing it would make "wait and try again"
+        // cost an action as well as a label — and the press after the window passes must put every
+        // other row's label right as it goes.
+        var client = new RefusingMembershipClient();
+        var state = SignedIn(client);
+        var savedEarlier = Guid.NewGuid();
+        var savingNow = Guid.NewGuid();
+        var savingLater = Guid.NewGuid();
+
+        client.Contents.Add(savedEarlier);
+
+        Assert.True(await state.ToggleSavedAsync(savingNow, "Min variabelliste"));
+        Assert.Contains(savingNow, client.Contents);
+
+        // The labels are what the refusal did cost: nothing has read the list yet.
+        Assert.False(state.IsSaved(savedEarlier));
+
+        client.RateLimitMembership = false;
+
+        Assert.True(await state.ToggleSavedAsync(savingLater, "Min variabelliste"));
+        Assert.True(state.IsSaved(savedEarlier));
+        Assert.True(state.IsSaved(savingNow));
+        Assert.True(state.IsSaved(savingLater));
+    }
+
+    [Fact]
+    public async Task State_WhenTheFirstPressAfterARefusedReadIsOnASavedVariable_ThenItIsNotDeleted()
+    {
+        // The trap inside the repair. The repair runs inside the press, so the set fills in the
+        // middle of the call — after the button was drawn and after the reader read it. A press
+        // that then asked the freshly filled set which way to go would find this variable saved and
+        // remove it: the reader presses the button labelled "save" on a variable they saved
+        // yesterday, and it disappears from their list, silently, with the label flipping back to
+        // "save" as though nothing had happened.
+        var client = new RefusingMembershipClient();
+        var state = SignedIn(client);
+        var savedYesterday = Guid.NewGuid();
+
+        client.Contents.Add(savedYesterday);
+
+        await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(() => state.EnsureActiveListAsync());
+
+        // Drawn as unsaved, because the read that would have said otherwise was refused.
+        Assert.False(state.IsSaved(savedYesterday));
+
+        client.RateLimitMembership = false;
+
+        Assert.True(await state.ToggleSavedAsync(savedYesterday, "Min variabelliste"));
+
+        // The direction came from the label, so the press added — which the API stores once — and
+        // the variable is still the reader's.
+        Assert.Contains(savedYesterday, client.Contents);
+        Assert.True(state.IsSaved(savedYesterday));
+
+        // And it is a working toggle again, now that the label and the list agree.
+        Assert.False(await state.ToggleSavedAsync(savedYesterday, "Min variabelliste"));
+        Assert.DoesNotContain(savedYesterday, client.Contents);
+    }
+
+    /// <summary>
+    /// Serves one list over several pages, and can hold every page until the test lets it go.
+    /// </summary>
+    /// <remarks>
+    /// Paged and gated because both hazards need a read that is still walking: two asks overlapping
+    /// must produce one read rather than two, and a read that is refused partway through must
+    /// publish nothing.
+    /// </remarks>
+    private sealed class PagedMembershipClient : EmptyMuninExplorerClient
+    {
+        private readonly Guid _listId = Guid.NewGuid();
+        private readonly TaskCompletionSource _gate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public int MembershipCalls { get; private set; }
+
+        /// <summary>The list's contents, split the way the API would serve them.</summary>
+        public List<Guid[]> Pages { get; } = [];
+
+        /// <summary>Refuse this page and every later one with the API's 429. Zero refuses nothing.</summary>
+        public int RefuseFromPage { get; set; }
+
+        /// <summary>Hold every page until <see cref="Release"/>, so a test can overlap two asks.</summary>
+        public bool Gated { get; init; }
+
+        public void Release() => _gate.TrySetResult();
+
+        public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<VariableList>>([new VariableList { Id = _listId, Name = "Mine" }]);
+
+        public override async Task<Page<VariableListItem>?> GetMyListVariablesAsync(
+            Guid id, int page = 1, int pageSize = 100, CancellationToken cancellationToken = default)
+        {
+            MembershipCalls++;
+
+            if (Gated)
+            {
+                await _gate.Task;
+            }
+
+            if (RefuseFromPage > 0 && page >= RefuseFromPage)
+            {
+                throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+            }
+
+            var items = page <= Pages.Count ? Pages[page - 1] : [];
+
+            return new Page<VariableListItem>
+            {
+                Items = [.. items.Select(v => new VariableListItem { VariableId = v })],
+                TotalCount = Pages.Sum(p => p.Length),
+                PageNumber = page,
+                Size = pageSize,
+                TotalPages = Pages.Count
+            };
+        }
+
+        public override Task<bool> AddVariablesToMyListAsync(
+            Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default) =>
+            Task.FromResult(true);
+    }
+
+    [Fact]
+    public async Task State_WhenASecondAskArrivesWhileMembershipIsStillBeingRead_ThenItIsReadOnceAndInFull()
+    {
+        // The sibling guard EnsureLoadedAsync has had all along, for the same burst: several
+        // surfaces mount together and each one asks before any of them has finished, and the flag
+        // that says "membership is here" stays false for the whole length of a paged read. Without
+        // this the second ask sends its own walk of the same list — a duplicate request against the
+        // very limiter this work exists to be gentle with — and the two reads write over each
+        // other, so the one that finishes second can latch a set with pages missing as complete.
+        var onPageOne = Guid.NewGuid();
+        var onPageTwo = Guid.NewGuid();
+        var client = new PagedMembershipClient { Gated = true };
+
+        client.Pages.Add([onPageOne]);
+        client.Pages.Add([onPageTwo]);
+
+        var state = SignedIn(client);
+
+        var mounting = state.EnsureActiveListAsync();
+
+        Assert.False(mounting.IsCompleted);
+        Assert.Equal(1, client.MembershipCalls);
+
+        // A second surface mounts while page one is still out.
+        var alsoMounting = state.EnsureActiveListAsync();
+
+        Assert.Equal(1, client.MembershipCalls);
+
+        client.Release();
+
+        await mounting;
+        await alsoMounting;
+
+        // Two calls: page one and page two of the one read. Not four.
+        Assert.Equal(2, client.MembershipCalls);
+        Assert.True(state.IsSaved(onPageOne));
+        Assert.True(state.IsSaved(onPageTwo));
+    }
+
+    [Fact]
+    public async Task State_WhenAMembershipReadIsRefusedPartWayThrough_ThenNoHalfReadListIsPublished()
+    {
+        // A set holding the pages a failed walk happened to reach answers "is this variable saved"
+        // wrongly for everything it did not, and every row it did not reach draws "save" for a
+        // variable the list already holds. So the pages are collected apart and swapped in whole,
+        // or not at all.
+        var onPageOne = Guid.NewGuid();
+        var onPageTwo = Guid.NewGuid();
+        var client = new PagedMembershipClient { RefuseFromPage = 2 };
+
+        client.Pages.Add([onPageOne]);
+        client.Pages.Add([onPageTwo]);
+
+        var state = SignedIn(client);
+
+        await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(() => state.EnsureActiveListAsync());
+
+        Assert.False(state.IsSaved(onPageOne));
+        Assert.False(state.IsSaved(onPageTwo));
+
+        // And nothing was latched as read, so the reader's next press still repairs it.
+        client.RefuseFromPage = 0;
+
+        await state.ToggleSavedAsync(Guid.NewGuid(), "Min variabelliste");
+
+        Assert.True(state.IsSaved(onPageOne));
+        Assert.True(state.IsSaved(onPageTwo));
     }
 
     [Fact]

@@ -24,8 +24,33 @@ public partial class VariableExplorer
 {
     private bool ShowSaveButton => ListState?.IsAuthenticated == true;
 
-    /// <summary>Rows whose last save attempt threw. Cleared when that row is tried again.</summary>
-    private readonly HashSet<Guid> _saveError = [];
+    /// <summary>How a row's last save attempt ended, when it ended badly.</summary>
+    /// <remarks>
+    /// Worth telling the two failures apart: saving one row after another is the rhythm that meets
+    /// the limiter, and "prøv igjen om litt" is the one piece of advice that cannot help a reader
+    /// who is being throttled.
+    /// </remarks>
+    private enum SaveFailure
+    {
+        /// <summary>Nothing has gone wrong for this row — the value a missing entry reads as.</summary>
+        None = 0,
+
+        /// <summary>The save threw for a reason the reader can only try again on.</summary>
+        Failed,
+
+        /// <summary>The API refused the save because too many requests arrived — HTTP 429.</summary>
+        Throttled
+    }
+
+    /// <summary>
+    /// Rows whose last save attempt threw, against how it threw. Cleared when that row is tried
+    /// again.
+    /// </summary>
+    /// <remarks>
+    /// The condition and not the sentence, so the text is still resolved at render time and a host
+    /// that switches language mid-session does not leave one row speaking the old one.
+    /// </remarks>
+    private readonly Dictionary<Guid, SaveFailure> _saveError = [];
 
     private RenderFragment RowSaveButton(VariableSummary v) => builder =>
     {
@@ -35,7 +60,10 @@ public partial class VariableExplorer
         }
 
         var saved = ListState!.IsSaved(v.Id);
-        var failed = _saveError.Contains(v.Id);
+
+        // A row with no entry reads as SaveFailure.None, which is what an untried — or a since
+        // retried — row is.
+        _saveError.TryGetValue(v.Id, out var failure);
 
         // Stiler's own square-button classes and nothing else, the same pair the detail panel's
         // toggles wear. No `munin-explorer-*` name of its own on purpose: the package ships no CSS,
@@ -63,7 +91,12 @@ public partial class VariableExplorer
         builder.AddAttribute(7, "role", "alert");
         builder.AddAttribute(8, "aria-live", "assertive");
         builder.AddAttribute(9, "aria-atomic", "true");
-        builder.AddContent(10, failed ? T.SaveError : null);
+        builder.AddContent(10, failure switch
+        {
+            SaveFailure.Throttled => T.RateLimitError,
+            SaveFailure.Failed => T.SaveError,
+            _ => null
+        });
         builder.CloseElement();
     };
 
@@ -82,9 +115,15 @@ public partial class VariableExplorer
             _saveError.Remove(v.Id);
             await ListState.ToggleSavedAsync(v.Id, T.FirstListName);
         }
+        catch (MuninExplorerRateLimitedException)
+        {
+            // The writes go through the same client as the reads and meet the same per-address
+            // limiter, so this row's save can be refused while the catalogue is perfectly up.
+            _saveError[v.Id] = SaveFailure.Throttled;
+        }
         catch (Exception)
         {
-            _saveError.Add(v.Id);
+            _saveError[v.Id] = SaveFailure.Failed;
         }
 
         StateHasChanged();

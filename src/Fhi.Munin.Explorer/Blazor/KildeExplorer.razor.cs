@@ -386,6 +386,12 @@ public sealed partial class KildeExplorer : ComponentBase
         {
             _kilder = await Client.GetKilderAsync();
         }
+        catch (MuninExplorerRateLimitedException)
+        {
+            // Throttled, not down — and the difference is the whole point of saying so: the text
+            // below invites the reader to try again, which is what the limiter is counting.
+            _error = T.RateLimitError;
+        }
         catch (Exception)
         {
             // What went wrong is the API's business and the host's logs'; what the reader needs is
@@ -522,14 +528,20 @@ public sealed partial class KildeExplorer : ComponentBase
             // the API never had.
             _detailError = detail is null ? T.KildeMissing : null;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            // One branch for both failures, so the stale-fetch guard is written once: a fetch the
+            // reader has already moved on from must not paint its answer — of either kind — into the
+            // panel now showing something else.
             if (generation != _detailGeneration)
             {
                 return;
             }
 
-            _detailError = T.KildeError;
+            // Only the sentence differs. A kilde that did not arrive because we asked too often is
+            // neither a kilde that is missing nor a catalogue that is down, and the generic text
+            // invites the retry the limiter is counting.
+            _detailError = ex is MuninExplorerRateLimitedException ? T.RateLimitError : T.KildeError;
         }
         finally
         {
