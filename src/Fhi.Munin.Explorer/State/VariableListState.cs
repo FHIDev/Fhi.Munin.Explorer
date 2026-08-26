@@ -28,6 +28,8 @@ public sealed class VariableListState(IMuninExplorerClient client)
 
     private IReadOnlyList<VariableList> _lists = [];
     private bool _loaded;
+    private bool _loading;
+    private int _generation;
 
     /// <summary>Raised after any change, so every surface can re-render without refetching.</summary>
     public event Action? Changed;
@@ -51,6 +53,11 @@ public sealed class VariableListState(IMuninExplorerClient client)
 
         IsAuthenticated = isAuthenticated;
 
+        // Anything already in flight belongs to the reader who was here a moment ago. Bumping the
+        // generation is what lets those calls recognise, when they come back, that their answer is
+        // no longer anybody's to see.
+        _generation++;
+
         // Leaving the previous user's list names on screen after a sign-out would be a disclosure,
         // not just a stale view.
         if (!isAuthenticated)
@@ -63,18 +70,49 @@ public sealed class VariableListState(IMuninExplorerClient client)
     }
 
     /// <summary>
+    /// True when the answer to a call started at <paramref name="startedAt"/> may still be used.
+    /// </summary>
+    /// <remarks>
+    /// Every await here is a point at which the reader can sign out. Without this check the
+    /// continuation would write the previous reader's lists back over the empty ones the sign-out
+    /// just installed — the disclosure the sign-out exists to prevent, arriving a few milliseconds
+    /// late.
+    /// </remarks>
+    private bool StillCurrent(int startedAt) => IsAuthenticated && _generation == startedAt;
+
+    /// <summary>
     /// Reads the lists once per circuit. Signed out, this returns without calling anything — the
     /// guard is here rather than at each call site so a new surface cannot forget it.
     /// </summary>
     public async Task EnsureLoadedAsync(CancellationToken cancellationToken = default)
     {
-        if (!IsAuthenticated || _loaded)
+        // _loading as well as _loaded: three surfaces mounting together all reach this before any of
+        // them has finished, and without it each would send its own request for the same lists.
+        if (!IsAuthenticated || _loaded || _loading)
         {
             return;
         }
 
-        _lists = await _client.GetMyListsAsync(cancellationToken).ConfigureAwait(false);
-        _loaded = true;
+        var startedAt = _generation;
+        _loading = true;
+
+        try
+        {
+            var lists = await _client.GetMyListsAsync(cancellationToken).ConfigureAwait(false);
+
+            if (!StillCurrent(startedAt))
+            {
+                return;
+            }
+
+            _lists = lists;
+            _loaded = true;
+        }
+        finally
+        {
+            _loading = false;
+        }
+
         Changed?.Invoke();
     }
 
@@ -93,7 +131,16 @@ public sealed class VariableListState(IMuninExplorerClient client)
             return null;
         }
 
+        var startedAt = _generation;
         var created = await _client.CreateMyListAsync(name, cancellationToken).ConfigureAwait(false);
+
+        // The list was made — it is the reader's, on the server. It is only this circuit's copy that
+        // must not keep it, because the reader who owns it is no longer the one at the screen.
+        if (!StillCurrent(startedAt))
+        {
+            return null;
+        }
+
         _lists = [.. _lists, created];
         Changed?.Invoke();
         return created;
@@ -107,7 +154,14 @@ public sealed class VariableListState(IMuninExplorerClient client)
             return false;
         }
 
+        var startedAt = _generation;
+
         if (!await _client.RenameMyListAsync(id, name, cancellationToken).ConfigureAwait(false))
+        {
+            return false;
+        }
+
+        if (!StillCurrent(startedAt))
         {
             return false;
         }
@@ -127,7 +181,14 @@ public sealed class VariableListState(IMuninExplorerClient client)
             return false;
         }
 
+        var startedAt = _generation;
+
         if (!await _client.DeleteMyListAsync(id, cancellationToken).ConfigureAwait(false))
+        {
+            return false;
+        }
+
+        if (!StillCurrent(startedAt))
         {
             return false;
         }

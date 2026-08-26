@@ -250,6 +250,47 @@ public class VariableListStateTest : BunitContext
         Assert.Equal(1, client.AddCalls);
     }
 
+    /// <summary>A client that lets the test decide when the in-flight call comes back.</summary>
+    private sealed class BlockingClient : EmptyMuninExplorerClient
+    {
+        private readonly TaskCompletionSource<IReadOnlyList<VariableList>> _gate = new();
+
+        public void Answer(params string[] names) =>
+            _gate.SetResult([.. names.Select(n => new VariableList { Id = Guid.NewGuid(), Name = n })]);
+
+        public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
+            _gate.Task;
+    }
+
+    [Fact]
+    public async Task State_WhenTheReaderSignsOutWhileTheLoadIsInFlight_ThenTheAnswerIsDiscarded()
+    {
+        // The disclosure the sign-out prevents, arriving a few milliseconds late: without the
+        // generation check the continuation writes the previous reader's names back over the empty
+        // list the sign-out just installed.
+        var client = new BlockingClient();
+        var state = new VariableListState(client);
+        state.SetAuthenticated(true);
+
+        var inFlight = state.EnsureLoadedAsync();
+        state.SetAuthenticated(false);
+        client.Answer("Mine hjertevariabler");
+        await inFlight;
+
+        Assert.Empty(state.Lists);
+    }
+
+    [Fact]
+    public async Task State_WhenThreeSurfacesMountTogether_ThenTheListsAreReadOnce()
+    {
+        var client = new CountingClient();
+        var state = SignedIn(client);
+
+        await Task.WhenAll(state.EnsureLoadedAsync(), state.EnsureLoadedAsync(), state.EnsureLoadedAsync());
+
+        Assert.Equal(1, client.GetMyListsCalls);
+    }
+
     [Fact]
     public async Task State_WhenAnEmptyBatchIsRemoved_ThenItStillReachesTheApi()
     {
