@@ -1,0 +1,212 @@
+using Bunit;
+using Fhi.Munin.Explorer.Blazor;
+using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.State;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Fhi.Munin.Explorer.Tests;
+
+/// <summary>
+/// The saved-list view: what is in the list the reader is looking at, and the two things they can
+/// do to it. Shares its state with the explorer's save button, and owns its own paging.
+/// </summary>
+public class VariableListViewTest : BunitContext
+{
+    private static readonly Guid ListId = new("11111111-1111-1111-1111-111111111111");
+
+    private static VariableListItem Item(string name, string code) =>
+        new()
+        {
+            VariableId = Guid.NewGuid(),
+            AddedAt = DateTimeOffset.UtcNow,
+            VariableName = name,
+            VariableCode = code,
+            KildeName = "Als registeret",
+            KildeShortName = "ALS",
+            DatasamlingName = "Inklusjon",
+            VariabelgruppeName = "Ikke oppgitt",
+            DataType = "2"
+        };
+
+    /// <summary>An entry whose variable has no row in the read model: id and timestamp, nothing else.</summary>
+    private static VariableListItem Orphan() =>
+        new() { VariableId = Guid.NewGuid(), AddedAt = DateTimeOffset.UtcNow };
+
+    private sealed class ListClient(params VariableListItem[] items) : EmptyMuninExplorerClient
+    {
+        public int VariablesCalls { get; private set; }
+        public int RemoveCalls { get; private set; }
+        public int CreateCalls { get; private set; }
+        public int LastPageAsked { get; private set; }
+        public int PageSize { get; init; } = 25;
+        public bool HasList { get; init; } = true;
+
+        private readonly List<VariableListItem> _items = [.. items];
+
+        public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<VariableList>>(
+                HasList ? [new VariableList { Id = ListId, Name = "Mine hjertevariabler" }] : []);
+
+        public override Task<VariableList> CreateMyListAsync(string name, CancellationToken cancellationToken = default)
+        {
+            CreateCalls++;
+            return Task.FromResult(new VariableList { Id = Guid.NewGuid(), Name = name });
+        }
+
+        public override Task<Page<VariableListItem>?> GetMyListVariablesAsync(
+            Guid id, int page = 1, int pageSize = 100, CancellationToken cancellationToken = default)
+        {
+            VariablesCalls++;
+            LastPageAsked = page;
+
+            var slice = _items.Skip((page - 1) * PageSize).Take(PageSize).ToList();
+
+            return Task.FromResult<Page<VariableListItem>?>(new Page<VariableListItem>
+            {
+                Items = slice,
+                TotalCount = _items.Count,
+                PageNumber = page,
+                Size = PageSize,
+                TotalPages = 1
+            });
+        }
+
+        public override Task<bool> RemoveVariablesFromMyListAsync(
+            Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default)
+        {
+            RemoveCalls++;
+            _items.RemoveAll(i => variableIds.Contains(i.VariableId));
+            return Task.FromResult(true);
+        }
+    }
+
+    private IRenderedComponent<VariableListView> RenderView(ListClient client, bool signedIn = true)
+    {
+        Services.AddSingleton<IMuninExplorerClient>(client);
+        Services.AddScoped<VariableListState>();
+        return Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, signedIn));
+    }
+
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void View_WhenTheReaderIsSignedOut_ThenNothingIsDrawnAndNothingIsAsked()
+    {
+        // Asserted on the call count, not on the markup: an implementation that fetches and swallows
+        // the 401 renders the same nothing while sending a failed request per render.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
+
+        var cut = RenderView(client, signedIn: false);
+
+        Assert.Empty(cut.Markup.Trim());
+        Assert.Equal(0, client.VariablesCalls);
+    }
+
+    [Fact]
+    public void View_WhenTheListHasVariables_ThenTheyAreShownWithTheirColumns()
+    {
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
+
+        var cut = RenderView(client);
+
+        Assert.Contains("Alder ved diagnose", cut.Markup);
+        Assert.Contains("V_BDR.ALDER", cut.Markup);
+        Assert.Contains("ALS", cut.Markup);
+        Assert.Contains("Inklusjon", cut.Markup);
+    }
+
+    [Fact]
+    public void View_WhenTheListIsEmpty_ThenItSaysSoRatherThanShowingAnEmptyTable()
+    {
+        var cut = RenderView(new ListClient());
+
+        Assert.Contains("tom", cut.Markup);
+    }
+
+    [Fact]
+    public void View_WhenTheReaderHasNoLists_ThenItSaysSo()
+    {
+        var cut = RenderView(new ListClient { HasList = false });
+
+        Assert.Contains("ingen variabellister", cut.Markup);
+    }
+
+    // -----------------------------------------------------------------------
+    // The traps.
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void View_WhenAnEntryHasNoRowInTheReadModel_ThenItKeepsItsPlace()
+    {
+        // The API returns it deliberately so the paging totals stay honest. A view that filtered
+        // rows without a name would show 1 of 2 under a count that says 2, and the reader would
+        // never learn something had gone.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"), Orphan());
+
+        var cut = RenderView(client);
+
+        Assert.Equal(2, cut.FindAll(".munin-explorer-data-list__item").Count);
+        Assert.Contains("ikke tilgjengelig", cut.Markup);
+    }
+
+    [Fact]
+    public async Task View_WhenTheListIsLongerThanAPage_ThenTheReaderCanReachTheSecondPage()
+    {
+        // A view that fetched page one and called it the list would show the first few and hide the
+        // rest without saying so.
+        var many = Enumerable.Range(1, 30).Select(i => Item($"Variabel {i}", $"V_{i}")).ToArray();
+        var client = new ListClient(many) { PageSize = 25 };
+        var cut = RenderView(client);
+
+        Assert.Contains("Variabel 1", cut.Markup);
+        Assert.DoesNotContain("Variabel 30", cut.Markup);
+
+        await cut.InvokeAsync(() => cut.FindAll("nav button")[^1].Click());
+
+        Assert.Equal(2, client.LastPageAsked);
+        Assert.Contains("Variabel 30", cut.Markup);
+    }
+
+    [Fact]
+    public void View_WhenAVariableIsRemoved_ThenItLeavesTheListAndTheApiWasAsked()
+    {
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
+        var cut = RenderView(client);
+
+        cut.FindAll(".munin-explorer-dataitem-main button")[0].Click();
+
+        Assert.Equal(1, client.RemoveCalls);
+        Assert.DoesNotContain("Alder ved diagnose", cut.Markup);
+    }
+
+    [Fact]
+    public void View_WhenANameIsEnteredAndCreatePressed_ThenTheListIsMade()
+    {
+        var client = new ListClient { HasList = false };
+        var cut = RenderView(client);
+
+        cut.Find("input[type=text]").Input("Hjerte og kar");
+        cut.Find("button:not([disabled])").Click();
+
+        Assert.Equal(1, client.CreateCalls);
+    }
+
+    [Fact]
+    public void View_WhenNothingHasFailed_ThenTheAlertContainerIsAlreadyInTheDom()
+    {
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        var alert = cut.FindAll("[role=alert]");
+        Assert.Single(alert);
+        Assert.Equal("", alert[0].TextContent.Trim());
+    }
+
+    [Fact]
+    public void View_WhenItIsDrawn_ThenEveryClassNameHasARuleInTheHostStylesheet()
+    {
+        // The package ships no CSS: a name with no rule behind it renders unstyled in the host.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"), Orphan()));
+
+        Assert.Equal([], HostClassNames.Orphans(HostClassNames.Of(cut.FindAll("[class]"))));
+    }
+}
