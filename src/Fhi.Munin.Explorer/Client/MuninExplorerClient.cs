@@ -284,6 +284,11 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
     /// belonging to somebody else — deliberately, so a caller cannot learn which list ids are real
     /// by watching the difference. It reads as "no such list of yours" here, which is the only
     /// thing a caller can act on and the same not-a-fault the read endpoints map to null.
+    /// <para>
+    /// A 429 is not one of those, and never reaches this method: <see cref="SendAsync"/> throws it
+    /// as <see cref="MuninExplorerRateLimitedException"/> first. Reading it as <c>false</c> would
+    /// tell the reader their list is gone when it is only their request that was refused.
+    /// </para>
     /// </remarks>
     private async Task<bool> SendForFoundAsync(
         HttpMethod method,
@@ -307,6 +312,20 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
     }
 
     /// <summary>Sends one request, with <paramref name="body"/> as JSON when there is one.</summary>
+    /// <remarks>
+    /// A 429 is turned into <see cref="MuninExplorerRateLimitedException"/> here rather than in each
+    /// caller, so every write inherits it the way every read inherits the branch in
+    /// <see cref="GetOrNullAsync{T}"/>. The reads had one status-interpreting place and the writes
+    /// have two — <see cref="CreateMyListAsync"/> and <see cref="SendForFoundAsync"/> — which is
+    /// exactly how the gap this repaired came to be missed once already: toggling save down a
+    /// result list is the rhythm that meets the limiter, and a throttled save reaching the reader as
+    /// "could not save" is the same wrong sentence in a smaller place. A third write added later
+    /// gets the branch by going through here at all.
+    /// <para>
+    /// The response is disposed before the throw, since nothing above can dispose one it never
+    /// received.
+    /// </para>
+    /// </remarks>
     private async Task<HttpResponseMessage> SendAsync(
         HttpMethod method,
         string url,
@@ -322,7 +341,17 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
             request.Content = JsonContent.Create(body, body.GetType(), options: Json);
         }
 
-        return await httpClient.SendAsync(request, cancellationToken);
+        var response = await httpClient.SendAsync(request, cancellationToken);
+
+        if (response.StatusCode == HttpStatusCode.TooManyRequests)
+        {
+            var retryAfter = RetryAfter(response);
+            response.Dispose();
+
+            throw new MuninExplorerRateLimitedException(retryAfter);
+        }
+
+        return response;
     }
 
     /// <summary>Escape one free-text value for the path, refusing one the path cannot carry.</summary>

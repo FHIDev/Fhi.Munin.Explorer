@@ -55,6 +55,16 @@ public class SaveToListTest : BunitContext
         /// <summary>Set when the reader is meant to already have a list.</summary>
         public bool HasExistingList { get; init; } = true;
 
+        /// <summary>Refuse every add with the API's 429.</summary>
+        public bool RateLimitAdd { get; init; }
+
+        /// <summary>Refuse every add the way anything else that goes wrong refuses it.</summary>
+        /// <remarks>
+        /// Its own switch beside <see cref="RateLimitAdd"/> so the pair can be asserted against each
+        /// other: the row has to say something different for each, and one flag could not show that.
+        /// </remarks>
+        public bool FailAdd { get; init; }
+
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
             string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default, SortDirection direction = SortDirection.Ascending,
@@ -92,6 +102,17 @@ public class SaveToListTest : BunitContext
             Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default)
         {
             AddCalls++;
+
+            if (RateLimitAdd)
+            {
+                throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+            }
+
+            if (FailAdd)
+            {
+                throw new HttpRequestException("nede");
+            }
+
             foreach (var v in variableIds) { Stored.Add(v); }
             return Task.FromResult(true);
         }
@@ -229,6 +250,46 @@ public class SaveToListTest : BunitContext
         var alert = cut.FindAll(".munin-explorer-dataitem-main [role=alert]");
         Assert.Single(alert);
         Assert.Equal("", alert[0].TextContent.Trim());
+    }
+
+    [Fact]
+    public void Row_WhenTheSaveIsRateLimited_ThenTheRowSaysSoRatherThanThatSavingFailed()
+    {
+        // The writes go through the same client and the same per-address limiter as the reads, and
+        // saving one row after another is the rhythm that meets it. "Prøv igjen om litt" beside the
+        // button would be advising the reader to do the one thing that keeps the window full.
+        var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER")))
+        {
+            RateLimitAdd = true
+        };
+        var cut = RenderSignedIn(client);
+
+        SaveButton(cut).Click();
+
+        var alert = cut.Find(".munin-explorer-dataitem-main [role=alert]");
+
+        Assert.Contains("for mange forespørsler", alert.TextContent);
+        Assert.DoesNotContain("Kunne ikke lagre", alert.TextContent);
+    }
+
+    [Fact]
+    public void Row_WhenTheSaveFailsForAnyOtherReason_ThenTheRowStillSaysTheSaveFailed()
+    {
+        // The other half of the pair: the throttled sentence must not swallow the ordinary one, or
+        // a reader whose save really did fail is told to wait for a window that was never the
+        // problem.
+        var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER")))
+        {
+            FailAdd = true
+        };
+        var cut = RenderSignedIn(client);
+
+        SaveButton(cut).Click();
+
+        var alert = cut.Find(".munin-explorer-dataitem-main [role=alert]");
+
+        Assert.Contains("Kunne ikke lagre", alert.TextContent);
+        Assert.DoesNotContain("for mange forespørsler", alert.TextContent);
     }
 
     // -----------------------------------------------------------------------

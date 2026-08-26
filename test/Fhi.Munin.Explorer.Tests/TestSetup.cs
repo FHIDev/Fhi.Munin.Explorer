@@ -256,6 +256,24 @@ internal sealed class StubHttpHandler(Func<HttpRequestMessage, HttpResponseMessa
         return response;
     });
 
+    /// <summary>
+    /// Answers <c>429 Too Many Requests</c> with a <c>Retry-After</c> in its other form — an HTTP
+    /// date rather than a number of seconds.
+    /// </summary>
+    /// <remarks>
+    /// Both forms are legal and the API is free to send either, so the date branch is a parse and a
+    /// subtraction the delta branch never exercises. The one worth pinning is a date already past,
+    /// which a reader whose clock runs behind the server's meets routinely: it has to floor at zero
+    /// rather than travel as a negative wait that reads like "you should have gone earlier".
+    /// </remarks>
+    public static StubHttpHandler RateLimitedUntil(DateTimeOffset when) => new(_ =>
+    {
+        var response = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+        response.Headers.RetryAfter = new RetryConditionHeaderValue(when);
+
+        return response;
+    });
+
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         Calls++;

@@ -5,8 +5,10 @@ category: Fixed
   used to throw that as the same generic `HttpRequestException` as a 500 or a timeout. So a reader
   who hit the limit was advised to try again shortly, which is the one thing that cannot help. The
   client now raises `MuninExplorerRateLimitedException`, carrying the wait the API asked for in
-  either form the header takes, and the result list, the facet-fed panels, the kilde list and the
-  kilde view each say so in their own place, in both languages. The wait is carried for a host that
+  either form the header takes, and the result list, the facet panel, the kilde list, the kilde view
+  and the row's save button each say so in their own place, in both languages. The reads and the
+  writes both raise it: a save refused by the limiter used to read as "could not save", and a list
+  the reader still has is not a list they have lost. The wait is carried for a host that
   logs it and never rendered: a countdown against a window shared with every other reader is a
   promise this package cannot keep. Nothing retries by itself — helsedata's cluster reaches Munin
   as one address, so components retrying on a shared `Retry-After` would rebuild the burst that

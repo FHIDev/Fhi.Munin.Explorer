@@ -409,6 +409,36 @@ public class MuninExplorerClientTest
     }
 
     [Fact]
+    public async Task GetKildeAsync_WhenARetryAfterIsAnHttpDate_ThenItIsReadAsTheWaitItImplies()
+    {
+        // Retry-After's other legal form, which is a parse and a subtraction rather than a value
+        // handed over as it stands. Bounded rather than exact because the header carries whole
+        // seconds and the clock moves between writing it and reading it.
+        var client = Client(StubHttpHandler.RateLimitedUntil(DateTimeOffset.UtcNow.AddMinutes(10)));
+
+        var refused = await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(
+            () => client.GetKildeAsync(Guid.NewGuid()));
+
+        Assert.NotNull(refused.RetryAfter);
+        Assert.InRange(refused.RetryAfter.Value, TimeSpan.FromMinutes(9), TimeSpan.FromMinutes(10));
+    }
+
+    [Fact]
+    public async Task GetKildeAsync_WhenAnHttpDateRetryAfterHasPassed_ThenTheWaitIsZeroRatherThanNegative()
+    {
+        // A reader whose clock runs behind the server's meets this on the first 429 they get, and a
+        // negative TimeSpan travelling on the exception would print in a host's log as a wait that
+        // ended before it began. Zero is the honest answer: nothing left to wait, as far as the
+        // header said.
+        var client = Client(StubHttpHandler.RateLimitedUntil(DateTimeOffset.UtcNow.AddMinutes(-1)));
+
+        var refused = await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(
+            () => client.GetKildeAsync(Guid.NewGuid()));
+
+        Assert.Equal(TimeSpan.Zero, refused.RetryAfter);
+    }
+
+    [Fact]
     public async Task SearchVariablesAsync_WhenTheApiRateLimits_ThenItThrowsInsteadOfReturningAnEmptyPage()
     {
         // The trap this whole change is about. A 404 maps to null and this method maps that null

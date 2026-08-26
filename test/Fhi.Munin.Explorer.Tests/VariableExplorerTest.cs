@@ -2571,6 +2571,14 @@ public class VariableExplorerTest : BunitContext
         /// <summary>Fail every facet refresh from the next one on.</summary>
         public bool FailFacets { get; set; }
 
+        /// <summary>Answer every facet refresh from the next one on with the API's 429.</summary>
+        /// <remarks>
+        /// Its own switch rather than a mode of <see cref="FailFacets"/>, for the reason the
+        /// separate <c>RateLimitedClient</c> exists: the point of the test using it is that the
+        /// panel tells the two apart, which a single flag could not show.
+        /// </remarks>
+        public bool RateLimitFacets { get; set; }
+
         /// <summary>Never answer a search from the next one on — the in-flight path.</summary>
         public bool StallSearch { get; set; }
 
@@ -2605,6 +2613,11 @@ public class VariableExplorerTest : BunitContext
             FacetCalls++;
             FacetFilter = filter;
             FacetSearch = search;
+
+            if (RateLimitFacets)
+            {
+                throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+            }
 
             return FailFacets
                 ? throw new HttpRequestException("nede")
@@ -2887,6 +2900,30 @@ public class VariableExplorerTest : BunitContext
 
         Assert.NotNull(Facet(cut, "Dødsårsaksregisteret"));
         Assert.Contains("Tallene kan være utdaterte", cut.Find("[role='alert']").TextContent);
+        Assert.Single(cut.FindAll("ul.munin-explorer-data-list > li"));
+    }
+
+    [Fact]
+    public void Render_WhenTheFacetRefreshIsRateLimited_ThenThePanelSaysSoRatherThanThatTheCountsAreStale()
+    {
+        // The facet refresh goes out alongside every search, so a throttled reader meets this panel
+        // and the result list in the same render. Left on the generic sentence, this region would
+        // be advising the reader to try again while the alert above it says trying again is the
+        // problem — two answers to one event, in one screenful.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        client.RateLimitFacets = true;
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        var alert = cut.Find("[role='alert']");
+
+        Assert.Contains("for mange forespørsler", alert.TextContent);
+        Assert.DoesNotContain("Tallene kan være utdaterte", alert.TextContent);
+
+        // The panel and the rows both stay, exactly as they do for the generic failure: it is the
+        // numbers that may now be wrong, not the controls or the list.
+        Assert.NotNull(Facet(cut, "Dødsårsaksregisteret"));
         Assert.Single(cut.FindAll("ul.munin-explorer-data-list > li"));
     }
 

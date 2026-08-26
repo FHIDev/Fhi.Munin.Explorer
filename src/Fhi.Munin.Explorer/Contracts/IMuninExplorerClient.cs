@@ -19,7 +19,8 @@ namespace Fhi.Munin.Explorer.Contracts;
 /// that count comes back as <see cref="MuninExplorerRateLimitedException"/> rather than as the
 /// general failure: it is neither a fault nor a "not published", and the only thing that helps is
 /// waiting — which is why an implementation must not answer it with null, with an empty
-/// collection, or with a retry of its own. The reasoning is on the exception.
+/// collection, with <c>false</c> from one of the writes below, or with a retry of its own. The
+/// reasoning is on the exception.
 /// </para>
 /// <para>
 /// The variable-list methods at the bottom follow the same rule in the shape a write can take it:

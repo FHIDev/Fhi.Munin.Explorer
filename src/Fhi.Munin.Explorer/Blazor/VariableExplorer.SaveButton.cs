@@ -24,8 +24,18 @@ public partial class VariableExplorer
 {
     private bool ShowSaveButton => ListState?.IsAuthenticated == true;
 
-    /// <summary>Rows whose last save attempt threw. Cleared when that row is tried again.</summary>
-    private readonly HashSet<Guid> _saveError = [];
+    /// <summary>
+    /// Rows whose last save attempt threw, against whether the throw was the rate limiter. Cleared
+    /// when that row is tried again.
+    /// </summary>
+    /// <remarks>
+    /// The flag and not the sentence, so the text is still resolved at render time and a host that
+    /// switches language mid-session does not leave one row speaking the old one. Worth telling
+    /// apart here in particular: saving one row after another is the rhythm that meets the limiter,
+    /// and "prøv igjen om litt" is the one piece of advice that cannot help a reader who is being
+    /// throttled.
+    /// </remarks>
+    private readonly Dictionary<Guid, bool> _saveError = [];
 
     private RenderFragment RowSaveButton(VariableSummary v) => builder =>
     {
@@ -35,7 +45,7 @@ public partial class VariableExplorer
         }
 
         var saved = ListState!.IsSaved(v.Id);
-        var failed = _saveError.Contains(v.Id);
+        var failed = _saveError.TryGetValue(v.Id, out var throttled);
 
         // Stiler's own square-button classes and nothing else, the same pair the detail panel's
         // toggles wear. No `munin-explorer-*` name of its own on purpose: the package ships no CSS,
@@ -63,7 +73,7 @@ public partial class VariableExplorer
         builder.AddAttribute(7, "role", "alert");
         builder.AddAttribute(8, "aria-live", "assertive");
         builder.AddAttribute(9, "aria-atomic", "true");
-        builder.AddContent(10, failed ? T.SaveError : null);
+        builder.AddContent(10, failed ? (throttled ? T.RateLimitError : T.SaveError) : null);
         builder.CloseElement();
     };
 
@@ -82,9 +92,15 @@ public partial class VariableExplorer
             _saveError.Remove(v.Id);
             await ListState.ToggleSavedAsync(v.Id, T.FirstListName);
         }
+        catch (MuninExplorerRateLimitedException)
+        {
+            // The writes go through the same client as the reads and meet the same per-address
+            // limiter, so this row's save can be refused while the catalogue is perfectly up.
+            _saveError[v.Id] = true;
+        }
         catch (Exception)
         {
-            _saveError.Add(v.Id);
+            _saveError[v.Id] = false;
         }
 
         StateHasChanged();
