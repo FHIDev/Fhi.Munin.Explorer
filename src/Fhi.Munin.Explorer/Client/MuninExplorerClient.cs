@@ -469,4 +469,42 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
 
         return query.ToString();
     }
+    public async Task<ExportedList> ExportListAsync(
+        IReadOnlyCollection<Guid> variableIds,
+        ExportFormat format = ExportFormat.Xlsx,
+        bool includeKodeverk = false,
+        Guid? kildeIdFilter = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(variableIds);
+
+        using var response = await httpClient
+            .PostAsJsonAsync(
+                "api/explorer/lists/export",
+                new
+                {
+                    variabelIds = variableIds,
+                    format,
+                    includeKodeverk,
+                    kildeIdFilter
+                },
+                Json,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        // Not mapped to null the way a missing variable is: a failed export is a failure, and a
+        // caller that showed "nothing to download" for a 500 would be lying about why.
+        response.EnsureSuccessStatusCode();
+
+        var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+
+        // The API's own name and type. Composing them here would get CSV-with-codebooks wrong: it
+        // answers with a zip of two files, not a csv.
+        var contentType = response.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
+        var fileName = response.Content.Headers.ContentDisposition?.FileNameStar
+            ?? response.Content.Headers.ContentDisposition?.FileName?.Trim('"')
+            ?? "variabelliste";
+
+        return new ExportedList(bytes, contentType, fileName);
+    }
 }

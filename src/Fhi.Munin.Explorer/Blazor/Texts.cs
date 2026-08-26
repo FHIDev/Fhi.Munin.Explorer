@@ -145,6 +145,13 @@ internal sealed record Texts(
     // Shown for an entry whose variable is no longer in the catalogue - retracted, unpublished,
     // or not yet projected. The row stays so the paging totals keep meaning what they say.
     string VariableNoLongerAvailable,
+    // Nedlasting av listen. Formatvalget er to knapper, ikke en nedtrekksliste: det er to
+    // valg, og en liste med to elementer er et klikk mer for det samme.
+    string DownloadList,
+    string DownloadXlsx,
+    string DownloadCsv,
+    string IncludeKodeverk,
+    string DownloadError,
     string HeadingKodeverk,
 
     // The version history in the whole-variable view.
@@ -537,6 +544,11 @@ internal sealed record Texts(
         RemoveFromThisList: "Fjern",
         ListLoadError: "Kunne ikke hente listen nå. Prøv igjen om litt.",
         VariableNoLongerAvailable: "Variabelen er ikke tilgjengelig lenger",
+        DownloadList: "Last ned listen",
+        DownloadXlsx: "Last ned som Excel",
+        DownloadCsv: "Last ned som CSV",
+        IncludeKodeverk: "Ta med kodeverk",
+        DownloadError: "Kunne ikke laste ned nå. Prøv igjen om litt.",
         HeadingKodeverk: "Kodeverk",
         HeadingVersionHistory: "Versjonshistorikk",
         VersionUnnamed: "Versjon uten navn",
@@ -768,6 +780,11 @@ internal sealed record Texts(
         RemoveFromThisList: "Remove",
         ListLoadError: "Could not fetch the list just now. Try again shortly.",
         VariableNoLongerAvailable: "The variable is no longer available",
+        DownloadList: "Download the list",
+        DownloadXlsx: "Download as Excel",
+        DownloadCsv: "Download as CSV",
+        IncludeKodeverk: "Include codebooks",
+        DownloadError: "Could not download just now. Try again shortly.",
         HeadingKodeverk: "Code lists",
         HeadingVersionHistory: "Version history",
         VersionUnnamed: "Version without a name",

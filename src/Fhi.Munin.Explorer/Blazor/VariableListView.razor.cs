@@ -2,6 +2,7 @@ using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -26,6 +27,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 {
     [Inject] private IServiceProvider ServiceProvider { get; set; } = null!;
     [Inject] private IMuninExplorerClient Client { get; set; } = null!;
+    [Inject] private IJSRuntime Js { get; set; } = null!;
 
     private VariableListState? _state;
     private VariableListState? State => _state ??= ServiceProvider.GetService<VariableListState>();
@@ -57,6 +59,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private bool _loading;
     private bool _failed;
     private string _newName = "";
+    private bool _includeKodeverk;
+    private bool _downloading;
+    private bool _downloadFailed;
 
     private IReadOnlyList<VariableList> Lists => State?.Lists ?? [];
 
@@ -242,6 +247,77 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             _pageNumber--;
             await LoadPageAsync();
         }
+    }
+
+    /// <summary>
+    /// Fetches the whole list from the API and hands it to the browser.
+    /// </summary>
+    /// <remarks>
+    /// Every id, not the page on screen: the reader asked for their list, and a download that
+    /// quietly contained only the 25 rows they happened to be looking at would be wrong in a way
+    /// nobody would notice until they opened the file.
+    /// </remarks>
+    private async Task DownloadAsync(ExportFormat format)
+    {
+        if (_shownList is null || _downloading)
+        {
+            return;
+        }
+
+        _downloading = true;
+        _downloadFailed = false;
+
+        try
+        {
+            var ids = await AllVariableIdsAsync();
+
+            if (ids.Count == 0)
+            {
+                return;
+            }
+
+            var file = await Client.ExportListAsync(ids, format, _includeKodeverk);
+            await BrowserDownload.OfferAsync(Js, file);
+        }
+        catch (Exception)
+        {
+            // Includes the browser refusing the blob — a Content-Security-Policy without blob:
+            // would land here. Said out loud rather than left as a button that does nothing.
+            _downloadFailed = true;
+        }
+        finally
+        {
+            _downloading = false;
+        }
+    }
+
+    /// <summary>Every id in the list, read a page at a time.</summary>
+    private async Task<List<Guid>> AllVariableIdsAsync()
+    {
+        var ids = new List<Guid>();
+        var page = 1;
+
+        while (true)
+        {
+            // The API's own ceiling per page, so a long list costs few round trips.
+            var slice = await Client.GetMyListVariablesAsync(_shownList!.Value, page, 1000);
+
+            if (slice is null || slice.Items.Count == 0)
+            {
+                break;
+            }
+
+            ids.AddRange(slice.Items.Select(i => i.VariableId));
+
+            if (ids.Count >= slice.TotalCount)
+            {
+                break;
+            }
+
+            page++;
+        }
+
+        return ids;
     }
 
     public void Dispose()

@@ -320,4 +320,40 @@ public interface IMuninExplorerClient
         Guid id,
         IReadOnlyCollection<Guid> variableIds,
         CancellationToken cancellationToken = default);
+    /// <summary>
+    /// The reader's chosen variables as a file — xlsx, csv, or a zip when codebooks come too.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Anonymous, unlike the rest of <c>my/lists</c>: the ids travel in the body, so the endpoint
+    /// has no need to know whose list they came from. That is why it lives under
+    /// <c>api/explorer/lists</c> rather than <c>my/lists</c>, and why no token is required.
+    /// </para>
+    /// <para>
+    /// The ceiling here is the API's own <c>MaxVariabelCount</c> of 2000, which is not the same
+    /// number as <see cref="MaxVariablesPerBatch"/>, and is enforced server-side with a 400 that
+    /// names it.
+    /// </para>
+    /// </remarks>
+    /// <param name="variableIds">The variables to export.</param>
+    /// <param name="format">Xlsx or Csv. Csv with codebooks answers with a zip.</param>
+    /// <param name="includeKodeverk">Whether to include the codebooks alongside the variables.</param>
+    /// <param name="kildeIdFilter">Optional: only the variables belonging to one kilde.</param>
+    /// <param name="cancellationToken">Cancelled when the caller goes away.</param>
+    /// <para>
+    /// Carries a default body, like <see cref="GetKildePropertyMetadataAsync"/> and for the same
+    /// reader: a host that implements this contract rather than consuming
+    /// <c>MuninExplorerClient</c> would otherwise stop building on the upgrade, and a version
+    /// already on the feed cannot be taken back from whoever restored it. The default refuses
+    /// rather than answering emptily — an empty file is a worse answer than a clear no.
+    /// </para>
+    Task<ExportedList> ExportListAsync(
+        IReadOnlyCollection<Guid> variableIds,
+        ExportFormat format = ExportFormat.Xlsx,
+        bool includeKodeverk = false,
+        Guid? kildeIdFilter = null,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            $"This {nameof(IMuninExplorerClient)} does not implement {nameof(ExportListAsync)}. " +
+            "Consume MuninExplorerClient, or implement the member.");
 }
