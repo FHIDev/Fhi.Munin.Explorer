@@ -49,7 +49,8 @@
 #
 # Usage:
 #   scripts/assert-sample-css-in-step.sh
-#   SAMPLE_CSS_MODERN=… SAMPLE_CSS_LEGACY=… scripts/assert-sample-css-in-step.sh   # tests only
+#   SAMPLE_CSS_MODERN=… SAMPLE_CSS_LEGACY=… HOST_CLASS_NAMES=… \
+#     scripts/assert-sample-css-in-step.sh                                        # tests only
 #
 # Runs from anywhere: the paths below are repo-relative and the script anchors itself to the
 # checkout root, so `bash scripts/assert-sample-css-in-step.sh` from scripts/ means what it says
@@ -76,6 +77,13 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 2
 # watches the check go red), and without the same thing here every branch below — the NAMED/DRAWN
 # split, the rule floor, `missing` against `empty` — is dead on every green run, which is how a
 # guard stops working without anything saying so. SampleCssGuardTest in the test project drives it.
+#
+# HOST_CLASS_NAMES, at clause three, is the third override and exists for the same reason. A
+# stylesheet is not enough to reach that clause: it is the only one whose names come from a second
+# source, and every borrowed name the package emits is in the real fixture today, so the fixture
+# rescues all of them however the stylesheet is mutated. Without a lever on the fixture, clause
+# three is what clause two would be without these two — green on every run and never once seen to
+# bite.
 #
 # Paths are resolved from the checkout root, because of the `cd` above; a test hands in absolute
 # ones.
@@ -323,7 +331,18 @@ fi
 # The half that catches those is HostClassNames in the test project, which renders the component
 # and reads the DOM. Neither is sufficient alone. Do not read a pass here as "every borrowed name
 # is styled".
-HOST_NAMES=test/host-class-names.txt
+#
+# One thing about the reach of this clause, because the message it prints below describes more
+# than it can ever be shown: it reads DRAWN, so an empty rule arrives here as no rule — but only
+# ever for a BORROWED name. A `munin-explorer*` name whose rule is empty trips clause two and
+# exits 1 before this clause is entered, and every name this clause reads is also read by that
+# one. The empty-rule half of the advice below is therefore about names like `caption`, not about
+# ours.
+#
+# Overridable for the same one reason the stylesheets above are: a test hands in a fixture with one
+# borrowed name taken out of it, so that name's only remaining cover is the sample rule, and
+# emptying that rule drives this clause red. Nothing else sets it; CI runs the script bare.
+HOST_NAMES="${HOST_CLASS_NAMES:-test/host-class-names.txt}"
 if [ ! -f "$HOST_NAMES" ]; then
   echo "::error::'$HOST_NAMES' is missing, so the borrowed names below cannot be checked." >&2
   echo "It lists the class names helsedata's own stylesheets define; the header in the file says" >&2
