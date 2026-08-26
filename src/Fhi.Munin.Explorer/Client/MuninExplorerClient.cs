@@ -196,21 +196,22 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
             HttpMethod.Delete, MyListVariables(id), new VariableIdsBody(variableIds), cancellationToken);
     }
 
-    /// <summary>The batch endpoints' bodies, spelled the way the API spells them.</summary>
+    /// <summary>The create and rename body, spelled the way the API spells it.</summary>
     /// <remarks>
-    /// Private records rather than public contracts: a caller passes a name and a collection of
-    /// ids, and the envelope those travel in is this client's business. A host substituting its own
+    /// A private record rather than a public contract: a caller passes a name, and the envelope it
+    /// travels in is this client's business. A host substituting its own
     /// <see cref="IMuninExplorerClient"/> writes its own, and is looking at the API for the shape
-    /// either way.
-    /// <para>
-    /// The wire names are explicit for the same reason every DTO's are. <c>variabelIds</c> in
-    /// particular is not what the web serialiser would derive from <c>VariableIds</c>, and a body
-    /// whose one property is unrecognised binds to null — which the API answers as
-    /// "request body is required", a message that says nothing about the spelling that caused it.
-    /// </para>
+    /// either way. The wire name is explicit for the same reason every DTO's is.
     /// </remarks>
     private sealed record NameBody([property: JsonPropertyName("name")] string Name);
 
+    /// <summary>The batch add and remove body, spelled the way the API spells it.</summary>
+    /// <remarks>
+    /// Private for the same reason <see cref="NameBody"/> is. The wire name matters more here:
+    /// <c>variabelIds</c> is not what the web serialiser would derive from <c>VariableIds</c>, and
+    /// a body whose one property is unrecognised binds to null — which the API answers as
+    /// "request body is required", a message that says nothing about the spelling that caused it.
+    /// </remarks>
     private sealed record VariableIdsBody(
         [property: JsonPropertyName("variabelIds")] IReadOnlyCollection<Guid> VariableIds);
 

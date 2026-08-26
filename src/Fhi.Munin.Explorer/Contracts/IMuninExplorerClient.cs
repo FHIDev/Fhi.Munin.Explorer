@@ -18,9 +18,10 @@ namespace Fhi.Munin.Explorer.Contracts;
 /// The variable-list methods at the bottom follow the same rule in the shape a write can take it:
 /// one that names a list the signed-in user does not have answers <c>false</c> rather than throwing,
 /// because a list deleted in another tab is the same ordinary event as an edited id. They are the
-/// only part of this interface that needs a token, and the only part where an
-/// <see cref="ArgumentException"/> can come back before anything is sent — see
-/// <see cref="MaxVariablesPerBatch"/>.
+/// only part of this interface that needs a token, and the only writes that can come back with an
+/// <see cref="ArgumentException"/> before anything is sent — see <see cref="MaxVariablesPerBatch"/>.
+/// They are not the only methods that can: <see cref="GetKodeverkCodesAsync"/> refuses a path
+/// segment it cannot carry the same way.
 /// </para>
 /// </remarks>
 public interface IMuninExplorerClient
@@ -184,8 +185,16 @@ public interface IMuninExplorerClient
     /// so. A caller doing the splitting knows how far it got, which is what it needs to retry or to
     /// tell the user.
     /// </para>
+    /// <para>
+    /// A <c>static readonly</c> field rather than a <c>const</c>, which reads identically at the
+    /// call site and behaves differently across the package boundary: a const literal is copied
+    /// into the host's IL when the host compiles, so a host that restored a newer
+    /// <c>Fhi.Munin.Explorer</c> after the API raised its ceiling would keep chunking at the old
+    /// number while this assembly's own check used the new one. This way the shipped package is
+    /// the single answer.
+    /// </para>
     /// </remarks>
-    const int MaxVariablesPerBatch = 2000;
+    static readonly int MaxVariablesPerBatch = 2000;
 
     /// <summary>The signed-in user's saved variable lists, newest changes and all. Empty when they have none.</summary>
     /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
@@ -217,6 +226,8 @@ public interface IMuninExplorerClient
     /// Delete one of the signed-in user's lists, and everything in it. False when they have no list
     /// with that id.
     /// </summary>
+    /// <param name="id">The list to delete.</param>
+    /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
     Task<bool> DeleteMyListAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>

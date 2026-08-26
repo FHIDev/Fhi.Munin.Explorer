@@ -6,7 +6,8 @@ using Fhi.Munin.Explorer.Contracts;
 namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
-/// An <see cref="IMuninExplorerClient"/> where every endpoint answers "nothing".
+/// An <see cref="IMuninExplorerClient"/> where every endpoint answers "nothing" — except
+/// <see cref="CreateMyListAsync"/>, which has no honest "nothing" to answer and throws instead.
 /// </summary>
 /// <remarks>
 /// Component tests care about one endpoint each. Deriving from this keeps them from having to

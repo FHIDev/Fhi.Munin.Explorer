@@ -17,7 +17,9 @@ category: Added
   `EnsureSuccessStatusCode` discards. `IMuninExplorerClient.MaxVariablesPerBatch` is that ceiling,
   and splitting is left to the caller on purpose: a client-side split turns one call that either
   happened or did not into several that may have half happened, with nothing in the return value to
-  say which.
+  say which. It is a `static readonly` field rather than a `const` so that the number a host chunks
+  by is the one in the package it restored: a const literal is copied into the host's own assembly
+  when it compiles, and would go on saying 2000 after an upgrade that said otherwise.
 - **A list that is not the caller's answers `false`, or `null` for the paged read.** The API cannot
   distinguish a list deleted in another tab from somebody else's and deliberately does not try -
   both are `404`, so that a caller cannot probe for which list ids exist. That is the same

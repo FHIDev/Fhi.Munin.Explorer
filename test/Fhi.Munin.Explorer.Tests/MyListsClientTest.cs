@@ -62,6 +62,29 @@ public class MyListsClientTest
 
     private static Guid[] Ids(int count) => [.. Enumerable.Range(0, count).Select(_ => Guid.NewGuid())];
 
+    /// <summary>
+    /// Fails when the interface has grown a <c>my/lists</c> method the sweep below does not call.
+    /// </summary>
+    /// <remarks>
+    /// The two sweeps spell their calls out rather than deriving them, because a hand-written call
+    /// is the only way to prove a token reaches the wire. Spelled out, though, they go stale
+    /// silently: an eighth endpoint added to the contract and left out of the arrays leaves exactly
+    /// the hole this file exists to close, and the suite stays green while that call 401s in
+    /// production. Counting the contract's own methods is what reddens this file instead.
+    /// </remarks>
+    private static void AssertEveryMyListsMethodIsSwept(int swept)
+    {
+        var onTheContract = typeof(IMuninExplorerClient)
+            .GetMethods()
+            .Count(method => method.Name.Contains("MyList", StringComparison.Ordinal));
+
+        Assert.True(
+            swept == onTheContract,
+            $"{nameof(IMuninExplorerClient)} has {onTheContract} my/lists methods and this sweep "
+            + $"calls {swept}. Every one of them is [Authorize], so the missing call is one nothing "
+            + "here proves sends the host's token. Add it to the array.");
+    }
+
     /// <summary>What <c>POST /api/explorer/my/lists</c> answers with, under <c>201</c>.</summary>
     private const string CreatedList =
         """{"id":"1f9d0b7e-3c14-4a2f-8f0b-2b6a4f1c9d31","name":"Ny liste","createdAt":"2026-06-02T08:14:37.412+00:00","updatedAt":"2026-06-02T08:14:37.412+00:00"}""";
@@ -237,14 +260,31 @@ public class MyListsClientTest
     [Fact]
     public async Task GetMyListVariablesAsync_WhenTheListIsEmpty_ThenNoPageCountIsInvented()
     {
-        // Nothing to page through, and ceil(0/100) is 0 either way — but the guard on TotalCount is
-        // what keeps a size of zero, which an empty or absent body deserialises to, out of a divide.
+        // Nothing to page through, and ceil(0/100) is 0 either way. It is the guard on TotalCount
+        // that makes this body safe — the size of zero here is never reached.
         var handler = StubHttpHandler.Ok("""{"items":[],"totalCount":0,"page":1,"size":0}""");
 
         var page = await Client(handler).GetMyListVariablesAsync(ListId);
 
         Assert.NotNull(page);
         Assert.Equal(0, page.TotalPages);
+    }
+
+    [Fact]
+    public async Task GetMyListVariablesAsync_WhenTheEnvelopeOmitsSize_ThenNoPageCountIsDerivedRatherThanADivideByZero()
+    {
+        // The body that pins the Size guard, and the only one that does: a positive totalCount with
+        // a size of zero — what an envelope that stopped sending size deserialises to, the DTO's
+        // own default arriving where data was expected. Without `Size: > 0` in the pattern this
+        // throws DivideByZeroException out of a paged read; with it, the count is simply not
+        // derived, because there is no size to derive it from.
+        var handler = StubHttpHandler.Ok("""{"items":[],"totalCount":247,"page":1,"size":0}""");
+
+        var page = await Client(handler).GetMyListVariablesAsync(ListId);
+
+        Assert.NotNull(page);
+        Assert.Equal(0, page.TotalPages);
+        Assert.Equal(247, page.TotalCount);
     }
 
     [Fact]
@@ -281,6 +321,45 @@ public class MyListsClientTest
         Assert.Equal($"{Collection}/{ListId}/variables", handler.LastUri?.AbsolutePath);
         Assert.Equal($$"""{"variabelIds":["{{id}}"]}""", handler.LastBody);
         AssertAuthenticated(handler);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ABatch_WhenItIsEmpty_ThenItIsStillSentBecauseTheAnswerSaysWhetherTheListExists(bool adding)
+    {
+        // The contract says an empty collection is a legitimate call and still goes out. It looks
+        // like a free round trip to skip — `if (variableIds.Count == 0) return true;` — but the
+        // answer is what tells the caller whether the list is still theirs, so short-circuiting it
+        // turns a probe of a list deleted in another tab into a confident true.
+        var handler = StubHttpHandler.Status(HttpStatusCode.NoContent);
+        var client = Client(handler);
+
+        Assert.True(adding
+            ? await client.AddVariablesToMyListAsync(ListId, [])
+            : await client.RemoveVariablesFromMyListAsync(ListId, []));
+
+        Assert.Equal(1, handler.Calls);
+        Assert.Equal($"{Collection}/{ListId}/variables", handler.LastUri?.AbsolutePath);
+        Assert.Equal("""{"variabelIds":[]}""", handler.LastBody);
+        AssertAuthenticated(handler);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AnEmptyBatch_WhenTheUserHasNoSuchList_ThenFalseRatherThanAnAssumedTrue(bool adding)
+    {
+        // The other half of the same point, and the one a short-circuit would get wrong: nothing to
+        // add or remove, but the list is gone, and the caller has to be told.
+        var handler = StubHttpHandler.Status(HttpStatusCode.NotFound);
+        var client = Client(handler);
+
+        Assert.False(adding
+            ? await client.AddVariablesToMyListAsync(ListId, [])
+            : await client.RemoveVariablesFromMyListAsync(ListId, []));
+
+        Assert.Equal(1, handler.Calls);
     }
 
     // ------------------------------------------------------------------------- "no such list of yours"
@@ -392,9 +471,10 @@ public class MyListsClientTest
     {
         // The point of this file in one test. Every one of these endpoints is [Authorize], and a
         // stub handler answers whatever it is told whether or not a token arrived — so a suite that
-        // only checked routes would be green while every call 401s against the real API. Adding an
-        // endpoint to the interface without adding it here leaves that hole open again, which is
-        // why the list is spelled out rather than derived.
+        // only checked routes would be green while every call 401s against the real API. The list
+        // is spelled out rather than derived, because only a real call proves a token reached the
+        // wire — and counted against the contract, so adding an endpoint and forgetting it here
+        // reddens this test rather than reopening the hole.
         var handler = new StubHttpHandler(request =>
         {
             var path = request.RequestUri!.AbsolutePath;
@@ -427,6 +507,8 @@ public class MyListsClientTest
             ("AddVariablesToMyListAsync", () => client.AddVariablesToMyListAsync(ListId, ids)),
             ("RemoveVariablesFromMyListAsync", () => client.RemoveVariablesFromMyListAsync(ListId, ids))
         };
+
+        AssertEveryMyListsMethodIsSwept(calls.Length);
 
         foreach (var (name, call) in calls)
         {
@@ -463,6 +545,8 @@ public class MyListsClientTest
             () => client.AddVariablesToMyListAsync(ListId, ids),
             () => client.RemoveVariablesFromMyListAsync(ListId, ids)
         };
+
+        AssertEveryMyListsMethodIsSwept(calls.Length);
 
         foreach (var call in calls)
         {
