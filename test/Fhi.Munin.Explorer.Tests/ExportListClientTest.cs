@@ -89,21 +89,35 @@ public class ExportListClientTest
     }
 
     [Fact]
-    public async Task ExportListAsync_WhenCsvIsAskedForWithCodebooks_ThenTheAnswerIsAZipAndSaysSo()
+    public async Task ExportListAsync_WhenCodebooksAreAskedFor_ThenTheFlagIsSent()
     {
-        // The trap: CSV with codebooks is two files, so the API answers with a zip. A caller that
-        // composed "variabelliste.csv" from the format it asked for would name it wrongly, and the
-        // reader would get a file their spreadsheet refuses to open.
+        // Only the flag is asserted here. Whether CSV-with-codebooks actually answers as a zip is
+        // the API's behaviour, and a mock that returns whatever the test handed it cannot prove it
+        // — an earlier version of this test asserted the zip and proved nothing but its own setup.
         var handler = new FileHandler("application/zip", "variabelliste-2026-08-26-141530.zip");
 
-        var file = await Client(handler)
-            .ExportListAsync([One], ExportFormat.Csv, includeKodeverk: true);
-
-        Assert.Equal("application/zip", file.ContentType);
-        Assert.EndsWith(".zip", file.FileName, StringComparison.Ordinal);
+        await Client(handler).ExportListAsync([One], ExportFormat.Csv, includeKodeverk: true);
 
         using var sent = JsonDocument.Parse(handler.LastBody!);
         Assert.True(sent.RootElement.GetProperty("includeKodeverk").GetBoolean());
+    }
+
+    [Theory]
+    [InlineData(ExportFormat.Xlsx, "Xlsx")]
+    [InlineData(ExportFormat.Csv, "Csv")]
+    public async Task ExportListAsync_WhenAFormatIsChosen_ThenItIsSentAsItsNameNotItsNumber(
+        ExportFormat format, string expected)
+    {
+        // The API reads enums as PascalCase strings, and this package serialises with
+        // JsonSerializerDefaults.Web, which has no string-enum converter — so an enum sent as
+        // itself goes out as 0 or 1. If the API then falls back to its default, a reader asking for
+        // CSV is handed an xlsx, and nothing anywhere says so.
+        var handler = new FileHandler("text/csv", "variabelliste.csv");
+
+        await Client(handler).ExportListAsync([One], format);
+
+        using var sent = JsonDocument.Parse(handler.LastBody!);
+        Assert.Equal(expected, sent.RootElement.GetProperty("format").GetString());
     }
 
     [Fact]

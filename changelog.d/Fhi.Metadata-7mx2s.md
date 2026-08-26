@@ -23,4 +23,4 @@ category: Added
   than a clear no.
 - **A refusal from the browser is said out loud.** A Content-Security-Policy without `blob:` would
   land in the catch, and the reader is told, rather than left with a button that appears to do
-  nothing. Whether helsedata's policy allows it is not yet known — Fhi.Metadata-vsrys.
+  nothing. A host whose Content-Security-Policy omits `blob:` will see that message.

@@ -294,7 +294,10 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// <summary>Every id in the list, read a page at a time.</summary>
     private async Task<List<Guid>> AllVariableIdsAsync()
     {
-        var ids = new List<Guid>();
+        // A set, not a list, for the reason LoadMembershipAsync uses one: the list can be changed
+        // in another tab while these pages are being read, and an entry that drifts across a page
+        // boundary would otherwise appear twice in the downloaded file.
+        var ids = new HashSet<Guid>();
         var page = 1;
 
         while (true)
@@ -307,7 +310,10 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 break;
             }
 
-            ids.AddRange(slice.Items.Select(i => i.VariableId));
+            foreach (var item in slice.Items)
+            {
+                ids.Add(item.VariableId);
+            }
 
             if (ids.Count >= slice.TotalCount)
             {
@@ -317,7 +323,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             page++;
         }
 
-        return ids;
+        return [.. ids];
     }
 
     public void Dispose()
