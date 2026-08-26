@@ -23,7 +23,12 @@
 # kilde view arrived in #43 with nine names of its own and no rules for any of them in either
 # copy, and a check that only compared the two files called that green.
 #
-# So the second clause reads the names out of src/ and asks the stylesheet for a rule for each.
+# So the second clause reads the names out of src/ and asks the stylesheet, for each, for a rule
+# that DOES something. Not merely one that names it: an empty block draws exactly what no block
+# draws, so a check that stops at the selector reports a rule nobody wrote a declaration into as
+# coverage. The facet fold is the shape to keep in mind — the selector for it was never the
+# missing half, the declaration that undoes the fold on a host with room for a sidebar was.
+#
 # Every name in the `munin-explorer` prefix is OURS: the package owns that prefix, and nothing
 # outside this repository is obliged to style any of it. There used to be a second category —
 # names in the old `variable-explorer` prefix that were helsedata's, read back off their compiled
@@ -44,6 +49,8 @@
 #
 # Usage:
 #   scripts/assert-sample-css-in-step.sh
+#   SAMPLE_CSS_MODERN=… SAMPLE_CSS_LEGACY=… HOST_CLASS_NAMES=… \
+#     scripts/assert-sample-css-in-step.sh                                        # tests only
 #
 # Runs from anywhere: the paths below are repo-relative and the script anchors itself to the
 # checkout root, so `bash scripts/assert-sample-css-in-step.sh` from scripts/ means what it says
@@ -61,8 +68,27 @@ set -uo pipefail
 # bug this line is here to fix.
 cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 2
 
-MODERN="samples/ModernHost/wwwroot/host.css"
-LEGACY="samples/LegacyHost/wwwroot/css/host.css"
+# The two copies — overridable, and for one reason only: so a test can run this whole script,
+# every clause of it unchanged, against a stylesheet it has deliberately broken. Nothing else sets
+# these; CI and the pre-PR checklist run the script bare and get the samples.
+#
+# The seam is here because the riskier half of this check is the shell half. Its C# twin has one
+# already (HostClassNames.OrphansIn takes a stylesheet, so a test empties a rule in memory and
+# watches the check go red), and without the same thing here every branch below — the NAMED/DRAWN
+# split, the rule floor, `missing` against `empty` — is dead on every green run, which is how a
+# guard stops working without anything saying so. SampleCssGuardTest in the test project drives it.
+#
+# HOST_CLASS_NAMES, at clause three, is the third override and exists for the same reason. A
+# stylesheet is not enough to reach that clause: it is the only one whose names come from a second
+# source, and every borrowed name the package emits is in the real fixture today, so the fixture
+# rescues all of them however the stylesheet is mutated. Without a lever on the fixture, clause
+# three is what clause two would be without these two — green on every run and never once seen to
+# bite.
+#
+# Paths are resolved from the checkout root, because of the `cd` above; a test hands in absolute
+# ones.
+MODERN="${SAMPLE_CSS_MODERN:-samples/ModernHost/wwwroot/host.css}"
+LEGACY="${SAMPLE_CSS_LEGACY:-samples/LegacyHost/wwwroot/css/host.css}"
 
 # Names in the prefix that belong to someone else, not to us — styled wherever the component is
 # mounted whether or not this sample styles them, so a missing rule here is not a missing rule
@@ -113,12 +139,12 @@ if ! cmp -s "$MODERN" "$LEGACY"; then
   exit 1
 fi
 
-# Both clauses below ask whether the stylesheet mentions a selector, by searching its text. That
-# question has to be put to the RULES only. This file carries more prose than CSS, and a comment
-# naming a selector is indistinguishable from a rule declaring one to a substring search — the
-# comment above the kildetype badge, which exists to record that helsedata has no `tag` class,
-# was written with a leading dot and made this check answer "styled" for that very name. A check
-# a comment can satisfy is a check prose can switch off, so strip them first.
+# Both clauses below ask whether a selector is drawn, by searching text. That question has to be
+# put to the RULES only. This file carries more prose than CSS, and a comment naming a selector is
+# indistinguishable from a rule declaring one to a substring search — the comment above the
+# kildetype badge, which exists to record that helsedata has no `tag` class, was written with a
+# leading dot and made this check answer "styled" for that very name. A check a comment can satisfy
+# is a check prose can switch off, so strip them first.
 STRIPPED=$(mktemp)
 trap 'rm -f "$STRIPPED"' EXIT
 perl -0pe 's{/\*.*?\*/}{ }gs' "$MODERN" > "$STRIPPED"
@@ -129,6 +155,60 @@ perl -0pe 's{/\*.*?\*/}{ }gs' "$MODERN" > "$STRIPPED"
 if [ ! -s "$STRIPPED" ]; then
   echo "::error::Stripping comments from '$MODERN' produced nothing, so the checks below would" >&2
   echo "report every class name as unstyled. Is perl on PATH?" >&2
+  exit 2
+fi
+
+# The rules themselves, cut apart into selector and declaration block, because "does the file
+# mention this name" and "does the file draw this name" are different questions and only the
+# second one is worth asking. NAMED holds the selector of every rule; DRAWN holds the selector of
+# every rule that declares something. A name in NAMED and not in DRAWN has a rule with nothing in
+# it, which renders identically to having no rule at all — and the two are reported apart below,
+# because "unstyled" alone sends a reader looking for a rule that is sitting right there empty.
+#
+# Innermost blocks only — `[^{}]` on both sides — so the rules inside an `@media` are read as
+# themselves rather than swallowed whole by the at-rule. Whitespace in a selector is squeezed to
+# single spaces so a selector broken across lines still arrives as one line here. This mirrors
+# HostClassNames.CssRule in the test project, which does the same thing to the same file.
+#
+# An `@media` is not the only thing shaped like a block holding a block, and the other one is NOT
+# handled the same way: a NESTED rule has the same shape and comes out wrong. Given
+#
+#   .munin-explorer-x { color: red; & .child { color: blue; } }
+#
+# the only innermost block is the child's, so the selector recorded is `color: red; & .child` —
+# `.munin-explorer-x` reaches neither NAMED nor DRAWN, and its own declarations arrive on the
+# selector side. A name styled only by such a rule is then reported as `missing`, pointing the
+# reader at a rule that is sitting right there with declarations in it, which is the confusion the
+# `empty` bucket below exists to avoid. Loud rather than silent, and the samples nest nothing today
+# (228 rules, all captured) — but the day they do, this extraction has to learn about it rather
+# than the reader having to.
+RULES=$(mktemp)
+NAMED=$(mktemp)
+DRAWN=$(mktemp)
+trap 'rm -f "$STRIPPED" "$RULES" "$NAMED" "$DRAWN"' EXIT
+
+perl -0ne '
+  while (/([^{}]*)\{([^{}]*)\}/g) {
+    my ($selector, $declarations) = ($1, $2);
+    $selector =~ s/\s+/ /g;
+    $selector =~ s/^ //;
+    $selector =~ s/ $//;
+    # Whitespace and stray semicolons are not declarations: `{ ; }` is as silent as `{}`.
+    my $verdict = $declarations =~ /[^\s;]/ ? "drawn" : "empty";
+    print "$verdict\t$selector\n";
+  }' "$STRIPPED" > "$RULES"
+
+cut -f2- < "$RULES" > "$NAMED"
+grep $'^drawn\t' "$RULES" | cut -f2- > "$DRAWN"
+
+# The same guard the stripping above gets, for the same reason: an extraction that finds nothing
+# would report every name as unstyled, loudly and about the wrong thing. A floor rather than a
+# count — the stylesheet yields 228 rules today, and a stale regex yields a handful.
+MIN_RULES=50
+if [ "$(wc -l < "$DRAWN")" -lt "$MIN_RULES" ]; then
+  echo "::error::Read only $(wc -l < "$DRAWN") non-empty rule(s) out of '$MODERN', below the floor" >&2
+  echo "of $MIN_RULES. The rule extraction in this script has gone stale against the stylesheet, so" >&2
+  echo "the checks below would report every class name as unstyled. Fix the extraction." >&2
   exit 2
 fi
 
@@ -173,7 +253,14 @@ if [ "${#names[@]}" -lt "$MIN_NAMES" ]; then
   exit 2
 fi
 
+# The exception lists are applied BEFORE the check, not after it, and that ordering is the whole
+# reason they survive a stricter check. `munin-explorer-source` is the case to understand rather
+# than delete: it is an id prefix and not a class — the region wears `munin-explorer-drilldown`,
+# the id is `munin-explorer-source-{instance}` — so `.munin-explorer-source` selects nothing, no
+# stylesheet can have a rule for it, and demanding a declaration for it would fail forever. The
+# entry in IDS is the answer; removing it to make this loop green is not.
 missing=()
+empty=()
 for name in "${names[@]}"; do
   case " ${THEIRS[*]} ${IDS[*]} " in
     *" $name "*) continue ;;
@@ -181,18 +268,38 @@ for name in "${names[@]}"; do
 
   # Anchored on both sides so `.munin-explorer-period__fill` does not answer for
   # `.munin-explorer-period`: a rule for the part is not a rule for the whole.
-  grep -qE "\.${name}([^A-Za-z0-9_-]|\$)" "$STRIPPED" || missing+=("$name")
+  if grep -qE "\.${name}([^A-Za-z0-9_-]|\$)" "$DRAWN"; then
+    continue
+  fi
+
+  if grep -qE "\.${name}([^A-Za-z0-9_-]|\$)" "$NAMED"; then
+    empty+=("$name")
+  else
+    missing+=("$name")
+  fi
 done
 
-if [ ${#missing[@]} -gt 0 ]; then
-  echo "::error::The sample stylesheet has no rule for ${#missing[@]} class name(s) the package invents:" >&2
-  printf '  %s\n' "${missing[@]}" >&2
+if [ ${#missing[@]} -gt 0 ] || [ ${#empty[@]} -gt 0 ]; then
+  if [ ${#missing[@]} -gt 0 ]; then
+    echo "::error::The sample stylesheet has no rule for ${#missing[@]} class name(s) the package invents:" >&2
+    printf '  %s\n' "${missing[@]}" >&2
+  fi
+
+  if [ ${#empty[@]} -gt 0 ]; then
+    echo "::error::The sample stylesheet names ${#empty[@]} class name(s) the package invents in a" >&2
+    echo "selector and then declares nothing under it:" >&2
+    printf '  %s\n' "${empty[@]}" >&2
+    echo "" >&2
+    echo "An empty block draws what no block draws, so the rule is coverage on paper only." >&2
+  fi
+
   echo "" >&2
   echo "Each renders at raw browser defaults in both samples, which reads as a bug in the" >&2
   echo "component rather than as a host that has not been asked for the rule. Add a rule to" >&2
   echo "$LEGACY, copy it over $MODERN — or, if the name turns out" >&2
   echo "to be borrowed rather than ours, add it to THEIRS at the top of this script and say which" >&2
-  echo "stylesheet you read it back off." >&2
+  echo "stylesheet you read it back off. If it is not a class at all — an id prefix, the way" >&2
+  echo "munin-explorer-source is — it belongs in IDS instead, with a note saying so." >&2
   exit 1
 fi
 
@@ -224,7 +331,18 @@ fi
 # The half that catches those is HostClassNames in the test project, which renders the component
 # and reads the DOM. Neither is sufficient alone. Do not read a pass here as "every borrowed name
 # is styled".
-HOST_NAMES=test/host-class-names.txt
+#
+# One thing about the reach of this clause, because the message it prints below describes more
+# than it can ever be shown: it reads DRAWN, so an empty rule arrives here as no rule — but only
+# ever for a BORROWED name. A `munin-explorer*` name whose rule is empty trips clause two and
+# exits 1 before this clause is entered, and every name this clause reads is also read by that
+# one. The empty-rule half of the advice below is therefore about names like `caption`, not about
+# ours.
+#
+# Overridable for the same one reason the stylesheets above are: a test hands in a fixture with one
+# borrowed name taken out of it, so that name's only remaining cover is the sample rule, and
+# emptying that rule drives this clause red. Nothing else sets it; CI runs the script bare.
+HOST_NAMES="${HOST_CLASS_NAMES:-test/host-class-names.txt}"
 if [ ! -f "$HOST_NAMES" ]; then
   echo "::error::'$HOST_NAMES' is missing, so the borrowed names below cannot be checked." >&2
   echo "It lists the class names helsedata's own stylesheets define; the header in the file says" >&2
@@ -253,9 +371,13 @@ if [ "${#emitted[@]}" -lt "$MIN_EMITTED" ]; then
   exit 2
 fi
 
+# Against DRAWN rather than STRIPPED, same as clause two: a rule the samples wrote with an empty
+# block is not styling, here either. The fixture on the next line is a list of names and not a
+# stylesheet, so nothing can be asked of helsedata's declarations — what that half claims is only
+# that the name is one their stylesheets define.
 orphans=()
 for name in "${emitted[@]}"; do
-  grep -qE "\.${name}([^A-Za-z0-9_-]|\$)" "$STRIPPED" && continue
+  grep -qE "\.${name}([^A-Za-z0-9_-]|\$)" "$DRAWN" && continue
   grep -qxF "$name" "$HOST_NAMES" && continue
   orphans+=("$name")
 done
@@ -267,11 +389,13 @@ if [ ${#orphans[@]} -gt 0 ]; then
   echo "" >&2
   echo "Each renders unstyled on helsedata.no. Either it is a typo for a real host name — check" >&2
   echo "$HOST_NAMES for what they actually define — or it is a name of ours that still needs a" >&2
-  echo "rule in $LEGACY, copied over $MODERN." >&2
+  echo "rule in $LEGACY, copied over $MODERN. This clause reads DRAWN, so" >&2
+  echo "'no rule' includes a rule that names it and declares nothing: look for the selector before" >&2
+  echo "concluding it is absent, because an empty block reaches here as though it were." >&2
   exit 1
 fi
 
-echo "Sample host stylesheets are in step ($(wc -l < "$MODERN" | tr -d ' ') lines), style every name"
-echo "the package invents, and every borrowed name in a class attribute is one a host stylesheet"
-echo "defines. Names reaching the DOM through helper arguments are checked by HostClassNames in the"
-echo "test project, not here."
+echo "Sample host stylesheets are in step ($(wc -l < "$MODERN" | tr -d ' ') lines), declare something"
+echo "under every name the package invents, and every borrowed name in a class attribute is one a"
+echo "host stylesheet defines. Names reaching the DOM through helper arguments are checked by"
+echo "HostClassNames in the test project, not here."
