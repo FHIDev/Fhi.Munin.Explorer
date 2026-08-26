@@ -24,6 +24,38 @@ public sealed partial class VariableListState
     /// </summary>
     public bool IsSaved(Guid variableId) => _saved.Contains(variableId);
 
+    /// <summary>
+    /// Picks the reader's first list as the active one and reads what is in it, so the rows know
+    /// which variables are already saved before anybody presses anything.
+    /// </summary>
+    /// <remarks>
+    /// Without this the set is empty until the first save, and a variable the reader saved
+    /// yesterday renders as "not saved" — so the button offers to save it and the press takes it
+    /// out instead. The label, the action and the state have to agree on the very first render.
+    /// A reader with no list yet gets none made here: that happens on the first save, where it is
+    /// something they asked for.
+    /// </remarks>
+    public async Task EnsureActiveListAsync(CancellationToken cancellationToken = default)
+    {
+        if (!IsAuthenticated || _activeListId is not null)
+        {
+            return;
+        }
+
+        var startedAt = _generation;
+        await EnsureLoadedAsync(cancellationToken).ConfigureAwait(false);
+
+        if (!StillCurrent(startedAt))
+        {
+            return;
+        }
+
+        if (_lists.FirstOrDefault() is { } first)
+        {
+            await SetActiveListAsync(first.Id, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
     /// <summary>Chooses which list saves go to, and reads what is already in it.</summary>
     public async Task SetActiveListAsync(Guid listId, CancellationToken cancellationToken = default)
     {
@@ -62,7 +94,7 @@ public sealed partial class VariableListState
         // reader's variable back into the set the sign-out just cleared.
         var startedAt = _generation;
 
-        await EnsureLoadedAsync(cancellationToken).ConfigureAwait(false);
+        await EnsureActiveListAsync(cancellationToken).ConfigureAwait(false);
 
         if (!StillCurrent(startedAt))
         {
@@ -71,16 +103,12 @@ public sealed partial class VariableListState
 
         if (_activeListId is null)
         {
-            var target = _lists.FirstOrDefault();
+            // No list to pick, so this save makes one — the reader asked for somewhere to put it.
+            var target = await CreateAsync(nameForFirstList, cancellationToken).ConfigureAwait(false);
 
             if (target is null)
             {
-                target = await CreateAsync(nameForFirstList, cancellationToken).ConfigureAwait(false);
-
-                if (target is null)
-                {
-                    return false;
-                }
+                return false;
             }
 
             await SetActiveListAsync(target.Id, cancellationToken).ConfigureAwait(false);

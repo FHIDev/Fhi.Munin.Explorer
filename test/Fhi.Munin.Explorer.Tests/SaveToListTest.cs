@@ -187,6 +187,50 @@ public class SaveToListTest : BunitContext
         Assert.Single(client.Stored);
     }
 
+    [Fact]
+    public void Row_WhenTheVariableIsAlreadyInTheList_ThenTheFirstRenderSaysSo()
+    {
+        // Without preloading the membership the set is empty until the first save, so a variable
+        // saved yesterday offers «Lagre i liste» and the press takes it out — the label and the
+        // action disagreeing about the same variable, on the very first render.
+        var already = Variable("Alder ved diagnose", "V_BDR.ALDER");
+        var client = new ListClient(OnePage(already));
+        client.Stored.Add(already.Id);
+
+        var cut = RenderSignedIn(client);
+
+        Assert.Equal("true", SaveButton(cut).GetAttribute("aria-pressed"));
+    }
+
+    [Fact]
+    public void Row_WhenAnAlreadySavedVariableIsPressed_ThenItIsRemovedRatherThanAddedTwice()
+    {
+        var already = Variable("Alder ved diagnose", "V_BDR.ALDER");
+        var client = new ListClient(OnePage(already));
+        client.Stored.Add(already.Id);
+        var cut = RenderSignedIn(client);
+
+        SaveButton(cut).Click();
+
+        Assert.Equal(1, client.RemoveCalls);
+        Assert.Equal(0, client.AddCalls);
+        Assert.Empty(client.Stored);
+    }
+
+    [Fact]
+    public void Row_WhenNothingHasFailed_ThenTheAlertContainerIsAlreadyInTheDom()
+    {
+        // A role="alert" inserted and filled in the same update is announced unreliably. The
+        // container is here from the start, empty — the shape the component's own alert region uses.
+        var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER")));
+
+        var cut = RenderSignedIn(client);
+
+        var alert = cut.FindAll(".munin-explorer-dataitem-main [role=alert]");
+        Assert.Single(alert);
+        Assert.Equal("", alert[0].TextContent.Trim());
+    }
+
     // -----------------------------------------------------------------------
     // The trap.
     // -----------------------------------------------------------------------

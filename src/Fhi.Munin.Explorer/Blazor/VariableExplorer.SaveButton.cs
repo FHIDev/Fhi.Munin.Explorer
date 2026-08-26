@@ -54,13 +54,17 @@ public partial class VariableExplorer
 
         // Said in the row rather than the component's alert region: the other rows are unaffected,
         // and the reader needs it beside the control that did not do what they asked.
-        if (failed)
-        {
-            builder.OpenElement(6, "span");
-            builder.AddAttribute(7, "role", "alert");
-            builder.AddContent(8, T.SaveError);
-            builder.CloseElement();
-        }
+        //
+        // The container is always here, empty when nothing is wrong — the same shape the component's
+        // own alert region uses (VariableExplorer.razor:286). A role="alert" element that is
+        // inserted and filled in the same DOM update is announced unreliably; one that is already
+        // there and gains text is announced.
+        builder.OpenElement(6, "span");
+        builder.AddAttribute(7, "role", "alert");
+        builder.AddAttribute(8, "aria-live", "assertive");
+        builder.AddAttribute(9, "aria-atomic", "true");
+        builder.AddContent(10, failed ? T.SaveError : null);
+        builder.CloseElement();
     };
 
     private async Task ToggleSavedAsync(VariableSummary v)
