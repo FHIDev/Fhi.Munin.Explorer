@@ -66,6 +66,14 @@ internal static class HostClassNames
             " "));
 
     /// <summary>
+    /// The sample stylesheet as the checks here see it, comments already gone. Exposed so a test
+    /// can ask what this file answers for a stylesheet that is the sample one with one rule
+    /// emptied — the mutation the guard exists to catch, which cannot be staged any other way
+    /// without editing a file the rest of the suite reads.
+    /// </summary>
+    internal static string SampleCss => SampleStylesheet.Value;
+
+    /// <summary>
     /// The names among <paramref name="rendered"/> that no stylesheet draws — the ones no rule
     /// names at all, and the ones a rule names and then says nothing about. Empty is the passing
     /// answer; anything else names a class that will render unstyled on helsedata.no.
@@ -81,11 +89,36 @@ internal static class HostClassNames
     /// looking for a rule that is sitting right there with nothing in it.
     /// </summary>
     internal static IReadOnlyList<string> Orphans(IEnumerable<string> rendered) =>
-        [.. rendered.Distinct(StringComparer.Ordinal)
-                    .Where(name => !TheirNames.Value.Contains(name))
-                    .Select(SampleVerdict)
-                    .OfType<string>()
-                    .Order(StringComparer.Ordinal)];
+        OrphansIn(SampleStylesheet.Value, rendered);
+
+    /// <summary>
+    /// <see cref="Orphans"/> asked of any stylesheet rather than of the sample one. The seam is
+    /// there for the test that proves this check bites: emptying a rule in
+    /// <c>samples/LegacyHost/wwwroot/css/host.css</c> is the experiment, and doing it in memory is
+    /// the only way to run the experiment inside the suite instead of by hand.
+    ///
+    /// The rules are cut once here rather than once per name, so the names arriving from a render
+    /// are all answered off one parse.
+    /// </summary>
+    internal static IReadOnlyList<string> OrphansIn(string stylesheet, IEnumerable<string> rendered)
+    {
+        var rules = RulesIn(stylesheet);
+
+        return [.. rendered.Distinct(StringComparer.Ordinal)
+                           .Where(name => !TheirNames.Value.Contains(name))
+                           .Select(name => Verdict(rules, name))
+                           .OfType<string>()
+                           .Order(StringComparer.Ordinal)];
+    }
+
+    /// <summary>
+    /// Every rule in a stylesheet, selector cut from declarations. Comments go first, for the
+    /// reason <see cref="SampleStylesheet"/> gives — stripping text already stripped costs a pass
+    /// and changes nothing, which is the price of letting a test hand in a stylesheet of its own.
+    /// </summary>
+    private static IReadOnlyList<(string Selector, string Declarations)> RulesIn(string stylesheet) =>
+        [.. CssRule.Matches(CssComment.Replace(stylesheet, " "))
+                   .Select(m => (m.Groups["selector"].Value.Trim(), m.Groups["declarations"].Value))];
 
     /// <summary>
     /// True for the structural names this package invented, as opposed to the ones it took over from
@@ -117,26 +150,32 @@ internal static class HostClassNames
     /// declaration that made it mean something was not.
     /// </summary>
     internal static IReadOnlyList<(string Selector, string Declarations)> SampleDeclarationsFor(string name) =>
-        [.. CssRule.Matches(SampleStylesheet.Value)
-                   .Where(m => Mentions(m.Groups["selector"].Value, name))
-                   .Select(m => (m.Groups["selector"].Value.Trim(), m.Groups["declarations"].Value))];
+        DeclarationsFor(SampleStylesheet.Value, name);
 
     /// <summary>
-    /// Null when the sample stylesheet really draws <paramref name="name"/>; otherwise the line
+    /// <see cref="SampleDeclarationsFor"/> asked of any stylesheet, for the same reason
+    /// <see cref="OrphansIn"/> exists.
+    /// </summary>
+    internal static IReadOnlyList<(string Selector, string Declarations)> DeclarationsFor(
+        string stylesheet, string name) =>
+        [.. RulesIn(stylesheet).Where(rule => Mentions(rule.Selector, name))];
+
+    /// <summary>
+    /// Null when <paramref name="rules"/> really draw <paramref name="name"/>; otherwise the line
     /// <see cref="Orphans"/> reports for it.
     /// </summary>
-    private static string? SampleVerdict(string name)
+    private static string? Verdict(IReadOnlyList<(string Selector, string Declarations)> rules, string name)
     {
-        var rules = SampleDeclarationsFor(name);
+        var naming = rules.Where(rule => Mentions(rule.Selector, name)).ToList();
 
-        if (rules.Count == 0)
+        if (naming.Count == 0)
         {
             return name;
         }
 
-        return rules.Any(rule => Declares(rule.Declarations))
+        return naming.Any(rule => Declares(rule.Declarations))
             ? null
-            : $"{name} (named by {rules.Count} rule(s) in the sample stylesheet, every one of them empty)";
+            : $"{name} (named by {naming.Count} rule(s) in the stylesheet, every one of them empty)";
     }
 
     /// <summary>

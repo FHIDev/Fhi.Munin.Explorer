@@ -4356,6 +4356,25 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
+    public void Codes_WhenAListIsOpen_ThenEveryClassNameIsOneSomeStylesheetActuallyDefines()
+    {
+        // The Orphans check reaches only as far as the markup a render produces, and the renders
+        // that carry it elsewhere in this file all stop at a closed result list or an opened panel
+        // with no code list in it. So the names under an open kodeverk — `munin-explorer-codes` and
+        // its table — were the guard's blind spot rather than its coverage: emptying their rules in
+        // both sample stylesheets left the whole suite green while the shell guard went red.
+        //
+        // This render is the deepest the component goes: a row open, the Data tab selected, and a
+        // code list fetched and drawn under it.
+        var cut = OpenData(KodeverkRows());
+
+        CodeToggles(cut)[0].Click();
+
+        Assert.NotNull(Panel(cut).QuerySelector(".munin-explorer-codes table"));
+        Assert.Equal([], HostClassNames.Orphans(HostClassNames.Of(cut.FindAll("[class]"))));
+    }
+
+    [Fact]
     public void Codes_WhenTheApiPublishesNoneForTheLink_ThenTheListSaysSoRatherThanFailing()
     {
         // A reference the upstream register does not know answers 404, which the client reports as
