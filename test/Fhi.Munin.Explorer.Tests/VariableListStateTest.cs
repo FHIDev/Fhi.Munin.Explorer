@@ -280,6 +280,51 @@ public class VariableListStateTest : BunitContext
         Assert.Empty(state.Lists);
     }
 
+    /// <summary>A client whose add is held open until the test lets it finish.</summary>
+    private sealed class BlockingAddClient : EmptyMuninExplorerClient
+    {
+        private readonly TaskCompletionSource<bool> _gate = new();
+
+        public void Answer() => _gate.SetResult(true);
+
+        public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<VariableList>>([new VariableList { Id = Guid.NewGuid(), Name = "Mine" }]);
+
+        public override Task<Page<VariableListItem>?> GetMyListVariablesAsync(
+            Guid id, int page = 1, int pageSize = 100, CancellationToken cancellationToken = default) =>
+            Task.FromResult<Page<VariableListItem>?>(new Page<VariableListItem>
+            {
+                Items = [],
+                TotalCount = 0,
+                PageNumber = 1,
+                Size = pageSize,
+                TotalPages = 1
+            });
+
+        public override Task<bool> AddVariablesToMyListAsync(
+            Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default) =>
+            _gate.Task;
+    }
+
+    [Fact]
+    public async Task State_WhenTheReaderSignsOutWhileASaveIsInFlight_ThenTheVariableIsNotPutBack()
+    {
+        // The same disclosure as the list names, one layer down: the add succeeds on the server
+        // because it went out under the old token, and without the generation guard the
+        // continuation would put that reader's variable back into the set the sign-out cleared.
+        var client = new BlockingAddClient();
+        var state = new VariableListState(client);
+        state.SetAuthenticated(true);
+        var variableId = Guid.NewGuid();
+
+        var inFlight = state.ToggleSavedAsync(variableId, "Min variabelliste");
+        state.SetAuthenticated(false);
+        client.Answer();
+        await inFlight;
+
+        Assert.False(state.IsSaved(variableId));
+    }
+
     [Fact]
     public async Task State_WhenThreeSurfacesMountTogether_ThenTheListsAreReadOnce()
     {

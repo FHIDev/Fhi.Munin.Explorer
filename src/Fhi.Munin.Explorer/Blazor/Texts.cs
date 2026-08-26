@@ -124,6 +124,14 @@ internal sealed record Texts(
     string StatisticsYearly,
     string StatisticsAccumulated,
     string ShowWholeVariable,
+    // The row's save action, in both of its states. One control, two words: the button says
+    // what pressing it does, not what the variable currently is.
+    string SaveToList,
+    string RemoveFromList,
+    // The list made for a reader who saves before they have made one themselves.
+    string FirstListName,
+    // Said in the row, beside the button that failed - the rest of the results are unaffected.
+    string SaveError,
     string HeadingKodeverk,
 
     // The version history in the whole-variable view.
@@ -503,6 +511,10 @@ internal sealed record Texts(
         StatisticsYearly: "\u00c5rsbasert",
         StatisticsAccumulated: "Akkumulert",
         ShowWholeVariable: "Vis hele variabelen",
+        SaveToList: "Lagre i liste",
+        RemoveFromList: "Fjern fra liste",
+        FirstListName: "Min variabelliste",
+        SaveError: "Kunne ikke lagre nå. Prøv igjen om litt.",
         HeadingKodeverk: "Kodeverk",
         HeadingVersionHistory: "Versjonshistorikk",
         VersionUnnamed: "Versjon uten navn",
@@ -721,6 +733,10 @@ internal sealed record Texts(
         StatisticsYearly: "Yearly",
         StatisticsAccumulated: "Accumulated",
         ShowWholeVariable: "Show the whole variable",
+        SaveToList: "Save to list",
+        RemoveFromList: "Remove from list",
+        FirstListName: "My variable list",
+        SaveError: "Could not save just now. Try again shortly.",
         HeadingKodeverk: "Code lists",
         HeadingVersionHistory: "Version history",
         VersionUnnamed: "Version without a name",

@@ -23,5 +23,18 @@ public partial class VariableExplorer
     private VariableListState? ListState =>
         _listState ??= ServiceProvider.GetService<VariableListState>();
 
-    protected override void OnParametersSet() => ListState?.SetAuthenticated(IsAuthenticated);
+    protected override async Task OnParametersSetAsync()
+    {
+        if (ListState is null)
+        {
+            return;
+        }
+
+        ListState.SetAuthenticated(IsAuthenticated);
+
+        // Read what is already in the reader's list before the rows draw their buttons. Without it
+        // the set is empty on the first render, so a variable saved earlier offers "save" and the
+        // press removes it — the label and the action disagreeing about the same variable.
+        await ListState.EnsureActiveListAsync();
+    }
 }
