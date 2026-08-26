@@ -10,7 +10,7 @@
       "kildeKortNavn": "BDR",
       "datasamlingName": "Førstegangsregistrering",
       "variabelgruppeName": "Ikke oppgitt",
-      "dataType": "Integer",
+      "dataType": "2",
       "dataFrom": "2021-08-01T00:00:00.000Z",
       "dataTo": null,
       "versjonStatus": "Active"

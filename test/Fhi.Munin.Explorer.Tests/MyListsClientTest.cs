@@ -232,8 +232,13 @@ public class MyListsClientTest
         Assert.Equal("BDR", first.KildeShortName);
         Assert.Equal("Førstegangsregistrering", first.DatasamlingName);
         Assert.Equal("Ikke oppgitt", first.VariabelgruppeName);
-        Assert.Equal("Integer", first.DataType);
-        Assert.Equal(2021, first.DataFrom?.Year);
+        // The same code the search results carry — both endpoints read DataType from the same
+        // ExplorerVariabelView, so this is not a display value and not a second vocabulary.
+        Assert.Equal("2", first.DataType);
+        // The whole instant, not just the year: the API writes .fffZ, and a value that lost its
+        // zone would be read in the machine's own and still land on 2021 — which is how a
+        // timezone regression passes a year assertion.
+        Assert.Equal(new DateTimeOffset(2021, 8, 1, 0, 0, 0, TimeSpan.Zero), first.DataFrom);
         Assert.Null(first.DataTo);
         // "Active"/"Historical" are the enum's own names — the API writes it PascalCase with no
         // converter attribute, and the sibling fixtures for VariableSummary use the same.
