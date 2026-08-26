@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Fhi.Munin.Explorer.Contracts;
 
 namespace Fhi.Munin.Explorer.Client;
@@ -114,6 +115,204 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
                   + $"/{EscapePathSegment(kodeverkReference, nameof(kodeverkReference))}/codes";
 
         return GetOrNullAsync<KodeverkCodes>(url, cancellationToken);
+    }
+
+    // ------------------------------------------------------------------ the user's own variable lists
+
+    public async Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
+        // A user with no lists is answered with an empty array rather than a 404, so the null arm
+        // here is only ever the endpoint moving. It reads as "no lists" either way, which is the
+        // same bargain GetKilderAsync makes.
+        await GetOrNullAsync<IReadOnlyList<VariableList>>(MyLists, cancellationToken) ?? [];
+
+    public async Task<VariableList> CreateMyListAsync(string name, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+
+        using var response = await SendAsync(HttpMethod.Post, MyLists, new NameBody(name), cancellationToken);
+
+        // 201 with the stored list as its body. A 400 — an empty name, or one over 200 characters —
+        // is thrown by EnsureSuccessStatusCode, because a name the user typed and the API refused
+        // is something to tell them about rather than an absence to render.
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<VariableList>(Json, cancellationToken)
+               ?? throw new InvalidOperationException(
+                   $"{MyLists} answered {(int)response.StatusCode} without a list in the body, so there is "
+                   + "nothing to return. The endpoint answers 201 with the created list.");
+    }
+
+    public Task<bool> RenameMyListAsync(Guid id, string name, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+
+        return SendForFoundAsync(HttpMethod.Put, MyList(id), new NameBody(name), cancellationToken);
+    }
+
+    public Task<bool> DeleteMyListAsync(Guid id, CancellationToken cancellationToken = default) =>
+        SendForFoundAsync(HttpMethod.Delete, MyList(id), body: null, cancellationToken);
+
+    public async Task<Page<VariableListItem>?> GetMyListVariablesAsync(
+        Guid id,
+        int page = 1,
+        int pageSize = 100,
+        CancellationToken cancellationToken = default)
+    {
+        // Both always sent, unlike the optional parameters on the read endpoints: this one is
+        // behind a token and never cached publicly, so there is no shorter URL worth having, and a
+        // page that says which page it is beats one that leaves it implied.
+        var url = $"{MyListVariables(id)}?page={page}&size={pageSize}";
+
+        var result = await GetOrNullAsync<Page<VariableListItem>>(url, cancellationToken);
+
+        return result is null ? null : WithDerivedTotalPages(result);
+    }
+
+    public Task<bool> AddVariablesToMyListAsync(
+        Guid id,
+        IReadOnlyCollection<Guid> variableIds,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(variableIds);
+        RefuseAnOversizedBatch(variableIds.Count, nameof(variableIds));
+
+        return SendForFoundAsync(
+            HttpMethod.Post, MyListVariables(id), new VariableIdsBody(variableIds), cancellationToken);
+    }
+
+    public Task<bool> RemoveVariablesFromMyListAsync(
+        Guid id,
+        IReadOnlyCollection<Guid> variableIds,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(variableIds);
+        RefuseAnOversizedBatch(variableIds.Count, nameof(variableIds));
+
+        // A DELETE carrying a body, which is unusual enough to be worth saying out loud: the API
+        // takes the ids to remove the same way the add takes the ids to add, so the two calls
+        // differ only in the verb. Sending them as a query string instead would put up to 2000
+        // GUIDs — some 74 000 characters — in a URL, which no server accepts.
+        return SendForFoundAsync(
+            HttpMethod.Delete, MyListVariables(id), new VariableIdsBody(variableIds), cancellationToken);
+    }
+
+    /// <summary>The batch endpoints' bodies, spelled the way the API spells them.</summary>
+    /// <remarks>
+    /// Private records rather than public contracts: a caller passes a name and a collection of
+    /// ids, and the envelope those travel in is this client's business. A host substituting its own
+    /// <see cref="IMuninExplorerClient"/> writes its own, and is looking at the API for the shape
+    /// either way.
+    /// <para>
+    /// The wire names are explicit for the same reason every DTO's are. <c>variabelIds</c> in
+    /// particular is not what the web serialiser would derive from <c>VariableIds</c>, and a body
+    /// whose one property is unrecognised binds to null — which the API answers as
+    /// "request body is required", a message that says nothing about the spelling that caused it.
+    /// </para>
+    /// </remarks>
+    private sealed record NameBody([property: JsonPropertyName("name")] string Name);
+
+    private sealed record VariableIdsBody(
+        [property: JsonPropertyName("variabelIds")] IReadOnlyCollection<Guid> VariableIds);
+
+    private const string MyLists = "api/explorer/my/lists";
+
+    private static string MyList(Guid id) => $"{MyLists}/{id}";
+
+    private static string MyListVariables(Guid id) => $"{MyList(id)}/variables";
+
+    /// <summary>Refuses a batch the API would refuse, before it costs a round trip.</summary>
+    /// <remarks>
+    /// The API answers an oversized batch with a 400 whose body names the ceiling — which
+    /// <c>EnsureSuccessStatusCode</c> then throws away, leaving the caller an
+    /// <see cref="HttpRequestException"/> reading "400 (Bad Request)" and nothing to act on. So the
+    /// ceiling is checked here, where the message can say what it is and what to do about it.
+    /// <para>
+    /// Refused rather than split. See <see cref="IMuninExplorerClient.MaxVariablesPerBatch"/>: a
+    /// split turns one call that either happened or did not into several that may have half
+    /// happened, and the return value has no way to say which.
+    /// </para>
+    /// </remarks>
+    private static void RefuseAnOversizedBatch(int count, string parameterName)
+    {
+        if (count <= IMuninExplorerClient.MaxVariablesPerBatch)
+        {
+            return;
+        }
+
+        throw new ArgumentException(
+            $"{count} variable ids is more than the API takes in one call: the maximum batch size is "
+            + $"{IMuninExplorerClient.MaxVariablesPerBatch}. Split them — "
+            + $"ids.Chunk({nameof(IMuninExplorerClient)}.{nameof(IMuninExplorerClient.MaxVariablesPerBatch)}) — "
+            + "and call once per batch, so a failure part-way through names the batch it stopped at.",
+            parameterName);
+    }
+
+    /// <summary>
+    /// Fills in the page count the <c>my/lists</c> variables envelope leaves out.
+    /// </summary>
+    /// <remarks>
+    /// That envelope carries items, totalCount, page and size, and — alone among the paged
+    /// endpoints — no totalPages. Deserialised into the shared <see cref="Page{T}"/> it would
+    /// therefore read as zero pages of a hundred-odd entries, and a pager binding to it would
+    /// render nothing at all: the failure this repository keeps meeting, a DTO's own default shown
+    /// as though it were data.
+    /// <para>
+    /// Derived rather than modelled with a second paging type, because the number is not in doubt —
+    /// the size in the answer is the one the API actually used, clamps and all. Only filled in when
+    /// the API sent none, so the day the envelope grows a totalPages of its own, that is the number
+    /// the caller sees rather than ours quietly standing in front of it.
+    /// </para>
+    /// </remarks>
+    private static Page<T> WithDerivedTotalPages<T>(Page<T> page) =>
+        page is { TotalPages: 0, TotalCount: > 0, Size: > 0 }
+            ? page with { TotalPages = (page.TotalCount + page.Size - 1) / page.Size }
+            : page;
+
+    /// <summary>Sends a write and reports whether the list it named was the caller's to write to.</summary>
+    /// <remarks>
+    /// Every one of these endpoints answers 404 both for a list that does not exist and for one
+    /// belonging to somebody else — deliberately, so a caller cannot learn which list ids are real
+    /// by watching the difference. It reads as "no such list of yours" here, which is the only
+    /// thing a caller can act on and the same not-a-fault the read endpoints map to null.
+    /// </remarks>
+    private async Task<bool> SendForFoundAsync(
+        HttpMethod method,
+        string url,
+        object? body,
+        CancellationToken cancellationToken)
+    {
+        using var response = await SendAsync(method, url, body, cancellationToken);
+
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return false;
+        }
+
+        // A 401 lands here, and lands loudly: these endpoints are authenticated, so calling them
+        // without a token provider registered is a host wiring mistake and not a user with nothing
+        // saved. Returning false would be indistinguishable from the latter.
+        response.EnsureSuccessStatusCode();
+
+        return true;
+    }
+
+    /// <summary>Sends one request, with <paramref name="body"/> as JSON when there is one.</summary>
+    private async Task<HttpResponseMessage> SendAsync(
+        HttpMethod method,
+        string url,
+        object? body,
+        CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(method, url);
+
+        if (body is not null)
+        {
+            // The runtime type, not the declared one: body is typed object here, and serialising it
+            // as declared would write "{}" for every one of these envelopes.
+            request.Content = JsonContent.Create(body, body.GetType(), options: Json);
+        }
+
+        return await httpClient.SendAsync(request, cancellationToken);
     }
 
     /// <summary>Escape one free-text value for the path, refusing one the path cannot carry.</summary>

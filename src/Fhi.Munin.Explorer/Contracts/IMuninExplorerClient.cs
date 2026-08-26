@@ -14,6 +14,14 @@ namespace Fhi.Munin.Explorer.Contracts;
 /// Anything else — a 500, a timeout, a network failure — still throws, because that is a fault and
 /// the caller has to be able to tell the two apart.
 /// </para>
+/// <para>
+/// The variable-list methods at the bottom follow the same rule in the shape a write can take it:
+/// one that names a list the signed-in user does not have answers <c>false</c> rather than throwing,
+/// because a list deleted in another tab is the same ordinary event as an edited id. They are the
+/// only part of this interface that needs a token, and the only part where an
+/// <see cref="ArgumentException"/> can come back before anything is sent — see
+/// <see cref="MaxVariablesPerBatch"/>.
+/// </para>
 /// </remarks>
 public interface IMuninExplorerClient
 {
@@ -149,5 +157,119 @@ public interface IMuninExplorerClient
         Guid variableId,
         string kodeverkType,
         string kodeverkReference,
+        CancellationToken cancellationToken = default);
+
+    // ------------------------------------------------------------------ the user's own variable lists
+    //
+    // Everything above is anonymous and read-only. Everything below is not: the whole of
+    // `api/explorer/my/lists` sits behind the API's authenticated explorer policy, so a caller
+    // reaches it only when the host has registered an IMuninExplorerTokenProvider *before*
+    // AddMuninExplorer — see the remarks on that interface. With the anonymous default in place
+    // every one of these answers 401, which arrives here as an HttpRequestException rather than as
+    // an empty list, because a host that thinks it wired up sign-in has a fault rather than a user
+    // with nothing saved.
+
+    /// <summary>
+    /// The largest number of variable ids the API accepts in one batch add or remove.
+    /// </summary>
+    /// <remarks>
+    /// Declared on the contract rather than inside the client because the ceiling belongs to the
+    /// API: a host substituting its own <see cref="IMuninExplorerClient"/> is talking to the same
+    /// endpoint and meets the same limit. A caller with more ids than this splits them itself —
+    /// <c>ids.Chunk(IMuninExplorerClient.MaxVariablesPerBatch)</c> — and calls once per chunk.
+    /// <para>
+    /// The splitting is left to the caller on purpose. One call either happens or does not; a
+    /// split does not, and a client that quietly turned 2500 ids into two requests would leave the
+    /// list holding the first 2000 when the second failed, with nothing in the return value to say
+    /// so. A caller doing the splitting knows how far it got, which is what it needs to retry or to
+    /// tell the user.
+    /// </para>
+    /// </remarks>
+    public const int MaxVariablesPerBatch = 2000;
+
+    /// <summary>The signed-in user's saved variable lists, newest changes and all. Empty when they have none.</summary>
+    /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
+    Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Create a list for the signed-in user and return it as the API stored it.</summary>
+    /// <remarks>
+    /// The API trims the name and refuses one that is empty or longer than 200 characters, with a
+    /// message in the caller's language. That refusal is a <c>400</c> and therefore throws: it is
+    /// something the user must be told about, not an absence to render.
+    /// </remarks>
+    /// <param name="name">What to call the list.</param>
+    /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
+    Task<VariableList> CreateMyListAsync(string name, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Rename one of the signed-in user's lists. False when they have no list with that id.
+    /// </summary>
+    /// <remarks>
+    /// The name is the only thing a list has to change, which is why this is a rename rather than
+    /// an update taking the whole record — the API's own body carries nothing else either.
+    /// </remarks>
+    /// <param name="id">The list to rename.</param>
+    /// <param name="name">What to call it instead.</param>
+    /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
+    Task<bool> RenameMyListAsync(Guid id, string name, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Delete one of the signed-in user's lists, and everything in it. False when they have no list
+    /// with that id.
+    /// </summary>
+    Task<bool> DeleteMyListAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// One page of what is in a list. Null when the signed-in user has no list with that id.
+    /// </summary>
+    /// <remarks>
+    /// Paged where <see cref="GetMyListsAsync"/> is not, because a list is as long as the user made
+    /// it. The API clamps <paramref name="pageSize"/> to at most 1000 and both numbers to at least
+    /// 1, and the page that comes back says which size it actually used.
+    /// </remarks>
+    /// <param name="id">The list to read.</param>
+    /// <param name="page">1-based page number.</param>
+    /// <param name="pageSize">Entries per page. The API's own default is 100 and its ceiling is 1000.</param>
+    /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
+    Task<Page<VariableListItem>?> GetMyListVariablesAsync(
+        Guid id,
+        int page = 1,
+        int pageSize = 100,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Add variables to one of the signed-in user's lists. False when they have no list with that id.
+    /// </summary>
+    /// <remarks>
+    /// Adding a variable the list already holds is not an error — the API stores each id once, so a
+    /// caller need not work out the difference before calling. An empty collection is a legitimate
+    /// call and is still sent: the answer says whether the list exists.
+    /// </remarks>
+    /// <param name="id">The list to add to.</param>
+    /// <param name="variableIds">
+    /// The variables to add, at most <see cref="MaxVariablesPerBatch"/> of them. More than that is
+    /// refused with an <see cref="ArgumentException"/> before any request is made, rather than sent
+    /// and answered with a <c>400</c> the caller has to unpack.
+    /// </param>
+    /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
+    Task<bool> AddVariablesToMyListAsync(
+        Guid id,
+        IReadOnlyCollection<Guid> variableIds,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Remove variables from one of the signed-in user's lists. False when they have no list with
+    /// that id.
+    /// </summary>
+    /// <remarks>
+    /// Removing an id the list does not hold is not an error either, for the same reason adding a
+    /// duplicate is not. The batch ceiling is the same one, and is enforced here the same way.
+    /// </remarks>
+    /// <param name="id">The list to remove from.</param>
+    /// <param name="variableIds">The variables to remove, at most <see cref="MaxVariablesPerBatch"/> of them.</param>
+    /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
+    Task<bool> RemoveVariablesFromMyListAsync(
+        Guid id,
+        IReadOnlyCollection<Guid> variableIds,
         CancellationToken cancellationToken = default);
 }

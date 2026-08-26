@@ -53,6 +53,35 @@ internal abstract class EmptyMuninExplorerClient : IMuninExplorerClient
         Guid variableId, string kodeverkType, string kodeverkReference,
         CancellationToken cancellationToken = default) =>
         Task.FromResult<KodeverkCodes?>(null);
+
+    public virtual Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<VariableList>>([]);
+
+    // "Nothing" has no honest shape for a create, which either produces a list or fails. A fake
+    // that is asked to create one and has not been told what to answer is a test setup mistake,
+    // so it says so rather than handing back an empty record that reads as a real list.
+    public virtual Task<VariableList> CreateMyListAsync(string name, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            $"{nameof(EmptyMuninExplorerClient)} has no list to create. Override "
+            + $"{nameof(CreateMyListAsync)} in the fake that needs it.");
+
+    public virtual Task<bool> RenameMyListAsync(Guid id, string name, CancellationToken cancellationToken = default) =>
+        Task.FromResult(false);
+
+    public virtual Task<bool> DeleteMyListAsync(Guid id, CancellationToken cancellationToken = default) =>
+        Task.FromResult(false);
+
+    public virtual Task<Page<VariableListItem>?> GetMyListVariablesAsync(
+        Guid id, int page = 1, int pageSize = 100, CancellationToken cancellationToken = default) =>
+        Task.FromResult<Page<VariableListItem>?>(null);
+
+    public virtual Task<bool> AddVariablesToMyListAsync(
+        Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default) =>
+        Task.FromResult(false);
+
+    public virtual Task<bool> RemoveVariablesFromMyListAsync(
+        Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default) =>
+        Task.FromResult(false);
 }
 
 /// <summary>
@@ -65,6 +94,25 @@ internal abstract class EmptyMuninExplorerClient : IMuninExplorerClient
 internal sealed class StubHttpHandler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
 {
     public Uri? LastUri { get; private set; }
+
+    /// <summary>
+    /// The verb of the last request, which is half of what a route assertion is about.
+    /// </summary>
+    /// <remarks>
+    /// The variable-list endpoints are the reason this is recorded: <c>my/lists/{id}/variables</c>
+    /// is one URL that adds on POST and removes on DELETE, so a test asserting only on the path
+    /// would pass with the two swapped.
+    /// </remarks>
+    public HttpMethod? LastMethod { get; private set; }
+
+    /// <summary>The last request body, verbatim, or null where there was none.</summary>
+    /// <remarks>
+    /// Kept as the JSON that actually went out rather than as a deserialised object: what these
+    /// tests are checking is the spelling of the wire names, and reading it back through the same
+    /// contract that wrote it would agree with itself whatever that spelling turned out to be.
+    /// </remarks>
+    public string? LastBody { get; private set; }
+
     public IReadOnlyList<string> LastClientHeader { get; private set; } = [];
     public AuthenticationHeaderValue? LastAuthorization { get; private set; }
 
@@ -73,7 +121,15 @@ internal sealed class StubHttpHandler(Func<HttpRequestMessage, HttpResponseMessa
     public int Calls { get; private set; }
 
     /// <summary>Answers <c>200 OK</c> with the given JSON body to every request.</summary>
-    public static StubHttpHandler Ok(string json) => new(_ => new HttpResponseMessage(HttpStatusCode.OK)
+    public static StubHttpHandler Ok(string json) => Answering(HttpStatusCode.OK, json);
+
+    /// <summary>Answers with the given status and JSON body.</summary>
+    /// <remarks>
+    /// <c>201 Created</c> is what this exists for: <c>POST /api/explorer/my/lists</c> answers with
+    /// the stored list under that status rather than under 200, so a stub that only knows how to
+    /// say 200 would test a response the API never sends.
+    /// </remarks>
+    public static StubHttpHandler Answering(HttpStatusCode status, string json) => new(_ => new HttpResponseMessage(status)
     {
         Content = new StringContent(json, Encoding.UTF8, "application/json")
     });
@@ -81,17 +137,19 @@ internal sealed class StubHttpHandler(Func<HttpRequestMessage, HttpResponseMessa
     /// <summary>Answers with the given status and an empty body.</summary>
     public static StubHttpHandler Status(HttpStatusCode status) => new(_ => new HttpResponseMessage(status));
 
-    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         Calls++;
         LastUri = request.RequestUri;
+        LastMethod = request.Method;
+        LastBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
         LastClientHeader = request.Headers.TryGetValues(Explorer.Client.ClientHeaderHandler.Header, out var values)
             ? [.. values]
             : [];
         LastAuthorization = request.Headers.Authorization;
         LastAcceptLanguage = [.. request.Headers.AcceptLanguage.Select(v => v.Value)];
 
-        return Task.FromResult(respond(request));
+        return respond(request);
     }
 }
 
