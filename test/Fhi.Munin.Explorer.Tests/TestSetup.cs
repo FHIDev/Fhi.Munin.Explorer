@@ -33,6 +33,10 @@ internal abstract class EmptyMuninExplorerClient : IMuninExplorerClient
         string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<KildeSummary>>([]);
 
+    public virtual Task<IReadOnlyList<PropertyMetadataEntry>> GetKildePropertyMetadataAsync(
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<PropertyMetadataEntry>>([]);
+
     public virtual Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default) =>
         Task.FromResult<KildeDetail?>(null);
 

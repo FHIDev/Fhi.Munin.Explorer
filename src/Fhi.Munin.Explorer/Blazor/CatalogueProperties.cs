@@ -249,11 +249,34 @@ internal static class CatalogueProperties
     /// Anything not drawn from a vocabulary is Norwegian: free text and identifiers are stored once,
     /// in the catalogue's own language, with no translated counterpart to fall back to.
     /// </remarks>
-    internal static (string Value, string Language) Value(PropertyMetadataEntry entry, string raw, string reader)
+    internal static (string Value, string Language) Value(PropertyMetadataEntry entry, string raw, string reader) =>
+        // A code the vocabulary does not list is shown as it arrived, and called Norwegian with the
+        // rest of the catalogue's own text. Showing it beats showing nothing: it is what the
+        // catalogue holds, and a blank cell would hide that the two disagree.
+        Word(entry, raw, reader) ?? (raw, "no");
+
+    /// <summary>
+    /// The vocabulary's own word for a stored code, or nothing at all where it lists none.
+    /// </summary>
+    /// <remarks>
+    /// The lookup <see cref="Value"/> is built on, separated out because the two callers want
+    /// different things from a miss. A property row shows the code and calls it Norwegian, which is
+    /// what the catalogue holds. A facet cannot: the codes it draws are CURIEs into EU and EHDS
+    /// vocabularies — <c>eu-access:OP_DATPRO</c> — which are prose in no language at all, and a
+    /// <c>lang="no"</c> over one hands it to a screen reader in a Norwegian voice (WCAG 3.1.2). So
+    /// the miss is reported rather than papered over, and each caller says what it means by it.
+    /// <para>
+    /// Matching is on the whole stored value, never on the part after a colon. Two prefixes over
+    /// one bare token are two values in the catalogue, so a prefix-blind lookup would answer
+    /// <c>annet-vokabular:biobanks</c> with the word for <c>ehds-cat:biobanks</c> — a label naming
+    /// a vocabulary entry the value is not in.
+    /// </para>
+    /// </remarks>
+    internal static (string Label, string Language)? Word(PropertyMetadataEntry entry, string raw, string reader)
     {
         if (string.IsNullOrWhiteSpace(entry.OptionsJson))
         {
-            return (raw, "no");
+            return null;
         }
 
         foreach (var option in Options(entry.OptionsJson, reader))
@@ -264,9 +287,7 @@ internal static class CatalogueProperties
             }
         }
 
-        // A code the vocabulary does not list. Showing it beats showing nothing: it is what the
-        // catalogue holds, and a blank cell would hide that the two disagree.
-        return (raw, "no");
+        return null;
     }
 
     /// <summary>

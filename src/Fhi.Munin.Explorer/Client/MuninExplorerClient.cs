@@ -72,6 +72,15 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
         return await GetOrNullAsync<IReadOnlyList<KildeSummary>>(url, cancellationToken) ?? [];
     }
 
+    public async Task<IReadOnlyList<PropertyMetadataEntry>> GetKildePropertyMetadataAsync(
+        CancellationToken cancellationToken = default) =>
+        // The route is the API's own spelling — a sibling of api/explorer/kilder rather than a
+        // field on it, because the vocabulary is one row per key and not one per kilde. No
+        // Accept-Language: the entries carry optionsJson with every label in it, and a caller that
+        // renders one response to readers in two languages is the case that field exists for.
+        await GetOrNullAsync<IReadOnlyList<PropertyMetadataEntry>>(
+            "api/explorer/kilder/egenskaper", cancellationToken) ?? [];
+
     public Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default) =>
         GetOrNullAsync<KildeDetail>($"api/explorer/kilder/{id}", cancellationToken);
 

@@ -63,6 +63,38 @@ public class ContractDriftTest
     }
 
     [LiveApiFact]
+    public async Task KildePropertyMetadata_WhenReadFromTheLiveApi_ThenTheTwoCodedFacetsStillHaveAVocabulary()
+    {
+        using var api = LiveApiConnection.Open();
+
+        var entries = await api.RoundTripAsync(client => client.GetKildePropertyMetadataAsync());
+
+        Assert.NotEmpty(entries);
+
+        // Both keys, in one response, and both carrying optionsJson — which is more than "the
+        // contract fits", and deliberately so. The two facets Kelda draws from the kilde list read
+        // their words out of exactly these two vocabularies, and the API composes the response from
+        // definitions at two different scopes: healthCategory's kilde-scoped definition is retired,
+        // so its vocabulary has to come from the datasamling-scoped row. An answer carrying only
+        // accessRights is the shape that mistake takes, and it is not one an empty-check would see.
+        foreach (var key in new[] { "healthCategory", "accessRights" })
+        {
+            var entry = entries.FirstOrDefault(e => string.Equals(e.Key, key, StringComparison.OrdinalIgnoreCase));
+
+            Assert.True(
+                entry is not null,
+                $"The kilde list's vocabulary no longer carries '{key}', which is a facet Kelda "
+                + "draws words for. Without it the choices fall back to raw EHDS and EU CURIEs.");
+
+            Assert.False(
+                string.IsNullOrWhiteSpace(entry.OptionsJson) || entry.OptionsJson == "[]",
+                $"'{key}' arrived with no options in optionsJson, so there is nothing to label a "
+                + "choice with. The component reads optionsJson rather than options, because it "
+                + "renders one response to readers in both languages.");
+        }
+    }
+
+    [LiveApiFact]
     public async Task KildeDetail_WhenReadFromTheLiveApi_ThenTheContractStillFitsIt()
     {
         using var api = LiveApiConnection.Open();

@@ -72,21 +72,29 @@ public sealed partial class KildeExplorer
     /// kategori, which is a list per kilde; a facet that flattened it to the first would drop
     /// kilder out of a filter they belong in.
     /// </param>
-    /// <param name="Label">A value as a word, where the catalogue's token is not one.</param>
-    /// <param name="FallbackIsProse">
-    /// Whether a value this facet found no word for is text in the catalogue's own language, or an
-    /// identifier in no language at all. Kildetype and databehandler are the first: Munin's enum
-    /// members and whatever a Norwegian caseworker typed. Kategori and tilgangsnivå are the second
-    /// — a missed lookup there leaves an EHDS or EU CURIE on screen, English-authored and not prose
-    /// in any language, which a <c>lang="no"</c> would hand to a screen reader as Norwegian. See
-    /// <see cref="Option"/> for what is done with the answer.
+    /// <param name="Label">
+    /// A value as a word, where the catalogue's token is not one — and which language those words
+    /// turned out to be in, because that is not a property of the facet. Three of the four look
+    /// their values up, and every one of those can miss: kildetype and databehandler fall back to
+    /// text in the catalogue's own language, while kategori and tilgangsnivå fall back to an EHDS
+    /// or EU CURIE, which is English-authored and prose in no language at all. A <c>lang="no"</c>
+    /// over one of those hands it to a screen reader as Norwegian, which is WCAG 3.1.2 — so a
+    /// label says which of the two it is rather than leaving <see cref="Option"/> to guess.
     /// </param>
     private sealed record FacetDefinition(
         string Key,
         string Heading,
         Func<KildeSummary, IReadOnlyList<string>> Values,
-        Func<string, string> Label,
-        bool FallbackIsProse);
+        Func<string, FacetLabel> Label);
+
+    /// <summary>What a choice is called, and the language those words are in.</summary>
+    /// <param name="Text">The value as a reader should see it.</param>
+    /// <param name="Language">
+    /// The language <paramref name="Text"/> is written in, or null where it is already the reader's
+    /// own or is an identifier belonging to no language. Null means "do not mark this", which is
+    /// not the same as "mark it as the page's language".
+    /// </param>
+    private readonly record struct FacetLabel(string Text, string? Language);
 
     /// <summary>A facet as the panel draws it: a heading and the choices under it.</summary>
     private sealed record Facet(string Key, string Heading, IReadOnlyList<FacetOption> Options);
@@ -169,10 +177,10 @@ public sealed partial class KildeExplorer
     /// </summary>
     /// <remarks>
     /// Kildetype and databehandler are columns of the list itself. The other two are curated
-    /// properties, which the list endpoint carries as a bag of strings with no vocabulary beside it
-    /// — the labels live on the detail endpoint, one request per kilde — so the words come from
-    /// this package's own translations where it has them and from the catalogue's token where it
-    /// does not.
+    /// properties, which the list endpoint carries as a bag of stored codes with no vocabulary
+    /// beside it, so their words come from the vocabulary this component fetches alongside the list
+    /// — the catalogue's own, the same editable master data the detail panel one click away reads.
+    /// See <see cref="Vocabulary"/>.
     /// <para>
     /// Held rather than rebuilt per read, which is the one place in this file where that is worth
     /// doing: <see cref="Facets"/> reads it once per render, but <see cref="MatchesFacets"/> reads
@@ -197,18 +205,17 @@ public sealed partial class KildeExplorer
             return _definitions =
             [
                 new("kildetype", T.ColumnKildetype,
-                    kilde => One(kilde.Kildetype), value => T.KildeTypeLabel(value, value),
-                    FallbackIsProse: true),
-                new("kategori", T.FacetCategory, Categories, value => T.HealthCategoryLabel(value),
-                    FallbackIsProse: false),
+                    kilde => One(kilde.Kildetype), value => Translated(T.KildeTypeLabel(value, value), value)),
+                new("kategori", T.FacetCategory, Categories, value => Vocabulary(CategoryKey, value)),
                 new("tilgangsniva", T.FacetAccessLevel,
-                    kilde => One(Property(kilde, AccessRightsKey)), value => T.AccessRightsLabel(value),
-                    FallbackIsProse: false),
+                    kilde => One(Property(kilde, AccessRightsKey)), value => Vocabulary(AccessRightsKey, value)),
 
-                // No label function of its own: databehandler is free text the catalogue stores as
-                // somebody typed it, so there is nothing to look it up in and the value is the word.
-                new("databehandler", T.FieldDataProcessor, kilde => One(kilde.DataProcessor), value => value,
-                    FallbackIsProse: true)
+                // No lookup of its own: databehandler is free text the catalogue stores as somebody
+                // typed it, so there is nothing to look it up in and the value is the word — the
+                // catalogue's own word, always, which is why it says so rather than asking whether
+                // some lookup missed.
+                new("databehandler", T.FieldDataProcessor,
+                    kilde => One(kilde.DataProcessor), value => new FacetLabel(value, "no"))
             ];
         }
     }
@@ -258,34 +265,73 @@ public sealed partial class KildeExplorer
     /// <remarks>
     /// A label the catalogue wrote is marked as the catalogue's language, exactly as the same
     /// string is in the table's cells: a Norwegian organisation's name inside an English page is
-    /// read out with English phonetics otherwise, which is WCAG 3.1.2. A label this package
-    /// supplied is not marked, because it is already in the reader's language and a <c>lang</c> it
-    /// is not in is the same failure the other way round.
+    /// read out with English phonetics otherwise, which is WCAG 3.1.2. A label already in the
+    /// reader's language is not marked, because a <c>lang</c> that says what the page already says
+    /// is noise — and an identifier belonging to no language is not marked either, which is the
+    /// same failure inverted: <c>eu-access:OP_DATPRO</c> announced in a Norwegian voice.
     /// <para>
-    /// Whether the label came from the catalogue is not a property of the facet: three of the four
-    /// look their values up in a vocabulary, and every one of those falls back to the catalogue's
-    /// own token where the vocabulary has no word for it. So the question is asked of the answer —
-    /// a label that came back as the value itself is what the catalogue holds, whether because the
-    /// facet has no vocabulary at all (databehandler, which is free text) or because the lookup
-    /// missed (a kildetype, CURIE or category added after this package's copy was taken).
-    /// </para>
-    /// <para>
-    /// What language <em>that</em> is in is a property of the facet, and the two answers differ:
-    /// kildetype and databehandler fall back to Norwegian words, while kategori and tilgangsnivå
-    /// fall back to a CURIE — <c>eu-access:OP_DATPRO</c>, <c>ehds-cat:biobanks</c> — which is an
-    /// English-authored identifier and not prose in any language. Marking one of those as Norwegian
-    /// is the same WCAG 3.1.2 failure this method exists to avoid, only inverted, so an unmatched
-    /// CURIE is left unmarked and read in the page's own language. See
-    /// <see cref="FacetDefinition.FallbackIsProse"/>.
+    /// Which of the three a label is, is <see cref="FacetDefinition.Label"/>'s answer to give — see
+    /// there for why the facet cannot be asked instead. This method only turns that answer into the
+    /// attribute, and <see cref="CatalogueProperties.Foreign"/> is what drops it for a reader
+    /// already reading the language it names.
     /// </para>
     /// </remarks>
     private FacetOption Option(FacetDefinition definition, string value, int count)
     {
-        var label = definition.Label(value);
-        var catalogueProse =
-            string.Equals(label, value, StringComparison.Ordinal) && definition.FallbackIsProse;
+        var (label, language) = definition.Label(value);
 
-        return new FacetOption(value, label, count, catalogueProse ? CatalogueLang(value) : null);
+        return new FacetOption(
+            value, label, count, language is null ? null : CatalogueProperties.Foreign(language, Reader));
+    }
+
+    /// <summary>
+    /// A label this package translated, or the catalogue's own text where the translation missed.
+    /// </summary>
+    /// <remarks>
+    /// The rule kildetype needs, and the reason it is asked of the answer rather than of the value:
+    /// a translation that came back as the value itself is the fallback, which for that facet is a
+    /// Munin enum member — <c>noeHeltNytt</c> — and reads as Norwegian.
+    /// </remarks>
+    private static FacetLabel Translated(string label, string value) =>
+        new(label, string.Equals(label, value, StringComparison.Ordinal) ? "no" : null);
+
+    /// <summary>
+    /// A curated property's value as the catalogue's own vocabulary words it, or as the token it
+    /// arrived as where that vocabulary lists no such value.
+    /// </summary>
+    /// <remarks>
+    /// The same source the detail panel one click away reads, and that is the whole point of it.
+    /// These two facets used to translate their CURIEs from a table transcribed into this package,
+    /// which was correct on the day it was written and drifted from then on: a category the
+    /// catalogue added afterwards showed as <c>ehds-cat:</c> in the panel while the kilde view
+    /// showed its Norwegian word. The vocabulary is editable master data, so the only copy that
+    /// cannot go stale is the one the API sends — see <see cref="KildeExplorer.LoadVocabularyAsync"/>
+    /// for how it gets here and what happens when it does not.
+    /// <para>
+    /// A value the vocabulary does not list keeps its checkbox and shows its token, whole. Dropping
+    /// it would take kilder out of a panel that still lists them, silently; and the token is
+    /// unmarked rather than called Norwegian, because a CURIE is prose in no language. An option
+    /// the vocabulary lists but has curated no label for counts as not listed here, for the same
+    /// reason: what ends up on screen is the token either way, and only the marking would differ.
+    /// </para>
+    /// <para>
+    /// The match is on the whole value — <see cref="CatalogueProperties.Word"/> — and not on the
+    /// part after the last colon, which is the second half of what the copied table got wrong:
+    /// prefix-blind, <c>annet-vokabular:biobanks</c> read as "Biobanker" in the facet while the
+    /// detail panel showed it raw. Two prefixes over one bare token are two values in the
+    /// catalogue, and the facet counts and filters them as two either way.
+    /// </para>
+    /// </remarks>
+    private FacetLabel Vocabulary(string key, string value)
+    {
+        if (_vocabulary.TryGetValue(key, out var entry)
+            && CatalogueProperties.Word(entry, value, Reader) is { } word
+            && !string.Equals(word.Label, value, StringComparison.Ordinal))
+        {
+            return new FacetLabel(word.Label, word.Language);
+        }
+
+        return new FacetLabel(value, null);
     }
 
     /// <summary>Whether <paramref name="kilde"/> survives every facet the reader has chosen in.</summary>
@@ -363,12 +409,11 @@ public sealed partial class KildeExplorer
     /// </para>
     /// <para>
     /// The tokens are what the facet groups and filters on, whole; what a reader sees is
-    /// <see cref="Texts.HealthCategoryLabel"/>, which is the catalogue's own word for the token
-    /// where it has one and the token itself where it has not. The list endpoint sends no
-    /// vocabulary, so the words are a copy of the one the detail endpoint sends — see that method
-    /// for why a copy, and why the alternative was not raw CURIEs on screen: tilgangsnivå sits in
-    /// the same panel with its tokens spelled out, and one panel cannot be in two minds about
-    /// whether a reader of this catalogue is expected to read EHDS.
+    /// <see cref="Vocabulary"/>'s answer, which is the catalogue's own word for the token where its
+    /// vocabulary has one and the token itself where it has not. The list endpoint sends the values
+    /// without that vocabulary, so it is fetched beside the list rather than copied into this
+    /// package — a reader of this catalogue is not expected to read EHDS, and a table transcribed
+    /// here would spell the seven categories of the day it was written and no more.
     /// </para>
     /// </remarks>
     private static IReadOnlyList<string> Categories(KildeSummary kilde)

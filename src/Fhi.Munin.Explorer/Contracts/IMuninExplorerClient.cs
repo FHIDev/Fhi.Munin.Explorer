@@ -97,6 +97,30 @@ public interface IMuninExplorerClient
         string? kildeType = null,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// The vocabulary behind the curated properties the kilde list carries: one entry per key its
+    /// <see cref="KildeSummary.AdditionalProperties"/> bag can hold. Empty when the API serves none.
+    /// </summary>
+    /// <remarks>
+    /// The same shape as <see cref="KildeDetail.PropertyMetadata"/>, and for the same reason —
+    /// <c>additionalProperties</c> is a bag of stored codes with no dictionary beside it, so a
+    /// caller drawing a word for one of those codes needs the vocabulary that defines it. The
+    /// detail endpoints ship theirs with the record; the list does not, because the vocabulary is
+    /// global rather than per kilde and repeating it on every row would send it some sixty times.
+    /// This is the list's half, served as a sibling of it.
+    /// <para>
+    /// No language parameter, deliberately, and it is the one thing that would look like an
+    /// omission: <see cref="GetKilderAsync"/> is fetched language-agnostically and its rows are
+    /// rendered to whichever reader is looking, so a caller switching language without refetching
+    /// has to be able to switch the words too. That means reading
+    /// <see cref="PropertyMetadataEntry.OptionsJson"/>, which carries both labels, rather than
+    /// <see cref="PropertyMetadataEntry.Options"/>, which carries the one the request asked for.
+    /// </para>
+    /// </remarks>
+    /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
+    Task<IReadOnlyList<PropertyMetadataEntry>> GetKildePropertyMetadataAsync(
+        CancellationToken cancellationToken = default);
+
     /// <summary>Fetch one kilde with its delkilde/datasamling tree. Null when no such kilde is published.</summary>
     Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default);
 

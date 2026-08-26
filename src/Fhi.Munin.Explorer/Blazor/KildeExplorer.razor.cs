@@ -137,6 +137,12 @@ public sealed partial class KildeExplorer : ComponentBase
     // asks the API a different question, which is the point of an endpoint that is not paged.
     private IReadOnlyList<KildeSummary> _kilder = [];
 
+    // The catalogue's own words for the coded properties the list carries, keyed by property. Two
+    // of the facets draw their choices out of it — see KildeExplorer.Filters.cs — and it stays
+    // empty when the fetch for it fails, which costs those choices their labels and nothing else.
+    private IReadOnlyDictionary<string, PropertyMetadataEntry> _vocabulary =
+        new Dictionary<string, PropertyMetadataEntry>(StringComparer.OrdinalIgnoreCase);
+
     // Whether that one fetch has answered, however it answered. The empty state and the count both
     // hang off it, so an empty list before the answer arrives does not read as "no kilder".
     private bool _loaded;
@@ -298,7 +304,7 @@ public sealed partial class KildeExplorer : ComponentBase
     }
 
     /// <summary>
-    /// The one request this component makes: the whole list, unfiltered.
+    /// The whole list, unfiltered, and the vocabulary its coded properties are read with.
     /// </summary>
     /// <remarks>
     /// No search parameter and no kildetype, though the endpoint takes both. Everything the reader
@@ -306,11 +312,24 @@ public sealed partial class KildeExplorer : ComponentBase
     /// sending either would fetch a second, smaller list that the client-side filter would then
     /// filter again, and the counts beside the facets would be counted over a set the reader cannot
     /// get back to without another request.
+    /// <para>
+    /// Two calls rather than one, in flight together and awaited apart. They answer different
+    /// questions and fail independently: the list is what the component is for, while the
+    /// vocabulary only decides whether two facets read as words or as CURIEs. Started together
+    /// because a reader waiting for the list should not also be waiting for a round trip that has
+    /// nothing to do with it; awaited apart because a vocabulary that never came back must not
+    /// leave the page saying the catalogue could not be reached.
+    /// </para>
     /// </remarks>
     private async Task LoadAsync()
     {
         _loading = true;
         _error = null;
+
+        // Started first and awaited last, so both calls are in flight at once. It cannot throw
+        // where the list can — it catches its own — which is why the list's own call stays inside
+        // the try: a client implementation is free to throw from the call rather than the await.
+        var vocabulary = LoadVocabularyAsync();
 
         try
         {
@@ -327,6 +346,47 @@ public sealed partial class KildeExplorer : ComponentBase
         {
             _loading = false;
             _loaded = true;
+        }
+
+        // Awaited here and not left running: a task nobody awaits would write the vocabulary in
+        // after the render that needed it, with nothing to redraw the panel it labels.
+        await vocabulary;
+    }
+
+    /// <summary>
+    /// The catalogue's own vocabulary for the curated properties the list sends as bare codes.
+    /// </summary>
+    /// <remarks>
+    /// A sibling of the list rather than part of it, because the vocabulary is one definition per
+    /// property and not one per kilde — see <see cref="IMuninExplorerClient.GetKildePropertyMetadataAsync"/>.
+    /// It is fetched at all so that the facets and the kilde view a click away cannot disagree
+    /// about what a token is called: both read the words the catalogue holds now, rather than one
+    /// of them reading a table transcribed into this package on some earlier day.
+    /// <para>
+    /// A failure costs labels, not the list, so it is caught here rather than reported: the facets
+    /// fall back to showing the catalogue's own tokens, which is what they show for a value the
+    /// vocabulary does not list either way. A sentence about a vocabulary is not something a reader
+    /// of a kilde list can act on, and it would sit beside a panel that is still usable.
+    /// </para>
+    /// <para>
+    /// One entry per key is what the endpoint promises; the grouping is what keeps a second entry
+    /// for one key from throwing at the reader instead of losing a label.
+    /// </para>
+    /// </remarks>
+    private async Task LoadVocabularyAsync()
+    {
+        try
+        {
+            var entries = await Client.GetKildePropertyMetadataAsync();
+
+            _vocabulary = entries
+                .Where(entry => !string.IsNullOrWhiteSpace(entry.Key))
+                .GroupBy(entry => entry.Key, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+        }
+        catch (Exception)
+        {
+            // Left as it was, which on the first load is empty.
         }
     }
 
