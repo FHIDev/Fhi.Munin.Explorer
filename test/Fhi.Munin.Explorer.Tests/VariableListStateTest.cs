@@ -109,7 +109,7 @@ public class VariableListStateTest : BunitContext
     }
 
     [Fact]
-    public async Task Component_WhenTheHostSetsNoIsAuthenticated_ThenTheStateStaysSignedOut()
+    public void Component_WhenTheHostSetsNoIsAuthenticated_ThenTheStateStaysSignedOut()
     {
         var client = new CountingClient();
         Services.AddSingleton<IMuninExplorerClient>(client);
@@ -120,7 +120,6 @@ public class VariableListStateTest : BunitContext
         var state = Services.GetRequiredService<VariableListState>();
         Assert.False(state.IsAuthenticated);
         Assert.Equal(0, client.TotalMyListsCalls);
-        await Task.CompletedTask;
     }
 
     [Fact]
@@ -249,5 +248,16 @@ public class VariableListStateTest : BunitContext
         await state.AddVariablesAsync(Guid.NewGuid(), []);
 
         Assert.Equal(1, client.AddCalls);
+    }
+
+    [Fact]
+    public async Task State_WhenAnEmptyBatchIsRemoved_ThenItStillReachesTheApi()
+    {
+        var client = new CountingClient();
+        var state = SignedIn(client);
+
+        await state.RemoveVariablesAsync(Guid.NewGuid(), []);
+
+        Assert.Equal(1, client.RemoveCalls);
     }
 }

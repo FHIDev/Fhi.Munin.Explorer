@@ -24,8 +24,7 @@ namespace Fhi.Munin.Explorer.State;
 /// </remarks>
 public sealed class VariableListState(IMuninExplorerClient client)
 {
-    private readonly IMuninExplorerClient _client = client
-        ?? throw new ArgumentNullException(nameof(client));
+    private readonly IMuninExplorerClient _client = client;
 
     private IReadOnlyList<VariableList> _lists = [];
     private bool _loaded;

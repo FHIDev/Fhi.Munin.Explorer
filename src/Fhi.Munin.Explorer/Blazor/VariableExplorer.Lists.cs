@@ -20,7 +20,7 @@ public partial class VariableExplorer
     /// component without calling <c>AddMuninExplorer</c> still gets an explorer — the same
     /// tolerance the package already extends to hosts with no localisation services registered.
     /// </summary>
-    private protected VariableListState? ListState =>
+    private VariableListState? ListState =>
         _listState ??= ServiceProvider.GetService<VariableListState>();
 
     protected override void OnParametersSet() => ListState?.SetAuthenticated(IsAuthenticated);

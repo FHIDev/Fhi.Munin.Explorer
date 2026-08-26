@@ -1,8 +1,11 @@
 category: Added
 
 - **`VariableListState` holds the signed-in reader's variable lists for the circuit** - one scoped
-  service over the seven `my/lists` client methods, so the save action in the result list, the list
-  view and the download all read and write the same copy and are told when one of them changes it.
+  service over six of the seven `my/lists` client methods, so the save action in the result list,
+  the list view and the download all read and write the same copy and are told when one of them
+  changes it. `GetMyListVariablesAsync` is deliberately not wrapped: it is a paged read of one
+  list's contents, and paging state belongs to the surface showing it rather than to a holder shared
+  by three of them.
   Scoped and never singleton: a singleton would be one reader's lists served to every circuit on the
   server. (Fhi.Metadata-jjry3)
 - **`VariableExplorer` gains an `IsAuthenticated` parameter, defaulting to signed out.** Whether the
