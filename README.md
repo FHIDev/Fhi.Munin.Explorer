@@ -7,8 +7,15 @@ Built for [helsedata.no](https://helsedata.no) as the first consumer — its Opt
 the component into a page — but the package has no helsedata-specific code and any Blazor host
 can consume it.
 
-Data comes from the public Munin Explorer API. **v1 is read-only and anonymous**; sign-in and
-saved variable lists follow later.
+Data comes from the public Munin Explorer API. **The components are read-only and anonymous**;
+everything they render is public metadata and needs no token.
+
+The client reaches one step further than they do. `IMuninExplorerClient` also carries the seven
+`api/explorer/my/lists` calls — the signed-in user's saved variable lists — which are the only part
+of it that is authenticated, and therefore the only part that needs a host-supplied
+`IMuninExplorerTokenProvider` registered *before* `AddMuninExplorer`. Without one they answer 401,
+which arrives as a thrown `HttpRequestException` rather than as an empty list. Nothing in this
+package calls them yet: they are here so a host can build the list UI on top.
 
 ## Layout
 
@@ -324,7 +331,18 @@ services.AddMuninExplorer(o => o.ApiBaseUrl = "https://munin.skytest.fhi.no");
 ```
 
 Leave the provider out entirely and calls are anonymous, which is all public metadata browsing
-needs.
+needs — and all the components this package ships ever do. The variable-list methods
+(`GetMyListsAsync` and the six beside it) are the exception: they call an endpoint the API gates
+behind a signed-in explorer user, so with no provider registered every one of them throws on the
+401 rather than reporting the user as having nothing saved.
+
+Two things about those seven are worth knowing before writing against them. A call naming a list
+the user does not have answers `false` — or `null`, for the paged read — because the API cannot
+tell "deleted in another tab" from "somebody else's" and deliberately does not try. And the two
+batch endpoints take at most `IMuninExplorerClient.MaxVariablesPerBatch` ids, which the client
+refuses above rather than splitting: split them yourself with
+`ids.Chunk(IMuninExplorerClient.MaxVariablesPerBatch)`, so a failure part-way through leaves you
+knowing how far it got.
 
 ### Writing the token provider for a Blazor Server host
 

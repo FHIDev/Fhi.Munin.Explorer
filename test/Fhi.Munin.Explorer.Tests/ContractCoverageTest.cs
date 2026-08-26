@@ -72,6 +72,25 @@ public class ContractCoverageTest
         Covers<IReadOnlyList<VariableVersion>>("timeline.json");
 
     [Fact]
+    public void MyLists_WhenReadFromTheDocumentedResponse_ThenEveryFieldIsCovered() =>
+        // Weaker evidence than the fixtures above it, and worth saying so. Every my/lists endpoint
+        // is authenticated, so this payload could not be captured from the anonymous test API the
+        // others came from — it is written from the API's own MyListDto, and the nightly
+        // ContractDriftTest cannot reach these endpoints either, since checking them live would
+        // mean holding an explorer session and creating and deleting real lists on a running
+        // server. So what this pins is that VariableList reads the shape Munin's controller
+        // declares, not that Munin still declares it. When the my/lists contract changes, this is
+        // a file somebody has to remember to update rather than a build that notices.
+        Covers<IReadOnlyList<VariableList>>("my-lists.json");
+
+    [Fact]
+    public void MyListVariables_WhenReadFromTheDocumentedResponse_ThenEveryFieldIsCovered() =>
+        // Same caveat as above. Note that the envelope carries no totalPages, which is why the
+        // client derives one — see MyListsClientTest, where that is pinned; the strict read here
+        // would pass either way, because an absent member is not an unmapped one.
+        Covers<Page<VariableListItem>>("my-list-variables.json");
+
+    [Fact]
     public void KodeverkCodes_WhenReadFromARealResponse_ThenEveryFieldIsCovered() =>
         // The endpoint answers with an envelope, not with the bare array of codes it is easy to
         // assume from reading one — kodeverkType and kodeverkReference come back alongside them.
