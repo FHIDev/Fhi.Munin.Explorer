@@ -122,19 +122,32 @@
                without saying so. *@
             @if (TotalPages > 1)
             {
-                <nav class="munin-explorer-pagination">
-                    <button class="hd-button-square button-square--ghost"
-                            type="button"
-                            disabled="@(_pageNumber <= 1)"
-                            @onclick="() => GoToPageAsync(_pageNumber - 1)">@T.Previous</button>
+                <div class="munin-explorer-pagination"
+                     role="navigation"
+                     aria-label="@T.Pagination">
+                    @* The content wrapper is where the layout lives (host.css:1609), and the
+                       disabled styling is scoped to it. Without it the buttons get no flex row and
+                       the unavailable state draws nothing.
 
-                    <span>@T.PageOf(_pageNumber, TotalPages)</span>
+                       aria-disabled, not disabled: a disabled button at the end of the list drops
+                       focus to <body>, which a sighted keyboard user has no sign of. The clamp in
+                       GoToPageAsync is what makes the press inert. Same rule as the result list. *@
+                    <div class="munin-explorer-pagination-content">
+                        <button class="hd-button-square button-square--secondary"
+                                type="button"
+                                aria-label="@T.PreviousLabel"
+                                aria-disabled="@AriaDisabled(_pageNumber > 1)"
+                                @onclick="() => GoToPageAsync(_pageNumber - 1)">@T.Previous</button>
 
-                    <button class="hd-button-square button-square--ghost"
-                            type="button"
-                            disabled="@(_pageNumber >= TotalPages)"
-                            @onclick="() => GoToPageAsync(_pageNumber + 1)">@T.Next</button>
-                </nav>
+                        <span class="caption">@T.PageOf(_pageNumber, TotalPages)</span>
+
+                        <button class="hd-button-square button-square--secondary"
+                                type="button"
+                                aria-label="@T.NextLabel"
+                                aria-disabled="@AriaDisabled(_pageNumber < TotalPages)"
+                                @onclick="() => GoToPageAsync(_pageNumber + 1)">@T.Next</button>
+                    </div>
+                </div>
             }
         }
     </div>

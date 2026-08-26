@@ -72,9 +72,15 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         };
     }
 
-    private int TotalPages => _page is null || _page.Size <= 0
-        ? 1
-        : Math.Max(1, (int)Math.Ceiling(_page.TotalCount / (double)_page.Size));
+    /// <summary>
+    /// The API's own answer, not ours. The client already derives it when the envelope omits it
+    /// (this endpoint's does), and deliberately leaves it alone when present — so recomputing here
+    /// would put our arithmetic in front of the API's number on the day the two disagree.
+    /// </summary>
+    private int TotalPages => Math.Max(1, _page?.TotalPages ?? 1);
+
+    /// <summary>Written the way the result list writes it, so the pager reads the same on both.</summary>
+    private static string AriaDisabled(bool enabled) => enabled ? "false" : "true";
 
     protected override void OnInitialized()
     {
@@ -98,7 +104,17 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         await ShowActiveListAsync();
     }
 
-    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+    /// <summary>
+    /// Another surface changed a list. Re-read the page rather than only re-rendering: the rows
+    /// come from <c>_page</c>, which the holder does not own, so a save button that removed a
+    /// variable would otherwise leave it on screen here — the very thing this subscription exists
+    /// to prevent.
+    /// </summary>
+    private void OnStateChanged() => InvokeAsync(async () =>
+    {
+        await LoadPageAsync();
+        StateHasChanged();
+    });
 
     /// <summary>Reads the page currently being looked at. Signed out this calls nothing.</summary>
     private async Task LoadPageAsync()
@@ -197,10 +213,26 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             return;
         }
 
+        // The holder raises Changed, and OnStateChanged re-reads the page — so no fetch here.
         if (await State.RemoveVariablesAsync(_shownList.Value, [variableId]))
         {
-            // Read the page again rather than dropping the row locally: removing the last entry on
-            // a page changes which page exists, and the totals the pager shows come from the API.
+            await RetreatFromEmptyPageAsync();
+        }
+    }
+
+    /// <summary>
+    /// Steps back when the page being looked at no longer exists.
+    /// </summary>
+    /// <remarks>
+    /// Taking the last row off page three leaves a page three with nothing on it, and the empty
+    /// state replaces the pager along with the rows — so the reader is told the list is empty and
+    /// has no control left to reach the two pages that still have things on them.
+    /// </remarks>
+    private async Task RetreatFromEmptyPageAsync()
+    {
+        while (_pageNumber > 1 && _page is not null && _page.Items.Count == 0)
+        {
+            _pageNumber--;
             await LoadPageAsync();
         }
     }

@@ -43,9 +43,27 @@ public class VariableListViewTest : BunitContext
 
         private readonly List<VariableListItem> _items = [.. items];
 
-        public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<VariableList>>(
-                HasList ? [new VariableList { Id = ListId, Name = "Mine hjertevariabler" }] : []);
+        public static readonly Guid SecondListId = new("22222222-2222-2222-2222-222222222222");
+
+        /// <summary>How many lists the reader has. Two of them makes the picker appear.</summary>
+        public int ListCount { get; init; } = 1;
+
+        public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default)
+        {
+            if (!HasList)
+            {
+                return Task.FromResult<IReadOnlyList<VariableList>>([]);
+            }
+
+            List<VariableList> lists = [new VariableList { Id = ListId, Name = "Mine hjertevariabler" }];
+
+            if (ListCount > 1)
+            {
+                lists.Add(new VariableList { Id = SecondListId, Name = "Hjerte og kar" });
+            }
+
+            return Task.FromResult<IReadOnlyList<VariableList>>(lists);
+        }
 
         public override Task<VariableList> CreateMyListAsync(string name, CancellationToken cancellationToken = default)
         {
@@ -67,7 +85,9 @@ public class VariableListViewTest : BunitContext
                 TotalCount = _items.Count,
                 PageNumber = page,
                 Size = PageSize,
-                TotalPages = 1
+                // Computed, not hardcoded: a fake that always said one page let a component
+                // ignoring the field pass its own paging test.
+                TotalPages = Math.Max(1, (int)Math.Ceiling(_items.Count / (double)PageSize))
             });
         }
 
@@ -161,7 +181,7 @@ public class VariableListViewTest : BunitContext
         Assert.Contains("Variabel 1", cut.Markup);
         Assert.DoesNotContain("Variabel 30", cut.Markup);
 
-        await cut.InvokeAsync(() => cut.FindAll("nav button")[^1].Click());
+        await cut.InvokeAsync(() => cut.FindAll(".munin-explorer-pagination-content button")[^1].Click());
 
         Assert.Equal(2, client.LastPageAsked);
         Assert.Contains("Variabel 30", cut.Markup);
@@ -189,6 +209,54 @@ public class VariableListViewTest : BunitContext
         cut.Find("button:not([disabled])").Click();
 
         Assert.Equal(1, client.CreateCalls);
+    }
+
+    [Fact]
+    public async Task View_WhenAnotherSurfaceRemovesAVariable_ThenItLeavesThisViewToo()
+    {
+        // The rows come from this component's own page, which the holder does not own. Re-rendering
+        // on Changed is not enough - the page has to be read again, or the removed row stays.
+        var item = Item("Alder ved diagnose", "V_BDR.ALDER");
+        var client = new ListClient(item);
+        var cut = RenderView(client);
+        Assert.Contains("Alder ved diagnose", cut.Markup);
+
+        // The save button's path, not this view's: straight at the shared holder.
+        var state = Services.GetRequiredService<VariableListState>();
+        await cut.InvokeAsync(() => state.RemoveVariablesAsync(ListId, [item.VariableId]));
+
+        Assert.DoesNotContain("Alder ved diagnose", cut.Markup);
+    }
+
+    [Fact]
+    public async Task View_WhenTheLastRowOfAPageIsRemoved_ThenTheReaderIsNotStrandedOnAnEmptyPage()
+    {
+        // Page two of two, one row on it. Removing that row leaves a page that no longer exists,
+        // and the empty state replaces the pager - so without a retreat the reader is told the list
+        // is empty with no control left to reach the rows still on page one.
+        var many = Enumerable.Range(1, 26).Select(i => Item($"Variabel {i}", $"V_{i}")).ToArray();
+        var client = new ListClient(many) { PageSize = 25 };
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => cut.FindAll(".munin-explorer-pagination-content button")[^1].Click());
+        Assert.Contains("Variabel 26", cut.Markup);
+
+        cut.FindAll(".munin-explorer-dataitem-main button")[0].Click();
+
+        Assert.Contains("Variabel 1", cut.Markup);
+        Assert.DoesNotContain("Denne listen er tom", cut.Markup);
+    }
+
+    [Fact]
+    public async Task View_WhenTheReaderHasTwoLists_ThenSwitchingShowsTheOtherOne()
+    {
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListCount = 2 };
+        var cut = RenderView(client);
+
+        var before = client.VariablesCalls;
+        await cut.InvokeAsync(() => cut.Find("select").Change(ListClient.SecondListId.ToString()));
+
+        Assert.True(client.VariablesCalls > before, "switching list did not read the other list");
     }
 
     [Fact]
