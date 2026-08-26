@@ -49,6 +49,7 @@
 #
 # Usage:
 #   scripts/assert-sample-css-in-step.sh
+#   SAMPLE_CSS_MODERN=… SAMPLE_CSS_LEGACY=… scripts/assert-sample-css-in-step.sh   # tests only
 #
 # Runs from anywhere: the paths below are repo-relative and the script anchors itself to the
 # checkout root, so `bash scripts/assert-sample-css-in-step.sh` from scripts/ means what it says
@@ -66,8 +67,20 @@ set -uo pipefail
 # bug this line is here to fix.
 cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 2
 
-MODERN="samples/ModernHost/wwwroot/host.css"
-LEGACY="samples/LegacyHost/wwwroot/css/host.css"
+# The two copies — overridable, and for one reason only: so a test can run this whole script,
+# every clause of it unchanged, against a stylesheet it has deliberately broken. Nothing else sets
+# these; CI and the pre-PR checklist run the script bare and get the samples.
+#
+# The seam is here because the riskier half of this check is the shell half. Its C# twin has one
+# already (HostClassNames.OrphansIn takes a stylesheet, so a test empties a rule in memory and
+# watches the check go red), and without the same thing here every branch below — the NAMED/DRAWN
+# split, the rule floor, `missing` against `empty` — is dead on every green run, which is how a
+# guard stops working without anything saying so. SampleCssGuardTest in the test project drives it.
+#
+# Paths are resolved from the checkout root, because of the `cd` above; a test hands in absolute
+# ones.
+MODERN="${SAMPLE_CSS_MODERN:-samples/ModernHost/wwwroot/host.css}"
+LEGACY="${SAMPLE_CSS_LEGACY:-samples/LegacyHost/wwwroot/css/host.css}"
 
 # Names in the prefix that belong to someone else, not to us — styled wherever the component is
 # mounted whether or not this sample styles them, so a missing rule here is not a missing rule
@@ -148,6 +161,19 @@ fi
 # themselves rather than swallowed whole by the at-rule. Whitespace in a selector is squeezed to
 # single spaces so a selector broken across lines still arrives as one line here. This mirrors
 # HostClassNames.CssRule in the test project, which does the same thing to the same file.
+#
+# An `@media` is not the only thing shaped like a block holding a block, and the other one is NOT
+# handled the same way: a NESTED rule has the same shape and comes out wrong. Given
+#
+#   .munin-explorer-x { color: red; & .child { color: blue; } }
+#
+# the only innermost block is the child's, so the selector recorded is `color: red; & .child` —
+# `.munin-explorer-x` reaches neither NAMED nor DRAWN, and its own declarations arrive on the
+# selector side. A name styled only by such a rule is then reported as `missing`, pointing the
+# reader at a rule that is sitting right there with declarations in it, which is the confusion the
+# `empty` bucket below exists to avoid. Loud rather than silent, and the samples nest nothing today
+# (228 rules, all captured) — but the day they do, this extraction has to learn about it rather
+# than the reader having to.
 RULES=$(mktemp)
 NAMED=$(mktemp)
 DRAWN=$(mktemp)
@@ -344,7 +370,9 @@ if [ ${#orphans[@]} -gt 0 ]; then
   echo "" >&2
   echo "Each renders unstyled on helsedata.no. Either it is a typo for a real host name — check" >&2
   echo "$HOST_NAMES for what they actually define — or it is a name of ours that still needs a" >&2
-  echo "rule in $LEGACY, copied over $MODERN." >&2
+  echo "rule in $LEGACY, copied over $MODERN. This clause reads DRAWN, so" >&2
+  echo "'no rule' includes a rule that names it and declares nothing: look for the selector before" >&2
+  echo "concluding it is absent, because an empty block reaches here as though it were." >&2
   exit 1
 fi
 

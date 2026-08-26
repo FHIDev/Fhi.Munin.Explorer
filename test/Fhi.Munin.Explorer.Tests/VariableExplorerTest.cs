@@ -5980,11 +5980,26 @@ public class VariableExplorerTest : BunitContext
 
         // And the shell guard still lets it through. An `IDS=(` block that has lost this entry is
         // a guard that will go red on the next run against a name no rule can ever satisfy.
+        //
+        // The block is matched rather than sliced out on two unchecked indices. Reformatting the
+        // array, renaming it, or closing it as `  )` is exactly the edit that would take the entry
+        // with it, and slicing would meet that edit with an ArgumentOutOfRangeException pointing at
+        // a string index — a reader would be told a number was out of range, in the one test
+        // written to tell them why this entry has to survive.
         var guard = File.ReadAllText(Repo.In("scripts", "assert-sample-css-in-step.sh"));
-        var ids = guard[guard.IndexOf("\nIDS=(", StringComparison.Ordinal)..];
-        ids = ids[..ids.IndexOf("\n)", StringComparison.Ordinal)];
+        var ids = System.Text.RegularExpressions.Regex.Match(
+            guard, @"^IDS=\((?<entries>.*?)^\)",
+            System.Text.RegularExpressions.RegexOptions.Multiline
+            | System.Text.RegularExpressions.RegexOptions.Singleline);
 
-        Assert.Contains("munin-explorer-source", ids, StringComparison.Ordinal);
+        Assert.True(ids.Success,
+            "No `IDS=(` … `)` block in scripts/assert-sample-css-in-step.sh. The exemption list is " +
+            "what keeps the guard off munin-explorer-source, which is an id prefix and not a class: " +
+            ".munin-explorer-source selects nothing, so no stylesheet can ever have a rule for it " +
+            "and a guard demanding one fails forever. If the list has moved, this test follows it; " +
+            "if it has been deleted, the guard is about to go red on a name nothing can satisfy.");
+
+        Assert.Contains("munin-explorer-source", ids.Groups["entries"].Value, StringComparison.Ordinal);
     }
 
     [Fact]

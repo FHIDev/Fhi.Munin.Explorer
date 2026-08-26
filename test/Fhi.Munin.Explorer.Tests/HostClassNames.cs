@@ -9,9 +9,9 @@ namespace Fhi.Munin.Explorer.Tests;
 /// keeps: it renders at raw browser defaults on helsedata.no and looks like a bug in the component.
 ///
 /// "Draws it" rather than "names it", because a rule with an empty block draws exactly what no rule
-/// draws. Every question here goes through <see cref="SampleDeclarationsFor"/>, which cuts the
-/// selector apart from the declarations, rather than searching the stylesheet as one string — a
-/// substring search cannot tell a rule that does something from a rule that does nothing.
+/// draws. Every question here goes through <see cref="RulesIn"/>, which cuts each rule's selector
+/// apart from its declarations, rather than searching the stylesheet as one string — a substring
+/// search cannot tell a rule that does something from a rule that does nothing.
 ///
 /// <c>headline-sm</c> was exactly that for months. It reads like one of helsedata's heading classes,
 /// it sat beside <c>headline</c> where a real one would, and it is a typo for <c>headline-s</c> that
@@ -44,14 +44,24 @@ internal static class HostClassNames
     ///
     /// No <c>Singleline</c>, unlike its neighbour above: the flag only widens what <c>.</c>
     /// matches, and there is no <c>.</c> here. A negated class crosses newlines on its own.
+    ///
+    /// Where that stops: an <c>@media</c> is not the only thing shaped like a block holding a
+    /// block. A NESTED rule is the same shape and is not handled the same way. Given
+    /// <c>.a { color: red; &amp; .b { color: blue; } }</c> the only innermost block is <c>.b</c>'s,
+    /// so the recorded selector is <c>color: red; &amp; .b</c> — <c>.a</c> never reaches a selector
+    /// at all and its own declarations arrive on the selector side. A name styled only by such a
+    /// rule is reported as having no rule, which is loud rather than silent, and points the reader
+    /// at a rule sitting right there with declarations in it. Nothing in the sample stylesheet
+    /// nests today; the day something does, this cut has to learn about it rather than the reader
+    /// having to.
     /// </summary>
     private static readonly System.Text.RegularExpressions.Regex CssRule =
         new(@"(?<selector>[^{}]*)\{(?<declarations>[^{}]*)\}");
 
     /// <summary>
-    /// The sample stylesheet, held as text rather than parsed: <see cref="SampleDeclarationsFor"/>
-    /// cuts the rules out of it with <see cref="CssRule"/>, and every question here is asked of
-    /// those rules rather than of this string.
+    /// The sample stylesheet, held as text rather than parsed: <see cref="RulesIn"/> cuts the rules
+    /// out of it with <see cref="CssRule"/>, and every question here is asked of those rules rather
+    /// than of this string.
     ///
     /// Comments are stripped first, and that is load-bearing rather than tidy. This file is heavily
     /// commented, and a comment naming a selector reads to a substring search exactly like a rule
@@ -78,10 +88,11 @@ internal static class HostClassNames
     /// names at all, and the ones a rule names and then says nothing about. Empty is the passing
     /// answer; anything else names a class that will render unstyled on helsedata.no.
     ///
-    /// The second case is the reason this asks <see cref="SampleDeclarationsFor"/> instead of
-    /// searching the stylesheet for the name. An empty block draws what no block draws, so a check
-    /// that stops at the selector calls it styled: the facet fold is the standing example of that
-    /// shape — the selector was never the missing half, the declaration that undoes the fold was.
+    /// The second case is the reason this asks <see cref="RulesIn"/> for the rules and reads their
+    /// blocks, instead of searching the stylesheet for the name. An empty block draws what no block
+    /// draws, so a check that stops at the selector calls it styled: the facet fold is the standing
+    /// example of that shape — the selector was never the missing half, the declaration that undoes
+    /// the fold was.
     /// Nothing in the sample stylesheet fails this today, which is the point of adding it now
     /// rather than after the next empty rule ships.
     ///
@@ -112,9 +123,17 @@ internal static class HostClassNames
     }
 
     /// <summary>
-    /// Every rule in a stylesheet, selector cut from declarations. Comments go first, for the
-    /// reason <see cref="SampleStylesheet"/> gives — stripping text already stripped costs a pass
-    /// and changes nothing, which is the price of letting a test hand in a stylesheet of its own.
+    /// Every rule in a stylesheet, selector cut from declarations. Every question this file answers
+    /// comes through here — <see cref="Orphans"/> by way of <see cref="Verdict"/>, and
+    /// <see cref="SampleDeclarationsFor"/> directly — and none of them is put to the stylesheet as
+    /// one string. That is deliberate: a search for a name alone answers "styled" for a rule with
+    /// nothing in it, and a rule with nothing in it draws nothing. <see cref="SampleCss"/> is the
+    /// one thing that hands the text out whole, and it is for a test to MUTATE rather than to
+    /// search; anything that searches it has stepped around this method.
+    ///
+    /// Comments go first, for the reason <see cref="SampleStylesheet"/> gives — stripping text
+    /// already stripped costs a pass and changes nothing, which is the price of letting a test hand
+    /// in a stylesheet of its own.
     /// </summary>
     private static IReadOnlyList<(string Selector, string Declarations)> RulesIn(string stylesheet) =>
         [.. CssRule.Matches(CssComment.Replace(stylesheet, " "))
@@ -141,24 +160,17 @@ internal static class HostClassNames
     /// <paramref name="name"/> — <c>.munin-explorer-skiplink-pagination</c> and its <c>:focus</c>
     /// twin come back as two entries, in the order the file writes them.
     ///
-    /// This is the only way into the stylesheet, and that is deliberate: a search for the name
-    /// alone answers "styled" for a rule with nothing in it, and a rule with nothing in it draws
-    /// nothing. <see cref="Orphans"/> reads these blocks to rule out the empty ones for every name
-    /// at once; the two named regression tests read them to assert a particular declaration — the
-    /// skip link's offset, and the pair that undoes the facet fold on a host with room for a
-    /// sidebar. Both halves of that failure are the same shape: the selector was there, and the
-    /// declaration that made it mean something was not.
+    /// Through <see cref="RulesIn"/> like everything else here, and for the reason given there: a
+    /// search for the name alone answers "styled" for a rule with nothing in it. What this adds is
+    /// the blocks themselves, for the two named regression tests that assert a particular
+    /// declaration — the skip link's offset, and the pair that undoes the facet fold on a host with
+    /// room for a sidebar. <see cref="Orphans"/> does not come this way; it asks
+    /// <see cref="Verdict"/> the coarser question, "does any rule naming this declare anything",
+    /// of every rendered name at once. Both halves of the facet fold's failure are the same shape:
+    /// the selector was there, and the declaration that made it mean something was not.
     /// </summary>
     internal static IReadOnlyList<(string Selector, string Declarations)> SampleDeclarationsFor(string name) =>
-        DeclarationsFor(SampleStylesheet.Value, name);
-
-    /// <summary>
-    /// <see cref="SampleDeclarationsFor"/> asked of any stylesheet, for the same reason
-    /// <see cref="OrphansIn"/> exists.
-    /// </summary>
-    internal static IReadOnlyList<(string Selector, string Declarations)> DeclarationsFor(
-        string stylesheet, string name) =>
-        [.. RulesIn(stylesheet).Where(rule => Mentions(rule.Selector, name))];
+        [.. RulesIn(SampleStylesheet.Value).Where(rule => Mentions(rule.Selector, name))];
 
     /// <summary>
     /// Null when <paramref name="rules"/> really draw <paramref name="name"/>; otherwise the line
