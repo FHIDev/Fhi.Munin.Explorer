@@ -49,6 +49,7 @@ public class SaveToListTest : BunitContext
         public int AddCalls { get; private set; }
         public int RemoveCalls { get; private set; }
         public int MyListsCalls { get; private set; }
+        public int MembershipCalls { get; private set; }
         public int CreateCalls { get; private set; }
         public readonly HashSet<Guid> Stored = [];
 
@@ -64,6 +65,13 @@ public class SaveToListTest : BunitContext
         /// other: the row has to say something different for each, and one flag could not show that.
         /// </remarks>
         public bool FailAdd { get; init; }
+
+        /// <summary>Refuse every membership read with the API's 429 while set.</summary>
+        /// <remarks>
+        /// Settable rather than <c>init</c>, unlike the two above: the point of the tests using it
+        /// is what happens after the reader has waited, so it has to be turned off mid-test.
+        /// </remarks>
+        public bool RateLimitMembership { get; set; }
 
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
             string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
@@ -88,8 +96,16 @@ public class SaveToListTest : BunitContext
         }
 
         public override Task<Page<VariableListItem>?> GetMyListVariablesAsync(
-            Guid id, int page = 1, int pageSize = 100, CancellationToken cancellationToken = default) =>
-            Task.FromResult<Page<VariableListItem>?>(new Page<VariableListItem>
+            Guid id, int page = 1, int pageSize = 100, CancellationToken cancellationToken = default)
+        {
+            MembershipCalls++;
+
+            if (RateLimitMembership)
+            {
+                throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+            }
+
+            return Task.FromResult<Page<VariableListItem>?>(new Page<VariableListItem>
             {
                 Items = [.. Stored.Select(v => new VariableListItem { VariableId = v })],
                 TotalCount = Stored.Count,
@@ -97,6 +113,7 @@ public class SaveToListTest : BunitContext
                 Size = pageSize,
                 TotalPages = 1
             });
+        }
 
         public override Task<bool> AddVariablesToMyListAsync(
             Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default)
@@ -290,6 +307,61 @@ public class SaveToListTest : BunitContext
 
         Assert.Contains("Kunne ikke lagre", alert.TextContent);
         Assert.DoesNotContain("for mange forespørsler", alert.TextContent);
+    }
+
+    [Fact]
+    public void Mount_WhenTheListBootstrapIsRateLimited_ThenThePageStillRenders()
+    {
+        // The mount fires the search, the facet refresh and this list read together, which is
+        // exactly the burst the per-address limiter counts — so a 429 here is ordinary. Left
+        // uncaught it leaves OnParametersSetAsync as an unhandled exception, and in helsedata's
+        // legacy Blazor Server host that tears down the circuit for the whole CMS page rather than
+        // showing the sentence this component has for it.
+        var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER")))
+        {
+            RateLimitMembership = true
+        };
+
+        var cut = RenderSignedIn(client);
+
+        Assert.Equal(1, client.MembershipCalls);
+        Assert.Single(cut.FindAll("ul.munin-explorer-data-list > li"));
+        Assert.Single(cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]"));
+
+        // Nothing is claimed about the list either way: the reader has touched nothing yet, so
+        // there is nothing for a page-wide alert to tell them to do.
+        Assert.Empty(cut.Find("[role='alert']").TextContent.Trim());
+    }
+
+    [Fact]
+    public void Mount_WhenTheListBootstrapWasRateLimited_ThenTheNextSavePutsTheOtherRowsRight()
+    {
+        // Why "wait and try again" is honest advice rather than a sentence that repairs nothing.
+        // The refused read leaves membership empty, so a variable saved yesterday renders unsaved;
+        // the next press reads it again, and every row's label agrees with the stored list once
+        // more.
+        var alder = Variable("Alder ved diagnose", "V_BDR.ALDER");
+        var status = Variable("Skjemastatus", "V_BDR.FORMSTATUS");
+        var client = new ListClient(OnePage(alder, status)) { RateLimitMembership = true };
+
+        client.Stored.Add(status.Id);
+
+        var cut = RenderSignedIn(client);
+
+        // Wrong, and knowably so: the read that would have said otherwise was refused.
+        Assert.Equal(["false", "false"],
+                     cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]")
+                        .Select(b => b.GetAttribute("aria-pressed")));
+
+        client.RateLimitMembership = false;
+        SaveButton(cut).Click();
+
+        Assert.Equal(["true", "true"],
+                     cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]")
+                        .Select(b => b.GetAttribute("aria-pressed")));
+        Assert.Equal(2, client.Stored.Count);
+        Assert.Contains(alder.Id, client.Stored);
+        Assert.Contains(status.Id, client.Stored);
     }
 
     // -----------------------------------------------------------------------

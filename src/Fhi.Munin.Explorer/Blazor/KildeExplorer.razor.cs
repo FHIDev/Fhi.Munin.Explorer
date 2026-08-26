@@ -528,25 +528,20 @@ public sealed partial class KildeExplorer : ComponentBase
             // the API never had.
             _detailError = detail is null ? T.KildeMissing : null;
         }
-        catch (MuninExplorerRateLimitedException)
+        catch (Exception ex)
         {
+            // One branch for both failures, so the stale-fetch guard is written once: a fetch the
+            // reader has already moved on from must not paint its answer — of either kind — into the
+            // panel now showing something else.
             if (generation != _detailGeneration)
             {
                 return;
             }
 
-            // Same generation check as below, and the same panel: only the sentence differs, because
-            // a kilde that did not arrive because we asked too often is not a kilde that is missing.
-            _detailError = T.RateLimitError;
-        }
-        catch (Exception)
-        {
-            if (generation != _detailGeneration)
-            {
-                return;
-            }
-
-            _detailError = T.KildeError;
+            // Only the sentence differs. A kilde that did not arrive because we asked too often is
+            // neither a kilde that is missing nor a catalogue that is down, and the generic text
+            // invites the retry the limiter is counting.
+            _detailError = ex is MuninExplorerRateLimitedException ? T.RateLimitError : T.KildeError;
         }
         finally
         {

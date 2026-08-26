@@ -34,11 +34,29 @@ public sealed partial class VariableListState
     /// out instead. The label, the action and the state have to agree on the very first render.
     /// A reader with no list yet gets none made here: that happens on the first save, where it is
     /// something they asked for.
+    /// <para>
+    /// The guard asks whether membership arrived, not merely whether a list was picked. A read that
+    /// throws — the rate limiter refusing it is the likeliest way — leaves
+    /// <see cref="SetActiveListAsync"/> having already assigned the id, so a guard on the id alone
+    /// would return here for the rest of the circuit and answer every
+    /// <see cref="IsSaved"/> from a set nothing would ever refill. The reader would be told to wait
+    /// and try again, and trying again would repair the save but never the labels.
+    /// </para>
     /// </remarks>
     public async Task EnsureActiveListAsync(CancellationToken cancellationToken = default)
     {
-        if (!IsAuthenticated || _activeListId is not null)
+        if (!IsAuthenticated || (_activeListId is not null && _membershipLoaded))
         {
+            return;
+        }
+
+        if (_activeListId is not null)
+        {
+            // A list is already chosen and its membership is not here: an earlier read failed. Read
+            // that list again rather than falling back to the first one, which is not necessarily
+            // the one the reader — or another surface — chose.
+            await LoadMembershipAsync(cancellationToken).ConfigureAwait(false);
+
             return;
         }
 
@@ -165,6 +183,11 @@ public sealed partial class VariableListState
         var page = 1;
         var startedAt = _generation;
         var listId = _activeListId.Value;
+
+        // Start from an empty set on every read, not only on the ones SetActiveListAsync cleared
+        // for: a read that threw partway through a long list left the pages it had reached behind,
+        // and the retry begins again at page one.
+        _saved.Clear();
 
         while (true)
         {

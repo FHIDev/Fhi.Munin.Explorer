@@ -313,14 +313,13 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
 
     /// <summary>Sends one request, with <paramref name="body"/> as JSON when there is one.</summary>
     /// <remarks>
-    /// A 429 is turned into <see cref="MuninExplorerRateLimitedException"/> here rather than in each
-    /// caller, so every write inherits it the way every read inherits the branch in
-    /// <see cref="GetOrNullAsync{T}"/>. The reads had one status-interpreting place and the writes
-    /// have two — <see cref="CreateMyListAsync"/> and <see cref="SendForFoundAsync"/> — which is
-    /// exactly how the gap this repaired came to be missed once already: toggling save down a
-    /// result list is the rhythm that meets the limiter, and a throttled save reaching the reader as
-    /// "could not save" is the same wrong sentence in a smaller place. A third write added later
-    /// gets the branch by going through here at all.
+    /// A 429 never leaves this method as a response: it is thrown as
+    /// <see cref="MuninExplorerRateLimitedException"/> here, so every write inherits that branch by
+    /// going through here at all — the way every read inherits it from
+    /// <see cref="GetOrNullAsync{T}"/>. It belongs here rather than in each caller because the
+    /// writes read status in two places, <see cref="CreateMyListAsync"/> and
+    /// <see cref="SendForFoundAsync"/>, and both would otherwise have to remember it; a write added
+    /// later would have to remember it too.
     /// <para>
     /// The response is disposed before the throw, since nothing above can dispose one it never
     /// received.
