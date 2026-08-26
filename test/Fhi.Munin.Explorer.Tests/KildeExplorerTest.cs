@@ -1705,7 +1705,7 @@ public class KildeExplorerTest : BunitContext
     }
 
     [Fact]
-    public void Fasettpanelet_NaarVertenHarPlass_ThenTheFoldIsUndoneByADeclaration()
+    public void Facets_WhenTheHostHasRoomForASidebar_ThenTheFoldIsUndoneByADeclaration()
     {
         // Same half of the bug the skip link had: every other check asks whether a NAME has a rule,
         // and the fold satisfies all of them while broken. What a host must actually supply is a
@@ -1725,11 +1725,11 @@ public class KildeExplorerTest : BunitContext
         Assert.True(
             BlocksFor(".munin-explorer-filters__toggle")
                 .Any(d => d.Contains("display:none", StringComparison.Ordinal)),
-            "Ingen regel tar toggle-knappen av skjermen når verten har plass.");
+            "No rule takes the toggle off screen once the host has room for a sidebar.");
 
         Assert.True(
             BlocksFor(".munin-explorer-filters__facets[hidden]")
                 .Any(d => d.Contains("display:block", StringComparison.Ordinal)),
-            "Ingen regel opphever [hidden] på fasettene når verten har plass.");
+            "No rule undoes [hidden] on the facets once the host has room for a sidebar.");
     }
 }
