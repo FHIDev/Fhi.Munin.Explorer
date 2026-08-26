@@ -49,11 +49,29 @@ public class SaveToListTest : BunitContext
         public int AddCalls { get; private set; }
         public int RemoveCalls { get; private set; }
         public int MyListsCalls { get; private set; }
+        public int MembershipCalls { get; private set; }
         public int CreateCalls { get; private set; }
         public readonly HashSet<Guid> Stored = [];
 
         /// <summary>Set when the reader is meant to already have a list.</summary>
         public bool HasExistingList { get; init; } = true;
+
+        /// <summary>Refuse every add with the API's 429.</summary>
+        public bool RateLimitAdd { get; init; }
+
+        /// <summary>Refuse every add the way anything else that goes wrong refuses it.</summary>
+        /// <remarks>
+        /// Its own switch beside <see cref="RateLimitAdd"/> so the pair can be asserted against each
+        /// other: the row has to say something different for each, and one flag could not show that.
+        /// </remarks>
+        public bool FailAdd { get; init; }
+
+        /// <summary>Refuse every membership read with the API's 429 while set.</summary>
+        /// <remarks>
+        /// Settable rather than <c>init</c>, unlike the two above: the point of the tests using it
+        /// is what happens after the reader has waited, so it has to be turned off mid-test.
+        /// </remarks>
+        public bool RateLimitMembership { get; set; }
 
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
             string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
@@ -78,8 +96,16 @@ public class SaveToListTest : BunitContext
         }
 
         public override Task<Page<VariableListItem>?> GetMyListVariablesAsync(
-            Guid id, int page = 1, int pageSize = 100, CancellationToken cancellationToken = default) =>
-            Task.FromResult<Page<VariableListItem>?>(new Page<VariableListItem>
+            Guid id, int page = 1, int pageSize = 100, CancellationToken cancellationToken = default)
+        {
+            MembershipCalls++;
+
+            if (RateLimitMembership)
+            {
+                throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+            }
+
+            return Task.FromResult<Page<VariableListItem>?>(new Page<VariableListItem>
             {
                 Items = [.. Stored.Select(v => new VariableListItem { VariableId = v })],
                 TotalCount = Stored.Count,
@@ -87,11 +113,23 @@ public class SaveToListTest : BunitContext
                 Size = pageSize,
                 TotalPages = 1
             });
+        }
 
         public override Task<bool> AddVariablesToMyListAsync(
             Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default)
         {
             AddCalls++;
+
+            if (RateLimitAdd)
+            {
+                throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+            }
+
+            if (FailAdd)
+            {
+                throw new HttpRequestException("nede");
+            }
+
             foreach (var v in variableIds) { Stored.Add(v); }
             return Task.FromResult(true);
         }
@@ -229,6 +267,132 @@ public class SaveToListTest : BunitContext
         var alert = cut.FindAll(".munin-explorer-dataitem-main [role=alert]");
         Assert.Single(alert);
         Assert.Equal("", alert[0].TextContent.Trim());
+    }
+
+    [Fact]
+    public void Row_WhenTheSaveIsRateLimited_ThenTheRowSaysSoRatherThanThatSavingFailed()
+    {
+        // The writes go through the same client and the same per-address limiter as the reads, and
+        // saving one row after another is the rhythm that meets it. "Prøv igjen om litt" beside the
+        // button would be advising the reader to do the one thing that keeps the window full.
+        var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER")))
+        {
+            RateLimitAdd = true
+        };
+        var cut = RenderSignedIn(client);
+
+        SaveButton(cut).Click();
+
+        var alert = cut.Find(".munin-explorer-dataitem-main [role=alert]");
+
+        Assert.Contains("for mange forespørsler", alert.TextContent);
+        Assert.DoesNotContain("Kunne ikke lagre", alert.TextContent);
+    }
+
+    [Fact]
+    public void Row_WhenTheSaveFailsForAnyOtherReason_ThenTheRowStillSaysTheSaveFailed()
+    {
+        // The other half of the pair: the throttled sentence must not swallow the ordinary one, or
+        // a reader whose save really did fail is told to wait for a window that was never the
+        // problem.
+        var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER")))
+        {
+            FailAdd = true
+        };
+        var cut = RenderSignedIn(client);
+
+        SaveButton(cut).Click();
+
+        var alert = cut.Find(".munin-explorer-dataitem-main [role=alert]");
+
+        Assert.Contains("Kunne ikke lagre", alert.TextContent);
+        Assert.DoesNotContain("for mange forespørsler", alert.TextContent);
+    }
+
+    [Fact]
+    public void Mount_WhenTheListBootstrapIsRateLimited_ThenThePageStillRenders()
+    {
+        // The mount fires the search, the facet refresh and this list read together, which is
+        // exactly the burst the per-address limiter counts — so a 429 here is ordinary. Left
+        // uncaught it leaves OnParametersSetAsync as an unhandled exception, and in helsedata's
+        // legacy Blazor Server host that tears down the circuit for the whole CMS page rather than
+        // showing the sentence this component has for it.
+        var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER")))
+        {
+            RateLimitMembership = true
+        };
+
+        var cut = RenderSignedIn(client);
+
+        Assert.Equal(1, client.MembershipCalls);
+        Assert.Single(cut.FindAll("ul.munin-explorer-data-list > li"));
+        Assert.Single(cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]"));
+
+        // Nothing is claimed about the list either way: the reader has touched nothing yet, so
+        // there is nothing for a page-wide alert to tell them to do.
+        Assert.Empty(cut.Find("[role='alert']").TextContent.Trim());
+    }
+
+    [Fact]
+    public void Mount_WhenTheListBootstrapWasRateLimited_ThenTheNextSavePutsTheOtherRowsRight()
+    {
+        // Why "wait and try again" is honest advice rather than a sentence that repairs nothing.
+        // The refused read leaves membership empty, so a variable saved yesterday renders unsaved;
+        // the next press reads it again, and every row's label agrees with the stored list once
+        // more.
+        var alder = Variable("Alder ved diagnose", "V_BDR.ALDER");
+        var status = Variable("Skjemastatus", "V_BDR.FORMSTATUS");
+        var client = new ListClient(OnePage(alder, status)) { RateLimitMembership = true };
+
+        client.Stored.Add(status.Id);
+
+        var cut = RenderSignedIn(client);
+
+        // Wrong, and knowably so: the read that would have said otherwise was refused.
+        Assert.Equal(["false", "false"],
+                     cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]")
+                        .Select(b => b.GetAttribute("aria-pressed")));
+
+        client.RateLimitMembership = false;
+        SaveButton(cut).Click();
+
+        Assert.Equal(["true", "true"],
+                     cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]")
+                        .Select(b => b.GetAttribute("aria-pressed")));
+        Assert.Equal(2, client.Stored.Count);
+        Assert.Contains(alder.Id, client.Stored);
+        Assert.Contains(status.Id, client.Stored);
+    }
+
+    [Fact]
+    public void Mount_WhenTheFirstPressAfterARefusedBootstrapIsOnASavedRow_ThenItIsNotRemoved()
+    {
+        // The other half of the repair, and the one that costs the reader something if it is wrong.
+        // The refused read draws every row as unsaved, so a variable saved yesterday shows "Lagre";
+        // the press reads membership again, which fills the set in the middle of the call. A press
+        // that then asked the freshly filled set which way to go would find the variable saved and
+        // delete it — the button doing the opposite of the word on it, and saying nothing about it
+        // afterwards. The direction comes from the row as it was drawn instead.
+        var status = Variable("Skjemastatus", "V_BDR.FORMSTATUS");
+        var client = new ListClient(OnePage(status)) { RateLimitMembership = true };
+
+        client.Stored.Add(status.Id);
+
+        var cut = RenderSignedIn(client);
+
+        Assert.Equal("false", SaveButton(cut).GetAttribute("aria-pressed"));
+        Assert.Contains("Lagre", SaveButton(cut).TextContent);
+
+        client.RateLimitMembership = false;
+        SaveButton(cut).Click();
+
+        // Still the reader's, and now labelled as such.
+        Assert.Contains(status.Id, client.Stored);
+        Assert.Equal("true", SaveButton(cut).GetAttribute("aria-pressed"));
+        Assert.Equal(0, client.RemoveCalls);
+
+        // Nothing was said, because nothing went wrong.
+        Assert.Empty(cut.Find("[role='alert']").TextContent.Trim());
     }
 
     // -----------------------------------------------------------------------

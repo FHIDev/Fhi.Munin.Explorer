@@ -294,6 +294,11 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
     /// belonging to somebody else — deliberately, so a caller cannot learn which list ids are real
     /// by watching the difference. It reads as "no such list of yours" here, which is the only
     /// thing a caller can act on and the same not-a-fault the read endpoints map to null.
+    /// <para>
+    /// A 429 is not one of those, and never reaches this method: <see cref="SendAsync"/> throws it
+    /// as <see cref="MuninExplorerRateLimitedException"/> first. Reading it as <c>false</c> would
+    /// tell the reader their list is gone when it is only their request that was refused.
+    /// </para>
     /// </remarks>
     private async Task<bool> SendForFoundAsync(
         HttpMethod method,
@@ -317,6 +322,19 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
     }
 
     /// <summary>Sends one request, with <paramref name="body"/> as JSON when there is one.</summary>
+    /// <remarks>
+    /// A 429 never leaves this method as a response: it is thrown as
+    /// <see cref="MuninExplorerRateLimitedException"/> here, so every write inherits that branch by
+    /// going through here at all — the way every read inherits it from
+    /// <see cref="GetOrNullAsync{T}"/>. It belongs here rather than in each caller because the
+    /// writes read status in two places, <see cref="CreateMyListAsync"/> and
+    /// <see cref="SendForFoundAsync"/>, and both would otherwise have to remember it; a write added
+    /// later would have to remember it too.
+    /// <para>
+    /// The response is disposed before the throw, since nothing above can dispose one it never
+    /// received.
+    /// </para>
+    /// </remarks>
     private async Task<HttpResponseMessage> SendAsync(
         HttpMethod method,
         string url,
@@ -332,7 +350,17 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
             request.Content = JsonContent.Create(body, body.GetType(), options: Json);
         }
 
-        return await httpClient.SendAsync(request, cancellationToken);
+        var response = await httpClient.SendAsync(request, cancellationToken);
+
+        if (response.StatusCode == HttpStatusCode.TooManyRequests)
+        {
+            var retryAfter = RetryAfter(response);
+            response.Dispose();
+
+            throw new MuninExplorerRateLimitedException(retryAfter);
+        }
+
+        return response;
     }
 
     /// <summary>Escape one free-text value for the path, refusing one the path cannot carry.</summary>
@@ -374,12 +402,21 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
     }
 
     /// <summary>
-    /// GET and deserialise, mapping 404 to null.
+    /// GET and deserialise, mapping 404 to null and 429 to
+    /// <see cref="MuninExplorerRateLimitedException"/>.
     /// </summary>
     /// <remarks>
     /// The explorer is a public page reachable by deep link, so a request for something that has
     /// been unpublished — or for an id someone typed — is an ordinary event the caller should be
-    /// able to render as "not found". Every other failure still throws.
+    /// able to render as "not found".
+    /// <para>
+    /// A 429 is the other status this method reads, and it is read only to throw something the
+    /// caller can recognise: the API is answering, and the reader has to be told they asked too
+    /// often rather than that the catalogue is down. It is deliberately not given the 404 branch's
+    /// treatment — see <see cref="MuninExplorerRateLimitedException"/> for why a throttled call
+    /// must not come back as an empty result. Every other failure still throws, as an
+    /// <see cref="HttpRequestException"/> from <c>EnsureSuccessStatusCode</c>.
+    /// </para>
     /// </remarks>
     private async Task<T?> GetOrNullAsync<T>(
         string url,
@@ -405,9 +442,46 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
             return default;
         }
 
+        if (response.StatusCode == HttpStatusCode.TooManyRequests)
+        {
+            throw new MuninExplorerRateLimitedException(RetryAfter(response));
+        }
+
         response.EnsureSuccessStatusCode();
 
         return await response.Content.ReadFromJsonAsync<T>(Json, cancellationToken);
+    }
+
+    /// <summary>How long a 429 asked us to wait, or null when it did not say.</summary>
+    /// <remarks>
+    /// <c>Retry-After</c> comes in two forms and the API is free to send either: delta-seconds,
+    /// which lands in <c>Delta</c>, and an HTTP date, which lands in <c>Date</c> and has to be
+    /// turned into a wait here. A reader whose clock runs behind the server's would otherwise be
+    /// handed a negative wait, so a date already past is floored at zero rather than sent on as a
+    /// number that reads like "you should have gone earlier".
+    /// <para>
+    /// Null when the header is absent, which is not an anomaly worth guessing a default for: the
+    /// value is carried for logging and nothing acts on it — see
+    /// <see cref="MuninExplorerRateLimitedException.RetryAfter"/>.
+    /// </para>
+    /// </remarks>
+    private static TimeSpan? RetryAfter(HttpResponseMessage response)
+    {
+        var header = response.Headers.RetryAfter;
+
+        if (header?.Delta is { } delta)
+        {
+            return delta;
+        }
+
+        if (header?.Date is { } date)
+        {
+            var wait = date - DateTimeOffset.UtcNow;
+
+            return wait > TimeSpan.Zero ? wait : TimeSpan.Zero;
+        }
+
+        return null;
     }
 
     /// <summary>

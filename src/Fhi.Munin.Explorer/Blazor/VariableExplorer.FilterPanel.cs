@@ -606,6 +606,14 @@ public partial class VariableExplorer
                 _executedSearch, _filter, ReaderLanguage.ForApi(Language));
             _facetError = null;
         }
+        catch (MuninExplorerRateLimitedException)
+        {
+            // This refresh goes out alongside every search, so a throttled reader meets this panel
+            // and the result list in the same render. "The counts may be out of date" beside "you
+            // have made too many requests" would have the two regions disagree about what happened,
+            // and only one of them would be telling the reader what to do about it.
+            _facetError = T.RateLimitError;
+        }
         catch (Exception)
         {
             _facetError = T.FilterError;

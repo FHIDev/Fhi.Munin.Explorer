@@ -246,6 +246,46 @@ internal sealed class StubHttpHandler(Func<HttpRequestMessage, HttpResponseMessa
     /// <summary>Answers with the given status and an empty body.</summary>
     public static StubHttpHandler Status(HttpStatusCode status) => new(_ => new HttpResponseMessage(status));
 
+    /// <summary>Answers <c>429 Too Many Requests</c>, with a <c>Retry-After</c> when given one.</summary>
+    /// <remarks>
+    /// The header is optional and both cases are real: the API sets it, and a proxy in front of it
+    /// can drop it. A stub that could only send it would leave the header-less path untested, which
+    /// is the one where a wait of "unknown" must not become a wait of zero.
+    /// <para>
+    /// A fresh response per call, like every factory here, so a test that counts calls can also
+    /// read the answer each of them got.
+    /// </para>
+    /// </remarks>
+    public static StubHttpHandler RateLimited(TimeSpan? retryAfter = null) => new(_ =>
+    {
+        var response = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+
+        if (retryAfter is { } delta)
+        {
+            response.Headers.RetryAfter = new RetryConditionHeaderValue(delta);
+        }
+
+        return response;
+    });
+
+    /// <summary>
+    /// Answers <c>429 Too Many Requests</c> with a <c>Retry-After</c> in its other form — an HTTP
+    /// date rather than a number of seconds.
+    /// </summary>
+    /// <remarks>
+    /// Both forms are legal and the API is free to send either, so the date branch is a parse and a
+    /// subtraction the delta branch never exercises. The one worth pinning is a date already past,
+    /// which a reader whose clock runs behind the server's meets routinely: it has to floor at zero
+    /// rather than travel as a negative wait that reads like "you should have gone earlier".
+    /// </remarks>
+    public static StubHttpHandler RateLimitedUntil(DateTimeOffset when) => new(_ =>
+    {
+        var response = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+        response.Headers.RetryAfter = new RetryConditionHeaderValue(when);
+
+        return response;
+    });
+
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         Calls++;

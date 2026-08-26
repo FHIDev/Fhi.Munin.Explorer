@@ -454,6 +454,54 @@ public class MyListsClientTest
         await Assert.ThrowsAsync<HttpRequestException>(() => client.DeleteMyListAsync(ListId));
     }
 
+    // --------------------------------------------------------------------------------------- 429
+
+    [Theory]
+    [InlineData("rename")]
+    [InlineData("delete")]
+    [InlineData("add")]
+    [InlineData("remove")]
+    public async Task AWrite_WhenTheApiRateLimits_ThenItThrowsRatherThanReadingAsNoSuchList(string call)
+    {
+        // The trap the reads meet, in the shape a write takes it. These routes sit under
+        // api/explorer/ like every other one and are counted against the same per-address limiter,
+        // and saving one row after another is exactly the rhythm that meets it — so a throttled
+        // write is an ordinary event here. Reporting it as false would tell the reader their list
+        // is gone when it is only their request that was refused.
+        var handler = StubHttpHandler.RateLimited(TimeSpan.FromSeconds(30));
+        var client = Client(handler);
+
+        var refused = await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(() => call switch
+        {
+            "rename" => client.RenameMyListAsync(ListId, "Nytt navn"),
+            "delete" => client.DeleteMyListAsync(ListId),
+            "add" => client.AddVariablesToMyListAsync(ListId, [Guid.NewGuid()]),
+            "remove" => client.RemoveVariablesFromMyListAsync(ListId, [Guid.NewGuid()]),
+            _ => throw new ArgumentOutOfRangeException(nameof(call), call, "No such call.")
+        });
+
+        Assert.Equal(TimeSpan.FromSeconds(30), refused.RetryAfter);
+
+        // The writes get no retry of their own either, for the same reason the reads get none.
+        Assert.Equal(1, handler.Calls);
+    }
+
+    [Fact]
+    public async Task CreateMyListAsync_WhenTheApiRateLimits_ThenItThrowsItsOwnExceptionRatherThanTheGenericOne()
+    {
+        // The other status-interpreting write. Its EnsureSuccessStatusCode is there for a name the
+        // API refused, which is the user's to fix; a 429 is not, and a caller that cannot tell them
+        // apart shows "could not save" to a reader whose list was never in doubt.
+        var handler = StubHttpHandler.RateLimited();
+        var client = Client(handler);
+
+        var refused = await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(
+            () => client.CreateMyListAsync("Min liste"));
+
+        Assert.Null(refused.RetryAfter);
+        Assert.Equal(1, handler.Calls);
+    }
+
     // ------------------------------------------------------------------------------ the batch ceiling
 
     [Theory]

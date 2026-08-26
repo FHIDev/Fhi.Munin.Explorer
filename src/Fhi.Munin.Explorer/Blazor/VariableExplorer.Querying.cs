@@ -525,16 +525,26 @@ public partial class VariableExplorer
 
             return true;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Say what the reader can do about it; the detail belongs in the host's logs,
-            // not on the page.
+            // One branch for both failures, because everything except the sentence is the same: say
+            // what the reader can do about it and clear the rows. The detail belongs in the host's
+            // logs, not on the page.
+            //
+            // A 429 gets its own sentence because the answer differs — the catalogue is up and the
+            // reader has asked too often, so pressing Søk again at once is the one thing that cannot
+            // help, which is exactly what the generic text advises.
+            //
+            // The rows are cleared either way. Leaving the previous page under a failed search would
+            // caption somebody else's result with this search's terms; clearing them says nothing
+            // about hits, because the summary line only speaks when there is a result at all
+            // (VariableExplorer.razor:275).
             if (!keepResult)
             {
                 _result = null;
             }
 
-            _error = T.Error;
+            _error = ex is MuninExplorerRateLimitedException ? T.RateLimitError : T.Error;
 
             return false;
         }

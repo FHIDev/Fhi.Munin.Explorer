@@ -78,6 +78,30 @@ public class VariableExplorerTest : BunitContext
     }
 
     /// <summary>
+    /// Answers every search with the API's 429, the way a reader who asked too often meets it.
+    /// </summary>
+    /// <remarks>
+    /// Separate from <see cref="FailingClient"/> on purpose: the point of the tests using it is
+    /// that the component tells the two apart. A fake that threw
+    /// <see cref="HttpRequestException"/> for both would pass whatever the component said.
+    /// </remarks>
+    private sealed class RateLimitedClient : EmptyMuninExplorerClient
+    {
+        public int Calls { get; private set; }
+
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
+            SortField sort = SortField.Default,
+            SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default)
+        {
+            Calls++;
+
+            throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+        }
+    }
+
+    /// <summary>
     /// A client that never answers until the test lets it, so the loading state can be inspected.
     /// Given a <paramref name="firstAnswer"/> it answers the first call at once and stalls only on
     /// the next one — the case where a second search is in flight over rows already on screen.
@@ -139,6 +163,54 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Contains("Kunne ikke hente variabler", cut.Markup);
         Assert.Empty(cut.FindAll("ul.munin-explorer-data-list > li"));
+    }
+
+    [Fact]
+    public void Render_WhenTheApiRateLimits_ThenTheReaderIsToldTheyAskedTooOftenRatherThanThatItFailed()
+    {
+        // "Prøv igjen om litt" is the wrong advice for a throttled reader — trying again is what
+        // the limiter counts. The two failures have to read differently or the reader cannot act.
+        var cut = RenderWith(new RateLimitedClient());
+
+        var alert = cut.Find("[role='alert']");
+
+        Assert.Contains("for mange forespørsler", alert.TextContent);
+        Assert.DoesNotContain("Kunne ikke hente variabler", alert.TextContent);
+    }
+
+    [Fact]
+    public void Render_WhenTheApiRateLimits_ThenItIsNotShownAsASearchWithNoHits()
+    {
+        // The trap, seen from the page: a throttled search must never read as "ingen variabler
+        // passet søket". That sentence is a claim about the catalogue, and no search was run.
+        var cut = RenderWith(new RateLimitedClient(), b => b.Add(c => c.Search, "tale"));
+
+        Assert.DoesNotContain("Ingen variabler passet søket", cut.Markup);
+        Assert.Empty(cut.FindAll("ul.munin-explorer-data-list > li"));
+    }
+
+    [Fact]
+    public void Render_WhenTheApiRateLimitsAndTheLanguageIsEn_ThenTheEnglishRateLimitTextIsUsed()
+    {
+        var cut = RenderWith(new RateLimitedClient(), b => b.Add(c => c.Language, "en"));
+
+        var alert = cut.Find("[role='alert']");
+
+        Assert.Contains("too many requests", alert.TextContent);
+        Assert.DoesNotContain("Could not load variables", alert.TextContent);
+    }
+
+    [Fact]
+    public void Render_WhenTheApiRateLimits_ThenTheComponentDoesNotAskAgainByItself()
+    {
+        // No retry anywhere in the package, and the component is the other place one could hide.
+        // helsedata's cluster shares one address bucket, so every reader's component retrying on
+        // the same Retry-After would rebuild the burst that caused the 429.
+        var client = new RateLimitedClient();
+
+        RenderWith(client);
+
+        Assert.Equal(1, client.Calls);
     }
 
     [Fact]
@@ -2501,6 +2573,14 @@ public class VariableExplorerTest : BunitContext
         /// <summary>Fail every facet refresh from the next one on.</summary>
         public bool FailFacets { get; set; }
 
+        /// <summary>Answer every facet refresh from the next one on with the API's 429.</summary>
+        /// <remarks>
+        /// Its own switch rather than a mode of <see cref="FailFacets"/>, for the reason the
+        /// separate <c>RateLimitedClient</c> exists: the point of the test using it is that the
+        /// panel tells the two apart, which a single flag could not show.
+        /// </remarks>
+        public bool RateLimitFacets { get; set; }
+
         /// <summary>Never answer a search from the next one on — the in-flight path.</summary>
         public bool StallSearch { get; set; }
 
@@ -2535,6 +2615,11 @@ public class VariableExplorerTest : BunitContext
             FacetCalls++;
             FacetFilter = filter;
             FacetSearch = search;
+
+            if (RateLimitFacets)
+            {
+                throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+            }
 
             return FailFacets
                 ? throw new HttpRequestException("nede")
@@ -2817,6 +2902,30 @@ public class VariableExplorerTest : BunitContext
 
         Assert.NotNull(Facet(cut, "Dødsårsaksregisteret"));
         Assert.Contains("Tallene kan være utdaterte", cut.Find("[role='alert']").TextContent);
+        Assert.Single(cut.FindAll("ul.munin-explorer-data-list > li"));
+    }
+
+    [Fact]
+    public void Render_WhenTheFacetRefreshIsRateLimited_ThenThePanelSaysSoRatherThanThatTheCountsAreStale()
+    {
+        // The facet refresh goes out alongside every search, so a throttled reader meets this panel
+        // and the result list in the same render. Left on the generic sentence, this region would
+        // be advising the reader to try again while the alert above it says trying again is the
+        // problem — two answers to one event, in one screenful.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        client.RateLimitFacets = true;
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        var alert = cut.Find("[role='alert']");
+
+        Assert.Contains("for mange forespørsler", alert.TextContent);
+        Assert.DoesNotContain("Tallene kan være utdaterte", alert.TextContent);
+
+        // The panel and the rows both stay, exactly as they do for the generic failure: it is the
+        // numbers that may now be wrong, not the controls or the list.
+        Assert.NotNull(Facet(cut, "Dødsårsaksregisteret"));
         Assert.Single(cut.FindAll("ul.munin-explorer-data-list > li"));
     }
 
@@ -3775,6 +3884,15 @@ public class VariableExplorerTest : BunitContext
         /// <summary>Fail the oldest detail fetch still hanging.</summary>
         public void FailStalled() => Oldest().TrySetException(new HttpRequestException("nede"));
 
+        /// <summary>Refuse the oldest detail fetch still hanging with the API's 429.</summary>
+        /// <remarks>
+        /// The abandoned-fetch guard is written once per catch branch, so the 429 branch has its own
+        /// copy of it — and a copy is exactly the thing that can be inverted or left out without any
+        /// other test noticing.
+        /// </remarks>
+        public void RateLimitStalled() =>
+            Oldest().TrySetException(new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30)));
+
         private TaskCompletionSource<VariableDetail?> Oldest() =>
             _stalls.First(stall => !stall.Task.IsCompleted);
 
@@ -3796,12 +3914,25 @@ public class VariableExplorerTest : BunitContext
                 : throw new HttpRequestException("nede");
         }
 
+        /// <summary>Refuse every detail fetch from the next one on with the API's 429.</summary>
+        /// <remarks>
+        /// Its own switch beside <see cref="FailDetail"/> rather than a mode of it, for the reason
+        /// the separate <c>RateLimitedClient</c> exists: the point of the tests using it is that the
+        /// panel tells the two failures apart, and one flag could not show that.
+        /// </remarks>
+        public bool RateLimitDetail { get; set; }
+
         public override Task<VariableDetail?> GetVariableAsync(
             Guid id, bool includeHistorical = false, CancellationToken cancellationToken = default)
         {
             DetailCalls++;
             LastDetailId = id;
             LastIncludeHistorical = includeHistorical;
+
+            if (RateLimitDetail)
+            {
+                throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+            }
 
             if (FailDetail)
             {
@@ -3838,6 +3969,9 @@ public class VariableExplorerTest : BunitContext
         /// <summary>Fail every owner fetch, of either kind, from the next one on.</summary>
         public bool FailSource { get; set; }
 
+        /// <summary>Refuse every owner fetch, of either kind, with the API's 429.</summary>
+        public bool RateLimitSource { get; set; }
+
         /// <summary>Never answer a kilde fetch from the next one on.</summary>
         public bool StallKilde { get; set; }
 
@@ -3864,6 +3998,11 @@ public class VariableExplorerTest : BunitContext
             KildeCalls++;
             LastSourceId = id;
 
+            if (RateLimitSource)
+            {
+                throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+            }
+
             if (FailSource)
             {
                 throw new HttpRequestException("nede");
@@ -3887,6 +4026,11 @@ public class VariableExplorerTest : BunitContext
             DatasamlingCalls++;
             LastSourceId = id;
 
+            if (RateLimitSource)
+            {
+                throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+            }
+
             if (FailSource)
             {
                 throw new HttpRequestException("nede");
@@ -3904,6 +4048,9 @@ public class VariableExplorerTest : BunitContext
 
         /// <summary>Fail every codes fetch from the next one on.</summary>
         public bool FailCodes { get; set; }
+
+        /// <summary>Refuse every codes fetch from the next one on with the API's 429.</summary>
+        public bool RateLimitCodes { get; set; }
 
         /// <summary>Never answer a codes fetch from the next one on.</summary>
         /// <remarks>
@@ -3932,6 +4079,11 @@ public class VariableExplorerTest : BunitContext
             CancellationToken cancellationToken = default)
         {
             CodeRequests.Add((variableId, kodeverkType, kodeverkReference));
+
+            if (RateLimitCodes)
+            {
+                throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+            }
 
             if (FailCodes)
             {
@@ -4429,6 +4581,53 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
+    public void Codes_WhenTheFetchIsRateLimited_ThenOnlyThatListSaysTheReaderAskedTooOften()
+    {
+        // Expanding one kodeverk after another is exactly the rhythm that meets the limiter, so a
+        // throttled reader arrives here with one list already filled. The sentence is written into
+        // the per-key dictionary, so the failure has to land on the key that was pressed and on no
+        // other: a sibling that answered perfectly must not inherit it.
+        var client = KodeverkRows();
+        var cut = OpenData(client);
+
+        CodeToggles(cut)[0].Click();
+
+        Assert.NotNull(Panel(cut).QuerySelector(".munin-explorer-codes table"));
+
+        client.RateLimitCodes = true;
+        CodeToggles(cut)[2].Click();
+
+        var lists = Panel(cut).QuerySelectorAll(".munin-explorer-codes");
+
+        Assert.Equal(2, lists.Length);
+
+        // The one that was refused says so, and says the throttled sentence rather than the
+        // generic one or the not-published one.
+        var refused = lists[1];
+
+        Assert.Contains("for mange forespørsler", refused.TextContent);
+        Assert.DoesNotContain("Kunne ikke hente kodene", refused.TextContent);
+        Assert.DoesNotContain("Ingen kodeverdier tilgjengelig", refused.TextContent);
+        Assert.Contains("infobox", refused.QuerySelector("p")!.ClassName!);
+
+        // The one that arrived is untouched — still its table, and no borrowed sentence.
+        Assert.NotNull(lists[0].QuerySelector("table"));
+        Assert.DoesNotContain("for mange forespørsler", lists[0].TextContent);
+
+        // And the panel around them, and the component's own alert region, are not the place this
+        // was reported.
+        Assert.Empty(cut.Find("[role='alert']").TextContent.Trim());
+
+        // Pressing again is the only retry a reader has, and nothing was cached over.
+        client.RateLimitCodes = false;
+        CodeToggles(cut)[2].Click();
+        CodeToggles(cut)[2].Click();
+
+        Assert.Equal(3, client.CodeRequests.Count);
+        Assert.Equal(2, Panel(cut).QuerySelectorAll(".munin-explorer-codes table").Length);
+    }
+
+    [Fact]
     public void Codes_WhenAnotherVariableIsOpened_ThenTheFirstOnesCodesAreNotInherited()
     {
         // Two variables can share a reference, so a cache left behind would look right and be
@@ -4760,6 +4959,63 @@ public class VariableExplorerTest : BunitContext
 
         // The component's own alert region is for the list, and the list is fine.
         Assert.Equal(string.Empty, cut.Find("[role='alert']").TextContent.Trim());
+    }
+
+    [Fact]
+    public void Detail_WhenTheFetchIsRateLimited_ThenThePanelSaysTheReaderAskedTooOften()
+    {
+        // Opening one row after another is what meets the per-address limiter, so this is the
+        // branch a throttled reader is likeliest to reach. "Prøv igjen om litt" in the panel would
+        // be advising the next press, which is what the limiter is counting.
+        var client = TwoRows();
+        var cut = RenderWith(client);
+
+        client.RateLimitDetail = true;
+        Toggles(cut)[0].Click();
+
+        Assert.Contains("for mange forespørsler", Panel(cut).TextContent);
+        Assert.DoesNotContain("Kunne ikke hente detaljene", Panel(cut).TextContent);
+
+        // Not "Fant ingen detaljer" either: a detail that was refused is not a variable the
+        // catalogue does not publish.
+        Assert.DoesNotContain("Fant ingen detaljer", Panel(cut).TextContent);
+
+        // Reported where it happened. The rows and the component's own alert region are untouched.
+        Assert.Equal(2, cut.FindAll("ul.munin-explorer-data-list > li").Count);
+        Assert.Equal(string.Empty, cut.Find("[role='alert']").TextContent.Trim());
+    }
+
+    [Fact]
+    public async Task Detail_WhenAReopenedRowsAbandonedFetchIsRateLimited_ThenItIsNotReportedInTheNewPanel()
+    {
+        // The generation guard, on the 429 branch's own copy of it. The generic branch's copy is
+        // pinned by the test below; an inverted or forgotten comparison on this one would paint an
+        // abandoned fetch's sentence over a panel the reader is still waiting on, with nothing else
+        // failing.
+        var client = TwoRows();
+        var cut = RenderWith(client);
+
+        client.StallDetail = true;
+        Toggles(cut)[0].Click();
+        Toggles(cut)[0].Click();
+        Toggles(cut)[0].Click();
+
+        Assert.Equal(2, client.Stalls);
+
+        await cut.InvokeAsync(client.RateLimitStalled);
+
+        Assert.Equal("true", Panel(cut).GetAttribute("aria-busy"));
+        Assert.Contains("Henter detaljer", Panel(cut).TextContent);
+        Assert.DoesNotContain("for mange forespørsler", Panel(cut).TextContent);
+
+        // And the fetch that does own the panel still gets to fill it.
+        await cut.InvokeAsync(() => client.AnswerStalled(Detail(TaleId)));
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal("false", Panel(cut).GetAttribute("aria-busy"));
+            Assert.Contains("Angir pasientens grad av utfall", Panel(cut).TextContent);
+        });
     }
 
     [Fact]
@@ -5708,6 +5964,28 @@ public class VariableExplorerTest : BunitContext
         // The variable above it is untouched, and so are the rows.
 
         // Nothing behind the view was disturbed by the failure.
+        Back(cut);
+
+        Assert.Contains("Angir pasientens grad av utfall", Panel(cut).TextContent);
+        Assert.Equal(2, cut.FindAll("ul.munin-explorer-data-list > li").Count);
+        Assert.Empty(cut.FindAll("div[role='alert'] p"));
+    }
+
+    [Fact]
+    public void Source_WhenTheFetchIsRateLimited_ThenTheOwnerPanelSaysTheReaderAskedTooOften()
+    {
+        // One sentence for both owner kinds, unlike the generic branch: which endpoint the limiter
+        // refused is not what the reader has to know, and it changes nothing about waiting.
+        var client = TwoRows();
+        client.RateLimitSource = true;
+
+        var cut = OpenOwner(client, 0);
+
+        Assert.Contains("for mange forespørsler", SourcePanel(cut).TextContent);
+        Assert.DoesNotContain("Kunne ikke hente datakilden", SourcePanel(cut).TextContent);
+        Assert.DoesNotContain("Fant ingen detaljer", SourcePanel(cut).TextContent);
+
+        // Reported where it happened, like the generic failure: nothing behind the view moved.
         Back(cut);
 
         Assert.Contains("Angir pasientens grad av utfall", Panel(cut).TextContent);
