@@ -50,6 +50,11 @@ public class VariableListViewTest : BunitContext
 
         public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default)
         {
+            if (ListsThrow)
+            {
+                throw new InvalidOperationException("too many requests");
+            }
+
             if (!HasList)
             {
                 return Task.FromResult<IReadOnlyList<VariableList>>([]);
@@ -95,6 +100,9 @@ public class VariableListViewTest : BunitContext
 
         /// <summary>The ids the export was asked for, so a test can see what would be in the file.</summary>
         public IReadOnlyCollection<Guid>? ExportedIds { get; private set; }
+
+        /// <summary>Set when the reader's lists cannot be read - a throttled call, for instance.</summary>
+        public bool ListsThrow { get; init; }
 
         /// <summary>Set when the test wants the export to fail the way a blocked browser would.</summary>
         public bool ExportThrows { get; init; }
@@ -311,6 +319,20 @@ public class VariableListViewTest : BunitContext
             .First(b => b.TextContent.Contains("Excel", StringComparison.Ordinal)).Click());
 
         Assert.Contains("Kunne ikke laste ned", cut.Markup);
+    }
+
+    [Fact]
+    public void View_WhenTheListsCannotBeRead_ThenItSaysSoRatherThanTakingTheCircuitDown()
+    {
+        // The read happens in a lifecycle method, and an exception out of one of those takes the
+        // whole circuit with it - in helsedata's legacy host, the entire CMS page. The mount fires
+        // this alongside the search and the facet refresh, which is the burst the rate limiter
+        // counts, so a refusal here is ordinary rather than rare.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListsThrow = true };
+
+        var cut = RenderView(client);
+
+        Assert.Contains("Kunne ikke hente listen", cut.Markup);
     }
 
     [Fact]

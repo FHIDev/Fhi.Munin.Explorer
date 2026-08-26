@@ -112,8 +112,26 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         State.SetAuthenticated(IsAuthenticated);
-        await State.EnsureActiveListAsync();
-        await ShowActiveListAsync();
+
+        // Caught here, like the save button's own read in VariableExplorer.Lists.cs:38. An exception
+        // out of a lifecycle method takes the whole circuit down with it, which in helsedata's
+        // legacy host means the entire CMS page — and the mount fires this read alongside the search
+        // and the facet refresh, which is exactly the burst the per-address limiter counts. A 429
+        // here is an ordinary event, not a rare one.
+        //
+        // Said on screen rather than swallowed: unlike the save button, this component has nothing
+        // to show if the read failed, so silence would be an empty list that looks like an empty
+        // list.
+        try
+        {
+            await State.EnsureActiveListAsync();
+            await ShowActiveListAsync();
+        }
+        catch (Exception)
+        {
+            _page = null;
+            _failed = true;
+        }
     }
 
     /// <summary>
@@ -178,9 +196,21 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             return;
         }
 
-        await State.SetActiveListAsync(id);
         _shownList = id;
         _pageNumber = 1;
+
+        try
+        {
+            await State.SetActiveListAsync(id);
+        }
+        catch (Exception)
+        {
+            // Same reason as the lifecycle read above: an uncaught throw out of an event handler
+            // takes the circuit with it. LoadPageAsync below has its own catch and will say so.
+            _failed = true;
+            return;
+        }
+
         await LoadPageAsync();
     }
 
