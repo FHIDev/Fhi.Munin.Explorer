@@ -276,6 +276,23 @@ public partial class VariableExplorer : ComponentBase
     [Parameter] public string Language { get; set; } = "no";
 
     /// <summary>
+    /// Whether the host says this reader is signed in. Defaults to <see langword="false"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Told by the host rather than discovered by calling the API and reading a 401: probing spends
+    /// a failed request per render on every signed-out reader, and cannot tell "no session" from
+    /// "expired token" or "Munin is down".
+    /// </para>
+    /// <para>
+    /// The default is signed out on purpose. A host that forgets this parameter gets no saved
+    /// lists, which is a visible gap; the alternative default would send unauthorised calls on
+    /// every render instead, which is not visible at all.
+    /// </para>
+    /// </remarks>
+    [Parameter] public bool IsAuthenticated { get; set; }
+
+    /// <summary>
     /// Heading level for the component's own title, 1–6. Defaults to <c>2</c>.
     /// </summary>
     /// <remarks>
