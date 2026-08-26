@@ -11,9 +11,9 @@
       "datasamlingName": "Førstegangsregistrering",
       "variabelgruppeName": "Ikke oppgitt",
       "dataType": "Integer",
-      "dataFrom": "2021-08-01T00:00:00",
+      "dataFrom": "2021-08-01T00:00:00.000Z",
       "dataTo": null,
-      "versjonStatus": "Gjeldende"
+      "versjonStatus": "Active"
     },
     {
       "variabelId": "3e5a8c11-7b42-49df-a6c8-1d904f2e6b73",

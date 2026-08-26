@@ -235,7 +235,9 @@ public class MyListsClientTest
         Assert.Equal("Integer", first.DataType);
         Assert.Equal(2021, first.DataFrom?.Year);
         Assert.Null(first.DataTo);
-        Assert.Equal("Gjeldende", first.VersionStatus);
+        // "Active"/"Historical" are the enum's own names — the API writes it PascalCase with no
+        // converter attribute, and the sibling fixtures for VariableSummary use the same.
+        Assert.Equal("Active", first.VersionStatus);
     }
 
     [Fact]
