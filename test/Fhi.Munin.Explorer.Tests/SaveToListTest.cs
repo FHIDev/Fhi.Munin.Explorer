@@ -364,6 +364,37 @@ public class SaveToListTest : BunitContext
         Assert.Contains(status.Id, client.Stored);
     }
 
+    [Fact]
+    public void Mount_WhenTheFirstPressAfterARefusedBootstrapIsOnASavedRow_ThenItIsNotRemoved()
+    {
+        // The other half of the repair, and the one that costs the reader something if it is wrong.
+        // The refused read draws every row as unsaved, so a variable saved yesterday shows "Lagre";
+        // the press reads membership again, which fills the set in the middle of the call. A press
+        // that then asked the freshly filled set which way to go would find the variable saved and
+        // delete it — the button doing the opposite of the word on it, and saying nothing about it
+        // afterwards. The direction comes from the row as it was drawn instead.
+        var status = Variable("Skjemastatus", "V_BDR.FORMSTATUS");
+        var client = new ListClient(OnePage(status)) { RateLimitMembership = true };
+
+        client.Stored.Add(status.Id);
+
+        var cut = RenderSignedIn(client);
+
+        Assert.Equal("false", SaveButton(cut).GetAttribute("aria-pressed"));
+        Assert.Contains("Lagre", SaveButton(cut).TextContent);
+
+        client.RateLimitMembership = false;
+        SaveButton(cut).Click();
+
+        // Still the reader's, and now labelled as such.
+        Assert.Contains(status.Id, client.Stored);
+        Assert.Equal("true", SaveButton(cut).GetAttribute("aria-pressed"));
+        Assert.Equal(0, client.RemoveCalls);
+
+        // Nothing was said, because nothing went wrong.
+        Assert.Empty(cut.Find("[role='alert']").TextContent.Trim());
+    }
+
     // -----------------------------------------------------------------------
     // The trap.
     // -----------------------------------------------------------------------

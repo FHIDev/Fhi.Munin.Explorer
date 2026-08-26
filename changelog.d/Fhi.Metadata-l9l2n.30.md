@@ -27,7 +27,15 @@ category: Fixed
   down** - reading which variables are in the reader's list happens once when the component mounts,
   alongside the search and the facet refresh, which is the burst the limiter counts. That read
   escaping a Blazor lifecycle method tore down the circuit - in a legacy Blazor Server host, the
-  whole page rather than this component. It is now caught, and the read is retried on the next ask
-  rather than abandoned for the life of the circuit, so the reader's next save also puts every
-  other row's label right. Without that, "wait and try again" repaired the save and nothing else.
+  whole page rather than this component. It is now caught, and the read is tried again on the
+  reader's next save rather than abandoned for the life of the circuit, so that press puts every
+  other row's label right as well. Without it, "wait and try again" repaired the save and nothing
+  else. Only a press retries: rendering does not, because the component reads this on every
+  parameter set, and a membership read alongside every search and page turn would rebuild the
+  burst that earned the 429. The press itself is decided from the row as the reader saw it, so a
+  variable already in the list - drawn as "save" because the read was refused - is added rather
+  than deleted when the repair arrives mid-press, and a repair that is refused again no longer
+  costs the reader the save they asked for. Overlapping asks now join the read already running
+  instead of each sending their own, and a read publishes its pages only once it has walked them
+  all, so a walk that is refused partway through leaves no half-read list behind.
   (Fhi.Metadata-l9l2n.30)

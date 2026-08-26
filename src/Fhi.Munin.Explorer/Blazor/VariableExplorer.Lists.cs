@@ -48,10 +48,16 @@ public partial class VariableExplorer
             // per-address limiter counts, so a 429 here is an ordinary event rather than a rare one.
             //
             // There is nothing to render: the buttons are drawn from the set, and a set that stayed
-            // empty draws every row as unsaved. That is wrong, but it is repaired rather than
-            // reported — VariableListState.EnsureActiveListAsync reads membership again on the next
-            // ask, so the reader's first press puts the labels right. The alternative, a page-wide
-            // alert about a list nobody has touched yet, says nothing they can act on.
+            // empty draws every row as unsaved. That is wrong, and the cost is a stale label and
+            // nothing more — VariableListState.ToggleSavedAsync decides the direction of a press
+            // from the set as it was drawn, so a row that says "save" saves whatever the stored
+            // list turns out to hold. The press is also where the refused read is tried again, so
+            // it puts the other rows' labels right as it goes. Not here, though: this method runs
+            // on every parameter set, so reading again here would send a membership read alongside
+            // every search and page turn while the address is already over the limit.
+            //
+            // Reported nowhere, because a page-wide alert about a list nobody has touched yet says
+            // nothing the reader can act on.
         }
     }
 }
