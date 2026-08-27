@@ -53,10 +53,21 @@ public partial class VariableExplorer
     /// </remarks>
     private async Task ClearSearchAsync()
     {
-        // aria-disabled does not stop a click, so the refusal lives here — and it matters more on
-        // this side than in Kelda: without it a press on the greyed button would spend a request
-        // asking the API for the search that is already running.
-        if (string.IsNullOrWhiteSpace(_search))
+        // Both guards come first, and the order is the whole of it — the rule <see cref="SortAsync"/>
+        // already states: changing the state and then not fetching leaves a control describing a
+        // list nobody is looking at. Here that is the very bug this button exists to fix. Clearing
+        // _search and then calling SearchAsync while a fetch is in flight would empty the box, be
+        // dropped by that method's own _loading guard, and leave the reader with an empty field
+        // over the old rows — with the host still holding the previous search for its URL.
+        //
+        // Dropped rather than queued, the same as a second submit and a sort: nothing disables
+        // these controls while a search runs, because disabling the element that has focus throws
+        // it to the document.
+        //
+        // The second half is what aria-disabled cannot do. That attribute says the button is off
+        // and stops nothing, so a press on the greyed button would otherwise spend a request asking
+        // the API for the search already in force.
+        if (_loading || string.IsNullOrWhiteSpace(_search))
         {
             return;
         }

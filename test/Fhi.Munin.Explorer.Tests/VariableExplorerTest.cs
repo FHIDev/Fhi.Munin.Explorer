@@ -6361,6 +6361,43 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
+    public void ClearSearch_WhenAFetchIsInFlight_ThenTheBoxDoesNotEmptyAheadOfTheRows()
+    {
+        // Found by review on PR #94, and it is the bug this button was added to fix, reached by a
+        // different door. Clearing _search and then calling SearchAsync is safe only while nothing
+        // is in flight: SearchAsync drops itself when _loading, so the box would empty, the fetch
+        // would never run, and the reader would be left with an empty field over the old rows -
+        // with the host still holding the previous search for its URL.
+        //
+        // The rule was already written down one method away, on SortAsync: the guard comes first,
+        // because changing the state and then not fetching leaves a control describing a list
+        // nobody is looking at.
+        var client = new SlowClient(OnePage(Variable("1. Tale", "KODE")));
+
+        var reported = new List<string?>();
+
+        var cut = RenderWith(client, b => b.Add(
+            c => c.SearchChanged, EventCallback.Factory.Create<string?>(this, reported.Add)));
+
+        // A search that never answers, so the component is left mid-fetch.
+        cut.Find(".searchbox__freetext").Change("alder");
+        cut.Find("form").Submit();
+
+        var callsWhileLoading = client.Calls;
+
+        // Counted rather than inspected for null: SearchChanged carries null on the initial load
+        // too, by design, so one is already in the list before the button is anywhere near it.
+        var reportsWhileLoading = reported.Count;
+
+        cut.Find(".munin-explorer-search__clear").Click();
+
+        // The box still says what the rows on screen came from, and nothing was asked or reported.
+        Assert.Equal("alder", cut.Find(".searchbox__freetext").GetAttribute("value"));
+        Assert.Equal(callsWhileLoading, client.Calls);
+        Assert.Equal(reportsWhileLoading, reported.Count);
+    }
+
+    [Fact]
     public void ClearSearch_WhenPressed_ThenTheHostIsToldTheSearchIsGone()
     {
         // The half with no visible symptom. A host mirrors SearchChanged into its URL, so a clear
