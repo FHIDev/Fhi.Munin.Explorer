@@ -11,7 +11,8 @@ set -euo pipefail
 
 # Pinned. An unpinned npx resolves to whatever is newest on the day, which turns an
 # unrelated PR red for a reason nobody changed.
-AXE_CLI_VERSION="4.10.1"
+PLAYWRIGHT_VERSION="1.49.1"
+AXE_PLAYWRIGHT_VERSION="4.10.1"
 
 PORT="${ACCESSIBILITY_PORT:-5099}"
 BASE="http://localhost:${PORT}"
@@ -60,60 +61,35 @@ fi
 # Without a settle the scan reads an empty shell and passes for the wrong reason.
 SETTLE_MS="${ACCESSIBILITY_SETTLE_MS:-4000}"
 
-# The runner ships a chromedriver AND a Chrome, on different release cadences, so the
-# two drift apart. Presence is not the question, pairing is - always pair.
-DRIVER=""
-echo "==> pairing chromedriver with the installed Chrome"
-if npx --yes browser-driver-manager@latest install chrome >/tmp/bdm.log 2>&1; then
-  # browser-driver-manager writes the paths it settled on into an env file.
-  for env_file in "$HOME/.browser-driver-manager/.env" ./.browser-driver-manager/.env; do
-    if [ -f "$env_file" ]; then
-      # shellcheck disable=SC1090
-      . "$env_file" 2>/dev/null || true
-    fi
-  done
-  if [ -n "${CHROMEDRIVER_TEST_PATH:-}" ] && [ -x "${CHROMEDRIVER_TEST_PATH}" ]; then
-    DRIVER="$CHROMEDRIVER_TEST_PATH"
-    echo "    using $DRIVER"
-  fi
-else
-  echo "browser-driver-manager failed; falling back to whatever is on PATH" >&2
-  tail -5 /tmp/bdm.log >&2 || true
+# Playwright brings its own browser, so nothing here depends on what the runner has.
+echo "==> installing the scanner"
+npm install --no-save --silent \
+    "playwright@${PLAYWRIGHT_VERSION}" \
+    "@axe-core/playwright@${AXE_PLAYWRIGHT_VERSION}" >/tmp/npm-install.log 2>&1 || {
+  echo "could not install the scanner - TOOLING failure." >&2
+  tail -10 /tmp/npm-install.log >&2
+  exit 2
+}
+
+npx --yes playwright install chromium >/tmp/pw-install.log 2>&1 || {
+  echo "could not install chromium - TOOLING failure." >&2
+  tail -10 /tmp/pw-install.log >&2
+  exit 2
+}
+
+set +e
+node "$ROOT/scripts/axe-scan.mjs" $(for p in "${PATHS[@]}"; do printf '%s ' "${BASE}${p}"; done)
+scan_status=$?
+set -e
+
+# 2 is the scanner saying it could not run. Passing that through unchanged keeps a
+# broken toolchain from reading as a broken page.
+if [ "$scan_status" -eq 2 ]; then
+  exit 2
 fi
 
 violations=0
-for p in "${PATHS[@]}"; do
-  echo
-  echo "==> axe ${BASE}${p}"
-
-  out="$(mktemp)"
-  set +e
-  npx --yes "@axe-core/cli@${AXE_CLI_VERSION}" \
-      "${BASE}${p}" \
-      ${DRIVER:+--chromedriver-path "$DRIVER"} \
-      --tags wcag2a,wcag2aa,wcag21a,wcag21aa \
-      --load-delay "${SETTLE_MS}" \
-      --save "$out" \
-      --exit 2>&1 | tee /tmp/axe-stdout.log
-  axe_status=${PIPESTATUS[0]}
-  set -e
-
-  # axe exits non-zero for a violation AND for a toolchain failure, so telling a broken page
-  # from a broken chromedriver needs the result file rather than the exit code: no file means
-  # it never got as far as scanning, and calling that a violation trains people to ignore it.
-  if [ ! -s "$out" ]; then
-    echo >&2
-    echo "axe could not run against ${BASE}${p} - this is a TOOLING failure, not a finding." >&2
-    echo "Exit was ${axe_status}. Common cause: chromedriver could not start, or no Chrome on PATH." >&2
-    rm -f "$out"
-    exit 2
-  fi
-
-  if [ "$axe_status" -ne 0 ]; then
-    violations=1
-  fi
-  rm -f "$out"
-done
+[ "$scan_status" -ne 0 ] && violations=1
 
 echo
 if [ "$violations" -ne 0 ]; then

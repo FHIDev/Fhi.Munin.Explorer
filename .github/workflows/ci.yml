@@ -259,6 +259,14 @@ jobs:
           key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
           restore-keys: nuget-${{ runner.os }}-
 
+      # Playwright brings its own browser; without a cache that is a download per run.
+      - name: Cache the scanner's browser
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('scripts/check-accessibility.sh') }}
+          restore-keys: playwright-${{ runner.os }}-
+
       - name: Scan the sample host with axe
         # The same script developers can run locally before pushing, so a red check here is
         # never a surprise that only CI knows how to reproduce.
