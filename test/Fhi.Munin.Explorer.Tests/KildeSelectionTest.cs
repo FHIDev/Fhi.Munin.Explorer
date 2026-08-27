@@ -250,7 +250,7 @@ public class KildeSelectionTest : BunitContext
             Kilde("Dødsårsaksregisteret", "K_DAR")));
 
         TickRow(cut, "Als registeret");
-        cut.Find("input[type=search]").Change("dødsårsak");
+        cut.Find(".searchbox__freetext").Change("dødsårsak");
 
         Assert.Equal(["Dødsårsaksregisteret"], RowNames(cut));
         Assert.Equal("1 kilde valgt", SelectionLine(cut));
@@ -268,7 +268,7 @@ public class KildeSelectionTest : BunitContext
             Kilde("Dødsårsaksregisteret", "K_DAR"),
             Kilde("Norsk pasientregister", "K_NPR")));
 
-        cut.Find("input[type=search]").Change("registeret");
+        cut.Find(".searchbox__freetext").Change("registeret");
 
         Assert.Equal(["Als registeret", "Dødsårsaksregisteret"], RowNames(cut));
 
@@ -307,7 +307,7 @@ public class KildeSelectionTest : BunitContext
         var (cut, _) = RenderSelectable(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
         TickRow(cut, "Als registeret");
-        cut.Find("input[type=search]").Change("hjortedyr");
+        cut.Find(".searchbox__freetext").Change("hjortedyr");
 
         Assert.Empty(cut.FindAll(".munin-explorer-kilder"));
         Assert.Equal("1 kilde valgt", SelectionLine(cut));
@@ -328,7 +328,7 @@ public class KildeSelectionTest : BunitContext
         TickRow(cut, "Als registeret");
         TickRow(cut, "Dødsårsaksregisteret");
 
-        cut.Find("input[type=search]").Change("pasient");
+        cut.Find(".searchbox__freetext").Change("pasient");
         HeaderBox(cut).Change(true);
 
         Assert.Equal("3 kilder valgt", SelectionLine(cut));
@@ -360,7 +360,7 @@ public class KildeSelectionTest : BunitContext
         TickRow(cut, "Als registeret");
         TickRow(cut, "Dødsårsaksregisteret");
 
-        cut.Find("input[type=search]").Change("dødsårsak");
+        cut.Find(".searchbox__freetext").Change("dødsårsak");
         ResetButtons(cut).Single().Click();
 
         Assert.Equal(string.Empty, SelectionLine(cut));
@@ -383,7 +383,7 @@ public class KildeSelectionTest : BunitContext
         var (cut, handovers) = RenderSelectable(new FakeClient(als, dar));
 
         TickRow(cut, "Als registeret");
-        cut.Find("input[type=search]").Change("dødsårsak");
+        cut.Find(".searchbox__freetext").Change("dødsårsak");
         ExploreButton(cut).Click();
 
         Assert.Equal([als.Id], handovers.Single());
@@ -400,7 +400,7 @@ public class KildeSelectionTest : BunitContext
 
         var (cut, handovers) = RenderSelectable(new FakeClient(als, dar, npr));
 
-        cut.Find("input[type=search]").Change("registeret");
+        cut.Find(".searchbox__freetext").Change("registeret");
         ExploreButton(cut).Click();
 
         Assert.Equal([als.Id, dar.Id], handovers.Single());
@@ -580,5 +580,32 @@ public class KildeSelectionTest : BunitContext
         Assert.True(
             rules.Any(rule => Squeezed(rule.Declarations).Contains("width:", StringComparison.Ordinal)),
             "No rule gives the checkbox column a width, so it takes an equal share of the table.");
+    }
+
+    // ---------------------------------------------------------------------------------
+    // The search field the ticks live under.
+    // ---------------------------------------------------------------------------------
+
+    [Fact]
+    public void SearchField_WhenItIsRendered_ThenItIsNotASearchInputWithAClearButtonWeCannotHook()
+    {
+        // The field is bound on change, deliberately - see the markup. A type="search" input
+        // then carries a user-agent clear button this component cannot hook: the ✕ fires the DOM
+        // `search` event, which is not one Blazor knows, so the box empties while the filter it
+        // set stays in force. Everything downstream - the row ticks, velg-alle, the handover -
+        // then operates on a subset the reader believes they have cleared, over a search box
+        // reading empty. Reported against Kelda on 2026-08-27.
+        //
+        // Asserted on the type rather than on the behaviour because the behaviour cannot be
+        // staged here: bUnit has no user agent, so nothing in this suite can press a ✕ that only
+        // a browser draws. What a test CAN pin is that the element which draws one is not used.
+        var cut = RenderSelectable(new FakeClient(Kilde("Als registeret", "K_ALS"))).Cut;
+
+        var field = cut.Find(".searchbox__freetext");
+
+        Assert.Equal("text", field.GetAttribute("type"));
+
+        // The half of type="search" worth keeping: a soft keyboard still offers a search key.
+        Assert.Equal("search", field.GetAttribute("enterkeyhint"));
     }
 }

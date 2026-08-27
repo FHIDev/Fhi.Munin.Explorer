@@ -561,8 +561,8 @@ public class KildeExplorerTest : BunitContext
         var a = Render<KildeExplorer>();
         var b = Render<KildeExplorer>();
 
-        var idA = a.Find("input[type=search]").Id;
-        var idB = b.Find("input[type=search]").Id;
+        var idA = a.Find(".searchbox__freetext").Id;
+        var idB = b.Find(".searchbox__freetext").Id;
 
         Assert.False(string.IsNullOrWhiteSpace(idA));
         Assert.NotEqual(idA, idB);
@@ -681,7 +681,7 @@ public class KildeExplorerTest : BunitContext
         var client = new FakeClient(Kilde("Als registeret", "K_ALS"));
         var cut = RenderWith(client);
 
-        var input = cut.Find("input[type=search]");
+        var input = cut.Find(".searchbox__freetext");
 
         Assert.Throws<MissingEventHandlerException>(() => input.Input("als"));
         Assert.Equal(1, client.Calls);
@@ -699,7 +699,7 @@ public class KildeExplorerTest : BunitContext
 
         // Two of the three survive, not one: a filter that narrowed to a single row would look the
         // same as a lookup, and this is a filter.
-        cut.Find("input[type=search]").Change("registeret");
+        cut.Find(".searchbox__freetext").Change("registeret");
         cut.Find("form").Submit();
 
         Assert.Equal(["Als registeret", "Dødsårsaksregisteret"], RowNames(cut));
@@ -718,7 +718,7 @@ public class KildeExplorerTest : BunitContext
             Kilde("Als registeret", "K_ALS"),
             Kilde("Reseptregisteret", "K_NORPD")));
 
-        cut.Find("input[type=search]").Change("norpd");
+        cut.Find(".searchbox__freetext").Change("norpd");
 
         Assert.Equal(["Reseptregisteret"], RowNames(cut));
     }
@@ -732,7 +732,7 @@ public class KildeExplorerTest : BunitContext
             Kilde("Als registeret", "K_ALS", shortName: "ALS"),
             Kilde("Dødsårsaksregisteret", "K_DAR", shortName: "DÅR")));
 
-        cut.Find("input[type=search]").Change("dår");
+        cut.Find(".searchbox__freetext").Change("dår");
 
         Assert.Equal(["Dødsårsaksregisteret"], RowNames(cut));
     }
@@ -742,7 +742,7 @@ public class KildeExplorerTest : BunitContext
     {
         var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
-        cut.Find("input[type=search]").Change("ALS REGISTERET");
+        cut.Find(".searchbox__freetext").Change("ALS REGISTERET");
 
         Assert.Equal(["Als registeret"], RowNames(cut));
     }
@@ -755,7 +755,7 @@ public class KildeExplorerTest : BunitContext
         // between trying again and giving up.
         var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
-        cut.Find("input[type=search]").Change("hjortedyr");
+        cut.Find(".searchbox__freetext").Change("hjortedyr");
 
         Assert.Contains("Ingen kilder samsvarer med søket «hjortedyr»", cut.Markup);
         Assert.Empty(cut.FindAll(".munin-explorer-kilder"));
@@ -770,8 +770,8 @@ public class KildeExplorerTest : BunitContext
 
         var cut = RenderWith(client);
 
-        cut.Find("input[type=search]").Change("als");
-        cut.Find("input[type=search]").Change("");
+        cut.Find(".searchbox__freetext").Change("als");
+        cut.Find(".searchbox__freetext").Change("");
 
         Assert.Equal(["Als registeret", "Reseptregisteret"], RowNames(cut));
         Assert.Equal(1, client.Calls);
@@ -892,7 +892,7 @@ public class KildeExplorerTest : BunitContext
 
         var cut = RenderWith(client);
 
-        cut.Find("input[type=search]").Change("als");
+        cut.Find(".searchbox__freetext").Change("als");
         cut.Find(".munin-explorer-kilder tbody th button").Click();
         cut.Find(".munin-explorer-drilldown button").Click();
 
@@ -1967,7 +1967,7 @@ public class KildeExplorerTest : BunitContext
 
         var cut = RenderWith(client);
 
-        cut.Find("input[type=search]").Change("als");
+        cut.Find(".searchbox__freetext").Change("als");
         cut.Find(".munin-explorer-kilder tbody th button").Click();
 
         Assert.Equal(1, client.Calls);
@@ -2060,7 +2060,7 @@ public class KildeExplorerTest : BunitContext
         Assert.Empty(RowNames(cut));
         Assert.Contains("Ingen kilder samsvarer med filtrene som er valgt.", cut.Markup);
 
-        cut.Find("input[type=search]").Change("als");
+        cut.Find(".searchbox__freetext").Change("als");
 
         Assert.Contains(
             "Ingen kilder samsvarer med søket «als» og filtrene som er valgt.", cut.Markup);
@@ -2074,7 +2074,7 @@ public class KildeExplorerTest : BunitContext
             Kilde("Als-biobanken", "K_ALSB", kildetype: "biobank"),
             Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "biobank")));
 
-        cut.Find("input[type=search]").Change("als");
+        cut.Find(".searchbox__freetext").Change("als");
         Tick(cut, "Kildetype", "Biobank");
 
         Assert.Equal(["Als-biobanken"], RowNames(cut));

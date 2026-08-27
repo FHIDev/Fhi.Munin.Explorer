@@ -155,10 +155,23 @@ else
                onchange is enough because searching is always an explicit act here: it fires on
                implicit submit (Enter), and a click on Søk blurs the field first, so the change
                event reaches the circuit before @onsubmit does. The event is spelled out rather
-               than left implicit so nobody "helpfully" restores oninput. *@
+               than left implicit so nobody "helpfully" restores oninput.
+
+               type="text" and not type="search", which is the one thing about this element that
+               is not obvious. A search input carries a clear button the user agent draws and this
+               component cannot hook: it fires the DOM `search` event, which is not in Blazor's
+               known-event list, and reaching it would mean shipping JavaScript this package does
+               not ship. Bound on change, the box therefore empties while the filter it set stays
+               in force — and everything downstream then quietly operates on a subset the reader
+               believes they have cleared. In Kelda that showed as velg-alle and Nullstill utvalg
+               acting on the filtered rows only, over a search box reading empty. Escape behaves
+               the same way, so it goes with it. enterkeyhint keeps the search key on a soft
+               keyboard, which is the part of type="search" worth keeping.
+            *@
             <input class="searchbox__freetext"
                    id="@SearchId"
-                   type="search"
+                   type="text"
+                   enterkeyhint="search"
                    @bind="_search"
                    @bind:event="onchange"
                    placeholder="@T.SearchPlaceholder"

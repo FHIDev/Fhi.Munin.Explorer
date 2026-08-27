@@ -246,8 +246,8 @@ public class VariableExplorerTest : BunitContext
         var a = Render<VariableExplorer>();
         var b = Render<VariableExplorer>();
 
-        var idA = a.Find("input[type=search]").Id;
-        var idB = b.Find("input[type=search]").Id;
+        var idA = a.Find(".searchbox__freetext").Id;
+        var idB = b.Find(".searchbox__freetext").Id;
 
         Assert.False(string.IsNullOrWhiteSpace(idA));
         Assert.NotEqual(idA, idB);
@@ -265,7 +265,7 @@ public class VariableExplorerTest : BunitContext
         var client = new FakeClient(OnePage());
         var cut = RenderWith(client);
 
-        var input = cut.Find("input[type=search]");
+        var input = cut.Find(".searchbox__freetext");
 
         Assert.Throws<MissingEventHandlerException>(() => input.Input("svelging"));
         Assert.Equal(1, client.Calls); // only the initial load
@@ -278,7 +278,7 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(client);
 
         // onchange carries the finished value, however fast it was typed or pasted.
-        cut.Find("input[type=search]").Change("svelging");
+        cut.Find(".searchbox__freetext").Change("svelging");
         cut.Find("form").Submit();
 
         Assert.Equal("svelging", client.LastSearch);
@@ -295,7 +295,7 @@ public class VariableExplorerTest : BunitContext
         var client = new FakeClient(OnePage());
         var cut = RenderWith(client);
 
-        cut.Find("input[type=search]").Change("svelging"); // blur caused by the click
+        cut.Find(".searchbox__freetext").Change("svelging"); // blur caused by the click
         cut.Find("button[type=submit]").Click();
 
         Assert.Equal("svelging", client.LastSearch);
@@ -307,7 +307,7 @@ public class VariableExplorerTest : BunitContext
     {
         var cut = RenderWith(new FakeClient(OnePage()));
 
-        var input = cut.Find("input[type=search]");
+        var input = cut.Find(".searchbox__freetext");
         var label = cut.Find("label");
 
         Assert.Equal(input.Id, label.GetAttribute("for"));
@@ -487,7 +487,7 @@ public class VariableExplorerTest : BunitContext
         var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
         var cut = RenderWith(client, b => b.Add(c => c.Search, "tale"));
 
-        cut.Find("input[type=search]").Change("noe helt annet");
+        cut.Find(".searchbox__freetext").Change("noe helt annet");
         ClickSort(cut, "Kilde");
 
         Assert.Equal("tale", client.LastSearch);
@@ -506,7 +506,7 @@ public class VariableExplorerTest : BunitContext
 
         reported.Clear(); // the initial load's own notification
 
-        cut.Find("input[type=search]").Change("noe helt annet");
+        cut.Find(".searchbox__freetext").Change("noe helt annet");
         ClickSort(cut, "Kilde");
 
         Assert.Empty(reported);
@@ -537,7 +537,7 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(new FakeClient(OnePage()),
                             b => b.Add(c => c.SearchChanged, (string? s) => reported.Add(s)));
 
-        cut.Find("input[type=search]").Change("svelging");
+        cut.Find(".searchbox__freetext").Change("svelging");
         cut.Find("form").Submit();
 
         // The initial load reports the parameter it was given, then the search reports itself.
@@ -554,7 +554,7 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(new FailingClient(),
                             b => b.Add(c => c.SearchChanged, (string? s) => reported.Add(s)));
 
-        cut.Find("input[type=search]").Change("svelging");
+        cut.Find(".searchbox__freetext").Change("svelging");
         cut.Find("form").Submit();
 
         Assert.Contains("Kunne ikke hente variabler", cut.Markup);
@@ -576,7 +576,7 @@ public class VariableExplorerTest : BunitContext
                             b => b.Add<string?>(c => c.SearchChanged,
                                                 _ => throw new InvalidOperationException("vertsfeil")));
 
-        cut.Find("input[type=search]").Change("svelging");
+        cut.Find(".searchbox__freetext").Change("svelging");
         cut.Find("form").Submit();
 
         Assert.Equal("svelging", client.LastSearch);
@@ -1167,7 +1167,7 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(new FakeClient(OnePage()));
 
         Assert.Equal("form-element__label", cut.Find("label").ClassName);
-        Assert.Equal("searchbox__freetext", cut.Find("input[type=search]").ClassName);
+        Assert.Equal("searchbox__freetext", cut.Find(".searchbox__freetext").ClassName);
         Assert.NotNull(cut.Find("div.searchbox__freetext-container"));
 
         // hd-button-square carries the shape, button-square--primary the colour, and
@@ -1314,7 +1314,7 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
                             b => b.Add(c => c.Search, "tale"));
 
-        cut.Find("input[type=search]").Change("noe helt annet");
+        cut.Find(".searchbox__freetext").Change("noe helt annet");
 
         Assert.Contains("«tale»", cut.Find("p[role='status']").TextContent);
     }
@@ -1950,7 +1950,7 @@ public class VariableExplorerTest : BunitContext
         Next(cut).Click();
         Next(cut).Click();
 
-        cut.Find("input[type=search]").Change("svelging");
+        cut.Find(".searchbox__freetext").Change("svelging");
         cut.Find("form").Submit();
 
         Assert.Equal(1, client.LastPage);
@@ -2029,7 +2029,7 @@ public class VariableExplorerTest : BunitContext
         var client = new FailingClient(ResultPage(312));
         var cut = RenderWith(client);
 
-        cut.Find("input[type=search]").Change("svelging");
+        cut.Find(".searchbox__freetext").Change("svelging");
         cut.Find("form").Submit();
 
         Assert.Contains("Kunne ikke hente variabler", cut.Markup);
@@ -2170,7 +2170,7 @@ public class VariableExplorerTest : BunitContext
 
         Next(cut).Click();
 
-        cut.Find("input[type=search]").Change("svelging");
+        cut.Find(".searchbox__freetext").Change("svelging");
         cut.Find("form").Submit();
 
         Assert.Empty(cut.FindAll("div.munin-explorer-pagination"));
@@ -3032,7 +3032,7 @@ public class VariableExplorerTest : BunitContext
         var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
         var cut = RenderWith(client);
 
-        cut.Find("input[type=search]").Change("svelging");
+        cut.Find(".searchbox__freetext").Change("svelging");
         cut.Find("form").Submit();
 
         Assert.Equal(2, client.FacetCalls);
@@ -6326,5 +6326,24 @@ public class VariableExplorerTest : BunitContext
         Back(b);
 
         Assert.NotEqual(SourceToggles(a)[0].Id, SourceToggles(b)[0].Id);
+    }
+
+    [Fact]
+    public void SearchField_WhenItIsRendered_ThenItIsNotASearchInputWithAClearButtonWeCannotHook()
+    {
+        // The same rule Kelda's field follows, and it binds both explorers because both bind on
+        // change: a type="search" input carries a user-agent clear button this package cannot hook.
+        // The ✕ fires the DOM `search` event, which Blazor does not know, so the box empties while
+        // the search it ran stays in force - and here that is worse than in Kelda, because the
+        // search reached the API and the host has been told to put it in a URL. The reader would be
+        // looking at results for a query the box no longer shows, with a link to match.
+        //
+        // Found in Kelda first, on 2026-08-27. The two fields are one pattern and must not diverge.
+        var cut = RenderWith(new FakeClient(new Page<VariableSummary>()));
+
+        var field = cut.Find(".searchbox__freetext");
+
+        Assert.Equal("text", field.GetAttribute("type"));
+        Assert.Equal("search", field.GetAttribute("enterkeyhint"));
     }
 }
