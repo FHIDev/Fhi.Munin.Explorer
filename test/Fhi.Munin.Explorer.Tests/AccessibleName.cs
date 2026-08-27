@@ -39,7 +39,7 @@ internal static class AccessibleName
         {
             var referenced = labelledBy
                 .Split(' ', StringSplitOptions.RemoveEmptyEntries)
-                .Select(id => element.Owner?.GetElementById(id)?.TextContent.Trim())
+                .Select(id => ById(element, id)?.TextContent.Trim())
                 .Where(text => !string.IsNullOrWhiteSpace(text));
 
             var joined = string.Join(" ", referenced).Trim();
@@ -61,8 +61,8 @@ internal static class AccessibleName
 
         if (!string.IsNullOrWhiteSpace(id))
         {
-            var associated = element.Owner?
-                .QuerySelectorAll("label")
+            var associated = Tree(element)
+                .Where(candidate => candidate.TagName.Equals("LABEL", StringComparison.OrdinalIgnoreCase))
                 .FirstOrDefault(label => string.Equals(
                     label.GetAttribute("for"), id, StringComparison.Ordinal));
 
@@ -89,6 +89,35 @@ internal static class AccessibleName
 
         return "";
     }
+
+    /// <summary>
+    /// Every element of the tree the control is rendered in.
+    /// </summary>
+    /// <remarks>
+    /// Walking up from the control rather than asking <see cref="INode.Owner"/>, because a bUnit
+    /// render is a parsed fragment: its nodes have an owner document and are not attached to it,
+    /// so <c>Owner.QuerySelectorAll</c> and <c>Owner.GetElementById</c> both answer nothing and
+    /// every <c>&lt;label for&gt;</c> in the component reads as absent. That failure is silent in
+    /// exactly the wrong direction — it reports a properly labelled control as unnamed — which is
+    /// how it was found.
+    /// </remarks>
+    private static IEnumerable<IElement> Tree(IElement element)
+    {
+        INode node = element;
+
+        while (node.Parent is not null)
+        {
+            node = node.Parent;
+        }
+
+        var root = node as IParentNode;
+
+        return root is null ? [] : root.QuerySelectorAll("*");
+    }
+
+    private static IElement? ById(IElement element, string id) =>
+        Tree(element).FirstOrDefault(candidate =>
+            string.Equals(candidate.GetAttribute("id"), id, StringComparison.Ordinal));
 
     private static bool NamedByItsContent(IElement element) =>
         element.TagName.Equals("BUTTON", StringComparison.OrdinalIgnoreCase)
