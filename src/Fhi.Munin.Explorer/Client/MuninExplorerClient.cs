@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
@@ -225,6 +225,12 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
     /// The export request. Named rather than anonymous, like the bodies beside it: the wire names
     /// carry the Norwegian stem, and an anonymous object puts that spelling out of reach of review.
     /// </summary>
+    private sealed record ExportRequestBody(
+        [property: JsonPropertyName("variabelIds")] IReadOnlyCollection<Guid> VariableIds,
+        [property: JsonPropertyName("format")] string Format,
+        [property: JsonPropertyName("includeKodeverk")] bool IncludeKodeverk,
+        [property: JsonPropertyName("kildeIdFilter")] Guid? KildeIdFilter);
+
     /// <summary>
     /// The spelling the API accepts for <c>format</c>.
     /// </summary>
@@ -239,12 +245,6 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
         ExportFormat.Csv => "csv",
         _ => throw new ArgumentOutOfRangeException(nameof(format), format, null)
     };
-
-    private sealed record ExportRequestBody(
-        [property: JsonPropertyName("variabelIds")] IReadOnlyCollection<Guid> VariableIds,
-        [property: JsonPropertyName("format")] string Format,
-        [property: JsonPropertyName("includeKodeverk")] bool IncludeKodeverk,
-        [property: JsonPropertyName("kildeIdFilter")] Guid? KildeIdFilter);
 
     private sealed record VariableIdsBody(
         [property: JsonPropertyName("variabelIds")] IReadOnlyCollection<Guid> VariableIds);

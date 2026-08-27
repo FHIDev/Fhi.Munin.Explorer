@@ -1,6 +1,6 @@
 category: Fixed
 
-- **Nedlasting av variabelliste virket ikke i det hele tatt** - `ExportListAsync` sendte
-  `format` som `"Csv"`/`"Xlsx"`, men API-et staver dem `[JsonStringEnumMemberName("csv"/"xlsx")]`
-  og svarer 400 på PascalCase. Hver eneste nedlasting endte i "Kunne ikke laste ned nå". Sender nå
-  navnet API-et faktisk tar imot. (Fhi.Metadata-7mx2s)
+- **Downloading a variable list never worked** - `ExportListAsync` sent `format` as `"Csv"`/`"Xlsx"`,
+  but the API spells those members `[JsonStringEnumMemberName("csv"/"xlsx")]` and answers PascalCase
+  with a 400, so every download ended in the failure message. Now sends the name the API accepts.
+  (Fhi.Metadata-7mx2s)

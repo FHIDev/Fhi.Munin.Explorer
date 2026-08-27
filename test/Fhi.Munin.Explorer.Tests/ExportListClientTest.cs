@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -108,13 +108,9 @@ public class ExportListClientTest
     // names until 2026-08-27 and passed the whole time, while every real download failed.
     [InlineData(ExportFormat.Xlsx, "xlsx")]
     [InlineData(ExportFormat.Csv, "csv")]
-    public async Task ExportListAsync_WhenAFormatIsChosen_ThenItIsSentAsItsNameNotItsNumber(
+    public async Task ExportListAsync_WhenAFormatIsChosen_ThenItIsSentAsTheWireNameTheApiAccepts(
         ExportFormat format, string expected)
     {
-        // The API reads enums as PascalCase strings, and this package serialises with
-        // JsonSerializerDefaults.Web, which has no string-enum converter — so an enum sent as
-        // itself goes out as 0 or 1. If the API then falls back to its default, a reader asking for
-        // CSV is handed an xlsx, and nothing anywhere says so.
         var handler = new FileHandler("text/csv", "variabelliste.csv");
 
         await Client(handler).ExportListAsync([One], format);
