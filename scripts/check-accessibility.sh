@@ -60,6 +60,16 @@ fi
 # Without a settle the scan reads an empty shell and passes for the wrong reason.
 SETTLE_MS="${ACCESSIBILITY_SETTLE_MS:-4000}"
 
+# Chrome moves faster than the driver bundled with axe, so pair them explicitly. Skipped
+# when a driver is already on PATH, which is the usual local case.
+if ! command -v chromedriver >/dev/null 2>&1; then
+  echo "==> pairing chromedriver with the installed Chrome"
+  npx --yes browser-driver-manager@latest install chrome >/dev/null 2>&1 || {
+    echo "could not install a matching chromedriver" >&2
+    exit 2
+  }
+fi
+
 violations=0
 for p in "${PATHS[@]}"; do
   echo
