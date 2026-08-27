@@ -53,6 +53,22 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     private Texts T => Texts.For(Language);
 
+    /// <summary>
+    /// Per-mount discriminator for every id this component renders: the create form's name field,
+    /// and per row the name cell and the remove button that is named from it. The shape the
+    /// explorer's own ids use — see <c>VariableExplorer.razor.cs</c>, where the convention lives.
+    /// </summary>
+    /// <remarks>
+    /// The host decides where this component goes and can mount it twice on one page. Two fields
+    /// sharing one id would leave both labels pointing at the first, so the second field is
+    /// unnamed again — the very defect the label was added to fix, and invisible in a page with
+    /// one mount, which is why the guard for it renders two.
+    /// </remarks>
+    private readonly string _instance = Guid.NewGuid().ToString("N")[..8];
+
+    /// <summary>The name field of the create form, which its label points at.</summary>
+    private string NewListNameId => $"munin-explorer-new-list-{_instance}";
+
     private Page<VariableListItem>? _page;
     private Guid? _shownList;
     private int _pageNumber = 1;
@@ -87,6 +103,47 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         return $"{from} – {to}";
     }
+
+    /// <summary>
+    /// What the row calls its variable — its name, or the sentence shown in place of one that is
+    /// no longer in the catalogue.
+    /// </summary>
+    /// <remarks>
+    /// The name column's own text, so there is one place that decides what an orphaned row reads
+    /// as. It used to be decided twice, inline in the markup and here. The remove button is named
+    /// from the rendered cell rather than from a second call to this, so the two cannot drift.
+    /// </remarks>
+    private string RowName(VariableListItem item) =>
+        string.IsNullOrWhiteSpace(item.VariableName) ? T.VariableNoLongerAvailable : item.VariableName;
+
+    /// <summary>The name cell of one row, which the row's remove button is named from.</summary>
+    private string RowNameId(VariableListItem item) =>
+        $"munin-explorer-list-name-{_instance}-{item.VariableId:N}";
+
+    /// <summary>The remove button of one row, which names itself from its own words first.</summary>
+    private string RemoveButtonId(VariableListItem item) =>
+        $"munin-explorer-list-remove-{_instance}-{item.VariableId:N}";
+
+    /// <summary>
+    /// The remove button's accessible name, as two elements: its own word, then the row's name.
+    /// </summary>
+    /// <remarks>
+    /// Every one of these buttons says the single word "Fjern", so a list of forty is forty
+    /// controls announcing the same thing with nothing to say which row the reader is on (WCAG
+    /// 4.1.2). Pointing at two elements rather than writing one <c>aria-label</c> is the rule the
+    /// explorer's save button follows and for the same reason: "Fjern" is ours and follows
+    /// <see cref="Language"/>, the variable's name is Munin's and is marked <c>lang="no"</c> in
+    /// the cell, and a single string would hand both to one voice (WCAG 3.1.2). The button first,
+    /// so the visible word opens the name and speech input still reaches it (WCAG 2.5.3).
+    /// <para>
+    /// An orphaned row has no name, and borrows the sentence its cell shows instead — so the
+    /// button still says what it removes, and says it without spelling out a GUID the row does not
+    /// display anywhere. Two orphans then announce alike, which is a duplicate name and not a
+    /// failure: 4.1.2 asks for a name and 2.4.6 asks that it describe, neither that it be unique.
+    /// </para>
+    /// </remarks>
+    private string RemoveLabelledBy(VariableListItem item) =>
+        $"{RemoveButtonId(item)} {RowNameId(item)}";
 
     /// <summary>A value, or the catalogue's own words for one that was never set.</summary>
     /// <remarks>

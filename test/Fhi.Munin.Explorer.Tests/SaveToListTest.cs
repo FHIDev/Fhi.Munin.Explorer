@@ -182,6 +182,209 @@ public class SaveToListTest : BunitContext
     }
 
     [Fact]
+    public void Row_WhenEveryRowOffersToSave_ThenEachButtonNamesItsOwnVariable()
+    {
+        // Two rows, because the weak version of this assertion — "the button has an accessible
+        // name" — is satisfied by a constant label on all 25 of them, which is the same "Lagre i
+        // liste, Lagre i liste, Lagre i liste" a screen reader hears from the visible words alone.
+        // Distinctness is what makes the assertion mean anything.
+        var client = new ListClient(OnePage(
+            Variable("Alder ved diagnose", "V_BDR.ALDER"),
+            Variable("Skjemastatus", "V_BDR.FORMSTATUS")));
+
+        var cut = RenderSignedIn(client);
+
+        var names = cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]")
+            .Select(AccessibleName.Of)
+            .ToList();
+
+        Assert.Equal(2, names.Count);
+        Assert.Contains("Alder ved diagnose", names[0], StringComparison.Ordinal);
+        Assert.Contains("Skjemastatus", names[1], StringComparison.Ordinal);
+        Assert.Equal(2, names.Distinct(StringComparer.Ordinal).Count());
+
+        // The visible words are still a contiguous part of the sentence, so a speech-input user
+        // saying what they can see hits the button. WCAG 2.5.3.
+        Assert.All(names, name => Assert.Contains("Lagre i liste", name, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Row_WhenThePageIsEnglish_ThenTheSaveButtonKeepsEachHalfOfItsNameInItsOwnLanguage()
+    {
+        // The reason the name is two elements rather than one aria-label, and the rule this
+        // package already wrote down for the toggle in this same row: "Save to list" is ours and
+        // follows Language, "Alder ved diagnose" is Munin's and is Norwegian whatever the
+        // surrounding UI is. One aria-label string would hand the whole sentence to an English
+        // voice, which pronounces the Norwegian half with English phonetics. WCAG 3.1.2.
+        Services.AddSingleton<IMuninExplorerClient>(
+            new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))));
+        Services.AddScoped<VariableListState>();
+
+        var cut = Render<VariableExplorer>(p => p
+            .Add(c => c.IsAuthenticated, true)
+            .Add(c => c.Language, "en"));
+
+        var button = SaveButton(cut);
+
+        Assert.Equal("Save to list Alder ved diagnose", AccessibleName.Of(button));
+        Assert.Null(button.GetAttribute("aria-label"));
+
+        var referenced = button.GetAttribute("aria-labelledby")!.Split(' ');
+        var nameSpan = cut.Find($"#{referenced[1]}");
+
+        Assert.Equal("Alder ved diagnose", nameSpan.TextContent.Trim());
+        Assert.Equal("no", nameSpan.GetAttribute("lang"));
+        Assert.Equal(button.Id, referenced[0]);
+    }
+
+    [Fact]
+    public void Row_WhenAVariableHasNoPreferredTerm_ThenItsButtonStillAnnouncesWhatItDoes()
+    {
+        // PreferredTerm defaults to "" and the row already renders it blank, so this is a shape
+        // the page can reach. Naming the button by pointing at that empty span rather than by
+        // interpolating the term into a sentence is what keeps it safe: the empty half
+        // contributes nothing and the button falls back to its own words, where "Lagre i liste: "
+        // would announce with a hole on the end.
+        var client = new ListClient(OnePage(Variable("", "V_BDR.ALDER")));
+        var cut = RenderSignedIn(client);
+
+        Assert.Equal("Lagre i liste", AccessibleName.Of(SaveButton(cut)));
+
+        // And the other control in the same row, which is the row's PRIMARY one: the variable's
+        // name IS the disclosure, so an empty term leaves that button with no content and no
+        // source at all — "button, collapsed" and nothing else, WCAG 4.1.2. Asserted here rather
+        // than in its own fact because this is the one render that reaches the shape, and the
+        // save button's fallback is only half of what the row has to survive.
+        Assert.Equal(
+            "Vis hele variabelen",
+            AccessibleName.Of(cut.Find("button.munin-explorer-dataitem-main__name")));
+    }
+
+    [Fact]
+    public void Row_WhenAVariableHasAPreferredTerm_ThenTheDisclosureIsNamedByItAndNotByTheFallback()
+    {
+        // The other side of the fallback: it must not survive into the ordinary row, where the
+        // visible name is the accessible one. An aria-label that stayed on would win over the
+        // button's own content, so every disclosure on the page would announce as "Vis hele
+        // variabelen" — 25 identical names, and a speech-input user saying the words they can see
+        // would reach none of them (WCAG 2.5.3).
+        var cut = RenderSignedIn(new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))));
+
+        var toggle = cut.Find("button.munin-explorer-dataitem-main__name");
+
+        Assert.Null(toggle.GetAttribute("aria-label"));
+        Assert.Equal("Alder ved diagnose", AccessibleName.Of(toggle));
+    }
+
+    [Fact]
+    public void Row_WhenARowIsDrawn_ThenTheNameSpanCarriesItsIdOnceWhetherThePanelIsOpenOrShut()
+    {
+        // The save button borrows the name span by id, in both states of the row. Two elements
+        // carrying that id would be a WCAG 4.1.1 failure and would aim the button at whichever
+        // came first; an id written only while the panel is open would leave the button pointing
+        // at nothing for every shut row, which is every row but one.
+        var cut = RenderSignedIn(new ListClient(OnePage(
+            Variable("Alder ved diagnose", "V_BDR.ALDER"),
+            Variable("Skjemastatus", "V_BDR.FORMSTATUS"))));
+
+        void AssertEachNameIdIsWrittenExactlyOnce()
+        {
+            var buttons = cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]");
+
+            Assert.Equal(2, buttons.Count);
+
+            foreach (var button in buttons)
+            {
+                var referenced = button.GetAttribute("aria-labelledby")!.Split(' ');
+
+                Assert.Equal(2, referenced.Length);
+                Assert.All(referenced, id => Assert.Single(cut.FindAll($"#{id}")));
+            }
+        }
+
+        AssertEachNameIdIsWrittenExactlyOnce();
+
+        cut.FindAll("button.munin-explorer-dataitem-main__name")[0].Click();
+
+        // The open panel points its own aria-labelledby at the toggle rather than at this span,
+        // so opening a row must not mint a second copy of the name anywhere in it.
+        Assert.NotEmpty(cut.FindAll(".munin-explorer-detail"));
+        AssertEachNameIdIsWrittenExactlyOnce();
+    }
+
+    [Fact]
+    public void Row_WhenTwoExplorersShareAPage_ThenEverySaveButtonBorrowsItsOwnRowsName()
+    {
+        // helsedata's CMS can legitimately put two explorers on one page — the reason every id in
+        // this component carries a per-mount discriminator (VariableExplorer.razor.cs, _instance).
+        // The row's two newest ids are the save button's own and the name span's, and without the
+        // discriminator two explorers listing the same variable mint each of them twice: a WCAG
+        // 4.1.1 failure, and — because accname takes the first element with a matching id — every
+        // save button in the second explorer would announce the FIRST explorer's variable. A
+        // confidently wrong name is worse than the unnamed button this all exists to fix.
+        //
+        // One render fragment holding both, not two Render calls. A bUnit render is a parsed
+        // fragment with its own root, so two of them are two documents: an id repeated across them
+        // is not a duplicate, and nothing resolving a reference in one would ever look at the
+        // other. The failure only exists on a page that holds both.
+        Services.AddSingleton<IMuninExplorerClient>(
+            new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))));
+        Services.AddScoped<VariableListState>();
+
+        var page = Render(builder =>
+        {
+            builder.OpenComponent<VariableExplorer>(0);
+            builder.AddComponentParameter(1, nameof(VariableExplorer.IsAuthenticated), true);
+            builder.CloseComponent();
+            builder.OpenComponent<VariableExplorer>(2);
+            builder.AddComponentParameter(3, nameof(VariableExplorer.IsAuthenticated), true);
+            builder.CloseComponent();
+        });
+
+        var buttons = page.FindAll(".munin-explorer-dataitem-main button[aria-pressed]");
+
+        Assert.Equal(2, buttons.Count);
+
+        var first = buttons[0].GetAttribute("aria-labelledby")!.Split(' ');
+        var second = buttons[1].GetAttribute("aria-labelledby")!.Split(' ');
+
+        // The save button's own id, and the name span's — both halves discriminated, since either
+        // one repeating is a duplicate id on the page.
+        Assert.NotEqual(first[0], second[0]);
+        Assert.NotEqual(first[1], second[1]);
+        Assert.All(first.Concat(second), id => Assert.Single(page.FindAll($"#{id}")));
+
+        // And the half an id comparison does not cover: each button has to point at the name span
+        // in its OWN row. Two distinct ids with both buttons aimed at the first explorer would
+        // still announce the wrong variable, and both explorers list the same one here, so no
+        // assertion on the announced text could tell them apart.
+        for (var i = 0; i < buttons.Count; i++)
+        {
+            var row = buttons[i].Closest(".munin-explorer-dataitem-main")!;
+            var borrowed = i == 0 ? first[1] : second[1];
+
+            Assert.NotNull(row.QuerySelector($"#{borrowed}"));
+            Assert.Equal("Lagre i liste Alder ved diagnose", AccessibleName.Of(buttons[i]));
+        }
+    }
+
+    [Fact]
+    public void Row_WhenAVariableIsSaved_ThenItsButtonStillNamesItInTheOtherState()
+    {
+        // One control in two states, and the accessible name has to follow the word the same way
+        // aria-pressed does. A name computed once for the unsaved state would tell a screen reader
+        // user the button saves a variable that is already in the list.
+        var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER")));
+        var cut = RenderSignedIn(client);
+
+        SaveButton(cut).Click();
+
+        var name = AccessibleName.Of(SaveButton(cut));
+
+        Assert.Equal("Fjern fra liste Alder ved diagnose", name);
+    }
+
+    [Fact]
     public void Row_WhenSaveIsPressed_ThenTheVariableIsInTheListAndTheButtonSaysSo()
     {
         var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER")));

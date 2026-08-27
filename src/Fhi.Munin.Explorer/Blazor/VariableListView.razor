@@ -34,8 +34,23 @@
            successful create clears the name, and disabling the element that has focus drops focus
            to <body>. CreateListAsync already refuses an empty name, so the press is inert. *@
         <div>
+            @* A real label with for/id, the shape the search field uses at
+               VariableExplorer.razor:140 — not a placeholder. A placeholder is not an accessible
+               name: a screen reader announces an unnamed edit field, and the hint disappears the
+               moment the reader starts typing, which is the one time they most need to know what
+               the field is for. WCAG 4.1.2 and 3.3.2.
+
+               `form-element__label` is borrowed, not ours — Stiler's own label style, read back
+               off its compiled stylesheet and already worn by the search field and the filter
+               panel's legend (VariableExplorer.razor:140, 209, 216). README's list of borrowed
+               names carries it. No new name is being invented here; a name Stiler has never heard
+               of would render as a raw browser default on a host that has only Stiler.
+
+               The id carries a per-mount discriminator, the shape the explorer's own ids use, so
+               two of this component on one page do not tie both labels to the first field. *@
+            <label class="form-element__label" for="@NewListNameId">@T.NewListName</label>
             <input type="text"
-                   placeholder="@T.NewListName"
+                   id="@NewListNameId"
                    @bind="_newName"
                    @bind:event="onchange" />
             <button class="hd-button-square button-square--ghost"
@@ -112,19 +127,19 @@
                                 @* An entry whose variable has no row in the read model keeps its place
                                    rather than being filtered out: the API returns it on purpose so the
                                    paging totals stay honest, and a list of 247 that answered with 246
-                                   would hide that something went. It says so instead. *@
-                                @if (string.IsNullOrWhiteSpace(item.VariableName))
-                                {
-                                    <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__name">
-                                        <span class="munin-explorer-dataitem-main__column__text">@T.VariableNoLongerAvailable</span>
-                                    </span>
-                                }
-                                else
-                                {
-                                    <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__name">
-                                        <span class="munin-explorer-dataitem-main__column__text" lang="no">@item.VariableName</span>
-                                    </span>
-                                }
+                                   would hide that something went. It says so instead.
+
+                                   RowName decides which of the two it is, in one place: written
+                                   out twice, the cell and the remove button below — which is
+                                   named from these very words — could come to say different
+                                   things about the same row. CatalogueLang leaves the attribute
+                                   off for the sentence, which is ours and in the reader's
+                                   language, not Norwegian catalogue text. *@
+                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__name">
+                                    <span class="munin-explorer-dataitem-main__column__text"
+                                          id="@RowNameId(item)"
+                                          lang="@CatalogueLang(item.VariableName)">@RowName(item)</span>
+                                </span>
 
                                 <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__code">
                                     <span class="munin-explorer-dataitem-main__column__text" lang="no">@item.VariableCode</span>
@@ -145,8 +160,31 @@
                                     <span class="munin-explorer-dataitem-main__column__text">@Period(item)</span>
                                 </span>
 
+                                @* The visible word stays "Fjern" — the column is narrow and every
+                                   button in it removes something. The accessible name says which
+                                   one: without it a list of forty is forty controls that read
+                                   "Fjern", and a screen reader user has no way to tell which row
+                                   they are standing on. WCAG 4.1.2.
+
+                                   Two elements rather than an aria-label, the rule the explorer's
+                                   own save button follows: this button points at itself and then
+                                   at the name cell, so "Fjern" stays ours and in the reader's
+                                   language while the variable's name stays Munin's and marked
+                                   lang="no" — one aria-label string would be a single unmarked
+                                   sentence an English voice pronounces the Norwegian half of with
+                                   English phonetics (WCAG 3.1.2). Itself first keeps the visible
+                                   word at the front for speech input (WCAG 2.5.3).
+
+                                   An orphaned row borrows the sentence its name cell shows
+                                   instead, so the button says what it removes without reading an
+                                   id out. Two orphans do then announce alike — a duplicate name
+                                   on two controls is not a WCAG failure, and ten seconds of
+                                   spelt-out GUID for a value the row does not show anywhere is
+                                   worse than one. *@
                                 <button class="hd-button-square button-square--ghost"
                                         type="button"
+                                        id="@RemoveButtonId(item)"
+                                        aria-labelledby="@RemoveLabelledBy(item)"
                                         @onclick="() => RemoveAsync(item.VariableId)">@T.RemoveFromThisList</button>
                             </div>
                         </div>

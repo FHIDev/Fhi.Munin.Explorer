@@ -339,7 +339,16 @@ public class VariableListViewTest : BunitContext
         var cut = RenderView(client);
 
         Assert.Equal(2, cut.FindAll(".munin-explorer-data-list__item").Count);
-        Assert.Contains("ikke tilgjengelig", cut.Markup);
+
+        // Scoped to the cell, not to the document. The remove button on that same row is named
+        // from these words, so a substring assertion over cut.Markup is satisfied by the button
+        // alone — and RowName could return "" for an orphan, leaving a blank name cell under a
+        // count that says two, with every case in this file still green.
+        var names = cut.FindAll(".munin-explorer-dataitem-main__name");
+
+        Assert.Equal(2, names.Count);
+        Assert.Equal("Alder ved diagnose", names[0].TextContent.Trim());
+        Assert.Equal("Variabelen er ikke tilgjengelig lenger", names[1].TextContent.Trim());
     }
 
     [Fact]
@@ -486,6 +495,173 @@ public class VariableListViewTest : BunitContext
         var alert = cut.FindAll("[role=alert]");
         Assert.Single(alert);
         Assert.Equal("", alert[0].TextContent.Trim());
+    }
+
+    [Fact]
+    public void View_WhenTheCreateFormIsDrawn_ThenTheNameFieldIsNamedBySomethingThatIsNotAPlaceholder()
+    {
+        // The field shipped as a bare input carrying a placeholder and nothing else, so a screen
+        // reader announced an unnamed edit field. Asserted on the accessible NAME rather than on
+        // the presence of a naming attribute: a placeholder, or a title, satisfies "has an
+        // attribute" while leaving the control unnamed, and several checking tools accept either.
+        // AccessibleName resolves only the sources that really are names, which is the point of it.
+        var cut = RenderView(new ListClient { HasList = false });
+
+        var field = cut.Find("input[type=text]");
+
+        Assert.Equal("Navn på ny liste", AccessibleName.Of(field));
+
+        // And the name is not a tooltip wearing a disguise. `title` is the other attribute a naive
+        // check counts, and mobile screen readers ignore it.
+        Assert.Null(field.GetAttribute("title"));
+
+        // The half a placeholder cannot do: the name has to survive the reader typing into the
+        // field, which is the moment a placeholder disappears.
+        field.Change("Hjerte og kar");
+        Assert.Equal("Navn på ny liste", AccessibleName.Of(cut.Find("input[type=text]")));
+    }
+
+    [Fact]
+    public void View_WhenTheListHasSeveralVariables_ThenEachRemoveButtonNamesItsOwnVariable()
+    {
+        // Two rows, not one: a constant aria-label passes "the button has an accessible name" and
+        // still leaves a screen reader user hearing "Fjern, Fjern, Fjern" with no way to tell which
+        // variable each one takes out. The distinctness assertion is what catches that.
+        var cut = RenderView(new ListClient(
+            Item("Alder ved diagnose", "V_BDR.ALDER"),
+            Item("Skjemastatus", "V_BDR.FORMSTATUS")));
+
+        var names = cut.FindAll(".munin-explorer-dataitem-main button")
+            .Select(AccessibleName.Of)
+            .ToList();
+
+        Assert.Equal(2, names.Count);
+        Assert.Contains("Alder ved diagnose", names[0], StringComparison.Ordinal);
+        Assert.Contains("Skjemastatus", names[1], StringComparison.Ordinal);
+        Assert.Equal(2, names.Distinct(StringComparer.Ordinal).Count());
+
+        // The word on the button stays in the sentence, so a speech-input user saying what they
+        // can see still hits the control. WCAG 2.5.3.
+        Assert.All(names, name => Assert.Contains("Fjern", name, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void View_WhenThePageIsEnglish_ThenTheRemoveButtonKeepsEachHalfOfItsNameInItsOwnLanguage()
+    {
+        // The reason the name is two elements rather than one aria-label. "Remove" is ours and
+        // follows Language; "Alder ved diagnose" is Munin's and is Norwegian whatever the
+        // surrounding UI is. Written as one string the whole sentence would reach an English
+        // voice, which pronounces the Norwegian half with English phonetics — WCAG 3.1.2, and the
+        // defect the lang="no" on these cells exists to prevent.
+        Services.AddSingleton<IMuninExplorerClient>(
+            new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+        Services.AddScoped<VariableListState>();
+
+        var cut = Render<VariableListView>(p => p
+            .Add(c => c.IsAuthenticated, true)
+            .Add(c => c.Language, "en"));
+
+        var button = cut.Find(".munin-explorer-dataitem-main button");
+
+        Assert.Equal("Remove Alder ved diagnose", AccessibleName.Of(button));
+
+        // Not an aria-label: a single string is exactly what cannot carry the two languages.
+        Assert.Null(button.GetAttribute("aria-label"));
+
+        // The half that is Munin's is marked as Norwegian where the button borrows it from.
+        var referenced = button.GetAttribute("aria-labelledby")!.Split(' ');
+        var nameCell = cut.Find($"#{referenced[1]}");
+
+        Assert.Equal("Alder ved diagnose", nameCell.TextContent.Trim());
+        Assert.Equal("no", nameCell.GetAttribute("lang"));
+
+        // And the button's own word comes first, so speech input reaches it by what is on screen.
+        Assert.Equal(button.Id, referenced[0]);
+    }
+
+    [Fact]
+    public void View_WhenAnEntryHasNoVariableLeft_ThenItsRemoveButtonSaysSoWithoutReadingAnIdOut()
+    {
+        // An orphaned entry has no name to borrow, so the button borrows the sentence its name
+        // cell shows instead — it still says what it removes, and it says it in words.
+        //
+        // Named from the cell rather than from the entry's id, which was the first attempt at
+        // telling two orphans apart: NVDA and JAWS spell a hex GUID out character by character,
+        // so that is about ten seconds of speech per row, naming the row after a value the row
+        // does not show in any column a reader could match it against.
+        var orphan = Orphan();
+        var cut = RenderView(new ListClient(orphan));
+
+        var name = AccessibleName.Of(cut.Find(".munin-explorer-dataitem-main button"));
+
+        Assert.Contains("ikke tilgjengelig lenger", name, StringComparison.Ordinal);
+        Assert.Contains("Fjern", name, StringComparison.Ordinal);
+        Assert.DoesNotContain(orphan.VariableId.ToString(), name, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            orphan.VariableId.ToString("N"), name, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void View_WhenTwoEntriesHaveNoVariableLeft_ThenTheirButtonsShareANameAndNotAnId()
+    {
+        // Two orphans do announce alike, deliberately. A duplicate accessible name on two distinct
+        // controls is not a WCAG failure — 4.1.2 asks for a name and 2.4.6 asks that it describe,
+        // neither that it be unique — and the only thing that could tell them apart is an id no
+        // column shows. What must NOT collide is the DOM ids the names are built from: two rows
+        // sharing one would aim both buttons at the first row's cell, which is a 4.1.1 failure.
+        var first = Orphan();
+        var second = Orphan();
+        var cut = RenderView(new ListClient(first, second));
+
+        var buttons = cut.FindAll(".munin-explorer-dataitem-main button");
+
+        Assert.Equal(2, buttons.Count);
+        Assert.Equal(AccessibleName.Of(buttons[0]), AccessibleName.Of(buttons[1]));
+        Assert.NotEqual(buttons[0].Id, buttons[1].Id);
+        Assert.NotEqual(
+            buttons[0].GetAttribute("aria-labelledby"), buttons[1].GetAttribute("aria-labelledby"));
+    }
+
+    [Fact]
+    public void View_WhenTheReaderHasTwoLists_ThenThePickerIsNamedByItsLabelAndNotByItsOptions()
+    {
+        // The picker is a <select> inside its own <label>, so its name comes from the words around
+        // it — not from the options, which are the reader's list names and would make the control
+        // announce as "Velg liste Mine hjertevariabler Hjerte og kar". The option text is the
+        // select's value, not its name.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListCount = 2 });
+
+        Assert.Equal("Velg liste", AccessibleName.Of(cut.Find("select")));
+    }
+
+    [Fact]
+    public void View_WhenTwoViewsAreOnOnePage_ThenTheirNameFieldsDoNotShareAnId()
+    {
+        // The host decides where this component goes, and helsedata's CMS can put two of it on one
+        // page. Duplicate ids are a WCAG 4.1.1 failure, and here they cost the thing the label was
+        // added for: both <label for> would resolve to whichever field rendered first, leaving the
+        // second one unnamed again. Nothing catches that in a page with one mount — the shape this
+        // borrows from the explorer's own guard, VariableExplorerTest.cs
+        // Source_WhenTwoExplorersAreOnOnePage_ThenTheirPanelsDoNotShareIds.
+        Services.AddSingleton<IMuninExplorerClient>(new ListClient { HasList = false });
+        Services.AddScoped<VariableListState>();
+
+        var a = Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, true));
+        var b = Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, true));
+
+        var first = a.Find("input[type=text]");
+        var second = b.Find("input[type=text]");
+
+        Assert.NotEqual(first.Id, second.Id);
+
+        // And each label points at its own field rather than at the same one, which is the half an
+        // id comparison does not cover: two different ids with both labels aimed at the first
+        // would still leave the second field unnamed.
+        Assert.Equal(first.Id, a.Find("label[for]").GetAttribute("for"));
+        Assert.Equal(second.Id, b.Find("label[for]").GetAttribute("for"));
+
+        Assert.Equal("Navn på ny liste", AccessibleName.Of(first));
+        Assert.Equal("Navn på ny liste", AccessibleName.Of(second));
     }
 
     [Fact]

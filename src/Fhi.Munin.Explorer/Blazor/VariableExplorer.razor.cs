@@ -580,6 +580,7 @@ public partial class VariableExplorer : ComponentBase
     private string RowHeadingId(VariableSummary v) => $"munin-explorer-heading-{_instance}-{v.Id:N}";
     private string DetailToggleId(VariableSummary v) => $"munin-explorer-toggle-{_instance}-{v.Id:N}";
     private string DetailId(VariableSummary v) => $"munin-explorer-detail-{_instance}-{v.Id:N}";
+    private string SaveButtonId(VariableSummary v) => $"munin-explorer-save-{_instance}-{v.Id:N}";
 
     // Per instance and not per row: the owner panel hangs inside the one open variable panel, so
     // there is never more than one of it in this component's DOM. The kind is in the toggle's id
@@ -822,15 +823,44 @@ public partial class VariableExplorer : ComponentBase
         builder.AddAttribute(5, "id", DetailToggleId(v));
         builder.AddAttribute(6, "aria-expanded", DetailExpanded(v));
         builder.AddAttribute(7, "aria-controls", DetailControls(v));
+
+        // A name for the shape where the button's own content cannot give it one. PreferredTerm
+        // defaults to "" (Contracts/VariableSummary.cs) and the row draws it blank, so the span
+        // below is empty and this button — whose only content IS that span — announces as
+        // "button, collapsed" with nothing in front of it. WCAG 4.1.2. The save button beside it
+        // survives the same row for free, because its own words are the first half of its name;
+        // this one has no second source, so it needs a written fallback.
+        //
+        // An aria-label, and not the two-element aria-labelledby the rest of this row uses. That
+        // rule exists because a Munin name interpolated into our prose is one unmarked string in
+        // two languages — here there is no Munin half at all, only our own sentence, which follows
+        // Language like every other string this component says. And it is not written into the
+        // span, because the save button borrows the span: putting it there would name that button
+        // "Lagre i liste Vis hele variabelen" for a variable neither control can actually name.
+        //
+        // Null while the term is there, so the visible words stay the name and a speech-input user
+        // saying what they can see still reaches the control (WCAG 2.5.3).
+        builder.AddAttribute(8, "aria-label",
+            string.IsNullOrWhiteSpace(v.PreferredTerm) ? T.ShowWholeVariable : null);
+
         // Never disabled, including while its own fetch runs: pressing it again is how the panel
         // is closed, and disabling the element that has focus drops focus to <body>.
-        builder.AddAttribute(8, "onclick", EventCallback.Factory.Create(this, () => ToggleDetailAsync(v)));
+        builder.AddAttribute(9, "onclick", EventCallback.Factory.Create(this, () => ToggleDetailAsync(v)));
 
-        builder.OpenElement(9, "span");
-        builder.AddAttribute(10, "class", "munin-explorer-dataitem-main__column__text");
+        builder.OpenElement(10, "span");
+        builder.AddAttribute(11, "class", "munin-explorer-dataitem-main__column__text");
+        // Named, because the save button beside it borrows these words for its own accessible
+        // name — see RowSaveButton. The id is on the span holding the name rather than on the
+        // button around it, so what gets borrowed is the variable and not the whole cell.
+        //
+        // Written here and nowhere else: this is the only element that carries RowHeadingId, and
+        // it is drawn for every row whether that row's panel is open or shut. Both matter to the
+        // save button, which points at it in either state — a second emitter would make every row
+        // a duplicate-id failure (WCAG 4.1.1) and aim the button at whichever came first.
+        builder.AddAttribute(12, "id", RowHeadingId(v));
         // Munin's variable names are Norwegian whatever language the surrounding UI is in.
-        builder.AddAttribute(11, "lang", "no");
-        builder.AddContent(12, v.PreferredTerm);
+        builder.AddAttribute(13, "lang", "no");
+        builder.AddContent(14, v.PreferredTerm);
         builder.CloseElement();
 
         builder.CloseElement();

@@ -42,18 +42,18 @@ public partial class VariableExplorer
     /// </remarks>
     private string? DetailControls(VariableSummary v) => IsSelected(v) ? DetailId(v) : null;
 
-    /// <summary>
-    /// The toggle's accessible name: its own words, then the variable's.
-    /// </summary>
-    /// <remarks>
-    /// Twenty-five buttons all called "Vis detaljer" say nothing about which row they open when a
-    /// screen reader lists them out of context. Pointing at both elements names it "Vis detaljer
-    /// 1. Tale" and keeps each half in its own language, which an <c>aria-label</c> could not do:
-    /// the words are ours and follow <see cref="Language"/>, the variable's name is Munin's and is
-    /// Norwegian whatever the surrounding UI is. It starts with the visible text, so speech input
-    /// still reaches it by what is on screen (WCAG 2.5.3).
-    /// </remarks>
-    private string DetailToggleLabelledBy(VariableSummary v) => $"{DetailToggleId(v)} {RowHeadingId(v)}";
+    // No aria-labelledby on the toggle, and nothing to build one from. It used to have a helper
+    // here, written when the disclosure was a separate button reading "Vis detaljer": twenty-five
+    // of those say nothing about which row they open, so it pointed at the button and then at the
+    // row's name to make "Vis detaljer 1. Tale" — each half in its own language, which an
+    // aria-label could not do, because the words are ours and follow Language while the variable's
+    // name is Munin's and is Norwegian whatever the surrounding UI is.
+    //
+    // The name IS the disclosure now (RowHeading), so the button's own content is the variable's
+    // name and it announces as "1. Tale" already. The old helper would have named it "1. Tale
+    // 1. Tale", and it had no caller — it was orphaned when the separate button went. The rule it
+    // recorded is still the rule; it is the save button beside this one that needs it now, and
+    // RowSaveButton is where it lives.
 
     /// <summary>What the panel's status line says: that it is loading, or why it is empty.</summary>
     private string? DetailStatus => _detailLoading ? T.DetailLoading : _detailError;
