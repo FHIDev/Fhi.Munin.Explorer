@@ -28,13 +28,15 @@ let violationCount = 0;
 try {
   for (const url of urls) {
     console.log(`\n==> axe ${url}`);
-    const page = await browser.newPage();
+    const context = await browser.newContext();
+    const page = await context.newPage();
 
     try {
       await page.goto(url, { waitUntil: 'networkidle', timeout: 60_000 });
     } catch (err) {
       console.error(`could not load ${url} - TOOLING failure.`);
       console.error(String(err?.message ?? err));
+      await context.close();
       await browser.close();
       process.exit(2);
     }
@@ -45,6 +47,7 @@ try {
 
     const results = await new AxeBuilder({ page }).withTags(tags).analyze();
     await page.close();
+    await context.close();
 
     if (results.violations.length === 0) {
       console.log('    no violations');
@@ -65,8 +68,16 @@ try {
       }
     }
   }
-} finally {
+} catch (err) {
+  // Anything reaching here is the scanner failing, not the page. Exit 1 would be read
+  // as "violations found" by the caller and send someone hunting a defect that is not
+  // there.
+  console.error('the scan did not complete - this is a TOOLING failure, not a finding.');
+  console.error(String(err?.stack ?? err));
   await browser.close();
+  process.exit(2);
+} finally {
+  await browser.close().catch(() => {});
 }
 
 process.exit(violationCount > 0 ? 1 : 0);
