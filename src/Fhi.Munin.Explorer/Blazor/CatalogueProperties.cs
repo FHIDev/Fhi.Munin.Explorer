@@ -119,23 +119,44 @@ internal static class CatalogueProperties
     internal static string? Foreign(string language, string reader)
         => string.Equals(language, reader, StringComparison.OrdinalIgnoreCase) ? null : language;
 
+    /// <summary>The bag a source with no curated properties at all has.</summary>
+    /// <remarks>
+    /// Stands in for a null bag so the two methods below can be written as though it is always
+    /// there — see <see cref="Rows"/> for why null reaches them.
+    /// </remarks>
+    private static readonly IReadOnlyDictionary<string, string?> NoProperties =
+        new Dictionary<string, string?>();
+
     /// <summary>
     /// The properties worth drawing, as label and value, in the catalogue's order.
     /// </summary>
     /// <remarks>
     /// A key with no metadata is skipped rather than drawn under its raw name: the bag can carry
     /// keys the catalogue no longer curates, and "FlerkodetFelt: 1" tells a reader nothing.
+    /// <para>
+    /// <paramref name="values"/> is nullable although every contract declares
+    /// <c>AdditionalProperties</c> non-nullable with an initialiser: that initialiser only survives
+    /// a key <em>absent</em> from the payload, and <c>System.Text.Json</c> writes null straight over
+    /// it for an explicit <c>"additionalProperties": null</c>. Null is taken as the empty bag, which
+    /// is what the payload means by it — the source has no curated properties — and it is the same
+    /// answer <c>KildeExplorer.Property</c> gives on the list side, so the two places do not
+    /// disagree about one question. Guarded here rather than at each call site because all three of
+    /// them pass a field declared that way: <c>KildeView</c>, <c>VariableView</c> and the variable
+    /// panel's own rows. Unguarded it throws while rendering, where the try/catch around the fetch
+    /// is long since finished and cannot catch it.
+    /// </para>
     /// </remarks>
     internal static List<PropertyRow> Rows(
         IEnumerable<PropertyMetadataEntry> metadata,
-        IReadOnlyDictionary<string, string?> values,
+        IReadOnlyDictionary<string, string?>? values,
         string reader)
     {
         var rows = new List<PropertyRow>();
+        var present = values ?? NoProperties;
 
         foreach (var entry in metadata.OrderBy(m => m.SortOrder).ThenBy(m => m.Key, StringComparer.Ordinal))
         {
-            if (!values.TryGetValue(entry.Key, out var raw) || string.IsNullOrWhiteSpace(raw))
+            if (!present.TryGetValue(entry.Key, out var raw) || string.IsNullOrWhiteSpace(raw))
             {
                 continue;
             }
@@ -183,13 +204,19 @@ internal static class CatalogueProperties
     /// Dropping the key drops the group with it whenever nothing else in that group is filled in,
     /// which is exactly what Runa shows.
     /// </para>
+    /// <para>
+    /// <paramref name="values"/> is nullable for the reason <see cref="Rows"/> gives, and taken the
+    /// same way. Normalised here as well as there because the group ordering reads the bag directly
+    /// rather than through <see cref="Rows"/>.
+    /// </para>
     /// </remarks>
     internal static List<PropertyGroup> Groups(
         IReadOnlyList<PropertyMetadataEntry> metadata,
-        IReadOnlyDictionary<string, string?> values,
+        IReadOnlyDictionary<string, string?>? values,
         string reader,
         IReadOnlySet<string>? drawnElsewhere = null)
     {
+        var present = values ?? NoProperties;
         var groups = new List<(string Name, string Language, int Order, List<PropertyMetadataEntry> Entries)>();
 
         foreach (var entry in metadata)
@@ -222,7 +249,7 @@ internal static class CatalogueProperties
 
         foreach (var (name, language, _, entries) in groups)
         {
-            var rows = Rows(entries, values, reader);
+            var rows = Rows(entries, present, reader);
 
             if (rows.Count == 0)
             {
@@ -230,7 +257,7 @@ internal static class CatalogueProperties
             }
 
             var order = entries
-                .Where(e => values.TryGetValue(e.Key, out var raw) && !string.IsNullOrWhiteSpace(raw))
+                .Where(e => present.TryGetValue(e.Key, out var raw) && !string.IsNullOrWhiteSpace(raw))
                 .Select(e => e.SortOrder)
                 .DefaultIfEmpty(int.MaxValue)
                 .Min();
