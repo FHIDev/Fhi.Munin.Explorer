@@ -69,6 +69,10 @@ dotnet pack -c Release -o artifacts && ./scripts/assert-package-contents.sh arti
 - **A `src/` change needs a changelog fragment** in `changelog.d/`. CI fails without one.
   Fragments here are **English only** — deliberately unlike Munin's bilingual `.en.md`/`.nb.md`
   pair. See `changelog.d/README.md`.
+- **Comments have a three-line ceiling** — the why, never the what; incident history goes in the
+  bead; the package's public XML docs are the exception, because their reader has only the
+  package. Full rule in `AGENTS.md` under "Comments". Prose that outgrows the ceiling belongs in
+  the bead, the PR description, or `AGENTS.md` — not in a file people reopen on every visit.
 - `dotnet format` on a Windows checkout reports pre-existing whitespace noise from CRLF. Compare
   the count against untouched `main` before believing it is yours; `.gitattributes` normalises to
   LF, so CI sees clean files.
@@ -113,6 +117,10 @@ checkout needs to find the shared database.
 ### Finishing
 
 - `bd preflight --check` before opening the PR.
+- **If the change touches markup, run `./scripts/check-accessibility.sh`.** WCAG 2.1 AA applies
+  to this package by law, and green means no detected regression rather than accessible — what the
+  gate cannot see is in AGENTS.md under "Accessibility is a requirement, not a preference". CI runs
+  the same script, so a red check there is never a surprise.
 - Reference the bead with the **cross-repository** form, since the issues live in Munin:
   `Closes FHIDev/Munin#1234`. Use `Refs` when the PR only partly satisfies the bead — `Closes`
   shuts it whether or not the acceptance criteria are met.

@@ -612,6 +612,14 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   cursor: pointer;
 }
 
+/* Navnet ligger i et rowheader-omslag som baerer flex-bredden, saa knappen inni maa fylle
+   den. Ellers krymper den til teksten og resten av kolonnen slutter aa svare paa klikk -
+   144px doedsone for et kort navn ved 1920. */
+.munin-explorer-dataitem-main__name > button.munin-explorer-dataitem-main__name {
+  width: 100%;
+  text-align: left;
+}
+
 .munin-explorer-dataitem-main__name:hover {
   text-decoration: underline;
 }

@@ -170,7 +170,7 @@ public class KildeSectionsTest : BunitContext
 
         var cut = Render<VariableExplorer>();
 
-        cut.FindAll("ul.munin-explorer-data-list .munin-explorer-dataitem-main__name")[0].Click();
+        cut.FindAll("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name")[0].Click();
         cut.FindAll(".munin-explorer-detail > button[id]")[0].Click();
 
         return cut;
