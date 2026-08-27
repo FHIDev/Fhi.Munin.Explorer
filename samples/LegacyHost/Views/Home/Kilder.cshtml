@@ -23,10 +23,16 @@
        The path is handed in beside the query string because this view is not on "/": closing the
        open kilde has to put back the path the reader arrived on rather than the front page. Which
        path that is varies — the action answers on both /kilder and /Home/Kilder — so it is read
-       from the request here instead of being named anywhere. *@
+       from the request here instead of being named anywhere.
+
+       PathBase and Path, not Path alone. history.replaceState writes an absolute path, and Path
+       is relative to wherever the application is mounted: behind a reverse proxy or in a virtual
+       directory it omits the prefix, so closing a kilde would send the reader to a path outside
+       the app. Locally the two are identical and nothing here would show it — helsedata's
+       Optimizely host is the one this has to survive. *@
     <component type="typeof(KildeExplorerWithUrlState)"
                render-mode="Server"
                param-Language="@("no")"
-               param-BasePath="@Context.Request.Path.Value"
+               param-BasePath="@((Context.Request.PathBase + Context.Request.Path).Value)"
                param-InitialQuery="@Context.Request.QueryString.Value" />
 </div>

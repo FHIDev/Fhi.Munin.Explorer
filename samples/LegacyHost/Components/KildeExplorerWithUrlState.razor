@@ -9,10 +9,15 @@
    shortcut taken here. KildeExplorer has no SearchChanged, no sort, no pager and no facet
    callbacks: search, filters and column choices are Kelda parity decisions that stay component
    state and go away on refresh. The one thing worth putting in a host's URL is which kilde is
-   open, so that is the one thing bound both ways. *@
+   open, so that is the one thing bound both ways — and the only thing read out of the URL.
+
+   ?search= is deliberately not honoured, though KildeExplorer.Search would accept it. Reading it
+   would make the parameter look supported while BuildQuery, which has no SearchChanged to follow,
+   erased it from the address bar on the first render after load. The link would work exactly once
+   and could not be shared onward. A parameter this host cannot maintain is one it should not take,
+   so the URL here carries the open kilde and nothing else. *@
 
 <KildeExplorer @bind-SelectedKildeId="_selectedKildeId"
-               Search="@_search"
                Language="@Language" />
 
 @code {
@@ -35,9 +40,6 @@
 
     [Parameter] public string Language { get; set; } = "no";
 
-    // Read once and handed in, never written back: there is no SearchChanged to write it from.
-    private string? _search;
-
     private Guid? _selectedKildeId;
 
     // What the address bar already says. Without it every render would call into JS to write
@@ -47,11 +49,6 @@
     protected override void OnInitialized()
     {
         var query = QueryHelpers.ParseQuery(InitialQuery ?? "");
-
-        if (query.TryGetValue("search", out var search))
-        {
-            _search = search.ToString();
-        }
 
         // A kilde id in a URL is whatever a stranger typed. One that does not parse opens the list,
         // and one that parses but names nothing the API publishes opens a view that says so — the
@@ -81,9 +78,8 @@
 
     private string BuildQuery()
     {
-        // Search is deliberately not mirrored out. With no SearchChanged beside it, what is in the
-        // box after the reader has typed is not something this host is ever told, so writing the
-        // initial value back would pin a stale term into a link that no longer describes the page.
+        // The open kilde is the whole of it — see the file header for why search is neither read
+        // in nor written out. Everything this returns is a URL the reader can share and reopen.
         return _selectedKildeId is { } id
             ? "?kilde=" + Uri.EscapeDataString(id.ToString())
             : string.IsNullOrEmpty(BasePath) ? "/" : BasePath;
