@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
@@ -225,6 +225,21 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
     /// The export request. Named rather than anonymous, like the bodies beside it: the wire names
     /// carry the Norwegian stem, and an anonymous object puts that spelling out of reach of review.
     /// </summary>
+    /// <summary>
+    /// The spelling the API accepts for <c>format</c>.
+    /// </summary>
+    /// <remarks>
+    /// Written out rather than lowercasing the enum name. Both give the same two strings today, but
+    /// only this one keeps saying so if a member is ever renamed - and the failure it guards against
+    /// is silent in the worst way: a request for CSV that comes back as a spreadsheet.
+    /// </remarks>
+    private static string WireName(ExportFormat format) => format switch
+    {
+        ExportFormat.Xlsx => "xlsx",
+        ExportFormat.Csv => "csv",
+        _ => throw new ArgumentOutOfRangeException(nameof(format), format, null)
+    };
+
     private sealed record ExportRequestBody(
         [property: JsonPropertyName("variabelIds")] IReadOnlyCollection<Guid> VariableIds,
         [property: JsonPropertyName("format")] string Format,
@@ -567,12 +582,12 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
             Content = JsonContent.Create(
                 new ExportRequestBody(
                     variableIds,
-                    // The name, not the number. The API reads enums as PascalCase strings
-                    // (EnumJsonConverterFactory), and this package serialises with
-                    // JsonSerializerDefaults.Web, which has no string-enum converter — so an enum
-                    // passed as itself goes out as 0 or 1. VariableList.cs:78 spells out the same
-                    // hazard from the reading side.
-                    format.ToString(),
+                    // The lowercase wire name. The API spells these out with
+                    // [JsonStringEnumMemberName("xlsx"/"csv")], and its converter accepts those and
+                    // the numbers — but not "Csv". Sending format.ToString() therefore 400-ed every
+                    // download. Verified against test 2026-08-27: "csv" and 1 both give text/csv,
+                    // "xlsx" and 0 both give a spreadsheet, "Csv" gives 400.
+                    WireName(format),
                     includeKodeverk,
                     kildeIdFilter),
                 options: Json)

@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -103,8 +103,11 @@ public class ExportListClientTest
     }
 
     [Theory]
-    [InlineData(ExportFormat.Xlsx, "Xlsx")]
-    [InlineData(ExportFormat.Csv, "Csv")]
+    // Lowercase, because that is what the API accepts. It spells the two out with
+    // [JsonStringEnumMemberName], and rejects "Csv" with a 400. This test asserted the PascalCase
+    // names until 2026-08-27 and passed the whole time, while every real download failed.
+    [InlineData(ExportFormat.Xlsx, "xlsx")]
+    [InlineData(ExportFormat.Csv, "csv")]
     public async Task ExportListAsync_WhenAFormatIsChosen_ThenItIsSentAsItsNameNotItsNumber(
         ExportFormat format, string expected)
     {
