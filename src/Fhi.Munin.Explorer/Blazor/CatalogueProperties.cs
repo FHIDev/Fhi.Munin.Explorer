@@ -123,8 +123,14 @@ internal static class CatalogueProperties
     /// <remarks>
     /// Stands in for a null bag so the two methods below can be written as though it is always
     /// there — see <see cref="Rows"/> for why null reaches them.
+    /// <para>
+    /// Internal rather than private because the statistics table in <c>VariableView</c> reads a
+    /// statistic's bag directly rather than through <see cref="Rows"/>, and needs the same stand-in
+    /// for the same reason. Shared rather than allocated there, so a table of statistics does not
+    /// build one empty dictionary per row.
+    /// </para>
     /// </remarks>
-    private static readonly IReadOnlyDictionary<string, string?> NoProperties =
+    internal static readonly IReadOnlyDictionary<string, string?> NoProperties =
         new Dictionary<string, string?>();
 
     /// <summary>

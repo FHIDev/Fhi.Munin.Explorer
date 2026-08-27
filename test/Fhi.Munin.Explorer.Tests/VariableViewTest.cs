@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Bunit;
 using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
@@ -168,6 +169,49 @@ public class VariableViewTest : BunitContext
         var cells = Render(detail).FindAll("table.munin-explorer-statistics tbody td");
 
         Assert.All(cells, c => Assert.Equal("—", c.TextContent));
+    }
+
+    [Fact]
+    public void Statistics_WhenTheirPropertiesArriveAsNull_ThenTheRowDrawsTheSameDashAnEmptyBagDoes()
+    {
+        // Deserialised rather than constructed, because the constructed shape proves nothing here:
+        // Statistic.AdditionalProperties is declared non-nullable with an initialiser, and that
+        // initialiser only survives a key ABSENT from the payload. System.Text.Json writes null
+        // straight over it for an explicit "additionalProperties": null, so the null this is about
+        // can only arrive through the deserialiser. Setting the property to null in C# would exercise
+        // a state the type says cannot happen and say nothing about the one that does.
+        //
+        // The statistikker array has to be there and non-empty as well, or the table returns before
+        // reading a bag at all and the test passes with the fault untouched — this went out once
+        // already, guarded in CatalogueProperties for the three call sites that go through it while
+        // this one read the bag straight off the contract one file away.
+        var detail = JsonSerializer.Deserialize<VariableDetail>(
+            """
+            {
+              "id": "6f1d4a5c-0000-4000-8000-000000000002",
+              "code": "ALSFRSR1Tale",
+              "preferredTerm": "1. Tale",
+              "datasamlingStatistikkType": "yearly",
+              "statistikker": [
+                {
+                  "id": "6f1d4a5c-0000-4000-8000-000000000003",
+                  "code": "ALSFRSR1Tale",
+                  "preferredTerm": "1. Tale",
+                  "additionalProperties": null
+                }
+              ]
+            }
+            """)!;
+
+        Assert.Null(detail.Statistics[0].AdditionalProperties);
+
+        var cut = Render(detail);
+
+        // The row is there, and every cell in it says what a missing number says — the year included,
+        // which heads its own row rather than sitting in a td.
+        Assert.Equal("—", cut.Find("table.munin-explorer-statistics tbody tr th").TextContent);
+        Assert.All(cut.FindAll("table.munin-explorer-statistics tbody td"),
+                   c => Assert.Equal("—", c.TextContent));
     }
 
     [Fact]

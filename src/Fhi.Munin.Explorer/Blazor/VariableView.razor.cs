@@ -233,7 +233,14 @@ public sealed partial class VariableView : ComponentBase
 
         foreach (var statistic in variable.Statistics)
         {
-            var props = statistic.AdditionalProperties;
+            // Null-coalesced although Statistic.AdditionalProperties is declared non-nullable: its
+            // initialiser only survives a key that is ABSENT from the payload, and
+            // System.Text.Json writes null straight over it for an explicit
+            // "additionalProperties": null. Unguarded, one such statistic throws while rendering,
+            // past the try/catch around the fetch, which on a Blazor Server host takes the circuit
+            // and the page it is mounted in down. Read as the empty bag it means, the row draws the
+            // dash Value already gives a key the catalogue holds no number for.
+            var props = statistic.AdditionalProperties ?? CatalogueProperties.NoProperties;
 
             builder.OpenElement(seq, "tr");
 
