@@ -103,15 +103,14 @@ public class ExportListClientTest
     }
 
     [Theory]
-    [InlineData(ExportFormat.Xlsx, "Xlsx")]
-    [InlineData(ExportFormat.Csv, "Csv")]
-    public async Task ExportListAsync_WhenAFormatIsChosen_ThenItIsSentAsItsNameNotItsNumber(
+    // Lowercase, because that is what the API accepts. It spells the two out with
+    // [JsonStringEnumMemberName], and rejects "Csv" with a 400. This test asserted the PascalCase
+    // names until 2026-08-27 and passed the whole time, while every real download failed.
+    [InlineData(ExportFormat.Xlsx, "xlsx")]
+    [InlineData(ExportFormat.Csv, "csv")]
+    public async Task ExportListAsync_WhenAFormatIsChosen_ThenItIsSentAsTheWireNameTheApiAccepts(
         ExportFormat format, string expected)
     {
-        // The API reads enums as PascalCase strings, and this package serialises with
-        // JsonSerializerDefaults.Web, which has no string-enum converter — so an enum sent as
-        // itself goes out as 0 or 1. If the API then falls back to its default, a reader asking for
-        // CSV is handed an xlsx, and nothing anywhere says so.
         var handler = new FileHandler("text/csv", "variabelliste.csv");
 
         await Client(handler).ExportListAsync([One], format);
