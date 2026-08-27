@@ -612,12 +612,14 @@ public class VariableExplorerTest : BunitContext
     [Fact]
     public void Render_WhenTheSearchHasHits_ThenTheListNameNamesTheOrderingToo()
     {
-        // The list's accessible name is the same sentence as the status line, so the two cannot
-        // drift apart and say the result is ordered two different ways.
+        // The table's accessible name is the same sentence as the status line, so the two cannot
+        // drift apart and say the result is ordered two different ways. It moved off the <ul> when
+        // the list became the table's body rowgroup: one element names the whole thing, and a
+        // named rowgroup inside a named table has the sentence read out twice.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
         Assert.Contains("sortert på Standard, stigende",
-                        cut.Find("ul.munin-explorer-data-list").GetAttribute("aria-label")!);
+                        cut.Find(".munin-explorer-data-list__result[role='table']").GetAttribute("aria-label")!);
     }
 
     [Fact]
@@ -781,7 +783,7 @@ public class VariableExplorerTest : BunitContext
             HideColumn(cut, column);
         }
 
-        Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__name"));
+        Assert.NotNull(cut.Find("button.munin-explorer-dataitem-main__name"));
         Assert.NotNull(cut.Find(".munin-explorer-dataitem-header__name"));
     }
 
@@ -876,6 +878,162 @@ public class VariableExplorerTest : BunitContext
         cut.Find("form").Submit();
 
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main__source"));
+    }
+
+    // ---------------------------------------------------------------------------------
+    // Table semantics. Fhi.Metadata-3b1l4: the result list drew a grid of columns out of
+    // <div>s and told assistive technology nothing about it — measured in Chrome's own
+    // accessibility tree against the sample stylesheet, every row, column and header of it
+    // resolved to `generic`, and the aria-sort on the sorted header sat on an element with no
+    // role that may carry one. WCAG 1.3.1 and 4.1.2, both Level A.
+    //
+    // What these cases can and cannot prove is worth being precise about, because the bug they
+    // guard hid behind exactly that gap. They assert the ATTRIBUTES are emitted and that the
+    // structure they describe is well formed. They cannot assert that a browser resolves them,
+    // since the CSS that lays this list out lives in Fhi.Helsedata.Stiler and bUnit applies no
+    // stylesheet at all. That half was checked by hand, in Chrome, against both the sample
+    // stylesheet and Stiler's own compiled main.css: `table`, `rowGroup`, `row`, `columnHeader`,
+    // `rowHeader`, `cell` and `sortDirection=ascending` all appear in the internal accessibility
+    // tree with `display: flex` applied. See the bead for the measurements.
+    // ---------------------------------------------------------------------------------
+
+    [Fact]
+    public void Table_WhenTheSearchHasHits_ThenTheResultListExposesRowsAndColumns()
+    {
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        var table = cut.Find(".munin-explorer-data-list__result[role='table']");
+
+        // A header rowgroup and a body rowgroup, which is what <thead> and <tbody> are.
+        Assert.Equal("rowgroup", table.QuerySelector(".munin-explorer-data-list__header")!.GetAttribute("role"));
+        Assert.Equal("rowgroup", table.QuerySelector("ul.munin-explorer-data-list")!.GetAttribute("role"));
+
+        // One header row of column headers, and one data row per result.
+        Assert.Equal("row", cut.Find(".munin-explorer-dataitem-header").GetAttribute("role"));
+        Assert.Equal(7, cut.FindAll("[role='columnheader']").Count);
+
+        var row = cut.Find("li.munin-explorer-data-list__item");
+
+        Assert.Equal("row", row.GetAttribute("role"));
+
+        // The name is the row's header, the way Kelda's <th scope="row"> is.
+        Assert.Equal("rowheader",
+                     row.QuerySelector(".munin-explorer-dataitem-main__name")!.GetAttribute("role"));
+        Assert.Equal(6, row.QuerySelectorAll("[role='cell']").Length);
+
+        // The two wrappers between the row and its cells are layout only. They have to say so, or
+        // they sit in the tree as anonymous groups between a row and the columns it owns.
+        Assert.Equal("none", row.QuerySelector(".munin-explorer-data-list__item__row")!.GetAttribute("role"));
+        Assert.Equal("none", row.QuerySelector(".munin-explorer-dataitem-main")!.GetAttribute("role"));
+    }
+
+    [Fact]
+    public void Table_WhenAColumnIsSorted_ThenAriaSortSitsOnAColumnHeader()
+    {
+        // The bug axe caught. aria-sort is allowed on columnheader and rowheader and nowhere else,
+        // and the cell carrying it had no role at all — so the attribute was discarded and the
+        // sort state was announced to nobody.
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        var sorted = cut.Find("[aria-sort]");
+
+        Assert.Equal("columnheader", sorted.GetAttribute("role"));
+        Assert.Equal("ascending", sorted.GetAttribute("aria-sort"));
+
+        ClickSort(cut, "Navn");
+
+        sorted = cut.Find("[aria-sort]");
+
+        Assert.Equal("columnheader", sorted.GetAttribute("role"));
+        Assert.Equal("descending", sorted.GetAttribute("aria-sort"));
+    }
+
+    [Fact]
+    public void Table_Always_ThenNothingButCellsSitsInsideARow()
+    {
+        // The rule that shaped the markup: a row owns cells and nothing else. It is why the name
+        // and the save button are wrapped, why the two layout boxes wear role="none", and why the
+        // open panel is a cell rather than a region loose in the rowgroup. Get it wrong and axe
+        // reports aria-required-children — which is how the first attempt at this was caught.
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        Toggles(cut)[0].Click();
+
+        var cells = new[] { "cell", "columnheader", "rowheader" };
+        var rows = cut.FindAll("[role='row']");
+
+        // The header row and the one result row. Asserted, because a walk over no rows at all
+        // passes without looking at anything.
+        Assert.Equal(2, rows.Count);
+
+        foreach (var row in rows)
+        {
+            Assert.NotEmpty(Owned(row));
+
+            foreach (var owned in Owned(row))
+            {
+                Assert.Contains(owned.GetAttribute("role"), cells);
+            }
+        }
+
+        // Every element a row owns, looking through the ones that stepped aside and past the ones
+        // hidden from assistive technology — the same walk axe does.
+        static IEnumerable<AngleSharp.Dom.IElement> Owned(AngleSharp.Dom.IElement element)
+        {
+            foreach (var child in element.Children)
+            {
+                if (child.GetAttribute("aria-hidden") == "true")
+                {
+                    continue;
+                }
+
+                if (child.GetAttribute("role") is "none" or "presentation")
+                {
+                    foreach (var deeper in Owned(child))
+                    {
+                        yield return deeper;
+                    }
+
+                    continue;
+                }
+
+                yield return child;
+            }
+        }
+    }
+
+    [Fact]
+    public void Table_WhenARowIsOpen_ThenThePanelIsThatRowsLastCellAndStillARegion()
+    {
+        // The panel is the list item's second child, so the row has to start above both — and then
+        // the panel is something a row owns, which may only be a cell. It is a bare wrapper rather
+        // than a role on the panel itself so the panel goes on being the landmark that tells a
+        // reader which variable they opened.
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        Toggles(cut)[0].Click();
+
+        var row = cut.Find("li.munin-explorer-data-list__item");
+        var last = row.Children[^1];
+
+        Assert.Equal("cell", last.GetAttribute("role"));
+        Assert.False(last.HasAttribute("class"));
+        Assert.Equal("region", last.Children[0].GetAttribute("role"));
+        Assert.Contains("munin-explorer-detail", last.Children[0].ClassName!);
+    }
+
+    [Fact]
+    public void Table_WhenThereIsAPager_ThenTheSkipLinkIsOutsideTheTable()
+    {
+        // It used to sit between the header row and the rows, which is inside the table now — and
+        // a link is not something a table may own. Still in the results column, still beside the
+        // list it skips.
+        var cut = RenderWith(new FakeClient(ResultPage(40)));
+
+        var link = cut.Find("a.munin-explorer-skiplink-pagination");
+
+        Assert.Null(link.Closest("[role='table']"));
+        Assert.NotNull(link.Closest(".munin-explorer-results"));
     }
 
     [Fact]
@@ -1242,7 +1400,7 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
         Assert.NotNull(cut.Find("ul.munin-explorer-data-list > li.munin-explorer-data-list__item > div.munin-explorer-data-list__item__row"));
-        Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__name"));
+        Assert.NotNull(cut.Find("button.munin-explorer-dataitem-main__name"));
         Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__column > .munin-explorer-dataitem-main__column__text"));
     }
 
@@ -1351,8 +1509,9 @@ public class VariableExplorerTest : BunitContext
                             b => b.Add(c => c.Search, "tale"));
 
         // aria-label rather than a clipped <caption>: Stiler has no visually-hidden rule, so
-        // markup that needs one is markup that shows its scaffolding on helsedata's page.
-        var name = cut.Find("ul.munin-explorer-data-list").GetAttribute("aria-label")!;
+        // markup that needs one is markup that shows its scaffolding on helsedata's page. On the
+        // table rather than the <ul> under it, which is now the body rowgroup.
+        var name = cut.Find(".munin-explorer-data-list__result[role='table']").GetAttribute("aria-label")!;
 
         Assert.Contains("1 variabel funnet", name);
         Assert.Contains("«tale»", name);
@@ -1376,7 +1535,7 @@ public class VariableExplorerTest : BunitContext
         // items, each with a named disclosure carrying aria-expanded.
         Assert.Empty(cut.FindAll("li h1, li h2, li h3, li h4, li h5, li h6"));
 
-        var name = cut.Find("li .munin-explorer-dataitem-main__name");
+        var name = cut.Find("li button.munin-explorer-dataitem-main__name");
 
         Assert.Equal("1. Tale", name.TextContent);
         Assert.Equal("BUTTON", name.TagName);
@@ -1510,7 +1669,7 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
                             b => b.Add(c => c.Language, "en"));
 
-        Assert.Equal("no", cut.Find(".munin-explorer-dataitem-main__name .munin-explorer-dataitem-main__column__text").GetAttribute("lang"));
+        Assert.Equal("no", cut.Find("button.munin-explorer-dataitem-main__name .munin-explorer-dataitem-main__column__text").GetAttribute("lang"));
         Assert.Equal("no", cut.Find(".munin-explorer-dataitem-main__column__text span[lang]").GetAttribute("lang"));
         Assert.False(cut.Find("ul.munin-explorer-data-list").HasAttribute("lang"));
     }
@@ -4122,7 +4281,7 @@ public class VariableExplorerTest : BunitContext
     }
 
     private static IReadOnlyList<AngleSharp.Dom.IElement> Toggles(IRenderedComponent<VariableExplorer> cut) =>
-        cut.FindAll("ul.munin-explorer-data-list .munin-explorer-dataitem-main__name");
+        cut.FindAll("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name");
     // The variable's own name is the disclosure — helsedata's pattern. There is no longer a
     // separate "Vis detaljer" button under the metadata line.
 
@@ -5491,7 +5650,7 @@ public class VariableExplorerTest : BunitContext
         // The heading wraps the button; the panel points at the heading, which is what holds
         // the row's name in the document outline.
         // The name button is the row's name — there is no heading wrapping it any more.
-        var heading = cut.FindAll("ul.munin-explorer-data-list .munin-explorer-dataitem-main__name")[0];
+        var heading = cut.FindAll("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name")[0];
 
         // Closed: nothing to control yet, and aria-controls pointing at an element that is not in
         // the document is a dangling reference.
@@ -6328,7 +6487,7 @@ public class VariableExplorerTest : BunitContext
         Back(cut);
 
         Assert.Equal("H1", cut.Find(".munin-explorer > [class*='headline']").TagName);
-        Assert.Equal("BUTTON", cut.Find(".munin-explorer-data-list__item__row .munin-explorer-dataitem-main__name").TagName);
+        Assert.Equal("BUTTON", cut.Find(".munin-explorer-data-list__item__row button.munin-explorer-dataitem-main__name").TagName);
     }
 
     [Fact]

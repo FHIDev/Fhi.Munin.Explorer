@@ -261,6 +261,27 @@ public class SaveToListTest : BunitContext
     }
 
     [Fact]
+    public void Row_WhenTheReaderIsSignedIn_ThenTheSaveButtonSitsInACellOfItsRow()
+    {
+        // Fhi.Metadata-3b1l4. The result row is a role="row" now, and a row owns nothing but
+        // cells — so the save button and the alert line beside it share a wrapper that is one.
+        // Signed out there is no button and no cell; this is the only render that reaches the
+        // shape, which is why it is asserted here.
+        var cut = RenderSignedIn(new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))));
+
+        var button = cut.Find(".munin-explorer-dataitem-main button[aria-pressed]");
+        var cell = button.ParentElement!;
+
+        Assert.Equal("cell", cell.GetAttribute("role"));
+        Assert.False(cell.HasAttribute("class"));
+
+        // The failure line comes inside with it, so a save that went wrong is announced in the
+        // same cell as the control that failed rather than loose between the columns.
+        Assert.Equal("alert", cell.Children[^1].GetAttribute("role"));
+        Assert.Equal("none", cell.ParentElement!.GetAttribute("role"));
+    }
+
+    [Fact]
     public void Row_WhenAVariableHasAPreferredTerm_ThenTheDisclosureIsNamedByItAndNotByTheFallback()
     {
         // The other side of the fallback: it must not survive into the ordinary row, where the

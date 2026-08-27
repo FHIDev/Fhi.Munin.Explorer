@@ -329,6 +329,57 @@ public class VariableListViewTest : BunitContext
     // -----------------------------------------------------------------------
 
     [Fact]
+    public void View_WhenTheListHasVariables_ThenTheRowsExposeTableStructure()
+    {
+        // Fhi.Metadata-3b1l4. These rows share `munin-explorer-data-list` with the explorer's own
+        // result list, so they shared its failure: no row, column or header of the reader's own
+        // saved list reached assistive technology. axe never reported it — there is no sortable
+        // header here to hang an invalid aria-sort on, and missing structure is not a rule
+        // violation, it is just missing.
+        //
+        // As in the explorer's own cases, this asserts the attributes and the shape. That a browser
+        // resolves them under the stylesheet was checked by hand in Chrome's accessibility tree,
+        // with the sample stylesheet and with Stiler's own compiled main.css.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        var table = cut.Find(".munin-explorer-data-list[role='table']");
+
+        // No rowgroups: the header row and the data rows are siblings here, unlike the explorer's
+        // list, and a table may own rows directly.
+        Assert.Equal("row", table.QuerySelector(".munin-explorer-dataitem-header")!.GetAttribute("role"));
+        Assert.Equal(7, cut.FindAll("[role='columnheader']").Count);
+
+        var row = cut.Find(".munin-explorer-data-list__item");
+
+        Assert.Equal("row", row.GetAttribute("role"));
+        Assert.Equal("rowheader",
+                     row.QuerySelector(".munin-explorer-dataitem-main__name")!.GetAttribute("role"));
+
+        // Six value columns and the cell holding the remove button, which is there because a row
+        // owns nothing but cells and a <button> cannot be one without ceasing to be a button.
+        var cells = row.QuerySelectorAll("[role='cell']");
+
+        Assert.Equal(7, cells.Length);
+        Assert.Equal("BUTTON", cells[^1].Children[0].TagName);
+
+        // The boxes that only lay the columns out step out of the tree, or they sit between the
+        // row and the cells it owns.
+        Assert.Equal("none", row.QuerySelector(".munin-explorer-data-list__item__row")!.GetAttribute("role"));
+        Assert.Equal("none", row.QuerySelector(".munin-explorer-dataitem-main")!.GetAttribute("role"));
+    }
+
+    [Fact]
+    public void View_WhenAListIsShown_ThenTheTableIsNamedAfterIt()
+    {
+        // The reader's own word for the list, not the view's heading: with several lists saved,
+        // "Mine variabellister" would name every table the same and a reader moving between them
+        // could not tell which one is on screen.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        Assert.Equal("Mine hjertevariabler", cut.Find("[role='table']").GetAttribute("aria-label"));
+    }
+
+    [Fact]
     public void View_WhenAnEntryHasNoRowInTheReadModel_ThenItKeepsItsPlace()
     {
         // The API returns it deliberately so the paging totals stay honest. A view that filtered
