@@ -65,18 +65,27 @@ public partial class VariableExplorer
         // retried — row is.
         _saveError.TryGetValue(v.Id, out var failure);
 
+        // A cell around the button and the line beside it. The result row is a role="row" now, and
+        // a row owns nothing but cells — a bare <button> in one is a structure error axe reports
+        // and a reader hears as a control adrift between the columns. The wrapper carries no class
+        // on purpose: it becomes the flex item the button was, with no width rule of its own, which
+        // is exactly what the button had. The alert span comes inside with it, so a failure stays
+        // in the same cell as the control that failed.
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "role", "cell");
+
         // Stiler's own square-button classes and nothing else, the same pair the detail panel's
         // toggles wear. No `munin-explorer-*` name of its own on purpose: the package ships no CSS,
         // so a new name here would be one with no rule behind it until somebody wrote one in Stiler,
         // and it would render unstyled in the host until they did.
-        builder.OpenElement(0, "button");
-        builder.AddAttribute(1, "class", "hd-button-square button-square--ghost");
-        builder.AddAttribute(2, "type", "button");
-        builder.AddAttribute(3, "id", SaveButtonId(v));
+        builder.OpenElement(2, "button");
+        builder.AddAttribute(3, "class", "hd-button-square button-square--ghost");
+        builder.AddAttribute(4, "type", "button");
+        builder.AddAttribute(5, "id", SaveButtonId(v));
 
         // The pressed state is what a screen reader announces, and it is the same fact the word
         // shows sighted readers — one control in two states, not two controls.
-        builder.AddAttribute(4, "aria-pressed", saved ? "true" : "false");
+        builder.AddAttribute(6, "aria-pressed", saved ? "true" : "false");
 
         // The accessible name says which variable, where the visible words cannot: a page of
         // results is 25 buttons all reading "Lagre i liste", and a screen reader moving down them
@@ -96,10 +105,10 @@ public partial class VariableExplorer
         // it is what makes a variable with no PreferredTerm safe: an empty span contributes
         // nothing, so the button falls back to "Lagre i liste" rather than announcing that phrase
         // with a hole on the end, which is what interpolating the term into a sentence would give.
-        builder.AddAttribute(5, "aria-labelledby", $"{SaveButtonId(v)} {RowHeadingId(v)}");
+        builder.AddAttribute(7, "aria-labelledby", $"{SaveButtonId(v)} {RowHeadingId(v)}");
 
-        builder.AddAttribute(6, "onclick", EventCallback.Factory.Create(this, () => ToggleSavedAsync(v)));
-        builder.AddContent(7, saved ? T.RemoveFromList : T.SaveToList);
+        builder.AddAttribute(8, "onclick", EventCallback.Factory.Create(this, () => ToggleSavedAsync(v)));
+        builder.AddContent(9, saved ? T.RemoveFromList : T.SaveToList);
         builder.CloseElement();
 
         // Said in the row rather than the component's alert region: the other rows are unaffected,
@@ -109,16 +118,19 @@ public partial class VariableExplorer
         // own alert region uses (VariableExplorer.razor:286). A role="alert" element that is
         // inserted and filled in the same DOM update is announced unreliably; one that is already
         // there and gains text is announced.
-        builder.OpenElement(8, "span");
-        builder.AddAttribute(9, "role", "alert");
-        builder.AddAttribute(10, "aria-live", "assertive");
-        builder.AddAttribute(11, "aria-atomic", "true");
-        builder.AddContent(12, failure switch
+        builder.OpenElement(10, "span");
+        builder.AddAttribute(11, "role", "alert");
+        builder.AddAttribute(12, "aria-live", "assertive");
+        builder.AddAttribute(13, "aria-atomic", "true");
+        builder.AddContent(14, failure switch
         {
             SaveFailure.Throttled => T.RateLimitError,
             SaveFailure.Failed => T.SaveError,
             _ => null
         });
+        builder.CloseElement();
+
+        // The cell.
         builder.CloseElement();
     };
 

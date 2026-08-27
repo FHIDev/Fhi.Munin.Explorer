@@ -85,6 +85,18 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     private IReadOnlyList<VariableList> Lists => State?.Lists ?? [];
 
+    /// <summary>The name of the list on screen, which is what names the table of its variables.</summary>
+    /// <remarks>
+    /// The reader's own word for the list rather than this component's heading: with several lists
+    /// saved, "Mine variabellister" would name every one of them the same and a screen reader
+    /// moving between tables could not tell which is on screen. Falls back to the heading before
+    /// the lists have arrived, so the table is never nameless.
+    /// </remarks>
+    private string ShownListName =>
+        Lists.FirstOrDefault(l => l.Id == _shownList)?.Name is { Length: > 0 } name
+            ? name
+            : T.MyListsHeading;
+
     /// <summary>
     /// The years a variable has data for, written the way the result rows and the detail panel
     /// write it — the same words as the explorer's own period column, so a variable does not

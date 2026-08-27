@@ -318,26 +318,50 @@ else
        Rendered whether or not anything was found, for the reason the header is: a control that
        leaves the document when a search comes back empty takes the reader's place in it with it. *@
     @ColumnPicker()
-    <div class="munin-explorer-data-list__result">
+
+    @if (_result is { Items.Count: > 0 } && ShowPager)
+    {
+        @* Without this a keyboard user reaches Neste by tabbing past every card on the page —
+           25 stops to move one page. The rule the host supplies for
+           `munin-explorer-skiplink-pagination` keeps it out of sight until it is focused, which
+           is the one place this markup depends on the host hiding something: see the note on
+           the component class. The name was helsedata's `skiplink-pagination` until
+           `Fhi.Metadata-ja2qu`, and no released Stiler ever had a rule that hid it, so on a
+           Stiler-only host the link sat permanently visible over every multi-page result list.
+
+           Rendered only alongside a pager, because with a single page there is nothing to skip to
+           and the link would be a tab stop leading nowhere.
+
+           Above the table now, not between its header and its rows. A `role="table"` may own
+           nothing but rows and rowgroups, so a link inside it is a structure error — axe reports
+           it, and a reader walking the table meets a link where a row should be. It still sits
+           beside the list it skips and is still invisible until focused. *@
+        <a class="munin-explorer-skiplink-pagination" href="#@PaginationId">@T.SkipToPagination</a>
+    }
+
+    @* role="table" over the header row and the result rows together.
+
+       Until this was written the list had no table semantics at all: measured in Chrome's
+       accessibility tree against the sample stylesheet, every row, column and header of it
+       resolved to `generic`, there was no `sort` property anywhere in the document, and the
+       `aria-sort` the sorted header carries sat on an element with no role that may carry one.
+       That is WCAG 1.3.1 and 4.1.2, both Level A.
+
+       Roles rather than a real <table>, which is what Kelda uses: `munin-explorer-dataitem-main`
+       is `display: flex` in Stiler, and flex on a <table> is exactly what strips table semantics
+       from it. Explicit ARIA roles survive it — verified in the accessibility tree with the
+       stylesheet applied, not in the markup — which is why the layout wrappers below wear
+       `role="none"` instead: a row may own nothing but cells, so an element that is only there to
+       lay the columns out has to step aside rather than sit in the tree between them.
+
+       aria-label rather than aria-labelledby: the name is the same sentence the status line above
+       shows, and pointing at that element would make the table's name change under a screen
+       reader every time the status line does. *@
+    <div class="munin-explorer-data-list__result" role="table" aria-label="@Summary">
     @ResultHeader()
 
     @if (_result is { Items.Count: > 0 })
     {
-        @if (ShowPager)
-        {
-            @* Without this a keyboard user reaches Neste by tabbing past every card on the page —
-               25 stops to move one page. The rule the host supplies for
-               `munin-explorer-skiplink-pagination` keeps it out of sight until it is focused, which
-               is the one place this markup depends on the host hiding something: see the note on
-               the component class. The name was helsedata's `skiplink-pagination` until
-               `Fhi.Metadata-ja2qu`, and no released Stiler ever had a rule that hid it, so on a
-               Stiler-only host the link sat permanently visible over every multi-page result list.
-
-               Rendered only alongside a pager, because with a single page there is nothing to skip
-               to and the link would be a tab stop leading nowhere. *@
-            <a class="munin-explorer-skiplink-pagination" href="#@PaginationId">@T.SkipToPagination</a>
-        }
-
         @* helsedata's own variable page builds its result grid from a <ul> and a header row of
            <div>s, not a <table> — there is not a single <table> element on the page. The column
            layout is theirs; what this markup has to get right is the nesting, because 132 of the
@@ -345,10 +369,11 @@ else
            depth still renders, it just renders unstyled, which looks identical to a class that
            matched something empty.
 
-           aria-label rather than aria-labelledby: the name is the same sentence the status line
-           above shows, and pointing at that element would make the list's name change under a
-           screen reader every time the status line does. *@
-        <ul class="munin-explorer-data-list" aria-label="@Summary" aria-busy="@Busy">
+           role="rowgroup", which is what a <tbody> is: the <ul> keeps laying the rows out and
+           stops claiming to be a list, since a list inside a table is a structure the reader has
+           to listen past. The name moved up to the table with it — one element names the whole
+           thing, and a rowgroup carrying the same sentence would have it read twice. *@
+        <ul class="munin-explorer-data-list" role="rowgroup" aria-busy="@Busy">
             @foreach (var v in _result.Items)
             {
                 @* Keyed by the variable's own id, the same reason the facet values are keyed: a row
@@ -356,7 +381,12 @@ else
                    rows reorder whenever the search, the filter or the ordering moves. Without a key
                    the renderer would patch that button into a different variable's rather than
                    moving it. *@
-                <li class="@RowItemClass(v)" @key="v.Id">
+                @* role="row" on the list item, not on the flex container inside it: the open
+                   panel is the item's second child, and a row owns everything under it — so the
+                   row has to start above both, or the panel ends up beside the rows rather than
+                   in one. The two wrappers below then wear role="none" and the panel becomes the
+                   row's last cell. *@
+                <li class="@RowItemClass(v)" role="row" @key="v.Id">
                     @* The row is the disclosure. helsedata makes the variable's own name the
                        button — button.munin-explorer-dataitem-main__name carrying aria-expanded — which
                        is the APG accordion pattern, and it is what removes the dead affordance the
@@ -369,8 +399,11 @@ else
                        the name cell is sized by `munin-explorer-dataitem-main__name`, so a heading
                        becomes the flex item and the column stops lining up with its header.
                        Neither reference wraps it. *@
-                    <div class="munin-explorer-data-list__item__row">
-                        <div class="munin-explorer-dataitem-main">
+                    @* Both wrappers are layout and nothing else — one is helsedata's row box, the
+                       other the flex container that lays the columns out — so both step out of the
+                       accessibility tree and let the cells inside become the row's own. *@
+                    <div class="munin-explorer-data-list__item__row" role="none">
+                        <div class="munin-explorer-dataitem-main" role="none">
                         @RowChevron(v)
                         @RowHeading(v)
                         @RowSaveButton(v)
@@ -401,6 +434,14 @@ else
                            never heard of renders as a raw browser default. *@
                         @if (IsSelected(v))
                         {
+                            @* A cell around the panel, wearing nothing else. The row above owns
+                               everything under the list item, and a row owns only cells — the same
+                               rule that puts an expanded panel in a <td colspan> in a real table.
+                               It is this bare wrapper rather than a role on the panel itself so
+                               the panel keeps being a region: a landmark named after the variable
+                               is how a reader finds which one they opened, and a cell cannot be
+                               both. The element carries no class on purpose; it lays nothing out. *@
+                            <div role="cell">
                             @* aria-labelledby points at the button that opens this panel, which is
                                the element carrying the variable's name now that no heading wraps it.
 
@@ -608,7 +649,8 @@ else
                                        What dresses the panel is base styling for <dl class="munin-explorer-meta__grid munin-explorer-meta__grid-2">, exactly as
                                        for the variable's own panel above. *@
                                 }
-                            </div>
+                            </div>@* munin-explorer-meta munin-explorer-detail *@
+                            </div>@* the row's last cell *@
                         }
                 </li>
             }
