@@ -1357,6 +1357,25 @@ public class KildeExplorerTest : BunitContext
         Assert.Equal("no", cut.Find(".munin-explorer-kilder__name").GetAttribute("lang"));
     }
 
+    [Fact]
+    public void Select_WhenTheReaderIsNotNorwegian_ThenTheDrilldownHeadingIsMarkedAsTheCataloguesLanguage()
+    {
+        // The same pair one level down, on the element aria-labelledby points at: this heading is
+        // the catalogue's Norwegian name for the kilde, so dropping the mark reads it out in an
+        // English voice to the reader entering the landmark — WCAG 3.1.2 again.
+        var client = new FakeClient(Kilde("Als registeret", "K_ALS")) { StallDetail = true };
+
+        var cut = RenderWith(client, b => b.Add(c => c.Language, "en"));
+
+        cut.Find(".munin-explorer-kilder tbody th button").Click();
+
+        var region = cut.Find(".munin-explorer-drilldown");
+        var heading = cut.Find($"#{region.GetAttribute("aria-labelledby")}");
+
+        Assert.Equal("Als registeret", heading.TextContent.Trim());
+        Assert.Equal("no", heading.GetAttribute("lang"));
+    }
+
     // ---------------------------------------------------------------------------------
     // The facets.
     // ---------------------------------------------------------------------------------

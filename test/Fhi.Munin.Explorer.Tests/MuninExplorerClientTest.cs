@@ -103,6 +103,10 @@ public class MuninExplorerClientTest
 
         Assert.NotNull(kilde);
         Assert.Equal("K_ALS", kilde.Code);
+
+        // Not a contradiction of the test above, which reads a kilder.json re-taken for its
+        // Opprettet key: this capture and the four siblings still carrying K_ALS's old name are
+        // older, so the corpus is coherent per file rather than as one pass.
         Assert.Equal("Als registeret", kilde.PreferredTerm);
         Assert.Equal(230, kilde.TotalVariables);
         Assert.Equal(9, kilde.Datasamlinger.Count);
