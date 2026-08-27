@@ -4744,6 +4744,12 @@ public class VariableExplorerTest : BunitContext
         // in reads a table the abandoned write has already been erased from.
         CodeToggles(cut)[0].Click();
 
+        // And the table this press produces is there by the time Click returns, so the read below
+        // needs no wait of its own: StallCodes is off again, GetKodeverkCodesAsync hands back a
+        // Task.FromResult, and LoadCodesAsync neither yields nor leaves the dispatcher — so its
+        // await continues inline, inside the dispatch bUnit blocks on. Deterministic rather than
+        // fast, which is why load does not change it, and why every other codes test in this file
+        // reads the table straight after the press as well.
         var table = Panel(cut).QuerySelector(".munin-explorer-codes table")!;
 
         Assert.DoesNotContain("STALE", table.TextContent);

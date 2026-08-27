@@ -803,9 +803,15 @@ public class MuninExplorerClientTest
     {
         // The converter has a write half, and the way to get it wrong is to hand the value back to
         // the serialiser as the interface it was just resolved for — which resolves the same
-        // converter again and recurses until the stack ends. Nothing in this package writes a
-        // contract out today, so this is what stands between that and a StackOverflowException in
-        // whatever does first.
+        // converter again and recurses until the stack ends. That much ShapeDrift would already
+        // catch: it serialises every deserialised contract with these same options, on eight
+        // fixtures, in every CI run, so the recursion would take those down rather than wait for a
+        // future caller.
+        //
+        // What it would not catch is what this pins: ShapeDrift only diffs our output against the
+        // live body, so a write half that emitted the right kinds with the wrong keys, or a
+        // dictionary written as an array, reads as drift in the API rather than as a bug here. This
+        // says what the bytes are.
         var detail = new VariableDetail
         {
             Code = "V_ALS.F1.ALSFRSR1TALE",

@@ -21,6 +21,9 @@ namespace Fhi.Munin.Explorer.Client;
 /// and nothing marks the sibling keys as incapable of it. Handled here rather than per read site
 /// because here it is one rule for every collection on every contract, which is what makes the
 /// declarations honest instead of leaving the next unguarded read waiting for the right payload.
+/// That last sentence holds because <see cref="CanConvert"/> matches the two shapes the contracts
+/// are spelled in and <c>NullAsEmptyCollectionsTest</c> fails the day one of them is not — see the
+/// remarks there.
 /// </para>
 /// <para>
 /// Null is read as empty rather than refused, because empty is what the payload means by it: no
@@ -43,6 +46,15 @@ internal sealed class NullAsEmptyCollections : JsonConverterFactory
     /// Dictionaries only when keyed by string, which every one of them is. A converter has to write
     /// property names itself, and doing that for an arbitrary key type means reimplementing the
     /// serialiser's key handling — for no contract that exists.
+    /// <para>
+    /// Which makes "every collection on every contract" a claim about how the contracts happen to
+    /// be spelled, so it is checked rather than asked for: <c>NullAsEmptyCollectionsTest</c> walks
+    /// every collection-typed property under <c>Contracts/</c> and fails on the first one this
+    /// method does not match. A property declared <c>IReadOnlyCollection&lt;T&gt;</c>,
+    /// <c>IEnumerable&lt;T&gt;</c>, <c>T[]</c> or a non-string-keyed dictionary would otherwise
+    /// fall through to the old behaviour while its declaration went on promising otherwise — and
+    /// the promise being trusted at the declaration is how this shipped twice.
+    /// </para>
     /// </remarks>
     public override bool CanConvert(Type typeToConvert)
     {
