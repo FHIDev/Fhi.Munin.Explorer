@@ -316,12 +316,16 @@ else
            It outlives the message it answers by exactly one fetch: a successful retry clears the
            sentence, and a button leaving with it would drop the focus of the reader who just
            pressed it to <body> — the pager's rule, and Fjern alle filtre's. The next fetch someone
-           else starts and that succeeds takes it away, so a dead offer is not read out again with
-           every later failure in this aria-atomic region.
+           else starts takes it away whether it answers or is refused for asking too often, so a
+           dead offer is not read out again with every later failure in this aria-atomic region.
 
            munin-explorer-retry is what draws the inert state. The region carries no class, so
            neither the pager's nor the filter panel's [aria-disabled] rule reaches in here, and
-           without one of its own a button that does nothing looks exactly like one that does. *@
+           without one of its own a button that does nothing looks exactly like one that does.
+
+           That rule has to ship in Fhi.Helsedata.Stiler under components/munin-explorer/, which as
+           of 0.1.14 carries none: the sample stylesheets are the samples' own, so a Stiler-only
+           host draws the two states alike until it does. Tracked as Fhi.Metadata-x6vqc. *@
         @if (_failedRows is not null)
         {
             <button class="hd-button-square button-square--ghost margin-right margin-bottom munin-explorer-retry"

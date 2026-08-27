@@ -12,6 +12,6 @@ category: Fixed
   else, so a retried page turn does not push three spurious history entries at a host that mirrors
   each callback into a URL. None is offered on a 429, where the sentence beside it says to wait;
   and once there is nothing left to retry the button stays where it is, inert, so it cannot take a
-  keyboard user's focus with it — until the next fetch started elsewhere succeeds, which is when a
-  dead offer would otherwise start being announced beside every later failure in that atomic
-  region. The labels are in both languages and follow the `Language` parameter. (Fhi.Metadata-p9c76)
+  keyboard user's focus with it — until the next fetch started elsewhere settles, answered or
+  throttled, which is when a dead offer would otherwise start being announced beside every later
+  failure in that atomic region. The labels are in both languages and follow the `Language` parameter. (Fhi.Metadata-p9c76)

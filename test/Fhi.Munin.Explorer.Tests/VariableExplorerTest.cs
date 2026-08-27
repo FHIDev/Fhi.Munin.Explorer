@@ -6764,7 +6764,7 @@ public class VariableExplorerTest : BunitContext
         client.FailSearch = true;
         Next(cut).Click(); // page 3, which does not
 
-        cut.Find("input[type=search]").Change("noe helt annet");
+        cut.Find(".searchbox__freetext").Change("noe helt annet");
 
         client.FailSearch = false;
         Retry(cut, RetryRows).Click();
@@ -6859,6 +6859,32 @@ public class VariableExplorerTest : BunitContext
         Assert.Equal(client.SearchFilter, client.FacetFilter);
         Assert.Empty(AlertMessages(cut));
         Assert.Empty(cut.FindAll("div.munin-explorer-pagination"));
+    }
+
+    [Fact]
+    public void Retry_WhenASubmittedSearchFailed_ThenTheCountsFollowTheTermThatFinallyWentOut()
+    {
+        // The scenario the change is named for, and the second of the three things that move the
+        // counts: they are cross-filtered against the query as well as the filter, so a retried
+        // search that leaves them alone leaves every number describing the term the reader typed
+        // over — with a panel that says nothing about being stale, because that message belongs to
+        // the facets' own failure and this was the rows'.
+        var client = RetryClient();
+        var cut = RenderWith(client);
+
+        client.FailSearch = true;
+        cut.Find(".searchbox__freetext").Change("svelging");
+        cut.Find("form").Submit();
+
+        var facetCalls = client.FacetCalls;
+
+        client.FailSearch = false;
+        Retry(cut, RetryRows).Click();
+
+        Assert.Equal("svelging", client.LastSearch);
+        Assert.Equal(facetCalls + 1, client.FacetCalls);
+        Assert.Equal("svelging", client.FacetSearch);
+        Assert.Empty(AlertMessages(cut));
     }
 
     [Fact]
@@ -6998,6 +7024,31 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Contains("Tallene kan være utdaterte", cut.Find("[role='alert']").TextContent);
         Assert.Equal(RetryFacets, Assert.Single(RetryButtons(cut)).TextContent);
+    }
+
+    [Fact]
+    public void Retry_WhenALaterFetchIsRateLimited_ThenTheDeadOfferLeavesRatherThanSittingBesideVentLitt()
+    {
+        // A 429 is neither a success nor a failure that can be retried, so an offer already
+        // answered survives it unless this branch clears it too — and the atomic region then reads
+        // the wait instruction and a dead button out as one utterance, which is the exact
+        // re-announcement clearing it on success exists to stop. No focus argument keeps it here:
+        // the reader's finger is on whatever control started the fetch that got throttled.
+        var client = RetryClient();
+        var cut = RenderWith(client);
+
+        client.FailSearch = true;
+        Next(cut).Click();
+
+        client.FailSearch = false;
+        Retry(cut, RetryRows).Click();
+
+        client.RateLimitSearch = true;
+        cut.Find(".searchbox__freetext").Change("svelging");
+        cut.Find("form").Submit();
+
+        Assert.Contains("for mange forespørsler", cut.Find("[role='alert']").TextContent);
+        Assert.Empty(RetryButtons(cut));
     }
 
     [Fact]

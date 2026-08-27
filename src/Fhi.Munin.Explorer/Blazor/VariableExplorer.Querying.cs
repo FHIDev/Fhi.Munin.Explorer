@@ -578,6 +578,13 @@ public partial class VariableExplorer
                 _failedRows = new RowRequest(search, _page, _sort, _direction, _filter, _keepPager);
                 _retryRowsEnabled = true;
             }
+            else
+            {
+                // An offer an earlier retry already answered goes with the 429 too, or this atomic
+                // region reads the dead button out as one utterance with "vent litt". When the 429
+                // is the answer to that very button, RetryRowsAsync puts it back inert — see there.
+                _failedRows = null;
+            }
 
             return false;
         }
@@ -664,6 +671,11 @@ public partial class VariableExplorer
             _direction = previousDirection;
             _filter = previousFilter;
             _keepPager = previousKeepPager;
+
+            // Same focus rule as after a success: a 429 clears the offer, and this button is the
+            // element under the reader's finger. Back inert — _retryRowsEnabled stayed false — and
+            // ??= so a plain failure keeps the live request the fetch above captured instead.
+            _failedRows ??= request;
 
             return;
         }
