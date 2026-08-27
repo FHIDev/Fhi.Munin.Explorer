@@ -254,13 +254,16 @@ internal sealed record Texts(
     string StatusActive,
     string StatusPassive,
     string ColumnKildetype,
-    string ColumnDelkilder,
     // ...VariableCount rather than ...Variables, though the column is headed "Variabler": every
     // member of this record is a string, so a name one letter from ColumnVariable above — the
     // variable list's first column, "Navn" — would swap for it silently and put "Navn" over a
     // column of numbers. The counts elsewhere in this file say so in their names for the same
     // reason: FieldTotalVariables, FieldVariableCount, VariableCountSuffix.
     string ColumnVariableCount,
+    // The founding year the import file states, which Kelda heads "Opprettet" and translates
+    // "Established". Named for the year and not for the word, because the word also names
+    // KildeSummary.Created — Munin's own row timestamp, and Kelda's Importert, not this column.
+    string ColumnEstablished,
     // Kelda's filter panel. Its heading is FiltersTitle, and two of its four facet headings are
     // strings this record already holds: the kildetype facet is headed with ColumnKildetype and
     // the databehandler facet with FieldDataProcessor, because each facet is a filter over the
@@ -660,8 +663,8 @@ internal sealed record Texts(
         StatusActive: "Aktiv",
         StatusPassive: "Passiv",
         ColumnKildetype: "Kildetype",
-        ColumnDelkilder: "Delkilder",
         ColumnVariableCount: "Variabler",
+        ColumnEstablished: "Opprettet",
         FacetCategory: "Kategori",
         FacetAccessLevel: "Tilgangsnivå",
         ShowFilters: "Vis filtre",
@@ -892,8 +895,8 @@ internal sealed record Texts(
         StatusActive: "Active",
         StatusPassive: "Passive",
         ColumnKildetype: "Source type",
-        ColumnDelkilder: "Sub-sources",
         ColumnVariableCount: "Variables",
+        ColumnEstablished: "Established",
         FacetCategory: "Category",
         FacetAccessLevel: "Access level",
         ShowFilters: "Show filters",

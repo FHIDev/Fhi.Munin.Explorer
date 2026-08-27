@@ -81,14 +81,19 @@ public class MuninExplorerClientTest
 
         var als = kilder[0];
         Assert.Equal("K_ALS", als.Code);
-        Assert.Equal("Als registeret", als.Name);
+        Assert.Equal("Norsk register for ALS og andre motonevronsykdommer (ALS-registeret)", als.Name);
         Assert.Equal("nasjonaltMedisinskKvalitetsregister", als.Kildetype);
         Assert.True(als.IsActive);
         Assert.True(als.HasVariableDescription);
         Assert.Equal(9, als.DatasamlingCount);
-        Assert.Equal(230, als.TotalVariables);
+        Assert.Equal(240, als.TotalVariables);
         Assert.Null(als.HealthDcatScore); // never computed yet — see the note on the property
         Assert.Equal("alsregister@stolav.no", als.AdditionalProperties["Epost"]);
+
+        // The founding year the Opprettet column reads, asserted where the payload is: the key is
+        // curated rather than modelled, so nothing about it is a compile error, and this capture is
+        // what says the spelling the ordinal lookup uses is the API's own.
+        Assert.Equal("2023", als.AdditionalProperties["Opprettet"]);
     }
 
     [Fact]
@@ -98,6 +103,10 @@ public class MuninExplorerClientTest
 
         Assert.NotNull(kilde);
         Assert.Equal("K_ALS", kilde.Code);
+
+        // Not a contradiction of the test above, which reads a kilder.json re-taken for its
+        // Opprettet key: this capture and the four siblings still carrying K_ALS's old name are
+        // older, so the corpus is coherent per file rather than as one pass.
         Assert.Equal("Als registeret", kilde.PreferredTerm);
         Assert.Equal(230, kilde.TotalVariables);
         Assert.Equal(9, kilde.Datasamlinger.Count);

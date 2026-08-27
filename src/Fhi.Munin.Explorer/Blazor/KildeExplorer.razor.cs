@@ -60,7 +60,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// beside the results writes that rule itself. Five are new and belong to this view:
 /// <c>munin-explorer-kilder</c> for the result table,
 /// <c>munin-explorer-kilder__name</c> for the control that opens a kilde,
-/// <c>munin-explorer-kilder__count</c> for the three columns that hold a number, and
+/// <c>munin-explorer-kilder__count</c> for the two columns that hold a number, and
 /// <c>munin-explorer-filters__toggle</c> and <c>munin-explorer-filters__facets</c> for the facet
 /// panel's disclosure — see <c>KildeExplorer.Filters.cs</c> for what those two are for. A host that
 /// styles none of them still gets a usable list, which is why the results are a
@@ -655,6 +655,19 @@ public sealed partial class KildeExplorer : ComponentBase
 
     /// <summary>A cell's value, with the package's own words for one the catalogue left empty.</summary>
     private string Value(string? value) => string.IsNullOrWhiteSpace(value) ? T.NotSpecified : value;
+
+    /// <summary>The year the kilde was founded, as the import file states it.</summary>
+    /// <remarks>
+    /// Not <see cref="KildeSummary.Created"/>, which is when Munin's own row was written — Kelda
+    /// draws that as Importert and keeps it off by default. Handed on verbatim because the source
+    /// holds "2916", "1900" and "0", and a formatter asked to read those hides a fault at source.
+    /// <para>
+    /// The lookup is ordinal, so the key's spelling is the whole contract: get it wrong and every
+    /// row reads "Ikke oppgitt" with nothing failing. It is pinned to a captured payload rather
+    /// than to a test's own bag — see <c>Testdata/kilder.json</c> and the test named for it.
+    /// </para>
+    /// </remarks>
+    private static string? Established(KildeSummary kilde) => Property(kilde, "Opprettet");
 
     /// <summary>
     /// Invoke a host callback without letting the host's own exception out.
