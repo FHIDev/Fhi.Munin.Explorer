@@ -4721,15 +4721,25 @@ public class VariableExplorerTest : BunitContext
             Codes = [new() { Value = "9", Name = "STALE" }]
         }));
 
-        // One turn of the dispatcher, so the abandoned answer has landed if it is going to.
+        // One turn of the dispatcher, so the abandoned answer has landed if it is going to. The
+        // stall completes its continuations asynchronously, so this is a nudge and not a promise:
+        // the answer can still be a thread-pool hop away from being queued here.
         await cut.InvokeAsync(() => { });
 
         CodeToggles(cut)[0].Click();
 
+        // Opening the list and fetching it are the handler's own work, and it runs on the
+        // dispatcher behind whatever the abandoned answer left queued there. On a loaded machine
+        // Click returns before that handler has asked for anything at all, so reading the document
+        // straight away finds no table rather than the wrong one — the same wait the re-opened
+        // list above needs, for the same reason.
+        cut.WaitForAssertion(() =>
+            Assert.Contains("Velg verdi",
+                            Panel(cut).QuerySelector(".munin-explorer-codes table")!.TextContent));
+
         var table = Panel(cut).QuerySelector(".munin-explorer-codes table")!;
 
         Assert.DoesNotContain("STALE", table.TextContent);
-        Assert.Contains("Velg verdi", table.TextContent);
 
         // Nothing was cached under the new variable, so its list was fetched for it.
         Assert.Equal(2, client.CodeRequests.Count);
