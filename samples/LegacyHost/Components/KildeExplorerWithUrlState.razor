@@ -22,8 +22,14 @@
     /// <summary>The path this component is mounted on, read server-side by the view.</summary>
     /// <remarks>
     /// ExplorerWithUrlState can hard-code "/" for the empty query because it only ever sits on the
-    /// front page. This one sits on /Home/Kilder, so closing the open kilde has to restore that
-    /// path — writing "/" would navigate the reader off the page they were reading.
+    /// front page. This one never does, so closing the open kilde has to restore the path it was
+    /// reached on — writing "/" would navigate the reader off the page they were reading.
+    /// <para>
+    /// Handed in rather than named here because there is more than one: the host answers this view
+    /// on both /kilder, which is the path ModernHost routes with <c>@@page</c>, and /Home/Kilder,
+    /// which the default controller route gives it for free. A constant would be wrong on whichever
+    /// of the two the reader did not use.
+    /// </para>
     /// </remarks>
     [Parameter] public string? BasePath { get; set; }
 

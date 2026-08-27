@@ -21,7 +21,9 @@
        would never follow the open kilde.
 
        The path is handed in beside the query string because this view is not on "/": closing the
-       open kilde has to put /Home/Kilder back rather than the front page. *@
+       open kilde has to put back the path the reader arrived on rather than the front page. Which
+       path that is varies — the action answers on both /kilder and /Home/Kilder — so it is read
+       from the request here instead of being named anywhere. *@
     <component type="typeof(KildeExplorerWithUrlState)"
                render-mode="Server"
                param-Language="@("no")"
