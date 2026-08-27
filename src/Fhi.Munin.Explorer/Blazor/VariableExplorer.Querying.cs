@@ -38,6 +38,26 @@ public partial class VariableExplorer
         await OpenInitialSelectionAsync();
     }
 
+    /// <summary>Empty the search box and run the search that leaves, which is no search at all.</summary>
+    /// <remarks>
+    /// Through <see cref="SearchAsync"/> rather than by clearing the field alone, because here the
+    /// search is a request and not a filter: the rows on screen came from the API and have to be
+    /// asked for again. Going that way also gets the rest of what submitting means for free — the
+    /// page number reset, the recounted facets, and the host being told, so a URL mirroring the
+    /// search stops naming one nobody is running.
+    /// <para>
+    /// The filter is left standing, for the reason Kelda's own clear leaves the facets: a reader
+    /// who narrowed by kilde and then typed a word asked for both, and one control must not
+    /// quietly undo the other.
+    /// </para>
+    /// </remarks>
+    private async Task ClearSearchAsync()
+    {
+        _search = null;
+
+        await SearchAsync();
+    }
+
     private async Task SearchAsync()
     {
         // Nothing disables the submit button while a search runs — see the comment on it in

@@ -272,6 +272,15 @@ internal sealed record Texts(
     // selection is what the reader ticked out of it — and the panel and the bar are on screen
     // together, so a reader pressing one and getting the other loses work either way. Each name
     // says which noun it is about for that reason rather than for symmetry.
+    // Emptying the search box, which is a control this package has to draw itself. The field is
+    // an <input type="text">, not type="search", so there is no user-agent ✕ — that one could not
+    // be hooked, and left the box empty over a search still in force. See the markup.
+    //
+    // Three strings now say "undo something" and they are deliberately different words, because
+    // all three can be on screen together and all three are strings that would swap in silence:
+    // ClearSearch empties the box, ClearFilters unticks the facets, ClearSelection drops the row
+    // ticks. A reader who presses one and gets another loses work.
+    string ClearSearch,
     string SelectAllKilder,
     string ClearSelection,
     // The handover itself. Kelda's own wording, kept as it stands: "for utvalget" is what tells the
@@ -688,6 +697,7 @@ internal sealed record Texts(
         ColumnKildetype: "Kildetype",
         ColumnDelkilder: "Delkilder",
         ColumnVariableCount: "Variabler",
+        ClearSearch: "Tøm søket",
         SelectAllKilder: "Velg alle synlige kilder",
         ClearSelection: "Nullstill utvalg",
         ExploreVariables: "Utforsk variabler for utvalget",
@@ -925,6 +935,7 @@ internal sealed record Texts(
         ColumnKildetype: "Source type",
         ColumnDelkilder: "Sub-sources",
         ColumnVariableCount: "Variables",
+        ClearSearch: "Clear search",
         SelectAllKilder: "Select all visible sources",
         ClearSelection: "Clear selection",
         ExploreVariables: "Explore variables for this selection",

@@ -762,6 +762,44 @@ public class KildeExplorerTest : BunitContext
     }
 
     [Fact]
+    public void ClearSearch_WhenThereIsNoSearch_ThenThereIsNoButtonToPress()
+    {
+        var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
+
+        Assert.Empty(cut.FindAll("form button.button-square--ghost"));
+    }
+
+    [Fact]
+    public void ClearSearch_WhenPressed_ThenTheWholeListIsBackWithoutTypingOrEnter()
+    {
+        // The control that replaces the user-agent ✕. That one emptied the box without applying
+        // it, so the reader was left with a search still in force behind a box reading empty, and
+        // everything downstream - velg-alle, Nullstill utvalg, the handover - then worked on rows
+        // they believed they had cleared. Reported 2026-08-27. This asserts the whole round trip:
+        // the button appears with a search, one press restores the list, and it goes away again.
+        var client = new FakeClient(
+            Kilde("Als registeret", "K_ALS"),
+            Kilde("Norsk pasientregister", "K_NPR"));
+
+        var cut = RenderWith(client);
+
+        cut.Find(".searchbox__freetext").Change("als");
+
+        Assert.Equal(["Als registeret"], RowNames(cut));
+
+        cut.Find("form button.button-square--ghost").Click();
+
+        Assert.Equal(["Als registeret", "Norsk pasientregister"], RowNames(cut));
+        Assert.Empty(cut.FindAll("form button.button-square--ghost"));
+
+        // The box on screen has to agree with the list under it - that is the whole bug.
+        Assert.Equal(string.Empty, cut.Find(".searchbox__freetext").GetAttribute("value") ?? string.Empty);
+
+        // Still the one fetch from initialisation: clearing a client-side filter is not a reload.
+        Assert.Equal(1, client.Calls);
+    }
+
+    [Fact]
     public void Search_WhenTheTermIsCleared_ThenTheWholeListComesBackWithoutARefetch()
     {
         var client = new FakeClient(

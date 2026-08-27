@@ -6329,6 +6329,45 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
+    public void ClearSearch_WhenPressed_ThenTheSearchIsRunAgainWithNothingInIt()
+    {
+        // The control that replaces the user-agent ✕, and here it has to be a real search rather
+        // than a field assignment: these rows came from the API. Pressing it must therefore ask
+        // again with no term - anything less leaves the reader looking at results for a search the
+        // box no longer shows, and the host mirroring that search into a URL.
+        var client = new FakeClient(new Page<VariableSummary>());
+
+        var cut = RenderWith(client);
+
+        cut.Find(".searchbox__freetext").Change("alder");
+        cut.Find("form").Submit();
+
+        Assert.Equal("alder", client.LastSearch);
+
+        cut.Find("form button.button-square--ghost").Click();
+
+        Assert.Null(client.LastSearch);
+        Assert.Empty(cut.FindAll("form button.button-square--ghost"));
+    }
+
+    [Fact]
+    public void ClearSearch_WhenPressed_ThenTheHostIsToldTheSearchIsGone()
+    {
+        // The half with no visible symptom. A host mirrors SearchChanged into its URL, so a clear
+        // that did not report itself would hand out a link reopening the search just cleared.
+        var reported = new List<string?>();
+
+        var cut = RenderWith(new FakeClient(new Page<VariableSummary>()), b => b.Add(
+            c => c.SearchChanged, EventCallback.Factory.Create<string?>(this, reported.Add)));
+
+        cut.Find(".searchbox__freetext").Change("alder");
+        cut.Find("form").Submit();
+        cut.Find("form button.button-square--ghost").Click();
+
+        Assert.Null(reported[^1]);
+    }
+
+    [Fact]
     public void SearchField_WhenItIsRendered_ThenItIsNotASearchInputWithAClearButtonWeCannotHook()
     {
         // The same rule Kelda's field follows, and it binds both explorers because both bind on

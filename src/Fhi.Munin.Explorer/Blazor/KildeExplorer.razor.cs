@@ -520,6 +520,18 @@ public sealed partial class KildeExplorer : ComponentBase
     {
     }
 
+    /// <summary>Empty the search box and put the whole list back.</summary>
+    /// <remarks>
+    /// Nothing is fetched: the list has been in hand since initialisation and the search was only
+    /// ever a filter over it — which is why this is a field assignment and not a reload.
+    /// <para>
+    /// The facets are deliberately left alone. They narrow the same list and a reader who ticked
+    /// two of them and typed a word has asked for both; clearing one control must not silently
+    /// undo the other. The count under the box says how many facets are still in force.
+    /// </para>
+    /// </remarks>
+    private void ClearSearch() => _search = null;
+
     /// <summary>Open <paramref name="kilde"/>'s view, in place of the list.</summary>
     private async Task SelectAsync(KildeSummary kilde)
     {
