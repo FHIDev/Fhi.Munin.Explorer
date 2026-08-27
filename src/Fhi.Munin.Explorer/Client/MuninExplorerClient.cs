@@ -243,7 +243,7 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
     {
         ExportFormat.Xlsx => "xlsx",
         ExportFormat.Csv => "csv",
-        _ => throw new ArgumentOutOfRangeException(nameof(format), format, null)
+        _ => throw new ArgumentOutOfRangeException(nameof(format), format, "No API wire name for this export format.")
     };
 
     private sealed record VariableIdsBody(
