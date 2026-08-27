@@ -58,6 +58,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private int _pageNumber = 1;
     private bool _loading;
     private bool _failed;
+
+    private Dictionary<string, string>? _dataTypeNames;
     private string _newName = "";
     private bool _includeKodeverk;
     private bool _downloading;
@@ -132,7 +134,67 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             _page = null;
             _failed = true;
         }
+
+        await LoadDataTypeNamesAsync();
     }
+
+    /// <summary>The datatype display names, read once per mount.</summary>
+    /// <remarks>
+    /// <para>
+    /// Asked for without a search or a filter, unlike the facet refresh in the explorer beside this
+    /// view. That call is scoped to what the reader is looking at, so a search matching no integers
+    /// comes back with no entry for the integer code - and this view has to name codes the reader
+    /// saved at some other time, under some other search.
+    /// </para>
+    /// <para>
+    /// Failure leaves the map empty, and an empty map renders the code. A list saying 2 where it
+    /// could say Heltall is worse than the explorer beside it, but it is still the reader's list;
+    /// losing the whole view over a label would not be.
+    /// </para>
+    /// </remarks>
+    private async Task LoadDataTypeNamesAsync()
+    {
+        if (_dataTypeNames is not null)
+        {
+            return;
+        }
+
+        try
+        {
+            // Search and filter left at their defaults on purpose - see the remarks above.
+            var facets = await Client.GetFiltersAsync(
+                language: ReaderLanguage.ForApi(Language));
+
+            _dataTypeNames = facets.DataTypes
+                .Where(d => !string.IsNullOrWhiteSpace(d.Value)
+                    && !string.IsNullOrWhiteSpace(d.DisplayName))
+                .GroupBy(d => d.Value!, StringComparer.Ordinal)
+                .ToDictionary(g => g.Key, g => g.First().DisplayName!, StringComparer.Ordinal);
+
+            StateHasChanged();
+        }
+        catch (Exception)
+        {
+            _dataTypeNames = new Dictionary<string, string>(StringComparer.Ordinal);
+        }
+    }
+
+    /// <summary>The readable name for a datatype code, or the code when there is no name.</summary>
+    /// <remarks>
+    /// The same shape as <c>VariableExplorer.DataTypeName</c>, and for the same reason: the codes are
+    /// editable master data on the API's side, so the names are read from it rather than written into
+    /// a table that ships to other people and goes stale where nobody is looking.
+    /// </remarks>
+    private string? DataTypeName(string? code)
+    {
+        if (string.IsNullOrWhiteSpace(code) || _dataTypeNames is null)
+        {
+            return code;
+        }
+
+        return _dataTypeNames.TryGetValue(code, out var named) ? named : code;
+    }
+
 
     /// <summary>
     /// Another surface changed a list. Re-read the page rather than only re-rendering: the rows
