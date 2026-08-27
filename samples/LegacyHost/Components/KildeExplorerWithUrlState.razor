@@ -1,0 +1,85 @@
+@using Fhi.Munin.Explorer.Blazor
+@using Microsoft.AspNetCore.WebUtilities
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+
+@* The kilde half of the shareable-state contract, beside ExplorerWithUrlState.
+
+   Deliberately far smaller than its sibling, and that is the component's contract rather than a
+   shortcut taken here. KildeExplorer has no SearchChanged, no sort, no pager and no facet
+   callbacks: search, filters and column choices are Kelda parity decisions that stay component
+   state and go away on refresh. The one thing worth putting in a host's URL is which kilde is
+   open, so that is the one thing bound both ways. *@
+
+<KildeExplorer @bind-SelectedKildeId="_selectedKildeId"
+               Search="@_search"
+               Language="@Language" />
+
+@code {
+    /// <summary>The query string the page was opened with, read server-side by the view.</summary>
+    [Parameter] public string? InitialQuery { get; set; }
+
+    /// <summary>The path this component is mounted on, read server-side by the view.</summary>
+    /// <remarks>
+    /// ExplorerWithUrlState can hard-code "/" for the empty query because it only ever sits on the
+    /// front page. This one sits on /Home/Kilder, so closing the open kilde has to restore that
+    /// path — writing "/" would navigate the reader off the page they were reading.
+    /// </remarks>
+    [Parameter] public string? BasePath { get; set; }
+
+    [Parameter] public string Language { get; set; } = "no";
+
+    // Read once and handed in, never written back: there is no SearchChanged to write it from.
+    private string? _search;
+
+    private Guid? _selectedKildeId;
+
+    // What the address bar already says. Without it every render would call into JS to write
+    // the URL it is already showing.
+    private string? _mirrored;
+
+    protected override void OnInitialized()
+    {
+        var query = QueryHelpers.ParseQuery(InitialQuery ?? "");
+
+        if (query.TryGetValue("search", out var search))
+        {
+            _search = search.ToString();
+        }
+
+        // A kilde id in a URL is whatever a stranger typed. One that does not parse opens the list,
+        // and one that parses but names nothing the API publishes opens a view that says so — the
+        // component's own documented behaviour, so nothing has to be validated here.
+        if (query.TryGetValue("kilde", out var kilde) && Guid.TryParse(kilde.ToString(), out var parsed))
+        {
+            _selectedKildeId = parsed;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        var query = BuildQuery();
+
+        if (query == _mirrored)
+        {
+            return;
+        }
+
+        _mirrored = query;
+
+        // replaceState, not pushState, for the reason ExplorerWithUrlState gives: opening and
+        // closing kilder would otherwise fill the history with steps the reader has to walk back
+        // through one at a time instead of leaving the site.
+        await JS.InvokeVoidAsync("history.replaceState", null, "", query);
+    }
+
+    private string BuildQuery()
+    {
+        // Search is deliberately not mirrored out. With no SearchChanged beside it, what is in the
+        // box after the reader has typed is not something this host is ever told, so writing the
+        // initial value back would pin a stale term into a link that no longer describes the page.
+        return _selectedKildeId is { } id
+            ? "?kilde=" + Uri.EscapeDataString(id.ToString())
+            : string.IsNullOrEmpty(BasePath) ? "/" : BasePath;
+    }
+}
