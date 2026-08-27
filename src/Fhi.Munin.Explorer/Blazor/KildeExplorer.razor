@@ -167,17 +167,9 @@ else
                it; the round-trip is the event reaching the circuit at all. The event is spelled
                out rather than left implicit so nobody "helpfully" restores oninput.
 
-               type="text" and not type="search", which is the one thing about this element that
-               is not obvious. A search input carries a clear button the user agent draws and this
-               component cannot hook: it fires the DOM `search` event, which is not in Blazor's
-               known-event list, and reaching it would mean shipping JavaScript this package does
-               not ship. Bound on change, the box therefore empties while the filter it set stays
-               in force — and everything downstream then quietly operates on a subset the reader
-               believes they have cleared. In Kelda that showed as velg-alle and Nullstill utvalg
-               acting on the filtered rows only, over a search box reading empty. Escape behaves
-               the same way, so it goes with it. enterkeyhint keeps the search key on a soft
-               keyboard, which is the part of type="search" worth keeping.
-            *@
+               type="text", not type="search": the user-agent ✕ fires the DOM `search` event, which
+               Blazor does not know, so it emptied the box without applying it. enterkeyhint keeps
+               the soft keyboard's search key. (Fhi.Metadata-5ghur) *@
             <input class="searchbox__freetext"
                    id="@SearchId"
                    type="text"
@@ -194,27 +186,9 @@ else
                     type="submit">@T.SearchButton</button>
         </div>
 
-            @* The way back to the whole list, and this package has to draw it: the field is a
-               type="text", so there is no user-agent ✕ to press. There was one, and it was worse
-               than none — it emptied the box without applying it, leaving a search still in force
-               behind a box reading empty. This button applies what it shows.
-
-               Always drawn, and greyed rather than removed while there is nothing to clear. A
-               control that appears and disappears beside a field the reader is typing in moves
-               everything next to it, twice per search; one that is always there costs a fixed
-               space and reads as part of the box.
-
-               aria-disabled, NOT disabled. A disabled button drops out of the tab order and,
-               worse, cannot hold focus — so pressing this one would clear the search and then
-               throw the reader's focus to the document, which is the exact failure the submit
-               button beside it refuses to risk. aria-disabled says the same thing to assistive
-               technology, keeps focus where the reader put it, and leaves the styling to a host:
-               the samples grey it, and both already carry [aria-disabled] rules for the facets.
-               The handler is what actually refuses, since the attribute alone stops nothing.
-
-               munin-explorer-search wraps this and the field so a host can lay the two out on
-               one line; munin-explorer-search__clear is this button's own handle. Without either
-               rule they stack, which is usable and is what a host with no stylesheet gets. *@
+            @* aria-disabled, not disabled: a disabled button cannot hold focus, so pressing this
+               one would clear the search and throw focus to the document. The attribute stops no
+               click, so the handler refuses instead. (Fhi.Metadata-5ghur) *@
             <button class="hd-button-square button-square--secondary munin-explorer-search__clear"
                     type="button"
                     aria-disabled="@(searchText is not null ? "false" : "true")"
@@ -341,38 +315,14 @@ else
         }
     </div>
 
-    @* The selection bar: how many kilder are ticked, the way to untick them all, and the handover
-       the ticks exist for. Drawn only where the host wired ExploreVariablesRequested — see
-       KildeExplorer.Selection.cs for why a column with nowhere to go is worse than no column.
-
-       Its own polite region, separate from the status line above, because the two report different
-       things and aria-atomic would otherwise read both sentences out for a change to either. It is
-       rendered empty rather than not rendered at all while nothing is ticked: a live region
-       inserted and filled in one DOM update is announced unreliably, which is the same reason the
-       error container above it is always present.
-
-       Flat rather than wrapped in a div of its own: three elements laid out with Stiler's own
-       margin utilities need no box around them, and a wrapper would be one more class name this
-       package has to promise somebody styles. The reset is only there once there is something to
-       reset — a button that empties an empty selection is furniture. *@
+    @* Drawn only where the host wired ExploreVariablesRequested — a column with nowhere to go is
+       worse than no column. The count is rendered while empty on purpose: a live region filled in
+       the same update that inserts it is announced unreliably. (Fhi.Metadata-5ghur) *@
     @if (Selectable && (visible.Count > 0 || TickedCount > 0))
     {
-        @* One row, in this order, and the order is the point: the handover first and never
-           changing width, then the reset, then the count. Everything that comes and goes is to
-           the RIGHT of everything that does not, so ticking a row moves nothing the reader is
-           looking at. The bar used to be a count on its own line above two buttons that resized
-           under it, and it jumped every time anybody ticked anything.
-
-           munin-explorer-selection__explore is what holds the handover's width still. Its label
-           is one of three and they are different lengths — the widest is English's "Explore
-           variables for this selection" — so without a width the button resizes on every tick and
-           drags the rest of the row with it. A host that supplies no rule gets that behaviour
-           back; it is the one thing here markup alone cannot fix.
-
-           The count stays a polite region and stays rendered while it is empty, for the reason it
-           always was: a live region inserted and filled in one DOM update is announced
-           unreliably. margin--none because a <p> in a flex row would otherwise contribute its
-           block margins to the row's height. *@
+        @* Handover, then reset, then count: everything that comes and goes is to the right of
+           everything that does not, so ticking a row moves nothing the reader is aiming at. The
+           handover's width is held by a host rule, since its label is one of three. (Fhi.Metadata-5ghur) *@
         <div class="munin-explorer-selection">
             <button class="hd-button-square button-square--primary munin-explorer-selection__explore"
                     type="button"
@@ -412,12 +362,9 @@ else
                 <tr>
                     @if (Selectable)
                     {
-                        @* Velg-alle over the rows the reader can see, and only those: with a search
-                           or a facet in force it ticks what is on screen rather than the catalogue
-                           behind it. No visible label, so aria-label is the whole of its accessible
-                           name — and no indeterminate third state, because the count above the table
-                           says "3 kilder valgt" in words, which is the same fact announced
-                           reliably. See KildeExplorer.Selection.cs. *@
+                        @* Over the rows the reader can see, and only those. No indeterminate state:
+                           it is a DOM property with no attribute behind it, and the count above says
+                           the same thing in words. (Fhi.Metadata-5ghur) *@
                         <th scope="col" class="munin-explorer-kilder__select">
                             <input type="checkbox"
                                    aria-label="@T.SelectAllKilder"
@@ -445,10 +392,9 @@ else
                     <tr @key="kilde.Id">
                         @if (Selectable)
                         {
-                            @* A td rather than a th: the box is a control over the row, not a label
-                               for it — the name beside it is that. Its accessible name carries the
-                               kilde's, because "Velg" repeated down a column tells a reader moving
-                               from control to control nothing about where they are standing. *@
+                            @* A td, not a th: the box is a control over the row, not its label. Its
+                               accessible name carries the kilde's, because "Velg" repeated down a
+                               column says nothing about which row. (Fhi.Metadata-5ghur) *@
                             <td class="munin-explorer-kilder__select">
                                 <input type="checkbox"
                                        aria-label="@T.SelectKilde(kilde.Name)"

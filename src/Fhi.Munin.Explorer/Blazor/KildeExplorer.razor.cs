@@ -521,20 +521,11 @@ public sealed partial class KildeExplorer : ComponentBase
     }
 
     /// <summary>Empty the search box and put the whole list back.</summary>
-    /// <remarks>
-    /// Nothing is fetched: the list has been in hand since initialisation and the search was only
-    /// ever a filter over it — which is why this is a field assignment and not a reload.
-    /// <para>
-    /// The facets are deliberately left alone. They narrow the same list and a reader who ticked
-    /// two of them and typed a word has asked for both; clearing one control must not silently
-    /// undo the other. The count under the box says how many facets are still in force.
-    /// </para>
-    /// </remarks>
     private void ClearSearch()
     {
-        // aria-disabled tells a reader the button is off; it does not stop a click, and nothing in
-        // the DOM does. So the refusal lives here. Without it a press on the greyed button would
-        // re-render for no reason on every visitor who tries one.
+        // Nothing is fetched — the search was only ever a filter over a list already in hand. The
+        // facets are left alone: one control must not undo another. aria-disabled stops no click,
+        // so the refusal lives here. (Fhi.Metadata-5ghur)
         if (SearchText is null)
         {
             return;

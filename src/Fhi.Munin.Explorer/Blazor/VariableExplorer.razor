@@ -160,17 +160,9 @@ else
                event reaches the circuit before @onsubmit does. The event is spelled out rather
                than left implicit so nobody "helpfully" restores oninput.
 
-               type="text" and not type="search", which is the one thing about this element that
-               is not obvious. A search input carries a clear button the user agent draws and this
-               component cannot hook: it fires the DOM `search` event, which is not in Blazor's
-               known-event list, and reaching it would mean shipping JavaScript this package does
-               not ship. Bound on change, the box therefore empties while the filter it set stays
-               in force — and everything downstream then quietly operates on a subset the reader
-               believes they have cleared. In Kelda that showed as velg-alle and Nullstill utvalg
-               acting on the filtered rows only, over a search box reading empty. Escape behaves
-               the same way, so it goes with it. enterkeyhint keeps the search key on a soft
-               keyboard, which is the part of type="search" worth keeping.
-            *@
+               type="text", not type="search": the user-agent ✕ fires the DOM `search` event, which
+               Blazor does not know, so it emptied the box without applying it. enterkeyhint keeps
+               the soft keyboard's search key. (Fhi.Metadata-5ghur) *@
             <input class="searchbox__freetext"
                    id="@SearchId"
                    type="text"
@@ -189,27 +181,9 @@ else
                     type="submit">@T.SearchButton</button>
         </div>
 
-            @* The way back to the whole list, and this package has to draw it: the field is a
-               type="text", so there is no user-agent ✕ to press. There was one, and it was worse
-               than none — it emptied the box without applying it, leaving a search still in force
-               behind a box reading empty. This button applies what it shows.
-
-               Always drawn, and greyed rather than removed while there is nothing to clear. A
-               control that appears and disappears beside a field the reader is typing in moves
-               everything next to it, twice per search; one that is always there costs a fixed
-               space and reads as part of the box.
-
-               aria-disabled, NOT disabled. A disabled button drops out of the tab order and,
-               worse, cannot hold focus — so pressing this one would clear the search and then
-               throw the reader's focus to the document, which is the exact failure the submit
-               button beside it refuses to risk. aria-disabled says the same thing to assistive
-               technology, keeps focus where the reader put it, and leaves the styling to a host:
-               the samples grey it, and both already carry [aria-disabled] rules for the facets.
-               The handler is what actually refuses, since the attribute alone stops nothing.
-
-               munin-explorer-search wraps this and the field so a host can lay the two out on
-               one line; munin-explorer-search__clear is this button's own handle. Without either
-               rule they stack, which is usable and is what a host with no stylesheet gets. *@
+            @* aria-disabled, not disabled: a disabled button cannot hold focus, so pressing this
+               one would clear the search and throw focus to the document. The attribute stops no
+               click, so the handler refuses instead. (Fhi.Metadata-5ghur) *@
             <button class="hd-button-square button-square--secondary munin-explorer-search__clear"
                     type="button"
                     aria-disabled="@(!string.IsNullOrWhiteSpace(_search) ? "false" : "true")"

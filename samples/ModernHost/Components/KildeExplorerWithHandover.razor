@@ -2,27 +2,9 @@
 @using Fhi.Munin.Explorer.Contracts
 @inject NavigationManager Nav
 
-@* The handover out of Kelda, in the one shape that actually works.
-
-   This wrapper exists for a single reason, and it is worth stating plainly because the arrangement
-   it replaces looked correct and was not. An EventCallback does not survive being passed from a
-   statically-rendered parent into an interactive island. It is not rejected either — Blazor throws
-   for a bare delegate parameter, but EventCallback is a struct, so it is serialised as
-   {"HasDelegate":true} and read back inside the circuit as an empty delegate. The handler then
-   never runs, and KildeExplorer, which draws its selection column only where the handover can
-   actually happen, correctly draws nothing.
-
-   `@rendermode` on the component tag does not fix that: it makes the MOUNT POINT interactive while
-   the parent that creates the callback is still static. What fixes it is the callback being created
-   inside the interactive component — so the wrapper is the island, and ExploreVariables below is
-   its own method.
-
-   That is the same shape LegacyHost's KildeExplorerWithUrlState has, and now for the same reason
-   rather than by coincidence: helsedata's Optimizely host mounts a wrapper too. Keeping the page
-   itself static also keeps the notes above the frame rendering on the first byte.
-
-   The front page mounts VariableExplorer straight onto the tag with @rendermode, and that stays
-   right: it passes Filter, which is data, and data serialises across the boundary intact. *@
+@* The wrapper is the island, not KildeExplorer, and that is the whole point: an EventCallback
+   created in a statically-rendered parent serialises as {"HasDelegate":true} and arrives empty,
+   so @rendermode on the component tag would not be enough. (Fhi.Metadata-5ghur) *@
 
 <KildeExplorer Language="@Language"
                ExploreVariablesRequested="ExploreVariables" />

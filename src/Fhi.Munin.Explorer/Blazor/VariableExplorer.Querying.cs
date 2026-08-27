@@ -38,35 +38,12 @@ public partial class VariableExplorer
         await OpenInitialSelectionAsync();
     }
 
-    /// <summary>Empty the search box and run the search that leaves, which is no search at all.</summary>
-    /// <remarks>
-    /// Through <see cref="SearchAsync"/> rather than by clearing the field alone, because here the
-    /// search is a request and not a filter: the rows on screen came from the API and have to be
-    /// asked for again. Going that way also gets the rest of what submitting means for free — the
-    /// page number reset, the recounted facets, and the host being told, so a URL mirroring the
-    /// search stops naming one nobody is running.
-    /// <para>
-    /// The filter is left standing, for the reason Kelda's own clear leaves the facets: a reader
-    /// who narrowed by kilde and then typed a word asked for both, and one control must not
-    /// quietly undo the other.
-    /// </para>
-    /// </remarks>
+    /// <summary>Empty the box and run the search that leaves, which is no search at all.</summary>
     private async Task ClearSearchAsync()
     {
-        // Both guards come first, and the order is the whole of it — the rule <see cref="SortAsync"/>
-        // already states: changing the state and then not fetching leaves a control describing a
-        // list nobody is looking at. Here that is the very bug this button exists to fix. Clearing
-        // _search and then calling SearchAsync while a fetch is in flight would empty the box, be
-        // dropped by that method's own _loading guard, and leave the reader with an empty field
-        // over the old rows — with the host still holding the previous search for its URL.
-        //
-        // Dropped rather than queued, the same as a second submit and a sort: nothing disables
-        // these controls while a search runs, because disabling the element that has focus throws
-        // it to the document.
-        //
-        // The second half is what aria-disabled cannot do. That attribute says the button is off
-        // and stops nothing, so a press on the greyed button would otherwise spend a request asking
-        // the API for the search already in force.
+        // Guard before mutation, the rule SortAsync states: clearing _search and then being dropped
+        // by SearchAsync's own _loading check would leave an empty box over the old rows, with the
+        // host still holding the previous search. (Fhi.Metadata-5ghur)
         if (_loading || string.IsNullOrWhiteSpace(_search))
         {
             return;
