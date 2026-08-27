@@ -254,46 +254,24 @@ internal sealed record Texts(
     string StatusActive,
     string StatusPassive,
     string ColumnKildetype,
-    string ColumnDelkilder,
     // ...VariableCount rather than ...Variables, though the column is headed "Variabler": every
     // member of this record is a string, so a name one letter from ColumnVariable above — the
     // variable list's first column, "Navn" — would swap for it silently and put "Navn" over a
     // column of numbers. The counts elsewhere in this file say so in their names for the same
     // reason: FieldTotalVariables, FieldVariableCount, VariableCountSuffix.
     string ColumnVariableCount,
-    // The selection column and the bar of controls under the count, both there for one purpose:
-    // carrying a set of kilder over to the variable explorer. SelectAllKilder names the header
-    // checkbox and ClearSelection the button that empties the set. Both are read by everyone, not
-    // only by assistive technology: a checkbox with no visible label is named by its aria-label
-    // alone, so that string is the only name it has.
-    //
-    // ClearSelection sits a few positions from ClearFilters above and both are strings, so they
-    // would swap in silence. They undo different things — the facets narrow the list, the
-    // selection is what the reader ticked out of it — and the panel and the bar are on screen
-    // together, so a reader pressing one and getting the other loses work either way. Each name
-    // says which noun it is about for that reason rather than for symmetry.
-    // Emptying the search box, which is a control this package has to draw itself. The field is
-    // an <input type="text">, not type="search", so there is no user-agent ✕ — that one could not
-    // be hooked, and left the box empty over a search still in force. See the markup.
-    //
-    // Three strings now say "undo something" and they are deliberately different words, because
-    // all three can be on screen together and all three are strings that would swap in silence:
-    // ClearSearch empties the box, ClearFilters unticks the facets, ClearSelection drops the row
-    // ticks. A reader who presses one and gets another loses work.
+    // The founding year the import file states, which Kelda heads "Opprettet" and translates
+    // "Established". Named for the year and not for the word, because the word also names
+    // KildeSummary.Created — Munin's own row timestamp, and Kelda's Importert, not this column.
+    string ColumnEstablished,
+    // Three strings that all undo something and can be on screen together, so each is named for
+    // its own noun: ClearSearch empties the box, ClearFilters unticks the facets, ClearSelection
+    // drops the row ticks. (Fhi.Metadata-5ghur)
     string ClearSearch,
     string SelectAllKilder,
     string ClearSelection,
-    // The handover, in the three wordings the three things it can carry deserve. One button, and
-    // what it hands over depends on what the reader has done — see Handover in
-    // KildeExplorer.Selection.cs — so one label for all three would be wrong twice.
-    //
-    // ExploreVariables is Kelda's own wording and covers the ticked case: "for utvalget" is what
-    // tells the reader the button carries the ticks with it. ExploreAllVariables covers an
-    // untouched list, where the handover carries nothing and the other side opens unfiltered.
-    // ExploreFilteredVariables covers the case between them, and it is the one worth the third
-    // string: with a search or a facet in force and nothing ticked, the button carries the rows on
-    // screen. Labelling that "alle" would promise the whole catalogue and deliver a slice of it,
-    // in exactly the situation a reader reaches for it — a list too long to tick through.
+    // One button, three payloads — see Handover in KildeExplorer.Selection.cs. "Alle" over a
+    // filtered list would promise the catalogue and hand over a slice. (Fhi.Metadata-5ghur)
     string ExploreVariables,
     string ExploreAllVariables,
     string ExploreFilteredVariables,
@@ -706,8 +684,8 @@ internal sealed record Texts(
         StatusActive: "Aktiv",
         StatusPassive: "Passiv",
         ColumnKildetype: "Kildetype",
-        ColumnDelkilder: "Delkilder",
         ColumnVariableCount: "Variabler",
+        ColumnEstablished: "Opprettet",
         ClearSearch: "Tøm søket",
         SelectAllKilder: "Velg alle synlige kilder",
         ClearSelection: "Nullstill utvalg",
@@ -946,8 +924,8 @@ internal sealed record Texts(
         StatusActive: "Active",
         StatusPassive: "Passive",
         ColumnKildetype: "Source type",
-        ColumnDelkilder: "Sub-sources",
         ColumnVariableCount: "Variables",
+        ColumnEstablished: "Established",
         ClearSearch: "Clear search",
         SelectAllKilder: "Select all visible sources",
         ClearSelection: "Clear selection",

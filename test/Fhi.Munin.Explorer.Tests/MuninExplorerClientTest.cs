@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
 
@@ -22,6 +23,9 @@ public class MuninExplorerClientTest
     }
 
     private static MuninExplorerClient WithStatus(HttpStatusCode status) => Client(StubHttpHandler.Status(status));
+
+    /// <summary>The client answering one hand-written body, for a shape no fixture has.</summary>
+    private static MuninExplorerClient WithJson(string json) => Client(StubHttpHandler.Ok(json));
 
     // ---------------------------------------------------------------- round-trip of real payloads
 
@@ -77,14 +81,19 @@ public class MuninExplorerClientTest
 
         var als = kilder[0];
         Assert.Equal("K_ALS", als.Code);
-        Assert.Equal("Als registeret", als.Name);
+        Assert.Equal("Norsk register for ALS og andre motonevronsykdommer (ALS-registeret)", als.Name);
         Assert.Equal("nasjonaltMedisinskKvalitetsregister", als.Kildetype);
         Assert.True(als.IsActive);
         Assert.True(als.HasVariableDescription);
         Assert.Equal(9, als.DatasamlingCount);
-        Assert.Equal(230, als.TotalVariables);
+        Assert.Equal(240, als.TotalVariables);
         Assert.Null(als.HealthDcatScore); // never computed yet — see the note on the property
         Assert.Equal("alsregister@stolav.no", als.AdditionalProperties["Epost"]);
+
+        // The founding year the Opprettet column reads, asserted where the payload is: the key is
+        // curated rather than modelled, so nothing about it is a compile error, and this capture is
+        // what says the spelling the ordinal lookup uses is the API's own.
+        Assert.Equal("2023", als.AdditionalProperties["Opprettet"]);
     }
 
     [Fact]
@@ -94,6 +103,10 @@ public class MuninExplorerClientTest
 
         Assert.NotNull(kilde);
         Assert.Equal("K_ALS", kilde.Code);
+
+        // Not a contradiction of the test above, which reads a kilder.json re-taken for its
+        // Opprettet key: this capture and the four siblings still carrying K_ALS's old name are
+        // older, so the corpus is coherent per file rather than as one pass.
         Assert.Equal("Als registeret", kilde.PreferredTerm);
         Assert.Equal(230, kilde.TotalVariables);
         Assert.Equal(9, kilde.Datasamlinger.Count);
@@ -744,5 +757,85 @@ public class MuninExplorerClientTest
 
         Assert.Equal($"/api/explorer/variables/{id}/kodeverk/AdministrativtKodeverk/2.16.578.1.12.4.1.1.7113/codes",
                      handler.LastUri?.AbsolutePath);
+    }
+
+    // ------------------------------------------------- explicit nulls where a collection is due
+
+    [Fact]
+    public async Task GetVariableAsync_WhenACollectionArrivesAsAnExplicitNull_ThenItIsReadAsEmpty()
+    {
+        // The failure this closes: every collection on every contract is declared non-nullable
+        // with an initialiser, and that initialiser only survives a key ABSENT from the payload.
+        // An explicit null is written straight over it, and the first read of the result throws
+        // while rendering — past the try/catch around the fetch, which on a Blazor Server host
+        // takes the circuit and the page it is mounted in down.
+        //
+        // additionalProperties is the key the API has actually been seen doing it on, twice. The
+        // three beside it are here because nothing marks them as incapable of it, and because the
+        // point of handling this on the serialiser rather than at a read site is that it covers
+        // the keys nobody has read yet.
+        var detail = await WithJson("""
+            {
+              "id": "6f1d4a5c-0000-4000-8000-000000000002",
+              "code": "V_ALS.F1.ALSFRSR1TALE",
+              "additionalProperties": null,
+              "propertyMetadata": null,
+              "versjoner": null,
+              "statistikker": [
+                { "code": "ALSFRSR1Tale", "additionalProperties": null }
+              ]
+            }
+            """).GetVariableAsync(Guid.NewGuid());
+
+        Assert.NotNull(detail);
+        Assert.Empty(detail.AdditionalProperties);
+        Assert.Empty(detail.PropertyMetadata);
+        Assert.Empty(detail.Versions);
+        Assert.Empty(detail.Statistics[0].AdditionalProperties);
+    }
+
+    [Fact]
+    public async Task SearchVariablesAsync_WhenTheItemsArriveAsAnExplicitNull_ThenThePageIsEmptyRatherThanBroken()
+    {
+        // The same rule one level up: a page is a collection too, and the count beside it is still
+        // read. Nothing is inferred from the null except that there is nothing in it.
+        var page = await WithJson("""
+            { "items": null, "totalCount": 0, "page": 1, "pageSize": 25, "totalPages": 0 }
+            """).SearchVariablesAsync(null);
+
+        Assert.Empty(page.Items);
+        Assert.Equal(0, page.TotalCount);
+    }
+
+    [Fact]
+    public void Json_WhenAContractIsWrittenBack_ThenItsCollectionsAreStillArraysAndObjects()
+    {
+        // The converter has a write half, and the way to get it wrong is to hand the value back to
+        // the serialiser as the interface it was just resolved for — which resolves the same
+        // converter again and recurses until the stack ends. That much ShapeDrift would already
+        // catch: it serialises every deserialised contract with these same options, on eight
+        // fixtures, in every CI run, so the recursion would take those down rather than wait for a
+        // future caller.
+        //
+        // What it would not catch is what this pins: ShapeDrift only diffs our output against the
+        // live body, so a write half that emitted the right kinds with the wrong keys, or a
+        // dictionary written as an array, reads as drift in the API rather than as a bug here. This
+        // says what the bytes are.
+        var detail = new VariableDetail
+        {
+            Code = "V_ALS.F1.ALSFRSR1TALE",
+            AdditionalProperties = new Dictionary<string, string?> { ["Kommentar"] = "noe" },
+            Statistics = [new Statistic { Code = "ALSFRSR1Tale" }]
+        };
+
+        var json = JsonSerializer.Serialize(detail, MuninExplorerClient.Json);
+
+        Assert.Contains("\"additionalProperties\":{\"Kommentar\":\"noe\"}", json);
+        Assert.Contains("\"statistikker\":[{", json);
+
+        var read = JsonSerializer.Deserialize<VariableDetail>(json, MuninExplorerClient.Json)!;
+
+        Assert.Equal("noe", read.AdditionalProperties["Kommentar"]);
+        Assert.Equal("ALSFRSR1Tale", read.Statistics[0].Code);
     }
 }

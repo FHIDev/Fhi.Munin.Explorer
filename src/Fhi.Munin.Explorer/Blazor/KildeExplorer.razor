@@ -399,10 +399,9 @@ else
            above shows, and pointing at that element would make the table's name change under a
            screen reader every time the status line does.
 
-           The eight columns, in the order Munin's own Kelda renders them, behind the checkbox
-           column a host that wired the handover gets. Munin's own table has one further control
-           column in front — an expand toggle — and four more of these behind a column picker;
-           the picker is Fhi.Metadata-ay3zz, and it is not this bead's.
+           Six columns: the set Munin's own Kelda shows by default, in its order (kelda.tsx:61,
+           DEFAULT_VISIBLE :86-100). Seven more sit behind its column picker, Fhi.Metadata-ay3zz;
+           of the two control columns in front, the checkbox is here and the expand toggle is not.
 
            No aria-busy, unlike the variable explorer's list: there is nothing to be busy with.
            The list is fetched once, on initialisation, and while that fetch is running this table
@@ -429,11 +428,11 @@ else
                     <th scope="col">@T.FieldName</th>
                     <th scope="col">@T.ColumnKildetype</th>
                     <th scope="col">@T.FieldStatus</th>
-                    <th scope="col">@T.FieldDataController</th>
-                    <th scope="col">@T.FieldDataProcessor</th>
-                    <th scope="col" class="munin-explorer-kilder__count">@T.ColumnDelkilder</th>
                     <th scope="col" class="munin-explorer-kilder__count">@T.HeadingDataCollections</th>
                     <th scope="col" class="munin-explorer-kilder__count">@T.ColumnVariableCount</th>
+                    @* No __count on this one: it holds a year the catalogue wrote down as text,
+                       not a number this component counted, and the class right-aligns figures. *@
+                    <th scope="col">@T.ColumnEstablished</th>
                 </tr>
             </thead>
             <tbody>
@@ -473,17 +472,12 @@ else
                         </th>
                         <td>@T.KildeTypeLabel(kilde.Kildetype, kilde.Kildetype)</td>
                         <td>@(kilde.IsActive ? T.StatusActive : T.StatusPassive)</td>
-                        @* Marked as the catalogue's language only when the cell really holds the
-                           catalogue's words. Where it left the field empty the cell holds this
-                           package's own "Ikke oppgitt", in the reader's language — lang="no" over
-                           an English sentence switches a screen reader to a Norwegian voice for it
-                           (WCAG 3.1.2). KildeView avoids this by dropping blank facts before it
-                           renders them; a table has to keep the cell, so it drops the attribute. *@
-                        <td lang="@CatalogueLang(kilde.DataController)">@Value(kilde.DataController)</td>
-                        <td lang="@CatalogueLang(kilde.DataProcessor)">@Value(kilde.DataProcessor)</td>
-                        <td class="munin-explorer-kilder__count">@kilde.DelkildeCount</td>
                         <td class="munin-explorer-kilder__count">@kilde.DatasamlingCount</td>
                         <td class="munin-explorer-kilder__count">@kilde.TotalVariables</td>
+                        @* No lang here, unlike the name above: the catalogue writes this field as
+                           a four-digit year, which has no language to mark (WCAG 3.1.2), and where
+                           it is missing the cell holds our "Ikke oppgitt" in the reader's own. *@
+                        <td>@Value(Established(kilde))</td>
                     </tr>
                 }
             </tbody>

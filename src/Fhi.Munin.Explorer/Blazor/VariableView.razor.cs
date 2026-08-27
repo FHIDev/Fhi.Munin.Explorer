@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
@@ -233,7 +234,14 @@ public sealed partial class VariableView : ComponentBase
 
         foreach (var statistic in variable.Statistics)
         {
-            var props = statistic.AdditionalProperties;
+            // Null-coalesced although Statistic.AdditionalProperties is declared non-nullable — see
+            // that declaration for how a null gets in, and NullAsEmptyCollections for what stops it
+            // arriving from this package's own client. A host can substitute that client, and
+            // unguarded one such statistic throws while rendering, past the try/catch around the
+            // fetch, which on a Blazor Server host takes the circuit and the page it is mounted in
+            // down. Read as the empty bag it means, the row draws the dash Value already gives a
+            // key the catalogue holds no number for.
+            var props = statistic.AdditionalProperties ?? ReadOnlyDictionary<string, string?>.Empty;
 
             builder.OpenElement(seq, "tr");
 

@@ -443,3 +443,10 @@ samples/*/wwwroot/_content/
 # ignored so an interrupted run cannot leave it to be committed by accident; a leftover copy still
 # fails the next build loudly, with the RS0030 that is the whole point of it.
 src/Fhi.Munin.Explorer/PortabilityGuardProbe.g.cs
+# bd worktree
+.worktrees\3b1l4-tabellsemantikk/
+
+# Claude Code steering. .claude/ is shared and tracked on purpose - see .claude/README.md for why
+# it has to live in this repository rather than being borrowed from the Munin checkout next door.
+# Per-developer settings are the one part that is not shared, same as in Munin.
+.claude/settings.local.json

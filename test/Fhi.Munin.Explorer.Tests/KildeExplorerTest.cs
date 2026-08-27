@@ -2,6 +2,7 @@ using System.Text.Json;
 using AngleSharp.Dom;
 using Bunit;
 using Fhi.Munin.Explorer.Blazor;
+using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,8 +10,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
-/// Kelda's shell: the search field, the count, the eight-column result table and what happens when
-/// a kilde is opened.
+/// Kelda's shell: the search field, the count, the result table and what happens when a kilde is
+/// opened.
 /// </summary>
 /// <remarks>
 /// Three of the things asserted here are the ones a component that merely renders would get wrong
@@ -45,11 +46,10 @@ public class KildeExplorerTest : BunitContext
         string? shortName = null,
         string kildetype = "sentraltHelseregister",
         bool active = true,
-        string? dataController = "Folkehelseinstituttet",
         string? dataProcessor = "Folkehelseinstituttet",
-        int delkilder = 0,
         int datasamlinger = 3,
         int variables = 42,
+        string? established = null,
         string? category = null,
         string? accessRights = null) =>
         new()
@@ -60,16 +60,15 @@ public class KildeExplorerTest : BunitContext
             ShortName = shortName,
             Kildetype = kildetype,
             IsActive = active,
-            DataController = dataController,
             DataProcessor = dataProcessor,
-            DelkildeCount = delkilder,
             DatasamlingCount = datasamlinger,
             TotalVariables = variables,
-            AdditionalProperties = Properties(category, accessRights),
+            AdditionalProperties = Properties(established, category, accessRights),
         };
 
     /// <summary>
-    /// The curated bag two of the facets read from, holding only the keys a test asked for.
+    /// The curated bag two of the facets and the Opprettet column read from, holding only the keys
+    /// a test asked for.
     /// </summary>
     /// <remarks>
     /// A key is left out entirely rather than set to null or to an empty string, because that is
@@ -78,9 +77,15 @@ public class KildeExplorerTest : BunitContext
     /// writes it, a JSON array inside a string, so a test can hand over a malformed one as easily
     /// as a good one.
     /// </remarks>
-    private static IReadOnlyDictionary<string, string?> Properties(string? category, string? accessRights)
+    private static IReadOnlyDictionary<string, string?> Properties(
+        string? established, string? category, string? accessRights)
     {
         var properties = new Dictionary<string, string?>(StringComparer.Ordinal);
+
+        if (established is not null)
+        {
+            properties["Opprettet"] = established;
+        }
 
         if (category is not null)
         {
@@ -573,12 +578,14 @@ public class KildeExplorerTest : BunitContext
     // ---------------------------------------------------------------------------------
 
     [Fact]
-    public void Render_Always_ThenTheTableHasTheEightColumnsInKeldasOwnOrder()
+    public void Render_Always_ThenTheTableHasKeldasDefaultVisibleColumnsInItsOwnOrder()
     {
-        // Measured off Munin's own Kelda. Its table puts two control columns in front of these —
-        // an expand toggle and a row checkbox — and hides four more behind a column picker; the
-        // checkbox belongs to Fhi.Metadata-5ghur and the picker to Fhi.Metadata-ay3zz, so neither
-        // is here. The order of the eight that are is Kelda's, unchanged.
+        // Read off Munin's own Kelda rather than off this component: Navn, Status and Opprettet are
+        // always visible there (kelda.tsx:61) and DEFAULT_VISIBLE (:86-100) turns on Kildetype,
+        // Datasamlinger and Variabler. The set is asserted whole and in order, so promoting one of
+        // Kelda's off-by-default columns back into this table cannot happen unnoticed again —
+        // Dataansvarlig, Databehandler and Delkilder were here for a while and are three of the
+        // seven Kelda keeps behind its column picker (Fhi.Metadata-ay3zz).
         var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
         var headers = cut.FindAll(".munin-explorer-kilder thead th").Select(th => th.TextContent.Trim());
@@ -588,11 +595,9 @@ public class KildeExplorerTest : BunitContext
             "Navn",
             "Kildetype",
             "Status",
-            "Dataansvarlig",
-            "Databehandler",
-            "Delkilder",
             "Datasamlinger",
             "Variabler",
+            "Opprettet",
         ], headers);
     }
 
@@ -603,11 +608,9 @@ public class KildeExplorerTest : BunitContext
             "Dødsårsaksregisteret", "K_DAR",
             shortName: "DÅR",
             kildetype: "sentraltHelseregister",
-            dataController: "Folkehelseinstituttet",
-            dataProcessor: "Norsk helsenett SF",
-            delkilder: 2,
             datasamlinger: 7,
-            variables: 312)));
+            variables: 312,
+            established: "1951")));
 
         var row = cut.Find(".munin-explorer-kilder tbody tr");
         var cells = row.QuerySelectorAll("th, td").Select(c => c.TextContent.Trim()).ToList();
@@ -619,11 +622,9 @@ public class KildeExplorerTest : BunitContext
 
         Assert.Equal("Sentralt helseregister", cells[1]);
         Assert.Equal("Aktiv", cells[2]);
-        Assert.Equal("Folkehelseinstituttet", cells[3]);
-        Assert.Equal("Norsk helsenett SF", cells[4]);
-        Assert.Equal("2", cells[5]);
-        Assert.Equal("7", cells[6]);
-        Assert.Equal("312", cells[7]);
+        Assert.Equal("7", cells[3]);
+        Assert.Equal("312", cells[4]);
+        Assert.Equal("1951", cells[5]);
     }
 
     [Fact]
@@ -637,17 +638,71 @@ public class KildeExplorerTest : BunitContext
     }
 
     [Fact]
-    public void Render_WhenTheCatalogueLeftAFieldEmpty_ThenTheCellSaysSoRatherThanGoingBlank()
+    public void Render_WhenTheKildeHasNoFoundingYear_ThenTheCellSaysSoRatherThanGoingBlank()
     {
-        // "Ikke oppgitt" for everyone, rather than an em dash whispered to assistive technology —
-        // the rule the rest of this package follows.
-        var cut = RenderWith(new FakeClient(
-            Kilde("Als registeret", "K_ALS", dataController: null, dataProcessor: "")));
+        // The ordinary case, not the edge case: which keys the property bag carries varies per
+        // kilde and per environment, so an Opprettet column built only against a kilde that has one
+        // renders a blank cell — or throws — for the ones that do not. "Ikke oppgitt" rather than
+        // Kelda's em dash, because that is what every other empty cell in this table says.
+        var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
         var cells = cut.FindAll(".munin-explorer-kilder tbody td").Select(c => c.TextContent.Trim()).ToList();
 
-        Assert.Equal("Ikke oppgitt", cells[2]);
-        Assert.Equal("Ikke oppgitt", cells[3]);
+        Assert.Equal("Ikke oppgitt", cells[4]);
+    }
+
+    [Fact]
+    public void Render_WhenTheCatalogueStatesAFoundingYear_ThenTheCellShowsItVerbatim()
+    {
+        // Kelda renders this one through no date formatter at all, and neither does this: the
+        // import file holds a '2916' typo, a '1900' and a literal '0', and showing them as they
+        // stand is what gets them fixed at source. A formatter would blank them or invent a day.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", established: "1994"),
+            Kilde("Kreftregisteret", "K_KREG", established: "2916")));
+
+        var cells = cut.FindAll(".munin-explorer-kilder tbody td").Select(c => c.TextContent.Trim()).ToList();
+
+        Assert.Equal("1994", cells[4]);
+        Assert.Equal("2916", cells[9]);
+    }
+
+    [Fact]
+    public void Render_Always_ThenOpprettetIsTheFoundingYearAndNotWhenMuninRegisteredTheKilde()
+    {
+        // The whole of Fhi.Metadata-bc4x1. KildeSummary.Created is JSON "opprettet" too, and binding
+        // this column to it reproduces Kelda's header over Kelda's Importert data — which Kelda
+        // demoted out of this slot and keeps off by default. Same word, different fact, and any
+        // assertion that only reads the header text passes either way.
+        var kilde = Kilde("Als registeret", "K_ALS", established: "1994") with
+        {
+            Created = new DateTimeOffset(2026, 5, 19, 12, 58, 37, TimeSpan.Zero),
+        };
+
+        var cut = RenderWith(new FakeClient(kilde));
+
+        var row = cut.Find(".munin-explorer-kilder tbody tr");
+
+        Assert.Equal("1994", row.QuerySelectorAll("td")[4].TextContent.Trim());
+        Assert.DoesNotContain("2026", row.TextContent);
+    }
+
+    [Fact]
+    public void Render_WhenTheListIsTheCapturedPayload_ThenTheColumnShowsTheYearsTheApiSent()
+    {
+        // The one Opprettet test that does not write the key it reads: Properties() spells it the
+        // way the component looks it up, so the rest pass just as well against a key the API never
+        // sends and a column of "Ikke oppgitt" ships. These years are the captured payload's own.
+        var kilder = JsonSerializer.Deserialize<IReadOnlyList<KildeSummary>>(
+                TestData.Read("kilder.json"), MuninExplorerClient.Json)
+            ?? throw new InvalidOperationException("kilder.json no longer reads as a kilde list.");
+
+        var cut = RenderWith(new FakeClient([.. kilder]));
+
+        var years = cut.FindAll(".munin-explorer-kilder tbody tr")
+            .Select(row => row.QuerySelectorAll("td")[4].TextContent.Trim());
+
+        Assert.Equal(["2023", "2006", "2020"], years);
     }
 
     [Fact]
@@ -1328,44 +1383,52 @@ public class KildeExplorerTest : BunitContext
 
         Assert.Contains("Source explorer", cut.Markup);
         Assert.Contains("1 source", cut.Markup);
-        Assert.Contains("Sub-sources", cut.Markup);
+        Assert.Contains("Established", cut.Markup);
         Assert.DoesNotContain("Kildeutforsker", cut.Markup);
     }
 
     [Fact]
-    public void Render_WhenTheCatalogueLeftAFieldEmpty_ThenTheCellIsNotMarkedAsTheCataloguesLanguage()
+    public void Render_WhenTheReaderIsNotNorwegian_ThenTheYearIsUnmarkedAndTheNameIsNot()
     {
-        // The cell holds the package's own "Not specified" then, in the reader's own language, so
-        // a lang="no" left on it switches a screen reader to a Norwegian voice for an English
-        // sentence — WCAG 3.1.2, Language of Parts. KildeView never hits this because it drops
-        // blank facts before rendering them; a table has to keep the cell, so it drops the
-        // attribute instead.
+        // Both halves of the one cell whose content is not the catalogue's words: a four-digit year
+        // has no language to mark (WCAG 3.1.2) and "Not specified" is in the reader's own, so a
+        // lang="no" over either only switches a screen reader's voice. The name is where it lives.
         var cut = RenderWith(
-            new FakeClient(Kilde("Als registeret", "K_ALS", dataController: null, dataProcessor: null)),
+            new FakeClient(
+                Kilde("Als registeret", "K_ALS", established: "1994"),
+                Kilde("Dødsårsaksregisteret", "K_DAR")),
             b => b.Add(c => c.Language, "en"));
 
         var cells = cut.FindAll(".munin-explorer-kilder tbody td");
 
-        Assert.Equal("Not specified", cells[2].TextContent.Trim());
-        Assert.Null(cells[2].GetAttribute("lang"));
-        Assert.Equal("Not specified", cells[3].TextContent.Trim());
-        Assert.Null(cells[3].GetAttribute("lang"));
+        Assert.Equal("1994", cells[4].TextContent.Trim());
+        Assert.Null(cells[4].GetAttribute("lang"));
+
+        Assert.Equal("Not specified", cells[9].TextContent.Trim());
+        Assert.Null(cells[9].GetAttribute("lang"));
+
+        // So the change above cannot become "stop marking anything": the kilde's name is the
+        // catalogue's own words, and it is marked whatever the reader is reading in.
+        Assert.Equal("no", cut.Find(".munin-explorer-kilder__name").GetAttribute("lang"));
     }
 
     [Fact]
-    public void Render_WhenTheCatalogueSuppliedTheField_ThenTheCellIsMarkedAsTheCataloguesLanguage()
+    public void Select_WhenTheReaderIsNotNorwegian_ThenTheDrilldownHeadingIsMarkedAsTheCataloguesLanguage()
     {
-        // The other half, so the fix above cannot be "stop marking anything": the catalogue holds
-        // these two in Norwegian whatever the reader is reading in.
-        var cut = RenderWith(
-            new FakeClient(Kilde("Als registeret", "K_ALS")),
-            b => b.Add(c => c.Language, "en"));
+        // The same pair one level down, on the element aria-labelledby points at: this heading is
+        // the catalogue's Norwegian name for the kilde, so dropping the mark reads it out in an
+        // English voice to the reader entering the landmark — WCAG 3.1.2 again.
+        var client = new FakeClient(Kilde("Als registeret", "K_ALS")) { StallDetail = true };
 
-        var cells = cut.FindAll(".munin-explorer-kilder tbody td");
+        var cut = RenderWith(client, b => b.Add(c => c.Language, "en"));
 
-        Assert.Equal("Folkehelseinstituttet", cells[2].TextContent.Trim());
-        Assert.Equal("no", cells[2].GetAttribute("lang"));
-        Assert.Equal("no", cells[3].GetAttribute("lang"));
+        cut.Find(".munin-explorer-kilder tbody th button").Click();
+
+        var region = cut.Find(".munin-explorer-drilldown");
+        var heading = cut.Find($"#{region.GetAttribute("aria-labelledby")}");
+
+        Assert.Equal("Als registeret", heading.TextContent.Trim());
+        Assert.Equal("no", heading.GetAttribute("lang"));
     }
 
     // ---------------------------------------------------------------------------------
