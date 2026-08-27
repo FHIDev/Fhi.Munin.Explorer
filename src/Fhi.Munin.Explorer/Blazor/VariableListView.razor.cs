@@ -60,6 +60,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private bool _failed;
 
     private Dictionary<string, string>? _dataTypeNames;
+
+    private string? _dataTypeNamesLanguage;
     private string _newName = "";
     private bool _includeKodeverk;
     private bool _downloading;
@@ -93,6 +95,18 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// </remarks>
     private string Or(string? value) =>
         string.IsNullOrWhiteSpace(value) ? T.NotSpecified : value;
+
+    /// <summary>
+    /// <c>"no"</c> for a value the catalogue wrote, and nothing at all for our own fallback.
+    /// </summary>
+    /// <remarks>
+    /// Catalogue text is Norwegian whatever language the page is in, which is why these cells carry
+    /// lang="no" at all. NotSpecified is not catalogue text - it is ours, in the reader's language -
+    /// and marking an English "Not specified" as Norwegian makes a screen reader pronounce it as
+    /// Norwegian. WCAG 3.1.2. A null here leaves the attribute off entirely.
+    /// </remarks>
+    private static string? CatalogueLang(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : "no";
 
     /// <summary>A date as month and year, in the reader's language.</summary>
     /// <remarks>The same format string as the explorer's own, so the two read alike.</remarks>
@@ -167,7 +181,19 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// </remarks>
     private async Task LoadDataTypeNamesAsync()
     {
-        if (_dataTypeNames is not null)
+        // Nothing is asked for a reader who is not signed in. This view renders nothing for them, and
+        // a call whose answer nobody sees is still a call the limiter counts - the same reason the
+        // list itself is not read either.
+        if (!IsAuthenticated)
+        {
+            return;
+        }
+
+        // Keyed on the language it was read in, not merely on having been read. The host can change
+        // Language after mount, and names fetched for the previous one would sit there until the
+        // component is recreated.
+        if (_dataTypeNames is not null
+            && string.Equals(_dataTypeNamesLanguage, Language, StringComparison.Ordinal))
         {
             return;
         }
@@ -184,11 +210,16 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 .GroupBy(d => d.Value!, StringComparer.Ordinal)
                 .ToDictionary(g => g.Key, g => g.First().DisplayName!, StringComparer.Ordinal);
 
+            _dataTypeNamesLanguage = Language;
             StateHasChanged();
         }
         catch (Exception)
         {
+            // Recorded as attempted for this language, so a failing endpoint is asked once rather
+            // than on every parameter change. The reader sees the codes until the language changes
+            // or the page is loaded again, which is the same fallback an empty map gives.
             _dataTypeNames = new Dictionary<string, string>(StringComparer.Ordinal);
+            _dataTypeNamesLanguage = Language;
         }
     }
 

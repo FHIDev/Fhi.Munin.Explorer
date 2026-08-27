@@ -187,6 +187,59 @@ public class VariableListViewTest : BunitContext
     }
 
     [Fact]
+    public void View_WhenTheReaderIsSignedOut_ThenTheNamesAreNotAskedForEither()
+    {
+        // Same reason the list itself is not read: the view draws nothing for a signed-out reader, and
+        // a call whose answer nobody sees still counts against the limiter.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"))
+        {
+            DataTypeFacets = [new DataTypeFacet { Value = "2", DisplayName = "Heltall" }]
+        };
+
+        RenderView(client, signedIn: false);
+
+        Assert.Equal(0, client.FilterCalls);
+    }
+
+    [Fact]
+    public void View_WhenTheLanguageChanges_ThenTheNamesAreReadAgainInTheNewOne()
+    {
+        // The names come back in the language they were asked for. Cached on "have they been read"
+        // alone, a host switching language would keep showing the previous one until the component
+        // was recreated.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"))
+        {
+            DataTypeFacets = [new DataTypeFacet { Value = "2", DisplayName = "Heltall" }]
+        };
+
+        Services.AddSingleton<IMuninExplorerClient>(client);
+        Services.AddScoped<VariableListState>();
+
+        var cut = Render<VariableListView>(p => p
+            .Add(c => c.IsAuthenticated, true)
+            .Add(c => c.Language, "no"));
+
+        Assert.Equal(1, client.FilterCalls);
+
+        cut.Render(p => p
+            .Add(c => c.IsAuthenticated, true)
+            .Add(c => c.Language, "en"));
+
+        Assert.Equal(2, client.FilterCalls);
+    }
+
+    [Fact]
+    public void View_WhenTheFallbackIsShown_ThenItIsNotMarkedAsNorwegian()
+    {
+        // The cells carry lang="no" because catalogue text is Norwegian whatever language the page is
+        // in. The fallback is ours, in the reader's language, so the same marking would have a screen
+        // reader pronounce an English phrase as Norwegian.
+        var cut = RenderView(new ListClient(Orphan()));
+
+        Assert.DoesNotContain("lang=\"no\">Ikke oppgitt", cut.Markup);
+    }
+
+    [Fact]
     public void View_WhenAPeriodIsOpenEnded_ThenItReadsTheWayTheExplorerWritesIt()
     {
         // "2021-" was this view's own shorthand. The explorer, one region up the same page, writes
