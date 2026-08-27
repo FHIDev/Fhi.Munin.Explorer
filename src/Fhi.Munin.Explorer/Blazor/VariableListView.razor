@@ -34,8 +34,16 @@
            successful create clears the name, and disabling the element that has focus drops focus
            to <body>. CreateListAsync already refuses an empty name, so the press is inert. *@
         <div>
+            @* A real label with for/id, the shape the search field uses at
+               VariableExplorer.razor:140 — not a placeholder. A placeholder is not an accessible
+               name: a screen reader announces an unnamed edit field, and the hint disappears the
+               moment the reader starts typing, which is the one time they most need to know what
+               the field is for. WCAG 4.1.2 and 3.3.2. The id carries the per-mount discriminator
+               every other id here carries, so two of this component on one page do not tie both
+               labels to the first field. *@
+            <label class="form-element__label" for="@NewListNameId">@T.NewListName</label>
             <input type="text"
-                   placeholder="@T.NewListName"
+                   id="@NewListNameId"
                    @bind="_newName"
                    @bind:event="onchange" />
             <button class="hd-button-square button-square--ghost"
@@ -145,8 +153,14 @@
                                     <span class="munin-explorer-dataitem-main__column__text">@Period(item)</span>
                                 </span>
 
+                                @* The visible word stays "Fjern" — the column is narrow and every
+                                   button in it removes something. The accessible name says which
+                                   one: without it a list of forty is forty controls that read
+                                   "Fjern", and a screen reader user has no way to tell which row
+                                   they are standing on. WCAG 4.1.2. *@
                                 <button class="hd-button-square button-square--ghost"
                                         type="button"
+                                        aria-label="@T.RemoveFromThisListLabel(RowName(item))"
                                         @onclick="() => RemoveAsync(item.VariableId)">@T.RemoveFromThisList</button>
                             </div>
                         </div>

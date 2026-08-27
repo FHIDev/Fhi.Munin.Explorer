@@ -53,6 +53,20 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     private Texts T => Texts.For(Language);
 
+    /// <summary>
+    /// Per-mount discriminator for this component's ids, the same shape the explorer's own uses.
+    /// </summary>
+    /// <remarks>
+    /// The host decides where this component goes and can mount it twice on one page. Two fields
+    /// sharing one id would leave both labels pointing at the first, so the second field is
+    /// unnamed again — the very defect the label was added to fix, and invisible in a page with
+    /// one mount.
+    /// </remarks>
+    private readonly string _instance = Guid.NewGuid().ToString("N")[..8];
+
+    /// <summary>The name field of the create form, which its label points at.</summary>
+    private string NewListNameId => $"munin-explorer-new-list-{_instance}";
+
     private Page<VariableListItem>? _page;
     private Guid? _shownList;
     private int _pageNumber = 1;
@@ -87,6 +101,18 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         return $"{from} – {to}";
     }
+
+    /// <summary>
+    /// What the row calls its variable — its name, or the sentence shown in place of one that is
+    /// no longer in the catalogue.
+    /// </summary>
+    /// <remarks>
+    /// Read by the remove button's accessible name, which has to say which row it acts on. An
+    /// orphaned entry has no name to say, and an empty one would leave that button announcing
+    /// "Fjern fra denne listen" with a hole where the variable should be.
+    /// </remarks>
+    private string RowName(VariableListItem item) =>
+        string.IsNullOrWhiteSpace(item.VariableName) ? T.VariableNoLongerAvailable : item.VariableName;
 
     /// <summary>A value, or the catalogue's own words for one that was never set.</summary>
     /// <remarks>

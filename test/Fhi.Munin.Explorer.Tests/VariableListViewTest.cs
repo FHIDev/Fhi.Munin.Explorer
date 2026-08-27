@@ -489,6 +489,67 @@ public class VariableListViewTest : BunitContext
     }
 
     [Fact]
+    public void View_WhenTheCreateFormIsDrawn_ThenTheNameFieldIsNamedBySomethingThatIsNotAPlaceholder()
+    {
+        // The field shipped as a bare input carrying a placeholder and nothing else, so a screen
+        // reader announced an unnamed edit field. Asserted on the accessible NAME rather than on
+        // the presence of a naming attribute: a placeholder, or a title, satisfies "has an
+        // attribute" while leaving the control unnamed, and several checking tools accept either.
+        // AccessibleName resolves only the sources that really are names, which is the point of it.
+        var cut = RenderView(new ListClient { HasList = false });
+
+        var field = cut.Find("input[type=text]");
+
+        Assert.Equal("Navn på ny liste", AccessibleName.Of(field));
+
+        // And the name is not a tooltip wearing a disguise. `title` is the other attribute a naive
+        // check counts, and mobile screen readers ignore it.
+        Assert.Null(field.GetAttribute("title"));
+
+        // The half a placeholder cannot do: the name has to survive the reader typing into the
+        // field, which is the moment a placeholder disappears.
+        field.Change("Hjerte og kar");
+        Assert.Equal("Navn på ny liste", AccessibleName.Of(cut.Find("input[type=text]")));
+    }
+
+    [Fact]
+    public void View_WhenTheListHasSeveralVariables_ThenEachRemoveButtonNamesItsOwnVariable()
+    {
+        // Two rows, not one: a constant aria-label passes "the button has an accessible name" and
+        // still leaves a screen reader user hearing "Fjern, Fjern, Fjern" with no way to tell which
+        // variable each one takes out. The distinctness assertion is what catches that.
+        var cut = RenderView(new ListClient(
+            Item("Alder ved diagnose", "V_BDR.ALDER"),
+            Item("Skjemastatus", "V_BDR.FORMSTATUS")));
+
+        var names = cut.FindAll(".munin-explorer-dataitem-main button")
+            .Select(AccessibleName.Of)
+            .ToList();
+
+        Assert.Equal(2, names.Count);
+        Assert.Contains("Alder ved diagnose", names[0], StringComparison.Ordinal);
+        Assert.Contains("Skjemastatus", names[1], StringComparison.Ordinal);
+        Assert.Equal(2, names.Distinct(StringComparer.Ordinal).Count());
+
+        // The word on the button stays in the sentence, so a speech-input user saying what they
+        // can see still hits the control. WCAG 2.5.3.
+        Assert.All(names, name => Assert.Contains("Fjern", name, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void View_WhenAnEntryHasNoVariableLeft_ThenItsRemoveButtonStillSaysWhatItRemoves()
+    {
+        // An orphaned entry has no name to put in the sentence. Left to the raw value the button
+        // would announce with a hole where the variable should be — so it says the same thing the
+        // row says.
+        var cut = RenderView(new ListClient(Orphan()));
+
+        var name = AccessibleName.Of(cut.Find(".munin-explorer-dataitem-main button"));
+
+        Assert.Contains("Variabelen er ikke tilgjengelig lenger", name, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void View_WhenItIsDrawn_ThenEveryClassNameHasARuleInTheHostStylesheet()
     {
         // The package ships no CSS: a name with no rule behind it renders unstyled in the host.

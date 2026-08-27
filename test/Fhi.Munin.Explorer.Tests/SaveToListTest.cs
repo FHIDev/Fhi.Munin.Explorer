@@ -182,6 +182,50 @@ public class SaveToListTest : BunitContext
     }
 
     [Fact]
+    public void Row_WhenEveryRowOffersToSave_ThenEachButtonNamesItsOwnVariable()
+    {
+        // Two rows, because the weak version of this assertion — "the button has an accessible
+        // name" — is satisfied by a constant label on all 25 of them, which is the same "Lagre i
+        // liste, Lagre i liste, Lagre i liste" a screen reader hears from the visible words alone.
+        // Distinctness is what makes the assertion mean anything.
+        var client = new ListClient(OnePage(
+            Variable("Alder ved diagnose", "V_BDR.ALDER"),
+            Variable("Skjemastatus", "V_BDR.FORMSTATUS")));
+
+        var cut = RenderSignedIn(client);
+
+        var names = cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]")
+            .Select(AccessibleName.Of)
+            .ToList();
+
+        Assert.Equal(2, names.Count);
+        Assert.Contains("Alder ved diagnose", names[0], StringComparison.Ordinal);
+        Assert.Contains("Skjemastatus", names[1], StringComparison.Ordinal);
+        Assert.Equal(2, names.Distinct(StringComparer.Ordinal).Count());
+
+        // The visible words are still a contiguous part of the sentence, so a speech-input user
+        // saying what they can see hits the button. WCAG 2.5.3.
+        Assert.All(names, name => Assert.Contains("Lagre i liste", name, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Row_WhenAVariableIsSaved_ThenItsButtonStillNamesItInTheOtherState()
+    {
+        // One control in two states, and the accessible name has to follow the word the same way
+        // aria-pressed does. A name computed once for the unsaved state would tell a screen reader
+        // user the button saves a variable that is already in the list.
+        var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER")));
+        var cut = RenderSignedIn(client);
+
+        SaveButton(cut).Click();
+
+        var name = AccessibleName.Of(SaveButton(cut));
+
+        Assert.Contains("Alder ved diagnose", name, StringComparison.Ordinal);
+        Assert.Contains("Fjern fra liste", name, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Row_WhenSaveIsPressed_ThenTheVariableIsInTheListAndTheButtonSaysSo()
     {
         var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER")));

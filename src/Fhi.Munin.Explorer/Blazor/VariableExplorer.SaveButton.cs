@@ -76,8 +76,19 @@ public partial class VariableExplorer
         // The pressed state is what a screen reader announces, and it is the same fact the word
         // shows sighted readers — one control in two states, not two controls.
         builder.AddAttribute(3, "aria-pressed", saved ? "true" : "false");
-        builder.AddAttribute(4, "onclick", EventCallback.Factory.Create(this, () => ToggleSavedAsync(v)));
-        builder.AddContent(5, saved ? T.RemoveFromList : T.SaveToList);
+
+        // The accessible name says which variable, where the visible words cannot: a page of
+        // results is 25 buttons all reading "Lagre i liste", and a screen reader moving down them
+        // announces the same three words 25 times over. It tracks the pressed state for the same
+        // reason the word does — one control in two states — and puts the name after the visible
+        // text so that text stays a contiguous substring of it (WCAG 2.5.3, and 4.1.2 for the
+        // name itself).
+        builder.AddAttribute(4, "aria-label", saved
+            ? T.RemoveFromListLabel(v.PreferredTerm)
+            : T.SaveToListLabel(v.PreferredTerm));
+
+        builder.AddAttribute(5, "onclick", EventCallback.Factory.Create(this, () => ToggleSavedAsync(v)));
+        builder.AddContent(6, saved ? T.RemoveFromList : T.SaveToList);
         builder.CloseElement();
 
         // Said in the row rather than the component's alert region: the other rows are unaffected,
@@ -87,11 +98,11 @@ public partial class VariableExplorer
         // own alert region uses (VariableExplorer.razor:286). A role="alert" element that is
         // inserted and filled in the same DOM update is announced unreliably; one that is already
         // there and gains text is announced.
-        builder.OpenElement(6, "span");
-        builder.AddAttribute(7, "role", "alert");
-        builder.AddAttribute(8, "aria-live", "assertive");
-        builder.AddAttribute(9, "aria-atomic", "true");
-        builder.AddContent(10, failure switch
+        builder.OpenElement(7, "span");
+        builder.AddAttribute(8, "role", "alert");
+        builder.AddAttribute(9, "aria-live", "assertive");
+        builder.AddAttribute(10, "aria-atomic", "true");
+        builder.AddContent(11, failure switch
         {
             SaveFailure.Throttled => T.RateLimitError,
             SaveFailure.Failed => T.SaveError,
