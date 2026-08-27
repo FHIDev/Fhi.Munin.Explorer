@@ -166,6 +166,28 @@ public class CataloguePropertiesTest
     }
 
     [Fact]
+    public void Rows_WhenTheBagIsNull_ThenThereAreNoRowsRatherThanAThrow()
+    {
+        // Every contract declares AdditionalProperties non-nullable with an initialiser, and
+        // System.Text.Json writes null straight over it for an explicit "additionalProperties":
+        // null. All three call sites pass such a field — KildeView, VariableView and the variable
+        // panel's rows — so the question is answered here rather than three times over.
+        //
+        // Empty is the right reading, not merely the safe one: the payload is saying the source has
+        // no curated properties, which is what an empty bag says too.
+        Assert.Empty(CatalogueProperties.Rows([Entry("Opprettet", 20, "Datainnsamling")], null, "no"));
+    }
+
+    [Fact]
+    public void Groups_WhenTheBagIsNull_ThenThereAreNoGroupsRatherThanAThrow()
+    {
+        // Normalised in Groups as well as in Rows, because the group ordering reads the bag itself
+        // rather than going through Rows. Guarding only Rows leaves that second read to fall over
+        // the moment a group has any row at all.
+        Assert.Empty(CatalogueProperties.Groups([Entry("Opprettet", 20, "Datainnsamling")], null, "no"));
+    }
+
+    [Fact]
     public void Formatting_WhenTheHostHasNoCultureOfThatName_ThenItIsTheInvariantOneRatherThanAThrow()
     {
         // The branch no host running this suite can otherwise take. It exists for a host built with
