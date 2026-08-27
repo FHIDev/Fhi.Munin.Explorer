@@ -566,8 +566,8 @@ public class KildeExplorerTest : BunitContext
         var a = Render<KildeExplorer>();
         var b = Render<KildeExplorer>();
 
-        var idA = a.Find("input[type=search]").Id;
-        var idB = b.Find("input[type=search]").Id;
+        var idA = a.Find(".searchbox__freetext").Id;
+        var idB = b.Find(".searchbox__freetext").Id;
 
         Assert.False(string.IsNullOrWhiteSpace(idA));
         Assert.NotEqual(idA, idB);
@@ -736,7 +736,7 @@ public class KildeExplorerTest : BunitContext
         var client = new FakeClient(Kilde("Als registeret", "K_ALS"));
         var cut = RenderWith(client);
 
-        var input = cut.Find("input[type=search]");
+        var input = cut.Find(".searchbox__freetext");
 
         Assert.Throws<MissingEventHandlerException>(() => input.Input("als"));
         Assert.Equal(1, client.Calls);
@@ -754,7 +754,7 @@ public class KildeExplorerTest : BunitContext
 
         // Two of the three survive, not one: a filter that narrowed to a single row would look the
         // same as a lookup, and this is a filter.
-        cut.Find("input[type=search]").Change("registeret");
+        cut.Find(".searchbox__freetext").Change("registeret");
         cut.Find("form").Submit();
 
         Assert.Equal(["Als registeret", "Dødsårsaksregisteret"], RowNames(cut));
@@ -773,7 +773,7 @@ public class KildeExplorerTest : BunitContext
             Kilde("Als registeret", "K_ALS"),
             Kilde("Reseptregisteret", "K_NORPD")));
 
-        cut.Find("input[type=search]").Change("norpd");
+        cut.Find(".searchbox__freetext").Change("norpd");
 
         Assert.Equal(["Reseptregisteret"], RowNames(cut));
     }
@@ -787,7 +787,7 @@ public class KildeExplorerTest : BunitContext
             Kilde("Als registeret", "K_ALS", shortName: "ALS"),
             Kilde("Dødsårsaksregisteret", "K_DAR", shortName: "DÅR")));
 
-        cut.Find("input[type=search]").Change("dår");
+        cut.Find(".searchbox__freetext").Change("dår");
 
         Assert.Equal(["Dødsårsaksregisteret"], RowNames(cut));
     }
@@ -797,7 +797,7 @@ public class KildeExplorerTest : BunitContext
     {
         var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
-        cut.Find("input[type=search]").Change("ALS REGISTERET");
+        cut.Find(".searchbox__freetext").Change("ALS REGISTERET");
 
         Assert.Equal(["Als registeret"], RowNames(cut));
     }
@@ -810,10 +810,65 @@ public class KildeExplorerTest : BunitContext
         // between trying again and giving up.
         var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
-        cut.Find("input[type=search]").Change("hjortedyr");
+        cut.Find(".searchbox__freetext").Change("hjortedyr");
 
         Assert.Contains("Ingen kilder samsvarer med søket «hjortedyr»", cut.Markup);
         Assert.Empty(cut.FindAll(".munin-explorer-kilder"));
+    }
+
+    [Fact]
+    public void ClearSearch_WhenThereIsNoSearch_ThenTheButtonIsThereAndSaysItHasNothingToDo()
+    {
+        // Always on screen, greyed rather than removed: a control that comes and goes beside a
+        // field somebody is typing in moves everything next to it, twice per search.
+        //
+        // aria-disabled and not disabled, so pressing it cannot throw focus to the document - and
+        // because nothing in the DOM then refuses the click, the component has to. Both halves are
+        // asserted here, since the attribute alone would be a claim the code does not keep.
+        var client = new FakeClient(
+            Kilde("Als registeret", "K_ALS"),
+            Kilde("Norsk pasientregister", "K_NPR"));
+
+        var cut = RenderWith(client);
+
+        var clear = cut.Find(".munin-explorer-search__clear");
+
+        Assert.Equal("true", clear.GetAttribute("aria-disabled"));
+        Assert.False(clear.HasAttribute("disabled"));
+
+        clear.Click();
+
+        Assert.Equal(["Als registeret", "Norsk pasientregister"], RowNames(cut));
+    }
+
+    [Fact]
+    public void ClearSearch_WhenPressed_ThenTheWholeListIsBackWithoutTypingOrEnter()
+    {
+        // The control that replaces the user-agent ✕. That one emptied the box without applying
+        // it, so the reader was left with a search still in force behind a box reading empty, and
+        // everything downstream - velg-alle, Nullstill utvalg, the handover - then worked on rows
+        // they believed they had cleared. Reported 2026-08-27. This asserts the whole round trip:
+        // the button appears with a search, one press restores the list, and it goes away again.
+        var client = new FakeClient(
+            Kilde("Als registeret", "K_ALS"),
+            Kilde("Norsk pasientregister", "K_NPR"));
+
+        var cut = RenderWith(client);
+
+        cut.Find(".searchbox__freetext").Change("als");
+
+        Assert.Equal(["Als registeret"], RowNames(cut));
+
+        cut.Find(".munin-explorer-search__clear").Click();
+
+        Assert.Equal(["Als registeret", "Norsk pasientregister"], RowNames(cut));
+        Assert.Equal("true", cut.Find(".munin-explorer-search__clear").GetAttribute("aria-disabled"));
+
+        // The box on screen has to agree with the list under it - that is the whole bug.
+        Assert.Equal(string.Empty, cut.Find(".searchbox__freetext").GetAttribute("value") ?? string.Empty);
+
+        // Still the one fetch from initialisation: clearing a client-side filter is not a reload.
+        Assert.Equal(1, client.Calls);
     }
 
     [Fact]
@@ -825,8 +880,8 @@ public class KildeExplorerTest : BunitContext
 
         var cut = RenderWith(client);
 
-        cut.Find("input[type=search]").Change("als");
-        cut.Find("input[type=search]").Change("");
+        cut.Find(".searchbox__freetext").Change("als");
+        cut.Find(".searchbox__freetext").Change("");
 
         Assert.Equal(["Als registeret", "Reseptregisteret"], RowNames(cut));
         Assert.Equal(1, client.Calls);
@@ -947,7 +1002,7 @@ public class KildeExplorerTest : BunitContext
 
         var cut = RenderWith(client);
 
-        cut.Find("input[type=search]").Change("als");
+        cut.Find(".searchbox__freetext").Change("als");
         cut.Find(".munin-explorer-kilder tbody th button").Click();
         cut.Find(".munin-explorer-drilldown button").Click();
 
@@ -2030,7 +2085,7 @@ public class KildeExplorerTest : BunitContext
 
         var cut = RenderWith(client);
 
-        cut.Find("input[type=search]").Change("als");
+        cut.Find(".searchbox__freetext").Change("als");
         cut.Find(".munin-explorer-kilder tbody th button").Click();
 
         Assert.Equal(1, client.Calls);
@@ -2123,7 +2178,7 @@ public class KildeExplorerTest : BunitContext
         Assert.Empty(RowNames(cut));
         Assert.Contains("Ingen kilder samsvarer med filtrene som er valgt.", cut.Markup);
 
-        cut.Find("input[type=search]").Change("als");
+        cut.Find(".searchbox__freetext").Change("als");
 
         Assert.Contains(
             "Ingen kilder samsvarer med søket «als» og filtrene som er valgt.", cut.Markup);
@@ -2137,7 +2192,7 @@ public class KildeExplorerTest : BunitContext
             Kilde("Als-biobanken", "K_ALSB", kildetype: "biobank"),
             Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "biobank")));
 
-        cut.Find("input[type=search]").Change("als");
+        cut.Find(".searchbox__freetext").Change("als");
         Tick(cut, "Kildetype", "Biobank");
 
         Assert.Equal(["Als-biobanken"], RowNames(cut));
@@ -2227,6 +2282,11 @@ public class KildeExplorerTest : BunitContext
         // ships. Four of these nine are the explorer's existing structure, reused rather than
         // reinvented; the three under `munin-explorer-kilder` and the two under
         // `munin-explorer-filters__` are this view's own.
+        //
+        // Nine and not ten because nothing here wires ExploreVariablesRequested, so the selection
+        // column and its `munin-explorer-kilder__select` are not rendered at all. That state has
+        // its own exact list, in KildeSelectionTest, and the pair of them is what says the column
+        // adds one name rather than appears from nowhere.
         var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
         var invented = HostClassNames.Of(cut.FindAll("[class]"))
@@ -2245,6 +2305,8 @@ public class KildeExplorerTest : BunitContext
             "munin-explorer-kilder__count",
             "munin-explorer-kilder__name",
             "munin-explorer-results",            // shared
+            "munin-explorer-search",             // shared with the variable explorer
+            "munin-explorer-search__clear",      // shared
         ], invented);
     }
 

@@ -142,6 +142,9 @@ else
         @* searchbox__freetext reserves 104px of right padding for a button sitting inside the
            field, which is what searchbox__freetext-submit-button positions there. Both come
            from Stiler; this is the arrangement their own search box uses. *@
+        @* The field and its clear button on one line. The wrapper is what lets a host shorten
+           the box and put the button beside it rather than under it — see the button below. *@
+        <div class="munin-explorer-search">
         <div class="searchbox__freetext-container">
             @* @bind (onchange), deliberately NOT value + @oninput.
 
@@ -155,10 +158,15 @@ else
                onchange is enough because searching is always an explicit act here: it fires on
                implicit submit (Enter), and a click on Søk blurs the field first, so the change
                event reaches the circuit before @onsubmit does. The event is spelled out rather
-               than left implicit so nobody "helpfully" restores oninput. *@
+               than left implicit so nobody "helpfully" restores oninput.
+
+               type="text", not type="search": the user-agent ✕ fires the DOM `search` event, which
+               Blazor does not know, so it emptied the box without applying it. enterkeyhint keeps
+               the soft keyboard's search key. (Fhi.Metadata-5ghur) *@
             <input class="searchbox__freetext"
                    id="@SearchId"
-                   type="search"
+                   type="text"
+                   enterkeyhint="search"
                    @bind="_search"
                    @bind:event="onchange"
                    placeholder="@T.SearchPlaceholder"
@@ -171,6 +179,15 @@ else
                stops the double request without touching focus. *@
             <button class="hd-button-square button-square--primary searchbox__freetext-submit-button"
                     type="submit">@T.SearchButton</button>
+        </div>
+
+            @* aria-disabled, not disabled: a disabled button cannot hold focus, so pressing this
+               one would clear the search and throw focus to the document. The attribute stops no
+               click, so the handler refuses instead. (Fhi.Metadata-5ghur) *@
+            <button class="hd-button-square button-square--secondary munin-explorer-search__clear"
+                    type="button"
+                    aria-disabled="@(!string.IsNullOrWhiteSpace(_search) ? "false" : "true")"
+                    @onclick="ClearSearchAsync">@T.ClearSearch</button>
         </div>
     </form>
 

@@ -194,6 +194,90 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   margin: 0;
 }
 
+/* ---- the search row and its clear button: two names of ours ----
+
+   The field is an <input type="text"> rather than type="search" on purpose — the user-agent ✕
+   could not be hooked and left the box empty over a search still in force — so the package draws
+   its own clear button, and these two names are how a host places it.
+
+   It was tried as an overlay first, absolutely positioned inside the field beside Søk. That was
+   wrong twice over: it sat on top of the reader's own text, and it could not line up with a
+   button Stiler positions against a different box. The field gives up the room instead, which is
+   what the flex line below does — the container shrinks, the button takes what it needs.
+
+   min-width: 0 on the container is load-bearing and easy to lose: a flex item will not shrink
+   below its content's minimum without it, so the field would refuse to give up the width and
+   push the button off the row.
+
+   Wrapping below 640px, where a shortened field and a button beside it leave too little of
+   either. A host that defines none of this gets them stacked, which is the same place. */
+.munin-explorer-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.munin-explorer-search > .searchbox__freetext-container {
+  flex: 1 1 320px;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.munin-explorer-search__clear {
+  flex: none;
+}
+
+/* The greyed state. The button is always on screen and says with this whether it has anything
+   to do, rather than appearing and disappearing beside a field somebody is typing in.
+
+   It is aria-disabled and not disabled, so that pressing it cannot throw focus to the document
+   — which means it is still focusable and still hoverable, and both have to stop looking like
+   invitations. The component refuses the click itself; this only has to say so. */
+.munin-explorer-search__clear[aria-disabled="true"] {
+  background-color: var(--grey40);
+  color: #fff;
+  cursor: default;
+}
+
+.munin-explorer-search__clear[aria-disabled="true"]:hover {
+  background-color: var(--grey40);
+  color: #fff;
+}
+
+/* ---- the selection ribbon ----
+
+   Handover, then reset, then count — the order the markup writes them in, and the order is what
+   keeps the row still. Everything that comes and goes sits to the right of everything that does
+   not, so ticking a row never moves a control the reader is aiming at.
+
+   The min-width is the load-bearing declaration and the only one a host cannot infer. The
+   handover's label is one of three, they are different lengths, and the widest is English's
+   "Explore variables for this selection" — so without a floor the button resizes on the first
+   tick and drags the reset and the count with it. 21rem clears that label at the sample's own
+   font size; a host on Stiler's Graphik should measure its own rather than copy the number.
+
+   Not a grid with equal columns, which is what this was before. Equal widths made the reset as
+   wide as the handover and gave the count a column it had no use for; what was actually wanted
+   is one button that never moves and everything else flowing after it.
+
+   max-width so the floor cannot push the row wider than the page on a narrow screen, and
+   flex-wrap so it drops to the next line instead. */
+.munin-explorer-selection {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-bottom: 16px;
+}
+
+.munin-explorer-selection__explore {
+  min-width: 21rem;
+  max-width: 100%;
+  justify-content: center;
+}
+
 /* components/buttons/_squarebutton.scss */
 .hd-button-square {
   cursor: pointer;
@@ -1230,16 +1314,16 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 /* ---- the kilde list ----
 
-   Kelda's result table, and three more names of ours. The shape rule is the one the datasamlinger
+   Kelda's result table, and four more names of ours. The shape rule is the one the datasamlinger
    table above follows: there was nothing to copy for a list of kilder — Stiler has no table
    component, and helsedata's own variable page lists variables rather than sources — so the shape
-   is a <table> and these three dress it rather than carry it. A host that defines none of them
+   is a <table> and these four dress it rather than carry it. A host that defines none of them
    still gets six columns that line up and a name that visibly is a control, which is what an
    element's own browser default buys and an undefined class name does not.
 
    The six are the ones Kelda shows by default. Its own table has two control columns in front of
-   them, a checkbox and an expand toggle, and seven more data columns behind a column picker. None
-   of those belongs to the component yet, so none is named here. */
+   them, and seven more data columns behind a column picker. The checkbox is the fourth name below;
+   the expand toggle does not belong to the component yet, so it is not named here. */
 .munin-explorer-kilder {
   width: 100%;
   border-collapse: collapse;
@@ -1286,6 +1370,19 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .munin-explorer-kilder .munin-explorer-kilder__count {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+/* The checkbox column, in front of the eight. It is only ever rendered by a host that wired
+   ExploreVariablesRequested, which is the handover the ticks exist for.
+
+   width: 1% is the whole of it, and it is the declaration a host that skips this block loses:
+   a table shares its width out between the columns, so a column holding one checkbox would take
+   the same share as Dataansvarlig and push the eight that carry words together. 1% is smaller
+   than the content, and a table cannot go under its content, so the column comes out exactly one
+   checkbox wide. Scoped under the table for the reason the count rule above is: the rule it has
+   to beat carries a class and an element. */
+.munin-explorer-kilder .munin-explorer-kilder__select {
+  width: 1%;
 }
 
 /* The name opens the kilde, so it has to look like the control it is without wearing a button

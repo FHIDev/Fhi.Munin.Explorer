@@ -38,6 +38,22 @@ public partial class VariableExplorer
         await OpenInitialSelectionAsync();
     }
 
+    /// <summary>Empty the box and run the search that leaves, which is no search at all.</summary>
+    private async Task ClearSearchAsync()
+    {
+        // Guard before mutation, the rule SortAsync states: clearing _search and then being dropped
+        // by SearchAsync's own _loading check would leave an empty box over the old rows, with the
+        // host still holding the previous search. (Fhi.Metadata-5ghur)
+        if (_loading || string.IsNullOrWhiteSpace(_search))
+        {
+            return;
+        }
+
+        _search = null;
+
+        await SearchAsync();
+    }
+
     private async Task SearchAsync()
     {
         // Nothing disables the submit button while a search runs — see the comment on it in

@@ -13,9 +13,10 @@
    wears the `munin-explorer` prefix this package owns. Five of those are the explorer's existing
    ones, reused rather than reinvented: the root `munin-explorer`, the `munin-explorer-container`
    and `munin-explorer-results` the list sits in, `munin-explorer-filters` for the facet panel and
-   `munin-explorer-drilldown` for the view an opened kilde takes over. Five are this view's own —
+   `munin-explorer-drilldown` for the view an opened kilde takes over. Six are this view's own —
    `munin-explorer-kilder` for the table, `munin-explorer-kilder__name` for the control that opens a
-   row, `munin-explorer-kilder__count` for the columns holding a number, and
+   row, `munin-explorer-kilder__count` for the columns holding a number,
+   `munin-explorer-kilder__select` for the checkbox column in front of them, and
    `munin-explorer-filters__toggle` and `munin-explorer-filters__facets` for the panel that folds
    away on a narrow screen.
 
@@ -152,6 +153,9 @@ else
         @* searchbox__freetext reserves the right-hand padding for a button sitting inside the
            field, which is what searchbox__freetext-submit-button positions there. Both are
            Stiler's; this is the arrangement their own search box uses. *@
+        @* The field and its clear button on one line. The wrapper is what lets a host shorten
+           the box and put the button beside it rather than under it — see the button below. *@
+        <div class="munin-explorer-search">
         <div class="searchbox__freetext-container">
             @* @bind (onchange), deliberately NOT value + @oninput.
 
@@ -161,10 +165,15 @@ else
                the input while more input is still arriving: a fast paste or a programmatic fill
                loses characters. That the filtering itself is client-side does not change any of
                it; the round-trip is the event reaching the circuit at all. The event is spelled
-               out rather than left implicit so nobody "helpfully" restores oninput. *@
+               out rather than left implicit so nobody "helpfully" restores oninput.
+
+               type="text", not type="search": the user-agent ✕ fires the DOM `search` event, which
+               Blazor does not know, so it emptied the box without applying it. enterkeyhint keeps
+               the soft keyboard's search key. (Fhi.Metadata-5ghur) *@
             <input class="searchbox__freetext"
                    id="@SearchId"
-                   type="search"
+                   type="text"
+                   enterkeyhint="search"
                    @bind="_search"
                    @bind:event="onchange"
                    placeholder="@T.KildeSearchPlaceholder"
@@ -175,6 +184,15 @@ else
                inside the field is what fires the change event that applies the search. *@
             <button class="hd-button-square button-square--primary searchbox__freetext-submit-button"
                     type="submit">@T.SearchButton</button>
+        </div>
+
+            @* aria-disabled, not disabled: a disabled button cannot hold focus, so pressing this
+               one would clear the search and throw focus to the document. The attribute stops no
+               click, so the handler refuses instead. (Fhi.Metadata-5ghur) *@
+            <button class="hd-button-square button-square--secondary munin-explorer-search__clear"
+                    type="button"
+                    aria-disabled="@(searchText is not null ? "false" : "true")"
+                    @onclick="ClearSearch">@T.ClearSearch</button>
         </div>
     </form>
 
@@ -297,6 +315,32 @@ else
         }
     </div>
 
+    @* Drawn only where the host wired ExploreVariablesRequested — a column with nowhere to go is
+       worse than no column. The count is rendered while empty on purpose: a live region filled in
+       the same update that inserts it is announced unreliably. (Fhi.Metadata-5ghur) *@
+    @if (Selectable && (visible.Count > 0 || TickedCount > 0))
+    {
+        @* Handover, then reset, then count: everything that comes and goes is to the right of
+           everything that does not, so ticking a row moves nothing the reader is aiming at. The
+           handover's width is held by a host rule, since its label is one of three. (Fhi.Metadata-5ghur) *@
+        <div class="munin-explorer-selection">
+            <button class="hd-button-square button-square--primary munin-explorer-selection__explore"
+                    type="button"
+                    @onclick="() => ExploreVariablesAsync(visible)">@ExploreLabel</button>
+
+            @if (TickedCount > 0)
+            {
+                <button class="hd-button-square button-square--secondary"
+                        type="button"
+                        @onclick="ClearTicks">@T.ClearSelection</button>
+            }
+
+            <p class="caption margin--none" role="status" aria-live="polite" aria-atomic="true">
+                @(TickedCount > 0 ? T.SelectedKildeCount(TickedCount) : null)
+            </p>
+        </div>
+    }
+
     @if (visible.Count > 0)
     {
     <div class="munin-explorer-container">
@@ -305,11 +349,9 @@ else
            above shows, and pointing at that element would make the table's name change under a
            screen reader every time the status line does.
 
-           Six columns: the set Munin's own Kelda shows by default, in its order — Navn, Status and
-           Opprettet are always visible there (kelda.tsx:61) and DEFAULT_VISIBLE (:86-100) turns on
-           Kildetype, Datasamlinger and Variabler. Kelda has 13 data columns in all, so seven are
-           behind its column picker, which is Fhi.Metadata-ay3zz; the two control columns in front —
-           a row checkbox and an expand toggle — are Fhi.Metadata-5ghur.
+           Six columns: the set Munin's own Kelda shows by default, in its order (kelda.tsx:61,
+           DEFAULT_VISIBLE :86-100). Seven more sit behind its column picker, Fhi.Metadata-ay3zz;
+           of the two control columns in front, the checkbox is here and the expand toggle is not.
 
            No aria-busy, unlike the variable explorer's list: there is nothing to be busy with.
            The list is fetched once, on initialisation, and while that fetch is running this table
@@ -318,6 +360,18 @@ else
         <table class="munin-explorer-kilder" aria-label="@summary">
             <thead>
                 <tr>
+                    @if (Selectable)
+                    {
+                        @* Over the rows the reader can see, and only those. No indeterminate state:
+                           it is a DOM property with no attribute behind it, and the count above says
+                           the same thing in words. (Fhi.Metadata-5ghur) *@
+                        <th scope="col" class="munin-explorer-kilder__select">
+                            <input type="checkbox"
+                                   aria-label="@T.SelectAllKilder"
+                                   checked="@AllVisibleTicked(visible)"
+                                   @onchange="() => TickAllVisible(visible)" />
+                        </th>
+                    }
                     <th scope="col">@T.FieldName</th>
                     <th scope="col">@T.ColumnKildetype</th>
                     <th scope="col">@T.FieldStatus</th>
@@ -336,6 +390,18 @@ else
                        renderer would patch that button into a different kilde's rather than moving
                        it. *@
                     <tr @key="kilde.Id">
+                        @if (Selectable)
+                        {
+                            @* A td, not a th: the box is a control over the row, not its label. Its
+                               accessible name carries the kilde's, because "Velg" repeated down a
+                               column says nothing about which row. (Fhi.Metadata-5ghur) *@
+                            <td class="munin-explorer-kilder__select">
+                                <input type="checkbox"
+                                       aria-label="@T.SelectKilde(kilde.Name)"
+                                       checked="@IsTicked(kilde.Id)"
+                                       @onchange="e => Tick(kilde.Id, e.Value is true)" />
+                            </td>
+                        }
                         @* The name is a th, not a td: it is what the rest of the row is about, and
                            a screen reader reading a cell out of context should hear which kilde it
                            belongs to. The catalogue holds one name, in Norwegian, so it is marked

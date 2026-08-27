@@ -1,7 +1,9 @@
 @using Fhi.Munin.Explorer.Blazor
+@using Fhi.Munin.Explorer.Contracts
 @using Microsoft.AspNetCore.WebUtilities
 @using Microsoft.JSInterop
 @inject IJSRuntime JS
+@inject NavigationManager Nav
 
 @* The kilde half of the shareable-state contract, beside ExplorerWithUrlState.
 
@@ -18,6 +20,7 @@
    so the URL here carries the open kilde and nothing else. *@
 
 <KildeExplorer @bind-SelectedKildeId="_selectedKildeId"
+               ExploreVariablesRequested="ExploreVariables"
                Language="@Language" />
 
 @code {
@@ -74,6 +77,19 @@
         // closing kilder would otherwise fill the history with steps the reader has to walk back
         // through one at a time instead of leaving the site.
         await JS.InvokeVoidAsync("history.replaceState", null, "", query);
+    }
+
+    /// <summary>Turn the chosen kilder into the query the variable explorer reads, and go there.</summary>
+    /// <remarks>
+    /// The host's job: only it knows where the other explorer is mounted. An empty list means the
+    /// reader narrowed nothing, so it lands unfiltered. forceLoad because this host has no router.
+    /// (Fhi.Metadata-5ghur)
+    /// </remarks>
+    private void ExploreVariables(IReadOnlyList<Guid> kildeIds)
+    {
+        var query = new VariableFilter { KildeIds = kildeIds }.ToQueryString();
+
+        Nav.NavigateTo(query.Length == 0 ? "/" : "/?" + query, forceLoad: true);
     }
 
     private string BuildQuery()

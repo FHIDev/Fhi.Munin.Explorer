@@ -264,6 +264,17 @@ internal sealed record Texts(
     // "Established". Named for the year and not for the word, because the word also names
     // KildeSummary.Created — Munin's own row timestamp, and Kelda's Importert, not this column.
     string ColumnEstablished,
+    // Three strings that all undo something and can be on screen together, so each is named for
+    // its own noun: ClearSearch empties the box, ClearFilters unticks the facets, ClearSelection
+    // drops the row ticks. (Fhi.Metadata-5ghur)
+    string ClearSearch,
+    string SelectAllKilder,
+    string ClearSelection,
+    // One button, three payloads — see Handover in KildeExplorer.Selection.cs. "Alle" over a
+    // filtered list would promise the catalogue and hand over a slice. (Fhi.Metadata-5ghur)
+    string ExploreVariables,
+    string ExploreAllVariables,
+    string ExploreFilteredVariables,
     // Kelda's filter panel. Its heading is FiltersTitle, and two of its four facet headings are
     // strings this record already holds: the kildetype facet is headed with ColumnKildetype and
     // the databehandler facet with FieldDataProcessor, because each facet is a filter over the
@@ -318,6 +329,16 @@ internal sealed record Texts(
     // never sorted. Assembled here rather than glued together at the call site for the reason
     // ResultSummary is: the plural is this language's business and not C#'s.
     Func<int, string> KildeCount,
+    // (count) — "3 kilder valgt", the selection bar's own line. Its own member rather than
+    // KildeCount reused, though both count kilder and both are Func<int, string>: that one says how
+    // many the search and the facets left, this one how many of those the reader ticked, and the
+    // two sit one above the other on screen. Swapped, each would read as a true sentence in the
+    // wrong place — the failure neither one's own test can see.
+    Func<int, string> SelectedKildeCount,
+    // (name) — the accessible name of one row's checkbox. Every checkbox in a table needs one of
+    // its own: "Velg" repeated down a column tells a reader moving from control to control nothing
+    // about which row they are standing in.
+    Func<string, string> SelectKilde,
     // (search, filters) — the kilde list's empty state, for a search or a set of facets that
     // matched none of them. A catalogue holding no kilder at all says NoKilder instead: the two ask
     // the reader to do different things. The facet count is in the sentence for the reason it is in
@@ -665,6 +686,12 @@ internal sealed record Texts(
         ColumnKildetype: "Kildetype",
         ColumnVariableCount: "Variabler",
         ColumnEstablished: "Opprettet",
+        ClearSearch: "Tøm søket",
+        SelectAllKilder: "Velg alle synlige kilder",
+        ClearSelection: "Nullstill utvalg",
+        ExploreVariables: "Utforsk variabler for utvalget",
+        ExploreAllVariables: "Utforsk alle variabler",
+        ExploreFilteredVariables: "Utforsk variabler for treffene",
         FacetCategory: "Kategori",
         FacetAccessLevel: "Tilgangsnivå",
         ShowFilters: "Vis filtre",
@@ -680,6 +707,8 @@ internal sealed record Texts(
             ? "1 publisert variabel i denne kilden."
             : $"{count} publiserte variabler i denne kilden.",
         KildeCount: count => count == 1 ? "1 kilde" : $"{count} kilder",
+        SelectedKildeCount: count => count == 1 ? "1 kilde valgt" : $"{count} kilder valgt",
+        SelectKilde: name => $"Velg {name}",
         NoKilderMatch: (search, filters) =>
         {
             if (search is null)
@@ -897,6 +926,12 @@ internal sealed record Texts(
         ColumnKildetype: "Source type",
         ColumnVariableCount: "Variables",
         ColumnEstablished: "Established",
+        ClearSearch: "Clear search",
+        SelectAllKilder: "Select all visible sources",
+        ClearSelection: "Clear selection",
+        ExploreVariables: "Explore variables for this selection",
+        ExploreAllVariables: "Explore all variables",
+        ExploreFilteredVariables: "Explore variables for these results",
         FacetCategory: "Category",
         FacetAccessLevel: "Access level",
         ShowFilters: "Show filters",
@@ -912,6 +947,8 @@ internal sealed record Texts(
             ? "1 published variable in this source."
             : $"{count} published variables in this source.",
         KildeCount: count => count == 1 ? "1 source" : $"{count} sources",
+        SelectedKildeCount: count => count == 1 ? "1 source selected" : $"{count} sources selected",
+        SelectKilde: name => $"Select {name}",
         NoKilderMatch: (search, filters) =>
         {
             if (search is null)
