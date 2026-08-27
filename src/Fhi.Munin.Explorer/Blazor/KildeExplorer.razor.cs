@@ -141,11 +141,21 @@ public sealed partial class KildeExplorer : ComponentBase
     /// <para>
     /// A host that leaves this unwired gets no checkbox column, no count and no button — the ticks
     /// exist to reach a destination this component cannot reach on its own, and a control that
-    /// leads nowhere is worse than one that is not there. The mount point must be fully
-    /// interactive for the same reason <see cref="SelectedKildeIdChanged"/> needs it: an
-    /// <see cref="EventCallback"/> serialises to an empty delegate across a static-SSR to
-    /// interactive-island boundary, and here that takes the column off screen rather than leaving a
-    /// button that silently never fires.
+    /// leads nowhere is worse than one that is not there.
+    /// </para>
+    /// <para>
+    /// "Unwired" includes wiring it from the wrong place, and that trap is worth stating exactly,
+    /// because it cost this repository a sample that looked right. An
+    /// <see cref="EventCallback"/> does not survive being passed from a statically-rendered parent
+    /// into an interactive island. It is not rejected either — Blazor throws for a bare delegate
+    /// parameter, but <see cref="EventCallback"/> is a struct, so it serialises as
+    /// <c>{"HasDelegate":true}</c> and is read back inside the circuit as empty. Putting
+    /// <c>@rendermode</c> on this component's own tag does NOT fix it: that makes the mount point
+    /// interactive while the parent creating the callback stays static. What fixes it is the
+    /// callback being created inside an interactive component — a wrapper the host renders
+    /// interactively, which is what both sample hosts do. Where it is wrong the column is simply
+    /// absent, which is quieter than a dead button but still a puzzle; the same applies to
+    /// <see cref="SelectedKildeIdChanged"/>, where it has no visible symptom at all.
     /// </para>
     /// </remarks>
     [Parameter] public EventCallback<IReadOnlyList<Guid>> ExploreVariablesRequested { get; set; }

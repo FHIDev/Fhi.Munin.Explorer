@@ -1,0 +1,59 @@
+@using Fhi.Munin.Explorer.Blazor
+@using Fhi.Munin.Explorer.Contracts
+@inject NavigationManager Nav
+
+@* The handover out of Kelda, in the one shape that actually works.
+
+   This wrapper exists for a single reason, and it is worth stating plainly because the arrangement
+   it replaces looked correct and was not. An EventCallback does not survive being passed from a
+   statically-rendered parent into an interactive island. It is not rejected either — Blazor throws
+   for a bare delegate parameter, but EventCallback is a struct, so it is serialised as
+   {"HasDelegate":true} and read back inside the circuit as an empty delegate. The handler then
+   never runs, and KildeExplorer, which draws its selection column only where the handover can
+   actually happen, correctly draws nothing.
+
+   `@rendermode` on the component tag does not fix that: it makes the MOUNT POINT interactive while
+   the parent that creates the callback is still static. What fixes it is the callback being created
+   inside the interactive component — so the wrapper is the island, and ExploreVariables below is
+   its own method.
+
+   That is the same shape LegacyHost's KildeExplorerWithUrlState has, and now for the same reason
+   rather than by coincidence: helsedata's Optimizely host mounts a wrapper too. Keeping the page
+   itself static also keeps the notes above the frame rendering on the first byte.
+
+   The front page mounts VariableExplorer straight onto the tag with @rendermode, and that stays
+   right: it passes Filter, which is data, and data serialises across the boundary intact. *@
+
+<KildeExplorer Language="@Language"
+               ExploreVariablesRequested="ExploreVariables" />
+
+@code {
+    [Parameter] public string Language { get; set; } = "no";
+
+    /// <summary>
+    /// Turn the reader's chosen kilder into the query the variable explorer already reads, and go
+    /// there.
+    /// </summary>
+    /// <remarks>
+    /// The host's job, because the host is the only side that knows where it mounted a
+    /// <c>VariableExplorer</c> — the package has no router and never touches the address bar. The
+    /// format is not restated here either: <c>VariableFilter.ToQueryString</c> writes exactly what
+    /// <c>VariableFilter.Parse</c> reads on the front page, so the two ends cannot drift apart.
+    /// <para>
+    /// An empty list is not a selection of none. It is what the component sends when the reader
+    /// narrowed nothing, so it lands on the unfiltered variable list rather than on a query asking
+    /// for no kilder at all.
+    /// </para>
+    /// <para>
+    /// An ordinary in-app navigation, unlike LegacyHost's, which has to force a load because its
+    /// front page is an MVC view with no router behind it. The component is the same in both; what
+    /// differs is the hosting model, which is why both samples are kept.
+    /// </para>
+    /// </remarks>
+    private void ExploreVariables(IReadOnlyList<Guid> kildeIds)
+    {
+        var query = new VariableFilter { KildeIds = kildeIds }.ToQueryString();
+
+        Nav.NavigateTo(query.Length == 0 ? "/" : "/?" + query);
+    }
+}

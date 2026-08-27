@@ -8,8 +8,10 @@ category: Notes for hosts
   why they are handles rather than names that carry meaning nothing else carries. Both sample hosts'
   `host.css` carries rules for all three, right after the kilde view's own block.
   (Fhi.Metadata-2fomm.1)
-- **`KildeExplorer` mounts the way `VariableExplorer` does**, and needs the same of its mount point:
-  fully interactive, because `SelectedKildeIdChanged` is an `EventCallback` and one serialises to an
-  empty delegate across a static-SSR to interactive-island boundary. Set `HeadingLevel` to whatever
-  keeps the surrounding page's outline unbroken, and `Language` to the page's own.
+- **`KildeExplorer` mounts the way `VariableExplorer` does**, and needs the same of the component
+  that mounts it: the parent creating `SelectedKildeIdChanged` must itself be interactive, because
+  an `EventCallback` serialises to an empty delegate across a static-SSR to interactive-island
+  boundary. Making the mount point interactive is not enough — see the note under
+  Fhi.Metadata-5ghur for what that costs and how the samples arrange it. Set `HeadingLevel` to
+  whatever keeps the surrounding page's outline unbroken, and `Language` to the page's own.
   (Fhi.Metadata-2fomm.1)

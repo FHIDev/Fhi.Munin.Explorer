@@ -28,9 +28,12 @@ namespace Fhi.Munin.Explorer.Tests;
 /// <para>
 /// The column is drawn only where the host wired <see cref="KildeExplorer.ExploreVariablesRequested"/>,
 /// which is why almost every test here wires it. The one that does not is the one asserting the
-/// column is absent, and that case is not hypothetical: an <see cref="EventCallback"/> serialises
-/// to an empty delegate across a static-SSR to interactive-island boundary, so a host that mounts
-/// this component without a fully interactive mount point lands in it.
+/// column is absent, and that case is not hypothetical — ModernHost reached it once. An
+/// <see cref="EventCallback"/> created in a statically-rendered parent and passed into an
+/// interactive island serialises as <c>{"HasDelegate":true}</c> and comes back empty, so the
+/// callback is there in the markup and gone in the circuit. bUnit cannot stage that boundary;
+/// what the test below pins is the behaviour the component shows once it is on the wrong side of
+/// one.
 /// </para>
 /// </remarks>
 public class KildeSelectionTest : BunitContext

@@ -60,12 +60,14 @@ public sealed partial class KildeExplorer
     /// over a primary button that does nothing is worse than no column: the reader spends the work
     /// of choosing before finding out there was nowhere to take it.
     /// <para>
-    /// One consequence is worth knowing, and it is in the host notes: this reads false across a
-    /// static-SSR to interactive-island boundary, because an <see cref="Microsoft.AspNetCore.Components.EventCallback"/>
-    /// serialises to an empty delegate there. A mount point that is not fully interactive loses the
-    /// column rather than showing one that cannot fire — the same requirement
-    /// <see cref="SelectedKildeIdChanged"/> already puts on the mount point, failing visibly here
-    /// instead of silently there.
+    /// One consequence is worth knowing, and it is in the host notes: this reads false wherever the
+    /// callback was created in a statically-rendered parent and passed into an interactive island.
+    /// An <see cref="Microsoft.AspNetCore.Components.EventCallback"/> is a struct rather than a
+    /// delegate, so Blazor does not reject it — it serialises as <c>{"HasDelegate":true}</c> and
+    /// comes back empty. Making this component's own mount point interactive is not the remedy;
+    /// creating the callback inside an interactive component is. Until then the column is absent
+    /// rather than dead, which is the better of the two failures and still a puzzle worth the
+    /// paragraph — see the host notes and both samples' wrappers.
     /// </para>
     /// </remarks>
     private bool Selectable => ExploreVariablesRequested.HasDelegate;
