@@ -123,11 +123,11 @@ public class KildeSelectionTest : BunitContext
     /// rather than on a wrong one.
     /// </remarks>
     private static IElement ExploreButton(IRenderedComponent<KildeExplorer> cut) =>
-        cut.Find(".munin-explorer > button.button-square--primary");
+        cut.Find(".munin-explorer-selection button.button-square--primary");
 
     /// <inheritdoc cref="ExploreButton"/>
     private static IReadOnlyList<IElement> ResetButtons(IRenderedComponent<KildeExplorer> cut) =>
-        [.. cut.FindAll(".munin-explorer > button.button-square--secondary")];
+        [.. cut.FindAll(".munin-explorer-selection button.button-square--secondary")];
 
     private static IReadOnlyList<string> RowNames(IRenderedComponent<KildeExplorer> cut) =>
         [.. cut.FindAll(".munin-explorer-kilder tbody th button").Select(b => b.TextContent.Trim())];
@@ -147,7 +147,7 @@ public class KildeSelectionTest : BunitContext
         var cut = Render<KildeExplorer>();
 
         Assert.Empty(cut.FindAll(".munin-explorer-kilder__select"));
-        Assert.DoesNotContain("Utforsk variabler for utvalget", cut.Markup);
+        Assert.Empty(cut.FindAll(".munin-explorer-selection"));
         Assert.DoesNotContain("Nullstill utvalg", cut.Markup);
     }
 
@@ -160,7 +160,65 @@ public class KildeSelectionTest : BunitContext
 
         Assert.Equal(2, RowBoxes(cut).Count);
         Assert.NotNull(HeaderBox(cut));
-        Assert.Contains("Utforsk variabler for utvalget", cut.Markup);
+        Assert.NotNull(ExploreButton(cut));
+    }
+
+    // ---------------------------------------------------------------------------------
+    // What the handover button says, which has to be what it is about to do.
+    // ---------------------------------------------------------------------------------
+
+    [Fact]
+    public void ExploreLabel_WhenNothingIsTickedOrFiltered_ThenItSaysAllVariables()
+    {
+        // The button carries an empty list here, which the other side reads as the whole
+        // catalogue. "for utvalget" would claim a selection nobody made.
+        var (cut, _) = RenderSelectable(new FakeClient(
+            Kilde("Als registeret", "K_ALS"),
+            Kilde("Dødsårsaksregisteret", "K_DAR")));
+
+        Assert.Equal("Utforsk alle variabler", ExploreButton(cut).TextContent.Trim());
+    }
+
+    [Fact]
+    public void ExploreLabel_WhenSomethingIsTicked_ThenItSaysForTheSelection()
+    {
+        var (cut, _) = RenderSelectable(new FakeClient(
+            Kilde("Als registeret", "K_ALS"),
+            Kilde("Dødsårsaksregisteret", "K_DAR")));
+
+        TickRow(cut, "Als registeret");
+
+        Assert.Equal("Utforsk variabler for utvalget", ExploreButton(cut).TextContent.Trim());
+    }
+
+    [Fact]
+    public void ExploreLabel_WhenASearchNarrowsItAndNothingIsTicked_ThenItDoesNotClaimAll()
+    {
+        // The third case, and the reason there are three labels rather than the two asked for.
+        // With a search in force and nothing ticked the button carries the rows on screen - not
+        // the catalogue - and this is exactly when a reader reaches for it, on a list too long to
+        // tick through. A label reading "alle" here would promise everything and deliver a slice.
+        var (cut, _) = RenderSelectable(new FakeClient(
+            Kilde("Als registeret", "K_ALS"),
+            Kilde("Norsk pasientregister", "K_NPR")));
+
+        cut.Find(".searchbox__freetext").Change("als");
+
+        Assert.Equal("Utforsk variabler for treffene", ExploreButton(cut).TextContent.Trim());
+    }
+
+    [Fact]
+    public void ExploreLabel_WhenTheSearchIsCleared_ThenItGoesBackToSayingAll()
+    {
+        // The label is read off the same two questions the payload is, so the two cannot drift.
+        var (cut, _) = RenderSelectable(new FakeClient(
+            Kilde("Als registeret", "K_ALS"),
+            Kilde("Norsk pasientregister", "K_NPR")));
+
+        cut.Find(".searchbox__freetext").Change("als");
+        cut.Find(".munin-explorer-search__clear").Click();
+
+        Assert.Equal("Utforsk alle variabler", ExploreButton(cut).TextContent.Trim());
     }
 
     [Fact]
@@ -536,7 +594,7 @@ public class KildeSelectionTest : BunitContext
     }
 
     [Fact]
-    public void Render_WhenTheColumnIsOnScreen_ThenItAddsExactlyOneInventedName()
+    public void Render_WhenTheColumnIsOnScreen_ThenItAddsExactlyTwoInventedNames()
     {
         // An exact list, like the one next door, and this is the difference between them: with the
         // handover wired the component writes one further name of its own. A second one appearing
@@ -560,8 +618,11 @@ public class KildeSelectionTest : BunitContext
             "munin-explorer-kilder",
             "munin-explorer-kilder__count",
             "munin-explorer-kilder__name",
-            "munin-explorer-kilder__select",     // this bead's, and the only one it adds
+            "munin-explorer-kilder__select",     // this bead's
             "munin-explorer-results",            // shared
+            "munin-explorer-search",             // shared with the variable explorer
+            "munin-explorer-search__clear",      // shared
+            "munin-explorer-selection",          // this bead's
         ], invented);
     }
 
@@ -580,6 +641,56 @@ public class KildeSelectionTest : BunitContext
         Assert.True(
             rules.Any(rule => Squeezed(rule.Declarations).Contains("width:", StringComparison.Ordinal)),
             "No rule gives the checkbox column a width, so it takes an equal share of the table.");
+    }
+
+    [Fact]
+    public void ClearButton_WhenAHostStylesIt_ThenTheFieldGivesUpTheRoomForIt()
+    {
+        // Same shape as the guard above: the general checks ask whether a name has a rule that
+        // declares SOMETHING, which a rule setting only a colour satisfies. What this needs is
+        // particular declarations, and it has already shipped without them twice - once in normal
+        // flow under the box, once absolutely positioned on top of the reader's own text.
+        //
+        // The row has to be a flex line, or the button is not beside the field at all. The field's
+        // container has to be allowed to shrink, or it refuses to give up the width and pushes the
+        // button off the row - min-width: 0 is the half of that which is easy to lose.
+        static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
+
+        IReadOnlyList<string> BlocksFor(string name) =>
+            [.. HostClassNames.SampleDeclarationsFor(name).Select(r => Squeezed(r.Declarations))];
+
+        Assert.True(
+            BlocksFor("munin-explorer-search").Any(d => d.Contains("display:flex", StringComparison.Ordinal)),
+            "No rule puts the field and its clear button on one line.");
+
+        Assert.True(
+            BlocksFor("munin-explorer-search").Any(d => d.Contains("min-width:0", StringComparison.Ordinal)),
+            "Nothing lets the field shrink, so the clear button is pushed off the row.");
+
+        // The greyed state. The button is always on screen, so this is the only thing that says
+        // whether it has anything to do.
+        Assert.True(
+            BlocksFor("munin-explorer-search__clear").Any(d => d.Contains("background-color", StringComparison.Ordinal)),
+            "No rule greys the clear button while there is nothing to clear.");
+    }
+
+    [Fact]
+    public void SelectionButtons_WhenAHostStylesThem_ThenTheyAreSizedAlike()
+    {
+        // Nullstill utvalg and the handover read as a pair, and two buttons of visibly different
+        // widths side by side read as two unrelated controls. Their labels are different lengths in
+        // both languages and one of them changes with the state, so this cannot be fixed by
+        // trimming a wording - it is grid-auto-columns: 1fr over a max-content row, which is the
+        // one thing flex cannot express.
+        static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
+
+        var blocks = HostClassNames.SampleDeclarationsFor("munin-explorer-selection")
+            .Select(r => Squeezed(r.Declarations))
+            .ToList();
+
+        Assert.True(
+            blocks.Any(d => d.Contains("grid-auto-columns:1fr", StringComparison.Ordinal)),
+            "Nothing makes the two selection buttons equal width.");
     }
 
     // ---------------------------------------------------------------------------------

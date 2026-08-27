@@ -142,6 +142,9 @@ else
         @* searchbox__freetext reserves 104px of right padding for a button sitting inside the
            field, which is what searchbox__freetext-submit-button positions there. Both come
            from Stiler; this is the arrangement their own search box uses. *@
+        @* The field and its clear button on one line. The wrapper is what lets a host shorten
+           the box and put the button beside it rather than under it — see the button below. *@
+        <div class="munin-explorer-search">
         <div class="searchbox__freetext-container">
             @* @bind (onchange), deliberately NOT value + @oninput.
 
@@ -186,23 +189,32 @@ else
                     type="submit">@T.SearchButton</button>
         </div>
 
-        @* The way back to the whole list, and this package has to draw it: the field is a
-           type="text", so there is no user-agent ✕ to press. There was one, and it was worse
-           than none — it emptied the box without applying it, leaving a search still in force
-           behind a box reading empty. This button applies what it shows.
+            @* The way back to the whole list, and this package has to draw it: the field is a
+               type="text", so there is no user-agent ✕ to press. There was one, and it was worse
+               than none — it emptied the box without applying it, leaving a search still in force
+               behind a box reading empty. This button applies what it shows.
 
-           Drawn only while there is something to clear, the same rule the selection's own
-           Nullstill follows. That does mean pressing it removes the element focus is on, and
-           focus falls to the document — the cost the submit button's own comment above is
-           about. It is accepted here rather than solved with a focus call, because the
-           alternative is a control that is always on screen and does nothing most of the
-           time, and because the two clear controls in this component must behave alike. *@
-        @if (!string.IsNullOrWhiteSpace(_search))
-        {
-            <button class="hd-button-square button-square--ghost margin-bottom"
+               Always drawn, and greyed rather than removed while there is nothing to clear. A
+               control that appears and disappears beside a field the reader is typing in moves
+               everything next to it, twice per search; one that is always there costs a fixed
+               space and reads as part of the box.
+
+               aria-disabled, NOT disabled. A disabled button drops out of the tab order and,
+               worse, cannot hold focus — so pressing this one would clear the search and then
+               throw the reader's focus to the document, which is the exact failure the submit
+               button beside it refuses to risk. aria-disabled says the same thing to assistive
+               technology, keeps focus where the reader put it, and leaves the styling to a host:
+               the samples grey it, and both already carry [aria-disabled] rules for the facets.
+               The handler is what actually refuses, since the attribute alone stops nothing.
+
+               munin-explorer-search wraps this and the field so a host can lay the two out on
+               one line; munin-explorer-search__clear is this button's own handle. Without either
+               rule they stack, which is usable and is what a host with no stylesheet gets. *@
+            <button class="hd-button-square button-square--secondary munin-explorer-search__clear"
                     type="button"
+                    aria-disabled="@(!string.IsNullOrWhiteSpace(_search) ? "false" : "true")"
                     @onclick="ClearSearchAsync">@T.ClearSearch</button>
-        }
+        </div>
     </form>
 
     @* The filters.

@@ -53,6 +53,14 @@ public partial class VariableExplorer
     /// </remarks>
     private async Task ClearSearchAsync()
     {
+        // aria-disabled does not stop a click, so the refusal lives here — and it matters more on
+        // this side than in Kelda: without it a press on the greyed button would spend a request
+        // asking the API for the search that is already running.
+        if (string.IsNullOrWhiteSpace(_search))
+        {
+            return;
+        }
+
         _search = null;
 
         await SearchAsync();

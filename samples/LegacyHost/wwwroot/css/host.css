@@ -194,6 +194,92 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   margin: 0;
 }
 
+/* ---- the search row and its clear button: two names of ours ----
+
+   The field is an <input type="text"> rather than type="search" on purpose — the user-agent ✕
+   could not be hooked and left the box empty over a search still in force — so the package draws
+   its own clear button, and these two names are how a host places it.
+
+   It was tried as an overlay first, absolutely positioned inside the field beside Søk. That was
+   wrong twice over: it sat on top of the reader's own text, and it could not line up with a
+   button Stiler positions against a different box. The field gives up the room instead, which is
+   what the flex line below does — the container shrinks, the button takes what it needs.
+
+   min-width: 0 on the container is load-bearing and easy to lose: a flex item will not shrink
+   below its content's minimum without it, so the field would refuse to give up the width and
+   push the button off the row.
+
+   Wrapping below 640px, where a shortened field and a button beside it leave too little of
+   either. A host that defines none of this gets them stacked, which is the same place. */
+.munin-explorer-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.munin-explorer-search > .searchbox__freetext-container {
+  flex: 1 1 320px;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.munin-explorer-search__clear {
+  flex: none;
+}
+
+/* The greyed state. The button is always on screen and says with this whether it has anything
+   to do, rather than appearing and disappearing beside a field somebody is typing in.
+
+   It is aria-disabled and not disabled, so that pressing it cannot throw focus to the document
+   — which means it is still focusable and still hoverable, and both have to stop looking like
+   invitations. The component refuses the click itself; this only has to say so. */
+.munin-explorer-search__clear[aria-disabled="true"] {
+  background-color: var(--grey40);
+  color: #fff;
+  cursor: default;
+}
+
+.munin-explorer-search__clear[aria-disabled="true"]:hover {
+  background-color: var(--grey40);
+  color: #fff;
+}
+
+/* ---- the selection bar's two buttons, sized alike ----
+
+   Undo the selection, or take it somewhere. They are a pair, and two buttons of visibly
+   different widths side by side read as two unrelated controls. Their labels are different
+   lengths in both languages and the second one changes with the state — "Utforsk alle variabler"
+   with nothing ticked, "...for treffene" under a filter, "...for utvalget" with ticks — so no
+   wording can be trimmed to match. It is a layout job.
+
+   grid rather than flex, because this is the one thing flex cannot do: grid-auto-columns: 1fr
+   over a max-content container makes every column the width of the widest, which is equal
+   widths sized to the longer label. flex: 1 would share the whole row out instead and stretch
+   two buttons across the page.
+
+   Falling back to one column below 640px, where two equal buttons are narrower than their own
+   words. A host that defines none of this gets them at their natural widths, side by side. */
+.munin-explorer-selection {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  justify-content: start;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  max-width: 100%;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 639px) {
+  .munin-explorer-selection {
+    grid-auto-flow: row;
+    width: 100%;
+  }
+}
+
 /* components/buttons/_squarebutton.scss */
 .hd-button-square {
   cursor: pointer;

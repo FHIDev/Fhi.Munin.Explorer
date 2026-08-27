@@ -180,6 +180,25 @@ public sealed partial class KildeExplorer
             : [.. visible.Select(kilde => kilde.Id)];
     }
 
+    /// <summary>
+    /// What the button says, which has to be what it is about to do.
+    /// </summary>
+    /// <remarks>
+    /// The same three cases <see cref="Handover"/> answers, read off the same two questions, so the
+    /// label and the payload cannot disagree. A single label would be wrong in two of the three:
+    /// "for utvalget" over an untouched list claims a selection nobody made, and "alle variabler"
+    /// over a filtered one promises the whole catalogue and hands over a slice.
+    /// <para>
+    /// Munin's Kelda writes the first wording in all three cases. The divergence is deliberate and
+    /// narrow: the behaviour is identical, only the sentence differs, and it differs by saying out
+    /// loud what the button was always going to carry.
+    /// </para>
+    /// </remarks>
+    private string ExploreLabel =>
+        _ticked.Count > 0 ? T.ExploreVariables
+        : SearchText is null && ChosenCount == 0 ? T.ExploreAllVariables
+        : T.ExploreFilteredVariables;
+
     /// <summary>Hand the selection to the host, which is what the ticks are for.</summary>
     /// <remarks>
     /// Through <c>RaiseAsync</c> like every other callback here, so a host handler that throws does

@@ -762,11 +762,28 @@ public class KildeExplorerTest : BunitContext
     }
 
     [Fact]
-    public void ClearSearch_WhenThereIsNoSearch_ThenThereIsNoButtonToPress()
+    public void ClearSearch_WhenThereIsNoSearch_ThenTheButtonIsThereAndSaysItHasNothingToDo()
     {
-        var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
+        // Always on screen, greyed rather than removed: a control that comes and goes beside a
+        // field somebody is typing in moves everything next to it, twice per search.
+        //
+        // aria-disabled and not disabled, so pressing it cannot throw focus to the document - and
+        // because nothing in the DOM then refuses the click, the component has to. Both halves are
+        // asserted here, since the attribute alone would be a claim the code does not keep.
+        var client = new FakeClient(
+            Kilde("Als registeret", "K_ALS"),
+            Kilde("Norsk pasientregister", "K_NPR"));
 
-        Assert.Empty(cut.FindAll("form button.button-square--ghost"));
+        var cut = RenderWith(client);
+
+        var clear = cut.Find(".munin-explorer-search__clear");
+
+        Assert.Equal("true", clear.GetAttribute("aria-disabled"));
+        Assert.False(clear.HasAttribute("disabled"));
+
+        clear.Click();
+
+        Assert.Equal(["Als registeret", "Norsk pasientregister"], RowNames(cut));
     }
 
     [Fact]
@@ -787,10 +804,10 @@ public class KildeExplorerTest : BunitContext
 
         Assert.Equal(["Als registeret"], RowNames(cut));
 
-        cut.Find("form button.button-square--ghost").Click();
+        cut.Find(".munin-explorer-search__clear").Click();
 
         Assert.Equal(["Als registeret", "Norsk pasientregister"], RowNames(cut));
-        Assert.Empty(cut.FindAll("form button.button-square--ghost"));
+        Assert.Equal("true", cut.Find(".munin-explorer-search__clear").GetAttribute("aria-disabled"));
 
         // The box on screen has to agree with the list under it - that is the whole bug.
         Assert.Equal(string.Empty, cut.Find(".searchbox__freetext").GetAttribute("value") ?? string.Empty);
@@ -2225,6 +2242,8 @@ public class KildeExplorerTest : BunitContext
             "munin-explorer-kilder__count",
             "munin-explorer-kilder__name",
             "munin-explorer-results",            // shared
+            "munin-explorer-search",             // shared with the variable explorer
+            "munin-explorer-search__clear",      // shared
         ], invented);
     }
 

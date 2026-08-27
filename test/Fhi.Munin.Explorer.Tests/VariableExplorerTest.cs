@@ -1217,6 +1217,11 @@ public class VariableExplorerTest : BunitContext
         Assert.Equal(
         [
             "munin-explorer",            // ours, a handle
+            // The search row's wrapper and the clear button inside it. Both are drawn on every
+            // render now: the button is always present and greys out when there is nothing to
+            // clear, rather than appearing and disappearing beside a field being typed in.
+            "munin-explorer-search",
+            "munin-explorer-search__clear",
             "munin-explorer-filters",    // ours, a handle
             "munin-explorer-container",  // ours, Stiler components/munin-explorer/
             "munin-explorer-results",    // ours, Stiler components/munin-explorer/
@@ -5557,6 +5562,11 @@ public class VariableExplorerTest : BunitContext
         Assert.Equal(
         [
             "munin-explorer",            // ours, a handle
+            // The search row's wrapper and the clear button inside it. Both are drawn on every
+            // render now: the button is always present and greys out when there is nothing to
+            // clear, rather than appearing and disappearing beside a field being typed in.
+            "munin-explorer-search",
+            "munin-explorer-search__clear",
             "munin-explorer-filters",    // ours, a handle
             "munin-explorer-breadcrumb", // ours — the trail over the results, which Stiler has
                                             // no breadcrumb rule of any kind to borrow
@@ -6344,10 +6354,10 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Equal("alder", client.LastSearch);
 
-        cut.Find("form button.button-square--ghost").Click();
+        cut.Find(".munin-explorer-search__clear").Click();
 
         Assert.Null(client.LastSearch);
-        Assert.Empty(cut.FindAll("form button.button-square--ghost"));
+        Assert.Equal("true", cut.Find(".munin-explorer-search__clear").GetAttribute("aria-disabled"));
     }
 
     [Fact]
@@ -6362,7 +6372,7 @@ public class VariableExplorerTest : BunitContext
 
         cut.Find(".searchbox__freetext").Change("alder");
         cut.Find("form").Submit();
-        cut.Find("form button.button-square--ghost").Click();
+        cut.Find(".munin-explorer-search__clear").Click();
 
         Assert.Null(reported[^1]);
     }

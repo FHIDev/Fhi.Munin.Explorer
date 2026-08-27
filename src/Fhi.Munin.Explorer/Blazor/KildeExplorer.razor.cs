@@ -530,7 +530,18 @@ public sealed partial class KildeExplorer : ComponentBase
     /// undo the other. The count under the box says how many facets are still in force.
     /// </para>
     /// </remarks>
-    private void ClearSearch() => _search = null;
+    private void ClearSearch()
+    {
+        // aria-disabled tells a reader the button is off; it does not stop a click, and nothing in
+        // the DOM does. So the refusal lives here. Without it a press on the greyed button would
+        // re-render for no reason on every visitor who tries one.
+        if (SearchText is null)
+        {
+            return;
+        }
+
+        _search = null;
+    }
 
     /// <summary>Open <paramref name="kilde"/>'s view, in place of the list.</summary>
     private async Task SelectAsync(KildeSummary kilde)

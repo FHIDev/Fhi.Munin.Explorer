@@ -283,9 +283,20 @@ internal sealed record Texts(
     string ClearSearch,
     string SelectAllKilder,
     string ClearSelection,
-    // The handover itself. Kelda's own wording, kept as it stands: "for utvalget" is what tells the
-    // reader the button carries the ticks with it rather than opening the whole variable list.
+    // The handover, in the three wordings the three things it can carry deserve. One button, and
+    // what it hands over depends on what the reader has done — see Handover in
+    // KildeExplorer.Selection.cs — so one label for all three would be wrong twice.
+    //
+    // ExploreVariables is Kelda's own wording and covers the ticked case: "for utvalget" is what
+    // tells the reader the button carries the ticks with it. ExploreAllVariables covers an
+    // untouched list, where the handover carries nothing and the other side opens unfiltered.
+    // ExploreFilteredVariables covers the case between them, and it is the one worth the third
+    // string: with a search or a facet in force and nothing ticked, the button carries the rows on
+    // screen. Labelling that "alle" would promise the whole catalogue and deliver a slice of it,
+    // in exactly the situation a reader reaches for it — a list too long to tick through.
     string ExploreVariables,
+    string ExploreAllVariables,
+    string ExploreFilteredVariables,
     // Kelda's filter panel. Its heading is FiltersTitle, and two of its four facet headings are
     // strings this record already holds: the kildetype facet is headed with ColumnKildetype and
     // the databehandler facet with FieldDataProcessor, because each facet is a filter over the
@@ -701,6 +712,8 @@ internal sealed record Texts(
         SelectAllKilder: "Velg alle synlige kilder",
         ClearSelection: "Nullstill utvalg",
         ExploreVariables: "Utforsk variabler for utvalget",
+        ExploreAllVariables: "Utforsk alle variabler",
+        ExploreFilteredVariables: "Utforsk variabler for treffene",
         FacetCategory: "Kategori",
         FacetAccessLevel: "Tilgangsnivå",
         ShowFilters: "Vis filtre",
@@ -939,6 +952,8 @@ internal sealed record Texts(
         SelectAllKilder: "Select all visible sources",
         ClearSelection: "Clear selection",
         ExploreVariables: "Explore variables for this selection",
+        ExploreAllVariables: "Explore all variables",
+        ExploreFilteredVariables: "Explore variables for these results",
         FacetCategory: "Category",
         FacetAccessLevel: "Access level",
         ShowFilters: "Show filters",

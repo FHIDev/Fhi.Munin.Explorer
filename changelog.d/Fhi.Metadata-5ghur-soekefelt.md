@@ -12,8 +12,17 @@ category: Fixed
   had also reached the API and been reported to the host for its URL, so a shared link described
   results nobody was looking at. (Fhi.Metadata-5ghur)
 - **The field is now `<input type="text" enterkeyhint="search">` with a *Tøm søket* / *Clear search*
-  button beside it**, drawn only while there is a search to clear. No user-agent ✕ to mislead, a
-  soft keyboard still offers a search key, and one press restores the whole list — in the variable
-  explorer that runs the search again with no term, so the API, the facet counts and
-  `SearchChanged` all follow. Neither clear touches the facets or the filter: a reader who narrowed
-  twice asked for both, and one control must not quietly undo the other. (Fhi.Metadata-5ghur)
+  button beside it.** No user-agent ✕ to mislead, a soft keyboard still offers a search key, and one
+  press restores the whole list — in the variable explorer that runs the search again with no term,
+  so the API, the facet counts and `SearchChanged` all follow. The button is **always on screen**,
+  greyed via `aria-disabled` while there is nothing to clear, rather than appearing and
+  disappearing beside a field somebody is typing in. `aria-disabled` and not `disabled`, so that
+  pressing it cannot throw focus to the document; the component refuses the click itself. Neither
+  clear touches the facets or the filter: a reader who narrowed twice asked for both, and one
+  control must not quietly undo the other. (Fhi.Metadata-5ghur)
+- **Kelda's handover button says what it is about to carry.** One button, three payloads — so three
+  wordings, read off the same two questions the payload is, which is what keeps the label and the
+  ids from disagreeing. *Utforsk variabler for utvalget* with rows ticked, *Utforsk variabler for
+  treffene* when a search or a facet is narrowing and nothing is ticked, and *Utforsk alle
+  variabler* on an untouched list. Munin's Kelda writes the first in all three cases; the behaviour
+  here is identical and only the sentence differs. (Fhi.Metadata-5ghur)
