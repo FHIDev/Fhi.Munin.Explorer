@@ -1234,12 +1234,12 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    table above follows: there was nothing to copy for a list of kilder — Stiler has no table
    component, and helsedata's own variable page lists variables rather than sources — so the shape
    is a <table> and these three dress it rather than carry it. A host that defines none of them
-   still gets eight columns that line up and a name that visibly is a control, which is what an
+   still gets six columns that line up and a name that visibly is a control, which is what an
    element's own browser default buys and an undefined class name does not.
 
-   Kelda's own table has two control columns in front of these eight, a checkbox and an expand
-   toggle, and four more behind a column picker. Neither belongs to the component yet, so neither
-   is named here. */
+   The six are the ones Kelda shows by default. Its own table has two control columns in front of
+   them, a checkbox and an expand toggle, and seven more data columns behind a column picker. None
+   of those belongs to the component yet, so none is named here. */
 .munin-explorer-kilder {
   width: 100%;
   border-collapse: collapse;
@@ -1267,16 +1267,18 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 }
 
 /* No column widths here, unlike the datasamlinger table above, and that is a decision rather than
-   the same omission. The symptom is not present: the three count columns already sit on one line —
-   the header word is wider than the number — and what wraps is the name, the kildetype and the two
-   responsibility columns, which are sentences and are meant to. Measured over 66 kilder at 1440px:
-   Delkilder 82px, Datasamlinger 118px, Variabler 82px, every one of them a single line.
+   the same omission. The symptom is not present: the two count columns and Opprettet already sit
+   on one line — the header word is wider than the value — and what wraps is the name and the
+   kildetype, which are sentences and are meant to. Measured over 66 kilder at 1440px:
+   Datasamlinger 118px, Variabler 82px, both of them a single line.
 
-   The table does have a problem, and widths are not what fixes it: eight columns come to a
-   min-content width of 1056px, so below roughly 1100px it overflows its container and puts a
-   horizontal scrollbar on the whole page. That needs its own issue. */
+   The overflow this note used to describe — eight columns at a min-content width of 1056px, a
+   horizontal scrollbar on the whole page below roughly 1100px — was measured on a table that
+   carried Dataansvarlig and Databehandler, and those institution names are what made it that
+   wide. Both sit behind Kelda's column picker now, so the number no longer describes this
+   table; whether the six still overflow is worth measuring before anyone reaches for widths. */
 
-/* The three columns holding a number, right-aligned and tabular: they are read down the page,
+/* The two columns holding a number, right-aligned and tabular: they are read down the page,
    comparing magnitudes, and proportional digits put the same number in two different widths on
    two rows. Scoped under the table because the rule it has to beat is the shared cell rule above,
    which carries a class and an element — a bare class name would lose to it and the numbers would
