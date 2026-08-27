@@ -237,3 +237,29 @@ jobs:
         # The same script developers can run locally before pushing, so a red check here is
         # never a surprise that only CI knows how to reproduce.
         run: ./scripts/assert-portability-guard-armed.sh
+
+  # WCAG 2.1 AA applies to this package by law, and this job keeps AGENTS.md's accessibility
+  # section - the gate's blind spots included - from being a sentence nobody checks. Its own job,
+  # and needing its name in the required checks to block a merge, for the guards' reasons above.
+  accessibility:
+    name: accessibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet
+        uses: actions/cache@v5
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Scan the sample host with axe
+        # The same script developers can run locally before pushing, so a red check here is
+        # never a surprise that only CI knows how to reproduce.
+        run: ./scripts/check-accessibility.sh

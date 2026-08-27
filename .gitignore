@@ -443,3 +443,5 @@ samples/*/wwwroot/_content/
 # ignored so an interrupted run cannot leave it to be committed by accident; a leftover copy still
 # fails the next build loudly, with the RS0030 that is the whole point of it.
 src/Fhi.Munin.Explorer/PortabilityGuardProbe.g.cs
+# bd worktree
+.worktrees\3b1l4-tabellsemantikk/
