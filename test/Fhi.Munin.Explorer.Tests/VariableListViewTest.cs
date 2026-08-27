@@ -187,6 +187,33 @@ public class VariableListViewTest : BunitContext
     }
 
     [Fact]
+    public void View_WhenAPeriodIsOpenEnded_ThenItReadsTheWayTheExplorerWritesIt()
+    {
+        // "2021-" was this view's own shorthand. The explorer, one region up the same page, writes
+        // the month and the catalogue's word for a period that has not ended.
+        var item = Item("Alder ved diagnose", "V_BDR.ALDER") with
+        {
+            DataFrom = new DateTimeOffset(2021, 8, 1, 0, 0, 0, TimeSpan.Zero),
+            DataTo = null
+        };
+
+        var cut = RenderView(new ListClient(item));
+
+        Assert.Contains("2021", cut.Markup);
+        Assert.Contains("Pågående", cut.Markup);
+        Assert.DoesNotContain("2021–<", cut.Markup);
+    }
+
+    [Fact]
+    public void View_WhenAFieldWasNeverSet_ThenItSaysSoRatherThanLeavingTheCellBlank()
+    {
+        // An empty cell beside a filled one reads as data that went missing, not data nobody entered.
+        var cut = RenderView(new ListClient(Orphan()));
+
+        Assert.Contains("Ikke oppgitt", cut.Markup);
+    }
+
+    [Fact]
     public void View_WhenTheApiNamesADatatype_ThenTheNameIsShownRatherThanTheCode()
     {
         // The list stores the code the search endpoint hands out. Left alone it renders as "2" beside

@@ -69,22 +69,35 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     /// <summary>
     /// The years a variable has data for, written the way the result rows and the detail panel
-    /// write it — same shape as <c>VariableExplorer.Period</c>, so a variable does not read
-    /// differently here than where it was saved from.
+    /// write it — the same words as the explorer's own period column, so a variable does not
+    /// read differently here than where it was saved from. Only the words: the explorer draws a
+    /// block with a coverage bar beside it, and this is one cell in a row.
     /// </summary>
-    private static string? Period(VariableListItem item)
+    private string Period(VariableListItem item)
     {
-        var from = item.DataFrom?.Year.ToString();
-        var to = item.DataTo?.Year.ToString();
-
-        return (from, to) switch
+        if (item.DataFrom is null && item.DataTo is null)
         {
-            (null, null) => null,
-            (not null, null) => $"{from}–",
-            (null, not null) => $"–{to}",
-            _ => from == to ? from! : $"{from}–{to}"
-        };
+            return T.NotSpecified;
+        }
+
+        var from = item.DataFrom is { } f ? MonthYear(f) : "?";
+        var to = item.DataTo is { } t ? MonthYear(t) : T.Ongoing;
+
+        return $"{from} – {to}";
     }
+
+    /// <summary>A value, or the catalogue's own words for one that was never set.</summary>
+    /// <remarks>
+    /// The explorer writes NotSpecified in this column rather than leaving it blank, and an empty cell
+    /// beside a filled one reads as data that went missing rather than data nobody entered.
+    /// </remarks>
+    private string Or(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? T.NotSpecified : value;
+
+    /// <summary>A date as month and year, in the reader's language.</summary>
+    /// <remarks>The same format string as the explorer's own, so the two read alike.</remarks>
+    private string MonthYear(DateTimeOffset date) =>
+        date.ToString("MMM yyyy", CatalogueProperties.Culture(Language));
 
     /// <summary>
     /// The API's own answer, not ours. The client already derives it when the envelope omits it
