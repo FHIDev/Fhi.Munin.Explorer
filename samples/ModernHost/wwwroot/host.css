@@ -1195,7 +1195,9 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    period is a percentage instead — nowrapping it costs 250px, which a wide table can pay and a
    673px one cannot without taking the description down to 191px. A percentage degrades instead:
    one line where there is room, and a break at the dash rather than inside a date where there is
-   not.
+   not. 24% is the widest period the catalogue holds — "1. januar 2020 – 4. november 2024", 226px —
+   with room over; the widest a Norwegian date pair can get is 282px, and that one wraps at the
+   dash, which is the point of not nowrapping it.
 
    The name and the description are left alone on purpose. That is what keeps a datasamling with no
    description from paying for one — the two auto columns still divide what is left by content, so
@@ -1210,7 +1212,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    Static/scss/components/munin-explorer/_trail.scss. That is the host helsedata.no actually loads;
    this copy is here so the sample renders what the host renders. */
 .munin-explorer-kilde__datasamlinger tr > :nth-child(3) {
-  width: 22%;
+  width: 24%;
 }
 
 .munin-explorer-kilde__datasamlinger tbody td:nth-child(4) {
