@@ -20,11 +20,9 @@ category: Notes for hosts
   Both sample hosts carry all of it, and tests here assert the load-bearing declarations rather
   than just the names. A host that supplies none of it still gets every control, stacked and at
   natural widths. (Fhi.Metadata-5ghur)
-- **Check one selector in Stiler if your search field looks wrong after upgrading.** Both
-  explorers' search inputs changed from `type="search"` to `type="text"` (see Fixed). The class
-  name is unchanged — it is still `searchbox__freetext`, still Stiler's own — so a rule written as
-  `.searchbox__freetext { … }` is unaffected, which is how both sample hosts write it. A rule
-  written as `input[type="search"].searchbox__freetext { … }` would stop matching. Nothing in this
-  repository can see Stiler's compiled `main.css`, so this one is stated rather than verified: if
-  the field renders at browser defaults after upgrading, that selector is why, and the fix is a
-  one-word change in Stiler rather than anything here. (Fhi.Metadata-5ghur)
+- **The `type="search"` → `type="text"` change is safe on Stiler, and this was checked rather
+  than assumed.** Every selector in helsedata's compiled bundle that mentions the search field is
+  a bare class selector — `.searchbox__freetext`, `.searchbox__freetext:focus`,
+  `.searchbox__freetext::placeholder`, `.searchbox__freetext-container` — with nothing scoped to
+  `input[type="search"]`. Read off `https://helsedata.no/dist/styles.<hash>.css` on 2026-08-27.
+  The field keeps every rule it had. (Fhi.Metadata-5ghur)
