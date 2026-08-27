@@ -45,6 +45,11 @@ public sealed record KildeDetail
     [JsonPropertyName("sistOppdatert")] public DateTimeOffset LastUpdated { get; init; }
 
     /// <summary>Curated free-form metadata; see <see cref="KildeSummary.AdditionalProperties"/>.</summary>
+    /// <remarks>
+    /// Non-nullable, and kept so by the deserialiser rather than by the initialiser below it —
+    /// see <see cref="KildeSummary.AdditionalProperties"/> for what an explicit JSON null does
+    /// to that initialiser and what reads it instead.
+    /// </remarks>
     [JsonPropertyName("additionalProperties")]
     public IReadOnlyDictionary<string, string?> AdditionalProperties { get; init; } =
         new Dictionary<string, string?>();
@@ -128,6 +133,11 @@ public sealed record KildeDatasamling
     [JsonPropertyName("effectiveKildetype")] public string EffectiveKildetype { get; init; } = "";
 
     /// <summary>The datasamling's own curated metadata; see <see cref="KildeSummary.AdditionalProperties"/>.</summary>
+    /// <remarks>
+    /// Non-nullable, and kept so by the deserialiser rather than by the initialiser below it —
+    /// see <see cref="KildeSummary.AdditionalProperties"/> for what an explicit JSON null does
+    /// to that initialiser and what reads it instead.
+    /// </remarks>
     [JsonPropertyName("additionalProperties")]
     public IReadOnlyDictionary<string, string?> AdditionalProperties { get; init; } =
         new Dictionary<string, string?>();
@@ -188,6 +198,11 @@ public sealed record KildeDelkilde
     [JsonPropertyName("effectiveKildetype")] public string EffectiveKildetype { get; init; } = "";
 
     /// <summary>The delkilde's own curated metadata.</summary>
+    /// <remarks>
+    /// Non-nullable, and kept so by the deserialiser rather than by the initialiser below it —
+    /// see <see cref="KildeSummary.AdditionalProperties"/> for what an explicit JSON null does
+    /// to that initialiser and what reads it instead.
+    /// </remarks>
     [JsonPropertyName("additionalProperties")]
     public IReadOnlyDictionary<string, string?> AdditionalProperties { get; init; } =
         new Dictionary<string, string?>();

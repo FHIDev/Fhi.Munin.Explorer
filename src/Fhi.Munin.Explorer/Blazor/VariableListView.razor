@@ -104,25 +104,38 @@
         }
         else if (_page is not null)
         {
-            <div class="munin-explorer-data-list">
+            @* role="table" over the same seven columns the explorer's own result list draws, and
+               for the same reason. These rows share helsedata's `munin-explorer-data-list` markup
+               with `VariableExplorer`, so they shared its failure too: measured in Chrome's
+               accessibility tree, not one row, column or header of the reader's own saved list
+               reached assistive technology — a flat run of text with no way to hear which column a
+               value was in (WCAG 1.3.1). axe never flagged it, because there is no sortable header
+               here to hang an invalid `aria-sort` on, and missing structure is not a rule
+               violation; it is just missing.
 
-                <div class="munin-explorer-data-list__item__row munin-explorer-data-list__item__row--header">
-                    <div class="munin-explorer-dataitem-header">
-                        <span class="munin-explorer-dataitem-header__name">@T.ColumnVariable</span>
-                        <span class="munin-explorer-dataitem-header__code">@T.FieldCode</span>
-                        <span class="munin-explorer-dataitem-header__source">@T.FieldSource</span>
-                        <span class="munin-explorer-dataitem-header__dataCollection">@T.FieldDataCollection</span>
-                        <span class="munin-explorer-dataitem-header__theme">@T.FieldVariableGroup</span>
-                        <span class="munin-explorer-dataitem-header__dataType">@T.FieldDataType</span>
-                        <span class="munin-explorer-dataitem-header__period">@T.FieldDataPeriod</span>
+               No rowgroups: unlike the explorer's list, the header row and the data rows are
+               siblings here, and a table may own rows directly. The wrappers that only lay
+               something out wear `role="none"` so the cells inside reach the row they belong to —
+               a row owns nothing but cells. *@
+            <div class="munin-explorer-data-list" role="table" aria-label="@ShownListName">
+
+                <div class="munin-explorer-data-list__item__row munin-explorer-data-list__item__row--header" role="none">
+                    <div class="munin-explorer-dataitem-header" role="row">
+                        <span class="munin-explorer-dataitem-header__name" role="columnheader">@T.ColumnVariable</span>
+                        <span class="munin-explorer-dataitem-header__code" role="columnheader">@T.FieldCode</span>
+                        <span class="munin-explorer-dataitem-header__source" role="columnheader">@T.FieldSource</span>
+                        <span class="munin-explorer-dataitem-header__dataCollection" role="columnheader">@T.FieldDataCollection</span>
+                        <span class="munin-explorer-dataitem-header__theme" role="columnheader">@T.FieldVariableGroup</span>
+                        <span class="munin-explorer-dataitem-header__dataType" role="columnheader">@T.FieldDataType</span>
+                        <span class="munin-explorer-dataitem-header__period" role="columnheader">@T.FieldDataPeriod</span>
                     </div>
                 </div>
 
                 @foreach (var item in _page.Items)
                 {
-                    <div class="munin-explorer-data-list__item">
-                        <div class="munin-explorer-data-list__item__row">
-                            <div class="munin-explorer-dataitem-main">
+                    <div class="munin-explorer-data-list__item" role="row">
+                        <div class="munin-explorer-data-list__item__row" role="none">
+                            <div class="munin-explorer-dataitem-main" role="none">
 
                                 @* An entry whose variable has no row in the read model keeps its place
                                    rather than being filtered out: the API returns it on purpose so the
@@ -135,28 +148,32 @@
                                    things about the same row. CatalogueLang leaves the attribute
                                    off for the sentence, which is ours and in the reader's
                                    language, not Norwegian catalogue text. *@
-                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__name">
+                                @* rowheader rather than cell, the call Kelda's own table makes with
+                                   <th scope="row">: the variable's name is what the rest of the row
+                                   is about, so a reader hearing one cell out of context is told
+                                   which variable it belongs to. *@
+                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__name" role="rowheader">
                                     <span class="munin-explorer-dataitem-main__column__text"
                                           id="@RowNameId(item)"
                                           lang="@CatalogueLang(item.VariableName)">@RowName(item)</span>
                                 </span>
 
-                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__code">
+                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__code" role="cell">
                                     <span class="munin-explorer-dataitem-main__column__text" lang="no">@item.VariableCode</span>
                                 </span>
-                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__source">
+                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__source" role="cell">
                                     <span class="munin-explorer-dataitem-main__column__text" lang="no">@(item.KildeShortName ?? item.KildeName)</span>
                                 </span>
-                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__dataCollection">
+                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__dataCollection" role="cell">
                                     <span class="munin-explorer-dataitem-main__column__text" lang="no">@item.DatasamlingName</span>
                                 </span>
-                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__theme">
+                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__theme" role="cell">
                                     <span class="munin-explorer-dataitem-main__column__text" lang="@CatalogueLang(item.VariabelgruppeName)">@Or(item.VariabelgruppeName)</span>
                                 </span>
-                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__dataType">
+                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__dataType" role="cell">
                                     <span class="munin-explorer-dataitem-main__column__text">@DataTypeName(item.DataType)</span>
                                 </span>
-                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__period">
+                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__period" role="cell">
                                     <span class="munin-explorer-dataitem-main__column__text">@Period(item)</span>
                                 </span>
 
@@ -180,12 +197,20 @@
                                    id out. Two orphans do then announce alike — a duplicate name
                                    on two controls is not a WCAG failure, and ten seconds of
                                    spelt-out GUID for a value the row does not show anywhere is
-                                   worse than one. *@
-                                <button class="hd-button-square button-square--ghost"
-                                        type="button"
-                                        id="@RemoveButtonId(item)"
-                                        aria-labelledby="@RemoveLabelledBy(item)"
-                                        @onclick="() => RemoveAsync(item.VariableId)">@T.RemoveFromThisList</button>
+                                   worse than one.
+
+                                   The <span role="cell"> around it is the row's last cell. A row
+                                   owns nothing but cells, and a <button> cannot be one without
+                                   ceasing to be a button; the wrapper carries no class, so it
+                                   becomes the flex item the button already was and the column
+                                   still sizes the same. *@
+                                <span role="cell">
+                                    <button class="hd-button-square button-square--ghost"
+                                            type="button"
+                                            id="@RemoveButtonId(item)"
+                                            aria-labelledby="@RemoveLabelledBy(item)"
+                                            @onclick="() => RemoveAsync(item.VariableId)">@T.RemoveFromThisList</button>
+                                </span>
                             </div>
                         </div>
                     </div>

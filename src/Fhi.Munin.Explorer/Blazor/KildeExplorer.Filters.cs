@@ -468,9 +468,9 @@ public sealed partial class KildeExplorer
     /// <summary>One of the curated properties, or null where the kilde has not got it.</summary>
     /// <remarks>
     /// Null-conditional although <see cref="KildeSummary.AdditionalProperties"/> is declared
-    /// non-nullable: its initialiser only survives a key that is <em>absent</em> from the payload,
-    /// and <c>System.Text.Json</c> writes null straight over it for an explicit
-    /// <c>"additionalProperties": null</c>. This runs for every kilde on every render, from the
+    /// non-nullable — see that declaration for how a null gets in, and
+    /// <c>NullAsEmptyCollections</c> for what stops it arriving from this package's own client. A
+    /// host can substitute that client, and this runs for every kilde on every render, from the
     /// counting and from the filtering both, so one malformed entry in the list would otherwise
     /// take the whole panel down at render time — where the try/catch around the fetch is long
     /// since finished and cannot catch it.

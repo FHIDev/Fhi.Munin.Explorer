@@ -92,6 +92,11 @@ public sealed record DatasamlingDetail
     [JsonPropertyName("inklusjonsOgEksklusjonskriterier")] public string? InclusionAndExclusionCriteria { get; init; }
 
     /// <summary>Curated free-form metadata; see <see cref="KildeSummary.AdditionalProperties"/>.</summary>
+    /// <remarks>
+    /// Non-nullable, and kept so by the deserialiser rather than by the initialiser below it —
+    /// see <see cref="KildeSummary.AdditionalProperties"/> for what an explicit JSON null does
+    /// to that initialiser and what reads it instead.
+    /// </remarks>
     [JsonPropertyName("additionalProperties")]
     public IReadOnlyDictionary<string, string?> AdditionalProperties { get; init; } =
         new Dictionary<string, string?>();
