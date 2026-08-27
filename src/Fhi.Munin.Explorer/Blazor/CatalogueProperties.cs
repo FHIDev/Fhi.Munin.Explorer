@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Text.Json;
 using Fhi.Munin.Explorer.Contracts;
@@ -119,20 +120,6 @@ internal static class CatalogueProperties
     internal static string? Foreign(string language, string reader)
         => string.Equals(language, reader, StringComparison.OrdinalIgnoreCase) ? null : language;
 
-    /// <summary>The bag a source with no curated properties at all has.</summary>
-    /// <remarks>
-    /// Stands in for a null bag so the two methods below can be written as though it is always
-    /// there — see <see cref="Rows"/> for why null reaches them.
-    /// <para>
-    /// Internal rather than private because the statistics table in <c>VariableView</c> reads a
-    /// statistic's bag directly rather than through <see cref="Rows"/>, and needs the same stand-in
-    /// for the same reason. Shared rather than allocated there, so a table of statistics does not
-    /// build one empty dictionary per row.
-    /// </para>
-    /// </remarks>
-    internal static readonly IReadOnlyDictionary<string, string?> NoProperties =
-        new Dictionary<string, string?>();
-
     /// <summary>
     /// The properties worth drawing, as label and value, in the catalogue's order.
     /// </summary>
@@ -141,13 +128,13 @@ internal static class CatalogueProperties
     /// keys the catalogue no longer curates, and "FlerkodetFelt: 1" tells a reader nothing.
     /// <para>
     /// <paramref name="values"/> is nullable although every contract declares
-    /// <c>AdditionalProperties</c> non-nullable with an initialiser: that initialiser only survives
-    /// a key <em>absent</em> from the payload, and <c>System.Text.Json</c> writes null straight over
-    /// it for an explicit <c>"additionalProperties": null</c>. Null is taken as the empty bag, which
-    /// is what the payload means by it — the source has no curated properties — and it is the same
-    /// answer <c>KildeExplorer.Property</c> gives on the list side, so the two places do not
-    /// disagree about one question. Guarded here rather than at each call site because all three of
-    /// them pass a field declared that way: <c>KildeView</c>, <c>VariableView</c> and the variable
+    /// <c>AdditionalProperties</c> non-nullable — see
+    /// <see cref="Contracts.KildeSummary.AdditionalProperties"/> for how a null gets in, and
+    /// <c>NullAsEmptyCollections</c> for what stops it arriving from this package's own client. A
+    /// host can substitute that client, so it is taken here as well: as the empty bag, which is
+    /// what the payload means by it, and which is the same answer <c>KildeExplorer.Property</c>
+    /// gives on the list side. Guarded here rather than at each call site because all three of them
+    /// pass a field declared that way: <c>KildeView</c>, <c>VariableView</c> and the variable
     /// panel's own rows. Unguarded it throws while rendering, where the try/catch around the fetch
     /// is long since finished and cannot catch it.
     /// </para>
@@ -158,7 +145,7 @@ internal static class CatalogueProperties
         string reader)
     {
         var rows = new List<PropertyRow>();
-        var present = values ?? NoProperties;
+        var present = values ?? ReadOnlyDictionary<string, string?>.Empty;
 
         foreach (var entry in metadata.OrderBy(m => m.SortOrder).ThenBy(m => m.Key, StringComparer.Ordinal))
         {
@@ -222,7 +209,7 @@ internal static class CatalogueProperties
         string reader,
         IReadOnlySet<string>? drawnElsewhere = null)
     {
-        var present = values ?? NoProperties;
+        var present = values ?? ReadOnlyDictionary<string, string?>.Empty;
         var groups = new List<(string Name, string Language, int Order, List<PropertyMetadataEntry> Entries)>();
 
         foreach (var entry in metadata)

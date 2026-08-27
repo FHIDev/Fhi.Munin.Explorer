@@ -15,7 +15,13 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
 {
     // Shared by the client and any test host, so a serialisation difference cannot
     // quietly appear between them.
-    internal static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+    internal static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
+    {
+        // See NullAsEmptyCollections. Without it an explicit "additionalProperties": null in the
+        // payload lands in a property the contract declares non-nullable, and the first read of it
+        // throws while rendering.
+        Converters = { new NullAsEmptyCollections() }
+    };
 
     public async Task<Page<VariableSummary>> SearchVariablesAsync(
         string? search,
