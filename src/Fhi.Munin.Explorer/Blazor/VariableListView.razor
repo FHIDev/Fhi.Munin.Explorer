@@ -38,9 +38,16 @@
                VariableExplorer.razor:140 — not a placeholder. A placeholder is not an accessible
                name: a screen reader announces an unnamed edit field, and the hint disappears the
                moment the reader starts typing, which is the one time they most need to know what
-               the field is for. WCAG 4.1.2 and 3.3.2. The id carries the per-mount discriminator
-               every other id here carries, so two of this component on one page do not tie both
-               labels to the first field. *@
+               the field is for. WCAG 4.1.2 and 3.3.2.
+
+               `form-element__label` is borrowed, not ours — Stiler's own label style, read back
+               off its compiled stylesheet and already worn by the search field and the filter
+               panel's legend (VariableExplorer.razor:140, 209, 216). README's list of borrowed
+               names carries it. No new name is being invented here; a name Stiler has never heard
+               of would render as a raw browser default on a host that has only Stiler.
+
+               The id carries a per-mount discriminator, the shape the explorer's own ids use, so
+               two of this component on one page do not tie both labels to the first field. *@
             <label class="form-element__label" for="@NewListNameId">@T.NewListName</label>
             <input type="text"
                    id="@NewListNameId"
@@ -120,19 +127,17 @@
                                 @* An entry whose variable has no row in the read model keeps its place
                                    rather than being filtered out: the API returns it on purpose so the
                                    paging totals stay honest, and a list of 247 that answered with 246
-                                   would hide that something went. It says so instead. *@
-                                @if (string.IsNullOrWhiteSpace(item.VariableName))
-                                {
-                                    <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__name">
-                                        <span class="munin-explorer-dataitem-main__column__text">@T.VariableNoLongerAvailable</span>
-                                    </span>
-                                }
-                                else
-                                {
-                                    <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__name">
-                                        <span class="munin-explorer-dataitem-main__column__text" lang="no">@item.VariableName</span>
-                                    </span>
-                                }
+                                   would hide that something went. It says so instead.
+
+                                   RowName decides which of the two it is, and the remove button's
+                                   accessible name is built off the same predicate — written out
+                                   twice, the cell and the button could come to say different
+                                   things about the same row. CatalogueLang leaves the attribute
+                                   off for the sentence, which is ours and in the reader's
+                                   language, not Norwegian catalogue text. *@
+                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__name">
+                                    <span class="munin-explorer-dataitem-main__column__text" lang="@CatalogueLang(item.VariableName)">@RowName(item)</span>
+                                </span>
 
                                 <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__code">
                                     <span class="munin-explorer-dataitem-main__column__text" lang="no">@item.VariableCode</span>
@@ -157,10 +162,13 @@
                                    button in it removes something. The accessible name says which
                                    one: without it a list of forty is forty controls that read
                                    "Fjern", and a screen reader user has no way to tell which row
-                                   they are standing on. WCAG 4.1.2. *@
+                                   they are standing on. WCAG 4.1.2. An entry whose variable has
+                                   left the catalogue has no name to say, so RemoveLabel gives it
+                                   a sentence naming its id — otherwise two retracted variables
+                                   would give two buttons reading the same thing. *@
                                 <button class="hd-button-square button-square--ghost"
                                         type="button"
-                                        aria-label="@T.RemoveFromThisListLabel(RowName(item))"
+                                        aria-label="@RemoveLabel(item)"
                                         @onclick="() => RemoveAsync(item.VariableId)">@T.RemoveFromThisList</button>
                             </div>
                         </div>

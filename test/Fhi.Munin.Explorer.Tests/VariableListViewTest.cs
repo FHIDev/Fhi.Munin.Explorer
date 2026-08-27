@@ -540,13 +540,80 @@ public class VariableListViewTest : BunitContext
     public void View_WhenAnEntryHasNoVariableLeft_ThenItsRemoveButtonStillSaysWhatItRemoves()
     {
         // An orphaned entry has no name to put in the sentence. Left to the raw value the button
-        // would announce with a hole where the variable should be — so it says the same thing the
-        // row says.
-        var cut = RenderView(new ListClient(Orphan()));
+        // would announce with a hole where the variable should be — so it says that the variable
+        // is gone, and which one it was.
+        var orphan = Orphan();
+        var cut = RenderView(new ListClient(orphan));
 
         var name = AccessibleName.Of(cut.Find(".munin-explorer-dataitem-main button"));
 
-        Assert.Contains("Variabelen er ikke tilgjengelig lenger", name, StringComparison.Ordinal);
+        Assert.Contains("ikke tilgjengelig lenger", name, StringComparison.Ordinal);
+        Assert.Contains("Fjern", name, StringComparison.Ordinal);
+        Assert.Contains(orphan.VariableId.ToString(), name, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void View_WhenTwoEntriesHaveNoVariableLeft_ThenTheirRemoveButtonsStillDiffer()
+    {
+        // The sentence shown in place of a name is a constant, so naming both orphans after it
+        // would rebuild the defect this label removes — two buttons announcing the identical
+        // thing, one row apart. A single orphan cannot show that, which is why there are two here.
+        // VariableList.cs says the display fields may all be null together, so the id is the only
+        // thing left that tells them apart.
+        var first = Orphan();
+        var second = Orphan();
+        var cut = RenderView(new ListClient(first, second));
+
+        var names = cut.FindAll(".munin-explorer-dataitem-main button")
+            .Select(AccessibleName.Of)
+            .ToList();
+
+        Assert.Equal(2, names.Count);
+        Assert.Equal(2, names.Distinct(StringComparer.Ordinal).Count());
+        Assert.Contains(first.VariableId.ToString(), names[0], StringComparison.Ordinal);
+        Assert.Contains(second.VariableId.ToString(), names[1], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void View_WhenTheReaderHasTwoLists_ThenThePickerIsNamedByItsLabelAndNotByItsOptions()
+    {
+        // The picker is a <select> inside its own <label>, so its name comes from the words around
+        // it — not from the options, which are the reader's list names and would make the control
+        // announce as "Velg liste Mine hjertevariabler Hjerte og kar". The option text is the
+        // select's value, not its name.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListCount = 2 });
+
+        Assert.Equal("Velg liste", AccessibleName.Of(cut.Find("select")));
+    }
+
+    [Fact]
+    public void View_WhenTwoViewsAreOnOnePage_ThenTheirNameFieldsDoNotShareAnId()
+    {
+        // The host decides where this component goes, and helsedata's CMS can put two of it on one
+        // page. Duplicate ids are a WCAG 4.1.1 failure, and here they cost the thing the label was
+        // added for: both <label for> would resolve to whichever field rendered first, leaving the
+        // second one unnamed again. Nothing catches that in a page with one mount — the shape this
+        // borrows from the explorer's own guard, VariableExplorerTest.cs
+        // Source_WhenTwoExplorersAreOnOnePage_ThenTheirPanelsDoNotShareIds.
+        Services.AddSingleton<IMuninExplorerClient>(new ListClient { HasList = false });
+        Services.AddScoped<VariableListState>();
+
+        var a = Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, true));
+        var b = Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, true));
+
+        var first = a.Find("input[type=text]");
+        var second = b.Find("input[type=text]");
+
+        Assert.NotEqual(first.Id, second.Id);
+
+        // And each label points at its own field rather than at the same one, which is the half an
+        // id comparison does not cover: two different ids with both labels aimed at the first
+        // would still leave the second field unnamed.
+        Assert.Equal(first.Id, a.Find("label[for]").GetAttribute("for"));
+        Assert.Equal(second.Id, b.Find("label[for]").GetAttribute("for"));
+
+        Assert.Equal("Navn på ny liste", AccessibleName.Of(first));
+        Assert.Equal("Navn på ny liste", AccessibleName.Of(second));
     }
 
     [Fact]

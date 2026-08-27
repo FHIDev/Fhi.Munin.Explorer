@@ -72,12 +72,18 @@ internal static class AccessibleName
             }
         }
 
-        // A control wrapped in a label is named by it — the shape the kodeverk checkbox uses.
+        // A control wrapped in a label is named by it — the shape the kodeverk checkbox uses, and
+        // the list picker.
         var wrapping = element.Closest("label");
 
-        if (wrapping is not null && wrapping.TextContent.Trim().Length > 0)
+        if (wrapping is not null)
         {
-            return wrapping.TextContent.Trim();
+            var text = TextExcept(wrapping, element);
+
+            if (text.Length > 0)
+            {
+                return text;
+            }
         }
 
         // Content, for the controls that are named by it. A button is; an input never is, which is
@@ -88,6 +94,30 @@ internal static class AccessibleName
         }
 
         return "";
+    }
+
+    /// <summary>
+    /// The label's own words, with the control it names left out of them.
+    /// </summary>
+    /// <remarks>
+    /// <c>TextContent</c> alone is wrong for a label that wraps its control, which is the shape
+    /// this component uses twice. The list picker is a <c>&lt;select&gt;</c> inside its label, and
+    /// the select's text content is every option in it — so the whole answer would be "Velg liste
+    /// Liste A Liste B Liste C" for a control that announces as "Velg liste". accname skips the
+    /// element being named when it walks the label, and so does this: the traversal is what the
+    /// name is built from, not the label's flattened text.
+    /// </remarks>
+    private static string TextExcept(IElement label, IElement named)
+    {
+        var words = label.Descendants<IText>()
+            .Where(text => !named.Contains(text))
+            .Select(text => text.Data);
+
+        // Runs of whitespace collapse to one, the way a screen reader flattens them — otherwise
+        // the newlines and indentation Razor writes around the control land in the middle of the
+        // name and no equality assertion can be written against it.
+        return string.Join(" ", string.Concat(words)
+            .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
     }
 
     /// <summary>

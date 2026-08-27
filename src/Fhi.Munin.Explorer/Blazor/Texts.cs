@@ -159,9 +159,17 @@ internal sealed record Texts(
     string RemoveFromThisList,
     // (name) — the saved-list row's remove button as an accessible name. Same reason as the two
     // above, and worse here: every row's button says the single word "Fjern", so a list of forty
-    // is forty identical controls. "Fjern" opens the sentence, which keeps it a contiguous
-    // substring of the accessible name (WCAG 2.5.3).
+    // is forty identical controls. The name goes after a colon, the shape the two above use: the
+    // slot takes a variable's name and reads as one, and a clause dropped into the middle of the
+    // phrase would not. "Fjern" still opens the sentence, which keeps the visible word a
+    // contiguous substring of the accessible name (WCAG 2.5.3).
     Func<string, string> RemoveFromThisListLabel,
+    // (id) — the same button on a row whose variable has left the catalogue. There is no name to
+    // put after the colon, and the sentence shown in its place is the same on every such row, so
+    // two retracted variables would give two buttons announcing the identical thing. The id is
+    // the only thing left that tells them apart: VariableList.cs documents that the display
+    // fields may all be null together, so the code is gone too.
+    Func<Guid, string> RemoveUnavailableFromThisListLabel,
     string ListLoadError,
     // Shown for an entry whose variable is no longer in the catalogue - retracted, unpublished,
     // or not yet projected. The row stays so the paging totals keep meaning what they say.
@@ -566,7 +574,9 @@ internal sealed record Texts(
         NoListsYet: "Du har ingen variabellister ennå.",
         EmptyList: "Denne listen er tom.",
         RemoveFromThisList: "Fjern",
-        RemoveFromThisListLabel: name => $"Fjern {name} fra denne listen",
+        RemoveFromThisListLabel: name => $"Fjern fra denne listen: {name}",
+        RemoveUnavailableFromThisListLabel: id =>
+            $"Fjern fra denne listen: variabel {id}, ikke tilgjengelig lenger",
         ListLoadError: "Kunne ikke hente listen nå. Prøv igjen om litt.",
         VariableNoLongerAvailable: "Variabelen er ikke tilgjengelig lenger",
         DownloadList: "Last ned listen",
@@ -806,7 +816,9 @@ internal sealed record Texts(
         NoListsYet: "You have no variable lists yet.",
         EmptyList: "This list is empty.",
         RemoveFromThisList: "Remove",
-        RemoveFromThisListLabel: name => $"Remove {name} from this list",
+        RemoveFromThisListLabel: name => $"Remove from this list: {name}",
+        RemoveUnavailableFromThisListLabel: id =>
+            $"Remove from this list: variable {id}, no longer available",
         ListLoadError: "Could not fetch the list just now. Try again shortly.",
         VariableNoLongerAvailable: "The variable is no longer available",
         DownloadList: "Download the list",

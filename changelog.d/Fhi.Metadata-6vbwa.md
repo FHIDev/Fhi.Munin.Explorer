@@ -8,4 +8,6 @@ category: Fixed
   all announcing "Lagre i liste", and a saved list of forty was forty announcing "Fjern", with
   nothing to say which row a screen reader user was standing on. Each now carries an `aria-label`
   naming its own variable, in both languages; the words on the button are unchanged and stay part of
-  the sentence, so speech input still reaches them. (Fhi.Metadata-6vbwa)
+  the sentence, so speech input still reaches them. A row whose variable has left the catalogue has
+  no name to say, so its button names the entry's id instead — two retracted variables would
+  otherwise give two buttons announcing the same sentence. (Fhi.Metadata-6vbwa)

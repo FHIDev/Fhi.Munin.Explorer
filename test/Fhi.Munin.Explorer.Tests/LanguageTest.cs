@@ -269,6 +269,17 @@ public class LanguageTest : BunitContext
             Assert.Contains(texts.RemoveFromList, texts.RemoveFromListLabel(variable), StringComparison.Ordinal);
             Assert.Contains(
                 texts.RemoveFromThisList, texts.RemoveFromThisListLabel(variable), StringComparison.Ordinal);
+
+            // The orphan row's remove button is named after an id rather than a variable, because
+            // the sentence it would otherwise carry is the same on every such row. A translation
+            // that dropped the {id} would put two identical names on two different buttons, which
+            // no arm of the parity guard can see.
+            var orphan = new Guid("33333333-3333-3333-3333-333333333333");
+            var unavailable = texts.RemoveUnavailableFromThisListLabel(orphan);
+
+            Assert.Contains(orphan.ToString(), unavailable, StringComparison.Ordinal);
+            Assert.Contains(texts.RemoveFromThisList, unavailable, StringComparison.Ordinal);
+            Assert.NotEqual(texts.RemoveFromThisListLabel(variable), unavailable);
         }
     }
 

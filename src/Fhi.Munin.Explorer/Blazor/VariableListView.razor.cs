@@ -54,13 +54,15 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private Texts T => Texts.For(Language);
 
     /// <summary>
-    /// Per-mount discriminator for this component's ids, the same shape the explorer's own uses.
+    /// Per-mount discriminator for the one id this component renders, and for any it grows later.
+    /// The shape the explorer's own ids use — see <c>VariableExplorer.razor.cs</c>, where the
+    /// convention lives.
     /// </summary>
     /// <remarks>
     /// The host decides where this component goes and can mount it twice on one page. Two fields
     /// sharing one id would leave both labels pointing at the first, so the second field is
     /// unnamed again — the very defect the label was added to fix, and invisible in a page with
-    /// one mount.
+    /// one mount, which is why the guard for it renders two.
     /// </remarks>
     private readonly string _instance = Guid.NewGuid().ToString("N")[..8];
 
@@ -103,16 +105,39 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     }
 
     /// <summary>
+    /// Whether this entry's variable still has a row in the read model.
+    /// </summary>
+    /// <remarks>
+    /// One predicate for the two things that turn on it — what the name column shows, and which
+    /// sentence the remove button announces. Asked in both places separately, the column and the
+    /// button could come to disagree about what an orphaned row even is.
+    /// </remarks>
+    private static bool HasNoVariableLeft(VariableListItem item) =>
+        string.IsNullOrWhiteSpace(item.VariableName);
+
+    /// <summary>
     /// What the row calls its variable — its name, or the sentence shown in place of one that is
     /// no longer in the catalogue.
     /// </summary>
     /// <remarks>
-    /// Read by the remove button's accessible name, which has to say which row it acts on. An
-    /// orphaned entry has no name to say, and an empty one would leave that button announcing
-    /// "Fjern fra denne listen" with a hole where the variable should be.
+    /// The name column's own text, so there is one place that decides what an orphaned row reads
+    /// as. It used to be decided twice, inline in the markup and here.
     /// </remarks>
     private string RowName(VariableListItem item) =>
-        string.IsNullOrWhiteSpace(item.VariableName) ? T.VariableNoLongerAvailable : item.VariableName;
+        HasNoVariableLeft(item) ? T.VariableNoLongerAvailable : item.VariableName!;
+
+    /// <summary>The remove button's accessible name, which has to say which row it acts on.</summary>
+    /// <remarks>
+    /// Not <see cref="RowName"/>: an orphaned entry has no name to say, and every one of them
+    /// reads as the same sentence, so a list holding two retracted variables would give two
+    /// buttons announcing the identical thing — the "forty controls that all read the same" defect
+    /// this label exists to remove, narrowed to orphans. Their own sentence names the id instead,
+    /// which is all such an entry has left.
+    /// </remarks>
+    private string RemoveLabel(VariableListItem item) =>
+        HasNoVariableLeft(item)
+            ? T.RemoveUnavailableFromThisListLabel(item.VariableId)
+            : T.RemoveFromThisListLabel(item.VariableName!);
 
     /// <summary>A value, or the catalogue's own words for one that was never set.</summary>
     /// <remarks>
