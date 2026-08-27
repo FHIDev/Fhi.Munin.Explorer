@@ -41,6 +41,15 @@ public class VariableListViewTest : BunitContext
         public int PageSize { get; init; } = 25;
         public bool HasList { get; init; } = true;
 
+        /// <summary>Datatype names as the filters endpoint answers them, or none at all.</summary>
+        public IReadOnlyList<DataTypeFacet> DataTypeFacets { get; init; } = [];
+
+        public int FilterCalls { get; private set; }
+
+        public string? LastFilterSearch { get; private set; }
+
+        public VariableFilter? LastFilterFilter { get; private set; }
+
         private readonly List<VariableListItem> _items = [.. items];
 
         public static readonly Guid SecondListId = new("22222222-2222-2222-2222-222222222222");
@@ -121,6 +130,18 @@ public class VariableListViewTest : BunitContext
                 : Task.FromResult(new ExportedList([1, 2, 3], "text/csv", "variabelliste.csv"));
         }
 
+        public override Task<FilterOptions> GetFiltersAsync(
+            string? search = null,
+            VariableFilter? filter = null,
+            string? language = null,
+            CancellationToken cancellationToken = default)
+        {
+            FilterCalls++;
+            LastFilterSearch = search;
+            LastFilterFilter = filter;
+            return Task.FromResult(new FilterOptions { DataTypes = DataTypeFacets });
+        }
+
         public override Task<bool> RemoveVariablesFromMyListAsync(
             Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default)
         {
@@ -163,6 +184,128 @@ public class VariableListViewTest : BunitContext
         Assert.Contains("V_BDR.ALDER", cut.Markup);
         Assert.Contains("ALS", cut.Markup);
         Assert.Contains("Inklusjon", cut.Markup);
+    }
+
+    [Fact]
+    public void View_WhenTheReaderIsSignedOut_ThenTheNamesAreNotAskedForEither()
+    {
+        // Same reason the list itself is not read: the view draws nothing for a signed-out reader, and
+        // a call whose answer nobody sees still counts against the limiter.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"))
+        {
+            DataTypeFacets = [new DataTypeFacet { Value = "2", DisplayName = "Heltall" }]
+        };
+
+        RenderView(client, signedIn: false);
+
+        Assert.Equal(0, client.FilterCalls);
+    }
+
+    [Fact]
+    public void View_WhenTheLanguageChanges_ThenTheNamesAreReadAgainInTheNewOne()
+    {
+        // The names come back in the language they were asked for. Cached on "have they been read"
+        // alone, a host switching language would keep showing the previous one until the component
+        // was recreated.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"))
+        {
+            DataTypeFacets = [new DataTypeFacet { Value = "2", DisplayName = "Heltall" }]
+        };
+
+        Services.AddSingleton<IMuninExplorerClient>(client);
+        Services.AddScoped<VariableListState>();
+
+        var cut = Render<VariableListView>(p => p
+            .Add(c => c.IsAuthenticated, true)
+            .Add(c => c.Language, "no"));
+
+        Assert.Equal(1, client.FilterCalls);
+
+        cut.Render(p => p
+            .Add(c => c.IsAuthenticated, true)
+            .Add(c => c.Language, "en"));
+
+        Assert.Equal(2, client.FilterCalls);
+    }
+
+    [Fact]
+    public void View_WhenTheFallbackIsShown_ThenItIsNotMarkedAsNorwegian()
+    {
+        // The cells carry lang="no" because catalogue text is Norwegian whatever language the page is
+        // in. The fallback is ours, in the reader's language, so the same marking would have a screen
+        // reader pronounce an English phrase as Norwegian.
+        var cut = RenderView(new ListClient(Orphan()));
+
+        Assert.DoesNotContain("lang=\"no\">Ikke oppgitt", cut.Markup);
+    }
+
+    [Fact]
+    public void View_WhenAPeriodIsOpenEnded_ThenItReadsTheWayTheExplorerWritesIt()
+    {
+        // "2021-" was this view's own shorthand. The explorer, one region up the same page, writes
+        // the month and the catalogue's word for a period that has not ended.
+        var item = Item("Alder ved diagnose", "V_BDR.ALDER") with
+        {
+            DataFrom = new DateTimeOffset(2021, 8, 1, 0, 0, 0, TimeSpan.Zero),
+            DataTo = null
+        };
+
+        var cut = RenderView(new ListClient(item));
+
+        Assert.Contains("2021", cut.Markup);
+        Assert.Contains("Pågående", cut.Markup);
+        Assert.DoesNotContain("2021–<", cut.Markup);
+    }
+
+    [Fact]
+    public void View_WhenAFieldWasNeverSet_ThenItSaysSoRatherThanLeavingTheCellBlank()
+    {
+        // An empty cell beside a filled one reads as data that went missing, not data nobody entered.
+        var cut = RenderView(new ListClient(Orphan()));
+
+        Assert.Contains("Ikke oppgitt", cut.Markup);
+    }
+
+    [Fact]
+    public void View_WhenTheApiNamesADatatype_ThenTheNameIsShownRatherThanTheCode()
+    {
+        // The list stores the code the search endpoint hands out. Left alone it renders as "2" beside
+        // an explorer showing "Heltall" for the same variable, on the same page.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"))
+        {
+            DataTypeFacets = [new DataTypeFacet { Value = "2", DisplayName = "Heltall" }]
+        };
+
+        var cut = RenderView(client);
+
+        Assert.Contains("Heltall", cut.Markup);
+    }
+
+    [Fact]
+    public void View_WhenTheNamesAreAskedFor_ThenItIsWithoutASearchOrAFilter()
+    {
+        // Scoped to a search, the answer only names the datatypes that search happens to match - and
+        // this view names codes the reader saved under some other search entirely.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"))
+        {
+            DataTypeFacets = [new DataTypeFacet { Value = "2", DisplayName = "Heltall" }]
+        };
+
+        RenderView(client);
+
+        Assert.Equal(1, client.FilterCalls);
+        Assert.Null(client.LastFilterSearch);
+        Assert.Null(client.LastFilterFilter);
+    }
+
+    [Fact]
+    public void View_WhenTheApiHasNoNameForTheCode_ThenTheCodeIsShownRatherThanNothing()
+    {
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
+
+        var cut = RenderView(client);
+
+        Assert.Contains(">2<", cut.Markup);
     }
 
     [Fact]

@@ -58,6 +58,10 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private int _pageNumber = 1;
     private bool _loading;
     private bool _failed;
+
+    private Dictionary<string, string>? _dataTypeNames;
+
+    private string? _dataTypeNamesLanguage;
     private string _newName = "";
     private bool _includeKodeverk;
     private bool _downloading;
@@ -67,22 +71,47 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     /// <summary>
     /// The years a variable has data for, written the way the result rows and the detail panel
-    /// write it — same shape as <c>VariableExplorer.Period</c>, so a variable does not read
-    /// differently here than where it was saved from.
+    /// write it — the same words as the explorer's own period column, so a variable does not
+    /// read differently here than where it was saved from. Only the words: the explorer draws a
+    /// block with a coverage bar beside it, and this is one cell in a row.
     /// </summary>
-    private static string? Period(VariableListItem item)
+    private string Period(VariableListItem item)
     {
-        var from = item.DataFrom?.Year.ToString();
-        var to = item.DataTo?.Year.ToString();
-
-        return (from, to) switch
+        if (item.DataFrom is null && item.DataTo is null)
         {
-            (null, null) => null,
-            (not null, null) => $"{from}–",
-            (null, not null) => $"–{to}",
-            _ => from == to ? from! : $"{from}–{to}"
-        };
+            return T.NotSpecified;
+        }
+
+        var from = item.DataFrom is { } f ? MonthYear(f) : "?";
+        var to = item.DataTo is { } t ? MonthYear(t) : T.Ongoing;
+
+        return $"{from} – {to}";
     }
+
+    /// <summary>A value, or the catalogue's own words for one that was never set.</summary>
+    /// <remarks>
+    /// The explorer writes NotSpecified in this column rather than leaving it blank, and an empty cell
+    /// beside a filled one reads as data that went missing rather than data nobody entered.
+    /// </remarks>
+    private string Or(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? T.NotSpecified : value;
+
+    /// <summary>
+    /// <c>"no"</c> for a value the catalogue wrote, and nothing at all for our own fallback.
+    /// </summary>
+    /// <remarks>
+    /// Catalogue text is Norwegian whatever language the page is in, which is why these cells carry
+    /// lang="no" at all. NotSpecified is not catalogue text - it is ours, in the reader's language -
+    /// and marking an English "Not specified" as Norwegian makes a screen reader pronounce it as
+    /// Norwegian. WCAG 3.1.2. A null here leaves the attribute off entirely.
+    /// </remarks>
+    private static string? CatalogueLang(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : "no";
+
+    /// <summary>A date as month and year, in the reader's language.</summary>
+    /// <remarks>The same format string as the explorer's own, so the two read alike.</remarks>
+    private string MonthYear(DateTimeOffset date) =>
+        date.ToString("MMM yyyy", CatalogueProperties.Culture(Language));
 
     /// <summary>
     /// The API's own answer, not ours. The client already derives it when the envelope omits it
@@ -132,7 +161,84 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             _page = null;
             _failed = true;
         }
+
+        await LoadDataTypeNamesAsync();
     }
+
+    /// <summary>The datatype display names, read once per mount.</summary>
+    /// <remarks>
+    /// <para>
+    /// Asked for without a search or a filter, unlike the facet refresh in the explorer beside this
+    /// view. That call is scoped to what the reader is looking at, so a search matching no integers
+    /// comes back with no entry for the integer code - and this view has to name codes the reader
+    /// saved at some other time, under some other search.
+    /// </para>
+    /// <para>
+    /// Failure leaves the map empty, and an empty map renders the code. A list saying 2 where it
+    /// could say Heltall is worse than the explorer beside it, but it is still the reader's list;
+    /// losing the whole view over a label would not be.
+    /// </para>
+    /// </remarks>
+    private async Task LoadDataTypeNamesAsync()
+    {
+        // Nothing is asked for a reader who is not signed in. This view renders nothing for them, and
+        // a call whose answer nobody sees is still a call the limiter counts - the same reason the
+        // list itself is not read either.
+        if (!IsAuthenticated)
+        {
+            return;
+        }
+
+        // Keyed on the language it was read in, not merely on having been read. The host can change
+        // Language after mount, and names fetched for the previous one would sit there until the
+        // component is recreated.
+        if (_dataTypeNames is not null
+            && string.Equals(_dataTypeNamesLanguage, Language, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        try
+        {
+            // Search and filter left at their defaults on purpose - see the remarks above.
+            var facets = await Client.GetFiltersAsync(
+                language: ReaderLanguage.ForApi(Language));
+
+            _dataTypeNames = facets.DataTypes
+                .Where(d => !string.IsNullOrWhiteSpace(d.Value)
+                    && !string.IsNullOrWhiteSpace(d.DisplayName))
+                .GroupBy(d => d.Value!, StringComparer.Ordinal)
+                .ToDictionary(g => g.Key, g => g.First().DisplayName!, StringComparer.Ordinal);
+
+            _dataTypeNamesLanguage = Language;
+            StateHasChanged();
+        }
+        catch (Exception)
+        {
+            // Recorded as attempted for this language, so a failing endpoint is asked once rather
+            // than on every parameter change. The reader sees the codes until the language changes
+            // or the page is loaded again, which is the same fallback an empty map gives.
+            _dataTypeNames = new Dictionary<string, string>(StringComparer.Ordinal);
+            _dataTypeNamesLanguage = Language;
+        }
+    }
+
+    /// <summary>The readable name for a datatype code, or the code when there is no name.</summary>
+    /// <remarks>
+    /// The same shape as <c>VariableExplorer.DataTypeName</c>, and for the same reason: the codes are
+    /// editable master data on the API's side, so the names are read from it rather than written into
+    /// a table that ships to other people and goes stale where nobody is looking.
+    /// </remarks>
+    private string? DataTypeName(string? code)
+    {
+        if (string.IsNullOrWhiteSpace(code) || _dataTypeNames is null)
+        {
+            return code;
+        }
+
+        return _dataTypeNames.TryGetValue(code, out var named) ? named : code;
+    }
+
 
     /// <summary>
     /// Another surface changed a list. Re-read the page rather than only re-rendering: the rows
