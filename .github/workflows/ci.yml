@@ -119,12 +119,16 @@ jobs:
             echo "**Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           } | tee "$FILE" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Comment summary on PR
-        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        uses: marocchino/sticky-pull-request-comment@v3
+      # The comment is posted by "ci summary" instead, which is the only job that can see the
+      # guards' results. This hands it the step detail; it owns the same build-summary header.
+      - name: Upload summary for the report job
+        if: always()
+        uses: actions/upload-artifact@v7
         with:
-          header: build-summary
+          name: pr-summary
           path: pr-summary.md
+          if-no-files-found: ignore
+          retention-days: 1
 
       - name: Upload packages
         if: steps.pack.outcome == 'success'
@@ -237,3 +241,71 @@ jobs:
         # The same script developers can run locally before pushing, so a red check here is
         # never a surprise that only CI knows how to reproduce.
         run: ./scripts/assert-portability-guard-armed.sh
+
+  # A step reads steps.<id>.outcome, which is job-local, so the summary inside "build + test"
+  # could only ever report itself and the four guards were never in the comment. A job added to
+  # this workflow must be added to needs: below and to the table, or it stays invisible here.
+  report:
+    name: ci summary
+    needs: [build, changelog, sample-css, portability-guard]
+    # It exists to report failed and skipped jobs, so it must not be skipped by one.
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # A new name, so branch protection does not match it and it blocks nothing — the same
+    # asymmetry the guards above carry. Add "ci summary" to the required checks to change that.
+    steps:
+      - name: Download the build job's step detail
+        # Absent when build never reached its Summary step; the job table still posts without it.
+        continue-on-error: true
+        uses: actions/download-artifact@v7
+        with:
+          name: pr-summary
+
+      - name: Summary
+        run: |
+          to_emoji() { case "$1" in success) echo "✅";; failure) echo "❌";; cancelled) echo "🚫";; skipped) echo "⏭️";; *) echo "❔";; esac; }
+
+          # Heredoc, not a pipe: a pipe runs the loop in a subshell and every bad=1 is discarded,
+          # so a red job would print in the table and still be headlined as a pass.
+          rows=""
+          bad=0
+          while IFS='|' read -r name result; do
+            [ -n "$name" ] || continue
+            case "$result" in success|skipped) ;; *) bad=1 ;; esac
+            rows="$rows| $name | $(to_emoji "$result") $result |"$'\n'
+          done <<EOF
+          build + test|${{ needs.build.result }}
+          changelog fragment|${{ needs.changelog.result }}
+          sample stylesheets in step|${{ needs['sample-css'].result }}
+          portability guard armed|${{ needs['portability-guard'].result }}
+          EOF
+
+          FILE=ci-summary.md
+          {
+            if [ "$bad" = "0" ]; then
+              echo "## CI ✅ every job passed"
+            else
+              echo "## CI ❌ one or more jobs failed"
+            fi
+            echo ""
+            echo "| Job | Result |"
+            echo "|-----|--------|"
+            printf '%s' "$rows"
+            echo ""
+
+            if [ -f pr-summary.md ]; then
+              cat pr-summary.md
+            else
+              echo "_No step detail from \`build + test\` for this run._"
+              echo ""
+              echo "**Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            fi
+          } | tee "$FILE" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Comment summary on PR
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        uses: marocchino/sticky-pull-request-comment@v3
+        with:
+          header: build-summary
+          path: ci-summary.md
