@@ -354,13 +354,10 @@ else
                         <td>@(kilde.IsActive ? T.StatusActive : T.StatusPassive)</td>
                         <td class="munin-explorer-kilder__count">@kilde.DatasamlingCount</td>
                         <td class="munin-explorer-kilder__count">@kilde.TotalVariables</td>
-                        @* Marked as the catalogue's language only when the cell really holds the
-                           catalogue's words. Where the kilde has no founding year the cell holds
-                           this package's own "Ikke oppgitt", in the reader's language — lang="no"
-                           over an English sentence switches a screen reader to a Norwegian voice
-                           for it (WCAG 3.1.2). KildeView avoids this by dropping blank facts before
-                           it renders them; a table has to keep the cell, so it drops the attribute. *@
-                        <td lang="@CatalogueLang(Established(kilde))">@Value(Established(kilde))</td>
+                        @* No lang here, unlike the name above: the catalogue writes this field as
+                           a four-digit year, which has no language to mark (WCAG 3.1.2), and where
+                           it is missing the cell holds our "Ikke oppgitt" in the reader's own. *@
+                        <td>@Value(Established(kilde))</td>
                     </tr>
                 }
             </tbody>

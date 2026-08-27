@@ -661,6 +661,11 @@ public sealed partial class KildeExplorer : ComponentBase
     /// Not <see cref="KildeSummary.Created"/>, which is when Munin's own row was written — Kelda
     /// draws that as Importert and keeps it off by default. Handed on verbatim because the source
     /// holds "2916", "1900" and "0", and a formatter asked to read those hides a fault at source.
+    /// <para>
+    /// The lookup is ordinal, so the key's spelling is the whole contract: get it wrong and every
+    /// row reads "Ikke oppgitt" with nothing failing. It is pinned to a captured payload rather
+    /// than to a test's own bag — see <c>Testdata/kilder.json</c> and the test named for it.
+    /// </para>
     /// </remarks>
     private static string? Established(KildeSummary kilde) => Property(kilde, "Opprettet");
 

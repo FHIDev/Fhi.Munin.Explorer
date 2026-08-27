@@ -2,6 +2,7 @@ using System.Text.Json;
 using AngleSharp.Dom;
 using Bunit;
 using Fhi.Munin.Explorer.Blazor;
+using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -45,9 +46,7 @@ public class KildeExplorerTest : BunitContext
         string? shortName = null,
         string kildetype = "sentraltHelseregister",
         bool active = true,
-        string? dataController = "Folkehelseinstituttet",
         string? dataProcessor = "Folkehelseinstituttet",
-        int delkilder = 0,
         int datasamlinger = 3,
         int variables = 42,
         string? established = null,
@@ -61,9 +60,7 @@ public class KildeExplorerTest : BunitContext
             ShortName = shortName,
             Kildetype = kildetype,
             IsActive = active,
-            DataController = dataController,
             DataProcessor = dataProcessor,
-            DelkildeCount = delkilder,
             DatasamlingCount = datasamlinger,
             TotalVariables = variables,
             AdditionalProperties = Properties(established, category, accessRights),
@@ -688,6 +685,24 @@ public class KildeExplorerTest : BunitContext
 
         Assert.Equal("1994", row.QuerySelectorAll("td")[4].TextContent.Trim());
         Assert.DoesNotContain("2026", row.TextContent);
+    }
+
+    [Fact]
+    public void Render_WhenTheListIsTheCapturedPayload_ThenTheColumnShowsTheYearsTheApiSent()
+    {
+        // The one Opprettet test that does not write the key it reads: Properties() spells it the
+        // way the component looks it up, so the rest pass just as well against a key the API never
+        // sends and a column of "Ikke oppgitt" ships. These years are the captured payload's own.
+        var kilder = JsonSerializer.Deserialize<IReadOnlyList<KildeSummary>>(
+                TestData.Read("kilder.json"), MuninExplorerClient.Json)
+            ?? throw new InvalidOperationException("kilder.json no longer reads as a kilde list.");
+
+        var cut = RenderWith(new FakeClient([.. kilder]));
+
+        var years = cut.FindAll(".munin-explorer-kilder tbody tr")
+            .Select(row => row.QuerySelectorAll("td")[4].TextContent.Trim());
+
+        Assert.Equal(["2023", "2006", "2020"], years);
     }
 
     [Fact]
@@ -1318,36 +1333,28 @@ public class KildeExplorerTest : BunitContext
     }
 
     [Fact]
-    public void Render_WhenTheCatalogueLeftAFieldEmpty_ThenTheCellIsNotMarkedAsTheCataloguesLanguage()
+    public void Render_WhenTheReaderIsNotNorwegian_ThenTheYearIsUnmarkedAndTheNameIsNot()
     {
-        // The cell holds the package's own "Not specified" then, in the reader's own language, so
-        // a lang="no" left on it switches a screen reader to a Norwegian voice for an English
-        // sentence — WCAG 3.1.2, Language of Parts. KildeView never hits this because it drops
-        // blank facts before rendering them; a table has to keep the cell, so it drops the
-        // attribute instead.
+        // Both halves of the one cell whose content is not the catalogue's words: a four-digit year
+        // has no language to mark (WCAG 3.1.2) and "Not specified" is in the reader's own, so a
+        // lang="no" over either only switches a screen reader's voice. The name is where it lives.
         var cut = RenderWith(
-            new FakeClient(Kilde("Als registeret", "K_ALS")),
-            b => b.Add(c => c.Language, "en"));
-
-        var cells = cut.FindAll(".munin-explorer-kilder tbody td");
-
-        Assert.Equal("Not specified", cells[4].TextContent.Trim());
-        Assert.Null(cells[4].GetAttribute("lang"));
-    }
-
-    [Fact]
-    public void Render_WhenTheCatalogueSuppliedTheField_ThenTheCellIsMarkedAsTheCataloguesLanguage()
-    {
-        // The other half, so the fix above cannot be "stop marking anything": what the catalogue
-        // wrote in this field is the catalogue's own, whatever the reader is reading in.
-        var cut = RenderWith(
-            new FakeClient(Kilde("Als registeret", "K_ALS", established: "1994")),
+            new FakeClient(
+                Kilde("Als registeret", "K_ALS", established: "1994"),
+                Kilde("Dødsårsaksregisteret", "K_DAR")),
             b => b.Add(c => c.Language, "en"));
 
         var cells = cut.FindAll(".munin-explorer-kilder tbody td");
 
         Assert.Equal("1994", cells[4].TextContent.Trim());
-        Assert.Equal("no", cells[4].GetAttribute("lang"));
+        Assert.Null(cells[4].GetAttribute("lang"));
+
+        Assert.Equal("Not specified", cells[9].TextContent.Trim());
+        Assert.Null(cells[9].GetAttribute("lang"));
+
+        // So the change above cannot become "stop marking anything": the kilde's name is the
+        // catalogue's own words, and it is marked whatever the reader is reading in.
+        Assert.Equal("no", cut.Find(".munin-explorer-kilder__name").GetAttribute("lang"));
     }
 
     // ---------------------------------------------------------------------------------

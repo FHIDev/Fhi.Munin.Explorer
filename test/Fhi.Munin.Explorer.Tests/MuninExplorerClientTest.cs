@@ -81,14 +81,19 @@ public class MuninExplorerClientTest
 
         var als = kilder[0];
         Assert.Equal("K_ALS", als.Code);
-        Assert.Equal("Als registeret", als.Name);
+        Assert.Equal("Norsk register for ALS og andre motonevronsykdommer (ALS-registeret)", als.Name);
         Assert.Equal("nasjonaltMedisinskKvalitetsregister", als.Kildetype);
         Assert.True(als.IsActive);
         Assert.True(als.HasVariableDescription);
         Assert.Equal(9, als.DatasamlingCount);
-        Assert.Equal(230, als.TotalVariables);
+        Assert.Equal(240, als.TotalVariables);
         Assert.Null(als.HealthDcatScore); // never computed yet — see the note on the property
         Assert.Equal("alsregister@stolav.no", als.AdditionalProperties["Epost"]);
+
+        // The founding year the Opprettet column reads, asserted where the payload is: the key is
+        // curated rather than modelled, so nothing about it is a compile error, and this capture is
+        // what says the spelling the ordinal lookup uses is the API's own.
+        Assert.Equal("2023", als.AdditionalProperties["Opprettet"]);
     }
 
     [Fact]
