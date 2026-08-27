@@ -1,7 +1,9 @@
 @using Fhi.Munin.Explorer.Blazor
+@using Fhi.Munin.Explorer.Contracts
 @using Microsoft.AspNetCore.WebUtilities
 @using Microsoft.JSInterop
 @inject IJSRuntime JS
+@inject NavigationManager Nav
 
 @* The kilde half of the shareable-state contract, beside ExplorerWithUrlState.
 
@@ -15,9 +17,16 @@
    would make the parameter look supported while BuildQuery, which has no SearchChanged to follow,
    erased it from the address bar on the first render after load. The link would work exactly once
    and could not be shared onward. A parameter this host cannot maintain is one it should not take,
-   so the URL here carries the open kilde and nothing else. *@
+   so the URL here carries the open kilde and nothing else.
+
+   The handover out of Kelda is the other thing this wrapper does, and it is not URL state at
+   all: the reader's ticks live in the component, and what arrives here is one request carrying
+   the ids they chose. Turning that into a link is the host's job because the host is the only
+   side that knows where the variabelutforsker is mounted — on this sample, the front page. See
+   ExploreVariables below. *@
 
 <KildeExplorer @bind-SelectedKildeId="_selectedKildeId"
+               ExploreVariablesRequested="ExploreVariables"
                Language="@Language" />
 
 @code {
@@ -74,6 +83,33 @@
         // closing kilder would otherwise fill the history with steps the reader has to walk back
         // through one at a time instead of leaving the site.
         await JS.InvokeVoidAsync("history.replaceState", null, "", query);
+    }
+
+    /// <summary>
+    /// The handover from the kildeutforsker to the variabelutforsker, which is the host's to
+    /// perform because the host is the only side that knows where the other explorer is mounted.
+    /// </summary>
+    /// <remarks>
+    /// The whole of it. <c>KildeExplorer</c> says which kilder the reader chose; this turns them
+    /// into the query the variable explorer already reads, and goes there. It does not restate
+    /// that format either — <c>VariableFilter.ToQueryString</c> writes what <c>Parse</c> reads on
+    /// the front page, so the two ends cannot drift apart.
+    /// <para>
+    /// An empty list is not a selection of none. It is what the component sends when the reader
+    /// narrowed nothing, so it lands on the unfiltered variable list rather than on a query asking
+    /// for no kilder at all.
+    /// </para>
+    /// <para>
+    /// forceLoad, because this host has no router: the front page is an MVC view with a
+    /// &lt;component&gt; tag helper in it, and there is nothing on the client that could render it
+    /// in place. Optimizely is the same shape, which is why the sample does not pretend otherwise.
+    /// </para>
+    /// </remarks>
+    private void ExploreVariables(IReadOnlyList<Guid> kildeIds)
+    {
+        var query = new VariableFilter { KildeIds = kildeIds }.ToQueryString();
+
+        Nav.NavigateTo(query.Length == 0 ? "/" : "/?" + query, forceLoad: true);
     }
 
     private string BuildQuery()

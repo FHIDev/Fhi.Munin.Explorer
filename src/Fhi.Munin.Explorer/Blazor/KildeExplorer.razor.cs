@@ -57,10 +57,12 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// and <c>munin-explorer-drilldown</c> are the explorer's existing ones, reused rather than
 /// reinvented — two of which, <c>munin-explorer</c> and <c>munin-explorer-filters</c>, are handles
 /// nothing defines a rule for, in this package or in Stiler, so a host that wants the panel placed
-/// beside the results writes that rule itself. Five are new and belong to this view:
+/// beside the results writes that rule itself. Six are new and belong to this view:
 /// <c>munin-explorer-kilder</c> for the result table,
 /// <c>munin-explorer-kilder__name</c> for the control that opens a kilde,
-/// <c>munin-explorer-kilder__count</c> for the three columns that hold a number, and
+/// <c>munin-explorer-kilder__count</c> for the three columns that hold a number,
+/// <c>munin-explorer-kilder__select</c> for the checkbox column a host that wired
+/// <see cref="ExploreVariablesRequested"/> gets in front of them, and
 /// <c>munin-explorer-filters__toggle</c> and <c>munin-explorer-filters__facets</c> for the facet
 /// panel's disclosure — see <c>KildeExplorer.Filters.cs</c> for what those two are for. A host that
 /// styles none of them still gets a usable list, which is why the results are a
@@ -116,6 +118,37 @@ public sealed partial class KildeExplorer : ComponentBase
     /// </para>
     /// </remarks>
     [Parameter] public EventCallback<Guid?> SelectedKildeIdChanged { get; set; }
+
+    /// <summary>
+    /// Raised when the reader asks to explore variables for the kilder they have chosen, carrying
+    /// the ids that go with them. Wire it, or no selection column is drawn.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The handover between the two explorers, and the reason it is a callback rather than a link:
+    /// this component has no <c>NavigationManager</c> and no idea where the host mounted a
+    /// <see cref="VariableExplorer"/>, so it says what the reader asked for and the host decides
+    /// where that goes. <c>new VariableFilter { KildeIds = ids }.ToQueryString()</c> is the pairing
+    /// that lands the ids in <see cref="VariableExplorer.Filter"/> — see
+    /// <c>KildeExplorer.Selection.cs</c> for the whole of the reasoning, and both sample hosts for
+    /// it written out.
+    /// </para>
+    /// <para>
+    /// What it carries is not always what is ticked. Ticked rows win; with nothing ticked but a
+    /// search or a facet in force it carries the rows the reader is looking at; with neither it
+    /// carries an empty list, which means the whole catalogue rather than a selection of none.
+    /// </para>
+    /// <para>
+    /// A host that leaves this unwired gets no checkbox column, no count and no button — the ticks
+    /// exist to reach a destination this component cannot reach on its own, and a control that
+    /// leads nowhere is worse than one that is not there. The mount point must be fully
+    /// interactive for the same reason <see cref="SelectedKildeIdChanged"/> needs it: an
+    /// <see cref="EventCallback"/> serialises to an empty delegate across a static-SSR to
+    /// interactive-island boundary, and here that takes the column off screen rather than leaving a
+    /// button that silently never fires.
+    /// </para>
+    /// </remarks>
+    [Parameter] public EventCallback<IReadOnlyList<Guid>> ExploreVariablesRequested { get; set; }
 
     /// <summary>
     /// The host's own sections for an open kilde, placed after Kelda's.

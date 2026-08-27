@@ -2164,6 +2164,11 @@ public class KildeExplorerTest : BunitContext
         // ships. Four of these nine are the explorer's existing structure, reused rather than
         // reinvented; the three under `munin-explorer-kilder` and the two under
         // `munin-explorer-filters__` are this view's own.
+        //
+        // Nine and not ten because nothing here wires ExploreVariablesRequested, so the selection
+        // column and its `munin-explorer-kilder__select` are not rendered at all. That state has
+        // its own exact list, in KildeSelectionTest, and the pair of them is what says the column
+        // adds one name rather than appears from nowhere.
         var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
         var invented = HostClassNames.Of(cut.FindAll("[class]"))

@@ -13,9 +13,10 @@
    wears the `munin-explorer` prefix this package owns. Five of those are the explorer's existing
    ones, reused rather than reinvented: the root `munin-explorer`, the `munin-explorer-container`
    and `munin-explorer-results` the list sits in, `munin-explorer-filters` for the facet panel and
-   `munin-explorer-drilldown` for the view an opened kilde takes over. Five are this view's own —
+   `munin-explorer-drilldown` for the view an opened kilde takes over. Six are this view's own —
    `munin-explorer-kilder` for the table, `munin-explorer-kilder__name` for the control that opens a
-   row, `munin-explorer-kilder__count` for the columns holding a number, and
+   row, `munin-explorer-kilder__count` for the columns holding a number,
+   `munin-explorer-kilder__select` for the checkbox column in front of them, and
    `munin-explorer-filters__toggle` and `munin-explorer-filters__facets` for the panel that folds
    away on a narrow screen.
 
@@ -297,6 +298,38 @@ else
         }
     </div>
 
+    @* The selection bar: how many kilder are ticked, the way to untick them all, and the handover
+       the ticks exist for. Drawn only where the host wired ExploreVariablesRequested — see
+       KildeExplorer.Selection.cs for why a column with nowhere to go is worse than no column.
+
+       Its own polite region, separate from the status line above, because the two report different
+       things and aria-atomic would otherwise read both sentences out for a change to either. It is
+       rendered empty rather than not rendered at all while nothing is ticked: a live region
+       inserted and filled in one DOM update is announced unreliably, which is the same reason the
+       error container above it is always present.
+
+       Flat rather than wrapped in a div of its own: three elements laid out with Stiler's own
+       margin utilities need no box around them, and a wrapper would be one more class name this
+       package has to promise somebody styles. The reset is only there once there is something to
+       reset — a button that empties an empty selection is furniture. *@
+    @if (Selectable && (visible.Count > 0 || TickedCount > 0))
+    {
+        <p class="caption" role="status" aria-live="polite" aria-atomic="true">
+            @(TickedCount > 0 ? T.SelectedKildeCount(TickedCount) : null)
+        </p>
+
+        @if (TickedCount > 0)
+        {
+            <button class="hd-button-square button-square--secondary margin-right margin-bottom"
+                    type="button"
+                    @onclick="ClearTicks">@T.ClearSelection</button>
+        }
+
+        <button class="hd-button-square button-square--primary margin-bottom"
+                type="button"
+                @onclick="() => ExploreVariablesAsync(visible)">@T.ExploreVariables</button>
+    }
+
     @if (visible.Count > 0)
     {
     <div class="munin-explorer-container">
@@ -305,10 +338,10 @@ else
            above shows, and pointing at that element would make the table's name change under a
            screen reader every time the status line does.
 
-           The eight columns, in the order Munin's own Kelda renders them. Its table has two more
-           control columns in front — a row checkbox and an expand toggle — and four more of these
-           behind a column picker; the checkbox is Fhi.Metadata-5ghur, the picker Fhi.Metadata-ay3zz,
-           and neither is this bead's.
+           The eight columns, in the order Munin's own Kelda renders them, behind the checkbox
+           column a host that wired the handover gets. Munin's own table has one further control
+           column in front — an expand toggle — and four more of these behind a column picker;
+           the picker is Fhi.Metadata-ay3zz, and it is not this bead's.
 
            No aria-busy, unlike the variable explorer's list: there is nothing to be busy with.
            The list is fetched once, on initialisation, and while that fetch is running this table
@@ -317,6 +350,21 @@ else
         <table class="munin-explorer-kilder" aria-label="@summary">
             <thead>
                 <tr>
+                    @if (Selectable)
+                    {
+                        @* Velg-alle over the rows the reader can see, and only those: with a search
+                           or a facet in force it ticks what is on screen rather than the catalogue
+                           behind it. No visible label, so aria-label is the whole of its accessible
+                           name — and no indeterminate third state, because the count above the table
+                           says "3 kilder valgt" in words, which is the same fact announced
+                           reliably. See KildeExplorer.Selection.cs. *@
+                        <th scope="col" class="munin-explorer-kilder__select">
+                            <input type="checkbox"
+                                   aria-label="@T.SelectAllKilder"
+                                   checked="@AllVisibleTicked(visible)"
+                                   @onchange="() => TickAllVisible(visible)" />
+                        </th>
+                    }
                     <th scope="col">@T.FieldName</th>
                     <th scope="col">@T.ColumnKildetype</th>
                     <th scope="col">@T.FieldStatus</th>
@@ -335,6 +383,19 @@ else
                        renderer would patch that button into a different kilde's rather than moving
                        it. *@
                     <tr @key="kilde.Id">
+                        @if (Selectable)
+                        {
+                            @* A td rather than a th: the box is a control over the row, not a label
+                               for it — the name beside it is that. Its accessible name carries the
+                               kilde's, because "Velg" repeated down a column tells a reader moving
+                               from control to control nothing about where they are standing. *@
+                            <td class="munin-explorer-kilder__select">
+                                <input type="checkbox"
+                                       aria-label="@T.SelectKilde(kilde.Name)"
+                                       checked="@IsTicked(kilde.Id)"
+                                       @onchange="e => Tick(kilde.Id, e.Value is true)" />
+                            </td>
+                        }
                         @* The name is a th, not a td: it is what the rest of the row is about, and
                            a screen reader reading a cell out of context should hear which kilde it
                            belongs to. The catalogue holds one name, in Norwegian, so it is marked

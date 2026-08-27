@@ -1185,16 +1185,16 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 /* ---- the kilde list ----
 
-   Kelda's result table, and three more names of ours. The shape rule is the one the datasamlinger
+   Kelda's result table, and four more names of ours. The shape rule is the one the datasamlinger
    table above follows: there was nothing to copy for a list of kilder — Stiler has no table
    component, and helsedata's own variable page lists variables rather than sources — so the shape
-   is a <table> and these three dress it rather than carry it. A host that defines none of them
+   is a <table> and these four dress it rather than carry it. A host that defines none of them
    still gets eight columns that line up and a name that visibly is a control, which is what an
    element's own browser default buys and an undefined class name does not.
 
    Kelda's own table has two control columns in front of these eight, a checkbox and an expand
-   toggle, and four more behind a column picker. Neither belongs to the component yet, so neither
-   is named here. */
+   toggle, and four more behind a column picker. The checkbox is the fourth name below; the
+   expand toggle does not belong to the component yet, so it is not named here. */
 .munin-explorer-kilder {
   width: 100%;
   border-collapse: collapse;
@@ -1229,6 +1229,19 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .munin-explorer-kilder .munin-explorer-kilder__count {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+/* The checkbox column, in front of the eight. It is only ever rendered by a host that wired
+   ExploreVariablesRequested, which is the handover the ticks exist for.
+
+   width: 1% is the whole of it, and it is the declaration a host that skips this block loses:
+   a table shares its width out between the columns, so a column holding one checkbox would take
+   the same share as Dataansvarlig and push the eight that carry words together. 1% is smaller
+   than the content, and a table cannot go under its content, so the column comes out exactly one
+   checkbox wide. Scoped under the table for the reason the count rule above is: the rule it has
+   to beat carries a class and an element. */
+.munin-explorer-kilder .munin-explorer-kilder__select {
+  width: 1%;
 }
 
 /* The name opens the kilde, so it has to look like the control it is without wearing a button

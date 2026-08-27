@@ -1,5 +1,7 @@
 ﻿@page "/kilder"
 @using Fhi.Munin.Explorer.Blazor
+@using Fhi.Munin.Explorer.Contracts
+@inject NavigationManager Nav
 
 <PageTitle>Modern host — kilder</PageTitle>
 
@@ -21,5 +23,32 @@
     @* render-mode is set HERE, by the host. The component itself is render-mode free — the same
        arrangement as Home.razor, and for the same reason: prerendering would run the component's
        initialise-time fetch twice against the public API on every page load. *@
-    <KildeExplorer Language="no" @rendermode="@(new InteractiveServerRenderMode(prerender: false))" />
+    <KildeExplorer Language="no"
+                   ExploreVariablesRequested="ExploreVariables"
+                   @rendermode="@(new InteractiveServerRenderMode(prerender: false))" />
 </div>
+
+@code {
+    /// <summary>
+    /// The handover out of Kelda, which is the host's to perform: the component says which kilder
+    /// the reader chose, and only the host knows where it mounted a variable explorer.
+    /// </summary>
+    /// <remarks>
+    /// The front page here, with the ids written as the query <c>VariableExplorer.Filter</c>
+    /// already reads. The format is not restated: <c>VariableFilter.ToQueryString</c> writes what
+    /// <c>VariableFilter.Parse</c> reads over there, so the two ends cannot drift apart. An empty
+    /// list means the reader narrowed nothing, so it lands on the unfiltered list rather than on a
+    /// query asking for no kilder at all.
+    /// <para>
+    /// This host has a router, so this is an ordinary in-app navigation — unlike LegacyHost, whose
+    /// front page is an MVC view and has to force a load. The component itself is the same either
+    /// way; what differs is the hosting model, which is the whole reason both samples are kept.
+    /// </para>
+    /// </remarks>
+    private void ExploreVariables(IReadOnlyList<Guid> kildeIds)
+    {
+        var query = new VariableFilter { KildeIds = kildeIds }.ToQueryString();
+
+        Nav.NavigateTo(query.Length == 0 ? "/" : "/?" + query);
+    }
+}
