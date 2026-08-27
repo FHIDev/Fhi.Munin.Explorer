@@ -1183,6 +1183,43 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   font-weight: 600;
 }
 
+/* Column widths. Nothing set any, so table-layout: auto handed the width to whichever column held
+   the most text — the description, always, because it is catalogue free text — and the two columns
+   holding a formatted value wrapped in every row. Measured on Kreftregisteret's 18 datasamlinger:
+   in a 1153px table the period column was 114px and "1. januar 1953 – Pågående" came out over four
+   lines, "51 variabler" over two.
+
+   Only those two get a width. The count is width: 1% with nowrap, which under auto layout reserves
+   the value's own width and nothing more; the nowrap is on the body cell alone, because the header
+   "Totalt antall variabler" held on one line asks for 160px where the value asks for 103px. The
+   period is a percentage instead — nowrapping it costs 250px, which a wide table can pay and a
+   673px one cannot without taking the description down to 191px. A percentage degrades instead:
+   one line where there is room, and a break at the dash rather than inside a date where there is
+   not. 24% is the widest period the catalogue holds — "1. januar 2020 – 4. november 2024", 226px —
+   with room over; the widest a Norwegian date pair can get is 282px, and that one wraps at the
+   dash, which is the point of not nowrapping it.
+
+   The name and the description are left alone on purpose. That is what keeps a datasamling with no
+   description from paying for one — the two auto columns still divide what is left by content, so
+   an empty description collapses and the name takes the room it would have had. The name still
+   wraps, for the reason above.
+
+   Positional selectors because the package puts no class on these cells, and a new class name
+   would have to land in three stylesheets before it meant anything. The head row and the body rows
+   have the same four children, so one selector reaches both.
+
+   The rule this mirrors is Fhi.Helsedata.Stiler's, in
+   Static/scss/components/munin-explorer/_trail.scss. That is the host helsedata.no actually loads;
+   this copy is here so the sample renders what the host renders. */
+.munin-explorer-kilde__datasamlinger tr > :nth-child(3) {
+  width: 24%;
+}
+
+.munin-explorer-kilde__datasamlinger tbody td:nth-child(4) {
+  width: 1%;
+  white-space: nowrap;
+}
+
 /* ---- the kilde list ----
 
    Kelda's result table, and three more names of ours. The shape rule is the one the datasamlinger
@@ -1220,6 +1257,16 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .munin-explorer-kilder tbody th {
   font-weight: 400;
 }
+
+/* No column widths here, unlike the datasamlinger table above, and that is a decision rather than
+   the same omission. The symptom is not present: the three count columns already sit on one line —
+   the header word is wider than the number — and what wraps is the name, the kildetype and the two
+   responsibility columns, which are sentences and are meant to. Measured over 66 kilder at 1440px:
+   Delkilder 82px, Datasamlinger 118px, Variabler 82px, every one of them a single line.
+
+   The table does have a problem, and widths are not what fixes it: eight columns come to a
+   min-content width of 1056px, so below roughly 1100px it overflows its container and puts a
+   horizontal scrollbar on the whole page. That needs its own issue. */
 
 /* The three columns holding a number, right-aligned and tabular: they are read down the page,
    comparing magnitudes, and proportional digits put the same number in two different widths on
