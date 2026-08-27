@@ -623,6 +623,7 @@ public class KildeSelectionTest : BunitContext
             "munin-explorer-search",             // shared with the variable explorer
             "munin-explorer-search__clear",      // shared
             "munin-explorer-selection",          // this bead's
+            "munin-explorer-selection__explore", // this bead's
         ], invented);
     }
 
@@ -675,22 +676,58 @@ public class KildeSelectionTest : BunitContext
     }
 
     [Fact]
-    public void SelectionButtons_WhenAHostStylesThem_ThenTheyAreSizedAlike()
+    public void ExploreButton_WhenAHostStylesIt_ThenItsWidthIsHeldStill()
     {
-        // Nullstill utvalg and the handover read as a pair, and two buttons of visibly different
-        // widths side by side read as two unrelated controls. Their labels are different lengths in
-        // both languages and one of them changes with the state, so this cannot be fixed by
-        // trimming a wording - it is grid-auto-columns: 1fr over a max-content row, which is the
-        // one thing flex cannot express.
+        // The one declaration in this component that a host cannot infer from the markup, and the
+        // reason the ribbon used to jump. The handover's label is one of three and they are
+        // different lengths, so without a floor under its width the button resizes on the first
+        // tick and drags the reset and the count along with it.
+        //
+        // The general guards would pass on a rule that set only a colour, which is why this one
+        // names the declaration - the same shape as the facet fold's guard and the skip link's.
         static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
 
-        var blocks = HostClassNames.SampleDeclarationsFor("munin-explorer-selection")
-            .Select(r => Squeezed(r.Declarations))
-            .ToList();
+        IReadOnlyList<string> BlocksFor(string name) =>
+            [.. HostClassNames.SampleDeclarationsFor(name).Select(r => Squeezed(r.Declarations))];
 
         Assert.True(
-            blocks.Any(d => d.Contains("grid-auto-columns:1fr", StringComparison.Ordinal)),
-            "Nothing makes the two selection buttons equal width.");
+            BlocksFor("munin-explorer-selection__explore").Any(d => d.Contains("min-width:", StringComparison.Ordinal)),
+            "Nothing holds the handover button's width, so the ribbon moves on every tick.");
+
+        Assert.True(
+            BlocksFor("munin-explorer-selection").Any(d => d.Contains("display:flex", StringComparison.Ordinal)),
+            "The ribbon is not a row, so its three parts stack.");
+    }
+
+    [Fact]
+    public void Ribbon_WhenARowIsTicked_ThenNothingAheadOfTheCountHasMoved()
+    {
+        // The arrangement itself, which no stylesheet can rescue if the markup writes it wrong:
+        // handover, then reset, then count. Everything that comes and goes has to sit to the RIGHT
+        // of everything that does not, or ticking a row moves a control the reader is aiming at.
+        var (cut, _) = RenderSelectable(new FakeClient(
+            Kilde("Als registeret", "K_ALS"),
+            Kilde("Dødsårsaksregisteret", "K_DAR")));
+
+        static IReadOnlyList<string> Parts(IRenderedComponent<KildeExplorer> c) =>
+            [.. c.Find(".munin-explorer-selection").Children.Select(e => e.LocalName + ":" + e.ClassName)];
+
+        // Nothing ticked: the handover, and the count sitting empty so its live region is already
+        // in the DOM when it has something to announce.
+        Assert.Equal(2, Parts(cut).Count);
+        Assert.StartsWith("button:", Parts(cut)[0]);
+        Assert.Contains("munin-explorer-selection__explore", Parts(cut)[0]);
+        Assert.StartsWith("p:", Parts(cut)[^1]);
+
+        TickRow(cut, "Als registeret");
+
+        // Ticked: the reset appears BETWEEN them rather than before the handover, so the handover
+        // has not moved and the count has only slid right.
+        Assert.Equal(3, Parts(cut).Count);
+        Assert.Contains("munin-explorer-selection__explore", Parts(cut)[0]);
+        Assert.Contains("button-square--secondary", Parts(cut)[1]);
+        Assert.StartsWith("p:", Parts(cut)[2]);
+        Assert.Equal("1 kilde valgt", SelectionLine(cut));
     }
 
     // ---------------------------------------------------------------------------------

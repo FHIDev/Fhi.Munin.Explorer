@@ -357,17 +357,27 @@ else
        reset — a button that empties an empty selection is furniture. *@
     @if (Selectable && (visible.Count > 0 || TickedCount > 0))
     {
-        <p class="caption" role="status" aria-live="polite" aria-atomic="true">
-            @(TickedCount > 0 ? T.SelectedKildeCount(TickedCount) : null)
-        </p>
+        @* One row, in this order, and the order is the point: the handover first and never
+           changing width, then the reset, then the count. Everything that comes and goes is to
+           the RIGHT of everything that does not, so ticking a row moves nothing the reader is
+           looking at. The bar used to be a count on its own line above two buttons that resized
+           under it, and it jumped every time anybody ticked anything.
 
-        @* The two controls in a row of their own, so a host can size them alike. They read as a
-           pair — undo the selection, or take it somewhere — and two buttons of visibly different
-           widths sitting side by side read as two unrelated things. Their labels are different
-           lengths in both languages and one of them changes with the state, so matching them is a
-           layout job and not something a wording can be trimmed to. Without a rule they fall back
-           to their natural widths, side by side, which is what they did before. *@
+           munin-explorer-selection__explore is what holds the handover's width still. Its label
+           is one of three and they are different lengths — the widest is English's "Explore
+           variables for this selection" — so without a width the button resizes on every tick and
+           drags the rest of the row with it. A host that supplies no rule gets that behaviour
+           back; it is the one thing here markup alone cannot fix.
+
+           The count stays a polite region and stays rendered while it is empty, for the reason it
+           always was: a live region inserted and filled in one DOM update is announced
+           unreliably. margin--none because a <p> in a flex row would otherwise contribute its
+           block margins to the row's height. *@
         <div class="munin-explorer-selection">
+            <button class="hd-button-square button-square--primary munin-explorer-selection__explore"
+                    type="button"
+                    @onclick="() => ExploreVariablesAsync(visible)">@ExploreLabel</button>
+
             @if (TickedCount > 0)
             {
                 <button class="hd-button-square button-square--secondary"
@@ -375,9 +385,9 @@ else
                         @onclick="ClearTicks">@T.ClearSelection</button>
             }
 
-            <button class="hd-button-square button-square--primary"
-                    type="button"
-                    @onclick="() => ExploreVariablesAsync(visible)">@ExploreLabel</button>
+            <p class="caption margin--none" role="status" aria-live="polite" aria-atomic="true">
+                @(TickedCount > 0 ? T.SelectedKildeCount(TickedCount) : null)
+            </p>
         </div>
     }
 

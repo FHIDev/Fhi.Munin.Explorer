@@ -9,9 +9,14 @@ category: Notes for hosts
   and that attribute is the only thing saying whether it has anything to do. It is `aria-disabled`
   rather than `disabled` on purpose — a disabled button cannot hold focus, so pressing it would
   clear the search and throw the reader's focus to the document — which also means it stays
-  hoverable and focusable, so style those states too. `munin-explorer-selection` wraps *Nullstill
-  utvalg* and the handover button; `display: grid; grid-auto-flow: column; grid-auto-columns: 1fr`
-  over a `width: max-content` row is what makes the two equal width, which flex cannot express.
+  hoverable and focusable, so style those states too. `munin-explorer-selection` is the ribbon under the
+  results — the handover button, then *Nullstill utvalg*, then the "{n} kilder valgt" count, in
+  that order so that everything which comes and goes sits to the right of everything that does
+  not. Make it a flex row. `munin-explorer-selection__explore` is the handover button, and it needs
+  a **`min-width`**: its label is one of three and they are different lengths, so without a floor
+  the button resizes on the first tick and drags the rest of the row with it. The samples use
+  `21rem`, which clears the longest label at their own font size — measure your own rather than
+  copying the number.
   Both sample hosts carry all of it, and tests here assert the load-bearing declarations rather
   than just the names. A host that supplies none of it still gets every control, stacked and at
   natural widths. (Fhi.Metadata-5ghur)

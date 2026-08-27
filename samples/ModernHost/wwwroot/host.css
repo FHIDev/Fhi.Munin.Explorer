@@ -246,38 +246,36 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   color: #fff;
 }
 
-/* ---- the selection bar's two buttons, sized alike ----
+/* ---- the selection ribbon ----
 
-   Undo the selection, or take it somewhere. They are a pair, and two buttons of visibly
-   different widths side by side read as two unrelated controls. Their labels are different
-   lengths in both languages and the second one changes with the state — "Utforsk alle variabler"
-   with nothing ticked, "...for treffene" under a filter, "...for utvalget" with ticks — so no
-   wording can be trimmed to match. It is a layout job.
+   Handover, then reset, then count — the order the markup writes them in, and the order is what
+   keeps the row still. Everything that comes and goes sits to the right of everything that does
+   not, so ticking a row never moves a control the reader is aiming at.
 
-   grid rather than flex, because this is the one thing flex cannot do: grid-auto-columns: 1fr
-   over a max-content container makes every column the width of the widest, which is equal
-   widths sized to the longer label. flex: 1 would share the whole row out instead and stretch
-   two buttons across the page.
+   The min-width is the load-bearing declaration and the only one a host cannot infer. The
+   handover's label is one of three, they are different lengths, and the widest is English's
+   "Explore variables for this selection" — so without a floor the button resizes on the first
+   tick and drags the reset and the count with it. 21rem clears that label at the sample's own
+   font size; a host on Stiler's Graphik should measure its own rather than copy the number.
 
-   Falling back to one column below 640px, where two equal buttons are narrower than their own
-   words. A host that defines none of this gets them at their natural widths, side by side. */
+   Not a grid with equal columns, which is what this was before. Equal widths made the reset as
+   wide as the handover and gave the count a column it had no use for; what was actually wanted
+   is one button that never moves and everything else flowing after it.
+
+   max-width so the floor cannot push the row wider than the page on a narrow screen, and
+   flex-wrap so it drops to the next line instead. */
 .munin-explorer-selection {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 1fr;
-  justify-content: start;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  width: max-content;
-  max-width: 100%;
+  gap: 8px 16px;
   margin-bottom: 16px;
 }
 
-@media (max-width: 639px) {
-  .munin-explorer-selection {
-    grid-auto-flow: row;
-    width: 100%;
-  }
+.munin-explorer-selection__explore {
+  min-width: 21rem;
+  max-width: 100%;
+  justify-content: center;
 }
 
 /* components/buttons/_squarebutton.scss */
