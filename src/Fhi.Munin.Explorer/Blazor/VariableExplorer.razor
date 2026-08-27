@@ -313,14 +313,18 @@ else
         @* Inside the region and not beside it, so the failure and the way out of it are announced
            in one utterance rather than the interruption saying only that something went wrong.
 
-           Shown from the first failure it could have answered and never removed again, only made
-           inert: a successful retry clears the message, and a button leaving with it would drop
-           the focus of the reader who just pressed it to <body> — the pager's rule, and Tøm
-           filtre's. Absent before that, because a retry button over a page with nothing wrong is
-           furniture, and the empty container above is empty on purpose. *@
-        @if (_retryRowsShown)
+           It outlives the message it answers by exactly one fetch: a successful retry clears the
+           sentence, and a button leaving with it would drop the focus of the reader who just
+           pressed it to <body> — the pager's rule, and Fjern alle filtre's. The next fetch someone
+           else starts and that succeeds takes it away, so a dead offer is not read out again with
+           every later failure in this aria-atomic region.
+
+           munin-explorer-retry is what draws the inert state. The region carries no class, so
+           neither the pager's nor the filter panel's [aria-disabled] rule reaches in here, and
+           without one of its own a button that does nothing looks exactly like one that does. *@
+        @if (_failedRows is not null)
         {
-            <button class="hd-button-square button-square--ghost margin-right margin-bottom"
+            <button class="hd-button-square button-square--ghost margin-right margin-bottom munin-explorer-retry"
                     type="button"
                     aria-disabled="@AriaDisabled(_retryRowsEnabled)"
                     @onclick="RetryRowsAsync">@T.RetrySearch</button>
@@ -338,7 +342,7 @@ else
            two identical offers with nothing to choose between them. *@
         @if (_retryFacetsShown)
         {
-            <button class="hd-button-square button-square--ghost margin-right margin-bottom"
+            <button class="hd-button-square button-square--ghost margin-right margin-bottom munin-explorer-retry"
                     type="button"
                     aria-disabled="@AriaDisabled(_retryFacetsEnabled)"
                     @onclick="RetryFacetsAsync">@T.RetryFilters</button>

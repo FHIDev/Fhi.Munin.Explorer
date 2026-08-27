@@ -540,6 +540,11 @@ public partial class VariableExplorer
             // the range, taken from the same place.
             _page = ResultPage;
 
+            // The offer belongs to the failure it answers. Left standing after a fetch someone
+            // else started came back, it is a dead control that the atomic alert region reads out
+            // again beside every later failure — RetryRowsAsync puts its own back, and says why.
+            _failedRows = null;
+
             return true;
         }
         catch (Exception ex)
@@ -570,8 +575,7 @@ public partial class VariableExplorer
             // off the fields, which every caller rolls back to describe the rows still on screen.
             if (!rateLimited)
             {
-                _failedRows = new RowRequest(search, _page, _sort, _direction, _filter);
-                _retryRowsShown = true;
+                _failedRows = new RowRequest(search, _page, _sort, _direction, _filter, _keepPager);
                 _retryRowsEnabled = true;
             }
 
@@ -590,9 +594,18 @@ public partial class VariableExplorer
     /// reader never left and <c>_sort</c> the order they are still looking at. Retrying from those
     /// would re-fetch what is already there and clear the error, reporting success for a page turn
     /// or a reordering that never happened.
+    /// <para>
+    /// <c>KeepPager</c> travels with <c>Page</c>, because every handler that moves one moves the
+    /// other: a sort or a narrowing renumbers to page one and takes the pager down with it.
+    /// </para>
     /// </remarks>
     private readonly record struct RowRequest(
-        string? Search, int Page, SortField Sort, SortDirection Direction, VariableFilter Filter);
+        string? Search,
+        int Page,
+        SortField Sort,
+        SortDirection Direction,
+        VariableFilter Filter,
+        bool KeepPager);
 
     /// <summary>Send the row request that failed once more, unchanged.</summary>
     /// <remarks>
@@ -602,25 +615,35 @@ public partial class VariableExplorer
     /// What failed was one particular request, and that is the one the button offers to repeat.
     /// </para>
     /// <para>
-    /// The counts are not refreshed alongside it. A failed refresh reports itself separately, with
-    /// its own sentence and its own button in the same region, and one handler answering for both
-    /// would clear one of the two messages with the other's request.
+    /// The counts follow only when the retried request moved the selection they describe — a search
+    /// or a filter change, which they are cross-filtered against. A failed refresh of them reports
+    /// itself separately, so re-asking after a page turn or a sort would answer that message with
+    /// the other one's request; not asking after a search or a narrowing would leave the numbers
+    /// describing a selection nothing on screen is in any more, and say nothing about it.
+    /// </para>
+    /// <para>
+    /// The host is told what moved and nothing else, the way each original handler is. A retried
+    /// page turn raises <see cref="PageChanged"/> alone: the other three carry values the host was
+    /// told during the rollback and the retried request never touched, and a host rewriting a URL
+    /// per callback would take three more history entries for a page turn.
     /// </para>
     /// </remarks>
     private async Task RetryRowsAsync()
     {
         // Dropped rather than queued while a fetch is in flight, the same as a second submit — and
-        // inert rather than absent once there is nothing left to retry, the same as Tøm filtre:
-        // the button is the control the reader just pressed, so it must not leave the document.
+        // inert rather than absent once there is nothing left to retry, the same as the clear
+        // button: the button is the control the reader just pressed, so it must not leave the DOM.
         if (_loading || !_retryRowsEnabled || _failedRows is not { } request)
         {
             return;
         }
 
+        var previousSearch = _executedSearch;
         var previousPage = _page;
         var previousSort = _sort;
         var previousDirection = _direction;
         var previousFilter = _filter;
+        var previousKeepPager = _keepPager;
         var previousResult = _result;
         var previousPanel = CapturePanel();
 
@@ -628,6 +651,7 @@ public partial class VariableExplorer
         _sort = request.Sort;
         _direction = request.Direction;
         _filter = request.Filter;
+        _keepPager = request.KeepPager;
 
         // keepResult, because a failed page turn's rows are still on screen and a failed search's
         // are already gone: either way the retry must not be what empties the list.
@@ -639,6 +663,7 @@ public partial class VariableExplorer
             _sort = previousSort;
             _direction = previousDirection;
             _filter = previousFilter;
+            _keepPager = previousKeepPager;
 
             return;
         }
@@ -647,11 +672,35 @@ public partial class VariableExplorer
         // attempt could — the index shrinks between two requests — so it takes the same way back.
         await RetreatFromEmptyPageAsync(previousPage, previousResult, previousPanel);
 
+        // Put back the offer the fetch above cleared, because this one button is the element under
+        // the reader's finger and removing it would drop focus to <body>. Not over a retreat that
+        // failed, which has left its own live request here.
+        _failedRows ??= request;
+
+        // Only what this request could have moved. _facets null is the first load's failure: the
+        // rows are back and the filter panel is still not on the page at all until they arrive.
+        if (_facets is null || _executedSearch != previousSearch || _filter != previousFilter)
+        {
+            await FetchFacetsAsync();
+        }
+
         // Only on success, and only afterwards: what the host mirrors is what is in force, and
         // until this answer arrived that was the rolled-back state it was already told about.
-        await RaiseAsync(SortChanged, _sort);
-        await RaiseAsync(DirectionChanged, _direction);
-        await RaiseAsync(FilterChanged, _filter);
+        if (_sort != previousSort)
+        {
+            await RaiseAsync(SortChanged, _sort);
+        }
+
+        if (_direction != previousDirection)
+        {
+            await RaiseAsync(DirectionChanged, _direction);
+        }
+
+        if (_filter != previousFilter)
+        {
+            await RaiseAsync(FilterChanged, _filter);
+        }
+
         await NotifyPageChangedAsync();
     }
 

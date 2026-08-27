@@ -445,12 +445,11 @@ public partial class VariableExplorer : ComponentBase
     private string? _error;
     private Page<VariableSummary>? _result;
 
-    // The retry control beside the failure: whether it is on the page at all, whether pressing it
-    // can help, and the request it would send. Once shown it is never taken away again — it is the
-    // control the reader just pressed, so it goes inert, the way the pager and Tøm filtre do.
-    private bool _retryRowsShown;
-    private bool _retryRowsEnabled;
+    // The request that failed and what pressing the button beside it would do. The request is the
+    // control's presence too — one field rather than a flag that could only ever disagree with it —
+    // and it outlives its own retry by one fetch, so the pressed button keeps its focus.
     private RowRequest? _failedRows;
+    private bool _retryRowsEnabled;
 
     // The facet selection the visible rows were fetched with. Never null — VariableFilter.None is
     // "no narrowing" — so nothing downstream has to spell that case out twice.
