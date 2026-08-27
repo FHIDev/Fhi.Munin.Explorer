@@ -445,6 +445,13 @@ public partial class VariableExplorer : ComponentBase
     private string? _error;
     private Page<VariableSummary>? _result;
 
+    // The retry control beside the failure: whether it is on the page at all, whether pressing it
+    // can help, and the request it would send. Once shown it is never taken away again — it is the
+    // control the reader just pressed, so it goes inert, the way the pager and Tøm filtre do.
+    private bool _retryRowsShown;
+    private bool _retryRowsEnabled;
+    private RowRequest? _failedRows;
+
     // The facet selection the visible rows were fetched with. Never null — VariableFilter.None is
     // "no narrowing" — so nothing downstream has to spell that case out twice.
     private VariableFilter _filter = VariableFilter.None;
@@ -461,6 +468,11 @@ public partial class VariableExplorer : ComponentBase
     // failing: the rows on screen are the right rows, and it is the numbers beside the filters that
     // may now be stale. Reported separately for that reason.
     private string? _facetError;
+
+    // Its own retry control, for its own failure. Shared state with the rows' would mean one button
+    // answering for two messages, and the counts and the list are asked for separately.
+    private bool _retryFacetsShown;
+    private bool _retryFacetsEnabled;
 
     // The variable whose detail panel is open, and what has been fetched for it. Never a variable
     // that is not among the rows on screen: the panel is drawn inside its own row, so a selection

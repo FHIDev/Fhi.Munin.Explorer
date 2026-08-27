@@ -310,6 +310,21 @@ else
         {
             <p class="infobox infobox--bg-yellow">@_error</p>
         }
+        @* Inside the region and not beside it, so the failure and the way out of it are announced
+           in one utterance rather than the interruption saying only that something went wrong.
+
+           Shown from the first failure it could have answered and never removed again, only made
+           inert: a successful retry clears the message, and a button leaving with it would drop
+           the focus of the reader who just pressed it to <body> — the pager's rule, and Tøm
+           filtre's. Absent before that, because a retry button over a page with nothing wrong is
+           furniture, and the empty container above is empty on purpose. *@
+        @if (_retryRowsShown)
+        {
+            <button class="hd-button-square button-square--ghost margin-right margin-bottom"
+                    type="button"
+                    aria-disabled="@AriaDisabled(_retryRowsEnabled)"
+                    @onclick="RetryRowsAsync">@T.RetrySearch</button>
+        }
         @* The facets failing is a different failure from the search failing — the rows are the right
            rows and it is the numbers beside the filters that may be stale — but it shares this one
            alert region rather than opening a second. Two assertive regions on one component race to
@@ -317,6 +332,16 @@ else
         @if (_facetError is not null)
         {
             <p class="infobox infobox--bg-yellow">@_facetError</p>
+        }
+        @* Its own button under its own sentence, named for what it retries: both failures can be
+           reported at once, and two buttons reading "Prøv igjen" in one assertive region would be
+           two identical offers with nothing to choose between them. *@
+        @if (_retryFacetsShown)
+        {
+            <button class="hd-button-square button-square--ghost margin-right margin-bottom"
+                    type="button"
+                    aria-disabled="@AriaDisabled(_retryFacetsEnabled)"
+                    @onclick="RetryFacetsAsync">@T.RetryFilters</button>
         }
     </div>
 

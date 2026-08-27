@@ -517,6 +517,7 @@ public partial class VariableExplorer
     {
         _loading = true;
         _error = null;
+        _retryRowsEnabled = false;
         StateHasChanged();
 
         try
@@ -560,7 +561,19 @@ public partial class VariableExplorer
                 _result = null;
             }
 
-            _error = ex is MuninExplorerRateLimitedException ? T.RateLimitError : T.Error;
+            var rateLimited = ex is MuninExplorerRateLimitedException;
+
+            _error = rateLimited ? T.RateLimitError : T.Error;
+
+            // No retry offered for a 429: pressing it is the one action that provably cannot help,
+            // and the sentence beside it says to wait. The request is captured rather than replayed
+            // off the fields, which every caller rolls back to describe the rows still on screen.
+            if (!rateLimited)
+            {
+                _failedRows = new RowRequest(search, _page, _sort, _direction, _filter);
+                _retryRowsShown = true;
+                _retryRowsEnabled = true;
+            }
 
             return false;
         }
@@ -568,6 +581,78 @@ public partial class VariableExplorer
         {
             _loading = false;
         }
+    }
+
+    /// <summary>The row request that failed, so the retry button can send that one again.</summary>
+    /// <remarks>
+    /// Not the fields as they stand when the button is pressed. Every caller that fails rolls its
+    /// own state back to describe the rows still on screen, so by then <c>_page</c> is the page the
+    /// reader never left and <c>_sort</c> the order they are still looking at. Retrying from those
+    /// would re-fetch what is already there and clear the error, reporting success for a page turn
+    /// or a reordering that never happened.
+    /// </remarks>
+    private readonly record struct RowRequest(
+        string? Search, int Page, SortField Sort, SortDirection Direction, VariableFilter Filter);
+
+    /// <summary>Send the row request that failed once more, unchanged.</summary>
+    /// <remarks>
+    /// <para>
+    /// Deliberately not <see cref="SearchAsync"/>. That is a new search — page one, and the live
+    /// contents of the box, which the reader may have typed into while the error sat on screen.
+    /// What failed was one particular request, and that is the one the button offers to repeat.
+    /// </para>
+    /// <para>
+    /// The counts are not refreshed alongside it. A failed refresh reports itself separately, with
+    /// its own sentence and its own button in the same region, and one handler answering for both
+    /// would clear one of the two messages with the other's request.
+    /// </para>
+    /// </remarks>
+    private async Task RetryRowsAsync()
+    {
+        // Dropped rather than queued while a fetch is in flight, the same as a second submit — and
+        // inert rather than absent once there is nothing left to retry, the same as Tøm filtre:
+        // the button is the control the reader just pressed, so it must not leave the document.
+        if (_loading || !_retryRowsEnabled || _failedRows is not { } request)
+        {
+            return;
+        }
+
+        var previousPage = _page;
+        var previousSort = _sort;
+        var previousDirection = _direction;
+        var previousFilter = _filter;
+        var previousResult = _result;
+        var previousPanel = CapturePanel();
+
+        _page = request.Page;
+        _sort = request.Sort;
+        _direction = request.Direction;
+        _filter = request.Filter;
+
+        // keepResult, because a failed page turn's rows are still on screen and a failed search's
+        // are already gone: either way the retry must not be what empties the list.
+        if (!await FetchAsync(request.Search, keepResult: true))
+        {
+            // The same invariant every rollback here protects: the state has to go on describing
+            // the rows the reader can see, which are still the ones from before the first failure.
+            _page = previousPage;
+            _sort = previousSort;
+            _direction = previousDirection;
+            _filter = previousFilter;
+
+            return;
+        }
+
+        // A retried page turn can land on a page the result no longer has, exactly as the first
+        // attempt could — the index shrinks between two requests — so it takes the same way back.
+        await RetreatFromEmptyPageAsync(previousPage, previousResult, previousPanel);
+
+        // Only on success, and only afterwards: what the host mirrors is what is in force, and
+        // until this answer arrived that was the rolled-back state it was already told about.
+        await RaiseAsync(SortChanged, _sort);
+        await RaiseAsync(DirectionChanged, _direction);
+        await RaiseAsync(FilterChanged, _filter);
+        await NotifyPageChangedAsync();
     }
 
     private static string? Trimmed(string? text) =>
