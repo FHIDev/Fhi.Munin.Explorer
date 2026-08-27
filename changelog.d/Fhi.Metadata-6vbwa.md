@@ -6,8 +6,9 @@ category: Fixed
   3.3.2. (Fhi.Metadata-6vbwa)
 - **The save and remove buttons say which variable they act on** - a page of results was 25 buttons
   all announcing "Lagre i liste", and a saved list of forty was forty announcing "Fjern", with
-  nothing to say which row a screen reader user was standing on. Each now carries an `aria-label`
-  naming its own variable, in both languages; the words on the button are unchanged and stay part of
-  the sentence, so speech input still reaches them. A row whose variable has left the catalogue has
-  no name to say, so its button names the entry's id instead — two retracted variables would
-  otherwise give two buttons announcing the same sentence. (Fhi.Metadata-6vbwa)
+  nothing to say which row a screen reader user was standing on. Each is now named from two
+  elements — its own words, then the row's name cell — so the words stay in the reader's language
+  while the variable's name stays Norwegian and marked as such, which a single `aria-label` string
+  could not do. The words on the button are unchanged and come first, so speech input still reaches
+  them. A row whose variable has left the catalogue borrows the sentence its name cell shows.
+  (Fhi.Metadata-6vbwa)

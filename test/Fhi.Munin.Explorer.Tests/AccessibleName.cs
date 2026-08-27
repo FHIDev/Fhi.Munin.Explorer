@@ -30,6 +30,17 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </remarks>
 internal static class AccessibleName
 {
+    /// <summary>
+    /// HTML's labelable elements — the only ones a wrapping <c>&lt;label&gt;</c> can name.
+    /// </summary>
+    /// <remarks>
+    /// A hidden input is not one of them, and neither is anything outside this list: a
+    /// <c>&lt;span&gt;</c>, an <c>&lt;a&gt;</c> or a <c>&lt;div role="button"&gt;</c> sitting
+    /// inside a label takes no name from it however close the words are on screen.
+    /// </remarks>
+    private const string LabelableSelector =
+        "button, input:not([type=hidden]), meter, output, progress, select, textarea";
+
     /// <summary>The name the control announces as, or an empty string when it has none.</summary>
     public static string Of(IElement element)
     {
@@ -73,10 +84,17 @@ internal static class AccessibleName
         }
 
         // A control wrapped in a label is named by it — the shape the kodeverk checkbox uses, and
-        // the list picker.
-        var wrapping = element.Closest("label");
+        // the list picker. Narrowly, though: HTML names (a) a labelable element from (b) the label
+        // whose FIRST labelable descendant it is. Two shapes a browser leaves unnamed would
+        // otherwise resolve to a name here — anything not labelable dropped inside a label, and a
+        // second control under a label whose first one is something else, as in
+        // `<label><input type="checkbox"/> Inkluder kodeverk <input type="text"/></label>`, where
+        // the text field really does announce as unnamed. Both would be a silent pass on exactly
+        // the defect this helper exists to catch, which is the failure direction that matters:
+        // the file's promise is that an empty answer means an unnamed control.
+        var wrapping = element.Matches(LabelableSelector) ? element.Closest("label") : null;
 
-        if (wrapping is not null)
+        if (wrapping is not null && NothingLabelableComesFirst(element))
         {
             var text = TextExcept(wrapping, element);
 
@@ -94,6 +112,40 @@ internal static class AccessibleName
         }
 
         return "";
+    }
+
+    /// <summary>
+    /// Whether this control is the first labelable element under the label that wraps it.
+    /// </summary>
+    /// <remarks>
+    /// Walked backwards and upwards from the control rather than asked of the label as
+    /// "is <c>QuerySelector</c>'s answer this element", because bUnit hands out wrapper objects
+    /// that re-find their element after a render: the wrapper and the element it stands for are
+    /// never the same reference, so an identity comparison answers no for a control that really is
+    /// the first one. Nothing here compares nodes — a previous sibling holding a labelable element
+    /// is what disqualifies it, and that is a question about the sibling alone.
+    /// </remarks>
+    private static bool NothingLabelableComesFirst(IElement element)
+    {
+        var node = element;
+
+        while (node is not null && !node.TagName.Equals("LABEL", StringComparison.OrdinalIgnoreCase))
+        {
+            for (var before = node.PreviousElementSibling;
+                 before is not null;
+                 before = before.PreviousElementSibling)
+            {
+                if (before.Matches(LabelableSelector) || before.QuerySelector(LabelableSelector) is not null)
+                {
+                    return false;
+                }
+            }
+
+            node = node.ParentElement;
+        }
+
+        // Off the top of the tree without meeting a label, which the caller has already ruled out.
+        return node is not null;
     }
 
     /// <summary>

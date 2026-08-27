@@ -339,7 +339,16 @@ public class VariableListViewTest : BunitContext
         var cut = RenderView(client);
 
         Assert.Equal(2, cut.FindAll(".munin-explorer-data-list__item").Count);
-        Assert.Contains("ikke tilgjengelig", cut.Markup);
+
+        // Scoped to the cell, not to the document. The remove button on that same row is named
+        // from these words, so a substring assertion over cut.Markup is satisfied by the button
+        // alone — and RowName could return "" for an orphan, leaving a blank name cell under a
+        // count that says two, with every case in this file still green.
+        var names = cut.FindAll(".munin-explorer-dataitem-main__name");
+
+        Assert.Equal(2, names.Count);
+        Assert.Equal("Alder ved diagnose", names[0].TextContent.Trim());
+        Assert.Equal("Variabelen er ikke tilgjengelig lenger", names[1].TextContent.Trim());
     }
 
     [Fact]
@@ -537,11 +546,49 @@ public class VariableListViewTest : BunitContext
     }
 
     [Fact]
-    public void View_WhenAnEntryHasNoVariableLeft_ThenItsRemoveButtonStillSaysWhatItRemoves()
+    public void View_WhenThePageIsEnglish_ThenTheRemoveButtonKeepsEachHalfOfItsNameInItsOwnLanguage()
     {
-        // An orphaned entry has no name to put in the sentence. Left to the raw value the button
-        // would announce with a hole where the variable should be — so it says that the variable
-        // is gone, and which one it was.
+        // The reason the name is two elements rather than one aria-label. "Remove" is ours and
+        // follows Language; "Alder ved diagnose" is Munin's and is Norwegian whatever the
+        // surrounding UI is. Written as one string the whole sentence would reach an English
+        // voice, which pronounces the Norwegian half with English phonetics — WCAG 3.1.2, and the
+        // defect the lang="no" on these cells exists to prevent.
+        Services.AddSingleton<IMuninExplorerClient>(
+            new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+        Services.AddScoped<VariableListState>();
+
+        var cut = Render<VariableListView>(p => p
+            .Add(c => c.IsAuthenticated, true)
+            .Add(c => c.Language, "en"));
+
+        var button = cut.Find(".munin-explorer-dataitem-main button");
+
+        Assert.Equal("Remove Alder ved diagnose", AccessibleName.Of(button));
+
+        // Not an aria-label: a single string is exactly what cannot carry the two languages.
+        Assert.Null(button.GetAttribute("aria-label"));
+
+        // The half that is Munin's is marked as Norwegian where the button borrows it from.
+        var referenced = button.GetAttribute("aria-labelledby")!.Split(' ');
+        var nameCell = cut.Find($"#{referenced[1]}");
+
+        Assert.Equal("Alder ved diagnose", nameCell.TextContent.Trim());
+        Assert.Equal("no", nameCell.GetAttribute("lang"));
+
+        // And the button's own word comes first, so speech input reaches it by what is on screen.
+        Assert.Equal(button.Id, referenced[0]);
+    }
+
+    [Fact]
+    public void View_WhenAnEntryHasNoVariableLeft_ThenItsRemoveButtonSaysSoWithoutReadingAnIdOut()
+    {
+        // An orphaned entry has no name to borrow, so the button borrows the sentence its name
+        // cell shows instead — it still says what it removes, and it says it in words.
+        //
+        // Named from the cell rather than from the entry's id, which was the first attempt at
+        // telling two orphans apart: NVDA and JAWS spell a hex GUID out character by character,
+        // so that is about ten seconds of speech per row, naming the row after a value the row
+        // does not show in any column a reader could match it against.
         var orphan = Orphan();
         var cut = RenderView(new ListClient(orphan));
 
@@ -549,29 +596,30 @@ public class VariableListViewTest : BunitContext
 
         Assert.Contains("ikke tilgjengelig lenger", name, StringComparison.Ordinal);
         Assert.Contains("Fjern", name, StringComparison.Ordinal);
-        Assert.Contains(orphan.VariableId.ToString(), name, StringComparison.Ordinal);
+        Assert.DoesNotContain(orphan.VariableId.ToString(), name, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            orphan.VariableId.ToString("N"), name, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public void View_WhenTwoEntriesHaveNoVariableLeft_ThenTheirRemoveButtonsStillDiffer()
+    public void View_WhenTwoEntriesHaveNoVariableLeft_ThenTheirButtonsShareANameAndNotAnId()
     {
-        // The sentence shown in place of a name is a constant, so naming both orphans after it
-        // would rebuild the defect this label removes — two buttons announcing the identical
-        // thing, one row apart. A single orphan cannot show that, which is why there are two here.
-        // VariableList.cs says the display fields may all be null together, so the id is the only
-        // thing left that tells them apart.
+        // Two orphans do announce alike, deliberately. A duplicate accessible name on two distinct
+        // controls is not a WCAG failure — 4.1.2 asks for a name and 2.4.6 asks that it describe,
+        // neither that it be unique — and the only thing that could tell them apart is an id no
+        // column shows. What must NOT collide is the DOM ids the names are built from: two rows
+        // sharing one would aim both buttons at the first row's cell, which is a 4.1.1 failure.
         var first = Orphan();
         var second = Orphan();
         var cut = RenderView(new ListClient(first, second));
 
-        var names = cut.FindAll(".munin-explorer-dataitem-main button")
-            .Select(AccessibleName.Of)
-            .ToList();
+        var buttons = cut.FindAll(".munin-explorer-dataitem-main button");
 
-        Assert.Equal(2, names.Count);
-        Assert.Equal(2, names.Distinct(StringComparer.Ordinal).Count());
-        Assert.Contains(first.VariableId.ToString(), names[0], StringComparison.Ordinal);
-        Assert.Contains(second.VariableId.ToString(), names[1], StringComparison.Ordinal);
+        Assert.Equal(2, buttons.Count);
+        Assert.Equal(AccessibleName.Of(buttons[0]), AccessibleName.Of(buttons[1]));
+        Assert.NotEqual(buttons[0].Id, buttons[1].Id);
+        Assert.NotEqual(
+            buttons[0].GetAttribute("aria-labelledby"), buttons[1].GetAttribute("aria-labelledby"));
     }
 
     [Fact]

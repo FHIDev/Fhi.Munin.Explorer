@@ -238,52 +238,6 @@ public class LanguageTest : BunitContext
     }
 
     [Fact]
-    public void Texts_WhenAControlIsNamedAfterAVariable_ThenBothLanguagesPutTheNameInTheSentence()
-    {
-        // The parity guard above has one arm for the sentence-building delegates, and it can only
-        // ask that both languages have one — a translation that dropped the {name} placeholder
-        // would satisfy it and give every row in the list an identical accessible name, which is
-        // the defect these three strings exist to fix. So each is called here, in both languages.
-        const string variable = "Alder ved diagnose";
-
-        foreach (var language in new[] { "no", "en" })
-        {
-            var texts = Texts.For(language);
-
-            foreach (var (name, sentence) in new[]
-            {
-                (nameof(texts.SaveToListLabel), texts.SaveToListLabel(variable)),
-                (nameof(texts.RemoveFromListLabel), texts.RemoveFromListLabel(variable)),
-                (nameof(texts.RemoveFromThisListLabel), texts.RemoveFromThisListLabel(variable))
-            })
-            {
-                Assert.False(
-                    string.IsNullOrWhiteSpace(sentence), $"{name} is empty in {language}.");
-                Assert.Contains(variable, sentence, StringComparison.Ordinal);
-            }
-
-            // Each accessible name contains the words on the button, so a speech-input user saying
-            // what they can see still hits the control. WCAG 2.5.3, and the reason the variable's
-            // name is appended rather than dropped into the middle of the phrase.
-            Assert.Contains(texts.SaveToList, texts.SaveToListLabel(variable), StringComparison.Ordinal);
-            Assert.Contains(texts.RemoveFromList, texts.RemoveFromListLabel(variable), StringComparison.Ordinal);
-            Assert.Contains(
-                texts.RemoveFromThisList, texts.RemoveFromThisListLabel(variable), StringComparison.Ordinal);
-
-            // The orphan row's remove button is named after an id rather than a variable, because
-            // the sentence it would otherwise carry is the same on every such row. A translation
-            // that dropped the {id} would put two identical names on two different buttons, which
-            // no arm of the parity guard can see.
-            var orphan = new Guid("33333333-3333-3333-3333-333333333333");
-            var unavailable = texts.RemoveUnavailableFromThisListLabel(orphan);
-
-            Assert.Contains(orphan.ToString(), unavailable, StringComparison.Ordinal);
-            Assert.Contains(texts.RemoveFromThisList, unavailable, StringComparison.Ordinal);
-            Assert.NotEqual(texts.RemoveFromThisListLabel(variable), unavailable);
-        }
-    }
-
-    [Fact]
     public void Texts_WhenTheApiRateLimits_ThenTheSentenceDiffersFromTheGenericFailureInBothLanguages()
     {
         // The whole point of the 429 branch is that a throttled reader is told something they can

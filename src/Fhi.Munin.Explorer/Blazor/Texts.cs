@@ -136,14 +136,6 @@ internal sealed record Texts(
     // what pressing it does, not what the variable currently is.
     string SaveToList,
     string RemoveFromList,
-    // (name) — the same two actions as accessible names, each naming the variable it acts on.
-    // The word on the button cannot: a result list is a column of buttons all reading "Lagre i
-    // liste", and a screen reader moving down them hears the same three words with nothing to say
-    // which row it is standing on. The variable's name goes after the visible text rather than
-    // inside it, so the visible label is still a contiguous substring of the accessible name and a
-    // speech-input user saying what they can see still hits the control (WCAG 2.5.3).
-    Func<string, string> SaveToListLabel,
-    Func<string, string> RemoveFromListLabel,
     // The list made for a reader who saves before they have made one themselves.
     string FirstListName,
     // Said in the row, beside the button that failed - the rest of the results are unaffected.
@@ -157,19 +149,6 @@ internal sealed record Texts(
     string NoListsYet,
     string EmptyList,
     string RemoveFromThisList,
-    // (name) — the saved-list row's remove button as an accessible name. Same reason as the two
-    // above, and worse here: every row's button says the single word "Fjern", so a list of forty
-    // is forty identical controls. The name goes after a colon, the shape the two above use: the
-    // slot takes a variable's name and reads as one, and a clause dropped into the middle of the
-    // phrase would not. "Fjern" still opens the sentence, which keeps the visible word a
-    // contiguous substring of the accessible name (WCAG 2.5.3).
-    Func<string, string> RemoveFromThisListLabel,
-    // (id) — the same button on a row whose variable has left the catalogue. There is no name to
-    // put after the colon, and the sentence shown in its place is the same on every such row, so
-    // two retracted variables would give two buttons announcing the identical thing. The id is
-    // the only thing left that tells them apart: VariableList.cs documents that the display
-    // fields may all be null together, so the code is gone too.
-    Func<Guid, string> RemoveUnavailableFromThisListLabel,
     string ListLoadError,
     // Shown for an entry whose variable is no longer in the catalogue - retracted, unpublished,
     // or not yet projected. The row stays so the paging totals keep meaning what they say.
@@ -563,8 +542,6 @@ internal sealed record Texts(
         ShowWholeVariable: "Vis hele variabelen",
         SaveToList: "Lagre i liste",
         RemoveFromList: "Fjern fra liste",
-        SaveToListLabel: name => $"Lagre i liste: {name}",
-        RemoveFromListLabel: name => $"Fjern fra liste: {name}",
         FirstListName: "Min variabelliste",
         SaveError: "Kunne ikke lagre nå. Prøv igjen om litt.",
         MyListsHeading: "Mine variabellister",
@@ -574,9 +551,6 @@ internal sealed record Texts(
         NoListsYet: "Du har ingen variabellister ennå.",
         EmptyList: "Denne listen er tom.",
         RemoveFromThisList: "Fjern",
-        RemoveFromThisListLabel: name => $"Fjern fra denne listen: {name}",
-        RemoveUnavailableFromThisListLabel: id =>
-            $"Fjern fra denne listen: variabel {id}, ikke tilgjengelig lenger",
         ListLoadError: "Kunne ikke hente listen nå. Prøv igjen om litt.",
         VariableNoLongerAvailable: "Variabelen er ikke tilgjengelig lenger",
         DownloadList: "Last ned listen",
@@ -805,8 +779,6 @@ internal sealed record Texts(
         ShowWholeVariable: "Show the whole variable",
         SaveToList: "Save to list",
         RemoveFromList: "Remove from list",
-        SaveToListLabel: name => $"Save to list: {name}",
-        RemoveFromListLabel: name => $"Remove from list: {name}",
         FirstListName: "My variable list",
         SaveError: "Could not save just now. Try again shortly.",
         MyListsHeading: "My variable lists",
@@ -816,9 +788,6 @@ internal sealed record Texts(
         NoListsYet: "You have no variable lists yet.",
         EmptyList: "This list is empty.",
         RemoveFromThisList: "Remove",
-        RemoveFromThisListLabel: name => $"Remove from this list: {name}",
-        RemoveUnavailableFromThisListLabel: id =>
-            $"Remove from this list: variable {id}, no longer available",
         ListLoadError: "Could not fetch the list just now. Try again shortly.",
         VariableNoLongerAvailable: "The variable is no longer available",
         DownloadList: "Download the list",

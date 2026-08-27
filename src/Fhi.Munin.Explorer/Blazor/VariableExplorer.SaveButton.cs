@@ -72,23 +72,34 @@ public partial class VariableExplorer
         builder.OpenElement(0, "button");
         builder.AddAttribute(1, "class", "hd-button-square button-square--ghost");
         builder.AddAttribute(2, "type", "button");
+        builder.AddAttribute(3, "id", SaveButtonId(v));
 
         // The pressed state is what a screen reader announces, and it is the same fact the word
         // shows sighted readers — one control in two states, not two controls.
-        builder.AddAttribute(3, "aria-pressed", saved ? "true" : "false");
+        builder.AddAttribute(4, "aria-pressed", saved ? "true" : "false");
 
         // The accessible name says which variable, where the visible words cannot: a page of
         // results is 25 buttons all reading "Lagre i liste", and a screen reader moving down them
-        // announces the same three words 25 times over. It tracks the pressed state for the same
-        // reason the word does — one control in two states — and puts the name after the visible
-        // text so that text stays a contiguous substring of it (WCAG 2.5.3, and 4.1.2 for the
-        // name itself).
-        builder.AddAttribute(4, "aria-label", saved
-            ? T.RemoveFromListLabel(v.PreferredTerm)
-            : T.SaveToListLabel(v.PreferredTerm));
+        // announces the same three words 25 times over. WCAG 4.1.2.
+        //
+        // Two elements rather than an aria-label, which is the rule this package already wrote
+        // down for the toggle in this same row: the words are ours and follow Language, the
+        // variable's name is Munin's and is Norwegian whatever the surrounding UI is. Pointing at
+        // the button and then at the name span keeps each half in the language it is written in —
+        // the span carries lang="no" (razor.cs, RowHeading) — where a single aria-label string
+        // would hand "Save to list: Alder ved diagnose" to an English voice and have it pronounce
+        // the Norwegian with English phonetics. WCAG 3.1.2.
+        //
+        // Self-reference first, so the name starts with the visible text and a speech-input user
+        // saying what they can see still reaches the control (WCAG 2.5.3). It also tracks the
+        // pressed state for free, because the button's own content is what changes with it — and
+        // it is what makes a variable with no PreferredTerm safe: an empty span contributes
+        // nothing, so the button falls back to "Lagre i liste" rather than announcing that phrase
+        // with a hole on the end, which is what interpolating the term into a sentence would give.
+        builder.AddAttribute(5, "aria-labelledby", $"{SaveButtonId(v)} {RowHeadingId(v)}");
 
-        builder.AddAttribute(5, "onclick", EventCallback.Factory.Create(this, () => ToggleSavedAsync(v)));
-        builder.AddContent(6, saved ? T.RemoveFromList : T.SaveToList);
+        builder.AddAttribute(6, "onclick", EventCallback.Factory.Create(this, () => ToggleSavedAsync(v)));
+        builder.AddContent(7, saved ? T.RemoveFromList : T.SaveToList);
         builder.CloseElement();
 
         // Said in the row rather than the component's alert region: the other rows are unaffected,
@@ -98,11 +109,11 @@ public partial class VariableExplorer
         // own alert region uses (VariableExplorer.razor:286). A role="alert" element that is
         // inserted and filled in the same DOM update is announced unreliably; one that is already
         // there and gains text is announced.
-        builder.OpenElement(7, "span");
-        builder.AddAttribute(8, "role", "alert");
-        builder.AddAttribute(9, "aria-live", "assertive");
-        builder.AddAttribute(10, "aria-atomic", "true");
-        builder.AddContent(11, failure switch
+        builder.OpenElement(8, "span");
+        builder.AddAttribute(9, "role", "alert");
+        builder.AddAttribute(10, "aria-live", "assertive");
+        builder.AddAttribute(11, "aria-atomic", "true");
+        builder.AddContent(12, failure switch
         {
             SaveFailure.Throttled => T.RateLimitError,
             SaveFailure.Failed => T.SaveError,

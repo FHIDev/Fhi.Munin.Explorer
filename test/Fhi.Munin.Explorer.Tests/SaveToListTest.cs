@@ -209,6 +209,49 @@ public class SaveToListTest : BunitContext
     }
 
     [Fact]
+    public void Row_WhenThePageIsEnglish_ThenTheSaveButtonKeepsEachHalfOfItsNameInItsOwnLanguage()
+    {
+        // The reason the name is two elements rather than one aria-label, and the rule this
+        // package already wrote down for the toggle in this same row: "Save to list" is ours and
+        // follows Language, "Alder ved diagnose" is Munin's and is Norwegian whatever the
+        // surrounding UI is. One aria-label string would hand the whole sentence to an English
+        // voice, which pronounces the Norwegian half with English phonetics. WCAG 3.1.2.
+        Services.AddSingleton<IMuninExplorerClient>(
+            new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))));
+        Services.AddScoped<VariableListState>();
+
+        var cut = Render<VariableExplorer>(p => p
+            .Add(c => c.IsAuthenticated, true)
+            .Add(c => c.Language, "en"));
+
+        var button = SaveButton(cut);
+
+        Assert.Equal("Save to list Alder ved diagnose", AccessibleName.Of(button));
+        Assert.Null(button.GetAttribute("aria-label"));
+
+        var referenced = button.GetAttribute("aria-labelledby")!.Split(' ');
+        var nameSpan = cut.Find($"#{referenced[1]}");
+
+        Assert.Equal("Alder ved diagnose", nameSpan.TextContent.Trim());
+        Assert.Equal("no", nameSpan.GetAttribute("lang"));
+        Assert.Equal(button.Id, referenced[0]);
+    }
+
+    [Fact]
+    public void Row_WhenAVariableHasNoPreferredTerm_ThenItsButtonStillAnnouncesWhatItDoes()
+    {
+        // PreferredTerm defaults to "" and the row already renders it blank, so this is a shape
+        // the page can reach. Naming the button by pointing at that empty span rather than by
+        // interpolating the term into a sentence is what keeps it safe: the empty half
+        // contributes nothing and the button falls back to its own words, where "Lagre i liste: "
+        // would announce with a hole on the end.
+        var client = new ListClient(OnePage(Variable("", "V_BDR.ALDER")));
+        var cut = RenderSignedIn(client);
+
+        Assert.Equal("Lagre i liste", AccessibleName.Of(SaveButton(cut)));
+    }
+
+    [Fact]
     public void Row_WhenAVariableIsSaved_ThenItsButtonStillNamesItInTheOtherState()
     {
         // One control in two states, and the accessible name has to follow the word the same way
@@ -221,8 +264,7 @@ public class SaveToListTest : BunitContext
 
         var name = AccessibleName.Of(SaveButton(cut));
 
-        Assert.Contains("Alder ved diagnose", name, StringComparison.Ordinal);
-        Assert.Contains("Fjern fra liste", name, StringComparison.Ordinal);
+        Assert.Equal("Fjern fra liste Alder ved diagnose", name);
     }
 
     [Fact]

@@ -580,6 +580,7 @@ public partial class VariableExplorer : ComponentBase
     private string RowHeadingId(VariableSummary v) => $"munin-explorer-heading-{_instance}-{v.Id:N}";
     private string DetailToggleId(VariableSummary v) => $"munin-explorer-toggle-{_instance}-{v.Id:N}";
     private string DetailId(VariableSummary v) => $"munin-explorer-detail-{_instance}-{v.Id:N}";
+    private string SaveButtonId(VariableSummary v) => $"munin-explorer-save-{_instance}-{v.Id:N}";
 
     // Per instance and not per row: the owner panel hangs inside the one open variable panel, so
     // there is never more than one of it in this component's DOM. The kind is in the toggle's id
@@ -828,9 +829,13 @@ public partial class VariableExplorer : ComponentBase
 
         builder.OpenElement(9, "span");
         builder.AddAttribute(10, "class", "munin-explorer-dataitem-main__column__text");
+        // Named, because the save button beside it borrows these words for its own accessible
+        // name — see RowSaveButton. The id is on the span holding the name rather than on the
+        // button around it, so what gets borrowed is the variable and not the whole cell.
+        builder.AddAttribute(11, "id", RowHeadingId(v));
         // Munin's variable names are Norwegian whatever language the surrounding UI is in.
-        builder.AddAttribute(11, "lang", "no");
-        builder.AddContent(12, v.PreferredTerm);
+        builder.AddAttribute(12, "lang", "no");
+        builder.AddContent(13, v.PreferredTerm);
         builder.CloseElement();
 
         builder.CloseElement();

@@ -129,14 +129,16 @@
                                    paging totals stay honest, and a list of 247 that answered with 246
                                    would hide that something went. It says so instead.
 
-                                   RowName decides which of the two it is, and the remove button's
-                                   accessible name is built off the same predicate — written out
-                                   twice, the cell and the button could come to say different
+                                   RowName decides which of the two it is, in one place: written
+                                   out twice, the cell and the remove button below — which is
+                                   named from these very words — could come to say different
                                    things about the same row. CatalogueLang leaves the attribute
                                    off for the sentence, which is ours and in the reader's
                                    language, not Norwegian catalogue text. *@
                                 <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__name">
-                                    <span class="munin-explorer-dataitem-main__column__text" lang="@CatalogueLang(item.VariableName)">@RowName(item)</span>
+                                    <span class="munin-explorer-dataitem-main__column__text"
+                                          id="@RowNameId(item)"
+                                          lang="@CatalogueLang(item.VariableName)">@RowName(item)</span>
                                 </span>
 
                                 <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__code">
@@ -162,13 +164,27 @@
                                    button in it removes something. The accessible name says which
                                    one: without it a list of forty is forty controls that read
                                    "Fjern", and a screen reader user has no way to tell which row
-                                   they are standing on. WCAG 4.1.2. An entry whose variable has
-                                   left the catalogue has no name to say, so RemoveLabel gives it
-                                   a sentence naming its id — otherwise two retracted variables
-                                   would give two buttons reading the same thing. *@
+                                   they are standing on. WCAG 4.1.2.
+
+                                   Two elements rather than an aria-label, the rule the explorer's
+                                   own save button follows: this button points at itself and then
+                                   at the name cell, so "Fjern" stays ours and in the reader's
+                                   language while the variable's name stays Munin's and marked
+                                   lang="no" — one aria-label string would be a single unmarked
+                                   sentence an English voice pronounces the Norwegian half of with
+                                   English phonetics (WCAG 3.1.2). Itself first keeps the visible
+                                   word at the front for speech input (WCAG 2.5.3).
+
+                                   An orphaned row borrows the sentence its name cell shows
+                                   instead, so the button says what it removes without reading an
+                                   id out. Two orphans do then announce alike — a duplicate name
+                                   on two controls is not a WCAG failure, and ten seconds of
+                                   spelt-out GUID for a value the row does not show anywhere is
+                                   worse than one. *@
                                 <button class="hd-button-square button-square--ghost"
                                         type="button"
-                                        aria-label="@RemoveLabel(item)"
+                                        id="@RemoveButtonId(item)"
+                                        aria-labelledby="@RemoveLabelledBy(item)"
                                         @onclick="() => RemoveAsync(item.VariableId)">@T.RemoveFromThisList</button>
                             </div>
                         </div>
