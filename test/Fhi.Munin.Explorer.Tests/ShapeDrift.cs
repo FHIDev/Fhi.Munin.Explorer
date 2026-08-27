@@ -31,6 +31,14 @@ namespace Fhi.Munin.Explorer.Tests;
 /// nightly job nobody believes is a nightly job nobody reads.
 /// </para>
 /// <para>
+/// The same three are interchangeable read the other way as well, which is what a live null
+/// opposite an empty collection is: the client reads an explicit null where a collection is due as
+/// the empty collection — see <c>NullAsEmptyCollections</c> — so the round trip writes <c>{}</c> or
+/// <c>[]</c> where the live body had <c>null</c>. The kinds differ and nothing has drifted, and
+/// since the Explorer API demonstrably sends <c>additionalProperties</c> that way, reporting it
+/// would be a standing false positive on the very payloads the package was taught to survive.
+/// </para>
+/// <para>
 /// What that gives up is narrow and worth stating: a collection the API stops sending entirely
 /// reads exactly like a collection it sends empty, so a withdrawn <c>delkilder</c> would pass here.
 /// It would not pass unnoticed for long — the same change usually renames or moves something else
@@ -75,6 +83,19 @@ internal static class ShapeDrift
     {
         if (live.ValueKind != ours.ValueKind)
         {
+            // A live null opposite an empty collection is the same "nothing here" the withdrawn
+            // direction below already lets through, read from the other side: the client reads an
+            // explicit null where a collection is due as the empty collection, so a live
+            // "additionalProperties": null comes back as {} and a live "delkilder": null as [].
+            // Nothing has drifted there — the contract holds exactly what was sent, and renders it
+            // the same way — but the kinds differ, and reporting that would make the nightly job
+            // file an issue on every payload carrying a null the package handles by design. The
+            // Explorer API demonstrably sends additionalProperties that way.
+            if (live.ValueKind == JsonValueKind.Null && IsNothing(ours))
+            {
+                return;
+            }
+
             // Most type changes throw during deserialisation and never reach here. The ones that
             // survive it are the quiet ones — a scalar that became an object, an object that
             // became an array — so they are worth a line of their own.

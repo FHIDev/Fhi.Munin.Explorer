@@ -4071,6 +4071,21 @@ public class VariableExplorerTest : BunitContext
         }
 
         /// <summary>Answer the oldest codes fetch still hanging.</summary>
+        /// <remarks>
+        /// Call it from inside <c>cut.InvokeAsync</c>, which every caller does, and the component's
+        /// continuation has run by the time this returns: the stall completes its continuations
+        /// inline, and the awaiting continuation captured the renderer's synchronisation context —
+        /// which is the current one there — so the task machinery runs it on the spot rather than
+        /// posting it.
+        /// <para>
+        /// That is the whole reason for not asking for <c>RunContinuationsAsynchronously</c> here.
+        /// An answer the generation guard is <em>supposed</em> to drop leaves nothing behind to
+        /// wait for, so a test about one has nothing to poll and no choice but to know it has
+        /// landed. Nudging the dispatcher one turn is not that: with the continuation queued
+        /// asynchronously the answer can still be a thread-pool hop away, and the test then races
+        /// the very thing it is checking.
+        /// </para>
+        /// </remarks>
         public void AnswerStalledCodes(KodeverkCodes codes) =>
             _codeStalls.First(stall => !stall.Task.IsCompleted).TrySetResult(codes);
 
@@ -4092,8 +4107,8 @@ public class VariableExplorerTest : BunitContext
 
             if (StallCodes)
             {
-                var stall = new TaskCompletionSource<KodeverkCodes?>(
-                    TaskCreationOptions.RunContinuationsAsynchronously);
+                // Continuations inline deliberately - see AnswerStalledCodes.
+                var stall = new TaskCompletionSource<KodeverkCodes?>();
                 _codeStalls.Add(stall);
 
                 return stall.Task;
@@ -4721,17 +4736,29 @@ public class VariableExplorerTest : BunitContext
             Codes = [new() { Value = "9", Name = "STALE" }]
         }));
 
-        // One turn of the dispatcher, so the abandoned answer has landed if it is going to.
-        await cut.InvokeAsync(() => { });
-
+        // The abandoned answer has landed by the line above, not merely been nudged towards
+        // landing: the stall runs its continuations inline, so the component's has run before
+        // AnswerStalledCodes returned. That ordering is what gives the rest of this test its bite.
+        // Waiting for the fresh answer instead would not: both answers write the same _codes entry,
+        // so with the guard broken the last writer wins, and a wait that ends once the fresh one is
+        // in reads a table the abandoned write has already been erased from.
         CodeToggles(cut)[0].Click();
 
+        // And the table this press produces is there by the time Click returns, so the read below
+        // needs no wait of its own: StallCodes is off again, GetKodeverkCodesAsync hands back a
+        // Task.FromResult, and LoadCodesAsync neither yields nor leaves the dispatcher — so its
+        // await continues inline, inside the dispatch bUnit blocks on. Deterministic rather than
+        // fast, which is why load does not change it, and why every other codes test in this file
+        // reads the table straight after the press as well.
         var table = Panel(cut).QuerySelector(".munin-explorer-codes table")!;
 
         Assert.DoesNotContain("STALE", table.TextContent);
         Assert.Contains("Velg verdi", table.TextContent);
 
-        // Nothing was cached under the new variable, so its list was fetched for it.
+        // Nothing was cached under the new variable, so its list was fetched for it. Break the
+        // guard and this fails too: the abandoned answer fills _codes for the key about to be
+        // opened, so the toggle finds it there and never asks. Checked by removing the guard —
+        // the STALE row shows up first, and this line behind it.
         Assert.Equal(2, client.CodeRequests.Count);
         Assert.Equal(SpyttId, client.CodeRequests[1].VariableId);
     }

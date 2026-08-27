@@ -66,6 +66,11 @@ public sealed record VariableDetail
     /// Curated metadata for the version being shown — database reference, comment, what it
     /// replaces, and so on. Every value is a string. Labels come from <see cref="PropertyMetadata"/>.
     /// </summary>
+    /// <remarks>
+    /// Non-nullable, and kept so by the deserialiser rather than by the initialiser below it —
+    /// see <see cref="KildeSummary.AdditionalProperties"/> for what an explicit JSON null does
+    /// to that initialiser and what reads it instead.
+    /// </remarks>
     [JsonPropertyName("additionalProperties")]
     public IReadOnlyDictionary<string, string?> AdditionalProperties { get; init; } =
         new Dictionary<string, string?>();
@@ -122,6 +127,11 @@ public sealed record VariableVersion
     [JsonPropertyName("publishedAt")] public DateTimeOffset? PublishedAt { get; init; }
 
     /// <summary>Curated metadata as it stood in this version — diff two versions to see what changed.</summary>
+    /// <remarks>
+    /// Non-nullable, and kept so by the deserialiser rather than by the initialiser below it —
+    /// see <see cref="KildeSummary.AdditionalProperties"/> for what an explicit JSON null does
+    /// to that initialiser and what reads it instead.
+    /// </remarks>
     [JsonPropertyName("additionalProperties")]
     public IReadOnlyDictionary<string, string?> AdditionalProperties { get; init; } =
         new Dictionary<string, string?>();
@@ -157,6 +167,11 @@ public sealed record Statistic
     [JsonPropertyName("code")] public string Code { get; init; } = "";
     [JsonPropertyName("preferredTerm")] public string PreferredTerm { get; init; } = "";
 
+    /// <remarks>
+    /// Non-nullable, and kept so by the deserialiser rather than by the initialiser below it —
+    /// see <see cref="KildeSummary.AdditionalProperties"/> for what an explicit JSON null does
+    /// to that initialiser and what reads it instead.
+    /// </remarks>
     [JsonPropertyName("additionalProperties")]
     public IReadOnlyDictionary<string, string?> AdditionalProperties { get; init; } =
         new Dictionary<string, string?>();
@@ -172,6 +187,11 @@ public sealed record CodeFrequency
     [JsonPropertyName("beskrivelse")] public string? Description { get; init; }
 
     /// <summary>The counts themselves live here, keyed by period — the shape is set by the curated data.</summary>
+    /// <remarks>
+    /// Non-nullable, and kept so by the deserialiser rather than by the initialiser below it —
+    /// see <see cref="KildeSummary.AdditionalProperties"/> for what an explicit JSON null does
+    /// to that initialiser and what reads it instead.
+    /// </remarks>
     [JsonPropertyName("additionalProperties")]
     public IReadOnlyDictionary<string, string?> AdditionalProperties { get; init; } =
         new Dictionary<string, string?>();
