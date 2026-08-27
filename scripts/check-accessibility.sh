@@ -60,14 +60,25 @@ fi
 # Without a settle the scan reads an empty shell and passes for the wrong reason.
 SETTLE_MS="${ACCESSIBILITY_SETTLE_MS:-4000}"
 
-# Chrome moves faster than the driver bundled with axe, so pair them explicitly. Skipped
-# when a driver is already on PATH, which is the usual local case.
-if ! command -v chromedriver >/dev/null 2>&1; then
-  echo "==> pairing chromedriver with the installed Chrome"
-  npx --yes browser-driver-manager@latest install chrome >/dev/null 2>&1 || {
-    echo "could not install a matching chromedriver" >&2
-    exit 2
-  }
+# The runner ships a chromedriver AND a Chrome, on different release cadences, so the
+# two drift apart. Presence is not the question, pairing is - always pair.
+DRIVER=""
+echo "==> pairing chromedriver with the installed Chrome"
+if npx --yes browser-driver-manager@latest install chrome >/tmp/bdm.log 2>&1; then
+  # browser-driver-manager writes the paths it settled on into an env file.
+  for env_file in "$HOME/.browser-driver-manager/.env" ./.browser-driver-manager/.env; do
+    if [ -f "$env_file" ]; then
+      # shellcheck disable=SC1090
+      . "$env_file" 2>/dev/null || true
+    fi
+  done
+  if [ -n "${CHROMEDRIVER_TEST_PATH:-}" ] && [ -x "${CHROMEDRIVER_TEST_PATH}" ]; then
+    DRIVER="$CHROMEDRIVER_TEST_PATH"
+    echo "    using $DRIVER"
+  fi
+else
+  echo "browser-driver-manager failed; falling back to whatever is on PATH" >&2
+  tail -5 /tmp/bdm.log >&2 || true
 fi
 
 violations=0
@@ -79,6 +90,7 @@ for p in "${PATHS[@]}"; do
   set +e
   npx --yes "@axe-core/cli@${AXE_CLI_VERSION}" \
       "${BASE}${p}" \
+      ${DRIVER:+--chromedriver-path "$DRIVER"} \
       --tags wcag2a,wcag2aa,wcag21a,wcag21aa \
       --load-delay "${SETTLE_MS}" \
       --save "$out" \
