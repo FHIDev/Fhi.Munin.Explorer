@@ -12,3 +12,8 @@ category: Fixed
   could not do. The words on the button are unchanged and come first, so speech input still reaches
   them. A row whose variable has left the catalogue borrows the sentence its name cell shows.
   (Fhi.Metadata-6vbwa)
+- **A variable with no name still announces what its row opens** - the variable's own name is the
+  button that opens its panel, so a variable the catalogue gives no preferred term for left that
+  button with no content and no accessible name at all: a screen reader announced "button,
+  collapsed" and nothing else. It now falls back to "Vis hele variabelen" in that one shape, and
+  keeps announcing the variable's name in every other. WCAG 2.1 AA, 4.1.2. (Fhi.Metadata-6vbwa)
