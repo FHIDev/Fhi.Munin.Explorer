@@ -25,11 +25,9 @@ public static class ServiceCollectionExtensions
     /// <summary>How long a connection may be kept before a fresh one is opened for it.</summary>
     private static readonly TimeSpan ConnectionLifetime = TimeSpan.FromSeconds(30);
 
-    // ConnectTimeout is the limit that bites on an unreachable host: HttpClient.Timeout bounds the
-    // whole request, so it is the ceiling and not the way out. PooledConnectionLifetime is what
-    // re-resolves DNS and retires connections, and it replaces the factory's handler rotation
-    // rather than racing it — hence the infinite handler lifetime beside it. Plain handler on
-    // browser, where SocketsHttpHandler does not exist and fetch owns both. (Fhi.Metadata-phgeg)
+    // ConnectTimeout is the limit that bites on an unreachable host; HttpClient.Timeout is the
+    // ceiling and not the way out. PooledConnectionLifetime retires connections and re-resolves
+    // DNS. Plain handler on browser, where neither it nor SocketsHttpHandler exists.
     private static HttpMessageHandler PrimaryHandler()
     {
         if (OperatingSystem.IsBrowser())

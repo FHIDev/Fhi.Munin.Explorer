@@ -436,11 +436,9 @@ public class ShareableStateTest : BunitContext
     [Fact]
     public void PageSize_WhenTheChangeFailsAndIsRetried_ThenTheSizeTheReaderAskedForIsWhatArrives()
     {
-        // The retry replays the request that failed, and the size has to be part of it. A failed
-        // change rolls the size back to describe the rows still on screen, so a retry reading the
-        // fields as they stand would fetch the OLD size, succeed and clear the error — reporting a
-        // change that never happened, from the one control the reader cannot press again once a
-        // single-page result has taken the pager away.
+        // The size has to travel in the replayed request. A failed change rolls it back to describe
+        // the rows still on screen, so a retry reading the fields as they stand would fetch the OLD
+        // size, succeed, and clear the error — reporting a change that never happened.
         var client = new SizedClient(total: 300);
         var reported = new List<int>();
 
