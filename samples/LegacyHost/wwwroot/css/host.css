@@ -1904,8 +1904,12 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   gap: 16px;
 }
 /* Stiler centres an infobox in its column with `margin: auto`, which inside a flex row would eat
-   the free space and push the button off the end of it. */
-.munin-explorer-alert .infobox { margin: 0; }
+   the free space and push the button off the end of it.
+
+   `flex: 1` so the box fills the row up to Stiler's own 720px cap rather than shrinking to its
+   words: the sentence changes while a retry runs, and a box sized to its text would move the
+   button left and right under the reader's pointer as it did. */
+.munin-explorer-alert .infobox { margin: 0; flex: 1 1 auto; }
 
 /* The retry the box offered is running. The box keeps its shape and its words change, so a wave
    across it is the only thing saying work is happening — the rows below are gone by then. */
@@ -1914,7 +1918,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
     90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.65) 50%, rgba(255, 255, 255, 0) 100%);
   background-repeat: no-repeat;
   background-size: 60% 100%;
-  animation: munin-explorer-alert-wave 1.6s linear infinite;
+  animation: munin-explorer-alert-wave 1s linear infinite;
 }
 @keyframes munin-explorer-alert-wave {
   from { background-position: -60% 0; }
