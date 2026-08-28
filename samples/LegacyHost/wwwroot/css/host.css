@@ -1943,13 +1943,19 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 /* The two retry buttons in the alert region. Neither the pager's rule above nor the filter panel's
    reaches them — the region deliberately carries no class of its own — so the inert state is drawn
-   from the buttons' own name instead of from a container. Never `disabled`, same focus reason. */
+   from the buttons' own name instead of from a container. Never `disabled`, same focus reason.
+
+   The background is part of it and not decoration. These wear button-square--secondary, which is
+   grey60 ON grey60 text once the inert rule recolours the text alone — a caption that is invisible
+   until a hover changes the background under it. Same pair the pager uses above, for the same
+   reason: its buttons are secondary too. */
 .munin-explorer-retry[aria-disabled="true"] {
+  background-color: var(--grey30);
   color: var(--grey60);
   cursor: default;
 }
 .munin-explorer-retry[aria-disabled="true"]:hover {
-  background-color: transparent;
+  background-color: var(--grey30);
   color: var(--grey60);
 }
 

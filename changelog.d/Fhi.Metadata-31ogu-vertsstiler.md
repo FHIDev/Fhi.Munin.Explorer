@@ -16,3 +16,12 @@ category: Notes for hosts
   hosts draw a gradient wave across the box from it, behind a `prefers-reduced-motion: reduce`
   guard, since a moving gradient is what WCAG 2.3.3 asks to be able to turn off. A host that styles
   nothing for it loses only the wave: the words in the box already say a retry is running.
+- **The inert rule for `munin-explorer-retry` in Stiler must gain a background.** It currently sets
+  `color: var(--grey60)` and nothing else, which was right while these buttons were ghosts and is
+  wrong now they are `button-square--secondary`: that is grey60 text on a grey60 background, a
+  caption nobody can read until a hover changes the background under it. The pair the pager already
+  uses is the fix — `background-color: var(--grey30); color: var(--grey60)`, on both the base and
+  the `:hover` — because the pager's buttons are secondary too. Both sample hosts carry it.
+  Until Stiler ships it, a Stiler-only host draws a retry button whose words are invisible while it
+  is inert, which is worse than the state `Fhi.Metadata-x6vqc` fixed. Neither guard here can catch
+  that: both ask whether a name has a rule, not which declarations the rule carries.
