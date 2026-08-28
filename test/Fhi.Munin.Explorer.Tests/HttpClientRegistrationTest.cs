@@ -8,10 +8,8 @@ namespace Fhi.Munin.Explorer.Tests;
 /// What <c>AddMuninExplorer</c> actually composes, read back off the container.
 /// </summary>
 /// <remarks>
-/// The limits below are the reader's, not a tuning detail: without them a dropped network leaves
-/// someone under a spinner for 12 to 33 seconds with nothing to press, which is what
-/// <c>Fhi.Metadata-phgeg</c> was reported as. A helper returning the right handler proves nothing
-/// if the registration never reaches for it, so these resolve the real chain.
+/// Resolved out of the container, because a helper returning the right handler proves nothing if
+/// the registration never reaches for it. (Fhi.Metadata-phgeg)
 /// </remarks>
 public class HttpClientRegistrationTest
 {
@@ -40,10 +38,8 @@ public class HttpClientRegistrationTest
     [Fact]
     public void Registration_WhenTheHostIsUnreachable_ThenTheConnectGivesUpWithoutWaitingForTheWholeRequest()
     {
-        // The one that answers the bead. HttpClient.Timeout bounds the whole request and so cannot
-        // shorten a connect the OS is still retrying — measured at 12 s and 33 s against a dropped
-        // network. This walks the composed chain rather than calling the factory method, because
-        // what broke was reachable only if the registration actually installs it.
+        // Walks the composed chain, because HttpClient.Timeout cannot shorten a connect the OS is
+        // still retrying, and the limit that can is only in force if the registration installs it.
         using var provider = Provider();
 
         var handler = provider.GetRequiredService<IHttpMessageHandlerFactory>().CreateHandler(ClientName);

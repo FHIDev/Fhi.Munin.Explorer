@@ -22,22 +22,9 @@ public static class ServiceCollectionExtensions
     /// <summary>How long to spend reaching the host before giving up on it.</summary>
     private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(5);
 
-    /// <summary>The handler at the bottom of the chain, bounded so a dead network fails fast.</summary>
-    /// <remarks>
-    /// <para>
-    /// The limit that matters when the network is gone rather than slow. An unreachable host is a
-    /// connect that never completes, and the OS spends about 21 seconds per address before saying
-    /// so — measured at 12 s and 33 s on a dropped connection, under a spinner the reader cannot
-    /// abandon. <see cref="HttpClient.Timeout"/> cannot shorten that on its own: it bounds the
-    /// whole request, so it is the ceiling and not the fast path out. (Fhi.Metadata-phgeg)
-    /// </para>
-    /// <para>
-    /// Not on browser, where <see cref="SocketsHttpHandler"/> does not exist: a WebAssembly host
-    /// has fetch underneath and no say in how long a connect may take. The overall timeout is what
-    /// bounds the wait there, and this narrows it everywhere it can be narrowed. The analyzer
-    /// turns forgetting that into a build error rather than a WASM host that fails to start.
-    /// </para>
-    /// </remarks>
+    // ConnectTimeout is the limit that bites on an unreachable host: HttpClient.Timeout bounds the
+    // whole request, so it is the ceiling and not the way out. Plain handler on browser, where
+    // SocketsHttpHandler does not exist and fetch owns the connect. (Fhi.Metadata-phgeg)
     private static HttpMessageHandler PrimaryHandler()
     {
         if (OperatingSystem.IsBrowser())
