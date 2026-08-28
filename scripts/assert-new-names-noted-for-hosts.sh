@@ -54,15 +54,18 @@ base_names="$(extract "$base_tree/src/")"
 # A floor on BOTH sides. An empty base makes every name look new; an empty head hides everything.
 # 10 is far below the ~75 the extraction yields today and far above what a stale regex returns.
 MIN_NAMES=10
-for side in head base; do
-  eval "count=\$(printf '%s\n' \"\$${side}_names\" | grep -cE '^munin-explorer' || true)"
+assert_floor() {
+  local side="$1" list="$2" count
+  count="$(printf '%s\n' "$list" | grep -cE '^munin-explorer' || true)"
   if [ "${count:-0}" -lt "$MIN_NAMES" ]; then
     echo "::error::Extracted only ${count:-0} name(s) on the $side side, below the floor of $MIN_NAMES." >&2
     echo "The regex has gone stale or the ref is wrong. Either way this check cannot see what it is" >&2
     echo "meant to see, and a pass would be meaningless." >&2
     exit 2
   fi
-done
+}
+assert_floor head "$head_names"
+assert_floor base "$base_names"
 
 new_names="$(comm -13 <(printf '%s\n' "$base_names") <(printf '%s\n' "$head_names"))"
 
