@@ -372,10 +372,10 @@ else
     @if (_result is { Items.Count: > 0 } && ShowPager)
     {
         @* Without this a keyboard user reaches Neste by tabbing past every card on the page —
-           twenty stops to move one page, and fifty if that is the size they chose. The rule the host supplies for
-           `munin-explorer-skiplink-pagination` keeps it out of sight until it is focused, which
-           is the one place this markup depends on the host hiding something: see the note on
-           the component class. The name was helsedata's `skiplink-pagination` until
+           one stop per row, which the reader can now set as high as fifty. The rule the host
+           supplies for `munin-explorer-skiplink-pagination` keeps it out of sight until it is
+           focused, which is the one place this markup depends on the host hiding something: see
+           the note on the component class. The name was helsedata's `skiplink-pagination` until
            `Fhi.Metadata-ja2qu`, and no released Stiler ever had a rule that hid it, so on a
            Stiler-only host the link sat permanently visible over every multi-page result list.
 
