@@ -579,7 +579,10 @@ public class ShareableStateTest : BunitContext
 
         ClickSize(cut, "50");
 
-        Assert.All(SizeButtonState(cut), state => Assert.Equal("true", state));
+        // Waited for rather than read straight after the click: the press sets _loading and asks
+        // for a render, and whether that render has been applied by the next line is a matter of
+        // timing. It held locally and did not on a slower CI runner.
+        cut.WaitForAssertion(() => Assert.All(SizeButtonState(cut), state => Assert.Equal("true", state)));
 
         client.Release();
         cut.WaitForAssertion(() => Assert.All(SizeButtonState(cut), Assert.Null));
@@ -597,15 +600,17 @@ public class ShareableStateTest : BunitContext
 
         ClickSize(cut, "50");
 
-        var retry = cut.Find("div[role='alert'][aria-live='assertive'] button");
+        // The button arrives with the failure it answers, so wait for it rather than for the click
+        // to have finished rendering by the time the next line runs.
+        var retry = cut.WaitForElement("div[role='alert'][aria-live='assertive'] button");
 
         Assert.Null(retry.GetAttribute("aria-disabled"));
 
         retry.Click();
 
-        Assert.Equal(
+        cut.WaitForAssertion(() => Assert.Equal(
             "true",
-            cut.Find("div[role='alert'][aria-live='assertive'] button").GetAttribute("aria-disabled"));
+            cut.Find("div[role='alert'][aria-live='assertive'] button").GetAttribute("aria-disabled")));
 
         client.Release();
     }
