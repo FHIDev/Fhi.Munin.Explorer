@@ -65,6 +65,46 @@ shape here, and the JSON side must keep spelling it Munin's way.
 Changelog fragments are **English only** — see [`changelog.d/README.md`](changelog.d/README.md),
 which explains why this repository deliberately differs from Munin's bilingual pair.
 
+## Comments
+
+The budget is in [`CLAUDE.md`](CLAUDE.md) under "Comment budget". This is what it looks like in
+practice, using two comments already in this repository rather than an invented example.
+
+**A comment earns its length when nobody could reconstruct it from the code.** The `<remarks>` on
+`IMuninExplorerTokenProvider` is twenty-odd lines and every one of them is load-bearing:
+`IHttpClientFactory` builds and caches the handler pipeline in its own scope and reuses it across
+callers, so an implementation cannot capture anything scoped; there is no `HttpContext` during
+Blazor Server circuit activity, so `IHttpContextAccessor` finds nothing and fails *quietly*; and
+the returned value is the raw token, not `Bearer `-prefixed, because the scheme is added when the
+header is written. None of that is visible in `Task<string?> GetTokenAsync(...)`, the failures are
+silent, and they land in a host repository we do not own. It is also on a `public` type in
+`Contracts/`, where it reaches the consumer who needs it.
+
+**A comment has outstayed its welcome when the document it duplicates already exists.** The
+`<remarks>` on `VariableExplorer` runs 171 lines — every borrowed Stiler name, every
+`munin-explorer*` name, the pager rename, the 0.1.13/0.1.14 Stiler split, the `skiplink-pagination`
+postmortem — and closes by saying `README.md` has the full split. It does. So this is a second copy
+of a document that is maintained elsewhere, kept in the one place a reader has no reason to check
+and an editor has no reason to update, on a `public` type that ships all 171 lines into
+IntelliSense for a component whose usage is one tag. What belongs there is a sentence and a link.
+
+DO:
+
+- Explain *why*, and prefer the reason the code cannot state: a race, an invariant that spans two
+  files, a workaround for behaviour we do not control.
+- Say what a caller must not do, and what happens if they do it anyway.
+- Cite the bead — `// See Fhi.Metadata-ja2qu` — where the history is the point.
+- Document the wire contract in `Contracts/`: spelling, nullability, units, error shapes.
+
+DON'T:
+
+- Restate the signature. A `<returns>` explaining that `AddedAt` is when it was added is noise
+  wherever it appears, and noise in the nupkg when the type is public.
+- Narrate an incident in a `.cs` file. It rots as soon as the code around it moves, and the bead
+  it belongs in is already there.
+- Copy `README.md` or `AGENTS.md` into a comment. Link them.
+- Put internal-only prose on a `public` type. Whoever it was written for, a consumer reads it.
+
 ## Tests
 
 - Test method names are English and follow `Method_WhenCondition_ThenOutcome`.

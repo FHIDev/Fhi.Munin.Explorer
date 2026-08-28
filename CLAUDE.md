@@ -56,6 +56,34 @@ behaviour found later by someone else.
 
 ---
 
+## Comment budget
+
+44% of `src/` is comments — 4 669 lines of 10 552, measured under `Fhi.Metadata-wyi8e`. That is
+not a style complaint: half of it is prose that already exists somewhere better, kept in the one
+place nobody updates when the thing it describes changes.
+
+- **Comment the why, never the what.** Anything derivable from the signature is deleted, not
+  reworded.
+- **`Blazor/` and `Client/`: three lines.** Longer needs a reason a reader cannot infer from the
+  code — a race, a non-obvious invariant, a workaround for behaviour we do not control.
+- **`Contracts/` is the exception, and deliberately so.** `GenerateDocumentationFile` is on and
+  the XML ships inside the nupkg, so it is the only documentation helsedata's developers get in
+  IntelliSense. Document wire spelling, null semantics, units and error shapes — everything a
+  consumer would otherwise have to discover by calling. Still no `<param>` or `<returns>` that
+  restates the name.
+- **Never restate `README.md` or `AGENTS.md` in a comment.** Link the file. A second copy of the
+  class-name split is a copy that will disagree with the first one.
+- **Incident history goes in the bead.** `// See Fhi.Metadata-ja2qu` beats thirty lines of
+  narrative, and the bead is where someone will look for it.
+- **Nothing internal-only on a `public` type.** It ships in the nupkg and lands in a consumer's
+  IntelliSense, whoever it was written for.
+
+DO/DON'T with worked examples from this repository is in [`AGENTS.md`](AGENTS.md) under
+"Comments". Fix on touch — there is no cleanup sweep, and a sweep would take the good comments
+with it.
+
+---
+
 ## Before opening a PR
 
 ```bash
