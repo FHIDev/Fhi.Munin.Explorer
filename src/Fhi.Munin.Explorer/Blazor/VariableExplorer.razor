@@ -306,6 +306,12 @@ else
        its own precisely because it is always present — an `infobox` here would draw an empty
        coloured box on every page that has nothing to report. *@
     <div role="alert" aria-live="assertive" aria-atomic="true">
+        @* The sentence and its way out on one row. The wrapper is inside the region and drawn only
+           when there is something to say, so the region itself stays classless and always present
+           — the two things its own note above depends on. (Fhi.Metadata-31ogu) *@
+        @if (_error is not null || _failedRows is not null)
+        {
+        <div class="munin-explorer-alert">
         @if (_error is not null)
         {
             <p class="infobox infobox--bg-yellow">@_error</p>
@@ -328,15 +334,23 @@ else
            host draws the two states alike until it does. Tracked as Fhi.Metadata-x6vqc. *@
         @if (_failedRows is not null)
         {
-            <button class="hd-button-square button-square--ghost margin-right margin-bottom munin-explorer-retry"
+            @* Filled, not a ghost: it is the way out of the failure beside it, and Tøm søket is
+               the other control in this component that wears --secondary for the same reason. A
+               ghost on a coloured infobox reads as text rather than as something to press. *@
+            <button class="hd-button-square button-square--secondary margin-right munin-explorer-retry"
                     type="button"
                     aria-disabled="@AriaDisabled(_retryRowsEnabled)"
                     @onclick="RetryRowsAsync">@T.RetrySearch</button>
+        }
+        </div>
         }
         @* The facets failing is a different failure from the search failing — the rows are the right
            rows and it is the numbers beside the filters that may be stale — but it shares this one
            alert region rather than opening a second. Two assertive regions on one component race to
            be announced, and the reader has no way to tell which one spoke. *@
+        @if (_facetError is not null || _retryFacetsShown)
+        {
+        <div class="munin-explorer-alert">
         @if (_facetError is not null)
         {
             <p class="infobox infobox--bg-yellow">@_facetError</p>
@@ -346,10 +360,12 @@ else
            two identical offers with nothing to choose between them. *@
         @if (_retryFacetsShown)
         {
-            <button class="hd-button-square button-square--ghost margin-right margin-bottom munin-explorer-retry"
+            <button class="hd-button-square button-square--secondary margin-right munin-explorer-retry"
                     type="button"
                     aria-disabled="@AriaDisabled(_retryFacetsEnabled)"
                     @onclick="RetryFacetsAsync">@T.RetryFilters</button>
+        }
+        </div>
         }
     </div>
 

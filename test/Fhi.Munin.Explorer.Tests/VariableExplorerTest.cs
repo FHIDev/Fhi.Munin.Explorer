@@ -6715,6 +6715,36 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
+    public void Retry_WhenTheSearchFails_ThenTheButtonStandsBesideItsOwnSentence()
+    {
+        // A message and a control that answers it belong on one row. Stacked, and drawn as a
+        // ghost on a coloured infobox, the offer read as stray text under a box rather than as
+        // something to press. (Fhi.Metadata-31ogu)
+        var cut = RenderWith(new FailingClient());
+
+        var row = cut.Find("div[role='alert'] > div.munin-explorer-alert");
+
+        Assert.NotNull(row.QuerySelector("p.infobox"));
+        Assert.Equal(RetryRows, row.QuerySelector("button")!.TextContent);
+
+        // Filled rather than a ghost, the pair Tøm søket already uses for a control that acts.
+        Assert.Contains("button-square--secondary", Retry(cut, RetryRows).ClassName!);
+        Assert.DoesNotContain("button-square--ghost", Retry(cut, RetryRows).ClassName!);
+    }
+
+    [Fact]
+    public void Retry_WhenNothingHasFailed_ThenTheRegionHoldsNoRowAtAll()
+    {
+        // The region itself is always in the DOM and deliberately classless — an announcement is
+        // unreliable when the element arrives with its text. The row inside it is what must not
+        // be there when there is nothing to say, or every quiet page draws an empty box.
+        var cut = RenderWith(new PagedClient(312));
+
+        Assert.NotNull(cut.Find("div[role='alert']"));
+        Assert.Empty(cut.FindAll("div.munin-explorer-alert"));
+    }
+
+    [Fact]
     public void Retry_WhenTheApiAnswersOnTheSecondTry_ThenTheRowsArriveAndTheMessageIsGone()
     {
         // The trap: a retry that fetches without clearing the failure shows the rows and the
