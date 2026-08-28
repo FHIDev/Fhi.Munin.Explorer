@@ -86,10 +86,13 @@ done
 missing=()
 while read -r name; do
   [ -n "$name" ] || continue
-  case "$notes" in
-    *"$name"*) ;;
-    *) missing+=("$name") ;;
-  esac
+  # Whole token, not substring: every name here shares the munin-explorer prefix, so a plain
+  # substring test lets a fragment naming munin-explorer-foo-bar silently satisfy
+  # munin-explorer-foo — the miss this script exists to prevent. Names are [A-Za-z0-9_-] by the
+  # extraction above, so they carry no regex metacharacters.
+  if ! printf '%s\n' "$notes" | grep -qE "(^|[^A-Za-z0-9_-])${name}([^A-Za-z0-9_-]|\$)"; then
+    missing+=("$name")
+  fi
 done <<< "$new_names"
 
 if [ "${#missing[@]}" -eq 0 ]; then
