@@ -1791,6 +1791,17 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   color: var(--grey60);
 }
 
+/* The size group. Which size is in force is drawn by the buttons' own Stiler classes — filled
+   for the one in force, ghosts for the rest — and they carry Stiler's `margin-right`, so all
+   this owes is keeping the label on their line. A host without the rule still gets a working
+   group in the flow. */
+.munin-explorer-pagination-size {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.munin-explorer-pagination-size .caption { margin-right: 16px; }
+
 /* ======================================================================
    The results list — the same rules as Stiler, extracted from its built
    stylesheet. Stiler in turn ported them from helsedata's variables.css.

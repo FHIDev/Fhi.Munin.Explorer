@@ -16,6 +16,7 @@ public partial class VariableExplorer
         _sort = Sort;
         _direction = Direction;
         _page = Math.Max(Page, 1);
+        _pageSize = PageSize;
 
         // Not SearchAsync: that is what a person pressing the search button does, and it starts by
         // throwing away the page number because a new search renumbers everything. Restoring a
@@ -212,6 +213,61 @@ public partial class VariableExplorer
 
         // After the retreat, not before: it can move the page again, and the host should be told
         // where the reader ended up rather than where they were headed.
+        await NotifyPageChangedAsync();
+    }
+
+    /// <summary>
+    /// Show <paramref name="size"/> rows per page, from the first page of the result.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Back to page 1, always. A change of size renumbers the rows, so page 3 of the old paging and
+    /// page 3 of the new one are not the same rows: keeping the number would move the reader
+    /// somewhere they never asked to go and leave them looking for their place in a result that no
+    /// longer has one. A change of search or of sort resets the page for the same reason.
+    /// </para>
+    /// <para>
+    /// The pager is kept afterwards the way a page turn keeps it. A larger size can collapse a
+    /// three-page result into one, and dropping the pager in that render would take the button the
+    /// reader just pressed out of the document, along with the only control that could put the size
+    /// back.
+    /// </para>
+    /// </remarks>
+    private async Task SetPageSizeAsync(int size)
+    {
+        // Dropped rather than queued while a fetch is in flight, the same as a page turn, and inert
+        // on the size already in force so pressing it again costs no request.
+        if (_loading || size == _pageSize)
+        {
+            return;
+        }
+
+        var previousSize = _pageSize;
+        var previousPage = _page;
+        var previousKeepPager = _keepPager;
+
+        _pageSize = size;
+        _page = 1;
+        _keepPager = true;
+
+        // keepResult, for the reason a page turn uses it: the pressed button is inside the pager,
+        // which is rendered conditionally, so clearing the rows would take it out of the document
+        // in the same render that reports the error and drop focus to <body>.
+        if (!await FetchAsync(_executedSearch, keepResult: true))
+        {
+            // Nothing arrived, so the state has to keep describing what is still on screen — the
+            // size included, or the control would report a size the visible rows were not built
+            // with.
+            _pageSize = previousSize;
+            _page = previousPage;
+            _keepPager = previousKeepPager;
+
+            return;
+        }
+
+        // No retreat is needed on this path: page 1 is the one page that can never be out of range,
+        // so an empty answer here is a result with no rows rather than a reader past the end.
+        await RaiseAsync(PageSizeChanged, _pageSize);
         await NotifyPageChangedAsync();
     }
 
@@ -575,7 +631,8 @@ public partial class VariableExplorer
             // off the fields, which every caller rolls back to describe the rows still on screen.
             if (!rateLimited)
             {
-                _failedRows = new RowRequest(search, _page, _sort, _direction, _filter, _keepPager);
+                _failedRows = new RowRequest(
+                    search, _page, _pageSize, _sort, _direction, _filter, _keepPager);
                 _retryRowsEnabled = true;
             }
             else
@@ -605,10 +662,18 @@ public partial class VariableExplorer
     /// <c>KeepPager</c> travels with <c>Page</c>, because every handler that moves one moves the
     /// other: a sort or a narrowing renumbers to page one and takes the pager down with it.
     /// </para>
+    /// <para>
+    /// <c>Size</c> is here for the same reason the page is, and it is the one field a reader could
+    /// not otherwise get back to. A failed size change rolls the size back to describe the rows
+    /// still on screen, so a retry replaying the fields as they stand would fetch the old size,
+    /// succeed, and clear the error — reporting a size change that never happened, from the one
+    /// control the reader has no other way to press again once the pager is gone.
+    /// </para>
     /// </remarks>
     private readonly record struct RowRequest(
         string? Search,
         int Page,
+        int Size,
         SortField Sort,
         SortDirection Direction,
         VariableFilter Filter,
@@ -647,6 +712,7 @@ public partial class VariableExplorer
 
         var previousSearch = _executedSearch;
         var previousPage = _page;
+        var previousSize = _pageSize;
         var previousSort = _sort;
         var previousDirection = _direction;
         var previousFilter = _filter;
@@ -655,6 +721,7 @@ public partial class VariableExplorer
         var previousPanel = CapturePanel();
 
         _page = request.Page;
+        _pageSize = request.Size;
         _sort = request.Sort;
         _direction = request.Direction;
         _filter = request.Filter;
@@ -667,6 +734,7 @@ public partial class VariableExplorer
             // The same invariant every rollback here protects: the state has to go on describing
             // the rows the reader can see, which are still the ones from before the first failure.
             _page = previousPage;
+            _pageSize = previousSize;
             _sort = previousSort;
             _direction = previousDirection;
             _filter = previousFilter;
@@ -711,6 +779,11 @@ public partial class VariableExplorer
         if (_filter != previousFilter)
         {
             await RaiseAsync(FilterChanged, _filter);
+        }
+
+        if (_pageSize != previousSize)
+        {
+            await RaiseAsync(PageSizeChanged, _pageSize);
         }
 
         await NotifyPageChangedAsync();

@@ -253,4 +253,268 @@ public class ShareableStateTest : BunitContext
 
         Assert.Equal(1, reported[^1]);
     }
+
+    /// <summary>Pages a fixed total honestly, at whatever size it is asked for.</summary>
+    /// <remarks>
+    /// <see cref="PagingClient"/> answers a fixed number of rows whatever it is asked for, which is
+    /// what the page tests want and the size tests cannot use: a client that ignores the size
+    /// cannot tell a size that reached the API from one that never left the component.
+    /// </remarks>
+    private sealed class SizedClient(int total) : EmptyMuninExplorerClient
+    {
+        public List<int> Pages { get; } = [];
+
+        public List<int> Sizes { get; } = [];
+
+        public int LastPage => Pages[^1];
+
+        public int LastPageSize => Sizes[^1];
+
+        /// <summary>Set to make the next single fetch fail, then clear itself.</summary>
+        public bool FailNext { get; set; }
+
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
+            SortField sort = SortField.Default,
+            SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default)
+        {
+            if (FailNext)
+            {
+                FailNext = false;
+
+                throw new HttpRequestException("nede");
+            }
+
+            Pages.Add(page);
+            Sizes.Add(pageSize);
+
+            var taken = Math.Clamp(total - ((page - 1) * pageSize), 0, pageSize);
+
+            return Task.FromResult(new Page<VariableSummary>
+            {
+                Items = [.. Enumerable.Range(1, taken).Select(i => Row($"p{page}v{i}"))],
+                TotalCount = total,
+                PageNumber = page,
+                Size = pageSize,
+                TotalPages = (int)Math.Ceiling(total / (double)pageSize),
+            });
+        }
+    }
+
+    private static void ClickSize(IRenderedComponent<VariableExplorer> cut, string size) =>
+        cut.FindAll(".munin-explorer-pagination-size button")
+            .First(b => b.TextContent.Trim() == size)
+            .Click();
+
+    /// <summary>The pager's own caption, which the size group's label is not.</summary>
+    private static string Position(IRenderedComponent<VariableExplorer> cut) =>
+        cut.Find(".munin-explorer-pagination-content > .caption").TextContent.Trim();
+
+    [Fact]
+    public void PageSize_WhenTheReaderChoosesFifty_ThenFiftyRowsArriveUnderATwoPagePager()
+    {
+        var client = new SizedClient(total: 60);
+
+        var cut = Render(client);
+
+        ClickSize(cut, "50");
+
+        Assert.Equal(50, client.LastPageSize);
+        Assert.Equal(50, cut.FindAll(".munin-explorer-data-list__item").Count);
+        Assert.Equal("Side 1 av 2", Position(cut));
+    }
+
+    [Fact]
+    public void PageSize_WhenTheReaderChoosesASize_ThenTheHostIsToldWhichOne()
+    {
+        var client = new SizedClient(total: 60);
+        var reported = new List<int>();
+
+        var cut = Render(client, b => b.Add(c => c.PageSizeChanged, reported.Add));
+
+        // Not 20: that is the default, and choosing the size already in force is inert by design,
+        // so a test pressing it would pass on a component that reported nothing at all.
+        ClickSize(cut, "50");
+
+        Assert.Equal([50], reported);
+    }
+
+    [Fact]
+    public void PageSize_WhenTheReaderChoosesTheSizeAlreadyInForce_ThenNothingIsFetchedOrReported()
+    {
+        var client = new SizedClient(total: 60);
+        var reported = new List<int>();
+
+        var cut = Render(client, b => b.Add(c => c.PageSizeChanged, reported.Add));
+
+        var fetches = client.Sizes.Count;
+
+        ClickSize(cut, "20");
+
+        Assert.Equal(fetches, client.Sizes.Count);
+        Assert.Empty(reported);
+    }
+
+    [Fact]
+    public void PageSize_WhenItChangesFromDeepInTheResult_ThenTheReaderLandsOnPageOne()
+    {
+        // The trap. Page 3 of 50-row pages is not the rows page 3 of 20-row pages was, so an
+        // implementation that keeps the number passes every other test here and still moves the
+        // reader somewhere arbitrary, with nothing on screen saying so.
+        var client = new SizedClient(total: 300);
+        var reported = new List<int>();
+
+        var cut = Render(client, b => b
+            .Add(c => c.Page, 3)
+            .Add(c => c.PageChanged, reported.Add));
+
+        Assert.Equal(3, client.LastPage);
+
+        ClickSize(cut, "50");
+
+        Assert.Equal(1, client.LastPage);
+        Assert.Equal("Side 1 av 6", Position(cut));
+
+        // And the host is told, or a mirrored URL would still say page=3 over the rows of page 1.
+        Assert.Equal(1, reported[^1]);
+    }
+
+    [Theory]
+    [InlineData(500, 100)]
+    [InlineData(0, 1)]
+    [InlineData(-5, 1)]
+    public void PageSize_WhenTheHostAsksOutsideTheApiRange_ThenItIsClampedRatherThanRefused(
+        int asked, int reaching)
+    {
+        var client = new SizedClient(total: 300);
+
+        Render(client, b => b.Add(c => c.PageSize, asked));
+
+        Assert.Equal(reaching, client.LastPageSize);
+    }
+
+    [Fact]
+    public void PageSize_WhenTheControlOffersItsSizes_ThenNoneOfThemBypassesTheClamp()
+    {
+        // The clamp is one expression in one place and the control reads through it, so the only
+        // way past it is an offered size outside the range: a fourth button saying 250 would fetch
+        // 100 rows and read as pressed, which is the button lying about what it did.
+        var client = new SizedClient(total: 300);
+
+        var cut = Render(client);
+
+        foreach (var button in cut.FindAll(".munin-explorer-pagination-size button"))
+        {
+            Assert.InRange(int.Parse(button.TextContent.Trim()), 1, 100);
+        }
+    }
+
+    [Fact]
+    public void PageSize_WhenTheChoiceIsMirroredIntoALink_ThenReopeningItKeepsTheSize()
+    {
+        // The whole reason the callback is a requirement rather than a detail. Everything else the
+        // reader can change survives a shared link; a picker without this would be the one piece of
+        // state that silently does not.
+        var client = new SizedClient(total: 300);
+        var mirrored = 20;
+
+        var cut = Render(client, b => b.Add(c => c.PageSizeChanged, size => mirrored = size));
+
+        ClickSize(cut, "50");
+
+        Assert.Equal(50, mirrored);
+
+        // Rebuilt from what the host wrote down, the way a link opens in someone else's browser.
+        var reopenedAt = client.Sizes.Count;
+
+        Render<VariableExplorer>(b => b.Add(c => c.PageSize, mirrored));
+
+        Assert.Equal(50, client.Sizes[reopenedAt]);
+    }
+
+    [Fact]
+    public void PageSize_WhenTheChangeFailsAndIsRetried_ThenTheSizeTheReaderAskedForIsWhatArrives()
+    {
+        // The retry replays the request that failed, and the size has to be part of it. A failed
+        // change rolls the size back to describe the rows still on screen, so a retry reading the
+        // fields as they stand would fetch the OLD size, succeed and clear the error — reporting a
+        // change that never happened, from the one control the reader cannot press again once a
+        // single-page result has taken the pager away.
+        var client = new SizedClient(total: 300);
+        var reported = new List<int>();
+
+        var cut = Render(client, b => b.Add(c => c.PageSizeChanged, reported.Add));
+
+        client.FailNext = true;
+        ClickSize(cut, "50");
+
+        Assert.Empty(reported);
+
+        cut.FindAll("div[role='alert'][aria-live='assertive'] button")
+            .Single(b => b.TextContent == "Prøv søket på nytt")
+            .Click();
+
+        Assert.Equal(50, client.LastPageSize);
+        Assert.Equal([50], reported);
+
+        // And the failure is gone from the alert region. The button stays, deliberately inert, so
+        // that the element the reader just pressed is not taken out from under their focus.
+        Assert.Empty(cut.FindAll("div[role='alert'][aria-live='assertive'] p.infobox"));
+    }
+
+    [Fact]
+    public void PageSize_WhenAScreenReaderMeetsTheControl_ThenEachSizeSaysWhatItIsFor()
+    {
+        // "20" is what the button says and not what it means. The group is named by the words on
+        // screen, and each button repeats them, because a reader tabbing straight into the middle
+        // of the group never hears its name.
+        var client = new SizedClient(total: 300);
+
+        var cut = Render(client);
+
+        var group = cut.Find(".munin-explorer-pagination-size");
+        var label = cut.Find($"#{group.GetAttribute("aria-labelledby")}");
+
+        Assert.Equal("Variabler per side", label.TextContent.Trim());
+        Assert.Equal(
+            ["Vis 10 variabler per side", "Vis 20 variabler per side", "Vis 50 variabler per side"],
+            cut.FindAll(".munin-explorer-pagination-size button").Select(AccessibleName.Of));
+    }
+
+    [Fact]
+    public void PageSize_WhenAHostSetsNoSize_ThenTwentyIsFetchedAndReadsAsThePressedOne()
+    {
+        // The default is one of the three offered, which is why it moved from 25 when the control
+        // arrived: three buttons with none of them pressed is truthful about a size nobody can
+        // choose and reads as broken. A host that wants the old 25 has to ask for it.
+        var client = new SizedClient(total: 300);
+
+        var cut = Render(client);
+
+        Assert.Equal(20, client.LastPageSize);
+        Assert.Equal(
+            ["false", "true", "false"],
+            cut.FindAll(".munin-explorer-pagination-size button").Select(b => b.GetAttribute("aria-pressed")));
+    }
+
+    [Fact]
+    public void PageSize_WhenTheSizeInForceIsNotOneOfTheThree_ThenNoneOfThemReadsAsPressed()
+    {
+        // A host is free to set 30, and then no button is the size the rows were built with.
+        // Pressing the nearest would say a size is on that is not.
+        var client = new SizedClient(total: 300);
+
+        var cut = Render(client, b => b.Add(c => c.PageSize, 30));
+
+        Assert.All(
+            cut.FindAll(".munin-explorer-pagination-size button"),
+            b => Assert.Equal("false", b.GetAttribute("aria-pressed")));
+
+        ClickSize(cut, "50");
+
+        Assert.Equal(
+            ["false", "false", "true"],
+            cut.FindAll(".munin-explorer-pagination-size button").Select(b => b.GetAttribute("aria-pressed")));
+    }
 }

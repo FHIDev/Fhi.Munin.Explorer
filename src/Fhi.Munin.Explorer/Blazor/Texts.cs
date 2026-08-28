@@ -219,6 +219,12 @@ internal sealed record Texts(
     // user saying what they can see still hits the button (WCAG 2.5.3).
     string PreviousLabel,
     string NextLabel,
+    // The name of the group the size buttons sit in, and each button's own accessible name.
+    // "10" alone says nothing about what ten there are of, and a group name is announced on
+    // entry rather than on every button, so each one carries the whole phrase (WCAG 2.5.3).
+    string VariablesPerPage,
+    // (size) — "Vis 20 variabler per side".
+    Func<int, string> VariablesPerPageLabel,
     // (page, totalPages) — the pager's own "Side 2 av 13".
     Func<int, int, string> PageOf,
     // (from, to, total, search, filters, field, direction) — the whole result sentence. The
@@ -655,6 +661,8 @@ internal sealed record Texts(
         Next: "Neste",
         PreviousLabel: "Forrige side",
         NextLabel: "Neste side",
+        VariablesPerPage: "Variabler per side",
+        VariablesPerPageLabel: size => $"Vis {size} variabler per side",
         PageOf: (page, totalPages) => $"Side {page} av {totalPages}",
         // The whole sentence, ordering clause included, because the comma and where the clause
         // sits are this language's grammar and not something to fix in C#.
@@ -901,6 +909,8 @@ internal sealed record Texts(
         Next: "Next",
         PreviousLabel: "Previous page",
         NextLabel: "Next page",
+        VariablesPerPage: "Variables per page",
+        VariablesPerPageLabel: size => $"Show {size} variables per page",
         PageOf: (page, totalPages) => $"Page {page} of {totalPages}",
         ResultSummary: (from, to, total, search, filters, field, direction) =>
         {

@@ -372,10 +372,10 @@ else
     @if (_result is { Items.Count: > 0 } && ShowPager)
     {
         @* Without this a keyboard user reaches Neste by tabbing past every card on the page —
-           25 stops to move one page. The rule the host supplies for
-           `munin-explorer-skiplink-pagination` keeps it out of sight until it is focused, which
-           is the one place this markup depends on the host hiding something: see the note on
-           the component class. The name was helsedata's `skiplink-pagination` until
+           one stop per row, which the reader can now set as high as fifty. The rule the host
+           supplies for `munin-explorer-skiplink-pagination` keeps it out of sight until it is
+           focused, which is the one place this markup depends on the host hiding something: see
+           the note on the component class. The name was helsedata's `skiplink-pagination` until
            `Fhi.Metadata-ja2qu`, and no released Stiler ever had a rule that hid it, so on a
            Stiler-only host the link sat permanently visible over every multi-page result list.
 
@@ -768,6 +768,25 @@ else
                         aria-label="@T.NextLabel"
                         aria-disabled="@AriaDisabled(CanGoNext)"
                         @onclick="() => GoToPageAsync(_page + 1)">@T.Next</button>
+
+                @* Buttons rather than a <select>: no name for one can be read back off Stiler, so
+                   the shape changes instead of the package shipping CSS. aria-pressed rather than
+                   a radiogroup, whose arrow-key navigation would need script we do not ship. *@
+                <div class="munin-explorer-pagination-size"
+                     role="group"
+                     aria-labelledby="@PageSizeLabelId">
+                    @* Named by the words on screen rather than by an aria-label, so the group has
+                       one name and sighted readers can see it too. *@
+                    <span class="caption" id="@PageSizeLabelId">@T.VariablesPerPage</span>
+                    @foreach (var size in PageSizeOptions)
+                    {
+                        <button class="@PageSizeClass(size)"
+                                type="button"
+                                aria-label="@T.VariablesPerPageLabel(size)"
+                                aria-pressed="@(ClampedPageSize == size ? "true" : "false")"
+                                @onclick="() => SetPageSizeAsync(size)">@size</button>
+                    }
+                </div>
             </div>
         </div>
     }
