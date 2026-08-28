@@ -571,6 +571,10 @@ public partial class VariableExplorer : ComponentBase
     // from a pager button, so a single-page result reached that way still costs no furniture.
     private bool _keepPager;
 
+    // Whether the fetch running is the one the rows' retry button started, which nothing else can
+    // report: _loading is raised by the facets too, and _failedRows outlives its own answer.
+    private bool _retryingRows;
+
     // The search text the visible result actually came from, which is not the same as the
     // text in the box: @bind writes _search on blur, so the box can hold an unsubmitted query
     // while the table below still shows the previous one. The announcement has to describe
@@ -618,6 +622,17 @@ public partial class VariableExplorer : ComponentBase
     private Texts T => Texts.For(Language);
 
     private string Busy => _loading ? "true" : "false";
+
+    /// <summary>Whether the rows' failure box is showing a retry in progress rather than a failure.</summary>
+    /// <remarks>
+    /// Set by the retry itself rather than derived from <c>_loading</c>. Two fetches are
+    /// indistinguishable from that flag: the facets refresh raises it too, and the offer outlives
+    /// its own answer as a focus anchor, so an ordinary page turn afterwards looks the same.
+    /// </remarks>
+    private bool RetryingRows => _retryingRows;
+
+    /// <summary>What that box says: the failure, or that the offer beside it is being answered.</summary>
+    private string? RowsAlert => RetryingRows ? T.Retrying : _error;
 
     /// <summary>The sizes the reader chooses between, which are Runa's own.</summary>
     private static readonly int[] PageSizeOptions = [10, 20, 50];

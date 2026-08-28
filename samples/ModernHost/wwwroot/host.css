@@ -1893,15 +1893,69 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   color: var(--grey60);
 }
 
+/* A failure and its way out, on one row. The alert region itself stays classless — it is always in
+   the DOM, and a coloured box there would be drawn on every page with nothing to report — so this
+   sits inside it and exists only when there is something to say. Without the rule the two stack, as
+   they did before, which is a host owing this one name rather than a host that is broken. */
+.munin-explorer-alert {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+/* Stiler centres an infobox in its column with `margin: auto`, which inside a flex row would eat
+   the free space and push the button off the end of it.
+
+   `flex: 1` so the box fills the row up to Stiler's own 720px cap rather than shrinking to its
+   words: the sentence changes while a retry runs, and a box sized to its text would move the
+   button left and right under the reader's pointer as it did. */
+.munin-explorer-alert .infobox { margin: 0; flex: 1 1 auto; }
+
+/* Stiler's `margin-bottom` stays on the button so a host with no rule for this row still gets the
+   spacing the stacked layout always had. Inside the row it would push the button off centre, so it
+   is taken back here rather than left off the element. */
+.munin-explorer-alert .munin-explorer-retry { margin-bottom: 0; }
+
+/* The retry the box offered is running. The box keeps its shape and its words change, so a wave
+   across it is the only thing saying work is happening — the rows below are gone by then.
+
+   A repeating tile shifted by exactly one tile width, rather than one highlight swept across and
+   sent back: the end state is then identical to the start, so the loop closes on itself instead of
+   jumping. Both ends of the tile are transparent, or the seam between tiles would be the jump
+   moved rather than removed. Pixels and not per cent, because a percentage background-position is
+   measured against the box minus the image and would not land back where it began. */
+.munin-explorer-alert .infobox[aria-busy="true"] {
+  background-image: linear-gradient(
+    90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.55) 50%, rgba(255, 255, 255, 0) 100%);
+  background-repeat: repeat-x;
+  background-size: 220px 100%;
+  animation: munin-explorer-alert-wave 1s linear infinite;
+}
+@keyframes munin-explorer-alert-wave {
+  from { background-position: 0 0; }
+  to { background-position: 220px 0; }
+}
+/* A moving gradient is exactly what 2.3.3 asks to be able to turn off, and the words in the box
+   already say what the wave says. */
+@media (prefers-reduced-motion: reduce) {
+  .munin-explorer-alert .infobox[aria-busy="true"] { animation: none; background-image: none; }
+}
+
 /* The two retry buttons in the alert region. Neither the pager's rule above nor the filter panel's
    reaches them — the region deliberately carries no class of its own — so the inert state is drawn
-   from the buttons' own name instead of from a container. Never `disabled`, same focus reason. */
+   from the buttons' own name instead of from a container. Never `disabled`, same focus reason.
+
+   The background is part of it and not decoration. These wear button-square--secondary, which is
+   grey60 ON grey60 text once the inert rule recolours the text alone — a caption that is invisible
+   until a hover changes the background under it. Same pair the pager uses above, for the same
+   reason: its buttons are secondary too. */
 .munin-explorer-retry[aria-disabled="true"] {
+  background-color: var(--grey30);
   color: var(--grey60);
   cursor: default;
 }
 .munin-explorer-retry[aria-disabled="true"]:hover {
-  background-color: transparent;
+  background-color: var(--grey30);
   color: var(--grey60);
 }
 

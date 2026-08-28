@@ -727,6 +727,29 @@ public partial class VariableExplorer
         _filter = request.Filter;
         _keepPager = request.KeepPager;
 
+        // Only this call is the retry the button offered, which is what the failure box reads to
+        // decide whether to say so. Nothing derived from _loading can tell them apart: the offer
+        // outlives its answer as a focus anchor, so a later page turn looks identical from there.
+        _retryingRows = true;
+
+        try
+        {
+            await RetryRowsFetchAsync(
+                request, previousSearch, previousPage, previousSize, previousSort,
+                previousDirection, previousFilter, previousKeepPager, previousResult, previousPanel);
+        }
+        finally
+        {
+            _retryingRows = false;
+        }
+    }
+
+    /// <summary>The body of <see cref="RetryRowsAsync"/>, so the flag around it has one exit.</summary>
+    private async Task RetryRowsFetchAsync(
+        RowRequest request, string? previousSearch, int previousPage, int previousSize,
+        SortField previousSort, SortDirection previousDirection, VariableFilter previousFilter,
+        bool previousKeepPager, Page<VariableSummary>? previousResult, PanelState previousPanel)
+    {
         // keepResult, because a failed page turn's rows are still on screen and a failed search's
         // are already gone: either way the retry must not be what empties the list.
         if (!await FetchAsync(request.Search, keepResult: true))
