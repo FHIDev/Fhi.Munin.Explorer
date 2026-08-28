@@ -9,3 +9,11 @@ category: Fixed
   so a WebAssembly host keeps the plain handler and is bounded by the thirty-second request timeout
   alone — fetch decides its own connect there and gives us no say. Getting that wrong is a build
   error rather than a host that fails to start, which is how it was caught.
+- A read that fails because the connection under it had died is sent once more, on a fresh one.
+  A pooled connection can be dead with nothing having said so — the network goes away, the sockets
+  stay in the pool, and the next request is written into one and fails on the read after seventeen
+  seconds of retransmission. No connect happens there, so no connect timeout shortens it, and
+  .NET's own retry does not cover it: that one repeats a request the connection refused before it
+  was sent. Only GET and HEAD, and only once — a reset during the response read says nothing about
+  whether the server processed the request, so a save must not be repeated, and a second failure is
+  the network being down rather than one stale connection.

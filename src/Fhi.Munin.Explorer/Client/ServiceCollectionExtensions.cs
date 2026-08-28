@@ -70,6 +70,7 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<IMuninExplorerTokenProvider, AnonymousTokenProvider>();
 
         services.AddTransient<ClientHeaderHandler>();
+        services.AddTransient<TransientRetryHandler>();
         services.AddTransient<BearerTokenHandler>();
 
         // Scoped, so the surfaces sharing a circuit share one copy of the user's lists. Never
@@ -93,7 +94,9 @@ public static class ServiceCollectionExtensions
         // Attaches the host's user token when it supplies one. With no provider
         // registered the default supplies none and calls stay anonymous, which is what
         // public metadata browsing needs.
-        .AddHttpMessageHandler<BearerTokenHandler>();
+        .AddHttpMessageHandler<BearerTokenHandler>()
+        // Innermost, so it repeats the network call and not the whole chain above it.
+        .AddHttpMessageHandler<TransientRetryHandler>();
 
         return services;
     }
