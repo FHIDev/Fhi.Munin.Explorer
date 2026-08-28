@@ -769,10 +769,9 @@ else
                         aria-disabled="@AriaDisabled(CanGoNext)"
                         @onclick="() => GoToPageAsync(_page + 1)">@T.Next</button>
 
-                @* Buttons in the pager's own classes rather than a <select>: a select would need a
-                   name read back off Stiler, and none of theirs is a size control, so the shape
-                   changes rather than the package shipping CSS for one. aria-pressed rather than a
-                   radiogroup, whose arrow-key navigation would need script. *@
+                @* Buttons rather than a <select>: no name for one can be read back off Stiler, so
+                   the shape changes instead of the package shipping CSS. aria-pressed rather than
+                   a radiogroup, whose arrow-key navigation would need script we do not ship. *@
                 <div class="munin-explorer-pagination-size"
                      role="group"
                      aria-labelledby="@PageSizeLabelId">
