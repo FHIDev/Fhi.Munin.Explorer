@@ -6,20 +6,9 @@ namespace Fhi.Munin.Explorer.Client;
 /// Sends a read-only request once more when the connection under it died before answering.
 /// </summary>
 /// <remarks>
-/// A pooled connection can be dead without anything having said so: the network goes away, the
-/// sockets stay in the pool, and the next request is written into one and fails on the read —
-/// "an existing connection was forcibly closed", after seventeen seconds of TCP retransmission.
-/// No connect happens on that path, so no connect timeout can shorten it, and .NET's own retry
-/// does not cover it either: that one repeats a request the connection refused before it was
-/// sent, and this connection accepted it and then went silent. The failure evicts the connection,
-/// so the second attempt opens a fresh one — which is what a reader does by hand when they press
-/// the button again. (Fhi.Metadata-phgeg)
-/// <para>
-/// Only GET and HEAD. A reset arriving during the response read says nothing about whether the
-/// server processed the request, so repeating a save or a delete could do it twice; repeating a
-/// read cannot. Once, not until it works: a second failure is the network being down rather than
-/// one stale connection, and the reader is told rather than kept waiting through another attempt.
-/// </para>
+/// A connection can die in the pool with nothing having said so, and the request written into it
+/// then fails on the read rather than on a connect — which no connect timeout bounds and .NET's
+/// own retry does not cover. (Fhi.Metadata-phgeg)
 /// </remarks>
 internal sealed class TransientRetryHandler : DelegatingHandler
 {
@@ -44,10 +33,6 @@ internal sealed class TransientRetryHandler : DelegatingHandler
     }
 
     /// <summary>Whether the transport failed, as opposed to the server answering something.</summary>
-    /// <remarks>
-    /// A response that arrived is not retried whatever it says: a 500 is the server's answer and
-    /// repeating it asks a working server the same question twice.
-    /// </remarks>
     private static bool IsDeadConnection(HttpRequestException ex) =>
         ex.InnerException is IOException or SocketException;
 

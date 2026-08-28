@@ -4,13 +4,7 @@ using Fhi.Munin.Explorer.Client;
 
 namespace Fhi.Munin.Explorer.Tests;
 
-/// <summary>
-/// The one more attempt a reader would otherwise make by pressing the button again.
-/// </summary>
-/// <remarks>
-/// A pooled connection can die without saying so, and the request written into it fails on the
-/// read rather than on a connect — so no connect timeout shortens it. (Fhi.Metadata-phgeg)
-/// </remarks>
+/// <summary>The one more attempt a reader would otherwise make by pressing the button again.</summary>
 public class TransientRetryHandlerTest
 {
     /// <summary>Fails the first n attempts with <paramref name="failure"/>, then answers.</summary>

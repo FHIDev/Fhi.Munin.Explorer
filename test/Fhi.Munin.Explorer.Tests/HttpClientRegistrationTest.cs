@@ -5,12 +5,9 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
-/// What <c>AddMuninExplorer</c> actually composes, read back off the container.
+/// What <c>AddMuninExplorer</c> composes, read back off the container rather than off the helper
+/// that builds it — one returning the right handler proves nothing if nothing installs it.
 /// </summary>
-/// <remarks>
-/// Resolved out of the container, because a helper returning the right handler proves nothing if
-/// the registration never reaches for it. (Fhi.Metadata-phgeg)
-/// </remarks>
 public class HttpClientRegistrationTest
 {
     /// <summary>The name <c>AddHttpClient&lt;TClient, TImplementation&gt;</c> registers under.</summary>
