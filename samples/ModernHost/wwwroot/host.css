@@ -1183,6 +1183,57 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   font-weight: 600;
 }
 
+/* ---- the delkilde tree ----
+
+   Three more names, and the shape under them is doing most of the work. A study series keeps its
+   datasamlinger one per wave, and the waves are the study's organising fact — a flat table of all
+   fourteen of Tromsø's answers what it holds and destroys how it is arranged. So the section is a
+   nested <ul> of <li>, one per delkilde, each carrying its own datasamling table and any delkilder
+   below it.
+
+   A real list rather than indented <div>s, and the reason is not tidiness. A <ul> carries the
+   parent/child relationship to a screen reader by itself; CSS indentation carries it to a sighted
+   reader only, and an automated accessibility check cannot tell the difference — it is blind to
+   structure that was never marked up, so a stack of indented divs passes it while telling a
+   screen-reader user nothing. The other half: a browser indents a <ul> on its own, so the
+   structure still reads on a host that has none of these three rules. That is what these three
+   dress rather than carry, the same bargain the two tables above strike.
+
+   The bullets go, because each item is headed by a name; the indentation stays, because it is the
+   only visual sign of depth. */
+.munin-explorer-kilde__delkilder {
+  margin: 16px 0 0;
+  padding-left: 20px;
+  list-style: none;
+}
+
+/* The rule that makes the depth visible at a glance. The left border runs the height of the item
+   including everything nested inside it, so a reader sees one line per level of the tree — and it
+   is a border rather than a background so that two levels do not blend into one block. */
+.munin-explorer-kilde__delkilde {
+  padding-left: 16px;
+  border-left: 2px solid var(--grey30);
+}
+
+.munin-explorer-kilde__delkilde + .munin-explorer-kilde__delkilde {
+  margin-top: 20px;
+}
+
+/* The name of one delkilde. It wears headline-xxs, the same size as a metadata group's heading,
+   because Stiler's scale has nothing verified between that and the headline-s the section heading
+   above it wears — the depth is carried by the heading LEVEL and by the border above, not by a
+   size invented to sit in the gap. */
+.munin-explorer-kilde__delkilde-name {
+  margin-top: 0;
+}
+
+/* The delkilde's own table sits under its name rather than against it. Scoped to the table that is
+   its own direct child, so a wave nested inside this one keeps its own spacing rather than taking
+   this rule twice over. */
+.munin-explorer-kilde__delkilde > .munin-explorer-kilde__datasamlinger {
+  margin-top: 8px;
+}
+
 /* ---- the kilde list ----
 
    Kelda's result table, and three more names of ours. The shape rule is the one the datasamlinger

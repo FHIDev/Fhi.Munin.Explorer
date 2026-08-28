@@ -5884,6 +5884,12 @@ public class VariableExplorerTest : BunitContext
         // The kilde view adds a layout - a main column, a sidebar - that no existing helsedata class
         // describes, which is why these exist at all. Anything inside that layout uses helsedata's
         // own names.
+        //
+        // The three delkilde names are here because this fixture's kilde has a delkilde tree two
+        // levels deep, which is deliberate: a source with no delkilder draws none of them, so a
+        // list taken off a flat source would pin the ones that need Stiler least. `__identifiers`
+        // is emitted twice over now - once by the kilde's own name block, once per delkilde - and
+        // appears once, this being a set.
         Assert.Equal(
             [
                 "munin-explorer",
@@ -5896,6 +5902,9 @@ public class VariableExplorerTest : BunitContext
                 "munin-explorer-kilde__body",
                 "munin-explorer-kilde__main",
                 "munin-explorer-kilde__datasamlinger",
+                "munin-explorer-kilde__delkilder",
+                "munin-explorer-kilde__delkilde",
+                "munin-explorer-kilde__delkilde-name",
                 "munin-explorer-kilde__aside",
             ],
             invented);

@@ -79,20 +79,18 @@ public sealed partial class KildeView : ComponentBase
     /// The identifier line under the name: <c>K_ALS (ALS)</c>, or just the code when there is no
     /// short name to put beside it.
     /// </summary>
-    private string? Identifiers
-    {
-        get
-        {
-            if (Kilde is not { } kilde || string.IsNullOrWhiteSpace(kilde.Code))
-            {
-                return null;
-            }
+    private string? Identifiers =>
+        Kilde is { } kilde ? Identifier(kilde.Code, kilde.ShortName) : null;
 
-            return string.IsNullOrWhiteSpace(kilde.ShortName)
-                ? kilde.Code
-                : $"{kilde.Code} ({kilde.ShortName})";
-        }
-    }
+    /// <inheritdoc cref="Identifiers"/>
+    /// <remarks>
+    /// Shared with the delkilder in the tree below, which have a code and a short name of the same
+    /// shape — <c>K_TR.BIODATA</c> — and are looked up by them the same way.
+    /// </remarks>
+    private static string? Identifier(string? code, string? shortName) =>
+        string.IsNullOrWhiteSpace(code) ? null
+        : string.IsNullOrWhiteSpace(shortName) ? code
+        : $"{code} ({shortName})";
 
     /// <summary>The catalogue's metadata, grouped and ordered as the catalogue arranges it.</summary>
     private IReadOnlyList<PropertyGroup> Groups =>
@@ -145,15 +143,46 @@ public sealed partial class KildeView : ComponentBase
     /// Every datasamling the source holds, including those hanging off a delkilde.
     /// </summary>
     /// <remarks>
-    /// A source's datasamlinger are not a flat list. They hang off the source directly and off each
-    /// delkilde, nested to any depth, and a reader asking what data a source holds wants all of them
-    /// — a delkilde is how the catalogue is organised, not a reason to hide what is inside it.
+    /// Not what the view draws — that is <see cref="DataCollectionStructure"/>, which keeps each one
+    /// under the delkilde it belongs to. This is the count behind the section's heading: a source
+    /// whose datasamlinger all hang under delkilder still has some, and a section that drew no
+    /// heading for them would be wrong about it.
     /// </remarks>
     private IReadOnlyList<KildeDatasamling> DataCollections =>
-        Kilde is { } kilde
-            ? [.. Flatten(kilde).OrderBy(d => d.PresentationOrder ?? int.MaxValue)
-                                .ThenBy(d => d.Name, CatalogueProperties.CatalogueOrder)]
-            : [];
+        Kilde is { } kilde ? Ordered([.. Flatten(kilde)]) : [];
+
+    /// <summary>The datasamlinger hanging directly off the source, in catalogue order.</summary>
+    private IReadOnlyList<KildeDatasamling> DirectDataCollections =>
+        Kilde is { } kilde ? Ordered(kilde.Datasamlinger) : [];
+
+    /// <summary>The source's own delkilder, in catalogue order. Most sources have none.</summary>
+    private IReadOnlyList<KildeDelkilde> Delkilder =>
+        Kilde is { } kilde ? Ordered(kilde.Delkilder) : [];
+
+    /// <summary>
+    /// The level a top-level delkilde's name lands on — under the section heading above it, and one
+    /// deeper for every level of the tree, so navigating the page by heading walks the same tree the
+    /// list draws. Both stop at 6, which is where the outline stops.
+    /// </summary>
+    private int DelkildeLevel => Math.Min(BlockLevel + 1, 6);
+
+    /// <summary>
+    /// Catalogue order: the curated order first for whatever has one, then the Norwegian alphabet
+    /// for the rest — the same two rules, and the same comparer, at every level of the tree.
+    /// </summary>
+    /// <remarks>
+    /// Two overloads rather than one generic. The two records share the pair of fields but no
+    /// interface declaring it, so a generic would need a selector argument at each call site, and a
+    /// selector argument is a place for one call site to sort by something else.
+    /// </remarks>
+    private static IReadOnlyList<KildeDatasamling> Ordered(IReadOnlyList<KildeDatasamling> datasamlinger) =>
+        [.. datasamlinger.OrderBy(d => d.PresentationOrder ?? int.MaxValue)
+                         .ThenBy(d => d.Name, CatalogueProperties.CatalogueOrder)];
+
+    /// <inheritdoc cref="Ordered(IReadOnlyList{KildeDatasamling})"/>
+    private static IReadOnlyList<KildeDelkilde> Ordered(IReadOnlyList<KildeDelkilde> delkilder) =>
+        [.. delkilder.OrderBy(d => d.PresentationOrder ?? int.MaxValue)
+                     .ThenBy(d => d.Name, CatalogueProperties.CatalogueOrder)];
 
     private static IEnumerable<KildeDatasamling> Flatten(KildeDetail kilde) =>
         kilde.Datasamlinger.Concat(kilde.Delkilder.SelectMany(Flatten));
@@ -161,76 +190,173 @@ public sealed partial class KildeView : ComponentBase
     private static IEnumerable<KildeDatasamling> Flatten(KildeDelkilde delkilde) =>
         delkilde.Datasamlinger.Concat(delkilde.Children.SelectMany(Flatten));
 
-    /// <summary>The datasamlinger, as the table Runa shows.</summary>
-    private RenderFragment DataCollectionTable => builder =>
+    /// <summary>
+    /// The datasamlinger, arranged the way the catalogue arranges them rather than flattened into
+    /// one table.
+    /// </summary>
+    /// <remarks>
+    /// A source with no delkilder has nothing to nest, and gets the single table this view has
+    /// always drawn — which is most sources, and the case where the arranged view and the flat one
+    /// are the same picture. A study series gets that table for its own datasamlinger and then a
+    /// list, one item per delkilde, each carrying what hangs off it and any delkilder below it.
+    /// Tromsø's organising fact is its waves: a flat table of all fourteen answers what the study
+    /// holds while destroying how it is arranged, which is usually the question a study series is
+    /// asked.
+    /// <para>
+    /// A real <c>&lt;ul&gt;</c> of real <c>&lt;li&gt;</c>, and deliberately not indented
+    /// <c>&lt;div&gt;</c>s. A list carries the parent/child relationship to a screen reader by
+    /// itself; indentation carries it to a sighted reader only, and an automated accessibility
+    /// check is blind to structure that was never marked up, so it would call the second one green.
+    /// <c>role="tree"</c> would carry it as well and would oblige this component to implement the
+    /// full arrow-key contract that goes with it — a different piece of work, not a spelling of
+    /// this one. The browser's own list indentation is the other half of the choice: the structure
+    /// still reads on a host that has no rule for any of the names below, where a stack of divs
+    /// would collapse into one undifferentiated column.
+    /// </para>
+    /// </remarks>
+    private RenderFragment DataCollectionStructure => builder =>
     {
-        var rows = DataCollections;
+        var seq = 0;
+        var delkilder = Delkilder;
 
+        if (delkilder.Count == 0)
+        {
+            CollectionTable(builder, ref seq, DataCollections);
+            return;
+        }
+
+        CollectionTable(builder, ref seq, DirectDataCollections);
+        DelkildeList(builder, ref seq, delkilder, DelkildeLevel);
+    };
+
+    /// <summary>The datasamlinger of one level of the tree, as the table Runa shows.</summary>
+    /// <remarks>
+    /// Drawn once per level, and each one keeps its own <c>thead</c>. A table is what associates a
+    /// cell with its column heading for a screen reader, so a second table borrowing the first
+    /// one's headings is a table with none — the repetition is what buys every level being
+    /// readable on its own.
+    /// </remarks>
+    private void CollectionTable(RenderTreeBuilder builder, ref int seq, IReadOnlyList<KildeDatasamling> rows)
+    {
         if (rows.Count == 0)
         {
             return;
         }
 
-        builder.OpenElement(0, "table");
-        builder.AddAttribute(1, "class", "munin-explorer-kilde__datasamlinger");
+        builder.OpenElement(seq++, "table");
+        builder.AddAttribute(seq++, "class", "munin-explorer-kilde__datasamlinger");
 
-        builder.OpenElement(2, "thead");
-        builder.OpenElement(3, "tr");
-        HeaderCell(builder, 10, T.FieldName);
-        HeaderCell(builder, 20, T.FieldDescription);
-        HeaderCell(builder, 30, T.FieldValidity);
-        HeaderCell(builder, 40, T.FieldTotalVariables);
+        builder.OpenElement(seq++, "thead");
+        builder.OpenElement(seq++, "tr");
+        HeaderCell(builder, ref seq, T.FieldName);
+        HeaderCell(builder, ref seq, T.FieldDescription);
+        HeaderCell(builder, ref seq, T.FieldValidity);
+        HeaderCell(builder, ref seq, T.FieldTotalVariables);
         builder.CloseElement();
         builder.CloseElement();
 
-        builder.OpenElement(4, "tbody");
-
-        var seq = 100;
+        builder.OpenElement(seq++, "tbody");
 
         foreach (var row in rows)
         {
-            builder.OpenElement(seq, "tr");
+            builder.OpenElement(seq++, "tr");
 
             // The name is a th, not a td: it is what the rest of the row is about, and a screen
             // reader reading a cell out of context should hear which datasamling it belongs to.
-            builder.OpenElement(seq + 1, "th");
-            builder.AddAttribute(seq + 2, "scope", "row");
-            builder.AddAttribute(seq + 3, "lang", CatalogueProperties.Foreign("no", Reader));
-            builder.AddContent(seq + 4, string.IsNullOrWhiteSpace(row.ShortName)
+            builder.OpenElement(seq++, "th");
+            builder.AddAttribute(seq++, "scope", "row");
+            builder.AddAttribute(seq++, "lang", CatalogueProperties.Foreign("no", Reader));
+            builder.AddContent(seq++, string.IsNullOrWhiteSpace(row.ShortName)
                 ? row.Name
                 : $"{row.Name} ({row.ShortName})");
             builder.CloseElement();
 
-            Cell(builder, seq + 10, row.Description, norwegian: true);
-            Cell(builder, seq + 20, Period(row.EffectiveValidFrom, row.EffectiveValidTo), norwegian: false);
-            Cell(builder, seq + 30, $"{row.VariableCount} {T.VariableCountSuffix}", norwegian: false);
+            Cell(builder, ref seq, row.Description, norwegian: true);
+            Cell(builder, ref seq, Period(row.EffectiveValidFrom, row.EffectiveValidTo), norwegian: false);
+            Cell(builder, ref seq, $"{row.VariableCount} {T.VariableCountSuffix}", norwegian: false);
 
             builder.CloseElement();
-            seq += 100;
         }
 
         builder.CloseElement();
-        builder.CloseElement();
-    };
-
-    private static void HeaderCell(RenderTreeBuilder builder, int seq, string label)
-    {
-        builder.OpenElement(seq, "th");
-        builder.AddAttribute(seq + 1, "scope", "col");
-        builder.AddContent(seq + 2, label);
         builder.CloseElement();
     }
 
-    private void Cell(RenderTreeBuilder builder, int seq, string? value, bool norwegian)
+    /// <summary>One level of the delkilde tree: a list item per delkilde, recursing into its own.</summary>
+    /// <remarks>
+    /// The name wears <c>headline-xxs</c> rather than a size between it and the <c>headline-s</c>
+    /// of the section heading above it, because Stiler's scale has nothing verified in that gap —
+    /// the same reason the block headings are the size they are. The heading LEVEL carries the
+    /// depth instead, which is what a screen reader navigates the page by anyway.
+    /// </remarks>
+    private void DelkildeList(RenderTreeBuilder builder, ref int seq,
+                              IReadOnlyList<KildeDelkilde> delkilder, int level)
     {
-        builder.OpenElement(seq, "td");
+        if (delkilder.Count == 0)
+        {
+            return;
+        }
+
+        builder.OpenElement(seq++, "ul");
+        builder.AddAttribute(seq++, "class", "munin-explorer-kilde__delkilder");
+
+        foreach (var delkilde in delkilder)
+        {
+            builder.OpenElement(seq++, "li");
+            builder.AddAttribute(seq++, "class", "munin-explorer-kilde__delkilde");
+
+            builder.OpenElement(seq++, $"h{level}");
+            builder.AddAttribute(seq++, "class",
+                                 "headline headline-xxs margin--none munin-explorer-kilde__delkilde-name");
+            builder.AddAttribute(seq++, "lang", CatalogueProperties.Foreign("no", Reader));
+            builder.AddContent(seq++, delkilde.Name);
+            builder.CloseElement();
+
+            // The same line the kilde's own name block carries, wearing the same name, because it is
+            // the same thing one level down: what a reader looks this level up by elsewhere.
+            if (Identifier(delkilde.Code, delkilde.ShortName) is { } identifiers)
+            {
+                builder.OpenElement(seq++, "p");
+                builder.AddAttribute(seq++, "class", "caption margin--none munin-explorer-kilde__identifiers");
+                builder.AddContent(seq++, identifiers);
+                builder.CloseElement();
+            }
+
+            // The delkilde's own beskrivelse is deliberately not drawn, though the contract carries
+            // one. Read what the catalogue actually stores there before adding it: in the Tromsø
+            // payload it is the name again for K_TR.BIODATA, and a bare markdown link whose text is
+            // the name again for each of the five waves. This view renders text rather than
+            // markdown — the kilde's own description already shows its <br> tags as words — so a
+            // description here would put "[Tromsø4 - The Fourth Tromsø Study](https://uit.no/...)"
+            // beside every wave, which is a visible fault rather than information.
+
+            CollectionTable(builder, ref seq, Ordered(delkilde.Datasamlinger));
+            DelkildeList(builder, ref seq, Ordered(delkilde.Children), Math.Min(level + 1, 6));
+
+            builder.CloseElement();
+        }
+
+        builder.CloseElement();
+    }
+
+    private static void HeaderCell(RenderTreeBuilder builder, ref int seq, string label)
+    {
+        builder.OpenElement(seq++, "th");
+        builder.AddAttribute(seq++, "scope", "col");
+        builder.AddContent(seq++, label);
+        builder.CloseElement();
+    }
+
+    private void Cell(RenderTreeBuilder builder, ref int seq, string? value, bool norwegian)
+    {
+        builder.OpenElement(seq++, "td");
 
         if (norwegian)
         {
-            builder.AddAttribute(seq + 1, "lang", CatalogueProperties.Foreign("no", Reader));
+            builder.AddAttribute(seq++, "lang", CatalogueProperties.Foreign("no", Reader));
         }
 
-        builder.AddContent(seq + 2, value);
+        builder.AddContent(seq++, value);
         builder.CloseElement();
     }
 

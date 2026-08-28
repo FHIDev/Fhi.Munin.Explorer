@@ -109,14 +109,45 @@ public class KildeViewTest : BunitContext
     private static KildeDelkilde Delkilde(
         string name,
         IReadOnlyList<KildeDatasamling> datasamlinger,
-        IReadOnlyList<KildeDelkilde>? children = null) =>
+        IReadOnlyList<KildeDelkilde>? children = null,
+        int? order = null,
+        string code = "",
+        string? shortName = null,
+        string description = "") =>
         new()
         {
             Id = Guid.NewGuid(),
+            Code = code,
             Name = name,
+            ShortName = shortName,
+            Description = description,
+            PresentationOrder = order,
             Datasamlinger = datasamlinger,
             Children = children ?? [],
         };
+
+    /// <summary>
+    /// A source arranged the way a study series is: datasamlinger of its own, three waves beside
+    /// them, and one wave with a wave of its own.
+    /// </summary>
+    /// <remarks>
+    /// THE TRAP every claim about the structure has to be put to. Most kilder have no delkilder at
+    /// all, and on those the arranged section and the flat table it replaced render the same
+    /// picture — an assertion that passes on one of them has not run. The nesting goes two levels
+    /// deep for the same reason one level is not enough: it cannot tell "the tree is walked" from
+    /// "the top of the tree is drawn".
+    /// </remarks>
+    private static KildeDetail Study() => Kilde() with
+    {
+        Datasamlinger = [Collection("Inklusjon")],
+        Delkilder =
+        [
+            Delkilde("Tromsø 4",
+                     [Collection("Spørreskjema")],
+                     [Delkilde("Første besøk", [Collection("Blodprøver")], code: "K_TR.TR4.V1")],
+                     code: "K_TR.TR4"),
+        ],
+    };
 
     /// <summary>Markup a host might hang after the metadata, carrying no class of its own.</summary>
     private static readonly RenderFragment KeldaSections = builder =>
@@ -212,6 +243,49 @@ public class KildeViewTest : BunitContext
     private static IReadOnlyList<string> CollectionNames(IRenderedComponent<KildeView> cut) =>
         [.. cut.FindAll("table.munin-explorer-kilde__datasamlinger tbody th").Select(e => e.TextContent)];
 
+    /// <summary>
+    /// The datasamling section read back as an outline: a line per delkilde, in brackets, and a
+    /// line per datasamling, each indented by how deeply the MARKUP nests it.
+    /// </summary>
+    /// <remarks>
+    /// The indentation here is read off the DOM rather than off a stylesheet, which is the whole
+    /// point of reading it this way. A flat list of names — which is what
+    /// <see cref="CollectionNames"/> returns, and what this section used to be — satisfies every
+    /// assertion about which datasamlinger are present while saying nothing about which delkilde
+    /// each belongs to. So does a stack of &lt;div&gt;s indented by CSS, to an automated
+    /// accessibility check as well as to a name-by-name assertion. Descending through the
+    /// &lt;li&gt; is the only reading that fails when the relationship is gone.
+    /// </remarks>
+    private static IReadOnlyList<string> Outline(IRenderedComponent<KildeView> cut)
+    {
+        var lines = new List<string>();
+
+        void Walk(IElement parent, int depth)
+        {
+            foreach (var child in parent.Children)
+            {
+                var indent = new string(' ', depth * 2);
+
+                if (child.ClassList.Contains("munin-explorer-kilde__datasamlinger"))
+                {
+                    lines.AddRange(child.QuerySelectorAll("tbody th").Select(th => indent + th.TextContent));
+                }
+                else if (child.ClassList.Contains("munin-explorer-kilde__delkilder"))
+                {
+                    foreach (var item in child.Children)
+                    {
+                        lines.Add($"{indent}[{item.QuerySelector("h3, h4, h5, h6")?.TextContent}]");
+                        Walk(item, depth + 1);
+                    }
+                }
+            }
+        }
+
+        Walk(cut.Find(".munin-explorer-kilde__main"), 0);
+
+        return lines;
+    }
+
     private static IReadOnlyList<string> BlockHeadings(IRenderedComponent<KildeView> cut) =>
         [.. cut.FindAll(".munin-explorer-kilde__body .headline-s").Select(e => e.TextContent)];
 
@@ -230,7 +304,11 @@ public class KildeViewTest : BunitContext
         // rendered at the browser's own <h*> size on helsedata.no. It reaches the DOM as an argument
         // to @Heading rather than as a class attribute, which puts it out of reach of grep and of
         // the CSS checks in scripts/; rendering the component is the only way to see it.
-        var cut = Render(Kilde());
+        //
+        // Asked of the study rather than of the plain source: the three names the delkilde tree
+        // writes are drawn only when there is a tree to draw, so a source with no delkilder checks
+        // every name but those.
+        var cut = Render(Study());
 
         // Compared against an empty list rather than asserted empty, so a failure names the classes
         // instead of saying only that there were some.
@@ -246,11 +324,15 @@ public class KildeViewTest : BunitContext
         // are all on the explorer, none on this view — so every one is a promise only the sample
         // stylesheet keeps.
         //
-        // It is the second such list: VariableExplorerTest.cs:5719 pins nine of these ten down the
-        // drill-in path, all but munin-explorer-group, which that fixture's kilde has no metadata
-        // groups to produce. Renaming a handle means editing both, and the other one fails with a
-        // message about the explorer rather than about this view.
-        var cut = Render(Kilde());
+        // It is the second such list: VariableExplorerTest.cs:5719 pins twelve of these thirteen
+        // down the drill-in path, all but munin-explorer-group, which that fixture's kilde has no
+        // metadata groups to produce. Renaming a handle means editing both, and the other one fails
+        // with a message about the explorer rather than about this view.
+        //
+        // Rendered from the study, so the three delkilde names are inside the list rather than
+        // outside it: they are drawn only when the source has a tree, which makes a source without
+        // one exactly the render that would let them ship unnamed and unstyled.
+        var cut = Render(Study());
 
         var invented = HostClassNames.Of(cut.FindAll("[class]"))
             .Where(HostClassNames.IsOwnStructureName)
@@ -264,6 +346,9 @@ public class KildeViewTest : BunitContext
             "munin-explorer-kilde__aside",
             "munin-explorer-kilde__body",
             "munin-explorer-kilde__datasamlinger",
+            "munin-explorer-kilde__delkilde",
+            "munin-explorer-kilde__delkilde-name",
+            "munin-explorer-kilde__delkilder",
             "munin-explorer-kilde__description",
             "munin-explorer-kilde__header",
             "munin-explorer-kilde__identifiers",
@@ -449,24 +534,175 @@ public class KildeViewTest : BunitContext
     // ---------------------------------------------------------------------------------
 
     [Fact]
-    public void DataCollections_WhenSomeHangUnderADelkilde_ThenTheyAreListedBesideTheKildesOwn()
+    public void DataCollections_WhenSomeHangUnderADelkilde_ThenEachSitsInsideTheDelkildeItBelongsTo()
     {
-        // A study series keeps its datasamlinger one per wave, under delkilder nested to any depth.
-        // Listing only the ones hanging off the kilde itself would show one row where the reader can
-        // reach three — a delkilde is how the catalogue is organised, not a reason to hide what is
-        // inside it.
+        // The section this view used to draw was one flat table of every datasamling the source
+        // holds, gathered through the delkilder and then sorted as if they were one list. It
+        // answered what a study series holds and destroyed how it is arranged, which for a study
+        // series is usually the question — Tromsø's organising fact is its waves.
+        //
+        // So: the source's own first, then a delkilde carrying its own, then that delkilde's own
+        // delkilde carrying the last one. Both halves of the claim are in this one list. Every
+        // datasamling is still reachable, which is what the flat table got right; and each is
+        // inside the delkilde it belongs to, which is what it got wrong.
+        Assert.Equal(
+        [
+            "Inklusjon",
+            "[Tromsø 4]",
+            "  Spørreskjema",
+            "  [Første besøk]",
+            "    Blodprøver",
+        ], Outline(Render(Study())));
+    }
+
+    [Fact]
+    public void DataCollections_WhenTheKildeHasNoDelkilder_ThenTheTableIsStillTheWholeSection()
+    {
+        // THE SECOND TRAP. Most kilder have no delkilder at all, so replacing the table with a tree
+        // unconditionally would trade a missing structure for missing data on the majority of
+        // sources — and every assertion about the tree above would still pass, because none of them
+        // renders a source like this one.
         var kilde = Kilde() with
         {
-            Datasamlinger = [Collection("Inklusjon")],
+            Datasamlinger = [Collection("Inklusjon"), Collection("Oppfølging")],
+            Delkilder = [],
+        };
+
+        var cut = Render(kilde);
+
+        Assert.Equal(["Inklusjon", "Oppfølging"], CollectionNames(cut));
+
+        // And no empty list around them: a source with nothing to nest gets exactly the section it
+        // has always had, which is the whole of what "looks as it does today" means here.
+        Assert.Empty(cut.FindAll("ul.munin-explorer-kilde__delkilder"));
+        Assert.Equal(["Inklusjon", "Oppfølging"], Outline(cut));
+    }
+
+    [Fact]
+    public void Delkilder_WhenOneIsNestedUnderAnother_ThenTheMarkupCarriesItRatherThanTheIndentation()
+    {
+        // THE THIRD TRAP, and the one an automated accessibility check cannot see: it is blind to
+        // structure that was never marked up, so a stack of <div>s indented by CSS passes it while
+        // telling a screen-reader user nothing at all. Indentation is not a relationship.
+        //
+        // A nested <ul>/<li> is, natively and with no keyboard contract to implement — which
+        // role="tree" would have obliged, and does not appear here for that reason. So this asks
+        // the DOM for the relationship itself rather than for a class name or a computed style.
+        var cut = Render(Study());
+
+        var list = cut.Find("ul.munin-explorer-kilde__delkilder");
+
+        Assert.Equal("UL", list.TagName);
+
+        var wave = Assert.Single(list.Children);
+
+        Assert.Equal("LI", wave.TagName);
+        Assert.Equal("Tromsø 4", wave.QuerySelector("h4")?.TextContent);
+
+        // The nested wave's list is INSIDE its parent's list item, which is the sentence "Første
+        // besøk is part of Tromsø 4" in markup. A second list beside the first would render
+        // identically once the sample stylesheet indented it.
+        var nested = wave.QuerySelector("ul.munin-explorer-kilde__delkilder");
+
+        Assert.NotNull(nested);
+        Assert.Equal("Første besøk", Assert.Single(nested!.Children).QuerySelector("h5")?.TextContent);
+
+        // And the datasamling belongs to the wave rather than to the section: the table it is in
+        // sits inside that same list item.
+        Assert.Equal("Spørreskjema",
+                     wave.QuerySelector(":scope > table.munin-explorer-kilde__datasamlinger tbody th")?.TextContent);
+    }
+
+    [Theory]
+    [InlineData(2, "H4", "H5")]
+    [InlineData(4, "H6", "H6")]
+    public void Delkilder_WhenTheViewIsMountedAtALevel_ThenEachDepthIsOneHeadingDeeperThanTheLast(
+        int headingLevel,
+        string top,
+        string nested)
+    {
+        // Heading order is how a screen reader user navigates a page, so the tree the list draws and
+        // the tree the outline draws have to be the same tree: a wave's wave one level deeper than
+        // the wave. The second row is the flattening rather than an off-by-one — a title at h4 puts
+        // the section at h5 and the first wave at h6, which is where the outline stops, so the
+        // nested one stops there too rather than becoming an h7 no browser has.
+        var cut = Render(Study(), headingLevel: headingLevel);
+
+        var names = cut.FindAll(".munin-explorer-kilde__delkilde-name");
+
+        Assert.Equal([top, nested], names.Select(e => e.TagName));
+        Assert.Equal(["Tromsø 4", "Første besøk"], names.Select(e => e.TextContent));
+    }
+
+    [Fact]
+    public void Delkilder_WhenOneCarriesACode_ThenItSitsUnderItsNameAndTheBeskrivelseDoesNot()
+    {
+        // A delkilde is looked up by its code the way the kilde above it is — K_TR.TR4 — so the line
+        // wears the same class name as the kilde's own, being the same thing one level down.
+        //
+        // The beskrivelse is left off, and is asserted absent rather than merely not asserted
+        // present, because adding it looks like an improvement until the payload is read. In the
+        // captured Tromsø kilde it is the name again for K_TR.BIODATA and a bare markdown link
+        // whose text is the name again for each of the five waves — and this view renders text, not
+        // markdown, so it would print the brackets and the URL beside every wave.
+        var cut = Render(Study(), language: "en");
+
+        var wave = cut.Find("ul.munin-explorer-kilde__delkilder > li");
+
+        Assert.Equal("K_TR.TR4", wave.QuerySelector(".munin-explorer-kilde__identifiers")?.TextContent);
+        Assert.Null(wave.QuerySelector("p.munin-explorer-kilde__description"));
+    }
+
+    [Fact]
+    public void Delkilder_WhenTheCatalogueHasOrderedThem_ThenThoseComeFirstAndTheRestAlphabetically()
+    {
+        // The same two rules the datasamlinger follow, applied at every level of the tree rather
+        // than at the top of it: a curated order wins, and the Norwegian alphabet takes the rest.
+        // The nested pair is the half a top-level-only sort would get wrong.
+        var kilde = Kilde() with
+        {
+            Datasamlinger = [],
             Delkilder =
             [
-                Delkilde("Tromsø 4",
-                         [Collection("Spørreskjema")],
-                         [Delkilde("Første besøk", [Collection("Blodprøver")])]),
+                Delkilde("Ålesund", []),
+                Delkilde("Bergen", [], order: 2),
+                Delkilde("Alta", [],
+                         [Delkilde("Åsane", []), Delkilde("Bønes", []), Delkilde("Sandviken", [], order: 1)]),
+                Delkilde("Oslo", [], order: 1),
             ],
         };
 
-        Assert.Equal(["Blodprøver", "Inklusjon", "Spørreskjema"], CollectionNames(Render(kilde)));
+        Assert.Equal(
+        [
+            "[Oslo]",
+            "[Bergen]",
+            "[Alta]",
+            "  [Sandviken]",
+            "  [Bønes]",
+            "  [Åsane]",
+            "[Ålesund]",
+        ], Outline(Render(kilde, language: "en")));
+    }
+
+    [Fact]
+    public void Delkilder_WhenOneHoldsNoDatasamlingerOfItsOwn_ThenItIsStillOnThePage()
+    {
+        // Tromsø really has one: K_TR.BIODATA carries no datasamlinger and is a wave of the study
+        // all the same. Drawing only the delkilder that hold something would leave a reader
+        // counting six waves on helsedata.no and five here, with nothing saying which is right.
+        var kilde = Kilde() with
+        {
+            Datasamlinger = [],
+            Delkilder = [Delkilde("Biodata", []), Delkilde("Tromsø 4", [Collection("Spørreskjema")])],
+        };
+
+        var cut = Render(kilde);
+
+        Assert.Equal(["[Biodata]", "[Tromsø 4]", "  Spørreskjema"], Outline(cut));
+
+        // And the section is headed, though not one datasamling hangs off the kilde itself. The
+        // heading follows what the source holds anywhere, not what it holds at the top.
+        Assert.Contains("Datasamlinger", BlockHeadings(cut));
     }
 
     [Fact]
@@ -553,6 +789,7 @@ public class KildeViewTest : BunitContext
         var cut = Render(Kilde() with { Datasamlinger = [], Delkilder = [] });
 
         Assert.Empty(cut.FindAll("table.munin-explorer-kilde__datasamlinger"));
+        Assert.Empty(cut.FindAll("ul.munin-explorer-kilde__delkilder"));
         Assert.DoesNotContain("Datasamlinger", BlockHeadings(cut));
     }
 
