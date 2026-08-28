@@ -210,6 +210,29 @@ jobs:
         # never a surprise that only CI knows how to reproduce.
         run: ./scripts/assert-sample-css-in-step.sh
 
+  # A class name new on this branch has to be written down for whoever updates Fhi.Helsedata.Stiler,
+  # which lives in Azure DevOps and is unreachable from here. The sample-css job above compares
+  # against the SAMPLE stylesheets — the most it can reach — so it goes green while the real site has
+  # no rule at all. That shipped three times in two days before this check existed.
+  #
+  # fetch-depth: 0 because this is a diff against the base branch: without it there is no base to
+  # compare against and the script exits 2 rather than guessing.
+  host-notes:
+    name: host notes for new names
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Assert new class names are noted for hosts
+        env:
+          BASE_REF: origin/${{ github.base_ref || github.event.repository.default_branch }}
+        run: |
+          git fetch --quiet origin "${BASE_REF#origin/}"
+          ./scripts/assert-new-names-noted-for-hosts.sh
+
   # BannedSymbols.txt is the only thing keeping host-specific types out of a component that has to
   # render in two hosts, and it is wired up by a condition on the RCL's project name. That
   # condition was stale for the whole time the merged project had a different name than it named:
@@ -281,7 +304,7 @@ jobs:
   # this workflow must be added to needs: below and to the table, or it stays invisible here.
   report:
     name: ci summary
-    needs: [build, changelog, sample-css, portability-guard, accessibility]
+    needs: [build, changelog, sample-css, host-notes, portability-guard, accessibility]
     # It exists to report failed and skipped jobs, so it must not be skipped by one.
     if: always()
     runs-on: ubuntu-latest
@@ -312,6 +335,7 @@ jobs:
           build + test|${{ needs.build.result }}
           changelog fragment|${{ needs.changelog.result }}
           sample stylesheets in step|${{ needs['sample-css'].result }}
+          host notes for new names|${{ needs['host-notes'].result }}
           portability guard armed|${{ needs['portability-guard'].result }}
           accessibility|${{ needs.accessibility.result }}
           EOF
