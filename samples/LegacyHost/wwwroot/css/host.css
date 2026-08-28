@@ -1161,6 +1161,33 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
+
+  /* `fixed`, and it is load-bearing rather than a tidiness preference. The section draws ONE table
+     per level of the delkilde tree, and under the default `auto` each of them sizes its own columns
+     from its own content — so Tromsø renders five tables whose Navn column measured 903, 1426, 270,
+     1409 and 1479 pixels. Nothing lines up down the page, and the one wave whose beskrivelse holds
+     a wall of text squeezed its other three columns to slivers: 270 / 3717 / 147 / 120.
+
+     This was invisible while the section was a single flat table, because one table has one column
+     grid however lopsided its content. It became visible the moment the table was drawn per level,
+     which is why the rule arrives with the tree rather than before it. */
+  table-layout: fixed;
+}
+
+/* The column grid every level shares. Percentages rather than ch, so the same four proportions hold
+   at each depth even though a nested table is narrower than the one above it — the indentation eats
+   the width, and columns fixed in absolute units would overflow instead of shrinking with it. */
+.munin-explorer-kilde__datasamlinger thead th:nth-child(1) { width: 28%; }
+.munin-explorer-kilde__datasamlinger thead th:nth-child(2) { width: 44%; }
+.munin-explorer-kilde__datasamlinger thead th:nth-child(3) { width: 16%; }
+.munin-explorer-kilde__datasamlinger thead th:nth-child(4) { width: 12%; }
+
+/* `fixed` alone would let one unbroken token — the catalogue stores beskrivelse as markdown, so the
+   cells carry bare URLs — push a cell past its column and out of the table. This keeps the break
+   inside the cell. */
+.munin-explorer-kilde__datasamlinger td,
+.munin-explorer-kilde__datasamlinger th {
+  overflow-wrap: anywhere;
 }
 
 .munin-explorer-kilde__datasamlinger th,

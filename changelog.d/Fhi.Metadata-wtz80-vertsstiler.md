@@ -15,3 +15,11 @@ category: Notes for hosts
   on helsedata.no. The rule has to land in Stiler under `components/munin-explorer/` the way the
   rest of the prefix did; until it does, a Stiler-only host gets the browser's own list indentation,
   which reads as a plain nested list rather than as nothing. (Fhi.Metadata-wtz80)
+- **The datasamling table needs a fixed column grid now that there is one per level.** Under CSS's
+  default `table-layout: auto` each level sizes its own columns from its own content, so Tromsø drew
+  five tables whose first column measured 903, 1426, 270, 1409 and 1479 pixels — nothing lining up
+  down the page, and the one wave whose beskrivelse holds a wall of text squeezed its other three
+  columns to slivers. One flat table hid this, having one column grid however lopsided its content.
+  Both sample hosts' `host.css` now sets `table-layout: fixed` on
+  `munin-explorer-kilde__datasamlinger` with four percentage widths and `overflow-wrap: anywhere`;
+  a host writing its own rule for that class wants the same. (Fhi.Metadata-wtz80)
