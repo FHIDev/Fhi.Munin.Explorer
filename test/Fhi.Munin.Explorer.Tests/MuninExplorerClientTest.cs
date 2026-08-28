@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
 
@@ -22,6 +23,9 @@ public class MuninExplorerClientTest
     }
 
     private static MuninExplorerClient WithStatus(HttpStatusCode status) => Client(StubHttpHandler.Status(status));
+
+    /// <summary>The client answering one hand-written body, for a shape no fixture has.</summary>
+    private static MuninExplorerClient WithJson(string json) => Client(StubHttpHandler.Ok(json));
 
     // ---------------------------------------------------------------- round-trip of real payloads
 
@@ -77,14 +81,19 @@ public class MuninExplorerClientTest
 
         var als = kilder[0];
         Assert.Equal("K_ALS", als.Code);
-        Assert.Equal("Als registeret", als.Name);
+        Assert.Equal("Norsk register for ALS og andre motonevronsykdommer (ALS-registeret)", als.Name);
         Assert.Equal("nasjonaltMedisinskKvalitetsregister", als.Kildetype);
         Assert.True(als.IsActive);
         Assert.True(als.HasVariableDescription);
         Assert.Equal(9, als.DatasamlingCount);
-        Assert.Equal(230, als.TotalVariables);
+        Assert.Equal(240, als.TotalVariables);
         Assert.Null(als.HealthDcatScore); // never computed yet — see the note on the property
         Assert.Equal("alsregister@stolav.no", als.AdditionalProperties["Epost"]);
+
+        // The founding year the Opprettet column reads, asserted where the payload is: the key is
+        // curated rather than modelled, so nothing about it is a compile error, and this capture is
+        // what says the spelling the ordinal lookup uses is the API's own.
+        Assert.Equal("2023", als.AdditionalProperties["Opprettet"]);
     }
 
     [Fact]
@@ -94,6 +103,10 @@ public class MuninExplorerClientTest
 
         Assert.NotNull(kilde);
         Assert.Equal("K_ALS", kilde.Code);
+
+        // Not a contradiction of the test above, which reads a kilder.json re-taken for its
+        // Opprettet key: this capture and the four siblings still carrying K_ALS's old name are
+        // older, so the corpus is coherent per file rather than as one pass.
         Assert.Equal("Als registeret", kilde.PreferredTerm);
         Assert.Equal(230, kilde.TotalVariables);
         Assert.Equal(9, kilde.Datasamlinger.Count);
@@ -119,6 +132,60 @@ public class MuninExplorerClientTest
         Assert.Equal(8, kildetype.Options.Count);
         Assert.Equal("sentraltHelseregister", kildetype.Options[0].Value);
         Assert.Equal("Sentralt helseregister", kildetype.Options[0].DisplayName);
+    }
+
+    [Fact]
+    public async Task GetKildePropertyMetadataAsync_WhenTheApiAnswersWithAVocabulary_ThenBothLabelsSurvive()
+    {
+        // The two entries are copied verbatim out of the propertyMetadata a real kilde detail
+        // carries — Testdata/kilde-med-delkilder.json — because the sibling endpoint serves the
+        // very same DTO, built by the same helper on the API side. What matters here is that
+        // optionsJson arrives as a *string* holding JSON rather than as JSON, and that both labels
+        // are still inside it: the list is fetched language-agnostically, so the component picks
+        // label or labelEn per render and cannot use a label the request already resolved.
+        const string vocabulary = """
+            [
+              {
+                "key": "accessRights",
+                "displayNameTranslations": { "no": "Tilgangsrettigheter", "en": "Access rights" },
+                "groupTranslations": { "no": "EHDS / HealthDCAT-AP", "en": "EHDS / HealthDCAT-AP" },
+                "sortOrder": 300,
+                "type": "SingleSelect",
+                "optionsJson": "[{\"value\":\"eu-access:NON_PUBLIC\",\"label\":\"Ikke-offentlig\",\"labelEn\":\"Non-public\"}]",
+                "options": [ { "value": "eu-access:NON_PUBLIC", "displayName": "Ikke-offentlig" } ]
+              },
+              {
+                "key": "healthCategory",
+                "displayNameTranslations": { "no": "Helsedatakategori", "en": "Health data category" },
+                "groupTranslations": { "no": "EHDS / HealthDCAT-AP", "en": "EHDS / HealthDCAT-AP" },
+                "sortOrder": 330,
+                "type": "MultiSelect",
+                "optionsJson": "[{\"value\":\"ehds-cat:biobanks\",\"label\":\"Biobanker\",\"labelEn\":\"Biobanks\"}]",
+                "options": [ { "value": "ehds-cat:biobanks", "displayName": "Biobanker" } ]
+              }
+            ]
+            """;
+
+        var handler = StubHttpHandler.Ok(vocabulary);
+
+        var entries = await Client(handler).GetKildePropertyMetadataAsync();
+
+        Assert.Equal("/api/explorer/kilder/egenskaper", handler.LastUri?.AbsolutePath);
+
+        // No Accept-Language, deliberately: see the remarks on the interface method.
+        Assert.Equal("", handler.LastUri?.Query);
+
+        Assert.Equal(["accessRights", "healthCategory"], entries.Select(entry => entry.Key));
+        Assert.Contains("\"labelEn\":\"Biobanks\"", entries[1].OptionsJson);
+        Assert.Equal("Biobanker", entries[1].Options[0].DisplayName);
+    }
+
+    [Fact]
+    public async Task GetKildePropertyMetadataAsync_WhenTheApiServesNoVocabulary_ThenAnEmptyListRatherThanAThrow()
+    {
+        // An API that predates the endpoint answers 404, and a facet without labels is a facet
+        // showing the catalogue's own tokens — worse to read, and not a reason to fail the page.
+        Assert.Empty(await WithStatus(HttpStatusCode.NotFound).GetKildePropertyMetadataAsync());
     }
 
     [Fact]
@@ -326,6 +393,108 @@ public class MuninExplorerClientTest
         var client = WithStatus(HttpStatusCode.InternalServerError);
 
         await Assert.ThrowsAsync<HttpRequestException>(() => client.GetKildeAsync(Guid.NewGuid()));
+    }
+
+    // ------------------------------------------------------------------------------------ 429
+
+    [Fact]
+    public async Task GetKildeAsync_WhenTheApiRateLimits_ThenItsOwnExceptionCarriesTheRetryAfter()
+    {
+        var client = Client(StubHttpHandler.RateLimited(TimeSpan.FromSeconds(30)));
+
+        var refused = await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(
+            () => client.GetKildeAsync(Guid.NewGuid()));
+
+        Assert.Equal(TimeSpan.FromSeconds(30), refused.RetryAfter);
+    }
+
+    [Fact]
+    public async Task GetKildeAsync_WhenARateLimitCarriesNoRetryAfter_ThenTheWaitIsUnknownRatherThanZero()
+    {
+        // The header is optional and a proxy can drop it. Null says "we were not told"; a zero
+        // would say "go now", which is the one thing a throttled caller must not read.
+        var client = Client(StubHttpHandler.RateLimited());
+
+        var refused = await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(
+            () => client.GetKildeAsync(Guid.NewGuid()));
+
+        Assert.Null(refused.RetryAfter);
+    }
+
+    [Fact]
+    public async Task GetKildeAsync_WhenARetryAfterIsAnHttpDate_ThenItIsReadAsTheWaitItImplies()
+    {
+        // Retry-After's other legal form, which is a parse and a subtraction rather than a value
+        // handed over as it stands. Bounded rather than exact because the header carries whole
+        // seconds and the clock moves between writing it and reading it.
+        var client = Client(StubHttpHandler.RateLimitedUntil(DateTimeOffset.UtcNow.AddMinutes(10)));
+
+        var refused = await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(
+            () => client.GetKildeAsync(Guid.NewGuid()));
+
+        Assert.NotNull(refused.RetryAfter);
+        Assert.InRange(refused.RetryAfter.Value, TimeSpan.FromMinutes(9), TimeSpan.FromMinutes(10));
+    }
+
+    [Fact]
+    public async Task GetKildeAsync_WhenAnHttpDateRetryAfterHasPassed_ThenTheWaitIsZeroRatherThanNegative()
+    {
+        // A reader whose clock runs behind the server's meets this on the first 429 they get, and a
+        // negative TimeSpan travelling on the exception would print in a host's log as a wait that
+        // ended before it began. Zero is the honest answer: nothing left to wait, as far as the
+        // header said.
+        var client = Client(StubHttpHandler.RateLimitedUntil(DateTimeOffset.UtcNow.AddMinutes(-1)));
+
+        var refused = await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(
+            () => client.GetKildeAsync(Guid.NewGuid()));
+
+        Assert.Equal(TimeSpan.Zero, refused.RetryAfter);
+    }
+
+    [Fact]
+    public async Task SearchVariablesAsync_WhenTheApiRateLimits_ThenItThrowsInsteadOfReturningAnEmptyPage()
+    {
+        // The trap this whole change is about. A 404 maps to null and this method maps that null
+        // on to an empty page, because a search with no hits is a normal answer — so the empty-page
+        // branch is sitting right there, one status away, and it is the wrong answer for a 429: it
+        // would tell the reader their search found nothing for a search that was never run, and
+        // hide the throttling from everything that logs on exceptions.
+        var client = Client(StubHttpHandler.RateLimited(TimeSpan.FromSeconds(5)));
+
+        await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(() => client.SearchVariablesAsync("tale"));
+    }
+
+    [Fact]
+    public async Task GetKilderAsync_WhenTheApiRateLimits_ThenItThrowsInsteadOfReturningAnEmptyList()
+    {
+        // The same trap in the shape the collection endpoints take it: 404 comes back as [], which
+        // reads as "the catalogue has no kilder" rather than "we were not allowed to ask".
+        var client = Client(StubHttpHandler.RateLimited());
+
+        await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(() => client.GetKilderAsync());
+    }
+
+    [Fact]
+    public async Task GetFiltersAsync_WhenTheApiRateLimits_ThenItThrowsInsteadOfReturningEmptyFacets()
+    {
+        var client = Client(StubHttpHandler.RateLimited());
+
+        await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(() => client.GetFiltersAsync());
+    }
+
+    [Fact]
+    public async Task SearchVariablesAsync_WhenTheApiRateLimits_ThenTheCallIsNotRetried()
+    {
+        // No resilience handler, no wait-and-try-again loop. The limit is counted per address and
+        // helsedata's cluster reaches Munin as one, so retrying on a Retry-After would fire every
+        // reader's component at the same instant and rebuild the same burst against the same
+        // window. Exactly one request leaves for one call, whatever the API answered.
+        var handler = StubHttpHandler.RateLimited(TimeSpan.FromSeconds(30));
+
+        await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(
+            () => Client(handler).SearchVariablesAsync(null));
+
+        Assert.Equal(1, handler.Calls);
     }
 
     // ------------------------------------------------------------------------------ URL building
@@ -588,5 +757,85 @@ public class MuninExplorerClientTest
 
         Assert.Equal($"/api/explorer/variables/{id}/kodeverk/AdministrativtKodeverk/2.16.578.1.12.4.1.1.7113/codes",
                      handler.LastUri?.AbsolutePath);
+    }
+
+    // ------------------------------------------------- explicit nulls where a collection is due
+
+    [Fact]
+    public async Task GetVariableAsync_WhenACollectionArrivesAsAnExplicitNull_ThenItIsReadAsEmpty()
+    {
+        // The failure this closes: every collection on every contract is declared non-nullable
+        // with an initialiser, and that initialiser only survives a key ABSENT from the payload.
+        // An explicit null is written straight over it, and the first read of the result throws
+        // while rendering — past the try/catch around the fetch, which on a Blazor Server host
+        // takes the circuit and the page it is mounted in down.
+        //
+        // additionalProperties is the key the API has actually been seen doing it on, twice. The
+        // three beside it are here because nothing marks them as incapable of it, and because the
+        // point of handling this on the serialiser rather than at a read site is that it covers
+        // the keys nobody has read yet.
+        var detail = await WithJson("""
+            {
+              "id": "6f1d4a5c-0000-4000-8000-000000000002",
+              "code": "V_ALS.F1.ALSFRSR1TALE",
+              "additionalProperties": null,
+              "propertyMetadata": null,
+              "versjoner": null,
+              "statistikker": [
+                { "code": "ALSFRSR1Tale", "additionalProperties": null }
+              ]
+            }
+            """).GetVariableAsync(Guid.NewGuid());
+
+        Assert.NotNull(detail);
+        Assert.Empty(detail.AdditionalProperties);
+        Assert.Empty(detail.PropertyMetadata);
+        Assert.Empty(detail.Versions);
+        Assert.Empty(detail.Statistics[0].AdditionalProperties);
+    }
+
+    [Fact]
+    public async Task SearchVariablesAsync_WhenTheItemsArriveAsAnExplicitNull_ThenThePageIsEmptyRatherThanBroken()
+    {
+        // The same rule one level up: a page is a collection too, and the count beside it is still
+        // read. Nothing is inferred from the null except that there is nothing in it.
+        var page = await WithJson("""
+            { "items": null, "totalCount": 0, "page": 1, "pageSize": 25, "totalPages": 0 }
+            """).SearchVariablesAsync(null);
+
+        Assert.Empty(page.Items);
+        Assert.Equal(0, page.TotalCount);
+    }
+
+    [Fact]
+    public void Json_WhenAContractIsWrittenBack_ThenItsCollectionsAreStillArraysAndObjects()
+    {
+        // The converter has a write half, and the way to get it wrong is to hand the value back to
+        // the serialiser as the interface it was just resolved for — which resolves the same
+        // converter again and recurses until the stack ends. That much ShapeDrift would already
+        // catch: it serialises every deserialised contract with these same options, on eight
+        // fixtures, in every CI run, so the recursion would take those down rather than wait for a
+        // future caller.
+        //
+        // What it would not catch is what this pins: ShapeDrift only diffs our output against the
+        // live body, so a write half that emitted the right kinds with the wrong keys, or a
+        // dictionary written as an array, reads as drift in the API rather than as a bug here. This
+        // says what the bytes are.
+        var detail = new VariableDetail
+        {
+            Code = "V_ALS.F1.ALSFRSR1TALE",
+            AdditionalProperties = new Dictionary<string, string?> { ["Kommentar"] = "noe" },
+            Statistics = [new Statistic { Code = "ALSFRSR1Tale" }]
+        };
+
+        var json = JsonSerializer.Serialize(detail, MuninExplorerClient.Json);
+
+        Assert.Contains("\"additionalProperties\":{\"Kommentar\":\"noe\"}", json);
+        Assert.Contains("\"statistikker\":[{", json);
+
+        var read = JsonSerializer.Deserialize<VariableDetail>(json, MuninExplorerClient.Json)!;
+
+        Assert.Equal("noe", read.AdditionalProperties["Kommentar"]);
+        Assert.Equal("ALSFRSR1Tale", read.Statistics[0].Code);
     }
 }

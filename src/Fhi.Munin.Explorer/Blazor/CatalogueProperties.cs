@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Text.Json;
 using Fhi.Munin.Explorer.Contracts;
@@ -125,17 +126,30 @@ internal static class CatalogueProperties
     /// <remarks>
     /// A key with no metadata is skipped rather than drawn under its raw name: the bag can carry
     /// keys the catalogue no longer curates, and "FlerkodetFelt: 1" tells a reader nothing.
+    /// <para>
+    /// <paramref name="values"/> is nullable although every contract declares
+    /// <c>AdditionalProperties</c> non-nullable — see
+    /// <see cref="Contracts.KildeSummary.AdditionalProperties"/> for how a null gets in, and
+    /// <c>NullAsEmptyCollections</c> for what stops it arriving from this package's own client. A
+    /// host can substitute that client, so it is taken here as well: as the empty bag, which is
+    /// what the payload means by it, and which is the same answer <c>KildeExplorer.Property</c>
+    /// gives on the list side. Guarded here rather than at each call site because all three of them
+    /// pass a field declared that way: <c>KildeView</c>, <c>VariableView</c> and the variable
+    /// panel's own rows. Unguarded it throws while rendering, where the try/catch around the fetch
+    /// is long since finished and cannot catch it.
+    /// </para>
     /// </remarks>
     internal static List<PropertyRow> Rows(
         IEnumerable<PropertyMetadataEntry> metadata,
-        IReadOnlyDictionary<string, string?> values,
+        IReadOnlyDictionary<string, string?>? values,
         string reader)
     {
         var rows = new List<PropertyRow>();
+        var present = values ?? ReadOnlyDictionary<string, string?>.Empty;
 
         foreach (var entry in metadata.OrderBy(m => m.SortOrder).ThenBy(m => m.Key, StringComparer.Ordinal))
         {
-            if (!values.TryGetValue(entry.Key, out var raw) || string.IsNullOrWhiteSpace(raw))
+            if (!present.TryGetValue(entry.Key, out var raw) || string.IsNullOrWhiteSpace(raw))
             {
                 continue;
             }
@@ -183,13 +197,19 @@ internal static class CatalogueProperties
     /// Dropping the key drops the group with it whenever nothing else in that group is filled in,
     /// which is exactly what Runa shows.
     /// </para>
+    /// <para>
+    /// <paramref name="values"/> is nullable for the reason <see cref="Rows"/> gives, and taken the
+    /// same way. Normalised here as well as there because the group ordering reads the bag directly
+    /// rather than through <see cref="Rows"/>.
+    /// </para>
     /// </remarks>
     internal static List<PropertyGroup> Groups(
         IReadOnlyList<PropertyMetadataEntry> metadata,
-        IReadOnlyDictionary<string, string?> values,
+        IReadOnlyDictionary<string, string?>? values,
         string reader,
         IReadOnlySet<string>? drawnElsewhere = null)
     {
+        var present = values ?? ReadOnlyDictionary<string, string?>.Empty;
         var groups = new List<(string Name, string Language, int Order, List<PropertyMetadataEntry> Entries)>();
 
         foreach (var entry in metadata)
@@ -222,7 +242,7 @@ internal static class CatalogueProperties
 
         foreach (var (name, language, _, entries) in groups)
         {
-            var rows = Rows(entries, values, reader);
+            var rows = Rows(entries, present, reader);
 
             if (rows.Count == 0)
             {
@@ -230,7 +250,7 @@ internal static class CatalogueProperties
             }
 
             var order = entries
-                .Where(e => values.TryGetValue(e.Key, out var raw) && !string.IsNullOrWhiteSpace(raw))
+                .Where(e => present.TryGetValue(e.Key, out var raw) && !string.IsNullOrWhiteSpace(raw))
                 .Select(e => e.SortOrder)
                 .DefaultIfEmpty(int.MaxValue)
                 .Min();
@@ -249,11 +269,34 @@ internal static class CatalogueProperties
     /// Anything not drawn from a vocabulary is Norwegian: free text and identifiers are stored once,
     /// in the catalogue's own language, with no translated counterpart to fall back to.
     /// </remarks>
-    internal static (string Value, string Language) Value(PropertyMetadataEntry entry, string raw, string reader)
+    internal static (string Value, string Language) Value(PropertyMetadataEntry entry, string raw, string reader) =>
+        // A code the vocabulary does not list is shown as it arrived, and called Norwegian with the
+        // rest of the catalogue's own text. Showing it beats showing nothing: it is what the
+        // catalogue holds, and a blank cell would hide that the two disagree.
+        Word(entry, raw, reader) ?? (raw, "no");
+
+    /// <summary>
+    /// The vocabulary's own word for a stored code, or nothing at all where it lists none.
+    /// </summary>
+    /// <remarks>
+    /// The lookup <see cref="Value"/> is built on, separated out because the two callers want
+    /// different things from a miss. A property row shows the code and calls it Norwegian, which is
+    /// what the catalogue holds. A facet cannot: the codes it draws are CURIEs into EU and EHDS
+    /// vocabularies — <c>eu-access:OP_DATPRO</c> — which are prose in no language at all, and a
+    /// <c>lang="no"</c> over one hands it to a screen reader in a Norwegian voice (WCAG 3.1.2). So
+    /// the miss is reported rather than papered over, and each caller says what it means by it.
+    /// <para>
+    /// Matching is on the whole stored value, never on the part after a colon. Two prefixes over
+    /// one bare token are two values in the catalogue, so a prefix-blind lookup would answer
+    /// <c>annet-vokabular:biobanks</c> with the word for <c>ehds-cat:biobanks</c> — a label naming
+    /// a vocabulary entry the value is not in.
+    /// </para>
+    /// </remarks>
+    internal static (string Label, string Language)? Word(PropertyMetadataEntry entry, string raw, string reader)
     {
         if (string.IsNullOrWhiteSpace(entry.OptionsJson))
         {
-            return (raw, "no");
+            return null;
         }
 
         foreach (var option in Options(entry.OptionsJson, reader))
@@ -264,9 +307,7 @@ internal static class CatalogueProperties
             }
         }
 
-        // A code the vocabulary does not list. Showing it beats showing nothing: it is what the
-        // catalogue holds, and a blank cell would hide that the two disagree.
-        return (raw, "no");
+        return null;
     }
 
     /// <summary>

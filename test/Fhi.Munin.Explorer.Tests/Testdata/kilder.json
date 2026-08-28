@@ -2,12 +2,12 @@
   {
     "id": "8ec4c2c4-662d-47a5-a946-f1086a014070",
     "code": "K_ALS",
-    "navn": "Als registeret",
+    "navn": "Norsk register for ALS og andre motonevronsykdommer (ALS-registeret)",
     "kortNavn": "ALS",
     "kildetype": "nasjonaltMedisinskKvalitetsregister",
     "aktiv": true,
     "opprettet": "2026-05-19T12:58:37.183Z",
-    "sistOppdatert": "2026-07-10T09:25:16.760Z",
+    "sistOppdatert": "2026-08-25T05:42:57.378Z",
     "dataansvarlig": "St. Olavs hospital HF",
     "databehandler": "St. Olavs hospital HF",
     "gradAvPersonidentifikasjon": "indirectlyIdentifiable",
@@ -17,27 +17,26 @@
     "harVariabelbeskrivelse": true,
     "datasamlingCount": 9,
     "delkildeCount": 0,
-    "totalVariables": 230,
+    "totalVariables": 240,
     "additionalProperties": {
-      "AnbefalteBruksomraader": "Kvalitetsforbedring;Forskning;Statistikk",
-      "Epost": "alsregister@stolav.no",
+      "Opprettet": "2023",
+      "SistOppdatert": "20260423",
       "Formaal": "ALS-registeret har som formål å måle/sikre kvalitet og bidra til kvalitetsforbedring av helsetjenesten for pasienter med ALS eller andre motonevronsykdommer gjennom å registrere ressursbruk, hvilken behandling og utredning pasientene får. ",
-      "Forskrift": "https://lovdata.no/dokument/SF/forskrift/2019-06-21-789",
-      "Hjemmeside": "https://www.norskalsregister.no",
       "InklusjonsOgEksklusjonskriterier": "Alle pasienter som er 18 år eller eldre og som etter utredning får ICD10-diagnosekode «G12.2 Sykdom i motoriske nevroner», ved genetisk analyse får påvist Kennedys sykdom eller uspesifisert motonevronsykdom (ICD10-kode G12.9).",
       "Telefonnummer": "93008532",
-      "healthCategory": "[\"ehds-cat:registries-quality-of-healthcare\"]",
+      "Epost": "alsregister@stolav.no",
+      "Hjemmeside": "https://www.norskalsregister.no",
       "accessRights": "eu-access:NON_PUBLIC",
       "healthDataAccessBodyName": "Helsedataservice",
       "healthDataAccessBodyPhone": "+47 21 07 70 00",
       "healthDataAccessBodyEmail": "service@helsedata.no",
       "healthDataAccessBodyHomepage": "https://www.fhi.no/om/organisasjon/helsedataservice/",
       "applicableLegislation": "http://data.europa.eu/eli/reg/2025/327/oj;https://lovdata.no/eli/lov/2001-05-18-24;https://lovdata.no/eli/lov/2018-06-15-38",
-      "hasLegalBasis": "Innmelding av opplysninger fra det enkelte helseforetak til kvalitetsregistrene som inngår i § 2-3 i Forskrift om medisinske kvalitetsregistre. Personopplysningsloven, personvernforordningen (jf. Personopplysningsloven § 1) og helseregisterloven gjelder for behandling av helseopplysninger i medisinske kvalitetsregistre. Behandlingsgrunnlaget for ALS-registeret er personvernforordningen artikkel 6 nr. 1 bokstav e og artikkel 9 nr. 2 bokstav g, h, i og j. Overgang fra samtykkebasert register til reservasjonsbasert register 04.04.2024.;Submission of information from each individual health trust to the quality registries included in Section 2-3 of the Regulation on Medical Quality Registries. The Personal Data Act, the General Data Protection Regulation (cf. Section 1 of the Personal Data Act), and the Health Register Act apply to the processing of health data in medical quality registries. The legal basis for processing in the ALS registry is Article 6(1)(e) and Article 9(2)(g), (h), (i), and (j) of the General Data Protection Regulation. Transition from a consent-based registry to an opt-out registry on 04.04.2024.\"",
-      "healthTheme": "[\"healthdcatap:rare-diseases\"]",
-      "TittelFlerspraklig": "{\"nb\":\"ALS Registeret\"}",
+      "hasLegalBasis": "[{\"value\":\"Innmelding av opplysninger fra det enkelte helseforetak til kvalitetsregistrene som inngår i § 2-3 i Forskrift om medisinske kvalitetsregistre. Personopplysningsloven, personvernforordningen (jf. Personopplysningsloven § 1) og helseregisterloven gjelder for behandling av helseopplysninger i medisinske kvalitetsregistre. Behandlingsgrunnlaget for ALS-registeret er personvernforordningen artikkel 6 nr. 1 bokstav e og artikkel 9 nr. 2 bokstav g, h, i og j. Overgang fra samtykkebasert register til reservasjonsbasert register 04.04.2024.\",\"language\":\"nb\"}]",
       "FormaalFlerspraklig": "[{\"value\":\"ALS-registeret har som formål å måle/sikre kvalitet og bidra til kvalitetsforbedring av helsetjenesten for pasienter med ALS eller andre motonevronsykdommer gjennom å registrere ressursbruk, hvilken behandling og utredning pasientene får. \",\"language\":\"nb\"}]",
-      "BeskrivelseFlerspraklig": "{\"nb\":\"Norsk register for ALS og andre motonevronsykdommer (ALS-registeret) er Norges nasjonale medisinske kvalitetsregister for pasienter som diagnostiseres med ALS eller annen motonevronsykdom. \"}"
+      "TittelFlerspraklig": "{\"nb\":\"Norsk register for ALS og andre motonevronsykdommer (ALS-registeret)\"}",
+      "BeskrivelseFlerspraklig": "{\"nb\":\"Norsk register for ALS og andre motonevronsykdommer (ALS-registeret) er Norges nasjonale medisinske kvalitetsregister for pasienter som diagnostiseres med ALS eller annen motonevronsykdom. \"}",
+      "healthCategory": "[\"ehds-cat:registries-quality-of-healthcare\"]"
     }
   },
   {
@@ -48,7 +47,7 @@
     "kildetype": "nasjonaltMedisinskKvalitetsregister",
     "aktiv": true,
     "opprettet": "2026-01-23T09:18:08.061Z",
-    "sistOppdatert": "2026-08-13T09:26:34.953Z",
+    "sistOppdatert": "2026-08-24T08:50:11.365Z",
     "dataansvarlig": "Administrerende direktør ved OUS  ",
     "databehandler": "Oslo universitetssykehus HF (OUS) har driftsansvar",
     "gradAvPersonidentifikasjon": "indirectlyIdentifiable",
@@ -60,12 +59,13 @@
     "delkildeCount": 0,
     "totalVariables": 630,
     "additionalProperties": {
+      "Opprettet": "2006",
+      "SistOppdatert": "20260813",
       "Formaal": "Barnediabetesregisterets formål er:\nOvervåke forekomsten av diabetes hos barn og ungdom.\nArbeide for å bedre diagnostikk og klassifisering av sykdommen.\nOvervåke og bedre kvaliteten av diabetesbehandlingen i henhold til nasjonale og internasjonale standarder (se www.ispad.org).\nVidereutvikle og drive et nettverk for kvalitetsutvikling mellom behandlende barneavdelinger i hele landet for å sikre et likeverdig behandlingstilbud.\nOvervåke forekomsten av kroniske og akutte komplikasjoner av sykdommen.\nArbeide for å fremme forskning knyttet til diabetes.\n",
       "InklusjonsOgEksklusjonskriterier": "Barnediabetesregisteret registrerer alle barn og ungdom i Norge som får diagnosen diabetes \nfør 18 års alder, uansett hvilken type diabetes. ",
       "Telefonnummer": "Leder av Barnediabetesregisteret: 99501613",
       "Epost": "bardia@ous-hf.no",
       "Hjemmeside": "www.barnediabetes.no",
-      "healthCategory": "[\"ehds-cat:registries-quality-of-healthcare\"]",
       "accessRights": "eu-access:NON_PUBLIC",
       "healthDataAccessBodyName": "Helsedataservice",
       "healthDataAccessBodyPhone": "+47 21 07 70 00",
@@ -76,7 +76,8 @@
       "FormaalFlerspraklig": "[{\"value\":\"Barnediabetesregisterets formål er:\\nOvervåke forekomsten av diabetes hos barn og ungdom.\\nArbeide for å bedre diagnostikk og klassifisering av sykdommen.\\nOvervåke og bedre kvaliteten av diabetesbehandlingen i henhold til nasjonale og internasjonale standarder (se www.ispad.org).\\nVidereutvikle og drive et nettverk for kvalitetsutvikling mellom behandlende barneavdelinger i hele landet for å sikre et likeverdig behandlingstilbud.\\nOvervåke forekomsten av kroniske og akutte komplikasjoner av sykdommen.\\nArbeide for å fremme forskning knyttet til diabetes.\\n\",\"language\":\"nb\"}]",
       "TittelFlerspraklig": "{\"nb\":\"Barnediabetes\"}",
       "BeskrivelseFlerspraklig": "{\"nb\":\"Barnediabetesregisteret (BDR) består av to deler. Den første delen registrerer alle barn og ungdom med nyoppdaget diabetes. Her registreres personalia, type diabetes, kliniske data og blodprøver.\\nDen andre delen registrerer kvaliteten på diabetesbehandlingen ved hjelp av internasjonalt definerte diabetes kvalitetsvariabler. Hver pasient undersøkes en gang i året (Årskontroll). Da registreres kliniske data, opplysninger fra spørreskjema, svar på urin og blodprøver.\\n\\nI diabetesomsorgen hos barn og ungdom har BDR et spesielt fokus på langtidsblodsukker, HbA1c. Målet er at flest mulig barn og ungdommer skal oppnå nasjonalt og internasjonalt behandlingsmål på HbA1c som til en hver tid er gjeldene. Denne grensen er satt for å redusere risikoen for å utvikle diabetes senskader.\\n\\nBDR har også fokus på registrering av insulinsjokk og diabetes ketoacidose (syreforgiftning). Målet er at så få pasienter som mulig får dette. I tillegg til dette registrerer vi hvilken grad pasientene blir screenet med øyeundersøkelse, urinundersøkelse, BT, kolesterolverdier og assosierte autoimmunesykdommer; hypothyreose, hyperthyreose og cøliaki. \\n\\nEt viktig verktøy for å fremme kvaliteten i diabetesbehandlingen hos barn og ungdom er å rapportere dataene tilbake til barneavdelingene, der kvalitetsarbeidet skjer. Avdelingene får rapporter både på egne data, og rapporter på egne data sammenlignet (benchmarket) med alle de andre barneavdelingene i Norge. \"}",
-      "AnbefalteBruksomraader": "Forskning, Statistikk, Kvalitetsforbedring"
+      "AnbefalteBruksomraader": "Forskning, Statistikk, Kvalitetsforbedring",
+      "healthCategory": "[\"ehds-cat:registries-quality-of-healthcare\"]"
     }
   },
   {
@@ -99,6 +100,8 @@
     "delkildeCount": 0,
     "totalVariables": 23,
     "additionalProperties": {
+      "Opprettet": "2020",
+      "SistOppdatert": "20230131",
       "AnbefalteBruksomraader": "Forskning, analyse, styringsdata, beredskap osv knyttet til bivirkninger",
       "BeskrivelseEngelsk": "The Norwegian Adverse Drug Reaction Registry, (NorADRR) shall contribute to safe and effective use of medicinal products, by continuously and systematically registering, processing, and analysing reports of suspected adverse drug reactions (ADRs) and capturing information about ADRs as early as possible.",
       "Epost": "bivirkninger@legemiddelverket.no",
@@ -108,7 +111,6 @@
       "InklusjonsOgEksklusjonskriterier": "Inkluderer data fra bivirkningsdatabasen VigiNor med data fra 1971 og gamle meldinger personidetifserbare meldinger (dokumenter).",
       "NavnEngelsk": "The Norwegian Adverse Drug Reaction Registry",
       "Telefonnummer": "+47 22 89 77 00",
-      "healthCategory": "[\"ehds-cat:health-registries\"]",
       "accessRights": "eu-access:NON_PUBLIC",
       "healthDataAccessBodyName": "Helsedataservice",
       "healthDataAccessBodyPhone": "+47 21 07 70 00",
@@ -119,7 +121,8 @@
       "healthTheme": "[\"healthdcatap:public-health-surveillance\",\"healthdcatap:pharmaceuticals\"]",
       "FormaalFlerspraklig": "[{\"value\":\"Registeret skal bidra til sikker og effektiv legemiddelbruk, ved at det fortløpende og systematisk registreres, behandles og analyseres bivirkningsmeldinger og fanges opp bivirkningsinformasjon fra legemiddelbruk så tidlig som mulig.\\n\\nOpplysninger som er registrert i registeret kan også tilgjengeliggjøres for styring, planlegging og kvalitetsforbedring av legemidler og legemiddelbruk og til forskning.\",\"language\":\"nb\"}]",
       "TittelFlerspraklig": "{\"nb\":\"Bivirkningsregisteret\",\"en\":\"The Norwegian Adverse Drug Reaction Registry\"}",
-      "BeskrivelseFlerspraklig": "{\"nb\":\"Registeret skal bidra til sikker og effektiv legemiddelbruk, ved at det fortløpende og systematisk registreres, behandles og analyseres bivirkningsmeldinger og fanges opp bivirkningsinformasjon fra legemiddelbruk så tidlig som mulig.\\n\\nOpplysninger som er registrert i registeret kan også tilgjengeliggjøres for styring, planlegging og kvalitetsforbedring av legemidler og legemiddelbruk og til forskning.\",\"en\":\"The Norwegian Adverse Drug Reaction Registry, (NorADRR) shall contribute to safe and effective use of medicinal products, by continuously and systematically registering, processing, and analysing reports of suspected adverse drug reactions (ADRs) and capturing information about ADRs as early as possible.\"}"
+      "BeskrivelseFlerspraklig": "{\"nb\":\"Registeret skal bidra til sikker og effektiv legemiddelbruk, ved at det fortløpende og systematisk registreres, behandles og analyseres bivirkningsmeldinger og fanges opp bivirkningsinformasjon fra legemiddelbruk så tidlig som mulig.\\n\\nOpplysninger som er registrert i registeret kan også tilgjengeliggjøres for styring, planlegging og kvalitetsforbedring av legemidler og legemiddelbruk og til forskning.\",\"en\":\"The Norwegian Adverse Drug Reaction Registry, (NorADRR) shall contribute to safe and effective use of medicinal products, by continuously and systematically registering, processing, and analysing reports of suspected adverse drug reactions (ADRs) and capturing information about ADRs as early as possible.\"}",
+      "healthCategory": "[\"ehds-cat:health-registries\"]"
     }
   }
 ]

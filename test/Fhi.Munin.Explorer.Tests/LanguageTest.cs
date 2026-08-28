@@ -236,4 +236,30 @@ public class LanguageTest : BunitContext
             }
         }
     }
+
+    [Fact]
+    public void Texts_WhenTheApiRateLimits_ThenTheSentenceDiffersFromTheGenericFailureInBothLanguages()
+    {
+        // The whole point of the 429 branch is that a throttled reader is told something they can
+        // act on. Two strings that happened to say the same thing would satisfy every other test
+        // here — the parity guard only asks that both languages have one — and leave the reader
+        // being told to try again by the failure that trying again causes.
+        foreach (var language in new[] { "no", "en" })
+        {
+            var texts = Texts.For(language);
+
+            Assert.NotEqual(texts.Error, texts.RateLimitError);
+            Assert.NotEqual(texts.KildeListError, texts.RateLimitError);
+            Assert.NotEqual(texts.CodesError, texts.RateLimitError);
+            Assert.NotEqual(texts.DetailError, texts.RateLimitError);
+            Assert.NotEqual(texts.KildeError, texts.RateLimitError);
+
+            // No number and no countdown. Retry-After is read and carried on the exception for a
+            // host that logs it, and never rendered: the window is shared, so a moment named on
+            // the page may already be spent by somebody else's request.
+            Assert.False(
+                texts.RateLimitError.Any(char.IsDigit),
+                $"The rate-limit text in {language} names a number: \"{texts.RateLimitError}\".");
+        }
+    }
 }

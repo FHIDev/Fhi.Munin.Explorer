@@ -134,6 +134,15 @@ public partial class VariableExplorer
             _detail = detail;
             _detailError = detail is null ? T.DetailMissing : null;
         }
+        catch (MuninExplorerRateLimitedException)
+        {
+            if (_detailGeneration == generation)
+            {
+                // Opening one row after another is what meets the limiter, so this branch is on the
+                // reader's likeliest path into it. Said in the panel, same as below.
+                _detailError = T.RateLimitError;
+            }
+        }
         catch (Exception)
         {
             if (_detailGeneration == generation)
@@ -277,6 +286,15 @@ public partial class VariableExplorer
 
                 _datasamling = datasamling;
                 _sourceError = datasamling is null ? T.DatasamlingMissing : null;
+            }
+        }
+        catch (MuninExplorerRateLimitedException)
+        {
+            if (_sourceGeneration == generation)
+            {
+                // One sentence for both kinds, unlike the branch below: which endpoint the limiter
+                // refused is not what the reader has to know, and it changes nothing about waiting.
+                _sourceError = T.RateLimitError;
             }
         }
         catch (Exception)

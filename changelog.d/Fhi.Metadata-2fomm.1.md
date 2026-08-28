@@ -2,8 +2,8 @@ category: Added
 
 - **`KildeExplorer`, the kildeutforsker, ships from this package beside `VariableExplorer`** - a
   second parameterised root component, under the same host rules as the first: no `@page`, no
-  `@rendermode`, no router, no CSS. It renders a search field, a `{n} kilder` count and an
-  eight-column table of the catalogue's kilder, and opening one hands it to the `KildeView` the
+  `@rendermode`, no router, no CSS. It renders a search field, a `{n} kilder` count and a
+  six-column table of the catalogue's kilder, and opening one hands it to the `KildeView` the
   variable explorer already drills into, so the two cannot render one source two ways. Kelda's own
   sections reach that view through its `Sections` parameter and its own heading for the datasamling
   table through `DataCollectionsHeading`; nothing Kelda-specific was added to the view itself.

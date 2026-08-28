@@ -78,6 +78,30 @@ public class VariableExplorerTest : BunitContext
     }
 
     /// <summary>
+    /// Answers every search with the API's 429, the way a reader who asked too often meets it.
+    /// </summary>
+    /// <remarks>
+    /// Separate from <see cref="FailingClient"/> on purpose: the point of the tests using it is
+    /// that the component tells the two apart. A fake that threw
+    /// <see cref="HttpRequestException"/> for both would pass whatever the component said.
+    /// </remarks>
+    private sealed class RateLimitedClient : EmptyMuninExplorerClient
+    {
+        public int Calls { get; private set; }
+
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
+            SortField sort = SortField.Default,
+            SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default)
+        {
+            Calls++;
+
+            throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+        }
+    }
+
+    /// <summary>
     /// A client that never answers until the test lets it, so the loading state can be inspected.
     /// Given a <paramref name="firstAnswer"/> it answers the first call at once and stalls only on
     /// the next one — the case where a second search is in flight over rows already on screen.
@@ -142,6 +166,54 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
+    public void Render_WhenTheApiRateLimits_ThenTheReaderIsToldTheyAskedTooOftenRatherThanThatItFailed()
+    {
+        // "Prøv igjen om litt" is the wrong advice for a throttled reader — trying again is what
+        // the limiter counts. The two failures have to read differently or the reader cannot act.
+        var cut = RenderWith(new RateLimitedClient());
+
+        var alert = cut.Find("[role='alert']");
+
+        Assert.Contains("for mange forespørsler", alert.TextContent);
+        Assert.DoesNotContain("Kunne ikke hente variabler", alert.TextContent);
+    }
+
+    [Fact]
+    public void Render_WhenTheApiRateLimits_ThenItIsNotShownAsASearchWithNoHits()
+    {
+        // The trap, seen from the page: a throttled search must never read as "ingen variabler
+        // passet søket". That sentence is a claim about the catalogue, and no search was run.
+        var cut = RenderWith(new RateLimitedClient(), b => b.Add(c => c.Search, "tale"));
+
+        Assert.DoesNotContain("Ingen variabler passet søket", cut.Markup);
+        Assert.Empty(cut.FindAll("ul.munin-explorer-data-list > li"));
+    }
+
+    [Fact]
+    public void Render_WhenTheApiRateLimitsAndTheLanguageIsEn_ThenTheEnglishRateLimitTextIsUsed()
+    {
+        var cut = RenderWith(new RateLimitedClient(), b => b.Add(c => c.Language, "en"));
+
+        var alert = cut.Find("[role='alert']");
+
+        Assert.Contains("too many requests", alert.TextContent);
+        Assert.DoesNotContain("Could not load variables", alert.TextContent);
+    }
+
+    [Fact]
+    public void Render_WhenTheApiRateLimits_ThenTheComponentDoesNotAskAgainByItself()
+    {
+        // No retry anywhere in the package, and the component is the other place one could hide.
+        // helsedata's cluster shares one address bucket, so every reader's component retrying on
+        // the same Retry-After would rebuild the burst that caused the 429.
+        var client = new RateLimitedClient();
+
+        RenderWith(client);
+
+        Assert.Equal(1, client.Calls);
+    }
+
+    [Fact]
     public void Render_WhenTheLanguageIsEn_ThenTheEnglishTextsAreUsed()
     {
         // helsedata's culture token is "en"/"no", not "nb" — worth pinning.
@@ -174,8 +246,8 @@ public class VariableExplorerTest : BunitContext
         var a = Render<VariableExplorer>();
         var b = Render<VariableExplorer>();
 
-        var idA = a.Find("input[type=search]").Id;
-        var idB = b.Find("input[type=search]").Id;
+        var idA = a.Find(".searchbox__freetext").Id;
+        var idB = b.Find(".searchbox__freetext").Id;
 
         Assert.False(string.IsNullOrWhiteSpace(idA));
         Assert.NotEqual(idA, idB);
@@ -193,7 +265,7 @@ public class VariableExplorerTest : BunitContext
         var client = new FakeClient(OnePage());
         var cut = RenderWith(client);
 
-        var input = cut.Find("input[type=search]");
+        var input = cut.Find(".searchbox__freetext");
 
         Assert.Throws<MissingEventHandlerException>(() => input.Input("svelging"));
         Assert.Equal(1, client.Calls); // only the initial load
@@ -206,7 +278,7 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(client);
 
         // onchange carries the finished value, however fast it was typed or pasted.
-        cut.Find("input[type=search]").Change("svelging");
+        cut.Find(".searchbox__freetext").Change("svelging");
         cut.Find("form").Submit();
 
         Assert.Equal("svelging", client.LastSearch);
@@ -223,7 +295,7 @@ public class VariableExplorerTest : BunitContext
         var client = new FakeClient(OnePage());
         var cut = RenderWith(client);
 
-        cut.Find("input[type=search]").Change("svelging"); // blur caused by the click
+        cut.Find(".searchbox__freetext").Change("svelging"); // blur caused by the click
         cut.Find("button[type=submit]").Click();
 
         Assert.Equal("svelging", client.LastSearch);
@@ -235,7 +307,7 @@ public class VariableExplorerTest : BunitContext
     {
         var cut = RenderWith(new FakeClient(OnePage()));
 
-        var input = cut.Find("input[type=search]");
+        var input = cut.Find(".searchbox__freetext");
         var label = cut.Find("label");
 
         Assert.Equal(input.Id, label.GetAttribute("for"));
@@ -415,7 +487,7 @@ public class VariableExplorerTest : BunitContext
         var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
         var cut = RenderWith(client, b => b.Add(c => c.Search, "tale"));
 
-        cut.Find("input[type=search]").Change("noe helt annet");
+        cut.Find(".searchbox__freetext").Change("noe helt annet");
         ClickSort(cut, "Kilde");
 
         Assert.Equal("tale", client.LastSearch);
@@ -434,7 +506,7 @@ public class VariableExplorerTest : BunitContext
 
         reported.Clear(); // the initial load's own notification
 
-        cut.Find("input[type=search]").Change("noe helt annet");
+        cut.Find(".searchbox__freetext").Change("noe helt annet");
         ClickSort(cut, "Kilde");
 
         Assert.Empty(reported);
@@ -465,7 +537,7 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(new FakeClient(OnePage()),
                             b => b.Add(c => c.SearchChanged, (string? s) => reported.Add(s)));
 
-        cut.Find("input[type=search]").Change("svelging");
+        cut.Find(".searchbox__freetext").Change("svelging");
         cut.Find("form").Submit();
 
         // The initial load reports the parameter it was given, then the search reports itself.
@@ -482,7 +554,7 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(new FailingClient(),
                             b => b.Add(c => c.SearchChanged, (string? s) => reported.Add(s)));
 
-        cut.Find("input[type=search]").Change("svelging");
+        cut.Find(".searchbox__freetext").Change("svelging");
         cut.Find("form").Submit();
 
         Assert.Contains("Kunne ikke hente variabler", cut.Markup);
@@ -504,7 +576,7 @@ public class VariableExplorerTest : BunitContext
                             b => b.Add<string?>(c => c.SearchChanged,
                                                 _ => throw new InvalidOperationException("vertsfeil")));
 
-        cut.Find("input[type=search]").Change("svelging");
+        cut.Find(".searchbox__freetext").Change("svelging");
         cut.Find("form").Submit();
 
         Assert.Equal("svelging", client.LastSearch);
@@ -540,12 +612,14 @@ public class VariableExplorerTest : BunitContext
     [Fact]
     public void Render_WhenTheSearchHasHits_ThenTheListNameNamesTheOrderingToo()
     {
-        // The list's accessible name is the same sentence as the status line, so the two cannot
-        // drift apart and say the result is ordered two different ways.
+        // The table's accessible name is the same sentence as the status line, so the two cannot
+        // drift apart and say the result is ordered two different ways. It moved off the <ul> when
+        // the list became the table's body rowgroup: one element names the whole thing, and a
+        // named rowgroup inside a named table has the sentence read out twice.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
         Assert.Contains("sortert på Standard, stigende",
-                        cut.Find("ul.munin-explorer-data-list").GetAttribute("aria-label")!);
+                        cut.Find(".munin-explorer-data-list__result[role='table']").GetAttribute("aria-label")!);
     }
 
     [Fact]
@@ -709,7 +783,7 @@ public class VariableExplorerTest : BunitContext
             HideColumn(cut, column);
         }
 
-        Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__name"));
+        Assert.NotNull(cut.Find("button.munin-explorer-dataitem-main__name"));
         Assert.NotNull(cut.Find(".munin-explorer-dataitem-header__name"));
     }
 
@@ -804,6 +878,162 @@ public class VariableExplorerTest : BunitContext
         cut.Find("form").Submit();
 
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main__source"));
+    }
+
+    // ---------------------------------------------------------------------------------
+    // Table semantics. Fhi.Metadata-3b1l4: the result list drew a grid of columns out of
+    // <div>s and told assistive technology nothing about it — measured in Chrome's own
+    // accessibility tree against the sample stylesheet, every row, column and header of it
+    // resolved to `generic`, and the aria-sort on the sorted header sat on an element with no
+    // role that may carry one. WCAG 1.3.1 and 4.1.2, both Level A.
+    //
+    // What these cases can and cannot prove is worth being precise about, because the bug they
+    // guard hid behind exactly that gap. They assert the ATTRIBUTES are emitted and that the
+    // structure they describe is well formed. They cannot assert that a browser resolves them,
+    // since the CSS that lays this list out lives in Fhi.Helsedata.Stiler and bUnit applies no
+    // stylesheet at all. That half was checked by hand, in Chrome, against both the sample
+    // stylesheet and Stiler's own compiled main.css: `table`, `rowGroup`, `row`, `columnHeader`,
+    // `rowHeader`, `cell` and `sortDirection=ascending` all appear in the internal accessibility
+    // tree with `display: flex` applied. See the bead for the measurements.
+    // ---------------------------------------------------------------------------------
+
+    [Fact]
+    public void Table_WhenTheSearchHasHits_ThenTheResultListExposesRowsAndColumns()
+    {
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        var table = cut.Find(".munin-explorer-data-list__result[role='table']");
+
+        // A header rowgroup and a body rowgroup, which is what <thead> and <tbody> are.
+        Assert.Equal("rowgroup", table.QuerySelector(".munin-explorer-data-list__header")!.GetAttribute("role"));
+        Assert.Equal("rowgroup", table.QuerySelector("ul.munin-explorer-data-list")!.GetAttribute("role"));
+
+        // One header row of column headers, and one data row per result.
+        Assert.Equal("row", cut.Find(".munin-explorer-dataitem-header").GetAttribute("role"));
+        Assert.Equal(7, cut.FindAll("[role='columnheader']").Count);
+
+        var row = cut.Find("li.munin-explorer-data-list__item");
+
+        Assert.Equal("row", row.GetAttribute("role"));
+
+        // The name is the row's header, the way Kelda's <th scope="row"> is.
+        Assert.Equal("rowheader",
+                     row.QuerySelector(".munin-explorer-dataitem-main__name")!.GetAttribute("role"));
+        Assert.Equal(6, row.QuerySelectorAll("[role='cell']").Length);
+
+        // The two wrappers between the row and its cells are layout only. They have to say so, or
+        // they sit in the tree as anonymous groups between a row and the columns it owns.
+        Assert.Equal("none", row.QuerySelector(".munin-explorer-data-list__item__row")!.GetAttribute("role"));
+        Assert.Equal("none", row.QuerySelector(".munin-explorer-dataitem-main")!.GetAttribute("role"));
+    }
+
+    [Fact]
+    public void Table_WhenAColumnIsSorted_ThenAriaSortSitsOnAColumnHeader()
+    {
+        // The bug axe caught. aria-sort is allowed on columnheader and rowheader and nowhere else,
+        // and the cell carrying it had no role at all — so the attribute was discarded and the
+        // sort state was announced to nobody.
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        var sorted = cut.Find("[aria-sort]");
+
+        Assert.Equal("columnheader", sorted.GetAttribute("role"));
+        Assert.Equal("ascending", sorted.GetAttribute("aria-sort"));
+
+        ClickSort(cut, "Navn");
+
+        sorted = cut.Find("[aria-sort]");
+
+        Assert.Equal("columnheader", sorted.GetAttribute("role"));
+        Assert.Equal("descending", sorted.GetAttribute("aria-sort"));
+    }
+
+    [Fact]
+    public void Table_Always_ThenNothingButCellsSitsInsideARow()
+    {
+        // The rule that shaped the markup: a row owns cells and nothing else. It is why the name
+        // and the save button are wrapped, why the two layout boxes wear role="none", and why the
+        // open panel is a cell rather than a region loose in the rowgroup. Get it wrong and axe
+        // reports aria-required-children — which is how the first attempt at this was caught.
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        Toggles(cut)[0].Click();
+
+        var cells = new[] { "cell", "columnheader", "rowheader" };
+        var rows = cut.FindAll("[role='row']");
+
+        // The header row and the one result row. Asserted, because a walk over no rows at all
+        // passes without looking at anything.
+        Assert.Equal(2, rows.Count);
+
+        foreach (var row in rows)
+        {
+            Assert.NotEmpty(Owned(row));
+
+            foreach (var owned in Owned(row))
+            {
+                Assert.Contains(owned.GetAttribute("role"), cells);
+            }
+        }
+
+        // Every element a row owns, looking through the ones that stepped aside and past the ones
+        // hidden from assistive technology — the same walk axe does.
+        static IEnumerable<AngleSharp.Dom.IElement> Owned(AngleSharp.Dom.IElement element)
+        {
+            foreach (var child in element.Children)
+            {
+                if (child.GetAttribute("aria-hidden") == "true")
+                {
+                    continue;
+                }
+
+                if (child.GetAttribute("role") is "none" or "presentation")
+                {
+                    foreach (var deeper in Owned(child))
+                    {
+                        yield return deeper;
+                    }
+
+                    continue;
+                }
+
+                yield return child;
+            }
+        }
+    }
+
+    [Fact]
+    public void Table_WhenARowIsOpen_ThenThePanelIsThatRowsLastCellAndStillARegion()
+    {
+        // The panel is the list item's second child, so the row has to start above both — and then
+        // the panel is something a row owns, which may only be a cell. It is a bare wrapper rather
+        // than a role on the panel itself so the panel goes on being the landmark that tells a
+        // reader which variable they opened.
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        Toggles(cut)[0].Click();
+
+        var row = cut.Find("li.munin-explorer-data-list__item");
+        var last = row.Children[^1];
+
+        Assert.Equal("cell", last.GetAttribute("role"));
+        Assert.False(last.HasAttribute("class"));
+        Assert.Equal("region", last.Children[0].GetAttribute("role"));
+        Assert.Contains("munin-explorer-detail", last.Children[0].ClassName!);
+    }
+
+    [Fact]
+    public void Table_WhenThereIsAPager_ThenTheSkipLinkIsOutsideTheTable()
+    {
+        // It used to sit between the header row and the rows, which is inside the table now — and
+        // a link is not something a table may own. Still in the results column, still beside the
+        // list it skips.
+        var cut = RenderWith(new FakeClient(ResultPage(40)));
+
+        var link = cut.Find("a.munin-explorer-skiplink-pagination");
+
+        Assert.Null(link.Closest("[role='table']"));
+        Assert.NotNull(link.Closest(".munin-explorer-results"));
     }
 
     [Fact]
@@ -1095,7 +1325,7 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(new FakeClient(OnePage()));
 
         Assert.Equal("form-element__label", cut.Find("label").ClassName);
-        Assert.Equal("searchbox__freetext", cut.Find("input[type=search]").ClassName);
+        Assert.Equal("searchbox__freetext", cut.Find(".searchbox__freetext").ClassName);
         Assert.NotNull(cut.Find("div.searchbox__freetext-container"));
 
         // hd-button-square carries the shape, button-square--primary the colour, and
@@ -1145,6 +1375,11 @@ public class VariableExplorerTest : BunitContext
         Assert.Equal(
         [
             "munin-explorer",            // ours, a handle
+            // The search row's wrapper and the clear button inside it. Both are drawn on every
+            // render now: the button is always present and greys out when there is nothing to
+            // clear, rather than appearing and disappearing beside a field being typed in.
+            "munin-explorer-search",
+            "munin-explorer-search__clear",
             "munin-explorer-filters",    // ours, a handle
             "munin-explorer-container",  // ours, Stiler components/munin-explorer/
             "munin-explorer-results",    // ours, Stiler components/munin-explorer/
@@ -1170,7 +1405,7 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
         Assert.NotNull(cut.Find("ul.munin-explorer-data-list > li.munin-explorer-data-list__item > div.munin-explorer-data-list__item__row"));
-        Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__name"));
+        Assert.NotNull(cut.Find("button.munin-explorer-dataitem-main__name"));
         Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__column > .munin-explorer-dataitem-main__column__text"));
     }
 
@@ -1242,7 +1477,7 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
                             b => b.Add(c => c.Search, "tale"));
 
-        cut.Find("input[type=search]").Change("noe helt annet");
+        cut.Find(".searchbox__freetext").Change("noe helt annet");
 
         Assert.Contains("«tale»", cut.Find("p[role='status']").TextContent);
     }
@@ -1279,8 +1514,9 @@ public class VariableExplorerTest : BunitContext
                             b => b.Add(c => c.Search, "tale"));
 
         // aria-label rather than a clipped <caption>: Stiler has no visually-hidden rule, so
-        // markup that needs one is markup that shows its scaffolding on helsedata's page.
-        var name = cut.Find("ul.munin-explorer-data-list").GetAttribute("aria-label")!;
+        // markup that needs one is markup that shows its scaffolding on helsedata's page. On the
+        // table rather than the <ul> under it, which is now the body rowgroup.
+        var name = cut.Find(".munin-explorer-data-list__result[role='table']").GetAttribute("aria-label")!;
 
         Assert.Contains("1 variabel funnet", name);
         Assert.Contains("«tale»", name);
@@ -1304,7 +1540,7 @@ public class VariableExplorerTest : BunitContext
         // items, each with a named disclosure carrying aria-expanded.
         Assert.Empty(cut.FindAll("li h1, li h2, li h3, li h4, li h5, li h6"));
 
-        var name = cut.Find("li .munin-explorer-dataitem-main__name");
+        var name = cut.Find("li button.munin-explorer-dataitem-main__name");
 
         Assert.Equal("1. Tale", name.TextContent);
         Assert.Equal("BUTTON", name.TagName);
@@ -1438,7 +1674,7 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
                             b => b.Add(c => c.Language, "en"));
 
-        Assert.Equal("no", cut.Find(".munin-explorer-dataitem-main__name .munin-explorer-dataitem-main__column__text").GetAttribute("lang"));
+        Assert.Equal("no", cut.Find("button.munin-explorer-dataitem-main__name .munin-explorer-dataitem-main__column__text").GetAttribute("lang"));
         Assert.Equal("no", cut.Find(".munin-explorer-dataitem-main__column__text span[lang]").GetAttribute("lang"));
         Assert.False(cut.Find("ul.munin-explorer-data-list").HasAttribute("lang"));
     }
@@ -1739,9 +1975,14 @@ public class VariableExplorerTest : BunitContext
             => Task.FromResult(ResultPage(totalCount, Math.Min(page, maxPage)));
     }
 
+    /// <summary>Forrige and Neste, which are not the only buttons in the pager any more.</summary>
+    /// <remarks>
+    /// A child selector, so the size group's three stay out of it: they are not page turns, and
+    /// every caller here counts on this being exactly the pair.
+    /// </remarks>
     private static IReadOnlyList<AngleSharp.Dom.IElement> PagerButtons(
         IRenderedComponent<VariableExplorer> cut) =>
-        cut.FindAll("div.munin-explorer-pagination .munin-explorer-pagination-content button");
+        cut.FindAll("div.munin-explorer-pagination .munin-explorer-pagination-content > button");
 
     private static AngleSharp.Dom.IElement Previous(IRenderedComponent<VariableExplorer> cut) =>
         PagerButtons(cut)[0];
@@ -1749,9 +1990,9 @@ public class VariableExplorerTest : BunitContext
     private static AngleSharp.Dom.IElement Next(IRenderedComponent<VariableExplorer> cut) =>
         PagerButtons(cut)[1];
 
-    /// <summary>The "Side 2 av 13" between the two buttons.</summary>
+    /// <summary>The "Side 2 av 13" between the two buttons, and not the size group's own label.</summary>
     private static string Position(IRenderedComponent<VariableExplorer> cut) =>
-        cut.Find(".munin-explorer-pagination-content span.caption").TextContent;
+        cut.Find(".munin-explorer-pagination-content > span.caption").TextContent;
 
     private static string StatusLine(IRenderedComponent<VariableExplorer> cut) =>
         cut.Find("p[role='status']").TextContent;
@@ -1878,7 +2119,7 @@ public class VariableExplorerTest : BunitContext
         Next(cut).Click();
         Next(cut).Click();
 
-        cut.Find("input[type=search]").Change("svelging");
+        cut.Find(".searchbox__freetext").Change("svelging");
         cut.Find("form").Submit();
 
         Assert.Equal(1, client.LastPage);
@@ -1957,7 +2198,7 @@ public class VariableExplorerTest : BunitContext
         var client = new FailingClient(ResultPage(312));
         var cut = RenderWith(client);
 
-        cut.Find("input[type=search]").Change("svelging");
+        cut.Find(".searchbox__freetext").Change("svelging");
         cut.Find("form").Submit();
 
         Assert.Contains("Kunne ikke hente variabler", cut.Markup);
@@ -2098,7 +2339,7 @@ public class VariableExplorerTest : BunitContext
 
         Next(cut).Click();
 
-        cut.Find("input[type=search]").Change("svelging");
+        cut.Find(".searchbox__freetext").Change("svelging");
         cut.Find("form").Submit();
 
         Assert.Empty(cut.FindAll("div.munin-explorer-pagination"));
@@ -2272,11 +2513,14 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Equal(
         [
+            "button-square--ghost",               // Stiler, a size that is not the one in force
             "button-square--secondary",           // Stiler, the buttons' colour
-            "caption",                            // Stiler, the "Side 2 av 13" between them
+            "caption",                            // Stiler, the position and the size group's label
             "hd-button-square",                   // Stiler, the square shape
+            "margin-right",                       // Stiler, what keeps the three sizes apart
             "munin-explorer-pagination",          // ours, Stiler components/munin-explorer/
             "munin-explorer-pagination-content",  // ours, Stiler components/munin-explorer/
+            "munin-explorer-pagination-size",     // ours, and outstanding with Stiler
         ], names);
     }
 
@@ -2357,12 +2601,14 @@ public class VariableExplorerTest : BunitContext
     [Fact]
     public void SkipLink_WhenTheSampleStylesheetHidesIt_ThenItGoesOffScreenRatherThanOutOfTheTabOrder()
     {
-        // The half of the bug no other check in this repository can see. Every one of them asks
-        // whether a NAME has a rule — HostClassNames.SampleStyles searches for `.<name>`,
-        // scripts/assert-sample-css-in-step.sh greps for `\.<name>` — and the skip link satisfied
-        // both the whole time it was broken. What was missing on a Stiler-only host was a
-        // DECLARATION: the one that takes the link off screen until it is focused. So this reads
-        // the block rather than the selector.
+        // The half of the bug no other check in this repository can see. The guards ask whether a
+        // name has a rule that declares SOMETHING — HostClassNames.Orphans and
+        // scripts/assert-sample-css-in-step.sh both read the block now, so an empty one no longer
+        // reads as coverage — but neither can ask WHICH declarations, because they are asked of all
+        // ~75 names at once and the answer differs for every one. The skip link satisfied them the
+        // whole time it was broken and would satisfy them still: its resting rule was never empty.
+        // What was missing on a Stiler-only host was one particular DECLARATION, the one that takes
+        // the link off screen until it is focused, and only a test about this link can name it.
         //
         // `display: none` is the way the invariant gets broken, and it is the tempting way: it
         // looks like hiding, and it reads as tidier than a negative offset. It also takes the
@@ -2476,7 +2722,15 @@ public class VariableExplorerTest : BunitContext
     };
 
     /// <summary>Answers both endpoints and remembers what each was asked with.</summary>
-    private sealed class FilteringClient(Page<VariableSummary> answer, FilterOptions? facets = null)
+    /// <remarks>
+    /// <paramref name="filteredAnswer"/> is what a narrowing request gets back, when a test supplies
+    /// one: without it every filter answers with the same number of pages, and a narrowing that
+    /// lands on a single page — the state the pager flag exists for — cannot be reached at all.
+    /// </remarks>
+    private sealed class FilteringClient(
+        Page<VariableSummary> answer,
+        FilterOptions? facets = null,
+        Page<VariableSummary>? filteredAnswer = null)
         : EmptyMuninExplorerClient
     {
         private readonly FilterOptions _facets = facets ?? Facets();
@@ -2489,15 +2743,33 @@ public class VariableExplorerTest : BunitContext
         public VariableFilter? SearchFilter { get; private set; }
         public VariableFilter? FacetFilter { get; private set; }
         public string? FacetSearch { get; private set; }
+        public string? LastSearch { get; private set; }
         public int SearchCalls { get; private set; }
         public int FacetCalls { get; private set; }
         public int LastPage { get; private set; }
+        public SortField LastSort { get; private set; }
+        public SortDirection LastDirection { get; private set; }
 
         /// <summary>Fail every search from the next one on — the rollback path.</summary>
         public bool FailSearch { get; set; }
 
+        /// <summary>Answer every search from the next one on with the API's 429.</summary>
+        /// <remarks>
+        /// Its own switch rather than a mode of <see cref="FailSearch"/>, for the same reason
+        /// <see cref="RateLimitFacets"/> is: the tests using it are about the two being told apart.
+        /// </remarks>
+        public bool RateLimitSearch { get; set; }
+
         /// <summary>Fail every facet refresh from the next one on.</summary>
         public bool FailFacets { get; set; }
+
+        /// <summary>Answer every facet refresh from the next one on with the API's 429.</summary>
+        /// <remarks>
+        /// Its own switch rather than a mode of <see cref="FailFacets"/>, for the reason the
+        /// separate <c>RateLimitedClient</c> exists: the point of the test using it is that the
+        /// panel tells the two apart, which a single flag could not show.
+        /// </remarks>
+        public bool RateLimitFacets { get; set; }
 
         /// <summary>Never answer a search from the next one on — the in-flight path.</summary>
         public bool StallSearch { get; set; }
@@ -2513,18 +2785,30 @@ public class VariableExplorerTest : BunitContext
             // Recorded before the failure, so a test can see what was asked for as well as what
             // the component was left holding afterwards.
             SearchFilter = filter;
+            LastSearch = search;
             LastPage = page;
+            LastSort = sort;
+            LastDirection = direction;
 
             if (StallSearch)
             {
                 return _stalled.Task;
             }
 
+            if (RateLimitSearch)
+            {
+                throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+            }
+
+            var body = filter is { ActiveCount: > 0 } && filteredAnswer is not null
+                ? filteredAnswer
+                : answer;
+
             // The page it was asked for, so the component's own paging state moves the way it does
             // against the real API rather than being reset to 1 by a fixture that always says 1.
             return FailSearch
                 ? throw new HttpRequestException("nede")
-                : Task.FromResult(answer with { PageNumber = page });
+                : Task.FromResult(body with { PageNumber = page });
         }
 
         public override Task<FilterOptions> GetFiltersAsync(
@@ -2533,6 +2817,11 @@ public class VariableExplorerTest : BunitContext
             FacetCalls++;
             FacetFilter = filter;
             FacetSearch = search;
+
+            if (RateLimitFacets)
+            {
+                throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+            }
 
             return FailFacets
                 ? throw new HttpRequestException("nede")
@@ -2819,6 +3108,30 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
+    public void Render_WhenTheFacetRefreshIsRateLimited_ThenThePanelSaysSoRatherThanThatTheCountsAreStale()
+    {
+        // The facet refresh goes out alongside every search, so a throttled reader meets this panel
+        // and the result list in the same render. Left on the generic sentence, this region would
+        // be advising the reader to try again while the alert above it says trying again is the
+        // problem — two answers to one event, in one screenful.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        client.RateLimitFacets = true;
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        var alert = cut.Find("[role='alert']");
+
+        Assert.Contains("for mange forespørsler", alert.TextContent);
+        Assert.DoesNotContain("Tallene kan være utdaterte", alert.TextContent);
+
+        // The panel and the rows both stay, exactly as they do for the generic failure: it is the
+        // numbers that may now be wrong, not the controls or the list.
+        Assert.NotNull(Facet(cut, "Dødsårsaksregisteret"));
+        Assert.Single(cut.FindAll("ul.munin-explorer-data-list > li"));
+    }
+
+    [Fact]
     public void Render_WhenTheFacetsHaveNeverArrived_ThenNoEmptyFilterPanelIsDrawn()
     {
         // The first search failed, so the facets were never asked for. A legend and a dead clear
@@ -2921,7 +3234,7 @@ public class VariableExplorerTest : BunitContext
         var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
         var cut = RenderWith(client);
 
-        cut.Find("input[type=search]").Change("svelging");
+        cut.Find(".searchbox__freetext").Change("svelging");
         cut.Find("form").Submit();
 
         Assert.Equal(2, client.FacetCalls);
@@ -3773,6 +4086,15 @@ public class VariableExplorerTest : BunitContext
         /// <summary>Fail the oldest detail fetch still hanging.</summary>
         public void FailStalled() => Oldest().TrySetException(new HttpRequestException("nede"));
 
+        /// <summary>Refuse the oldest detail fetch still hanging with the API's 429.</summary>
+        /// <remarks>
+        /// The abandoned-fetch guard is written once per catch branch, so the 429 branch has its own
+        /// copy of it — and a copy is exactly the thing that can be inverted or left out without any
+        /// other test noticing.
+        /// </remarks>
+        public void RateLimitStalled() =>
+            Oldest().TrySetException(new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30)));
+
         private TaskCompletionSource<VariableDetail?> Oldest() =>
             _stalls.First(stall => !stall.Task.IsCompleted);
 
@@ -3794,12 +4116,25 @@ public class VariableExplorerTest : BunitContext
                 : throw new HttpRequestException("nede");
         }
 
+        /// <summary>Refuse every detail fetch from the next one on with the API's 429.</summary>
+        /// <remarks>
+        /// Its own switch beside <see cref="FailDetail"/> rather than a mode of it, for the reason
+        /// the separate <c>RateLimitedClient</c> exists: the point of the tests using it is that the
+        /// panel tells the two failures apart, and one flag could not show that.
+        /// </remarks>
+        public bool RateLimitDetail { get; set; }
+
         public override Task<VariableDetail?> GetVariableAsync(
             Guid id, bool includeHistorical = false, CancellationToken cancellationToken = default)
         {
             DetailCalls++;
             LastDetailId = id;
             LastIncludeHistorical = includeHistorical;
+
+            if (RateLimitDetail)
+            {
+                throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+            }
 
             if (FailDetail)
             {
@@ -3836,6 +4171,9 @@ public class VariableExplorerTest : BunitContext
         /// <summary>Fail every owner fetch, of either kind, from the next one on.</summary>
         public bool FailSource { get; set; }
 
+        /// <summary>Refuse every owner fetch, of either kind, with the API's 429.</summary>
+        public bool RateLimitSource { get; set; }
+
         /// <summary>Never answer a kilde fetch from the next one on.</summary>
         public bool StallKilde { get; set; }
 
@@ -3862,6 +4200,11 @@ public class VariableExplorerTest : BunitContext
             KildeCalls++;
             LastSourceId = id;
 
+            if (RateLimitSource)
+            {
+                throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+            }
+
             if (FailSource)
             {
                 throw new HttpRequestException("nede");
@@ -3885,6 +4228,11 @@ public class VariableExplorerTest : BunitContext
             DatasamlingCalls++;
             LastSourceId = id;
 
+            if (RateLimitSource)
+            {
+                throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+            }
+
             if (FailSource)
             {
                 throw new HttpRequestException("nede");
@@ -3902,6 +4250,9 @@ public class VariableExplorerTest : BunitContext
 
         /// <summary>Fail every codes fetch from the next one on.</summary>
         public bool FailCodes { get; set; }
+
+        /// <summary>Refuse every codes fetch from the next one on with the API's 429.</summary>
+        public bool RateLimitCodes { get; set; }
 
         /// <summary>Never answer a codes fetch from the next one on.</summary>
         /// <remarks>
@@ -3922,6 +4273,21 @@ public class VariableExplorerTest : BunitContext
         }
 
         /// <summary>Answer the oldest codes fetch still hanging.</summary>
+        /// <remarks>
+        /// Call it from inside <c>cut.InvokeAsync</c>, which every caller does, and the component's
+        /// continuation has run by the time this returns: the stall completes its continuations
+        /// inline, and the awaiting continuation captured the renderer's synchronisation context —
+        /// which is the current one there — so the task machinery runs it on the spot rather than
+        /// posting it.
+        /// <para>
+        /// That is the whole reason for not asking for <c>RunContinuationsAsynchronously</c> here.
+        /// An answer the generation guard is <em>supposed</em> to drop leaves nothing behind to
+        /// wait for, so a test about one has nothing to poll and no choice but to know it has
+        /// landed. Nudging the dispatcher one turn is not that: with the continuation queued
+        /// asynchronously the answer can still be a thread-pool hop away, and the test then races
+        /// the very thing it is checking.
+        /// </para>
+        /// </remarks>
         public void AnswerStalledCodes(KodeverkCodes codes) =>
             _codeStalls.First(stall => !stall.Task.IsCompleted).TrySetResult(codes);
 
@@ -3931,6 +4297,11 @@ public class VariableExplorerTest : BunitContext
         {
             CodeRequests.Add((variableId, kodeverkType, kodeverkReference));
 
+            if (RateLimitCodes)
+            {
+                throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+            }
+
             if (FailCodes)
             {
                 throw new HttpRequestException("nede");
@@ -3938,8 +4309,8 @@ public class VariableExplorerTest : BunitContext
 
             if (StallCodes)
             {
-                var stall = new TaskCompletionSource<KodeverkCodes?>(
-                    TaskCreationOptions.RunContinuationsAsynchronously);
+                // Continuations inline deliberately - see AnswerStalledCodes.
+                var stall = new TaskCompletionSource<KodeverkCodes?>();
                 _codeStalls.Add(stall);
 
                 return stall.Task;
@@ -3953,7 +4324,7 @@ public class VariableExplorerTest : BunitContext
     }
 
     private static IReadOnlyList<AngleSharp.Dom.IElement> Toggles(IRenderedComponent<VariableExplorer> cut) =>
-        cut.FindAll("ul.munin-explorer-data-list .munin-explorer-dataitem-main__name");
+        cut.FindAll("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name");
     // The variable's own name is the disclosure — helsedata's pattern. There is no longer a
     // separate "Vis detaljer" button under the metadata line.
 
@@ -4354,6 +4725,25 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
+    public void Codes_WhenAListIsOpen_ThenEveryClassNameIsOneSomeStylesheetActuallyDefines()
+    {
+        // The Orphans check reaches only as far as the markup a render produces, and the renders
+        // that carry it elsewhere in this file all stop at a closed result list or an opened panel
+        // with no code list in it. So the names under an open kodeverk — `munin-explorer-codes` and
+        // its table — were the guard's blind spot rather than its coverage: emptying their rules in
+        // both sample stylesheets left the whole suite green while the shell guard went red.
+        //
+        // This render is the deepest the component goes: a row open, the Data tab selected, and a
+        // code list fetched and drawn under it.
+        var cut = OpenData(KodeverkRows());
+
+        CodeToggles(cut)[0].Click();
+
+        Assert.NotNull(Panel(cut).QuerySelector(".munin-explorer-codes table"));
+        Assert.Equal([], HostClassNames.Orphans(HostClassNames.Of(cut.FindAll("[class]"))));
+    }
+
+    [Fact]
     public void Codes_WhenTheApiPublishesNoneForTheLink_ThenTheListSaysSoRatherThanFailing()
     {
         // A reference the upstream register does not know answers 404, which the client reports as
@@ -4405,6 +4795,53 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Equal(2, client.CodeRequests.Count);
         Assert.NotNull(Panel(cut).QuerySelector(".munin-explorer-codes table"));
+    }
+
+    [Fact]
+    public void Codes_WhenTheFetchIsRateLimited_ThenOnlyThatListSaysTheReaderAskedTooOften()
+    {
+        // Expanding one kodeverk after another is exactly the rhythm that meets the limiter, so a
+        // throttled reader arrives here with one list already filled. The sentence is written into
+        // the per-key dictionary, so the failure has to land on the key that was pressed and on no
+        // other: a sibling that answered perfectly must not inherit it.
+        var client = KodeverkRows();
+        var cut = OpenData(client);
+
+        CodeToggles(cut)[0].Click();
+
+        Assert.NotNull(Panel(cut).QuerySelector(".munin-explorer-codes table"));
+
+        client.RateLimitCodes = true;
+        CodeToggles(cut)[2].Click();
+
+        var lists = Panel(cut).QuerySelectorAll(".munin-explorer-codes");
+
+        Assert.Equal(2, lists.Length);
+
+        // The one that was refused says so, and says the throttled sentence rather than the
+        // generic one or the not-published one.
+        var refused = lists[1];
+
+        Assert.Contains("for mange forespørsler", refused.TextContent);
+        Assert.DoesNotContain("Kunne ikke hente kodene", refused.TextContent);
+        Assert.DoesNotContain("Ingen kodeverdier tilgjengelig", refused.TextContent);
+        Assert.Contains("infobox", refused.QuerySelector("p")!.ClassName!);
+
+        // The one that arrived is untouched — still its table, and no borrowed sentence.
+        Assert.NotNull(lists[0].QuerySelector("table"));
+        Assert.DoesNotContain("for mange forespørsler", lists[0].TextContent);
+
+        // And the panel around them, and the component's own alert region, are not the place this
+        // was reported.
+        Assert.Empty(cut.Find("[role='alert']").TextContent.Trim());
+
+        // Pressing again is the only retry a reader has, and nothing was cached over.
+        client.RateLimitCodes = false;
+        CodeToggles(cut)[2].Click();
+        CodeToggles(cut)[2].Click();
+
+        Assert.Equal(3, client.CodeRequests.Count);
+        Assert.Equal(2, Panel(cut).QuerySelectorAll(".munin-explorer-codes table").Length);
     }
 
     [Fact]
@@ -4501,17 +4938,29 @@ public class VariableExplorerTest : BunitContext
             Codes = [new() { Value = "9", Name = "STALE" }]
         }));
 
-        // One turn of the dispatcher, so the abandoned answer has landed if it is going to.
-        await cut.InvokeAsync(() => { });
-
+        // The abandoned answer has landed by the line above, not merely been nudged towards
+        // landing: the stall runs its continuations inline, so the component's has run before
+        // AnswerStalledCodes returned. That ordering is what gives the rest of this test its bite.
+        // Waiting for the fresh answer instead would not: both answers write the same _codes entry,
+        // so with the guard broken the last writer wins, and a wait that ends once the fresh one is
+        // in reads a table the abandoned write has already been erased from.
         CodeToggles(cut)[0].Click();
 
+        // And the table this press produces is there by the time Click returns, so the read below
+        // needs no wait of its own: StallCodes is off again, GetKodeverkCodesAsync hands back a
+        // Task.FromResult, and LoadCodesAsync neither yields nor leaves the dispatcher — so its
+        // await continues inline, inside the dispatch bUnit blocks on. Deterministic rather than
+        // fast, which is why load does not change it, and why every other codes test in this file
+        // reads the table straight after the press as well.
         var table = Panel(cut).QuerySelector(".munin-explorer-codes table")!;
 
         Assert.DoesNotContain("STALE", table.TextContent);
         Assert.Contains("Velg verdi", table.TextContent);
 
-        // Nothing was cached under the new variable, so its list was fetched for it.
+        // Nothing was cached under the new variable, so its list was fetched for it. Break the
+        // guard and this fails too: the abandoned answer fills _codes for the key about to be
+        // opened, so the toggle finds it there and never asks. Checked by removing the guard —
+        // the STALE row shows up first, and this line behind it.
         Assert.Equal(2, client.CodeRequests.Count);
         Assert.Equal(SpyttId, client.CodeRequests[1].VariableId);
     }
@@ -4739,6 +5188,63 @@ public class VariableExplorerTest : BunitContext
 
         // The component's own alert region is for the list, and the list is fine.
         Assert.Equal(string.Empty, cut.Find("[role='alert']").TextContent.Trim());
+    }
+
+    [Fact]
+    public void Detail_WhenTheFetchIsRateLimited_ThenThePanelSaysTheReaderAskedTooOften()
+    {
+        // Opening one row after another is what meets the per-address limiter, so this is the
+        // branch a throttled reader is likeliest to reach. "Prøv igjen om litt" in the panel would
+        // be advising the next press, which is what the limiter is counting.
+        var client = TwoRows();
+        var cut = RenderWith(client);
+
+        client.RateLimitDetail = true;
+        Toggles(cut)[0].Click();
+
+        Assert.Contains("for mange forespørsler", Panel(cut).TextContent);
+        Assert.DoesNotContain("Kunne ikke hente detaljene", Panel(cut).TextContent);
+
+        // Not "Fant ingen detaljer" either: a detail that was refused is not a variable the
+        // catalogue does not publish.
+        Assert.DoesNotContain("Fant ingen detaljer", Panel(cut).TextContent);
+
+        // Reported where it happened. The rows and the component's own alert region are untouched.
+        Assert.Equal(2, cut.FindAll("ul.munin-explorer-data-list > li").Count);
+        Assert.Equal(string.Empty, cut.Find("[role='alert']").TextContent.Trim());
+    }
+
+    [Fact]
+    public async Task Detail_WhenAReopenedRowsAbandonedFetchIsRateLimited_ThenItIsNotReportedInTheNewPanel()
+    {
+        // The generation guard, on the 429 branch's own copy of it. The generic branch's copy is
+        // pinned by the test below; an inverted or forgotten comparison on this one would paint an
+        // abandoned fetch's sentence over a panel the reader is still waiting on, with nothing else
+        // failing.
+        var client = TwoRows();
+        var cut = RenderWith(client);
+
+        client.StallDetail = true;
+        Toggles(cut)[0].Click();
+        Toggles(cut)[0].Click();
+        Toggles(cut)[0].Click();
+
+        Assert.Equal(2, client.Stalls);
+
+        await cut.InvokeAsync(client.RateLimitStalled);
+
+        Assert.Equal("true", Panel(cut).GetAttribute("aria-busy"));
+        Assert.Contains("Henter detaljer", Panel(cut).TextContent);
+        Assert.DoesNotContain("for mange forespørsler", Panel(cut).TextContent);
+
+        // And the fetch that does own the panel still gets to fill it.
+        await cut.InvokeAsync(() => client.AnswerStalled(Detail(TaleId)));
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal("false", Panel(cut).GetAttribute("aria-busy"));
+            Assert.Contains("Angir pasientens grad av utfall", Panel(cut).TextContent);
+        });
     }
 
     [Fact]
@@ -5187,7 +5693,7 @@ public class VariableExplorerTest : BunitContext
         // The heading wraps the button; the panel points at the heading, which is what holds
         // the row's name in the document outline.
         // The name button is the row's name — there is no heading wrapping it any more.
-        var heading = cut.FindAll("ul.munin-explorer-data-list .munin-explorer-dataitem-main__name")[0];
+        var heading = cut.FindAll("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name")[0];
 
         // Closed: nothing to control yet, and aria-controls pointing at an element that is not in
         // the document is a dangling reference.
@@ -5280,6 +5786,11 @@ public class VariableExplorerTest : BunitContext
         Assert.Equal(
         [
             "munin-explorer",            // ours, a handle
+            // The search row's wrapper and the clear button inside it. Both are drawn on every
+            // render now: the button is always present and greys out when there is nothing to
+            // clear, rather than appearing and disappearing beside a field being typed in.
+            "munin-explorer-search",
+            "munin-explorer-search__clear",
             "munin-explorer-filters",    // ours, a handle
             "munin-explorer-breadcrumb", // ours — the trail over the results, which Stiler has
                                             // no breadcrumb rule of any kind to borrow
@@ -5695,6 +6206,28 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
+    public void Source_WhenTheFetchIsRateLimited_ThenTheOwnerPanelSaysTheReaderAskedTooOften()
+    {
+        // One sentence for both owner kinds, unlike the generic branch: which endpoint the limiter
+        // refused is not what the reader has to know, and it changes nothing about waiting.
+        var client = TwoRows();
+        client.RateLimitSource = true;
+
+        var cut = OpenOwner(client, 0);
+
+        Assert.Contains("for mange forespørsler", SourcePanel(cut).TextContent);
+        Assert.DoesNotContain("Kunne ikke hente datakilden", SourcePanel(cut).TextContent);
+        Assert.DoesNotContain("Fant ingen detaljer", SourcePanel(cut).TextContent);
+
+        // Reported where it happened, like the generic failure: nothing behind the view moved.
+        Back(cut);
+
+        Assert.Contains("Angir pasientens grad av utfall", Panel(cut).TextContent);
+        Assert.Equal(2, cut.FindAll("ul.munin-explorer-data-list > li").Count);
+        Assert.Empty(cut.FindAll("div[role='alert'] p"));
+    }
+
+    [Fact]
     public void Source_WhenTheCatalogueHasNoSuchDatasamling_ThenItSaysSoRatherThanAskingForARetry()
     {
         // Null is not a failure — the client answers it for something that is not published — so
@@ -5936,6 +6469,61 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
+    public void Source_WhenTheDrillInIsOpen_ThenTheNameIsAnIdPrefixAndStaysExemptFromTheStylesheetGuards()
+    {
+        // The trap that comes with asking every name for a declaration rather than for a mention.
+        //
+        // `munin-explorer-source` is not a class. It is the prefix of the id that names the
+        // drill-in region — `munin-explorer-source-{instance}`, so two mounts on one page cannot
+        // collide — and the region itself wears `munin-explorer-drilldown`. So
+        // `.munin-explorer-source` selects nothing, no stylesheet can have a rule for it, and no
+        // amount of adding CSS would satisfy a guard that demanded one.
+        //
+        // scripts/assert-sample-css-in-step.sh reads names statically out of src/, prose and all,
+        // so it does see the name — in the very paragraph explaining that it is an id — and IDS is
+        // why it skips it. Under the old mention-only check that exemption looked like a rule
+        // somebody had not got round to writing; under the stricter one it is the only thing
+        // standing between the guard and a failure that cannot be fixed. The lazy repair is to
+        // delete the entry, so this test asserts both halves: that the name really is an id prefix,
+        // and that the entry survives.
+        var cut = OpenOwner(TwoRows(), 0);
+
+        // Nothing wears it. Rendered, not read off the source, because the question is what the
+        // DOM contains — which is also why the C# guard is immune to this trap and the shell one
+        // is not: HostClassNames only ever sees names in a rendered class attribute.
+        Assert.Empty(cut.FindAll(".munin-explorer-source"));
+
+        // What does carry the name is an id, on an element whose class is the drill-in handle.
+        var panel = SourcePanel(cut);
+
+        Assert.StartsWith("munin-explorer-source-", panel.Id, StringComparison.Ordinal);
+        Assert.Equal("munin-explorer-drilldown", panel.GetAttribute("class"));
+
+        // And the shell guard still lets it through. An `IDS=(` block that has lost this entry is
+        // a guard that will go red on the next run against a name no rule can ever satisfy.
+        //
+        // The block is matched rather than sliced out on two unchecked indices. Reformatting the
+        // array, renaming it, or closing it as `  )` is exactly the edit that would take the entry
+        // with it, and slicing would meet that edit with an ArgumentOutOfRangeException pointing at
+        // a string index — a reader would be told a number was out of range, in the one test
+        // written to tell them why this entry has to survive.
+        var guard = File.ReadAllText(Repo.In("scripts", "assert-sample-css-in-step.sh"));
+        var ids = System.Text.RegularExpressions.Regex.Match(
+            guard, @"^IDS=\((?<entries>.*?)^\)",
+            System.Text.RegularExpressions.RegexOptions.Multiline
+            | System.Text.RegularExpressions.RegexOptions.Singleline);
+
+        Assert.True(ids.Success,
+            "No `IDS=(` … `)` block in scripts/assert-sample-css-in-step.sh. The exemption list is " +
+            "what keeps the guard off munin-explorer-source, which is an id prefix and not a class: " +
+            ".munin-explorer-source selects nothing, so no stylesheet can ever have a rule for it " +
+            "and a guard demanding one fails forever. If the list has moved, this test follows it; " +
+            "if it has been deleted, the guard is about to go red on a name nothing can satisfy.");
+
+        Assert.Contains("munin-explorer-source", ids.Groups["entries"].Value, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Source_WhenThePanelIsOpen_ThenItsHeadingSitsBelowTheCardsInTheOutline()
     {
         // A heading level the host cannot see is a broken outline, so it is derived rather than
@@ -5956,7 +6544,7 @@ public class VariableExplorerTest : BunitContext
         Back(cut);
 
         Assert.Equal("H1", cut.Find(".munin-explorer > [class*='headline']").TagName);
-        Assert.Equal("BUTTON", cut.Find(".munin-explorer-data-list__item__row .munin-explorer-dataitem-main__name").TagName);
+        Assert.Equal("BUTTON", cut.Find(".munin-explorer-data-list__item__row button.munin-explorer-dataitem-main__name").TagName);
     }
 
     [Fact]
@@ -5981,5 +6569,621 @@ public class VariableExplorerTest : BunitContext
         Back(b);
 
         Assert.NotEqual(SourceToggles(a)[0].Id, SourceToggles(b)[0].Id);
+    }
+
+    [Fact]
+    public void ClearSearch_WhenPressed_ThenTheSearchIsRunAgainWithNothingInIt()
+    {
+        // The control that replaces the user-agent ✕, and here it has to be a real search rather
+        // than a field assignment: these rows came from the API. Pressing it must therefore ask
+        // again with no term - anything less leaves the reader looking at results for a search the
+        // box no longer shows, and the host mirroring that search into a URL.
+        var client = new FakeClient(new Page<VariableSummary>());
+
+        var cut = RenderWith(client);
+
+        cut.Find(".searchbox__freetext").Change("alder");
+        cut.Find("form").Submit();
+
+        Assert.Equal("alder", client.LastSearch);
+
+        cut.Find(".munin-explorer-search__clear").Click();
+
+        Assert.Null(client.LastSearch);
+        Assert.Equal("true", cut.Find(".munin-explorer-search__clear").GetAttribute("aria-disabled"));
+    }
+
+    [Fact]
+    public void ClearSearch_WhenAFetchIsInFlight_ThenTheBoxDoesNotEmptyAheadOfTheRows()
+    {
+        // Found by review on PR #94, and it is the bug this button was added to fix, reached by a
+        // different door. Clearing _search and then calling SearchAsync is safe only while nothing
+        // is in flight: SearchAsync drops itself when _loading, so the box would empty, the fetch
+        // would never run, and the reader would be left with an empty field over the old rows -
+        // with the host still holding the previous search for its URL.
+        //
+        // The rule was already written down one method away, on SortAsync: the guard comes first,
+        // because changing the state and then not fetching leaves a control describing a list
+        // nobody is looking at.
+        var client = new SlowClient(OnePage(Variable("1. Tale", "KODE")));
+
+        var reported = new List<string?>();
+
+        var cut = RenderWith(client, b => b.Add(
+            c => c.SearchChanged, EventCallback.Factory.Create<string?>(this, reported.Add)));
+
+        // A search that never answers, so the component is left mid-fetch.
+        cut.Find(".searchbox__freetext").Change("alder");
+        cut.Find("form").Submit();
+
+        var callsWhileLoading = client.Calls;
+
+        // Counted rather than inspected for null: SearchChanged carries null on the initial load
+        // too, by design, so one is already in the list before the button is anywhere near it.
+        var reportsWhileLoading = reported.Count;
+
+        cut.Find(".munin-explorer-search__clear").Click();
+
+        // The box still says what the rows on screen came from, and nothing was asked or reported.
+        Assert.Equal("alder", cut.Find(".searchbox__freetext").GetAttribute("value"));
+        Assert.Equal(callsWhileLoading, client.Calls);
+        Assert.Equal(reportsWhileLoading, reported.Count);
+    }
+
+    [Fact]
+    public void ClearSearch_WhenPressed_ThenTheHostIsToldTheSearchIsGone()
+    {
+        // The half with no visible symptom. A host mirrors SearchChanged into its URL, so a clear
+        // that did not report itself would hand out a link reopening the search just cleared.
+        var reported = new List<string?>();
+
+        var cut = RenderWith(new FakeClient(new Page<VariableSummary>()), b => b.Add(
+            c => c.SearchChanged, EventCallback.Factory.Create<string?>(this, reported.Add)));
+
+        cut.Find(".searchbox__freetext").Change("alder");
+        cut.Find("form").Submit();
+        cut.Find(".munin-explorer-search__clear").Click();
+
+        Assert.Null(reported[^1]);
+    }
+
+    [Fact]
+    public void SearchField_WhenItIsRendered_ThenItIsNotASearchInputWithAClearButtonWeCannotHook()
+    {
+        // The same rule Kelda's field follows, and it binds both explorers because both bind on
+        // change: a type="search" input carries a user-agent clear button this package cannot hook.
+        // The ✕ fires the DOM `search` event, which Blazor does not know, so the box empties while
+        // the search it ran stays in force - and here that is worse than in Kelda, because the
+        // search reached the API and the host has been told to put it in a URL. The reader would be
+        // looking at results for a query the box no longer shows, with a link to match.
+        //
+        // Found in Kelda first, on 2026-08-27. The two fields are one pattern and must not diverge.
+        var cut = RenderWith(new FakeClient(new Page<VariableSummary>()));
+
+        var field = cut.Find(".searchbox__freetext");
+
+        Assert.Equal("text", field.GetAttribute("type"));
+        Assert.Equal("search", field.GetAttribute("enterkeyhint"));
+    }
+
+    /// <summary>
+    /// The client the retry tests fetch against: thirteen pages, and every switch those tests need
+    /// already on <see cref="FilteringClient"/> rather than on a fifth near-identical fake.
+    /// </summary>
+    private static FilteringClient RetryClient(
+        bool failSearch = false, Page<VariableSummary>? filtered = null) =>
+        new(ResultPage(312), filteredAnswer: filtered) { FailSearch = failSearch };
+
+    /// <summary>
+    /// The retry controls, selected through the alert region rather than by their own class.
+    /// </summary>
+    /// <remarks>
+    /// The selector is the assertion in every test below that uses it: a button outside
+    /// <c>role="alert" aria-live="assertive"</c> is a failure announced with no way forward
+    /// mentioned, and a plain search for a button would find one there and call it done.
+    /// </remarks>
+    private static IReadOnlyList<IElement> RetryButtons(IRenderedComponent<VariableExplorer> cut) =>
+        cut.FindAll("div[role='alert'][aria-live='assertive'] button");
+
+    private static IElement Retry(IRenderedComponent<VariableExplorer> cut, string label) =>
+        RetryButtons(cut).Single(b => b.TextContent == label);
+
+    private const string RetryRows = "Prøv søket på nytt";
+    private const string RetryFacets = "Prøv filtrene på nytt";
+
+    /// <summary>
+    /// The sentences in the alert region, which is where both failures report.
+    /// </summary>
+    /// <remarks>
+    /// Scoped to the <c>div</c>. Every saveable row carries a <c>role="alert"</c> span of its own
+    /// (<c>VariableExplorer.SaveButton.cs</c>), and an unscoped selector would start counting those.
+    /// </remarks>
+    private static IReadOnlyList<IElement> AlertMessages(IRenderedComponent<VariableExplorer> cut) =>
+        cut.FindAll("div[role='alert'] p");
+
+    [Fact]
+    public void Retry_WhenTheSearchFails_ThenTheButtonIsInsideTheRegionTheFailureIsAnnouncedFrom()
+    {
+        // The whole point of the change. A message with no control is a dead end for everyone, and
+        // a control outside the assertive region is a dead end for a screen-reader user only: the
+        // interruption says something went wrong and stops there, while the way out sits silently
+        // somewhere further down the page.
+        var cut = RenderWith(new FailingClient());
+
+        Assert.Contains("Kunne ikke hente variabler", cut.Find("[role='alert']").TextContent);
+        Assert.Equal(RetryRows, Assert.Single(RetryButtons(cut)).TextContent);
+    }
+
+    [Fact]
+    public void Retry_WhenTheApiAnswersOnTheSecondTry_ThenTheRowsArriveAndTheMessageIsGone()
+    {
+        // The trap: a retry that fetches without clearing the failure shows the rows and the
+        // sentence saying they could not be fetched, side by side, and passes any test that only
+        // asks whether the results came back.
+        var client = RetryClient(failSearch: true);
+        var cut = RenderWith(client);
+
+        client.FailSearch = false;
+        Retry(cut, RetryRows).Click();
+
+        Assert.NotEmpty(cut.FindAll("ul.munin-explorer-data-list > li"));
+        Assert.Empty(AlertMessages(cut));
+    }
+
+    [Fact]
+    public void Retry_WhenTheApiRateLimits_ThenNoRetryIsOfferedBesideTheSentenceTellingThemToWait()
+    {
+        // The one failure a retry cannot answer: the catalogue is up and the reader has asked too
+        // often, so the button would invite the exact action the sentence beside it advises against
+        // — and would feed the burst that caused the 429. A test throwing a generic exception never
+        // reaches this branch and stays green whatever this branch does.
+        var cut = RenderWith(new RateLimitedClient());
+
+        Assert.Contains("for mange forespørsler", cut.Find("[role='alert']").TextContent);
+        Assert.Empty(RetryButtons(cut));
+    }
+
+    [Fact]
+    public void Retry_WhenARateLimitFollowsAFailureThatOfferedOne_ThenTheButtonIsInertRatherThanGone()
+    {
+        // The 429 arriving over a button already on screen. It cannot leave — that is the focus
+        // rule below — so it goes inert instead, and pressing it sends nothing.
+        var client = RetryClient(failSearch: true);
+        var cut = RenderWith(client);
+
+        client.FailSearch = false;
+        client.RateLimitSearch = true;
+        Retry(cut, RetryRows).Click();
+
+        var button = Retry(cut, RetryRows);
+        var calls = client.SearchCalls;
+
+        Assert.Contains("for mange forespørsler", cut.Find("[role='alert']").TextContent);
+        Assert.Equal("true", button.GetAttribute("aria-disabled"));
+
+        button.Click();
+
+        Assert.Equal(calls, client.SearchCalls); // inert: no request went out
+    }
+
+    [Fact]
+    public void Retry_WhenAPageTurnFailed_ThenItAsksForThatPageAgainAndNotForWhatIsInTheBox()
+    {
+        // The trap the whole handler exists for. Wiring the button to SearchAsync passes a test
+        // that only ever fails the first search, and throws away both the reader's position and the
+        // query the rows came from: the box holds text that was never submitted, and every caller
+        // that fails has already rolled the page back to the one still on screen.
+        var client = RetryClient();
+        var cut = RenderWith(client, b => b.Add(c => c.Search, "tale"));
+
+        Next(cut).Click(); // page 2, which arrives
+
+        client.FailSearch = true;
+        Next(cut).Click(); // page 3, which does not
+
+        cut.Find(".searchbox__freetext").Change("noe helt annet");
+
+        client.FailSearch = false;
+        Retry(cut, RetryRows).Click();
+
+        Assert.Equal(3, client.LastPage);
+        Assert.Equal("tale", client.LastSearch);
+        Assert.Equal("Side 3 av 13", Position(cut));
+        Assert.Empty(AlertMessages(cut));
+    }
+
+    [Fact]
+    public void Retry_WhenASortFailed_ThenItAsksForTheOrderThatFailedRatherThanTheOneOnScreen()
+    {
+        // Same trap one control along, and the reason the request is captured rather than read back
+        // off the fields: a failed sort rolls the order back, so a retry built from _sort would
+        // fetch the ordering the reader was already looking at and report success for it.
+        var client = RetryClient();
+        var cut = RenderWith(client);
+
+        client.FailSearch = true;
+        ClickSort(cut, "Kilde");
+
+        client.FailSearch = false;
+        Retry(cut, RetryRows).Click();
+
+        Assert.Equal(SortField.Kilde, client.LastSort);
+        Assert.Empty(AlertMessages(cut));
+    }
+
+    [Fact]
+    public void Retry_WhenADirectionReversalFailed_ThenItAsksForThatDirectionAndTellsTheHostSo()
+    {
+        // The other half of the captured request, and the one a retry built off the fields would
+        // get wrong without any test noticing: a second click on the active column reverses to
+        // descending, and the failure rolls the direction back to ascending — so _direction names
+        // the order still on screen, not the order the reader asked for. The host was told the
+        // rolled-back value too, so it is holding ascending until this retry says otherwise.
+        var raised = new List<string>();
+        SortDirection? direction = null;
+        var client = RetryClient();
+
+        var cut = RenderWith(client, b => b
+            .Add(c => c.SortChanged, _ => raised.Add("sort"))
+            .Add(c => c.DirectionChanged, d => { direction = d; raised.Add("direction"); }));
+
+        ClickSort(cut, "Kilde");   // ascending, which arrives
+
+        raised.Clear();
+
+        client.FailSearch = true;
+        ClickSort(cut, "Kilde");   // its reversal, which does not
+
+        Assert.Empty(raised); // the rollback said nothing, so the host still has ascending
+
+        client.FailSearch = false;
+        Retry(cut, RetryRows).Click();
+
+        Assert.Equal(SortField.Kilde, client.LastSort);
+        Assert.Equal(SortDirection.Descending, client.LastDirection);
+
+        // The field never moved — the host was told it two clicks ago and this request kept it.
+        Assert.Equal(["direction"], raised);
+        Assert.Equal(SortDirection.Descending, direction);
+        Assert.Empty(AlertMessages(cut));
+    }
+
+    [Fact]
+    public void Retry_WhenAFilterChangeFailed_ThenTheCountsAndThePagerFollowTheFilterThatWentOut()
+    {
+        // The third caller that can leave a failed request behind, and the only one where the
+        // filter half of it matters. Two things a retried narrowing has to bring with it: the
+        // counts, which are cross-filtered and would otherwise go on describing the selection the
+        // reader left; and the pager flag, which the narrowing cleared on its way to page one and
+        // its rollback put back, leaving "Side 1 av 1" between two inert buttons over a result the
+        // same narrowing would have hidden it for on the first attempt.
+        var client = RetryClient(filtered: ResultPage(4));
+        var cut = RenderWith(client);
+
+        Next(cut).Click(); // page 2, so the pager is on screen by the reader's own doing
+
+        var facetCalls = client.FacetCalls;
+
+        client.FailSearch = true;
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        client.FailSearch = false;
+        Retry(cut, RetryRows).Click();
+
+        Assert.Equal(1, client.SearchFilter!.ActiveCount);
+        Assert.Equal(1, client.LastPage);
+        Assert.Equal(facetCalls + 1, client.FacetCalls);
+        Assert.Equal(client.SearchFilter, client.FacetFilter);
+        Assert.Empty(AlertMessages(cut));
+        Assert.Empty(cut.FindAll("div.munin-explorer-pagination"));
+    }
+
+    [Fact]
+    public void Retry_WhenASubmittedSearchFailed_ThenTheCountsFollowTheTermThatFinallyWentOut()
+    {
+        // The scenario the change is named for, and the second of the three things that move the
+        // counts: they are cross-filtered against the query as well as the filter, so a retried
+        // search that leaves them alone leaves every number describing the term the reader typed
+        // over — with a panel that says nothing about being stale, because that message belongs to
+        // the facets' own failure and this was the rows'.
+        var client = RetryClient();
+        var cut = RenderWith(client);
+
+        client.FailSearch = true;
+        cut.Find(".searchbox__freetext").Change("svelging");
+        cut.Find("form").Submit();
+
+        var facetCalls = client.FacetCalls;
+
+        client.FailSearch = false;
+        Retry(cut, RetryRows).Click();
+
+        Assert.Equal("svelging", client.LastSearch);
+        Assert.Equal(facetCalls + 1, client.FacetCalls);
+        Assert.Equal("svelging", client.FacetSearch);
+        Assert.Empty(AlertMessages(cut));
+    }
+
+    [Fact]
+    public void Retry_WhenTheFirstLoadFailed_ThenTheFilterPanelArrivesWithTheRows()
+    {
+        // The worst case of not refreshing the counts: OnInitializedAsync never asked for them, so
+        // _facets is null and the whole fieldset is off the page. Rows without filters, silently,
+        // with nothing to say so and no way back short of submitting a fresh search — which is the
+        // page reload this change exists to remove.
+        var client = RetryClient(failSearch: true);
+        var cut = RenderWith(client);
+
+        Assert.Empty(cut.FindAll("fieldset.munin-explorer-filters"));
+
+        client.FailSearch = false;
+        Retry(cut, RetryRows).Click();
+
+        Assert.NotEmpty(cut.FindAll("ul.munin-explorer-data-list > li"));
+        Assert.Single(cut.FindAll("fieldset.munin-explorer-filters"));
+        Assert.Empty(AlertMessages(cut));
+    }
+
+    [Fact]
+    public void Retry_WhenASortFailed_ThenTheHostIsToldTheFieldThatFinallyTookEffect()
+    {
+        // The failure rolled the order back and told the host nothing, so the host is holding the
+        // order that is still on screen. Without these callbacks a host mirroring sort into its URL
+        // keeps a URL that reopens the list in the wrong order — and every assertion about the
+        // request that went out stays green, because none of them looks at what was raised.
+        var raised = new List<string>();
+        SortField? sort = null;
+        var client = RetryClient();
+
+        var cut = RenderWith(client, b => b
+            .Add(c => c.SortChanged, f => { sort = f; raised.Add("sort"); })
+            .Add(c => c.DirectionChanged, _ => raised.Add("direction")));
+
+        client.FailSearch = true;
+        ClickSort(cut, "Kilde");
+
+        Assert.Empty(raised); // the failure rolled it back and said nothing
+
+        client.FailSearch = false;
+        Retry(cut, RetryRows).Click();
+
+        // The field, and only the field: a first sort starts ascending, which is what the host was
+        // handed at mount and has been holding ever since.
+        Assert.Equal(["sort"], raised);
+        Assert.Equal(SortField.Kilde, sort);
+    }
+
+    [Fact]
+    public void Retry_WhenAPageTurnFailed_ThenTheHostIsToldThePageMovedAndNothingElse()
+    {
+        // The opposite regression, and the one a blanket four-callback ending causes: GoToPageAsync
+        // deliberately raises the page alone, so a retried page turn that also raises sort,
+        // direction and filter hands a host that navigates or pushes history on them three entries
+        // for values it was already holding and this request never touched.
+        var raised = new List<string>();
+        var client = RetryClient();
+
+        var cut = RenderWith(client, b => b
+            .Add(c => c.SortChanged, _ => raised.Add("sort"))
+            .Add(c => c.DirectionChanged, _ => raised.Add("direction"))
+            .Add(c => c.FilterChanged, _ => raised.Add("filter"))
+            .Add(c => c.PageChanged, _ => raised.Add("page")));
+
+        raised.Clear(); // the mount echoes the page it was given
+
+        client.FailSearch = true;
+        Next(cut).Click();
+
+        raised.Clear();
+
+        client.FailSearch = false;
+        Retry(cut, RetryRows).Click();
+
+        Assert.Equal(["page"], raised);
+    }
+
+    [Fact]
+    public void Retry_WhenItSucceeds_ThenTheButtonStaysInTheDocumentInsteadOfLeavingWithTheMessage()
+    {
+        // A successful retry clears the message, and the button belongs to the message. Removing it
+        // would take the element the reader has just pressed — and is therefore focused — out of the
+        // document, dropping focus to <body> and sending a keyboard user back to the top of
+        // helsedata's page. The same failure the pager's buttons and Fjern alle filtre refuse the same way.
+        //
+        // bUnit reparses the markup on every render, so document.activeElement cannot be inspected
+        // across one here. What is pinned instead is the condition focus survives on: the pressed
+        // element is still in the document, and inert rather than disabled — the attribute would
+        // drop focus without removing anything.
+        var client = RetryClient(failSearch: true);
+        var cut = RenderWith(client);
+
+        client.FailSearch = false;
+        Retry(cut, RetryRows).Click();
+
+        var button = Retry(cut, RetryRows);
+
+        Assert.Equal("true", button.GetAttribute("aria-disabled"));
+        Assert.False(button.HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void Retry_WhenTheButtonIsShown_ThenItsClassNamesAreOnesSomeStylesheetActuallyDefines()
+    {
+        // Every other sweep in this file renders a page with nothing wrong, so the one control that
+        // exists only after a failure is past all of them.
+        var cut = RenderWith(RetryClient(failSearch: true));
+
+        Assert.Equal(RetryRows, Assert.Single(RetryButtons(cut)).TextContent);
+        Assert.Equal([], HostClassNames.Orphans(HostClassNames.Of(cut.FindAll("[class]"))));
+    }
+
+    [Fact]
+    public void Retry_WhenALaterFetchSucceedsOnItsOwn_ThenTheDeadOfferLeavesTheRegion()
+    {
+        // The region is aria-atomic, so everything in it is announced together. A button kept for
+        // good is read out beside every failure after it — "Tallene kan være utdaterte … Prøv søket
+        // på nytt Prøv filtrene på nytt", one live offer and one dead one with nothing but
+        // aria-disabled telling them apart. So it stays only until the next fetch someone started
+        // elsewhere comes back, which is long enough for the press that kept it to hold its focus.
+        var client = RetryClient();
+        var cut = RenderWith(client);
+
+        client.FailSearch = true;
+        Next(cut).Click();
+
+        client.FailSearch = false;
+        Retry(cut, RetryRows).Click();
+
+        Assert.Equal(RetryRows, Assert.Single(RetryButtons(cut)).TextContent);
+
+        client.FailFacets = true;
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        Assert.Contains("Tallene kan være utdaterte", cut.Find("[role='alert']").TextContent);
+        Assert.Equal(RetryFacets, Assert.Single(RetryButtons(cut)).TextContent);
+    }
+
+    [Fact]
+    public void Retry_WhenALaterFetchIsRateLimited_ThenTheDeadOfferLeavesRatherThanSittingBesideVentLitt()
+    {
+        // A 429 is neither a success nor a failure that can be retried, so an offer already
+        // answered survives it unless this branch clears it too — and the atomic region then reads
+        // the wait instruction and a dead button out as one utterance, which is the exact
+        // re-announcement clearing it on success exists to stop. No focus argument keeps it here:
+        // the reader's finger is on whatever control started the fetch that got throttled.
+        var client = RetryClient();
+        var cut = RenderWith(client);
+
+        client.FailSearch = true;
+        Next(cut).Click();
+
+        client.FailSearch = false;
+        Retry(cut, RetryRows).Click();
+
+        client.RateLimitSearch = true;
+        cut.Find(".searchbox__freetext").Change("svelging");
+        cut.Find("form").Submit();
+
+        Assert.Contains("for mange forespørsler", cut.Find("[role='alert']").TextContent);
+        Assert.Empty(RetryButtons(cut));
+    }
+
+    [Fact]
+    public void Retry_WhenTheButtonIsInert_ThenItCarriesTheNameThatDrawsItThatWay()
+    {
+        // aria-disabled says it to a screen reader and to nobody else. The pager and the filter
+        // panel are drawn inert by rules scoped to their containers; this button's container is the
+        // alert region, which carries no class, so neither rule reaches it and it needs its own
+        // name. Without one a sighted reader presses a normal-looking ghost button that does
+        // nothing — the exact failure the aria-disabled styling exists to prevent.
+        var client = RetryClient(failSearch: true);
+        var cut = RenderWith(client);
+
+        client.FailSearch = false;
+        Retry(cut, RetryRows).Click();
+
+        var button = Retry(cut, RetryRows);
+
+        Assert.Equal("true", button.GetAttribute("aria-disabled"));
+        Assert.Contains("munin-explorer-retry", button.ClassName!.Split(' '));
+    }
+
+    [Fact]
+    public void Retry_WhenNothingHasFailed_ThenThereIsNoRetryButtonAndTheRegionIsStillEmpty()
+    {
+        // The container is deliberately always present and empty. A retry button parked in it would
+        // be furniture on every page that has nothing to report, and would make the region announce
+        // something the first time anything else changed inside it.
+        var cut = RenderWith(RetryClient());
+
+        Assert.Empty(RetryButtons(cut));
+        Assert.Equal(string.Empty, cut.Find("[role='alert']").TextContent.Trim());
+    }
+
+    [Fact]
+    public void Retry_WhenTheFacetRefreshFails_ThenItsOwnButtonRefreshesTheCountsAndNothingElse()
+    {
+        // The facets fail on their own request and clear their own message, so a handler shared
+        // with the rows would answer this sentence by re-fetching a list nobody said was wrong.
+        var client = RetryClient();
+        var cut = RenderWith(client);
+
+        client.FailFacets = true;
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        Assert.Contains("Tallene kan være utdaterte", cut.Find("[role='alert']").TextContent);
+
+        var searchCalls = client.SearchCalls;
+        var facetCalls = client.FacetCalls;
+
+        client.FailFacets = false;
+        Retry(cut, RetryFacets).Click();
+
+        Assert.Equal(facetCalls + 1, client.FacetCalls);
+        Assert.Equal(searchCalls, client.SearchCalls); // the rows were never in doubt
+        Assert.Empty(AlertMessages(cut));
+    }
+
+    [Fact]
+    public void Retry_WhenBothFailuresAreReported_ThenEachSentenceHasItsOwnButtonAndItsOwnRequest()
+    {
+        // Both messages share one assertive region, so both buttons land in it together. Two
+        // reading "Prøv igjen" would be two identical offers with nothing to choose between them,
+        // and one button for both would clear one sentence with the answer to the other question.
+        var client = RetryClient();
+        var cut = RenderWith(client);
+
+        client.FailFacets = true;
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        client.FailSearch = true;
+        Next(cut).Click();
+
+        var buttons = RetryButtons(cut);
+
+        Assert.Equal(2, buttons.Count);
+        Assert.Equal(RetryRows, buttons[0].TextContent);
+        Assert.Equal(RetryFacets, buttons[1].TextContent);
+        Assert.Equal(2, AlertMessages(cut).Count);
+
+        var facetCalls = client.FacetCalls;
+
+        client.FailSearch = false;
+        Retry(cut, RetryRows).Click();
+
+        // The rows came back; the counts are still stale and still say so, in their own sentence.
+        Assert.Equal(facetCalls, client.FacetCalls);
+        Assert.DoesNotContain("Kunne ikke hente variabler", cut.Find("[role='alert']").TextContent);
+        Assert.Contains("Tallene kan være utdaterte", cut.Find("[role='alert']").TextContent);
+
+        var searchCalls = client.SearchCalls;
+
+        client.FailFacets = false;
+        Retry(cut, RetryFacets).Click();
+
+        Assert.Equal(searchCalls, client.SearchCalls);
+        Assert.Empty(AlertMessages(cut));
+    }
+
+    [Fact]
+    public void Retry_WhenTheLanguageIsEn_ThenTheButtonsAreInEnglishToo()
+    {
+        // The reader parameter decides, not the machine's culture — and a button left in Norwegian
+        // beside an English sentence is the half-translated release the parity guard cannot see,
+        // because both languages would have a string and only one of them would be rendered.
+        var client = RetryClient();
+        var cut = RenderWith(client, b => b.Add(c => c.Language, "en"));
+
+        client.FailFacets = true;
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        client.FailSearch = true;
+        Next(cut).Click();
+
+        var buttons = RetryButtons(cut);
+
+        Assert.Equal(2, buttons.Count);
+        Assert.Equal("Try the search again", buttons[0].TextContent);
+        Assert.Equal("Try the filters again", buttons[1].TextContent);
     }
 }

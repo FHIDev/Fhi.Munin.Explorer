@@ -1,0 +1,38 @@
+﻿@page "/kilder"
+@using ModernHost.Components
+
+<PageTitle>Modern host — kilder</PageTitle>
+
+<div class="hostchrome">
+    <p class="hostchrome-note">
+        The other root component the package ships: <code>KildeExplorer</code>, the
+        kildeutforsker. <code>VariableExplorer</code> is on <a href="/">the front page</a> — the
+        two are separate entry points, not two tabs of one thing, so each gets a page here.
+    </p>
+    <p class="hostchrome-note">
+        <strong>The component is behind a wrapper here, not mounted straight onto the tag</strong>,
+        and that is forced rather than chosen. <code>KildeExplorer</code> raises
+        <code>ExploreVariablesRequested</code>, and an <code>EventCallback</code> does not survive
+        being passed from a statically-rendered parent into an interactive island: it is
+        serialised as <code>{"HasDelegate":true}</code> and read back as an empty delegate, so the
+        handler never runs. <code>@@rendermode</code> on the component tag does not fix that — it
+        makes the mount point interactive while the parent creating the callback stays static.
+        The callback has to be created <em>inside</em> the interactive component, so the wrapper
+        is the island. <a href="/">The front page</a> mounts straight onto the tag and is right
+        to: it passes only data, and data crosses the boundary intact.
+    </p>
+    <p class="hostchrome-note">
+        <code>prerender: false</code> is separate, and not a preference either:
+        <code>KildeExplorer</code> fetches the whole kilde list when it initialises, and
+        prerendering would run that call twice against the API on every page load.
+    </p>
+</div>
+
+<div class="hostframe">
+    @* render-mode is set HERE, by the host, on the wrapper that owns the handover — see the note
+       above for why it cannot go on the KildeExplorer tag inside it. The package's own components
+       stay render-mode free either way, which is the rule that lets them mount in LegacyHost's
+       MVC view too. *@
+    <KildeExplorerWithHandover Language="no"
+                               @rendermode="@(new InteractiveServerRenderMode(prerender: false))" />
+</div>

@@ -1,5 +1,7 @@
 ﻿@page "/"
 @using Fhi.Munin.Explorer.Blazor
+@using Fhi.Munin.Explorer.Contracts
+@inject NavigationManager Nav
 
 <PageTitle>Modern host</PageTitle>
 
@@ -16,6 +18,12 @@
         <code>@@rendermode</code> — because that is what helsedata.no's Optimizely CMS does. The
         component has to work in both, so both hosts are kept alive.
     </p>
+    <p class="hostchrome-note">
+        The package ships a second root component beside this one — <code>KildeExplorer</code>, the
+        kildeutforsker. It has a page of its own: <a href="/kilder">kilder</a>. Ticking kilder
+        there and pressing <em>Utforsk variabler for utvalget</em> arrives back here with the ids
+        in the query, which is the whole of the handover between the two.
+    </p>
 </div>
 
 <div class="hostframe">
@@ -23,5 +31,29 @@
        prerender: false for the same reason LegacyHost uses render-mode="Server" rather than
        "ServerPrerendered" — the component fetches on initialise, and prerendering would run
        that call twice against the public API on every page load. *@
-    <VariableExplorer Language="no" @rendermode="@(new InteractiveServerRenderMode(prerender: false))" />
+    <VariableExplorer Language="no"
+                      Filter="_filter"
+                      @rendermode="@(new InteractiveServerRenderMode(prerender: false))" />
 </div>
+
+@code {
+    /// <summary>The kilder the query names, which is how a link out of Kelda arrives.</summary>
+    /// <remarks>
+    /// Read once here rather than bound: this page mirrors nothing back out, unlike LegacyHost's
+    /// wrapper, which is the sample that shows the whole shareable-state contract. What this shows
+    /// is the receiving half of the handover, and it is deliberately the smallest thing that works
+    /// — <c>VariableFilter.Parse</c> reads the very query <c>ToQueryString</c> wrote on /kilder, so
+    /// neither page restates the format.
+    /// <para>
+    /// The filter crosses from this statically-rendered page into the interactive island as a
+    /// component parameter, so it is serialised on the way. That works because <c>VariableFilter</c>
+    /// is a record of primitives and lists of them; a parameter type that were not would fail here
+    /// and nowhere else in this repository, since LegacyHost hands its filter to a wrapper that is
+    /// itself the interactive component and so never crosses a boundary at all.
+    /// </para>
+    /// </remarks>
+    private VariableFilter _filter = VariableFilter.None;
+
+    protected override void OnInitialized() =>
+        _filter = VariableFilter.Parse(new Uri(Nav.Uri).Query);
+}

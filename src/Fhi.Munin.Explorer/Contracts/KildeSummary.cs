@@ -75,6 +75,20 @@ public sealed record KildeSummary
     /// <c>["ehds-cat:registries-quality-of-healthcare"]</c> in a string). Labels for the keys come
     /// from the detail endpoint's <see cref="KildeDetail.PropertyMetadata"/>.
     /// </summary>
+    /// <remarks>
+    /// Non-nullable, and it is the deserialiser rather than the initialiser beside it that keeps
+    /// that promise: the initialiser only survives a key <em>absent</em> from the payload, and this
+    /// API does send an explicit <c>"additionalProperties": null</c>, which
+    /// <c>System.Text.Json</c> would write straight over it. <c>NullAsEmptyCollections</c>, on the
+    /// client's serialiser options, reads that null as the empty bag it means — for this property
+    /// and every other collection on every contract. This is the canonical statement of it; the
+    /// other <c>AdditionalProperties</c> declarations point here.
+    /// <para>
+    /// A host substituting its own <see cref="IMuninExplorerClient"/> deserialises with its own
+    /// options and gets none of that, which is why the components still coalesce a null bag to
+    /// empty where they read one.
+    /// </para>
+    /// </remarks>
     [JsonPropertyName("additionalProperties")]
     public IReadOnlyDictionary<string, string?> AdditionalProperties { get; init; } =
         new Dictionary<string, string?>();

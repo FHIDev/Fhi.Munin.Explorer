@@ -119,12 +119,16 @@ jobs:
             echo "**Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           } | tee "$FILE" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Comment summary on PR
-        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        uses: marocchino/sticky-pull-request-comment@v3
+      # The comment is posted by "ci summary" instead, which is the only job that can see the
+      # guards' results. This hands it the step detail; it owns the same build-summary header.
+      - name: Upload summary for the report job
+        if: always()
+        uses: actions/upload-artifact@v7
         with:
-          header: build-summary
+          name: pr-summary
           path: pr-summary.md
+          if-no-files-found: ignore
+          retention-days: 1
 
       - name: Upload packages
         if: steps.pack.outcome == 'success'
@@ -153,10 +157,10 @@ jobs:
   # per change under changelog.d/ and folded in at release time. That only works if the
   # fragments get written, which is what this job is for.
   #
-  # A separate job, not a step in "build + test": that job's name is a required status check
-  # and renaming it breaks branch protection, and a missing changelog is not a broken build.
-  # For this to *block* a merge rather than just show red, add "changelog fragment" to the
-  # branch-protection required checks.
+  # A separate job, not a step in "build + test": a missing changelog is not a broken build.
+  #
+  # This job's name is one of the six required status checks on main (2026-08-28), so renaming it
+  # silently stops gating anything — the check it names simply never reports again.
   changelog:
     name: changelog fragment
     # Dependabot touches src/**/*.csproj on every bump and ships its own changelog, and
@@ -188,12 +192,10 @@ jobs:
   # copies are missing the same rules, which looks broken in both. The script checks for each in
   # turn; see its header.
   #
-  # Its own job, like the changelog check and for the same reason: "build + test" is a required
-  # status check whose name must not move, and sample CSS drift is not a broken build.
-  # And with the same consequence: for this to *block* a merge rather than just show red, add
-  # "sample stylesheets in step" to the branch-protection required checks. Until it is added,
-  # a drifted PR shows this job red and merges anyway — which is weaker than the script header
-  # and the README both imply.
+  # Its own job, like the changelog check and for the same reason: sample CSS drift is not a
+  # broken build. Required on main since 2026-08-28 — a drifted PR now blocks rather than merging
+  # red, which is what the script header and the README always implied. Renaming this job removes
+  # the gate without removing the check that appears to enforce it.
   sample-css:
     name: sample stylesheets in step
     runs-on: ubuntu-latest
@@ -206,15 +208,37 @@ jobs:
         # never a surprise that only CI knows how to reproduce.
         run: ./scripts/assert-sample-css-in-step.sh
 
+  # A class name new on this branch has to be written down for whoever updates Fhi.Helsedata.Stiler,
+  # which lives in Azure DevOps and is unreachable from here. The sample-css job above compares
+  # against the SAMPLE stylesheets — the most it can reach — so it goes green while the real site has
+  # no rule at all. That shipped three times in two days before this check existed.
+  #
+  # fetch-depth: 0 because this is a diff against the base branch: without it there is no base to
+  # compare against and the script exits 2 rather than guessing.
+  host-notes:
+    name: host notes for new names
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Assert new class names are noted for hosts
+        env:
+          BASE_REF: origin/${{ github.base_ref || github.event.repository.default_branch }}
+        run: |
+          git fetch --quiet origin "${BASE_REF#origin/}"
+          ./scripts/assert-new-names-noted-for-hosts.sh
+
   # BannedSymbols.txt is the only thing keeping host-specific types out of a component that has to
   # render in two hosts, and it is wired up by a condition on the RCL's project name. That
   # condition was stale for the whole time the merged project had a different name than it named:
   # no analyzer, no RS0030, every build green. A guard that fails open cannot report its own
   # absence, so the guard gets a check of its own.
   #
-  # Its own job for the same reason as the two above — "build + test" is a required status check
-  # whose name must not move — and with the same consequence: add "portability guard armed" to the
-  # branch-protection required checks for this to block a merge rather than only show red.
+  # Its own job for the same reason as the two above, and required on main since 2026-08-28: a
+  # guard that fails open is worth little if the check reporting it cannot block a merge either.
   portability-guard:
     name: portability guard armed
     runs-on: ubuntu-latest
@@ -237,3 +261,123 @@ jobs:
         # The same script developers can run locally before pushing, so a red check here is
         # never a surprise that only CI knows how to reproduce.
         run: ./scripts/assert-portability-guard-armed.sh
+
+  # WCAG 2.1 AA applies to this package by law, and this job keeps AGENTS.md's accessibility
+  # section - the gate's blind spots included - from being a sentence nobody checks. Its own job,
+  # required on main since 2026-08-28, for the guards' reasons above.
+  accessibility:
+    name: accessibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet
+        uses: actions/cache@v5
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      # Playwright brings its own browser; without a cache that is a download per run.
+      - name: Cache the scanner's browser
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('scripts/check-accessibility.sh') }}
+          restore-keys: playwright-${{ runner.os }}-
+
+      - name: Scan the sample host with axe
+        # The same script developers can run locally before pushing, so a red check here is
+        # never a surprise that only CI knows how to reproduce.
+        run: ./scripts/check-accessibility.sh
+
+  # A step reads steps.<id>.outcome, which is job-local, so the summary inside "build + test"
+  # could only ever report itself and the four guards were never in the comment. A job added to
+  # this workflow must be added to needs: below and to the table, or it stays invisible here.
+  report:
+    name: ci summary
+    needs: [build, changelog, sample-css, host-notes, portability-guard, accessibility]
+    # It exists to report failed and skipped jobs, so it must not be skipped by one.
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # This job fails when any job in the table did (see the last step). That is what makes it worth
+    # requiring: every job is already in needs: above, so a NEW job is gated the moment it is added
+    # here — no second trip to branch protection, which is where the guards above spent months.
+    #
+    # It reported the failure without adopting it until 2026-08-28: the heading said "one or more
+    # jobs failed" and the job still exited 0, so requiring it would have gated nothing.
+    steps:
+      - name: Download the build job's step detail
+        # Absent when build never reached its Summary step; the job table still posts without it.
+        continue-on-error: true
+        uses: actions/download-artifact@v7
+        with:
+          name: pr-summary
+
+      - name: Summary
+        id: summary
+        run: |
+          to_emoji() { case "$1" in success) echo "✅";; failure) echo "❌";; cancelled) echo "🚫";; skipped) echo "⏭️";; *) echo "❔";; esac; }
+
+          # Heredoc, not a pipe: a pipe runs the loop in a subshell and every bad=1 is discarded,
+          # so a red job would print in the table and still be headlined as a pass.
+          rows=""
+          bad=0
+          while IFS='|' read -r name result; do
+            [ -n "$name" ] || continue
+            case "$result" in success|skipped) ;; *) bad=1 ;; esac
+            rows="$rows| $name | $(to_emoji "$result") $result |"$'\n'
+          done <<EOF
+          build + test|${{ needs.build.result }}
+          changelog fragment|${{ needs.changelog.result }}
+          sample stylesheets in step|${{ needs['sample-css'].result }}
+          host notes for new names|${{ needs['host-notes'].result }}
+          portability guard armed|${{ needs['portability-guard'].result }}
+          accessibility|${{ needs.accessibility.result }}
+          EOF
+
+          FILE=ci-summary.md
+          {
+            if [ "$bad" = "0" ]; then
+              echo "## CI ✅ every job passed"
+            else
+              echo "## CI ❌ one or more jobs failed"
+            fi
+            echo ""
+            echo "| Job | Result |"
+            echo "|-----|--------|"
+            printf '%s' "$rows"
+            echo ""
+
+            if [ -f pr-summary.md ]; then
+              cat pr-summary.md
+            else
+              echo "_No step detail from \`build + test\` for this run._"
+              echo ""
+              echo "**Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            fi
+          } | tee "$FILE" >> "$GITHUB_STEP_SUMMARY"
+
+          # Carried out of the step so the last one can fail on it, after the comment has posted.
+          echo "bad=$bad" >> "$GITHUB_OUTPUT"
+
+      - name: Comment summary on PR
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        uses: marocchino/sticky-pull-request-comment@v3
+        with:
+          header: build-summary
+          path: ci-summary.md
+
+      - name: Fail if any job in the table failed
+        # Last on purpose. Failing earlier would skip the comment step, so the run that most needs
+        # a summary would be the one without one.
+        if: steps.summary.outputs.bad == '1'
+        run: |
+          echo "::error::One or more jobs failed — see the table in the run summary." >&2
+          exit 1

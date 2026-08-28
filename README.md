@@ -113,10 +113,12 @@ These are not style preferences — each one is a host that breaks otherwise.
     so a Stiler-only host drew a permanently visible "Hopp til paginering" over every
     multi-page result list rather than an unstyled anything. Neither sample host showed it — both
     styled the borrowed name in their own `host.css` — and neither guard could, because neither
-    guard reads Stiler. Both ask only whether a name has *a* rule, in the capture of helsedata's
-    live page (`test/host-class-names.txt`, where `skiplink-pagination` sits at line 2064 because
-    helsedata styles it) or in the sample stylesheet. The name was in both sources the whole time
-    it was broken, and neither source says anything about the host that has neither of them.
+    guard reads Stiler. Both ask only whether a name has a rule that declares something, in the
+    capture of helsedata's live page (`test/host-class-names.txt`, where `skiplink-pagination` sits
+    at line 2064 because helsedata styles it) or in the sample stylesheet — and neither can say
+    which declarations the rule needs to carry, which is the question this link turned on. The
+    name was in both sources the whole time it was broken, and neither source says anything about
+    the host that has neither of them.
     `skiplink-pagination` is `munin-explorer-skiplink-pagination` now, and Stiler **0.1.14**
     carries its rule unscoped. A Stiler-only host is down to no rules of its own, not to one.
 
@@ -126,6 +128,9 @@ These are not style preferences — each one is a host that breaks otherwise.
     and closes entirely inside the column picker, while the anchor is rendered beside the result
     list. A rule naming the right class under the wrong ancestor draws exactly nothing, which is
     the same outcome as no rule at all and reads as coverage to any check that searches for names.
+    An empty block is that failure with the ancestor taken away, and it is the one the guards do
+    catch: a name whose every rule declares nothing is reported, and reported apart from a name
+    with no rule, so the reader is not sent looking for a rule that is sitting right there.
 
   A name no stylesheet has heard of renders as a raw browser default inside an otherwise styled
   page, which defeats the point of shipping this as a component at all. That is why owning the
@@ -147,8 +152,8 @@ These are not style preferences — each one is a host that breaks otherwise.
   a category to check against. The `THEIRS` allowlist in `scripts/assert-sample-css-in-step.sh` is
   empty by construction, and what these names cost a host is now the same question everywhere: a
   host on Stiler 0.1.13 or later has rules for them — 0.1.14 for the pager and its skip link, which
-  were renamed after 0.1.13 shipped — any other host draws whatever it wants drawn, and the
-  sub-lists below are about how much drawing nothing costs.
+  were renamed after 0.1.13 shipped, and none at all yet for `munin-explorer-retry` — any other host
+  draws whatever it wants drawn, and the sub-lists below are about how much drawing nothing costs.
 
   - Handles, where something else already dresses the element — a Stiler class it also wears, or
     its own browser default — and the name is there so a host or a test can find that part of the
@@ -181,7 +186,16 @@ These are not style preferences — each one is a host that breaks otherwise.
     undrawn one is a numbered list with a stray × after it; and inside the `munin-explorer-period*`
     wrapper, `__track`, `__fill` and `__track--ongoing` are the period bar itself — only its width
     comes from an inline style, so an undrawn bar renders as nothing at all. The period is still
-    legible without it, because the dates are next to it in words, in `__range`.
+    legible without it, because the dates are next to it in words, in `__range`. Last in this list
+    is `munin-explorer-retry`, on the two retry buttons in the alert region: it draws their inert
+    state, and it is the one name here that **no Stiler version carries yet, 0.1.14 included** —
+    tracked as `Fhi.Metadata-x6vqc`. The buttons are never `disabled`, because that would drop the
+    focus of the reader who just pressed one to `<body>`, so `aria-disabled` is what says the offer
+    is spent; the alert region deliberately carries no class, so neither the pager's nor the filter
+    panel's `[aria-disabled]` rule reaches in, and without one of its own a button that does nothing
+    looks exactly like one that works. That is a WCAG 2.1 AA problem rather than a cosmetic one, and
+    it is the `skiplink-pagination` shape: both sample stylesheets have the rule, so the guard is
+    green while the host the prefix exists for gets nothing.
 
   Ids are a separate family, each suffixed with a per-instance discriminator so two mounts on one
   page cannot collide: `munin-explorer-title-*`, `-search-*`, `-heading-*`, `-toggle-*`,

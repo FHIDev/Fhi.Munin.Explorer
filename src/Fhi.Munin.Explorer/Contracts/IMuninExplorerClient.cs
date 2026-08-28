@@ -15,6 +15,14 @@ namespace Fhi.Munin.Explorer.Contracts;
 /// the caller has to be able to tell the two apart.
 /// </para>
 /// <para>
+/// One of those throws has a type of its own. The API rate-limits per address, and a refusal on
+/// that count comes back as <see cref="MuninExplorerRateLimitedException"/> rather than as the
+/// general failure: it is neither a fault nor a "not published", and the only thing that helps is
+/// waiting — which is why an implementation must not answer it with null, with an empty
+/// collection, with <c>false</c> from one of the writes below, or with a retry of its own. The
+/// reasoning is on the exception.
+/// </para>
+/// <para>
 /// The variable-list methods at the bottom follow the same rule in the shape a write can take it:
 /// one that names a list the signed-in user does not have answers <c>false</c> rather than throwing,
 /// because a list deleted in another tab is the same ordinary event as an edited id. They are the
@@ -96,6 +104,43 @@ public interface IMuninExplorerClient
         string? search = null,
         string? kildeType = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// The vocabulary behind the curated properties the kilde list carries: one entry per key its
+    /// <see cref="KildeSummary.AdditionalProperties"/> bag can hold. Empty when the API serves none.
+    /// </summary>
+    /// <remarks>
+    /// The same shape as <see cref="KildeDetail.PropertyMetadata"/>, and for the same reason —
+    /// <c>additionalProperties</c> is a bag of stored codes with no dictionary beside it, so a
+    /// caller drawing a word for one of those codes needs the vocabulary that defines it. The
+    /// detail endpoints ship theirs with the record; the list does not, because the vocabulary is
+    /// global rather than per kilde and repeating it on every row would send it some sixty times.
+    /// This is the list's half, served as a sibling of it.
+    /// <para>
+    /// No language parameter, deliberately, and it is the one thing that would look like an
+    /// omission: <see cref="GetKilderAsync"/> is fetched language-agnostically and its rows are
+    /// rendered to whichever reader is looking, so a caller switching language without refetching
+    /// has to be able to switch the words too. That means reading
+    /// <see cref="PropertyMetadataEntry.OptionsJson"/>, which carries both labels, rather than
+    /// <see cref="PropertyMetadataEntry.Options"/>, which carries the one the request asked for.
+    /// </para>
+    /// <para>
+    /// The one member here with a body, and it answers nothing. This interface is already on the
+    /// feed, and a version there cannot be taken back from whoever restored it — so it is a
+    /// contract with hosts rather than a seam inside this package, and anything implementing it
+    /// instead of consuming <c>MuninExplorerClient</c> stops compiling on upgrade when a member
+    /// arrives without a default. Empty is a working answer rather than a placeholder: it is the
+    /// state a caller reaches anyway when the endpoint is unreachable, and
+    /// <c>KildeExplorer</c> already treats that as labels lost and nothing else — the coded facets
+    /// show the catalogue's own tokens. What it costs is that a host which never overrides it gets
+    /// CURIEs on two facets silently, which is the price of not breaking the ones that have not
+    /// caught up; anything louder would be a page-level failure over a label.
+    /// </para>
+    /// </remarks>
+    /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
+    Task<IReadOnlyList<PropertyMetadataEntry>> GetKildePropertyMetadataAsync(
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<PropertyMetadataEntry>>([]);
 
     /// <summary>Fetch one kilde with its delkilde/datasamling tree. Null when no such kilde is published.</summary>
     Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default);
@@ -283,4 +328,40 @@ public interface IMuninExplorerClient
         Guid id,
         IReadOnlyCollection<Guid> variableIds,
         CancellationToken cancellationToken = default);
+    /// <summary>
+    /// The reader's chosen variables as a file — xlsx, csv, or a zip when codebooks come too.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Anonymous, unlike the rest of <c>my/lists</c>: the ids travel in the body, so the endpoint
+    /// has no need to know whose list they came from. That is why it lives under
+    /// <c>api/explorer/lists</c> rather than <c>my/lists</c>, and why no token is required.
+    /// </para>
+    /// <para>
+    /// The ceiling here is the API's own <c>MaxVariabelCount</c> of 2000, which is not the same
+    /// number as <see cref="MaxVariablesPerBatch"/>, and is enforced server-side with a 400 that
+    /// names it.
+    /// </para>
+    /// <para>
+    /// Carries a default body, like <see cref="GetKildePropertyMetadataAsync"/> and for the same
+    /// reader: a host that implements this contract rather than consuming
+    /// <c>MuninExplorerClient</c> would otherwise stop building on the upgrade, and a version
+    /// already on the feed cannot be taken back from whoever restored it. The default refuses
+    /// rather than answering emptily — an empty file is a worse answer than a clear no.
+    /// </para>
+    /// </remarks>
+    /// <param name="variableIds">The variables to export.</param>
+    /// <param name="format">Xlsx or Csv. Csv with codebooks answers with a zip.</param>
+    /// <param name="includeKodeverk">Whether to include the codebooks alongside the variables.</param>
+    /// <param name="kildeIdFilter">Optional: only the variables belonging to one kilde.</param>
+    /// <param name="cancellationToken">Cancelled when the caller goes away.</param>
+    Task<ExportedList> ExportListAsync(
+        IReadOnlyCollection<Guid> variableIds,
+        ExportFormat format = ExportFormat.Xlsx,
+        bool includeKodeverk = false,
+        Guid? kildeIdFilter = null,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            $"This {nameof(IMuninExplorerClient)} does not implement {nameof(ExportListAsync)}. " +
+            "Consume MuninExplorerClient, or implement the member.");
 }

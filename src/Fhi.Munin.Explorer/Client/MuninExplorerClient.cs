@@ -15,7 +15,13 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
 {
     // Shared by the client and any test host, so a serialisation difference cannot
     // quietly appear between them.
-    internal static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+    internal static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
+    {
+        // See NullAsEmptyCollections. Without it an explicit "additionalProperties": null in the
+        // payload lands in a property the contract declares non-nullable, and the first read of it
+        // throws while rendering.
+        Converters = { new NullAsEmptyCollections() }
+    };
 
     public async Task<Page<VariableSummary>> SearchVariablesAsync(
         string? search,
@@ -71,6 +77,15 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
 
         return await GetOrNullAsync<IReadOnlyList<KildeSummary>>(url, cancellationToken) ?? [];
     }
+
+    public async Task<IReadOnlyList<PropertyMetadataEntry>> GetKildePropertyMetadataAsync(
+        CancellationToken cancellationToken = default) =>
+        // The route is the API's own spelling — a sibling of api/explorer/kilder rather than a
+        // field on it, because the vocabulary is one row per key and not one per kilde. No
+        // Accept-Language: the entries carry optionsJson with every label in it, and a caller that
+        // renders one response to readers in two languages is the case that field exists for.
+        await GetOrNullAsync<IReadOnlyList<PropertyMetadataEntry>>(
+            "api/explorer/kilder/egenskaper", cancellationToken) ?? [];
 
     public Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default) =>
         GetOrNullAsync<KildeDetail>($"api/explorer/kilder/{id}", cancellationToken);
@@ -212,6 +227,31 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
     /// a body whose one property is unrecognised binds to null — which the API answers as
     /// "request body is required", a message that says nothing about the spelling that caused it.
     /// </remarks>
+    /// <summary>
+    /// The export request. Named rather than anonymous, like the bodies beside it: the wire names
+    /// carry the Norwegian stem, and an anonymous object puts that spelling out of reach of review.
+    /// </summary>
+    private sealed record ExportRequestBody(
+        [property: JsonPropertyName("variabelIds")] IReadOnlyCollection<Guid> VariableIds,
+        [property: JsonPropertyName("format")] string Format,
+        [property: JsonPropertyName("includeKodeverk")] bool IncludeKodeverk,
+        [property: JsonPropertyName("kildeIdFilter")] Guid? KildeIdFilter);
+
+    /// <summary>
+    /// The spelling the API accepts for <c>format</c>.
+    /// </summary>
+    /// <remarks>
+    /// Written out rather than lowercasing the enum name. Both give the same two strings today, but
+    /// only this one keeps saying so if a member is ever renamed - and the failure it guards against
+    /// is silent in the worst way: a request for CSV that comes back as a spreadsheet.
+    /// </remarks>
+    private static string WireName(ExportFormat format) => format switch
+    {
+        ExportFormat.Xlsx => "xlsx",
+        ExportFormat.Csv => "csv",
+        _ => throw new ArgumentOutOfRangeException(nameof(format), format, "No API wire name for this export format.")
+    };
+
     private sealed record VariableIdsBody(
         [property: JsonPropertyName("variabelIds")] IReadOnlyCollection<Guid> VariableIds);
 
@@ -275,6 +315,11 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
     /// belonging to somebody else — deliberately, so a caller cannot learn which list ids are real
     /// by watching the difference. It reads as "no such list of yours" here, which is the only
     /// thing a caller can act on and the same not-a-fault the read endpoints map to null.
+    /// <para>
+    /// A 429 is not one of those, and never reaches this method: <see cref="SendAsync"/> throws it
+    /// as <see cref="MuninExplorerRateLimitedException"/> first. Reading it as <c>false</c> would
+    /// tell the reader their list is gone when it is only their request that was refused.
+    /// </para>
     /// </remarks>
     private async Task<bool> SendForFoundAsync(
         HttpMethod method,
@@ -298,6 +343,19 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
     }
 
     /// <summary>Sends one request, with <paramref name="body"/> as JSON when there is one.</summary>
+    /// <remarks>
+    /// A 429 never leaves this method as a response: it is thrown as
+    /// <see cref="MuninExplorerRateLimitedException"/> here, so every write inherits that branch by
+    /// going through here at all — the way every read inherits it from
+    /// <see cref="GetOrNullAsync{T}"/>. It belongs here rather than in each caller because the
+    /// writes read status in two places, <see cref="CreateMyListAsync"/> and
+    /// <see cref="SendForFoundAsync"/>, and both would otherwise have to remember it; a write added
+    /// later would have to remember it too.
+    /// <para>
+    /// The response is disposed before the throw, since nothing above can dispose one it never
+    /// received.
+    /// </para>
+    /// </remarks>
     private async Task<HttpResponseMessage> SendAsync(
         HttpMethod method,
         string url,
@@ -313,7 +371,17 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
             request.Content = JsonContent.Create(body, body.GetType(), options: Json);
         }
 
-        return await httpClient.SendAsync(request, cancellationToken);
+        var response = await httpClient.SendAsync(request, cancellationToken);
+
+        if (response.StatusCode == HttpStatusCode.TooManyRequests)
+        {
+            var retryAfter = RetryAfter(response);
+            response.Dispose();
+
+            throw new MuninExplorerRateLimitedException(retryAfter);
+        }
+
+        return response;
     }
 
     /// <summary>Escape one free-text value for the path, refusing one the path cannot carry.</summary>
@@ -355,12 +423,21 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
     }
 
     /// <summary>
-    /// GET and deserialise, mapping 404 to null.
+    /// GET and deserialise, mapping 404 to null and 429 to
+    /// <see cref="MuninExplorerRateLimitedException"/>.
     /// </summary>
     /// <remarks>
     /// The explorer is a public page reachable by deep link, so a request for something that has
     /// been unpublished — or for an id someone typed — is an ordinary event the caller should be
-    /// able to render as "not found". Every other failure still throws.
+    /// able to render as "not found".
+    /// <para>
+    /// A 429 is the other status this method reads, and it is read only to throw something the
+    /// caller can recognise: the API is answering, and the reader has to be told they asked too
+    /// often rather than that the catalogue is down. It is deliberately not given the 404 branch's
+    /// treatment — see <see cref="MuninExplorerRateLimitedException"/> for why a throttled call
+    /// must not come back as an empty result. Every other failure still throws, as an
+    /// <see cref="HttpRequestException"/> from <c>EnsureSuccessStatusCode</c>.
+    /// </para>
     /// </remarks>
     private async Task<T?> GetOrNullAsync<T>(
         string url,
@@ -386,9 +463,46 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
             return default;
         }
 
+        if (response.StatusCode == HttpStatusCode.TooManyRequests)
+        {
+            throw new MuninExplorerRateLimitedException(RetryAfter(response));
+        }
+
         response.EnsureSuccessStatusCode();
 
         return await response.Content.ReadFromJsonAsync<T>(Json, cancellationToken);
+    }
+
+    /// <summary>How long a 429 asked us to wait, or null when it did not say.</summary>
+    /// <remarks>
+    /// <c>Retry-After</c> comes in two forms and the API is free to send either: delta-seconds,
+    /// which lands in <c>Delta</c>, and an HTTP date, which lands in <c>Date</c> and has to be
+    /// turned into a wait here. A reader whose clock runs behind the server's would otherwise be
+    /// handed a negative wait, so a date already past is floored at zero rather than sent on as a
+    /// number that reads like "you should have gone earlier".
+    /// <para>
+    /// Null when the header is absent, which is not an anomaly worth guessing a default for: the
+    /// value is carried for logging and nothing acts on it — see
+    /// <see cref="MuninExplorerRateLimitedException.RetryAfter"/>.
+    /// </para>
+    /// </remarks>
+    private static TimeSpan? RetryAfter(HttpResponseMessage response)
+    {
+        var header = response.Headers.RetryAfter;
+
+        if (header?.Delta is { } delta)
+        {
+            return delta;
+        }
+
+        if (header?.Date is { } date)
+        {
+            var wait = date - DateTimeOffset.UtcNow;
+
+            return wait > TimeSpan.Zero ? wait : TimeSpan.Zero;
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -459,5 +573,49 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
         }
 
         return query.ToString();
+    }
+    public async Task<ExportedList> ExportListAsync(
+        IReadOnlyCollection<Guid> variableIds,
+        ExportFormat format = ExportFormat.Xlsx,
+        bool includeKodeverk = false,
+        Guid? kildeIdFilter = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(variableIds);
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "api/explorer/lists/export")
+        {
+            Content = JsonContent.Create(
+                new ExportRequestBody(
+                    variableIds,
+                    // The lowercase wire name. The API spells these out with
+                    // [JsonStringEnumMemberName("xlsx"/"csv")], and its converter accepts those and
+                    // the numbers — but not "Csv". Sending format.ToString() therefore 400-ed every
+                    // download. Verified against test 2026-08-27: "csv" and 1 both give text/csv,
+                    // "xlsx" and 0 both give a spreadsheet, "Csv" gives 400.
+                    WireName(format),
+                    includeKodeverk,
+                    kildeIdFilter),
+                options: Json)
+        };
+
+        using var response = await httpClient
+            .SendAsync(request, cancellationToken)
+            .ConfigureAwait(false);
+
+        // Not mapped to null the way a missing variable is: a failed export is a failure, and a
+        // caller that showed "nothing to download" for a 500 would be lying about why.
+        response.EnsureSuccessStatusCode();
+
+        var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+
+        // The API's own name and type. Composing them here would get CSV-with-codebooks wrong: it
+        // answers with a zip of two files, not a csv.
+        var contentType = response.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
+        var fileName = response.Content.Headers.ContentDisposition?.FileNameStar
+            ?? response.Content.Headers.ContentDisposition?.FileName?.Trim('"')
+            ?? "variabelliste";
+
+        return new ExportedList(bytes, contentType, fileName);
     }
 }

@@ -57,11 +57,8 @@
                     }
                 }
 
-                @* The source's datasamlinger, arranged the way the catalogue arranges them: the
-                   ones hanging directly off the source in a table of their own, then a list of its
-                   delkilder, each carrying its own. A study series' organising fact is its waves,
-                   and a flat table of everything underneath answers what exists while destroying
-                   how it is arranged. *@
+                @* The source's own datasamlinger, then its delkilder each carrying theirs. A study
+                   series' organising fact is its waves; one flat table destroys it. *@
                 @if (DataCollections.Count > 0 || Delkilder.Count > 0)
                 {
                     @Heading(BlockLevel, DataCollectionsHeading ?? DefaultDataCollectionsHeading, "headline headline-s")

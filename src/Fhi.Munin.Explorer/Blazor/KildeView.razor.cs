@@ -141,33 +141,17 @@ public sealed partial class KildeView : ComponentBase
     public string? DataCollectionsHeading { get; set; }
 
     /// <summary>
-    /// What the section is called when the caller does not say: "Delkilder og datasamlinger" over a
-    /// source that has delkilder, "Datasamlinger" over one that has not.
+    /// The section's own word for itself, which the source decides rather than the explorer: it
+    /// draws the delkilder now, so the wording for a flat table promised none of them
+    /// (Fhi.Metadata-wtz80).
     /// </summary>
-    /// <remarks>
-    /// It followed the explorer until the section started drawing the delkilde tree — Runa said
-    /// "Datasamlinger" and Kelda said "Delkilder og datasamlinger" over identical rows, which was a
-    /// difference of one word over one flat table and not worth a parameter's worth of argument.
-    /// <para>
-    /// It is not that any more. The section now draws the delkilder themselves, so on Tromsø the
-    /// Runa wording headed five waves and promised none of them — the heading was describing the
-    /// old section. Which of the two words is right is a question about the SOURCE, not about who
-    /// is rendering it, so the answer comes from the source: a kilde with no delkilder still says
-    /// "Datasamlinger", because there is nothing else under it to name.
-    /// </para>
-    /// </remarks>
     private string DefaultDataCollectionsHeading =>
         Delkilder.Count > 0 ? T.HeadingDelkilderAndDataCollections : T.HeadingDataCollections;
 
     /// <summary>
-    /// Every datasamling the source holds, including those hanging off a delkilde.
+    /// Every datasamling the source holds, delkilder included — the count behind the heading, not
+    /// what the view draws. <see cref="DataCollectionStructure"/> keeps each under its own delkilde.
     /// </summary>
-    /// <remarks>
-    /// Not what the view draws — that is <see cref="DataCollectionStructure"/>, which keeps each one
-    /// under the delkilde it belongs to. This is the count behind the section's heading: a source
-    /// whose datasamlinger all hang under delkilder still has some, and a section that drew no
-    /// heading for them would be wrong about it.
-    /// </remarks>
     private IReadOnlyList<KildeDatasamling> DataCollections =>
         Kilde is { } kilde ? Ordered([.. Flatten(kilde)]) : [];
 
@@ -180,21 +164,16 @@ public sealed partial class KildeView : ComponentBase
         Kilde is { } kilde ? Ordered(kilde.Delkilder) : [];
 
     /// <summary>
-    /// The level a top-level delkilde's name lands on — under the section heading above it, and one
-    /// deeper for every level of the tree, so navigating the page by heading walks the same tree the
-    /// list draws. Both stop at 6, which is where the outline stops.
+    /// Where a top-level delkilde's name sits, so the heading outline walks the same tree the list
+    /// draws. Stops at 6 with the outline.
     /// </summary>
     private int DelkildeLevel => Math.Min(BlockLevel + 1, 6);
 
     /// <summary>
-    /// Catalogue order: the curated order first for whatever has one, then the Norwegian alphabet
-    /// for the rest — the same two rules, and the same comparer, at every level of the tree.
+    /// Catalogue order at every level: curated first, then the Norwegian alphabet. Two overloads
+    /// because the records share the fields but no interface, and a selector argument is a place
+    /// for one call site to sort by something else.
     /// </summary>
-    /// <remarks>
-    /// Two overloads rather than one generic. The two records share the pair of fields but no
-    /// interface declaring it, so a generic would need a selector argument at each call site, and a
-    /// selector argument is a place for one call site to sort by something else.
-    /// </remarks>
     private static IReadOnlyList<KildeDatasamling> Ordered(IReadOnlyList<KildeDatasamling> datasamlinger) =>
         [.. datasamlinger.OrderBy(d => d.PresentationOrder ?? int.MaxValue)
                          .ThenBy(d => d.Name, CatalogueProperties.CatalogueOrder)];
@@ -211,29 +190,10 @@ public sealed partial class KildeView : ComponentBase
         delkilde.Datasamlinger.Concat(delkilde.Children.SelectMany(Flatten));
 
     /// <summary>
-    /// The datasamlinger, arranged the way the catalogue arranges them rather than flattened into
-    /// one table.
+    /// The datasamlinger under the delkilde each belongs to. A real &lt;ul&gt;/&lt;li&gt;: it
+    /// carries the relationship to a screen reader, where indentation carries it only to a sighted
+    /// one, and a browser indents it unasked so it survives a host with no rule (Fhi.Metadata-wtz80).
     /// </summary>
-    /// <remarks>
-    /// A source with no delkilder has nothing to nest, and gets the single table this view has
-    /// always drawn — which is most sources, and the case where the arranged view and the flat one
-    /// are the same picture. A study series gets that table for its own datasamlinger and then a
-    /// list, one item per delkilde, each carrying what hangs off it and any delkilder below it.
-    /// Tromsø's organising fact is its waves: a flat table of all fourteen answers what the study
-    /// holds while destroying how it is arranged, which is usually the question a study series is
-    /// asked.
-    /// <para>
-    /// A real <c>&lt;ul&gt;</c> of real <c>&lt;li&gt;</c>, and deliberately not indented
-    /// <c>&lt;div&gt;</c>s. A list carries the parent/child relationship to a screen reader by
-    /// itself; indentation carries it to a sighted reader only, and an automated accessibility
-    /// check is blind to structure that was never marked up, so it would call the second one green.
-    /// <c>role="tree"</c> would carry it as well and would oblige this component to implement the
-    /// full arrow-key contract that goes with it — a different piece of work, not a spelling of
-    /// this one. The browser's own list indentation is the other half of the choice: the structure
-    /// still reads on a host that has no rule for any of the names below, where a stack of divs
-    /// would collapse into one undifferentiated column.
-    /// </para>
-    /// </remarks>
     private RenderFragment DataCollectionStructure => builder =>
     {
         var seq = 0;
@@ -249,13 +209,10 @@ public sealed partial class KildeView : ComponentBase
         DelkildeList(builder, ref seq, delkilder, DelkildeLevel);
     };
 
-    /// <summary>The datasamlinger of one level of the tree, as the table Runa shows.</summary>
-    /// <remarks>
-    /// Drawn once per level, and each one keeps its own <c>thead</c>. A table is what associates a
-    /// cell with its column heading for a screen reader, so a second table borrowing the first
-    /// one's headings is a table with none — the repetition is what buys every level being
-    /// readable on its own.
-    /// </remarks>
+    /// <summary>
+    /// One level's datasamlinger. Each table keeps its own <c>thead</c>: a table is what ties a cell
+    /// to its column heading for a screen reader, so one borrowing another's has none.
+    /// </summary>
     private void CollectionTable(RenderTreeBuilder builder, ref int seq, IReadOnlyList<KildeDatasamling> rows)
     {
         if (rows.Count == 0)
@@ -302,13 +259,10 @@ public sealed partial class KildeView : ComponentBase
         builder.CloseElement();
     }
 
-    /// <summary>One level of the delkilde tree: a list item per delkilde, recursing into its own.</summary>
-    /// <remarks>
-    /// The name wears <c>headline-xxs</c> rather than a size between it and the <c>headline-s</c>
-    /// of the section heading above it, because Stiler's scale has nothing verified in that gap —
-    /// the same reason the block headings are the size they are. The heading LEVEL carries the
-    /// depth instead, which is what a screen reader navigates the page by anyway.
-    /// </remarks>
+    /// <summary>
+    /// One level of the tree. The name wears <c>headline-xxs</c> because Stiler's scale has nothing
+    /// verified between it and the <c>headline-s</c> above; the heading LEVEL carries the depth.
+    /// </summary>
     private void DelkildeList(RenderTreeBuilder builder, ref int seq,
                               IReadOnlyList<KildeDelkilde> delkilder, int level)
     {
@@ -332,8 +286,7 @@ public sealed partial class KildeView : ComponentBase
             builder.AddContent(seq++, delkilde.Name);
             builder.CloseElement();
 
-            // The same line the kilde's own name block carries, wearing the same name, because it is
-            // the same thing one level down: what a reader looks this level up by elsewhere.
+            // The kilde's own identifier line, one level down and wearing the same name.
             if (Identifier(delkilde.Code, delkilde.ShortName) is { } identifiers)
             {
                 builder.OpenElement(seq++, "p");
@@ -342,13 +295,8 @@ public sealed partial class KildeView : ComponentBase
                 builder.CloseElement();
             }
 
-            // The delkilde's own beskrivelse is deliberately not drawn, though the contract carries
-            // one. Read what the catalogue actually stores there before adding it: in the Tromsø
-            // payload it is the name again for K_TR.BIODATA, and a bare markdown link whose text is
-            // the name again for each of the five waves. This view renders text rather than
-            // markdown — the kilde's own description already shows its <br> tags as words — so a
-            // description here would put "[Tromsø4 - The Fourth Tromsø Study](https://uit.no/...)"
-            // beside every wave, which is a visible fault rather than information.
+            // Beskrivelse is deliberately not drawn: the catalogue stores it as markdown and this
+            // view renders text, so it would print a bare link beside every wave (Fhi.Metadata-wtz80).
 
             CollectionTable(builder, ref seq, Ordered(delkilde.Datasamlinger));
             DelkildeList(builder, ref seq, Ordered(delkilde.Children), Math.Min(level + 1, 6));

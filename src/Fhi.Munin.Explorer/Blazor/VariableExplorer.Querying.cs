@@ -16,6 +16,7 @@ public partial class VariableExplorer
         _sort = Sort;
         _direction = Direction;
         _page = Math.Max(Page, 1);
+        _pageSize = PageSize;
 
         // Not SearchAsync: that is what a person pressing the search button does, and it starts by
         // throwing away the page number because a new search renumbers everything. Restoring a
@@ -36,6 +37,22 @@ public partial class VariableExplorer
         await NotifyPageChangedAsync();
 
         await OpenInitialSelectionAsync();
+    }
+
+    /// <summary>Empty the box and run the search that leaves, which is no search at all.</summary>
+    private async Task ClearSearchAsync()
+    {
+        // Guard before mutation, the rule SortAsync states: clearing _search and then being dropped
+        // by SearchAsync's own _loading check would leave an empty box over the old rows, with the
+        // host still holding the previous search. (Fhi.Metadata-5ghur)
+        if (_loading || string.IsNullOrWhiteSpace(_search))
+        {
+            return;
+        }
+
+        _search = null;
+
+        await SearchAsync();
     }
 
     private async Task SearchAsync()
@@ -196,6 +213,61 @@ public partial class VariableExplorer
 
         // After the retreat, not before: it can move the page again, and the host should be told
         // where the reader ended up rather than where they were headed.
+        await NotifyPageChangedAsync();
+    }
+
+    /// <summary>
+    /// Show <paramref name="size"/> rows per page, from the first page of the result.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Back to page 1, always. A change of size renumbers the rows, so page 3 of the old paging and
+    /// page 3 of the new one are not the same rows: keeping the number would move the reader
+    /// somewhere they never asked to go and leave them looking for their place in a result that no
+    /// longer has one. A change of search or of sort resets the page for the same reason.
+    /// </para>
+    /// <para>
+    /// The pager is kept afterwards the way a page turn keeps it. A larger size can collapse a
+    /// three-page result into one, and dropping the pager in that render would take the button the
+    /// reader just pressed out of the document, along with the only control that could put the size
+    /// back.
+    /// </para>
+    /// </remarks>
+    private async Task SetPageSizeAsync(int size)
+    {
+        // Dropped rather than queued while a fetch is in flight, the same as a page turn, and inert
+        // on the size already in force so pressing it again costs no request.
+        if (_loading || size == _pageSize)
+        {
+            return;
+        }
+
+        var previousSize = _pageSize;
+        var previousPage = _page;
+        var previousKeepPager = _keepPager;
+
+        _pageSize = size;
+        _page = 1;
+        _keepPager = true;
+
+        // keepResult, for the reason a page turn uses it: the pressed button is inside the pager,
+        // which is rendered conditionally, so clearing the rows would take it out of the document
+        // in the same render that reports the error and drop focus to <body>.
+        if (!await FetchAsync(_executedSearch, keepResult: true))
+        {
+            // Nothing arrived, so the state has to keep describing what is still on screen — the
+            // size included, or the control would report a size the visible rows were not built
+            // with.
+            _pageSize = previousSize;
+            _page = previousPage;
+            _keepPager = previousKeepPager;
+
+            return;
+        }
+
+        // No retreat is needed on this path: page 1 is the one page that can never be out of range,
+        // so an empty answer here is a result with no rows rather than a reader past the end.
+        await RaiseAsync(PageSizeChanged, _pageSize);
         await NotifyPageChangedAsync();
     }
 
@@ -501,6 +573,7 @@ public partial class VariableExplorer
     {
         _loading = true;
         _error = null;
+        _retryRowsEnabled = false;
         StateHasChanged();
 
         try
@@ -523,18 +596,52 @@ public partial class VariableExplorer
             // the range, taken from the same place.
             _page = ResultPage;
 
+            // The offer belongs to the failure it answers. Left standing after a fetch someone
+            // else started came back, it is a dead control that the atomic alert region reads out
+            // again beside every later failure — RetryRowsAsync puts its own back, and says why.
+            _failedRows = null;
+
             return true;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Say what the reader can do about it; the detail belongs in the host's logs,
-            // not on the page.
+            // One branch for both failures, because everything except the sentence is the same: say
+            // what the reader can do about it and clear the rows. The detail belongs in the host's
+            // logs, not on the page.
+            //
+            // A 429 gets its own sentence because the answer differs — the catalogue is up and the
+            // reader has asked too often, so pressing Søk again at once is the one thing that cannot
+            // help, which is exactly what the generic text advises.
+            //
+            // The rows are cleared either way. Leaving the previous page under a failed search would
+            // caption somebody else's result with this search's terms; clearing them says nothing
+            // about hits, because the summary line only speaks when there is a result at all
+            // (VariableExplorer.razor:275).
             if (!keepResult)
             {
                 _result = null;
             }
 
-            _error = T.Error;
+            var rateLimited = ex is MuninExplorerRateLimitedException;
+
+            _error = rateLimited ? T.RateLimitError : T.Error;
+
+            // No retry offered for a 429: pressing it is the one action that provably cannot help,
+            // and the sentence beside it says to wait. The request is captured rather than replayed
+            // off the fields, which every caller rolls back to describe the rows still on screen.
+            if (!rateLimited)
+            {
+                _failedRows = new RowRequest(
+                    search, _page, _pageSize, _sort, _direction, _filter, _keepPager);
+                _retryRowsEnabled = true;
+            }
+            else
+            {
+                // An offer an earlier retry already answered goes with the 429 too, or this atomic
+                // region reads the dead button out as one utterance with "vent litt". When the 429
+                // is the answer to that very button, RetryRowsAsync puts it back inert — see there.
+                _failedRows = null;
+            }
 
             return false;
         }
@@ -542,6 +649,144 @@ public partial class VariableExplorer
         {
             _loading = false;
         }
+    }
+
+    /// <summary>The row request that failed, so the retry button can send that one again.</summary>
+    /// <remarks>
+    /// Not the fields as they stand when the button is pressed. Every caller that fails rolls its
+    /// own state back to describe the rows still on screen, so by then <c>_page</c> is the page the
+    /// reader never left and <c>_sort</c> the order they are still looking at. Retrying from those
+    /// would re-fetch what is already there and clear the error, reporting success for a page turn
+    /// or a reordering that never happened.
+    /// <para>
+    /// <c>KeepPager</c> travels with <c>Page</c>, because every handler that moves one moves the
+    /// other: a sort or a narrowing renumbers to page one and takes the pager down with it.
+    /// </para>
+    /// <para>
+    /// <c>Size</c> is here for the same reason the page is, and it is the one field a reader could
+    /// not otherwise get back to. A failed size change rolls the size back to describe the rows
+    /// still on screen, so a retry replaying the fields as they stand would fetch the old size,
+    /// succeed, and clear the error — reporting a size change that never happened, from the one
+    /// control the reader has no other way to press again once the pager is gone.
+    /// </para>
+    /// </remarks>
+    private readonly record struct RowRequest(
+        string? Search,
+        int Page,
+        int Size,
+        SortField Sort,
+        SortDirection Direction,
+        VariableFilter Filter,
+        bool KeepPager);
+
+    /// <summary>Send the row request that failed once more, unchanged.</summary>
+    /// <remarks>
+    /// <para>
+    /// Deliberately not <see cref="SearchAsync"/>. That is a new search — page one, and the live
+    /// contents of the box, which the reader may have typed into while the error sat on screen.
+    /// What failed was one particular request, and that is the one the button offers to repeat.
+    /// </para>
+    /// <para>
+    /// The counts follow only when the retried request moved the selection they describe — a search
+    /// or a filter change, which they are cross-filtered against. A failed refresh of them reports
+    /// itself separately, so re-asking after a page turn or a sort would answer that message with
+    /// the other one's request; not asking after a search or a narrowing would leave the numbers
+    /// describing a selection nothing on screen is in any more, and say nothing about it.
+    /// </para>
+    /// <para>
+    /// The host is told what moved and nothing else, the way each original handler is. A retried
+    /// page turn raises <see cref="PageChanged"/> alone: the other three carry values the host was
+    /// told during the rollback and the retried request never touched, and a host rewriting a URL
+    /// per callback would take three more history entries for a page turn.
+    /// </para>
+    /// </remarks>
+    private async Task RetryRowsAsync()
+    {
+        // Dropped rather than queued while a fetch is in flight, the same as a second submit — and
+        // inert rather than absent once there is nothing left to retry, the same as the clear
+        // button: the button is the control the reader just pressed, so it must not leave the DOM.
+        if (_loading || !_retryRowsEnabled || _failedRows is not { } request)
+        {
+            return;
+        }
+
+        var previousSearch = _executedSearch;
+        var previousPage = _page;
+        var previousSize = _pageSize;
+        var previousSort = _sort;
+        var previousDirection = _direction;
+        var previousFilter = _filter;
+        var previousKeepPager = _keepPager;
+        var previousResult = _result;
+        var previousPanel = CapturePanel();
+
+        _page = request.Page;
+        _pageSize = request.Size;
+        _sort = request.Sort;
+        _direction = request.Direction;
+        _filter = request.Filter;
+        _keepPager = request.KeepPager;
+
+        // keepResult, because a failed page turn's rows are still on screen and a failed search's
+        // are already gone: either way the retry must not be what empties the list.
+        if (!await FetchAsync(request.Search, keepResult: true))
+        {
+            // The same invariant every rollback here protects: the state has to go on describing
+            // the rows the reader can see, which are still the ones from before the first failure.
+            _page = previousPage;
+            _pageSize = previousSize;
+            _sort = previousSort;
+            _direction = previousDirection;
+            _filter = previousFilter;
+            _keepPager = previousKeepPager;
+
+            // Same focus rule as after a success: a 429 clears the offer, and this button is the
+            // element under the reader's finger. Back inert — _retryRowsEnabled stayed false — and
+            // ??= so a plain failure keeps the live request the fetch above captured instead.
+            _failedRows ??= request;
+
+            return;
+        }
+
+        // A retried page turn can land on a page the result no longer has, exactly as the first
+        // attempt could — the index shrinks between two requests — so it takes the same way back.
+        await RetreatFromEmptyPageAsync(previousPage, previousResult, previousPanel);
+
+        // Put back the offer the fetch above cleared, because this one button is the element under
+        // the reader's finger and removing it would drop focus to <body>. Not over a retreat that
+        // failed, which has left its own live request here.
+        _failedRows ??= request;
+
+        // Only what this request could have moved. _facets null is the first load's failure: the
+        // rows are back and the filter panel is still not on the page at all until they arrive.
+        if (_facets is null || _executedSearch != previousSearch || _filter != previousFilter)
+        {
+            await FetchFacetsAsync();
+        }
+
+        // Only on success, and only afterwards: what the host mirrors is what is in force, and
+        // until this answer arrived that was the rolled-back state it was already told about.
+        if (_sort != previousSort)
+        {
+            await RaiseAsync(SortChanged, _sort);
+        }
+
+        if (_direction != previousDirection)
+        {
+            await RaiseAsync(DirectionChanged, _direction);
+        }
+
+        if (_filter != previousFilter)
+        {
+            await RaiseAsync(FilterChanged, _filter);
+        }
+
+        if (_pageSize != previousSize)
+        {
+            await RaiseAsync(PageSizeChanged, _pageSize);
+        }
+
+        await NotifyPageChangedAsync();
     }
 
     private static string? Trimmed(string? text) =>

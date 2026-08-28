@@ -1,6 +1,8 @@
+using System.Text.Json;
 using AngleSharp.Dom;
 using Bunit;
 using Fhi.Munin.Explorer.Blazor;
+using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,8 +10,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
-/// Kelda's shell: the search field, the count, the eight-column result table and what happens when
-/// a kilde is opened.
+/// Kelda's shell: the search field, the count, the result table and what happens when a kilde is
+/// opened.
 /// </summary>
 /// <remarks>
 /// Three of the things asserted here are the ones a component that merely renders would get wrong
@@ -44,11 +46,10 @@ public class KildeExplorerTest : BunitContext
         string? shortName = null,
         string kildetype = "sentraltHelseregister",
         bool active = true,
-        string? dataController = "Folkehelseinstituttet",
         string? dataProcessor = "Folkehelseinstituttet",
-        int delkilder = 0,
         int datasamlinger = 3,
         int variables = 42,
+        string? established = null,
         string? category = null,
         string? accessRights = null) =>
         new()
@@ -59,16 +60,15 @@ public class KildeExplorerTest : BunitContext
             ShortName = shortName,
             Kildetype = kildetype,
             IsActive = active,
-            DataController = dataController,
             DataProcessor = dataProcessor,
-            DelkildeCount = delkilder,
             DatasamlingCount = datasamlinger,
             TotalVariables = variables,
-            AdditionalProperties = Properties(category, accessRights),
+            AdditionalProperties = Properties(established, category, accessRights),
         };
 
     /// <summary>
-    /// The curated bag two of the facets read from, holding only the keys a test asked for.
+    /// The curated bag two of the facets and the Opprettet column read from, holding only the keys
+    /// a test asked for.
     /// </summary>
     /// <remarks>
     /// A key is left out entirely rather than set to null or to an empty string, because that is
@@ -77,9 +77,15 @@ public class KildeExplorerTest : BunitContext
     /// writes it, a JSON array inside a string, so a test can hand over a malformed one as easily
     /// as a good one.
     /// </remarks>
-    private static IReadOnlyDictionary<string, string?> Properties(string? category, string? accessRights)
+    private static IReadOnlyDictionary<string, string?> Properties(
+        string? established, string? category, string? accessRights)
     {
         var properties = new Dictionary<string, string?>(StringComparer.Ordinal);
+
+        if (established is not null)
+        {
+            properties["Opprettet"] = established;
+        }
 
         if (category is not null)
         {
@@ -93,6 +99,57 @@ public class KildeExplorerTest : BunitContext
 
         return properties;
     }
+
+    /// <summary>
+    /// The EHDS categories the catalogue's own vocabulary lists, value, Norwegian and English.
+    /// </summary>
+    /// <remarks>
+    /// Transcribed off the <c>healthCategory</c> vocabulary in
+    /// <c>Testdata/kilde-med-delkilder.json</c>, which is what the API really serves. It belongs
+    /// here and nowhere else: the package itself used to hold this table and translate the facet
+    /// out of it, and that copy going stale is what the tests below are here to keep from coming
+    /// back.
+    /// </remarks>
+    private static readonly (string Value, string Norwegian, string? English)[] Categories =
+    [
+        ("ehds-cat:health-registries", "Helseregistre", "Health registries"),
+        ("ehds-cat:registries-quality-of-healthcare", "Kvalitetsregistre", "Quality-of-healthcare registries"),
+        ("ehds-cat:population-health-surveys", "Befolkningsbaserte helseundersøkelser", "Population health surveys"),
+        ("ehds-cat:provesamling", "Prøvesamling", "Sample collection"),
+        ("ehds-cat:biodata", "Biodata (DNA/omikk)", "Biodata (DNA/omics)"),
+        ("ehds-cat:biobanks", "Biobanker", "Biobanks"),
+        ("ehds-cat:other", "Annet", "Other")
+    ];
+
+    /// <summary>The access-rights values the same vocabulary lists. <inheritdoc cref="Categories"/></summary>
+    private static readonly (string Value, string Norwegian, string? English)[] AccessLevels =
+    [
+        ("eu-access:NON_PUBLIC", "Ikke-offentlig", "Non-public"),
+        ("eu-access:RESTRICTED", "Begrenset", "Restricted"),
+        ("eu-access:PUBLIC", "Offentlig", "Public")
+    ];
+
+    /// <summary>
+    /// One property's vocabulary, in the shape the API sends it.
+    /// </summary>
+    /// <remarks>
+    /// The options are a JSON string rather than a JSON array, which is the API's own doing and
+    /// the reason the component parses them: the field carries both labels so that one response can
+    /// be rendered to readers in either language without being fetched again.
+    /// </remarks>
+    private static PropertyMetadataEntry Vocabulary(
+        string key, params (string Value, string Norwegian, string? English)[] options) =>
+        new()
+        {
+            Key = key,
+            Type = "MultiSelect",
+            OptionsJson = JsonSerializer.Serialize(
+                options.Select(option => new { value = option.Value, label = option.Norwegian, labelEn = option.English })),
+        };
+
+    /// <summary>The vocabulary the catalogue serves today, for both of the coded facets.</summary>
+    private static IReadOnlyList<PropertyMetadataEntry> CatalogueVocabulary() =>
+        [Vocabulary("healthCategory", Categories), Vocabulary("accessRights", AccessLevels)];
 
     private static KildeDetail Detail(KildeSummary summary) =>
         new()
@@ -126,12 +183,33 @@ public class KildeExplorerTest : BunitContext
         public string? LastKildeType { get; private set; }
         public int Calls { get; private set; }
         public int DetailCalls { get; private set; }
+        public int VocabularyCalls { get; private set; }
+
+        /// <summary>
+        /// The vocabulary the API serves beside the list, which the coded facets draw their words
+        /// from. Whatever the catalogue holds now — a test that wants a value the catalogue added
+        /// since says so with <see cref="Serving"/>.
+        /// </summary>
+        private IReadOnlyList<PropertyMetadataEntry> _vocabulary = CatalogueVocabulary();
+
+        /// <summary>Fail the vocabulary fetch — the sibling endpoint being down, with the list up.</summary>
+        public bool FailVocabulary { get; set; }
 
         /// <summary>How many detail fetches have been left hanging.</summary>
         public int Stalls => _stalls.Count;
 
         /// <summary>Fail every detail fetch from the next one on — the API being down, not an id it does not know.</summary>
         public bool FailDetail { get; set; }
+
+        /// <summary>
+        /// Refuse every detail fetch from the next one on with the API's 429 — the API being up and
+        /// this reader having asked too often.
+        /// </summary>
+        /// <remarks>
+        /// Its own switch beside <see cref="FailDetail"/>, because the point of the tests using it
+        /// is that the view tells the three answers apart: refused, down, and not published.
+        /// </remarks>
+        public bool RateLimitDetail { get; set; }
 
         /// <summary>
         /// Never answer a detail fetch from the next one on, so a test can decide when — and
@@ -155,11 +233,23 @@ public class KildeExplorerTest : BunitContext
             return this;
         }
 
+        /// <summary>Serve this vocabulary in place of the catalogue's current one.</summary>
+        public FakeClient Serving(params PropertyMetadataEntry[] vocabulary)
+        {
+            _vocabulary = vocabulary;
+
+            return this;
+        }
+
         /// <summary>Answer the oldest detail fetch still hanging.</summary>
         public void AnswerStalled(KildeDetail detail) => Oldest().TrySetResult(detail);
 
         /// <summary>Fail the oldest detail fetch still hanging.</summary>
         public void FailStalled() => Oldest().TrySetException(new HttpRequestException("the API is down"));
+
+        /// <summary>Refuse the oldest detail fetch still hanging with the API's 429.</summary>
+        public void RateLimitStalled() =>
+            Oldest().TrySetException(new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30)));
 
         private TaskCompletionSource<KildeDetail?> Oldest() =>
             _stalls.First(stall => !stall.Task.IsCompleted);
@@ -174,9 +264,26 @@ public class KildeExplorerTest : BunitContext
             return Task.FromResult<IReadOnlyList<KildeSummary>>(kilder);
         }
 
+        public override Task<IReadOnlyList<PropertyMetadataEntry>> GetKildePropertyMetadataAsync(
+            CancellationToken cancellationToken = default)
+        {
+            VocabularyCalls++;
+
+            return FailVocabulary
+                ? Task.FromException<IReadOnlyList<PropertyMetadataEntry>>(
+                    new HttpRequestException("the API is down"))
+                : Task.FromResult(_vocabulary);
+        }
+
         public override Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default)
         {
             DetailCalls++;
+
+            if (RateLimitDetail)
+            {
+                return Task.FromException<KildeDetail?>(
+                    new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30)));
+            }
 
             if (FailDetail)
             {
@@ -215,12 +322,80 @@ public class KildeExplorerTest : BunitContext
             _never.Task;
     }
 
+    /// <summary>
+    /// Answers the list and the vocabulary from a <see cref="TaskCompletionSource{TResult}"/>
+    /// apiece, so a test can land one while the other is still in flight.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="FakeClient"/> answers both from <see cref="Task.FromResult{TResult}"/>, so its
+    /// awaits never yield and every test using it renders with the two calls already finished —
+    /// the one ordering that cannot happen there is the one the component's two-call design is
+    /// about. A real <c>HttpClient</c> yields on both, and a host pointed at an API that has not
+    /// deployed <c>api/explorer/kilder/egenskaper</c> yet, or a slow one, gets exactly this: the
+    /// list in hand and the vocabulary still outstanding.
+    /// </remarks>
+    private sealed class StagedClient(params KildeSummary[] kilder) : EmptyMuninExplorerClient
+    {
+        private readonly TaskCompletionSource<IReadOnlyList<KildeSummary>> _list = new();
+        private readonly TaskCompletionSource<IReadOnlyList<PropertyMetadataEntry>> _vocabulary = new();
+        private readonly TaskCompletionSource<KildeDetail?> _detail = new();
+
+        /// <summary>
+        /// How many detail fetches have been issued, which is the point of this counter rather
+        /// than a detail of it: the question a deep link asks is whether the fetch was made at
+        /// all while the vocabulary was still outstanding, and an unmade one and a made one that
+        /// has not answered look identical on screen.
+        /// </summary>
+        public int DetailCalls { get; private set; }
+
+        public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
+            string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
+            _list.Task;
+
+        public override Task<IReadOnlyList<PropertyMetadataEntry>> GetKildePropertyMetadataAsync(
+            CancellationToken cancellationToken = default) =>
+            _vocabulary.Task;
+
+        public override Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            DetailCalls++;
+
+            return _detail.Task;
+        }
+
+        /// <summary>Land the list.</summary>
+        public void AnswerList() => _list.TrySetResult(kilder);
+
+        /// <summary>Land the vocabulary the catalogue serves today.</summary>
+        public void AnswerVocabulary() => _vocabulary.TrySetResult(CatalogueVocabulary());
+
+        /// <summary>Land the detail for the first kilde, which is the one a deep link opens here.</summary>
+        public void AnswerDetail() => _detail.TrySetResult(Detail(kilder[0]));
+    }
+
     /// <summary>Fails the list call, which is the API being down rather than the catalogue being empty.</summary>
     private sealed class FailingClient : EmptyMuninExplorerClient
     {
         public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
             string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
             throw new HttpRequestException("the API is down");
+    }
+
+    /// <summary>
+    /// Refuses the list call with the API's 429, which is neither the API being down nor the
+    /// catalogue being empty — it is this reader having asked too often.
+    /// </summary>
+    private sealed class RateLimitedClient : EmptyMuninExplorerClient
+    {
+        public int Calls { get; private set; }
+
+        public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
+            string? search = null, string? kildeType = null, CancellationToken cancellationToken = default)
+        {
+            Calls++;
+
+            throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+        }
     }
 
     private IRenderedComponent<KildeExplorer> RenderWith(
@@ -363,6 +538,25 @@ public class KildeExplorerTest : BunitContext
     }
 
     [Fact]
+    public void Render_WhenTheApiRateLimits_ThenTheReaderIsToldTheyAskedTooOftenAndNothingIsRetried()
+    {
+        // The kilde list is one call on load, so a reader meets the limiter here through the site
+        // rather than through their own clicking — helsedata's cluster shares one address bucket.
+        // Telling them the sources could not be loaded, and inviting a retry, aims them straight
+        // back at it.
+        var client = new RateLimitedClient();
+
+        var cut = RenderWith(client);
+
+        var alert = cut.Find("[role=alert]");
+
+        Assert.Contains("for mange forespørsler", alert.TextContent);
+        Assert.DoesNotContain("Kunne ikke laste kilder", alert.TextContent);
+        Assert.DoesNotContain("Ingen kilder er registrert", cut.Markup);
+        Assert.Equal(1, client.Calls);
+    }
+
+    [Fact]
     public void Render_WhenTwoInstancesShareAPage_ThenTheirDomIdsDoNotCollide()
     {
         // Duplicate ids break label association and fail WCAG 4.1.1. helsedata can legitimately put
@@ -372,8 +566,8 @@ public class KildeExplorerTest : BunitContext
         var a = Render<KildeExplorer>();
         var b = Render<KildeExplorer>();
 
-        var idA = a.Find("input[type=search]").Id;
-        var idB = b.Find("input[type=search]").Id;
+        var idA = a.Find(".searchbox__freetext").Id;
+        var idB = b.Find(".searchbox__freetext").Id;
 
         Assert.False(string.IsNullOrWhiteSpace(idA));
         Assert.NotEqual(idA, idB);
@@ -384,12 +578,14 @@ public class KildeExplorerTest : BunitContext
     // ---------------------------------------------------------------------------------
 
     [Fact]
-    public void Render_Always_ThenTheTableHasTheEightColumnsInKeldasOwnOrder()
+    public void Render_Always_ThenTheTableHasKeldasDefaultVisibleColumnsInItsOwnOrder()
     {
-        // Measured off Munin's own Kelda. Its table puts two control columns in front of these —
-        // an expand toggle and a row checkbox — and hides four more behind a column picker; the
-        // checkbox belongs to Fhi.Metadata-5ghur and the picker to Fhi.Metadata-ay3zz, so neither
-        // is here. The order of the eight that are is Kelda's, unchanged.
+        // Read off Munin's own Kelda rather than off this component: Navn, Status and Opprettet are
+        // always visible there (kelda.tsx:61) and DEFAULT_VISIBLE (:86-100) turns on Kildetype,
+        // Datasamlinger and Variabler. The set is asserted whole and in order, so promoting one of
+        // Kelda's off-by-default columns back into this table cannot happen unnoticed again —
+        // Dataansvarlig, Databehandler and Delkilder were here for a while and are three of the
+        // seven Kelda keeps behind its column picker (Fhi.Metadata-ay3zz).
         var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
         var headers = cut.FindAll(".munin-explorer-kilder thead th").Select(th => th.TextContent.Trim());
@@ -399,11 +595,9 @@ public class KildeExplorerTest : BunitContext
             "Navn",
             "Kildetype",
             "Status",
-            "Dataansvarlig",
-            "Databehandler",
-            "Delkilder",
             "Datasamlinger",
             "Variabler",
+            "Opprettet",
         ], headers);
     }
 
@@ -414,11 +608,9 @@ public class KildeExplorerTest : BunitContext
             "Dødsårsaksregisteret", "K_DAR",
             shortName: "DÅR",
             kildetype: "sentraltHelseregister",
-            dataController: "Folkehelseinstituttet",
-            dataProcessor: "Norsk helsenett SF",
-            delkilder: 2,
             datasamlinger: 7,
-            variables: 312)));
+            variables: 312,
+            established: "1951")));
 
         var row = cut.Find(".munin-explorer-kilder tbody tr");
         var cells = row.QuerySelectorAll("th, td").Select(c => c.TextContent.Trim()).ToList();
@@ -430,11 +622,9 @@ public class KildeExplorerTest : BunitContext
 
         Assert.Equal("Sentralt helseregister", cells[1]);
         Assert.Equal("Aktiv", cells[2]);
-        Assert.Equal("Folkehelseinstituttet", cells[3]);
-        Assert.Equal("Norsk helsenett SF", cells[4]);
-        Assert.Equal("2", cells[5]);
-        Assert.Equal("7", cells[6]);
-        Assert.Equal("312", cells[7]);
+        Assert.Equal("7", cells[3]);
+        Assert.Equal("312", cells[4]);
+        Assert.Equal("1951", cells[5]);
     }
 
     [Fact]
@@ -448,17 +638,71 @@ public class KildeExplorerTest : BunitContext
     }
 
     [Fact]
-    public void Render_WhenTheCatalogueLeftAFieldEmpty_ThenTheCellSaysSoRatherThanGoingBlank()
+    public void Render_WhenTheKildeHasNoFoundingYear_ThenTheCellSaysSoRatherThanGoingBlank()
     {
-        // "Ikke oppgitt" for everyone, rather than an em dash whispered to assistive technology —
-        // the rule the rest of this package follows.
-        var cut = RenderWith(new FakeClient(
-            Kilde("Als registeret", "K_ALS", dataController: null, dataProcessor: "")));
+        // The ordinary case, not the edge case: which keys the property bag carries varies per
+        // kilde and per environment, so an Opprettet column built only against a kilde that has one
+        // renders a blank cell — or throws — for the ones that do not. "Ikke oppgitt" rather than
+        // Kelda's em dash, because that is what every other empty cell in this table says.
+        var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
         var cells = cut.FindAll(".munin-explorer-kilder tbody td").Select(c => c.TextContent.Trim()).ToList();
 
-        Assert.Equal("Ikke oppgitt", cells[2]);
-        Assert.Equal("Ikke oppgitt", cells[3]);
+        Assert.Equal("Ikke oppgitt", cells[4]);
+    }
+
+    [Fact]
+    public void Render_WhenTheCatalogueStatesAFoundingYear_ThenTheCellShowsItVerbatim()
+    {
+        // Kelda renders this one through no date formatter at all, and neither does this: the
+        // import file holds a '2916' typo, a '1900' and a literal '0', and showing them as they
+        // stand is what gets them fixed at source. A formatter would blank them or invent a day.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", established: "1994"),
+            Kilde("Kreftregisteret", "K_KREG", established: "2916")));
+
+        var cells = cut.FindAll(".munin-explorer-kilder tbody td").Select(c => c.TextContent.Trim()).ToList();
+
+        Assert.Equal("1994", cells[4]);
+        Assert.Equal("2916", cells[9]);
+    }
+
+    [Fact]
+    public void Render_Always_ThenOpprettetIsTheFoundingYearAndNotWhenMuninRegisteredTheKilde()
+    {
+        // The whole of Fhi.Metadata-bc4x1. KildeSummary.Created is JSON "opprettet" too, and binding
+        // this column to it reproduces Kelda's header over Kelda's Importert data — which Kelda
+        // demoted out of this slot and keeps off by default. Same word, different fact, and any
+        // assertion that only reads the header text passes either way.
+        var kilde = Kilde("Als registeret", "K_ALS", established: "1994") with
+        {
+            Created = new DateTimeOffset(2026, 5, 19, 12, 58, 37, TimeSpan.Zero),
+        };
+
+        var cut = RenderWith(new FakeClient(kilde));
+
+        var row = cut.Find(".munin-explorer-kilder tbody tr");
+
+        Assert.Equal("1994", row.QuerySelectorAll("td")[4].TextContent.Trim());
+        Assert.DoesNotContain("2026", row.TextContent);
+    }
+
+    [Fact]
+    public void Render_WhenTheListIsTheCapturedPayload_ThenTheColumnShowsTheYearsTheApiSent()
+    {
+        // The one Opprettet test that does not write the key it reads: Properties() spells it the
+        // way the component looks it up, so the rest pass just as well against a key the API never
+        // sends and a column of "Ikke oppgitt" ships. These years are the captured payload's own.
+        var kilder = JsonSerializer.Deserialize<IReadOnlyList<KildeSummary>>(
+                TestData.Read("kilder.json"), MuninExplorerClient.Json)
+            ?? throw new InvalidOperationException("kilder.json no longer reads as a kilde list.");
+
+        var cut = RenderWith(new FakeClient([.. kilder]));
+
+        var years = cut.FindAll(".munin-explorer-kilder tbody tr")
+            .Select(row => row.QuerySelectorAll("td")[4].TextContent.Trim());
+
+        Assert.Equal(["2023", "2006", "2020"], years);
     }
 
     [Fact]
@@ -492,7 +736,7 @@ public class KildeExplorerTest : BunitContext
         var client = new FakeClient(Kilde("Als registeret", "K_ALS"));
         var cut = RenderWith(client);
 
-        var input = cut.Find("input[type=search]");
+        var input = cut.Find(".searchbox__freetext");
 
         Assert.Throws<MissingEventHandlerException>(() => input.Input("als"));
         Assert.Equal(1, client.Calls);
@@ -510,7 +754,7 @@ public class KildeExplorerTest : BunitContext
 
         // Two of the three survive, not one: a filter that narrowed to a single row would look the
         // same as a lookup, and this is a filter.
-        cut.Find("input[type=search]").Change("registeret");
+        cut.Find(".searchbox__freetext").Change("registeret");
         cut.Find("form").Submit();
 
         Assert.Equal(["Als registeret", "Dødsårsaksregisteret"], RowNames(cut));
@@ -529,7 +773,7 @@ public class KildeExplorerTest : BunitContext
             Kilde("Als registeret", "K_ALS"),
             Kilde("Reseptregisteret", "K_NORPD")));
 
-        cut.Find("input[type=search]").Change("norpd");
+        cut.Find(".searchbox__freetext").Change("norpd");
 
         Assert.Equal(["Reseptregisteret"], RowNames(cut));
     }
@@ -543,7 +787,7 @@ public class KildeExplorerTest : BunitContext
             Kilde("Als registeret", "K_ALS", shortName: "ALS"),
             Kilde("Dødsårsaksregisteret", "K_DAR", shortName: "DÅR")));
 
-        cut.Find("input[type=search]").Change("dår");
+        cut.Find(".searchbox__freetext").Change("dår");
 
         Assert.Equal(["Dødsårsaksregisteret"], RowNames(cut));
     }
@@ -553,7 +797,7 @@ public class KildeExplorerTest : BunitContext
     {
         var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
-        cut.Find("input[type=search]").Change("ALS REGISTERET");
+        cut.Find(".searchbox__freetext").Change("ALS REGISTERET");
 
         Assert.Equal(["Als registeret"], RowNames(cut));
     }
@@ -566,10 +810,65 @@ public class KildeExplorerTest : BunitContext
         // between trying again and giving up.
         var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
-        cut.Find("input[type=search]").Change("hjortedyr");
+        cut.Find(".searchbox__freetext").Change("hjortedyr");
 
         Assert.Contains("Ingen kilder samsvarer med søket «hjortedyr»", cut.Markup);
         Assert.Empty(cut.FindAll(".munin-explorer-kilder"));
+    }
+
+    [Fact]
+    public void ClearSearch_WhenThereIsNoSearch_ThenTheButtonIsThereAndSaysItHasNothingToDo()
+    {
+        // Always on screen, greyed rather than removed: a control that comes and goes beside a
+        // field somebody is typing in moves everything next to it, twice per search.
+        //
+        // aria-disabled and not disabled, so pressing it cannot throw focus to the document - and
+        // because nothing in the DOM then refuses the click, the component has to. Both halves are
+        // asserted here, since the attribute alone would be a claim the code does not keep.
+        var client = new FakeClient(
+            Kilde("Als registeret", "K_ALS"),
+            Kilde("Norsk pasientregister", "K_NPR"));
+
+        var cut = RenderWith(client);
+
+        var clear = cut.Find(".munin-explorer-search__clear");
+
+        Assert.Equal("true", clear.GetAttribute("aria-disabled"));
+        Assert.False(clear.HasAttribute("disabled"));
+
+        clear.Click();
+
+        Assert.Equal(["Als registeret", "Norsk pasientregister"], RowNames(cut));
+    }
+
+    [Fact]
+    public void ClearSearch_WhenPressed_ThenTheWholeListIsBackWithoutTypingOrEnter()
+    {
+        // The control that replaces the user-agent ✕. That one emptied the box without applying
+        // it, so the reader was left with a search still in force behind a box reading empty, and
+        // everything downstream - velg-alle, Nullstill utvalg, the handover - then worked on rows
+        // they believed they had cleared. Reported 2026-08-27. This asserts the whole round trip:
+        // the button appears with a search, one press restores the list, and it goes away again.
+        var client = new FakeClient(
+            Kilde("Als registeret", "K_ALS"),
+            Kilde("Norsk pasientregister", "K_NPR"));
+
+        var cut = RenderWith(client);
+
+        cut.Find(".searchbox__freetext").Change("als");
+
+        Assert.Equal(["Als registeret"], RowNames(cut));
+
+        cut.Find(".munin-explorer-search__clear").Click();
+
+        Assert.Equal(["Als registeret", "Norsk pasientregister"], RowNames(cut));
+        Assert.Equal("true", cut.Find(".munin-explorer-search__clear").GetAttribute("aria-disabled"));
+
+        // The box on screen has to agree with the list under it - that is the whole bug.
+        Assert.Equal(string.Empty, cut.Find(".searchbox__freetext").GetAttribute("value") ?? string.Empty);
+
+        // Still the one fetch from initialisation: clearing a client-side filter is not a reload.
+        Assert.Equal(1, client.Calls);
     }
 
     [Fact]
@@ -581,8 +880,8 @@ public class KildeExplorerTest : BunitContext
 
         var cut = RenderWith(client);
 
-        cut.Find("input[type=search]").Change("als");
-        cut.Find("input[type=search]").Change("");
+        cut.Find(".searchbox__freetext").Change("als");
+        cut.Find(".searchbox__freetext").Change("");
 
         Assert.Equal(["Als registeret", "Reseptregisteret"], RowNames(cut));
         Assert.Equal(1, client.Calls);
@@ -703,7 +1002,7 @@ public class KildeExplorerTest : BunitContext
 
         var cut = RenderWith(client);
 
-        cut.Find("input[type=search]").Change("als");
+        cut.Find(".searchbox__freetext").Change("als");
         cut.Find(".munin-explorer-kilder tbody th button").Click();
         cut.Find(".munin-explorer-drilldown button").Click();
 
@@ -751,6 +1050,68 @@ public class KildeExplorerTest : BunitContext
         Assert.Equal("infobox infobox--bg-yellow", status.GetAttribute("class"));
         Assert.DoesNotContain("Fant ingen detaljer", cut.Markup);
         Assert.Empty(cut.FindComponents<KildeView>());
+    }
+
+    [Fact]
+    public void Select_WhenTheDetailFetchIsRateLimited_ThenItSaysTheReaderAskedTooOften()
+    {
+        // The list arrives and the detail is refused, which is what a reader opening one kilde after
+        // another meets: the catalogue is up, and they have asked too often. All three answers this
+        // status line can carry have to stay apart — "kunne ikke hente" invites the retry the
+        // limiter is counting, and "fant ingen detaljer" says there is nothing to come back for.
+        var als = Kilde("Als registeret", "K_ALS");
+        var client = new FakeClient(als).Publishing(als);
+
+        var cut = RenderWith(client);
+
+        client.RateLimitDetail = true;
+        cut.Find(".munin-explorer-kilder tbody th button").Click();
+
+        var status = cut.Find(".munin-explorer-drilldown p[role=status]");
+
+        Assert.Contains("for mange forespørsler", status.TextContent);
+        Assert.Equal("infobox infobox--bg-yellow", status.GetAttribute("class"));
+        Assert.DoesNotContain("Kunne ikke hente datakilden", cut.Markup);
+        Assert.DoesNotContain("Fant ingen detaljer", cut.Markup);
+        Assert.Empty(cut.FindComponents<KildeView>());
+
+        // Nothing asks again by itself: one click, one request.
+        Assert.Equal(1, client.DetailCalls);
+    }
+
+    [Fact]
+    public async Task Select_WhenAReopenedKildesAbandonedFetchIsRateLimited_ThenItIsNotReportedInTheNewView()
+    {
+        // The generation guard on the 429 path. It is written once for both failures now, but this
+        // pins the throttled sentence specifically: a fetch the reader has already left must not put
+        // a warning box over a kilde that loaded perfectly.
+        //
+        // Ordering as in the generic test below: the abandoned fetch is refused only after the
+        // owning fetch has landed, because DetailStatus reads the loading flag before the error and
+        // a stale error behind "Henter datakilden …" is invisible to any assertion on the view.
+        var als = Kilde("Als registeret", "K_ALS");
+        var client = new FakeClient(als).Publishing(als);
+
+        var cut = RenderWith(client);
+
+        client.StallDetail = true;
+        cut.Find(".munin-explorer-kilder tbody th button").Click();
+        cut.Find(".munin-explorer-drilldown button").Click();
+
+        client.StallDetail = false;
+        cut.Find(".munin-explorer-kilder tbody th button").Click();
+
+        Assert.Equal(als.Id, cut.FindComponent<KildeView>().Instance.Kilde?.Id);
+
+        await cut.InvokeAsync(client.RateLimitStalled);
+
+        var status = cut.Find(".munin-explorer-drilldown p[role=status]");
+
+        Assert.Equal(string.Empty, status.TextContent.Trim());
+        Assert.Equal("caption", status.GetAttribute("class"));
+        Assert.DoesNotContain("for mange forespørsler", cut.Markup);
+        Assert.Equal("false", cut.Find(".munin-explorer-drilldown").GetAttribute("aria-busy"));
+        Assert.Equal(als.Id, cut.FindComponent<KildeView>().Instance.Kilde?.Id);
     }
 
     [Fact]
@@ -1022,44 +1383,52 @@ public class KildeExplorerTest : BunitContext
 
         Assert.Contains("Source explorer", cut.Markup);
         Assert.Contains("1 source", cut.Markup);
-        Assert.Contains("Sub-sources", cut.Markup);
+        Assert.Contains("Established", cut.Markup);
         Assert.DoesNotContain("Kildeutforsker", cut.Markup);
     }
 
     [Fact]
-    public void Render_WhenTheCatalogueLeftAFieldEmpty_ThenTheCellIsNotMarkedAsTheCataloguesLanguage()
+    public void Render_WhenTheReaderIsNotNorwegian_ThenTheYearIsUnmarkedAndTheNameIsNot()
     {
-        // The cell holds the package's own "Not specified" then, in the reader's own language, so
-        // a lang="no" left on it switches a screen reader to a Norwegian voice for an English
-        // sentence — WCAG 3.1.2, Language of Parts. KildeView never hits this because it drops
-        // blank facts before rendering them; a table has to keep the cell, so it drops the
-        // attribute instead.
+        // Both halves of the one cell whose content is not the catalogue's words: a four-digit year
+        // has no language to mark (WCAG 3.1.2) and "Not specified" is in the reader's own, so a
+        // lang="no" over either only switches a screen reader's voice. The name is where it lives.
         var cut = RenderWith(
-            new FakeClient(Kilde("Als registeret", "K_ALS", dataController: null, dataProcessor: null)),
+            new FakeClient(
+                Kilde("Als registeret", "K_ALS", established: "1994"),
+                Kilde("Dødsårsaksregisteret", "K_DAR")),
             b => b.Add(c => c.Language, "en"));
 
         var cells = cut.FindAll(".munin-explorer-kilder tbody td");
 
-        Assert.Equal("Not specified", cells[2].TextContent.Trim());
-        Assert.Null(cells[2].GetAttribute("lang"));
-        Assert.Equal("Not specified", cells[3].TextContent.Trim());
-        Assert.Null(cells[3].GetAttribute("lang"));
+        Assert.Equal("1994", cells[4].TextContent.Trim());
+        Assert.Null(cells[4].GetAttribute("lang"));
+
+        Assert.Equal("Not specified", cells[9].TextContent.Trim());
+        Assert.Null(cells[9].GetAttribute("lang"));
+
+        // So the change above cannot become "stop marking anything": the kilde's name is the
+        // catalogue's own words, and it is marked whatever the reader is reading in.
+        Assert.Equal("no", cut.Find(".munin-explorer-kilder__name").GetAttribute("lang"));
     }
 
     [Fact]
-    public void Render_WhenTheCatalogueSuppliedTheField_ThenTheCellIsMarkedAsTheCataloguesLanguage()
+    public void Select_WhenTheReaderIsNotNorwegian_ThenTheDrilldownHeadingIsMarkedAsTheCataloguesLanguage()
     {
-        // The other half, so the fix above cannot be "stop marking anything": the catalogue holds
-        // these two in Norwegian whatever the reader is reading in.
-        var cut = RenderWith(
-            new FakeClient(Kilde("Als registeret", "K_ALS")),
-            b => b.Add(c => c.Language, "en"));
+        // The same pair one level down, on the element aria-labelledby points at: this heading is
+        // the catalogue's Norwegian name for the kilde, so dropping the mark reads it out in an
+        // English voice to the reader entering the landmark — WCAG 3.1.2 again.
+        var client = new FakeClient(Kilde("Als registeret", "K_ALS")) { StallDetail = true };
 
-        var cells = cut.FindAll(".munin-explorer-kilder tbody td");
+        var cut = RenderWith(client, b => b.Add(c => c.Language, "en"));
 
-        Assert.Equal("Folkehelseinstituttet", cells[2].TextContent.Trim());
-        Assert.Equal("no", cells[2].GetAttribute("lang"));
-        Assert.Equal("no", cells[3].GetAttribute("lang"));
+        cut.Find(".munin-explorer-kilder tbody th button").Click();
+
+        var region = cut.Find(".munin-explorer-drilldown");
+        var heading = cut.Find($"#{region.GetAttribute("aria-labelledby")}");
+
+        Assert.Equal("Als registeret", heading.TextContent.Trim());
+        Assert.Equal("no", heading.GetAttribute("lang"));
     }
 
     // ---------------------------------------------------------------------------------
@@ -1298,10 +1667,10 @@ public class KildeExplorerTest : BunitContext
     [Fact]
     public void Facets_WhenAKategoriIsOutsideTheKnownVocabulary_ThenItsTokenIsTheChoice()
     {
-        // The vocabulary is copied into this package, so it is a copy that can fall behind the
-        // catalogue. A token added after the copy was taken has to keep its checkbox and show what
-        // the catalogue sent: a facet that dropped it would filter over less than the list holds,
-        // silently, and the kilder carrying it would be unreachable through the panel.
+        // A value stored on a kilde that the vocabulary lists no option for — a category retired
+        // out of the definition, or one written straight into the bag. It has to keep its checkbox
+        // and show what the catalogue sent: a facet that dropped it would filter over less than the
+        // list holds, silently, and the kilder carrying it would be unreachable through the panel.
         var cut = RenderWith(new FakeClient(
             Kilde("Als registeret", "K_ALS", category: """["ehds-cat:biobanks"]"""),
             Kilde("Dødsårsaksregisteret", "K_DAR", category: """["ehds-cat:something-new"]""")));
@@ -1477,6 +1846,253 @@ public class KildeExplorerTest : BunitContext
     }
 
     [Fact]
+    public void Facets_WhenTheVocabularyHasNoEnglishForAValue_ThenItsNorwegianWordIsMarkedAsNorwegian()
+    {
+        // Curation is uneven: the vocabulary carries a Norwegian label for every option and an
+        // English one for most. The words now come from the catalogue rather than from a table in
+        // this package, so an English page can legitimately end up with a Norwegian choice in it —
+        // and it is marked, which is the difference between a screen reader saying "Prøvesamling"
+        // and saying it with English phonetics (WCAG 3.1.2).
+        var cut = RenderWith(
+            new FakeClient(Kilde("Als registeret", "K_ALS", category: """["ehds-cat:provesamling"]"""))
+                .Serving(Vocabulary("healthCategory", ("ehds-cat:provesamling", "Prøvesamling", null))),
+            b => b.Add(c => c.Language, "en"));
+
+        Assert.Equal(["Prøvesamling (1)"], Choices(Facet(cut, "Category")));
+        Assert.Equal(["no"], Languages(Facet(cut, "Category")));
+    }
+
+    [Fact]
+    public void Facets_WhenTheCatalogueAddsAValueAfterThisPackageShipped_ThenTheFacetStillDrawsItsWord()
+    {
+        // The whole point of reading the vocabulary the API sends rather than one written down
+        // here. Both tokens are ones no copy in this package ever knew — the eighth category and a
+        // fourth access-right value — and they arrive with their words the same day the catalogue
+        // adds them. A copied table would answer both of these with a raw CURIE, one click away
+        // from a kilde view showing the Norwegian word for the very same token.
+        var cut = RenderWith(new FakeClient(
+                Kilde("Als registeret", "K_ALS",
+                    accessRights: "eu-access:OP_DATPRO",
+                    category: """["ehds-cat:noe-helt-nytt"]"""))
+            .Serving(
+                Vocabulary("healthCategory", [.. Categories, ("ehds-cat:noe-helt-nytt", "Noe helt nytt", "Something new")]),
+                Vocabulary("accessRights", [.. AccessLevels, ("eu-access:OP_DATPRO", "Databehandleravtale", "Data processing agreement")])));
+
+        Assert.Equal(["Noe helt nytt (1)"], Choices(Facet(cut, "Kategori")));
+        Assert.Equal(["Databehandleravtale (1)"], Choices(Facet(cut, "Tilgangsnivå")));
+
+        // And the token is still what it filters on, so a word arriving late changes nothing about
+        // which kilder a checkbox reaches.
+        Tick(cut, "Kategori", "Noe helt nytt");
+
+        Assert.Equal(["Als registeret"], RowNames(cut));
+    }
+
+    [Fact]
+    public void Facets_WhenAValueRepeatsAnothersBareTokenUnderItsOwnPrefix_ThenItIsNotGivenThatWord()
+    {
+        // Matching is on the whole stored value, never on the part after the last colon. The copy
+        // this package used to hold was keyed prefix-blind, so annet-vokabular:biobanks read as
+        // "Biobanker" in the facet while the detail panel one click away showed it raw — one value,
+        // two labels, depending on which screen the reader was on. It is a value the vocabulary
+        // does not list, and it says so.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", category: """["ehds-cat:biobanks"]"""),
+            Kilde("Dødsårsaksregisteret", "K_DAR", category: """["annet-vokabular:biobanks"]""")));
+
+        Assert.Equal(["annet-vokabular:biobanks (1)", "Biobanker (1)"], Choices(Facet(cut, "Kategori")));
+
+        Tick(cut, "Kategori", "Biobanker");
+
+        Assert.Equal(["Als registeret"], RowNames(cut));
+    }
+
+    [Fact]
+    public void Facets_WhenAValueDiffersOnlyInCaseFromALabellessOption_ThenItIsStillLeftUnmarked()
+    {
+        // An option the vocabulary lists but has curated no label for is not a word, and the guard
+        // that spots one asks whether the label came back as the token again. The lookup behind it
+        // matches ordinal-insensitively and answers a label-less option with the *vocabulary's*
+        // spelling of the code, so the guard has to ignore case as well: an ordinal check reads two
+        // spellings of one code as a curated word and marks a bare CURIE lang="no" — the WCAG 3.1.2
+        // failure the marking exists to avoid — while showing it in a casing the value never had.
+        var cut = RenderWith(new FakeClient(
+                Kilde("Als registeret", "K_ALS", category: """["ehds-cat:Biobanks"]"""))
+            .Serving(Vocabulary("healthCategory", ("ehds-cat:biobanks", "", null))));
+
+        var kategori = Facet(cut, "Kategori");
+
+        Assert.Equal(["ehds-cat:Biobanks (1)"], Choices(kategori));
+        Assert.Equal([null], Languages(kategori));
+    }
+
+    [Fact]
+    public void Facets_WhenTheVocabularyCannotBeFetched_ThenTheChoicesKeepTheirTokensAndTheListIsUnharmed()
+    {
+        // Two calls that fail apart. The vocabulary only decides whether two facets read as words
+        // or as CURIEs, so losing it costs those labels and nothing else: the list is on screen, no
+        // error is claimed, and every checkbox still filters on the value the catalogue sent.
+        var client = new FakeClient(
+            Kilde("Als registeret", "K_ALS", category: """["ehds-cat:biobanks"]""",
+                accessRights: "eu-access:NON_PUBLIC"))
+        {
+            FailVocabulary = true
+        };
+
+        var cut = RenderWith(client);
+
+        Assert.Equal(["Als registeret"], RowNames(cut));
+        Assert.DoesNotContain("Kunne ikke laste kilder", cut.Markup);
+
+        Assert.Equal(["ehds-cat:biobanks (1)"], Choices(Facet(cut, "Kategori")));
+        Assert.Equal(["eu-access:NON_PUBLIC (1)"], Choices(Facet(cut, "Tilgangsnivå")));
+
+        Tick(cut, "Kategori", "ehds-cat:biobanks");
+
+        Assert.Equal(["Als registeret"], RowNames(cut));
+    }
+
+    [Fact]
+    public async Task Facets_WhenTheListAnswersBeforeTheVocabulary_ThenTheRowsAreOnScreenWithoutWaitingForIt()
+    {
+        // The point of two calls in flight together: the vocabulary's round trip is not one the
+        // reader spends. Nothing using FakeClient can see whether that holds — it answers both from
+        // Task.FromResult, so its awaits never yield and both are finished before the first render.
+        // Here the list lands with the vocabulary still outstanding, which is what a host pointed
+        // at a slow or undeployed egenskaper endpoint gets, and the finished list is on screen
+        // rather than sitting behind "Laster kilder …" for the rest of that round trip.
+        var client = new StagedClient(
+            Kilde("Als registeret", "K_ALS", category: """["ehds-cat:biobanks"]"""));
+
+        var cut = RenderWith(client);
+
+        Assert.Contains("Laster kilder …", cut.Markup);
+
+        await cut.InvokeAsync(client.AnswerList);
+
+        Assert.Equal(["Als registeret"], RowNames(cut));
+        Assert.DoesNotContain("Laster kilder …", cut.Markup);
+
+        // And the panel beside them is usable meanwhile, showing the catalogue's token — the same
+        // thing it shows for a vocabulary that never arrives at all.
+        Assert.Equal(["ehds-cat:biobanks (1)"], Choices(Facet(cut, "Kategori")));
+
+        await cut.InvokeAsync(client.AnswerVocabulary);
+
+        Assert.Equal(["Biobanker (1)"], Choices(Facet(cut, "Kategori")));
+    }
+
+    [Fact]
+    public async Task Render_WhenAKildeIsDeepLinkedAndTheVocabularyIsStillOutstanding_ThenItIsFetchedAndDrawnAnyway()
+    {
+        // The other half of the same rule, and the half that costs more: a host mounting with
+        // SelectedKildeId set is a reader who came for the kilde, and the vocabulary decides
+        // nothing the drilldown draws. The fetch used to be issued only after the vocabulary
+        // landed — OnInitializedAsync could not reach it until LoadAsync returned — so the region
+        // sat on "Henter datakilden …" for a request nobody had made, for up to HttpClient's
+        // hundred-second default. Then, once it was issued, the answer used to sit undrawn behind
+        // the same await.
+        var als = Kilde("Als registeret", "K_ALS", category: """["ehds-cat:biobanks"]""");
+        var client = new StagedClient(als);
+
+        var cut = RenderWith(client, b => b.Add(c => c.SelectedKildeId, als.Id));
+
+        // Nothing can be fetched before the list answers, because the list is what names the kilde.
+        Assert.Equal(0, client.DetailCalls);
+
+        await cut.InvokeAsync(client.AnswerList);
+
+        // The list has landed and the vocabulary has not, and the kilde is already being fetched.
+        Assert.Equal(1, client.DetailCalls);
+        Assert.Equal("Als registeret", cut.Find(".munin-explorer-drilldown h3").TextContent.Trim());
+        Assert.Equal("true", cut.Find(".munin-explorer-drilldown").GetAttribute("aria-busy"));
+
+        await cut.InvokeAsync(client.AnswerDetail);
+
+        // And on screen as soon as it lands, with the vocabulary still outstanding.
+        Assert.Equal(als.Id, cut.FindComponent<KildeView>().Instance.Kilde?.Id);
+        Assert.Equal("false", cut.Find(".munin-explorer-drilldown").GetAttribute("aria-busy"));
+
+        await cut.InvokeAsync(client.AnswerVocabulary);
+
+        // The vocabulary was the last thing waited for, and the facets it labels are back on
+        // screen the moment the reader closes the kilde.
+        cut.Find(".munin-explorer-drilldown button").Click();
+
+        Assert.Equal(["Biobanker (1)"], Choices(Facet(cut, "Kategori")));
+    }
+
+    [Fact]
+    public void Facets_WhenTheHostsOwnClientPredatesTheVocabularyEndpoint_ThenTheChoicesKeepTheirTokens()
+    {
+        // The default body on IMuninExplorerClient.GetKildePropertyMetadataAsync, exercised by the
+        // one kind of caller it exists for. The interface is on the feed and a version there cannot
+        // be taken back, so a host that implements it rather than consuming MuninExplorerClient has
+        // to keep compiling across the upgrade — and every other fake in this suite overrides the
+        // member, which leaves that promise resting on nothing. UnupgradedHostClient is the guard:
+        // it does not derive from EmptyMuninExplorerClient and does not implement this member, so a
+        // member added here without a default stops the test build before it reaches a host.
+        //
+        // What the default costs is asserted rather than described: the coded facets show the
+        // catalogue's own tokens, the same as a vocabulary that failed to arrive, and the list is
+        // unharmed.
+        var cut = RenderWith(new UnupgradedHostClient(
+            Kilde("Als registeret", "K_ALS", category: """["ehds-cat:biobanks"]""",
+                accessRights: "eu-access:NON_PUBLIC")));
+
+        Assert.Equal(["Als registeret"], RowNames(cut));
+        Assert.Equal(["ehds-cat:biobanks (1)"], Choices(Facet(cut, "Kategori")));
+        Assert.Equal(["eu-access:NON_PUBLIC (1)"], Choices(Facet(cut, "Tilgangsnivå")));
+    }
+
+    [Fact]
+    public void Facets_WhenTheVocabularyRepeatsAKeyOrCarriesBlankOnes_ThenTheChoicesStillReadAsWords()
+    {
+        // The repeated key is the guard that can only fail quietly, which is why it is worth a test
+        // of its own: the fetch is wrapped in a catch, so a ToDictionary throwing on it would be
+        // swallowed whole and *every* coded facet would fall back to raw CURIEs — the endpoint
+        // being down and the grouping being dropped look identical on screen.
+        //
+        // First entry wins, so the repeat's label is the one that must not appear.
+        //
+        // The blank keys are not a second route to that throw, and this test does not claim they
+        // are: the grouping would collapse them as readily as two real ones. They are here because
+        // they are what a key-less entry does to the facets, which is nothing — no property is
+        // named "" or "   ", so an entry filed under one is unreachable whether the filter that
+        // drops it is there or not. Deleting that filter leaves this test green, and should.
+        var cut = RenderWith(new FakeClient(
+                Kilde("Als registeret", "K_ALS", category: """["ehds-cat:biobanks"]""",
+                    accessRights: "eu-access:NON_PUBLIC"))
+            .Serving(
+                Vocabulary("", ("ehds-cat:biobanks", "Nøkkelløs", null)),
+                Vocabulary("   ", ("ehds-cat:biobanks", "Nøkkelløs igjen", null)),
+                Vocabulary("healthCategory", Categories),
+                Vocabulary("healthCategory", ("ehds-cat:biobanks", "Andre gangs oppslag", null)),
+                Vocabulary("accessRights", AccessLevels)));
+
+        Assert.Equal(["Biobanker (1)"], Choices(Facet(cut, "Kategori")));
+        Assert.Equal(["Ikke-offentlig (1)"], Choices(Facet(cut, "Tilgangsnivå")));
+    }
+
+    [Fact]
+    public void Facets_WhenTheReaderSearchesAndOpensAKilde_ThenTheVocabularyIsFetchedOnceAndOnlyOnce()
+    {
+        // A sibling of the list and fetched like one: once, on initialisation. The vocabulary is
+        // editable master data rather than anything the reader's typing changes, so a component
+        // that refetched it per search or per open would spend a round trip to be told the same
+        // thing — and the labels are drawn on every render, which is what makes that easy to miss.
+        var client = new FakeClient(Kilde("Als registeret", "K_ALS")).Publishing();
+
+        var cut = RenderWith(client);
+
+        cut.Find(".searchbox__freetext").Change("als");
+        cut.Find(".munin-explorer-kilder tbody th button").Click();
+
+        Assert.Equal(1, client.Calls);
+        Assert.Equal(1, client.VocabularyCalls);
+    }
+
+    [Fact]
     public void Facets_WhenAnAccessRightsTokenIsKnown_ThenItIsDrawnAsAWordInTheReadersLanguage()
     {
         // The catalogue writes eu-access:NON_PUBLIC; Kelda says "Ikke-offentlig". The token is what
@@ -1562,7 +2178,7 @@ public class KildeExplorerTest : BunitContext
         Assert.Empty(RowNames(cut));
         Assert.Contains("Ingen kilder samsvarer med filtrene som er valgt.", cut.Markup);
 
-        cut.Find("input[type=search]").Change("als");
+        cut.Find(".searchbox__freetext").Change("als");
 
         Assert.Contains(
             "Ingen kilder samsvarer med søket «als» og filtrene som er valgt.", cut.Markup);
@@ -1576,7 +2192,7 @@ public class KildeExplorerTest : BunitContext
             Kilde("Als-biobanken", "K_ALSB", kildetype: "biobank"),
             Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "biobank")));
 
-        cut.Find("input[type=search]").Change("als");
+        cut.Find(".searchbox__freetext").Change("als");
         Tick(cut, "Kildetype", "Biobank");
 
         Assert.Equal(["Als-biobanken"], RowNames(cut));
@@ -1666,6 +2282,11 @@ public class KildeExplorerTest : BunitContext
         // ships. Four of these nine are the explorer's existing structure, reused rather than
         // reinvented; the three under `munin-explorer-kilder` and the two under
         // `munin-explorer-filters__` are this view's own.
+        //
+        // Nine and not ten because nothing here wires ExploreVariablesRequested, so the selection
+        // column and its `munin-explorer-kilder__select` are not rendered at all. That state has
+        // its own exact list, in KildeSelectionTest, and the pair of them is what says the column
+        // adds one name rather than appears from nowhere.
         var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
         var invented = HostClassNames.Of(cut.FindAll("[class]"))
@@ -1684,6 +2305,8 @@ public class KildeExplorerTest : BunitContext
             "munin-explorer-kilder__count",
             "munin-explorer-kilder__name",
             "munin-explorer-results",            // shared
+            "munin-explorer-search",             // shared with the variable explorer
+            "munin-explorer-search__clear",      // shared
         ], invented);
     }
 
@@ -1707,9 +2330,10 @@ public class KildeExplorerTest : BunitContext
     [Fact]
     public void Facets_WhenTheHostHasRoomForASidebar_ThenTheFoldIsUndoneByADeclaration()
     {
-        // Same half of the bug the skip link had: every other check asks whether a NAME has a rule,
-        // and the fold satisfies all of them while broken. What a host must actually supply is a
-        // DECLARATION - one that hides the toggle and undoes [hidden] once there is room for a
+        // Same half of the bug the skip link had. The general guards ask whether a name has a rule
+        // that declares something, which the fold's rules do - so they pass whether or not the rule
+        // says the one thing that matters. What a host must actually supply is a PARTICULAR
+        // DECLARATION: one that hides the toggle and undoes [hidden] once there is room for a
         // sidebar. Without it the panel stays folded behind "Vis filtre" on a desktop.
         var rules = HostClassNames.SampleDeclarationsFor("munin-explorer-filters__toggle")
             .Concat(HostClassNames.SampleDeclarationsFor("munin-explorer-filters__facets"))

@@ -222,27 +222,32 @@ public partial class VariableExplorer : ComponentBase
     /// <summary>Rows per page. Clamped to 1–100, the range the API itself accepts.</summary>
     /// <remarks>
     /// <para>
-    /// The host owns this, and the reader is deliberately given no way to change it. Munin's own
-    /// explorer offers a 10/20/50 picker; this one does not, and that is a decision rather than a
-    /// gap. A picker is a <c>&lt;select&gt;</c>, and no class name for one can be read back off
-    /// helsedata's stylesheets — their pager has no size control, so there is nothing to copy and
-    /// anything we chose would be invented. An unstyled select inside an otherwise styled page is
-    /// the failure this package exists to avoid, and the rule the rest of the component follows is
-    /// to change the shape rather than to ship CSS. The host already knows how much room it gave
-    /// us, which is the other reason this is a parameter in the first place.
+    /// Two-way, like <see cref="Page"/>, and for the same reason: the reader chooses between 10, 20
+    /// and 50 beside the pager, so the value moves without the host touching it. A host that
+    /// mirrors it into a URL keeps the choice on a shared link; a host that ignores
+    /// <see cref="PageSizeChanged"/> still gets a working control and loses the choice on reload.
     /// </para>
     /// <para>
-    /// If a picker is wanted later it needs a verified class name first, and it belongs with the
-    /// shareable-state work that puts the page number in the host's URL — page and size travel
-    /// together there. Nothing in the current surface makes that harder: paging is private state
-    /// behind one method, not an API.
+    /// Choosing a size returns the reader to page 1 and raises <see cref="PageChanged"/> with it.
+    /// Page 7 of 12 is not page 7 of 5: the rows are renumbered, so the old number names a
+    /// different part of the result, and the reader would lose their place without having asked to.
     /// </para>
     /// <para>
     /// Values outside 1–100 are clamped rather than rejected. The server clamps them anyway, and a
-    /// zero or negative page size would otherwise make the page arithmetic on this side meaningless.
+    /// zero or negative page size would otherwise make the page arithmetic on this side
+    /// meaningless. The control's own values go through the same clamp, so it has no way past it.
+    /// </para>
+    /// <para>
+    /// The default is 20, which is the middle of the three and Runa's own starting size. It was 25
+    /// until the control arrived: a default outside the offered values would have left a host that
+    /// never set this showing three buttons with none of them pressed, which is truthful and reads
+    /// as broken. A host that had relied on 25 has to say so now.
     /// </para>
     /// </remarks>
-    [Parameter] public int PageSize { get; set; } = 25;
+    [Parameter] public int PageSize { get; set; } = 20;
+
+    /// <inheritdoc cref="PageSize"/>
+    [Parameter] public EventCallback<int> PageSizeChanged { get; set; }
 
     /// <summary>
     /// <c>"no"</c> or <c>"en"</c>. Matches helsedata's own culture tokens rather than
@@ -274,6 +279,23 @@ public partial class VariableExplorer : ComponentBase
     /// </para>
     /// </remarks>
     [Parameter] public string Language { get; set; } = "no";
+
+    /// <summary>
+    /// Whether the host says this reader is signed in. Defaults to <see langword="false"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Told by the host rather than discovered by calling the API and reading a 401: probing spends
+    /// a failed request per render on every signed-out reader, and cannot tell "no session" from
+    /// "expired token" or "Munin is down".
+    /// </para>
+    /// <para>
+    /// The default is signed out on purpose. A host that forgets this parameter gets no saved
+    /// lists, which is a visible gap; the alternative default would send unauthorised calls on
+    /// every render instead, which is not visible at all.
+    /// </para>
+    /// </remarks>
+    [Parameter] public bool IsAuthenticated { get; set; }
 
     /// <summary>
     /// Heading level for the component's own title, 1–6. Defaults to <c>2</c>.
@@ -428,6 +450,12 @@ public partial class VariableExplorer : ComponentBase
     private string? _error;
     private Page<VariableSummary>? _result;
 
+    // The request that failed and what pressing the button beside it would do. The request is the
+    // control's presence too — one field rather than a flag that could only ever disagree with it —
+    // and it outlives its own retry by one fetch, so the pressed button keeps its focus.
+    private RowRequest? _failedRows;
+    private bool _retryRowsEnabled;
+
     // The facet selection the visible rows were fetched with. Never null — VariableFilter.None is
     // "no narrowing" — so nothing downstream has to spell that case out twice.
     private VariableFilter _filter = VariableFilter.None;
@@ -444,6 +472,11 @@ public partial class VariableExplorer : ComponentBase
     // failing: the rows on screen are the right rows, and it is the numbers beside the filters that
     // may now be stale. Reported separately for that reason.
     private string? _facetError;
+
+    // Its own retry control, for its own failure. Shared state with the rows' would mean one button
+    // answering for two messages, and the counts and the list are asked for separately.
+    private bool _retryFacetsShown;
+    private bool _retryFacetsEnabled;
 
     // The variable whose detail panel is open, and what has been fetched for it. Never a variable
     // that is not among the rows on screen: the panel is drawn inside its own row, so a selection
@@ -523,17 +556,11 @@ public partial class VariableExplorer : ComponentBase
     private SortField _sort = SortField.Default;
     private SortDirection _direction = SortDirection.Ascending;
 
-    // The page being asked for, and the only piece of paging state there is. "Any change of search
-    // or sort goes back to page one" is a rule about state — a result set reordered under someone
-    // still looking at page 7 shows them rows from the middle of a sequence they never saw the
-    // start of — so the resets live next to the field rather than at the call sites.
-    //
-    // Private, and reached only through GoToPageAsync. The host has no Page parameter and no
-    // PageChanged callback, deliberately: the page number belongs in the host's URL alongside the
-    // search text, and that contract is still being designed. One field and one method is the
-    // smallest thing for it to hook into when it arrives; a public parameter now would be a shape
-    // it had to keep.
+    // The page and the size being asked for: the host's parameters, read once at mount and owned
+    // here afterwards. Both send the reader back to page one when they change, because a renumbered
+    // result leaves someone on page 7 in the middle of a sequence they never saw the start of.
     private int _page = 1;
+    private int _pageSize = 20;
 
     // Whether the pager has been pressed since the last search or reordering, which is the one
     // thing "there is more than one page" cannot tell the markup on its own. A retreat can land on
@@ -557,12 +584,16 @@ public partial class VariableExplorer : ComponentBase
     private string TitleId => $"munin-explorer-title-{_instance}";
     private string PaginationId => $"munin-explorer-pagination-{_instance}";
 
+    /// <summary>The size group's visible label, which is also its accessible name.</summary>
+    private string PageSizeLabelId => $"munin-explorer-pagination-size-{_instance}";
+
     // Per row as well as per instance: the detail panel is wired to its own row with
     // aria-controls and aria-labelledby, and two explorers listing the same variable would
     // otherwise mint the same id twice on one page.
     private string RowHeadingId(VariableSummary v) => $"munin-explorer-heading-{_instance}-{v.Id:N}";
     private string DetailToggleId(VariableSummary v) => $"munin-explorer-toggle-{_instance}-{v.Id:N}";
     private string DetailId(VariableSummary v) => $"munin-explorer-detail-{_instance}-{v.Id:N}";
+    private string SaveButtonId(VariableSummary v) => $"munin-explorer-save-{_instance}-{v.Id:N}";
 
     // Per instance and not per row: the owner panel hangs inside the one open variable panel, so
     // there is never more than one of it in this component's DOM. The kind is in the toggle's id
@@ -588,8 +619,32 @@ public partial class VariableExplorer : ComponentBase
 
     private string Busy => _loading ? "true" : "false";
 
+    /// <summary>The sizes the reader chooses between, which are Runa's own.</summary>
+    private static readonly int[] PageSizeOptions = [10, 20, 50];
+
+    /// <summary>
+    /// A size's classes — filled when it is the size in force, a ghost when not, the same pair the
+    /// facet values and the sort buttons use.
+    /// </summary>
+    /// <remarks>
+    /// The state is drawn by swapping Stiler's own names rather than from a rule on
+    /// <c>aria-pressed</c>, so a host with Stiler and nothing else still shows which size is on
+    /// without owing this package a stylesheet. <c>margin-right</c> is theirs too, and is what
+    /// keeps the three apart: Razor drops the whitespace between elements, so without it they touch.
+    /// </remarks>
+    private string PageSizeClass(int size)
+    {
+        var style = ClampedPageSize == size ? "button-square--secondary" : "button-square--ghost";
+
+        return $"hd-button-square {style} margin-right";
+    }
+
     /// <summary>Rows per page as actually requested — see <see cref="PageSize"/>.</summary>
-    private int ClampedPageSize => Math.Clamp(PageSize, 1, 100);
+    /// <remarks>
+    /// The one clamp, so the reader's control cannot reach the API with a size the host's own
+    /// parameter would have been held to.
+    /// </remarks>
+    private int ClampedPageSize => Math.Clamp(_pageSize, 1, 100);
 
     /// <summary>How many variables the search matched, not how many are on screen.</summary>
     private int TotalCount => _result?.TotalCount ?? 0;
@@ -780,6 +835,12 @@ public partial class VariableExplorer : ComponentBase
     /// item and the name column falls out of line with its header. Neither reference wraps it:
     /// helsedata puts the button straight in the row, and Runa's rows are table rows. The results
     /// are a list of list items, each with a named disclosure carrying <c>aria-expanded</c>.
+    /// <para>
+    /// There is a wrapper, though, and it is not a heading: a <c>div</c> carrying
+    /// <c>role="rowheader"</c> and the same class the button wears. A row owns nothing but cells,
+    /// and this column's content is a <c>button</c> that cannot be one without ceasing to be a
+    /// button — see the comment on the wrapper for why the class is on both elements.
+    /// </para>
     /// </remarks>
     private RenderFragment RowHeading(VariableSummary v) => builder =>
     {
@@ -795,27 +856,76 @@ public partial class VariableExplorer : ComponentBase
         // The rows are a list of list items, each with a named disclosure carrying aria-expanded,
         // which is the pattern this is supposed to be.
 
+        // A cell around the button, and rowheader rather than cell: the variable's name is what
+        // the rest of the row is about, which is the same call Kelda's table makes with
+        // <th scope="row">. It exists at all because a row owns nothing but cells and this column
+        // is a <button> — the one element in the row that cannot carry a cell role itself without
+        // giving up being a button.
+        //
+        // It wears `munin-explorer-dataitem-main__name`, the class the button already had, and the
+        // button keeps it too. That is deliberate rather than sloppy: the class is what sizes this
+        // column (`flex: 210 1 0`, in Stiler and in both sample stylesheets), so the wrapper has to
+        // carry it or the name column stops lining up with its header — and the button has to keep
+        // it or it draws as a browser default button. Every rule on the name is either inherited
+        // or harmless twice; the only one that repeats is an empty `::after` overlay with
+        // `pointer-events: none`, which draws nothing.
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "class", "munin-explorer-dataitem-main__name");
+        builder.AddAttribute(2, "role", "rowheader");
+
         // The name IS the disclosure — helsedata's own pattern, and the APG accordion pattern.
         // It replaces a separate "Vis detaljer" button that sat under the metadata line, and with
         // it the dead affordance the old card shape had: .datasourcecard carried a pointer cursor,
         // because on their datakilde page the whole card is a link, which ours never was.
-        builder.OpenElement(2, "button");
-        builder.AddAttribute(3, "class", "munin-explorer-dataitem-main__name");
-        builder.AddAttribute(4, "type", "button");
-        builder.AddAttribute(5, "id", DetailToggleId(v));
-        builder.AddAttribute(6, "aria-expanded", DetailExpanded(v));
-        builder.AddAttribute(7, "aria-controls", DetailControls(v));
+        builder.OpenElement(3, "button");
+        builder.AddAttribute(4, "class", "munin-explorer-dataitem-main__name");
+        builder.AddAttribute(5, "type", "button");
+        builder.AddAttribute(6, "id", DetailToggleId(v));
+        builder.AddAttribute(7, "aria-expanded", DetailExpanded(v));
+        builder.AddAttribute(8, "aria-controls", DetailControls(v));
+
+        // A name for the shape where the button's own content cannot give it one. PreferredTerm
+        // defaults to "" (Contracts/VariableSummary.cs) and the row draws it blank, so the span
+        // below is empty and this button — whose only content IS that span — announces as
+        // "button, collapsed" with nothing in front of it. WCAG 4.1.2. The save button beside it
+        // survives the same row for free, because its own words are the first half of its name;
+        // this one has no second source, so it needs a written fallback.
+        //
+        // An aria-label, and not the two-element aria-labelledby the rest of this row uses. That
+        // rule exists because a Munin name interpolated into our prose is one unmarked string in
+        // two languages — here there is no Munin half at all, only our own sentence, which follows
+        // Language like every other string this component says. And it is not written into the
+        // span, because the save button borrows the span: putting it there would name that button
+        // "Lagre i liste Vis hele variabelen" for a variable neither control can actually name.
+        //
+        // Null while the term is there, so the visible words stay the name and a speech-input user
+        // saying what they can see still reaches the control (WCAG 2.5.3).
+        builder.AddAttribute(9, "aria-label",
+            string.IsNullOrWhiteSpace(v.PreferredTerm) ? T.ShowWholeVariable : null);
+
         // Never disabled, including while its own fetch runs: pressing it again is how the panel
         // is closed, and disabling the element that has focus drops focus to <body>.
-        builder.AddAttribute(8, "onclick", EventCallback.Factory.Create(this, () => ToggleDetailAsync(v)));
+        builder.AddAttribute(10, "onclick", EventCallback.Factory.Create(this, () => ToggleDetailAsync(v)));
 
-        builder.OpenElement(9, "span");
-        builder.AddAttribute(10, "class", "munin-explorer-dataitem-main__column__text");
+        builder.OpenElement(11, "span");
+        builder.AddAttribute(12, "class", "munin-explorer-dataitem-main__column__text");
+        // Named, because the save button beside it borrows these words for its own accessible
+        // name — see RowSaveButton. The id is on the span holding the name rather than on the
+        // button around it, so what gets borrowed is the variable and not the whole cell.
+        //
+        // Written here and nowhere else: this is the only element that carries RowHeadingId, and
+        // it is drawn for every row whether that row's panel is open or shut. Both matter to the
+        // save button, which points at it in either state — a second emitter would make every row
+        // a duplicate-id failure (WCAG 4.1.1) and aim the button at whichever came first.
+        builder.AddAttribute(13, "id", RowHeadingId(v));
         // Munin's variable names are Norwegian whatever language the surrounding UI is in.
-        builder.AddAttribute(11, "lang", "no");
-        builder.AddContent(12, v.PreferredTerm);
+        builder.AddAttribute(14, "lang", "no");
+        builder.AddContent(15, v.PreferredTerm);
         builder.CloseElement();
 
+        builder.CloseElement();
+
+        // The rowheader cell.
         builder.CloseElement();
     };
 
@@ -849,14 +959,22 @@ public partial class VariableExplorer : ComponentBase
     /// </remarks>
     private RenderFragment ResultHeader() => builder =>
     {
+        // The table's header rowgroup — what a <thead> is. The row itself is two elements further
+        // down, on the flex container that actually holds the cells; the box in between is
+        // helsedata's row wrapper and lays nothing out that the tree needs to hear about, so it
+        // steps aside with role="none". A row owns nothing but cells, and an anonymous group
+        // sitting between a row and its columns is what breaks that.
         builder.OpenElement(0, "div");
         builder.AddAttribute(1, "class", "munin-explorer-data-list__header");
+        builder.AddAttribute(2, "role", "rowgroup");
 
-        builder.OpenElement(2, "div");
-        builder.AddAttribute(3, "class", "munin-explorer-data-list__item__row munin-explorer-data-list__item__row--header");
+        builder.OpenElement(3, "div");
+        builder.AddAttribute(4, "class", "munin-explorer-data-list__item__row munin-explorer-data-list__item__row--header");
+        builder.AddAttribute(5, "role", "none");
 
-        builder.OpenElement(4, "div");
-        builder.AddAttribute(5, "class", "munin-explorer-dataitem-header");
+        builder.OpenElement(6, "div");
+        builder.AddAttribute(7, "class", "munin-explorer-dataitem-header");
+        builder.AddAttribute(8, "role", "row");
 
         // Navn is not in the picker and has no condition here: it is the row's disclosure as well
         // as its first column.
@@ -909,9 +1027,15 @@ public partial class VariableExplorer : ComponentBase
         builder.AddAttribute(seq + 1, "class",
             key is null ? "sortable-header" : $"sortable-header munin-explorer-dataitem-header__{key}");
 
+        // columnheader, which is the role aria-sort below is only allowed on — and, more to the
+        // point, the role that gives the cells under this one a column to belong to. Without it
+        // the whole header resolved to a run of anonymous nodes and a reader had no way to hear
+        // "kolonne 3 av 7, Kilde" (WCAG 1.3.1).
+        builder.AddAttribute(seq + 2, "role", "columnheader");
+
         if (sort is not { } field)
         {
-            builder.AddContent(seq + 2, label);
+            builder.AddContent(seq + 3, label);
             builder.CloseElement();
             return;
         }
@@ -921,28 +1045,28 @@ public partial class VariableExplorer : ComponentBase
         // it — "none" on every other column is noise a reader has to listen through.
         if (IsActiveSort(field))
         {
-            builder.AddAttribute(seq + 2, "aria-sort", AriaSort());
+            builder.AddAttribute(seq + 4, "aria-sort", AriaSort());
         }
 
-        builder.OpenElement(seq + 3, "button");
+        builder.OpenElement(seq + 5, "button");
         // hd-button-reset is Stiler's own "this is a button but draw nothing" class, which is what
         // their header buttons wear — 12 rules, in the site-wide stylesheet.
-        builder.AddAttribute(seq + 4, "class", "hd-button-reset munin-explorer-dataitem-header__button");
-        builder.AddAttribute(seq + 5, "type", "button");
-        builder.AddAttribute(seq + 6, "aria-current", AriaCurrent(field));
-        builder.AddAttribute(seq + 7, "onclick", EventCallback.Factory.Create(this, () => SortAsync(field)));
+        builder.AddAttribute(seq + 6, "class", "hd-button-reset munin-explorer-dataitem-header__button");
+        builder.AddAttribute(seq + 7, "type", "button");
+        builder.AddAttribute(seq + 8, "aria-current", AriaCurrent(field));
+        builder.AddAttribute(seq + 9, "onclick", EventCallback.Factory.Create(this, () => SortAsync(field)));
 
         // The button says what the COLUMN is, not what the ordering is. It used to render the sort
         // field's own label, so the first column read "Standard (stigende)" where it should read
         // "Navn" — the name of the thing in the column. The ordering is shown by the arrow beside
         // it and announced by aria-sort above, which is how a column header carries both.
-        builder.AddContent(seq + 8, label);
+        builder.AddContent(seq + 10, label);
 
         if (IsActiveSort(field))
         {
-            builder.OpenElement(seq + 9, "span");
-            builder.AddAttribute(seq + 10, "aria-hidden", "true");
-            builder.AddContent(seq + 11, Ascending ? " \u2191" : " \u2193");
+            builder.OpenElement(seq + 11, "span");
+            builder.AddAttribute(seq + 12, "aria-hidden", "true");
+            builder.AddContent(seq + 13, Ascending ? " \u2191" : " \u2193");
             builder.CloseElement();
         }
 
@@ -1412,6 +1536,11 @@ public partial class VariableExplorer : ComponentBase
                 ? "munin-explorer-dataitem-main__column"
                 : $"munin-explorer-dataitem-main__column munin-explorer-dataitem-main__{key}");
 
+        // The cell, which is what this element has always been called in the comments here and is
+        // now what it is. Without the role the value and the header above it were two unrelated
+        // runs of text, so nothing said which column a value belonged to (WCAG 1.3.1).
+        builder.AddAttribute(seq + 2, "role", "cell");
+
         // The full value as a tooltip on the CELL, because a cell can be clipped — the code column
         // truncates rather than wraps, since a broken identifier is neither readable nor copyable.
         // A column may show a shorter form than the value it holds: kilde shows the short name.
@@ -1419,7 +1548,7 @@ public partial class VariableExplorer : ComponentBase
 
         if (!string.IsNullOrWhiteSpace(hoverText))
         {
-            builder.AddAttribute(seq + 2, "title", hoverText);
+            builder.AddAttribute(seq + 3, "title", hoverText);
         }
 
         // The field name, for assistive technology only. The column header names it on screen, so
@@ -1430,33 +1559,33 @@ public partial class VariableExplorer : ComponentBase
         // NOT an aria-label on the value: aria-label REPLACES the text it labels, so a reader would
         // hear the field name instead of the value. screenreader-only is Stiler's own class for
         // this, 16 rules in the site-wide stylesheet.
-        builder.OpenElement(seq + 3, "span");
-        builder.AddAttribute(seq + 4, "class", "screenreader-only");
-        builder.AddContent(seq + 5, $"{label}: ");
+        builder.OpenElement(seq + 4, "span");
+        builder.AddAttribute(seq + 5, "class", "screenreader-only");
+        builder.AddContent(seq + 6, $"{label}: ");
         builder.CloseElement();
 
-        builder.OpenElement(seq + 6, "span");
-        builder.AddAttribute(seq + 7, "class", "munin-explorer-dataitem-main__column__text");
+        builder.OpenElement(seq + 7, "span");
+        builder.AddAttribute(seq + 8, "class", "munin-explorer-dataitem-main__column__text");
 
         if (string.IsNullOrWhiteSpace(value))
         {
-            builder.AddContent(seq + 8, T.NotSpecified);
+            builder.AddContent(seq + 9, T.NotSpecified);
         }
         else if (catalogue)
         {
             // The label follows Language; the value does not. Munin's metadata is Norwegian
             // whatever language the surrounding UI is in, and an English speech synthesiser
             // reading Norwegian variable names is unintelligible (WCAG 3.1.2).
-            builder.OpenElement(seq + 9, "span");
-            builder.AddAttribute(seq + 10, "lang", "no");
-            builder.AddContent(seq + 11, value);
+            builder.OpenElement(seq + 10, "span");
+            builder.AddAttribute(seq + 11, "lang", "no");
+            builder.AddContent(seq + 12, value);
             builder.CloseElement();
         }
         else
         {
             // The component's own words, in the reader's language. Unmarked, so it inherits the
             // host page's language the same way every other string this component composes does.
-            builder.AddContent(seq + 12, value);
+            builder.AddContent(seq + 13, value);
         }
 
         builder.CloseElement();

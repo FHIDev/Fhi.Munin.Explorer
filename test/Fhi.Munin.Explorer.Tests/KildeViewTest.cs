@@ -1,3 +1,4 @@
+using System.Text.Json;
 using AngleSharp.Dom;
 using Bunit;
 using Fhi.Munin.Explorer.Blazor;
@@ -1052,5 +1053,50 @@ public class KildeViewTest : BunitContext
         // with English month names — "1. January 2023" — is neither language.
         Assert.Equal("1 January 2023 – Ongoing",
                      Value(SourceInformation(Render(Kilde(), language: "en")), "Validity"));
+    }
+
+    [Fact]
+    public void Render_WhenTheCataloguePropertiesArriveAsNull_ThenTheViewStillDraws()
+    {
+        // Deserialised rather than constructed, because the constructed shape is the easy half and
+        // the payload is the claim: AdditionalProperties is declared non-nullable with an
+        // initialiser, and that initialiser only survives a key ABSENT from the payload.
+        // System.Text.Json writes null straight over it for an explicit "additionalProperties":
+        // null, so the guarantee the type appears to give is not one it has.
+        //
+        // Both halves are needed to reach the fault. An empty propertyMetadata never looks a key up,
+        // so the entry below is what turns the null into a dereference — one that happens while
+        // rendering, past the try/catch around the fetch, taking the whole detail view down where a
+        // failed load would have been reported. KildeExplorer.Property guards the list against the
+        // same shape one click earlier; this is the other half of that answer.
+        var kilde = JsonSerializer.Deserialize<KildeDetail>(
+            """
+            {
+              "id": "6f1d4a5c-0000-4000-8000-000000000001",
+              "code": "K_ALS",
+              "preferredTerm": "Als registeret",
+              "kildetype": "nasjonaltMedisinskKvalitetsregister",
+              "additionalProperties": null,
+              "propertyMetadata": [
+                {
+                  "key": "Datakilde",
+                  "sortOrder": 1,
+                  "groupTranslations": { "no": "Om kilden" },
+                  "displayNameTranslations": { "no": "Datakilde" }
+                }
+              ]
+            }
+            """)!;
+
+        Assert.Null(kilde.AdditionalProperties);
+
+        var cut = Render(kilde);
+
+        // The name survives, which is the point: a source with no curated properties is a source
+        // with no curated properties, not a source that cannot be shown.
+        Assert.Equal("Als registeret", cut.Find(".munin-explorer-kilde__header .headline-s").TextContent.Trim());
+
+        // And nothing is invented in their place — no heading promising a group that has no rows.
+        Assert.Empty(cut.FindAll(".munin-explorer-group"));
     }
 }

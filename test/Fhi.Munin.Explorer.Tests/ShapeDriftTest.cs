@@ -155,6 +155,28 @@ public class ShapeDriftTest
     }
 
     [Fact]
+    public void Between_WhenTheApiSendsACollectionAsNull_ThenNothingDrifts()
+    {
+        var live = Load("kilde-med-delkilder.json");
+        live["delkilder"] = null;
+        live["additionalProperties"] = null;
+
+        // The control for the direction the null-as-empty converter opened, one list and one bag:
+        // the API sends the key with an explicit null, the client reads it as the empty collection
+        // the payload means by it, and the round trip writes [] and {} where the live body had
+        // null. The contract holds exactly what was sent and renders it exactly as an omitted key,
+        // so this is not drift — but the kinds differ, and the comparison has to be told that.
+        //
+        // Without the tolerance in Compare this fails with two findings, and it would fail at 04:17
+        // UTC instead: additionalProperties is the key the Explorer API has actually been seen
+        // sending as null, so the first night after that converter shipped, the nightly job would
+        // have filed an issue about a payload the package handles by design. The test above is the
+        // neighbour it belongs beside — a collection withdrawn wholesale and a collection sent as
+        // null are the same "nothing here" from two directions.
+        Assert.Empty(DriftIn<KildeDetail>(live));
+    }
+
+    [Fact]
     public void Between_WhenANumberStartsArrivingAsAString_ThenItDrifts()
     {
         var live = Load("variables.json");

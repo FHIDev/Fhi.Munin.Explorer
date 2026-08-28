@@ -1,0 +1,38 @@
+@using Fhi.Munin.Explorer.Blazor
+@using LegacyHost.Components
+@{
+    ViewData["Title"] = "Legacy host — kilder";
+}
+
+<div class="hostchrome">
+    <p class="hostchrome-note">
+        The same MVC mount as the front page, for the package's other root component —
+        <code>KildeExplorer</code>, the kildeutforsker. <a href="/">The variable explorer</a> is on
+        the front page.
+    </p>
+</div>
+
+<div class="hostframe">
+    @* render-mode is set HERE, by the host. Server rather than ServerPrerendered for the two
+       reasons the front page gives — the component fetches on initialise, and prerendering would
+       run that twice — and for a third that applies only to this component: KildeExplorer raises
+       SelectedKildeIdChanged, and an EventCallback serialises to an empty delegate across a
+       static-SSR boundary. A prerendered mount would leave the callback silently dead and the URL
+       would never follow the open kilde.
+
+       The path is handed in beside the query string because this view is not on "/": closing the
+       open kilde has to put back the path the reader arrived on rather than the front page. Which
+       path that is varies — the action answers on both /kilder and /Home/Kilder — so it is read
+       from the request here instead of being named anywhere.
+
+       PathBase and Path, not Path alone. history.replaceState writes an absolute path, and Path
+       is relative to wherever the application is mounted: behind a reverse proxy or in a virtual
+       directory it omits the prefix, so closing a kilde would send the reader to a path outside
+       the app. Locally the two are identical and nothing here would show it — helsedata's
+       Optimizely host is the one this has to survive. *@
+    <component type="typeof(KildeExplorerWithUrlState)"
+               render-mode="Server"
+               param-Language="@("no")"
+               param-BasePath="@((Context.Request.PathBase + Context.Request.Path).Value)"
+               param-InitialQuery="@Context.Request.QueryString.Value" />
+</div>

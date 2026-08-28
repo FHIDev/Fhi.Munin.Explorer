@@ -1,0 +1,41 @@
+@using Fhi.Munin.Explorer.Blazor
+@using Fhi.Munin.Explorer.Contracts
+@inject NavigationManager Nav
+
+@* The wrapper is the island, not KildeExplorer, and that is the whole point: an EventCallback
+   created in a statically-rendered parent serialises as {"HasDelegate":true} and arrives empty,
+   so @rendermode on the component tag would not be enough. (Fhi.Metadata-5ghur) *@
+
+<KildeExplorer Language="@Language"
+               ExploreVariablesRequested="ExploreVariables" />
+
+@code {
+    [Parameter] public string Language { get; set; } = "no";
+
+    /// <summary>
+    /// Turn the reader's chosen kilder into the query the variable explorer already reads, and go
+    /// there.
+    /// </summary>
+    /// <remarks>
+    /// The host's job, because the host is the only side that knows where it mounted a
+    /// <c>VariableExplorer</c> — the package has no router and never touches the address bar. The
+    /// format is not restated here either: <c>VariableFilter.ToQueryString</c> writes exactly what
+    /// <c>VariableFilter.Parse</c> reads on the front page, so the two ends cannot drift apart.
+    /// <para>
+    /// An empty list is not a selection of none. It is what the component sends when the reader
+    /// narrowed nothing, so it lands on the unfiltered variable list rather than on a query asking
+    /// for no kilder at all.
+    /// </para>
+    /// <para>
+    /// An ordinary in-app navigation, unlike LegacyHost's, which has to force a load because its
+    /// front page is an MVC view with no router behind it. The component is the same in both; what
+    /// differs is the hosting model, which is why both samples are kept.
+    /// </para>
+    /// </remarks>
+    private void ExploreVariables(IReadOnlyList<Guid> kildeIds)
+    {
+        var query = new VariableFilter { KildeIds = kildeIds }.ToQueryString();
+
+        Nav.NavigateTo(query.Length == 0 ? "/" : "/?" + query);
+    }
+}

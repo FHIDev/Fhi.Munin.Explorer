@@ -194,6 +194,90 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   margin: 0;
 }
 
+/* ---- the search row and its clear button: two names of ours ----
+
+   The field is an <input type="text"> rather than type="search" on purpose — the user-agent ✕
+   could not be hooked and left the box empty over a search still in force — so the package draws
+   its own clear button, and these two names are how a host places it.
+
+   It was tried as an overlay first, absolutely positioned inside the field beside Søk. That was
+   wrong twice over: it sat on top of the reader's own text, and it could not line up with a
+   button Stiler positions against a different box. The field gives up the room instead, which is
+   what the flex line below does — the container shrinks, the button takes what it needs.
+
+   min-width: 0 on the container is load-bearing and easy to lose: a flex item will not shrink
+   below its content's minimum without it, so the field would refuse to give up the width and
+   push the button off the row.
+
+   Wrapping below 640px, where a shortened field and a button beside it leave too little of
+   either. A host that defines none of this gets them stacked, which is the same place. */
+.munin-explorer-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.munin-explorer-search > .searchbox__freetext-container {
+  flex: 1 1 320px;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.munin-explorer-search__clear {
+  flex: none;
+}
+
+/* The greyed state. The button is always on screen and says with this whether it has anything
+   to do, rather than appearing and disappearing beside a field somebody is typing in.
+
+   It is aria-disabled and not disabled, so that pressing it cannot throw focus to the document
+   — which means it is still focusable and still hoverable, and both have to stop looking like
+   invitations. The component refuses the click itself; this only has to say so. */
+.munin-explorer-search__clear[aria-disabled="true"] {
+  background-color: var(--grey40);
+  color: #fff;
+  cursor: default;
+}
+
+.munin-explorer-search__clear[aria-disabled="true"]:hover {
+  background-color: var(--grey40);
+  color: #fff;
+}
+
+/* ---- the selection ribbon ----
+
+   Handover, then reset, then count — the order the markup writes them in, and the order is what
+   keeps the row still. Everything that comes and goes sits to the right of everything that does
+   not, so ticking a row never moves a control the reader is aiming at.
+
+   The min-width is the load-bearing declaration and the only one a host cannot infer. The
+   handover's label is one of three, they are different lengths, and the widest is English's
+   "Explore variables for this selection" — so without a floor the button resizes on the first
+   tick and drags the reset and the count with it. 21rem clears that label at the sample's own
+   font size; a host on Stiler's Graphik should measure its own rather than copy the number.
+
+   Not a grid with equal columns, which is what this was before. Equal widths made the reset as
+   wide as the handover and gave the count a column it had no use for; what was actually wanted
+   is one button that never moves and everything else flowing after it.
+
+   max-width so the floor cannot push the row wider than the page on a narrow screen, and
+   flex-wrap so it drops to the next line instead. */
+.munin-explorer-selection {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-bottom: 16px;
+}
+
+.munin-explorer-selection__explore {
+  min-width: 21rem;
+  max-width: 100%;
+  justify-content: center;
+}
+
 /* components/buttons/_squarebutton.scss */
 .hd-button-square {
   cursor: pointer;
@@ -610,6 +694,14 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   text-align: left;
   color: var(--primary-dark);
   cursor: pointer;
+}
+
+/* Navnet ligger i et rowheader-omslag som baerer flex-bredden, saa knappen inni maa fylle
+   den. Ellers krymper den til teksten og resten av kolonnen slutter aa svare paa klikk -
+   144px doedsone for et kort navn ved 1920. */
+.munin-explorer-dataitem-main__name > button.munin-explorer-dataitem-main__name {
+  width: 100%;
+  text-align: left;
 }
 
 .munin-explorer-dataitem-main__name:hover {
@@ -1220,43 +1312,96 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   font-weight: 600;
 }
 
+/* Column widths. Nothing set any, so table-layout: auto handed the width to whichever column held
+   the most text — the description, always, because it is catalogue free text — and the two columns
+   holding a formatted value wrapped in every row. Measured on Kreftregisteret's 18 datasamlinger:
+   in a 1153px table the period column was 114px and "1. januar 1953 – Pågående" came out over four
+   lines, "51 variabler" over two.
+
+   Only those two get a width. The count is width: 1% with nowrap, which under auto layout reserves
+   the value's own width and nothing more; the nowrap is on the body cell alone, because the header
+   "Totalt antall variabler" held on one line asks for 160px where the value asks for 103px. The
+   period is a percentage instead — nowrapping it costs 250px, which a wide table can pay and a
+   673px one cannot without taking the description down to 191px. A percentage degrades instead:
+   one line where there is room, and a break at the dash rather than inside a date where there is
+   not. 24% is the widest period the catalogue holds — "1. januar 2020 – 4. november 2024", 226px —
+   with room over; the widest a Norwegian date pair can get is 282px, and that one wraps at the
+   dash, which is the point of not nowrapping it.
+
+   The name and the description are left alone on purpose. That is what keeps a datasamling with no
+   description from paying for one — the two auto columns still divide what is left by content, so
+   an empty description collapses and the name takes the room it would have had. The name still
+   wraps, for the reason above.
+
+   Positional selectors because the package puts no class on these cells, and a new class name
+   would have to land in three stylesheets before it meant anything. The head row and the body rows
+   have the same four children, so one selector reaches both.
+
+   The rule this mirrors is Fhi.Helsedata.Stiler's, in
+   Static/scss/components/munin-explorer/_trail.scss. That is the host helsedata.no actually loads;
+   this copy is here so the sample renders what the host renders. */
+.munin-explorer-kilde__datasamlinger tr > :nth-child(3) {
+  width: 24%;
+}
+
+.munin-explorer-kilde__datasamlinger tbody td:nth-child(4) {
+  width: 1%;
+  white-space: nowrap;
+}
+
+/* The FIRST column, which the block above deliberately leaves alone — and the reason that decision
+   is revisited rather than ignored: it was made when this section was ONE table, where letting name
+   and description divide the remainder by content is right, and an empty description collapsing so
+   the name takes its room is a feature.
+
+   The section draws one table per level of the delkilde tree now, and auto-layout measures each
+   table against its own content. Tromsø's five came out at 903, 1426, 270, 1409 and 1479px across
+   this column, and the wave whose description holds a wall of markdown squeezed the other three to
+   slivers. Nothing lines up down the page.
+
+   Pinning it leaves the description as the only free column, which is what makes every level agree.
+   The cost is the case above: a datasamling with no description no longer widens the name. That is
+   a real loss and a deliberate one — across levels, alignment is worth more than the reflow.
+   `table-layout: fixed` would also do it and is not used, because it throws away the width: 1%
+   trick on the count. */
+.munin-explorer-kilde__datasamlinger tr > :nth-child(1) {
+  width: 30%;
+}
+
+/* The catalogue stores beskrivelse as markdown, so cells carry bare URLs — one unbroken token long
+   enough to push a column past its share and the table past its container. */
+.munin-explorer-kilde__datasamlinger td,
+.munin-explorer-kilde__datasamlinger th {
+  overflow-wrap: anywhere;
+}
+
 /* ---- the delkilde tree ----
 
-   Three more names. A study series keeps its datasamlinger one per wave, and the waves are the
-   study's organising fact — a flat table of all fourteen of Tromsø's answers what it holds and
-   destroys how it is arranged. So the section is a nested <ul> of <li>, one per delkilde, each
-   carrying its own datasamling table and any delkilder below it.
+   A study series keeps its datasamlinger one per wave, and the waves are its organising fact, so
+   the section is a nested <ul> of <li> — one per delkilde, each with its own datasamling table and
+   any delkilder below it. A real list rather than indented <div>s: a <ul> carries the parent/child
+   relationship to a screen reader by itself, where indentation carries it to a sighted reader only,
+   and an accessibility check is blind to structure that was never marked up.
 
-   A real list rather than indented <div>s, and the reason is not tidiness. A <ul> carries the
-   parent/child relationship to a screen reader by itself; CSS indentation carries it to a sighted
-   reader only, and an automated accessibility check cannot tell the difference — it is blind to
-   structure that was never marked up. The other half: a browser indents a <ul> on its own, so the
-   structure still reads on a host that has none of these three rules.
-
-   THE SHAPE BELOW IS STILER'S, not this file's invention. `components/munin-explorer/_filters.scss`
-   already dresses a nested <ul> of delkilder — the filter panel's — and it does it in three
-   declarations: `list-style: none`, `padding-left: 20px` on the list, and `padding-left: 0` on the
-   TOP-LEVEL one. That last rule is the whole lesson. This block first shipped indenting every
-   level, so the top-level waves landed 36px in, immediately under the last row of the kilde's own
-   datasamling table and with no gap, and read as children of its last row. The <ul> is a SIBLING
-   of that table; indenting it claimed a parent it does not have. Stiler had already met this and
-   written the answer down one file over.
-
-   So: indentation is spent on depth INSIDE the tree only, and what separates one wave from the
-   next is a $grey30 rule — the same separator the filter panel puts between its <details>. */
+   The shape is Stiler's, not this file's. components/munin-explorer/_filters.scss already dresses a
+   nested <ul> of delkilder — the filter panel's — in three declarations: list-style none,
+   padding-left 20px on the list, and padding-left 0 on the TOP-LEVEL one. That last rule is the
+   whole lesson: the <ul> is a SIBLING of the table above it, so indenting it claims a parent it
+   does not have. Without it the top-level waves sat 36px in under the table's last row and read as
+   its children. Indentation is spent on depth INSIDE the tree only. */
 .munin-explorer-kilde__delkilder {
   margin: 0;
   padding-left: 20px;
   list-style: none;
 }
 
-/* The top level sits beside the kilde's own datasamling table, not under its last row. */
 .munin-explorer-kilde__main > .munin-explorer-kilde__delkilder,
 .munin-explorer-whole__main > .munin-explorer-kilde__delkilder {
   padding-left: 0;
   margin-top: 28px;
 }
 
+/* A $grey30 rule between waves — the separator the filter panel puts between its <details>. */
 .munin-explorer-kilde__delkilde {
   padding-top: 14px;
   border-top: 1px solid var(--grey30);
@@ -1266,38 +1411,33 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   margin-top: 14px;
 }
 
-/* A nested list needs the gap under its parent's own table; the indent supplies the rest. */
 .munin-explorer-kilde__delkilde > .munin-explorer-kilde__delkilder {
   margin-top: 14px;
 }
 
-/* The name of one delkilde. It wears headline-xxs, the same size as a metadata group's heading,
-   because Stiler's scale has nothing verified between that and the headline-s the section heading
-   above it wears — the depth is carried by the heading LEVEL and by the indent, not by a size
-   invented to sit in the gap. */
+/* headline-xxs, the size a metadata group heading wears: the scale has nothing verified between it
+   and the headline-s of the section heading above. Depth is carried by the heading LEVEL and the
+   indent, not by a size invented to fill the gap. */
 .munin-explorer-kilde__delkilde-name {
   margin-top: 0;
 }
 
-/* The delkilde's own table sits under its name rather than against it. Scoped to the table that is
-   its own direct child, so a wave nested inside this one keeps its own spacing rather than taking
-   this rule twice over. */
 .munin-explorer-kilde__delkilde > .munin-explorer-kilde__datasamlinger {
   margin-top: 10px;
 }
 
 /* ---- the kilde list ----
 
-   Kelda's result table, and three more names of ours. The shape rule is the one the datasamlinger
+   Kelda's result table, and four more names of ours. The shape rule is the one the datasamlinger
    table above follows: there was nothing to copy for a list of kilder — Stiler has no table
    component, and helsedata's own variable page lists variables rather than sources — so the shape
-   is a <table> and these three dress it rather than carry it. A host that defines none of them
-   still gets eight columns that line up and a name that visibly is a control, which is what an
+   is a <table> and these four dress it rather than carry it. A host that defines none of them
+   still gets six columns that line up and a name that visibly is a control, which is what an
    element's own browser default buys and an undefined class name does not.
 
-   Kelda's own table has two control columns in front of these eight, a checkbox and an expand
-   toggle, and four more behind a column picker. Neither belongs to the component yet, so neither
-   is named here. */
+   The six are the ones Kelda shows by default. Its own table has two control columns in front of
+   them, and seven more data columns behind a column picker. The checkbox is the fourth name below;
+   the expand toggle does not belong to the component yet, so it is not named here. */
 .munin-explorer-kilder {
   width: 100%;
   border-collapse: collapse;
@@ -1324,7 +1464,19 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   font-weight: 400;
 }
 
-/* The three columns holding a number, right-aligned and tabular: they are read down the page,
+/* No column widths here, unlike the datasamlinger table above, and that is a decision rather than
+   the same omission. The symptom is not present: the two count columns and Opprettet already sit
+   on one line — the header word is wider than the value — and what wraps is the name and the
+   kildetype, which are sentences and are meant to. Measured over 66 kilder at 1440px:
+   Datasamlinger 118px, Variabler 82px, both of them a single line.
+
+   The overflow this note used to describe — eight columns at a min-content width of 1056px, a
+   horizontal scrollbar on the whole page below roughly 1100px — was measured on a table that
+   carried Dataansvarlig and Databehandler, and those institution names are what made it that
+   wide. Both sit behind Kelda's column picker now, so the number no longer describes this
+   table; whether the six still overflow is worth measuring before anyone reaches for widths. */
+
+/* The two columns holding a number, right-aligned and tabular: they are read down the page,
    comparing magnitudes, and proportional digits put the same number in two different widths on
    two rows. Scoped under the table because the rule it has to beat is the shared cell rule above,
    which carries a class and an element — a bare class name would lose to it and the numbers would
@@ -1332,6 +1484,19 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .munin-explorer-kilder .munin-explorer-kilder__count {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+/* The checkbox column, in front of the eight. It is only ever rendered by a host that wired
+   ExploreVariablesRequested, which is the handover the ticks exist for.
+
+   width: 1% is the whole of it, and it is the declaration a host that skips this block loses:
+   a table shares its width out between the columns, so a column holding one checkbox would take
+   the same share as Dataansvarlig and push the eight that carry words together. 1% is smaller
+   than the content, and a table cannot go under its content, so the column comes out exactly one
+   checkbox wide. Scoped under the table for the reason the count rule above is: the rule it has
+   to beat carries a class and an element. */
+.munin-explorer-kilder .munin-explorer-kilder__select {
+  width: 1%;
 }
 
 /* The name opens the kilde, so it has to look like the control it is without wearing a button
@@ -1727,6 +1892,29 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   background-color: var(--grey30);
   color: var(--grey60);
 }
+
+/* The two retry buttons in the alert region. Neither the pager's rule above nor the filter panel's
+   reaches them — the region deliberately carries no class of its own — so the inert state is drawn
+   from the buttons' own name instead of from a container. Never `disabled`, same focus reason. */
+.munin-explorer-retry[aria-disabled="true"] {
+  color: var(--grey60);
+  cursor: default;
+}
+.munin-explorer-retry[aria-disabled="true"]:hover {
+  background-color: transparent;
+  color: var(--grey60);
+}
+
+/* The size group. Which size is in force is drawn by the buttons' own Stiler classes — filled
+   for the one in force, ghosts for the rest — and they carry Stiler's `margin-right`, so all
+   this owes is keeping the label on their line. A host without the rule still gets a working
+   group in the flow. */
+.munin-explorer-pagination-size {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.munin-explorer-pagination-size .caption { margin-right: 16px; }
 
 /* ======================================================================
    The results list — the same rules as Stiler, extracted from its built

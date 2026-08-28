@@ -18,6 +18,19 @@ internal sealed record Texts(
     string SortBy,
     string Loading,
     string Error,
+
+    // The 429 answer, which is a different thing from the API being unreachable and has to read
+    // as one: the catalogue is up, and it is this reader — or, on a shared address, this whole
+    // site — that has asked too often. One string for every call that can be throttled, because
+    // the cause and the remedy are the same whichever request the limiter refused. No number and
+    // no countdown: Retry-After is read and carried on the exception for a host that logs it, and
+    // never shown. Decision Robin 2026-08-26.
+    string RateLimitError,
+
+    // The button beside a failure, so the reader has a way forward and not only a sentence.
+    // Named for what it retries rather than "Prøv igjen": the search and the counts report into
+    // one alert region, so both buttons can be on screen at once and have to be told apart.
+    string RetrySearch,
     string NotSpecified,
     string SortDefault,
     // The first column's header. Runa calls it Navn; helsedata calls the same column
@@ -124,6 +137,34 @@ internal sealed record Texts(
     string StatisticsYearly,
     string StatisticsAccumulated,
     string ShowWholeVariable,
+    // The row's save action, in both of its states. One control, two words: the button says
+    // what pressing it does, not what the variable currently is.
+    string SaveToList,
+    string RemoveFromList,
+    // The list made for a reader who saves before they have made one themselves.
+    string FirstListName,
+    // Said in the row, beside the button that failed - the rest of the results are unaffected.
+    string SaveError,
+    // The saved-list view: its heading, the picker, the create form, and what it says when
+    // there is nothing to show yet.
+    string MyListsHeading,
+    string ChooseList,
+    string NewListName,
+    string CreateList,
+    string NoListsYet,
+    string EmptyList,
+    string RemoveFromThisList,
+    string ListLoadError,
+    // Shown for an entry whose variable is no longer in the catalogue - retracted, unpublished,
+    // or not yet projected. The row stays so the paging totals keep meaning what they say.
+    string VariableNoLongerAvailable,
+    // Nedlasting av listen. Formatvalget er to knapper, ikke en nedtrekksliste: det er to
+    // valg, og en liste med to elementer er et klikk mer for det samme.
+    string DownloadList,
+    string DownloadXlsx,
+    string DownloadCsv,
+    string IncludeKodeverk,
+    string DownloadError,
     string HeadingKodeverk,
 
     // The version history in the whole-variable view.
@@ -142,6 +183,7 @@ internal sealed record Texts(
     string FiltersTitle,
     string ClearFilters,
     string FilterError,
+    string RetryFilters,
     string FacetKildeType,
     string FacetFilter,
     string FacetDataType,
@@ -177,6 +219,12 @@ internal sealed record Texts(
     // user saying what they can see still hits the button (WCAG 2.5.3).
     string PreviousLabel,
     string NextLabel,
+    // The name of the group the size buttons sit in, and each button's own accessible name.
+    // "10" alone says nothing about what ten there are of, and a group name is announced on
+    // entry rather than on every button, so each one carries the whole phrase (WCAG 2.5.3).
+    string VariablesPerPage,
+    // (size) — "Vis 20 variabler per side".
+    Func<int, string> VariablesPerPageLabel,
     // (page, totalPages) — the pager's own "Side 2 av 13".
     Func<int, int, string> PageOf,
     // (from, to, total, search, filters, field, direction) — the whole result sentence. The
@@ -218,18 +266,39 @@ internal sealed record Texts(
     string StatusActive,
     string StatusPassive,
     string ColumnKildetype,
-    string ColumnDelkilder,
     // ...VariableCount rather than ...Variables, though the column is headed "Variabler": every
     // member of this record is a string, so a name one letter from ColumnVariable above — the
     // variable list's first column, "Navn" — would swap for it silently and put "Navn" over a
     // column of numbers. The counts elsewhere in this file say so in their names for the same
     // reason: FieldTotalVariables, FieldVariableCount, VariableCountSuffix.
     string ColumnVariableCount,
+    // The founding year the import file states, which Kelda heads "Opprettet" and translates
+    // "Established". Named for the year and not for the word, because the word also names
+    // KildeSummary.Created — Munin's own row timestamp, and Kelda's Importert, not this column.
+    string ColumnEstablished,
+    // Three strings that all undo something and can be on screen together, so each is named for
+    // its own noun: ClearSearch empties the box, ClearFilters unticks the facets, ClearSelection
+    // drops the row ticks. (Fhi.Metadata-5ghur)
+    string ClearSearch,
+    string SelectAllKilder,
+    string ClearSelection,
+    // One button, three payloads — see Handover in KildeExplorer.Selection.cs. "Alle" over a
+    // filtered list would promise the catalogue and hand over a slice. (Fhi.Metadata-5ghur)
+    string ExploreVariables,
+    string ExploreAllVariables,
+    string ExploreFilteredVariables,
     // Kelda's filter panel. Its heading is FiltersTitle, and two of its four facet headings are
     // strings this record already holds: the kildetype facet is headed with ColumnKildetype and
     // the databehandler facet with FieldDataProcessor, because each facet is a filter over the
     // very column beside it — renaming the column has to rename the facet, and two strings could
     // not promise that. The two below name nothing else in this package.
+    //
+    // Headings only. The choices under them are EHDS and EU CURIEs, and their words are the
+    // catalogue's own — fetched with the list from the vocabulary the API serves beside it, the
+    // same editable master data the kilde view reads. This record held a copy of both vocabularies
+    // for a while and it is deliberately gone: a table transcribed here is right on the day it is
+    // written and drifts from then on, and the drift showed as a raw CURIE in the facet beside the
+    // Norwegian word in the panel one click away.
     string FacetCategory,
     string FacetAccessLevel,
     // The panel's own disclosure, which is one control saying two things: the panel is folded away
@@ -238,26 +307,8 @@ internal sealed record Texts(
     // it does.
     string ShowFilters,
     string HideFilters,
-    // Prose for an access-rights token, which arrives as a CURIE into the EU's own access-right
-    // vocabulary — `eu-access:NON_PUBLIC`. Keyed on the bare token rather than the whole CURIE, so
-    // a value authored with another prefix, or with none, still finds its word; a token missing
-    // from this falls back to what the API sent, the same way kildetype does.
-    IReadOnlyDictionary<string, string> AccessRightsNames,
-    // Prose for a kategori token, which arrives the same way — a CURIE, `ehds-cat:biobanks`, into
-    // the EHDS health-category vocabulary. Not invented here: the words are the catalogue's own,
-    // transcribed off the `healthCategory` vocabulary the kilde detail endpoint sends with every
-    // source (`optionsJson`, captured in test/Testdata/kilde-med-delkilder.json), in both the
-    // languages it carries. They are copied rather than read because the *list* endpoint sends no
-    // vocabulary and the facets are built off the list alone — one detail request per kilde to
-    // label a checkbox is not a trade this panel makes. Keyed on the bare token and falling back to
-    // what the API sent, exactly like AccessRightsNames above: a token the catalogue adds after
-    // this copy was taken shows as its CURIE, which is ugly and true, rather than as nothing.
-    IReadOnlyDictionary<string, string> HealthCategoryNames,
-    // The heading over a kilde's datasamling section when the source HAS delkilder — in either
-    // explorer, since the section draws the delkilde tree and the word is about the source rather
-    // than about who is rendering it. Kelda also passes it explicitly, unconditionally, which is
-    // what Munin's own Kelda says; Runa passes nothing and lets the source decide. A source with no
-    // delkilder takes HeadingDataCollections above instead. See
+    // The heading when the source HAS delkilder, in either explorer: the section draws the tree,
+    // so the word is about the source rather than about who renders it. See
     // KildeView.DefaultDataCollectionsHeading.
     string HeadingDelkilderAndDataCollections,
     // The sections Kelda has over a kilde and Runa has not, measured on the same source in both on
@@ -290,6 +341,16 @@ internal sealed record Texts(
     // never sorted. Assembled here rather than glued together at the call site for the reason
     // ResultSummary is: the plural is this language's business and not C#'s.
     Func<int, string> KildeCount,
+    // (count) — "3 kilder valgt", the selection bar's own line. Its own member rather than
+    // KildeCount reused, though both count kilder and both are Func<int, string>: that one says how
+    // many the search and the facets left, this one how many of those the reader ticked, and the
+    // two sit one above the other on screen. Swapped, each would read as a true sentence in the
+    // wrong place — the failure neither one's own test can see.
+    Func<int, string> SelectedKildeCount,
+    // (name) — the accessible name of one row's checkbox. Every checkbox in a table needs one of
+    // its own: "Velg" repeated down a column tells a reader moving from control to control nothing
+    // about which row they are standing in.
+    Func<string, string> SelectKilde,
     // (search, filters) — the kilde list's empty state, for a search or a set of facets that
     // matched none of them. A catalogue holding no kilder at all says NoKilder instead: the two ask
     // the reader to do different things. The facet count is in the sentence for the reason it is in
@@ -387,65 +448,6 @@ internal sealed record Texts(
     }
 
     /// <summary>
-    /// Prose for an access-rights token, falling back to the token the API sent.
-    /// </summary>
-    /// <remarks>
-    /// The catalogue writes these as CURIEs into the EU's own access-right vocabulary, and only
-    /// <c>eu-access:NON_PUBLIC</c> has been observed — every kilde in the payloads this repository
-    /// holds carries it. The other two below are the vocabulary's, spelled the way it spells them;
-    /// anything else is shown as it arrived rather than renamed into something it is not.
-    /// <para>
-    /// The lookup is on the part after the last colon, so a token authored with another prefix or
-    /// with none still finds its word. That is a decision about the <em>label</em> only: the facet
-    /// itself groups and filters on the whole token, because two prefixes over one bare token are
-    /// two values in the catalogue whatever they are called on screen.
-    /// </para>
-    /// </remarks>
-    public string AccessRightsLabel(string? value) => Prose(AccessRightsNames, value);
-
-    /// <summary>
-    /// Prose for a kategori token, falling back to the token the API sent.
-    /// </summary>
-    /// <remarks>
-    /// The same treatment its sibling facet gets, deliberately: two facets side by side, one
-    /// reading "Ikke-offentlig" and the other "ehds-cat:registries-quality-of-healthcare", would be
-    /// one panel speaking two languages, and the CURIE is the one no reader of this catalogue is
-    /// meant to see. The words are not invented for it — see <see cref="HealthCategoryNames"/> for
-    /// where they are copied from and why they are copied rather than read.
-    /// <para>
-    /// Keyed on the part after the last colon and falling back to the whole value, for the reasons
-    /// <see cref="AccessRightsLabel"/> gives: the label is looked up prefix-blind, while the facet
-    /// still groups and filters on the whole token, so a kategori the catalogue adds tomorrow keeps
-    /// its checkbox and shows its CURIE rather than disappearing out of the panel.
-    /// </para>
-    /// </remarks>
-    public string HealthCategoryLabel(string? value) => Prose(HealthCategoryNames, value);
-
-    /// <summary>
-    /// A CURIE as the vocabulary's own word for it, or as it arrived where the vocabulary has none.
-    /// </summary>
-    /// <remarks>
-    /// The one copy of a rule two facets state twice in prose: blank reads as
-    /// <see cref="NotSpecified"/>, the lookup is on the part after the last colon so a token
-    /// authored with another prefix or with none still finds its word, and a token no word was
-    /// found for is shown whole rather than renamed into something it is not. The two public
-    /// methods stay, because which vocabulary a value belongs to is the thing a caller knows and
-    /// this method does not.
-    /// </remarks>
-    private string Prose(IReadOnlyDictionary<string, string> names, string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return NotSpecified;
-        }
-
-        // LastIndexOf answers -1 for a token with no prefix, which +1 turns into the whole string.
-        var token = value[(value.LastIndexOf(':') + 1)..];
-
-        return names.TryGetValue(token, out var name) ? name : value;
-    }
-
-    /// <summary>
     /// Prose for a kodeverk link's type, falling back to the token the API sent.
     /// </summary>
     /// <remarks>
@@ -494,6 +496,8 @@ internal sealed record Texts(
         SortBy: "Sorter etter",
         Loading: "Henter variabler …",
         Error: "Kunne ikke hente variabler nå. Prøv igjen om litt.",
+        RateLimitError: "Du har gjort for mange forespørsler. Vent litt før du prøver igjen.",
+        RetrySearch: "Prøv søket på nytt",
         NotSpecified: "Ikke oppgitt",
         SortDefault: "Standard",
         BackToVariables: "← Tilbake til variabler",
@@ -573,6 +577,24 @@ internal sealed record Texts(
         StatisticsYearly: "\u00c5rsbasert",
         StatisticsAccumulated: "Akkumulert",
         ShowWholeVariable: "Vis hele variabelen",
+        SaveToList: "Lagre i liste",
+        RemoveFromList: "Fjern fra liste",
+        FirstListName: "Min variabelliste",
+        SaveError: "Kunne ikke lagre nå. Prøv igjen om litt.",
+        MyListsHeading: "Mine variabellister",
+        ChooseList: "Velg liste",
+        NewListName: "Navn på ny liste",
+        CreateList: "Opprett liste",
+        NoListsYet: "Du har ingen variabellister ennå.",
+        EmptyList: "Denne listen er tom.",
+        RemoveFromThisList: "Fjern",
+        ListLoadError: "Kunne ikke hente listen nå. Prøv igjen om litt.",
+        VariableNoLongerAvailable: "Variabelen er ikke tilgjengelig lenger",
+        DownloadList: "Last ned listen",
+        DownloadXlsx: "Last ned som Excel",
+        DownloadCsv: "Last ned som CSV",
+        IncludeKodeverk: "Ta med kodeverk",
+        DownloadError: "Kunne ikke laste ned nå. Prøv igjen om litt.",
         HeadingKodeverk: "Kodeverk",
         HeadingVersionHistory: "Versjonshistorikk",
         VersionUnnamed: "Versjon uten navn",
@@ -592,6 +614,7 @@ internal sealed record Texts(
         FiltersTitle: "Filtre",
         ClearFilters: "Fjern alle filtre",
         FilterError: "Kunne ikke oppdatere filtrene nå. Tallene kan være utdaterte.",
+        RetryFilters: "Prøv filtrene på nytt",
         // helsedata's own variable page calls it this, rather than Munin's "Kildetype".
         FacetKildeType: "Type datakilde",
         FacetFilter: "Filter",
@@ -638,6 +661,8 @@ internal sealed record Texts(
         Next: "Neste",
         PreviousLabel: "Forrige side",
         NextLabel: "Neste side",
+        VariablesPerPage: "Variabler per side",
+        VariablesPerPageLabel: size => $"Vis {size} variabler per side",
         PageOf: (page, totalPages) => $"Side {page} av {totalPages}",
         // The whole sentence, ordering clause included, because the comma and where the clause
         // sits are this language's grammar and not something to fix in C#.
@@ -675,28 +700,18 @@ internal sealed record Texts(
         StatusActive: "Aktiv",
         StatusPassive: "Passiv",
         ColumnKildetype: "Kildetype",
-        ColumnDelkilder: "Delkilder",
         ColumnVariableCount: "Variabler",
+        ColumnEstablished: "Opprettet",
+        ClearSearch: "Tøm søket",
+        SelectAllKilder: "Velg alle synlige kilder",
+        ClearSelection: "Nullstill utvalg",
+        ExploreVariables: "Utforsk variabler for utvalget",
+        ExploreAllVariables: "Utforsk alle variabler",
+        ExploreFilteredVariables: "Utforsk variabler for treffene",
         FacetCategory: "Kategori",
         FacetAccessLevel: "Tilgangsnivå",
         ShowFilters: "Vis filtre",
         HideFilters: "Skjul filtre",
-        AccessRightsNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["NON_PUBLIC"] = "Ikke-offentlig",
-            ["PUBLIC"] = "Offentlig",
-            ["RESTRICTED"] = "Begrenset"
-        },
-        HealthCategoryNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["health-registries"] = "Helseregistre",
-            ["registries-quality-of-healthcare"] = "Kvalitetsregistre",
-            ["population-health-surveys"] = "Befolkningsbaserte helseundersøkelser",
-            ["provesamling"] = "Prøvesamling",
-            ["biodata"] = "Biodata (DNA/omikk)",
-            ["biobanks"] = "Biobanker",
-            ["other"] = "Annet"
-        },
         HeadingDelkilderAndDataCollections: "Delkilder og datasamlinger",
         HeadingVariables: "Variabler",
         HeadingAccessCriteria: "Kriterier for tilgang til data",
@@ -708,6 +723,8 @@ internal sealed record Texts(
             ? "1 publisert variabel i denne kilden."
             : $"{count} publiserte variabler i denne kilden.",
         KildeCount: count => count == 1 ? "1 kilde" : $"{count} kilder",
+        SelectedKildeCount: count => count == 1 ? "1 kilde valgt" : $"{count} kilder valgt",
+        SelectKilde: name => $"Velg {name}",
         NoKilderMatch: (search, filters) =>
         {
             if (search is null)
@@ -728,6 +745,8 @@ internal sealed record Texts(
         SortBy: "Sort by",
         Loading: "Loading variables …",
         Error: "Could not load variables right now. Please try again shortly.",
+        RateLimitError: "You have made too many requests. Please wait a little before trying again.",
+        RetrySearch: "Try the search again",
         NotSpecified: "Not specified",
         SortDefault: "Default",
         BackToVariables: "← Back to variables",
@@ -807,6 +826,24 @@ internal sealed record Texts(
         StatisticsYearly: "Yearly",
         StatisticsAccumulated: "Accumulated",
         ShowWholeVariable: "Show the whole variable",
+        SaveToList: "Save to list",
+        RemoveFromList: "Remove from list",
+        FirstListName: "My variable list",
+        SaveError: "Could not save just now. Try again shortly.",
+        MyListsHeading: "My variable lists",
+        ChooseList: "Choose list",
+        NewListName: "Name of new list",
+        CreateList: "Create list",
+        NoListsYet: "You have no variable lists yet.",
+        EmptyList: "This list is empty.",
+        RemoveFromThisList: "Remove",
+        ListLoadError: "Could not fetch the list just now. Try again shortly.",
+        VariableNoLongerAvailable: "The variable is no longer available",
+        DownloadList: "Download the list",
+        DownloadXlsx: "Download as Excel",
+        DownloadCsv: "Download as CSV",
+        IncludeKodeverk: "Include codebooks",
+        DownloadError: "Could not download just now. Try again shortly.",
         HeadingKodeverk: "Code lists",
         HeadingVersionHistory: "Version history",
         VersionUnnamed: "Version without a name",
@@ -826,6 +863,7 @@ internal sealed record Texts(
         FiltersTitle: "Filters",
         ClearFilters: "Clear all filters",
         FilterError: "Could not refresh the filters right now. The counts may be out of date.",
+        RetryFilters: "Try the filters again",
         FacetKildeType: "Type of data source",
         FacetFilter: "Filter",
         FacetDataType: "Data type",
@@ -871,6 +909,8 @@ internal sealed record Texts(
         Next: "Next",
         PreviousLabel: "Previous page",
         NextLabel: "Next page",
+        VariablesPerPage: "Variables per page",
+        VariablesPerPageLabel: size => $"Show {size} variables per page",
         PageOf: (page, totalPages) => $"Page {page} of {totalPages}",
         ResultSummary: (from, to, total, search, filters, field, direction) =>
         {
@@ -904,28 +944,18 @@ internal sealed record Texts(
         StatusActive: "Active",
         StatusPassive: "Passive",
         ColumnKildetype: "Source type",
-        ColumnDelkilder: "Sub-sources",
         ColumnVariableCount: "Variables",
+        ColumnEstablished: "Established",
+        ClearSearch: "Clear search",
+        SelectAllKilder: "Select all visible sources",
+        ClearSelection: "Clear selection",
+        ExploreVariables: "Explore variables for this selection",
+        ExploreAllVariables: "Explore all variables",
+        ExploreFilteredVariables: "Explore variables for these results",
         FacetCategory: "Category",
         FacetAccessLevel: "Access level",
         ShowFilters: "Show filters",
         HideFilters: "Hide filters",
-        AccessRightsNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["NON_PUBLIC"] = "Non-public",
-            ["PUBLIC"] = "Public",
-            ["RESTRICTED"] = "Restricted"
-        },
-        HealthCategoryNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["health-registries"] = "Health registries",
-            ["registries-quality-of-healthcare"] = "Quality-of-healthcare registries",
-            ["population-health-surveys"] = "Population health surveys",
-            ["provesamling"] = "Sample collection",
-            ["biodata"] = "Biodata (DNA/omics)",
-            ["biobanks"] = "Biobanks",
-            ["other"] = "Other"
-        },
         HeadingDelkilderAndDataCollections: "Sub-sources and data collections",
         HeadingVariables: "Variables",
         HeadingAccessCriteria: "Criteria for access to data",
@@ -937,6 +967,8 @@ internal sealed record Texts(
             ? "1 published variable in this source."
             : $"{count} published variables in this source.",
         KildeCount: count => count == 1 ? "1 source" : $"{count} sources",
+        SelectedKildeCount: count => count == 1 ? "1 source selected" : $"{count} sources selected",
+        SelectKilde: name => $"Select {name}",
         NoKilderMatch: (search, filters) =>
         {
             if (search is null)

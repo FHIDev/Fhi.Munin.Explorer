@@ -53,6 +53,16 @@ app.UseStaticFiles();
 app.UseRouting();
 app.UseAuthorization();
 
+// Before the default route, so /kilder reaches the kildeutforsker rather than falling through to
+// a controller named Kilder that does not exist. ModernHost routes it with @page "/kilder"; giving
+// the two samples the same path means a URL copied from one opens the same thing in the other.
+// Without this the legacy host answers /kilder with a bare 404 — no body, no error page — which in
+// a browser is indistinguishable from a component that failed to render.
+app.MapControllerRoute(
+    name: "kilder",
+    pattern: "kilder",
+    defaults: new { controller = "Home", action = "Kilder" });
+
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
