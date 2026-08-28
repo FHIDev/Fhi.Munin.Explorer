@@ -1,0 +1,254 @@
+@namespace Fhi.Munin.Explorer.Blazor
+@using Fhi.Munin.Explorer.Contracts
+
+@* Signed out there is nothing here at all — not an empty frame, not a sign-in prompt this package
+   has no business wording. The host knows how its readers sign in; the package does not. *@
+@if (State?.IsAuthenticated == true)
+{
+    <div class="munin-explorer munin-explorer-container">
+
+        @* No class on the heading: the package ships no CSS, and the other components leave
+           theirs bare too. A name here would be one with no rule behind it. *@
+        @((MarkupString)$"<h{TitleLevel}>{T.MyListsHeading}</h{TitleLevel}>")
+
+        @* The picker is only a choice when there is one to make. With a single list it would be a
+           control whose every option is already selected. *@
+        @if (Lists.Count > 1)
+        {
+            <label class="munin-explorer-filters__facets">
+                @T.ChooseList
+                <select value="@_shownList" @onchange="ChooseListAsync">
+                    @foreach (var list in Lists)
+                    {
+                        <option value="@list.Id" selected="@(list.Id == _shownList)">@list.Name</option>
+                    }
+                </select>
+            </label>
+        }
+
+        @* @bind with onchange, deliberately NOT value + @oninput: this renders inside a Blazor
+           Server circuit, where oninput is one round trip per keystroke and drops characters on a
+           fast paste. The search field says the same thing at VariableExplorer.razor:146.
+
+           aria-disabled rather than disabled on the button: it becomes unavailable the moment a
+           successful create clears the name, and disabling the element that has focus drops focus
+           to <body>. CreateListAsync already refuses an empty name, so the press is inert. *@
+        <div>
+            @* A real label with for/id, the shape the search field uses at
+               VariableExplorer.razor:140 — not a placeholder. A placeholder is not an accessible
+               name: a screen reader announces an unnamed edit field, and the hint disappears the
+               moment the reader starts typing, which is the one time they most need to know what
+               the field is for. WCAG 4.1.2 and 3.3.2.
+
+               `form-element__label` is borrowed, not ours — Stiler's own label style, read back
+               off its compiled stylesheet and already worn by the search field and the filter
+               panel's legend (VariableExplorer.razor:140, 209, 216). README's list of borrowed
+               names carries it. No new name is being invented here; a name Stiler has never heard
+               of would render as a raw browser default on a host that has only Stiler.
+
+               The id carries a per-mount discriminator, the shape the explorer's own ids use, so
+               two of this component on one page do not tie both labels to the first field. *@
+            <label class="form-element__label" for="@NewListNameId">@T.NewListName</label>
+            <input type="text"
+                   id="@NewListNameId"
+                   @bind="_newName"
+                   @bind:event="onchange" />
+            <button class="hd-button-square button-square--ghost"
+                    type="button"
+                    aria-disabled="@AriaDisabled(_newName.Trim().Length > 0)"
+                    @onclick="CreateListAsync">@T.CreateList</button>
+        </div>
+
+        @* Only when there is something to download. A button that exports an empty list would
+           produce a file with a header row and nothing under it. *@
+        @if (_page is not null && _page.TotalCount > 0)
+        {
+            @* A named group, not just a visual one: three controls that only make sense together,
+               and a screen reader moving between them otherwise hears three unrelated widgets. *@
+            <div role="group" aria-label="@T.DownloadList">
+                <label>
+                    <input type="checkbox"
+                           checked="@_includeKodeverk"
+                           @onchange="e => _includeKodeverk = e.Value is true" />
+                    @T.IncludeKodeverk
+                </label>
+
+                @* Two formats, two buttons. aria-disabled while a download is in flight rather
+                   than disabled, for the reason the pager gives: disabling the element that has
+                   focus drops focus to <body>. *@
+                <button class="hd-button-square button-square--ghost"
+                        type="button"
+                        aria-disabled="@AriaDisabled(!_downloading)"
+                        @onclick="() => DownloadAsync(ExportFormat.Xlsx)">@T.DownloadXlsx</button>
+
+                <button class="hd-button-square button-square--ghost"
+                        type="button"
+                        aria-disabled="@AriaDisabled(!_downloading)"
+                        @onclick="() => DownloadAsync(ExportFormat.Csv)">@T.DownloadCsv</button>
+            </div>
+        }
+
+        @* Always in the DOM, empty when nothing is wrong — a role="alert" inserted and filled in the
+           same update is announced unreliably. Same shape as the explorer's own alert region. *@
+        <div role="alert" aria-live="assertive" aria-atomic="true">
+            @(_failed ? T.ListLoadError : _downloadFailed ? T.DownloadError : null)
+        </div>
+
+        @if (Lists.Count == 0)
+        {
+            <p>@T.NoListsYet</p>
+        }
+        else if (_page is not null && _page.Items.Count == 0 && !_loading)
+        {
+            <p>@T.EmptyList</p>
+        }
+        else if (_page is not null)
+        {
+            @* role="table" over the same seven columns the explorer's own result list draws, and
+               for the same reason. These rows share helsedata's `munin-explorer-data-list` markup
+               with `VariableExplorer`, so they shared its failure too: measured in Chrome's
+               accessibility tree, not one row, column or header of the reader's own saved list
+               reached assistive technology — a flat run of text with no way to hear which column a
+               value was in (WCAG 1.3.1). axe never flagged it, because there is no sortable header
+               here to hang an invalid `aria-sort` on, and missing structure is not a rule
+               violation; it is just missing.
+
+               No rowgroups: unlike the explorer's list, the header row and the data rows are
+               siblings here, and a table may own rows directly. The wrappers that only lay
+               something out wear `role="none"` so the cells inside reach the row they belong to —
+               a row owns nothing but cells. *@
+            <div class="munin-explorer-data-list" role="table" aria-label="@ShownListName">
+
+                <div class="munin-explorer-data-list__item__row munin-explorer-data-list__item__row--header" role="none">
+                    <div class="munin-explorer-dataitem-header" role="row">
+                        <span class="munin-explorer-dataitem-header__name" role="columnheader">@T.ColumnVariable</span>
+                        <span class="munin-explorer-dataitem-header__code" role="columnheader">@T.FieldCode</span>
+                        <span class="munin-explorer-dataitem-header__source" role="columnheader">@T.FieldSource</span>
+                        <span class="munin-explorer-dataitem-header__dataCollection" role="columnheader">@T.FieldDataCollection</span>
+                        <span class="munin-explorer-dataitem-header__theme" role="columnheader">@T.FieldVariableGroup</span>
+                        <span class="munin-explorer-dataitem-header__dataType" role="columnheader">@T.FieldDataType</span>
+                        <span class="munin-explorer-dataitem-header__period" role="columnheader">@T.FieldDataPeriod</span>
+                    </div>
+                </div>
+
+                @foreach (var item in _page.Items)
+                {
+                    <div class="munin-explorer-data-list__item" role="row">
+                        <div class="munin-explorer-data-list__item__row" role="none">
+                            <div class="munin-explorer-dataitem-main" role="none">
+
+                                @* An entry whose variable has no row in the read model keeps its place
+                                   rather than being filtered out: the API returns it on purpose so the
+                                   paging totals stay honest, and a list of 247 that answered with 246
+                                   would hide that something went. It says so instead.
+
+                                   RowName decides which of the two it is, in one place: written
+                                   out twice, the cell and the remove button below — which is
+                                   named from these very words — could come to say different
+                                   things about the same row. CatalogueLang leaves the attribute
+                                   off for the sentence, which is ours and in the reader's
+                                   language, not Norwegian catalogue text. *@
+                                @* rowheader rather than cell, the call Kelda's own table makes with
+                                   <th scope="row">: the variable's name is what the rest of the row
+                                   is about, so a reader hearing one cell out of context is told
+                                   which variable it belongs to. *@
+                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__name" role="rowheader">
+                                    <span class="munin-explorer-dataitem-main__column__text"
+                                          id="@RowNameId(item)"
+                                          lang="@CatalogueLang(item.VariableName)">@RowName(item)</span>
+                                </span>
+
+                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__code" role="cell">
+                                    <span class="munin-explorer-dataitem-main__column__text" lang="no">@item.VariableCode</span>
+                                </span>
+                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__source" role="cell">
+                                    <span class="munin-explorer-dataitem-main__column__text" lang="no">@(item.KildeShortName ?? item.KildeName)</span>
+                                </span>
+                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__dataCollection" role="cell">
+                                    <span class="munin-explorer-dataitem-main__column__text" lang="no">@item.DatasamlingName</span>
+                                </span>
+                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__theme" role="cell">
+                                    <span class="munin-explorer-dataitem-main__column__text" lang="@CatalogueLang(item.VariabelgruppeName)">@Or(item.VariabelgruppeName)</span>
+                                </span>
+                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__dataType" role="cell">
+                                    <span class="munin-explorer-dataitem-main__column__text">@DataTypeName(item.DataType)</span>
+                                </span>
+                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__period" role="cell">
+                                    <span class="munin-explorer-dataitem-main__column__text">@Period(item)</span>
+                                </span>
+
+                                @* The visible word stays "Fjern" — the column is narrow and every
+                                   button in it removes something. The accessible name says which
+                                   one: without it a list of forty is forty controls that read
+                                   "Fjern", and a screen reader user has no way to tell which row
+                                   they are standing on. WCAG 4.1.2.
+
+                                   Two elements rather than an aria-label, the rule the explorer's
+                                   own save button follows: this button points at itself and then
+                                   at the name cell, so "Fjern" stays ours and in the reader's
+                                   language while the variable's name stays Munin's and marked
+                                   lang="no" — one aria-label string would be a single unmarked
+                                   sentence an English voice pronounces the Norwegian half of with
+                                   English phonetics (WCAG 3.1.2). Itself first keeps the visible
+                                   word at the front for speech input (WCAG 2.5.3).
+
+                                   An orphaned row borrows the sentence its name cell shows
+                                   instead, so the button says what it removes without reading an
+                                   id out. Two orphans do then announce alike — a duplicate name
+                                   on two controls is not a WCAG failure, and ten seconds of
+                                   spelt-out GUID for a value the row does not show anywhere is
+                                   worse than one.
+
+                                   The <span role="cell"> around it is the row's last cell. A row
+                                   owns nothing but cells, and a <button> cannot be one without
+                                   ceasing to be a button; the wrapper carries no class, so it
+                                   becomes the flex item the button already was and the column
+                                   still sizes the same. *@
+                                <span role="cell">
+                                    <button class="hd-button-square button-square--ghost"
+                                            type="button"
+                                            id="@RemoveButtonId(item)"
+                                            aria-labelledby="@RemoveLabelledBy(item)"
+                                            @onclick="() => RemoveAsync(item.VariableId)">@T.RemoveFromThisList</button>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @* The list is as long as the reader made it, and the endpoint is paged. A view that
+               fetched page one and called it the list would show the first 25 and hide the rest
+               without saying so. *@
+            @if (TotalPages > 1)
+            {
+                <div class="munin-explorer-pagination"
+                     role="navigation"
+                     aria-label="@T.Pagination">
+                    @* The content wrapper is where the layout lives (host.css:1609), and the
+                       disabled styling is scoped to it. Without it the buttons get no flex row and
+                       the unavailable state draws nothing.
+
+                       aria-disabled, not disabled: a disabled button at the end of the list drops
+                       focus to <body>, which a sighted keyboard user has no sign of. The clamp in
+                       GoToPageAsync is what makes the press inert. Same rule as the result list. *@
+                    <div class="munin-explorer-pagination-content">
+                        <button class="hd-button-square button-square--secondary"
+                                type="button"
+                                aria-label="@T.PreviousLabel"
+                                aria-disabled="@AriaDisabled(_pageNumber > 1)"
+                                @onclick="() => GoToPageAsync(_pageNumber - 1)">@T.Previous</button>
+
+                        <span class="caption">@T.PageOf(_pageNumber, TotalPages)</span>
+
+                        <button class="hd-button-square button-square--secondary"
+                                type="button"
+                                aria-label="@T.NextLabel"
+                                aria-disabled="@AriaDisabled(_pageNumber < TotalPages)"
+                                @onclick="() => GoToPageAsync(_pageNumber + 1)">@T.Next</button>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+}

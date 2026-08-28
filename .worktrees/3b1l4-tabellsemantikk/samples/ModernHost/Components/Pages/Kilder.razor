@@ -1,0 +1,25 @@
+﻿@page "/kilder"
+@using Fhi.Munin.Explorer.Blazor
+
+<PageTitle>Modern host — kilder</PageTitle>
+
+<div class="hostchrome">
+    <p class="hostchrome-note">
+        The other root component the package ships: <code>KildeExplorer</code>, the
+        kildeutforsker. <code>VariableExplorer</code> is on <a href="/">the front page</a> — the
+        two are separate entry points, not two tabs of one thing, so each gets a page here.
+    </p>
+    <p class="hostchrome-note">
+        <code>prerender: false</code> is not a preference on this page. <code>KildeExplorer</code>
+        raises <code>SelectedKildeIdChanged</code>, and an <code>EventCallback</code> serialises to
+        an empty delegate across a static-SSR to interactive-island boundary — the mount point has
+        to be fully interactive or the callback silently never fires.
+    </p>
+</div>
+
+<div class="hostframe">
+    @* render-mode is set HERE, by the host. The component itself is render-mode free — the same
+       arrangement as Home.razor, and for the same reason: prerendering would run the component's
+       initialise-time fetch twice against the public API on every page load. *@
+    <KildeExplorer Language="no" @rendermode="@(new InteractiveServerRenderMode(prerender: false))" />
+</div>

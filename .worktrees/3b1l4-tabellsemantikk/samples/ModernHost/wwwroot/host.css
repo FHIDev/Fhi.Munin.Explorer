@@ -1,0 +1,1704 @@
+/* Stand-in for Fhi.Helsedata.Stiler.
+
+   The RCL ships no CSS — the host provides it. In helsedata's Optimizely site that is the
+   Stiler stylesheet; here it is this file. Every rule below the "Stiler stand-in" divider
+   is a class name *Stiler* defines: one of its own components, or one of ours that Stiler
+   took in, because `Fhi.Helsedata.Stiler` ships the whole `munin-explorer` prefix under
+   `Static/scss/components/munin-explorer/`. The pager and the skip link into it joined that
+   prefix last, under `Fhi.Metadata-hyyxl` and `Fhi.Metadata-ja2qu`, so their rules are in Stiler
+   0.1.14 and not in 0.1.13 itself, where every other name below already is; they share a heading
+   further down. What no rule below is, is a name only this repository has heard of. That was
+   tried: inventing `variabelutforsker-*` names meant helsedata's stylesheet had never heard of
+   them and the search box, the Søk button and the results rendered as raw browser defaults
+   inside an otherwise styled page.
+
+   So this file is an approximation of Stiler, not a design of its own. Values are copied from
+   `Fhi.Helsedata.Stiler/Static/scss` — the palette and the 4px spacing scale from
+   `abstracts/_variables.scss`, the rules from `components/_searchbox.scss`,
+   `components/_datasourcecard.scss`, `components/buttons/_squarebutton.scss`,
+   `components/_formelement.scss`, `components/_infobox.scss`, `base/_headline.scss` and
+   `base/_caption.scss`. It will never match exactly: Stiler ships the Graphik typeface and a
+   set of SVG icons, and neither is ours to redistribute here.
+
+   Every declaration below was read back off helsedata.no's own compiled stylesheet rather than
+   off a list of names, which is the only way to be sure a class exists and is not scoped under
+   an ancestor an embedded component is never inside — Stiler's sort-header rules, for one, live
+   under `article.registerOwnerListPage` and are unreachable from here. Reading it back is also
+   how the pager's names turned out not to be Stiler's at all but the variable page's own, which
+   is why they were renamed into our prefix rather than left borrowed; the shape they carry is
+   still theirs, and it is stood in for further down under its own heading.
+
+   samples/ModernHost/wwwroot/host.css and samples/LegacyHost/wwwroot/css/host.css are this same
+   file twice, byte for byte, on purpose: if the two hosts style the component identically, any
+   difference you see between them is a difference in the *hosting model*, not in the CSS. That is
+   why neither copy names the other — a self-reference is the one line that cannot be identical in
+   both, and the claim is worth more as something a machine can check.
+
+   scripts/assert-sample-css-in-step.sh does the checking and runs in CI, because the copies did
+   drift once: the kodeverk block below reached LegacyHost's copy only, and ModernHost showed an
+   unstyled list that read as a component bug. Change one copy, copy it over the other.
+
+   The same script asks a second question, because the first one alone reads as "the samples are
+   right" and does not say that: does this file have a rule for every class name the package
+   invents? Two copies can agree about a block neither of them has. They did — the kilde view
+   shipped with nine names of its own and no rules for any of them here, so both samples drew it
+   at raw browser defaults while the files matched perfectly. */
+
+:root {
+  /* Stiler's palette — abstracts/_variables.scss.
+
+     Every rule below reads these bare, as `var(--grey30)` rather than `var(--grey30, #e6e6ed)`.
+     The declarations are in this same file, so a fallback can never fire; what it can do is
+     disagree. Five rules used to paint `var(--grey70, #5a5f78)` — a token nothing declares, so
+     every one of them rendered a colour that is not in the palette this file claims to
+     reproduce, and read as if it were. They ask for --grey60 now. Bare uses cannot drift that
+     way: a token that is not declared here renders as nothing at all, which is visible. */
+  --primary: #521eff;
+  --primary-dark: #32378d;
+  --dark: #262045;
+  --focus: #428bff;
+  --grey10: #f6f7fc;
+  --grey20: #eff0fa;
+  --grey30: #e6e6ed;
+  --grey40: #bbb8c9;
+  --grey60: #51547b;
+  --warning-light: #fff3cd;
+  --error-dark: #b4002c;
+
+  /* Stiler sets Graphik here. It is a licensed typeface and is not redistributed with this
+     sample, so the sample falls back to the system stack and leans on weight instead. */
+  --font: system-ui, -apple-system, "Segoe UI", Arial, Helvetica, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--grey10);   /* helsedata's own page ground; their cards read as white *on* this */
+  color: var(--dark);
+  font: normal 1rem/160% var(--font);
+}
+
+/* ---- host chrome: this sample's own furniture, not the component's ---- */
+
+.hostbar {
+  background: var(--dark);
+  color: #fff;
+  padding: 12px 24px;
+  display: flex;
+  gap: 16px;
+  align-items: baseline;
+  flex-wrap: wrap;
+  font-size: 14px;
+}
+.hostbar span { color: #b9b5cc; }
+
+.hostmain { max-width: 1100px; margin: 0 auto; padding: 28px 24px 64px; }
+
+.hostchrome-note {
+  color: var(--grey60);
+  font-size: 14.5px;
+  background: var(--grey10);
+  border-left: 3px solid var(--primary);
+  padding: 12px 16px;
+  margin: 0 0 12px;
+}
+/* Both samples style the component with the same rules — see the file header — so any
+   visible difference between them is a difference in the HOSTING MODEL rather than in
+   CSS. With a single note — as here — :last-child resolves to the same 24px this
+   previously hard-coded, so nothing changes visually. */
+.hostchrome-note:last-child { margin-bottom: 24px; }
+.hostchrome-note code { font-size: 13px; }
+
+/* A dashed frame so it is obvious which part of the page came out of the package. */
+.hostframe {
+  border: 1px dashed #c3bfd4;
+  border-radius: 6px;
+  padding: 22px;
+}
+
+/* ======================================================================
+   Stiler stand-in — everything from here down to the first "not Stiler"
+   divider is one of Fhi.Helsedata.Stiler's own components, and Stiler's
+   job in the real host. Past that divider comes the rest of what a host
+   owes the component: the result vocabulary, which is ours and which
+   Stiler carries under components/munin-explorer/ — it was read
+   back off helsedata's `variables.css` while the component still wore
+   their `variable-*` names, the pager included since
+   `Fhi.Metadata-hyyxl` and its skip link since `Fhi.Metadata-ja2qu`;
+   and the base element styling neither stylesheet gives.
+   README.md, under "Rules the components follow", is the authoritative
+   account of which name belongs to which — this file is the same
+   division laid out as rules you can see.
+   ====================================================================== */
+
+/* base/_headings.scss */
+h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
+
+/* base/_headline.scss — the component pins its title's size with headline-3 so that a host
+   mounting it deeper in the outline does not silently shrink it. */
+.headline { margin: 16px 0; }
+.headline-3 { font: normal 500 2rem/160% var(--font); }
+
+/* base/_caption.scss — muted secondary text; the component's status line. */
+.caption { font: normal 1rem/160% var(--font); color: var(--grey60); }
+
+/* components/_formelement.scss */
+.form-element__label {
+  display: inline-block;
+  color: var(--dark);
+  font: normal 500 1.3125rem/160% var(--font);
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+
+/* components/_searchbox.scss — the field reserves 104px on the right for a button that sits
+   inside it, which is where searchbox__freetext-submit-button puts one. */
+.searchbox__freetext-container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  position: relative;
+  margin-bottom: 16px;
+  padding: 8px 0;
+}
+.searchbox__freetext {
+  width: 100%;
+  height: 3.5rem;
+  margin: 0;
+  padding: 18px 104px 16px 16px;
+  line-height: 56px;
+  color: var(--dark);
+  background-color: #fff;
+  border: 1px solid var(--grey40);
+  border-radius: 8px;
+  outline: none;
+  font: normal 1rem/160% var(--font);
+  letter-spacing: 0;
+  text-align: left;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+.searchbox__freetext:focus {
+  border: 1px solid var(--focus);
+  outline: none;
+  box-shadow: 0 0 0 1px var(--focus);
+}
+.searchbox__freetext::placeholder { color: var(--grey60); opacity: 1; }
+.searchbox__freetext-submit-button {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  margin: 0;
+}
+
+/* components/buttons/_squarebutton.scss */
+.hd-button-square {
+  cursor: pointer;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  height: 2.75rem;
+  padding: 0.8125rem 1rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: none;
+  color: inherit;
+  font: normal 500 1rem/1 var(--font);
+  white-space: nowrap;
+  text-decoration: none;
+}
+.hd-button-square:focus {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 6px var(--focus);
+  outline: none;
+}
+.hd-button-square.button-square--primary { background-color: var(--primary); color: #fff; }
+.hd-button-square.button-square--primary:hover { background-color: var(--primary-dark); color: #fff; }
+
+/* The sort control's two states: the field the list is ordered by is filled, the rest are ghosts.
+   Deliberately not --primary, so the one primary call to action on screen stays the Søk button. */
+.hd-button-square.button-square--secondary { background-color: var(--grey60); color: #fff; }
+.hd-button-square.button-square--secondary:hover { background-color: var(--dark); color: #fff; }
+.hd-button-square.button-square--ghost { border: none; color: var(--dark); }
+.hd-button-square.button-square--ghost:hover { background-color: var(--grey30); color: var(--dark); }
+
+/* Stiler's spacing modifiers, which only apply on a square button. The sort buttons need them
+   because Razor drops the whitespace between elements, so without a margin they would touch. */
+.hd-button-square.margin-right { margin-right: 16px; }
+.hd-button-square.margin-bottom { margin-bottom: 16px; }
+
+/* components/_formelement.scss — the sort control is a fieldset so its legend can name the group. */
+.form-fieldset { border: none; margin: 0; padding: 0; }
+
+/* components/_infobox.scss — the component's failure message. Only ever rendered when there
+   is something to say; the always-present role="alert" container carries no class. */
+.infobox {
+  display: flex;
+  position: relative;
+  max-width: 720px;
+  margin: auto;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  background-color: var(--grey30);
+  color: var(--dark);
+  word-break: break-word;
+}
+.infobox--bg-yellow { background-color: var(--warning-light); }
+
+/* components/_datasourcecard.scss — the shape the results had until `Fhi.Metadata-zs56s`, when
+   they took the shape of helsedata's variable-page rows instead (`munin-explorer-data-list`, far
+   below — their `variable-data-list` at the time, ours since the rename). The
+   component emits none of these names any more; they are kept because a real helsedata page loads
+   the whole of Stiler either way, and a stand-in that only carries what one component happens to
+   wear stops being a stand-in for Stiler. */
+.datasourcecard-list { padding: 0; margin: 0; }
+.datasourcecard-list__item { position: relative; display: block; list-style: none; }
+
+.datasourcecard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin-bottom: 40px;
+  padding: 32px 24px;
+  border-radius: 5px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(11, 17, 120, 0.16);
+  color: var(--dark);
+  text-decoration: none;
+  /* Stiler's own, because on helsedata's page the whole card is a link to a datasource. Ours
+     is not one yet — the Explorer API has no per-variable URL — so this is inherited
+     imprecision rather than a decision, and it goes away when that endpoint lands. */
+  cursor: pointer;
+}
+.datasourcecard:hover { box-shadow: 0 6px 11px rgba(33, 42, 190, 0.18); }
+.datasourcecard:focus-within { box-shadow: 0 0 0 2px var(--focus); }
+
+.datasourcecard__heading {
+  margin: 0 40px 0 0;
+  font: normal 500 1.3125rem/160% var(--font);
+  overflow-wrap: break-word;
+}
+
+.datasourcecard__info {
+  margin: 16px 0 20px;
+  color: var(--grey60);
+  font: normal 1rem/160% var(--font);
+}
+.datasourcecard__info--text { display: inline-block; }
+.datasourcecard__info .dot {
+  display: inline-block;
+  height: 5px;
+  width: 5px;
+  margin: 0 16px 2px;
+  border-radius: 50%;
+  background-color: var(--grey60);
+}
+
+.datasourcecard__intro p {
+  margin: 0;
+  display: block;
+  line-height: 150%;
+  font: normal 1.125rem/160% var(--font);
+  overflow: hidden;
+}
+
+@media (max-width: 1280px) {
+  .datasourcecard__info { display: flex; flex-direction: column; }
+  .datasourcecard__info .dot { margin-left: 0; margin-bottom: 0; position: relative; bottom: 2.5px; }
+}
+
+/* ---- not Stiler: base element styling for the filter panel ----
+
+   Everything above is a stand-in for Stiler, which every helsedata page loads. Everything from
+   here to the munin-explorer heading is what neither stylesheet gives at all.
+
+   The filter panel is built from `<details>`, `<summary>` and nested `<ul>`s rather than from class
+   names, because Stiler has no accordion, no tree and no checkbox that can be read back off its
+   compiled stylesheet — and a name it has never heard of renders as a raw browser default, which is
+   the failure the whole approach exists to avoid. On helsedata.no what dresses those elements is
+   that site's own base rules; here it is this block. The package emits `munin-explorer-filters`
+   as a handle for exactly this, and styles nothing itself.
+
+   A host that provides none of this still gets a working panel — the nesting is what carries the
+   hierarchy, and the values are Stiler's own square buttons either way. What it loses is the
+   indentation that makes a delkilde look like it sits under its kilde. Scoped to the panel so none
+   of it can reach the results list, which is our own munin-explorer-data-list. */
+
+.munin-explorer-filters { margin-bottom: 24px; }
+
+.munin-explorer-filters details {
+  border-bottom: 1px solid var(--grey30);
+  padding: 8px 0;
+}
+.munin-explorer-filters summary { cursor: pointer; }
+.munin-explorer-filters summary .form-element__label { margin-top: 0; cursor: pointer; }
+.munin-explorer-filters summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.munin-explorer-filters ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  list-style: none;
+}
+.munin-explorer-filters > details > ul { padding-left: 0; }
+
+/* The clear button is never `disabled` — the same focus reason as the pager's — so its unavailable
+   state has to be drawn from aria-disabled. */
+.munin-explorer-filters [aria-disabled="true"] {
+  color: var(--grey40);
+  cursor: default;
+}
+.munin-explorer-filters [aria-disabled="true"]:hover {
+  background: none;
+  color: var(--grey40);
+}
+
+/* Kelda's facet panel, which is the same handle holding a different shape: a heading per facet and
+   a checkbox per value, with no <details> anywhere. Its two names below are the package's own.
+
+   The folding is the browser's `hidden` attribute rather than a class, so a host that supplies none
+   of these rules still gets a panel that opens and closes — what it does not get is the sidebar,
+   and the media query further down is where a host that has room for one takes the folding away
+   again. The toggle goes with it: a button reading "Vis filtre" over an unfoldable panel is a
+   control that does nothing. */
+
+.munin-explorer-filters__toggle { margin-bottom: 8px; }
+
+.munin-explorer-filters__facets > [role="group"] { margin-bottom: 16px; }
+
+/* Wrapping is the point of this rule rather than a detail of it: one databehandler on the live
+   catalogue is a 200-character sentence, and the component cuts the label at 60 characters
+   precisely because no host is obliged to supply a rule like this one. Both belts are worn. */
+.munin-explorer-filters__facets label {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 2px 0;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+  line-height: 150%;
+}
+
+.munin-explorer-filters__facets input[type="checkbox"] { margin-top: 4px; flex: none; }
+
+/* ---- not Stiler either: base element styling for the detail panel ----
+
+   The same reason as the filter panel above. The panel a row opens is a <dl> of labels and values,
+   an <ol> for the kilde trail and a <ul> for the variabelgrupper and kodeverk, because Stiler has
+   no definition list, no breadcrumb and no key/value block that can be read back off its compiled
+   stylesheet — and a name it has never heard of renders as a raw browser default. On helsedata.no
+   what dresses those elements is that site's own base rules; here it is this block. The package
+   emits `munin-explorer-detail` as a handle for exactly this, and styles nothing itself.
+
+   A host that supplies none of this still gets a panel that reads correctly: the labels are
+   Stiler's own and each value sits under the label that names it. What it loses is the trail
+   reading as a trail rather than as a numbered list. */
+
+.munin-explorer-detail {
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--grey30);
+}
+
+/* The panel's status line holds one message at a time and is empty when there is nothing to
+   report — it stays in the document so a failure replaces text in a region that is already
+   there, which is what makes it announced. Empty, it should take up no room. */
+.munin-explorer-detail > p:empty { display: none; }
+
+.munin-explorer-detail dl { margin: 0; }
+.munin-explorer-detail dt { margin-top: 12px; }
+.munin-explorer-detail dd { margin: 0; }
+
+.munin-explorer-detail dd ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+/* The kilde trail, drawn as one: a chevron between the steps rather than the numbers a bare <ol>
+   would carry. Generated content, so the separator is decoration — not announced, and not copied
+   out with the text. */
+.munin-explorer-detail dd ol {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.munin-explorer-detail dd ol li + li::before {
+  content: "\203A";
+  margin: 0 8px;
+  color: var(--grey60);
+}
+
+/* ---- not Stiler either: base element styling for the kilde and datasamling drill-in ----
+
+   The same reason a third time: what "Vis datakilde" and "Vis datasamling" open is a heading and a
+   <dl>, because Stiler has no key/value block whose name can be read back off its compiled
+   stylesheet. The package emits `munin-explorer-drilldown` as a handle and styles nothing
+   itself. Selecting on `munin-explorer-source` would match nothing — that name is an element id
+   (`munin-explorer-source-<instance>`, which is what names the region) and not a class. It was
+   a class while the kilde opened inside the variable's panel; the rules written against it then
+   sat here dead from the day that panel became a drill-in until this was noticed.
+
+   A host that has styled the detail panel has very nearly styled this one too, and the rest of the
+   drill-in — the padding that separates it from the chrome above — is at the bottom of this file
+   with the other names of ours. There is no inset, because the drill-in is not nested: it takes
+   over the component's own area rather than opening inside the row. */
+
+/* Empty when there is nothing to report, and in the document either way — the same arrangement,
+   and the same reason, as the detail panel's own status line. */
+.munin-explorer-drilldown > p:empty { display: none; }
+
+/* The drill-in's own heading — the datasamling case; a kilde is drawn by KildeView, which brings
+   its own. Rendered at whatever level keeps the host page's outline unbroken, so it is matched by
+   level rather than by element. Only the page margin is overridden: the size comes from Stiler's
+   own headline classes, which the heading also wears.
+
+   Direct children throughout, so none of this reaches into KildeView: its <dl>s wear the result
+   vocabulary's munin-explorer-meta__grid and are styled by that further down, and a descendant
+   selector here would out-specify it and take its spacing away. */
+.munin-explorer-drilldown > h2,
+.munin-explorer-drilldown > h3,
+.munin-explorer-drilldown > h4,
+.munin-explorer-drilldown > h5,
+.munin-explorer-drilldown > h6 { margin: 0 0 8px; }
+
+.munin-explorer-drilldown > dl { margin: 0; }
+.munin-explorer-drilldown > dl > dt { margin-top: 12px; }
+.munin-explorer-drilldown > dl > dd { margin: 0; }
+
+/* ---- not Stiler either: the two-column layout ----
+
+   Stiler styles components, not the arrangement of them — it has no page layout at all, so where
+   the filter panel sits relative to the results is the host's decision and nobody else's. These
+   proportions are Runa's, measured off it: a 384px filter column, a 24px gutter, and a panel that
+   only starts scrolling once the viewport is wide enough to hold two columns in the first place.
+
+   Three things here are less obvious than they look, and any host that puts this panel in a
+   column will meet all three.
+
+   1. The panel is a <fieldset>, and a fieldset defaults to `min-inline-size: min-content`. Left
+      alone it flatly refuses to shrink into its track — 621px of content sitting in a 384px
+      column, overlapping the results. `min-inline-size: 0` is what lets it obey the grid at all.
+
+   2. It has to span every results row. The results are siblings rather than one wrapper, so each
+      lands in its own implicit row; a panel occupying only the first leaves the rest stacked
+      below it with the sidebar's full height as dead space. `span 99` and not `-1`, because -1
+      counts only the *explicit* grid lines and every results row here is implicit.
+
+   3. Stiler's buttons are `white-space: nowrap`, and the facet values are Norwegian register
+      names. "Nasjonalt kvalitetsregister for ..." asks for 565px inside a 384px column, which is
+      a horizontal scrollbar until the label is allowed to wrap.
+
+   Below 1024px none of it applies and the panel returns to the document flow above the results,
+   which is the right answer on a phone. */
+
+@media (min-width: 1024px) {
+  .hostmain { max-width: none; }   /* helsedata sets no cap; the page fills the window */
+
+  .munin-explorer {
+    display: grid;
+    grid-template-columns: 384px minmax(0, 1fr);
+    grid-template-areas:
+      "head    head"
+      "search  search"
+      "filters results";
+    column-gap: 24px;
+    align-items: start;
+  }
+
+  .munin-explorer > h2 { grid-area: head; }
+  .munin-explorer > form { grid-area: search; }
+
+  .munin-explorer > .munin-explorer-filters {
+    grid-area: filters;
+    grid-row: 3 / span 99;
+    min-inline-size: 0;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+  }
+
+  .munin-explorer > *:not(h2):not(form):not(.munin-explorer-filters) {
+    grid-column: 2;
+    min-inline-size: 0;
+  }
+
+  /* Room for a sidebar, so the facets are simply there. `[hidden]` is an author-overridable rule in
+     the browser's own stylesheet, which is what lets one line here undo the folding — and the
+     button that does the folding goes off screen with it, so its aria-expanded is never read while
+     it disagrees with what the reader can see. */
+  .munin-explorer-filters__toggle { display: none; }
+  .munin-explorer-filters__facets[hidden] { display: block; }
+}
+
+.munin-explorer-filters .hd-button-square {
+  white-space: normal;
+  text-align: left;
+  height: auto;
+}
+
+/* ---- Stiler 0.1.13, under components/munin-explorer: the result vocabulary ----
+
+   Everything above stands in for a Stiler component every helsedata page loads. These names are
+   ours — the `munin-explorer` prefix this package owns — and their rules ship in
+   `Fhi.Helsedata.Stiler` 0.1.13 and later under `Static/scss/components/munin-explorer/`, so a
+   host on that version gets them the same way it gets the searchbox above, and a host on an older
+   one gets nothing. Two of the subsections below are a version behind the rest: the pager's rules
+   and its skip link's were renamed after 0.1.13 was cut and arrive in 0.1.14, so a host on 0.1.13
+   has every other name here and neither of those — see their own heading further down.
+
+   They were not ours to begin with. The component wore helsedata's `variable-data-list*`,
+   `variable-dataitem*` and `variable-meta*`, because it replaces the variable page and inheriting
+   that page's rules off `variables.css` cost nothing — nothing inside their estate, and
+   everything outside it, which is what the rename fixed. The shape below is still read off theirs;
+   the names are not theirs any more.
+
+   The real rules are far richer — munin-explorer-meta alone carries 204, and there are 292 selectors
+   across this family. What matters for a sample is the arrangement: rows with columns, a name that
+   is a button, a chevron, and a panel that opens underneath. */
+
+.munin-explorer-data-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.munin-explorer-data-list__item {
+  border-bottom: 1px solid var(--grey30);
+}
+
+.munin-explorer-data-list__item__row {
+  padding: 14px 8px;
+}
+
+.munin-explorer-data-list__item__row:hover {
+  background: var(--grey10);
+}
+
+/* helsedata ships an icon font for this — .icon alone carries 466 rules across five of their
+   bundles. A sample host has no such font, so the chevron is drawn from a character instead.
+   It rotates rather than swapping glyphs, which is what makes the state change read as motion. */
+.munin-explorer-dataitem-main__expand-icon {
+  display: inline-block;
+  width: 16px;
+  color: var(--primary);
+  transition: transform 120ms ease;
+}
+
+.munin-explorer-dataitem-main__expand-icon::before {
+  content: "\203A";           /* › */
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.icon-keyboard-arrow-down.munin-explorer-dataitem-main__expand-icon {
+  transform: rotate(90deg);
+}
+
+/* The name is the disclosure, so it has to look like the control it is without wearing a button
+   box: helsedata draws it as a link, left-aligned, and lets the row's hover carry the affordance. */
+.munin-explorer-dataitem-main__name {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  color: var(--primary-dark);
+  cursor: pointer;
+}
+
+/* Navnet ligger i et rowheader-omslag som baerer flex-bredden, saa knappen inni maa fylle
+   den. Ellers krymper den til teksten og resten av kolonnen slutter aa svare paa klikk -
+   144px doedsone for et kort navn ved 1920. */
+.munin-explorer-dataitem-main__name > button.munin-explorer-dataitem-main__name {
+  width: 100%;
+  text-align: left;
+}
+
+.munin-explorer-dataitem-main__name:hover {
+  text-decoration: underline;
+}
+
+.munin-explorer-data-list__item__row:hover .munin-explorer-dataitem-main__name {
+  text-decoration: underline;
+}
+
+.munin-explorer-dataitem-main__column {
+  min-width: 0;
+}
+
+.munin-explorer-dataitem-main__column__text {
+  display: block;
+  font-size: 0.9375rem;
+  color: var(--dark);
+  overflow-wrap: break-word;
+}
+
+.munin-explorer-dataitem-main__column--description {
+  padding: 4px 8px 0 44px;
+}
+
+.munin-explorer-dataitem-main__column--description p {
+  margin: 0;
+  color: var(--grey60);
+  font-size: 0.9375rem;
+}
+
+/* The panel is a sibling of the row, not a child of it — that is how helsedata nests it, and
+   several of their rules select on exactly that relationship. */
+.munin-explorer-meta {
+  padding: 4px 8px 20px 44px;
+  background: var(--grey10);
+}
+
+.munin-explorer-data-list__item--expanded {
+  background: var(--grey10);
+}
+
+/* ---- the opened panel ----
+
+   munin-explorer-meta is the biggest single family here, and the biggest single thing the
+   component took off the variable page: 204 rules under helsedata's `variable-meta` when it was
+   read back off theirs, 176 selectors under the prefix. This is the arrangement only.
+
+   The definition list keeps being a definition list. The grid is class-based — the whole of
+   `munin-explorer-meta__grid` is `display: grid; gap: 40px 24px`, and the only rule in the family that
+   names an element is `p { margin: 0 }` — so it lays out dt/dd exactly as the variable page lays out
+   its own spans. We get that layout without giving up the semantics of labels and the values they
+   name.
+
+   headline-s / headline-xxs / margin--none are Stiler's own headline scale, from the site-wide
+   styles.css, and are what their h4 field labels wear. The sample carries stand-ins. */
+
+.headline-s { font: normal 600 1.25rem/150% var(--font); }
+.headline-xxs { font: normal 600 0.875rem/150% var(--font); }
+.margin--none { margin: 0; }
+.margin--bottom { margin: 0 0 12px; }
+
+.munin-explorer-meta__grid {
+  display: grid;
+  gap: 16px 24px;
+}
+
+.munin-explorer-meta__grid-1,
+.munin-explorer-meta__grid-2 {
+  grid-template-columns: auto;
+}
+
+.munin-explorer-meta__grid p {
+  margin: 0;
+}
+
+/* dt/dd inside the grid: the label sits on the value rather than beside it, which is what their
+   h4-over-value blocks do. */
+.munin-explorer-meta dl > dt {
+  color: var(--grey60);
+}
+
+.munin-explorer-meta dl > dd {
+  margin: 2px 0 0;
+}
+
+/* ---- the column header ----
+
+   The header and the rows have to share one grid template, or the columns line up with nothing.
+   helsedata solved it by giving `variable-dataitem-header` and `variable-dataitem-main` the same
+   track list, and munin-explorer-dataitem-header and munin-explorer-dataitem-main carry that
+   over; the header has no chevron, so its first cell starts in track 2 and the rest flow after
+   it. Get this wrong and every row sizes its own columns, which is what the sample looked
+   like before the header existed. */
+
+.munin-explorer-data-list__header {
+  border-bottom: 2px solid var(--grey30);
+}
+
+.munin-explorer-data-list__item__row--header {
+  padding-bottom: 8px;
+}
+
+/* helsedata lays these out with flex, not grid — `variable-dataitem-header, variable-dataitem-main
+   { display: flex; width: 100% }` in the stylesheet this shape was read back off — and each column
+   is an inline-flex box that takes its width from its own modifier. That is why extra columns are
+   possible at all: flex distributes what is left rather than needing a track declared up front.
+
+   The header carries `padding-left: 56px` on their side to clear the chevron, which is how the two
+   rows line up without the header having a chevron cell of its own. */
+.munin-explorer-dataitem-header,
+.munin-explorer-dataitem-main {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 12px;
+}
+
+.munin-explorer-dataitem-header {
+  padding-left: 36px;   /* clears the chevron column, as theirs does */
+}
+
+.munin-explorer-dataitem-main__expand-icon {
+  flex: 0 0 24px;
+}
+
+.munin-explorer-dataitem-main__column,
+.sortable-header {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* Column widths in Runa's proportions, measured off it rather than guessed:
+
+     Navn 210   Kode 246   Kilde 96   Datasamling 212   Variabelgruppe 160
+     Datatype 114   Status 98
+
+   Kode is the WIDEST, which is the opposite of what it looks like it should be. A variable code
+   is one unbreakable token — V_ALS.F1.MRCAPUTJERNAVSWI has nowhere to wrap — so a narrow code
+   column either breaks mid-identifier or pushes everything else out of line. A name has spaces
+   and wraps gracefully, so the name is the column that should give way.
+
+   `flex: <width> 1 0` makes grow proportional to those numbers, so the ratios hold at any
+   container width rather than only at Runa's. */
+.munin-explorer-dataitem-main__name,
+.munin-explorer-dataitem-header__name {
+  flex: 210 1 0;
+}
+
+.munin-explorer-dataitem-main__code,
+.munin-explorer-dataitem-header__code {
+  flex: 246 1 0;
+}
+
+.munin-explorer-dataitem-main__source,
+.munin-explorer-dataitem-header__source {
+  flex: 96 1 0;
+}
+
+.munin-explorer-dataitem-main__dataCollection,
+.munin-explorer-dataitem-header__dataCollection {
+  flex: 212 1 0;
+}
+
+.munin-explorer-dataitem-main__theme,
+.munin-explorer-dataitem-header__theme {
+  flex: 160 1 0;
+}
+
+.munin-explorer-dataitem-main__dataType,
+.munin-explorer-dataitem-header__dataType {
+  flex: 114 1 0;
+}
+
+.munin-explorer-dataitem-main__status,
+.munin-explorer-dataitem-header__status {
+  flex: 98 1 0;
+}
+
+/* Dataperiode. The one width here that is not measured off Runa — its own column is a bar rather
+   than two dates, so there was nothing to measure. 150 is what "jan. 2001 – des. 2025" needs
+   without wrapping, and the column is the last one, so it is also the one with room to give. */
+.munin-explorer-dataitem-main__period,
+.munin-explorer-dataitem-header__period {
+  flex: 150 1 0;
+}
+
+
+.sortable-header {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--grey60);
+}
+
+/* Stiler's "this is a button, draw nothing" class — 12 rules in their site-wide stylesheet. */
+.hd-button-reset {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.munin-explorer-dataitem-header__button:hover {
+  text-decoration: underline;
+}
+
+.munin-explorer-dataitem-header__button[aria-current="true"] {
+  color: var(--primary-dark);
+}
+
+/* A code is an identifier, not prose: broken across two lines it stops being readable and
+   stops being copyable as one token. So the code column never wraps — it truncates with an
+   ellipsis and keeps the whole value in the DOM, where assistive technology and the title
+   tooltip still get it in full. Names, kilder and datasamlinger are words and wrap happily. */
+.munin-explorer-dataitem-main__code .munin-explorer-dataitem-main__column__text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Stiler's own visually-hidden class (16 rules site-wide). The sample carries a stand-in, or every
+   cell would show its field name again and the column header would be pointless. */
+.screenreader-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- the panel's tabs ----
+
+   munin-explorer-meta__tabs / __tab / __tab--active / __body / __tab-content are ours, and ship in
+   Stiler 0.1.13 with the rest of the prefix. The shape came off helsedata's `variable-meta` tabs,
+   which carry 204 rules on their side. This is the arrangement only: a row of tabs with the
+   selected one marked, and the panel beneath it. */
+
+.munin-explorer-meta__tabs {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 16px;
+  border-bottom: 1px solid var(--grey30);
+}
+
+.munin-explorer-meta__tab > .hd-button-reset {
+  padding: 8px 16px;
+  color: var(--grey60);
+  border-bottom: 2px solid transparent;
+}
+
+.munin-explorer-meta__tab--active > .hd-button-reset {
+  color: var(--primary-dark);
+  font-weight: 600;
+  border-bottom-color: var(--primary);
+}
+
+.munin-explorer-meta__tab > .hd-button-reset:hover {
+  color: var(--dark);
+}
+
+/* The panel is focusable (tabindex=0) so a keyboard reader can move into the tab's content
+   directly rather than tabbing through it from the tablist. Nothing moves focus there
+   programmatically — choosing a tab leaves focus on the tab — so this is the style for when the
+   panel IS focused, and :focus-visible keeps it off a mouse click. */
+.munin-explorer-meta__tab-content:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.munin-explorer-meta h3 {
+  margin-top: 20px;
+}
+
+.munin-explorer-meta h3:first-child {
+  margin-top: 0;
+}
+
+/* ---- the panel's group headings and period bar ----
+
+   Both are ours to name: helsedata's panel is flat, so it has no group heading, and neither
+   explorer's stylesheet has a period bar. Runa's treatment, translated.
+
+   The group heading is an eyebrow, not a heading-sized heading: 11px, bold, uppercase, wide
+   tracking. Runa draws it in blue. It stays a real <h3> so the panel has an outline. */
+
+.munin-explorer-group {
+  margin: 20px 0 8px;
+  font-size: 0.6875rem;      /* 11px, as Runa */
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--primary-dark);
+}
+
+.munin-explorer-meta [role="tabpanel"] > .munin-explorer-group:first-child {
+  margin-top: 0;
+}
+
+/* The period. The dates are the information; the bar is the illustration, so a host that styles
+   neither still shows the period as words. */
+.munin-explorer-period {
+  margin-bottom: 8px;
+}
+
+.munin-explorer-period__range {
+  margin: 0 0 6px;
+}
+
+.munin-explorer-period__track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--grey30);
+  overflow: hidden;
+  max-width: 420px;
+}
+
+.munin-explorer-period__fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--primary);
+}
+
+/* A period with no end is still running, which is a different fact from a short one — Runa marks
+   it with colour rather than leaving it to look like a full bar that happens to be full. */
+.munin-explorer-period__track--ongoing .munin-explorer-period__fill {
+  background: #1f8a4c;
+}
+
+/* The kilde step of the trail is a control, not a link — this component has no routes, so it
+   discloses the kilde in place instead of navigating to it. Drawn as a link anyway, because that
+   is what it behaves like from the reader's side. */
+.munin-explorer-crumb {
+  color: var(--primary-dark);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.munin-explorer-crumb:hover {
+  color: var(--primary);
+}
+
+/* ---- the hierarchy trail over the results ----
+
+   The same shape as the kilde trail in the panel above, and for the same reason: Stiler has no
+   breadcrumb rule that can be read back off its compiled stylesheet, so the steps are an <ol> and
+   the chevrons between them are generated content — decoration, not announced, and not copied out
+   with the text. The steps wear `munin-explorer-crumb` too, so the two trails on one screen
+   cannot end up looking like different kinds of thing.
+
+   A host that draws none of this still gets a working trail: a numbered list of buttons and a ×
+   after it, in the right order, with the right names. What it loses is the shape that says "path"
+   rather than "list". */
+.munin-explorer-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+
+.munin-explorer-breadcrumb ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.munin-explorer-breadcrumb li + li::before {
+  content: "\203A";
+  margin: 0 8px;
+  color: var(--grey60);
+}
+
+/* The step the selection actually stands on. It is still a button — pressing the step above it
+   makes THIS one the last, and a last step drawn as plain text would take the pressed control out
+   of the document — so what says it is inert is aria-current, exactly as aria-disabled says it for
+   the pager's ends. */
+.munin-explorer-breadcrumb [aria-current="true"] {
+  color: var(--dark);
+  text-decoration: none;
+  cursor: default;
+}
+
+/* The × that empties the hierarchy and leaves every other filter alone. Muted until hovered: it
+   is the trail's escape hatch, not the thing the trail is for. */
+.munin-explorer-breadcrumb__clear {
+  color: var(--grey60);
+  font-size: 1.25rem;
+  line-height: 1;
+  padding: 0 4px;
+}
+
+.munin-explorer-breadcrumb__clear:hover {
+  color: var(--dark);
+}
+
+/* helsedata's panel grid is `1fr 1fr` above 1280px and one column below. The sample carries a
+   stand-in so the fields sit in lanes here too — stacked, they read as a long column of labels
+   and the group headings stop meaning anything. */
+.munin-explorer-meta__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px 24px;
+  margin-bottom: 20px;
+}
+
+.munin-explorer-meta__grid-1 {
+  grid-template-columns: auto;
+}
+
+@media (max-width: 1280px) {
+  .munin-explorer-meta__grid {
+    grid-template-columns: auto;
+    gap: 16px;
+  }
+}
+
+.munin-explorer-meta__grid dt {
+  margin-bottom: 4px;
+}
+
+.munin-explorer-meta__grid dd {
+  margin: 0;
+}
+
+/* The drill-in view. A kilde or datasamling takes over the component's area rather than nesting
+   a third panel inside an open row — Runa navigates to a page for this, and a component with no
+   router gets closest by giving the reader the full width and a way back. The base element styling
+   for what it holds — the heading, the status line, the <dl> — is up under "base element styling
+   for the kilde and datasamling drill-in"; this is the separation from the chrome above it. */
+.munin-explorer-drilldown {
+  padding: 4px 0 24px;
+}
+
+/* ---- the kilde view ----
+
+   Nine names, and the only block in this file that exists because no other name would have
+   done. Runa gives a kilde a page of its own; a component with no router gives it the
+   component's own area instead, and the arrangement it needs — a name block above, then a main
+   column and a sidebar — is a page layout. Stiler had no page layout to take, and helsedata's
+   variables.css had no kilde section to read one back off, so there was nothing to copy and
+   these had to be invented outright. What the layout HOLDS is named from elsewhere: the headings
+   are Stiler's `headline`, the fact lists are `munin-explorer-meta__grid` from the result
+   vocabulary above, and the kildetype badge is named by nobody but us — see the rule for it
+   below.
+
+   They arrived unstyled. The view shipped in #43 and neither sample had a rule for any of these
+   nine until now, so both rendered it at raw browser defaults — a sidebar stacked under a main
+   column, a tag reading as a paragraph — while `assert-sample-css-in-step.sh` said the samples
+   were in step, which they were. That is why the script has a second clause: the names are read
+   out of src/ and each one is asked for a rule. */
+/* The name is rendered at whatever heading level keeps the host page's outline unbroken, so it is
+   matched by level rather than by element — and its top margin comes off, because the drilldown
+   above already supplies the gap and `.headline` would add a second one. */
+.munin-explorer-kilde > * > :is(h2, h3, h4, h5, h6):first-child,
+.munin-explorer-whole > * > :is(h2, h3, h4, h5, h6):first-child {
+  margin-top: 0;
+}
+
+.munin-explorer-kilde__header,
+.munin-explorer-whole__header {
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--grey30);
+}
+
+/* The identifiers are what a reader looks the kilde up by elsewhere, so they are set the way the
+   kodeverk reference is: a run of digits reads as an identifier rather than as prose. */
+.munin-explorer-kilde__identifiers,
+.munin-explorer-whole__code {
+  font-family: ui-monospace, "SFMono-Regular", "Consolas", monospace;
+  font-size: 0.8125rem;
+}
+
+/* The kildetype is a category, not part of the name. This said "Stiler's tag class says so on
+   helsedata, and this stands in for it" until the day someone read helsedata's stylesheets
+   instead of assuming: no such class exists there, in any of their seven bundles or in Stiler.
+   So there is no `tag` rule anywhere for this to stand in for. The badge wears a munin-explorer
+   name of its own instead, which puts it in Stiler 0.1.13 with the rest of the prefix; what
+   follows is this sample's rule for it, and it was the badge's only rule until then.
+
+   Written without a leading dot on purpose. The checks that read this file ask whether it
+   mentions a selector, and prose naming one reads exactly like a rule declaring one. They strip
+   comments before looking now, so this is belt as well as braces. */
+.munin-explorer-kilde__kildetype {
+  display: inline-block;
+  margin: 8px 0 0;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--grey20);
+  color: var(--grey60);
+  font-size: 0.8125rem;
+}
+
+.munin-explorer-kilde__description,
+.munin-explorer-whole__description {
+  margin: 12px 0 0;
+  max-width: 65ch;   /* prose, and prose the full width of a wide window is unreadable */
+  color: var(--grey60);
+}
+
+/* Main column and sidebar, and only once there is room for two of them. Below 1024px the aside
+   returns to the flow under the main column, which is where a phone wants it — the same
+   threshold and the same reasoning as the filter panel above. */
+.munin-explorer-kilde__body,
+.munin-explorer-whole__body {
+  display: grid;
+  gap: 24px;
+}
+
+@media (min-width: 1024px) {
+  .munin-explorer-kilde__body,
+  .munin-explorer-whole__body {
+    grid-template-columns: minmax(0, 1fr) 320px;
+    align-items: start;
+  }
+}
+
+/* A grid track is `min-width: auto` by default, so the widest thing in the column sets the floor.
+   The datasamlinger table has four columns of Norwegian names in it and would push the sidebar
+   off the right edge rather than shrink. Same trap the filter panel meets, same fix. */
+.munin-explorer-kilde__main,
+.munin-explorer-whole__main {
+  min-inline-size: 0;
+}
+
+.munin-explorer-kilde__aside,
+.munin-explorer-whole__aside {
+  padding: 16px;
+  border-radius: 4px;
+  background: var(--grey10);
+}
+
+/* The datasamlinger table. Same shape as the Data tab's code table — the two are the same kind of
+   thing, a list of rows with a heading each — with the name column left to wrap, because a
+   datasamling name is a Norwegian sentence and nowrap on it is a horizontal scrollbar. */
+.munin-explorer-kilde__datasamlinger {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.munin-explorer-kilde__datasamlinger th,
+.munin-explorer-kilde__datasamlinger td {
+  padding: 8px 12px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--grey30);
+}
+
+.munin-explorer-kilde__datasamlinger thead th {
+  background: var(--grey10);
+  color: var(--grey60);
+  font-weight: 600;
+}
+
+/* The name is a <th scope="row">, which browsers centre and bold by default. It is a label for
+   the row, not a heading over it. */
+.munin-explorer-kilde__datasamlinger tbody th {
+  font-weight: 600;
+}
+
+/* ---- the kilde list ----
+
+   Kelda's result table, and three more names of ours. The shape rule is the one the datasamlinger
+   table above follows: there was nothing to copy for a list of kilder — Stiler has no table
+   component, and helsedata's own variable page lists variables rather than sources — so the shape
+   is a <table> and these three dress it rather than carry it. A host that defines none of them
+   still gets eight columns that line up and a name that visibly is a control, which is what an
+   element's own browser default buys and an undefined class name does not.
+
+   Kelda's own table has two control columns in front of these eight, a checkbox and an expand
+   toggle, and four more behind a column picker. Neither belongs to the component yet, so neither
+   is named here. */
+.munin-explorer-kilder {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.munin-explorer-kilder th,
+.munin-explorer-kilder td {
+  padding: 8px 12px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--grey30);
+}
+
+.munin-explorer-kilder thead th {
+  background: var(--grey10);
+  color: var(--grey60);
+  font-weight: 600;
+}
+
+/* The name cell is a <th scope="row">, which browsers centre and bold by default. It is a label
+   for the row, not a heading over it, and the button inside it carries the weight. */
+.munin-explorer-kilder tbody th {
+  font-weight: 400;
+}
+
+/* The three columns holding a number, right-aligned and tabular: they are read down the page,
+   comparing magnitudes, and proportional digits put the same number in two different widths on
+   two rows. Scoped under the table because the rule it has to beat is the shared cell rule above,
+   which carries a class and an element — a bare class name would lose to it and the numbers would
+   silently stay left. */
+.munin-explorer-kilder .munin-explorer-kilder__count {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The name opens the kilde, so it has to look like the control it is without wearing a button
+   box — the same treatment the variable rows' name button gets above, and for the same reason.
+   What a host that skips this loses is the look and not the affordance: the element underneath is
+   a <button>, so it stays operable and stays obviously operable. */
+.munin-explorer-kilder__name {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  color: var(--primary-dark);
+  cursor: pointer;
+}
+
+.munin-explorer-kilder__name:hover {
+  text-decoration: underline;
+}
+
+.munin-explorer-kilder__name:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* ---- the Data tab's kodeverk ----
+
+   All five names below are ours, and every one is a handle: there was no kodeverk section
+   anywhere to read a shape back off, because helsedata's variable page has no such panel at all.
+   Rules for them reached Stiler 0.1.13 with the rest of the prefix; the sample supplies what a
+   host would — the arrangement, nothing more.
+
+   The list is a plain <ul> with its bullets off, because the group heading above it already says
+   these are kodeverk of one kind and a bullet per line adds nothing. */
+.munin-explorer-kodeverk {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 8px;
+}
+
+.munin-explorer-kodeverk__item {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--grey30);
+}
+
+.munin-explorer-kodeverk__item:last-child {
+  border-bottom: 0;
+}
+
+.munin-explorer-kodeverk__name {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* The reference is the thing a reader can look the kodeverk up by, so it is set in a monospace
+   face — a run of digits like 2336 or a dotted OID reads as an identifier rather than as prose. */
+.munin-explorer-kodeverk__reference {
+  margin: 2px 0 8px;
+  font-family: ui-monospace, "SFMono-Regular", "Consolas", monospace;
+}
+
+/* The open code list. Capped in height and scrolled rather than left to run: Kommunenummer is 885
+   codes, and a list that pushes the rest of the page out of reach is worse than one you scroll. */
+.munin-explorer-codes {
+  margin: 8px 0 4px;
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid var(--grey30);
+  border-radius: 4px;
+}
+
+/* One of the two tables this component emits — the other is the datasamlinger list in KildeView —
+   and the reason it is a table at all: four columns of code values have no honest alternative
+   shape. What makes that safe is that an element has a browser
+   default to fall back on — a host that styles nothing still gets aligned columns, where an
+   invented class name would render as nothing. */
+.munin-explorer-codes__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.munin-explorer-codes__table th,
+.munin-explorer-codes__table td {
+  padding: 6px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--grey30);
+}
+
+/* Sticky, so the columns stay named while a long kodeverk is scrolled past them. */
+.munin-explorer-codes__table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--grey10);
+  color: var(--grey60);
+  font-weight: 600;
+}
+
+.munin-explorer-codes__table td:first-child {
+  font-family: ui-monospace, "SFMono-Regular", "Consolas", monospace;
+  white-space: nowrap;
+}
+
+/* ---- the column picker ----
+
+   Our names now — they were helsedata's `variable-explorer-header*` until the rename — and their
+   arrangement throughout: a ghost button above the results, and the choices drawn as a card that
+   hangs off it. Their React sets `position: relative` inline on the wrapper and the component
+   emits the same inline style, so what is left for a host is the dress. The open list is
+   `dropdown-choicepicker`, which is Stiler's own name and stays that way.
+
+   The component builds it from <details> and <summary> because it ships no script. That is the
+   one place the shape differs from theirs, and it costs two rules — the browser's disclosure
+   marker, which their button does not have. */
+.munin-explorer-header {
+  position: relative;
+  margin-bottom: 8px;
+}
+
+/* Right-aligned, where helsedata's own `__actions-button-search` puts the column picker: it acts
+   on the list below rather than introducing it, so it sits at the end of the row instead of at
+   the start. */
+.munin-explorer-header__actions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.munin-explorer-header__actions-button {
+  border: none;
+}
+
+.munin-explorer__dropdown > summary {
+  list-style: none;
+}
+
+.munin-explorer__dropdown > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* The open list, over the header rather than pushing it down: a picker that moved the columns
+   while you chose them would be aiming at a moving target. */
+.dropdown-choicepicker {
+  position: absolute;
+  top: 36px;
+  z-index: 10;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-radius: 0.5rem;
+  background-color: var(--dark);
+  color: #fff;
+}
+
+.dropdown-choicepicker--right {
+  right: 0;
+}
+
+.dropdown-choicepicker__item {
+  display: flex;
+  align-items: center;
+  padding: 4px 20px;
+  white-space: nowrap;
+}
+
+.dropdown-choicepicker__item:first-of-type { padding-top: 16px; }
+.dropdown-choicepicker__item:last-of-type { padding-bottom: 16px; }
+.dropdown-choicepicker__item:hover { background-color: #32378d; }
+
+/* A chosen column is a pressed button, the same two states the facet values use. The mark is
+   drawn in the ::before so the label text stays put whichever state it is in — a tick that
+   appeared and disappeared would shift every line beside it. */
+.dropdown-choicepicker__item .hd-button-reset {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 0;
+  color: inherit;
+}
+
+.dropdown-choicepicker__item .hd-button-reset::before {
+  content: "\2610";
+  margin-right: 8px;
+}
+
+.dropdown-choicepicker__item .hd-button-reset[aria-pressed="true"]::before {
+  content: "\2611";
+}
+
+/* The last column left. Inert rather than disabled, so it can still be reached and still says
+   why it will not move — the sentence is in the DOM, aria-describedby points at it, and this is
+   what says the same thing to everyone else. */
+.dropdown-choicepicker__item .hd-button-reset[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* The sidebar's lists — variabelgrupper and datasamlinger. Bulletless because each is one fact
+   about the variable rather than an enumeration a reader counts, and tight because the sidebar is
+   320px and a hanging indent wastes a fifth of it. */
+.munin-explorer-whole__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.munin-explorer-whole__list li + li {
+  margin-top: 6px;
+}
+
+/* The statistics table. Same shape as the datasamlinger table above it, with the numbers right
+   aligned and tabular: these columns are read down, comparing magnitudes, and proportional digits
+   put the same number in two different widths on two rows. */
+.munin-explorer-statistics {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.munin-explorer-statistics th,
+.munin-explorer-statistics td {
+  padding: 8px 12px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--grey30);
+}
+
+.munin-explorer-statistics thead th {
+  background: var(--grey10);
+}
+
+.munin-explorer-statistics td {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The version history. A list of disclosures rather than a table: each row is one version and the
+   thing under it is that version's own record, which is a shape a table cell cannot hold. */
+.munin-explorer-versions {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--grey30);
+}
+
+.munin-explorer-versions > li {
+  border-bottom: 1px solid var(--grey30);
+}
+
+/* Name, badge and period on one line, with the name taking the slack. The period is pushed to the
+   end so the dates line up down the list and can be read as a column. */
+.munin-explorer-versions__toggle {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 4px;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.munin-explorer-versions__toggle:hover {
+  background: var(--grey10);
+}
+
+.munin-explorer-versions__name {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  font-weight: 600;
+}
+
+/* Reads as a state, not as part of the name — the same move the kildetype tag makes. */
+.munin-explorer-versions__badge {
+  flex: 0 0 auto;
+  padding: 1px 9px;
+  border-radius: 999px;
+  background: var(--grey20);
+  color: var(--grey60);
+  font-size: 0.75rem;
+}
+
+/* Fixed widths so the two dates make columns down the list rather than drifting with the length
+   of each name. tabular-nums for the same reason: proportional digits put "24." and "9." in
+   different widths and the column stops being one. */
+.munin-explorer-versions__from,
+.munin-explorer-versions__to {
+  flex: 0 0 auto;
+  inline-size: 7.5rem;
+  color: var(--grey60);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.munin-explorer-versions__detail {
+  padding: 0 4px 14px;
+}
+
+/* ---- the pager, and the skip link into it ----
+
+   Ours since `Fhi.Metadata-hyyxl`, and the last part of the component to become so. It wore
+   helsedata's `variables-pagination` and `variables-pagination-content` long after the rest of the
+   vocabulary was renamed, because the argument for borrowing looked strongest here: Stiler has no
+   pagination rule of any kind — no `pagination`, `pager`, `paging`, `page-link` or `page-item` —
+   while `variables.css`, which has one, loads on every page of helsedata.no. That covered every
+   host inside their estate and no host outside it, which is the promise the rename exists to keep,
+   so the names moved into the prefix and the rules go to Stiler under `components/munin-explorer/`
+   with the rest of them. They arrive there in 0.1.14, unlike the rest of this section: 0.1.13
+   shipped before this rename, so a host on it has every other `munin-explorer` rule and none of
+   the pager's.
+
+   The skip link into it followed under `Fhi.Metadata-ja2qu`, and was the last borrowed name of
+   all. It wore helsedata's `skiplink-pagination`, off the same `variables.css`, and no released
+   Stiler had a rule that hid it — but that gap failed backwards from every other one in
+   this file. What was missing was the rule that HIDES the link, so a host on Stiler alone drew a
+   permanently visible "Hopp til paginering" above every multi-page result list, and neither sample
+   showed it, because both styled the borrowed name right here. The repository's guards were blind
+   to it for the same reason: they ask whether a name has a rule in the capture of helsedata's live
+   page or in this stylesheet, and it had one in both. Neither reads Stiler. It is
+   `munin-explorer-skiplink-pagination` now, and its Stiler rule is in 0.1.14 with the pager's,
+   unscoped for the reason spelled out on the rule below.
+
+   The declarations are unchanged from when they stood in for helsedata's: an arrangement, not a
+   design. Three of them are not spacing and are worth keeping whatever a host does with the look —
+   each says why in its own comment. */
+
+/* Out of sight until focused, which is the whole point of a skip link: it is there for the
+   keyboard user who would otherwise tab through every card to reach the next page, and for
+   nobody else. Never `display: none` — that would take it out of the tab order too, and a link
+   that is gone looks exactly like a link that is hidden to anyone reading the page. That last
+   sentence is the one thing here a test enforces rather than merely states: the offset below, the
+   absence of `display: none` from this rule and from the `:focus` one, and the presence of that
+   `:focus` rule putting the link back on screen, are all read out of this block by
+   SkipLink_WhenTheSampleStylesheetHidesIt_ThenItGoesOffScreenRatherThanOutOfTheTabOrder. Deleting
+   the twin rather than weakening it therefore fails too — an anchor left in the tab order at
+   -10000px is the same bug mirrored, and just as invisible to a mouse. Every other check in the
+   repository asks only whether the name has a rule at all, which is the question this link
+   satisfied throughout the release it was broken in.
+
+   Unscoped, and Stiler's copy is too. An early attempt at the Stiler rule — on the
+   `feature/munin-explorer-scss` branch, never released in that shape — scoped it under
+   `.munin-explorer-header`, and that selector can never match: the header opens and closes
+   entirely inside the column picker, while this anchor is rendered beside the result list. */
+.munin-explorer-skiplink-pagination {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.munin-explorer-skiplink-pagination:focus {
+  position: static;
+  display: inline-block;
+  width: auto;
+  height: auto;
+  margin-bottom: 16px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background-color: var(--primary);
+  color: #fff;
+  font: normal 500 1rem/1.5 var(--font);
+}
+
+.munin-explorer-pagination {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--grey30);
+}
+/* The skip link's target, focused programmatically. Without an outline of its own the jump is
+   invisible to a sighted keyboard user, who has no other sign that focus moved. */
+.munin-explorer-pagination:focus { outline: 2px solid var(--focus); outline-offset: 4px; }
+
+.munin-explorer-pagination-content {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+
+/* The pager buttons are never `disabled` — that would drop focus to <body> at the ends of the
+   list — so the unavailable state has to be drawn from aria-disabled instead. */
+.munin-explorer-pagination-content [aria-disabled="true"] {
+  background-color: var(--grey30);
+  color: var(--grey60);
+  cursor: default;
+}
+.munin-explorer-pagination-content [aria-disabled="true"]:hover {
+  background-color: var(--grey30);
+  color: var(--grey60);
+}
+
+/* ======================================================================
+   The results list — the same rules as Stiler, extracted from its built
+   stylesheet. Stiler in turn ported them from helsedata's variables.css.
+   ======================================================================
+
+   While the component borrowed helsedata's class names these rules came for
+   free on helsedata.no, and the sample host managed without them. After the
+   rename to the munin-explorer prefix nobody but Stiler 0.1.13 and later
+   supplies them, so the sample has to stand for the same set itself.
+   Generated from Stiler's built main.css so the two do not drift apart. */
+
+.munin-explorer-results {
+  display: flex;
+  flex-direction: column;
+  padding-right: 16px;
+  position: relative;
+  width: 100%;
+}
+
+@media (max-width: 767px) {
+  .munin-explorer-results {
+    margin-left: 0 !important;
+    max-width: none !important;
+    padding-right: 0;
+    width: 100%;
+  }
+
+}
+
+.munin-explorer-container {
+  display: flex;
+  flex-direction: row;
+  padding-top: 40px;
+}
+
+@media (max-width: 767px) {
+  .munin-explorer-container {
+    flex-direction: column-reverse;
+    padding: 24px 16px 0;
+  }
+
+}
+
+.munin-explorer-data-list__result {
+  position: relative;
+}
+
+@media (max-width: 767px) {
+  .munin-explorer-data-list__result {
+    border-left: none;
+    padding-left: 0;
+  }
+
+}
+
+.munin-explorer-dataitem-period {
+  background-color: rgb(187, 184, 201);
+  height: 8px;
+  position: relative;
+  width: 100%;
+}
+
+@media (max-width: 1280px) {
+  .munin-explorer-dataitem-period {
+    margin: 4px 0;
+  }
+
+}
+

@@ -1,0 +1,82 @@
+@namespace Fhi.Munin.Explorer.Blazor
+
+@if (Kilde is { } kilde)
+{
+    <div class="munin-explorer-kilde">
+
+        @* The name block. Runa puts the identifiers under the name rather than beside it, and the
+           kildetype as a tag away from both — it is a category, not part of what this source is
+           called. *@
+        <div class="munin-explorer-kilde__header">
+            @* The catalogue holds one name, in Norwegian, so it is marked when the reader is not. *@
+            @Heading(HeadingLevel, kilde.PreferredTerm, "headline headline-s margin--bottom",
+                     HeadingId, CatalogueProperties.Foreign("no", Reader))
+
+            @if (Identifiers is { } identifiers)
+            {
+                <p class="caption margin--none munin-explorer-kilde__identifiers">@identifiers</p>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(kilde.Kildetype))
+            {
+                @* `tag` was here, on the theory that it was Stiler's badge class. helsedata defines
+                   no `.tag` at all — their badges are `taglist`/`taglistitem`, and even those are
+                   only styled inside `.listcontainer .listitemholder .taglist`, which never matches
+                   this markup. The kildetype class below is ours and carries the whole badge. *@
+                <p class="munin-explorer-kilde__kildetype">@T.KildeTypeLabel(kilde.Kildetype, kilde.Kildetype)</p>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(kilde.Description))
+            {
+                @* Norwegian whatever the reader's language: the catalogue stores one description. *@
+                <p class="ingress munin-explorer-kilde__description" lang="@CatalogueProperties.Foreign("no", Reader)">
+                    @kilde.Description
+                </p>
+            }
+        </div>
+
+        <div class="munin-explorer-kilde__body">
+            <div class="munin-explorer-kilde__main">
+
+                @* The catalogue's own metadata. Which groups exist, what they are called and what
+                   order they come in all arrive with the payload — see CatalogueProperties.Groups
+                   for the two rules that decide which of them a reader actually sees.
+
+                   The four block headings below wear headline-s, the same size as the name above
+                   them, because Stiler's scale has nothing verified between it and the headline-xxs
+                   the field labels wear. A smaller-sounding name invented to sit in that gap —
+                   headline-sm was here until Fhi.Metadata-e4bj2 — is a name no stylesheet defines,
+                   so it renders as a bare <h*> at the browser's own size instead. *@
+                @if (Groups.Count > 0)
+                {
+                    @Heading(BlockLevel, T.HeadingMetadata, "headline headline-s")
+
+                    foreach (var group in Groups)
+                    {
+                        @Group(group)
+                    }
+                }
+
+                @* The source's datasamlinger, gathered through its delkilder rather than only the
+                   ones hanging directly off it. *@
+                @if (DataCollections.Count > 0)
+                {
+                    @Heading(BlockLevel, DataCollectionsHeading ?? T.HeadingDataCollections, "headline headline-s")
+                    @DataCollectionTable
+                }
+
+                @* Whatever the explorer using this view puts after the metadata. This component
+                   never learns which explorer that is. *@
+                @Sections
+            </div>
+
+            <aside class="munin-explorer-kilde__aside">
+                @Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
+                @Facts(SourceInformation)
+
+                @Heading(BlockLevel, T.HeadingStatistics, "headline headline-s")
+                @Facts(Statistics)
+            </aside>
+        </div>
+    </div>
+}

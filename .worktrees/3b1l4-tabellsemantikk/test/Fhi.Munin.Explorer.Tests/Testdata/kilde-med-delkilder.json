@@ -1,0 +1,1704 @@
+{
+  "id": "e358db40-0efa-47bb-893a-40ee00ccde12",
+  "code": "K_TR",
+  "preferredTerm": "The Tromsø study",
+  "kortNavn": null,
+  "beskrivelse": "The Tromsø Study is Norway's most comprehensive and most participated population study. More than 45 000 persons have participated in one or more of the seven surveys conducted since 1974. The research has provided important knowledge about health and disease and contributes to better patient care, nationally and internationally.<br><br>The Tromsø Study has invited whole birth cohorts and random samples from the municipality of Tromsø, and collected health data from questionnaires, clinical examinations and biological samples.\r\n<br><br>As data controller, UiT the Arctic University of Norway is responsible for the cohort and the storage of questionnaire data and data generated from the biological material.\r\n<br><br>\r\n**Legislation**\r\n<br>\r\n- The Public Health Act \r\n- The Health Research Act \r\n- Personal Health Data Filing System Act (The Health Register Act) \r\n- The Personal Data Act \r\n- The General Data Protection Regulation \r\n- The Research Ethics Act \r\n- The Patient Injury Act \r\n- The Public Administration Act \r\n- The Freedom of Information Act \r\n- The Patient and Consumer Rights Act \r\n- The Regulation relating to population-based health surveys\r\n\r\n<br><br>\r\n**Data controller**\r\n<br>\r\nUiT The Arctic University of Norway<br><br>\r\n\r\n**Contact information**\r\n<br>\r\n[https://uit.no/research/tromsostudy](https://uit.no/research/tromsostudy)<br><br>\r\ntromsous@uit.no<br><br>\r\nLeader of The Tromsø Study Sameline Grimsgaard +47 77 64 92 85/Adviser Kristin Kanstad +47 77 64 48 86<br><br>Department of Community Medicine<br>UiT The Arctic University of Norway<br>PP Box 6050 Langnes<br>N-9037 Tromsø<br>NORWAY",
+  "kildetype": "befolkningsbasertHelseundersokelse",
+  "lovverk": "\r\n- The Public Health Act \r\n- The Health Research Act \r\n- Personal Health Data Filing System Act (The Health Register Act) \r\n- The Personal Data Act \r\n- The General Data Protection Regulation \r\n- The Research Ethics Act \r\n- The Patient Injury Act \r\n- The Public Administration Act \r\n- The Freedom of Information Act \r\n- The Patient and Consumer Rights Act \r\n- The Regulation relating to population-based health surveys",
+  "dataansvarlig": "UiT The Arctic University of Norway",
+  "databehandler": "UiT The Arctic University of Norway",
+  "gradAvPersonidentifikasjon": null,
+  "gyldigFra": "1974-01-01T00:00:00.000Z",
+  "gyldigTil": null,
+  "opprettet": "2026-06-29T08:14:25.999Z",
+  "sistOppdatert": "2026-07-01T07:46:57.401Z",
+  "additionalProperties": {
+    "NavnEngelsk": "The Tromsø Study",
+    "Hjemmeside": "[https://uit.no/research/tromsostudy](https://uit.no/research/tromsostudy)",
+    "Epost": "tromsous@uit.no",
+    "Telefonnummer": "Leader of The Tromsø Study Sameline Grimsgaard +47 77 64 92 85/Adviser Kristin Kanstad +47 77 64 48 86",
+    "healthCategory": "[\"ehds-cat:population-health-surveys\"]",
+    "accessRights": "eu-access:NON_PUBLIC",
+    "healthDataAccessBodyName": "Helsedataservice",
+    "healthDataAccessBodyPhone": "+47 21 07 70 00",
+    "healthDataAccessBodyEmail": "service@helsedata.no",
+    "healthDataAccessBodyHomepage": "https://www.fhi.no/om/organisasjon/helsedataservice/",
+    "applicableLegislation": "http://data.europa.eu/eli/reg/2025/327/oj;https://lovdata.no/eli/lov/2001-05-18-24;https://lovdata.no/eli/lov/2011-06-24-29;https://lovdata.no/eli/lov/2008-06-20-44;https://lovdata.no/eli/lov/2018-06-15-38;http://data.europa.eu/eli/reg/2016/679/oj;https://lovdata.no/eli/lov/2017-04-28-23;https://lovdata.no/eli/lov/2001-06-15-53;https://lovdata.no/eli/lov/1967-02-10-0;https://lovdata.no/eli/lov/2006-05-19-16;https://lovdata.no/eli/lov/1999-07-02-63;https://lovdata.no/eli/forskrift/2018-06-20-911",
+    "hasLegalBasis": "- The Public Health Act;- The Health Research Act;- Personal Health Data Filing System Act (The Health Register Act);- The Personal Data Act;- The General Data Protection Regulation;- The Research Ethics Act;- The Patient Injury Act;- The Public Administration Act;- The Freedom of Information Act;- The Patient and Consumer Rights Act;- The Regulation relating to population-based health surveys",
+    "TittelFlerspraklig": "{\"nb\":\"The Tromsø study\",\"en\":\"The Tromsø Study\"}",
+    "BeskrivelseFlerspraklig": "{\"nb\":\"The Tromsø Study is Norway\\u0027s most comprehensive and most participated population study. More than 45 000 persons have participated in one or more of the seven surveys conducted since 1974. The research has provided important knowledge about health and disease and contributes to better patient care, nationally and internationally.\\u003Cbr\\u003E\\u003Cbr\\u003EThe Tromsø Study has invited whole birth cohorts and random samples from the municipality of Tromsø, and collected health data from questionnaires, clinical examinations and biological samples.\\r\\n\\u003Cbr\\u003E\\u003Cbr\\u003EAs data controller, UiT the Arctic University of Norway is responsible for the cohort and the storage of questionnaire data and data generated from the biological material.\\r\\n\\u003Cbr\\u003E\\u003Cbr\\u003E\\r\\n**Legislation**\\r\\n\\u003Cbr\\u003E\\r\\n- The Public Health Act \\r\\n- The Health Research Act \\r\\n- Personal Health Data Filing System Act (The Health Register Act) \\r\\n- The Personal Data Act \\r\\n- The General Data Protection Regulation \\r\\n- The Research Ethics Act \\r\\n- The Patient Injury Act \\r\\n- The Public Administration Act \\r\\n- The Freedom of Information Act \\r\\n- The Patient and Consumer Rights Act \\r\\n- The Regulation relating to population-based health surveys\\r\\n\\r\\n\\u003Cbr\\u003E\\u003Cbr\\u003E\\r\\n**Data controller**\\r\\n\\u003Cbr\\u003E\\r\\nUiT The Arctic University of Norway\\u003Cbr\\u003E\\u003Cbr\\u003E\\r\\n\\r\\n**Contact information**\\r\\n\\u003Cbr\\u003E\\r\\n[https://uit.no/research/tromsostudy](https://uit.no/research/tromsostudy)\\u003Cbr\\u003E\\u003Cbr\\u003E\\r\\ntromsous@uit.no\\u003Cbr\\u003E\\u003Cbr\\u003E\\r\\nLeader of The Tromsø Study Sameline Grimsgaard \\u002B47 77 64 92 85/Adviser Kristin Kanstad \\u002B47 77 64 48 86\\u003Cbr\\u003E\\u003Cbr\\u003EDepartment of Community Medicine\\u003Cbr\\u003EUiT The Arctic University of Norway\\u003Cbr\\u003EPP Box 6050 Langnes\\u003Cbr\\u003EN-9037 Tromsø\\u003Cbr\\u003ENORWAY\"}"
+  },
+  "propertyMetadata": [
+    {
+      "key": "Code",
+      "displayNameTranslations": {
+        "no": "Kode",
+        "en": "Code"
+      },
+      "groupTranslations": {},
+      "sortOrder": 5,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "NavnEngelsk",
+      "displayNameTranslations": {
+        "no": "Navn på engelsk",
+        "en": "Name in English"
+      },
+      "groupTranslations": {
+        "no": "Identifikasjon",
+        "en": "Identification"
+      },
+      "sortOrder": 10,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "KortNavn",
+      "displayNameTranslations": {
+        "no": "Kortnavn",
+        "en": "Short name"
+      },
+      "groupTranslations": {},
+      "sortOrder": 10,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "PreferredTerm",
+      "displayNameTranslations": {
+        "no": "Foretrukken term",
+        "en": "Preferred term"
+      },
+      "groupTranslations": {},
+      "sortOrder": 20,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "BeskrivelseEngelsk",
+      "displayNameTranslations": {
+        "no": "Beskrivelse på engelsk",
+        "en": "Description in English"
+      },
+      "groupTranslations": {
+        "no": "Beskrivelse",
+        "en": "Description"
+      },
+      "sortOrder": 20,
+      "type": "Text",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "AnbefalteBruksomraader",
+      "displayNameTranslations": {
+        "no": "Anbefalte bruksområder",
+        "en": "Recommended Use Cases"
+      },
+      "groupTranslations": {
+        "no": "Beskrivelse",
+        "en": "Description"
+      },
+      "sortOrder": 30,
+      "type": "Text",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "Beskrivelse",
+      "displayNameTranslations": {
+        "no": "Beskrivelse",
+        "en": "Description"
+      },
+      "groupTranslations": {},
+      "sortOrder": 30,
+      "type": "Text",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "Emneord",
+      "displayNameTranslations": {
+        "no": "Emneord",
+        "en": "Keywords"
+      },
+      "groupTranslations": {
+        "no": "Beskrivelse",
+        "en": "Description"
+      },
+      "sortOrder": 40,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "Kildetype",
+      "displayNameTranslations": {
+        "no": "Kildetype",
+        "en": "Source type"
+      },
+      "groupTranslations": {},
+      "sortOrder": 40,
+      "type": "SingleSelect",
+      "optionsJson": "[{\"value\":\"sentraltHelseregister\",\"label\":\"Sentralt helseregister\",\"labelEn\":\"Central health registry\"},{\"value\":\"nasjonaltMedisinskKvalitetsregister\",\"label\":\"Nasjonalt medisinsk kvalitetsregister\",\"labelEn\":\"National medical quality registry\"},{\"value\":\"annetMedisinskKvalitetsregister\",\"label\":\"Annet medisinsk kvalitetsregister\",\"labelEn\":\"Other medical quality registry\"},{\"value\":\"befolkningsbasertHelseundersokelse\",\"label\":\"Befolkningsbasert helseundersøkelse\",\"labelEn\":\"Population-based health survey\"},{\"value\":\"biobank\",\"label\":\"Biobank\",\"labelEn\":\"Biobank\"},{\"value\":\"annenDatakilde\",\"label\":\"Annen datakilde\",\"labelEn\":\"Other data source\"},{\"value\":\"forskningsprosjekt\",\"label\":\"Forskningsprosjekt\",\"labelEn\":\"Research project\"},{\"value\":\"manueltOpprettet\",\"label\":\"Manuelt opprettet\",\"labelEn\":\"Manually created\"}]",
+      "options": [
+        {
+          "value": "sentraltHelseregister",
+          "displayName": "Sentralt helseregister"
+        },
+        {
+          "value": "nasjonaltMedisinskKvalitetsregister",
+          "displayName": "Nasjonalt medisinsk kvalitetsregister"
+        },
+        {
+          "value": "annetMedisinskKvalitetsregister",
+          "displayName": "Annet medisinsk kvalitetsregister"
+        },
+        {
+          "value": "befolkningsbasertHelseundersokelse",
+          "displayName": "Befolkningsbasert helseundersøkelse"
+        },
+        {
+          "value": "biobank",
+          "displayName": "Biobank"
+        },
+        {
+          "value": "annenDatakilde",
+          "displayName": "Annen datakilde"
+        },
+        {
+          "value": "forskningsprosjekt",
+          "displayName": "Forskningsprosjekt"
+        },
+        {
+          "value": "manueltOpprettet",
+          "displayName": "Manuelt opprettet"
+        }
+      ]
+    },
+    {
+      "key": "EmneordFlerspraklig",
+      "displayNameTranslations": {
+        "no": "Emneord (språkmerket)",
+        "en": "Keywords (language-tagged)"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 41,
+      "type": "LangTaggedList",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "Innsamlingsmetode",
+      "displayNameTranslations": {
+        "no": "Innsamlingsmetode",
+        "en": "Collection Method"
+      },
+      "groupTranslations": {
+        "no": "Datainnsamling",
+        "en": "Data Collection"
+      },
+      "sortOrder": 50,
+      "type": "Text",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "InklusjonsOgEksklusjonskriterier",
+      "displayNameTranslations": {
+        "no": "Inklusjons- og eksklusjonskriterier",
+        "en": "Inclusion and Exclusion Criteria"
+      },
+      "groupTranslations": {
+        "no": "Datainnsamling",
+        "en": "Data Collection"
+      },
+      "sortOrder": 60,
+      "type": "Text",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "GeografiskAvgrensning",
+      "displayNameTranslations": {
+        "no": "Geografisk avgrensning",
+        "en": "Geographic Boundaries"
+      },
+      "groupTranslations": {
+        "no": "Datainnsamling",
+        "en": "Data Collection"
+      },
+      "sortOrder": 70,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "GradAvPersonidentifikasjon",
+      "displayNameTranslations": {
+        "no": "Grad av personidentifikasjon",
+        "en": "Degree of personal identification"
+      },
+      "groupTranslations": {},
+      "sortOrder": 70,
+      "type": "SingleSelect",
+      "optionsJson": "[{\"value\":\"directlyIdentifiable\",\"label\":\"Direkte personidentifiserbare data\",\"labelEn\":\"Directly identifiable data\"},{\"value\":\"indirectlyIdentifiable\",\"label\":\"Indirekte personidentifiserbare data\",\"labelEn\":\"Indirectly identifiable data\"},{\"value\":\"deIdentified\",\"label\":\"Avidentifiserte data\",\"labelEn\":\"De-identified data\"},{\"value\":\"anonymous\",\"label\":\"Anonyme data\",\"labelEn\":\"Anonymous data\"}]",
+      "options": [
+        {
+          "value": "directlyIdentifiable",
+          "displayName": "Direkte personidentifiserbare data"
+        },
+        {
+          "value": "indirectlyIdentifiable",
+          "displayName": "Indirekte personidentifiserbare data"
+        },
+        {
+          "value": "deIdentified",
+          "displayName": "Avidentifiserte data"
+        },
+        {
+          "value": "anonymous",
+          "displayName": "Anonyme data"
+        }
+      ]
+    },
+    {
+      "key": "Lovverk",
+      "displayNameTranslations": {
+        "no": "Lovverk",
+        "en": "Legislation"
+      },
+      "groupTranslations": {},
+      "sortOrder": 80,
+      "type": "Url",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "Tilslutningsgrad",
+      "displayNameTranslations": {
+        "no": "Tilslutningsgrad",
+        "en": "Participation Rate"
+      },
+      "groupTranslations": {
+        "no": "Kvalitet",
+        "en": "Quality"
+      },
+      "sortOrder": 80,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "BeregningTilslutningsgrad",
+      "displayNameTranslations": {
+        "no": "Beregning av tilslutningsgrad",
+        "en": "Participation Rate Calculation"
+      },
+      "groupTranslations": {
+        "no": "Kvalitet",
+        "en": "Quality"
+      },
+      "sortOrder": 90,
+      "type": "Text",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "Dataansvarlig",
+      "displayNameTranslations": {
+        "no": "Dataansvarlig",
+        "en": "Data controller"
+      },
+      "groupTranslations": {},
+      "sortOrder": 90,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "Databehandler",
+      "displayNameTranslations": {
+        "no": "Databehandler",
+        "en": "Data processor"
+      },
+      "groupTranslations": {},
+      "sortOrder": 100,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "Dekningsgrad",
+      "displayNameTranslations": {
+        "no": "Dekningsgrad",
+        "en": "Coverage Rate"
+      },
+      "groupTranslations": {
+        "no": "Kvalitet",
+        "en": "Quality"
+      },
+      "sortOrder": 100,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "GyldigFra",
+      "displayNameTranslations": {
+        "no": "Gyldig fra",
+        "en": "Valid from"
+      },
+      "groupTranslations": {},
+      "sortOrder": 110,
+      "type": "Date",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "BeregningDekningsgrad",
+      "displayNameTranslations": {
+        "no": "Beregning av dekningsgrad",
+        "en": "Coverage Rate Calculation"
+      },
+      "groupTranslations": {
+        "no": "Kvalitet",
+        "en": "Quality"
+      },
+      "sortOrder": 110,
+      "type": "Text",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "Kvalitetsnote",
+      "displayNameTranslations": {
+        "no": "Kvalitetsnote",
+        "en": "Quality Note"
+      },
+      "groupTranslations": {
+        "no": "Kvalitet",
+        "en": "Quality"
+      },
+      "sortOrder": 120,
+      "type": "Text",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "GyldigTil",
+      "displayNameTranslations": {
+        "no": "Gyldig til",
+        "en": "Valid to"
+      },
+      "groupTranslations": {},
+      "sortOrder": 120,
+      "type": "Date",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "Formaal",
+      "displayNameTranslations": {
+        "no": "Formål",
+        "en": "Purpose"
+      },
+      "groupTranslations": {
+        "no": "Formål",
+        "en": "Purpose"
+      },
+      "sortOrder": 130,
+      "type": "Text",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "FormaalFlerspraklig",
+      "displayNameTranslations": {
+        "no": "Formål (språkmerket)",
+        "en": "Purpose (language-tagged)"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 131,
+      "type": "LangTaggedList",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "Forskrift",
+      "displayNameTranslations": {
+        "no": "Forskrift",
+        "en": "Regulation"
+      },
+      "groupTranslations": {
+        "no": "Juridisk",
+        "en": "Legal"
+      },
+      "sortOrder": 140,
+      "type": "Text",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "HjemmelTilgjengeliggjoring",
+      "displayNameTranslations": {
+        "no": "Hjemmel for tilgjengeliggjøring",
+        "en": "Legal Basis for Disclosure"
+      },
+      "groupTranslations": {
+        "no": "Juridisk",
+        "en": "Legal"
+      },
+      "sortOrder": 150,
+      "type": "Text",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "JuridiskNote",
+      "displayNameTranslations": {
+        "no": "Juridisk note",
+        "en": "Legal Note"
+      },
+      "groupTranslations": {
+        "no": "Juridisk",
+        "en": "Legal"
+      },
+      "sortOrder": 160,
+      "type": "Text",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "Hjemmeside",
+      "displayNameTranslations": {
+        "no": "Hjemmeside",
+        "en": "Website"
+      },
+      "groupTranslations": {
+        "no": "Kontakt",
+        "en": "Contact"
+      },
+      "sortOrder": 170,
+      "type": "Url",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "Epost",
+      "displayNameTranslations": {
+        "no": "E-post",
+        "en": "Email"
+      },
+      "groupTranslations": {
+        "no": "Kontakt",
+        "en": "Contact"
+      },
+      "sortOrder": 180,
+      "type": "Email",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "Telefonnummer",
+      "displayNameTranslations": {
+        "no": "Telefonnummer",
+        "en": "Phone Number"
+      },
+      "groupTranslations": {
+        "no": "Kontakt",
+        "en": "Contact"
+      },
+      "sortOrder": 190,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "OrgnrDataansvarlig",
+      "displayNameTranslations": {
+        "no": "Org.nr. dataansvarlig",
+        "en": "Data Controller Org. No."
+      },
+      "groupTranslations": {
+        "no": "Identifikatorer",
+        "en": "Identifiers"
+      },
+      "sortOrder": 200,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "HERidDatakilde",
+      "displayNameTranslations": {
+        "no": "HER-ID datakilde",
+        "en": "HER-ID Data Source"
+      },
+      "groupTranslations": {
+        "no": "Identifikatorer",
+        "en": "Identifiers"
+      },
+      "sortOrder": 210,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "HERidDataansvarlig",
+      "displayNameTranslations": {
+        "no": "HER-ID dataansvarlig",
+        "en": "HER-ID Data Controller"
+      },
+      "groupTranslations": {
+        "no": "Identifikatorer",
+        "en": "Identifiers"
+      },
+      "sortOrder": 220,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "ErISamsvarMed",
+      "displayNameTranslations": {
+        "no": "Er i samsvar med",
+        "en": "Complies With"
+      },
+      "groupTranslations": {
+        "no": "Samsvar",
+        "en": "Compliance"
+      },
+      "sortOrder": 230,
+      "type": "Text",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "accessRights",
+      "displayNameTranslations": {
+        "no": "Tilgangsrettigheter",
+        "en": "Access rights"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 300,
+      "type": "SingleSelect",
+      "optionsJson": "[{\"value\":\"eu-access:NON_PUBLIC\",\"label\":\"Ikke-offentlig\",\"labelEn\":\"Non-public\"},{\"value\":\"eu-access:RESTRICTED\",\"label\":\"Begrenset\",\"labelEn\":\"Restricted\"},{\"value\":\"eu-access:PUBLIC\",\"label\":\"Offentlig\",\"labelEn\":\"Public\"}]",
+      "options": [
+        {
+          "value": "eu-access:NON_PUBLIC",
+          "displayName": "Ikke-offentlig"
+        },
+        {
+          "value": "eu-access:RESTRICTED",
+          "displayName": "Begrenset"
+        },
+        {
+          "value": "eu-access:PUBLIC",
+          "displayName": "Offentlig"
+        }
+      ]
+    },
+    {
+      "key": "healthDataAccessBodyName",
+      "displayNameTranslations": {
+        "no": "Navn",
+        "en": "Name"
+      },
+      "groupTranslations": {
+        "no": "Helsedatatilgangsorgan (overstyring)",
+        "en": "Health Data Access Body (override)"
+      },
+      "sortOrder": 311,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "healthDataAccessBodyPhone",
+      "displayNameTranslations": {
+        "no": "Telefon",
+        "en": "Phone"
+      },
+      "groupTranslations": {
+        "no": "Helsedatatilgangsorgan (overstyring)",
+        "en": "Health Data Access Body (override)"
+      },
+      "sortOrder": 312,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "healthDataAccessBodyEmail",
+      "displayNameTranslations": {
+        "no": "E-post",
+        "en": "Email"
+      },
+      "groupTranslations": {
+        "no": "Helsedatatilgangsorgan (overstyring)",
+        "en": "Health Data Access Body (override)"
+      },
+      "sortOrder": 313,
+      "type": "Email",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "healthDataAccessBodyHomepage",
+      "displayNameTranslations": {
+        "no": "Hjemmeside",
+        "en": "Homepage"
+      },
+      "groupTranslations": {
+        "no": "Helsedatatilgangsorgan (overstyring)",
+        "en": "Health Data Access Body (override)"
+      },
+      "sortOrder": 314,
+      "type": "Url",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "applicableLegislation",
+      "displayNameTranslations": {
+        "no": "Gjeldende lovgivning",
+        "en": "Applicable legislation"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 320,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "hasLegalBasis",
+      "displayNameTranslations": {
+        "no": "Rettslig grunnlag (språkmerket)",
+        "en": "Legal basis (language-tagged)"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 325,
+      "type": "LangTaggedList",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "healthCategory",
+      "displayNameTranslations": {
+        "no": "Helsedatakategori",
+        "en": "Health data category"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 330,
+      "type": "MultiSelect",
+      "optionsJson": "[{\"value\":\"ehds-cat:health-registries\",\"label\":\"Helseregistre\",\"labelEn\":\"Health registries\"},{\"value\":\"ehds-cat:registries-quality-of-healthcare\",\"label\":\"Kvalitetsregistre\",\"labelEn\":\"Quality-of-healthcare registries\"},{\"value\":\"ehds-cat:population-health-surveys\",\"label\":\"Befolkningsbaserte helseundersøkelser\",\"labelEn\":\"Population health surveys\"},{\"value\":\"ehds-cat:provesamling\",\"label\":\"Prøvesamling\",\"labelEn\":\"Sample collection\"},{\"value\":\"ehds-cat:biodata\",\"label\":\"Biodata (DNA/omikk)\",\"labelEn\":\"Biodata (DNA/omics)\"},{\"value\":\"ehds-cat:biobanks\",\"label\":\"Biobanker\",\"labelEn\":\"Biobanks\"},{\"value\":\"ehds-cat:other\",\"label\":\"Annet\",\"labelEn\":\"Other\"}]",
+      "options": [
+        {
+          "value": "ehds-cat:health-registries",
+          "displayName": "Helseregistre"
+        },
+        {
+          "value": "ehds-cat:registries-quality-of-healthcare",
+          "displayName": "Kvalitetsregistre"
+        },
+        {
+          "value": "ehds-cat:population-health-surveys",
+          "displayName": "Befolkningsbaserte helseundersøkelser"
+        },
+        {
+          "value": "ehds-cat:provesamling",
+          "displayName": "Prøvesamling"
+        },
+        {
+          "value": "ehds-cat:biodata",
+          "displayName": "Biodata (DNA/omikk)"
+        },
+        {
+          "value": "ehds-cat:biobanks",
+          "displayName": "Biobanker"
+        },
+        {
+          "value": "ehds-cat:other",
+          "displayName": "Annet"
+        }
+      ]
+    },
+    {
+      "key": "healthTheme",
+      "displayNameTranslations": {
+        "no": "Helsetema",
+        "en": "Health theme"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 340,
+      "type": "MultiSelect",
+      "optionsJson": "[{\"value\":\"healthdcatap:communicable-diseases\",\"label\":\"Smittsomme sykdommer\",\"labelEn\":\"Communicable diseases\"},{\"value\":\"healthdcatap:non-communicable-diseases\",\"label\":\"Ikke-smittsomme sykdommer\",\"labelEn\":\"Non-communicable diseases\"},{\"value\":\"healthdcatap:rare-diseases\",\"label\":\"Sjeldne sykdommer\",\"labelEn\":\"Rare diseases\"},{\"value\":\"healthdcatap:mental-health\",\"label\":\"Psykisk helse\",\"labelEn\":\"Mental health\"},{\"value\":\"healthdcatap:reproductive-health\",\"label\":\"Reproduktiv helse\",\"labelEn\":\"Reproductive health\"},{\"value\":\"healthdcatap:environmental-health\",\"label\":\"Milj\\u00f8helse\",\"labelEn\":\"Environmental health\"},{\"value\":\"healthdcatap:public-health-surveillance\",\"label\":\"Folkehelseoverv\\u00e5king\",\"labelEn\":\"Public health surveillance\"},{\"value\":\"healthdcatap:health-services\",\"label\":\"Helsetjenester\",\"labelEn\":\"Health services\"},{\"value\":\"healthdcatap:pharmaceuticals\",\"label\":\"Legemidler\",\"labelEn\":\"Pharmaceuticals\"},{\"value\":\"healthdcatap:genomics\",\"label\":\"Genomikk\",\"labelEn\":\"Genomics\"}]",
+      "options": [
+        {
+          "value": "healthdcatap:communicable-diseases",
+          "displayName": "Smittsomme sykdommer"
+        },
+        {
+          "value": "healthdcatap:non-communicable-diseases",
+          "displayName": "Ikke-smittsomme sykdommer"
+        },
+        {
+          "value": "healthdcatap:rare-diseases",
+          "displayName": "Sjeldne sykdommer"
+        },
+        {
+          "value": "healthdcatap:mental-health",
+          "displayName": "Psykisk helse"
+        },
+        {
+          "value": "healthdcatap:reproductive-health",
+          "displayName": "Reproduktiv helse"
+        },
+        {
+          "value": "healthdcatap:environmental-health",
+          "displayName": "Miljøhelse"
+        },
+        {
+          "value": "healthdcatap:public-health-surveillance",
+          "displayName": "Folkehelseovervåking"
+        },
+        {
+          "value": "healthdcatap:health-services",
+          "displayName": "Helsetjenester"
+        },
+        {
+          "value": "healthdcatap:pharmaceuticals",
+          "displayName": "Legemidler"
+        },
+        {
+          "value": "healthdcatap:genomics",
+          "displayName": "Genomikk"
+        }
+      ]
+    },
+    {
+      "key": "numberOfRecords",
+      "displayNameTranslations": {
+        "no": "Antall registreringer",
+        "en": "Number of records"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 350,
+      "type": "Number",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "numberOfUniqueIndividuals",
+      "displayNameTranslations": {
+        "no": "Antall unike individer",
+        "en": "Number of unique individuals"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 360,
+      "type": "Number",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "retentionPeriod",
+      "displayNameTranslations": {
+        "no": "Oppbevaringstid",
+        "en": "Retention period"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 370,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "populationCoverage",
+      "displayNameTranslations": {
+        "no": "Populasjonsdekning",
+        "en": "Population coverage"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 380,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "PopulationCoverageFlerspraklig",
+      "displayNameTranslations": {
+        "no": "Befolkningsdekning (flerspråklig)",
+        "en": "Population Coverage (multilingual)"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 381,
+      "type": "MultilingualText",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "spatialResolutionInMeters",
+      "displayNameTranslations": {
+        "no": "Romlig oppløsning (meter)",
+        "en": "Spatial resolution (meters)"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 400,
+      "type": "Number",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "temporalResolution",
+      "displayNameTranslations": {
+        "no": "Tidsoppløsning",
+        "en": "Temporal resolution"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 410,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "creator",
+      "displayNameTranslations": {
+        "no": "Skaper",
+        "en": "Creator"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 420,
+      "type": "Object",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "CreatorNavnFlerspraklig",
+      "displayNameTranslations": {
+        "no": "Navn på skaper (flerspråklig)",
+        "en": "Creator name (multilingual)"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 425,
+      "type": "MultilingualText",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "contactPoint",
+      "displayNameTranslations": {
+        "no": "Kontaktpunkt",
+        "en": "Contact point"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 430,
+      "type": "Object",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "webPage",
+      "displayNameTranslations": {
+        "no": "Nettside",
+        "en": "Web page"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 440,
+      "type": "Url",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "landingPage",
+      "displayNameTranslations": {
+        "no": "Landingsside",
+        "en": "Landing page"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 450,
+      "type": "Url",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "isReferencedBy",
+      "displayNameTranslations": {
+        "no": "Referert av",
+        "en": "Is referenced by"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 460,
+      "type": "Url",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "relation",
+      "displayNameTranslations": {
+        "no": "Relasjon",
+        "en": "Relation"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 470,
+      "type": "Url",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "source",
+      "displayNameTranslations": {
+        "no": "Kilde (referanse)",
+        "en": "Source (reference)"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 480,
+      "type": "Url",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "hasQualityAnnotation",
+      "displayNameTranslations": {
+        "no": "Kvalitetsmerknad",
+        "en": "Quality annotation"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 490,
+      "type": "Url",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "qualifiedAttribution",
+      "displayNameTranslations": {
+        "no": "Kvalifisert tilskrivning",
+        "en": "Qualified attribution"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 500,
+      "type": "Object",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "otherIdentifiers",
+      "displayNameTranslations": {
+        "no": "Andre identifikatorer",
+        "en": "Other identifiers"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 510,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "typicalAge",
+      "displayNameTranslations": {
+        "no": "Typisk alder (minimum)",
+        "en": "Typical age (minimum)"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 520,
+      "type": "Number",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "maxTypicalAge",
+      "displayNameTranslations": {
+        "no": "Typisk alder (maksimum)",
+        "en": "Typical age (maximum)"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 530,
+      "type": "Number",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "TittelFlerspraklig",
+      "displayNameTranslations": {
+        "no": "Tittel (flerspråklig)",
+        "en": "Title (multilingual)"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 540,
+      "type": "MultilingualText",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "AlternativtTittelFlerspraklig",
+      "displayNameTranslations": {
+        "no": "Alternativ tittel (flerspråklig)",
+        "en": "Alternative title (multilingual)"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 545,
+      "type": "MultilingualText",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "BeskrivelseFlerspraklig",
+      "displayNameTranslations": {
+        "no": "Beskrivelse (flerspråklig)",
+        "en": "Description (multilingual)"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 550,
+      "type": "MultilingualText",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "VersjonsnotaterFlerspraklig",
+      "displayNameTranslations": {
+        "no": "Versjonsnotater (flerspråklig)",
+        "en": "Version notes (multilingual)"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 555,
+      "type": "LangTaggedList",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "PublisherNavnFlerspraklig",
+      "displayNameTranslations": {
+        "no": "Dataansvarlig (flerspråklig)",
+        "en": "Publisher name (multilingual)"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 556,
+      "type": "MultilingualText",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "PublisherNoteFlerspraklig",
+      "displayNameTranslations": {
+        "no": "Merknad om dataansvarlig (flerspråklig)",
+        "en": "Publisher note (multilingual)"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 557,
+      "type": "MultilingualText",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "HealthDataAccessBodyNameFlerspraklig",
+      "displayNameTranslations": {
+        "no": "Navn på tilgangsorgan for helsedata (flerspråklig)",
+        "en": "Health data access body name (multilingual)"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 558,
+      "type": "MultilingualText",
+      "optionsJson": "[]",
+      "options": []
+    }
+  ],
+  "datasamlinger": [
+    {
+      "id": "2172a76d-b522-44c7-a80e-5aacb0a477f9",
+      "name": "Tromsø1 - The First Tromsø Study",
+      "kortNavn": "",
+      "beskrivelse": "[Tromsø1 - The First Tromsø Study](https://uit.no/research/tromsostudy/project?pid=708230)",
+      "variableCount": 31,
+      "presentationOrder": 10,
+      "parentDelkildeId": null,
+      "dataansvarlig": null,
+      "databehandler": null,
+      "gradAvPersonidentifikasjon": null,
+      "gyldigFra": "1984-01-01T00:00:00.000Z",
+      "gyldigTil": null,
+      "effectiveDataansvarlig": "UiT The Arctic University of Norway",
+      "effectiveDatabehandler": "UiT The Arctic University of Norway",
+      "effectiveGradAvPersonidentifikasjon": null,
+      "effectiveGyldigFra": "1984-01-01T00:00:00.000Z",
+      "effectiveGyldigTil": null,
+      "effectiveKildetype": "befolkningsbasertHelseundersokelse",
+      "additionalProperties": {
+        "AnbefalteBruksomraader": "Forskning;Statistikk",
+        "NavnEngelsk": "Tromsø1 - The First Tromsø Study",
+        "healthCategory": "[\"ehds-cat:population-health-surveys\"]"
+      }
+    },
+    {
+      "id": "6b71900f-9be1-4335-969a-80c415acc385",
+      "name": "Tromsø2 - The Second Tromsø Study",
+      "kortNavn": "",
+      "beskrivelse": "[Tromsø2 - The Second Tromsø Study](https://uit.no/research/tromsostudy/project?pid=708899)",
+      "variableCount": 83,
+      "presentationOrder": 11,
+      "parentDelkildeId": null,
+      "dataansvarlig": null,
+      "databehandler": null,
+      "gradAvPersonidentifikasjon": null,
+      "gyldigFra": "1984-01-01T00:00:00.000Z",
+      "gyldigTil": null,
+      "effectiveDataansvarlig": "UiT The Arctic University of Norway",
+      "effectiveDatabehandler": "UiT The Arctic University of Norway",
+      "effectiveGradAvPersonidentifikasjon": null,
+      "effectiveGyldigFra": "1984-01-01T00:00:00.000Z",
+      "effectiveGyldigTil": null,
+      "effectiveKildetype": "befolkningsbasertHelseundersokelse",
+      "additionalProperties": {
+        "AnbefalteBruksomraader": "Forskning;Statistikk",
+        "NavnEngelsk": "Tromsø2 - The Second Tromsø Study",
+        "healthCategory": "[\"ehds-cat:population-health-surveys\"]"
+      }
+    },
+    {
+      "id": "5c196301-c4cf-4e90-b1f9-d24910f8a4da",
+      "name": "Tromsø3 - The Third Tromsø Study",
+      "kortNavn": "",
+      "beskrivelse": "[Tromsø3 - The Third Tromsø Study](https://uit.no/research/tromsostudy/project?pid=708900)",
+      "variableCount": 128,
+      "presentationOrder": 12,
+      "parentDelkildeId": null,
+      "dataansvarlig": null,
+      "databehandler": null,
+      "gradAvPersonidentifikasjon": null,
+      "gyldigFra": "1984-01-01T00:00:00.000Z",
+      "gyldigTil": null,
+      "effectiveDataansvarlig": "UiT The Arctic University of Norway",
+      "effectiveDatabehandler": "UiT The Arctic University of Norway",
+      "effectiveGradAvPersonidentifikasjon": null,
+      "effectiveGyldigFra": "1984-01-01T00:00:00.000Z",
+      "effectiveGyldigTil": null,
+      "effectiveKildetype": "befolkningsbasertHelseundersokelse",
+      "additionalProperties": {
+        "AnbefalteBruksomraader": "Forskning;Statistikk",
+        "NavnEngelsk": "Tromsø3 - The Third Tromsø Study",
+        "healthCategory": "[\"ehds-cat:population-health-surveys\"]"
+      }
+    }
+  ],
+  "delkilder": [
+    {
+      "id": "9709cdb7-393a-4043-8e5a-63a20a2ef6bc",
+      "code": "K_TR.BIODATA",
+      "name": "Biodata",
+      "kortNavn": null,
+      "beskrivelse": "Biodata",
+      "presentationOrder": 1,
+      "parentDelkildeId": null,
+      "dataansvarlig": null,
+      "databehandler": null,
+      "gradAvPersonidentifikasjon": null,
+      "gyldigFra": "2025-10-09T00:00:00.000Z",
+      "gyldigTil": null,
+      "effectiveDataansvarlig": "UiT The Arctic University of Norway",
+      "effectiveDatabehandler": "UiT The Arctic University of Norway",
+      "effectiveGradAvPersonidentifikasjon": null,
+      "effectiveGyldigFra": "2025-10-09T00:00:00.000Z",
+      "effectiveGyldigTil": null,
+      "effectiveKildetype": "befolkningsbasertHelseundersokelse",
+      "additionalProperties": {
+        "AnbefalteBruksomraader": "Forskning;Statistikk"
+      },
+      "datasamlinger": [],
+      "children": []
+    },
+    {
+      "id": "38f8f0f2-9b12-48e3-b24b-eeaa3a84a5a7",
+      "code": "K_TR.TR4",
+      "name": "Tromsø4 - The Fourth Tromsø Study",
+      "kortNavn": null,
+      "beskrivelse": "[Tromsø4 - The Fourth Tromsø Study](https://uit.no/research/tromsostudy/project?pid=708901)",
+      "presentationOrder": 13,
+      "parentDelkildeId": null,
+      "dataansvarlig": null,
+      "databehandler": null,
+      "gradAvPersonidentifikasjon": null,
+      "gyldigFra": "1984-01-01T00:00:00.000Z",
+      "gyldigTil": null,
+      "effectiveDataansvarlig": "UiT The Arctic University of Norway",
+      "effectiveDatabehandler": "UiT The Arctic University of Norway",
+      "effectiveGradAvPersonidentifikasjon": null,
+      "effectiveGyldigFra": "1984-01-01T00:00:00.000Z",
+      "effectiveGyldigTil": null,
+      "effectiveKildetype": "befolkningsbasertHelseundersokelse",
+      "additionalProperties": {
+        "AnbefalteBruksomraader": "Kvalitetsforbedring;Forskning;Statistikk",
+        "NavnEngelsk": "Tromsø4 - The Fourth Tromsø Study"
+      },
+      "datasamlinger": [
+        {
+          "id": "eaa36200-3a76-4c38-ba6c-a57bbac61dca",
+          "name": "Tromsø4 - The Fourth Tromsø Study - first visit",
+          "kortNavn": "",
+          "beskrivelse": "Tromsø4 - The Fourth Tromsø Study - first visit",
+          "variableCount": 151,
+          "presentationOrder": 14,
+          "parentDelkildeId": "38f8f0f2-9b12-48e3-b24b-eeaa3a84a5a7",
+          "dataansvarlig": null,
+          "databehandler": null,
+          "gradAvPersonidentifikasjon": null,
+          "gyldigFra": "1984-01-01T00:00:00.000Z",
+          "gyldigTil": null,
+          "effectiveDataansvarlig": "UiT The Arctic University of Norway",
+          "effectiveDatabehandler": "UiT The Arctic University of Norway",
+          "effectiveGradAvPersonidentifikasjon": null,
+          "effectiveGyldigFra": "1984-01-01T00:00:00.000Z",
+          "effectiveGyldigTil": null,
+          "effectiveKildetype": "befolkningsbasertHelseundersokelse",
+          "additionalProperties": {
+            "AnbefalteBruksomraader": "Forskning;Statistikk",
+            "NavnEngelsk": "Tromsø4 - The Fourth Tromsø Study - first visit",
+            "healthCategory": "[\"ehds-cat:population-health-surveys\"]"
+          }
+        },
+        {
+          "id": "e9b2839f-dd55-4dac-9f6d-83295b5499f8",
+          "name": "Tromsø4 - The Fourth Tromsø Study - second visit",
+          "kortNavn": "",
+          "beskrivelse": "Tromsø4 - The Fourth Tromsø Study - second visit",
+          "variableCount": 59,
+          "presentationOrder": 15,
+          "parentDelkildeId": "38f8f0f2-9b12-48e3-b24b-eeaa3a84a5a7",
+          "dataansvarlig": null,
+          "databehandler": null,
+          "gradAvPersonidentifikasjon": null,
+          "gyldigFra": "1984-01-01T00:00:00.000Z",
+          "gyldigTil": null,
+          "effectiveDataansvarlig": "UiT The Arctic University of Norway",
+          "effectiveDatabehandler": "UiT The Arctic University of Norway",
+          "effectiveGradAvPersonidentifikasjon": null,
+          "effectiveGyldigFra": "1984-01-01T00:00:00.000Z",
+          "effectiveGyldigTil": null,
+          "effectiveKildetype": "befolkningsbasertHelseundersokelse",
+          "additionalProperties": {
+            "AnbefalteBruksomraader": "Forskning;Statistikk",
+            "NavnEngelsk": "Tromsø4 - The Fourth Tromsø Study - second visit",
+            "healthCategory": "[\"ehds-cat:population-health-surveys\"]"
+          }
+        }
+      ],
+      "children": []
+    },
+    {
+      "id": "4f6d7094-8976-42e8-b2da-841394a88771",
+      "code": "K_TR.TR5",
+      "name": "Tromsø5 - The Fifth Tromsø Study",
+      "kortNavn": null,
+      "beskrivelse": "[Tromsø5 - The Fifth Tromsø Study](https://uit.no/research/tromsostudy/project?pid=708903)",
+      "presentationOrder": 16,
+      "parentDelkildeId": null,
+      "dataansvarlig": null,
+      "databehandler": null,
+      "gradAvPersonidentifikasjon": null,
+      "gyldigFra": "1984-01-01T00:00:00.000Z",
+      "gyldigTil": null,
+      "effectiveDataansvarlig": "UiT The Arctic University of Norway",
+      "effectiveDatabehandler": "UiT The Arctic University of Norway",
+      "effectiveGradAvPersonidentifikasjon": null,
+      "effectiveGyldigFra": "1984-01-01T00:00:00.000Z",
+      "effectiveGyldigTil": null,
+      "effectiveKildetype": "befolkningsbasertHelseundersokelse",
+      "additionalProperties": {
+        "AnbefalteBruksomraader": "Forskning;Statistikk",
+        "NavnEngelsk": "Tromsø5 - The Fifth Tromsø Study"
+      },
+      "datasamlinger": [
+        {
+          "id": "faa93827-a828-431b-b69f-66a5da0e3553",
+          "name": "Tromsø5 - The Fifth Tromsø Study - first visit",
+          "kortNavn": "",
+          "beskrivelse": "Tromsø5 - The Fifth Tromsø Study - first visit",
+          "variableCount": 624,
+          "presentationOrder": 17,
+          "parentDelkildeId": "4f6d7094-8976-42e8-b2da-841394a88771",
+          "dataansvarlig": null,
+          "databehandler": null,
+          "gradAvPersonidentifikasjon": null,
+          "gyldigFra": "1984-01-01T00:00:00.000Z",
+          "gyldigTil": null,
+          "effectiveDataansvarlig": "UiT The Arctic University of Norway",
+          "effectiveDatabehandler": "UiT The Arctic University of Norway",
+          "effectiveGradAvPersonidentifikasjon": null,
+          "effectiveGyldigFra": "1984-01-01T00:00:00.000Z",
+          "effectiveGyldigTil": null,
+          "effectiveKildetype": "befolkningsbasertHelseundersokelse",
+          "additionalProperties": {
+            "AnbefalteBruksomraader": "Forskning;Statistikk",
+            "NavnEngelsk": "Tromsø5 - The Fifth Tromsø Study - first visit",
+            "healthCategory": "[\"ehds-cat:population-health-surveys\"]"
+          }
+        },
+        {
+          "id": "6d809c1d-cc85-4c61-a624-adc07dc66dee",
+          "name": "Tromsø5 - The Fifth Tromsø Study - second visit",
+          "kortNavn": "",
+          "beskrivelse": "Tromsø5 - The Fifth Tromsø Study - second visit",
+          "variableCount": 442,
+          "presentationOrder": 18,
+          "parentDelkildeId": "4f6d7094-8976-42e8-b2da-841394a88771",
+          "dataansvarlig": null,
+          "databehandler": null,
+          "gradAvPersonidentifikasjon": null,
+          "gyldigFra": "1984-01-01T00:00:00.000Z",
+          "gyldigTil": null,
+          "effectiveDataansvarlig": "UiT The Arctic University of Norway",
+          "effectiveDatabehandler": "UiT The Arctic University of Norway",
+          "effectiveGradAvPersonidentifikasjon": null,
+          "effectiveGyldigFra": "1984-01-01T00:00:00.000Z",
+          "effectiveGyldigTil": null,
+          "effectiveKildetype": "befolkningsbasertHelseundersokelse",
+          "additionalProperties": {
+            "AnbefalteBruksomraader": "Forskning;Statistikk",
+            "NavnEngelsk": "Tromsø5 - The Fifth Tromsø Study - second visit",
+            "healthCategory": "[\"ehds-cat:population-health-surveys\"]"
+          }
+        },
+        {
+          "id": "a7f9ded2-7853-4588-9b60-1a6dae587983",
+          "name": "Tromsø5 - The Fifth Tromsø study - forst visit ; sample collection",
+          "kortNavn": "",
+          "beskrivelse": "Sample collection for population based health study of the general population of Tromsø. The First Tromsø Study<br>\n**Survey data**\n[Tromsø1 - The First Tromsø Study](https://helsedata-test02.qa.nhn.no/no/variabler/?datakilde=K_TR&page=search) <br>\n**Sex**\nMale<br>\n**Age low**\n30<br>\n**Age high**\n89<br>\n**Age unit**\nYears<br>\n**Data categories**\nBiological samples, Imaging data, National registries, Physiological/Biochemical measurements, Survey data<br>\n**Material type**\nPlasma, Serum, Urine, Whole Blood<br>\n**Storage temperature**\n-18°C to -35°C, -60°C to -80°C<br>\n**Collection type**\nCohort, Image collection, Longitudinal, Population-based, Sample collection<br>\n**Donors**\n6700<br>\n**Size**\n10000-100000<br>\n**Available**\n31000<br>\n**Contact information**\n[https://uit.no/research/tromsostudy](https://uit.no/research/tromsostudy)\ntromsous@uit.no<br>\nLeader of The Tromsø Study Sameline Grimsgaard +47 77 64 92 85/Adviser Kristin Kanstad +47 77 64 48 86\nDepartment of Community Medicine\nUiT The Arctic University of Norway\nPP Box 6050 Langnes\nN-9037 Tromsø\nNORWAY",
+          "variableCount": 52,
+          "presentationOrder": 19,
+          "parentDelkildeId": "4f6d7094-8976-42e8-b2da-841394a88771",
+          "dataansvarlig": null,
+          "databehandler": null,
+          "gradAvPersonidentifikasjon": null,
+          "gyldigFra": "2024-10-16T00:00:00.000Z",
+          "gyldigTil": null,
+          "effectiveDataansvarlig": "UiT The Arctic University of Norway",
+          "effectiveDatabehandler": "UiT The Arctic University of Norway",
+          "effectiveGradAvPersonidentifikasjon": null,
+          "effectiveGyldigFra": "2024-10-16T00:00:00.000Z",
+          "effectiveGyldigTil": null,
+          "effectiveKildetype": "befolkningsbasertHelseundersokelse",
+          "additionalProperties": {
+            "AnbefalteBruksomraader": "Forskning;Statistikk",
+            "NavnEngelsk": "The Tromsø Study 5 Second visit - sample collection",
+            "healthCategory": "[\"ehds-cat:population-health-surveys\"]"
+          }
+        },
+        {
+          "id": "b5f4abbb-0dc1-4bb6-90cc-ebe632b3195a",
+          "name": "Tromsø5 - The Fifth Tromsø study - second visit; sample collection",
+          "kortNavn": "",
+          "beskrivelse": "Sample collection for population based health study of the general population of Tromsø. The Second Tromsø Study<br>\n**Sex**\nMale, Female<br>\n**Age low**\n28<br>\n**Age high**\n95<br>\n**Age unit**\nYears<br>\n**Data categories**\nBiological samples, Imaging data, National registries, Physiological/Biochemical measurements, Survey data<br>\n**Material type**\nDNA, Feces, Plasma, Serum, Urine, Whole Blood<br>\n**Storage temperature**\n-18°C to -35°C, -60°C to -80°C<br>\n**Collection type**\nCohort, Image collection, Longitudinal, Population-based, Sample collection<br>\n**Donors**\n16200<br>\n**Size**\n100000-1000000<br>\n**Available**\n96000<br>\n**Contact information**\n[https://uit.no/research/tromsostudy](https://uit.no/research/tromsostudy)\ntromsous@uit.no<br>\nLeader of The Tromsø Study Sameline Grimsgaard +47 77 64 92 85/Adviser Kristin Kanstad +47 77 64 48 86\nDepartment of Community Medicine\nUiT The Arctic University of Norway\nPP Box 6050 Langnes\nN-9037 Tromsø\nNORWAY",
+          "variableCount": 52,
+          "presentationOrder": 20,
+          "parentDelkildeId": "4f6d7094-8976-42e8-b2da-841394a88771",
+          "dataansvarlig": null,
+          "databehandler": null,
+          "gradAvPersonidentifikasjon": null,
+          "gyldigFra": "2024-10-16T00:00:00.000Z",
+          "gyldigTil": null,
+          "effectiveDataansvarlig": "UiT The Arctic University of Norway",
+          "effectiveDatabehandler": "UiT The Arctic University of Norway",
+          "effectiveGradAvPersonidentifikasjon": null,
+          "effectiveGyldigFra": "2024-10-16T00:00:00.000Z",
+          "effectiveGyldigTil": null,
+          "effectiveKildetype": "befolkningsbasertHelseundersokelse",
+          "additionalProperties": {
+            "AnbefalteBruksomraader": "Forskning;Statistikk",
+            "NavnEngelsk": "The Tromsø Study 5 First visit - sample collection",
+            "healthCategory": "[\"ehds-cat:population-health-surveys\"]"
+          }
+        }
+      ],
+      "children": []
+    },
+    {
+      "id": "276ad1bd-71e9-40ee-b000-11909f3a4896",
+      "code": "K_TR.TR6",
+      "name": "Tromsø6 - The Sixth Tromsø Study",
+      "kortNavn": null,
+      "beskrivelse": "[Tromsø6 - The Sixth Tromsø Study](https://uit.no/research/tromsostudy/project?pid=708904)",
+      "presentationOrder": 21,
+      "parentDelkildeId": null,
+      "dataansvarlig": null,
+      "databehandler": null,
+      "gradAvPersonidentifikasjon": null,
+      "gyldigFra": "1984-01-01T00:00:00.000Z",
+      "gyldigTil": null,
+      "effectiveDataansvarlig": "UiT The Arctic University of Norway",
+      "effectiveDatabehandler": "UiT The Arctic University of Norway",
+      "effectiveGradAvPersonidentifikasjon": null,
+      "effectiveGyldigFra": "1984-01-01T00:00:00.000Z",
+      "effectiveGyldigTil": null,
+      "effectiveKildetype": "befolkningsbasertHelseundersokelse",
+      "additionalProperties": {
+        "AnbefalteBruksomraader": "Forskning;Statistikk",
+        "NavnEngelsk": "Tromsø6 - The Sixth Tromsø Study"
+      },
+      "datasamlinger": [
+        {
+          "id": "c74d7385-f2e8-49fa-b115-25ceefd23017",
+          "name": "Tromsø6 - The Sixth Tromsø Study - first visit",
+          "kortNavn": "",
+          "beskrivelse": "Tromsø6 - The Sixth Tromsø Study - first visit",
+          "variableCount": 424,
+          "presentationOrder": 22,
+          "parentDelkildeId": "276ad1bd-71e9-40ee-b000-11909f3a4896",
+          "dataansvarlig": null,
+          "databehandler": null,
+          "gradAvPersonidentifikasjon": null,
+          "gyldigFra": "1984-01-01T00:00:00.000Z",
+          "gyldigTil": null,
+          "effectiveDataansvarlig": "UiT The Arctic University of Norway",
+          "effectiveDatabehandler": "UiT The Arctic University of Norway",
+          "effectiveGradAvPersonidentifikasjon": null,
+          "effectiveGyldigFra": "1984-01-01T00:00:00.000Z",
+          "effectiveGyldigTil": null,
+          "effectiveKildetype": "befolkningsbasertHelseundersokelse",
+          "additionalProperties": {
+            "AnbefalteBruksomraader": "Forskning;Statistikk",
+            "NavnEngelsk": "Tromsø6 - The Sixth Tromsø Study - first visit",
+            "healthCategory": "[\"ehds-cat:population-health-surveys\"]"
+          }
+        },
+        {
+          "id": "0c403491-2d06-4fd9-9e2b-06689358f6a4",
+          "name": "Tromsø6 - The Sixth Tromsø Study - second visit",
+          "kortNavn": "",
+          "beskrivelse": "Tromsø6 - The Sixth Tromsø Study - second visit",
+          "variableCount": 619,
+          "presentationOrder": 23,
+          "parentDelkildeId": "276ad1bd-71e9-40ee-b000-11909f3a4896",
+          "dataansvarlig": null,
+          "databehandler": null,
+          "gradAvPersonidentifikasjon": null,
+          "gyldigFra": "1984-01-01T00:00:00.000Z",
+          "gyldigTil": null,
+          "effectiveDataansvarlig": "UiT The Arctic University of Norway",
+          "effectiveDatabehandler": "UiT The Arctic University of Norway",
+          "effectiveGradAvPersonidentifikasjon": null,
+          "effectiveGyldigFra": "1984-01-01T00:00:00.000Z",
+          "effectiveGyldigTil": null,
+          "effectiveKildetype": "befolkningsbasertHelseundersokelse",
+          "additionalProperties": {
+            "AnbefalteBruksomraader": "Forskning;Statistikk",
+            "NavnEngelsk": "Tromsø6 - The Sixth Tromsø Study - second visit",
+            "healthCategory": "[\"ehds-cat:population-health-surveys\"]"
+          }
+        }
+      ],
+      "children": []
+    },
+    {
+      "id": "4bbdf1a9-5285-4c9d-913c-9e6ead7a30c2",
+      "code": "K_TR.TR7",
+      "name": "Tromsø7 - The Seventh Tromsø Study",
+      "kortNavn": null,
+      "beskrivelse": "[Tromsø7 - The Seventh Tromsø Study](https://uit.no/research/tromsostudy/project?pid=708909)",
+      "presentationOrder": 24,
+      "parentDelkildeId": null,
+      "dataansvarlig": null,
+      "databehandler": null,
+      "gradAvPersonidentifikasjon": null,
+      "gyldigFra": "1984-01-01T00:00:00.000Z",
+      "gyldigTil": null,
+      "effectiveDataansvarlig": "UiT The Arctic University of Norway",
+      "effectiveDatabehandler": "UiT The Arctic University of Norway",
+      "effectiveGradAvPersonidentifikasjon": null,
+      "effectiveGyldigFra": "1984-01-01T00:00:00.000Z",
+      "effectiveGyldigTil": null,
+      "effectiveKildetype": "befolkningsbasertHelseundersokelse",
+      "additionalProperties": {
+        "AnbefalteBruksomraader": "Forskning;Statistikk",
+        "NavnEngelsk": "Tromsø7 - The Seventh Tromsø Study"
+      },
+      "datasamlinger": [
+        {
+          "id": "6a577d93-72a8-465d-907d-fb9eb8397b57",
+          "name": "Tromsø7 - The Seventh Tromsø Study - first visit",
+          "kortNavn": "",
+          "beskrivelse": "Tromsø7 - The Seventh Tromsø Study - first visit",
+          "variableCount": 1634,
+          "presentationOrder": 25,
+          "parentDelkildeId": "4bbdf1a9-5285-4c9d-913c-9e6ead7a30c2",
+          "dataansvarlig": null,
+          "databehandler": null,
+          "gradAvPersonidentifikasjon": null,
+          "gyldigFra": "1984-01-01T00:00:00.000Z",
+          "gyldigTil": null,
+          "effectiveDataansvarlig": "UiT The Arctic University of Norway",
+          "effectiveDatabehandler": "UiT The Arctic University of Norway",
+          "effectiveGradAvPersonidentifikasjon": null,
+          "effectiveGyldigFra": "1984-01-01T00:00:00.000Z",
+          "effectiveGyldigTil": null,
+          "effectiveKildetype": "befolkningsbasertHelseundersokelse",
+          "additionalProperties": {
+            "AnbefalteBruksomraader": "Forskning;Statistikk",
+            "NavnEngelsk": "Tromsø7 - The Seventh Tromsø Study - first visit",
+            "healthCategory": "[\"ehds-cat:population-health-surveys\"]"
+          }
+        },
+        {
+          "id": "de648876-b3ee-431e-a8ac-32a34851e357",
+          "name": "Tromsø7 - The Seventh Tromsø Study - second visit",
+          "kortNavn": "",
+          "beskrivelse": "Tromsø7 - The Seventh Tromsø Study - second visit",
+          "variableCount": 1453,
+          "presentationOrder": 26,
+          "parentDelkildeId": "4bbdf1a9-5285-4c9d-913c-9e6ead7a30c2",
+          "dataansvarlig": null,
+          "databehandler": null,
+          "gradAvPersonidentifikasjon": null,
+          "gyldigFra": "1984-01-01T00:00:00.000Z",
+          "gyldigTil": null,
+          "effectiveDataansvarlig": "UiT The Arctic University of Norway",
+          "effectiveDatabehandler": "UiT The Arctic University of Norway",
+          "effectiveGradAvPersonidentifikasjon": null,
+          "effectiveGyldigFra": "1984-01-01T00:00:00.000Z",
+          "effectiveGyldigTil": null,
+          "effectiveKildetype": "befolkningsbasertHelseundersokelse",
+          "additionalProperties": {
+            "AnbefalteBruksomraader": "Forskning;Statistikk",
+            "NavnEngelsk": "Tromsø7 - The Seventh Tromsø Study - second visit",
+            "healthCategory": "[\"ehds-cat:population-health-surveys\"]"
+          }
+        },
+        {
+          "id": "d660225b-eacf-45e9-9b5f-f666a2ee210c",
+          "name": "Tromsø7 - The Seventh Tromsø Study -Sample collection",
+          "kortNavn": "",
+          "beskrivelse": "Tromsø7 - The Seventh Tromsø Study -Sample collection",
+          "variableCount": 0,
+          "presentationOrder": 27,
+          "parentDelkildeId": "4bbdf1a9-5285-4c9d-913c-9e6ead7a30c2",
+          "dataansvarlig": null,
+          "databehandler": null,
+          "gradAvPersonidentifikasjon": null,
+          "gyldigFra": "1984-01-01T00:00:00.000Z",
+          "gyldigTil": null,
+          "effectiveDataansvarlig": "UiT The Arctic University of Norway",
+          "effectiveDatabehandler": "UiT The Arctic University of Norway",
+          "effectiveGradAvPersonidentifikasjon": null,
+          "effectiveGyldigFra": "1984-01-01T00:00:00.000Z",
+          "effectiveGyldigTil": null,
+          "effectiveKildetype": "befolkningsbasertHelseundersokelse",
+          "additionalProperties": {
+            "AnbefalteBruksomraader": "Kvalitetsforbedring;Forskning;Statistikk",
+            "NavnEngelsk": "Tromsø7 - The Seventh Tromsø Study - Sample Collection",
+            "healthCategory": "[\"ehds-cat:population-health-surveys\"]"
+          }
+        }
+      ],
+      "children": []
+    }
+  ],
+  "totalVariables": 5752,
+  "dataFrom": "1974-01-01T00:00:00.000Z",
+  "dataTo": null
+}

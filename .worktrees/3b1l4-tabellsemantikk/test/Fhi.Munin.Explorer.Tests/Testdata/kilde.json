@@ -1,0 +1,1477 @@
+{
+  "id": "8ec4c2c4-662d-47a5-a946-f1086a014070",
+  "code": "K_ALS",
+  "preferredTerm": "Als registeret",
+  "kortNavn": "ALS",
+  "beskrivelse": "Norsk register for ALS og andre motonevronsykdommer (ALS-registeret) er Norges nasjonale medisinske kvalitetsregister for pasienter som diagnostiseres med ALS eller annen motonevronsykdom. ",
+  "kildetype": "nasjonaltMedisinskKvalitetsregister",
+  "lovverk": "Innmelding av opplysninger fra det enkelte helseforetak til kvalitetsregistrene som inngår i § 2-3 i Forskrift om medisinske kvalitetsregistre. Personopplysningsloven, personvernforordningen (jf. Personopplysningsloven § 1) og helseregisterloven gjelder for behandling av helseopplysninger i medisinske kvalitetsregistre. Behandlingsgrunnlaget for ALS-registeret er personvernforordningen artikkel 6 nr. 1 bokstav e og artikkel 9 nr. 2 bokstav g, h, i og j. Overgang fra samtykkebasert register til reservasjonsbasert register 04.04.2024.",
+  "dataansvarlig": "St. Olavs hospital HF",
+  "databehandler": "St. Olavs hospital HF",
+  "gradAvPersonidentifikasjon": "indirectlyIdentifiable",
+  "gyldigFra": "2023-01-01T00:00:00.000Z",
+  "gyldigTil": null,
+  "opprettet": "2026-05-19T12:58:37.183Z",
+  "sistOppdatert": "2026-07-10T09:25:16.760Z",
+  "additionalProperties": {
+    "AnbefalteBruksomraader": "Kvalitetsforbedring;Forskning;Statistikk",
+    "Epost": "alsregister@stolav.no",
+    "Formaal": "ALS-registeret har som formål å måle/sikre kvalitet og bidra til kvalitetsforbedring av helsetjenesten for pasienter med ALS eller andre motonevronsykdommer gjennom å registrere ressursbruk, hvilken behandling og utredning pasientene får. ",
+    "Forskrift": "https://lovdata.no/dokument/SF/forskrift/2019-06-21-789",
+    "Hjemmeside": "https://www.norskalsregister.no",
+    "InklusjonsOgEksklusjonskriterier": "Alle pasienter som er 18 år eller eldre og som etter utredning får ICD10-diagnosekode «G12.2 Sykdom i motoriske nevroner», ved genetisk analyse får påvist Kennedys sykdom eller uspesifisert motonevronsykdom (ICD10-kode G12.9).",
+    "Telefonnummer": "93008532",
+    "healthCategory": "[\"ehds-cat:registries-quality-of-healthcare\"]",
+    "accessRights": "eu-access:NON_PUBLIC",
+    "healthDataAccessBodyName": "Helsedataservice",
+    "healthDataAccessBodyPhone": "+47 21 07 70 00",
+    "healthDataAccessBodyEmail": "service@helsedata.no",
+    "healthDataAccessBodyHomepage": "https://www.fhi.no/om/organisasjon/helsedataservice/",
+    "applicableLegislation": "http://data.europa.eu/eli/reg/2025/327/oj;https://lovdata.no/eli/lov/2001-05-18-24;https://lovdata.no/eli/lov/2018-06-15-38",
+    "hasLegalBasis": "Innmelding av opplysninger fra det enkelte helseforetak til kvalitetsregistrene som inngår i § 2-3 i Forskrift om medisinske kvalitetsregistre. Personopplysningsloven, personvernforordningen (jf. Personopplysningsloven § 1) og helseregisterloven gjelder for behandling av helseopplysninger i medisinske kvalitetsregistre. Behandlingsgrunnlaget for ALS-registeret er personvernforordningen artikkel 6 nr. 1 bokstav e og artikkel 9 nr. 2 bokstav g, h, i og j. Overgang fra samtykkebasert register til reservasjonsbasert register 04.04.2024.;Submission of information from each individual health trust to the quality registries included in Section 2-3 of the Regulation on Medical Quality Registries. The Personal Data Act, the General Data Protection Regulation (cf. Section 1 of the Personal Data Act), and the Health Register Act apply to the processing of health data in medical quality registries. The legal basis for processing in the ALS registry is Article 6(1)(e) and Article 9(2)(g), (h), (i), and (j) of the General Data Protection Regulation. Transition from a consent-based registry to an opt-out registry on 04.04.2024.\"",
+    "healthTheme": "[\"healthdcatap:rare-diseases\"]",
+    "TittelFlerspraklig": "{\"nb\":\"ALS Registeret\"}",
+    "FormaalFlerspraklig": "[{\"value\":\"ALS-registeret har som formål å måle/sikre kvalitet og bidra til kvalitetsforbedring av helsetjenesten for pasienter med ALS eller andre motonevronsykdommer gjennom å registrere ressursbruk, hvilken behandling og utredning pasientene får. \",\"language\":\"nb\"}]",
+    "BeskrivelseFlerspraklig": "{\"nb\":\"Norsk register for ALS og andre motonevronsykdommer (ALS-registeret) er Norges nasjonale medisinske kvalitetsregister for pasienter som diagnostiseres med ALS eller annen motonevronsykdom. \"}"
+  },
+  "propertyMetadata": [
+    {
+      "key": "Code",
+      "displayNameTranslations": {
+        "no": "Kode",
+        "en": "Code"
+      },
+      "groupTranslations": {},
+      "sortOrder": 5,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "NavnEngelsk",
+      "displayNameTranslations": {
+        "no": "Navn på engelsk",
+        "en": "Name in English"
+      },
+      "groupTranslations": {
+        "no": "Identifikasjon",
+        "en": "Identification"
+      },
+      "sortOrder": 10,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "KortNavn",
+      "displayNameTranslations": {
+        "no": "Kortnavn",
+        "en": "Short name"
+      },
+      "groupTranslations": {},
+      "sortOrder": 10,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "PreferredTerm",
+      "displayNameTranslations": {
+        "no": "Foretrukken term",
+        "en": "Preferred term"
+      },
+      "groupTranslations": {},
+      "sortOrder": 20,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "BeskrivelseEngelsk",
+      "displayNameTranslations": {
+        "no": "Beskrivelse på engelsk",
+        "en": "Description in English"
+      },
+      "groupTranslations": {
+        "no": "Beskrivelse",
+        "en": "Description"
+      },
+      "sortOrder": 20,
+      "type": "Text",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "AnbefalteBruksomraader",
+      "displayNameTranslations": {
+        "no": "Anbefalte bruksområder",
+        "en": "Recommended Use Cases"
+      },
+      "groupTranslations": {
+        "no": "Beskrivelse",
+        "en": "Description"
+      },
+      "sortOrder": 30,
+      "type": "Text",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "Beskrivelse",
+      "displayNameTranslations": {
+        "no": "Beskrivelse",
+        "en": "Description"
+      },
+      "groupTranslations": {},
+      "sortOrder": 30,
+      "type": "Text",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "Emneord",
+      "displayNameTranslations": {
+        "no": "Emneord",
+        "en": "Keywords"
+      },
+      "groupTranslations": {
+        "no": "Beskrivelse",
+        "en": "Description"
+      },
+      "sortOrder": 40,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "Kildetype",
+      "displayNameTranslations": {
+        "no": "Kildetype",
+        "en": "Source type"
+      },
+      "groupTranslations": {},
+      "sortOrder": 40,
+      "type": "SingleSelect",
+      "optionsJson": "[{\"value\":\"sentraltHelseregister\",\"label\":\"Sentralt helseregister\",\"labelEn\":\"Central health registry\"},{\"value\":\"nasjonaltMedisinskKvalitetsregister\",\"label\":\"Nasjonalt medisinsk kvalitetsregister\",\"labelEn\":\"National medical quality registry\"},{\"value\":\"annetMedisinskKvalitetsregister\",\"label\":\"Annet medisinsk kvalitetsregister\",\"labelEn\":\"Other medical quality registry\"},{\"value\":\"befolkningsbasertHelseundersokelse\",\"label\":\"Befolkningsbasert helseundersøkelse\",\"labelEn\":\"Population-based health survey\"},{\"value\":\"biobank\",\"label\":\"Biobank\",\"labelEn\":\"Biobank\"},{\"value\":\"annenDatakilde\",\"label\":\"Annen datakilde\",\"labelEn\":\"Other data source\"},{\"value\":\"forskningsprosjekt\",\"label\":\"Forskningsprosjekt\",\"labelEn\":\"Research project\"},{\"value\":\"manueltOpprettet\",\"label\":\"Manuelt opprettet\",\"labelEn\":\"Manually created\"}]",
+      "options": [
+        {
+          "value": "sentraltHelseregister",
+          "displayName": "Sentralt helseregister"
+        },
+        {
+          "value": "nasjonaltMedisinskKvalitetsregister",
+          "displayName": "Nasjonalt medisinsk kvalitetsregister"
+        },
+        {
+          "value": "annetMedisinskKvalitetsregister",
+          "displayName": "Annet medisinsk kvalitetsregister"
+        },
+        {
+          "value": "befolkningsbasertHelseundersokelse",
+          "displayName": "Befolkningsbasert helseundersøkelse"
+        },
+        {
+          "value": "biobank",
+          "displayName": "Biobank"
+        },
+        {
+          "value": "annenDatakilde",
+          "displayName": "Annen datakilde"
+        },
+        {
+          "value": "forskningsprosjekt",
+          "displayName": "Forskningsprosjekt"
+        },
+        {
+          "value": "manueltOpprettet",
+          "displayName": "Manuelt opprettet"
+        }
+      ]
+    },
+    {
+      "key": "EmneordFlerspraklig",
+      "displayNameTranslations": {
+        "no": "Emneord (språkmerket)",
+        "en": "Keywords (language-tagged)"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 41,
+      "type": "LangTaggedList",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "Innsamlingsmetode",
+      "displayNameTranslations": {
+        "no": "Innsamlingsmetode",
+        "en": "Collection Method"
+      },
+      "groupTranslations": {
+        "no": "Datainnsamling",
+        "en": "Data Collection"
+      },
+      "sortOrder": 50,
+      "type": "Text",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "InklusjonsOgEksklusjonskriterier",
+      "displayNameTranslations": {
+        "no": "Inklusjons- og eksklusjonskriterier",
+        "en": "Inclusion and Exclusion Criteria"
+      },
+      "groupTranslations": {
+        "no": "Datainnsamling",
+        "en": "Data Collection"
+      },
+      "sortOrder": 60,
+      "type": "Text",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "GeografiskAvgrensning",
+      "displayNameTranslations": {
+        "no": "Geografisk avgrensning",
+        "en": "Geographic Boundaries"
+      },
+      "groupTranslations": {
+        "no": "Datainnsamling",
+        "en": "Data Collection"
+      },
+      "sortOrder": 70,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "GradAvPersonidentifikasjon",
+      "displayNameTranslations": {
+        "no": "Grad av personidentifikasjon",
+        "en": "Degree of personal identification"
+      },
+      "groupTranslations": {},
+      "sortOrder": 70,
+      "type": "SingleSelect",
+      "optionsJson": "[{\"value\":\"directlyIdentifiable\",\"label\":\"Direkte personidentifiserbare data\",\"labelEn\":\"Directly identifiable data\"},{\"value\":\"indirectlyIdentifiable\",\"label\":\"Indirekte personidentifiserbare data\",\"labelEn\":\"Indirectly identifiable data\"},{\"value\":\"deIdentified\",\"label\":\"Avidentifiserte data\",\"labelEn\":\"De-identified data\"},{\"value\":\"anonymous\",\"label\":\"Anonyme data\",\"labelEn\":\"Anonymous data\"}]",
+      "options": [
+        {
+          "value": "directlyIdentifiable",
+          "displayName": "Direkte personidentifiserbare data"
+        },
+        {
+          "value": "indirectlyIdentifiable",
+          "displayName": "Indirekte personidentifiserbare data"
+        },
+        {
+          "value": "deIdentified",
+          "displayName": "Avidentifiserte data"
+        },
+        {
+          "value": "anonymous",
+          "displayName": "Anonyme data"
+        }
+      ]
+    },
+    {
+      "key": "Lovverk",
+      "displayNameTranslations": {
+        "no": "Lovverk",
+        "en": "Legislation"
+      },
+      "groupTranslations": {},
+      "sortOrder": 80,
+      "type": "Url",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "Tilslutningsgrad",
+      "displayNameTranslations": {
+        "no": "Tilslutningsgrad",
+        "en": "Participation Rate"
+      },
+      "groupTranslations": {
+        "no": "Kvalitet",
+        "en": "Quality"
+      },
+      "sortOrder": 80,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "BeregningTilslutningsgrad",
+      "displayNameTranslations": {
+        "no": "Beregning av tilslutningsgrad",
+        "en": "Participation Rate Calculation"
+      },
+      "groupTranslations": {
+        "no": "Kvalitet",
+        "en": "Quality"
+      },
+      "sortOrder": 90,
+      "type": "Text",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "Dataansvarlig",
+      "displayNameTranslations": {
+        "no": "Dataansvarlig",
+        "en": "Data controller"
+      },
+      "groupTranslations": {},
+      "sortOrder": 90,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "Databehandler",
+      "displayNameTranslations": {
+        "no": "Databehandler",
+        "en": "Data processor"
+      },
+      "groupTranslations": {},
+      "sortOrder": 100,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "Dekningsgrad",
+      "displayNameTranslations": {
+        "no": "Dekningsgrad",
+        "en": "Coverage Rate"
+      },
+      "groupTranslations": {
+        "no": "Kvalitet",
+        "en": "Quality"
+      },
+      "sortOrder": 100,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "GyldigFra",
+      "displayNameTranslations": {
+        "no": "Gyldig fra",
+        "en": "Valid from"
+      },
+      "groupTranslations": {},
+      "sortOrder": 110,
+      "type": "Date",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "BeregningDekningsgrad",
+      "displayNameTranslations": {
+        "no": "Beregning av dekningsgrad",
+        "en": "Coverage Rate Calculation"
+      },
+      "groupTranslations": {
+        "no": "Kvalitet",
+        "en": "Quality"
+      },
+      "sortOrder": 110,
+      "type": "Text",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "Kvalitetsnote",
+      "displayNameTranslations": {
+        "no": "Kvalitetsnote",
+        "en": "Quality Note"
+      },
+      "groupTranslations": {
+        "no": "Kvalitet",
+        "en": "Quality"
+      },
+      "sortOrder": 120,
+      "type": "Text",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "GyldigTil",
+      "displayNameTranslations": {
+        "no": "Gyldig til",
+        "en": "Valid to"
+      },
+      "groupTranslations": {},
+      "sortOrder": 120,
+      "type": "Date",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "Formaal",
+      "displayNameTranslations": {
+        "no": "Formål",
+        "en": "Purpose"
+      },
+      "groupTranslations": {
+        "no": "Formål",
+        "en": "Purpose"
+      },
+      "sortOrder": 130,
+      "type": "Text",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "FormaalFlerspraklig",
+      "displayNameTranslations": {
+        "no": "Formål (språkmerket)",
+        "en": "Purpose (language-tagged)"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 131,
+      "type": "LangTaggedList",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "Forskrift",
+      "displayNameTranslations": {
+        "no": "Forskrift",
+        "en": "Regulation"
+      },
+      "groupTranslations": {
+        "no": "Juridisk",
+        "en": "Legal"
+      },
+      "sortOrder": 140,
+      "type": "Text",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "HjemmelTilgjengeliggjoring",
+      "displayNameTranslations": {
+        "no": "Hjemmel for tilgjengeliggjøring",
+        "en": "Legal Basis for Disclosure"
+      },
+      "groupTranslations": {
+        "no": "Juridisk",
+        "en": "Legal"
+      },
+      "sortOrder": 150,
+      "type": "Text",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "JuridiskNote",
+      "displayNameTranslations": {
+        "no": "Juridisk note",
+        "en": "Legal Note"
+      },
+      "groupTranslations": {
+        "no": "Juridisk",
+        "en": "Legal"
+      },
+      "sortOrder": 160,
+      "type": "Text",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "Hjemmeside",
+      "displayNameTranslations": {
+        "no": "Hjemmeside",
+        "en": "Website"
+      },
+      "groupTranslations": {
+        "no": "Kontakt",
+        "en": "Contact"
+      },
+      "sortOrder": 170,
+      "type": "Url",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "Epost",
+      "displayNameTranslations": {
+        "no": "E-post",
+        "en": "Email"
+      },
+      "groupTranslations": {
+        "no": "Kontakt",
+        "en": "Contact"
+      },
+      "sortOrder": 180,
+      "type": "Email",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "Telefonnummer",
+      "displayNameTranslations": {
+        "no": "Telefonnummer",
+        "en": "Phone Number"
+      },
+      "groupTranslations": {
+        "no": "Kontakt",
+        "en": "Contact"
+      },
+      "sortOrder": 190,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "OrgnrDataansvarlig",
+      "displayNameTranslations": {
+        "no": "Org.nr. dataansvarlig",
+        "en": "Data Controller Org. No."
+      },
+      "groupTranslations": {
+        "no": "Identifikatorer",
+        "en": "Identifiers"
+      },
+      "sortOrder": 200,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "HERidDatakilde",
+      "displayNameTranslations": {
+        "no": "HER-ID datakilde",
+        "en": "HER-ID Data Source"
+      },
+      "groupTranslations": {
+        "no": "Identifikatorer",
+        "en": "Identifiers"
+      },
+      "sortOrder": 210,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "HERidDataansvarlig",
+      "displayNameTranslations": {
+        "no": "HER-ID dataansvarlig",
+        "en": "HER-ID Data Controller"
+      },
+      "groupTranslations": {
+        "no": "Identifikatorer",
+        "en": "Identifiers"
+      },
+      "sortOrder": 220,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "ErISamsvarMed",
+      "displayNameTranslations": {
+        "no": "Er i samsvar med",
+        "en": "Complies With"
+      },
+      "groupTranslations": {
+        "no": "Samsvar",
+        "en": "Compliance"
+      },
+      "sortOrder": 230,
+      "type": "Text",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "accessRights",
+      "displayNameTranslations": {
+        "no": "Tilgangsrettigheter",
+        "en": "Access rights"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 300,
+      "type": "SingleSelect",
+      "optionsJson": "[{\"value\":\"eu-access:NON_PUBLIC\",\"label\":\"Ikke-offentlig\",\"labelEn\":\"Non-public\"},{\"value\":\"eu-access:RESTRICTED\",\"label\":\"Begrenset\",\"labelEn\":\"Restricted\"},{\"value\":\"eu-access:PUBLIC\",\"label\":\"Offentlig\",\"labelEn\":\"Public\"}]",
+      "options": [
+        {
+          "value": "eu-access:NON_PUBLIC",
+          "displayName": "Ikke-offentlig"
+        },
+        {
+          "value": "eu-access:RESTRICTED",
+          "displayName": "Begrenset"
+        },
+        {
+          "value": "eu-access:PUBLIC",
+          "displayName": "Offentlig"
+        }
+      ]
+    },
+    {
+      "key": "healthDataAccessBodyName",
+      "displayNameTranslations": {
+        "no": "Navn",
+        "en": "Name"
+      },
+      "groupTranslations": {
+        "no": "Helsedatatilgangsorgan (overstyring)",
+        "en": "Health Data Access Body (override)"
+      },
+      "sortOrder": 311,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "healthDataAccessBodyPhone",
+      "displayNameTranslations": {
+        "no": "Telefon",
+        "en": "Phone"
+      },
+      "groupTranslations": {
+        "no": "Helsedatatilgangsorgan (overstyring)",
+        "en": "Health Data Access Body (override)"
+      },
+      "sortOrder": 312,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "healthDataAccessBodyEmail",
+      "displayNameTranslations": {
+        "no": "E-post",
+        "en": "Email"
+      },
+      "groupTranslations": {
+        "no": "Helsedatatilgangsorgan (overstyring)",
+        "en": "Health Data Access Body (override)"
+      },
+      "sortOrder": 313,
+      "type": "Email",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "healthDataAccessBodyHomepage",
+      "displayNameTranslations": {
+        "no": "Hjemmeside",
+        "en": "Homepage"
+      },
+      "groupTranslations": {
+        "no": "Helsedatatilgangsorgan (overstyring)",
+        "en": "Health Data Access Body (override)"
+      },
+      "sortOrder": 314,
+      "type": "Url",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "applicableLegislation",
+      "displayNameTranslations": {
+        "no": "Gjeldende lovgivning",
+        "en": "Applicable legislation"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 320,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "hasLegalBasis",
+      "displayNameTranslations": {
+        "no": "Rettslig grunnlag (språkmerket)",
+        "en": "Legal basis (language-tagged)"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 325,
+      "type": "LangTaggedList",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "healthCategory",
+      "displayNameTranslations": {
+        "no": "Helsedatakategori",
+        "en": "Health data category"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 330,
+      "type": "MultiSelect",
+      "optionsJson": "[{\"value\":\"ehds-cat:health-registries\",\"label\":\"Helseregistre\",\"labelEn\":\"Health registries\"},{\"value\":\"ehds-cat:registries-quality-of-healthcare\",\"label\":\"Kvalitetsregistre\",\"labelEn\":\"Quality-of-healthcare registries\"},{\"value\":\"ehds-cat:population-health-surveys\",\"label\":\"Befolkningsbaserte helseundersøkelser\",\"labelEn\":\"Population health surveys\"},{\"value\":\"ehds-cat:provesamling\",\"label\":\"Prøvesamling\",\"labelEn\":\"Sample collection\"},{\"value\":\"ehds-cat:biodata\",\"label\":\"Biodata (DNA/omikk)\",\"labelEn\":\"Biodata (DNA/omics)\"},{\"value\":\"ehds-cat:biobanks\",\"label\":\"Biobanker\",\"labelEn\":\"Biobanks\"},{\"value\":\"ehds-cat:other\",\"label\":\"Annet\",\"labelEn\":\"Other\"}]",
+      "options": [
+        {
+          "value": "ehds-cat:health-registries",
+          "displayName": "Helseregistre"
+        },
+        {
+          "value": "ehds-cat:registries-quality-of-healthcare",
+          "displayName": "Kvalitetsregistre"
+        },
+        {
+          "value": "ehds-cat:population-health-surveys",
+          "displayName": "Befolkningsbaserte helseundersøkelser"
+        },
+        {
+          "value": "ehds-cat:provesamling",
+          "displayName": "Prøvesamling"
+        },
+        {
+          "value": "ehds-cat:biodata",
+          "displayName": "Biodata (DNA/omikk)"
+        },
+        {
+          "value": "ehds-cat:biobanks",
+          "displayName": "Biobanker"
+        },
+        {
+          "value": "ehds-cat:other",
+          "displayName": "Annet"
+        }
+      ]
+    },
+    {
+      "key": "healthTheme",
+      "displayNameTranslations": {
+        "no": "Helsetema",
+        "en": "Health theme"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 340,
+      "type": "MultiSelect",
+      "optionsJson": "[{\"value\":\"healthdcatap:communicable-diseases\",\"label\":\"Smittsomme sykdommer\",\"labelEn\":\"Communicable diseases\"},{\"value\":\"healthdcatap:non-communicable-diseases\",\"label\":\"Ikke-smittsomme sykdommer\",\"labelEn\":\"Non-communicable diseases\"},{\"value\":\"healthdcatap:rare-diseases\",\"label\":\"Sjeldne sykdommer\",\"labelEn\":\"Rare diseases\"},{\"value\":\"healthdcatap:mental-health\",\"label\":\"Psykisk helse\",\"labelEn\":\"Mental health\"},{\"value\":\"healthdcatap:reproductive-health\",\"label\":\"Reproduktiv helse\",\"labelEn\":\"Reproductive health\"},{\"value\":\"healthdcatap:environmental-health\",\"label\":\"Milj\\u00f8helse\",\"labelEn\":\"Environmental health\"},{\"value\":\"healthdcatap:public-health-surveillance\",\"label\":\"Folkehelseoverv\\u00e5king\",\"labelEn\":\"Public health surveillance\"},{\"value\":\"healthdcatap:health-services\",\"label\":\"Helsetjenester\",\"labelEn\":\"Health services\"},{\"value\":\"healthdcatap:pharmaceuticals\",\"label\":\"Legemidler\",\"labelEn\":\"Pharmaceuticals\"},{\"value\":\"healthdcatap:genomics\",\"label\":\"Genomikk\",\"labelEn\":\"Genomics\"}]",
+      "options": [
+        {
+          "value": "healthdcatap:communicable-diseases",
+          "displayName": "Smittsomme sykdommer"
+        },
+        {
+          "value": "healthdcatap:non-communicable-diseases",
+          "displayName": "Ikke-smittsomme sykdommer"
+        },
+        {
+          "value": "healthdcatap:rare-diseases",
+          "displayName": "Sjeldne sykdommer"
+        },
+        {
+          "value": "healthdcatap:mental-health",
+          "displayName": "Psykisk helse"
+        },
+        {
+          "value": "healthdcatap:reproductive-health",
+          "displayName": "Reproduktiv helse"
+        },
+        {
+          "value": "healthdcatap:environmental-health",
+          "displayName": "Miljøhelse"
+        },
+        {
+          "value": "healthdcatap:public-health-surveillance",
+          "displayName": "Folkehelseovervåking"
+        },
+        {
+          "value": "healthdcatap:health-services",
+          "displayName": "Helsetjenester"
+        },
+        {
+          "value": "healthdcatap:pharmaceuticals",
+          "displayName": "Legemidler"
+        },
+        {
+          "value": "healthdcatap:genomics",
+          "displayName": "Genomikk"
+        }
+      ]
+    },
+    {
+      "key": "numberOfRecords",
+      "displayNameTranslations": {
+        "no": "Antall registreringer",
+        "en": "Number of records"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 350,
+      "type": "Number",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "numberOfUniqueIndividuals",
+      "displayNameTranslations": {
+        "no": "Antall unike individer",
+        "en": "Number of unique individuals"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 360,
+      "type": "Number",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "retentionPeriod",
+      "displayNameTranslations": {
+        "no": "Oppbevaringstid",
+        "en": "Retention period"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 370,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "populationCoverage",
+      "displayNameTranslations": {
+        "no": "Populasjonsdekning",
+        "en": "Population coverage"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 380,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "PopulationCoverageFlerspraklig",
+      "displayNameTranslations": {
+        "no": "Befolkningsdekning (flerspråklig)",
+        "en": "Population Coverage (multilingual)"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 381,
+      "type": "MultilingualText",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "spatialResolutionInMeters",
+      "displayNameTranslations": {
+        "no": "Romlig oppløsning (meter)",
+        "en": "Spatial resolution (meters)"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 400,
+      "type": "Number",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "temporalResolution",
+      "displayNameTranslations": {
+        "no": "Tidsoppløsning",
+        "en": "Temporal resolution"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 410,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "creator",
+      "displayNameTranslations": {
+        "no": "Skaper",
+        "en": "Creator"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 420,
+      "type": "Object",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "CreatorNavnFlerspraklig",
+      "displayNameTranslations": {
+        "no": "Navn på skaper (flerspråklig)",
+        "en": "Creator name (multilingual)"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 425,
+      "type": "MultilingualText",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "contactPoint",
+      "displayNameTranslations": {
+        "no": "Kontaktpunkt",
+        "en": "Contact point"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 430,
+      "type": "Object",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "webPage",
+      "displayNameTranslations": {
+        "no": "Nettside",
+        "en": "Web page"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 440,
+      "type": "Url",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "landingPage",
+      "displayNameTranslations": {
+        "no": "Landingsside",
+        "en": "Landing page"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 450,
+      "type": "Url",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "isReferencedBy",
+      "displayNameTranslations": {
+        "no": "Referert av",
+        "en": "Is referenced by"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 460,
+      "type": "Url",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "relation",
+      "displayNameTranslations": {
+        "no": "Relasjon",
+        "en": "Relation"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 470,
+      "type": "Url",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "source",
+      "displayNameTranslations": {
+        "no": "Kilde (referanse)",
+        "en": "Source (reference)"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 480,
+      "type": "Url",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "hasQualityAnnotation",
+      "displayNameTranslations": {
+        "no": "Kvalitetsmerknad",
+        "en": "Quality annotation"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 490,
+      "type": "Url",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "qualifiedAttribution",
+      "displayNameTranslations": {
+        "no": "Kvalifisert tilskrivning",
+        "en": "Qualified attribution"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 500,
+      "type": "Object",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "otherIdentifiers",
+      "displayNameTranslations": {
+        "no": "Andre identifikatorer",
+        "en": "Other identifiers"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 510,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "typicalAge",
+      "displayNameTranslations": {
+        "no": "Typisk alder (minimum)",
+        "en": "Typical age (minimum)"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 520,
+      "type": "Number",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "maxTypicalAge",
+      "displayNameTranslations": {
+        "no": "Typisk alder (maksimum)",
+        "en": "Typical age (maximum)"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 530,
+      "type": "Number",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "TittelFlerspraklig",
+      "displayNameTranslations": {
+        "no": "Tittel (flerspråklig)",
+        "en": "Title (multilingual)"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 540,
+      "type": "MultilingualText",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "AlternativtTittelFlerspraklig",
+      "displayNameTranslations": {
+        "no": "Alternativ tittel (flerspråklig)",
+        "en": "Alternative title (multilingual)"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 545,
+      "type": "MultilingualText",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "BeskrivelseFlerspraklig",
+      "displayNameTranslations": {
+        "no": "Beskrivelse (flerspråklig)",
+        "en": "Description (multilingual)"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 550,
+      "type": "MultilingualText",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "VersjonsnotaterFlerspraklig",
+      "displayNameTranslations": {
+        "no": "Versjonsnotater (flerspråklig)",
+        "en": "Version notes (multilingual)"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 555,
+      "type": "LangTaggedList",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "PublisherNavnFlerspraklig",
+      "displayNameTranslations": {
+        "no": "Dataansvarlig (flerspråklig)",
+        "en": "Publisher name (multilingual)"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 556,
+      "type": "MultilingualText",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "PublisherNoteFlerspraklig",
+      "displayNameTranslations": {
+        "no": "Merknad om dataansvarlig (flerspråklig)",
+        "en": "Publisher note (multilingual)"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 557,
+      "type": "MultilingualText",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "HealthDataAccessBodyNameFlerspraklig",
+      "displayNameTranslations": {
+        "no": "Navn på tilgangsorgan for helsedata (flerspråklig)",
+        "en": "Health data access body name (multilingual)"
+      },
+      "groupTranslations": {
+        "no": "EHDS / HealthDCAT-AP",
+        "en": "EHDS / HealthDCAT-AP"
+      },
+      "sortOrder": 558,
+      "type": "MultilingualText",
+      "optionsJson": "[]",
+      "options": []
+    }
+  ],
+  "datasamlinger": [
+    {
+      "id": "0c027ce6-2994-45bf-99ec-facad3d1703e",
+      "name": "Inklusjon",
+      "kortNavn": "ALS",
+      "beskrivelse": "Skjemaet inneholder opplysninger om utredning og oppstart av behandling fra symptomdebut fra symptomdebut til diagnosetidspunkt.",
+      "variableCount": 99,
+      "presentationOrder": 1,
+      "parentDelkildeId": null,
+      "dataansvarlig": null,
+      "databehandler": null,
+      "gradAvPersonidentifikasjon": null,
+      "gyldigFra": "2010-01-01T00:00:00.000Z",
+      "gyldigTil": null,
+      "effectiveDataansvarlig": "St. Olavs hospital HF",
+      "effectiveDatabehandler": "St. Olavs hospital HF",
+      "effectiveGradAvPersonidentifikasjon": "indirectlyIdentifiable",
+      "effectiveGyldigFra": "2010-01-01T00:00:00.000Z",
+      "effectiveGyldigTil": null,
+      "effectiveKildetype": "nasjonaltMedisinskKvalitetsregister",
+      "additionalProperties": {
+        "AnbefalteBruksomraader": "Kvalitetsforbedring;Forskning;Statistikk",
+        "Dataansvarlig": "St. Olavs hospital HF",
+        "Databehandler": "St. Olavs hospital HF",
+        "GradAvPersonidentifikasjon": "1",
+        "Lovverk": "Innmelding av opplysninger fra det enkelte helseforetak til kvalitetsregistrene som inngår i § 2-3 i Forskrift om medisinske kvalitetsregistre. Personopplysningsloven, personvernforordningen (jf. Personopplysningsloven § 1) og helseregisterloven gjelder for behandling av helseopplysninger i medisinske kvalitetsregistre. Behandlingsgrunnlaget for ALS-registeret er personvernforordningen artikkel 6 nr. 1 bokstav e og artikkel 9 nr. 2 bokstav g, h, i og j. Overgang fra samtykkebasert register til reservasjonsbasert register 04.04.2024.",
+        "healthCategory": "[\"ehds-cat:registries-quality-of-healthcare\"]"
+      }
+    },
+    {
+      "id": "4411873c-0367-4334-a7cf-8e763c8e3490",
+      "name": "Oppfølgingskonsultasjon",
+      "kortNavn": "ALS",
+      "beskrivelse": "Skjemaet registreres ved oppfølgingskonsultasjoner. Det inneholder opplysninger om behandling, bosituasjon, diagnose og komorbiditet, samt eventuelle undersøkelser. Skjemaet kan også inneholde opplysninger ved død, om oppfølgingen er overtatt av annet sykehus eller om pasienten har hatt feil diagnose.",
+      "variableCount": 94,
+      "presentationOrder": 2,
+      "parentDelkildeId": null,
+      "dataansvarlig": null,
+      "databehandler": null,
+      "gradAvPersonidentifikasjon": null,
+      "gyldigFra": "2010-01-01T00:00:00.000Z",
+      "gyldigTil": null,
+      "effectiveDataansvarlig": "St. Olavs hospital HF",
+      "effectiveDatabehandler": "St. Olavs hospital HF",
+      "effectiveGradAvPersonidentifikasjon": "indirectlyIdentifiable",
+      "effectiveGyldigFra": "2010-01-01T00:00:00.000Z",
+      "effectiveGyldigTil": null,
+      "effectiveKildetype": "nasjonaltMedisinskKvalitetsregister",
+      "additionalProperties": {
+        "AnbefalteBruksomraader": "Kvalitetsforbedring;Forskning;Statistikk",
+        "Dataansvarlig": "St. Olavs hospital HF",
+        "Databehandler": "St. Olavs hospital HF",
+        "GradAvPersonidentifikasjon": "1",
+        "Lovverk": "Innmelding av opplysninger fra det enkelte helseforetak til kvalitetsregistrene som inngår i § 2-3 i Forskrift om medisinske kvalitetsregistre. Personopplysningsloven, personvernforordningen (jf. Personopplysningsloven § 1) og helseregisterloven gjelder for behandling av helseopplysninger i medisinske kvalitetsregistre. Behandlingsgrunnlaget for ALS-registeret er personvernforordningen artikkel 6 nr. 1 bokstav e og artikkel 9 nr. 2 bokstav g, h, i og j. Overgang fra samtykkebasert register til reservasjonsbasert register 04.04.2024.",
+        "healthCategory": "[\"ehds-cat:registries-quality-of-healthcare\"]"
+      }
+    },
+    {
+      "id": "6e6100bb-b91c-41b2-abb5-113ae6062154",
+      "name": "KomplikasjonBehandling",
+      "kortNavn": "ALS",
+      "beskrivelse": "Skjema inneholder informasjon om medikamentell behandling og eventuell bruk av ventilasjonsstøtte.",
+      "variableCount": 22,
+      "presentationOrder": 3,
+      "parentDelkildeId": null,
+      "dataansvarlig": null,
+      "databehandler": null,
+      "gradAvPersonidentifikasjon": null,
+      "gyldigFra": "2010-01-01T00:00:00.000Z",
+      "gyldigTil": null,
+      "effectiveDataansvarlig": "St. Olavs hospital HF",
+      "effectiveDatabehandler": "St. Olavs hospital HF",
+      "effectiveGradAvPersonidentifikasjon": "indirectlyIdentifiable",
+      "effectiveGyldigFra": "2010-01-01T00:00:00.000Z",
+      "effectiveGyldigTil": null,
+      "effectiveKildetype": "nasjonaltMedisinskKvalitetsregister",
+      "additionalProperties": {
+        "AnbefalteBruksomraader": "Kvalitetsforbedring;Forskning;Statistikk",
+        "Dataansvarlig": "St. Olavs hospital HF",
+        "Databehandler": "St. Olavs hospital HF",
+        "GradAvPersonidentifikasjon": "1",
+        "Lovverk": "Innmelding av opplysninger fra det enkelte helseforetak til kvalitetsregistrene som inngår i § 2-3 i Forskrift om medisinske kvalitetsregistre. Personopplysningsloven, personvernforordningen (jf. Personopplysningsloven § 1) og helseregisterloven gjelder for behandling av helseopplysninger i medisinske kvalitetsregistre. Behandlingsgrunnlaget for ALS-registeret er personvernforordningen artikkel 6 nr. 1 bokstav e og artikkel 9 nr. 2 bokstav g, h, i og j. Overgang fra samtykkebasert register til reservasjonsbasert register 04.04.2024.",
+        "healthCategory": "[\"ehds-cat:registries-quality-of-healthcare\"]"
+      }
+    },
+    {
+      "id": "3617a313-caa2-4448-9ba7-26cc3853bc8f",
+      "name": "Automatisk eProm etter tre måneder",
+      "kortNavn": "ALS",
+      "beskrivelse": "Skjemaet er besvart av pasienten ca. 3 måneder etter inklusjon i registeret. Det inneholder bl. a. opplysninger om bosituasjon, sivilstatus og utdanningsnivå.",
+      "variableCount": 18,
+      "presentationOrder": 4,
+      "parentDelkildeId": null,
+      "dataansvarlig": null,
+      "databehandler": null,
+      "gradAvPersonidentifikasjon": null,
+      "gyldigFra": "2023-01-01T00:00:00.000Z",
+      "gyldigTil": null,
+      "effectiveDataansvarlig": "St. Olavs hospital HF",
+      "effectiveDatabehandler": "St. Olavs hospital HF",
+      "effectiveGradAvPersonidentifikasjon": "indirectlyIdentifiable",
+      "effectiveGyldigFra": "2023-01-01T00:00:00.000Z",
+      "effectiveGyldigTil": null,
+      "effectiveKildetype": "nasjonaltMedisinskKvalitetsregister",
+      "additionalProperties": {
+        "AnbefalteBruksomraader": "Kvalitetsforbedring;Forskning;Statistikk",
+        "Dataansvarlig": "St. Olavs hospital HF",
+        "Databehandler": "St. Olavs hospital HF",
+        "GradAvPersonidentifikasjon": "1",
+        "Lovverk": "Innmelding av opplysninger fra det enkelte helseforetak til kvalitetsregistrene som inngår i § 2-3 i Forskrift om medisinske kvalitetsregistre. Personopplysningsloven, personvernforordningen (jf. Personopplysningsloven § 1) og helseregisterloven gjelder for behandling av helseopplysninger i medisinske kvalitetsregistre. Behandlingsgrunnlaget for ALS-registeret er personvernforordningen artikkel 6 nr. 1 bokstav e og artikkel 9 nr. 2 bokstav g, h, i og j. Overgang fra samtykkebasert register til reservasjonsbasert register 04.04.2024.",
+        "healthCategory": "[\"ehds-cat:registries-quality-of-healthcare\"]"
+      }
+    },
+    {
+      "id": "45205799-8455-4f15-93a9-1d90359b51b4",
+      "name": "Utredning",
+      "kortNavn": "ALS",
+      "beskrivelse": "Utredning",
+      "variableCount": 0,
+      "presentationOrder": 5,
+      "parentDelkildeId": null,
+      "dataansvarlig": null,
+      "databehandler": null,
+      "gradAvPersonidentifikasjon": null,
+      "gyldigFra": "2015-01-01T00:00:00.000Z",
+      "gyldigTil": "2026-03-01T00:00:00.000Z",
+      "effectiveDataansvarlig": "St. Olavs hospital HF",
+      "effectiveDatabehandler": "St. Olavs hospital HF",
+      "effectiveGradAvPersonidentifikasjon": "indirectlyIdentifiable",
+      "effectiveGyldigFra": "2015-01-01T00:00:00.000Z",
+      "effectiveGyldigTil": "2026-03-01T00:00:00.000Z",
+      "effectiveKildetype": "nasjonaltMedisinskKvalitetsregister",
+      "additionalProperties": {
+        "AnbefalteBruksomraader": "Kvalitetsforbedring;Forskning;Statistikk",
+        "Dataansvarlig": "St. Olavs hospital HF",
+        "Databehandler": "St. Olavs hospital HF",
+        "GradAvPersonidentifikasjon": "1",
+        "Lovverk": "Innmelding av opplysninger fra det enkelte helseforetak til kvalitetsregistrene som inngår i § 2-3 i Forskrift om medisinske kvalitetsregistre. Personopplysningsloven, personvernforordningen (jf. Personopplysningsloven § 1) og helseregisterloven gjelder for behandling av helseopplysninger i medisinske kvalitetsregistre. Behandlingsgrunnlaget for ALS-registeret er personvernforordningen artikkel 6 nr. 1 bokstav e og artikkel 9 nr. 2 bokstav g, h, i og j. Overgang fra samtykkebasert register til reservasjonsbasert register 04.04.2024.",
+        "healthCategory": "[\"ehds-cat:registries-quality-of-healthcare\"]"
+      }
+    },
+    {
+      "id": "d8a38ef2-ff3f-4ead-b7b7-b366b97e08d2",
+      "name": "Tverrfaglighet",
+      "kortNavn": "ALS",
+      "beskrivelse": "Tverrfaglighet",
+      "variableCount": 0,
+      "presentationOrder": 6,
+      "parentDelkildeId": null,
+      "dataansvarlig": null,
+      "databehandler": null,
+      "gradAvPersonidentifikasjon": null,
+      "gyldigFra": "2010-01-01T00:00:00.000Z",
+      "gyldigTil": null,
+      "effectiveDataansvarlig": "St. Olavs hospital HF",
+      "effectiveDatabehandler": "St. Olavs hospital HF",
+      "effectiveGradAvPersonidentifikasjon": "indirectlyIdentifiable",
+      "effectiveGyldigFra": "2010-01-01T00:00:00.000Z",
+      "effectiveGyldigTil": null,
+      "effectiveKildetype": "nasjonaltMedisinskKvalitetsregister",
+      "additionalProperties": {
+        "AnbefalteBruksomraader": "Kvalitetsforbedring;Forskning;Statistikk",
+        "Dataansvarlig": "St. Olavs hospital HF",
+        "Databehandler": "St. Olavs hospital HF",
+        "GradAvPersonidentifikasjon": "1",
+        "Lovverk": "Innmelding av opplysninger fra det enkelte helseforetak til kvalitetsregistrene som inngår i § 2-3 i Forskrift om medisinske kvalitetsregistre. Personopplysningsloven, personvernforordningen (jf. Personopplysningsloven § 1) og helseregisterloven gjelder for behandling av helseopplysninger i medisinske kvalitetsregistre. Behandlingsgrunnlaget for ALS-registeret er personvernforordningen artikkel 6 nr. 1 bokstav e og artikkel 9 nr. 2 bokstav g, h, i og j. Overgang fra samtykkebasert register til reservasjonsbasert register 04.04.2024.",
+        "healthCategory": "[\"ehds-cat:registries-quality-of-healthcare\"]"
+      }
+    },
+    {
+      "id": "b57f0278-5cd1-4997-8ad2-4dd862936e09",
+      "name": "Pasientsvar symptomer",
+      "kortNavn": "ALS",
+      "beskrivelse": "Pasientsvar symptomer",
+      "variableCount": 0,
+      "presentationOrder": 7,
+      "parentDelkildeId": null,
+      "dataansvarlig": null,
+      "databehandler": null,
+      "gradAvPersonidentifikasjon": null,
+      "gyldigFra": "2021-01-01T00:00:00.000Z",
+      "gyldigTil": null,
+      "effectiveDataansvarlig": "St. Olavs hospital HF",
+      "effectiveDatabehandler": "St. Olavs hospital HF",
+      "effectiveGradAvPersonidentifikasjon": "indirectlyIdentifiable",
+      "effectiveGyldigFra": "2021-01-01T00:00:00.000Z",
+      "effectiveGyldigTil": null,
+      "effectiveKildetype": "nasjonaltMedisinskKvalitetsregister",
+      "additionalProperties": {
+        "AnbefalteBruksomraader": "Kvalitetsforbedring;Forskning;Statistikk",
+        "Dataansvarlig": "St. Olavs hospital HF",
+        "Databehandler": "St. Olavs hospital HF",
+        "GradAvPersonidentifikasjon": "1",
+        "Lovverk": "Innmelding av opplysninger fra det enkelte helseforetak til kvalitetsregistrene som inngår i § 2-3 i Forskrift om medisinske kvalitetsregistre. Personopplysningsloven, personvernforordningen (jf. Personopplysningsloven § 1) og helseregisterloven gjelder for behandling av helseopplysninger i medisinske kvalitetsregistre. Behandlingsgrunnlaget for ALS-registeret er personvernforordningen artikkel 6 nr. 1 bokstav e og artikkel 9 nr. 2 bokstav g, h, i og j. Overgang fra samtykkebasert register til reservasjonsbasert register 04.04.2024.",
+        "healthCategory": "[\"ehds-cat:registries-quality-of-healthcare\"]"
+      }
+    },
+    {
+      "id": "5a5b2b29-fa45-4ce5-91d9-af9ffeb9912a",
+      "name": "Pasientsvar kommunalt tilbud",
+      "kortNavn": "ALS",
+      "beskrivelse": "Pasientsvar kommunalt tilbud",
+      "variableCount": 0,
+      "presentationOrder": 8,
+      "parentDelkildeId": null,
+      "dataansvarlig": null,
+      "databehandler": null,
+      "gradAvPersonidentifikasjon": null,
+      "gyldigFra": "2021-01-01T00:00:00.000Z",
+      "gyldigTil": null,
+      "effectiveDataansvarlig": "St. Olavs hospital HF",
+      "effectiveDatabehandler": "St. Olavs hospital HF",
+      "effectiveGradAvPersonidentifikasjon": "indirectlyIdentifiable",
+      "effectiveGyldigFra": "2021-01-01T00:00:00.000Z",
+      "effectiveGyldigTil": null,
+      "effectiveKildetype": "nasjonaltMedisinskKvalitetsregister",
+      "additionalProperties": {
+        "AnbefalteBruksomraader": "Kvalitetsforbedring;Forskning;Statistikk",
+        "Dataansvarlig": "St. Olavs hospital HF",
+        "Databehandler": "St. Olavs hospital HF",
+        "GradAvPersonidentifikasjon": "1",
+        "Lovverk": "Innmelding av opplysninger fra det enkelte helseforetak til kvalitetsregistrene som inngår i § 2-3 i Forskrift om medisinske kvalitetsregistre. Personopplysningsloven, personvernforordningen (jf. Personopplysningsloven § 1) og helseregisterloven gjelder for behandling av helseopplysninger i medisinske kvalitetsregistre. Behandlingsgrunnlaget for ALS-registeret er personvernforordningen artikkel 6 nr. 1 bokstav e og artikkel 9 nr. 2 bokstav g, h, i og j. Overgang fra samtykkebasert register til reservasjonsbasert register 04.04.2024.",
+        "healthCategory": "[\"ehds-cat:registries-quality-of-healthcare\"]"
+      }
+    },
+    {
+      "id": "44e7cb51-d827-4601-99d1-dbf096840f8b",
+      "name": "Samtykkeskjema",
+      "kortNavn": "ALS",
+      "beskrivelse": "Samtykkeskjema",
+      "variableCount": 0,
+      "presentationOrder": 9,
+      "parentDelkildeId": null,
+      "dataansvarlig": null,
+      "databehandler": null,
+      "gradAvPersonidentifikasjon": null,
+      "gyldigFra": "2023-01-01T00:00:00.000Z",
+      "gyldigTil": null,
+      "effectiveDataansvarlig": "St. Olavs hospital HF",
+      "effectiveDatabehandler": "St. Olavs hospital HF",
+      "effectiveGradAvPersonidentifikasjon": "indirectlyIdentifiable",
+      "effectiveGyldigFra": "2023-01-01T00:00:00.000Z",
+      "effectiveGyldigTil": null,
+      "effectiveKildetype": "nasjonaltMedisinskKvalitetsregister",
+      "additionalProperties": {
+        "AnbefalteBruksomraader": "Kvalitetsforbedring;Forskning;Statistikk",
+        "Dataansvarlig": "St. Olavs hospital HF",
+        "Databehandler": "St. Olavs hospital HF",
+        "GradAvPersonidentifikasjon": "1",
+        "Lovverk": "Innmelding av opplysninger fra det enkelte helseforetak til kvalitetsregistrene som inngår i § 2-3 i Forskrift om medisinske kvalitetsregistre. Personopplysningsloven, personvernforordningen (jf. Personopplysningsloven § 1) og helseregisterloven gjelder for behandling av helseopplysninger i medisinske kvalitetsregistre. Behandlingsgrunnlaget for ALS-registeret er personvernforordningen artikkel 6 nr. 1 bokstav e og artikkel 9 nr. 2 bokstav g, h, i og j. Overgang fra samtykkebasert register til reservasjonsbasert register 04.04.2024.",
+        "healthCategory": "[\"ehds-cat:registries-quality-of-healthcare\"]"
+      }
+    }
+  ],
+  "delkilder": [],
+  "totalVariables": 230,
+  "dataFrom": "2010-01-01T00:00:00.000Z",
+  "dataTo": null
+}

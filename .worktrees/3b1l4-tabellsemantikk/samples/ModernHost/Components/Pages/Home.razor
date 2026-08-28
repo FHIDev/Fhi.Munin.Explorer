@@ -1,0 +1,31 @@
+﻿@page "/"
+@using Fhi.Munin.Explorer.Blazor
+
+<PageTitle>Modern host</PageTitle>
+
+<div class="hostchrome">
+    <p class="hostchrome-note">
+        This page is a routed <code>.razor</code> page in a modern Blazor Web App. Everything
+        inside the frame below is the <code>Fhi.Munin.Explorer.Blazor</code> package, mounted the
+        modern way — a component tag with <code>@@rendermode</code> set here, by the host, inside
+        an app served by <code>MapRazorComponents&lt;App&gt;()</code>.
+    </p>
+    <p class="hostchrome-note">
+        <code>samples/LegacyHost</code> mounts the very same component the other way — a
+        <code>&lt;component&gt;</code> tag helper in an MVC view, no router, no
+        <code>@@rendermode</code> — because that is what helsedata.no's Optimizely CMS does. The
+        component has to work in both, so both hosts are kept alive.
+    </p>
+    <p class="hostchrome-note">
+        The package ships a second root component beside this one — <code>KildeExplorer</code>, the
+        kildeutforsker. It has a page of its own: <a href="/kilder">kilder</a>.
+    </p>
+</div>
+
+<div class="hostframe">
+    @* render-mode is set HERE, by the host. The component itself is render-mode free.
+       prerender: false for the same reason LegacyHost uses render-mode="Server" rather than
+       "ServerPrerendered" — the component fetches on initialise, and prerendering would run
+       that call twice against the public API on every page load. *@
+    <VariableExplorer Language="no" @rendermode="@(new InteractiveServerRenderMode(prerender: false))" />
+</div>

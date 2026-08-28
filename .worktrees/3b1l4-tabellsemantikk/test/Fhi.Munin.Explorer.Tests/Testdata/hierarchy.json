@@ -1,0 +1,498 @@
+{
+  "kildeId": "e358db40-0efa-47bb-893a-40ee00ccde12",
+  "kildeName": "The Tromsø study",
+  "totalVariableCount": 5752,
+  "delkilder": [
+    {
+      "id": "9709cdb7-393a-4043-8e5a-63a20a2ef6bc",
+      "name": "Biodata",
+      "variableCount": 0,
+      "datasamlinger": [],
+      "unassignedVariabelgrupper": [],
+      "children": [],
+      "presentationOrder": 1
+    },
+    {
+      "id": "38f8f0f2-9b12-48e3-b24b-eeaa3a84a5a7",
+      "name": "Tromsø4 - The Fourth Tromsø Study",
+      "variableCount": 210,
+      "datasamlinger": [
+        {
+          "id": "eaa36200-3a76-4c38-ba6c-a57bbac61dca",
+          "name": "Tromsø4 - The Fourth Tromsø Study - first visit",
+          "variableCount": 151,
+          "variabelgrupper": [],
+          "presentationOrder": 14,
+          "categories": [
+            "ehds-cat:population-health-surveys"
+          ]
+        },
+        {
+          "id": "e9b2839f-dd55-4dac-9f6d-83295b5499f8",
+          "name": "Tromsø4 - The Fourth Tromsø Study - second visit",
+          "variableCount": 59,
+          "variabelgrupper": [],
+          "presentationOrder": 15,
+          "categories": [
+            "ehds-cat:population-health-surveys"
+          ]
+        }
+      ],
+      "unassignedVariabelgrupper": [],
+      "children": [],
+      "presentationOrder": 13
+    },
+    {
+      "id": "4f6d7094-8976-42e8-b2da-841394a88771",
+      "name": "Tromsø5 - The Fifth Tromsø Study",
+      "variableCount": 1170,
+      "datasamlinger": [
+        {
+          "id": "faa93827-a828-431b-b69f-66a5da0e3553",
+          "name": "Tromsø5 - The Fifth Tromsø Study - first visit",
+          "variableCount": 624,
+          "variabelgrupper": [
+            {
+              "id": "b1823f03-dc4d-4b6e-8578-0f0f61fa80cc",
+              "name": "ALCOHOL - Q2",
+              "variableCount": 7,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "fceb8135-a217-4bad-a3c2-8324d7934ffe",
+              "name": "BALANCE",
+              "variableCount": 5,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "6324ee97-7374-4e74-be55-8de746bb8dda",
+              "name": "BLOOD SAMPLES",
+              "variableCount": 6,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "e80aaf4d-e778-4463-9a18-3b8c0411d52e",
+              "name": "BODILY FUNCTIONS, AND SAFETY PO70",
+              "variableCount": 9,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "058b7371-cb04-4b47-af99-4b874fed1ef0",
+              "name": "BODY WEIGHT - Q2",
+              "variableCount": 2,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "e24d4d87-683a-42ff-932d-f36bf87b47c0",
+              "name": "BONE MINERAL DENSITY",
+              "variableCount": 23,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "ce74998a-3bc7-4fb3-a614-daaf390675c9",
+              "name": "CHILDHOOD/YOUTH AND AFFILIATION",
+              "variableCount": 7,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "448ed425-7855-45c3-9241-4599553c2f2d",
+              "name": "EDUCATION AND WORK",
+              "variableCount": 15,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "24cd789d-f97e-4aa1-ae34-ea1b2c9952b0",
+              "name": "EXERCISE AND PHYSICAL ACTIVITY",
+              "variableCount": 3,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "6509a17c-47ec-4066-b863-8bcf0bdcebe6",
+              "name": "FALLS",
+              "variableCount": 3,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "c161c779-9f00-4e2a-a4e9-4245cde263d5",
+              "name": "FAMILY AND FRIENDS",
+              "variableCount": 8,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "550d2c64-bff0-4b1c-b9fa-ea3396168def",
+              "name": "FOOD AND BEVERAGES",
+              "variableCount": 31,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "73d5fa0e-46ed-403d-a686-88da271b3c62",
+              "name": "FOOD AND DIETARY SUPPLEMENTS - Q2",
+              "variableCount": 7,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "c7056f5e-a7b5-4ee5-abec-53fe1c91e61b",
+              "name": "GENERAL INFORMATION",
+              "variableCount": 8,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "6fa94f77-5082-44ba-849b-89da1aa90e01",
+              "name": "HOME AND NEIGHBORHOOD - Q2",
+              "variableCount": 18,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "8881172b-3f57-4f40-83f0-913d85f54980",
+              "name": "ILLNESS IN THE FAMILY",
+              "variableCount": 37,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "8b3c4bce-4667-4a19-b390-2e6f808c62d9",
+              "name": "ILLNESS IN THE FAMILY - Q2",
+              "variableCount": 69,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "e0899596-9a99-41aa-b65b-f0f5ccb5c1ad",
+              "name": "ILLNESSES AND INJURIES - Q2",
+              "variableCount": 37,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "c70245cc-1ef1-4c62-ad98-abef83053a6e",
+              "name": "LABORATORY DATA",
+              "variableCount": 23,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "aabd4f7d-5b69-4800-8504-8d55828f2f1f",
+              "name": "MEDICINES - Q2",
+              "variableCount": 10,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "2f2f269b-1cb1-4738-967d-ae0aa919e67a",
+              "name": "MOBILE TELEPHONE - Q2",
+              "variableCount": 3,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "eb5d17df-628d-4a6c-ab87-05065807a2b2",
+              "name": "MUSCULO AND SKELETAL PAIN",
+              "variableCount": 18,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "651822e3-19c9-4122-891c-2cbdb70a1799",
+              "name": "OTHER COMPLAINTS (HSCL 10)",
+              "variableCount": 10,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "4c4f21cd-def4-431b-b6c5-7b16cab1c95e",
+              "name": "PAID AND UNPAID WORK - Q2",
+              "variableCount": 3,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "5113a400-3bd4-46b8-ab50-d499ca2103e1",
+              "name": "PHYSICAL EXAMINATION",
+              "variableCount": 31,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "f90e7180-4177-48b8-a5b1-f16368eff370",
+              "name": "QUESTIONNAIRE 2",
+              "variableCount": 4,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "da507a06-295e-40d2-8e06-adbb263211bf",
+              "name": "SIGHT",
+              "variableCount": 11,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "f3dcb076-17d6-4aa7-99ac-ec36ea494d84",
+              "name": "SMOKING",
+              "variableCount": 11,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "8d5c5a0d-1888-4205-99bf-6c896411e869",
+              "name": "SYMPTOMS - Q2",
+              "variableCount": 41,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "d4c24f22-4183-49f2-a550-e18ad4b4482c",
+              "name": "TOBACCO - Q2",
+              "variableCount": 6,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "ac4e3a6c-c49e-4a67-9014-d41cbf7143bc",
+              "name": "USE OF HEALTH SERVICES",
+              "variableCount": 14,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "6f5c2509-9a6d-42d4-837e-8df4e5a92f17",
+              "name": "USE OF MEDICINE",
+              "variableCount": 63,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "76478603-a714-4ca5-b7e2-8e96a65b540a",
+              "name": "WEIGHT",
+              "variableCount": 1,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "bf841498-99c5-4b76-976d-950209850e45",
+              "name": "WOMEN ONLY",
+              "variableCount": 16,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "aa5cd0b6-7205-44b7-aa9b-5edd84b034b2",
+              "name": "WOMEN ONLY - Q2",
+              "variableCount": 38,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "920da3e0-8659-4c6b-9e26-8df95f77febc",
+              "name": "YOUR OWN HEALTH",
+              "variableCount": 26,
+              "childVariabelgrupper": []
+            }
+          ],
+          "presentationOrder": 17,
+          "categories": [
+            "ehds-cat:population-health-surveys"
+          ]
+        },
+        {
+          "id": "6d809c1d-cc85-4c61-a624-adc07dc66dee",
+          "name": "Tromsø5 - The Fifth Tromsø Study - second visit",
+          "variableCount": 442,
+          "variabelgrupper": [
+            {
+              "id": "10b47e03-1fa7-4724-bb3f-50e4707f5634",
+              "name": "BLOOD SAMPLES",
+              "variableCount": 5,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "cbe97482-857c-4b69-9df0-90a36578e2d6",
+              "name": "CAROTIS",
+              "variableCount": 50,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "91da11ed-b578-48ab-8bdd-731e97e7b73a",
+              "name": "COGNITIVE",
+              "variableCount": 99,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "fecb6842-810a-475f-a2c6-7162f320ec08",
+              "name": "DEXA",
+              "variableCount": 109,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "e7a6e0e0-2aaf-4344-b1d2-f07afc9ce8d0",
+              "name": "ECHO",
+              "variableCount": 24,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "1247a7f4-9abb-47c4-bdcf-4e26b1937cbd",
+              "name": "ECHO - CAUSE OF REFERRAL",
+              "variableCount": 40,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "99c3ef20-4d00-40a7-8d0e-5476a0d5e90a",
+              "name": "FALL REGISTRATION",
+              "variableCount": 40,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "a513f40a-68e9-41bf-8d64-3c397d17b320",
+              "name": "GENERAL INFORMATION",
+              "variableCount": 1,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "ba31985b-d922-4571-8a2a-1185ff633833",
+              "name": "SPIROMETRY",
+              "variableCount": 11,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "b62b5b38-1b19-4976-acd5-e55ddd95b0ad",
+              "name": "ULTRASOUND EXAMINATION OF ABDOMINAL ARTERIES",
+              "variableCount": 36,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "a63073ad-5f14-4129-98bd-67ebac88d11c",
+              "name": "URINARY SAMPLES",
+              "variableCount": 27,
+              "childVariabelgrupper": []
+            }
+          ],
+          "presentationOrder": 18,
+          "categories": [
+            "ehds-cat:population-health-surveys"
+          ]
+        },
+        {
+          "id": "a7f9ded2-7853-4588-9b60-1a6dae587983",
+          "name": "Tromsø5 - The Fifth Tromsø study - forst visit ; sample collection",
+          "variableCount": 52,
+          "variabelgrupper": [
+            {
+              "id": "eb9abfd4-c901-4c2c-8de6-fa480a7b0766",
+              "name": "Plasma",
+              "variableCount": 30,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "beb16f4d-ab5f-473a-885c-f7df60e1bf41",
+              "name": "Serum",
+              "variableCount": 22,
+              "childVariabelgrupper": []
+            }
+          ],
+          "presentationOrder": 19,
+          "categories": [
+            "ehds-cat:population-health-surveys"
+          ]
+        },
+        {
+          "id": "b5f4abbb-0dc1-4bb6-90cc-ebe632b3195a",
+          "name": "Tromsø5 - The Fifth Tromsø study - second visit; sample collection",
+          "variableCount": 52,
+          "variabelgrupper": [
+            {
+              "id": "eb9abfd4-c901-4c2c-8de6-fa480a7b0766",
+              "name": "Plasma",
+              "variableCount": 27,
+              "childVariabelgrupper": []
+            },
+            {
+              "id": "beb16f4d-ab5f-473a-885c-f7df60e1bf41",
+              "name": "Serum",
+              "variableCount": 25,
+              "childVariabelgrupper": []
+            }
+          ],
+          "presentationOrder": 20,
+          "categories": [
+            "ehds-cat:population-health-surveys"
+          ]
+        }
+      ],
+      "unassignedVariabelgrupper": [],
+      "children": [],
+      "presentationOrder": 16
+    },
+    {
+      "id": "276ad1bd-71e9-40ee-b000-11909f3a4896",
+      "name": "Tromsø6 - The Sixth Tromsø Study",
+      "variableCount": 1043,
+      "datasamlinger": [
+        {
+          "id": "c74d7385-f2e8-49fa-b115-25ceefd23017",
+          "name": "Tromsø6 - The Sixth Tromsø Study - first visit",
+          "variableCount": 424,
+          "variabelgrupper": [],
+          "presentationOrder": 22,
+          "categories": [
+            "ehds-cat:population-health-surveys"
+          ]
+        },
+        {
+          "id": "0c403491-2d06-4fd9-9e2b-06689358f6a4",
+          "name": "Tromsø6 - The Sixth Tromsø Study - second visit",
+          "variableCount": 619,
+          "variabelgrupper": [],
+          "presentationOrder": 23,
+          "categories": [
+            "ehds-cat:population-health-surveys"
+          ]
+        }
+      ],
+      "unassignedVariabelgrupper": [],
+      "children": [],
+      "presentationOrder": 21
+    },
+    {
+      "id": "4bbdf1a9-5285-4c9d-913c-9e6ead7a30c2",
+      "name": "Tromsø7 - The Seventh Tromsø Study",
+      "variableCount": 3087,
+      "datasamlinger": [
+        {
+          "id": "6a577d93-72a8-465d-907d-fb9eb8397b57",
+          "name": "Tromsø7 - The Seventh Tromsø Study - first visit",
+          "variableCount": 1634,
+          "variabelgrupper": [],
+          "presentationOrder": 25,
+          "categories": [
+            "ehds-cat:population-health-surveys"
+          ]
+        },
+        {
+          "id": "de648876-b3ee-431e-a8ac-32a34851e357",
+          "name": "Tromsø7 - The Seventh Tromsø Study - second visit",
+          "variableCount": 1453,
+          "variabelgrupper": [],
+          "presentationOrder": 26,
+          "categories": [
+            "ehds-cat:population-health-surveys"
+          ]
+        }
+      ],
+      "unassignedVariabelgrupper": [],
+      "children": [],
+      "presentationOrder": 24
+    }
+  ],
+  "directDatasamlinger": [
+    {
+      "id": "2172a76d-b522-44c7-a80e-5aacb0a477f9",
+      "name": "Tromsø1 - The First Tromsø Study",
+      "variableCount": 31,
+      "variabelgrupper": [],
+      "presentationOrder": 10,
+      "categories": [
+        "ehds-cat:population-health-surveys"
+      ]
+    },
+    {
+      "id": "6b71900f-9be1-4335-969a-80c415acc385",
+      "name": "Tromsø2 - The Second Tromsø Study",
+      "variableCount": 83,
+      "variabelgrupper": [],
+      "presentationOrder": 11,
+      "categories": [
+        "ehds-cat:population-health-surveys"
+      ]
+    },
+    {
+      "id": "5c196301-c4cf-4e90-b1f9-d24910f8a4da",
+      "name": "Tromsø3 - The Third Tromsø Study",
+      "variableCount": 128,
+      "variabelgrupper": [],
+      "presentationOrder": 12,
+      "categories": [
+        "ehds-cat:population-health-surveys"
+      ]
+    }
+  ]
+}
