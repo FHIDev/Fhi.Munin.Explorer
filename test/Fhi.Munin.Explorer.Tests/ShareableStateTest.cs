@@ -457,6 +457,10 @@ public class ShareableStateTest : BunitContext
 
         Assert.Equal(50, client.LastPageSize);
         Assert.Equal([50], reported);
+
+        // And the failure is gone from the alert region. The button stays, deliberately inert, so
+        // that the element the reader just pressed is not taken out from under their focus.
+        Assert.Empty(cut.FindAll("div[role='alert'][aria-live='assertive'] p.infobox"));
     }
 
     [Fact]
