@@ -26,7 +26,15 @@ Then open **<http://localhost:5113>**. That's it — no API key, no database, no
 dotnet run --project samples/LegacyHost --launch-profile https
 ```
 
-It talks to `https://munin.skytest.fhi.no`, which is public and read-only, so you get the real ~20 000 variables rather than fixtures.
+It talks to `https://runa.munin.skytest.fhi.no`, which is read-only, so you get the real ~20 000 variables
+rather than fixtures.
+
+> **Use the `runa` host, not the bare `munin.skytest.fhi.no`.** The bare host resolves to a private address
+> (`10.97.72.176`) and is reachable only from inside FHI's network. `runa` — and `kelda` — are published
+> externally by `api-explorer-ingress.yaml` in `Fhi.Munin.Gitops`, and both route `/api/explorer/*` to the
+> same API. So either hostname serves *both* components: the two names brand the two UIs, not two backends.
+> A host that copies the internal address works on the FHI network and fails silently once deployed
+> anywhere else, which is exactly what happened to helsedata's test environment on 2026-08-28.
 
 ### Which sample?
 
@@ -63,6 +71,19 @@ Heavier, and only worth it when the question is styling or authentication.
 - **Podman or Docker** for the SQL Server container.
 - Access to their Azure DevOps NuGet feed — their projects restore Optimizely packages from it. Note this feed is declared in *their* repo config; do not add it to your machine-wide `NuGet.Config`, or every unrelated build on your machine starts consulting an authenticated feed and failing when the token expires.
 
+  A stale credential fails like a missing package, not like an auth problem:
+
+  ```
+  error NU1301: Unable to load the service index for source .../Fhi.Helsedata.no/nuget/v3/index.json.
+  error NU1301:   Response status code does not indicate success: 401 (Unauthorized).
+  error NU1101: Unable to find package Fhi.Munin.Explorer.
+  ```
+
+  Everything then reports as `CS0246: type or namespace 'Munin' not found`, which reads like a broken
+  reference. Check the 401 first. Credentials live per-source in `%APPDATA%\NuGet\NuGet.Config` under
+  `packageSourceCredentials`; an az token there expires within the hour. The durable fix is the Azure
+  Artifacts Credential Provider — without it, every build after expiry looks like the package vanished.
+
 ### Wiring our component in
 
 Add a project reference from their `Fhi.Helsedata.Optimizely.csproj` to `src/Fhi.Munin.Explorer`, register it in `Startup.cs` before the CMS registrations:
@@ -71,7 +92,7 @@ Add a project reference from their `Fhi.Helsedata.Optimizely.csproj` to `src/Fhi
 
 
 ```csharp
-services.AddMuninExplorer(o => o.ApiBaseUrl = "https://munin.skytest.fhi.no");
+services.AddMuninExplorer(o => o.ApiBaseUrl = "https://runa.munin.skytest.fhi.no");
 ```
 
 and mount it in a view with the tag helper — `render-mode="Server"`, **not** `ServerPrerendered`, since prerendering runs `OnInitializedAsync` twice and doubles the API calls.
@@ -94,9 +115,60 @@ Login to the dashboard at https://localhost:17124/login?t=<token>
 
 Open **that** link, not the bare port. Without the token the dashboard just asks for one, and the token only appears in the startup output.
 
-The site comes up on **`https://localhost:5001`** — title "Finn helsedata". `:5000` is bound too and answers 404, so it looks like the site is broken when you have the wrong one of the pair; the backend API is on `:5064`/`:7245` (Scalar) and `:7150` answers 401 by design. Read the dashboard's resource list rather than guessing, since Aspire assigns these.
+Two sites come up on adjacent ports, and it is easy to read the wrong one as broken:
+
+| port | app | title |
+|---|---|---|
+| **`:5000`** | **Optimizely — the CMS site the component is mounted in** | "Helsedata.no - for forskning, helseanalyse …" |
+| `:5001` | helseid-web, a separate app | "Finn helsedata" |
+
+Measured 2026-08-28. An earlier version of this page had these the other way round; if `:5001` shows only
+a HelseID login card and no Munin content, you are on the wrong one of the pair rather than looking at a
+failure. The backend API is on `:5064`/`:7245` (Scalar) and `:7150` answers 401 by design. Read the
+dashboard's resource list rather than guessing, since Aspire assigns these.
 
 It does not come up quickly: Optimizely's CMS boot plus the database migrations take minutes on a cold container, during which the port is already bound and simply never answers. That is not a hang.
+
+### A page of theirs is content, not just code
+
+Their pages live in the CMS database as well as in the assembly, so pulling their code is not enough to
+make one appear. If a page they added 404s, or a card on the front page bounces to the home page, the
+page type exists and the *content* does not — restore their database.
+
+Backups are committed to `Helsedata.AppHost/db-backup/`. The documented flow is: stop `Optimizely` in the
+dashboard, then on the `HelsedataSql` container use `...` → **Database Restore**, then start `Optimizely`
+again.
+
+**Stopping first is the part that matters.** Optimizely serves a cached content tree, so a restore under a
+running site changes nothing you can see — the same 404, the same dead link — and it looks as though the
+restore failed. It did not; the app simply never re-read. Measured 2026-08-28: after restoring beneath a
+running site, `/muninvariabelutforsker/` still 404'd and the front-page card still pointed at a dead
+`/link/<guid>.aspx`; after a restart the card's href became `/muninvariabelutforsker/` and the page
+returned 200, with no further change to the database.
+
+To check whether the content is actually in the restored database rather than guessing at the cache,
+ask it directly:
+
+```sql
+SELECT c.pkID, cl.Name, cl.URLSegment
+FROM tblContent c JOIN tblContentLanguage cl ON cl.fkContentID = c.pkID
+WHERE cl.URLSegment LIKE '%munin%';
+```
+
+### The package they pin is usually behind
+
+Their `csproj` pins a published `Fhi.Munin.Explorer` version, and the feed only ever carries prereleases.
+A component added after that cut simply does not exist for them: on 2026-08-28 their `main` pinned
+`0.1.0-alpha.5`, which predates `VariableListView` (added in #80), so a view mounting it failed with
+`CS0246: The type or namespace name 'VariableListView' could not be found` — which reads like a typo and
+is really a version gap. `KildeExplorer` is missing from `alpha.4` the same way.
+
+For local work, do not chase this with a new release. Their `csproj` carries a dev-loop flag that
+references our source instead of the package:
+
+```bash
+dotnet run --project Helsedata.AppHost -p:UseLocalStiler=true -p:UseLocalMuninExplorer=true
+```
 
 To prove the local Stiler actually reached the page, compare what the site serves against the file on disk:
 
