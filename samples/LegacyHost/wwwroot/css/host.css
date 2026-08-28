@@ -1161,33 +1161,6 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
-
-  /* `fixed`, and it is load-bearing rather than a tidiness preference. The section draws ONE table
-     per level of the delkilde tree, and under the default `auto` each of them sizes its own columns
-     from its own content — so Tromsø renders five tables whose Navn column measured 903, 1426, 270,
-     1409 and 1479 pixels. Nothing lines up down the page, and the one wave whose beskrivelse holds
-     a wall of text squeezed its other three columns to slivers: 270 / 3717 / 147 / 120.
-
-     This was invisible while the section was a single flat table, because one table has one column
-     grid however lopsided its content. It became visible the moment the table was drawn per level,
-     which is why the rule arrives with the tree rather than before it. */
-  table-layout: fixed;
-}
-
-/* The column grid every level shares. Percentages rather than ch, so the same four proportions hold
-   at each depth even though a nested table is narrower than the one above it — the indentation eats
-   the width, and columns fixed in absolute units would overflow instead of shrinking with it. */
-.munin-explorer-kilde__datasamlinger thead th:nth-child(1) { width: 28%; }
-.munin-explorer-kilde__datasamlinger thead th:nth-child(2) { width: 44%; }
-.munin-explorer-kilde__datasamlinger thead th:nth-child(3) { width: 16%; }
-.munin-explorer-kilde__datasamlinger thead th:nth-child(4) { width: 12%; }
-
-/* `fixed` alone would let one unbroken token — the catalogue stores beskrivelse as markdown, so the
-   cells carry bare URLs — push a cell past its column and out of the table. This keeps the break
-   inside the cell. */
-.munin-explorer-kilde__datasamlinger td,
-.munin-explorer-kilde__datasamlinger th {
-  overflow-wrap: anywhere;
 }
 
 .munin-explorer-kilde__datasamlinger th,
@@ -1196,12 +1169,49 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   text-align: left;
   vertical-align: top;
   border-bottom: 1px solid var(--grey30);
+
+  /* The catalogue stores beskrivelse as markdown, so the cells carry bare URLs — one unbroken
+     token long enough to push a column past its share and the table past its container. */
+  overflow-wrap: anywhere;
 }
 
 .munin-explorer-kilde__datasamlinger thead th {
   background: var(--grey10);
   color: var(--grey60);
   font-weight: 600;
+}
+
+/* ---- the column grid, and why three of the four are pinned ----
+
+   Read off Stiler's `components/munin-explorer/_trail.scss` rather than invented here, because a
+   sample that disagrees with Stiler is a sample that lies about what a host gets. The two rules
+   this file used to be missing are the third and fourth columns: the period at 24%, so it breaks
+   at the dash rather than inside a date, and the count at `width: 1%` + nowrap, which is the
+   idiom for "as narrow as the content and no narrower". Both were measured — see PR 38959 and
+   Fhi.Metadata-oq40w — so they are copied, not re-derived.
+
+   The FIRST column is the one this repository adds, and it is the delkilde tree that needs it.
+   Stiler pinned three columns and left Navn and Beskrivelse to auto-layout, which is right for
+   one table: whatever the two of them work out is at least self-consistent. The section now
+   draws one table per level, and auto-layout sizes each one from its own content, so Tromsø's
+   five tables measured 903, 1426, 270, 1409 and 1479px across their first column — and the wave
+   whose beskrivelse holds a wall of text squeezed everything else to slivers.
+
+   Pinning Navn as well leaves Beskrivelse as the only free column, which is the same as pinning
+   it: every level lines up. `table-layout: fixed` would also do it and was tried first, but it
+   throws away the `width: 1%` trick on the count — under fixed layout a width is a width, and
+   the column can no longer be as narrow as its content. */
+.munin-explorer-kilde__datasamlinger tr > :nth-child(1) {
+  width: 30%;
+}
+
+.munin-explorer-kilde__datasamlinger tr > :nth-child(3) {
+  width: 24%;
+}
+
+.munin-explorer-kilde__datasamlinger tbody td:nth-child(4) {
+  width: 1%;
+  white-space: nowrap;
 }
 
 /* The name is a <th scope="row">, which browsers centre and bold by default. It is a label for
@@ -1212,65 +1222,58 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 /* ---- the delkilde tree ----
 
-   Three more names, and the shape under them is doing most of the work. A study series keeps its
-   datasamlinger one per wave, and the waves are the study's organising fact — a flat table of all
-   fourteen of Tromsø's answers what it holds and destroys how it is arranged. So the section is a
-   nested <ul> of <li>, one per delkilde, each carrying its own datasamling table and any delkilder
-   below it.
+   Three more names. A study series keeps its datasamlinger one per wave, and the waves are the
+   study's organising fact — a flat table of all fourteen of Tromsø's answers what it holds and
+   destroys how it is arranged. So the section is a nested <ul> of <li>, one per delkilde, each
+   carrying its own datasamling table and any delkilder below it.
 
    A real list rather than indented <div>s, and the reason is not tidiness. A <ul> carries the
    parent/child relationship to a screen reader by itself; CSS indentation carries it to a sighted
    reader only, and an automated accessibility check cannot tell the difference — it is blind to
-   structure that was never marked up, so a stack of indented divs passes it while telling a
-   screen-reader user nothing. The other half: a browser indents a <ul> on its own, so the
+   structure that was never marked up. The other half: a browser indents a <ul> on its own, so the
    structure still reads on a host that has none of these three rules.
 
-   WHAT THESE RULES ARE FOR, and it is not decoration. The first version of them indented the
-   whole list — 20px on the <ul> plus 16px and a left border on each <li> — and the top-level waves
-   landed 36px in, immediately under the last row of the kilde's own datasamling table and with no
-   gap. Every reader of that page read Tromsø4 through Tromsø7 as children of Tromsø3. The markup
-   said otherwise and nobody can see markup: the <ul> is a SIBLING of that table, and indenting it
-   claimed a parent it does not have.
+   THE SHAPE BELOW IS STILER'S, not this file's invention. `components/munin-explorer/_filters.scss`
+   already dresses a nested <ul> of delkilder — the filter panel's — and it does it in three
+   declarations: `list-style: none`, `padding-left: 20px` on the list, and `padding-left: 0` on the
+   TOP-LEVEL one. That last rule is the whole lesson. This block first shipped indenting every
+   level, so the top-level waves landed 36px in, immediately under the last row of the kilde's own
+   datasamling table and with no gap, and read as children of its last row. The <ul> is a SIBLING
+   of that table; indenting it claimed a parent it does not have. Stiler had already met this and
+   written the answer down one file over.
 
-   So indentation is spent on one thing only — depth INSIDE the tree — and the top level of the
-   list is flush with the table it sits beside, because those two are peers. What separates a wave
-   from a loose datasamling is that a wave is drawn as a box; what separates a nested wave from a
-   top-level one is that its box sits inside another box. */
+   So: indentation is spent on depth INSIDE the tree only, and what separates one wave from the
+   next is a $grey30 rule — the same separator the filter panel puts between its <details>. */
 .munin-explorer-kilde__delkilder {
   margin: 0;
-  padding: 0;
+  padding-left: 20px;
   list-style: none;
 }
 
-/* The top-level list is a peer of the kilde's own datasamling table, so it starts where that table
-   starts and is separated from it by space rather than by an indent. */
+/* The top level sits beside the kilde's own datasamling table, not under its last row. */
 .munin-explorer-kilde__main > .munin-explorer-kilde__delkilder,
 .munin-explorer-whole__main > .munin-explorer-kilde__delkilder {
+  padding-left: 0;
   margin-top: 28px;
 }
 
-/* Each delkilde is a box a reader can see the edge of. A nested one is inside its parent's box and
-   inset by that box's own padding, which is what carries the depth — no left-margin arithmetic per
-   level, and no rule that has to know how deep it is. */
 .munin-explorer-kilde__delkilde {
-  padding: 12px 14px 14px;
-  border: 1px solid var(--grey30);
-  border-radius: 4px;
-  background: #fff;
+  padding-top: 14px;
+  border-top: 1px solid var(--grey30);
 }
 
 .munin-explorer-kilde__delkilde + .munin-explorer-kilde__delkilde {
-  margin-top: 12px;
+  margin-top: 14px;
 }
 
-/* A nested list needs the gap under its parent's own table; the box supplies the rest. */
+/* A nested list needs the gap under its parent's own table; the indent supplies the rest. */
 .munin-explorer-kilde__delkilde > .munin-explorer-kilde__delkilder {
-  margin-top: 12px;
+  margin-top: 14px;
 }
 
 /* The name of one delkilde. It wears headline-xxs, the same size as a metadata group's heading,
    because Stiler's scale has nothing verified between that and the headline-s the section heading
-   above it wears — the depth is carried by the heading LEVEL and by the boxes, not by a size
+   above it wears — the depth is carried by the heading LEVEL and by the indent, not by a size
    invented to sit in the gap. */
 .munin-explorer-kilde__delkilde-name {
   margin-top: 0;

@@ -15,14 +15,14 @@ category: Notes for hosts
   on helsedata.no. The rule has to land in Stiler under `components/munin-explorer/` the way the
   rest of the prefix did; until it does, a Stiler-only host gets the browser's own list indentation,
   which reads as a plain nested list rather than as nothing. (Fhi.Metadata-wtz80)
-- **The datasamling table needs a fixed column grid now that there is one per level.** Under CSS's
-  default `table-layout: auto` each level sizes its own columns from its own content, so Tromsø drew
-  five tables whose first column measured 903, 1426, 270, 1409 and 1479 pixels — nothing lining up
-  down the page, and the one wave whose beskrivelse holds a wall of text squeezed its other three
-  columns to slivers. One flat table hid this, having one column grid however lopsided its content.
-  Both sample hosts' `host.css` now sets `table-layout: fixed` on
-  `munin-explorer-kilde__datasamlinger` with four percentage widths and `overflow-wrap: anywhere`;
-  a host writing its own rule for that class wants the same. (Fhi.Metadata-wtz80)
+- **The datasamling table needs its first column pinned now that there is one table per level.**
+  Stiler already pins the third (`24%`) and fourth (`width: 1%` + `nowrap`) and leaves Navn and
+  Beskrivelse to auto-layout, which is right for one table — whatever those two settle on is at
+  least self-consistent. It is not right for six: auto-layout sizes each table from its own
+  content, so Tromsø's first column measured 903, 1426, 270, 1409 and 1479 pixels across five
+  tables, and the wave whose beskrivelse holds a wall of text squeezed the rest to slivers. Pinning
+  Navn leaves Beskrivelse as the only free column, which lines every level up. Both sample hosts do
+  this now; a host writing its own rule wants the same, and so does Stiler.
 - **Do not indent the top level of the delkilde list.** The `<ul>` is a SIBLING of the table holding
   the kilde's own datasamlinger, and a rule that indents it claims a parent it does not have: the
   first attempt put the top-level waves 36px in, directly under the last row of that table and with
