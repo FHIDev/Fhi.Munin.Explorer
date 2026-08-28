@@ -524,6 +524,34 @@ public class ShareableStateTest : BunitContext
     }
 
     [Fact]
+    public void Retry_WhenAPageTurnFollowsASuccessfulRetry_ThenNothingClaimsToBeRetrying()
+    {
+        // The offer outlives its own answer on purpose — it is the focus anchor for whoever pressed
+        // it — so "there is a failed request on file and a fetch is running" stays true long after
+        // the retry finished. Derived from that, an ordinary page turn announced itself as a retry.
+        var client = new GatedClient(total: 300) { FailOn = 2, GateOn = 4 };
+
+        var cut = Render(client);
+
+        ClickSize(cut, "50");
+
+        cut.WaitForElement("div[role='alert'][aria-live='assertive'] button").Click();
+
+        // The rows are back and the offer is still there, inert, holding focus.
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("div.munin-explorer-alert p.infobox")));
+
+        cut.FindAll("div.munin-explorer-pagination-content > button")
+            .First(b => b.TextContent == "Neste")
+            .Click();
+
+        Assert.DoesNotContain(
+            "Prøver igjen",
+            cut.Find("div[role='alert']").TextContent);
+
+        client.Release();
+    }
+
+    [Fact]
     public void PageSize_WhenAScreenReaderMeetsTheControl_ThenEachSizeSaysWhatItIsFor()
     {
         // "20" is what the button says and not what it means. The group is named by the words on

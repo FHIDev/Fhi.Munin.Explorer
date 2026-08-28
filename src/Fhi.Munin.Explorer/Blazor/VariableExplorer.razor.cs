@@ -571,6 +571,10 @@ public partial class VariableExplorer : ComponentBase
     // from a pager button, so a single-page result reached that way still costs no furniture.
     private bool _keepPager;
 
+    // Whether the fetch running is the one the rows' retry button started, which nothing else can
+    // report: _loading is raised by the facets too, and _failedRows outlives its own answer.
+    private bool _retryingRows;
+
     // The search text the visible result actually came from, which is not the same as the
     // text in the box: @bind writes _search on blur, so the box can hold an unsubmitted query
     // while the table below still shows the previous one. The announcement has to describe
@@ -621,12 +625,11 @@ public partial class VariableExplorer : ComponentBase
 
     /// <summary>Whether the rows' failure box is showing a retry in progress rather than a failure.</summary>
     /// <remarks>
-    /// <c>_error is null</c> is what narrows <c>_loading</c> to a rows fetch: the facet refresh
-    /// raises the same flag and clears <c>_facetError</c> rather than this one, so without it a
-    /// reader who ticked a filter while a row failure stood would watch the sentence they had not
-    /// answered turn into "trying again".
+    /// Set by the retry itself rather than derived from <c>_loading</c>. Two fetches are
+    /// indistinguishable from that flag: the facets refresh raises it too, and the offer outlives
+    /// its own answer as a focus anchor, so an ordinary page turn afterwards looks the same.
     /// </remarks>
-    private bool RetryingRows => _loading && _error is null && _failedRows is not null;
+    private bool RetryingRows => _retryingRows;
 
     /// <summary>What that box says: the failure, or that the offer beside it is being answered.</summary>
     private string? RowsAlert => RetryingRows ? T.Retrying : _error;
