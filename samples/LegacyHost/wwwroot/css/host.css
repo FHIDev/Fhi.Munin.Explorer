@@ -1912,17 +1912,23 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .munin-explorer-alert .infobox { margin: 0; flex: 1 1 auto; }
 
 /* The retry the box offered is running. The box keeps its shape and its words change, so a wave
-   across it is the only thing saying work is happening — the rows below are gone by then. */
+   across it is the only thing saying work is happening — the rows below are gone by then.
+
+   A repeating tile shifted by exactly one tile width, rather than one highlight swept across and
+   sent back: the end state is then identical to the start, so the loop closes on itself instead of
+   jumping. Both ends of the tile are transparent, or the seam between tiles would be the jump
+   moved rather than removed. Pixels and not per cent, because a percentage background-position is
+   measured against the box minus the image and would not land back where it began. */
 .munin-explorer-alert .infobox[aria-busy="true"] {
   background-image: linear-gradient(
-    90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.65) 50%, rgba(255, 255, 255, 0) 100%);
-  background-repeat: no-repeat;
-  background-size: 60% 100%;
+    90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.55) 50%, rgba(255, 255, 255, 0) 100%);
+  background-repeat: repeat-x;
+  background-size: 220px 100%;
   animation: munin-explorer-alert-wave 1s linear infinite;
 }
 @keyframes munin-explorer-alert-wave {
-  from { background-position: -60% 0; }
-  to { background-position: 160% 0; }
+  from { background-position: 0 0; }
+  to { background-position: 220px 0; }
 }
 /* A moving gradient is exactly what 2.3.3 asks to be able to turn off, and the words in the box
    already say what the wave says. */
