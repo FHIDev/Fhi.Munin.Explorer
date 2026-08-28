@@ -17,3 +17,8 @@ category: Fixed
   was sent. Only GET and HEAD, and only once — a reset during the response read says nothing about
   whether the server processed the request, so a save must not be repeated, and a second failure is
   the network being down rather than one stale connection.
+- Connections are retired on a schedule this package chooses rather than on whichever of two
+  mechanisms fired first. `PooledConnectionLifetime` is thirty seconds and the factory's handler
+  rotation is off: supplying a primary handler without setting the first leaves DNS refresh to the
+  factory discarding the handler every two minutes, which is the pairing the setting exists to
+  replace rather than race.

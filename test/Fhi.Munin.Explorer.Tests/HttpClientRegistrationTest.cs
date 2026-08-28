@@ -50,7 +50,13 @@ public class HttpClientRegistrationTest
             primary = delegating.InnerHandler;
         }
 
-        Assert.Equal(TimeSpan.FromSeconds(5), Assert.IsType<SocketsHttpHandler>(primary).ConnectTimeout);
+        var sockets = Assert.IsType<SocketsHttpHandler>(primary);
+
+        Assert.Equal(TimeSpan.FromSeconds(5), sockets.ConnectTimeout);
+
+        // Retiring connections is what re-resolves DNS. Left unset, that fell to the factory
+        // discarding the handler every two minutes, which is not a schedule anyone here chose.
+        Assert.Equal(TimeSpan.FromSeconds(30), sockets.PooledConnectionLifetime);
     }
 
     [Fact]

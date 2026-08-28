@@ -22,9 +22,14 @@ public static class ServiceCollectionExtensions
     /// <summary>How long to spend reaching the host before giving up on it.</summary>
     private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(5);
 
+    /// <summary>How long a connection may be kept before a fresh one is opened for it.</summary>
+    private static readonly TimeSpan ConnectionLifetime = TimeSpan.FromSeconds(30);
+
     // ConnectTimeout is the limit that bites on an unreachable host: HttpClient.Timeout bounds the
-    // whole request, so it is the ceiling and not the way out. Plain handler on browser, where
-    // SocketsHttpHandler does not exist and fetch owns the connect. (Fhi.Metadata-phgeg)
+    // whole request, so it is the ceiling and not the way out. PooledConnectionLifetime is what
+    // re-resolves DNS and retires connections, and it replaces the factory's handler rotation
+    // rather than racing it — hence the infinite handler lifetime beside it. Plain handler on
+    // browser, where SocketsHttpHandler does not exist and fetch owns both. (Fhi.Metadata-phgeg)
     private static HttpMessageHandler PrimaryHandler()
     {
         if (OperatingSystem.IsBrowser())
@@ -32,7 +37,11 @@ public static class ServiceCollectionExtensions
             return new HttpClientHandler();
         }
 
-        return new SocketsHttpHandler { ConnectTimeout = ConnectTimeout };
+        return new SocketsHttpHandler
+        {
+            ConnectTimeout = ConnectTimeout,
+            PooledConnectionLifetime = ConnectionLifetime,
+        };
     }
 
     /// <summary>Registers the explorer's data client.</summary>
@@ -96,7 +105,11 @@ public static class ServiceCollectionExtensions
         // public metadata browsing needs.
         .AddHttpMessageHandler<BearerTokenHandler>()
         // Innermost, so it repeats the network call and not the whole chain above it.
-        .AddHttpMessageHandler<TransientRetryHandler>();
+        .AddHttpMessageHandler<TransientRetryHandler>()
+        // The pairing PooledConnectionLifetime asks for: with both set, the factory would discard
+        // a pool every two minutes while the handler retires connections on its own schedule, and
+        // which of the two refreshed DNS would be whichever fired first.
+        .SetHandlerLifetime(Timeout.InfiniteTimeSpan);
 
         return services;
     }
