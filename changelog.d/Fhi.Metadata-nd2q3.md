@@ -8,3 +8,7 @@ category: Added
   renumbers the rows, so keeping the page number would leave someone on page 3 of 15 looking at an
   arbitrary part of the result without anything on screen saying they had been moved. Sizes outside
   1–100 are still clamped rather than refused, and the control reads through the same clamp.
+- A failed size change can be retried like any other failed request, and the retry sends the size
+  the reader asked for rather than the one the rollback restored. Without that it would refetch the
+  old size, succeed and clear the error, reporting a change that never happened — from the one
+  control a reader cannot press again once a single-page result has taken the pager away.

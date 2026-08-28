@@ -631,7 +631,8 @@ public partial class VariableExplorer
             // off the fields, which every caller rolls back to describe the rows still on screen.
             if (!rateLimited)
             {
-                _failedRows = new RowRequest(search, _page, _sort, _direction, _filter, _keepPager);
+                _failedRows = new RowRequest(
+                    search, _page, _pageSize, _sort, _direction, _filter, _keepPager);
                 _retryRowsEnabled = true;
             }
             else
@@ -661,10 +662,18 @@ public partial class VariableExplorer
     /// <c>KeepPager</c> travels with <c>Page</c>, because every handler that moves one moves the
     /// other: a sort or a narrowing renumbers to page one and takes the pager down with it.
     /// </para>
+    /// <para>
+    /// <c>Size</c> is here for the same reason the page is, and it is the one field a reader could
+    /// not otherwise get back to. A failed size change rolls the size back to describe the rows
+    /// still on screen, so a retry replaying the fields as they stand would fetch the old size,
+    /// succeed, and clear the error — reporting a size change that never happened, from the one
+    /// control the reader has no other way to press again once the pager is gone.
+    /// </para>
     /// </remarks>
     private readonly record struct RowRequest(
         string? Search,
         int Page,
+        int Size,
         SortField Sort,
         SortDirection Direction,
         VariableFilter Filter,
@@ -703,6 +712,7 @@ public partial class VariableExplorer
 
         var previousSearch = _executedSearch;
         var previousPage = _page;
+        var previousSize = _pageSize;
         var previousSort = _sort;
         var previousDirection = _direction;
         var previousFilter = _filter;
@@ -711,6 +721,7 @@ public partial class VariableExplorer
         var previousPanel = CapturePanel();
 
         _page = request.Page;
+        _pageSize = request.Size;
         _sort = request.Sort;
         _direction = request.Direction;
         _filter = request.Filter;
@@ -723,6 +734,7 @@ public partial class VariableExplorer
             // The same invariant every rollback here protects: the state has to go on describing
             // the rows the reader can see, which are still the ones from before the first failure.
             _page = previousPage;
+            _pageSize = previousSize;
             _sort = previousSort;
             _direction = previousDirection;
             _filter = previousFilter;
@@ -767,6 +779,11 @@ public partial class VariableExplorer
         if (_filter != previousFilter)
         {
             await RaiseAsync(FilterChanged, _filter);
+        }
+
+        if (_pageSize != previousSize)
+        {
+            await RaiseAsync(PageSizeChanged, _pageSize);
         }
 
         await NotifyPageChangedAsync();

@@ -270,12 +270,22 @@ public class ShareableStateTest : BunitContext
 
         public int LastPageSize => Sizes[^1];
 
+        /// <summary>Set to make the next single fetch fail, then clear itself.</summary>
+        public bool FailNext { get; set; }
+
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
             string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default,
             SortDirection direction = SortDirection.Ascending,
             CancellationToken cancellationToken = default)
         {
+            if (FailNext)
+            {
+                FailNext = false;
+
+                throw new HttpRequestException("nede");
+            }
+
             Pages.Add(page);
             Sizes.Add(pageSize);
 
@@ -421,6 +431,32 @@ public class ShareableStateTest : BunitContext
         Render<VariableExplorer>(b => b.Add(c => c.PageSize, mirrored));
 
         Assert.Equal(50, client.Sizes[reopenedAt]);
+    }
+
+    [Fact]
+    public void PageSize_WhenTheChangeFailsAndIsRetried_ThenTheSizeTheReaderAskedForIsWhatArrives()
+    {
+        // The retry replays the request that failed, and the size has to be part of it. A failed
+        // change rolls the size back to describe the rows still on screen, so a retry reading the
+        // fields as they stand would fetch the OLD size, succeed and clear the error — reporting a
+        // change that never happened, from the one control the reader cannot press again once a
+        // single-page result has taken the pager away.
+        var client = new SizedClient(total: 300);
+        var reported = new List<int>();
+
+        var cut = Render(client, b => b.Add(c => c.PageSizeChanged, reported.Add));
+
+        client.FailNext = true;
+        ClickSize(cut, "50");
+
+        Assert.Empty(reported);
+
+        cut.FindAll("div[role='alert'][aria-live='assertive'] button")
+            .Single(b => b.TextContent == "Prøv søket på nytt")
+            .Click();
+
+        Assert.Equal(50, client.LastPageSize);
+        Assert.Equal([50], reported);
     }
 
     [Fact]
