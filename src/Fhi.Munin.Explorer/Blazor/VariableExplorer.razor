@@ -310,6 +310,29 @@ else
         {
             <p class="infobox infobox--bg-yellow">@_error</p>
         }
+        @* Inside the region and not beside it, so the failure and the way out of it are announced
+           in one utterance rather than the interruption saying only that something went wrong.
+
+           It outlives the message it answers by exactly one fetch: a successful retry clears the
+           sentence, and a button leaving with it would drop the focus of the reader who just
+           pressed it to <body> — the pager's rule, and Fjern alle filtre's. The next fetch someone
+           else starts takes it away whether it answers or is refused for asking too often, so a
+           dead offer is not read out again with every later failure in this aria-atomic region.
+
+           munin-explorer-retry is what draws the inert state. The region carries no class, so
+           neither the pager's nor the filter panel's [aria-disabled] rule reaches in here, and
+           without one of its own a button that does nothing looks exactly like one that does.
+
+           That rule has to ship in Fhi.Helsedata.Stiler under components/munin-explorer/, which as
+           of 0.1.14 carries none: the sample stylesheets are the samples' own, so a Stiler-only
+           host draws the two states alike until it does. Tracked as Fhi.Metadata-x6vqc. *@
+        @if (_failedRows is not null)
+        {
+            <button class="hd-button-square button-square--ghost margin-right margin-bottom munin-explorer-retry"
+                    type="button"
+                    aria-disabled="@AriaDisabled(_retryRowsEnabled)"
+                    @onclick="RetryRowsAsync">@T.RetrySearch</button>
+        }
         @* The facets failing is a different failure from the search failing — the rows are the right
            rows and it is the numbers beside the filters that may be stale — but it shares this one
            alert region rather than opening a second. Two assertive regions on one component race to
@@ -317,6 +340,16 @@ else
         @if (_facetError is not null)
         {
             <p class="infobox infobox--bg-yellow">@_facetError</p>
+        }
+        @* Its own button under its own sentence, named for what it retries: both failures can be
+           reported at once, and two buttons reading "Prøv igjen" in one assertive region would be
+           two identical offers with nothing to choose between them. *@
+        @if (_retryFacetsShown)
+        {
+            <button class="hd-button-square button-square--ghost margin-right margin-bottom munin-explorer-retry"
+                    type="button"
+                    aria-disabled="@AriaDisabled(_retryFacetsEnabled)"
+                    @onclick="RetryFacetsAsync">@T.RetryFilters</button>
         }
     </div>
 

@@ -1779,6 +1779,18 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   color: var(--grey60);
 }
 
+/* The two retry buttons in the alert region. Neither the pager's rule above nor the filter panel's
+   reaches them — the region deliberately carries no class of its own — so the inert state is drawn
+   from the buttons' own name instead of from a container. Never `disabled`, same focus reason. */
+.munin-explorer-retry[aria-disabled="true"] {
+  color: var(--grey60);
+  cursor: default;
+}
+.munin-explorer-retry[aria-disabled="true"]:hover {
+  background-color: transparent;
+  color: var(--grey60);
+}
+
 /* ======================================================================
    The results list — the same rules as Stiler, extracted from its built
    stylesheet. Stiler in turn ported them from helsedata's variables.css.

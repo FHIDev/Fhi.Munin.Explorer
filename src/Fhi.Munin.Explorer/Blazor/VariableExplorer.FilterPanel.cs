@@ -605,6 +605,7 @@ public partial class VariableExplorer
             _facets = await Client.GetFiltersAsync(
                 _executedSearch, _filter, ReaderLanguage.ForApi(Language));
             _facetError = null;
+            _retryFacetsEnabled = false;
         }
         catch (MuninExplorerRateLimitedException)
         {
@@ -613,14 +614,42 @@ public partial class VariableExplorer
             // have made too many requests" would have the two regions disagree about what happened,
             // and only one of them would be telling the reader what to do about it.
             _facetError = T.RateLimitError;
+
+            // Offered no more here than beside the rows, and for the same reason: waiting is the
+            // remedy, so a button saying otherwise would contradict the sentence it sits under.
+            _retryFacetsEnabled = false;
         }
         catch (Exception)
         {
             _facetError = T.FilterError;
+            _retryFacetsShown = true;
+            _retryFacetsEnabled = true;
         }
         finally
         {
             _loading = false;
         }
+    }
+
+    /// <summary>Ask for the counts again after a refresh that failed.</summary>
+    /// <remarks>
+    /// Refreshes the counts and nothing else. The rows are the right rows — that is exactly what
+    /// makes this a failure of its own — so a handler shared with the row retry would re-fetch a
+    /// list nobody said was wrong, and clear this message with the answer to a different question.
+    /// <para>
+    /// No arguments to capture, unlike <see cref="RetryRowsAsync"/>: the counts describe whatever
+    /// is on screen, and <c>_executedSearch</c> and <c>_filter</c> are still describing it.
+    /// </para>
+    /// </remarks>
+    private async Task RetryFacetsAsync()
+    {
+        // Inert rather than absent once there is nothing left to retry, the same as the clear
+        // button above it — and dropped while a fetch is in flight, the same as every other press.
+        if (_loading || !_retryFacetsEnabled)
+        {
+            return;
+        }
+
+        await FetchFacetsAsync();
     }
 }

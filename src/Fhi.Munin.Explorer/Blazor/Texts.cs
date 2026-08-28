@@ -26,6 +26,11 @@ internal sealed record Texts(
     // no countdown: Retry-After is read and carried on the exception for a host that logs it, and
     // never shown. Decision Robin 2026-08-26.
     string RateLimitError,
+
+    // The button beside a failure, so the reader has a way forward and not only a sentence.
+    // Named for what it retries rather than "Prøv igjen": the search and the counts report into
+    // one alert region, so both buttons can be on screen at once and have to be told apart.
+    string RetrySearch,
     string NotSpecified,
     string SortDefault,
     // The first column's header. Runa calls it Navn; helsedata calls the same column
@@ -178,6 +183,7 @@ internal sealed record Texts(
     string FiltersTitle,
     string ClearFilters,
     string FilterError,
+    string RetryFilters,
     string FacetKildeType,
     string FacetFilter,
     string FacetDataType,
@@ -485,6 +491,7 @@ internal sealed record Texts(
         Loading: "Henter variabler …",
         Error: "Kunne ikke hente variabler nå. Prøv igjen om litt.",
         RateLimitError: "Du har gjort for mange forespørsler. Vent litt før du prøver igjen.",
+        RetrySearch: "Prøv søket på nytt",
         NotSpecified: "Ikke oppgitt",
         SortDefault: "Standard",
         BackToVariables: "← Tilbake til variabler",
@@ -601,6 +608,7 @@ internal sealed record Texts(
         FiltersTitle: "Filtre",
         ClearFilters: "Fjern alle filtre",
         FilterError: "Kunne ikke oppdatere filtrene nå. Tallene kan være utdaterte.",
+        RetryFilters: "Prøv filtrene på nytt",
         // helsedata's own variable page calls it this, rather than Munin's "Kildetype".
         FacetKildeType: "Type datakilde",
         FacetFilter: "Filter",
@@ -730,6 +738,7 @@ internal sealed record Texts(
         Loading: "Loading variables …",
         Error: "Could not load variables right now. Please try again shortly.",
         RateLimitError: "You have made too many requests. Please wait a little before trying again.",
+        RetrySearch: "Try the search again",
         NotSpecified: "Not specified",
         SortDefault: "Default",
         BackToVariables: "← Back to variables",
@@ -846,6 +855,7 @@ internal sealed record Texts(
         FiltersTitle: "Filters",
         ClearFilters: "Clear all filters",
         FilterError: "Could not refresh the filters right now. The counts may be out of date.",
+        RetryFilters: "Try the filters again",
         FacetKildeType: "Type of data source",
         FacetFilter: "Filter",
         FacetDataType: "Data type",

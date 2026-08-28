@@ -2714,7 +2714,15 @@ public class VariableExplorerTest : BunitContext
     };
 
     /// <summary>Answers both endpoints and remembers what each was asked with.</summary>
-    private sealed class FilteringClient(Page<VariableSummary> answer, FilterOptions? facets = null)
+    /// <remarks>
+    /// <paramref name="filteredAnswer"/> is what a narrowing request gets back, when a test supplies
+    /// one: without it every filter answers with the same number of pages, and a narrowing that
+    /// lands on a single page — the state the pager flag exists for — cannot be reached at all.
+    /// </remarks>
+    private sealed class FilteringClient(
+        Page<VariableSummary> answer,
+        FilterOptions? facets = null,
+        Page<VariableSummary>? filteredAnswer = null)
         : EmptyMuninExplorerClient
     {
         private readonly FilterOptions _facets = facets ?? Facets();
@@ -2727,12 +2735,22 @@ public class VariableExplorerTest : BunitContext
         public VariableFilter? SearchFilter { get; private set; }
         public VariableFilter? FacetFilter { get; private set; }
         public string? FacetSearch { get; private set; }
+        public string? LastSearch { get; private set; }
         public int SearchCalls { get; private set; }
         public int FacetCalls { get; private set; }
         public int LastPage { get; private set; }
+        public SortField LastSort { get; private set; }
+        public SortDirection LastDirection { get; private set; }
 
         /// <summary>Fail every search from the next one on — the rollback path.</summary>
         public bool FailSearch { get; set; }
+
+        /// <summary>Answer every search from the next one on with the API's 429.</summary>
+        /// <remarks>
+        /// Its own switch rather than a mode of <see cref="FailSearch"/>, for the same reason
+        /// <see cref="RateLimitFacets"/> is: the tests using it are about the two being told apart.
+        /// </remarks>
+        public bool RateLimitSearch { get; set; }
 
         /// <summary>Fail every facet refresh from the next one on.</summary>
         public bool FailFacets { get; set; }
@@ -2759,18 +2777,30 @@ public class VariableExplorerTest : BunitContext
             // Recorded before the failure, so a test can see what was asked for as well as what
             // the component was left holding afterwards.
             SearchFilter = filter;
+            LastSearch = search;
             LastPage = page;
+            LastSort = sort;
+            LastDirection = direction;
 
             if (StallSearch)
             {
                 return _stalled.Task;
             }
 
+            if (RateLimitSearch)
+            {
+                throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+            }
+
+            var body = filter is { ActiveCount: > 0 } && filteredAnswer is not null
+                ? filteredAnswer
+                : answer;
+
             // The page it was asked for, so the component's own paging state moves the way it does
             // against the real API rather than being reset to 1 by a fixture that always says 1.
             return FailSearch
                 ? throw new HttpRequestException("nede")
-                : Task.FromResult(answer with { PageNumber = page });
+                : Task.FromResult(body with { PageNumber = page });
         }
 
         public override Task<FilterOptions> GetFiltersAsync(
@@ -6617,5 +6647,526 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Equal("text", field.GetAttribute("type"));
         Assert.Equal("search", field.GetAttribute("enterkeyhint"));
+    }
+
+    /// <summary>
+    /// The client the retry tests fetch against: thirteen pages, and every switch those tests need
+    /// already on <see cref="FilteringClient"/> rather than on a fifth near-identical fake.
+    /// </summary>
+    private static FilteringClient RetryClient(
+        bool failSearch = false, Page<VariableSummary>? filtered = null) =>
+        new(ResultPage(312), filteredAnswer: filtered) { FailSearch = failSearch };
+
+    /// <summary>
+    /// The retry controls, selected through the alert region rather than by their own class.
+    /// </summary>
+    /// <remarks>
+    /// The selector is the assertion in every test below that uses it: a button outside
+    /// <c>role="alert" aria-live="assertive"</c> is a failure announced with no way forward
+    /// mentioned, and a plain search for a button would find one there and call it done.
+    /// </remarks>
+    private static IReadOnlyList<IElement> RetryButtons(IRenderedComponent<VariableExplorer> cut) =>
+        cut.FindAll("div[role='alert'][aria-live='assertive'] button");
+
+    private static IElement Retry(IRenderedComponent<VariableExplorer> cut, string label) =>
+        RetryButtons(cut).Single(b => b.TextContent == label);
+
+    private const string RetryRows = "Prøv søket på nytt";
+    private const string RetryFacets = "Prøv filtrene på nytt";
+
+    /// <summary>
+    /// The sentences in the alert region, which is where both failures report.
+    /// </summary>
+    /// <remarks>
+    /// Scoped to the <c>div</c>. Every saveable row carries a <c>role="alert"</c> span of its own
+    /// (<c>VariableExplorer.SaveButton.cs</c>), and an unscoped selector would start counting those.
+    /// </remarks>
+    private static IReadOnlyList<IElement> AlertMessages(IRenderedComponent<VariableExplorer> cut) =>
+        cut.FindAll("div[role='alert'] p");
+
+    [Fact]
+    public void Retry_WhenTheSearchFails_ThenTheButtonIsInsideTheRegionTheFailureIsAnnouncedFrom()
+    {
+        // The whole point of the change. A message with no control is a dead end for everyone, and
+        // a control outside the assertive region is a dead end for a screen-reader user only: the
+        // interruption says something went wrong and stops there, while the way out sits silently
+        // somewhere further down the page.
+        var cut = RenderWith(new FailingClient());
+
+        Assert.Contains("Kunne ikke hente variabler", cut.Find("[role='alert']").TextContent);
+        Assert.Equal(RetryRows, Assert.Single(RetryButtons(cut)).TextContent);
+    }
+
+    [Fact]
+    public void Retry_WhenTheApiAnswersOnTheSecondTry_ThenTheRowsArriveAndTheMessageIsGone()
+    {
+        // The trap: a retry that fetches without clearing the failure shows the rows and the
+        // sentence saying they could not be fetched, side by side, and passes any test that only
+        // asks whether the results came back.
+        var client = RetryClient(failSearch: true);
+        var cut = RenderWith(client);
+
+        client.FailSearch = false;
+        Retry(cut, RetryRows).Click();
+
+        Assert.NotEmpty(cut.FindAll("ul.munin-explorer-data-list > li"));
+        Assert.Empty(AlertMessages(cut));
+    }
+
+    [Fact]
+    public void Retry_WhenTheApiRateLimits_ThenNoRetryIsOfferedBesideTheSentenceTellingThemToWait()
+    {
+        // The one failure a retry cannot answer: the catalogue is up and the reader has asked too
+        // often, so the button would invite the exact action the sentence beside it advises against
+        // — and would feed the burst that caused the 429. A test throwing a generic exception never
+        // reaches this branch and stays green whatever this branch does.
+        var cut = RenderWith(new RateLimitedClient());
+
+        Assert.Contains("for mange forespørsler", cut.Find("[role='alert']").TextContent);
+        Assert.Empty(RetryButtons(cut));
+    }
+
+    [Fact]
+    public void Retry_WhenARateLimitFollowsAFailureThatOfferedOne_ThenTheButtonIsInertRatherThanGone()
+    {
+        // The 429 arriving over a button already on screen. It cannot leave — that is the focus
+        // rule below — so it goes inert instead, and pressing it sends nothing.
+        var client = RetryClient(failSearch: true);
+        var cut = RenderWith(client);
+
+        client.FailSearch = false;
+        client.RateLimitSearch = true;
+        Retry(cut, RetryRows).Click();
+
+        var button = Retry(cut, RetryRows);
+        var calls = client.SearchCalls;
+
+        Assert.Contains("for mange forespørsler", cut.Find("[role='alert']").TextContent);
+        Assert.Equal("true", button.GetAttribute("aria-disabled"));
+
+        button.Click();
+
+        Assert.Equal(calls, client.SearchCalls); // inert: no request went out
+    }
+
+    [Fact]
+    public void Retry_WhenAPageTurnFailed_ThenItAsksForThatPageAgainAndNotForWhatIsInTheBox()
+    {
+        // The trap the whole handler exists for. Wiring the button to SearchAsync passes a test
+        // that only ever fails the first search, and throws away both the reader's position and the
+        // query the rows came from: the box holds text that was never submitted, and every caller
+        // that fails has already rolled the page back to the one still on screen.
+        var client = RetryClient();
+        var cut = RenderWith(client, b => b.Add(c => c.Search, "tale"));
+
+        Next(cut).Click(); // page 2, which arrives
+
+        client.FailSearch = true;
+        Next(cut).Click(); // page 3, which does not
+
+        cut.Find(".searchbox__freetext").Change("noe helt annet");
+
+        client.FailSearch = false;
+        Retry(cut, RetryRows).Click();
+
+        Assert.Equal(3, client.LastPage);
+        Assert.Equal("tale", client.LastSearch);
+        Assert.Equal("Side 3 av 13", Position(cut));
+        Assert.Empty(AlertMessages(cut));
+    }
+
+    [Fact]
+    public void Retry_WhenASortFailed_ThenItAsksForTheOrderThatFailedRatherThanTheOneOnScreen()
+    {
+        // Same trap one control along, and the reason the request is captured rather than read back
+        // off the fields: a failed sort rolls the order back, so a retry built from _sort would
+        // fetch the ordering the reader was already looking at and report success for it.
+        var client = RetryClient();
+        var cut = RenderWith(client);
+
+        client.FailSearch = true;
+        ClickSort(cut, "Kilde");
+
+        client.FailSearch = false;
+        Retry(cut, RetryRows).Click();
+
+        Assert.Equal(SortField.Kilde, client.LastSort);
+        Assert.Empty(AlertMessages(cut));
+    }
+
+    [Fact]
+    public void Retry_WhenADirectionReversalFailed_ThenItAsksForThatDirectionAndTellsTheHostSo()
+    {
+        // The other half of the captured request, and the one a retry built off the fields would
+        // get wrong without any test noticing: a second click on the active column reverses to
+        // descending, and the failure rolls the direction back to ascending — so _direction names
+        // the order still on screen, not the order the reader asked for. The host was told the
+        // rolled-back value too, so it is holding ascending until this retry says otherwise.
+        var raised = new List<string>();
+        SortDirection? direction = null;
+        var client = RetryClient();
+
+        var cut = RenderWith(client, b => b
+            .Add(c => c.SortChanged, _ => raised.Add("sort"))
+            .Add(c => c.DirectionChanged, d => { direction = d; raised.Add("direction"); }));
+
+        ClickSort(cut, "Kilde");   // ascending, which arrives
+
+        raised.Clear();
+
+        client.FailSearch = true;
+        ClickSort(cut, "Kilde");   // its reversal, which does not
+
+        Assert.Empty(raised); // the rollback said nothing, so the host still has ascending
+
+        client.FailSearch = false;
+        Retry(cut, RetryRows).Click();
+
+        Assert.Equal(SortField.Kilde, client.LastSort);
+        Assert.Equal(SortDirection.Descending, client.LastDirection);
+
+        // The field never moved — the host was told it two clicks ago and this request kept it.
+        Assert.Equal(["direction"], raised);
+        Assert.Equal(SortDirection.Descending, direction);
+        Assert.Empty(AlertMessages(cut));
+    }
+
+    [Fact]
+    public void Retry_WhenAFilterChangeFailed_ThenTheCountsAndThePagerFollowTheFilterThatWentOut()
+    {
+        // The third caller that can leave a failed request behind, and the only one where the
+        // filter half of it matters. Two things a retried narrowing has to bring with it: the
+        // counts, which are cross-filtered and would otherwise go on describing the selection the
+        // reader left; and the pager flag, which the narrowing cleared on its way to page one and
+        // its rollback put back, leaving "Side 1 av 1" between two inert buttons over a result the
+        // same narrowing would have hidden it for on the first attempt.
+        var client = RetryClient(filtered: ResultPage(4));
+        var cut = RenderWith(client);
+
+        Next(cut).Click(); // page 2, so the pager is on screen by the reader's own doing
+
+        var facetCalls = client.FacetCalls;
+
+        client.FailSearch = true;
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        client.FailSearch = false;
+        Retry(cut, RetryRows).Click();
+
+        Assert.Equal(1, client.SearchFilter!.ActiveCount);
+        Assert.Equal(1, client.LastPage);
+        Assert.Equal(facetCalls + 1, client.FacetCalls);
+        Assert.Equal(client.SearchFilter, client.FacetFilter);
+        Assert.Empty(AlertMessages(cut));
+        Assert.Empty(cut.FindAll("div.munin-explorer-pagination"));
+    }
+
+    [Fact]
+    public void Retry_WhenASubmittedSearchFailed_ThenTheCountsFollowTheTermThatFinallyWentOut()
+    {
+        // The scenario the change is named for, and the second of the three things that move the
+        // counts: they are cross-filtered against the query as well as the filter, so a retried
+        // search that leaves them alone leaves every number describing the term the reader typed
+        // over — with a panel that says nothing about being stale, because that message belongs to
+        // the facets' own failure and this was the rows'.
+        var client = RetryClient();
+        var cut = RenderWith(client);
+
+        client.FailSearch = true;
+        cut.Find(".searchbox__freetext").Change("svelging");
+        cut.Find("form").Submit();
+
+        var facetCalls = client.FacetCalls;
+
+        client.FailSearch = false;
+        Retry(cut, RetryRows).Click();
+
+        Assert.Equal("svelging", client.LastSearch);
+        Assert.Equal(facetCalls + 1, client.FacetCalls);
+        Assert.Equal("svelging", client.FacetSearch);
+        Assert.Empty(AlertMessages(cut));
+    }
+
+    [Fact]
+    public void Retry_WhenTheFirstLoadFailed_ThenTheFilterPanelArrivesWithTheRows()
+    {
+        // The worst case of not refreshing the counts: OnInitializedAsync never asked for them, so
+        // _facets is null and the whole fieldset is off the page. Rows without filters, silently,
+        // with nothing to say so and no way back short of submitting a fresh search — which is the
+        // page reload this change exists to remove.
+        var client = RetryClient(failSearch: true);
+        var cut = RenderWith(client);
+
+        Assert.Empty(cut.FindAll("fieldset.munin-explorer-filters"));
+
+        client.FailSearch = false;
+        Retry(cut, RetryRows).Click();
+
+        Assert.NotEmpty(cut.FindAll("ul.munin-explorer-data-list > li"));
+        Assert.Single(cut.FindAll("fieldset.munin-explorer-filters"));
+        Assert.Empty(AlertMessages(cut));
+    }
+
+    [Fact]
+    public void Retry_WhenASortFailed_ThenTheHostIsToldTheFieldThatFinallyTookEffect()
+    {
+        // The failure rolled the order back and told the host nothing, so the host is holding the
+        // order that is still on screen. Without these callbacks a host mirroring sort into its URL
+        // keeps a URL that reopens the list in the wrong order — and every assertion about the
+        // request that went out stays green, because none of them looks at what was raised.
+        var raised = new List<string>();
+        SortField? sort = null;
+        var client = RetryClient();
+
+        var cut = RenderWith(client, b => b
+            .Add(c => c.SortChanged, f => { sort = f; raised.Add("sort"); })
+            .Add(c => c.DirectionChanged, _ => raised.Add("direction")));
+
+        client.FailSearch = true;
+        ClickSort(cut, "Kilde");
+
+        Assert.Empty(raised); // the failure rolled it back and said nothing
+
+        client.FailSearch = false;
+        Retry(cut, RetryRows).Click();
+
+        // The field, and only the field: a first sort starts ascending, which is what the host was
+        // handed at mount and has been holding ever since.
+        Assert.Equal(["sort"], raised);
+        Assert.Equal(SortField.Kilde, sort);
+    }
+
+    [Fact]
+    public void Retry_WhenAPageTurnFailed_ThenTheHostIsToldThePageMovedAndNothingElse()
+    {
+        // The opposite regression, and the one a blanket four-callback ending causes: GoToPageAsync
+        // deliberately raises the page alone, so a retried page turn that also raises sort,
+        // direction and filter hands a host that navigates or pushes history on them three entries
+        // for values it was already holding and this request never touched.
+        var raised = new List<string>();
+        var client = RetryClient();
+
+        var cut = RenderWith(client, b => b
+            .Add(c => c.SortChanged, _ => raised.Add("sort"))
+            .Add(c => c.DirectionChanged, _ => raised.Add("direction"))
+            .Add(c => c.FilterChanged, _ => raised.Add("filter"))
+            .Add(c => c.PageChanged, _ => raised.Add("page")));
+
+        raised.Clear(); // the mount echoes the page it was given
+
+        client.FailSearch = true;
+        Next(cut).Click();
+
+        raised.Clear();
+
+        client.FailSearch = false;
+        Retry(cut, RetryRows).Click();
+
+        Assert.Equal(["page"], raised);
+    }
+
+    [Fact]
+    public void Retry_WhenItSucceeds_ThenTheButtonStaysInTheDocumentInsteadOfLeavingWithTheMessage()
+    {
+        // A successful retry clears the message, and the button belongs to the message. Removing it
+        // would take the element the reader has just pressed — and is therefore focused — out of the
+        // document, dropping focus to <body> and sending a keyboard user back to the top of
+        // helsedata's page. The same failure the pager's buttons and Fjern alle filtre refuse the same way.
+        //
+        // bUnit reparses the markup on every render, so document.activeElement cannot be inspected
+        // across one here. What is pinned instead is the condition focus survives on: the pressed
+        // element is still in the document, and inert rather than disabled — the attribute would
+        // drop focus without removing anything.
+        var client = RetryClient(failSearch: true);
+        var cut = RenderWith(client);
+
+        client.FailSearch = false;
+        Retry(cut, RetryRows).Click();
+
+        var button = Retry(cut, RetryRows);
+
+        Assert.Equal("true", button.GetAttribute("aria-disabled"));
+        Assert.False(button.HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void Retry_WhenTheButtonIsShown_ThenItsClassNamesAreOnesSomeStylesheetActuallyDefines()
+    {
+        // Every other sweep in this file renders a page with nothing wrong, so the one control that
+        // exists only after a failure is past all of them.
+        var cut = RenderWith(RetryClient(failSearch: true));
+
+        Assert.Equal(RetryRows, Assert.Single(RetryButtons(cut)).TextContent);
+        Assert.Equal([], HostClassNames.Orphans(HostClassNames.Of(cut.FindAll("[class]"))));
+    }
+
+    [Fact]
+    public void Retry_WhenALaterFetchSucceedsOnItsOwn_ThenTheDeadOfferLeavesTheRegion()
+    {
+        // The region is aria-atomic, so everything in it is announced together. A button kept for
+        // good is read out beside every failure after it — "Tallene kan være utdaterte … Prøv søket
+        // på nytt Prøv filtrene på nytt", one live offer and one dead one with nothing but
+        // aria-disabled telling them apart. So it stays only until the next fetch someone started
+        // elsewhere comes back, which is long enough for the press that kept it to hold its focus.
+        var client = RetryClient();
+        var cut = RenderWith(client);
+
+        client.FailSearch = true;
+        Next(cut).Click();
+
+        client.FailSearch = false;
+        Retry(cut, RetryRows).Click();
+
+        Assert.Equal(RetryRows, Assert.Single(RetryButtons(cut)).TextContent);
+
+        client.FailFacets = true;
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        Assert.Contains("Tallene kan være utdaterte", cut.Find("[role='alert']").TextContent);
+        Assert.Equal(RetryFacets, Assert.Single(RetryButtons(cut)).TextContent);
+    }
+
+    [Fact]
+    public void Retry_WhenALaterFetchIsRateLimited_ThenTheDeadOfferLeavesRatherThanSittingBesideVentLitt()
+    {
+        // A 429 is neither a success nor a failure that can be retried, so an offer already
+        // answered survives it unless this branch clears it too — and the atomic region then reads
+        // the wait instruction and a dead button out as one utterance, which is the exact
+        // re-announcement clearing it on success exists to stop. No focus argument keeps it here:
+        // the reader's finger is on whatever control started the fetch that got throttled.
+        var client = RetryClient();
+        var cut = RenderWith(client);
+
+        client.FailSearch = true;
+        Next(cut).Click();
+
+        client.FailSearch = false;
+        Retry(cut, RetryRows).Click();
+
+        client.RateLimitSearch = true;
+        cut.Find(".searchbox__freetext").Change("svelging");
+        cut.Find("form").Submit();
+
+        Assert.Contains("for mange forespørsler", cut.Find("[role='alert']").TextContent);
+        Assert.Empty(RetryButtons(cut));
+    }
+
+    [Fact]
+    public void Retry_WhenTheButtonIsInert_ThenItCarriesTheNameThatDrawsItThatWay()
+    {
+        // aria-disabled says it to a screen reader and to nobody else. The pager and the filter
+        // panel are drawn inert by rules scoped to their containers; this button's container is the
+        // alert region, which carries no class, so neither rule reaches it and it needs its own
+        // name. Without one a sighted reader presses a normal-looking ghost button that does
+        // nothing — the exact failure the aria-disabled styling exists to prevent.
+        var client = RetryClient(failSearch: true);
+        var cut = RenderWith(client);
+
+        client.FailSearch = false;
+        Retry(cut, RetryRows).Click();
+
+        var button = Retry(cut, RetryRows);
+
+        Assert.Equal("true", button.GetAttribute("aria-disabled"));
+        Assert.Contains("munin-explorer-retry", button.ClassName!.Split(' '));
+    }
+
+    [Fact]
+    public void Retry_WhenNothingHasFailed_ThenThereIsNoRetryButtonAndTheRegionIsStillEmpty()
+    {
+        // The container is deliberately always present and empty. A retry button parked in it would
+        // be furniture on every page that has nothing to report, and would make the region announce
+        // something the first time anything else changed inside it.
+        var cut = RenderWith(RetryClient());
+
+        Assert.Empty(RetryButtons(cut));
+        Assert.Equal(string.Empty, cut.Find("[role='alert']").TextContent.Trim());
+    }
+
+    [Fact]
+    public void Retry_WhenTheFacetRefreshFails_ThenItsOwnButtonRefreshesTheCountsAndNothingElse()
+    {
+        // The facets fail on their own request and clear their own message, so a handler shared
+        // with the rows would answer this sentence by re-fetching a list nobody said was wrong.
+        var client = RetryClient();
+        var cut = RenderWith(client);
+
+        client.FailFacets = true;
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        Assert.Contains("Tallene kan være utdaterte", cut.Find("[role='alert']").TextContent);
+
+        var searchCalls = client.SearchCalls;
+        var facetCalls = client.FacetCalls;
+
+        client.FailFacets = false;
+        Retry(cut, RetryFacets).Click();
+
+        Assert.Equal(facetCalls + 1, client.FacetCalls);
+        Assert.Equal(searchCalls, client.SearchCalls); // the rows were never in doubt
+        Assert.Empty(AlertMessages(cut));
+    }
+
+    [Fact]
+    public void Retry_WhenBothFailuresAreReported_ThenEachSentenceHasItsOwnButtonAndItsOwnRequest()
+    {
+        // Both messages share one assertive region, so both buttons land in it together. Two
+        // reading "Prøv igjen" would be two identical offers with nothing to choose between them,
+        // and one button for both would clear one sentence with the answer to the other question.
+        var client = RetryClient();
+        var cut = RenderWith(client);
+
+        client.FailFacets = true;
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        client.FailSearch = true;
+        Next(cut).Click();
+
+        var buttons = RetryButtons(cut);
+
+        Assert.Equal(2, buttons.Count);
+        Assert.Equal(RetryRows, buttons[0].TextContent);
+        Assert.Equal(RetryFacets, buttons[1].TextContent);
+        Assert.Equal(2, AlertMessages(cut).Count);
+
+        var facetCalls = client.FacetCalls;
+
+        client.FailSearch = false;
+        Retry(cut, RetryRows).Click();
+
+        // The rows came back; the counts are still stale and still say so, in their own sentence.
+        Assert.Equal(facetCalls, client.FacetCalls);
+        Assert.DoesNotContain("Kunne ikke hente variabler", cut.Find("[role='alert']").TextContent);
+        Assert.Contains("Tallene kan være utdaterte", cut.Find("[role='alert']").TextContent);
+
+        var searchCalls = client.SearchCalls;
+
+        client.FailFacets = false;
+        Retry(cut, RetryFacets).Click();
+
+        Assert.Equal(searchCalls, client.SearchCalls);
+        Assert.Empty(AlertMessages(cut));
+    }
+
+    [Fact]
+    public void Retry_WhenTheLanguageIsEn_ThenTheButtonsAreInEnglishToo()
+    {
+        // The reader parameter decides, not the machine's culture — and a button left in Norwegian
+        // beside an English sentence is the half-translated release the parity guard cannot see,
+        // because both languages would have a string and only one of them would be rendered.
+        var client = RetryClient();
+        var cut = RenderWith(client, b => b.Add(c => c.Language, "en"));
+
+        client.FailFacets = true;
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        client.FailSearch = true;
+        Next(cut).Click();
+
+        var buttons = RetryButtons(cut);
+
+        Assert.Equal(2, buttons.Count);
+        Assert.Equal("Try the search again", buttons[0].TextContent);
+        Assert.Equal("Try the filters again", buttons[1].TextContent);
     }
 }
