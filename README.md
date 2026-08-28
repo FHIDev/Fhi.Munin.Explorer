@@ -139,9 +139,11 @@ These are not style preferences — each one is a host that breaks otherwise.
   an accordion and a tree, and the detail panel is a `<dl>` with an `<ol>` for the kilde trail,
   because no host stylesheet names any of those. What a host supplies for them is base element
   styling — list indentation in particular, which is what shows a delkilde sitting under its kilde.
-  The package emits two `<table>`s, for the same reason: the kodeverk code list in an opened panel,
-  and the datasamlinger of a kilde in `KildeView`. An element degrades to its own browser default,
-  where an unknown class name degrades to nothing.
+  `KildeView`'s own delkilde tree is a nested `<ul>` for both halves of that: a browser indents it
+  unasked, and the nesting is a relationship a screen reader reads rather than one CSS draws.
+  The package emits `<table>`s for the same reason: the kodeverk code list in an opened panel, and
+  a kilde's datasamlinger in `KildeView`, one per level of that tree. An element degrades to its
+  own browser default, where an unknown class name degrades to nothing.
 
   Every name in the `munin-explorer` prefix is ours. That is worth saying because it used not to
   be: under the old prefix six names were helsedata's — the container, the results column, the

@@ -1261,12 +1261,49 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   text-align: left;
   vertical-align: top;
   border-bottom: 1px solid var(--grey30);
+
+  /* The catalogue stores beskrivelse as markdown, so the cells carry bare URLs — one unbroken
+     token long enough to push a column past its share and the table past its container. */
+  overflow-wrap: anywhere;
 }
 
 .munin-explorer-kilde__datasamlinger thead th {
   background: var(--grey10);
   color: var(--grey60);
   font-weight: 600;
+}
+
+/* ---- the column grid, and why three of the four are pinned ----
+
+   Read off Stiler's `components/munin-explorer/_trail.scss` rather than invented here, because a
+   sample that disagrees with Stiler is a sample that lies about what a host gets. The two rules
+   this file used to be missing are the third and fourth columns: the period at 24%, so it breaks
+   at the dash rather than inside a date, and the count at `width: 1%` + nowrap, which is the
+   idiom for "as narrow as the content and no narrower". Both were measured — see PR 38959 and
+   Fhi.Metadata-oq40w — so they are copied, not re-derived.
+
+   The FIRST column is the one this repository adds, and it is the delkilde tree that needs it.
+   Stiler pinned three columns and left Navn and Beskrivelse to auto-layout, which is right for
+   one table: whatever the two of them work out is at least self-consistent. The section now
+   draws one table per level, and auto-layout sizes each one from its own content, so Tromsø's
+   five tables measured 903, 1426, 270, 1409 and 1479px across their first column — and the wave
+   whose beskrivelse holds a wall of text squeezed everything else to slivers.
+
+   Pinning Navn as well leaves Beskrivelse as the only free column, which is the same as pinning
+   it: every level lines up. `table-layout: fixed` would also do it and was tried first, but it
+   throws away the `width: 1%` trick on the count — under fixed layout a width is a width, and
+   the column can no longer be as narrow as its content. */
+.munin-explorer-kilde__datasamlinger tr > :nth-child(1) {
+  width: 30%;
+}
+
+.munin-explorer-kilde__datasamlinger tr > :nth-child(3) {
+  width: 24%;
+}
+
+.munin-explorer-kilde__datasamlinger tbody td:nth-child(4) {
+  width: 1%;
+  white-space: nowrap;
 }
 
 /* The name is a <th scope="row">, which browsers centre and bold by default. It is a label for
@@ -1310,6 +1347,83 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .munin-explorer-kilde__datasamlinger tbody td:nth-child(4) {
   width: 1%;
   white-space: nowrap;
+}
+
+/* The FIRST column, which the block above deliberately leaves alone — and the reason that decision
+   is revisited rather than ignored: it was made when this section was ONE table, where letting name
+   and description divide the remainder by content is right, and an empty description collapsing so
+   the name takes its room is a feature.
+
+   The section draws one table per level of the delkilde tree now, and auto-layout measures each
+   table against its own content. Tromsø's five came out at 903, 1426, 270, 1409 and 1479px across
+   this column, and the wave whose description holds a wall of markdown squeezed the other three to
+   slivers. Nothing lines up down the page.
+
+   Pinning it leaves the description as the only free column, which is what makes every level agree.
+   The cost is the case above: a datasamling with no description no longer widens the name. That is
+   a real loss and a deliberate one — across levels, alignment is worth more than the reflow.
+   `table-layout: fixed` would also do it and is not used, because it throws away the width: 1%
+   trick on the count. */
+.munin-explorer-kilde__datasamlinger tr > :nth-child(1) {
+  width: 30%;
+}
+
+/* The catalogue stores beskrivelse as markdown, so cells carry bare URLs — one unbroken token long
+   enough to push a column past its share and the table past its container. */
+.munin-explorer-kilde__datasamlinger td,
+.munin-explorer-kilde__datasamlinger th {
+  overflow-wrap: anywhere;
+}
+
+/* ---- the delkilde tree ----
+
+   A study series keeps its datasamlinger one per wave, and the waves are its organising fact, so
+   the section is a nested <ul> of <li> — one per delkilde, each with its own datasamling table and
+   any delkilder below it. A real list rather than indented <div>s: a <ul> carries the parent/child
+   relationship to a screen reader by itself, where indentation carries it to a sighted reader only,
+   and an accessibility check is blind to structure that was never marked up.
+
+   The shape is Stiler's, not this file's. components/munin-explorer/_filters.scss already dresses a
+   nested <ul> of delkilder — the filter panel's — in three declarations: list-style none,
+   padding-left 20px on the list, and padding-left 0 on the TOP-LEVEL one. That last rule is the
+   whole lesson: the <ul> is a SIBLING of the table above it, so indenting it claims a parent it
+   does not have. Without it the top-level waves sat 36px in under the table's last row and read as
+   its children. Indentation is spent on depth INSIDE the tree only. */
+.munin-explorer-kilde__delkilder {
+  margin: 0;
+  padding-left: 20px;
+  list-style: none;
+}
+
+.munin-explorer-kilde__main > .munin-explorer-kilde__delkilder,
+.munin-explorer-whole__main > .munin-explorer-kilde__delkilder {
+  padding-left: 0;
+  margin-top: 28px;
+}
+
+/* A $grey30 rule between waves — the separator the filter panel puts between its <details>. */
+.munin-explorer-kilde__delkilde {
+  padding-top: 14px;
+  border-top: 1px solid var(--grey30);
+}
+
+.munin-explorer-kilde__delkilde + .munin-explorer-kilde__delkilde {
+  margin-top: 14px;
+}
+
+.munin-explorer-kilde__delkilde > .munin-explorer-kilde__delkilder {
+  margin-top: 14px;
+}
+
+/* headline-xxs, the size a metadata group heading wears: the scale has nothing verified between it
+   and the headline-s of the section heading above. Depth is carried by the heading LEVEL and the
+   indent, not by a size invented to fill the gap. */
+.munin-explorer-kilde__delkilde-name {
+  margin-top: 0;
+}
+
+.munin-explorer-kilde__delkilde > .munin-explorer-kilde__datasamlinger {
+  margin-top: 10px;
 }
 
 /* ---- the kilde list ----

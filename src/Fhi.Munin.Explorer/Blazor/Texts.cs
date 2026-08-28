@@ -307,9 +307,9 @@ internal sealed record Texts(
     // it does.
     string ShowFilters,
     string HideFilters,
-    // Runa says "Datasamlinger" over a kilde's datasamling table; Kelda says "Delkilder og
-    // datasamlinger" over the same rows. One word of difference is not worth a second table — see
-    // KildeView.DataCollectionsHeading.
+    // The heading when the source HAS delkilder, in either explorer: the section draws the tree,
+    // so the word is about the source rather than about who renders it. See
+    // KildeView.DefaultDataCollectionsHeading.
     string HeadingDelkilderAndDataCollections,
     // The sections Kelda has over a kilde and Runa has not, measured on the same source in both on
     // 2026-08-20. They are markup Kelda hands to KildeView.Sections rather than markup inside that

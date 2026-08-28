@@ -57,12 +57,12 @@
                     }
                 }
 
-                @* The source's datasamlinger, gathered through its delkilder rather than only the
-                   ones hanging directly off it. *@
-                @if (DataCollections.Count > 0)
+                @* The source's own datasamlinger, then its delkilder each carrying theirs. A study
+                   series' organising fact is its waves; one flat table destroys it. *@
+                @if (DataCollections.Count > 0 || Delkilder.Count > 0)
                 {
-                    @Heading(BlockLevel, DataCollectionsHeading ?? T.HeadingDataCollections, "headline headline-s")
-                    @DataCollectionTable
+                    @Heading(BlockLevel, DataCollectionsHeading ?? DefaultDataCollectionsHeading, "headline headline-s")
+                    @DataCollectionStructure
                 }
 
                 @* Whatever the explorer using this view puts after the metadata. This component

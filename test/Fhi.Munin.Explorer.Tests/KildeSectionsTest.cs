@@ -251,6 +251,76 @@ public class KildeSectionsTest : BunitContext
     }
 
     [Fact]
+    public void DataCollections_WhenTheStudySeriesIsOpen_ThenEachWavesOwnSitInsideTheWave()
+    {
+        // THE TRAP, and the reason this test is here and not only in KildeViewTest: do not verify
+        // the arrangement on a kilde without delkilder. Most kilder have none, and on those the
+        // arranged section and the flat table it replaced draw the same picture, so a pass there
+        // proves nothing ran. This is the captured Tromsø payload — a study series whose organising
+        // fact is its waves, three datasamlinger on the study itself and eleven under its five
+        // delkilder — rather than a source written to suit the assertion.
+        //
+        // Read by descending through the <li> each row is in. A flat table holds all fourteen names
+        // too and would satisfy any assertion that only counted them, which is exactly what the
+        // section did before: it answered what the study holds while destroying how it is arranged.
+        var cut = OpenInKelda(Tromso());
+
+        // The study's own three, in the table outside the list — the datasamlinger that hang off
+        // the kilde rather than off a wave.
+        Assert.Equal(
+        [
+            "Tromsø1 - The First Tromsø Study",
+            "Tromsø2 - The Second Tromsø Study",
+            "Tromsø3 - The Third Tromsø Study",
+        ], TextOf(cut.FindAll(
+            ".munin-explorer-kilde__main > table.munin-explorer-kilde__datasamlinger tbody th")));
+
+        // Then the five waves, in the catalogue's order, each with what is inside it. K_TR.BIODATA
+        // holds nothing and is a wave of the study all the same: drawing only the delkilder that
+        // hold something would leave a reader counting five waves on helsedata.no and four here.
+        Assert.Equal(
+        [
+            "Biodata:",
+            "Tromsø4 - The Fourth Tromsø Study: "
+            + "Tromsø4 - The Fourth Tromsø Study - first visit, "
+            + "Tromsø4 - The Fourth Tromsø Study - second visit",
+            "Tromsø5 - The Fifth Tromsø Study: "
+            + "Tromsø5 - The Fifth Tromsø Study - first visit, "
+            + "Tromsø5 - The Fifth Tromsø Study - second visit, "
+            + "Tromsø5 - The Fifth Tromsø study - forst visit ; sample collection, "
+            + "Tromsø5 - The Fifth Tromsø study - second visit; sample collection",
+            "Tromsø6 - The Sixth Tromsø Study: "
+            + "Tromsø6 - The Sixth Tromsø Study - first visit, "
+            + "Tromsø6 - The Sixth Tromsø Study - second visit",
+            "Tromsø7 - The Seventh Tromsø Study: "
+            + "Tromsø7 - The Seventh Tromsø Study - first visit, "
+            + "Tromsø7 - The Seventh Tromsø Study - second visit, "
+            + "Tromsø7 - The Seventh Tromsø Study -Sample collection",
+        ], Waves(cut));
+    }
+
+    /// <summary>
+    /// Every delkilde on the page, as its name and the datasamlinger inside its own list item.
+    /// </summary>
+    /// <remarks>
+    /// <c>:scope &gt;</c> on the table is the whole assertion. Without it a wave would report the
+    /// datasamlinger of every wave nested below it as its own, which is the flattening this section
+    /// exists to undo — and the test would pass on the implementation that has it.
+    /// </remarks>
+    private static IReadOnlyList<string> Waves(IRenderedComponent<KildeExplorer> cut) =>
+        [.. cut.FindAll("li.munin-explorer-kilde__delkilde")
+               .Select(item =>
+               {
+                   var name = item.QuerySelector(".munin-explorer-kilde__delkilde-name")?.TextContent.Trim();
+
+                   var rows = item
+                       .QuerySelectorAll(":scope > table.munin-explorer-kilde__datasamlinger tbody th")
+                       .Select(th => th.TextContent.Trim());
+
+                   return $"{name}: {string.Join(", ", rows)}".TrimEnd();
+               })];
+
+    [Fact]
     public void Runa_WhenTheSameKildeIsOpen_ThenNoneOfKeldasSectionsAreOnIt()
     {
         // THE TRAP. Kelda's sections put inside the shared view behind a condition would pass every
@@ -260,8 +330,13 @@ public class KildeSectionsTest : BunitContext
 
         var cut = OpenInRuna(kilde);
 
+        // "Delkilder og datasamlinger" in Runa too, and that is not Kelda leaking in: Runa passes
+        // no heading at all, and the shared core's default reads the SOURCE. Tromsø has five
+        // delkilder and the section now draws them, so the word that named the old flat table would
+        // head five waves while promising none of them. Kelda still passes its own copy of the
+        // string; what changed is that Runa no longer has to.
         Assert.Equal(
-            ["Metadata", "Datasamlinger", "Kildeinformasjon", "Statistikk"],
+            ["Metadata", "Delkilder og datasamlinger", "Kildeinformasjon", "Statistikk"],
             TextOf(cut.FindAll(BlockHeadings)));
 
         // Said again over the text rather than only over the headings: a section reduced to a
