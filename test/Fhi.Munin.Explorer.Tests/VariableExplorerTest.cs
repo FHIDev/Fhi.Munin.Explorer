@@ -1975,9 +1975,14 @@ public class VariableExplorerTest : BunitContext
             => Task.FromResult(ResultPage(totalCount, Math.Min(page, maxPage)));
     }
 
+    /// <summary>Forrige and Neste, which are not the only buttons in the pager any more.</summary>
+    /// <remarks>
+    /// A child selector, so the size group's three stay out of it: they are not page turns, and
+    /// every caller here counts on this being exactly the pair.
+    /// </remarks>
     private static IReadOnlyList<AngleSharp.Dom.IElement> PagerButtons(
         IRenderedComponent<VariableExplorer> cut) =>
-        cut.FindAll("div.munin-explorer-pagination .munin-explorer-pagination-content button");
+        cut.FindAll("div.munin-explorer-pagination .munin-explorer-pagination-content > button");
 
     private static AngleSharp.Dom.IElement Previous(IRenderedComponent<VariableExplorer> cut) =>
         PagerButtons(cut)[0];
@@ -1985,9 +1990,9 @@ public class VariableExplorerTest : BunitContext
     private static AngleSharp.Dom.IElement Next(IRenderedComponent<VariableExplorer> cut) =>
         PagerButtons(cut)[1];
 
-    /// <summary>The "Side 2 av 13" between the two buttons.</summary>
+    /// <summary>The "Side 2 av 13" between the two buttons, and not the size group's own label.</summary>
     private static string Position(IRenderedComponent<VariableExplorer> cut) =>
-        cut.Find(".munin-explorer-pagination-content span.caption").TextContent;
+        cut.Find(".munin-explorer-pagination-content > span.caption").TextContent;
 
     private static string StatusLine(IRenderedComponent<VariableExplorer> cut) =>
         cut.Find("p[role='status']").TextContent;
@@ -2508,11 +2513,14 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Equal(
         [
+            "button-square--ghost",               // Stiler, a size that is not the one in force
             "button-square--secondary",           // Stiler, the buttons' colour
-            "caption",                            // Stiler, the "Side 2 av 13" between them
+            "caption",                            // Stiler, the position and the size group's label
             "hd-button-square",                   // Stiler, the square shape
+            "margin-right",                       // Stiler, what keeps the three sizes apart
             "munin-explorer-pagination",          // ours, Stiler components/munin-explorer/
             "munin-explorer-pagination-content",  // ours, Stiler components/munin-explorer/
+            "munin-explorer-pagination-size",     // ours, and outstanding with Stiler
         ], names);
     }
 

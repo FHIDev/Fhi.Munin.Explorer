@@ -20,6 +20,7 @@
                   @bind-Sort="_sort"
                   @bind-Direction="_direction"
                   @bind-Page="_page"
+                  @bind-PageSize="_pageSize"
                   Language="@Language" />
 
 @code {
@@ -33,6 +34,12 @@
     private SortField _sort = SortField.Default;
     private SortDirection _direction = SortDirection.Ascending;
     private int _page = 1;
+
+    // The component's own default, restated because a host cannot read a parameter's default and
+    // only what differs from it belongs in the URL.
+    private const int DefaultPageSize = 20;
+
+    private int _pageSize = DefaultPageSize;
 
     // What the address bar already says. Without it every render would call into JS to write
     // the URL it is already showing.
@@ -66,6 +73,14 @@
         if (query.TryGetValue("page", out var page) && int.TryParse(page.ToString(), out var parsedPage))
         {
             _page = Math.Max(parsedPage, 1);
+        }
+
+        // Not clamped here either, for the reason the page is not: the component holds every size
+        // to 1–100 on its way to the API, so a host repeating that rule would be a second copy of
+        // it to keep in step.
+        if (query.TryGetValue("pageSize", out var size) && int.TryParse(size.ToString(), out var parsedSize))
+        {
+            _pageSize = parsedSize;
         }
     }
 
@@ -108,6 +123,11 @@
         if (_page > 1)
         {
             Append(query, "page", _page.ToString());
+        }
+
+        if (_pageSize != DefaultPageSize)
+        {
+            Append(query, "pageSize", _pageSize.ToString());
         }
 
         // "?x=1" to set, and a bare path to clear: assigning "" would leave the previous query

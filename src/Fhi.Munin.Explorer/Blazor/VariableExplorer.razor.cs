@@ -222,27 +222,32 @@ public partial class VariableExplorer : ComponentBase
     /// <summary>Rows per page. Clamped to 1–100, the range the API itself accepts.</summary>
     /// <remarks>
     /// <para>
-    /// The host owns this, and the reader is deliberately given no way to change it. Munin's own
-    /// explorer offers a 10/20/50 picker; this one does not, and that is a decision rather than a
-    /// gap. A picker is a <c>&lt;select&gt;</c>, and no class name for one can be read back off
-    /// helsedata's stylesheets — their pager has no size control, so there is nothing to copy and
-    /// anything we chose would be invented. An unstyled select inside an otherwise styled page is
-    /// the failure this package exists to avoid, and the rule the rest of the component follows is
-    /// to change the shape rather than to ship CSS. The host already knows how much room it gave
-    /// us, which is the other reason this is a parameter in the first place.
+    /// Two-way, like <see cref="Page"/>, and for the same reason: the reader chooses between 10, 20
+    /// and 50 beside the pager, so the value moves without the host touching it. A host that
+    /// mirrors it into a URL keeps the choice on a shared link; a host that ignores
+    /// <see cref="PageSizeChanged"/> still gets a working control and loses the choice on reload.
     /// </para>
     /// <para>
-    /// If a picker is wanted later it needs a verified class name first, and it belongs with the
-    /// shareable-state work that puts the page number in the host's URL — page and size travel
-    /// together there. Nothing in the current surface makes that harder: paging is private state
-    /// behind one method, not an API.
+    /// Choosing a size returns the reader to page 1 and raises <see cref="PageChanged"/> with it.
+    /// Page 7 of 12 is not page 7 of 5: the rows are renumbered, so the old number names a
+    /// different part of the result, and the reader would lose their place without having asked to.
     /// </para>
     /// <para>
     /// Values outside 1–100 are clamped rather than rejected. The server clamps them anyway, and a
-    /// zero or negative page size would otherwise make the page arithmetic on this side meaningless.
+    /// zero or negative page size would otherwise make the page arithmetic on this side
+    /// meaningless. The control's own values go through the same clamp, so it has no way past it.
+    /// </para>
+    /// <para>
+    /// The default is 20, which is the middle of the three and Runa's own starting size. It was 25
+    /// until the control arrived: a default outside the offered values would have left a host that
+    /// never set this showing three buttons with none of them pressed, which is truthful and reads
+    /// as broken. A host that had relied on 25 has to say so now.
     /// </para>
     /// </remarks>
-    [Parameter] public int PageSize { get; set; } = 25;
+    [Parameter] public int PageSize { get; set; } = 20;
+
+    /// <inheritdoc cref="PageSize"/>
+    [Parameter] public EventCallback<int> PageSizeChanged { get; set; }
 
     /// <summary>
     /// <c>"no"</c> or <c>"en"</c>. Matches helsedata's own culture tokens rather than
@@ -551,17 +556,11 @@ public partial class VariableExplorer : ComponentBase
     private SortField _sort = SortField.Default;
     private SortDirection _direction = SortDirection.Ascending;
 
-    // The page being asked for, and the only piece of paging state there is. "Any change of search
-    // or sort goes back to page one" is a rule about state — a result set reordered under someone
-    // still looking at page 7 shows them rows from the middle of a sequence they never saw the
-    // start of — so the resets live next to the field rather than at the call sites.
-    //
-    // Private, and reached only through GoToPageAsync. The host has no Page parameter and no
-    // PageChanged callback, deliberately: the page number belongs in the host's URL alongside the
-    // search text, and that contract is still being designed. One field and one method is the
-    // smallest thing for it to hook into when it arrives; a public parameter now would be a shape
-    // it had to keep.
+    // The page and the size being asked for: the host's parameters, read once at mount and owned
+    // here afterwards. Both send the reader back to page one when they change, because a renumbered
+    // result leaves someone on page 7 in the middle of a sequence they never saw the start of.
     private int _page = 1;
+    private int _pageSize = 20;
 
     // Whether the pager has been pressed since the last search or reordering, which is the one
     // thing "there is more than one page" cannot tell the markup on its own. A retreat can land on
@@ -584,6 +583,9 @@ public partial class VariableExplorer : ComponentBase
     private string SearchId => $"munin-explorer-search-{_instance}";
     private string TitleId => $"munin-explorer-title-{_instance}";
     private string PaginationId => $"munin-explorer-pagination-{_instance}";
+
+    /// <summary>The size group's visible label, which is also its accessible name.</summary>
+    private string PageSizeLabelId => $"munin-explorer-pagination-size-{_instance}";
 
     // Per row as well as per instance: the detail panel is wired to its own row with
     // aria-controls and aria-labelledby, and two explorers listing the same variable would
@@ -617,8 +619,32 @@ public partial class VariableExplorer : ComponentBase
 
     private string Busy => _loading ? "true" : "false";
 
+    /// <summary>The sizes the reader chooses between, which are Runa's own.</summary>
+    private static readonly int[] PageSizeOptions = [10, 20, 50];
+
+    /// <summary>
+    /// A size's classes — filled when it is the size in force, a ghost when not, the same pair the
+    /// facet values and the sort buttons use.
+    /// </summary>
+    /// <remarks>
+    /// The state is drawn by swapping Stiler's own names rather than from a rule on
+    /// <c>aria-pressed</c>, so a host with Stiler and nothing else still shows which size is on
+    /// without owing this package a stylesheet. <c>margin-right</c> is theirs too, and is what
+    /// keeps the three apart: Razor drops the whitespace between elements, so without it they touch.
+    /// </remarks>
+    private string PageSizeClass(int size)
+    {
+        var style = ClampedPageSize == size ? "button-square--secondary" : "button-square--ghost";
+
+        return $"hd-button-square {style} margin-right";
+    }
+
     /// <summary>Rows per page as actually requested — see <see cref="PageSize"/>.</summary>
-    private int ClampedPageSize => Math.Clamp(PageSize, 1, 100);
+    /// <remarks>
+    /// The one clamp, so the reader's control cannot reach the API with a size the host's own
+    /// parameter would have been held to.
+    /// </remarks>
+    private int ClampedPageSize => Math.Clamp(_pageSize, 1, 100);
 
     /// <summary>How many variables the search matched, not how many are on screen.</summary>
     private int TotalCount => _result?.TotalCount ?? 0;
