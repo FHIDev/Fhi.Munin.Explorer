@@ -495,6 +495,35 @@ public class ShareableStateTest : BunitContext
     }
 
     [Fact]
+    public void Retry_WhenTheFiltersAreRefetching_ThenTheRowsFailureStillReadsAsAFailure()
+    {
+        // _loading is raised by a facets fetch as well as by a rows fetch, so "loading" on its own
+        // does not mean the offer beside THIS sentence is being answered. Without the narrowing,
+        // pressing the filters' retry while a rows failure stood rewrote the rows' sentence into
+        // "trying again" — an answer to a question nobody had asked yet.
+        var client = new GatedClient(total: 300) { FailOn = 2, FacetsFailOn = 1, FacetsGateOn = 2 };
+
+        var cut = Render(client, b => b.Add(c => c.Page, 2));
+
+        ClickSize(cut, "50");
+
+        var rowsFailure = cut.WaitForElement("div.munin-explorer-alert p.infobox").TextContent;
+
+        Assert.DoesNotContain("Prøver igjen", rowsFailure);
+
+        // The filters' own retry, which fetches facets and leaves the rows' message alone.
+        cut.FindAll("div[role='alert'][aria-live='assertive'] button")
+            .First(b => b.TextContent == "Prøv filtrene på nytt")
+            .Click();
+
+        Assert.Equal(
+            rowsFailure,
+            cut.FindAll("div.munin-explorer-alert p.infobox")[0].TextContent);
+
+        client.ReleaseFacets();
+    }
+
+    [Fact]
     public void PageSize_WhenAScreenReaderMeetsTheControl_ThenEachSizeSaysWhatItIsFor()
     {
         // "20" is what the button says and not what it means. The group is named by the words on
@@ -562,7 +591,38 @@ public class ShareableStateTest : BunitContext
         /// <summary>Which call waits for <see cref="Release"/> before answering.</summary>
         public int GateOn { get; set; } = -1;
 
+        private readonly TaskCompletionSource _facetGate = new();
+
+        public int FacetCalls { get; private set; }
+
+        /// <summary>Which facet call throws, so the filters get a failure of their own.</summary>
+        public int FacetsFailOn { get; set; } = -1;
+
+        /// <summary>Which facet call waits, so a facets fetch can be held in flight.</summary>
+        public int FacetsGateOn { get; set; } = -1;
+
         public void Release() => _gate.TrySetResult();
+
+        public void ReleaseFacets() => _facetGate.TrySetResult();
+
+        public override async Task<FilterOptions> GetFiltersAsync(
+            string? search = null, VariableFilter? filter = null, string? language = null,
+            CancellationToken cancellationToken = default)
+        {
+            FacetCalls++;
+
+            if (FacetCalls == FacetsFailOn)
+            {
+                throw new HttpRequestException("nede");
+            }
+
+            if (FacetCalls == FacetsGateOn)
+            {
+                await _facetGate.Task;
+            }
+
+            return new FilterOptions { DataTypes = [new() { Value = "1", Count = 9 }] };
+        }
 
         public override async Task<Page<VariableSummary>> SearchVariablesAsync(
             string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,

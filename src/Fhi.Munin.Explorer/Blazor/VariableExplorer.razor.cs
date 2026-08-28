@@ -620,7 +620,13 @@ public partial class VariableExplorer : ComponentBase
     private string Busy => _loading ? "true" : "false";
 
     /// <summary>Whether the rows' failure box is showing a retry in progress rather than a failure.</summary>
-    private bool RetryingRows => _loading && _failedRows is not null;
+    /// <remarks>
+    /// <c>_error is null</c> is what narrows <c>_loading</c> to a rows fetch: the facet refresh
+    /// raises the same flag and clears <c>_facetError</c> rather than this one, so without it a
+    /// reader who ticked a filter while a row failure stood would watch the sentence they had not
+    /// answered turn into "trying again".
+    /// </remarks>
+    private bool RetryingRows => _loading && _error is null && _failedRows is not null;
 
     /// <summary>What that box says: the failure, or that the offer beside it is being answered.</summary>
     private string? RowsAlert => RetryingRows ? T.Retrying : _error;

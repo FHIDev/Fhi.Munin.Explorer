@@ -1911,6 +1911,11 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    button left and right under the reader's pointer as it did. */
 .munin-explorer-alert .infobox { margin: 0; flex: 1 1 auto; }
 
+/* Stiler's `margin-bottom` stays on the button so a host with no rule for this row still gets the
+   spacing the stacked layout always had. Inside the row it would push the button off centre, so it
+   is taken back here rather than left off the element. */
+.munin-explorer-alert .munin-explorer-retry { margin-bottom: 0; }
+
 /* The retry the box offered is running. The box keeps its shape and its words change, so a wave
    across it is the only thing saying work is happening — the rows below are gone by then.
 

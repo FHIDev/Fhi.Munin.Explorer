@@ -340,7 +340,7 @@ else
             @* Filled, not a ghost: it is the way out of the failure beside it, and Tøm søket is
                the other control in this component that wears --secondary for the same reason. A
                ghost on a coloured infobox reads as text rather than as something to press. *@
-            <button class="hd-button-square button-square--secondary margin-right munin-explorer-retry"
+            <button class="hd-button-square button-square--secondary margin-right margin-bottom munin-explorer-retry"
                     type="button"
                     aria-disabled="@AriaDisabled(_retryRowsEnabled)"
                     @onclick="RetryRowsAsync">@T.RetrySearch</button>
@@ -363,7 +363,7 @@ else
            two identical offers with nothing to choose between them. *@
         @if (_retryFacetsShown)
         {
-            <button class="hd-button-square button-square--secondary margin-right munin-explorer-retry"
+            <button class="hd-button-square button-square--secondary margin-right margin-bottom munin-explorer-retry"
                     type="button"
                     aria-disabled="@AriaDisabled(_retryFacetsEnabled)"
                     @onclick="RetryFacetsAsync">@T.RetryFilters</button>
