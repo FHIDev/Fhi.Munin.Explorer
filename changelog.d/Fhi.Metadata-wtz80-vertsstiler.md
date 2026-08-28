@@ -23,3 +23,11 @@ category: Notes for hosts
   Both sample hosts' `host.css` now sets `table-layout: fixed` on
   `munin-explorer-kilde__datasamlinger` with four percentage widths and `overflow-wrap: anywhere`;
   a host writing its own rule for that class wants the same. (Fhi.Metadata-wtz80)
+- **Do not indent the top level of the delkilde list.** The `<ul>` is a SIBLING of the table holding
+  the kilde's own datasamlinger, and a rule that indents it claims a parent it does not have: the
+  first attempt put the top-level waves 36px in, directly under the last row of that table and with
+  no gap, and every reader of the page took Tromsø4 through Tromsø7 to be children of Tromsø3. The
+  markup said otherwise, and nobody can see markup. Indentation is spent on depth INSIDE the tree
+  only. Both sample hosts draw each delkilde as a bordered box instead, flush with the table at the
+  top level, so a nested wave is inset by its parent box's own padding rather than by a rule that
+  has to know how deep it is. (Fhi.Metadata-wtz80)
