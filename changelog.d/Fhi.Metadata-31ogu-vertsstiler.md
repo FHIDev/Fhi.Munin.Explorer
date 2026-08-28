@@ -10,3 +10,7 @@ category: Notes for hosts
 - The two retry buttons wear `button-square--secondary` where they wore `button-square--ghost`,
   which is Stiler's own filled pair and the one Tøm søket already uses. No new name, and nothing
   further owed for it. (Fhi.Metadata-31ogu)
+- `aria-busy="true"` appears on the failure box while the retry it offered is running. Both sample
+  hosts draw a gradient wave across the box from it, behind a `prefers-reduced-motion: reduce`
+  guard, since a moving gradient is what WCAG 2.3.3 asks to be able to turn off. A host that styles
+  nothing for it loses only the wave: the words in the box already say a retry is running.

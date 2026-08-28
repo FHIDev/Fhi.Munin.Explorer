@@ -26,6 +26,10 @@ internal sealed record Texts(
     // no countdown: Retry-After is read and carried on the exception for a host that logs it, and
     // never shown. Decision Robin 2026-08-26.
     string RateLimitError,
+    // What the failure box says while the retry it offered is running. The box stays and only its
+    // words change: the button inside must not leave under the focus of whoever just pressed it,
+    // and a box that empties itself for a few seconds reads as a control with nothing to do.
+    string Retrying,
 
     // The button beside a failure, so the reader has a way forward and not only a sentence.
     // Named for what it retries rather than "Prøv igjen": the search and the counts report into
@@ -497,6 +501,7 @@ internal sealed record Texts(
         Loading: "Henter variabler …",
         Error: "Kunne ikke hente variabler nå. Prøv igjen om litt.",
         RateLimitError: "Du har gjort for mange forespørsler. Vent litt før du prøver igjen.",
+        Retrying: "Prøver igjen …",
         RetrySearch: "Prøv søket på nytt",
         NotSpecified: "Ikke oppgitt",
         SortDefault: "Standard",
@@ -746,6 +751,7 @@ internal sealed record Texts(
         Loading: "Loading variables …",
         Error: "Could not load variables right now. Please try again shortly.",
         RateLimitError: "You have made too many requests. Please wait a little before trying again.",
+        Retrying: "Trying again …",
         RetrySearch: "Try the search again",
         NotSpecified: "Not specified",
         SortDefault: "Default",

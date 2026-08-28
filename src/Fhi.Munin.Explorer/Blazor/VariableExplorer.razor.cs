@@ -619,6 +619,12 @@ public partial class VariableExplorer : ComponentBase
 
     private string Busy => _loading ? "true" : "false";
 
+    /// <summary>Whether the rows' failure box is showing a retry in progress rather than a failure.</summary>
+    private bool RetryingRows => _loading && _failedRows is not null;
+
+    /// <summary>What that box says: the failure, or that the offer beside it is being answered.</summary>
+    private string? RowsAlert => RetryingRows ? T.Retrying : _error;
+
     /// <summary>The sizes the reader chooses between, which are Runa's own.</summary>
     private static readonly int[] PageSizeOptions = [10, 20, 50];
 

@@ -309,12 +309,15 @@ else
         @* The sentence and its way out on one row. The wrapper is inside the region and drawn only
            when there is something to say, so the region itself stays classless and always present
            — the two things its own note above depends on. (Fhi.Metadata-31ogu) *@
-        @if (_error is not null || _failedRows is not null)
+        @if (RowsAlert is not null || _failedRows is not null)
         {
         <div class="munin-explorer-alert">
-        @if (_error is not null)
+        @* The box stays and only its words change while the retry runs. Emptying it would leave the
+           button standing alone, and taking the button with it would drop the focus of whoever
+           pressed it — aria-busy is what a host draws the waiting on. *@
+        @if (RowsAlert is not null)
         {
-            <p class="infobox infobox--bg-yellow">@_error</p>
+            <p class="infobox infobox--bg-yellow" aria-busy="@(RetryingRows ? "true" : null)">@RowsAlert</p>
         }
         @* Inside the region and not beside it, so the failure and the way out of it are announced
            in one utterance rather than the interruption saying only that something went wrong.

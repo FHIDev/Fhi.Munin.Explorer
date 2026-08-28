@@ -462,6 +462,39 @@ public class ShareableStateTest : BunitContext
     }
 
     [Fact]
+    public void Retry_WhileTheRetryIsRunning_ThenTheBoxSaysSoInsteadOfEmptying()
+    {
+        // The reader saw the sentence vanish while the button stayed, which reads as a control
+        // with nothing to answer. The box cannot leave — the button inside it would go with it,
+        // out from under the focus of whoever pressed it — so its words change instead.
+        var client = new GatedClient(total: 300) { FailOn = 2, GateOn = 3 };
+
+        var cut = Render(client, b => b.Add(c => c.Page, 2));
+
+        ClickSize(cut, "50");
+
+        var box = cut.WaitForElement("div[role='alert'] p.infobox");
+
+        Assert.DoesNotContain("Prøver igjen", box.TextContent);
+        Assert.Null(box.GetAttribute("aria-busy"));
+
+        cut.Find("div[role='alert'][aria-live='assertive'] button").Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            var busy = cut.Find("div[role='alert'] p.infobox");
+
+            Assert.Equal("Prøver igjen …", busy.TextContent);
+            Assert.Equal("true", busy.GetAttribute("aria-busy"));
+        });
+
+        // And the button is still there to be focused, which is the whole reason the box stayed.
+        Assert.Single(cut.FindAll("div[role='alert'][aria-live='assertive'] button"));
+
+        client.Release();
+    }
+
+    [Fact]
     public void PageSize_WhenAScreenReaderMeetsTheControl_ThenEachSizeSaysWhatItIsFor()
     {
         // "20" is what the button says and not what it means. The group is named by the words on
