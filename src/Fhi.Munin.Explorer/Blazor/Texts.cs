@@ -253,9 +253,12 @@ internal sealed record Texts(
     // what the API sent, exactly like AccessRightsNames above: a token the catalogue adds after
     // this copy was taken shows as its CURIE, which is ugly and true, rather than as nothing.
     IReadOnlyDictionary<string, string> HealthCategoryNames,
-    // Runa says "Datasamlinger" over a kilde's datasamling table; Kelda says "Delkilder og
-    // datasamlinger" over the same rows. One word of difference is not worth a second table — see
-    // KildeView.DataCollectionsHeading.
+    // The heading over a kilde's datasamling section when the source HAS delkilder — in either
+    // explorer, since the section draws the delkilde tree and the word is about the source rather
+    // than about who is rendering it. Kelda also passes it explicitly, unconditionally, which is
+    // what Munin's own Kelda says; Runa passes nothing and lets the source decide. A source with no
+    // delkilder takes HeadingDataCollections above instead. See
+    // KildeView.DefaultDataCollectionsHeading.
     string HeadingDelkilderAndDataCollections,
     // The sections Kelda has over a kilde and Runa has not, measured on the same source in both on
     // 2026-08-20. They are markup Kelda hands to KildeView.Sections rather than markup inside that

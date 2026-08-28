@@ -129,15 +129,35 @@ public sealed partial class KildeView : ComponentBase
             ];
 
     /// <summary>
-    /// The heading for the datasamling section, when the explorer using this view calls it
-    /// something else.
+    /// The heading for the datasamling section, when the explorer using this view wants a word of
+    /// its own over it.
     /// </summary>
     /// <remarks>
-    /// Runa says "Datasamlinger"; Kelda says "Delkilder og datasamlinger" over the same data. That
-    /// is a difference of one word, and one word is not worth a second table.
+    /// Kelda passes "Delkilder og datasamlinger" unconditionally, which is what Munin's own Kelda
+    /// says. Runa passes nothing and takes <see cref="DefaultDataCollectionsHeading"/>, which now
+    /// follows the source rather than the explorer.
     /// </remarks>
     [Parameter]
     public string? DataCollectionsHeading { get; set; }
+
+    /// <summary>
+    /// What the section is called when the caller does not say: "Delkilder og datasamlinger" over a
+    /// source that has delkilder, "Datasamlinger" over one that has not.
+    /// </summary>
+    /// <remarks>
+    /// It followed the explorer until the section started drawing the delkilde tree — Runa said
+    /// "Datasamlinger" and Kelda said "Delkilder og datasamlinger" over identical rows, which was a
+    /// difference of one word over one flat table and not worth a parameter's worth of argument.
+    /// <para>
+    /// It is not that any more. The section now draws the delkilder themselves, so on Tromsø the
+    /// Runa wording headed five waves and promised none of them — the heading was describing the
+    /// old section. Which of the two words is right is a question about the SOURCE, not about who
+    /// is rendering it, so the answer comes from the source: a kilde with no delkilder still says
+    /// "Datasamlinger", because there is nothing else under it to name.
+    /// </para>
+    /// </remarks>
+    private string DefaultDataCollectionsHeading =>
+        Delkilder.Count > 0 ? T.HeadingDelkilderAndDataCollections : T.HeadingDataCollections;
 
     /// <summary>
     /// Every datasamling the source holds, including those hanging off a delkilde.

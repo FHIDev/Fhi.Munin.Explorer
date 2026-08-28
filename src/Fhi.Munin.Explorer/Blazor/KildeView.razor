@@ -64,7 +64,7 @@
                    how it is arranged. *@
                 @if (DataCollections.Count > 0 || Delkilder.Count > 0)
                 {
-                    @Heading(BlockLevel, DataCollectionsHeading ?? T.HeadingDataCollections, "headline headline-s")
+                    @Heading(BlockLevel, DataCollectionsHeading ?? DefaultDataCollectionsHeading, "headline headline-s")
                     @DataCollectionStructure
                 }
 

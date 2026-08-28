@@ -701,8 +701,44 @@ public class KildeViewTest : BunitContext
         Assert.Equal(["[Biodata]", "[Tromsø 4]", "  Spørreskjema"], Outline(cut));
 
         // And the section is headed, though not one datasamling hangs off the kilde itself. The
-        // heading follows what the source holds anywhere, not what it holds at the top.
-        Assert.Contains("Datasamlinger", BlockHeadings(cut));
+        // heading follows what the source holds anywhere, not what it holds at the top — and it
+        // names the delkilder, because there are some.
+        Assert.Contains("Delkilder og datasamlinger", BlockHeadings(cut));
+    }
+
+    [Fact]
+    public void DataCollections_WhenNoCallerNamesTheSection_ThenTheSourceDecidesWhichWordItGets()
+    {
+        // The heading used to follow the EXPLORER: Runa said "Datasamlinger" and Kelda said
+        // "Delkilder og datasamlinger" over identical rows, which was one word of disagreement
+        // about one flat table.
+        //
+        // The section draws the delkilder themselves now, so the Runa wording headed five of
+        // Tromsø's waves while promising none of them. Which word is right is a question about the
+        // source rather than about who is rendering it, so the source answers it — and a source
+        // with no delkilder keeps the old word, because there is nothing else under it to name.
+        Assert.Contains("Delkilder og datasamlinger", BlockHeadings(Render(Study())));
+        Assert.Contains("Datasamlinger", BlockHeadings(Render(Kilde())));
+
+        // Exact rather than substring, in both directions: "Datasamlinger" IS a substring of
+        // "Delkilder og datasamlinger", so a check that only searched the markup would call the
+        // wrong heading right. BlockHeadings returns the headings themselves, and Assert.Contains
+        // over a list compares whole elements.
+        Assert.DoesNotContain("Datasamlinger", BlockHeadings(Render(Study())));
+        Assert.DoesNotContain("Delkilder og datasamlinger", BlockHeadings(Render(Kilde())));
+    }
+
+    [Fact]
+    public void DataCollections_WhenTheCallerNamesTheSection_ThenItsWordWinsOverTheSourcesOwn()
+    {
+        // Kelda passes "Delkilder og datasamlinger" unconditionally, which is what Munin's Kelda
+        // says, and the source-led default must not quietly take that decision back off it. Asked
+        // of a source with NO delkilder, where the default and the override disagree — on Study()
+        // they agree, and a test that could not tell them apart would pass on an implementation
+        // that ignored the parameter entirely.
+        Assert.Contains(
+            "Delkilder og datasamlinger",
+            BlockHeadings(Render(Kilde(), dataCollectionsHeading: "Delkilder og datasamlinger")));
     }
 
     [Fact]

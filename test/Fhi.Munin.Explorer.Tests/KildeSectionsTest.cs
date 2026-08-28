@@ -330,8 +330,13 @@ public class KildeSectionsTest : BunitContext
 
         var cut = OpenInRuna(kilde);
 
+        // "Delkilder og datasamlinger" in Runa too, and that is not Kelda leaking in: Runa passes
+        // no heading at all, and the shared core's default reads the SOURCE. Tromsø has five
+        // delkilder and the section now draws them, so the word that named the old flat table would
+        // head five waves while promising none of them. Kelda still passes its own copy of the
+        // string; what changed is that Runa no longer has to.
         Assert.Equal(
-            ["Metadata", "Datasamlinger", "Kildeinformasjon", "Statistikk"],
+            ["Metadata", "Delkilder og datasamlinger", "Kildeinformasjon", "Statistikk"],
             TextOf(cut.FindAll(BlockHeadings)));
 
         // Said again over the text rather than only over the headings: a section reduced to a
