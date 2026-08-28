@@ -436,11 +436,9 @@ public class ShareableStateTest : BunitContext
     [Fact]
     public void PageSize_WhenTheChangeFailsAndIsRetried_ThenTheSizeTheReaderAskedForIsWhatArrives()
     {
-        // The retry replays the request that failed, and the size has to be part of it. A failed
-        // change rolls the size back to describe the rows still on screen, so a retry reading the
-        // fields as they stand would fetch the OLD size, succeed and clear the error — reporting a
-        // change that never happened, from the one control the reader cannot press again once a
-        // single-page result has taken the pager away.
+        // The size has to travel in the replayed request. A failed change rolls it back to describe
+        // the rows still on screen, so a retry reading the fields as they stand would fetch the OLD
+        // size, succeed, and clear the error — reporting a change that never happened.
         var client = new SizedClient(total: 300);
         var reported = new List<int>();
 
@@ -516,5 +514,104 @@ public class ShareableStateTest : BunitContext
         Assert.Equal(
             ["false", "false", "true"],
             cut.FindAll(".munin-explorer-pagination-size button").Select(b => b.GetAttribute("aria-pressed")));
+    }
+
+    /// <summary>Answers on demand, so a fetch can be held in flight and looked at.</summary>
+    private sealed class GatedClient(int total) : EmptyMuninExplorerClient
+    {
+        private readonly TaskCompletionSource _gate = new();
+
+        public int Calls { get; private set; }
+
+        /// <summary>Which call throws, so the retry button has a failure to answer.</summary>
+        public int FailOn { get; set; } = -1;
+
+        /// <summary>Which call waits for <see cref="Release"/> before answering.</summary>
+        public int GateOn { get; set; } = -1;
+
+        public void Release() => _gate.TrySetResult();
+
+        public override async Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
+            SortField sort = SortField.Default,
+            SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default)
+        {
+            Calls++;
+
+            if (Calls == FailOn)
+            {
+                throw new HttpRequestException("nede");
+            }
+
+            if (Calls == GateOn)
+            {
+                await _gate.Task;
+            }
+
+            var taken = Math.Clamp(total - ((page - 1) * pageSize), 0, pageSize);
+
+            return new Page<VariableSummary>
+            {
+                Items = [.. Enumerable.Range(1, taken).Select(i => Row($"p{page}v{i}"))],
+                TotalCount = total,
+                PageNumber = page,
+                Size = pageSize,
+                TotalPages = (int)Math.Ceiling(total / (double)pageSize),
+            };
+        }
+    }
+
+    private static IReadOnlyList<string?> SizeButtonState(IRenderedComponent<VariableExplorer> cut) =>
+        [.. cut.FindAll(".munin-explorer-pagination-size button").Select(b => b.GetAttribute("aria-disabled"))];
+
+    [Fact]
+    public void PageSize_WhileTheFetchIsStillRunning_ThenTheSizesReadAsInertRatherThanLive()
+    {
+        // SetPageSizeAsync drops a press that arrives mid-fetch, and until this it dropped it
+        // behind a control that still looked live — so a reader waiting on a slow answer presses
+        // again, nothing happens, and nothing says why.
+        var client = new GatedClient(total: 300) { GateOn = 2 };
+
+        var cut = Render(client);
+
+        Assert.All(SizeButtonState(cut), state => Assert.Null(state));
+
+        ClickSize(cut, "50");
+
+        // Waited for rather than read straight after the click: the press sets _loading and asks
+        // for a render, and whether that render has been applied by the next line is a matter of
+        // timing. It held locally and did not on a slower CI runner.
+        cut.WaitForAssertion(() => Assert.All(SizeButtonState(cut), state => Assert.Equal("true", state)));
+
+        client.Release();
+        cut.WaitForAssertion(() => Assert.All(SizeButtonState(cut), Assert.Null));
+    }
+
+    [Fact]
+    public void Retry_WhileTheRetryItStartedIsStillRunning_ThenItReadsAsInertRatherThanLive()
+    {
+        // Pre-existing behaviour, untested until now: FetchRowsAsync clears the offer and
+        // re-renders before it awaits, so the button the reader just pressed says it is busy
+        // instead of inviting a second press that RetryRowsAsync would drop.
+        var client = new GatedClient(total: 300) { FailOn = 2, GateOn = 3 };
+
+        var cut = Render(client, b => b.Add(c => c.Page, 2));
+
+        ClickSize(cut, "50");
+
+        // The button arrives with the failure it answers, so wait for it rather than for the click
+        // to have finished rendering by the time the next line runs.
+        var retry = cut.WaitForElement("div[role='alert'][aria-live='assertive'] button");
+
+        Assert.Null(retry.GetAttribute("aria-disabled"));
+
+        retry.Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(
+            "true",
+            cut.Find("div[role='alert'][aria-live='assertive'] button").GetAttribute("aria-disabled")));
+
+        client.Release();
     }
 }

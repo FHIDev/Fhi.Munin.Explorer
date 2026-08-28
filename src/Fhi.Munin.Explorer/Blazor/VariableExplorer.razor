@@ -780,10 +780,14 @@ else
                     <span class="caption" id="@PageSizeLabelId">@T.VariablesPerPage</span>
                     @foreach (var size in PageSizeOptions)
                     {
+                        @* Inert while a fetch is in flight, the same treatment the retry button
+                           gets: SetPageSizeAsync drops the press anyway, and a control that looks
+                           live and does nothing reads as broken rather than busy. *@
                         <button class="@PageSizeClass(size)"
                                 type="button"
                                 aria-label="@T.VariablesPerPageLabel(size)"
                                 aria-pressed="@(ClampedPageSize == size ? "true" : "false")"
+                                aria-disabled="@AriaDisabled(!_loading)"
                                 @onclick="() => SetPageSizeAsync(size)">@size</button>
                     }
                 </div>

@@ -16,6 +16,32 @@ public sealed class MuninExplorerOptions
 /// <summary>The one call a host makes to use the explorer components.</summary>
 public static class ServiceCollectionExtensions
 {
+    /// <summary>How long a call may take in total before the reader is told it failed.</summary>
+    private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(30);
+
+    /// <summary>How long to spend reaching the host before giving up on it.</summary>
+    private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(5);
+
+    /// <summary>How long a connection may be kept before a fresh one is opened for it.</summary>
+    private static readonly TimeSpan ConnectionLifetime = TimeSpan.FromSeconds(30);
+
+    // ConnectTimeout is the limit that bites on an unreachable host; HttpClient.Timeout is the
+    // ceiling and not the way out. PooledConnectionLifetime retires connections and re-resolves
+    // DNS. Plain handler on browser, where neither it nor SocketsHttpHandler exists.
+    private static HttpMessageHandler PrimaryHandler()
+    {
+        if (OperatingSystem.IsBrowser())
+        {
+            return new HttpClientHandler();
+        }
+
+        return new SocketsHttpHandler
+        {
+            ConnectTimeout = ConnectTimeout,
+            PooledConnectionLifetime = ConnectionLifetime,
+        };
+    }
+
     /// <summary>Registers the explorer's data client.</summary>
     /// <remarks>
     /// Calls are anonymous unless the host has already registered its own
@@ -51,6 +77,7 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<IMuninExplorerTokenProvider, AnonymousTokenProvider>();
 
         services.AddTransient<ClientHeaderHandler>();
+        services.AddTransient<TransientRetryHandler>();
         services.AddTransient<BearerTokenHandler>();
 
         // Scoped, so the surfaces sharing a circuit share one copy of the user's lists. Never
@@ -62,13 +89,25 @@ public static class ServiceCollectionExtensions
             // Trailing slash so relative routes ("api/explorer/...") resolve against the
             // base address instead of replacing its last segment.
             client.BaseAddress = new Uri(options.ApiBaseUrl.TrimEnd('/') + "/");
+
+            // Not the 100-second default, which is a number chosen for a background job and not
+            // for someone waiting at a page. A healthy variable search answers in well under a
+            // second; anything still running at thirty is not going to be read. (Fhi.Metadata-phgeg)
+            client.Timeout = RequestTimeout;
         })
+        .ConfigurePrimaryHttpMessageHandler(PrimaryHandler)
         // Identifies this component to Munin's observability — see ClientHeaderHandler.
         .AddHttpMessageHandler<ClientHeaderHandler>()
         // Attaches the host's user token when it supplies one. With no provider
         // registered the default supplies none and calls stay anonymous, which is what
         // public metadata browsing needs.
-        .AddHttpMessageHandler<BearerTokenHandler>();
+        .AddHttpMessageHandler<BearerTokenHandler>()
+        // Innermost, so it repeats the network call and not the whole chain above it.
+        .AddHttpMessageHandler<TransientRetryHandler>()
+        // The pairing PooledConnectionLifetime asks for: with both set, the factory would discard
+        // a pool every two minutes while the handler retires connections on its own schedule, and
+        // which of the two refreshed DNS would be whichever fired first.
+        .SetHandlerLifetime(Timeout.InfiniteTimeSpan);
 
         return services;
     }
