@@ -9,7 +9,15 @@ namespace Fhi.Munin.Explorer.Client;
 /// <summary>Options a host supplies when registering the explorer.</summary>
 public sealed class MuninExplorerOptions
 {
-    /// <summary>Base URL of the Munin API, e.g. <c>https://munin.skytest.fhi.no</c>.</summary>
+    /// <summary>
+    /// Base URL of the Munin API, e.g. <c>https://runa.munin.skytest.fhi.no</c>.
+    /// <para>
+    /// Use the <c>runa</c> (or <c>kelda</c>) host, not the bare <c>munin.skytest.fhi.no</c>: the bare one
+    /// resolves to a private address and is reachable only from inside FHI's network, so a host that uses
+    /// it works on the FHI network and fails silently once deployed elsewhere. Both explorer hosts route
+    /// to the same API, so one value serves the variable and the source explorer alike.
+    /// </para>
+    /// </summary>
     public string? ApiBaseUrl { get; set; }
 }
 
