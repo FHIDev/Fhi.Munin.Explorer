@@ -209,7 +209,10 @@ jobs:
           # The word both titles share, not either of them: the exact-title filter below picks the
           # thread, and a query naming one title would never return the other kind — leaving the
           # job to open a fresh issue every night it stayed red.
-          matches=$(gh issue list --state open --search 'contract in:title' --json number,title,author \
+          # --limit because the default is 30, and the exact-title filter below runs on whatever this
+          # returns: a thread paged out reads as "none open" and opens a duplicate every night.
+          matches=$(gh issue list --state open --search 'contract in:title' --limit 200 \
+            --json number,title,author \
             --jq ".[] | select(.title == \"$TITLE\" and .author.is_bot) | .number")
           existing=${matches%%$'\n'*}
 
