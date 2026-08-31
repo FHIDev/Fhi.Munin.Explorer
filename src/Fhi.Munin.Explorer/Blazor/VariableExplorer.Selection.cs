@@ -242,6 +242,53 @@ public partial class VariableExplorer
     }
 
     /// <summary>
+    /// Leave the open owner and narrow the list to that owner's variables.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The other half of "← Tilbake til variabler", which returns to the whole list. Runa's kilde
+    /// and datasamling views both link back to the variable list pre-filtered on what the reader
+    /// was looking at; this is that path, and it is the same filter the facet panel sets — no new
+    /// state and no new contract, which is why it goes through <see cref="ApplyFilterAsync"/>
+    /// rather than filtering the rows on the way past. A list narrowed without the filter being
+    /// set would look right and leave the facet panel showing nothing to remove.
+    /// </para>
+    /// <para>
+    /// The id is re-read from <see cref="_detail"/> for the reason
+    /// <see cref="ToggleSourceAsync"/> re-reads it: that payload is what the open view was drawn
+    /// from, so a press can only ever narrow to an owner the view actually names.
+    /// </para>
+    /// <para>
+    /// Replaces that facet rather than adding to it — the button says "bare variabler fra denne
+    /// datakilden", and appending to a kilde already chosen would widen the list instead. The
+    /// reader's other facets are left alone: they narrowed the search this variable was found in,
+    /// and clearing them silently would undo work the button never mentions.
+    /// </para>
+    /// <para>
+    /// Closed before the filter is applied, not after: the drill-in renders <em>instead of</em>
+    /// the list, so applying first would fetch rows behind a view that is still covering them.
+    /// <see cref="ClearSource"/> rather than <see cref="CloseSourceAsync"/>, so that pressing this
+    /// while the owner is still loading disowns that fetch instead of leaving it to land into a
+    /// panel that has gone.
+    /// </para>
+    /// </remarks>
+    private async Task ShowSourceVariablesAsync()
+    {
+        if (_sourceKind is not { } kind || _detail is not { } detail || SourceIdOf(detail, kind) is not { } id)
+        {
+            return;
+        }
+
+        var narrowed = kind == SourceKind.Kilde
+            ? _filter with { KildeIds = [id] }
+            : _filter with { DatasamlingIds = [id] };
+
+        ClearSource();
+
+        await ApplyFilterAsync(narrowed);
+    }
+
+    /// <summary>
     /// Fetch one owner into the open panel.
     /// </summary>
     /// <remarks>

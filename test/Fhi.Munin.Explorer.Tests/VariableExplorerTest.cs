@@ -6208,6 +6208,110 @@ public class VariableExplorerTest : BunitContext
         Assert.Equal(1, client.KildeCalls);
     }
 
+    /// <summary>
+    /// The drill-in's second way out: back to the list, narrowed to the owner on screen.
+    /// </summary>
+    /// <remarks>
+    /// Found by its own words among the region's direct children rather than by index, so it
+    /// cannot silently start matching a button <see cref="KildeView"/> draws inside the same
+    /// region — and so a rename fails this helper rather than moving the click onto "Tilbake".
+    /// </remarks>
+    private static AngleSharp.Dom.IElement NarrowButton(IRenderedComponent<VariableExplorer> cut) =>
+        SourcePanel(cut).Children
+            .Where(child => child.TagName == "BUTTON")
+            .Single(button => button.TextContent.StartsWith("Vis bare variabler"));
+
+    [Fact]
+    public void Source_WhenTheKildesVariablesAreAskedFor_ThenTheViewClosesAndTheFilterIsSet()
+    {
+        // The acceptance criterion, and the trap it warns about. A list that merely came back
+        // shorter would satisfy a row count and still be wrong: the filter has to be SET, so the
+        // facet panel shows it as active and the reader can take it off again. FilterChanged is
+        // what the component reports as actually in force, and it is the same value the host
+        // writes into its own URL — which is what makes the narrowed list a shareable link.
+        VariableFilter? reported = null;
+        var client = TwoRows();
+        var cut = RenderWith(client, b => b.Add(c => c.FilterChanged, f => reported = f));
+
+        Toggles(cut)[0].Click();
+        SourceToggles(cut)[0].Click();
+        NarrowButton(cut).Click();
+
+        Assert.Empty(cut.FindAll(".munin-explorer-drilldown"));
+        Assert.Equal(new VariableFilter { KildeIds = [AlsId] }, reported);
+    }
+
+    [Fact]
+    public void Source_WhenTheDatasamlingsVariablesAreAskedFor_ThenTheFilterNamesTheDatasamling()
+    {
+        // The sibling the bead asks for by name. The datasamling view had the same gap and gets
+        // the same button; what differs is only which facet it writes, so a shared handler that
+        // wrote KildeIds for both would pass the kilde test and quietly mis-file this one.
+        VariableFilter? reported = null;
+        var client = TwoRows();
+        var cut = RenderWith(client, b => b.Add(c => c.FilterChanged, f => reported = f));
+
+        Toggles(cut)[0].Click();
+        SourceToggles(cut)[1].Click();
+        NarrowButton(cut).Click();
+
+        Assert.Empty(cut.FindAll(".munin-explorer-drilldown"));
+        Assert.Equal(new VariableFilter { DatasamlingIds = [InklusjonId] }, reported);
+    }
+
+    [Fact]
+    public void Source_WhenTheKildesVariablesAreAskedFor_ThenTheReadersOtherFacetsSurvive()
+    {
+        // The button narrows to one kilde; it does not start a new search. The facets the reader
+        // already set are what the variable was found under, and dropping them silently would
+        // undo work the button never mentions — and hand back a wider list than the one they
+        // drilled in from, which is the opposite of what it says it does.
+        VariableFilter? reported = null;
+        var client = TwoRows();
+        var cut = RenderWith(client, b => b
+            .Add(c => c.Filter, new VariableFilter { DataTypes = ["Integer"] })
+            .Add(c => c.FilterChanged, f => reported = f));
+
+        Toggles(cut)[0].Click();
+        SourceToggles(cut)[0].Click();
+        NarrowButton(cut).Click();
+
+        Assert.Equal(new VariableFilter { DataTypes = ["Integer"], KildeIds = [AlsId] }, reported);
+    }
+
+    [Fact]
+    public void Source_WhenAnotherKildeWasAlreadyChosen_ThenNarrowingReplacesItRatherThanAdding()
+    {
+        // "Vis bare variabler fra denne datakilden" has to mean bare. Appending to KildeIds is
+        // what the facet panel's own toggle does, and it would widen the list to two kilder while
+        // the button claims to have narrowed it to one.
+        var other = new Guid("eeeeeeee-0000-0000-0000-0000000000ff");
+        VariableFilter? reported = null;
+        var client = TwoRows();
+        var cut = RenderWith(client, b => b
+            .Add(c => c.Filter, new VariableFilter { KildeIds = [other] })
+            .Add(c => c.FilterChanged, f => reported = f));
+
+        Toggles(cut)[0].Click();
+        SourceToggles(cut)[0].Click();
+        NarrowButton(cut).Click();
+
+        Assert.Equal(new VariableFilter { KildeIds = [AlsId] }, reported);
+    }
+
+    [Fact]
+    public void Source_WhenTheListIsShowing_ThenThereIsNoNarrowingButton()
+    {
+        // It belongs to the drill-in, not to the list: on the list there is no owner to narrow to,
+        // and a button offering to filter by "this kilde" with no kilde on screen has nothing to
+        // name. This is what SourceVariablesText returning null buys.
+        var cut = RenderWith(TwoRows());
+
+        Toggles(cut)[0].Click();
+
+        Assert.DoesNotContain("Vis bare variabler", cut.Markup);
+    }
+
     [Fact]
     public void Source_WhenOpened_ThenTheToggleAndTheRegionAreWiredToEachOther()
     {
