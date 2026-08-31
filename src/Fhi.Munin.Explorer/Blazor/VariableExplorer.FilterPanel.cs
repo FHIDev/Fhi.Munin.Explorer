@@ -14,11 +14,10 @@ public partial class VariableExplorer
     /// instead, which is the right answer for most of them, because a facet the API returned nothing
     /// for is one there is nothing to choose from. Variabelgruppe is the exception: its emptiness is
     /// a message.
-    /// </remarks>
-    /// <remarks>
-    /// <c>Body</c> is a facet whose control is not a list of values — the dataperiode's date
-    /// fields, which hold no <see cref="FacetValue"/> and so survive neither older shape.
-    /// (Fhi.Metadata-uidue)
+    /// <para>
+    /// <c>Body</c> is a facet whose control is not a list of values — the dataperiode's date fields,
+    /// which hold no <see cref="FacetValue"/> and so survive neither other shape. (Fhi.Metadata-uidue)
+    /// </para>
     /// </remarks>
     private sealed record FacetGroup(
         string Key,
@@ -228,9 +227,9 @@ public partial class VariableExplorer
         builder.CloseElement();
     }
 
-    private string DateFromId => $"munin-explorer-dato-fra-{_instance}";
+    private string DateFromId => $"munin-explorer-date-from-{_instance}";
 
-    private string DateToId => $"munin-explorer-dato-til-{_instance}";
+    private string DateToId => $"munin-explorer-date-to-{_instance}";
 
     /// <summary>
     /// A reported bound as the date it names, without asking what time zone anyone is in.
