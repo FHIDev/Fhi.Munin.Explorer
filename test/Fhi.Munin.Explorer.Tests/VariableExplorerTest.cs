@@ -3062,6 +3062,47 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
+    public void Filter_WhenDatesAreSet_ThenTheFoldedDataperiodeSaysItIsNarrowing()
+    {
+        // Every other facet counts its chosen values into the summary, so a reader who folds one
+        // can still see it is doing something. The dataperiode holds no values to count, so it has
+        // to report the number itself — otherwise a folded facet over an active date filter reads
+        // as inert, which is the one state the summary exists to rule out.
+        var range = new DateInterval
+        {
+            Min = new DateTimeOffset(2010, 1, 1, 0, 0, 0, TimeSpan.Zero),
+            Max = new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero)
+        };
+        var cut = RenderWith(
+            new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: range)),
+            b => b.Add(c => c.Filter, new VariableFilter { DataFrom = new DateOnly(2015, 3, 4) }));
+
+        Assert.Contains("Dataperiode (1)", FacetHeadings(cut));
+
+        // Both ends set counts as two, the same way two ticked values in any other facet do.
+        DateInputs(cut)[1].Change("2020-12-31");
+
+        Assert.Contains("Dataperiode (2)", FacetHeadings(cut));
+    }
+
+    [Fact]
+    public void Filter_WhenNoDatesAreSet_ThenTheDataperiodeSummaryCarriesNoCount()
+    {
+        // The other direction: a count of zero must not draw "(0)", which would report a filter
+        // nobody has set.
+        var range = new DateInterval
+        {
+            Min = new DateTimeOffset(2010, 1, 1, 0, 0, 0, TimeSpan.Zero),
+            Max = new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero)
+        };
+        var cut = RenderWith(new FilteringClient(
+            OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: range)));
+
+        Assert.Contains("Dataperiode", FacetHeadings(cut));
+        Assert.DoesNotContain("Dataperiode (", string.Join("|", FacetHeadings(cut)), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Filter_WhenTheApiReportsNoDateRange_ThenNoDataperiodeFacetIsDrawn()
     {
         // THE TRAP, second direction, and the one the third FacetGroup shape could most easily

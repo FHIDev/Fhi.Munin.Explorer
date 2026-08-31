@@ -16,7 +16,9 @@ public partial class VariableExplorer
     /// a message.
     /// <para>
     /// <c>Body</c> is a facet whose control is not a list of values — the dataperiode's date fields,
-    /// which hold no <see cref="FacetValue"/> and so survive neither other shape. (Fhi.Metadata-uidue)
+    /// which hold no <see cref="FacetValue"/> and so survive neither other shape. Such a facet has
+    /// to report <c>ChosenCount</c> itself, or it would say nothing in the summary while narrowing.
+    /// (Fhi.Metadata-uidue)
     /// </para>
     /// </remarks>
     private sealed record FacetGroup(
@@ -25,10 +27,11 @@ public partial class VariableExplorer
         bool OpenByDefault,
         IReadOnlyList<FacetValue> Values,
         string? EmptyText = null,
-        RenderFragment? Body = null)
+        RenderFragment? Body = null,
+        int? ChosenCount = null)
     {
         /// <summary>How many values in this facet are selected, counting nested ones.</summary>
-        public int SelectedCount => Selected(Values);
+        public int SelectedCount => ChosenCount ?? Selected(Values);
 
         private static int Selected(IReadOnlyList<FacetValue> values) =>
             values.Sum(value => (value.Selected ? 1 : 0) + Selected(value.Children));
@@ -170,8 +173,13 @@ public partial class VariableExplorer
             return null;
         }
 
+        // One per bound the reader has set, so a folded dataperiode says it is narrowing the way
+        // every other facet does. Without it the summary reads plain "Dataperiode" over an active
+        // date filter — the facet holds no values to count.
+        var chosen = (_filter.DataFrom is null ? 0 : 1) + (_filter.DataTo is null ? 0 : 1);
+
         return new FacetGroup("dataperiode", T.FieldDataPeriod, OpenByDefault: false, [],
-                              Body: DateFields(range));
+                              Body: DateFields(range), ChosenCount: chosen);
     }
 
     /// <summary>The from and to fields, each bounded by the range and by the other.</summary>
