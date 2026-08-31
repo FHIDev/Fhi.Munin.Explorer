@@ -2,27 +2,9 @@ using System.Text.RegularExpressions;
 
 namespace Fhi.Munin.Explorer.Tests;
 
-/// <summary>
-/// That the checkout names the Munin test API only through a host published outside FHI's network.
-/// </summary>
-/// <remarks>
-/// <para>
-/// The roots are named in <see cref="Roots"/> and every file at the top of the checkout is read too:
-/// <c>src/</c>, <c>samples/</c>, <c>test/</c>, <c>docs/</c>, <c>scripts/</c>, <c>.github/</c>,
-/// <c>changelog.d/</c>, and <c>README.md</c>, <c>AGENTS.md</c>, <c>CLAUDE.md</c> beside them. The
-/// wide list is deliberate: the change this guard arrives with had to fix the host by hand in
-/// <c>.github/workflows/contract-drift.yml</c> and in two files under <c>test/</c>, so a guard that
-/// read only the package and its docs could not have re-caught the one regression it is named for.
-/// The five test classes that used the bare host as an example base address were moved to the
-/// <c>runa.</c> form rather than exempted; <see cref="ExemptMarker"/> is for the handful of lines
-/// whose subject *is* the internal host, and it is per line so no whole file goes quiet.
-/// </para>
-/// <para>
-/// It reads hostnames and nothing else. A private IP address, an internal repository name or an
-/// ingress manifest written into the docs is the same class of leak and this test says nothing
-/// about it — see <c>docs/running-locally.md</c>, which describes the split in prose instead.
-/// </para>
-/// </remarks>
+// That the checkout names the Munin test API only through a host published outside FHI's network
+// (Fhi.Metadata-ip02g). Hostnames only: a private IP or an internal repository name in the docs is
+// the same leak and goes unread, so docs/running-locally.md describes that split in prose.
 public class InternalHostGuardTest
 {
     // The preceding label is part of the match on purpose: searching for the bare name alone also
@@ -33,7 +15,8 @@ public class InternalHostGuardTest
     private static readonly string[] ExternalPrefixes = ["runa.", "kelda."];
 
     /// <summary>Put on a line whose point is the internal host, such as an assertion that a message
-    /// does not contain it. Per line, so a file is never exempt as a whole.</summary>
+    /// does not contain it. Per line, so a file is never exempt as a whole, and the test below
+    /// keeps it out of every root but <c>test/</c>.</summary>
     private const string ExemptMarker = "internal-host-on-purpose";
 
     /// <summary>The internal host, written once here so the cases below can be read literally.</summary>
@@ -93,6 +76,27 @@ public class InternalHostGuardTest
         Assert.Contains(".github/workflows/contract-drift.yml", found);
         Assert.Contains("changelog.d/README.md", found);
         Assert.Contains("README.md", found);
+    }
+
+    [Fact]
+    public void Sources_WhenTheyCarryTheExemptMarker_ThenOnlyUnderTheTestProject()
+    {
+        // Per line is not per place: the marker pasted into a copy target silences the guard over
+        // exactly the files it exists to keep copyable, and the ordinary way there is fixing a red
+        // test by carrying the comment that made it green along with the snippet.
+        var elsewhere = Sources()
+            .Where(file => File.ReadAllText(file).Contains(ExemptMarker, StringComparison.Ordinal))
+            .Select(file => Path.GetRelativePath(Repo.Root, file).Replace(Path.DirectorySeparatorChar, '/'))
+            .Where(path => !path.StartsWith("test/", StringComparison.Ordinal))
+            .ToList();
+
+        Assert.True(
+            elsewhere.Count == 0,
+            "The exemption is only for lines under test/ whose subject is the internal host. These "
+            + "are copy targets, so a line exempted here ships the host to a reader who cannot "
+            + "reach it:"
+            + Environment.NewLine
+            + string.Join(Environment.NewLine, elsewhere));
     }
 
     [Theory]
