@@ -1,26 +1,26 @@
-@using System.Text
 @using Fhi.Munin.Explorer.Blazor
 @using Fhi.Munin.Explorer.Contracts
-@using Microsoft.AspNetCore.WebUtilities
 @using Microsoft.JSInterop
 @inject IJSRuntime JS
+@inject NavigationManager Nav
 
 @* The host half of the shareable-state contract, and the whole of it.
 
-   The package has no router and never touches the address bar — the host owns the URL, so
-   this is where a shared link is read and written. helsedata can copy this file nearly
-   verbatim; it is the reference implementation as much as it is the sample.
+   The package has no router and never touches the address bar — the host owns the URL, so this is
+   where a shared link is read and written. helsedata can copy this file nearly verbatim; it is the
+   reference implementation as much as it is the sample.
 
-   Everything is bound both ways. The component reports what is in force after each fetch,
-   including the corrections it makes on its own — a page past the end of a shrunken result
-   set comes back as the page that actually loaded. *@
+   What used to be here — parsing five parameters, validating two enums, and restating the
+   component's page-size default to know what to leave out — is now ExplorerUrlState in the package.
+   What is left is the part only a host can know: which query it was opened with, and when to write
+   the address bar. *@
 
-<VariableExplorer @bind-Search="_search"
-                  @bind-Filter="_filter"
-                  @bind-Sort="_sort"
-                  @bind-Direction="_direction"
-                  @bind-Page="_page"
-                  @bind-PageSize="_pageSize"
+<VariableExplorer @bind-Search="_state.Search"
+                  @bind-Filter="_state.Filter"
+                  @bind-Sort="_state.Sort"
+                  @bind-Direction="_state.Direction"
+                  @bind-Page="_state.Page"
+                  @bind-PageSize="_state.PageSize"
                   Language="@Language" />
 
 @code {
@@ -29,136 +29,67 @@
 
     [Parameter] public string Language { get; set; } = "no";
 
-    private string? _search;
-    private VariableFilter _filter = VariableFilter.None;
-    private SortField _sort = SortField.Default;
-    private SortDirection _direction = SortDirection.Ascending;
-    private int _page = 1;
+    // A mutable holder, because @bind- needs settable properties and the state itself is a record.
+    private Binding _state = new();
 
-    // The component's own default, restated because a host cannot read a parameter's default and
-    // only what differs from it belongs in the URL.
-    private const int DefaultPageSize = 20;
-
-    private int _pageSize = DefaultPageSize;
-
-    // What the address bar already says. Without it every render would call into JS to write
-    // the URL it is already showing.
+    // What the address bar already says. Without it every render would call into JS to write the
+    // URL it is already showing.
     private string? _mirrored;
 
-    protected override void OnInitialized()
-    {
-        // The filter knows its own query format, both ways — this host does not restate it.
-        _filter = VariableFilter.Parse(InitialQuery);
-
-        var query = QueryHelpers.ParseQuery(InitialQuery ?? "");
-
-        if (query.TryGetValue("search", out var search))
-        {
-            _search = search.ToString();
-        }
-
-        if (query.TryGetValue("sort", out var sort) && Named<SortField>(sort.ToString()) is { } parsedSort)
-        {
-            _sort = parsedSort;
-        }
-
-        if (query.TryGetValue("sortDir", out var direction)
-            && Named<SortDirection>(direction.ToString()) is { } parsedDirection)
-        {
-            _direction = parsedDirection;
-        }
-
-        // Not validated against the result set, deliberately: nothing here knows how many pages
-        // there are, and the component clamps it and reports back what it landed on.
-        if (query.TryGetValue("page", out var page) && int.TryParse(page.ToString(), out var parsedPage))
-        {
-            _page = Math.Max(parsedPage, 1);
-        }
-
-        // Not clamped here either, for the reason the page is not: the component holds every size
-        // to 1–100 on its way to the API, so a host repeating that rule would be a second copy of
-        // it to keep in step.
-        if (query.TryGetValue("pageSize", out var size) && int.TryParse(size.ToString(), out var parsedSize))
-        {
-            _pageSize = parsedSize;
-        }
-    }
+    protected override void OnInitialized() => _state = Binding.From(ExplorerUrlState.Parse(InitialQuery));
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        var query = BuildQuery();
+        var query = _state.ToState().ToQueryString();
 
-        if (query == _mirrored)
-        {
-            return;
-        }
-
-        _mirrored = query;
-
-        // replaceState, not pushState. Every keystroke-free interaction here — a sort, a page turn,
-        // a facet — would otherwise become a history entry, and Back would walk the reader through
-        // their own filtering one step at a time instead of leaving the site. Runa made the same
-        // call; its router writes these with replace: true.
-        await JS.InvokeVoidAsync("history.replaceState", null, "", query);
-    }
-
-    private string BuildQuery()
-    {
-        var query = new StringBuilder(_filter.ToQueryString());
-
-        Append(query, "search", _search);
-
-        // Only what differs from the default reaches the URL. A link should carry the parts of the
-        // view someone chose, not a transcript of every setting the component has.
-        if (_sort != SortField.Default)
-        {
-            Append(query, "sort", _sort.ToString());
-        }
-
-        if (_direction != SortDirection.Ascending)
-        {
-            Append(query, "sortDir", _direction.ToString());
-        }
-
-        if (_page > 1)
-        {
-            Append(query, "page", _page.ToString());
-        }
-
-        if (_pageSize != DefaultPageSize)
-        {
-            Append(query, "pageSize", _pageSize.ToString());
-        }
-
-        // "?x=1" to set, and a bare path to clear: assigning "" would leave the previous query
+        // "?x=1" to set, and the path itself to clear: assigning "" would leave the previous query
         // string in place, so clearing every filter would not clear the URL.
-        return query.Length == 0 ? "/" : "?" + query;
-    }
+        //
+        // The path from NavigationManager rather than a literal "/". replaceState writes an absolute
+        // path, and this component does not know where the host mounted it — behind a reverse proxy
+        // or in a virtual directory, "/" would send the reader out of the application entirely.
+        var url = query.Length == 0 ? new Uri(Nav.Uri).AbsolutePath : "?" + query;
 
-    /// <summary>
-    /// An enum value the query string actually names, or null.
-    /// </summary>
-    /// <remarks>
-    /// <c>Enum.TryParse</c> alone is not enough: it accepts any number, so <c>?sort=999</c> succeeds
-    /// and yields a <c>SortField</c> with value 999 that no case in the enum covers. That then
-    /// travels into the component and out to the API as a sort nobody defined. A query string is
-    /// whatever a stranger typed, so the value has to be one the enum actually declares.
-    /// </remarks>
-    private static TEnum? Named<TEnum>(string? value) where TEnum : struct, Enum
-        => Enum.TryParse<TEnum>(value, ignoreCase: true, out var parsed) && Enum.IsDefined(parsed)
-            ? parsed
-            : null;
-
-    private static void Append(StringBuilder query, string name, string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
+        if (url == _mirrored)
         {
             return;
         }
 
-        query.Append(query.Length == 0 ? "" : "&")
-             .Append(name)
-             .Append('=')
-             .Append(Uri.EscapeDataString(value));
+        _mirrored = url;
+
+        // replaceState, not pushState: opening and closing filters would otherwise fill the history
+        // with steps the reader has to walk back through one at a time instead of leaving the site.
+        await JS.InvokeVoidAsync("history.replaceState", null, "", url);
+    }
+
+    /// <summary>The state as separate settable properties, which is what <c>@@bind-</c> needs.</summary>
+    private sealed class Binding
+    {
+        public string? Search { get; set; }
+        public VariableFilter Filter { get; set; } = VariableFilter.None;
+        public SortField Sort { get; set; } = SortField.Default;
+        public SortDirection Direction { get; set; } = SortDirection.Ascending;
+        public int Page { get; set; } = 1;
+        public int PageSize { get; set; } = ExplorerUrlState.DefaultPageSize;
+
+        public static Binding From(ExplorerUrlState state) => new()
+        {
+            Search = state.Search,
+            Filter = state.Filter,
+            Sort = state.Sort,
+            Direction = state.Direction,
+            Page = state.Page,
+            PageSize = state.PageSize,
+        };
+
+        public ExplorerUrlState ToState() => new()
+        {
+            Search = Search,
+            Filter = Filter,
+            Sort = Sort,
+            Direction = Direction,
+            Page = Page,
+            PageSize = PageSize,
+        };
     }
 }
