@@ -536,14 +536,9 @@ public class KildeViewTest : BunitContext
     // ---------------------------------------------------------------------------------
 
     /// <summary>
-    /// The Barnediabetes register as the live endpoint serves it: 73 curated keys across thirteen
-    /// groups, eighteen of them filled in.
+    /// The live payload, captured: 73 curated keys across thirteen groups, eighteen filled in. The
+    /// hand-written sources above carry two groups between them. (Fhi.Metadata-6a8wp)
     /// </summary>
-    /// <remarks>
-    /// A captured payload rather than a hand-written source, because the claim under test is how
-    /// many sections a reader is actually shown and the sources written above carry two groups
-    /// between them. This is the source Fhi.Metadata-6a8wp was measured on.
-    /// </remarks>
     private static KildeDetail Barnediabetes() =>
         JsonSerializer.Deserialize<KildeDetail>(
             TestData.Read("kilde-barnediabetes.json"), MuninExplorerClient.Json)
