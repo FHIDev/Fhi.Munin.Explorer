@@ -93,9 +93,20 @@ else if (_sourceKind is not null)
          role="region"
          aria-labelledby="@SourceHeadingId"
          aria-busy="@SourceBusy">
-        <button class="hd-button-square button-square--ghost margin-bottom"
+        @* Two ways out, in the order they undo things: back to the whole list, then back to it
+           narrowed to what is on screen. The narrowing one is filled and the plain one ghosted
+           because it is the one that changes the list — the same pairing Tøm søket already uses.
+           Both names are Stiler's own; this pair invents no class, so it needs no host note. *@
+        <button class="hd-button-square button-square--ghost margin-right margin-bottom"
                 type="button"
                 @onclick="CloseSourceAsync">@T.BackToVariables</button>
+
+        @if (SourceVariablesText is { } narrowText)
+        {
+            <button class="hd-button-square button-square--secondary margin-bottom"
+                    type="button"
+                    @onclick="ShowSourceVariablesAsync">@narrowText</button>
+        }
 
         @* Once a kilde has arrived, KildeView owns the heading - the same component Kelda renders
            on a page of its own, so the two cannot drift. Until then, and for a datasamling, the

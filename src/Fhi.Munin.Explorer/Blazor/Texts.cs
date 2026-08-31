@@ -43,6 +43,13 @@ internal sealed record Texts(
     // "still running" — a period with no end date.
     // The way out of the kilde view, back to the list of variables.
     string BackToVariables,
+
+    // The other way out of the same view: back to the list, narrowed to what the reader was
+    // just looking at. Worded as what happens to the list rather than as where the button
+    // goes, because "Tilbake til variabler" beside it already claims the plain destination
+    // and two buttons that both only name a destination read as the same button twice.
+    string ShowKildeVariables,
+    string ShowDatasamlingVariables,
     string Ongoing,
 
     // Runa's own words for two fields we had named differently. The trail through the
@@ -511,6 +518,8 @@ internal sealed record Texts(
         NotSpecified: "Ikke oppgitt",
         SortDefault: "Standard",
         BackToVariables: "← Tilbake til variabler",
+        ShowKildeVariables: "Vis bare variabler fra denne datakilden",
+        ShowDatasamlingVariables: "Vis bare variabler fra denne datasamlingen",
         Ongoing: "Pågående",
         FieldKildePath: "Kildesti",
         FieldDataPeriod: "Dataperiode",
@@ -764,6 +773,8 @@ internal sealed record Texts(
         NotSpecified: "Not specified",
         SortDefault: "Default",
         BackToVariables: "← Back to variables",
+        ShowKildeVariables: "Show only variables from this data source",
+        ShowDatasamlingVariables: "Show only variables from this data collection",
         Ongoing: "Ongoing",
         FieldKildePath: "Source path",
         FieldDataPeriod: "Data period",

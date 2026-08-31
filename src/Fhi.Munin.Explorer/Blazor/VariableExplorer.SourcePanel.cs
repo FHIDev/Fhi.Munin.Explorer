@@ -63,6 +63,22 @@ public partial class VariableExplorer
     private string SourceExpanded(SourceKind kind) => SourceOpen(kind) ? "true" : "false";
 
     /// <summary>
+    /// What the narrowing button says, or null when no owner is open and it is not drawn.
+    /// </summary>
+    /// <remarks>
+    /// Null rather than a throwing switch, unlike <see cref="SourceToggleText"/>: that one is only
+    /// ever called with a kind the panel is already drawing, while this reads
+    /// <see cref="_sourceKind"/> itself and so has a real null case — the list, where the button
+    /// does not belong. Returning it lets the markup ask one question instead of two.
+    /// </remarks>
+    private string? SourceVariablesText => _sourceKind switch
+    {
+        SourceKind.Kilde => T.ShowKildeVariables,
+        SourceKind.Datasamling => T.ShowDatasamlingVariables,
+        _ => null
+    };
+
+    /// <summary>
     /// The panel's id on the toggle that opened it, and nothing on the other one.
     /// </summary>
     /// <remarks>
