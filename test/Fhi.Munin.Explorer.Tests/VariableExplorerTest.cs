@@ -3024,6 +3024,39 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
+    public void Filter_WhenTheFacetsRefresh_ThenTheCategoryWordsAreFetchedOnceAndOnlyWhenNeeded()
+    {
+        // The vocabulary is a second request against a rate limit this component already shares
+        // with the search beside it, so it is asked for lazily and at most once. Both halves are
+        // easy to lose: a fetch on mount costs a call an API predating the facet can never use,
+        // and a fetch per refresh costs one on every keystroke.
+        var client = new FilteringClient(
+            OnePage(Variable("1. Tale", "KODE")), FacetsWith(TwoCategories), vocabulary: CategoryWords());
+        var cut = RenderWith(client);
+
+        Assert.Equal(1, client.VocabularyCalls);
+
+        // Two more facet refreshes, which is what narrowing does.
+        ClickFacet(cut, "Dødsårsaksregisteret");
+        ClickFacet(cut, "Befolkningsundersøkelser");
+
+        Assert.True(client.FacetCalls > 1, "the facets should have refreshed");
+        Assert.Equal(1, client.VocabularyCalls);
+    }
+
+    [Fact]
+    public void Filter_WhenThereAreNoDatakategorier_ThenTheCategoryWordsAreNotFetchedAtAll()
+    {
+        // The lazy half on its own: an API that predates the facet returns none, and a request
+        // whose answer nothing on screen could use is one the panel should not make.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith());
+
+        RenderWith(client);
+
+        Assert.Equal(0, client.VocabularyCalls);
+    }
+
+    [Fact]
     public void Filter_WhenTheApiOffersNoDatakategorier_ThenTheFacetIsLeftOutRatherThanDrawnEmpty()
     {
         // THE TRAP, first direction. An API that predates the facet returns none at all, and the
