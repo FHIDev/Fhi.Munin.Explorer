@@ -266,76 +266,28 @@ internal static class CatalogueProperties
         return [.. resolved.OrderBy(g => g.Order).Select(g => g.Group)];
     }
 
-    /// <summary>Names the catalogue gives the property types whose value is not prose.</summary>
-    /// <remarks>
-    /// Matched case-insensitively and held as strings for the reason
-    /// <see cref="PropertyMetadataEntry.Type"/> is a string rather than an enum: a type added server
-    /// side must not break deserialisation, and one whose casing shifts must not silently stop
-    /// matching and put the envelope back on the page.
-    /// </remarks>
+    // The catalogue's names for the property types whose value is not prose. Matched
+    // case-insensitively: Type is a string so a type added server side cannot break
+    // deserialisation, and casing that shifts there must not put the envelope back on the page.
     private const string MultilingualTextType = "MultilingualText";
-
-    /// <inheritdoc cref="MultilingualTextType"/>
     private const string LangTaggedListType = "LangTaggedList";
-
-    /// <inheritdoc cref="MultilingualTextType"/>
     private const string MultiSelectType = "MultiSelect";
-
-    /// <inheritdoc cref="MultilingualTextType"/>
     private const string ObjectType = "Object";
 
-    /// <summary>What separates the parts of a value the catalogue stores as several.</summary>
-    /// <remarks>
-    /// The same shape the view already draws the catalogue's own semicolon lists in —
-    /// <c>applicableLegislation</c> and <c>AnbefalteBruksomraader</c> arrive that way and are drawn
-    /// as one line — so unwrapping a list into a row does not introduce a second way of showing one.
-    /// A real list would want real markup, which is a change to the row model rather than to what a
-    /// value resolves to.
-    /// </remarks>
+    // The shape the view already draws the catalogue's own semicolon lists in, so unwrapping a
+    // list into a row does not introduce a second way of showing one.
     private const string Separator = "; ";
 
-    /// <summary>Whether the catalogue declares <paramref name="entry"/> to hold a <paramref name="type"/>.</summary>
     private static bool Typed(PropertyMetadataEntry entry, string type)
         => string.Equals(entry.Type, type, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    /// A stored value as a reader should see it, with the language it ended up in — or nothing at
-    /// all, where there is nothing honest to draw.
+    /// A stored value as a reader should see it and the language it ended up in, or nothing where
+    /// there is nothing honest to draw.
     /// </summary>
-    /// <remarks>
-    /// The catalogue types every property, and four of those types store something other than
-    /// prose. Drawn without reading <see cref="PropertyMetadataEntry.Type"/> they put a serialised
-    /// object on the page — braces, key names and escapes and all — on some 200 rows across the
-    /// catalogue.
-    /// <para>
-    /// The envelope is the API's. <c>ExplorerService.ParseAllJsonProperties</c> flattens the bag to
-    /// <c>Dictionary&lt;string, string?&gt;</c> and re-serialises whatever is not already a string.
-    /// It cannot be undone there without changing that shape for every consumer, and it cannot be
-    /// undone by resolving server side per <c>Accept-Language</c> either, because this package
-    /// renders one response to readers in two languages — the same reason
-    /// <see cref="PropertyMetadataEntry.OptionsJson"/> is kept beside the already-resolved
-    /// <see cref="PropertyMetadataEntry.Options"/>. Which is what puts the language pick here.
-    /// </para>
-    /// <para>
-    /// Every unwrapping is allowed to decline, and a declined one falls through to what this method
-    /// did before. The catalogue is not consistent about these shapes: <c>LangTaggedList</c> arrives
-    /// as a tagged array on 69 values, as plain text on 33 and as a semicolon list on one, so a
-    /// value that is not the shape its type promises is still a value. It is shown as the
-    /// vocabulary's word for it, or as it arrived and called Norwegian with the rest of the
-    /// catalogue's own text — showing it beats showing nothing, because it is what the catalogue
-    /// holds, and a blank cell would hide that the type and the value disagree.
-    /// </para>
-    /// <para>
-    /// <see cref="ObjectType"/> is the one type with no fallback. Its value is a record with named
-    /// parts — <c>creator</c>, <c>contactPoint</c>, <c>qualifiedAttribution</c> — and the catalogue
-    /// curates a label for the property while curating none for what is inside it, so there is no
-    /// honest way to draw one in a single cell and the row is dropped instead. No kilde populates
-    /// one today, so that branch is written against the declared shape rather than against a reading
-    /// of a real value, and it is the one here a live payload has not confirmed.
-    /// </para>
-    /// </remarks>
     internal static (string Value, string Language)? Value(PropertyMetadataEntry entry, string raw, string reader)
     {
+        // A curated label over uncurated parts: no honest single cell, so the row goes instead.
         if (Typed(entry, ObjectType))
         {
             return null;
@@ -347,27 +299,19 @@ internal static class CatalogueProperties
             : Typed(entry, MultiSelectType) ? Chosen(entry, raw, reader)
             : null;
 
+        // An unwrapping declines on a value that is not the shape its type promises, which the
+        // catalogue produces often enough to be the path rather than the net — and a value that
+        // disagrees with its type is still a value, so it is shown as it arrived.
         return unwrapped ?? Word(entry, raw, reader) ?? (raw, "no");
     }
 
-    /// <summary>
-    /// A value parsed as JSON, or nothing where it is not the structured shape its type promised.
-    /// </summary>
-    /// <remarks>
-    /// The first character is checked before parsing rather than left to the parser, because values
-    /// that are not envelopes are the common case on some of these types and every one of them would
-    /// otherwise cost a thrown <see cref="JsonException"/> per row per render. It is the reasoning
-    /// <see cref="NorwegianFormatting"/> gives for resolving its cultures once, applied to the other
-    /// throw this type can make a habit of.
-    /// <para>
-    /// The document is handed back rather than its root: a <see cref="JsonElement"/> is only valid
-    /// while the <see cref="JsonDocument"/> that owns it is, so returning the element and disposing
-    /// the document here would return a window onto memory already given back. Callers own the
-    /// <c>using</c>.
-    /// </para>
-    /// </remarks>
+    /// <summary>A value parsed as JSON, or nothing where it is not structured.</summary>
+    /// <returns>A document the caller owns; <see cref="JsonElement"/> outlives no document.</returns>
     private static JsonDocument? Structured(string raw)
     {
+        // Parsed only past a first character that could open one: values that are not envelopes are
+        // the common case on some of these types, and each would otherwise cost a thrown
+        // JsonException per row per render, on the same reasoning NorwegianFormatting gives.
         var trimmed = raw.AsSpan().TrimStart();
 
         if (trimmed.IsEmpty || (trimmed[0] is not '{' and not '['))
@@ -385,21 +329,12 @@ internal static class CatalogueProperties
         }
     }
 
-    /// <summary>
-    /// The reader's language out of a multilingual envelope, or nothing where the value is not one.
-    /// </summary>
-    /// <remarks>
-    /// The envelope's own keys are the language tags — <c>nb</c> on 130 values across the catalogue
-    /// and <c>en</c> on 39 — so it is a translation bag by another name, and resolved through
-    /// <see cref="Localised"/> rather than through a second copy of the same fallback.
-    /// <para>
-    /// Which matters for more than the words: unresolved, the row is marked <c>lang="no"</c> over
-    /// whatever the envelope held, and an English title in a Norwegian voice is what a screen reader
-    /// then reads out (WCAG 3.1.2).
-    /// </para>
-    /// </remarks>
+    /// <summary>The reader's language out of a multilingual envelope, or nothing where it is not one.</summary>
     private static (string Value, string Language)? Multilingual(string raw, string reader)
     {
+        // The envelope's keys are language tags, so it is a translation bag and resolved by
+        // Localised rather than by a second copy of the fallback. Unresolved it stays marked
+        // lang="no" over whatever it held: an English title in a Norwegian voice (WCAG 3.1.2).
         using var document = Structured(raw);
 
         if (document?.RootElement.ValueKind is not JsonValueKind.Object)
@@ -428,20 +363,10 @@ internal static class CatalogueProperties
     /// The reader's language out of a list whose entries carry their own language tags, or nothing
     /// where the value is not such a list.
     /// </summary>
-    /// <remarks>
-    /// Entries are gathered per language and each language's entries joined, so the fallback runs
-    /// over whole lists rather than over single entries — a reader who gets Norwegian gets the
-    /// Norwegian list, not an English one with a Norwegian entry spliced into it. The gathered bag
-    /// is then a translation bag like any other, which is why <see cref="Localised"/> decides
-    /// between them here too.
-    /// <para>
-    /// Lists really are lists: the catalogue holds one entry on 66 values, and two, eleven and
-    /// sixteen on others. A bare string among them is taken as Norwegian, which is where the
-    /// catalogue's untagged text always sits.
-    /// </para>
-    /// </remarks>
     private static (string Value, string Language)? Tagged(string raw, string reader)
     {
+        // Gathered per language and joined per language, so a reader gets one language's list whole
+        // rather than another's spliced through it.
         using var document = Structured(raw);
 
         if (document?.RootElement.ValueKind is not JsonValueKind.Array)
@@ -486,6 +411,7 @@ internal static class CatalogueProperties
     /// <summary>One entry of a language-tagged list, as its text and the language it claims.</summary>
     private static (string? Text, string Language) Entry(JsonElement element) => element.ValueKind switch
     {
+        // Untagged text is Norwegian, which is where the catalogue's own always sits.
         JsonValueKind.String => (element.GetString(), "no"),
         JsonValueKind.Object => (
             element.TryGetProperty("value", out var value) && value.ValueKind is JsonValueKind.String
@@ -503,15 +429,10 @@ internal static class CatalogueProperties
     /// The vocabulary's words for every code a multi-valued property holds, or nothing where the
     /// value is not a list of codes.
     /// </summary>
-    /// <remarks>
-    /// <see cref="Word"/> matches on the whole stored value, which is right for a single code and
-    /// wrong for a list of them: handed <c>["a","b"]</c> it compares the array's own text against the
-    /// vocabulary, misses, and the array is what reaches the page. The codes are looked up one at a
-    /// time instead, and one the vocabulary does not list is shown as it arrived, for the reason
-    /// <see cref="Value"/> gives.
-    /// </remarks>
     private static (string Value, string Language)? Chosen(PropertyMetadataEntry entry, string raw, string reader)
     {
+        // Word matches on the whole stored value, so handed ["a","b"] it compares the array's own
+        // text against the vocabulary and misses. Looked up one code at a time instead.
         using var document = Structured(raw);
 
         if (document?.RootElement.ValueKind is not JsonValueKind.Array)
@@ -542,9 +463,8 @@ internal static class CatalogueProperties
             return null;
         }
 
-        // One lang attribute covers the whole cell, so it can only be honest where every part agrees
-        // on one. Mixed, it falls to Norwegian with the rest of the catalogue's own text, which is
-        // the same answer Value gives for a code the vocabulary does not list.
+        // One lang covers the whole cell, so it is honest only where every part agrees; mixed, it
+        // falls to Norwegian with the rest of the catalogue's own text.
         return (string.Join(Separator, labels), languages.Count == 1 ? languages.First() : "no");
     }
 
