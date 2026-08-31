@@ -255,9 +255,9 @@ public class UrlStateComponentTest : BunitContext
     /// <summary>One page of two variables, so there is a row to open and one to leave closed.</summary>
     private sealed class TwoVariableClient : EmptyMuninExplorerClient
     {
-        public static readonly Guid TaleId = Guid.NewGuid();
+        public static readonly Guid SpeechId = Guid.NewGuid();
 
-        public static readonly Guid SpyttId = Guid.NewGuid();
+        public static readonly Guid SalivaId = Guid.NewGuid();
 
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
             string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
@@ -266,7 +266,7 @@ public class UrlStateComponentTest : BunitContext
             CancellationToken cancellationToken = default) =>
             Task.FromResult(new Page<VariableSummary>
             {
-                Items = [Variable(TaleId, "1. Tale"), Variable(SpyttId, "2. Spyttsekresjon")],
+                Items = [Variable(SpeechId, "1. Tale"), Variable(SalivaId, "2. Spyttsekresjon")],
                 TotalCount = 2,
                 PageNumber = 1,
                 Size = pageSize,
@@ -278,7 +278,7 @@ public class UrlStateComponentTest : BunitContext
             Task.FromResult<VariableDetail?>(new VariableDetail
             {
                 Id = id,
-                PreferredTerm = id == TaleId ? "1. Tale" : "2. Spyttsekresjon",
+                PreferredTerm = id == SpeechId ? "1. Tale" : "2. Spyttsekresjon",
             });
     }
 
@@ -330,14 +330,14 @@ public class UrlStateComponentTest : BunitContext
 
         Rows(cut)[0].Click();
 
-        Assert.Equal($"/variabler?variabelId={TwoVariableClient.TaleId}", Mirrored());
+        Assert.Equal($"/variabler?variabelId={TwoVariableClient.SpeechId}", Mirrored());
     }
 
     [Fact]
     public void Selection_WhenALinkCarriesAVariable_ThenItOpensWithTheSearchAroundItIntact()
     {
         var cut = RenderVariables(
-            $"http://localhost/variabler?search=svelging&variabelId={TwoVariableClient.SpyttId}");
+            $"http://localhost/variabler?search=svelging&variabelId={TwoVariableClient.SalivaId}");
 
         Assert.Equal("true", Rows(cut)[1].GetAttribute("aria-expanded"));
         Assert.NotEmpty(cut.FindAll(".munin-explorer-detail"));
@@ -363,7 +363,7 @@ public class UrlStateComponentTest : BunitContext
     {
         // A URL still naming a closed variable sends the next reader somewhere the sender was not.
         var cut = RenderVariables(
-            $"http://localhost/variabler?search=svelging&variabelId={TwoVariableClient.TaleId}");
+            $"http://localhost/variabler?search=svelging&variabelId={TwoVariableClient.SpeechId}");
 
         Rows(cut)[0].Click();
 
