@@ -5,5 +5,5 @@ category: Fixed
   address reachable only from inside FHI. A host that copied either one booted, called an address it
   could never reach and showed "Kunne ikke hente variabler nå" while the API logged nothing. Both now
   give `https://runa.munin.skytest.fhi.no`, the exception says why the prefix matters, and a test
-  reads `src/`, `samples/`, `docs/` and the packaged README to keep the unprefixed host out of
-  everything a host developer can copy. (Fhi.Metadata-ip02g)
+  reads the whole checkout - sources, samples, tests, docs, scripts, workflows and the packaged
+  README - to keep the unprefixed host out of everything a host developer can copy. (Fhi.Metadata-ip02g)

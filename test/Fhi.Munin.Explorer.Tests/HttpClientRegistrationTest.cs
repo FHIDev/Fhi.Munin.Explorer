@@ -17,7 +17,7 @@ public class HttpClientRegistrationTest
     {
         var services = new ServiceCollection();
 
-        services.AddMuninExplorer(o => o.ApiBaseUrl = "https://munin.skytest.fhi.no");
+        services.AddMuninExplorer(o => o.ApiBaseUrl = "https://runa.munin.skytest.fhi.no");
 
         return services.BuildServiceProvider();
     }
@@ -67,7 +67,10 @@ public class HttpClientRegistrationTest
             () => services.AddMuninExplorer(o => o.ApiBaseUrl = null));
 
         Assert.Contains("https://runa.munin.skytest.fhi.no", thrown.Message, StringComparison.Ordinal);
-        Assert.DoesNotContain("https://munin.skytest.fhi.no", thrown.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "https://munin.skytest.fhi.no", // internal-host-on-purpose
+            thrown.Message,
+            StringComparison.Ordinal);
     }
 
     [Fact]
@@ -81,7 +84,7 @@ public class HttpClientRegistrationTest
         var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient(ClientName);
 
         Assert.Equal(
-            new Uri("https://munin.skytest.fhi.no/api/explorer/variables"),
+            new Uri("https://runa.munin.skytest.fhi.no/api/explorer/variables"),
             new Uri(client.BaseAddress!, "api/explorer/variables"));
     }
 }

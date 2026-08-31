@@ -29,7 +29,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </remarks>
 public class MyListsClientTest
 {
-    private const string BaseAddress = "https://munin.skytest.fhi.no/";
+    private const string BaseAddress = "https://runa.munin.skytest.fhi.no/";
     private const string Token = "the-hosts-token";
 
     /// <summary>The route every one of these calls hangs off, spelled once.</summary>

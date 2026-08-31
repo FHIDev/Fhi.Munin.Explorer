@@ -25,7 +25,7 @@ public class ClientHeaderHandlerTest
     }
 
     private static HttpClient WithHandler(StubHttpHandler inner) =>
-        new(new ClientHeaderHandler { InnerHandler = inner }) { BaseAddress = new Uri("https://munin.skytest.fhi.no/") };
+        new(new ClientHeaderHandler { InnerHandler = inner }) { BaseAddress = new Uri("https://runa.munin.skytest.fhi.no/") };
 
     [Fact]
     public async Task SendAsync_WhenARequestIsSent_ThenTheClientHeaderTravelsWithIt()
@@ -104,7 +104,7 @@ public class ClientHeaderHandlerTest
         var stub = StubHttpHandler.Ok("[]");
         var services = new ServiceCollection();
 
-        services.AddMuninExplorer(o => o.ApiBaseUrl = "https://munin.skytest.fhi.no");
+        services.AddMuninExplorer(o => o.ApiBaseUrl = "https://runa.munin.skytest.fhi.no");
         services.AddHttpClient<IMuninExplorerClient, MuninExplorerClient>()
                 .ConfigurePrimaryHttpMessageHandler(() => stub);
 

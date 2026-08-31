@@ -29,10 +29,10 @@ dotnet run --project samples/LegacyHost --launch-profile https
 It talks to `https://runa.munin.skytest.fhi.no`, which is read-only, so you get the real ~20 000 variables
 rather than fixtures.
 
-> **Use the `runa` host, never the same name without a prefix.** The unprefixed host resolves to a private address
-> (`10.97.72.176`) and is reachable only from inside FHI's network. `runa` — and `kelda` — are published
-> externally by `api-explorer-ingress.yaml` in `Fhi.Munin.Gitops`, and both route `/api/explorer/*` to the
-> same API. So either hostname serves *both* components: the two names brand the two UIs, not two backends.
+> **Use the `runa` host, never the same name without a prefix.** The unprefixed host resolves to a private
+> address and is reachable only from inside FHI's network. `runa` — and `kelda` — are published externally
+> by the GitOps ingress, and both route `/api/explorer/*` to the same API. So either hostname serves
+> *both* components: the two names brand the two UIs, not two backends.
 > A host that copies the internal address works on the FHI network and fails silently once deployed
 > anywhere else, which is exactly what happened to helsedata's test environment on 2026-08-28.
 

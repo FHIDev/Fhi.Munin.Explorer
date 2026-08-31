@@ -11,7 +11,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </summary>
 public class MuninExplorerClientTest
 {
-    private const string DefaultBaseAddress = "https://munin.skytest.fhi.no/";
+    private const string DefaultBaseAddress = "https://runa.munin.skytest.fhi.no/";
 
     private static MuninExplorerClient Client(HttpMessageHandler handler, string baseAddress = DefaultBaseAddress) =>
         new(new HttpClient(handler) { BaseAddress = new Uri(baseAddress) });

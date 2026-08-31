@@ -11,7 +11,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </summary>
 public class BearerTokenHandlerTest
 {
-    private const string BaseAddress = "https://munin.skytest.fhi.no/";
+    private const string BaseAddress = "https://runa.munin.skytest.fhi.no/";
 
     private sealed class FixedTokenProvider(string? token) : IMuninExplorerTokenProvider
     {
