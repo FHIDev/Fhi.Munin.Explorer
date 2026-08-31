@@ -16,14 +16,9 @@ public partial class VariableExplorer
     /// a message.
     /// </remarks>
     /// <remarks>
-    /// <para>
-    /// Three shapes, not two. A facet is normally a list of <see cref="FacetValue"/>, or a sentence
-    /// where the emptiness is itself the message. <c>Body</c> is the third: a facet whose control is
-    /// not a list of values at all — the dataperiode, which is two date fields bounded by the range
-    /// the API reports. It has no <see cref="FacetValue"/> to hold, so under the two older shapes it
-    /// was dropped by the group filter as empty, and given an <c>EmptyText</c> to survive that it
-    /// drew the sentence instead of the fields. (Fhi.Metadata-uidue)
-    /// </para>
+    /// <c>Body</c> is a facet whose control is not a list of values — the dataperiode's date
+    /// fields, which hold no <see cref="FacetValue"/> and so survive neither older shape.
+    /// (Fhi.Metadata-uidue)
     /// </remarks>
     private sealed record FacetGroup(
         string Key,
@@ -135,7 +130,10 @@ public partial class VariableExplorer
         new($"datakategori:{category.Value}",
             CategoryWord(category.Value),
             category.Count,
-            _filter.Categories.Contains(category.Value, StringComparer.OrdinalIgnoreCase),
+            // Ordinal, like every other string facet here, because that is what ToggleAsync removes
+            // with: a case-insensitive mark over a case-sensitive toggle draws a token as chosen
+            // and then appends a duplicate when it is pressed.
+            _filter.Categories.Contains(category.Value),
             () => ToggleAsync(_filter.Categories, category.Value,
                               values => _filter with { Categories = values }),
             []);

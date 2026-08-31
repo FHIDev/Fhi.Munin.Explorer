@@ -2979,6 +2979,53 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
+    public void Filter_WhenATickedDatakategoriIsPressedAgain_ThenItIsRemovedRatherThanDuplicated()
+    {
+        // How a facet marks itself chosen and how ToggleAsync removes have to be the SAME
+        // comparison, and the case that shows it is a token whose casing differs from the API's —
+        // which a shared link can carry, since VariableFilter.Parse takes the query string as
+        // written. Marked case-insensitively over a case-sensitive removal, such a token draws as
+        // chosen, and pressing it appends the canonical spelling instead of removing anything: the
+        // button stays lit and the filter has grown.
+        //
+        // The invariant asserted is the one that holds whichever comparison is chosen, as long as
+        // both ends agree: pressing a facet inverts what it says about itself.
+        VariableFilter? reported = null;
+        var client = new FilteringClient(
+            OnePage(Variable("1. Tale", "KODE")), FacetsWith(TwoCategories), vocabulary: CategoryWords());
+        var cut = RenderWith(client, b => b
+            .Add(c => c.Filter, new VariableFilter { Categories = ["EHDS-CAT:BIOBANKS"] })
+            .Add(c => c.FilterChanged, f => reported = f));
+
+        var before = Facet(cut, "ehds-cat:biobanks").GetAttribute("aria-pressed");
+
+        ClickFacet(cut, "ehds-cat:biobanks");
+
+        Assert.NotEqual(before, Facet(cut, "ehds-cat:biobanks").GetAttribute("aria-pressed"));
+    }
+
+    [Fact]
+    public void Filter_WhenAnExactlyMatchingDatakategoriIsPressedAgain_ThenItComesOffTheFilter()
+    {
+        // The ordinary path the invariant above protects: a token spelled as the API spells it
+        // goes on and comes back off, leaving nothing behind.
+        VariableFilter? reported = null;
+        var cut = RenderWith(
+            new FilteringClient(OnePage(Variable("1. Tale", "KODE")),
+                                FacetsWith(TwoCategories), vocabulary: CategoryWords()),
+            b => b
+                .Add(c => c.Filter, new VariableFilter { Categories = ["ehds-cat:biobanks"] })
+                .Add(c => c.FilterChanged, f => reported = f));
+
+        Assert.Equal("true", Facet(cut, "ehds-cat:biobanks").GetAttribute("aria-pressed"));
+
+        ClickFacet(cut, "ehds-cat:biobanks");
+
+        Assert.Empty(reported!.Categories);
+        Assert.Equal("false", Facet(cut, "ehds-cat:biobanks").GetAttribute("aria-pressed"));
+    }
+
+    [Fact]
     public void Filter_WhenTheApiOffersNoDatakategorier_ThenTheFacetIsLeftOutRatherThanDrawnEmpty()
     {
         // THE TRAP, first direction. An API that predates the facet returns none at all, and the

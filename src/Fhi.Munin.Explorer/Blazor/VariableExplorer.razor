@@ -242,11 +242,8 @@ else
                    — cannot hand its open state to whichever facet takes its place. *@
                 <details @key="group.Key" open="@group.OpenByDefault">
                     <summary><span class="form-element__label">@GroupLabel(group)</span></summary>
-                    @* Three shapes: a facet's own control where it has one, then the list of
-                       values, then the sentence for a facet whose emptiness is the message. The
-                       first is what lets the dataperiode draw two date fields here — it holds no
-                       values, so under the older two shapes it either vanished or said "ingen".
-                       (Fhi.Metadata-uidue) *@
+                    @* A facet's own control first, where it has one: the dataperiode holds no
+                       values and would otherwise draw the empty-state sentence. (Fhi.Metadata-uidue) *@
                     @if (group.Body is { } body)
                     {
                         @body
