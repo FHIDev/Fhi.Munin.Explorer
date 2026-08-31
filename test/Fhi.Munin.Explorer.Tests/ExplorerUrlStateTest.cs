@@ -59,6 +59,39 @@ public class ExplorerUrlStateTest
         Assert.Equal(state.PageSize, back.PageSize);
     }
 
+    /// <summary>The open variable is what a reader most wants to send someone.</summary>
+    [Fact]
+    public void RoundTrip_WhenAVariableIsOpen_ThenItComesBackTheSame()
+    {
+        var variable = Guid.NewGuid();
+        var state = new ExplorerUrlState { Search = "svelging", SelectedVariableId = variable };
+
+        var query = state.ToQueryString();
+
+        Assert.Contains("variabelId=" + variable, query, StringComparison.Ordinal);
+        Assert.Equal(variable, ExplorerUrlState.Parse(query).SelectedVariableId);
+    }
+
+    /// <summary>
+    /// A URL that kept the id after the panel was closed would send the next reader to a variable
+    /// the sender was no longer looking at.
+    /// </summary>
+    [Fact]
+    public void ToQueryString_WhenNoVariableIsOpen_ThenTheKeyIsNotWritten()
+    {
+        var state = new ExplorerUrlState { Search = "svelging" };
+
+        Assert.Equal("search=svelging", state.ToQueryString());
+    }
+
+    [Theory]
+    [InlineData("?variabelId=notaguid")]
+    [InlineData("?variabelId=42")]
+    public void Parse_WhenTheVariableIdIsNotOne_ThenNothingIsOpen(string query)
+    {
+        Assert.Null(ExplorerUrlState.Parse(query).SelectedVariableId);
+    }
+
     /// <summary>The facets are the filter's own business, and must survive the trip through here.</summary>
     [Fact]
     public void RoundTrip_WhenTheFilterCarriesFacets_ThenTheySurvive()
@@ -139,6 +172,7 @@ public class ExplorerUrlStateTest
     [InlineData("Search")]
     [InlineData("PAGESIZE")]
     [InlineData("sortdir")]
+    [InlineData("VariabelId")]
     public void QueryKeys_MatchesTheCasesParseAccepts(string key)
     {
         Assert.Contains(key, ExplorerUrlState.QueryKeys);
@@ -198,6 +232,7 @@ public class ExplorerUrlStateTest
             Direction = SortDirection.Descending,
             Page = 2,
             PageSize = 99,
+            SelectedVariableId = Guid.NewGuid(),
         };
 
         var written = state.ToQueryString()
@@ -205,6 +240,11 @@ public class ExplorerUrlStateTest
             .Select(pair => pair.Split('=')[0]);
 
         Assert.All(written, key => Assert.Contains(key, ExplorerUrlState.QueryKeys));
+
+        // Named rather than left to the loop above: this is the key added last, and the defect the
+        // remark describes is what happens when a key Parse reads is missing from the set.
+        Assert.Contains("variabelId", written, StringComparer.Ordinal);
+        Assert.Contains("variabelId", ExplorerUrlState.ScalarQueryKeys);
     }
 
     /// <summary>A host's own parameters are not ours to erase.</summary>

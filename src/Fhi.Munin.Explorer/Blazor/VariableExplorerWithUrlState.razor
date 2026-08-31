@@ -7,6 +7,11 @@
    saying the explorer owns the query string; a host that wants to own it mounts VariableExplorer
    and keeps ExplorerUrlState. (Fhi.Metadata-zrcf4)
 
+   Every parameter the explorer takes a value on is passed through, so mounting this costs a host
+   nothing it would have had from mounting VariableExplorer itself. The seven Changed callbacks are
+   deliberately not re-exposed: this component is what consumes them, and a host that wants them
+   mounts the explorer with ExplorerUrlState instead. (Fhi.Metadata-l1f2s)
+
    No class names and no markup of its own: whatever the explorer draws is what a reader sees. *@
 
 <VariableExplorer @bind-Search="_state.Search"
@@ -15,4 +20,7 @@
                   @bind-Direction="_state.Direction"
                   @bind-Page="_state.Page"
                   @bind-PageSize="_state.PageSize"
+                  @bind-SelectedVariableId="_state.SelectedVariableId"
+                  IsAuthenticated="@IsAuthenticated"
+                  HeadingLevel="@HeadingLevel"
                   Language="@Language" />

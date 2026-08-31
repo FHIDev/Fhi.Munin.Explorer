@@ -1,6 +1,8 @@
+using AngleSharp.Dom;
 using Bunit;
 using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -240,6 +242,132 @@ public class UrlStateComponentTest : BunitContext
 
         Assert.NotEmpty(JSInterop.Invocations[ReplaceState]);
         Assert.Empty(JSInterop.Invocations["history.pushState"]);
+    }
+
+    private static VariableSummary Variable(Guid id, string name) => new()
+    {
+        Id = id,
+        Code = "V_ALS.F1." + name,
+        PreferredTerm = name,
+        KildeName = "Als registeret",
+    };
+
+    /// <summary>One page of two variables, so there is a row to open and one to leave closed.</summary>
+    private sealed class TwoVariableClient : EmptyMuninExplorerClient
+    {
+        public static readonly Guid SpeechId = Guid.NewGuid();
+
+        public static readonly Guid SalivaId = Guid.NewGuid();
+
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
+            SortField sort = SortField.Default,
+            SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new Page<VariableSummary>
+            {
+                Items = [Variable(SpeechId, "1. Tale"), Variable(SalivaId, "2. Spyttsekresjon")],
+                TotalCount = 2,
+                PageNumber = 1,
+                Size = pageSize,
+                TotalPages = 1,
+            });
+
+        public override Task<VariableDetail?> GetVariableAsync(
+            Guid id, bool includeHistorical = false, CancellationToken cancellationToken = default) =>
+            Task.FromResult<VariableDetail?>(new VariableDetail
+            {
+                Id = id,
+                PreferredTerm = id == SpeechId ? "1. Tale" : "2. Spyttsekresjon",
+            });
+    }
+
+    /// <inheritdoc cref="RenderExplorer"/>
+    private IRenderedComponent<VariableExplorerWithUrlState> RenderVariables(
+        string url,
+        Action<ComponentParameterCollectionBuilder<VariableExplorerWithUrlState>>? parameters = null)
+    {
+        Services.AddSingleton<IMuninExplorerClient>(new TwoVariableClient());
+        Services.AddScoped<VariableListState>();
+        Prepare();
+        Navigation.NavigateTo(url);
+
+        return Render<VariableExplorerWithUrlState>(b => parameters?.Invoke(b));
+    }
+
+    /// <summary>The rows, whose names are the disclosures that open a variable.</summary>
+    private static IReadOnlyList<IElement> Rows(IRenderedComponent<VariableExplorerWithUrlState> cut) =>
+        cut.FindAll("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name");
+
+    [Theory]
+    [InlineData(true, 2)]
+    [InlineData(false, 0)]
+    public void Save_WhenTheHostSaysWhoTheReaderIs_ThenItReachesTheExplorerRatherThanBeingDropped(
+        bool signedIn, int buttons)
+    {
+        // Signed out the button is absent either way, which is why this was invisible: the wrapper
+        // declared no IsAuthenticated at all, so mounting it cost every host its saved lists and
+        // the host could not put it back. (Fhi.Metadata-l1f2s)
+        var cut = RenderVariables("http://localhost/variabler", b => b.Add(c => c.IsAuthenticated, signedIn));
+
+        Assert.Equal(buttons, cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]").Count);
+    }
+
+    [Fact]
+    public void Heading_WhenTheHostSetsTheLevel_ThenItReachesTheExplorerToo()
+    {
+        // The level that keeps a page outline unbroken is only knowable at the mount site, and a
+        // wrapper that swallowed it would force an h2 under whatever the host's last heading was.
+        var cut = RenderVariables("http://localhost/variabler", b => b.Add(c => c.HeadingLevel, 3));
+
+        Assert.Equal("Variabelutforsker", cut.Find("h3").TextContent);
+    }
+
+    [Fact]
+    public void Selection_WhenTheReaderOpensAVariable_ThenThereIsSomethingToCopy()
+    {
+        var cut = RenderVariables("http://localhost/variabler");
+
+        Rows(cut)[0].Click();
+
+        Assert.Equal($"/variabler?variabelId={TwoVariableClient.SpeechId}", Mirrored());
+    }
+
+    [Fact]
+    public void Selection_WhenALinkCarriesAVariable_ThenItOpensWithTheSearchAroundItIntact()
+    {
+        var cut = RenderVariables(
+            $"http://localhost/variabler?search=svelging&variabelId={TwoVariableClient.SalivaId}");
+
+        Assert.Equal("true", Rows(cut)[1].GetAttribute("aria-expanded"));
+        Assert.NotEmpty(cut.FindAll(".munin-explorer-detail"));
+    }
+
+    [Fact]
+    public void Selection_WhenAHostDeclinesTheVariableKey_ThenItsOwnValueIsLeftWhereItIs()
+    {
+        // Declinable for the reason ?search= is: a host with a variable page of its own may already
+        // mean something by ?variabelId=. Declining it does not close the panel, only keep it out
+        // of the link.
+        var cut = RenderVariables("http://localhost/variabler?variabelId=vertens-egen",
+                                  b => b.Add(c => c.DeclinedKeys, ["variabelId"]));
+
+        Rows(cut)[0].Click();
+
+        Assert.NotEmpty(cut.FindAll(".munin-explorer-detail"));
+        Assert.Equal("/variabler?variabelId=vertens-egen", Mirrored());
+    }
+
+    [Fact]
+    public void Selection_WhenTheReaderClosesTheVariable_ThenTheKeyGoesRatherThanGoingStale()
+    {
+        // A URL still naming a closed variable sends the next reader somewhere the sender was not.
+        var cut = RenderVariables(
+            $"http://localhost/variabler?search=svelging&variabelId={TwoVariableClient.SpeechId}");
+
+        Rows(cut)[0].Click();
+
+        Assert.Equal("/variabler?search=svelging", Mirrored());
     }
 
     /// <summary>A navigation manager mounted under a path base, which bUnit's own cannot be.</summary>
