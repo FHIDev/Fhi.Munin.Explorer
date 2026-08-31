@@ -2,6 +2,7 @@
 @using Fhi.Munin.Explorer.Contracts
 @using Microsoft.JSInterop
 @inject IJSRuntime JS
+@inject NavigationManager Nav
 
 @* The host half of the shareable-state contract, and the whole of it.
 
@@ -41,9 +42,13 @@
     {
         var query = _state.ToState().ToQueryString();
 
-        // "?x=1" to set, and a bare path to clear: assigning "" would leave the previous query
+        // "?x=1" to set, and the path itself to clear: assigning "" would leave the previous query
         // string in place, so clearing every filter would not clear the URL.
-        var url = query.Length == 0 ? "/" : "?" + query;
+        //
+        // The path from NavigationManager rather than a literal "/". replaceState writes an absolute
+        // path, and this component does not know where the host mounted it — behind a reverse proxy
+        // or in a virtual directory, "/" would send the reader out of the application entirely.
+        var url = query.Length == 0 ? new Uri(Nav.Uri).AbsolutePath : "?" + query;
 
         if (url == _mirrored)
         {

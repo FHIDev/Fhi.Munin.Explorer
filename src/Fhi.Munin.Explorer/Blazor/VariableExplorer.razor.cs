@@ -659,7 +659,8 @@ public partial class VariableExplorer : ComponentBase
     /// The one clamp, so the reader's control cannot reach the API with a size the host's own
     /// parameter would have been held to.
     /// </remarks>
-    private int ClampedPageSize => Math.Clamp(_pageSize, 1, 100);
+    private int ClampedPageSize =>
+        Math.Clamp(_pageSize, ExplorerUrlState.MinPageSize, ExplorerUrlState.MaxPageSize);
 
     /// <summary>How many variables the search matched, not how many are on screen.</summary>
     private int TotalCount => _result?.TotalCount ?? 0;

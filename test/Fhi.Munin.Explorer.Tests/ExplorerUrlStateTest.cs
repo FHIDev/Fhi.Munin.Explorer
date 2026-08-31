@@ -8,15 +8,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </summary>
 public class ExplorerUrlStateTest
 {
-    /// <summary>
-    /// The reason this type exists rather than each host restating the number.
-    /// </summary>
-    /// <remarks>
-    /// A host cannot read a component parameter's default, so every host that wanted to omit the
-    /// page size from its URLs kept its own copy of it. Two copies far apart, and nothing failing
-    /// when they drift: change the component and every host silently writes URLs that disagree with
-    /// what the reader sees. This is the assertion that makes the copy safe to have removed.
-    /// </remarks>
+    /// <summary>Binds the two copies of this number so they cannot drift. (Fhi.Metadata-f3p6v)</summary>
     [Fact]
     public void DefaultPageSize_IsTheSameNumberTheComponentUses()
     {
@@ -120,9 +112,39 @@ public class ExplorerUrlStateTest
         Assert.Equal(expected, ExplorerUrlState.Parse(query).Page);
     }
 
-    /// <summary>
-    /// Parse reads whatever a public URL carried, so length is bounded like the filter's own values.
-    /// </summary>
+    /// <summary>The component clamps what it sends but reports the raw value back, so a size it
+    /// cannot honour would be written into the URL over a page the reader is not looking at.</summary>
+    [Theory]
+    [InlineData("?pageSize=0")]
+    [InlineData("?pageSize=-10")]
+    [InlineData("?pageSize=101")]
+    [InlineData("?pageSize=99999")]
+    [InlineData("?pageSize=notanumber")]
+    public void Parse_WhenThePageSizeIsOneTheExplorerCannotHonour_ThenTheDefaultStands(string query)
+    {
+        Assert.Equal(ExplorerUrlState.DefaultPageSize, ExplorerUrlState.Parse(query).PageSize);
+    }
+
+    [Theory]
+    [InlineData("?pageSize=1", 1)]
+    [InlineData("?pageSize=100", 100)]
+    [InlineData("?pageSize=50", 50)]
+    public void Parse_WhenThePageSizeIsInRange_ThenItIsKept(string query, int expected)
+    {
+        Assert.Equal(expected, ExplorerUrlState.Parse(query).PageSize);
+    }
+
+    /// <summary>A host testing membership must not miss a key because of its case.</summary>
+    [Theory]
+    [InlineData("Search")]
+    [InlineData("PAGESIZE")]
+    [InlineData("sortdir")]
+    public void QueryKeys_MatchesTheCasesParseAccepts(string key)
+    {
+        Assert.Contains(key, ExplorerUrlState.QueryKeys);
+    }
+
+    /// <summary>Bounded like the filter's own values, since Parse reads whatever a public URL carried.</summary>
     [Fact]
     public void Parse_WhenTheSearchIsLongerThanAnyoneWouldType_ThenItIsDroppedRatherThanKept()
     {

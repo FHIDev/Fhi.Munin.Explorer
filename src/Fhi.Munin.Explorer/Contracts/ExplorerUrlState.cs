@@ -52,6 +52,20 @@ public sealed record ExplorerUrlState
     /// </remarks>
     public const int DefaultPageSize = 20;
 
+    /// <summary>The smallest page size the explorer will request.</summary>
+    public const int MinPageSize = 1;
+
+    /// <summary>The largest page size the explorer will request.</summary>
+    /// <remarks>
+    /// Here rather than only inside the component because a size outside this range cannot be
+    /// honoured, and a URL that names one would describe a page the reader is not looking at: the
+    /// component clamps what it sends to the API but reports the raw value back, so an unclamped
+    /// <c>?pageSize=99999</c> would be written back into the address bar over a hundred-row page.
+    /// <see cref="Parse"/> drops such a value instead, and <c>VariableExplorer</c> clamps against
+    /// these same two constants, so there is one range rather than two.
+    /// </remarks>
+    public const int MaxPageSize = 100;
+
     /// <summary>How long a search term may be before <see cref="Parse"/> drops it.</summary>
     /// <remarks>
     /// The same reasoning as <see cref="VariableFilter"/>'s own caps: this parses whatever a public,
@@ -188,11 +202,14 @@ public sealed record ExplorerUrlState
                 : state;
         }
 
-        // Not clamped to the component's 1-100: it holds every size to that range on its way to the
-        // API, and a second copy of the rule here would be one more thing to keep in step.
+        // Dropped rather than clamped, and for the same reason the search is: a size outside the
+        // range cannot be honoured, and silently substituting one would put a number in the URL
+        // that describes a different page from the one on screen.
         if (Is(name, "pageSize"))
         {
-            return int.TryParse(value, out var size) ? state with { PageSize = size } : state;
+            return int.TryParse(value, out var size) && size is >= MinPageSize and <= MaxPageSize
+                ? state with { PageSize = size }
+                : state;
         }
 
         return state;
@@ -211,8 +228,14 @@ public sealed record ExplorerUrlState
     /// leave in the URL": everything not named here survives untouched, because
     /// <see cref="ToQueryString"/> never writes it.
     /// </remarks>
-    public static IReadOnlyList<string> QueryKeys { get; } =
-        ["search", "sort", "sortDir", "page", "pageSize"];
+    /// <remarks>
+    /// Case-insensitive, because <see cref="Parse"/> is: a host testing membership against an
+    /// ordinal list would miss <c>?Search=</c>, keep it as one of its own, and end up with the
+    /// parameter twice in the URL it rebuilds.
+    /// </remarks>
+    public static IReadOnlySet<string> QueryKeys { get; } =
+        new HashSet<string>(["search", "sort", "sortDir", "page", "pageSize"],
+                            StringComparer.OrdinalIgnoreCase);
 
     private static void Append(StringBuilder query, string name, string? value)
     {
