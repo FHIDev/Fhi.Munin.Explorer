@@ -26,7 +26,7 @@ on:
       api-base-url:
         description: Which Munin API to check the contracts against
         required: false
-        default: https://munin.skytest.fhi.no
+        default: https://runa.munin.skytest.fhi.no
 
 permissions:
   contents: read
@@ -50,7 +50,7 @@ jobs:
       MUNIN_EXPLORER_LIVE: '1'
       # Spelled the way a host spells it in configuration. The public test API is anonymous and
       # read-only, so this job needs no secret and no token provider.
-      MuninExplorer__ApiBaseUrl: ${{ inputs.api-base-url || 'https://munin.skytest.fhi.no' }}
+      MuninExplorer__ApiBaseUrl: ${{ inputs.api-base-url || 'https://runa.munin.skytest.fhi.no' }}
       TRX: artifacts/contract-drift.trx
 
     steps:

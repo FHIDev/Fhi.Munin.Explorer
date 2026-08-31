@@ -306,7 +306,7 @@ internal sealed class StubHttpHandler(Func<HttpRequestMessage, HttpResponseMessa
 /// <remarks>
 /// Round-tripping a real payload is the test that actually catches contract drift; a fixture
 /// written by hand only ever proves the DTO agrees with itself. Re-capture with, for example,
-/// <c>curl https://munin.skytest.fhi.no/api/explorer/filters</c> when an endpoint changes.
+/// <c>curl https://runa.munin.skytest.fhi.no/api/explorer/filters</c> when an endpoint changes.
 /// </remarks>
 internal static class TestData
 {

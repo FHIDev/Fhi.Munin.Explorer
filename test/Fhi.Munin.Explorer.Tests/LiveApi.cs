@@ -26,7 +26,7 @@ internal static class LiveApi
     public const string BaseUrlVariable = "MuninExplorer__ApiBaseUrl";
 
     /// <summary>The public, anonymous test API the sample hosts already read. No secret to hold.</summary>
-    public const string DefaultBaseUrl = "https://munin.skytest.fhi.no";
+    public const string DefaultBaseUrl = "https://runa.munin.skytest.fhi.no";
 
     /// <summary>The name <c>IHttpClientFactory</c> gives the explorer's client.</summary>
     /// <remarks>

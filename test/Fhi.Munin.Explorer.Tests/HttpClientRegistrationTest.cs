@@ -17,7 +17,7 @@ public class HttpClientRegistrationTest
     {
         var services = new ServiceCollection();
 
-        services.AddMuninExplorer(o => o.ApiBaseUrl = "https://munin.skytest.fhi.no");
+        services.AddMuninExplorer(o => o.ApiBaseUrl = "https://runa.munin.skytest.fhi.no");
 
         return services.BuildServiceProvider();
     }
@@ -57,6 +57,23 @@ public class HttpClientRegistrationTest
     }
 
     [Fact]
+    public void Registration_WhenNoBaseUrlWasSupplied_ThenTheStartupFailureNamesAHostThatAnswersOffTheFhiNetwork()
+    {
+        // The one string a host developer reads at the moment they are looking for the value, so
+        // it is the likeliest thing here to be copied verbatim (Fhi.Metadata-ip02g).
+        var services = new ServiceCollection();
+
+        var thrown = Assert.Throws<InvalidOperationException>(
+            () => services.AddMuninExplorer(o => o.ApiBaseUrl = null));
+
+        Assert.Contains("https://runa.munin.skytest.fhi.no", thrown.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "https://munin.skytest.fhi.no", // internal-host-on-purpose
+            thrown.Message,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Registration_WhenTheHostSuppliedABaseUrl_ThenRelativeRoutesResolveUnderIt()
     {
         // Pinned beside the timeouts because both are set in the same lambda: a later edit that
@@ -67,7 +84,7 @@ public class HttpClientRegistrationTest
         var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient(ClientName);
 
         Assert.Equal(
-            new Uri("https://munin.skytest.fhi.no/api/explorer/variables"),
+            new Uri("https://runa.munin.skytest.fhi.no/api/explorer/variables"),
             new Uri(client.BaseAddress!, "api/explorer/variables"));
     }
 }
