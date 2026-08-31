@@ -574,6 +574,10 @@ public class KildeViewTest : BunitContext
         // it counts as a missing section rather than a drawn one.
         var cut = Render(Barnediabetes(), language);
 
+        // Counted first: every assertion below passes over a view that drew no group at all, which
+        // is the very regression this source was captured for.
+        Assert.NotEmpty(cut.FindAll(".munin-explorer-group"));
+
         Assert.All(unset, name => Assert.DoesNotContain(
             name, cut.FindAll(".munin-explorer-group").Select(e => e.TextContent)));
 
