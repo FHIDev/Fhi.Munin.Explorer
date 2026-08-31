@@ -246,10 +246,9 @@ internal sealed record Texts(
     // control (WCAG 2.5.3), which is a constraint on the whole sentence and therefore belongs in
     // the sentence rather than in the caller.
     Func<string, string> CrumbLabel,
-    // (search, filters, historicalHidden) — the empty state. It names the filters because a search
-    // matching nothing *with three filters on* is a different thing to be told than one matching
-    // nothing at all, and offers the historical toggle only while it is off: naming one already on
-    // would tell the reader to switch on what already is. (Fhi.Metadata-rkjlx)
+    // (search, filters, historicalHidden) — the empty state. It names the filters because matching
+    // nothing *with three of them on* is a different thing to be told than matching nothing at all,
+    // and offers the historical toggle only while it is off. (Fhi.Metadata-rkjlx)
     Func<string?, int, bool, string> NoResults,
 
     // Kelda, the kildeutforsker, which ships from this package beside Runa. The wording is read
