@@ -92,6 +92,32 @@ at. Then:
 A red build here is not necessarily our bug. It is the API telling us something changed, on the
 day it changed, which is the whole point.
 
+## When it goes red without reaching the API
+
+A red run has two causes, and they want opposite responses. Either a payload no longer fits the
+contracts, or nothing answered and nothing was compared.
+
+The second says nothing at all about the contracts, so reporting it as drift is worse than saying
+nothing: it names a cause that does not exist and sends whoever picks it up to edit DTOs that were
+correct. That is not hypothetical — the job spent three nights filing "the Explorer API no longer
+matches Fhi.Munin.Explorer.Contracts" while every one of its nine tests was dying on a TCP connect
+timeout, because the base URL named the Munin test API by a host that resolves to a private
+address. It answers by hand from inside FHI's network and not at all from a hosted runner, which
+is the shape of mistake that survives being checked (Fhi.Metadata-ghxh4).
+
+So the two are separated end to end. `LiveApiConnection` catches the transport failure and fails
+with `LiveApi.UnreachableMarker` and the base URL rather than a list of differences;
+`scripts/drift-failure-kind.sh` reads the results file for that marker; and the workflow titles its
+issue from the answer, so an outage and a real difference never land in the same thread. Where
+nothing was recorded at all the answer is `drift`, because that is the case where somebody has to
+read the log and the drift report is the one that says so.
+
+Both halves are covered offline in `ShapeDriftTest`, including the connect-timeout form — an
+unroutable address surfaces as `TaskCanceledException` rather than `HttpRequestException`, and
+catching only the obvious one would have left the real case reported as drift. A third test pins
+the marker to the spelling the script greps for, since nothing else connects a C# constant to a
+line of bash.
+
 ## Why the job cannot quietly stop working
 
 The tests gate themselves on `MUNIN_EXPLORER_LIVE`, and that gate is also the way the check could

@@ -2,6 +2,7 @@ using System.Net;
 using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.Extensions.DependencyInjection;
+using Xunit.Sdk;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -27,6 +28,16 @@ internal static class LiveApi
 
     /// <summary>The public, anonymous test API the sample hosts already read. No secret to hold.</summary>
     public const string DefaultBaseUrl = "https://runa.munin.skytest.fhi.no";
+
+    /// <summary>
+    /// Written into the failure message when the API could not be reached at all, so the workflow
+    /// can tell that apart from a real difference and title its issue accordingly.
+    /// </summary>
+    /// <remarks>
+    /// <c>scripts/drift-failure-kind.sh</c> greps the results file for this exact word, and
+    /// <see cref="ShapeDriftTest"/> asserts the two have not drifted apart.
+    /// </remarks>
+    public const string UnreachableMarker = "API-UNREACHABLE";
 
     /// <summary>The name <c>IHttpClientFactory</c> gives the explorer's client.</summary>
     /// <remarks>
@@ -172,7 +183,19 @@ internal sealed class LiveApiConnection : IDisposable
 
         log.Clear();
 
-        var value = await call(Client);
+        T value;
+
+        try
+        {
+            value = await call(Client);
+        }
+        catch (Exception cause) when (cause is HttpRequestException or TaskCanceledException)
+        {
+            // Nothing answered, so nothing was compared and this run says nothing about the
+            // contracts. Its own kind rather than a failed comparison because the workflow titles
+            // its issue from it (Fhi.Metadata-ghxh4).
+            throw new XunitException(Unreachable(cause), cause);
+        }
 
         if (log.Responses.Count != 1)
         {
@@ -204,6 +227,22 @@ internal sealed class LiveApiConnection : IDisposable
     }
 
     public void Dispose() => provider.Dispose();
+
+    /// <summary>Why no comparison happened, said so it cannot be read as drift.</summary>
+    /// <remarks>
+    /// The base URL is quoted because it is nearly always the answer: the Munin test API answers
+    /// outside FHI's network only under its <c>runa.</c> and <c>kelda.</c> names, so the wrong one
+    /// succeeds by hand on the VPN and times out on a hosted runner.
+    /// </remarks>
+    private static string Unreachable(Exception cause) =>
+        $"""
+         {LiveApi.UnreachableMarker}: could not reach {LiveApi.BaseUrl} — {cause.GetType().Name}: {cause.Message}
+
+         Nothing was fetched, so nothing was compared. This run says nothing about whether the
+         contracts still fit, and no DTO needs editing on account of it.
+
+         Check that {LiveApi.BaseUrlVariable} names a host published outside FHI's network.
+         """;
 
     private static string Explain(Uri? uri, IReadOnlyList<string> drift) =>
         $"""
