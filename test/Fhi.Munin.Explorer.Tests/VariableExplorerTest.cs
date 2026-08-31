@@ -2760,10 +2760,29 @@ public class VariableExplorerTest : BunitContext
     private sealed class FilteringClient(
         Page<VariableSummary> answer,
         FilterOptions? facets = null,
-        Page<VariableSummary>? filteredAnswer = null)
+        Page<VariableSummary>? filteredAnswer = null,
+        IReadOnlyList<PropertyMetadataEntry>? vocabulary = null)
         : EmptyMuninExplorerClient
     {
         private readonly FilterOptions _facets = facets ?? Facets();
+        private readonly IReadOnlyList<PropertyMetadataEntry> _vocabulary = vocabulary ?? [];
+
+        /// <summary>How many times the datakategori words were asked for.</summary>
+        public int VocabularyCalls { get; private set; }
+
+        /// <summary>Fail the vocabulary fetch — the degraded-labels path.</summary>
+        public bool FailVocabulary { get; set; }
+
+        public override Task<IReadOnlyList<PropertyMetadataEntry>> GetKildePropertyMetadataAsync(
+            CancellationToken cancellationToken = default)
+        {
+            VocabularyCalls++;
+
+            return FailVocabulary
+                ? Task.FromException<IReadOnlyList<PropertyMetadataEntry>>(
+                    new HttpRequestException("the API is down"))
+                : Task.FromResult(_vocabulary);
+        }
 
         // Never completed. A search asked for while this is set stays in flight for the rest of
         // the test, which is the only way to press a second facet while the first is still running.
@@ -2869,6 +2888,265 @@ public class VariableExplorerTest : BunitContext
 
     private static void ClickFacet(IRenderedComponent<VariableExplorer> cut, string label) =>
         Facet(cut, label).Click();
+
+    // ---- datakategori and dataperiode (Fhi.Metadata-uidue) ----
+
+    private static readonly DataCategoryFacet[] TwoCategories =
+    [
+        new() { Value = "ehds-cat:population-health-surveys", Count = 12 },
+        new() { Value = "ehds-cat:biobanks", Count = 3 }
+    ];
+
+    /// <summary>The vocabulary the API serves, holding the catalogue's word for one of the two.</summary>
+    /// <remarks>
+    /// Deliberately covering only one token. The other is what proves an unresolved code is shown
+    /// rather than dropped — a facet that hid what it could not name would silently offer fewer
+    /// choices than the catalogue has.
+    /// </remarks>
+    private static IReadOnlyList<PropertyMetadataEntry> CategoryWords() =>
+    [
+        new()
+        {
+            Key = "healthCategory",
+            OptionsJson = """
+                [{"value":"ehds-cat:population-health-surveys","label":"Befolkningsundersøkelser","labelEn":"Population health surveys"}]
+                """
+        }
+    ];
+
+    private static FilterOptions FacetsWith(
+        IReadOnlyList<DataCategoryFacet>? categories = null, DateInterval? range = null) =>
+        Facets() with { DataCategories = categories ?? [], DateRange = range };
+
+    /// <summary>The facet disclosure headings, which is where a facet is present or absent.</summary>
+    /// <remarks>
+    /// Scoped to the panel rather than asserted over the whole markup: "Dataperiode" is also a
+    /// results column, so a DoesNotContain over cut.Markup can never pass and would have to be
+    /// weakened into meaninglessness to try.
+    /// </remarks>
+    private static IReadOnlyList<string> FacetHeadings(IRenderedComponent<VariableExplorer> cut) =>
+        [.. cut.FindAll(".munin-explorer-filters summary").Select(s => s.TextContent)];
+
+    private static IReadOnlyList<AngleSharp.Dom.IElement> DateInputs(
+        IRenderedComponent<VariableExplorer> cut) =>
+        [.. cut.FindAll(".munin-explorer-filters input[type=date]")];
+
+    [Fact]
+    public void Filter_WhenTheApiOffersDatakategorier_ThenTheyAreDrawnInTheCataloguesOwnWords()
+    {
+        // The words are the catalogue's, resolved through the same vocabulary Kelda reads. A table
+        // of EHDS tokens transcribed into Texts is the other way to get words here, and it is the
+        // one the note above Texts.FacetCategory forbids.
+        var cut = RenderWith(new FilteringClient(
+            OnePage(Variable("1. Tale", "KODE")), FacetsWith(TwoCategories), vocabulary: CategoryWords()));
+
+        Assert.Equal("Befolkningsundersøkelser (12)", Facet(cut, "Befolkningsundersøkelser").TextContent);
+
+        // The token the vocabulary does not name is shown as itself rather than hidden. Ugly and
+        // honest beats a facet quietly offering fewer choices than the catalogue has.
+        Assert.Equal("ehds-cat:biobanks (3)", Facet(cut, "ehds-cat:biobanks").TextContent);
+    }
+
+    [Fact]
+    public void Filter_WhenTheVocabularyCannotBeFetched_ThenTheFacetStillFiltersOnTokens()
+    {
+        // The vocabulary is a label lookup, not the facet. Losing it costs the choices their words
+        // and nothing else — and it must not report a second failure beside the facet error, which
+        // would have the panel announce a broken filter that is not broken.
+        var client = new FilteringClient(
+            OnePage(Variable("1. Tale", "KODE")), FacetsWith(TwoCategories), vocabulary: CategoryWords())
+        { FailVocabulary = true };
+        var cut = RenderWith(client);
+
+        Assert.Equal("ehds-cat:biobanks (3)", Facet(cut, "ehds-cat:biobanks").TextContent);
+        Assert.Empty(cut.FindAll(".infobox"));
+    }
+
+    [Fact]
+    public void Filter_WhenADatakategoriIsTicked_ThenTheFilterCarriesItsToken()
+    {
+        VariableFilter? reported = null;
+        var client = new FilteringClient(
+            OnePage(Variable("1. Tale", "KODE")), FacetsWith(TwoCategories), vocabulary: CategoryWords());
+        var cut = RenderWith(client, b => b.Add(c => c.FilterChanged, f => reported = f));
+
+        ClickFacet(cut, "Befolkningsundersøkelser");
+
+        // The token, not the word: the word is a label for a reader and the API filters on neither
+        // it nor a prefix-stripped form of the code.
+        Assert.Equal(["ehds-cat:population-health-surveys"], reported!.Categories);
+        Assert.Equal(reported, client.SearchFilter);
+    }
+
+    [Fact]
+    public void Filter_WhenTheApiOffersNoDatakategorier_ThenTheFacetIsLeftOutRatherThanDrawnEmpty()
+    {
+        // THE TRAP, first direction. An API that predates the facet returns none at all, and the
+        // line under the group list says such a facet is left out rather than drawn as an empty
+        // disclosure. A fixture with only rich data passes against an implementation that always
+        // draws the heading — the Kelda defect in Fhi.Metadata-2fomm.3.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith()));
+
+        Assert.DoesNotContain("Datakategori", FacetHeadings(cut));
+    }
+
+    [Fact]
+    public void Filter_WhenTheApiReportsADateRange_ThenBothFieldsAreDrawnBoundedByIt()
+    {
+        // Asserting the two inputs are in the DOM, not that a heading exists: a heading passes over
+        // an empty accordion, which is exactly what the group-drop predicate and the FacetList /
+        // EmptyText body would have produced before FacetGroup learned a third shape.
+        var range = new DateInterval
+        {
+            Min = new DateTimeOffset(2010, 1, 1, 0, 0, 0, TimeSpan.Zero),
+            Max = new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero)
+        };
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: range)));
+
+        var inputs = DateInputs(cut);
+
+        Assert.Equal(2, inputs.Count);
+        Assert.Equal(["2010-01-01", "2010-01-01"], inputs.Select(i => i.GetAttribute("min")));
+        Assert.Equal(["2025-06-01", "2025-06-01"], inputs.Select(i => i.GetAttribute("max")));
+
+        // Labelled, and the label points at the field rather than merely sitting above it.
+        var labels = cut.FindAll(".munin-explorer-filters label").Select(l => l.GetAttribute("for"));
+
+        Assert.Contains(inputs[0].Id, labels);
+        Assert.Contains(inputs[1].Id, labels);
+    }
+
+    [Fact]
+    public void Filter_WhenTheApiReportsNoDateRange_ThenNoDataperiodeFacetIsDrawn()
+    {
+        // THE TRAP, second direction, and the one the third FacetGroup shape could most easily
+        // break: a Body that is never null would draw an unbounded pair of fields over a selection
+        // whose date span the API could not report.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith()));
+
+        Assert.Empty(DateInputs(cut));
+        Assert.DoesNotContain("Dataperiode", FacetHeadings(cut));
+    }
+
+    [Fact]
+    public void Filter_WhenABoundCarriesAnOffset_ThenTheDateIsTheOneTheValueWrites()
+    {
+        // THE SEAM. DateInterval carries DateTimeOffset; the filter takes DateOnly. 2020-01-01
+        // at +02:00 is 1 January — .UtcDateTime.Date would make it 31 December, and
+        // .LocalDateTime.Date would hand the answer to whichever machine runs the test, so CI and
+        // a Norwegian laptop would disagree and neither would be obviously wrong.
+        //
+        // Max null as well, which DateInterval documents as "unknown": one end bounded and the
+        // other open.
+        var range = new DateInterval { Min = new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.FromHours(2)) };
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: range)));
+
+        var inputs = DateInputs(cut);
+
+        Assert.Equal(2, inputs.Count);
+        Assert.Equal("2020-01-01", inputs[0].GetAttribute("min"));
+        Assert.True(string.IsNullOrEmpty(inputs[1].GetAttribute("max")));
+    }
+
+    [Fact]
+    public void Filter_WhenTheFromDateIsSet_ThenItReachesTheFilterAndTheApi()
+    {
+        var range = new DateInterval
+        {
+            Min = new DateTimeOffset(2010, 1, 1, 0, 0, 0, TimeSpan.Zero),
+            Max = new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero)
+        };
+        VariableFilter? reported = null;
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: range));
+        var cut = RenderWith(client, b => b.Add(c => c.FilterChanged, f => reported = f));
+
+        DateInputs(cut)[0].Change("2015-03-04");
+
+        Assert.Equal(new DateOnly(2015, 3, 4), reported!.DataFrom);
+        Assert.Equal(new DateOnly(2015, 3, 4), client.SearchFilter!.DataFrom);
+    }
+
+    [Fact]
+    public void Filter_WhenBothNewFiltersAreShared_ThenTheyComeBackSetAndShownInTheControls()
+    {
+        // Not here to find a parsing bug — VariableFilterTest already covers the round trip. It is
+        // here to catch controls drawn but bound to local state instead of to _filter, which looks
+        // correct on screen and is lost on every shared link.
+        var range = new DateInterval
+        {
+            Min = new DateTimeOffset(2010, 1, 1, 0, 0, 0, TimeSpan.Zero),
+            Max = new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero)
+        };
+        var set = new VariableFilter
+        {
+            Categories = ["ehds-cat:population-health-surveys"],
+            DataFrom = new DateOnly(2015, 3, 4),
+            DataTo = new DateOnly(2020, 12, 31)
+        };
+
+        var parsed = VariableFilter.Parse(set.ToQueryString());
+
+        Assert.Equal(set, parsed);
+
+        var cut = RenderWith(
+            new FilteringClient(OnePage(Variable("1. Tale", "KODE")),
+                                FacetsWith(TwoCategories, range), vocabulary: CategoryWords()),
+            b => b.Add(c => c.Filter, parsed));
+
+        var inputs = DateInputs(cut);
+
+        Assert.Equal("2015-03-04", inputs[0].GetAttribute("value"));
+        Assert.Equal("2020-12-31", inputs[1].GetAttribute("value"));
+        Assert.Equal("true", Facet(cut, "Befolkningsundersøkelser").GetAttribute("aria-pressed"));
+    }
+
+    [Fact]
+    public void Filter_WhenBothNewFacetsAreDrawn_ThenEveryClassNameTheyEmitIsStyled()
+    {
+        // The sample hosts style these names themselves, so opening one in a browser looks correct
+        // whatever the name is. This guard is the only thing that sees an unstyled name on a
+        // Stiler-only host such as helsedata.no.
+        var range = new DateInterval
+        {
+            Min = new DateTimeOffset(2010, 1, 1, 0, 0, 0, TimeSpan.Zero),
+            Max = new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero)
+        };
+        var cut = RenderWith(new FilteringClient(
+            OnePage(Variable("1. Tale", "KODE")),
+            FacetsWith(TwoCategories, range), vocabulary: CategoryWords()));
+
+        Assert.Equal(2, DateInputs(cut).Count);
+        Assert.Equal([], HostClassNames.Orphans(HostClassNames.Of(cut.FindAll("[class]"))));
+    }
+
+    [Fact]
+    public void Filter_WhenBothNewFacetsAreDrawn_ThenTheySitWhereTheOrderingCommentSaysTheyDo()
+    {
+        // Placement is a decision here, not an accident of where the list was appended to.
+        var range = new DateInterval
+        {
+            Min = new DateTimeOffset(2010, 1, 1, 0, 0, 0, TimeSpan.Zero),
+            Max = new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero)
+        };
+        var facets = FacetsWith(TwoCategories, range) with
+        {
+            // Present only so the slot AFTER dataperiode exists to be measured against.
+            HelsefagligKodeverk = [new() { ShortName = "ICD-10", FullName = "ICD-10", Count = 5 }]
+        };
+        var cut = RenderWith(new FilteringClient(
+            OnePage(Variable("1. Tale", "KODE")), facets, vocabulary: CategoryWords()));
+
+        var headings = cut.FindAll(".munin-explorer-filters summary").Select(s => s.TextContent).ToList();
+
+        // Datakategori third: the two above it are in helsedata's own order and were not moved.
+        Assert.Equal(2, headings.FindIndex(h => h.StartsWith("Datakategori", StringComparison.Ordinal)));
+
+        // Dataperiode in Runa's slot — after Datatype, before Helsefaglig kodeverk.
+        var period = headings.FindIndex(h => h.StartsWith("Dataperiode", StringComparison.Ordinal));
+
+        Assert.True(period > headings.FindIndex(h => h.StartsWith("Datatype", StringComparison.Ordinal)));
+        Assert.True(period < headings.FindIndex(h => h.StartsWith("Helsefaglig", StringComparison.Ordinal)));
+    }
 
     [Fact]
     public void Render_WhenTheApiOffersFacets_ThenEachValueIsDrawnWithTheCountItWouldLeave()

@@ -467,6 +467,21 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 .munin-explorer-filters__facets input[type="checkbox"] { margin-top: 4px; flex: none; }
 
+/* The dataperiode facet: a label and a native date input per end. No class name of our own —
+   Stiler has no date-range widget, and inventing one here would render as a raw browser default
+   on a Stiler-only host, which is the failure this package exists to avoid. The input is an
+   element every stylesheet already draws, the same argument the <details> and bare <ul> above
+   rest on, so what is styled here is the spacing between the two fields and nothing else. */
+.munin-explorer-filters input[type="date"] {
+  display: block;
+  margin: 4px 0 12px;
+  padding: 6px 8px;
+  font: inherit;
+  color: var(--dark);
+  border: 1px solid var(--grey30);
+  border-radius: 4px;
+}
+
 /* ---- not Stiler either: base element styling for the detail panel ----
 
    The same reason as the filter panel above. The panel a row opens is a <dl> of labels and values,
