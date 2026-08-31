@@ -126,7 +126,21 @@ public class UrlStateComponentTest : BunitContext
         cut.Find(".searchbox__freetext").Change("svelging");
         cut.Find("form").Submit();
 
-        Assert.Equal("?search=svelging", Mirrored());
+        Assert.Equal("/?search=svelging", Mirrored());
+    }
+
+    [Fact]
+    public void Mirror_WhenTheHostMountsTheExplorerUnderASubPath_ThenTheMirroredUrlKeepsThatPath()
+    {
+        // replaceState resolves a relative URL against the document's <base href>, not against the
+        // page being viewed. A mirrored "?search=" would therefore land wherever that href points —
+        // the app root on most hosts, its path base on others — and never on this page.
+        RenderExplorer("http://localhost/MuninRuna", out var cut);
+
+        cut.Find(".searchbox__freetext").Change("svelging");
+        cut.Find("form").Submit();
+
+        Assert.Equal("/MuninRuna?search=svelging", Mirrored());
     }
 
     [Fact]
@@ -139,7 +153,7 @@ public class UrlStateComponentTest : BunitContext
         cut.Find(".searchbox__freetext").Change("diabetes");
         cut.Find("form").Submit();
 
-        Assert.Equal("?utm_source=nyhetsbrev&search=diabetes", Mirrored());
+        Assert.Equal("/?utm_source=nyhetsbrev&search=diabetes", Mirrored());
     }
 
     [Fact]
@@ -275,6 +289,20 @@ public class UrlStateComponentTest : BunitContext
     }
 
     [Fact]
+    public void Kilder_WhenTheReaderOpensAKildeUnderASubPath_ThenOnlyTheQueryChanges()
+    {
+        // The same trap as the variable explorer's, asserted while the state is set rather than
+        // after it is cleared: the clear branch has always written the path and hides this.
+        var id = Guid.NewGuid();
+
+        var cut = RenderKilder(id, "http://localhost/MuninKelda");
+
+        cut.Find(".munin-explorer-kilder__name").Click();
+
+        Assert.Equal($"/MuninKelda?kilde={id}", Mirrored());
+    }
+
+    [Fact]
     public void Kilder_WhenTheReaderClosesTheKilde_ThenThePathTheyArrivedOnComesBackWithItsPathBase()
     {
         // Trap 2, which is invisible locally: replaceState writes an absolute path, so a component
@@ -301,7 +329,7 @@ public class UrlStateComponentTest : BunitContext
 
         cut.FindAll("button").First(button => button.TextContent.Contains("Tilbake", StringComparison.Ordinal)).Click();
 
-        Assert.Equal("?search=als", Mirrored());
+        Assert.Equal("/kilder?search=als", Mirrored());
     }
 
     [Fact]
