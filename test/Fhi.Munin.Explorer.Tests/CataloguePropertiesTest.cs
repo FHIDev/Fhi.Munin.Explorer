@@ -19,7 +19,8 @@ public class CataloguePropertiesTest
         string group,
         string? optionsJson = null,
         string? english = null,
-        string? englishGroup = null)
+        string? englishGroup = null,
+        string type = "")
     {
         var name = new Dictionary<string, string> { ["no"] = key };
         var groups = new Dictionary<string, string> { ["no"] = group };
@@ -41,6 +42,7 @@ public class CataloguePropertiesTest
             GroupTranslations = groups,
             DisplayNameTranslations = name,
             OptionsJson = optionsJson,
+            Type = type,
         };
     }
 
@@ -207,5 +209,254 @@ public class CataloguePropertiesTest
         // that touching it at all comes back.
         Assert.NotNull(CatalogueProperties.CatalogueOrder);
         Assert.Equal(0, CatalogueProperties.CatalogueOrder.Compare("Ås", "Ås"));
+    }
+
+    /// <summary>The vocabulary <c>healthTheme</c> carries, trimmed to the codes these tests use.</summary>
+    private const string HealthThemes =
+        """
+        [{"value":"healthdcatap:pharmaceuticals","label":"Legemidler","labelEn":"Pharmaceuticals"},
+         {"value":"healthdcatap:rare-diseases","label":"Sjeldne sykdommer","labelEn":"Rare diseases"}]
+        """;
+
+    [Fact]
+    public void Rows_WhenAValueIsAMultilingualEnvelope_ThenTheReaderSeesTheirOwnLanguageRatherThanTheJson()
+    {
+        // The shape the API really sends: the object is serialised into the string field, so a view
+        // that draws the bag verbatim draws braces, key names and escapes at the reader.
+        List<PropertyMetadataEntry> metadata =
+        [
+            Entry("TittelFlerspraklig", 540, "EHDS / HealthDCAT-AP", type: "MultilingualText"),
+        ];
+
+        Dictionary<string, string?> values = new()
+        {
+            ["TittelFlerspraklig"] = """{"nb":"The Tromsø study","en":"The Tromsø Study"}""",
+        };
+
+        var row = Assert.Single(CatalogueProperties.Rows(metadata, values, "en"));
+
+        Assert.Equal("The Tromsø Study", row.Value);
+
+        // And the row can now say which language it ended up in. Marked "no" over English text, as
+        // an unresolved envelope was, it reaches a screen reader in the wrong voice.
+        Assert.Equal("en", row.ValueLanguage);
+    }
+
+    [Fact]
+    public void Rows_WhenAMultilingualEnvelopeHasNoEnglish_ThenTheNorwegianShowsAndSaysSoItself()
+    {
+        // 130 of these across the catalogue carry nb and only 39 carry en, so the fallback is the
+        // common path rather than the edge — and the language it lands in is the whole point.
+        List<PropertyMetadataEntry> metadata =
+        [
+            Entry("TittelFlerspraklig", 540, "EHDS / HealthDCAT-AP", type: "MultilingualText"),
+        ];
+
+        Dictionary<string, string?> values = new()
+        {
+            ["TittelFlerspraklig"] = """{"nb":"Nasjonalt register for ablasjonsbehandling"}""",
+        };
+
+        var row = Assert.Single(CatalogueProperties.Rows(metadata, values, "en"));
+
+        Assert.Equal("Nasjonalt register for ablasjonsbehandling", row.Value);
+        Assert.Equal("no", row.ValueLanguage);
+    }
+
+    [Fact]
+    public void Rows_WhenAListCarriesItsOwnLanguageTags_ThenTheReadersEntriesAreDrawnAsOneValue()
+    {
+        // A different envelope for the same problem: a list of values each tagged with its own
+        // language. Lists really are lists here — the catalogue holds up to sixteen entries in one.
+        List<PropertyMetadataEntry> metadata =
+        [
+            Entry("FormaalFlerspraklig", 131, "EHDS / HealthDCAT-AP", type: "LangTaggedList"),
+        ];
+
+        Dictionary<string, string?> values = new()
+        {
+            ["FormaalFlerspraklig"] =
+                """[{"value":"Kvalitetsforbedring","language":"nb"},{"value":"Forskning","language":"nb"}]""",
+        };
+
+        var row = Assert.Single(CatalogueProperties.Rows(metadata, values, "no"));
+
+        Assert.Equal("Kvalitetsforbedring; Forskning", row.Value);
+        Assert.Equal("no", row.ValueLanguage);
+    }
+
+    [Fact]
+    public void Rows_WhenATaggedListCarriesBothLanguages_ThenOneReadersListIsNotSplicedIntoTheOthers()
+    {
+        // Gathered per language rather than per entry, so an English reader gets the English list
+        // whole. Entry by entry, a language with fewer entries would borrow the other's.
+        List<PropertyMetadataEntry> metadata =
+        [
+            Entry("FormaalFlerspraklig", 131, "EHDS / HealthDCAT-AP", type: "LangTaggedList"),
+        ];
+
+        Dictionary<string, string?> values = new()
+        {
+            ["FormaalFlerspraklig"] =
+                """
+                [{"value":"Kvalitetsforbedring","language":"nb"},
+                 {"value":"Forskning","language":"nb"},
+                 {"value":"Research","language":"en"}]
+                """,
+        };
+
+        var row = Assert.Single(CatalogueProperties.Rows(metadata, values, "en"));
+
+        Assert.Equal("Research", row.Value);
+        Assert.Equal("en", row.ValueLanguage);
+    }
+
+    [Fact]
+    public void Rows_WhenALangTaggedValueIsPlainTextInstead_ThenItIsShownAsItArrived()
+    {
+        // The catalogue is not consistent about this type: 69 values arrive as tagged arrays, 33 as
+        // plain text and one as a semicolon list. A value that is not the shape its type promises is
+        // still a value, and dropping it would hide that the two disagree.
+        List<PropertyMetadataEntry> metadata =
+        [
+            Entry("hasLegalBasis", 320, "EHDS / HealthDCAT-AP", type: "LangTaggedList"),
+        ];
+
+        Dictionary<string, string?> values = new()
+        {
+            ["hasLegalBasis"] = "§ 9 Registre som er samtykkebaserte",
+        };
+
+        var row = Assert.Single(CatalogueProperties.Rows(metadata, values, "no"));
+
+        Assert.Equal("§ 9 Registre som er samtykkebaserte", row.Value);
+        Assert.Equal("no", row.ValueLanguage);
+    }
+
+    [Fact]
+    public void Rows_WhenAMultiSelectHoldsSeveralCodes_ThenEachIsResolvedThroughTheVocabulary()
+    {
+        // The vocabulary lookup matches on the whole stored value, which is right for one code and
+        // wrong for a list: the array's own text matches nothing, and the array reaches the page.
+        List<PropertyMetadataEntry> metadata =
+        [
+            Entry("healthTheme", 305, "EHDS / HealthDCAT-AP", optionsJson: HealthThemes, type: "MultiSelect"),
+        ];
+
+        Dictionary<string, string?> values = new()
+        {
+            ["healthTheme"] = """["healthdcatap:pharmaceuticals","healthdcatap:rare-diseases"]""",
+        };
+
+        var row = Assert.Single(CatalogueProperties.Rows(metadata, values, "no"));
+
+        Assert.Equal("Legemidler; Sjeldne sykdommer", row.Value);
+        Assert.Equal("no", row.ValueLanguage);
+    }
+
+    [Fact]
+    public void Rows_WhenAMultiSelectCodeIsNotInTheVocabulary_ThenItIsShownRatherThanDropped()
+    {
+        // Half a list is worse than a list with a code in it: the reader cannot tell that a value
+        // was left out, and the row would claim the source has fewer themes than it does.
+        List<PropertyMetadataEntry> metadata =
+        [
+            Entry("healthTheme", 305, "EHDS / HealthDCAT-AP", optionsJson: HealthThemes, type: "MultiSelect"),
+        ];
+
+        Dictionary<string, string?> values = new()
+        {
+            ["healthTheme"] = """["healthdcatap:pharmaceuticals","healthdcatap:not-curated-yet"]""",
+        };
+
+        var row = Assert.Single(CatalogueProperties.Rows(metadata, values, "no"));
+
+        Assert.Equal("Legemidler; healthdcatap:not-curated-yet", row.Value);
+    }
+
+    [Fact]
+    public void Rows_WhenAPropertyHoldsAnObject_ThenTheRowIsDroppedRatherThanFilledWithJson()
+    {
+        // creator, contactPoint and qualifiedAttribution are records with named parts, and the
+        // catalogue curates a label for the property but none for what is inside it. There is no
+        // honest single cell to draw, so the row goes rather than the JSON.
+        List<PropertyMetadataEntry> metadata =
+        [
+            Entry("Formaal", 10, "Formål"),
+            Entry("creator", 425, "Formål", type: "Object"),
+        ];
+
+        Dictionary<string, string?> values = new()
+        {
+            ["Formaal"] = "Kvalitetsforbedring",
+            ["creator"] = """{"name":"UiT","homepage":"https://uit.no"}""",
+        };
+
+        var row = Assert.Single(CatalogueProperties.Rows(metadata, values, "no"));
+
+        Assert.Equal("Formaal", row.Label);
+    }
+
+    [Fact]
+    public void Rows_WhenAGroupHoldsNothingButObjects_ThenTheGroupGoesWithItsRows()
+    {
+        // Dropping a row has to drop an empty group the same way an unfilled key does, or the page
+        // grows a heading promising something with nothing under it.
+        List<PropertyMetadataEntry> metadata =
+        [
+            Entry("Formaal", 10, "Formål"),
+            Entry("creator", 425, "Ansvar", type: "Object"),
+        ];
+
+        Dictionary<string, string?> values = new()
+        {
+            ["Formaal"] = "Kvalitetsforbedring",
+            ["creator"] = """{"name":"UiT"}""",
+        };
+
+        var group = Assert.Single(CatalogueProperties.Groups(metadata, values, "no"));
+
+        Assert.Equal("Formål", group.Name);
+    }
+
+    [Fact]
+    public void Rows_WhenAnEnvelopeIsMalformed_ThenTheValueIsShownAsItArrived()
+    {
+        // Curated data arriving over the wire, so one bad value costs that value its unwrapping and
+        // not the page. Shown as stored for the reason a plain-text tagged value is.
+        List<PropertyMetadataEntry> metadata =
+        [
+            Entry("TittelFlerspraklig", 540, "EHDS / HealthDCAT-AP", type: "MultilingualText"),
+        ];
+
+        Dictionary<string, string?> values = new() { ["TittelFlerspraklig"] = """{"nb":"unterminated""" };
+
+        var row = Assert.Single(CatalogueProperties.Rows(metadata, values, "no"));
+
+        Assert.Equal("""{"nb":"unterminated""", row.Value);
+        Assert.Equal("no", row.ValueLanguage);
+    }
+
+    [Fact]
+    public void Rows_WhenAPropertyIsOrdinaryText_ThenNothingAboutItChanged()
+    {
+        // The types that store prose are the great majority, and the switch must leave them exactly
+        // where they were — including a code the vocabulary does not list.
+        List<PropertyMetadataEntry> metadata =
+        [
+            Entry("Formaal", 10, "Formål", type: "Text"),
+            Entry("accessRights", 300, "Formål", optionsJson: HealthThemes, type: "SingleSelect"),
+        ];
+
+        Dictionary<string, string?> values = new()
+        {
+            ["Formaal"] = "Kvalitetsforbedring",
+            ["accessRights"] = "eu-access:NON_PUBLIC",
+        };
+
+        var rows = CatalogueProperties.Rows(metadata, values, "no");
+
+        Assert.Equal(["Kvalitetsforbedring", "eu-access:NON_PUBLIC"], rows.Select(r => r.Value));
+        Assert.Equal(["no", "no"], rows.Select(r => r.ValueLanguage));
     }
 }
