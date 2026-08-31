@@ -295,7 +295,7 @@ else
         }
         else if (_result is not null)
         {
-            @T.NoResults(_executedSearch, _filter.ActiveCount)
+            @T.NoResults(_executedSearch, _filter.ActiveCount, !_filter.IncludeHistorical)
         }
     </p>
 

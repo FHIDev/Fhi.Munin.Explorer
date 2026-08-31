@@ -3186,7 +3186,10 @@ public class VariableExplorerTest : BunitContext
         // guard at all. A completely routine path: an English reader whose search matches nothing.
         var cut = RenderWith(new FakeClient(OnePage()), b => b.Add(c => c.Language, "en"));
 
-        Assert.Equal("No variables matched your search.", StatusLine(cut));
+        Assert.Equal(
+            "No variables matched your search. Historical variables are not included – "
+            + "turn on “Show historical” to see expired ones.",
+            StatusLine(cut));
     }
 
     [Fact]
@@ -3201,8 +3204,61 @@ public class VariableExplorerTest : BunitContext
                   .Add(c => c.Filter, new VariableFilter { KildeIds = [Dodsarsak] }));
 
         Assert.Equal(
-            "No variables matched your search for \u201csvelging\u201d with the filters you have chosen.",
+            "No variables matched your search for \u201csvelging\u201d with the filters you have chosen. "
+            + "Historical variables are not included \u2013 turn on \u201cShow historical\u201d to see expired ones.",
             StatusLine(cut));
+    }
+
+    [Fact]
+    public void Render_WhenNothingMatchesAndHistoricalVariablesAreHidden_ThenTheEmptyStateOffersTheToggle()
+    {
+        // The toggle is off by default and sits inside a collapsed facet group, so a reader whose
+        // variable exists only historically is told "no hits" by a filter they never set and
+        // cannot see. Without this sentence they conclude the catalogue does not have it.
+        var cut = RenderWith(new FakeClient(OnePage()), b => b.Add(c => c.Search, "svelging"));
+
+        Assert.Contains("Vis historiske", StatusLine(cut));
+    }
+
+    [Fact]
+    public void Render_WhenNothingMatchesWhileHistoricalVariablesAreShown_ThenTheEmptyStateIsSilentAboutThem()
+    {
+        // The trap. An empty state that always names the toggle passes the test above and tells a
+        // reader who already turned it on to turn it on \u2014 a hint that is not merely useless but
+        // points at the one explanation that has been ruled out.
+        var cut = RenderWith(
+            new FakeClient(OnePage()),
+            b => b.Add(c => c.Search, "svelging")
+                  .Add(c => c.Filter, new VariableFilter { IncludeHistorical = true }));
+
+        Assert.DoesNotContain("Vis historiske", StatusLine(cut));
+    }
+
+    [Fact]
+    public void Render_WhenTheReaderTurnsHistoricalOnWithNothingMatching_ThenTheHintGoesAway()
+    {
+        // Through the control rather than the parameter: the sentence reads off _filter, which the
+        // toggle rewrites, and a hint computed once at render would survive the click that answers it.
+        var cut = RenderWith(new FakeClient(OnePage()), b => b.Add(c => c.Search, "svelging"));
+        Assert.Contains("Vis historiske", StatusLine(cut));
+
+        ClickFacet(cut, "Vis historiske");
+
+        Assert.DoesNotContain("Vis historiske", StatusLine(cut));
+    }
+
+    [Fact]
+    public void Render_WhenHistoricalVariablesAreShownForAnEnglishReader_ThenTheEmptyStateIsSilentAboutThem()
+    {
+        // Both halves of the fix exist in two languages, and the English one is the half that is
+        // routinely left behind \u2014 the toggle-on case doubly so, since it asserts an absence.
+        var cut = RenderWith(
+            new FakeClient(OnePage()),
+            b => b.Add(c => c.Language, "en")
+                  .Add(c => c.Filter, new VariableFilter { IncludeHistorical = true }));
+
+        Assert.Equal(
+            "No variables matched your search with the filters you have chosen.", StatusLine(cut));
     }
 
     [Fact]
