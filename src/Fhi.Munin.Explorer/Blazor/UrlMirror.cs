@@ -82,11 +82,12 @@ internal sealed class UrlMirror
             return;
         }
 
-        _mirrored = url;
-
         // replaceState, not pushState: opening and closing filters would otherwise fill the history
         // with steps the reader has to walk back through one at a time instead of leaving the site.
         await _js.InvokeVoidAsync("history.replaceState", null, "", url).ConfigureAwait(false);
+
+        // After the call, not before: a write the browser refused must not read as one it has.
+        _mirrored = url;
     }
 
     private static string Join(string left, string right) =>

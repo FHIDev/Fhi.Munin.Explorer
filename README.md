@@ -384,7 +384,9 @@ Three things are worth knowing before mounting one.
   overwritten.
 - **`KildeExplorerWithUrlState` needs `VariableExplorerPath`** to offer the handover to the variable
   explorer, because only the host knows where it mounted one. Leave it out and the selection column
-  is not drawn at all. A path rather than a callback on purpose: an `EventCallback` handed to an
+  is not drawn at all. It is relative to your application rather than to the domain — `"variabler"`
+  and `"/variabler"` mean the same page, and a path base is kept either way — and a full URL is
+  taken as given. A path rather than a callback on purpose: an `EventCallback` handed to an
   interactive component by a statically rendered parent serialises to an empty delegate.
 
 Owning the address bar yourself is still supported and unchanged: mount `VariableExplorer` directly

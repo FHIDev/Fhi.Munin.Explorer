@@ -234,22 +234,24 @@ public sealed record ExplorerUrlState
 
     /// <summary>The keys this type reads and writes, so a host can tell them from its own.</summary>
     /// <remarks>
+    /// <para>
     /// A host that mounts more than one thing on a page needs to know which parameters are ours
     /// before it decides what to do with the rest. It is also the answer to "which of these may I
     /// leave in the URL": everything not named here survives untouched, because
     /// <see cref="ToQueryString"/> never writes it.
-    /// </remarks>
-    /// <remarks>
+    /// </para>
+    /// <para>
     /// Case-insensitive, because <see cref="Parse"/> is: a host testing membership against an
     /// ordinal list would miss <c>?Search=</c>, keep it as one of its own, and end up with the
     /// parameter twice in the URL it rebuilds.
-    /// </remarks>
-    /// <remarks>
+    /// </para>
+    /// <para>
     /// <see cref="VariableFilter.QueryKeys"/> is in here too, and was missing until
     /// <c>Fhi.Metadata-zrcf4</c>: this type writes the facets through
     /// <see cref="VariableFilter.ToQueryString"/>, so a host that read the five scalars as the whole
     /// answer kept <c>?kildeIds=</c> as one of its own and had it written twice. Declared below
     /// <see cref="ScalarQueryKeys"/> because a static initialiser only sees the fields above it.
+    /// </para>
     /// </remarks>
     public static IReadOnlySet<string> QueryKeys { get; } =
         new HashSet<string>(

@@ -6,7 +6,7 @@ category: Notes for hosts
   never `ServerPrerendered` — and now **throw on initialisation** rather than rendering a page whose
   URL silently never follows the view. `KildeExplorerWithUrlState` takes `VariableExplorerPath`
   instead of a handover callback, because a delegate from a statically rendered parent arrives
-  empty.
+  empty; it is relative to your application, so a path base survives it.
   <br><br>
   Your own parameters survive: each component rewrites only the keys it owns and carries everything
   else through untouched, `?utm_source=` included. `DeclinedKeys` keeps one of ours as well.

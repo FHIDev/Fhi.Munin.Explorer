@@ -47,9 +47,18 @@ public partial class KildeExplorerWithUrlState : ComponentBase
     /// over to it. Leave it null and the selection column is not offered at all.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// The one thing only the host knows, and the reason it is a string: a delegate given to this
     /// component by a statically rendered parent would arrive empty. The handover is a full page
     /// load, because this package has no router and cannot know whether the host has one.
+    /// </para>
+    /// <para>
+    /// <b>Relative to the application, not to the domain.</b> <c>"variabler"</c> and
+    /// <c>"/variabler"</c> both mean the same page of your application; the leading slash does not
+    /// send the reader to the domain root, because this resolves against
+    /// <see cref="NavigationManager.BaseUri"/> so that a host mounted under a path base keeps it. A
+    /// full URL is taken as given, for the host whose other explorer is in another application.
+    /// </para>
     /// </remarks>
     [Parameter] public string? VariableExplorerPath { get; set; }
 
@@ -92,8 +101,12 @@ public partial class KildeExplorerWithUrlState : ComponentBase
     {
         var query = new VariableFilter { KildeIds = kildeIds }.ToQueryString();
 
-        Navigation.NavigateTo(
-            query.Length == 0 ? VariableExplorerPath! : VariableExplorerPath + "?" + query,
-            forceLoad: true);
+        // Against the application base rather than the origin. NavigateTo("/variabler") from an app
+        // mounted under /optimizely drops the prefix, which is identical locally and sends the
+        // reader out of the application behind a reverse proxy — the trap the mirror avoids too.
+        var path = (VariableExplorerPath ?? "").TrimStart('/');
+        var destination = Navigation.ToAbsoluteUri(query.Length == 0 ? path : path + "?" + query);
+
+        Navigation.NavigateTo(destination.ToString(), forceLoad: true);
     }
 }

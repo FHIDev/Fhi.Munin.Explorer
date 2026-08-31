@@ -228,6 +228,17 @@ public class UrlStateComponentTest : BunitContext
         Assert.Empty(JSInterop.Invocations["history.pushState"]);
     }
 
+    /// <summary>A navigation manager mounted under a path base, which bUnit's own cannot be.</summary>
+    private sealed class BasedNavigationManager : NavigationManager
+    {
+        public BasedNavigationManager(string baseUri, string uri) => Initialize(baseUri, uri);
+
+        /// <summary>Where the component asked to go, absolute, or null if it never asked.</summary>
+        public string? Went { get; private set; }
+
+        protected override void NavigateToCore(string uri, bool forceLoad) => Went = ToAbsoluteUri(uri).ToString();
+    }
+
     private static KildeSummary Kilde(Guid id, string name) => new() { Id = id, Name = name, Code = "K" };
 
     /// <summary>Answers with one kilde, so there is a row to open and a selection to hand over.</summary>
@@ -330,5 +341,28 @@ public class UrlStateComponentTest : BunitContext
         Assert.Equal(
             $"http://localhost/variabler?kildeIds={id}",
             Navigation.Uri);
+    }
+
+    [Fact]
+    public void Kilder_WhenTheHostIsMountedUnderAPathBase_ThenTheHandoverStaysInsideTheApplication()
+    {
+        // Closing a kilde has to put the path base back, and so does the handover: NavigateTo with
+        // a leading slash resolves against the origin, not the application, so "/variabler" would
+        // send the reader outside it. Identical locally, wrong behind the reverse proxy helsedata
+        // runs behind — the same shape as the trap the mirror avoids by reading the circuit's URI.
+        var id = Guid.NewGuid();
+        var navigation = new BasedNavigationManager(
+            "http://localhost/optimizely/", "http://localhost/optimizely/kilder");
+
+        Services.AddSingleton<IMuninExplorerClient>(new OneKildeClient(id));
+        Services.AddSingleton<NavigationManager>(navigation);
+        Prepare();
+
+        var cut = Render<KildeExplorerWithUrlState>(b => b.Add(c => c.VariableExplorerPath, "/variabler"));
+
+        cut.Find(".munin-explorer-kilder__select input").Change(true);
+        cut.FindAll("button").First(button => button.TextContent.Contains("Utforsk", StringComparison.Ordinal)).Click();
+
+        Assert.StartsWith("http://localhost/optimizely/variabler?kildeIds=", navigation.Went, StringComparison.Ordinal);
     }
 }
