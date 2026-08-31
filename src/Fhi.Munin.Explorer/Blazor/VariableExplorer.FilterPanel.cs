@@ -219,8 +219,13 @@ public partial class VariableExplorer
         // onchange, not oninput: a partly typed date is a date the browser reports as it is being
         // typed, and every keystroke would be a search. The same reason the search box binds on
         // change.
+        //
+        // The awaiting binder overload rather than a void one discarding the task. A dropped task
+        // is a fetch whose failure nothing observes — the rollback ApplyFilterAsync does on a failed
+        // search would run with no one waiting on it, and the exception would surface as an
+        // unobserved task rather than in the panel's own alert region.
         builder.AddAttribute(seq + 16, "onchange",
-            EventCallback.Factory.CreateBinder<string?>(this, raw => _ = set(Parse(raw)), Iso(value)));
+            EventCallback.Factory.CreateBinder<string?>(this, raw => set(Parse(raw)), Iso(value)));
 
         builder.CloseElement();
     }
@@ -740,19 +745,6 @@ public partial class VariableExplorer
     }
 
     /// <summary>
-    /// Refresh the facets and their counts for the current search and filter.
-    /// </summary>
-    /// <remarks>
-    /// Its own request, and its own failure. The counts are cross-filtered against the whole
-    /// selection, so they move whenever the search or the filter does — but not when the page or
-    /// the ordering does, which is why turning a page does not re-ask for them.
-    /// <para>
-    /// A failure keeps the facets already on screen rather than clearing them. They are the controls
-    /// the reader is using, and the numbers being briefly stale is a far smaller problem than the
-    /// panel emptying under a press.
-    /// </para>
-    /// </remarks>
-    /// <summary>
     /// The catalogue's own words for the EHDS tokens the datakategori facet is made of.
     /// </summary>
     /// <remarks>
@@ -812,6 +804,19 @@ public partial class VariableExplorer
         }
     }
 
+    /// <summary>
+    /// Refresh the facets and their counts for the current search and filter.
+    /// </summary>
+    /// <remarks>
+    /// Its own request, and its own failure. The counts are cross-filtered against the whole
+    /// selection, so they move whenever the search or the filter does — but not when the page or
+    /// the ordering does, which is why turning a page does not re-ask for them.
+    /// <para>
+    /// A failure keeps the facets already on screen rather than clearing them. They are the controls
+    /// the reader is using, and the numbers being briefly stale is a far smaller problem than the
+    /// panel emptying under a press.
+    /// </para>
+    /// </remarks>
     private async Task FetchFacetsAsync()
     {
         _loading = true;

@@ -471,7 +471,11 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    Stiler has no date-range widget, and inventing one here would render as a raw browser default
    on a Stiler-only host, which is the failure this package exists to avoid. The input is an
    element every stylesheet already draws, the same argument the <details> and bare <ul> above
-   rest on, so what is styled here is the spacing between the two fields and nothing else. */
+   rest on. What is set here is what the samples have to set themselves for the pair to read as
+   fields in a panel: the box (padding, a border in the panel grey, a matching radius), the
+   inherited font and text colour, and the spacing that stacks the two. A Stiler-only host styles
+   its own inputs and gets none of this, which is the point of it living here and not in the
+   package. */
 .munin-explorer-filters input[type="date"] {
   display: block;
   margin: 4px 0 12px;
