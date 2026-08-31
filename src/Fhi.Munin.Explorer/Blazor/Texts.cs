@@ -246,10 +246,11 @@ internal sealed record Texts(
     // control (WCAG 2.5.3), which is a constraint on the whole sentence and therefore belongs in
     // the sentence rather than in the caller.
     Func<string, string> CrumbLabel,
-    // (search, filters) — the empty state. It names the filters because a search that matches
-    // nothing *with three filters on* is a different thing to be told than one that matches
-    // nothing at all, and the second reads as "this catalogue does not have it".
-    Func<string?, int, string> NoResults,
+    // (search, filters, historicalHidden) — the empty state. It names the filters because a search
+    // matching nothing *with three filters on* is a different thing to be told than one matching
+    // nothing at all, and offers the historical toggle only while it is off: naming one already on
+    // would tell the reader to switch on what already is. (Fhi.Metadata-rkjlx)
+    Func<string?, int, bool, string> NoResults,
 
     // Kelda, the kildeutforsker, which ships from this package beside Runa. The wording is read
     // off Munin's own Kelda rather than translated afresh, so the two UIs name the same thing the
@@ -492,6 +493,11 @@ internal sealed record Texts(
             nameof(direction), direction, "No name for this sort direction.")
     };
 
+    // The facet's own label, named once so the empty state cannot come to offer a toggle under a
+    // name the filter panel no longer draws. (Fhi.Metadata-rkjlx)
+    private const string ShowHistoricalNo = "Vis historiske";
+    private const string ShowHistoricalEn = "Show historical";
+
     private static readonly Texts No = new(
         Title: "Variabelutforsker",
         SearchLabel: "Søk i variabler",
@@ -629,7 +635,7 @@ internal sealed record Texts(
         FacetInstrument: "Instrument",
         FacetOther: "Andre filtre",
         HasKildekodeverk: "Har kildekodeverk",
-        IncludeHistorical: "Vis historiske",
+        IncludeHistorical: ShowHistoricalNo,
         NoVariabelgrupper: "Velg en datakilde for å se variabelgrupper.",
         FieldDelkilde: "Delkilde",
         HierarchyTrail: "Valgt hierarki",
@@ -690,10 +696,13 @@ internal sealed record Texts(
         },
         CrumbMore: (text, others) => $"{text} (+{others})",
         CrumbLabel: text => $"{text} – fjern nivåene under",
-        NoResults: (search, filters) =>
+        NoResults: (search, filters, historicalHidden) =>
         {
             var forSearch = search is null ? "Ingen variabler passet søket" : $"Ingen variabler passet søket «{search}»";
-            return filters == 0 ? $"{forSearch}." : $"{forSearch} med filtrene som er valgt.";
+            var matched = filters == 0 ? $"{forSearch}." : $"{forSearch} med filtrene som er valgt.";
+            return historicalHidden
+                ? $"{matched} Historiske variabler er ikke med – slå på «{ShowHistoricalNo}» for å se utgåtte variabler."
+                : matched;
         },
         KildeTitle: "Kildeutforsker",
         KildeSearchLabel: "Søk i kilder",
@@ -878,7 +887,7 @@ internal sealed record Texts(
         FacetInstrument: "Instrument",
         FacetOther: "Other filters",
         HasKildekodeverk: "Has source code system",
-        IncludeHistorical: "Show historical",
+        IncludeHistorical: ShowHistoricalEn,
         NoVariabelgrupper: "Select a data source to see variable groups.",
         FieldDelkilde: "Sub-source",
         HierarchyTrail: "Selected hierarchy",
@@ -935,10 +944,13 @@ internal sealed record Texts(
         },
         CrumbMore: (text, others) => $"{text} (+{others})",
         CrumbLabel: text => $"{text} – remove the levels below",
-        NoResults: (search, filters) =>
+        NoResults: (search, filters, historicalHidden) =>
         {
             var forSearch = search is null ? "No variables matched your search" : $"No variables matched your search for “{search}”";
-            return filters == 0 ? $"{forSearch}." : $"{forSearch} with the filters you have chosen.";
+            var matched = filters == 0 ? $"{forSearch}." : $"{forSearch} with the filters you have chosen.";
+            return historicalHidden
+                ? $"{matched} Historical variables are not included – turn on “{ShowHistoricalEn}” to see expired ones."
+                : matched;
         },
         KildeTitle: "Source explorer",
         KildeSearchLabel: "Search sources",
