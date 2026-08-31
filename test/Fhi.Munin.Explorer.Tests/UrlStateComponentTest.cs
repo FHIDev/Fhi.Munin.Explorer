@@ -132,9 +132,9 @@ public class UrlStateComponentTest : BunitContext
     [Fact]
     public void Mirror_WhenTheHostMountsTheExplorerUnderASubPath_ThenTheMirroredUrlKeepsThatPath()
     {
-        // replaceState resolves a relative URL against the document's <base href>, which every
-        // Blazor host writes as "/". A mirrored "?search=" would therefore move the reader to the
-        // site root, where the explorer is not mounted, on the first thing they touch.
+        // replaceState resolves a relative URL against the document's <base href>, not against the
+        // page being viewed. A mirrored "?search=" would therefore land wherever that href points —
+        // the app root on most hosts, its path base on others — and never on this page.
         RenderExplorer("http://localhost/MuninRuna", out var cut);
 
         cut.Find(".searchbox__freetext").Change("svelging");
