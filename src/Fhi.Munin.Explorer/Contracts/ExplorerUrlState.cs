@@ -221,21 +221,41 @@ public sealed record ExplorerUrlState
     private static string Decode(string value) =>
         Uri.UnescapeDataString(value.Replace('+', ' '));
 
+    /// <summary>The keys this type reads and writes itself, beside the filter's own.</summary>
+    /// <remarks>
+    /// Separate from <see cref="QueryKeys"/> because these are the ones a host can plausibly
+    /// collide with — <c>page</c> and <c>search</c> are anyone's parameter names, where
+    /// <c>variabelgruppeIds</c> is nobody's. It is therefore the set a host may ask an explorer
+    /// component to leave alone.
+    /// </remarks>
+    public static IReadOnlySet<string> ScalarQueryKeys { get; } =
+        new HashSet<string>(["search", "sort", "sortDir", "page", "pageSize"],
+                            StringComparer.OrdinalIgnoreCase);
+
     /// <summary>The keys this type reads and writes, so a host can tell them from its own.</summary>
     /// <remarks>
+    /// <para>
     /// A host that mounts more than one thing on a page needs to know which parameters are ours
     /// before it decides what to do with the rest. It is also the answer to "which of these may I
     /// leave in the URL": everything not named here survives untouched, because
     /// <see cref="ToQueryString"/> never writes it.
-    /// </remarks>
-    /// <remarks>
+    /// </para>
+    /// <para>
     /// Case-insensitive, because <see cref="Parse"/> is: a host testing membership against an
     /// ordinal list would miss <c>?Search=</c>, keep it as one of its own, and end up with the
     /// parameter twice in the URL it rebuilds.
+    /// </para>
+    /// <para>
+    /// <see cref="VariableFilter.QueryKeys"/> is in here too, and was missing until
+    /// <c>Fhi.Metadata-zrcf4</c>: this type writes the facets through
+    /// <see cref="VariableFilter.ToQueryString"/>, so a host that read the five scalars as the whole
+    /// answer kept <c>?kildeIds=</c> as one of its own and had it written twice. Declared below
+    /// <see cref="ScalarQueryKeys"/> because a static initialiser only sees the fields above it.
+    /// </para>
     /// </remarks>
     public static IReadOnlySet<string> QueryKeys { get; } =
-        new HashSet<string>(["search", "sort", "sortDir", "page", "pageSize"],
-                            StringComparer.OrdinalIgnoreCase);
+        new HashSet<string>(
+            [.. ScalarQueryKeys, .. VariableFilter.QueryKeys], StringComparer.OrdinalIgnoreCase);
 
     private static void Append(StringBuilder query, string name, string? value)
     {

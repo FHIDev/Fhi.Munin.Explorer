@@ -224,6 +224,19 @@ public class VariableFilterTest
         Assert.Equal("", blank.ToQueryString());
     }
 
+    /// <summary>
+    /// A name missing from this set is one an explorer component carries through and then writes a
+    /// second time, so the URL ends up narrowing by a facet twice.
+    /// </summary>
+    [Fact]
+    public void QueryKeys_NamesEveryKeyToQueryWrites_AndNothingItDoesNot()
+    {
+        var written = Everything().ToQuery().Select(pair => pair.Name).ToHashSet(StringComparer.Ordinal);
+
+        Assert.All(written, name => Assert.Contains(name, VariableFilter.QueryKeys));
+        Assert.Equal(written.Count, VariableFilter.QueryKeys.Count);
+    }
+
     private static VariableFilter Everything() => new()
     {
         KildeIds = [Kilde],

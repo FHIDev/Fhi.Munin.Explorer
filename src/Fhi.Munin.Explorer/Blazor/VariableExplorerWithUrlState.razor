@@ -1,0 +1,18 @@
+@namespace Fhi.Munin.Explorer.Blazor
+
+@* VariableExplorer with its state in the host's address bar, and no glue for the host to write.
+
+   No @page and no @rendermode, the same as everything else here — but unlike everything else here
+   this one does touch the URL, and that is the whole of what it adds. Mounting it is the host
+   saying the explorer owns the query string; a host that wants to own it mounts VariableExplorer
+   and keeps ExplorerUrlState. (Fhi.Metadata-zrcf4)
+
+   No class names and no markup of its own: whatever the explorer draws is what a reader sees. *@
+
+<VariableExplorer @bind-Search="_state.Search"
+                  @bind-Filter="_state.Filter"
+                  @bind-Sort="_state.Sort"
+                  @bind-Direction="_state.Direction"
+                  @bind-Page="_state.Page"
+                  @bind-PageSize="_state.PageSize"
+                  Language="@Language" />

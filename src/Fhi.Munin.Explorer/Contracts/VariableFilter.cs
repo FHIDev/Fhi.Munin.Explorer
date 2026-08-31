@@ -140,6 +140,20 @@ public sealed record VariableFilter
     /// <summary>Whether this narrows anything at all.</summary>
     public bool IsEmpty => ActiveCount == 0;
 
+    /// <summary>The query keys this filter reads and writes, so a host can tell them from its own.</summary>
+    /// <remarks>
+    /// The facet half of what an explorer link carries; <see cref="ExplorerUrlState.QueryKeys"/>
+    /// composes it with the rest. Case-insensitive, because <see cref="Parse"/> is — an ordinal
+    /// membership test would miss <c>?KildeIds=</c>, keep it as one of the host's own, and end up
+    /// with the parameter in the URL twice.
+    /// </remarks>
+    public static IReadOnlySet<string> QueryKeys { get; } = new HashSet<string>(
+    [
+        "kildeIds", "kildeType", "delkildeIds", "datasamlingIds", "variabelgruppeIds", "filterIds",
+        "datatypes", "helsefagligKodeverkReferanser", "administrativtKodeverkOids", "instrumentIds",
+        "datakategorier", "harKildekodeverk", "dataFrom", "dataTo", "includeHistorical"
+    ], StringComparer.OrdinalIgnoreCase);
+
     /// <summary>
     /// The filter as query-string parameters, using the Explorer API's own names.
     /// </summary>

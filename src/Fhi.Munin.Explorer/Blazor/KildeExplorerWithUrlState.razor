@@ -1,0 +1,18 @@
+@namespace Fhi.Munin.Explorer.Blazor
+
+@* KildeExplorer with the open kilde in the host's address bar, and the handover to the variable
+   explorer wired up. (Fhi.Metadata-zrcf4)
+
+   Deliberately far smaller than its sibling, and that is Kelda's contract rather than a shortcut:
+   KildeExplorer has no SearchChanged, no sort and no pager, so search and filters are component
+   state that goes away on refresh. The one thing worth putting in a URL is which kilde is open.
+
+   ?search= is not read, for that same reason — a link carrying it would work exactly once and
+   could not be shared onward. It is left in the address bar rather than erased, along with
+   everything else this component does not own.
+
+   No class names and no markup of its own. *@
+
+<KildeExplorer @bind-SelectedKildeId="_selectedKildeId"
+               ExploreVariablesRequested="@Handover"
+               Language="@Language" />
