@@ -1,7 +1,5 @@
-using System.Collections.ObjectModel;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Rendering;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
