@@ -41,6 +41,13 @@ public sealed record ExplorerUrlState
     /// <summary>How many rows a page holds.</summary>
     public int PageSize { get; init; } = DefaultPageSize;
 
+    /// <summary>The variable whose detail panel is open, or null when none is.</summary>
+    /// <remarks>
+    /// The part of the view a reader is likeliest to want to hand on: without it a link opens the
+    /// search the sender was looking at, but not the variable they were looking at in it.
+    /// </remarks>
+    public Guid? SelectedVariableId { get; init; }
+
     /// <summary>
     /// The page size a reader who has chosen nothing gets, and so the one value omitted from a URL.
     /// </summary>
@@ -85,7 +92,7 @@ public sealed record ExplorerUrlState
     /// <summary>How many parameters <see cref="Parse"/> reads before ignoring the rest.</summary>
     /// <remarks>
     /// Bounds the parse itself and not only what it keeps, the same reasoning as
-    /// <see cref="VariableFilter"/>'s own cap. Well above the five keys here plus a host's own.
+    /// <see cref="VariableFilter"/>'s own cap. Well above the six keys here plus a host's own.
     /// </remarks>
     private const int MaxParameters = 200;
 
@@ -121,6 +128,11 @@ public sealed record ExplorerUrlState
         if (PageSize != DefaultPageSize)
         {
             Append(query, "pageSize", PageSize.ToString());
+        }
+
+        if (SelectedVariableId is { } selected)
+        {
+            Append(query, "variabelId", selected.ToString());
         }
 
         return query.ToString();
@@ -212,6 +224,14 @@ public sealed record ExplorerUrlState
                 : state;
         }
 
+        // An id in a URL is whatever a stranger typed, and nothing is validated beyond the format:
+        // one that names no variable the first page holds is dropped by the component itself, which
+        // then reports the selection back as null.
+        if (Is(name, "variabelId"))
+        {
+            return Guid.TryParse(value, out var variable) ? state with { SelectedVariableId = variable } : state;
+        }
+
         return state;
     }
 
@@ -226,10 +246,11 @@ public sealed record ExplorerUrlState
     /// Separate from <see cref="QueryKeys"/> because these are the ones a host can plausibly
     /// collide with — <c>page</c> and <c>search</c> are anyone's parameter names, where
     /// <c>variabelgruppeIds</c> is nobody's. It is therefore the set a host may ask an explorer
-    /// component to leave alone.
+    /// component to leave alone. <c>variabelId</c> is in here for that reason too: a host with a
+    /// variable page of its own plausibly already means something by it.
     /// </remarks>
     public static IReadOnlySet<string> ScalarQueryKeys { get; } =
-        new HashSet<string>(["search", "sort", "sortDir", "page", "pageSize"],
+        new HashSet<string>(["search", "sort", "sortDir", "page", "pageSize", "variabelId"],
                             StringComparer.OrdinalIgnoreCase);
 
     /// <summary>The keys this type reads and writes, so a host can tell them from its own.</summary>

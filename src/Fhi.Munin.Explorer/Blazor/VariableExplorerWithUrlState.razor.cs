@@ -6,7 +6,8 @@ namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
 /// <see cref="VariableExplorer"/> with its state in the host's address bar: a link opens the search
-/// it was copied from, and every change the reader makes updates the URL.
+/// it was copied from and the variable that was open in it, and every change the reader makes
+/// updates the URL.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -37,6 +38,17 @@ public partial class VariableExplorerWithUrlState : ComponentBase
 
     /// <inheritdoc cref="VariableExplorer.Language"/>
     [Parameter] public string Language { get; set; } = "no";
+
+    /// <inheritdoc cref="VariableExplorer.IsAuthenticated"/>
+    /// <remarks>
+    /// Passed straight through. It is a <see langword="bool"/> rather than a callback, so it
+    /// crosses a static-SSR boundary intact — see <see cref="KildeExplorerWithUrlState"/> for why
+    /// that distinction matters here.
+    /// </remarks>
+    [Parameter] public bool IsAuthenticated { get; set; }
+
+    /// <inheritdoc cref="VariableExplorer.HeadingLevel"/>
+    [Parameter] public int HeadingLevel { get; set; } = 2;
 
     /// <summary>
     /// Query keys this component must leave alone: not read when the page opens, not written when
@@ -104,6 +116,7 @@ public partial class VariableExplorerWithUrlState : ComponentBase
         return state with
         {
             Search = Declined("search") ? null : state.Search,
+            SelectedVariableId = Declined("variabelId") ? null : state.SelectedVariableId,
             Sort = Declined("sort") ? SortField.Default : state.Sort,
             Direction = Declined("sortDir") ? SortDirection.Ascending : state.Direction,
             Page = Declined("page") ? 1 : state.Page,
@@ -126,6 +139,8 @@ public partial class VariableExplorerWithUrlState : ComponentBase
 
         public int PageSize { get; set; } = ExplorerUrlState.DefaultPageSize;
 
+        public Guid? SelectedVariableId { get; set; }
+
         public static Binding From(ExplorerUrlState state) => new()
         {
             Search = state.Search,
@@ -134,6 +149,7 @@ public partial class VariableExplorerWithUrlState : ComponentBase
             Direction = state.Direction,
             Page = state.Page,
             PageSize = state.PageSize,
+            SelectedVariableId = state.SelectedVariableId,
         };
 
         public ExplorerUrlState ToState() => new()
@@ -144,6 +160,7 @@ public partial class VariableExplorerWithUrlState : ComponentBase
             Direction = Direction,
             Page = Page,
             PageSize = PageSize,
+            SelectedVariableId = SelectedVariableId,
         };
     }
 }

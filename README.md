@@ -363,9 +363,11 @@ knowing how far it got.
 ### Shareable URLs
 
 Mount `VariableExplorerWithUrlState` or `KildeExplorerWithUrlState` in place of the explorer itself
-and a link carries the view: opening one restores the search, the facets, the sort, the page and the
-open kilde, and every change the reader makes updates the address bar. There is no glue to write —
-no wrapper component, no query parsing, no `history.replaceState`.
+and a link carries the view: opening one restores the search, the facets, the sort, the page, the
+open variable and the open kilde, and every change the reader makes updates the address bar. There
+is no glue to write — no wrapper component, no query parsing, no `history.replaceState`. The
+explorer's own parameters — `Language`, `IsAuthenticated`, `HeadingLevel` — are set on the wrapper
+exactly as they would be on the explorer itself.
 
 ```html
 <component type="typeof(VariableExplorerWithUrlState)" render-mode="Server" param-Language="@("no")" />
