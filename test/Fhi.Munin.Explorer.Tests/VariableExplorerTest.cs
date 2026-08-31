@@ -4466,6 +4466,101 @@ public class VariableExplorerTest : BunitContext
         Assert.DoesNotContain("Beskrivelse", Panel(cut).TextContent);
     }
 
+    /// <summary>The captured detail, plus the statistics Runa shows in the same tab.</summary>
+    private static VariableDetail DetailWithStatistics(Guid id) => Detail(id) with
+    {
+        DatasamlingStatisticsType = "yearly",
+        Statistics =
+        [
+            new()
+            {
+                AdditionalProperties = new Dictionary<string, string?>
+                {
+                    ["SisteOppdaterteAarssett"] = "2022",
+                    ["MIN"] = "1",
+                    ["MAX"] = "4",
+                    ["AVG"] = "2.5"
+                }
+            }
+        ]
+    };
+
+    [Fact]
+    public void Panel_WhenTheDataTabIsChosen_ThenTheStatisticsShowBesideTheKodeverk()
+    {
+        // Runa's Data tab shows kodeverk and statistics together. This panel showed kodeverk alone
+        // and left the numbers one click further in, inside the whole-variable view — so a reader
+        // who opened a row to see what its values look like was told nothing about them.
+        var client = new DetailClient(OnePage(Row(TaleId, "1. Tale")))
+            .Knows(DetailWithStatistics(TaleId));
+        var cut = RenderWith(client);
+
+        Toggles(cut)[0].Click();
+        TabButtons(cut)[1].Click();
+
+        var panel = Panel(cut);
+
+        Assert.Contains("Kildekodeverk", panel.TextContent);
+        Assert.Contains("Statistikk (Årsbasert)", panel.TextContent);
+
+        // The table itself, not just its heading — and the dash for the column the payload holds
+        // no number for, so a reader can tell "not measured" from a cell that failed to draw.
+        var table = panel.QuerySelector("table.munin-explorer-statistics");
+
+        Assert.NotNull(table);
+        Assert.Equal(
+            ["År", "Minimum", "Maksimum", "Gjennomsnitt", "Standardavvik"],
+            table!.QuerySelectorAll("thead th").Select(cell => cell.TextContent));
+        Assert.Equal(
+            ["2022", "1", "4", "2.5", "—"],
+            table.QuerySelectorAll("tbody tr")[0].Children.Select(cell => cell.TextContent));
+    }
+
+    [Fact]
+    public void Panel_WhenTheVariableHasNoStatistics_ThenTheDataTabDrawsNeitherHeadingNorTable()
+    {
+        // THE TRAP this bead names. A test written only with rich data passes against an
+        // implementation that draws a "Statistikk" heading over an empty table, which is exactly
+        // the shape VariableView already avoided with its Count > 0 check. The captured Detail()
+        // has no statistics, so this is the real payload for most variables rather than a
+        // contrived one.
+        var cut = RenderWith(TwoRows());
+
+        Toggles(cut)[0].Click();
+        TabButtons(cut)[1].Click();
+
+        var panel = Panel(cut);
+
+        // The tab did arrive — otherwise this passes for the wrong reason.
+        Assert.Contains("Kildekodeverk", panel.TextContent);
+
+        Assert.DoesNotContain("Statistikk", panel.TextContent, StringComparison.Ordinal);
+        Assert.Empty(panel.QuerySelectorAll("table.munin-explorer-statistics"));
+    }
+
+    [Fact]
+    public void Panel_WhenTheHostMovesTheComponentDown_ThenTheStatisticsHeadingFollowsTheRow()
+    {
+        // The component takes HeadingLevel because the host decides where in its document this
+        // sits. A hardcoded level would be right only for the default, and the heading would jump
+        // out of the row's outline everywhere else — with the rest of the tab still following it.
+        var client = new DetailClient(OnePage(Row(TaleId, "1. Tale")))
+            .Knows(DetailWithStatistics(TaleId));
+        var cut = RenderWith(client, b => b.Add(c => c.HeadingLevel, 3));
+
+        Toggles(cut)[0].Click();
+        TabButtons(cut)[1].Click();
+
+        var panel = Panel(cut);
+        var statistics = panel.QuerySelectorAll("h4")
+            .Single(h => h.TextContent.StartsWith("Statistikk", StringComparison.Ordinal));
+
+        // HeadingLevel 3 → title h3 → RowLevel h4, which is where the kodeverk kinds beside it
+        // sit. The two must land on the same level or the tab reads as two outlines.
+        Assert.Equal("H4", statistics.TagName);
+        Assert.Contains("Kildekodeverk", panel.QuerySelectorAll("h4").Select(h => h.TextContent));
+    }
+
     [Fact]
     public void Panel_WhenAnArrowKeyIsPressed_ThenTheTabMoves()
     {

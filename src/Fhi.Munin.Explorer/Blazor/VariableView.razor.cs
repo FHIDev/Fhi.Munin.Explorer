@@ -97,20 +97,6 @@ public sealed partial class VariableView : ComponentBase
                 (T.FacetKildeType, T.KildeTypeLabel(variable.KildeType, variable.KildeType), false),
             ];
 
-    /// <summary>
-    /// The statistics heading, which names the kind of statistics rather than just saying
-    /// "Statistikk".
-    /// </summary>
-    /// <remarks>
-    /// Runa writes "Statistikk (Årsbasert)". The kind matters to a reader deciding what the numbers
-    /// mean: a yearly set is one row per year, and an accumulated one is a running total that only
-    /// its last row describes.
-    /// </remarks>
-    private string StatisticsHeading =>
-        Variable?.DatasamlingStatisticsType is { } type && !string.IsNullOrWhiteSpace(type)
-            ? $"{T.HeadingStatistics} ({T.StatisticsTypeLabel(type)})"
-            : T.HeadingStatistics;
-
     /// <summary>A heading at the given level, so this view nests wherever it is put.</summary>
     private static RenderFragment Heading(int level, string text, string cssClass,
                                           string? id = null, string? language = null) => builder =>
@@ -194,95 +180,6 @@ public sealed partial class VariableView : ComponentBase
 
         builder.CloseElement();
     };
-
-    /// <summary>
-    /// The statistics, as the table Runa draws: one row per set, described by the year it covers.
-    /// </summary>
-    /// <remarks>
-    /// Only the summary columns, and deliberately: measured against Runa on 2026-08-21, it shows
-    /// Minimum, Maksimum, Gjennomsnitt and Standardavvik and nothing else. The payload also carries
-    /// MED, a median, and counts of valid and missing cases — Runa draws none of them, so neither
-    /// does this. Adding a column Runa has not got would make the two disagree about the same data.
-    /// <para>
-    /// An absent number is a dash rather than a blank, so a reader can tell "not measured" from a
-    /// cell that failed to draw.
-    /// </para>
-    /// </remarks>
-    private RenderFragment StatisticsTable => builder =>
-    {
-        if (Variable is not { Statistics.Count: > 0 } variable)
-        {
-            return;
-        }
-
-        builder.OpenElement(0, "table");
-        builder.AddAttribute(1, "class", "munin-explorer-statistics");
-
-        builder.OpenElement(2, "thead");
-        builder.OpenElement(3, "tr");
-        HeaderCell(builder, 10, T.FieldYear);
-        HeaderCell(builder, 20, T.FieldMinimum);
-        HeaderCell(builder, 30, T.FieldMaximum);
-        HeaderCell(builder, 40, T.FieldMean);
-        HeaderCell(builder, 50, T.FieldStandardDeviation);
-        builder.CloseElement();
-        builder.CloseElement();
-
-        builder.OpenElement(4, "tbody");
-
-        var seq = 100;
-
-        foreach (var statistic in variable.Statistics)
-        {
-            // Null-coalesced although Statistic.AdditionalProperties is declared non-nullable — see
-            // that declaration for how a null gets in, and NullAsEmptyCollections for what stops it
-            // arriving from this package's own client. A host can substitute that client, and
-            // unguarded one such statistic throws while rendering, past the try/catch around the
-            // fetch, which on a Blazor Server host takes the circuit and the page it is mounted in
-            // down. Read as the empty bag it means, the row draws the dash Value already gives a
-            // key the catalogue holds no number for.
-            var props = statistic.AdditionalProperties ?? ReadOnlyDictionary<string, string?>.Empty;
-
-            builder.OpenElement(seq, "tr");
-
-            // The year heads its own row: every other cell is a number about that year, and a
-            // screen reader reading one out of context should hear which year it belongs to.
-            builder.OpenElement(seq + 1, "th");
-            builder.AddAttribute(seq + 2, "scope", "row");
-            builder.AddContent(seq + 3, Value(props, "SisteOppdaterteAarssett"));
-            builder.CloseElement();
-
-            Cell(builder, seq + 10, Value(props, "MIN"));
-            Cell(builder, seq + 20, Value(props, "MAX"));
-            Cell(builder, seq + 30, Value(props, "AVG"));
-            Cell(builder, seq + 40, Value(props, "STD"));
-
-            builder.CloseElement();
-            seq += 100;
-        }
-
-        builder.CloseElement();
-        builder.CloseElement();
-    };
-
-    /// <summary>A statistic's value, or a dash where the catalogue holds none.</summary>
-    private static string Value(IReadOnlyDictionary<string, string?> properties, string key) =>
-        properties.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value) ? value : "—";
-
-    private static void HeaderCell(RenderTreeBuilder builder, int seq, string label)
-    {
-        builder.OpenElement(seq, "th");
-        builder.AddAttribute(seq + 1, "scope", "col");
-        builder.AddContent(seq + 2, label);
-        builder.CloseElement();
-    }
-
-    private static void Cell(RenderTreeBuilder builder, int seq, string? value)
-    {
-        builder.OpenElement(seq, "td");
-        builder.AddContent(seq + 1, value);
-        builder.CloseElement();
-    }
 
     /// <summary>A date as the day it fell on, with the month abbreviated.</summary>
     /// <remarks>

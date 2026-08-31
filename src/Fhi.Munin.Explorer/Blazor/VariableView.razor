@@ -45,11 +45,9 @@
                     @VersionHistory
                 }
 
-                @if (variable.Statistics.Count > 0)
-                {
-                    @Heading(BlockLevel, StatisticsHeading, "headline headline-s")
-                    @StatisticsTable
-                }
+                @* Heading and table both, or neither — the block answers the emptiness question
+                   itself, so this view and the row's Data tab cannot disagree about it. *@
+                @StatisticsBlock.For(variable, BlockLevel, "headline headline-s", T)
             </div>
 
             <aside class="munin-explorer-whole__aside">
