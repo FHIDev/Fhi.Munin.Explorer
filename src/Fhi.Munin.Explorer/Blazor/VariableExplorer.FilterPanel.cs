@@ -1,5 +1,7 @@
+using System.Globalization;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Rendering;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>The facet sidebar: what can be narrowed, and what narrowing it costs.</summary>
@@ -12,16 +14,24 @@ public partial class VariableExplorer
     /// instead, which is the right answer for most of them, because a facet the API returned nothing
     /// for is one there is nothing to choose from. Variabelgruppe is the exception: its emptiness is
     /// a message.
+    /// <para>
+    /// <c>Body</c> is a facet whose control is not a list of values — the dataperiode's date fields,
+    /// which hold no <see cref="FacetValue"/> and so survive neither other shape. Such a facet has
+    /// to report <c>ChosenCount</c> itself, or it would say nothing in the summary while narrowing.
+    /// (Fhi.Metadata-uidue)
+    /// </para>
     /// </remarks>
     private sealed record FacetGroup(
         string Key,
         string Label,
         bool OpenByDefault,
         IReadOnlyList<FacetValue> Values,
-        string? EmptyText = null)
+        string? EmptyText = null,
+        RenderFragment? Body = null,
+        int? ChosenCount = null)
     {
         /// <summary>How many values in this facet are selected, counting nested ones.</summary>
-        public int SelectedCount => Selected(Values);
+        public int SelectedCount => ChosenCount ?? Selected(Values);
 
         private static int Selected(IReadOnlyList<FacetValue> values) =>
             values.Sum(value => (value.Selected ? 1 : 0) + Selected(value.Children));
@@ -69,13 +79,24 @@ public partial class VariableExplorer
 
             // Kildetype first and kilde second, which is the order helsedata's own variable page
             // puts them in; the rest follow Munin's explorer.
-            List<FacetGroup> groups =
+            //
+            // Datakategori third. Runa puts it FIRST, and that slot is not available here: the two
+            // above it are in helsedata's order on purpose, and moving them would trade a reason
+            // this panel has for one it is copying. Third is as near Runa's placement as that
+            // leaves, and it keeps datakategori above the facets it is coarser than — a reader
+            // narrowing by kind of data does it before picking variabelgrupper.
+            //
+            // Dataperiode after datatype and before helsefaglig kodeverk, which IS Runa's own slot
+            // for it. (Fhi.Metadata-uidue)
+            List<FacetGroup?> groups =
             [
                 KildeTypeGroup(facets),
                 KildeGroup(facets),
+                DataCategoryGroup(facets),
                 VariabelgruppeGroup(facets),
                 SavedFilterGroup(facets),
                 DataTypeGroup(facets),
+                DataPeriodGroup(facets),
                 HelsefagligKodeverkGroup(facets),
                 AdministrativtKodeverkGroup(facets),
                 InstrumentGroup(facets),
@@ -83,10 +104,162 @@ public partial class VariableExplorer
             ];
 
             // A facet the API returned nothing for is left out rather than drawn as an empty
-            // disclosure — except where the emptiness is itself the message.
-            return [.. groups.Where(group => group.Values.Count > 0 || group.EmptyText is not null)];
+            // disclosure — except where the emptiness is itself the message, or where the facet's
+            // control is not a list of values at all. The dataperiode is the latter: it holds no
+            // FacetValue and would be dropped here as empty, though it has two date fields to draw.
+            return
+            [
+                .. groups
+                    .OfType<FacetGroup>()
+                    .Where(group =>
+                        group.Values.Count > 0 || group.EmptyText is not null || group.Body is not null)
+            ];
         }
     }
+
+    /// <summary>The datakategori facet — the EHDS tokens a variable's datasamling carries.</summary>
+    /// <remarks>
+    /// An ordinary multi-select facet: the values are a flat list, ticking one adds it to
+    /// <see cref="VariableFilter.Categories"/>, and two ticked leave the variables matching either.
+    /// The words come from the catalogue's vocabulary rather than from this package — see
+    /// <see cref="_vocabulary"/> for why a table here would be wrong.
+    /// </remarks>
+    private FacetGroup DataCategoryGroup(FilterOptions facets) =>
+        new("datakategori", T.FacetDataCategory, OpenByDefault: false,
+            [.. facets.DataCategories.Select(DataCategoryValue)]);
+
+    private FacetValue DataCategoryValue(DataCategoryFacet category) =>
+        new($"datakategori:{category.Value}",
+            CategoryWord(category.Value),
+            category.Count,
+            // Ordinal, like every other string facet here, because that is what ToggleAsync removes
+            // with: a case-insensitive mark over a case-sensitive toggle draws a token as chosen
+            // and then appends a duplicate when it is pressed.
+            _filter.Categories.Contains(category.Value),
+            () => ToggleAsync(_filter.Categories, category.Value,
+                              values => _filter with { Categories = values }),
+            []);
+
+    /// <summary>
+    /// The catalogue's word for one EHDS token, or the token itself where there is none.
+    /// </summary>
+    /// <remarks>
+    /// The miss is shown rather than hidden, which is the rule <see cref="CatalogueProperties.Word"/>
+    /// states: a facet drawing nothing for a token it cannot name would silently offer fewer
+    /// choices than the catalogue has. A token is ugly and honest.
+    /// </remarks>
+    private string CategoryWord(string value) =>
+        _vocabulary.TryGetValue(DataCategoryKey, out var entry)
+        && CatalogueProperties.Word(entry, value, Reader) is { } word
+            ? word.Label
+            : value;
+
+    /// <summary>
+    /// The dataperiode facet — two date fields rather than a list of values.
+    /// </summary>
+    /// <remarks>
+    /// The <c>Body</c> shape, and the reason it exists. Bounded by the range the API reports for the
+    /// current selection, so the reader cannot ask for a year the selection has no data in.
+    /// <para>
+    /// Drawn only where the API reports a range at all. A pair of unbounded date fields would still
+    /// filter, but the bounds are half of what the facet tells a reader — without them it says
+    /// nothing about what there is to find.
+    /// </para>
+    /// </remarks>
+    private FacetGroup? DataPeriodGroup(FilterOptions facets)
+    {
+        if (facets.DateRange is not { } range || (range.Min is null && range.Max is null))
+        {
+            return null;
+        }
+
+        // One per bound the reader has set, so a folded dataperiode says it is narrowing the way
+        // every other facet does. Without it the summary reads plain "Dataperiode" over an active
+        // date filter — the facet holds no values to count.
+        var chosen = (_filter.DataFrom is null ? 0 : 1) + (_filter.DataTo is null ? 0 : 1);
+
+        return new FacetGroup("dataperiode", T.FieldDataPeriod, OpenByDefault: false, [],
+                              Body: DateFields(range), ChosenCount: chosen);
+    }
+
+    /// <summary>The from and to fields, each bounded by the range and by the other.</summary>
+    /// <remarks>
+    /// Labelled and bound one at a time rather than as a range control: Stiler has no date-range
+    /// widget, and the two native inputs are elements every stylesheet already draws — the same
+    /// argument the panel's <c>&lt;details&gt;</c> and bare <c>&lt;ul&gt;</c> are built on. No class
+    /// name is invented here; the labels wear <c>form-element__label</c>, which this panel already
+    /// uses and which is verified against the host.
+    /// </remarks>
+    private RenderFragment DateFields(DateInterval range) => builder =>
+    {
+        DateField(builder, 0, DateFromId, T.FacetDateFrom, _filter.DataFrom,
+                  Bound(range.Min), _filter.DataTo ?? Bound(range.Max),
+                  value => ApplyFilterAsync(_filter with { DataFrom = value }));
+
+        DateField(builder, 100, DateToId, T.FacetDateTo, _filter.DataTo,
+                  _filter.DataFrom ?? Bound(range.Min), Bound(range.Max),
+                  value => ApplyFilterAsync(_filter with { DataTo = value }));
+    };
+
+    /// <summary>
+    /// One date field: a label, and an input bounded at both ends.
+    /// </summary>
+    private void DateField(
+        RenderTreeBuilder builder, int seq, string id, string label, DateOnly? value,
+        DateOnly? min, DateOnly? max, Func<DateOnly?, Task> set)
+    {
+        builder.OpenElement(seq, "label");
+        builder.AddAttribute(seq + 1, "class", "form-element__label");
+        builder.AddAttribute(seq + 2, "for", id);
+        builder.AddContent(seq + 3, label);
+        builder.CloseElement();
+
+        builder.OpenElement(seq + 10, "input");
+        builder.AddAttribute(seq + 11, "id", id);
+        builder.AddAttribute(seq + 12, "type", "date");
+        builder.AddAttribute(seq + 13, "value", Iso(value));
+        builder.AddAttribute(seq + 14, "min", Iso(min));
+        builder.AddAttribute(seq + 15, "max", Iso(max));
+
+        // onchange, not oninput: a partly typed date is a date the browser reports as it is being
+        // typed, and every keystroke would be a search. The same reason the search box binds on
+        // change.
+        //
+        // The awaiting binder overload rather than a void one discarding the task. A dropped task
+        // is a fetch whose failure nothing observes — the rollback ApplyFilterAsync does on a failed
+        // search would run with no one waiting on it, and the exception would surface as an
+        // unobserved task rather than in the panel's own alert region.
+        builder.AddAttribute(seq + 16, "onchange",
+            EventCallback.Factory.CreateBinder<string?>(this, raw => set(Parse(raw)), Iso(value)));
+
+        builder.CloseElement();
+    }
+
+    private string DateFromId => $"munin-explorer-date-from-{_instance}";
+
+    private string DateToId => $"munin-explorer-date-to-{_instance}";
+
+    /// <summary>
+    /// A reported bound as the date it names, without asking what time zone anyone is in.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="DateTimeOffset.Date"/> is the date as the value itself writes it, so
+    /// <c>2020-01-01T00:00:00+02:00</c> is 1 January whoever reads it. <c>UtcDateTime.Date</c> would
+    /// make it 31 December, and <c>LocalDateTime.Date</c> would hand the answer to whichever machine
+    /// the code runs on — so CI and a Norwegian laptop would disagree and neither would be wrong.
+    /// The filter is a <see cref="DateOnly"/> for the same reason; see the remarks on
+    /// <see cref="VariableFilter.DataFrom"/>, which prescribes exactly this conversion.
+    /// </remarks>
+    private static DateOnly? Bound(DateTimeOffset? instant) =>
+        instant is { } value ? DateOnly.FromDateTime(value.Date) : null;
+
+    private static string? Iso(DateOnly? date) => date?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+    private static DateOnly? Parse(string? raw) =>
+        DateOnly.TryParseExact(raw, "yyyy-MM-dd", CultureInfo.InvariantCulture,
+                               DateTimeStyles.None, out var date)
+            ? date
+            : null;
 
     /// <summary>The kildetype facet — one value each, and only one of them can be chosen.</summary>
     private FacetGroup KildeTypeGroup(FilterOptions facets) =>
@@ -577,6 +750,66 @@ public partial class VariableExplorer
     }
 
     /// <summary>
+    /// The catalogue's own words for the EHDS tokens the datakategori facet is made of.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="DataCategoryFacet"/> carries a CURIE and a count and no label, so without this the
+    /// facet would read <c>ehds-cat:population-health-surveys</c> down the panel. Transcribing the
+    /// vocabulary into <see cref="Texts"/> is the other way to get words, and is the one the note
+    /// above <c>Texts.FacetCategory</c> forbids: a table copied here is right on the day it is
+    /// written and drifts from then on. Kelda resolves the same vocabulary the same way.
+    /// <para>
+    /// Empty until the fetch lands, and empty for good if it fails — which costs the choices their
+    /// words and nothing else, exactly as it does in Kelda. The facet still filters.
+    /// </para>
+    /// </remarks>
+    private IReadOnlyDictionary<string, PropertyMetadataEntry> _vocabulary =
+        new Dictionary<string, PropertyMetadataEntry>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Whether the vocabulary has been asked for, however that turned out.</summary>
+    private bool _vocabularyAsked;
+
+    /// <summary>The property key the datakategori tokens are defined under.</summary>
+    private const string DataCategoryKey = "healthCategory";
+
+    /// <summary>
+    /// Fetch the vocabulary once, and only for a panel that has datakategorier to name.
+    /// </summary>
+    /// <remarks>
+    /// Lazy rather than fetched on mount: an API that predates the facet returns no datakategorier
+    /// at all (see <see cref="FilterOptions.DataCategories"/>), and a request whose answer nothing
+    /// on screen could use is one more call against a rate limit this component already shares with
+    /// the search beside it. Asked at most once per component, failure included — a vocabulary that
+    /// could not be had will not be had by asking again on every keystroke.
+    /// </remarks>
+    private async Task EnsureCategoryWordsAsync()
+    {
+        if (_vocabularyAsked || _facets is not { DataCategories.Count: > 0 })
+        {
+            return;
+        }
+
+        _vocabularyAsked = true;
+
+        try
+        {
+            var entries = await Client.GetKildePropertyMetadataAsync();
+
+            _vocabulary = entries
+                .Where(entry => !string.IsNullOrWhiteSpace(entry.Key))
+                .GroupBy(entry => entry.Key, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+        }
+        catch (Exception)
+        {
+            // Deliberately silent, and deliberately not surfaced beside the facet error. The panel
+            // is not broken without it: every choice still filters, and the reader sees the token
+            // rather than the word. A second failure message for a degraded label would be louder
+            // than what it reports.
+        }
+    }
+
+    /// <summary>
     /// Refresh the facets and their counts for the current search and filter.
     /// </summary>
     /// <remarks>
@@ -606,6 +839,11 @@ public partial class VariableExplorer
                 _executedSearch, _filter, ReaderLanguage.ForApi(Language));
             _facetError = null;
             _retryFacetsEnabled = false;
+
+            // After the facets, because whether it is worth asking at all depends on what they
+            // hold. Its own failure is swallowed inside — the counts arriving is what this try
+            // block reports on, and a missing label must not read as a missing facet.
+            await EnsureCategoryWordsAsync();
         }
         catch (MuninExplorerRateLimitedException)
         {

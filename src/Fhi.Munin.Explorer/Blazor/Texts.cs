@@ -312,6 +312,22 @@ internal sealed record Texts(
     // Norwegian word in the panel one click away.
     string FacetCategory,
     string FacetAccessLevel,
+
+    // The variable explorer's own datakategori facet, which is NOT FacetCategory above. Kelda
+    // filters kilder and heads its facet "Kategori"; Runa filters variables and heads the same
+    // EHDS vocabulary "Datakategori (EHDS)", naming both the thing filtered and the vocabulary
+    // the codes come from. Two surfaces, two headings, so two strings — sharing one would rename
+    // both whenever either moved.
+    //
+    // The choices under it are the catalogue's own words, resolved through the property-metadata
+    // vocabulary exactly as Kelda's are. No table of EHDS tokens belongs in this record; see the
+    // note above FacetCategory for the drift that argument is drawn from.
+    string FacetDataCategory,
+
+    // The dataperiode facet's two fields. The heading is FieldDataPeriod, which this record
+    // already holds — the facet filters the very column that word names.
+    string FacetDateFrom,
+    string FacetDateTo,
     // The panel's own disclosure, which is one control saying two things: the panel is folded away
     // on a narrow screen and this is what unfolds it. Both wordings are needed because a button
     // still reading "Vis filtre" over an open panel tells the reader the opposite of what pressing
@@ -731,6 +747,9 @@ internal sealed record Texts(
         ExploreAllVariables: "Utforsk alle variabler",
         ExploreFilteredVariables: "Utforsk variabler for treffene",
         FacetCategory: "Kategori",
+        FacetDataCategory: "Datakategori (EHDS)",
+        FacetDateFrom: "Fra og med",
+        FacetDateTo: "Til og med",
         FacetAccessLevel: "Tilgangsnivå",
         ShowFilters: "Vis filtre",
         HideFilters: "Skjul filtre",
@@ -981,6 +1000,9 @@ internal sealed record Texts(
         ExploreAllVariables: "Explore all variables",
         ExploreFilteredVariables: "Explore variables for these results",
         FacetCategory: "Category",
+        FacetDataCategory: "Data category (EHDS)",
+        FacetDateFrom: "From",
+        FacetDateTo: "To",
         FacetAccessLevel: "Access level",
         ShowFilters: "Show filters",
         HideFilters: "Hide filters",

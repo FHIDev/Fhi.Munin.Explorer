@@ -242,7 +242,13 @@ else
                    — cannot hand its open state to whichever facet takes its place. *@
                 <details @key="group.Key" open="@group.OpenByDefault">
                     <summary><span class="form-element__label">@GroupLabel(group)</span></summary>
-                    @if (group.Values.Count > 0)
+                    @* A facet's own control first, where it has one: the dataperiode holds no
+                       values and would otherwise draw the empty-state sentence. (Fhi.Metadata-uidue) *@
+                    @if (group.Body is { } body)
+                    {
+                        @body
+                    }
+                    else if (group.Values.Count > 0)
                     {
                         @FacetList(group.Values)
                     }
