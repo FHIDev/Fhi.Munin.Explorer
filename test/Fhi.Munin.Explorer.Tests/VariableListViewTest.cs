@@ -368,6 +368,51 @@ public class VariableListViewTest : BunitContext
         Assert.Equal("none", row.QuerySelector(".munin-explorer-dataitem-main")!.GetAttribute("role"));
     }
 
+    /// <summary>The text of one named column's cell in the first row of the list.</summary>
+    private static string CellText(IRenderedComponent<VariableListView> cut, string key) =>
+        cut.Find($".munin-explorer-dataitem-main__{key} .munin-explorer-dataitem-main__column__text")
+           .TextContent;
+
+    [Fact]
+    public void View_WhenACellIsDrawn_ThenItIsTheCellTheResultListDraws()
+    {
+        // Both surfaces draw these columns, and now from one helper. Written out twice they looked
+        // alike and could stop being alike without anything failing: the hidden field name and the
+        // full kilde name on hover were in the explorer's cells and in none of these.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        var cell = cut.Find(".munin-explorer-dataitem-main__source");
+
+        Assert.Equal("cell", cell.GetAttribute("role"));
+        Assert.Equal("Kilde: ", cell.QuerySelector(".screenreader-only")!.TextContent);
+        Assert.Equal("ALS", cell.QuerySelector(".munin-explorer-dataitem-main__column__text")!.TextContent);
+        Assert.Equal("Als registeret", cell.GetAttribute("title"));
+    }
+
+    [Fact]
+    public async Task View_WhenThePageChanges_ThenEveryCellStillHoldsItsOwnValue()
+    {
+        // The cells are built with explicit sequence numbers, which Blazor uses positionally to
+        // diff one render against the next. A number that repeats or goes backwards patches one
+        // column's node with another's — and only from the second render, never the first.
+        var many = Enumerable.Range(1, 30)
+            .Select(i => Item($"Variabel {i}", $"V_{i}") with { DatasamlingName = $"Samling {i}", VariabelgruppeName = $"Gruppe {i}" })
+            .ToArray();
+
+        var cut = RenderView(new ListClient(many) { PageSize = 25 });
+
+        await cut.InvokeAsync(() => cut.FindAll(".munin-explorer-pagination-content button")[^1].Click());
+
+        Assert.Equal("V_26", CellText(cut, "code"));
+        Assert.Equal("ALS", CellText(cut, "source"));
+        Assert.Equal("Samling 26", CellText(cut, "dataCollection"));
+        Assert.Equal("Gruppe 26", CellText(cut, "theme"));
+
+        // The hidden field name travels with the value, not with the position it was drawn in.
+        Assert.Equal("Datasamling: ",
+                     cut.Find(".munin-explorer-dataitem-main__dataCollection .screenreader-only").TextContent);
+    }
+
     [Fact]
     public void View_WhenAListIsShown_ThenTheTableIsNamedAfterIt()
     {

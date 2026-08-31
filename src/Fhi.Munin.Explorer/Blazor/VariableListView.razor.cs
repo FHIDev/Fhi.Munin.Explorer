@@ -1,6 +1,7 @@
 using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 
@@ -103,11 +104,13 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// read differently here than where it was saved from. Only the words: the explorer draws a
     /// block with a coverage bar beside it, and this is one cell in a row.
     /// </summary>
-    private string Period(VariableListItem item)
+    private string? Period(VariableListItem item)
     {
+        // Null rather than "Ikke oppgitt": the cell writes that itself, the way it does for every
+        // other column the catalogue has no value for.
         if (item.DataFrom is null && item.DataTo is null)
         {
-            return T.NotSpecified;
+            return null;
         }
 
         var from = item.DataFrom is { } f ? MonthYear(f) : "?";
@@ -127,6 +130,27 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// </remarks>
     private string RowName(VariableListItem item) =>
         string.IsNullOrWhiteSpace(item.VariableName) ? T.VariableNoLongerAvailable : item.VariableName;
+
+    /// <summary>
+    /// The columns of one row, drawn by the same helper the search results use.
+    /// </summary>
+    /// <remarks>
+    /// A fragment rather than markup because Blazor gives one its own sequence-number region, so
+    /// these numbers stand clear of the surrounding markup's — spaced <see cref="RowCell.Slots"/>
+    /// apart, which is what the helper's own note about rising numbers requires.
+    /// </remarks>
+    private RenderFragment Cells(VariableListItem item) => builder =>
+    {
+        RowCell.Write(builder, 100, T.FieldCode, item.VariableCode, "code", T.NotSpecified);
+        RowCell.Write(builder, 200, T.FieldSource, item.KildeShortName ?? item.KildeName, "source", T.NotSpecified, tooltip: item.KildeName);
+        RowCell.Write(builder, 300, T.FieldDataCollection, item.DatasamlingName, "dataCollection", T.NotSpecified);
+        RowCell.Write(builder, 400, T.FieldVariableGroup, item.VariabelgruppeName, "theme", T.NotSpecified);
+        RowCell.Write(builder, 500, T.FieldDataType, DataTypeName(item.DataType), "dataType", T.NotSpecified);
+
+        // The only column whose words are this component's rather than the catalogue's — the dates
+        // are formatted for the reader — so it is left unmarked, exactly as the explorer leaves it.
+        RowCell.Write(builder, 600, T.FieldDataPeriod, Period(item), "period", T.NotSpecified, catalogue: false);
+    };
 
     /// <summary>The name cell of one row, which the row's remove button is named from.</summary>
     private string RowNameId(VariableListItem item) =>
@@ -156,14 +180,6 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// </remarks>
     private string RemoveLabelledBy(VariableListItem item) =>
         $"{RemoveButtonId(item)} {RowNameId(item)}";
-
-    /// <summary>A value, or the catalogue's own words for one that was never set.</summary>
-    /// <remarks>
-    /// The explorer writes NotSpecified in this column rather than leaving it blank, and an empty cell
-    /// beside a filled one reads as data that went missing rather than data nobody entered.
-    /// </remarks>
-    private string Or(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? T.NotSpecified : value;
 
     /// <summary>
     /// <c>"no"</c> for a value the catalogue wrote, and nothing at all for our own fallback.
