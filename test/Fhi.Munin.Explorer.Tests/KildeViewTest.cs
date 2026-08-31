@@ -2,6 +2,7 @@ using System.Text.Json;
 using AngleSharp.Dom;
 using Bunit;
 using Fhi.Munin.Explorer.Blazor;
+using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
 
@@ -528,6 +529,78 @@ public class KildeViewTest : BunitContext
         // check for a reason that has nothing to do with a heading promising a block.
         Assert.DoesNotContain("Metadata", BlockHeadings(cut));
         Assert.Empty(cut.FindAll(".munin-explorer-group"));
+    }
+
+    // ---------------------------------------------------------------------------------
+    // The same metadata, out of a captured payload rather than a hand-written source.
+    // ---------------------------------------------------------------------------------
+
+    /// <summary>
+    /// The Barnediabetes register as the live endpoint serves it: 73 curated keys across thirteen
+    /// groups, eighteen of them filled in.
+    /// </summary>
+    /// <remarks>
+    /// A captured payload rather than a hand-written source, because the claim under test is how
+    /// many sections a reader is actually shown and the sources written above carry two groups
+    /// between them. This is the source Fhi.Metadata-6a8wp was measured on.
+    /// </remarks>
+    private static KildeDetail Barnediabetes() =>
+        JsonSerializer.Deserialize<KildeDetail>(
+            TestData.Read("kilde-barnediabetes.json"), MuninExplorerClient.Json)
+        ?? throw new InvalidOperationException("kilde-barnediabetes.json no longer reads as a KildeDetail.");
+
+    [Theory]
+    [InlineData("no", new[] { "Datainnsamling", "Beskrivelse", "Formål", "EHDS / HealthDCAT-AP",
+                              "Kontakt", "Versjonering", "Helsedatatilgangsorgan (overstyring)" })]
+    [InlineData("en", new[] { "Data Collection", "Description", "Purpose", "EHDS / HealthDCAT-AP",
+                              "Contact", "Versioning", "Health Data Access Body (override)" })]
+    public void Metadata_WhenARealSourceIsDrawn_ThenEveryGroupItFilledInIsThereInTheReadersLanguage(
+        string language, string[] expected)
+    {
+        // Read as a list rather than searched for, so a group that stops being drawn is a failure
+        // and not merely unreported, and so the catalogue's own order is asserted with it.
+        var cut = Render(Barnediabetes(), language);
+
+        Assert.Equal(expected, cut.FindAll(".munin-explorer-group").Select(e => e.TextContent));
+    }
+
+    [Theory]
+    [InlineData("no", new[] { "Identifikasjon", "Kvalitet", "Juridisk", "Identifikatorer", "Samsvar" })]
+    [InlineData("en", new[] { "Identification", "Quality", "Legal", "Identifiers", "Compliance" })]
+    public void Metadata_WhenARealSourceLeavesAGroupUnset_ThenNoHeadingPromisesIt(
+        string language, string[] unset)
+    {
+        // Five of this source's thirteen groups are curated and empty. A heading with nothing under
+        // it counts as a missing section rather than a drawn one.
+        var cut = Render(Barnediabetes(), language);
+
+        Assert.All(unset, name => Assert.DoesNotContain(
+            name, cut.FindAll(".munin-explorer-group").Select(e => e.TextContent)));
+
+        foreach (var heading in cut.FindAll(".munin-explorer-group"))
+        {
+            Assert.Equal("DL", heading.NextElementSibling?.TagName);
+            Assert.NotEmpty(heading.NextElementSibling!.QuerySelectorAll("dd"));
+        }
+    }
+
+    [Theory]
+    [InlineData("no")]
+    [InlineData("en")]
+    public void Metadata_WhenARealSourceStoresAValuePerLanguage_ThenTheReaderSeesWordsAndNotTheEnvelope(
+        string language)
+    {
+        // Three of this source's values are Flerspraklig siblings, and all three are stored under
+        // nb alone: an English host reading only the Norwegian sibling shows them, one reading only
+        // an en key that is not there shows blanks, and one reading neither shows the envelope.
+        var cut = Render(Barnediabetes(), language);
+
+        var values = cut.FindAll(".munin-explorer-kilde__main dd").Select(e => e.TextContent).ToList();
+
+        Assert.Contains(values, v => v.StartsWith("Barnediabetesregisterets formål er:", StringComparison.Ordinal));
+        Assert.Contains("Barnediabetes", values);
+        Assert.All(values, v => Assert.DoesNotContain("\"nb\":", v, StringComparison.Ordinal));
+        Assert.All(values, v => Assert.DoesNotContain("\"value\":", v, StringComparison.Ordinal));
     }
 
     // ---------------------------------------------------------------------------------
