@@ -158,24 +158,10 @@
                                           lang="@CatalogueLang(item.VariableName)">@RowName(item)</span>
                                 </span>
 
-                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__code" role="cell">
-                                    <span class="munin-explorer-dataitem-main__column__text" lang="no">@item.VariableCode</span>
-                                </span>
-                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__source" role="cell">
-                                    <span class="munin-explorer-dataitem-main__column__text" lang="no">@(item.KildeShortName ?? item.KildeName)</span>
-                                </span>
-                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__dataCollection" role="cell">
-                                    <span class="munin-explorer-dataitem-main__column__text" lang="no">@item.DatasamlingName</span>
-                                </span>
-                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__theme" role="cell">
-                                    <span class="munin-explorer-dataitem-main__column__text" lang="@CatalogueLang(item.VariabelgruppeName)">@Or(item.VariabelgruppeName)</span>
-                                </span>
-                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__dataType" role="cell">
-                                    <span class="munin-explorer-dataitem-main__column__text">@DataTypeName(item.DataType)</span>
-                                </span>
-                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__period" role="cell">
-                                    <span class="munin-explorer-dataitem-main__column__text">@Period(item)</span>
-                                </span>
+                                @* The six columns the result list draws too, built by the cell helper
+                                   both call — written out here as well, they could gain an attribute
+                                   in one place and not the other without anything failing. *@
+                                @Cells(item)
 
                                 @* The visible word stays "Fjern" — the column is narrow and every
                                    button in it removes something. The accessible name says which

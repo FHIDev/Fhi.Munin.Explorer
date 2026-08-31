@@ -732,6 +732,36 @@ public class VariableExplorerTest : BunitContext
         Assert.Equal("false", ColumnToggle(cut, "Kode").GetAttribute("aria-pressed"));
     }
 
+    /// <summary>The text of one named column's cell in the first result row.</summary>
+    private static string CellText(IRenderedComponent<VariableExplorer> cut, string key) =>
+        cut.Find($".munin-explorer-dataitem-main__{key} .munin-explorer-dataitem-main__column__text")
+           .TextContent;
+
+    [Fact]
+    public void Columns_WhenOneIsTurnedOffAndOnAgain_ThenEveryCellStillHoldsItsOwnValue()
+    {
+        // The cells are built with explicit sequence numbers, which Blazor uses positionally to
+        // diff one render against the next. A number that repeats or goes backwards patches one
+        // column's node with another's — and only from the second render, never the first.
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "V_ALS.F1.TALE") with
+        {
+            KildeShortName = "ALS",
+            VariabelgruppeName = "Bakgrunn"
+        })));
+
+        HideColumn(cut, "Datasamling");
+        ColumnToggle(cut, "Datasamling").Click();
+
+        Assert.Equal("V_ALS.F1.TALE", CellText(cut, "code"));
+        Assert.Equal("ALS", CellText(cut, "source"));
+        Assert.Equal("Inklusjon", CellText(cut, "dataCollection"));
+        Assert.Equal("Bakgrunn", CellText(cut, "theme"));
+
+        // The hidden field name travels with the value, not with the position it was drawn in.
+        Assert.Equal("Datasamling: ",
+                     cut.Find(".munin-explorer-dataitem-main__dataCollection .screenreader-only").TextContent);
+    }
+
     [Fact]
     public void Columns_WhenAColumnIsTurnedOffAndOnAgain_ThenItComesBack()
     {
