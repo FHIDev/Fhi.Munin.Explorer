@@ -275,7 +275,11 @@ public class UrlStateComponentTest : BunitContext
 
         public override Task<VariableDetail?> GetVariableAsync(
             Guid id, bool includeHistorical = false, CancellationToken cancellationToken = default) =>
-            Task.FromResult<VariableDetail?>(new VariableDetail { Id = id, PreferredTerm = "1. Tale" });
+            Task.FromResult<VariableDetail?>(new VariableDetail
+            {
+                Id = id,
+                PreferredTerm = id == TaleId ? "1. Tale" : "2. Spyttsekresjon",
+            });
     }
 
     /// <inheritdoc cref="RenderExplorer"/>
@@ -337,6 +341,21 @@ public class UrlStateComponentTest : BunitContext
 
         Assert.Equal("true", Rows(cut)[1].GetAttribute("aria-expanded"));
         Assert.NotEmpty(cut.FindAll(".munin-explorer-detail"));
+    }
+
+    [Fact]
+    public void Selection_WhenAHostDeclinesTheVariableKey_ThenItsOwnValueIsLeftWhereItIs()
+    {
+        // Declinable for the reason ?search= is: a host with a variable page of its own may already
+        // mean something by ?variabelId=. Declining it does not close the panel, only keep it out
+        // of the link.
+        var cut = RenderVariables("http://localhost/variabler?variabelId=vertens-egen",
+                                  b => b.Add(c => c.DeclinedKeys, ["variabelId"]));
+
+        Rows(cut)[0].Click();
+
+        Assert.NotEmpty(cut.FindAll(".munin-explorer-detail"));
+        Assert.Equal("?variabelId=vertens-egen", Mirrored());
     }
 
     [Fact]
