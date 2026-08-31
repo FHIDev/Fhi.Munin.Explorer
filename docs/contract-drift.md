@@ -73,7 +73,7 @@ MUNIN_EXPLORER_LIVE=1 MuninExplorer__ApiBaseUrl=https://localhost:7134 \
   dotnet test --filter Category=ContractDrift
 ```
 
-The default is `https://munin.skytest.fhi.no` — public, anonymous, read-only. There is no secret
+The default is `https://runa.munin.skytest.fhi.no` — public, anonymous, read-only. There is no secret
 to hold and no token provider to register.
 
 ## When the nightly job goes red
@@ -84,7 +84,7 @@ at. Then:
 
 1. Update the DTO under `src/Fhi.Munin.Explorer.Contracts`.
 2. Re-capture the matching file under `test/Fhi.Munin.Explorer.Tests/Testdata/` — for example
-   `curl https://munin.skytest.fhi.no/api/explorer/filters > filters.json` — so the offline test is
+   `curl https://runa.munin.skytest.fhi.no/api/explorer/filters > filters.json` — so the offline test is
    reading the same payload the live one saw.
 3. Write a changelog fragment. A contract change is one every host sees.
 4. Raise a bead in the Munin workspace with `--label=helsedata --label=rcl`.

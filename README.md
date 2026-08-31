@@ -343,7 +343,7 @@ all three out:
 // BEFORE AddMuninExplorer — it uses TryAdd, so the anonymous default wins if it goes first and
 // the explorer will quietly keep calling without a token.
 services.AddSingleton<IMuninExplorerTokenProvider, MyTokenProvider>();
-services.AddMuninExplorer(o => o.ApiBaseUrl = "https://munin.skytest.fhi.no");
+services.AddMuninExplorer(o => o.ApiBaseUrl = "https://runa.munin.skytest.fhi.no");
 ```
 
 Leave the provider out entirely and calls are anonymous, which is all public metadata browsing

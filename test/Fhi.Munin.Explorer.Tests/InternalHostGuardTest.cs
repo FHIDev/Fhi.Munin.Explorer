@@ -2,21 +2,16 @@ using System.Text.RegularExpressions;
 
 namespace Fhi.Munin.Explorer.Tests;
 
-/// <summary>
-/// That nothing a host developer can copy out of <c>src/</c> or <c>samples/</c> names the
-/// unprefixed <c>munin.skytest.fhi.no</c>, which answers only from inside FHI's network.
-/// </summary>
-/// <remarks>
-/// Reads the sources, because the way this went wrong was a site nobody thought to look at
-/// (Fhi.Metadata-ip02g). Matching the preceding label is load-bearing: searching for the bare
-/// name alone also matches the corrected form, and calls a file clean that never was.
-/// </remarks>
+/// <summary>That nothing a host developer can copy — the sources, the docs, the README that ships
+/// inside the package — names the unprefixed Munin test host, internal to FHI (Fhi.Metadata-ip02g).</summary>
 public class InternalHostGuardTest
 {
+    // The preceding label is part of the match on purpose: searching for the bare name alone also
+    // matches the corrected runa./kelda. forms, and would call an uncorrected file clean.
     private static readonly Regex AnyMuninTestHost =
-        new(@"(?<prefix>[A-Za-z0-9.-]*)munin\.skytest\.fhi\.no");
+        new(@"(?<prefix>[A-Za-z0-9.-]*)munin\.skytest\.fhi\.no", RegexOptions.IgnoreCase);
 
-    private static readonly string[] Prefixed = ["runa.", "kelda."];
+    private static readonly string[] ExternalPrefixes = ["runa.", "kelda."];
 
     // Text a developer can copy from. Build output is skipped because it is a copy of what is
     // already checked, and would report every offender twice.
@@ -36,7 +31,7 @@ public class InternalHostGuardTest
             {
                 foreach (Match match in AnyMuninTestHost.Matches(lines[i]))
                 {
-                    if (!Prefixed.Contains(match.Groups["prefix"].Value))
+                    if (!IsExternal(match.Groups["prefix"].Value))
                     {
                         offenders.Add(
                             $"{Path.GetRelativePath(Repo.Root, file)}:{i + 1}: {lines[i].Trim()}");
@@ -53,9 +48,17 @@ public class InternalHostGuardTest
             + string.Join(Environment.NewLine, offenders));
     }
 
+    // EndsWith rather than equality, so a deeper name below runa. is still external.
+    private static bool IsExternal(string prefix) =>
+        ExternalPrefixes.Any(external => prefix.EndsWith(external, StringComparison.OrdinalIgnoreCase));
+
+    // README.md is here because it ships inside the package as PackageReadmeFile and is rendered on
+    // the feed's package page, which makes its registration snippet the most direct copy target of all.
     private static IEnumerable<string> Sources() =>
-        new[] { Repo.In("src"), Repo.In("samples") }
-            .SelectMany(root => Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories))
+        new[] { Repo.In("src"), Repo.In("samples"), Repo.In("docs"), Repo.In("README.md") }
+            .SelectMany(path => Directory.Exists(path)
+                ? Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories)
+                : new[] { path })
             .Where(file => Readable.Contains(Path.GetExtension(file), StringComparer.OrdinalIgnoreCase))
             .Where(file => !file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}")
                 && !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"));
