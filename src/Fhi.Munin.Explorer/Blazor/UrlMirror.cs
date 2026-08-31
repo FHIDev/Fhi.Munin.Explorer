@@ -58,7 +58,10 @@ internal sealed class UrlMirror
     public string Owned =>
         string.Join('&', _owned.Select(pair => Uri.EscapeDataString(pair.Name) + "=" + Uri.EscapeDataString(pair.Value)));
 
-    /// <summary>The first value the incoming query gave <paramref name="name"/>, decoded.</summary>
+    /// <summary>
+    /// The first value the incoming query gave <paramref name="name"/>, decoded — and null when it
+    /// gave none. An empty value is null too: <c>?kilde=</c> names a kilde no better than nothing.
+    /// </summary>
     public string? Value(string name) =>
         _owned.Find(pair => string.Equals(pair.Name, name, StringComparison.OrdinalIgnoreCase)).Value is { Length: > 0 } value
             ? value
