@@ -65,6 +65,10 @@ jobs:
 
       - name: Check the contracts against the live API
         id: drift
+        # Bounded here as well as on the job: a job that overruns is cancelled, and `cancelled()`
+        # is not `failure()`, so the reporting step never runs — which is how eight nights of this
+        # hanging went unreported. A step that overruns fails instead (Fhi.Metadata-ghxh4).
+        timeout-minutes: 12
         run: |
           set -uo pipefail
 
@@ -132,30 +136,61 @@ jobs:
           # repository is tracked as beads in FHIDev/Munin, which a workflow has no credentials to
           # write to, so the alert lands in this repository's issues and says to raise one. One
           # issue, commented on each night it stays broken, rather than a new one every morning.
-          TITLE='Contract drift: the Explorer API no longer matches Fhi.Munin.Explorer.Contracts'
+          # Which of the two failures this was. A run that compared nothing has no DTO to point
+          # at, so it gets its own title rather than drift's — an outage and a real difference
+          # never share a thread (Fhi.Metadata-ghxh4).
+          KIND=$(./scripts/drift-failure-kind.sh "$TRX")
 
-          {
-            echo "The nightly contract check failed against \`$MuninExplorer__ApiBaseUrl\`."
-            echo ""
-            echo "**Run:** $RUN_URL"
-            echo ""
-            echo "Either a response no longer round-trips through \`Fhi.Munin.Explorer.Contracts\` —"
-            echo "the failure message names the field and the path it sits at — or the check did not"
-            echo "run at all, which the run log says outright."
-            echo ""
-            echo "What to do:"
-            echo ""
-            echo "1. Read the failing test's message. It names each difference and which way it goes."
-            echo "2. Update the DTO under \`src/Fhi.Munin.Explorer/Contracts/\`."
-            echo "3. Re-capture the matching file under \`test/Fhi.Munin.Explorer.Tests/Testdata/\` so"
-            echo "   the offline \`ContractCoverageTest\` is reading the same payload."
-            echo "4. Write a changelog fragment — a contract change is one every host sees."
-            echo "5. Raise a bead in the Munin workspace (\`--label=helsedata --label=rcl\`) and close"
-            echo "   this issue with the pull request that fixes it."
-            echo ""
-            echo "Until then the component renders that field's default — usually an empty string —"
-            echo "as though it were data."
-          } > drift-report.md
+          if [ "$KIND" = unreachable ]; then
+            TITLE='The nightly contract check could not reach the Explorer API'
+
+            {
+              echo "The nightly contract check could not reach \`$MuninExplorer__ApiBaseUrl\`, so the"
+              echo "contracts were not checked against anything."
+              echo ""
+              echo "**Run:** $RUN_URL"
+              echo ""
+              echo "**This is not contract drift.** No response was compared, so the run says nothing"
+              echo "about whether the DTOs still fit. Nothing under \`src/Fhi.Munin.Explorer/Contracts/\`"
+              echo "needs editing on account of it."
+              echo ""
+              echo "What to check:"
+              echo ""
+              echo "1. Whether the API is up, and whether that host answers from outside FHI's network."
+              echo "   The Munin test API is published under its \`runa.\` and \`kelda.\` names; the"
+              echo "   unprefixed one resolves to a private address, so it answers by hand on the VPN"
+              echo "   and times out on a hosted runner."
+              echo "2. \`MuninExplorer__ApiBaseUrl\` in \`.github/workflows/contract-drift.yml\`."
+              echo ""
+              echo "Until this is fixed the check is not running, so a real change to the API would"
+              echo "land unnoticed — the gap the job exists to close is open for as long as it is red."
+            } > drift-report.md
+          else
+            TITLE='Contract drift: the Explorer API no longer matches Fhi.Munin.Explorer.Contracts'
+
+            {
+              echo "The nightly contract check failed against \`$MuninExplorer__ApiBaseUrl\`."
+              echo ""
+              echo "**Run:** $RUN_URL"
+              echo ""
+              echo "A response no longer round-trips through \`Fhi.Munin.Explorer.Contracts\` — the"
+              echo "failure message names the field and the path it sits at. (The API was reachable;"
+              echo "a run that could not connect files a different issue.)"
+              echo ""
+              echo "What to do:"
+              echo ""
+              echo "1. Read the failing test's message. It names each difference and which way it goes."
+              echo "2. Update the DTO under \`src/Fhi.Munin.Explorer/Contracts/\`."
+              echo "3. Re-capture the matching file under \`test/Fhi.Munin.Explorer.Tests/Testdata/\` so"
+              echo "   the offline \`ContractCoverageTest\` is reading the same payload."
+              echo "4. Write a changelog fragment — a contract change is one every host sees."
+              echo "5. Raise a bead in the Munin workspace (\`--label=helsedata --label=rcl\`) and close"
+              echo "   this issue with the pull request that fixes it."
+              echo ""
+              echo "Until then the component renders that field's default — usually an empty string —"
+              echo "as though it were data."
+            } > drift-report.md
+          fi
 
           # Matched on the exact title rather than on a label, so the alert does not depend on a
           # label existing in a repository whose issues are otherwise for external consumers.
@@ -171,7 +206,10 @@ jobs:
           #
           # Not piped through `head`: this block runs under `pipefail`, and a reader that closes
           # the pipe early leaves `gh` killed by SIGPIPE, which would take the whole alert with it.
-          matches=$(gh issue list --state open --search 'Contract drift in:title' --json number,title,author \
+          # The word both titles share, not either of them: the exact-title filter below picks the
+          # thread, and a query naming one title would never return the other kind — leaving the
+          # job to open a fresh issue every night it stayed red.
+          matches=$(gh issue list --state open --search 'contract in:title' --json number,title,author \
             --jq ".[] | select(.title == \"$TITLE\" and .author.is_bot) | .number")
           existing=${matches%%$'\n'*}
 

@@ -246,6 +246,15 @@ internal sealed class StubHttpHandler(Func<HttpRequestMessage, HttpResponseMessa
     /// <summary>Answers with the given status and an empty body.</summary>
     public static StubHttpHandler Status(HttpStatusCode status) => new(_ => new HttpResponseMessage(status));
 
+    /// <summary>Does not answer at all: throws as the transport does when nothing is listening.</summary>
+    /// <remarks>
+    /// The two forms are both real and land in different catch clauses — a refused connection or
+    /// an unknown host arrives as <see cref="HttpRequestException"/>, while a connect that times
+    /// out arrives as <see cref="TaskCanceledException"/> — so the exception is passed in rather
+    /// than chosen here.
+    /// </remarks>
+    public static StubHttpHandler Throwing(Exception cause) => new(_ => throw cause);
+
     /// <summary>Answers <c>429 Too Many Requests</c>, with a <c>Retry-After</c> when given one.</summary>
     /// <remarks>
     /// The header is optional and both cases are real: the API sets it, and a proxy in front of it

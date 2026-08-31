@@ -221,6 +221,50 @@ public class ShapeDriftTest
         Assert.Contains("404", failure.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task RoundTripAsync_WhenTheApiCannotBeReached_ThenTheFailureSaysSoRatherThanNamingDrift()
+    {
+        using var api = LiveApiConnection.Open(StubHttpHandler.Throwing(
+            new HttpRequestException("No such host is known.")));
+
+        // Nothing answered, so nothing was compared. Reported as drift anyway, this sends whoever
+        // picks it up to edit DTOs that were never wrong, so what the message must not do is read
+        // as a difference (Fhi.Metadata-ghxh4).
+        var failure = await Assert.ThrowsAnyAsync<XunitException>(
+            () => api.RoundTripAsync(client => client.GetKilderAsync()));
+
+        Assert.Contains(LiveApi.UnreachableMarker, failure.Message, StringComparison.Ordinal);
+        Assert.Contains(LiveApi.BaseUrl, failure.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("no longer matches", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RoundTripAsync_WhenTheConnectionTimesOut_ThenItIsReportedAsUnreachableToo()
+    {
+        // How an unroutable address presents: HttpClient gives up on the connect and it surfaces as
+        // TaskCanceledException, not HttpRequestException. Catching only the obvious one would
+        // leave the case that actually happens reported as drift.
+        using var api = LiveApiConnection.Open(StubHttpHandler.Throwing(
+            new TaskCanceledException(
+                "The operation was canceled.",
+                new TimeoutException("A connection could not be established within the configured ConnectTimeout."))));
+
+        var failure = await Assert.ThrowsAnyAsync<XunitException>(
+            () => api.RoundTripAsync(client => client.GetKilderAsync()));
+
+        Assert.Contains(LiveApi.UnreachableMarker, failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void UnreachableMarker_WhenTheWorkflowLooksForIt_ThenTheScriptSpellsItTheSameWay()
+    {
+        // Written in C# and read by bash, so nothing but this test connects them: rename the
+        // constant and the workflow silently goes back to calling every outage drift.
+        var script = File.ReadAllText(Repo.In("scripts", "drift-failure-kind.sh"));
+
+        Assert.Contains($"MARKER='{LiveApi.UnreachableMarker}'", script, StringComparison.Ordinal);
+    }
+
     private static JsonNode Load(string fixture) =>
         JsonNode.Parse(TestData.Read(fixture))
         ?? throw new InvalidOperationException($"Test data '{fixture}' is not JSON.");
