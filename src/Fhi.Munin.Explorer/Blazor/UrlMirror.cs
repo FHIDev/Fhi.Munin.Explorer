@@ -75,9 +75,10 @@ internal sealed class UrlMirror
     {
         var whole = Join(_carried, query);
 
-        // "?x=1" to set, and the path itself to clear: assigning "" would leave the previous query
-        // string in place, so clearing every filter would not clear the URL.
-        var url = whole.Length == 0 ? _path : "?" + whole;
+        // The path leads both: replaceState resolves a relative URL against the document's <base
+        // href>, so a bare "?x=1" would move the reader to the site root. The path alone to clear —
+        // assigning "" would leave the previous query string in place.
+        var url = whole.Length == 0 ? _path : _path + "?" + whole;
 
         // Without this, every render would call into JS to write the URL it is already showing.
         if (url == _mirrored)
