@@ -330,7 +330,7 @@ public class UrlStateComponentTest : BunitContext
 
         Rows(cut)[0].Click();
 
-        Assert.Equal($"?variabelId={TwoVariableClient.TaleId}", Mirrored());
+        Assert.Equal($"/variabler?variabelId={TwoVariableClient.TaleId}", Mirrored());
     }
 
     [Fact]
@@ -355,7 +355,7 @@ public class UrlStateComponentTest : BunitContext
         Rows(cut)[0].Click();
 
         Assert.NotEmpty(cut.FindAll(".munin-explorer-detail"));
-        Assert.Equal("?variabelId=vertens-egen", Mirrored());
+        Assert.Equal("/variabler?variabelId=vertens-egen", Mirrored());
     }
 
     [Fact]
@@ -367,7 +367,7 @@ public class UrlStateComponentTest : BunitContext
 
         Rows(cut)[0].Click();
 
-        Assert.Equal("?search=svelging", Mirrored());
+        Assert.Equal("/variabler?search=svelging", Mirrored());
     }
 
     /// <summary>A navigation manager mounted under a path base, which bUnit's own cannot be.</summary>
