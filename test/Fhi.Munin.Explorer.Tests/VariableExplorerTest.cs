@@ -6219,7 +6219,7 @@ public class VariableExplorerTest : BunitContext
     private static AngleSharp.Dom.IElement NarrowButton(IRenderedComponent<VariableExplorer> cut) =>
         SourcePanel(cut).Children
             .Where(child => child.TagName == "BUTTON")
-            .Single(button => button.TextContent.StartsWith("Vis bare variabler"));
+            .Single(button => button.TextContent.StartsWith("Vis bare variabler", StringComparison.Ordinal));
 
     [Fact]
     public void Source_WhenTheKildesVariablesAreAskedFor_ThenTheViewClosesAndTheFilterIsSet()
