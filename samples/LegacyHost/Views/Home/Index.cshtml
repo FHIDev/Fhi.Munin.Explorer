@@ -1,5 +1,4 @@
 @using Fhi.Munin.Explorer.Blazor
-@using LegacyHost.Components
 @{
     ViewData["Title"] = "Legacy host";
 }
@@ -22,12 +21,14 @@
        Server (not ServerPrerendered) because the component fetches on initialise and
        prerendering would run that twice.
 
-       The wrapper, not the explorer directly: the package has no router and never touches the
-       address bar, so mirroring state into the URL is the host's job. The query string is read
-       here, server-side, and handed in — which is what makes a shared link work on first paint
-       rather than after a round trip. *@
-    <component type="typeof(ExplorerWithUrlState)"
+       VariableExplorerWithUrlState now says that itself: mounted prerendered it throws on
+       initialisation rather than rendering a page whose URL silently never follows the view.
+
+       The whole of what this host used to write is in that name. A 90-line wrapper stood here
+       until Fhi.Metadata-zrcf4 — a Binding class, a parse, and a history.replaceState — with the
+       request's query string handed in beside it. All of it is the package's now, including
+       reading the query, so there is nothing left for this view to pass but the language. *@
+    <component type="typeof(VariableExplorerWithUrlState)"
                render-mode="Server"
-               param-Language="@("no")"
-               param-InitialQuery="@Context.Request.QueryString.Value" />
+               param-Language="@("no")" />
 </div>

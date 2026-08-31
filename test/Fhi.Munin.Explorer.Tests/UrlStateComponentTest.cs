@@ -1,0 +1,334 @@
+using Bunit;
+using Fhi.Munin.Explorer.Blazor;
+using Fhi.Munin.Explorer.Contracts;
+using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Fhi.Munin.Explorer.Tests;
+
+/// <summary>
+/// The two components that put explorer state in a host's address bar, and the promise that makes
+/// them worth shipping: the host writes none of this itself and loses nothing by mounting them.
+/// </summary>
+/// <remarks>
+/// Every failure here is silent in a browser. A key that is written where it should have been left
+/// alone erases a parameter nobody notices until a campaign link stops attributing; a mount at the
+/// wrong render mode draws a working explorer whose URL simply never moves. So the assertions are
+/// on what reached <c>history.replaceState</c>, not on what the page looks like.
+/// </remarks>
+public class UrlStateComponentTest : BunitContext
+{
+    private const string ReplaceState = "history.replaceState";
+
+    /// <summary>Cleared by the one test that mounts a component the way a host must not.</summary>
+    private bool _interactive = true;
+
+    /// <summary>
+    /// The render mode both components require, and the loose JS runtime that lets
+    /// <c>history.replaceState</c> through.
+    /// </summary>
+    /// <remarks>
+    /// Called after the client is registered rather than from the constructor: bUnit seals its
+    /// service collection the first time anything is resolved from it, and setting the renderer
+    /// info resolves the renderer.
+    /// </remarks>
+    private void Prepare()
+    {
+        SetRendererInfo(new RendererInfo(_interactive ? "Server" : "Static", _interactive));
+        JSInterop.Mode = JSRuntimeMode.Loose;
+    }
+
+    /// <summary>Records what the explorer asked the API for, which is what a link has to restore.</summary>
+    private sealed class RecordingClient : EmptyMuninExplorerClient
+    {
+        public string? LastSearch { get; private set; }
+
+        public VariableFilter? LastFilter { get; private set; }
+
+        public int LastPage { get; private set; }
+
+        public int LastPageSize { get; private set; }
+
+        public SortField LastSort { get; private set; }
+
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
+            SortField sort = SortField.Default,
+            SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default)
+        {
+            LastSearch = search;
+            LastFilter = filter;
+            LastPage = page;
+            LastPageSize = pageSize;
+            LastSort = sort;
+
+            return Task.FromResult(new Page<VariableSummary>
+            {
+                Items = [],
+                TotalCount = 0,
+                PageNumber = page,
+                Size = pageSize,
+                TotalPages = 0,
+            });
+        }
+    }
+
+    /// <summary>The last URL the component wrote, or null when it never wrote one.</summary>
+    private string? Mirrored() =>
+        JSInterop.Invocations[ReplaceState] is { Count: > 0 } calls
+            ? calls[^1].Arguments[2] as string
+            : null;
+
+    /// <summary>
+    /// Registers the client, puts the browser at <paramref name="url"/>, and renders.
+    /// </summary>
+    /// <remarks>
+    /// In that order, and not by accident: bUnit seals its service collection the first time
+    /// anything is resolved from it, and reaching for the NavigationManager is a resolve.
+    /// </remarks>
+    private RecordingClient RenderExplorer(
+        string url,
+        out IRenderedComponent<VariableExplorerWithUrlState> cut,
+        Action<ComponentParameterCollectionBuilder<VariableExplorerWithUrlState>>? parameters = null)
+    {
+        var client = new RecordingClient();
+        Services.AddSingleton<IMuninExplorerClient>(client);
+        Prepare();
+        Navigation.NavigateTo(url);
+        cut = Render<VariableExplorerWithUrlState>(b => parameters?.Invoke(b));
+
+        return client;
+    }
+
+    private NavigationManager Navigation => Services.GetRequiredService<NavigationManager>();
+
+    [Fact]
+    public void Restore_WhenALinkCarriesASearch_ThenTheExplorerOpensOnItWithNoHostCode()
+    {
+        // The whole claim, in one test: a host mounts the component and nothing else, and a shared
+        // link opens the search it was copied from.
+        var client = RenderExplorer(
+            "http://localhost/?search=svelging&page=3&pageSize=50&sort=Kilde&kildeType=biobank", out _);
+
+        Assert.Equal("svelging", client.LastSearch);
+        Assert.Equal(3, client.LastPage);
+        Assert.Equal(50, client.LastPageSize);
+        Assert.Equal(SortField.Kilde, client.LastSort);
+        Assert.Equal("biobank", client.LastFilter?.KildeType);
+    }
+
+    [Fact]
+    public void Mirror_WhenTheReaderSearches_ThenTheAddressBarFollows()
+    {
+        RenderExplorer("http://localhost/", out var cut);
+
+        cut.Find(".searchbox__freetext").Change("svelging");
+        cut.Find("form").Submit();
+
+        Assert.Equal("?search=svelging", Mirrored());
+    }
+
+    [Fact]
+    public void Mirror_WhenTheHostHasParametersOfItsOwn_ThenTheySurviveAChange()
+    {
+        // The failure the 90-line sample wrapper had and nothing caught: it wrote "?" + its own
+        // query, so the first render after load dropped every parameter the host cared about.
+        RenderExplorer("http://localhost/?utm_source=nyhetsbrev&search=svelging", out var cut);
+
+        cut.Find(".searchbox__freetext").Change("diabetes");
+        cut.Find("form").Submit();
+
+        Assert.Equal("?utm_source=nyhetsbrev&search=diabetes", Mirrored());
+    }
+
+    [Fact]
+    public void Mirror_WhenAKeyIsDeclined_ThenItIsNeitherReadNorRewritten()
+    {
+        // A host whose page already means something else by ?search=. Declining it does not take
+        // the search box away — it keeps that word out of the link, and leaves the host's own
+        // meaning of the parameter exactly where it was.
+        var client = RenderExplorer(
+            "http://localhost/?search=hostens+egen&page=2", out var cut,
+            b => b.Add(c => c.DeclinedKeys, ["search"]));
+
+        Assert.Null(client.LastSearch);
+        Assert.Equal(2, client.LastPage);
+
+        cut.Find(".searchbox__freetext").Change("svelging");
+        cut.Find("form").Submit();
+
+        var mirrored = Mirrored();
+
+        Assert.Contains("search=hostens+egen", mirrored, StringComparison.Ordinal);
+        Assert.DoesNotContain("svelging", mirrored, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DeclinedKeys_WhenItNamesAKeyThatIsNotDeclinable_ThenItSaysSoRatherThanDoingNothing()
+    {
+        // A facet key cannot be declined — half a filter in a URL describes a search nobody is
+        // looking at — and a typo is the same mistake. Both would otherwise be silent.
+        var thrown = Assert.Throws<ArgumentException>(
+            () => RenderExplorer("http://localhost/", out _, b => b.Add(c => c.DeclinedKeys, ["kildeIds"])));
+
+        Assert.Contains("kildeIds", thrown.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Mount_WhenItIsPrerendered_ThenItFailsLoudlyRatherThanSilentlyNeverFollowing()
+    {
+        // The trap this component exists to close. Prerendered, nothing calls into the browser and
+        // no callback fires: the page renders, the URL never moves, and there is nothing to search
+        // for. An exception on initialisation names the render mode to change instead.
+        _interactive = false;
+
+        var thrown = Assert.Throws<InvalidOperationException>(
+            () => RenderExplorer("http://localhost/", out _));
+
+        Assert.Contains("render-mode=\"Server\"", thrown.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Mirror_WhenNothingIsSet_ThenTheQueryIsClearedRatherThanLeftBehind()
+    {
+        // Assigning "" to replaceState leaves the previous query in place, so the path itself is
+        // what clears it — and it is the mounted path, PathBase included, not "/".
+        RenderExplorer("http://localhost/app/variabler?search=svelging", out var cut);
+
+        cut.Find(".searchbox__freetext").Change("");
+        cut.Find("form").Submit();
+
+        Assert.Equal("/app/variabler", Mirrored());
+    }
+
+    [Fact]
+    public void Mirror_WhenTheStateHasNotChanged_ThenTheAddressBarIsNotWrittenTwice()
+    {
+        RenderExplorer("http://localhost/?search=svelging", out var cut);
+
+        var written = JSInterop.Invocations[ReplaceState].Count;
+
+        cut.Render();
+
+        Assert.Equal(written, JSInterop.Invocations[ReplaceState].Count);
+    }
+
+    [Fact]
+    public void Mirror_WhenTheReaderChangesTheView_ThenNoHistoryEntryIsPushed()
+    {
+        // pushState would make every filter change a step the reader has to walk back through
+        // before they can leave the site.
+        RenderExplorer("http://localhost/", out var cut);
+
+        cut.Find(".searchbox__freetext").Change("svelging");
+        cut.Find("form").Submit();
+
+        Assert.NotEmpty(JSInterop.Invocations[ReplaceState]);
+        Assert.Empty(JSInterop.Invocations["history.pushState"]);
+    }
+
+    private static KildeSummary Kilde(Guid id, string name) => new() { Id = id, Name = name, Code = "K" };
+
+    /// <summary>Answers with one kilde, so there is a row to open and a selection to hand over.</summary>
+    private sealed class OneKildeClient(Guid id) : EmptyMuninExplorerClient
+    {
+        public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
+            string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<KildeSummary>>([Kilde(id, "Als registeret")]);
+
+        public override Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default) =>
+            Task.FromResult<KildeDetail?>(new KildeDetail { Id = id, PreferredTerm = "Als registeret" });
+    }
+
+    /// <inheritdoc cref="RenderExplorer"/>
+    private IRenderedComponent<KildeExplorerWithUrlState> RenderKilder(
+        Guid id, string url,
+        Action<ComponentParameterCollectionBuilder<KildeExplorerWithUrlState>>? parameters = null)
+    {
+        Services.AddSingleton<IMuninExplorerClient>(new OneKildeClient(id));
+        Prepare();
+        Navigation.NavigateTo(url);
+
+        return Render<KildeExplorerWithUrlState>(b => parameters?.Invoke(b));
+    }
+
+    [Fact]
+    public void Kilder_WhenALinkCarriesAKilde_ThenThatKildeIsOpen()
+    {
+        var id = Guid.NewGuid();
+
+        var cut = RenderKilder(id, $"http://localhost/kilder?kilde={id}");
+
+        Assert.NotEmpty(cut.FindAll(".munin-explorer-drilldown"));
+    }
+
+    [Fact]
+    public void Kilder_WhenTheReaderClosesTheKilde_ThenThePathTheyArrivedOnComesBackWithItsPathBase()
+    {
+        // Trap 2, which is invisible locally: replaceState writes an absolute path, so a component
+        // that cleared the query by writing "/" would send a reader behind a reverse proxy — which
+        // is where helsedata runs — out of the application entirely.
+        var id = Guid.NewGuid();
+
+        var cut = RenderKilder(id, $"http://localhost/optimizely/kilder?kilde={id}");
+
+        cut.FindAll("button").First(button => button.TextContent.Contains("Tilbake", StringComparison.Ordinal)).Click();
+
+        Assert.Equal("/optimizely/kilder", Mirrored());
+    }
+
+    [Fact]
+    public void Kilder_WhenTheLinkCarriesASearchKeldaCannotMaintain_ThenItIsLeftAloneRatherThanErased()
+    {
+        // KildeExplorer has no SearchChanged, so a ?search= this component adopted would be erased
+        // on the first render after load: the link would work exactly once and could not be shared
+        // onward. It is carried through instead, like any parameter that is not ours.
+        var id = Guid.NewGuid();
+
+        var cut = RenderKilder(id, $"http://localhost/kilder?search=als&kilde={id}");
+
+        cut.FindAll("button").First(button => button.TextContent.Contains("Tilbake", StringComparison.Ordinal)).Click();
+
+        Assert.Equal("?search=als", Mirrored());
+    }
+
+    [Fact]
+    public void Kilder_WhenNoVariableExplorerPathIsGiven_ThenNoHandoverIsOffered()
+    {
+        // The package cannot know where a host mounted the other explorer, and a selection column
+        // leading nowhere is worse than none.
+        var id = Guid.NewGuid();
+
+        var cut = RenderKilder(id, "http://localhost/kilder");
+
+        Assert.Empty(cut.FindAll(".munin-explorer-kilder__select"));
+    }
+
+    [Fact]
+    public void Kilder_WhenAVariableExplorerPathIsGiven_ThenTheSelectionColumnIsOffered()
+    {
+        var id = Guid.NewGuid();
+
+        var cut = RenderKilder(id, "http://localhost/kilder",
+                               b => b.Add(c => c.VariableExplorerPath, "/"));
+
+        Assert.NotEmpty(cut.FindAll(".munin-explorer-kilder__select"));
+    }
+
+    [Fact]
+    public void Kilder_WhenTheReaderHandsTheSelectionOver_ThenItArrivesAsTheFilterQueryTheOtherExplorerReads()
+    {
+        var id = Guid.NewGuid();
+
+        var cut = RenderKilder(id, "http://localhost/kilder",
+                               b => b.Add(c => c.VariableExplorerPath, "/variabler"));
+
+        cut.Find(".munin-explorer-kilder__select input").Change(true);
+        cut.FindAll("button").First(button => button.TextContent.Contains("Utforsk", StringComparison.Ordinal)).Click();
+
+        Assert.Equal(
+            $"http://localhost/variabler?kildeIds={id}",
+            Navigation.Uri);
+    }
+}

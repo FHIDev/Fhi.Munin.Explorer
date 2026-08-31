@@ -1,5 +1,4 @@
 @using Fhi.Munin.Explorer.Blazor
-@using LegacyHost.Components
 @{
     ViewData["Title"] = "Legacy host — kilder";
 }
@@ -13,26 +12,21 @@
 </div>
 
 <div class="hostframe">
-    @* render-mode is set HERE, by the host. Server rather than ServerPrerendered for the two
-       reasons the front page gives — the component fetches on initialise, and prerendering would
-       run that twice — and for a third that applies only to this component: KildeExplorer raises
+    @* render-mode is set HERE, by the host. Server rather than ServerPrerendered for the reason
+       the front page gives, and for one that applies only to this component: KildeExplorer raises
        SelectedKildeIdChanged, and an EventCallback serialises to an empty delegate across a
-       static-SSR boundary. A prerendered mount would leave the callback silently dead and the URL
-       would never follow the open kilde.
+       static-SSR boundary. That is what a host wrapper could not survive and this component does
+       not have to — the callbacks are created inside it — and it refuses a prerendered mount
+       anyway rather than leaving them silently dead.
 
-       The path is handed in beside the query string because this view is not on "/": closing the
-       open kilde has to put back the path the reader arrived on rather than the front page. Which
-       path that is varies — the action answers on both /kilder and /Home/Kilder — so it is read
-       from the request here instead of being named anywhere.
-
-       PathBase and Path, not Path alone. history.replaceState writes an absolute path, and Path
-       is relative to wherever the application is mounted: behind a reverse proxy or in a virtual
-       directory it omits the prefix, so closing a kilde would send the reader to a path outside
-       the app. Locally the two are identical and nothing here would show it — helsedata's
-       Optimizely host is the one this has to survive. *@
+       VariableExplorerPath is the one thing the package cannot know: where this host mounted the
+       other explorer. Everything else that was handed in here — a 103-line wrapper, the request's
+       query string and the path this view answers on — is the component's own now
+       (Fhi.Metadata-zrcf4). It takes the path from the circuit's address, which already carries
+       PathBase, so closing a kilde behind a reverse proxy no longer sends the reader out of the
+       application. *@
     <component type="typeof(KildeExplorerWithUrlState)"
                render-mode="Server"
                param-Language="@("no")"
-               param-BasePath="@((Context.Request.PathBase + Context.Request.Path).Value)"
-               param-InitialQuery="@Context.Request.QueryString.Value" />
+               param-VariableExplorerPath="@("/")" />
 </div>

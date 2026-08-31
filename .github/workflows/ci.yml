@@ -262,6 +262,35 @@ jobs:
         # never a surprise that only CI knows how to reproduce.
         run: ./scripts/assert-portability-guard-armed.sh
 
+  # The URL-state components exist so a host writes no glue, and both sample hosts prove that
+  # badly: they compile against src/, so a type the package does not actually export or a parameter
+  # that only exists on this branch look fine in them and fail on someone else's build server. This
+  # job packs the package and builds a throwaway project that has a PackageReference and nothing
+  # else. Its own job because it packs, which the build job's own pack step does not cover — that
+  # one asks what is in the package, this one asks whether a stranger can use it.
+  consumer:
+    name: a host needs no glue
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet
+        uses: actions/cache@v5
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Assert the components mount from the package alone
+        # The same script developers can run locally before pushing, so a red check here is
+        # never a surprise that only CI knows how to reproduce.
+        run: ./scripts/assert-host-needs-no-glue.sh
+
   # WCAG 2.1 AA applies to this package by law, and this job keeps AGENTS.md's accessibility
   # section - the gate's blind spots included - from being a sentence nobody checks. Its own job,
   # required on main since 2026-08-28, for the guards' reasons above.
@@ -301,7 +330,7 @@ jobs:
   # this workflow must be added to needs: below and to the table, or it stays invisible here.
   report:
     name: ci summary
-    needs: [build, changelog, sample-css, host-notes, portability-guard, accessibility]
+    needs: [build, changelog, sample-css, host-notes, portability-guard, consumer, accessibility]
     # It exists to report failed and skipped jobs, so it must not be skipped by one.
     if: always()
     runs-on: ubuntu-latest
@@ -339,6 +368,7 @@ jobs:
           sample stylesheets in step|${{ needs['sample-css'].result }}
           host notes for new names|${{ needs['host-notes'].result }}
           portability guard armed|${{ needs['portability-guard'].result }}
+          a host needs no glue|${{ needs.consumer.result }}
           accessibility|${{ needs.accessibility.result }}
           EOF
 

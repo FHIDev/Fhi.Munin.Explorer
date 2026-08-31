@@ -360,6 +360,40 @@ refuses above rather than splitting: split them yourself with
 `ids.Chunk(IMuninExplorerClient.MaxVariablesPerBatch)`, so a failure part-way through leaves you
 knowing how far it got.
 
+### Shareable URLs
+
+Mount `VariableExplorerWithUrlState` or `KildeExplorerWithUrlState` in place of the explorer itself
+and a link carries the view: opening one restores the search, the facets, the sort, the page and the
+open kilde, and every change the reader makes updates the address bar. There is no glue to write —
+no wrapper component, no query parsing, no `history.replaceState`.
+
+```html
+<component type="typeof(VariableExplorerWithUrlState)" render-mode="Server" param-Language="@("no")" />
+```
+
+Three things are worth knowing before mounting one.
+
+- **The render mode has to be interactive** — `render-mode="Server"`, never `ServerPrerendered`;
+  in a modern host, `@rendermode` with `prerender: false`. Both components throw on initialisation
+  otherwise, because the failure they replace is invisible: prerendered, the page renders and the
+  URL simply never follows the view.
+- **Your own parameters are safe.** Each component reads and rewrites only the keys it owns —
+  `ExplorerUrlState.QueryKeys` for the variable explorer, `?kilde=` for the kildeutforsker — and
+  carries everything else through untouched. `DeclinedKeys` keeps one of ours as well, for a page
+  that already means something else by `?page=`; a declined key is left where it is rather than
+  overwritten.
+- **`KildeExplorerWithUrlState` needs `VariableExplorerPath`** to offer the handover to the variable
+  explorer, because only the host knows where it mounted one. Leave it out and the selection column
+  is not drawn at all. A path rather than a callback on purpose: an `EventCallback` handed to an
+  interactive component by a statically rendered parent serialises to an empty delegate.
+
+Owning the address bar yourself is still supported and unchanged: mount `VariableExplorer` directly
+and build the query with `ExplorerUrlState.Parse` / `.ToQueryString`. `ExplorerUrlState.QueryKeys`
+names every parameter it reads and writes, the filter's own included, so you can tell ours from
+yours. Do that and three details are yours to get right — the interactive render mode above, a path
+built from `PathBase + Path` rather than a literal (identical locally, wrong behind a reverse
+proxy), and `replaceState` rather than `pushState`.
+
 ### Writing the token provider for a Blazor Server host
 
 Two things about Blazor Server make the obvious implementations wrong, and both fail quietly

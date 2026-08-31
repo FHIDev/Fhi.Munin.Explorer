@@ -173,11 +173,26 @@ public class ExplorerUrlStateTest
     /// <summary>
     /// A host needs to tell our parameters from its own before deciding what to do with the rest.
     /// </summary>
+    /// <remarks>
+    /// The filter is set here, and was not until <c>Fhi.Metadata-zrcf4</c>. This type writes the
+    /// facets through the filter's own <c>ToQueryString</c>, so with an empty filter the test
+    /// passed while <c>QueryKeys</c> named none of them — and a host following it kept
+    /// <c>?kildeIds=</c> as one of its own and had it written twice.
+    /// </remarks>
     [Fact]
     public void QueryKeys_NamesEveryKeyToQueryStringCanWrite()
     {
         var state = new ExplorerUrlState
         {
+            Filter = new VariableFilter
+            {
+                KildeIds = [Guid.NewGuid()],
+                KildeType = "biobank",
+                DataTypes = ["1"],
+                HasKildekodeverk = true,
+                DataFrom = new DateOnly(2010, 1, 1),
+                IncludeHistorical = true,
+            },
             Search = "x",
             Sort = SortField.Kilde,
             Direction = SortDirection.Descending,
