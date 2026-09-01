@@ -27,7 +27,7 @@ jobs:
           global-json-file: global.json
 
       - name: Cache NuGet
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
@@ -251,7 +251,7 @@ jobs:
           global-json-file: global.json
 
       - name: Cache NuGet
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
@@ -280,7 +280,7 @@ jobs:
           global-json-file: global.json
 
       - name: Cache NuGet
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
@@ -306,7 +306,7 @@ jobs:
           global-json-file: global.json
 
       - name: Cache NuGet
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
@@ -314,7 +314,7 @@ jobs:
 
       # Playwright brings its own browser; without a cache that is a download per run.
       - name: Cache the scanner's browser
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('scripts/check-accessibility.sh') }}
