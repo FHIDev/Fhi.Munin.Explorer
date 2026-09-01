@@ -345,7 +345,7 @@ jobs:
       - name: Download the build job's step detail
         # Absent when build never reached its Summary step; the job table still posts without it.
         continue-on-error: true
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: pr-summary
 
