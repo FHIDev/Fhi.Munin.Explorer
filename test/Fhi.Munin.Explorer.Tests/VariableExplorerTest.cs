@@ -3185,6 +3185,80 @@ public class VariableExplorerTest : BunitContext
         Assert.Equal(new DateOnly(2015, 3, 4), client.SearchFilter!.DataFrom);
     }
 
+    [Theory]
+    [InlineData("0002-01-01")]
+    [InlineData("2010-06-01")]
+    public void Filter_WhenATypedDateFallsOutsideTheFieldsOwnBounds_ThenItIsNotApplied(string typed)
+    {
+        // A native date input reports a complete value as soon as all three segments hold digits,
+        // so typing 01.01.2017 arrives as 0002-01-01 on the way. Applied, it empties the list and
+        // reaches the host's URL. The to-field's lower bound is the from-date. (Fhi.Metadata-uidue)
+        var range = new DateInterval
+        {
+            Min = new DateTimeOffset(2010, 1, 1, 0, 0, 0, TimeSpan.Zero),
+            Max = new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero)
+        };
+        VariableFilter? reported = null;
+        var cut = RenderWith(
+            new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: range)),
+            b => b
+                .Add(c => c.Filter, new VariableFilter { DataFrom = new DateOnly(2015, 1, 1) })
+                .Add(c => c.FilterChanged, f => reported = f));
+
+        DateInputs(cut)[1].Change(typed);
+
+        Assert.Null(reported);
+    }
+
+    [Fact]
+    public void Filter_WhenADateFilterEmptiesTheResults_ThenTheFacetStaysSoItCanBeUndone()
+    {
+        // THE TRAP. A date filter matching nothing is exactly when the API stops reporting a
+        // range, and the facet was dropped on that — taking away the only control that could undo
+        // it and leaving the address bar as the way out. (Fhi.Metadata-yxhv1)
+        var cut = RenderWith(
+            new FilteringClient(OnePage(), FacetsWith()),
+            b => b.Add(c => c.Filter, new VariableFilter { DataTo = new DateOnly(2017, 1, 1) }));
+
+        // The inputs themselves, not the heading: a heading passes over an empty accordion.
+        var inputs = DateInputs(cut);
+
+        Assert.Equal(2, inputs.Count);
+        Assert.Equal("2017-01-01", inputs[1].GetAttribute("value"));
+        Assert.Contains("Dataperiode (1)", FacetHeadings(cut));
+    }
+
+    [Fact]
+    public void Filter_WhenNoDatesAreSetAndTheApiReportsNoRange_ThenTheFacetIsStillLeftOut()
+    {
+        // The other direction: without a date set there is nothing to undo, so the old rule holds.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith()));
+
+        Assert.Empty(DateInputs(cut));
+        Assert.DoesNotContain("Dataperiode", FacetHeadings(cut));
+    }
+
+    [Fact]
+    public void Filter_WhenATypedDateIsInsideTheBounds_ThenItIsApplied()
+    {
+        // The guard must reject only what the field already says is out of range.
+        var range = new DateInterval
+        {
+            Min = new DateTimeOffset(2010, 1, 1, 0, 0, 0, TimeSpan.Zero),
+            Max = new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero)
+        };
+        VariableFilter? reported = null;
+        var cut = RenderWith(
+            new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: range)),
+            b => b
+                .Add(c => c.Filter, new VariableFilter { DataFrom = new DateOnly(2015, 1, 1) })
+                .Add(c => c.FilterChanged, f => reported = f));
+
+        DateInputs(cut)[1].Change("2017-01-01");
+
+        Assert.Equal(new DateOnly(2017, 1, 1), reported!.DataTo);
+    }
+
     [Fact]
     public void Filter_WhenBothNewFiltersAreShared_ThenTheyComeBackSetAndShownInTheControls()
     {

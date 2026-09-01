@@ -168,18 +168,23 @@ public partial class VariableExplorer
     /// </remarks>
     private FacetGroup? DataPeriodGroup(FilterOptions facets)
     {
-        if (facets.DateRange is not { } range || (range.Min is null && range.Max is null))
-        {
-            return null;
-        }
-
         // One per bound the reader has set, so a folded dataperiode says it is narrowing the way
         // every other facet does. Without it the summary reads plain "Dataperiode" over an active
         // date filter — the facet holds no values to count.
         var chosen = (_filter.DataFrom is null ? 0 : 1) + (_filter.DataTo is null ? 0 : 1);
+        var range = facets.DateRange;
+        var reported = range is { } r && (r.Min is not null || r.Max is not null);
+
+        // Drawn when the API reports a range, and drawn regardless whenever the reader has a date
+        // set. A date filter matching nothing is exactly when the API stops reporting a range, so
+        // dropping the facet then takes away the only control that can undo it. (Fhi.Metadata-yxhv1)
+        if (!reported && chosen == 0)
+        {
+            return null;
+        }
 
         return new FacetGroup("dataperiode", T.FieldDataPeriod, OpenByDefault: false, [],
-                              Body: DateFields(range), ChosenCount: chosen);
+                              Body: DateFields(range ?? new DateInterval()), ChosenCount: chosen);
     }
 
     /// <summary>The from and to fields, each bounded by the range and by the other.</summary>
@@ -230,10 +235,21 @@ public partial class VariableExplorer
         // search would run with no one waiting on it, and the exception would surface as an
         // unobserved task rather than in the panel's own alert region.
         builder.AddAttribute(seq + 16, "onchange",
-            EventCallback.Factory.CreateBinder<string?>(this, raw => set(Parse(raw)), Iso(value)));
+            EventCallback.Factory.CreateBinder<string?>(
+                this, raw => Within(Parse(raw), min, max) ? set(Parse(raw)) : Task.CompletedTask, Iso(value)));
 
         builder.CloseElement();
     }
+
+    /// <summary>Whether a typed date is inside the bounds the field itself advertises.</summary>
+    /// <remarks>
+    /// A native date input reports a complete value as soon as all three segments hold digits, so
+    /// typing 01.01.2017 arrives as 0002-01-01 on the way — a date before every bound, which empties
+    /// the list and reaches the host's URL. min and max are on the element already; this is the
+    /// check that makes them mean something. (Fhi.Metadata-uidue)
+    /// </remarks>
+    private static bool Within(DateOnly? value, DateOnly? min, DateOnly? max) =>
+        value is not { } date || ((min is not { } lo || date >= lo) && (max is not { } hi || date <= hi));
 
     private string DateFromId => $"munin-explorer-date-from-{_instance}";
 
