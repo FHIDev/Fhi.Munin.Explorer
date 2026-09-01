@@ -596,15 +596,26 @@ public class KildeViewTest : BunitContext
         // populated EHDS keys survive, so the group must still be drawn and still be populated.
         // Its sibling test above pins the full list of seven groups, which is what would catch the
         // group disappearing; this one catches it being drawn hollow.
-        var cut = Render(Barnediabetes(), language);
+        var kilde = Barnediabetes();
+        var cut = Render(kilde, language);
 
-        var headings = cut.FindAll(".munin-explorer-group").Select(e => e.TextContent).ToList();
+        var heading = cut.FindAll(".munin-explorer-group")
+                         .SingleOrDefault(e => e.TextContent == group);
 
-        Assert.Contains(group, headings);
+        Assert.NotNull(heading);
 
-        // Rows, not just the heading: a heading over nothing is the shape this bead is about.
-        Assert.True(cut.FindAll("dt").Count > 10,
-                    $"the metadata should still draw its rows, found {cut.FindAll("dt").Count}");
+        // THAT group's own rows, reached through its sibling <dl>. A global count of <dt> passes
+        // while this very group is empty, on the strength of the six other groups' rows — which
+        // would leave the test green over exactly the hollow heading it exists to catch.
+        var rows = heading!.NextElementSibling;
+
+        Assert.NotNull(rows);
+        Assert.Equal("DL", rows!.TagName);
+        Assert.True(rows.QuerySelectorAll("dt").Length >= 4,
+                    $"the EHDS group should keep its other fields, found {rows.QuerySelectorAll("dt").Length}");
+
+        // And what it lost is the description, not something else.
+        Assert.DoesNotContain(kilde.Description!, rows.TextContent, StringComparison.Ordinal);
     }
 
     [Fact]
