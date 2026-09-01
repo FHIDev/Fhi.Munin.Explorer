@@ -385,6 +385,39 @@ public partial class VariableExplorer : ComponentBase
     /// <inheritdoc cref="Sort"/>
     [Parameter] public EventCallback<SortDirection> DirectionChanged { get; set; }
 
+    /// <summary>
+    /// Whether the filter panel asks for guide lines down the levels of the facet tree. Two-way,
+    /// off by default. <b>The package draws no lines.</b> It puts
+    /// <c>data-level-lines="true"</c> on the panel and the host's stylesheet draws them, so a host
+    /// with no rule for that attribute sees nothing change when this is on.
+    /// </summary>
+    /// <remarks>
+    /// The rule is one <c>border-left</c> on the nested lists — both sample hosts carry it. Give it
+    /// at least 3:1 against whatever is behind the panel: a guide line is a non-text control under
+    /// WCAG 1.4.11, and an ordinary light border grey does not reach it. The samples measured 1.16:1
+    /// with theirs before this was settled, which is a line that is there and cannot be seen.
+    /// <para>
+    /// A way of drawing the panel rather than a filter, so it is deliberately not part of the
+    /// shareable state: a link carries what the reader is looking at, not how they like to look at
+    /// it. The <c>Nivålinjer</c> button in the panel is what the reader presses, and pressing it
+    /// raises <see cref="LevelLinesChanged"/>.
+    /// </para>
+    /// <para>
+    /// The package does not remember the choice, by decision rather than by omission. Reaching
+    /// <c>localStorage</c> from a Blazor circuit is a JS interop call, and this package makes none —
+    /// it has to run inside a static-SSR host as well as an interactive one, and what is remembered
+    /// about a reader is the host's own policy to set. Like every other parameter here it is read
+    /// once at mount and owned by the component afterwards, so a host that wants it remembered
+    /// stores what this raises and supplies it at the next mount; a later change to the parameter on
+    /// a mounted component does nothing. A host that stores nothing gets the lines off on every
+    /// visit, which is the state the panel has had until now.
+    /// </para>
+    /// </remarks>
+    [Parameter] public bool LevelLines { get; set; }
+
+    /// <inheritdoc cref="LevelLines"/>
+    [Parameter] public EventCallback<bool> LevelLinesChanged { get; set; }
+
     /// <summary>Which page of results is showing. Two-way, one-based.</summary>
     /// <remarks>
     /// Restored on first render, so a shared link opens on the page it was shared from. A page past

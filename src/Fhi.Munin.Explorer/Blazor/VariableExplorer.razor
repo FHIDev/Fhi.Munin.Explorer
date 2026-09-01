@@ -225,7 +225,8 @@ else
          explorer uses an accordion, and `<details>` is the one this package can have — native
          disclosure behaviour, no script, no class name, and the browser draws the marker. Its open
          state lives in the browser, so filtering does not collapse what the reader opened: the
-         `open` attribute below is a constant per facet, and a constant is never patched.
+         `open` attribute below moves only when Utvid alle or Skjul alle is pressed, and an
+         unchanged value is never patched. (Fhi.Metadata-wcbxi)
        * A bare `<ul>` for the values, nested for the hierarchy. Indentation is what shows a delkilde
          sitting under its kilde, and a list is an element every base stylesheet already styles —
          unlike `variabelutforsker-tree`, which would be exactly the invented name that renders as a
@@ -237,14 +238,39 @@ else
        the panel, and nothing this markup relies on. *@
     @if (_facets is not null)
     {
-        <fieldset class="form-fieldset munin-explorer-filters" aria-busy="@Busy">
+        @* `data-level-lines` rather than a class of our own. A class on the <ul> already there would
+           render fine unstyled; what it would cost is inventory — the README contract, both sample
+           stylesheets and the name guard. A host that ignores the marker loses lines, not
+           information. (Fhi.Metadata-wcbxi) *@
+        <fieldset class="form-fieldset munin-explorer-filters" aria-busy="@Busy"
+                  data-level-lines="@LevelLinesMarker">
             <legend class="form-element__label">@FiltersLegend</legend>
+
+            @* The toolbar. Utvid alle and Skjul alle act on every facet at once, which is the one
+               thing the native disclosure cannot do for itself; Nivålinjer is a toggle and says so
+               with aria-pressed, the same as a facet value. None of the three narrows anything. *@
+            <button class="hd-button-square button-square--ghost margin-right margin-bottom"
+                    type="button"
+                    @onclick="() => FoldAll(true)">@T.ExpandAllFacets</button>
+            <button class="hd-button-square button-square--ghost margin-right margin-bottom"
+                    type="button"
+                    @onclick="() => FoldAll(false)">@T.CollapseAllFacets</button>
+            <button class="@LevelLinesClass"
+                    type="button"
+                    aria-pressed="@(_levelLines ? "true" : "false")"
+                    @onclick="ToggleLevelLinesAsync">@T.LevelLines</button>
+
+            @* A fold press rewrites every disclosure in the panel and is otherwise silent — the same
+               argument the result region makes for announcing a search at all. A bare live region
+               and deliberately NOT a second role="status": that role is the component reporting its
+               own state, there is one of those by design, and this only says what a press just did. *@
+            <p class="screenreader-only" aria-live="polite" aria-atomic="true">@FoldAnnouncement</p>
 
             @foreach (var group in FacetGroups)
             {
                 @* Keyed, so a facet that drops out of the list — the API omits one with no matches
                    — cannot hand its open state to whichever facet takes its place. *@
-                <details @key="group.Key" open="@group.OpenByDefault">
+                <details @key="FacetKey(group)" open="@FacetOpen(group)">
                     <summary><span class="form-element__label">@GroupLabel(group)</span></summary>
                     @* A facet's own control first, where it has one: the dataperiode holds no
                        values and would otherwise draw the empty-state sentence. (Fhi.Metadata-uidue) *@

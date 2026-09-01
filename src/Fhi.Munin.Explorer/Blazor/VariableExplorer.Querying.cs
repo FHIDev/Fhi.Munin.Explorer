@@ -15,6 +15,7 @@ public partial class VariableExplorer
         _selectedId = SelectedVariableId;
         _sort = Sort;
         _direction = Direction;
+        _levelLines = LevelLines;
         _page = Math.Max(Page, 1);
         _pageSize = PageSize;
 
