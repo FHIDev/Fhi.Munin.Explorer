@@ -101,9 +101,8 @@ public sealed partial class KildeView : ComponentBase
 
     /// <summary>Keys the header renders itself, so the metadata does not repeat them.</summary>
     /// <remarks>
-    /// Both description spellings, since a kilde curates one or the other. Not
-    /// <c>BeskrivelseEngelsk</c> — the ingress is the Norwegian one, so excluding the English text
-    /// would delete a fact rather than de-duplicate it. (Fhi.Metadata-8yqoz)
+    /// Both spellings, since a kilde curates one or the other. Not <c>BeskrivelseEngelsk</c>: the
+    /// ingress is the Norwegian one, so excluding it would delete a fact. (Fhi.Metadata-8yqoz)
     /// </remarks>
     private static readonly IReadOnlySet<string> DrawnInTheHeader =
         new HashSet<string>(StringComparer.Ordinal) { "Beskrivelse", "BeskrivelseFlerspraklig" };
