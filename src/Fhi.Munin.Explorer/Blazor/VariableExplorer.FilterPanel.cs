@@ -824,11 +824,8 @@ public partial class VariableExplorer
         }
     }
 
-    /// <summary>Whether the panel is drawing controls from the last non-empty answer.</summary>
-    /// <remarks>
-    /// True only while a selection returns nothing. The controls are the reader's own; the counts
-    /// beside them are not ours to state, so they are dropped. (Fhi.Metadata-v2bgr)
-    /// </remarks>
+    // True only while a selection returns nothing: the controls are the reader's own, the counts
+    // beside them are not ours to state. (Fhi.Metadata-v2bgr)
     private bool _facetsRetained;
 
     /// <summary>A count, or none while the counts on screen would describe another moment.</summary>
@@ -872,7 +869,7 @@ public partial class VariableExplorer
         {
             return await Client.GetFiltersAsync(_executedSearch, VariableFilter.None, language);
         }
-        catch
+        catch (Exception)
         {
             // Reported, not swallowed. Returning the empty answer would read as a panel with
             // nothing to offer when it is a request that failed, and would cost the reader the
