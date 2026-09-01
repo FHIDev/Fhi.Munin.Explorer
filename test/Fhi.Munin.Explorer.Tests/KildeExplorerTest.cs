@@ -976,12 +976,15 @@ public class KildeExplorerTest : BunitContext
     }
 
     [Fact]
-    public void Select_WhenAKildeIsChosen_ThenKildeViewIsGivenKeldasOwnHeadingForTheDatasamlinger()
+    public void Select_WhenAKildeIsChosen_ThenKeldaNamesNoHeadingForTheDatasamlinger()
     {
-        // The other half of the same seam: Runa says "Datasamlinger" over those rows and Kelda says
-        // "Delkilder og datasamlinger". One word is not worth a second table, so it arrives as a
-        // parameter — and a component that hard-coded either word would be renaming the other
-        // explorer's heading.
+        // Kelda used to pass "Delkilder og datasamlinger" over every source, delkilder or not, and
+        // 61 of the 66 sources the API serves have none (Fhi.Metadata-rhybi). The word belongs to
+        // the source, so the core reads it there — passing nothing is what lets it.
+        //
+        // The heading that results is asserted on the rendered page in KildeSectionsTest, on the
+        // captured payloads: this source is hand-written and carries no delkilder either way,
+        // which is how the wrong heading stayed invisible here.
         var als = Kilde("Als registeret", "K_ALS");
         var client = new FakeClient(als).Publishing(als);
 
@@ -989,9 +992,7 @@ public class KildeExplorerTest : BunitContext
 
         cut.Find(".munin-explorer-kilder tbody th button").Click();
 
-        Assert.Equal(
-            "Delkilder og datasamlinger",
-            cut.FindComponent<KildeView>().Instance.DataCollectionsHeading);
+        Assert.Null(cut.FindComponent<KildeView>().Instance.DataCollectionsHeading);
     }
 
     [Fact]

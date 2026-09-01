@@ -18,20 +18,22 @@ namespace Fhi.Munin.Explorer.Tests;
 /// <see cref="KildeView"/> is one component both explorers render a source with — measured on
 /// 2026-08-20, the same kilde drew the same name block, the same eight metadata groups in the same
 /// order and the same two sidebar boxes in both. Kelda then adds Variabler, Kriterier for tilgang
-/// til data and Priser, and says "Delkilder og datasamlinger" where Runa says "Datasamlinger" over
-/// the same rows. That difference is markup Kelda passes <em>into</em> the shared core, plus one
-/// heading it passes as a parameter — never markup added to the core.
+/// til data and Priser. That difference is markup Kelda passes <em>into</em> the shared core —
+/// never markup added to the core. The datasamling section is not part of it: its heading follows
+/// the source, so both explorers pass none and get the same word (Fhi.Metadata-rhybi).
 /// </para>
 /// <para>
 /// The trap is not in the first test, and it takes three more to close. An implementation that
 /// moved Kelda's three sections inside <see cref="KildeView"/> would pass every assertion about
 /// Kelda's own page — same sections, same order, same level — so the second test renders the same
 /// kilde out of the same fixture in <em>Runa</em>, where those sections must not be. That catches
-/// the move only if it was unconditional: <c>DataCollectionsHeading</c> is the one parameter Kelda
-/// passes and Runa does not, so <c>@if (DataCollectionsHeading is not null)</c> around the same
-/// markup inside the core passes both. The third test is what that one cannot survive — the core
-/// rendered directly, with Kelda's parameters and none of Kelda's markup, asserting its own four
-/// blocks are the whole of what it draws. The fourth catches the same change from the side no
+/// the move only if it was unconditional, and <c>DataCollectionsHeading</c> was the one parameter
+/// Kelda passed and Runa did not — a ready-made "am I Kelda?" switch, which
+/// <c>@if (DataCollectionsHeading is not null)</c> around the same markup inside the core would
+/// have used to pass both. Neither explorer passes it now, so no parameter tells them apart; the
+/// third test holds that line whatever a later change gives the core to key one off — the core
+/// rendered directly, with a heading and none of Kelda's markup, asserting its own four blocks are
+/// the whole of what it draws. The fourth catches the same change from the side no
 /// render can look at, the core's own text, and it greps the identifiers a section is written with
 /// rather than the Norwegian words it displays: identifiers here are English and the words live in
 /// <see cref="Texts"/>, so the Norwegian never reaches that file even when the leak does.
@@ -52,6 +54,19 @@ public class KildeSectionsTest : BunitContext
         JsonSerializer.Deserialize<KildeDetail>(
             TestData.Read("kilde-med-delkilder.json"), MuninExplorerClient.Json)
         ?? throw new InvalidOperationException("kilde-med-delkilder.json no longer reads as a KildeDetail.");
+
+    /// <summary>
+    /// Barnediabetes, out of the captured payload — six datasamlinger and not one delkilde.
+    /// </summary>
+    /// <remarks>
+    /// The other half of what the heading has to tell apart, and captured rather than written here
+    /// for the reason Tromsø is: 61 of the 66 sources the API serves look like this one, so it is
+    /// the ordinary case and not the corner.
+    /// </remarks>
+    private static KildeDetail Barnediabetes() =>
+        JsonSerializer.Deserialize<KildeDetail>(
+            TestData.Read("kilde-barnediabetes.json"), MuninExplorerClient.Json)
+        ?? throw new InvalidOperationException("kilde-barnediabetes.json no longer reads as a KildeDetail.");
 
     /// <summary>Answers Kelda's one list call with the fixture's kilde, and its detail call with the fixture.</summary>
     private sealed class KeldaClient(KildeDetail kilde) : EmptyMuninExplorerClient
@@ -321,6 +336,32 @@ public class KildeSectionsTest : BunitContext
                })];
 
     [Fact]
+    public void DataCollections_WhenTheSourceHasNoDelkilder_ThenKeldaPromisesNone()
+    {
+        // The defect. Kelda passed "Delkilder og datasamlinger" over every source it opened, so
+        // Barnediabetes was headed by a word naming something the section did not draw — six
+        // datasamlinger and not one delkilde name under a heading that announced delkilder. It is
+        // the ordinary page rather than a corner: 61 of the 66 sources the API serves have none.
+        //
+        // The captured payload, for the reason the Tromsø tests use theirs. A source written here
+        // would carry whatever delkilder the assertion wanted, and it was exactly a hand-written
+        // source with none that let the parameter test above pass while the page said this.
+        var cut = OpenInKelda(Barnediabetes());
+
+        // Six rows really drew, so the heading is over a section and not over nothing.
+        Assert.Equal(6, cut.FindAll(CollectionRows).Count);
+
+        // Exact rather than substring, in both directions: "Datasamlinger" IS a substring of
+        // "Delkilder og datasamlinger", so a check that searched the markup would call the wrong
+        // heading right. BlockHeadings reads the headings themselves, and Assert.Contains over a
+        // list compares whole elements.
+        var headings = TextOf(cut.FindAll(BlockHeadings));
+
+        Assert.Contains("Datasamlinger", headings);
+        Assert.DoesNotContain("Delkilder og datasamlinger", headings);
+    }
+
+    [Fact]
     public void Runa_WhenTheSameKildeIsOpen_ThenNoneOfKeldasSectionsAreOnIt()
     {
         // THE TRAP. Kelda's sections put inside the shared view behind a condition would pass every
@@ -333,8 +374,8 @@ public class KildeSectionsTest : BunitContext
         // "Delkilder og datasamlinger" in Runa too, and that is not Kelda leaking in: Runa passes
         // no heading at all, and the shared core's default reads the SOURCE. Tromsø has five
         // delkilder and the section now draws them, so the word that named the old flat table would
-        // head five waves while promising none of them. Kelda still passes its own copy of the
-        // string; what changed is that Runa no longer has to.
+        // head five waves while promising none of them. Kelda passes no copy of the string either
+        // (Fhi.Metadata-rhybi), so this is the source's word in both explorers.
         Assert.Equal(
             ["Metadata", "Delkilder og datasamlinger", "Kildeinformasjon", "Statistikk"],
             TextOf(cut.FindAll(BlockHeadings)));
@@ -349,17 +390,19 @@ public class KildeSectionsTest : BunitContext
     }
 
     [Fact]
-    public void SharedCore_WhenItIsGivenKeldasParametersAndNoSections_ThenItDrawsOnlyItsOwnBlocks()
+    public void SharedCore_WhenItIsGivenAHeadingAndNoSections_ThenItDrawsOnlyItsOwnBlocks()
     {
         // THE OTHER HALF OF THE TRAP, and the one the two renders above cannot see between them.
         // They render the two explorers, so they catch a section moved into the core only if it
-        // was moved unconditionally. DataCollectionsHeading is the one parameter Kelda passes and
-        // Runa does not, which makes it a ready-made "am I Kelda?" switch inside the core: the
-        // three sections put inside KildeView behind `@if (DataCollectionsHeading is not null)`
-        // pass Kelda's test (same sections, same order, same level) and pass Runa's (Runa passes no
-        // such heading), and the seam is gone with the whole suite green.
+        // was moved unconditionally. DataCollectionsHeading used to be the one parameter Kelda
+        // passed and Runa did not, which made it a ready-made "am I Kelda?" switch inside the core:
+        // the three sections put inside KildeView behind `@if (DataCollectionsHeading is not null)`
+        // passed Kelda's test (same sections, same order, same level) and passed Runa's (Runa
+        // passes no such heading), and the seam was gone with the whole suite green. Neither
+        // explorer passes it now, so that particular switch is empty — but any parameter one
+        // explorer sets and the other does not would do the same job.
         //
-        // So this renders the core directly, with Kelda's parameter set and none of Kelda's markup.
+        // So this renders the core directly, with a heading of its own and none of Kelda's markup.
         // That is not the restatement OpenInRuna refuses to be: this is a claim about the core —
         // that its own blocks are the whole of what it draws — rather than a second copy of what an
         // explorer is believed to pass. The only thing that makes these headings appear is markup

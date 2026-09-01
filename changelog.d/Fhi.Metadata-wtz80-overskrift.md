@@ -7,6 +7,5 @@ category: Changed
   over one flat table. It is not that any more: the section draws the delkilder themselves, so on a
   study series the Runa wording headed five waves and promised none of them. Which word is right is
   a question about the source, not about who is rendering it. `DataCollectionsHeading` still wins
-  when a host sets it, and `KildeExplorer` still passes its own copy. A host that relied on the
-  default reading "Datasamlinger" over a kilde with delkilder should pass the parameter.
-  (Fhi.Metadata-wtz80)
+  when a host sets it. A host that relied on the default reading "Datasamlinger" over a kilde with
+  delkilder should pass the parameter. (Fhi.Metadata-wtz80)

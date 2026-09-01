@@ -142,9 +142,9 @@ public sealed partial class KildeView : ComponentBase
     /// its own over it.
     /// </summary>
     /// <remarks>
-    /// Kelda passes "Delkilder og datasamlinger" unconditionally, which is what Munin's own Kelda
-    /// says. Runa passes nothing and takes <see cref="DefaultDataCollectionsHeading"/>, which now
-    /// follows the source rather than the explorer.
+    /// Neither explorer passes one: both take <see cref="DefaultDataCollectionsHeading"/>, which
+    /// follows the source rather than the explorer. Kept for a host rendering this view directly
+    /// with a word of its own.
     /// </remarks>
     [Parameter]
     public string? DataCollectionsHeading { get; set; }

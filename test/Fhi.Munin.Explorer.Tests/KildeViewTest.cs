@@ -915,11 +915,11 @@ public class KildeViewTest : BunitContext
     [Fact]
     public void DataCollections_WhenTheCallerNamesTheSection_ThenItsWordWinsOverTheSourcesOwn()
     {
-        // Kelda passes "Delkilder og datasamlinger" unconditionally, which is what Munin's Kelda
-        // says, and the source-led default must not quietly take that decision back off it. Asked
-        // of a source with NO delkilder, where the default and the override disagree — on Study()
-        // they agree, and a test that could not tell them apart would pass on an implementation
-        // that ignored the parameter entirely.
+        // Neither explorer passes a heading any more (Fhi.Metadata-rhybi), but a host rendering
+        // this view directly still can, and the source-led default must not quietly take that
+        // decision back off it. Asked of a source with NO delkilder, where the default and the
+        // override disagree — on Study() they agree, and a test that could not tell them apart
+        // would pass on an implementation that ignored the parameter entirely.
         Assert.Contains(
             "Delkilder og datasamlinger",
             BlockHeadings(Render(Kilde(), dataCollectionsHeading: "Delkilder og datasamlinger")));
@@ -1016,9 +1016,8 @@ public class KildeViewTest : BunitContext
     [Fact]
     public void DataCollections_WhenTheExplorerCallsThemSomethingElse_ThenItsOwnHeadingIsUsed()
     {
-        // Runa says "Datasamlinger" over this table; Kelda says "Delkilder og datasamlinger" over
-        // the same data. One word of difference is not worth a second table, so the caller supplies
-        // the word — and the default has to survive the caller supplying nothing.
+        // A caller's own word wins over the source's, and the default has to survive the caller
+        // supplying nothing — which is what both explorers do.
         Assert.Contains("Delkilder og datasamlinger",
                         BlockHeadings(Render(Kilde(), dataCollectionsHeading: "Delkilder og datasamlinger")));
 

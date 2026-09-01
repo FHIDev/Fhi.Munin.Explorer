@@ -76,23 +76,25 @@
 
         @if (_kilde is { } kilde)
         {
-            @* Kelda's own sections go in through Sections, and Kelda's own word for the
-               datasamling table goes in through DataCollectionsHeading — Runa says
-               "Datasamlinger" over the same rows. Neither is markup added to KildeView, which is
-               the whole reason that component is a core with slots: a boolean per Kelda section
-               would make that component the one place where the two explorers leak into each
-               other, and every later difference would add another flag.
+            @* Kelda's own sections go in through Sections, which is not markup added to
+               KildeView: a boolean per Kelda section would make that component the one place
+               where the two explorers leak into each other, and every later difference would add
+               another flag.
+
+               No DataCollectionsHeading. Kelda used to pass "Delkilder og datasamlinger" over
+               every source, so the 61 of 66 sources with no delkilder were headed by a word that
+               named something the section did not draw (Fhi.Metadata-rhybi). The core reads the
+               source and picks the same word when there are delkilder.
 
                Measured on the same kilde in both explorers on 2026-08-20: the name block, the
                eight metadata groups and the two sidebar boxes are identical, the datasamling
-               section is the same rows under a different word, and the three below are Kelda's
-               alone. They are written here, in Kelda's own markup, so KildeView never learns which
-               explorer is calling it. *@
+               section is the same rows, and the three below are Kelda's alone. They are written
+               here, in Kelda's own markup, so KildeView never learns which explorer is calling
+               it. *@
             <KildeView Kilde="kilde"
                        Language="@Language"
                        HeadingLevel="@KildeLevel"
-                       HeadingId="@DetailHeadingId"
-                       DataCollectionsHeading="@T.HeadingDelkilderAndDataCollections">
+                       HeadingId="@DetailHeadingId">
                 <Sections>
                     @* At SectionLevel rather than a literal h2: these have to land on the level
                        KildeView gives its own block headings, or "Variabler" reads as part of the

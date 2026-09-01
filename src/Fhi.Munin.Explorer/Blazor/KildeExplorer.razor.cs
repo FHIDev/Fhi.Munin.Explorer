@@ -35,10 +35,10 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <para>
 /// Selecting a kilde swaps the list for <see cref="KildeView"/> — the same component the variable
 /// explorer drills into, so the two cannot render the same source differently. Kelda's own
-/// sections reach it through <see cref="KildeView.Sections"/> and its own heading for the
-/// datasamling table through <see cref="KildeView.DataCollectionsHeading"/>; nothing
-/// Kelda-specific is added to that component itself, which is the whole reason it is a core with
-/// slots rather than one view with flags.
+/// sections reach it through <see cref="KildeView.Sections"/>; nothing Kelda-specific is added to
+/// that component itself, which is the whole reason it is a core with slots rather than one view
+/// with flags. The datasamling section's heading is not passed at all — it follows the source,
+/// which is a fact about the source rather than about who is rendering it.
 /// </para>
 /// <para>
 /// The sections are the measured difference between the two explorers rather than an invention
