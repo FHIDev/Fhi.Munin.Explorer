@@ -95,8 +95,17 @@ public sealed partial class KildeView : ComponentBase
     /// <summary>The catalogue's metadata, grouped and ordered as the catalogue arranges it.</summary>
     private IReadOnlyList<PropertyGroup> Groups =>
         Kilde is { } kilde
-            ? CatalogueProperties.Groups(kilde.PropertyMetadata, kilde.AdditionalProperties, Reader)
+            ? CatalogueProperties.Groups(kilde.PropertyMetadata, kilde.AdditionalProperties, Reader,
+                                         DrawnInTheHeader)
             : [];
+
+    /// <summary>Keys the header renders itself, so the metadata does not repeat them.</summary>
+    /// <remarks>
+    /// Both spellings, since a kilde curates one or the other. Not <c>BeskrivelseEngelsk</c>: the
+    /// ingress is the Norwegian one, so excluding it would delete a fact. (Fhi.Metadata-8yqoz)
+    /// </remarks>
+    private static readonly IReadOnlySet<string> DrawnInTheHeader =
+        new HashSet<string>(StringComparer.Ordinal) { "Beskrivelse", "BeskrivelseFlerspraklig" };
 
     /// <summary>
     /// The facts every source has, which is why they are typed fields rather than curated properties.

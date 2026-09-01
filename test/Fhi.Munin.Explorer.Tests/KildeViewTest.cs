@@ -560,6 +560,117 @@ public class KildeViewTest : BunitContext
     }
 
     [Theory]
+    [InlineData("no")]
+    [InlineData("en")]
+    public void Metadata_WhenARealSourceIsDrawn_ThenItsDescriptionIsPrintedOnceAndNotAgainAsAField(
+        string language)
+    {
+        // Counted over the whole render rather than asserted on one element: where the second copy
+        // came from is the thing under test, so naming the EHDS group would pass if it moved.
+        // (Fhi.Metadata-8yqoz)
+        var kilde = Barnediabetes();
+        var cut = Render(kilde, language);
+
+        var description = kilde.Description!;
+
+        Assert.True(description.Length > 1000, "the captured description should be the long one");
+        Assert.Equal(1, Occurrences(cut.Markup, description));
+
+        // And it is the ingress that kept it, not the field.
+        Assert.Contains(description, cut.Find(".munin-explorer-kilde__description").TextContent,
+                        StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("no", "EHDS / HealthDCAT-AP")]
+    [InlineData("en", "EHDS / HealthDCAT-AP")]
+    public void Metadata_WhenTheDescriptionIsExcluded_ThenItsGroupKeepsTheRestOfItsFields(
+        string language, string group)
+    {
+        // THE TRAP: Groups drops a group whose every key is unset, so an exclusion can take the
+        // group with it. Five of the six populated EHDS keys survive, so it must still draw rows.
+        // The sibling test pins all seven group names; this one catches a hollow heading.
+        var kilde = Barnediabetes();
+        var cut = Render(kilde, language);
+
+        var heading = cut.FindAll(".munin-explorer-group")
+                         .SingleOrDefault(e => e.TextContent == group);
+
+        Assert.NotNull(heading);
+
+        // THAT group's own rows, reached through its sibling <dl>. A global count of <dt> passes
+        // while this very group is empty, on the strength of the six other groups' rows — which
+        // would leave the test green over exactly the hollow heading it exists to catch.
+        var rows = heading!.NextElementSibling;
+
+        Assert.NotNull(rows);
+        Assert.Equal("DL", rows!.TagName);
+        Assert.True(rows.QuerySelectorAll("dt").Length >= 4,
+                    $"the EHDS group should keep its other fields, found {rows.QuerySelectorAll("dt").Length}");
+
+        // And what it lost is the description, not something else.
+        Assert.DoesNotContain(kilde.Description!, rows.TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Metadata_WhenTheCatalogueHoldsAnEnglishDescription_ThenItIsNotExcludedWithTheNorwegian()
+    {
+        // THE SECOND TRAP, in the direction that deletes rather than duplicates: the ingress is the
+        // Norwegian description whatever the reader's language, so the English text appears nowhere
+        // else and excluding it would remove it from the panel rather than de-duplicate it.
+        var kilde = Kilde() with
+        {
+            PropertyMetadata = [Entry("BeskrivelseEngelsk", 10, "Beskrivelse", "Beskrivelse (engelsk)")],
+            AdditionalProperties = new Dictionary<string, string?>
+            {
+                ["BeskrivelseEngelsk"] = "Norwegian register for ALS and other motor neurone diseases.",
+            },
+        };
+
+        var cut = Render(kilde);
+
+        Assert.Contains("Norwegian register for ALS", cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Metadata_WhenOnlyThePlainDescriptionKeyIsCurated_ThenItIsExcludedToo()
+    {
+        // THE THIRD TRAP. The captured source carries BeskrivelseFlerspraklig, so a fix covering
+        // only that key looks complete against it. A source curating the plain Beskrivelse instead
+        // would keep the duplicate, and nothing here would have said so.
+        var kilde = Kilde() with
+        {
+            PropertyMetadata = [Entry("Beskrivelse", 10, "Beskrivelse")],
+            AdditionalProperties = new Dictionary<string, string?>
+            {
+                ["Beskrivelse"] = "Norsk register for ALS og andre motonevronsykdommer.",
+            },
+        };
+
+        var cut = Render(kilde);
+
+        Assert.Equal(1, Occurrences(cut.Markup, kilde.Description!));
+    }
+
+    // Throws on an empty needle rather than hanging the run: IndexOf("") answers the position it
+    // was asked from and the stride is zero.
+    private static int Occurrences(string haystack, string needle)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(needle);
+
+        var count = 0;
+
+        for (var i = haystack.IndexOf(needle, StringComparison.Ordinal);
+             i >= 0;
+             i = haystack.IndexOf(needle, i + needle.Length, StringComparison.Ordinal))
+        {
+            count++;
+        }
+
+        return count;
+    }
+
+    [Theory]
     [InlineData("no", new[] { "Identifikasjon", "Kvalitet", "Juridisk", "Identifikatorer", "Samsvar" })]
     [InlineData("en", new[] { "Identification", "Quality", "Legal", "Identifiers", "Compliance" })]
     public void Metadata_WhenARealSourceLeavesAGroupUnset_ThenNoHeadingPromisesIt(
