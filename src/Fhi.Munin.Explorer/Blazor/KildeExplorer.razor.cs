@@ -546,7 +546,14 @@ public sealed partial class KildeExplorer : ComponentBase
         _detailLoading = true;
 
         await RaiseAsync(SelectedKildeIdChanged, _selectedId);
-        await LoadKildeAsync(kilde.Id);
+
+        // _selectedId rather than the captured id — the rule ToggleDetailAsync follows for what the
+        // host is told, here for what is fetched: the callback above yields with Back drawn and
+        // clickable, and a fetch for a kilde the reader has left would undo the close.
+        if (_selectedId == kilde.Id)
+        {
+            await LoadKildeAsync(kilde.Id);
+        }
     }
 
     /// <summary>Go back to the list.</summary>
