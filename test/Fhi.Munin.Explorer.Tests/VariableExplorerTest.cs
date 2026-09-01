@@ -2963,8 +2963,9 @@ public class VariableExplorerTest : BunitContext
         // THE TRAP, and why a case per facet: the ten groups are built by ten separate methods.
         // At zero rows the API reports nothing for any of them, the chosen value included — so
         // there is nothing left to press. (Fhi.Metadata-v2bgr)
+        VariableFilter? reported = null;
         var client = new EmptyingClient(OnePage(Variable("1. Tale", "KODE")));
-        var cut = RenderWith(client);
+        var cut = RenderWith(client, b => b.Add(c => c.FilterChanged, f => reported = f));
 
         ClickFacet(cut, chosen);
         client.Exhausted = true;
@@ -2972,13 +2973,20 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Contains("0 variabler", cut.Markup, StringComparison.Ordinal);
 
-        // The control is still there, still marked, and still pressable.
+        // The control is still there and still marked.
         var still = Facet(cut, chosen);
 
         Assert.Equal("true", still.GetAttribute("aria-pressed"));
 
         // And the counts are gone rather than stale: they described a selection no longer on screen.
         Assert.DoesNotContain("(", still.TextContent, StringComparison.Ordinal);
+
+        // Undone, which is the whole point — present but inert would be the same dead end with
+        // more furniture. Pressing it takes the choice off the filter the host is given.
+        ClickFacet(cut, chosen);
+
+        Assert.Equal("false", Facet(cut, chosen).GetAttribute("aria-pressed"));
+        Assert.True(reported!.ActiveCount < 2, $"the choice should be off the filter, got {reported}");
     }
 
     /// <summary>Answers nothing for the reader's filter, and the full facets for no filter.</summary>
