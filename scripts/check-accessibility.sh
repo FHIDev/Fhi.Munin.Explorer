@@ -4,6 +4,9 @@
 # DETECTED regression and nothing more; what this gate is blind to is in AGENTS.md under
 # "Accessibility is a requirement, not a preference". Read it before quoting a pass.
 #
+# Some of what it scans is behind a press. TARGETS below says which states, and which it leaves
+# alone on purpose — read that before adding a state, and before quoting this one either.
+#
 # Usage:  ./scripts/check-accessibility.sh
 # Needs:  dotnet, node (for npx), and a Chrome/Chromium on PATH.
 
@@ -18,9 +21,19 @@ PORT="${ACCESSIBILITY_PORT:-5099}"
 BASE="http://localhost:${PORT}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# The two root components the package ships. Both are entry points a host mounts on its
-# own page, so both are surfaces a reader meets.
-PATHS=("/" "/kilder")
+# What the scan visits. A bare path is the page as it loads; `path::state` names a state in
+# scripts/axe-states.mjs, which drives the page there first. Why at all: AGENTS.md, "It scans
+# states, not only pages" (Fhi.Metadata-wcbxi).
+#
+# DELIBERATELY NOT COVERED, so nobody reads a green run as more than it is:
+#   - the whole-variable drill-in and the owner panel inside a row, two more presses each;
+#   - the kildeutforsker's own facet panel, which sits behind its `Vis filtre` toggle;
+#   - the pager past page one, and anything reached by searching or by narrowing a facet;
+#   - error and empty states, which need the API to misbehave;
+#   - the English texts, and samples/LegacyHost, the same component in the other host.
+# Each is another page load and settle, about ten seconds, and none carries the risk the five
+# targets below do. Add one here and in axe-states.mjs when that stops being true.
+TARGETS=("/" "/kilder" "/::filters-level-lines" "/::variable-detail" "/kilder::kilde-drilldown")
 
 host_pid=""
 cleanup() {
@@ -78,7 +91,7 @@ npx --yes playwright install chromium >/tmp/pw-install.log 2>&1 || {
 }
 
 set +e
-node "$ROOT/scripts/axe-scan.mjs" $(for p in "${PATHS[@]}"; do printf '%s ' "${BASE}${p}"; done)
+node "$ROOT/scripts/axe-scan.mjs" $(for t in "${TARGETS[@]}"; do printf '%s ' "${BASE}${t}"; done)
 scan_status=$?
 set -e
 
