@@ -1229,6 +1229,43 @@ public class KildeExplorerTest : BunitContext
     }
 
     [Fact]
+    public async Task Select_WhenTheHostHandlesTheSelectionAsynchronously_ThenTheOpenViewIsLoadingBeforeTheFetchStarts()
+    {
+        // The render between the click and the fetch. SelectAsync raises the host's callback first,
+        // and a host that does anything asynchronous in it — writing the URL, as both sample hosts do
+        // — yields there; ComponentBase draws the open view in that gap, with no detail and no error,
+        // so the frame announced a finished and empty fetch that had not been issued.
+        //
+        // No other test reaches that render: the callbacks here are synchronous, so RaiseAsync never
+        // yields and asserting on the settled view alone passes whatever the frame in between said.
+        var als = Kilde("Als registeret", "K_ALS");
+        var client = new FakeClient(als).Publishing(als);
+        var host = new TaskCompletionSource();
+
+        var cut = RenderWith(client, b => b.Add(
+            c => c.SelectedKildeIdChanged, EventCallback.Factory.Create<Guid?>(this, _ => host.Task)));
+
+        cut.Find(".munin-explorer-kilder tbody th button").Click();
+
+        var region = cut.Find(".munin-explorer-drilldown");
+
+        Assert.Equal(0, client.DetailCalls);
+        Assert.Equal("true", region.GetAttribute("aria-busy"));
+        Assert.Equal(
+            "Henter datakilden …",
+            cut.Find(".munin-explorer-drilldown p[role=status]").TextContent.Trim());
+
+        // And the settled view, so the fix reads as "busy until it lands" rather than "busy always".
+        await cut.InvokeAsync(host.SetResult);
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal("false", cut.Find(".munin-explorer-drilldown").GetAttribute("aria-busy"));
+            Assert.Equal(als.Id, cut.FindComponent<KildeView>().Instance.Kilde?.Id);
+        });
+    }
+
+    [Fact]
     public void Render_WhenTheHostNamesAKilde_ThenItIsAlreadyOpenOnTheFirstRender()
     {
         // The one piece of state worth putting in a host's URL, per the Kelda parity decision, so
