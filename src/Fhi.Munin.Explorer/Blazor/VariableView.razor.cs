@@ -59,6 +59,14 @@ public sealed partial class VariableView : ComponentBase
 
     private int GroupLevel => Math.Min(HeadingLevel + 2, 6);
 
+    /// <summary>The month this view abbreviates, because both places it writes a date are narrow.</summary>
+    /// <remarks>
+    /// The sidebar is 320px and "20. september 2022 – 9. november 2022" wraps in it; the version
+    /// list writes its two dates as two columns beside a name and a badge. The width is this view's
+    /// to pick — the ordinal dot is not, and follows the reader (Fhi.Metadata-n39ea).
+    /// </remarks>
+    private const DateWidth Dates = DateWidth.Narrow;
+
     /// <summary>
     /// The catalogue's metadata about this variable, grouped as the catalogue groups it.
     /// </summary>
@@ -94,116 +102,4 @@ public sealed partial class VariableView : ComponentBase
                 (T.FieldKildeShortName, variable.KildeShortName, true),
                 (T.FacetKildeType, T.KildeTypeLabel(variable.KildeType, variable.KildeType), false),
             ];
-
-    /// <summary>A heading at the given level, so this view nests wherever it is put.</summary>
-    private static RenderFragment Heading(int level, string text, string cssClass,
-                                          string? id = null, string? language = null) => builder =>
-    {
-        builder.OpenElement(0, $"h{level}");
-        builder.AddAttribute(1, "class", cssClass);
-        builder.AddAttribute(2, "id", id);
-        builder.AddAttribute(3, "lang", language);
-        builder.AddContent(4, text);
-        builder.CloseElement();
-    };
-
-    /// <summary>One metadata group: its name, then its rows.</summary>
-    private RenderFragment Group(PropertyGroup group) => builder =>
-    {
-        builder.OpenElement(0, $"h{GroupLevel}");
-        builder.AddAttribute(1, "class", "headline headline-xxs margin--none munin-explorer-group");
-        builder.AddAttribute(2, "lang", CatalogueProperties.Foreign(group.NameLanguage, Reader));
-        builder.AddContent(3, group.Name);
-        builder.CloseElement();
-
-        builder.OpenElement(4, "dl");
-        builder.AddAttribute(5, "class", "munin-explorer-meta__grid");
-
-        var seq = 10;
-
-        foreach (var row in group.Rows)
-        {
-            builder.OpenElement(seq, "div");
-
-            builder.OpenElement(seq + 1, "dt");
-            builder.AddAttribute(seq + 2, "class", "headline headline-xxs margin--none");
-            builder.AddAttribute(seq + 3, "lang", CatalogueProperties.Foreign(row.LabelLanguage, Reader));
-            builder.AddContent(seq + 4, row.Label);
-            builder.CloseElement();
-
-            builder.OpenElement(seq + 5, "dd");
-            builder.AddAttribute(seq + 6, "lang", CatalogueProperties.Foreign(row.ValueLanguage, Reader));
-            builder.AddContent(seq + 7, row.Value);
-            builder.CloseElement();
-
-            builder.CloseElement();
-            seq += 10;
-        }
-
-        builder.CloseElement();
-    };
-
-    /// <summary>A definition list of label and value, skipping what the variable has not filled in.</summary>
-    private RenderFragment Facts(IReadOnlyList<(string Label, string? Value, bool Norwegian)> facts) => builder =>
-    {
-        var shown = facts.Where(f => !string.IsNullOrWhiteSpace(f.Value)).ToList();
-
-        if (shown.Count == 0)
-        {
-            return;
-        }
-
-        builder.OpenElement(0, "dl");
-        builder.AddAttribute(1, "class", "munin-explorer-meta__grid");
-
-        var seq = 10;
-
-        foreach (var (label, value, norwegian) in shown)
-        {
-            builder.OpenElement(seq, "div");
-
-            builder.OpenElement(seq + 1, "dt");
-            builder.AddAttribute(seq + 2, "class", "headline headline-xxs margin--none");
-            builder.AddContent(seq + 3, label);
-            builder.CloseElement();
-
-            builder.OpenElement(seq + 4, "dd");
-            builder.AddAttribute(seq + 5, "lang", norwegian ? CatalogueProperties.Foreign("no", Reader) : null);
-            builder.AddContent(seq + 6, value);
-            builder.CloseElement();
-
-            builder.CloseElement();
-            seq += 10;
-        }
-
-        builder.CloseElement();
-    };
-
-    /// <summary>A date as the day it fell on, with the month abbreviated.</summary>
-    /// <remarks>
-    /// Not the panel's <c>MonthYear</c>, whose name this borrowed while changing the format under
-    /// it. The two are answering different questions and Runa writes them differently: the panel's
-    /// period bar spans years and is drawn to be compared across rows, so a month and a year is as
-    /// much as it can use; this is one variable's validity window, where the day is the point.
-    /// <para>
-    /// The month is abbreviated rather than spelled out as the kilde view spells it, which is what
-    /// Runa does here too — this sidebar is 320px, and "20. september 2022 – 9. november 2022" wraps
-    /// in it where the short form does not.
-    /// </para>
-    /// </remarks>
-    private string Day(DateTimeOffset date) =>
-        date.ToString("d. MMM yyyy", CatalogueProperties.Culture(Language));
-
-    private string? Period(DateTimeOffset? from, DateTimeOffset? to)
-    {
-        if (from is null && to is null)
-        {
-            return null;
-        }
-
-        var start = from is { } f ? Day(f) : "";
-        var end = to is { } t ? Day(t) : T.Ongoing;
-
-        return string.IsNullOrEmpty(start) ? end : $"{start} – {end}";
-    }
 }

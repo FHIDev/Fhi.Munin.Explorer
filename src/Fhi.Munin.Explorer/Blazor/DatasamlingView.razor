@@ -8,8 +8,8 @@
            name rather than beside it, and the description as prose below both. *@
         <div class="munin-explorer-datasamling__header">
             @* The catalogue holds one name, in Norwegian, so it is marked when the reader is not. *@
-            @Heading(HeadingLevel, datasamling.PreferredTerm, "headline headline-s margin--bottom",
-                     HeadingId, CatalogueProperties.Foreign("no", Reader))
+            @DetailBlocks.Heading(HeadingLevel, datasamling.PreferredTerm, "headline headline-s margin--bottom",
+                                  HeadingId, CatalogueProperties.Foreign("no", Reader))
 
             @if (!string.IsNullOrWhiteSpace(datasamling.Code))
             {
@@ -31,11 +31,11 @@
                    and every datasamling measured carries between three and eleven curated keys. *@
                 @if (Groups.Count > 0)
                 {
-                    @Heading(BlockLevel, T.HeadingMetadata, "headline headline-s")
+                    @DetailBlocks.Heading(BlockLevel, T.HeadingMetadata, "headline headline-s")
 
                     foreach (var group in Groups)
                     {
-                        @Group(group)
+                        @DetailBlocks.Group(group, GroupLevel, Language)
                     }
                 }
 
@@ -43,7 +43,7 @@
                    datasamling, and prose rather than a field, so it sits in the main column. *@
                 @if (!string.IsNullOrWhiteSpace(datasamling.InclusionAndExclusionCriteria))
                 {
-                    @Heading(BlockLevel, T.FieldInclusionCriteria, "headline headline-s")
+                    @DetailBlocks.Heading(BlockLevel, T.FieldInclusionCriteria, "headline headline-s")
                     <p class="munin-explorer-datasamling__criteria"
                        lang="@CatalogueProperties.Foreign("no", Reader)">
                         @datasamling.InclusionAndExclusionCriteria
@@ -56,15 +56,15 @@
             </div>
 
             <aside class="munin-explorer-datasamling__aside">
-                @Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
-                @Facts(SourceInformation)
+                @DetailBlocks.Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
+                @DetailBlocks.Facts(SourceInformation, Language)
 
                 @* Heading and list together or neither: a datasamling that counts nothing gets no
                    empty block, and the type names the heading rather than filling a row. *@
                 @if (AnyStatistics)
                 {
-                    @Heading(BlockLevel, StatisticsHeading, "headline headline-s")
-                    @Facts(Statistics)
+                    @DetailBlocks.Heading(BlockLevel, StatisticsHeading, "headline headline-s")
+                    @DetailBlocks.Facts(Statistics, Language)
                 }
             </aside>
         </div>

@@ -9,8 +9,8 @@
            called. *@
         <div class="munin-explorer-kilde__header">
             @* The catalogue holds one name, in Norwegian, so it is marked when the reader is not. *@
-            @Heading(HeadingLevel, kilde.PreferredTerm, "headline headline-s margin--bottom",
-                     HeadingId, CatalogueProperties.Foreign("no", Reader))
+            @DetailBlocks.Heading(HeadingLevel, kilde.PreferredTerm, "headline headline-s margin--bottom",
+                                  HeadingId, CatalogueProperties.Foreign("no", Reader))
 
             @if (Identifiers is { } identifiers)
             {
@@ -49,11 +49,11 @@
                    so it renders as a bare <h*> at the browser's own size instead. *@
                 @if (Groups.Count > 0)
                 {
-                    @Heading(BlockLevel, T.HeadingMetadata, "headline headline-s")
+                    @DetailBlocks.Heading(BlockLevel, T.HeadingMetadata, "headline headline-s")
 
                     foreach (var group in Groups)
                     {
-                        @Group(group)
+                        @DetailBlocks.Group(group, GroupLevel, Language)
                     }
                 }
 
@@ -61,7 +61,7 @@
                    series' organising fact is its waves; one flat table destroys it. *@
                 @if (DataCollections.Count > 0 || Delkilder.Count > 0)
                 {
-                    @Heading(BlockLevel, DataCollectionsHeading ?? DefaultDataCollectionsHeading, "headline headline-s")
+                    @DetailBlocks.Heading(BlockLevel, DataCollectionsHeading ?? DefaultDataCollectionsHeading, "headline headline-s")
                     @DataCollectionStructure
                 }
 
@@ -71,11 +71,11 @@
             </div>
 
             <aside class="munin-explorer-kilde__aside">
-                @Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
-                @Facts(SourceInformation)
+                @DetailBlocks.Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
+                @DetailBlocks.Facts(SourceInformation, Language)
 
-                @Heading(BlockLevel, T.HeadingStatistics, "headline headline-s")
-                @Facts(Statistics)
+                @DetailBlocks.Heading(BlockLevel, T.HeadingStatistics, "headline headline-s")
+                @DetailBlocks.Facts(Statistics, Language)
             </aside>
         </div>
     </div>

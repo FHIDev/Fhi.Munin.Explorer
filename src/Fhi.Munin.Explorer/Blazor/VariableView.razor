@@ -6,8 +6,8 @@
 
         <div class="munin-explorer-whole__header">
             @* The catalogue holds one name, in Norwegian, so it is marked when the reader is not. *@
-            @Heading(HeadingLevel, variable.PreferredTerm, "headline headline-s margin--bottom",
-                     HeadingId, CatalogueProperties.Foreign("no", Reader))
+            @DetailBlocks.Heading(HeadingLevel, variable.PreferredTerm, "headline headline-s margin--bottom",
+                                  HeadingId, CatalogueProperties.Foreign("no", Reader))
 
             @if (!string.IsNullOrWhiteSpace(variable.Code))
             {
@@ -27,11 +27,11 @@
                 @* Resolved from the payload, exactly as the kilde view resolves a source's. *@
                 @if (Groups.Count > 0)
                 {
-                    @Heading(BlockLevel, T.HeadingMetadata, "headline headline-s")
+                    @DetailBlocks.Heading(BlockLevel, T.HeadingMetadata, "headline headline-s")
 
                     foreach (var group in Groups)
                     {
-                        @Group(group)
+                        @DetailBlocks.Group(group, GroupLevel, Language)
                     }
                 }
 
@@ -41,7 +41,7 @@
 
                 @if (Versions.Count > 0)
                 {
-                    @Heading(BlockLevel, T.HeadingVersionHistory, "headline headline-s")
+                    @DetailBlocks.Heading(BlockLevel, T.HeadingVersionHistory, "headline headline-s")
                     @VersionHistory
                 }
 
@@ -51,24 +51,24 @@
             </div>
 
             <aside class="munin-explorer-whole__aside">
-                @Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
-                @Facts(SourceInformation)
+                @DetailBlocks.Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
+                @DetailBlocks.Facts(SourceInformation, Language)
 
-                @if (Period(variable.DataFrom, variable.DataTo) is { } period)
+                @if (CatalogueDate.Period(variable.DataFrom, variable.DataTo, Language, T, Dates) is { } period)
                 {
-                    @Heading(BlockLevel, T.FieldDataPeriod, "headline headline-s")
+                    @DetailBlocks.Heading(BlockLevel, T.FieldDataPeriod, "headline headline-s")
                     <p class="margin--none">@period</p>
                 }
 
                 @if (!string.IsNullOrWhiteSpace(variable.DataType))
                 {
-                    @Heading(BlockLevel, T.FieldDataType, "headline headline-s")
+                    @DetailBlocks.Heading(BlockLevel, T.FieldDataType, "headline headline-s")
                     <p class="margin--none">@T.DataTypeLabel(variable.DataType)</p>
                 }
 
                 @if (variable.AllVariabelgrupper.Count > 0)
                 {
-                    @Heading(BlockLevel, T.FieldVariableGroups, "headline headline-s")
+                    @DetailBlocks.Heading(BlockLevel, T.FieldVariableGroups, "headline headline-s")
                     <ul class="munin-explorer-whole__list">
                         @foreach (var group in variable.AllVariabelgrupper)
                         {
@@ -79,13 +79,13 @@
 
                 @if (variable.AllDatasamlinger.Count > 0)
                 {
-                    @Heading(BlockLevel, T.HeadingDataCollections, "headline headline-s")
+                    @DetailBlocks.Heading(BlockLevel, T.HeadingDataCollections, "headline headline-s")
                     <ul class="munin-explorer-whole__list">
                         @foreach (var datasamling in variable.AllDatasamlinger)
                         {
                             <li>
                                 <span lang="@CatalogueProperties.Foreign("no", Reader)">@datasamling.Name</span>
-                                @if (Period(datasamling.ValidFrom, datasamling.ValidTo) is { } validity)
+                                @if (CatalogueDate.Period(datasamling.ValidFrom, datasamling.ValidTo, Language, T, Dates) is { } validity)
                                 {
                                     <span class="caption"> (@validity)</span>
                                 }
