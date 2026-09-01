@@ -349,7 +349,7 @@ jobs:
   # this workflow must be added to needs: below and to the table, or it stays invisible here.
   report:
     name: ci summary
-    needs: [build, changelog, sample-css, host-notes, portability-guard, consumer, accessibility]
+    needs: [build, changelog, sample-css, host-notes, class-names, portability-guard, consumer, accessibility]
     # It exists to report failed and skipped jobs, so it must not be skipped by one.
     if: always()
     runs-on: ubuntu-latest
@@ -386,6 +386,7 @@ jobs:
           changelog fragment|${{ needs.changelog.result }}
           sample stylesheets in step|${{ needs['sample-css'].result }}
           host notes for new names|${{ needs['host-notes'].result }}
+          class names listed in the README|${{ needs['class-names'].result }}
           portability guard armed|${{ needs['portability-guard'].result }}
           a host needs no glue|${{ needs.consumer.result }}
           accessibility|${{ needs.accessibility.result }}
