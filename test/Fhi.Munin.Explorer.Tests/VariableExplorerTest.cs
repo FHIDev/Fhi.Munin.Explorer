@@ -3101,7 +3101,7 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
-    public void Filter_WhenUtvidAlleIsPressed_ThenEveryFacetIsOpen()
+    public void Filter_WhenExpandAllIsPressed_ThenEveryFacetIsOpen()
     {
         // The one thing a native <details> cannot do for itself, and the reason the open attribute
         // stopped being a constant. Only kildetype and kilde start open. (Fhi.Metadata-wcbxi)
@@ -3115,7 +3115,7 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
-    public void Filter_WhenSkjulAlleIsPressed_ThenNoFacetIsOpen()
+    public void Filter_WhenCollapseAllIsPressed_ThenNoFacetIsOpen()
     {
         // Both directions, because a press that only ever opens is half a control: the panel is
         // hundreds of buttons expanded, which is what there has to be a way back from.
@@ -3147,7 +3147,7 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
-    public void Filter_WhenAValueIsChosenAfterSkjulAlle_ThenTheFacetsStayFolded()
+    public void Filter_WhenAValueIsChosenAfterCollapseAll_ThenTheFacetsStayFolded()
     {
         // The fold is the reader's and a refresh is not allowed to undo it — the same invariant that
         // has always kept a filter change from collapsing a facet the reader opened.
@@ -3160,7 +3160,7 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
-    public void Filter_WhenNivaalinjerIsPressed_ThenThePanelMarksThemAndTheHostIsTold()
+    public void Filter_WhenLevelLinesArePressed_ThenThePanelMarksThemAndTheHostIsTold()
     {
         // The package draws no lines and remembers no preference: it emits the marker a host styles
         // and raises the change, which is the whole storage mechanism it offers. (Fhi.Metadata-wcbxi)
