@@ -621,6 +621,11 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
     min-inline-size: 0;
     max-height: calc(100vh - 2rem);
     overflow-y: auto;
+
+    /* overflow-y: auto makes overflow-x compute to auto as well, so this panel clips sideways
+       too. The facet buttons sit flush against that edge, and their 3px focus ring was painting
+       outside it and being cut off. (Fhi.Metadata-4ht9v) */
+    padding-inline: 3px;
   }
 
   .munin-explorer > *:not(h2):not(form):not(.munin-explorer-filters) {
