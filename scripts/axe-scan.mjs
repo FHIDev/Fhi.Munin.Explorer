@@ -1,17 +1,39 @@
-// Scans the given URLs with axe and exits 1 on a violation, 2 if it could not run.
+// Scans the given targets with axe and exits 1 on a violation, 2 if it could not run.
 // Playwright is used because it manages its own browser: the previous runner drove
 // Chrome through selenium, and the runner's chromedriver drifted from its Chrome on a
 // weekly cadence, so the gate failed for reasons that had nothing to do with the page.
+//
+// A target is a URL, or `URL::state` to drive the loaded page into a named state from
+// `axe-states.mjs` first: what a reader reaches by pressing is invisible to the plain form.
 import { chromium } from 'playwright';
 import AxeBuilder from '@axe-core/playwright';
+import { states } from './axe-states.mjs';
 
-const urls = process.argv.slice(2);
+const targets = process.argv.slice(2);
 const settleMs = Number(process.env.ACCESSIBILITY_SETTLE_MS ?? 4000);
 const tags = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
 
-if (urls.length === 0) {
-  console.error('usage: node axe-scan.mjs <url> [url...]');
+if (targets.length === 0) {
+  console.error('usage: node axe-scan.mjs <url|url::state> [...]');
+  console.error(`known states: ${Object.keys(states).join(', ')}`);
   process.exit(2);
+}
+
+// Parsed before a browser starts, so a typo in a state name is a message rather than a run that
+// scans the default state and reports it under the name of one it never entered.
+const plan = [];
+for (const target of targets) {
+  const separator = target.indexOf('::');
+  const url = separator < 0 ? target : target.slice(0, separator);
+  const state = separator < 0 ? null : target.slice(separator + 2);
+
+  if (state !== null && !Object.hasOwn(states, state)) {
+    console.error(`unknown state "${state}" - TOOLING failure.`);
+    console.error(`known states: ${Object.keys(states).join(', ')}`);
+    process.exit(2);
+  }
+
+  plan.push({ url, state, label: state === null ? url : `${url} [${state}]` });
 }
 
 let browser;
@@ -26,8 +48,8 @@ try {
 let violationCount = 0;
 
 try {
-  for (const url of urls) {
-    console.log(`\n==> axe ${url}`);
+  for (const { url, state, label } of plan) {
+    console.log(`\n==> axe ${label}`);
     const context = await browser.newContext();
     const page = await context.newPage();
 
@@ -44,6 +66,20 @@ try {
     // Blazor Server paints a shell first and fills it over the circuit, so scanning
     // immediately reads an empty page and passes for the wrong reason.
     await page.waitForTimeout(settleMs);
+
+    if (state !== null) {
+      // A state that cannot be entered is the scanner failing, not the page: scanning the default
+      // state under this state's name is exactly the false green this whole form exists to end.
+      try {
+        await states[state](page);
+      } catch (err) {
+        console.error(`could not reach state "${state}" on ${url} - TOOLING failure.`);
+        console.error(String(err?.message ?? err));
+        await context.close();
+        await browser.close();
+        process.exit(2);
+      }
+    }
 
     const results = await new AxeBuilder({ page }).withTags(tags).analyze();
     await page.close();

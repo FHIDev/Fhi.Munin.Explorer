@@ -126,6 +126,23 @@ What it scans is the sample host, and so the sample stylesheet — the copy
 `scripts/assert-sample-css-in-step.sh` keeps in step — not the Stiler rules the component actually
 ships into, which puts the paragraph above outside the gate entirely.
 
+**It scans states, not only pages.** A page in its default state is not the page a reader uses,
+and for a while the default state was the whole of this check: the level lines shipped at 1.16:1
+against WCAG 1.4.11's 3:1, invisible on a desktop, with this job green — because the lines only
+exist once `Nivålinjer` has been pressed and axe never saw them (`Fhi.Metadata-wcbxi`).
+`scripts/axe-states.mjs` now drives the sample into named states before axe looks: the filter tree
+unfolded with the guide lines on, a variable row opened, and a kilde opened in the kildeutforsker.
+The states it does **not** enter are listed above `TARGETS` in `check-accessibility.sh`, and that
+list is the honest bound on a green run — extend the two together, never one alone.
+
+**And it scans data, not an empty shell.** The sample host reads `scripts/axe-stub-api.mjs`, which
+serves the contract-drift fixtures, because `runa.munin.skytest.fhi.no` is geo-filtered and a
+GitHub runner sits outside it — the same finding that moved the contract-drift check off CI and
+onto the devbox (#127). Until this was noticed the gate had spent its whole life scanning two
+pages with nothing on them, and axe reports no violations in nothing: on CI, "no violations" meant
+"no content". Every state now waits for a row before axe looks, the list pages included, so an
+empty page fails as TOOLING rather than passing as clean.
+
 So the gate catches regressions in the subset it can see. Read a green run as "no detected
 regression", and never write it down as more than that. That sentence is the whole reason the
 script and the CI job carry no argument of their own: this is where it is written down.
