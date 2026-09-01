@@ -393,6 +393,35 @@ public class VariableViewTest : BunitContext
         Assert.Equal(cut.Find(".munin-explorer-versions__detail").GetAttribute("id"), controls);
     }
 
+    /// <summary>A variable whose data period is closed, so both dates in it are written out.</summary>
+    private static VariableDetail WithDataPeriod() => Detail() with
+    {
+        DataFrom = new DateTimeOffset(2022, 9, 20, 0, 0, 0, TimeSpan.Zero),
+        DataTo = new DateTimeOffset(2022, 11, 9, 0, 0, 0, TimeSpan.Zero),
+    };
+
+    /// <summary>The sidebar's data period, which is the first plain paragraph in the aside.</summary>
+    private static string DataPeriod(IRenderedComponent<VariableView> cut) =>
+        cut.Find(".munin-explorer-whole__aside p.margin--none").TextContent;
+
+    [Fact]
+    public void Dates_Always_ThenTheMonthIsAbbreviatedBecauseTheColumnTheySitInIsNarrow()
+    {
+        // The aside is 320px, where "20. september 2022 – 9. november 2022" wraps and the short
+        // form does not. Untested until the date helpers became shared, which is exactly when a
+        // spelled-out month could arrive here without anything failing.
+        Assert.Equal("20. sep. 2022 – 9. nov. 2022", DataPeriod(Render(WithDataPeriod())));
+    }
+
+    [Fact]
+    public void Dates_WhenTheReaderIsEnglish_ThenTheAbbreviatedMonthCarriesNoNorwegianOrdinalDot()
+    {
+        // This view wrote "20. Sep 2022" to an English reader: the dot is what makes the number an
+        // ordinal in Norwegian, and English uses none. The kilde view's own dates have followed the
+        // reader all along — this one never did, because nothing here read them.
+        Assert.Equal("20 Sep 2022 – 9 Nov 2022", DataPeriod(Render(WithDataPeriod(), "en")));
+    }
+
     [Fact]
     public void Heading_WhenTheReaderIsEnglish_ThenTheCataloguesOwnNameIsMarkedNorwegian()
     {

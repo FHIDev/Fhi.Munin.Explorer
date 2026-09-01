@@ -130,12 +130,12 @@ public sealed partial class VariableView
             // which is how Runa lays them out.
             builder.OpenElement(seq + 14, "span");
             builder.AddAttribute(seq + 15, "class", "munin-explorer-versions__from");
-            builder.AddContent(seq + 16, version.ValidFrom is { } from ? Day(from) : "—");
+            builder.AddContent(seq + 16, version.ValidFrom is { } from ? CatalogueDate.Day(from, Language, Dates) : "—");
             builder.CloseElement();
 
             builder.OpenElement(seq + 17, "span");
             builder.AddAttribute(seq + 18, "class", "munin-explorer-versions__to");
-            builder.AddContent(seq + 19, version.ValidTo is { } to ? Day(to) : T.Ongoing);
+            builder.AddContent(seq + 19, version.ValidTo is { } to ? CatalogueDate.Day(to, Language, Dates) : T.Ongoing);
             builder.CloseElement();
 
             builder.CloseElement();
@@ -169,10 +169,10 @@ public sealed partial class VariableView
         var facts = new List<(string Label, string? Value, bool Norwegian)>
         {
             (T.FieldDescription, version.Description, true),
-            (T.FieldValidFrom, version.ValidFrom is { } f ? Day(f) : null, false),
-            (T.FieldValidTo, version.ValidTo is { } t ? Day(t) : T.Ongoing, false),
+            (T.FieldValidFrom, version.ValidFrom is { } f ? CatalogueDate.Day(f, Language, Dates) : null, false),
+            (T.FieldValidTo, version.ValidTo is { } t ? CatalogueDate.Day(t, Language, Dates) : T.Ongoing, false),
         };
 
-        builder.AddContent(0, Facts(facts));
+        builder.AddContent(0, DetailBlocks.Facts(facts, Language));
     };
 }
