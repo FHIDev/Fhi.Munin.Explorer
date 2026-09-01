@@ -134,7 +134,7 @@ jobs:
       # anything. Nothing here is secret - the source is public and the licence is MIT - but where
       # a consumer is meant to get a build from is a decision, and it should have one answer.
       - name: Create the GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           name: v${{ steps.version.outputs.version }}
           generate_release_notes: true
