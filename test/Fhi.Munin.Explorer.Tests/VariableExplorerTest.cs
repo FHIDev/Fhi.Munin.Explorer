@@ -2931,6 +2931,134 @@ public class VariableExplorerTest : BunitContext
         IRenderedComponent<VariableExplorer> cut) =>
         [.. cut.FindAll(".munin-explorer-filters input[type=date]")];
 
+    /// <summary>An answer with nothing in any facet, which is what a selection matching nothing gets.</summary>
+    private static FilterOptions NothingLeft() => new() { TotalCount = 0 };
+
+    /// <summary>Answers with the full facets first, then with nothing, as narrowing to zero does.</summary>
+    private sealed class EmptyingClient(Page<VariableSummary> answer, FilterOptions? first = null)
+        : EmptyMuninExplorerClient
+    {
+        private readonly FilterOptions _first = first ?? Facets();
+
+        public bool Exhausted { get; set; }
+
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
+            SortField sort = SortField.Default, SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(Exhausted ? OnePage() : answer);
+
+        public override Task<FilterOptions> GetFiltersAsync(
+            string? search = null, VariableFilter? filter = null, string? language = null,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(Exhausted ? NothingLeft() : _first);
+    }
+
+    [Theory]
+    [InlineData("Dødsårsaksregisteret")]
+    [InlineData("Bakgrunn")]
+    [InlineData("Streng")]
+    public void Filter_WhenASelectionLeavesNothing_ThenTheFacetThatMadeItSurvivesAndCanBeUndone(string chosen)
+    {
+        // THE TRAP, and why a case per facet: the ten groups are built by ten separate methods.
+        // At zero rows the API reports nothing for any of them, the chosen value included — so
+        // there is nothing left to press. (Fhi.Metadata-v2bgr)
+        var client = new EmptyingClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        ClickFacet(cut, chosen);
+        client.Exhausted = true;
+        ClickFacet(cut, "Vis historiske");
+
+        Assert.Contains("0 variabler", cut.Markup, StringComparison.Ordinal);
+
+        // The control is still there, still marked, and still pressable.
+        var still = Facet(cut, chosen);
+
+        Assert.Equal("true", still.GetAttribute("aria-pressed"));
+
+        // And the counts are gone rather than stale: they described a selection no longer on screen.
+        Assert.DoesNotContain("(", still.TextContent, StringComparison.Ordinal);
+    }
+
+    /// <summary>Answers nothing for the reader's filter, and the full facets for no filter.</summary>
+    private sealed class ColdEmptyClient(Page<VariableSummary> answer) : EmptyMuninExplorerClient
+    {
+        public int UnfilteredAsks { get; private set; }
+
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
+            SortField sort = SortField.Default, SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(answer);
+
+        public override Task<FilterOptions> GetFiltersAsync(
+            string? search = null, VariableFilter? filter = null, string? language = null,
+            CancellationToken cancellationToken = default)
+        {
+            if (filter is null || filter.IsEmpty)
+            {
+                UnfilteredAsks++;
+
+                return Task.FromResult(Facets());
+            }
+
+            return Task.FromResult(NothingLeft());
+        }
+    }
+
+    [Fact]
+    public void Filter_WhenTheReaderArrivesOnALinkThatMatchesNothing_ThenTheControlsAreStillDrawn()
+    {
+        // Found in the browser, not by the tests above: they narrow into the empty state, so a
+        // populated answer is already on screen to keep. A reader arriving on a shared link has no
+        // such answer, and retention alone leaves them exactly as stranded. (Fhi.Metadata-v2bgr)
+        var client = new ColdEmptyClient(OnePage());
+        var cut = RenderWith(client,
+            b => b.Add(c => c.Filter, new VariableFilter { KildeIds = [Dodsarsak] }));
+
+        Assert.Equal(1, client.UnfilteredAsks);
+
+        var chosen = Facet(cut, "Dødsårsaksregisteret");
+
+        Assert.Equal("true", chosen.GetAttribute("aria-pressed"));
+        Assert.DoesNotContain("(", chosen.TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Filter_WhenNothingIsChosenAndTheApiOffersNothing_ThenNoFacetIsDrawn()
+    {
+        // THE SECOND TRAP: do not simply always keep the panel. With no selection there is nothing
+        // to undo, so an answer with nothing in it must still drop the value facets rather than
+        // leaving ten disclosures behind.
+        var client = new EmptyingClient(OnePage(Variable("1. Tale", "KODE"))) { Exhausted = true };
+        var cut = RenderWith(client);
+
+        // Two survive for reasons of their own and always did: variabelgruppe says its emptiness
+        // out loud, and andre filtre holds the historical toggle rather than API values.
+        Assert.Equal(["Variabelgruppe", "Andre filtre"], FacetHeadings(cut));
+    }
+
+    [Fact]
+    public void Filter_WhenTheSelectionYieldsRowsAgain_ThenTheCountsComeBack()
+    {
+        // The retained answer is for the stranded state only. Once the API has something to say,
+        // it says it — otherwise the panel would keep showing countless values for good.
+        var client = new EmptyingClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        ClickFacet(cut, "Dødsårsaksregisteret");
+        client.Exhausted = true;
+        ClickFacet(cut, "Vis historiske");
+
+        Assert.DoesNotContain("(", Facet(cut, "Dødsårsaksregisteret").TextContent, StringComparison.Ordinal);
+
+        client.Exhausted = false;
+        ClickFacet(cut, "Vis historiske");
+
+        Assert.Equal("Dødsårsaksregisteret (30)", Facet(cut, "Dødsårsaksregisteret").TextContent);
+    }
+
     [Fact]
     public void Filter_WhenTheApiOffersDatakategorier_ThenTheyAreDrawnInTheCataloguesOwnWords()
     {
