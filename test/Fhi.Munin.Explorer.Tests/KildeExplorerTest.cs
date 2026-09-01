@@ -1231,16 +1231,15 @@ public class KildeExplorerTest : BunitContext
     [Fact]
     public async Task Select_WhenTheHostHandlesTheSelectionAsynchronously_ThenTheOpenViewIsLoadingBeforeTheFetchStarts()
     {
-        // The render between the click and the fetch. SelectAsync raises the host's callback first,
-        // and a host that does anything asynchronous in it — writing the URL, as both sample hosts do
-        // — yields there; ComponentBase draws the open view in that gap, with no detail and no error,
-        // so the frame announced a finished and empty fetch that had not been issued.
-        //
-        // No other test reaches that render: the callbacks here are synchronous, so RaiseAsync never
-        // yields and asserting on the settled view alone passes whatever the frame in between said.
+        // The render between the click and the fetch, where the open view once said aria-busy
+        // "false" over an empty status line for a request not yet issued. No other test reaches it:
+        // the callbacks here are synchronous, so RaiseAsync never yields. (Fhi.Metadata-74cbp)
         var als = Kilde("Als registeret", "K_ALS");
         var client = new FakeClient(als).Publishing(als);
-        var host = new TaskCompletionSource();
+
+        // RunContinuationsAsynchronously so landing it here resumes SelectAsync the way a real
+        // host's callback does, rather than inline on the thread that completed it.
+        var host = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
         var cut = RenderWith(client, b => b.Add(
             c => c.SelectedKildeIdChanged, EventCallback.Factory.Create<Guid?>(this, _ => host.Task)));
