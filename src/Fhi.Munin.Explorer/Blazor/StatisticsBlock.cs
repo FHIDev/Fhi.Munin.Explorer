@@ -51,8 +51,13 @@ internal static class StatisticsBlock
     /// Runa writes "Statistikk (Årsbasert)". The kind matters to a reader deciding what the numbers
     /// mean: a yearly set is one row per year, and an accumulated one is a running total that only
     /// its last row describes.
+    /// <para>
+    /// Shared with <see cref="DatasamlingView"/> rather than private: the type it names belongs to
+    /// the datasamling, and a variable reports the one it is pinned into, so two spellings of this
+    /// heading would be two spellings of one fact.
+    /// </para>
     /// </remarks>
-    private static string Heading(string? statisticsType, Texts texts) =>
+    internal static string Heading(string? statisticsType, Texts texts) =>
         statisticsType is { } type && !string.IsNullOrWhiteSpace(type)
             ? $"{texts.HeadingStatistics} ({texts.StatisticsTypeLabel(type)})"
             : texts.HeadingStatistics;

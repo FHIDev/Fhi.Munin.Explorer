@@ -160,13 +160,14 @@ These are not style preferences — each one is a host that breaks otherwise.
     component in the page: `munin-explorer` (the root `<section>`), `munin-explorer-filters`,
     `munin-explorer-detail`, `munin-explorer-drilldown`, `munin-explorer-kodeverk*`,
     `munin-explorer-codes*`, `munin-explorer-group`, the nine `munin-explorer-kilde*` names in
-    `KildeView`, and the three `munin-explorer-kilder*` names in `KildeExplorer` — the kilde list's
-    table, the button that opens a row and the three columns that hold a number. The samples style
-    them for arrangement — the root as a grid at desktop width, `-filters`, `-detail`,
-    `-drilldown`, `-kodeverk*` and `-codes*` for spacing, indentation and a rule between rows, the
-    kilde view's name block, main column and sidebar as a page layout, the kilde list as a table
-    with its counts right-aligned — and they draw `munin-explorer-group` as Runa's blue uppercase
-    eyebrow. A host that defines none of them loses no information: the group headings, for
+    `KildeView`, the eight `munin-explorer-datasamling*` ones in `DatasamlingView`, and the three
+    `munin-explorer-kilder*` names in `KildeExplorer` — the kilde list's table, the button that
+    opens a row and the three columns that hold a number. The samples style them for arrangement —
+    the root as a grid at desktop width, `-filters`, `-detail`, `-drilldown`, `-kodeverk*` and
+    `-codes*` for spacing, indentation and a rule between rows, the kilde and datasamling views'
+    name block, main column and sidebar as one page layout under two prefixes, the kilde list as a
+    table with its counts right-aligned — and they draw `munin-explorer-group` as Runa's blue
+    uppercase eyebrow. A host that defines none of them loses no information: the group headings, for
     instance, are already sized by the `headline headline-xxs` they wear, so what an undefined
     `munin-explorer-group` costs is the eyebrow's look, not the fact that it is a heading. The
     kilde list is the same bargain twice over, which is why it is a `<table>` of `<button>`s — an

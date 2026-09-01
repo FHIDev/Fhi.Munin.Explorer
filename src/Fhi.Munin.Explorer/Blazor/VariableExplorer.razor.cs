@@ -1352,26 +1352,23 @@ public partial class VariableExplorer : ComponentBase
         return string.IsNullOrWhiteSpace(named) ? code : named;
     }
 
-    /// <summary>The heading of the drill-in view, named after whatever was opened.</summary>
+    /// <summary>
+    /// The heading of the drill-in view while it is still empty, named after which of the two the
+    /// reader opened.
+    /// </summary>
+    /// <remarks>
+    /// Only ever the placeholder. This is drawn exactly while both payloads are null, because a
+    /// payload that has arrived brings its own view and that view owns the heading — so a branch
+    /// naming the kilde or the datasamling here could not be reached (Fhi.Metadata-jgfum). It still
+    /// carries the id the region is labelled by: a landmark whose label does not exist yet is worse
+    /// than a plain one.
+    /// </remarks>
     private RenderFragment DrilldownHeading => builder =>
     {
-        var name = _kilde?.PreferredTerm ?? _datasamling?.PreferredTerm;
-
         builder.OpenElement(0, $"h{RowLevel}");
         builder.AddAttribute(1, "class", "headline headline-s margin--bottom");
         builder.AddAttribute(2, "id", SourceHeadingId);
-
-        if (!string.IsNullOrWhiteSpace(name))
-        {
-            // The catalogue's own name, so it stays Norwegian whatever the UI language is.
-            builder.AddAttribute(3, "lang", "no");
-            builder.AddContent(4, name);
-        }
-        else
-        {
-            builder.AddContent(5, _sourceKind == SourceKind.Kilde ? T.ShowKilde : T.ShowDatasamling);
-        }
-
+        builder.AddContent(3, _sourceKind == SourceKind.Kilde ? T.ShowKilde : T.ShowDatasamling);
         builder.CloseElement();
     };
 
