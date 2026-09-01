@@ -158,13 +158,9 @@ public partial class VariableExplorer
     /// The dataperiode facet — two date fields rather than a list of values.
     /// </summary>
     /// <remarks>
-    /// The <c>Body</c> shape, and the reason it exists. Bounded by the range the API reports for the
-    /// current selection, so the reader cannot ask for a year the selection has no data in.
-    /// <para>
-    /// Drawn only where the API reports a range at all. A pair of unbounded date fields would still
-    /// filter, but the bounds are half of what the facet tells a reader — without them it says
-    /// nothing about what there is to find.
-    /// </para>
+    /// The <c>Body</c> shape, bounded by the range the API reports so the reader cannot ask for a
+    /// year the selection has no data in. Drawn without a range only when a date is already set,
+    /// so the control that applied a filter cannot vanish under it. (Fhi.Metadata-yxhv1)
     /// </remarks>
     private FacetGroup? DataPeriodGroup(FilterOptions facets)
     {
@@ -235,18 +231,20 @@ public partial class VariableExplorer
         // search would run with no one waiting on it, and the exception would surface as an
         // unobserved task rather than in the panel's own alert region.
         builder.AddAttribute(seq + 16, "onchange",
-            EventCallback.Factory.CreateBinder<string?>(
-                this, raw => Within(Parse(raw), min, max) ? set(Parse(raw)) : Task.CompletedTask, Iso(value)));
+            EventCallback.Factory.CreateBinder<string?>(this, raw =>
+            {
+                var typed = Parse(raw);
+
+                return Within(typed, min, max) ? set(typed) : Task.CompletedTask;
+            }, Iso(value)));
 
         builder.CloseElement();
     }
 
     /// <summary>Whether a typed date is inside the bounds the field itself advertises.</summary>
     /// <remarks>
-    /// A native date input reports a complete value as soon as all three segments hold digits, so
-    /// typing 01.01.2017 arrives as 0002-01-01 on the way — a date before every bound, which empties
-    /// the list and reaches the host's URL. min and max are on the element already; this is the
-    /// check that makes them mean something. (Fhi.Metadata-uidue)
+    /// A date input reports a complete value once all three segments hold digits, so a half-typed
+    /// year arrives as 0002 and would otherwise be applied. (Fhi.Metadata-yxhv1)
     /// </remarks>
     private static bool Within(DateOnly? value, DateOnly? min, DateOnly? max) =>
         value is not { } date || ((min is not { } lo || date >= lo) && (max is not { } hi || date <= hi));
