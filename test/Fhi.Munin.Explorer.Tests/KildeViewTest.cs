@@ -565,13 +565,9 @@ public class KildeViewTest : BunitContext
     public void Metadata_WhenARealSourceIsDrawn_ThenItsDescriptionIsPrintedOnceAndNotAgainAsAField(
         string language)
     {
-        // The panel drew the whole description twice: as the lead ingress, and again under
-        // "Beskrivelse (flerspråklig)" inside the EHDS group — 1441 identical characters a screen
-        // apart, under a heading suggesting it was something else. (Fhi.Metadata-8yqoz)
-        //
-        // Counted over the rendered text rather than asserted on one element, because where the
-        // second copy comes from is the thing under test: an assertion naming the EHDS group would
-        // pass if the duplicate moved.
+        // Counted over the whole render rather than asserted on one element: where the second copy
+        // came from is the thing under test, so naming the EHDS group would pass if it moved.
+        // (Fhi.Metadata-8yqoz)
         var kilde = Barnediabetes();
         var cut = Render(kilde, language);
 
@@ -591,11 +587,9 @@ public class KildeViewTest : BunitContext
     public void Metadata_WhenTheDescriptionIsExcluded_ThenItsGroupKeepsTheRestOfItsFields(
         string language, string group)
     {
-        // THE TRAP. Groups drops a group whose every key is unset, so excluding a key can take the
-        // group with it when that key was the only one filled in. Here it is not: five of the six
-        // populated EHDS keys survive, so the group must still be drawn and still be populated.
-        // Its sibling test above pins the full list of seven groups, which is what would catch the
-        // group disappearing; this one catches it being drawn hollow.
+        // THE TRAP: Groups drops a group whose every key is unset, so an exclusion can take the
+        // group with it. Five of the six populated EHDS keys survive, so it must still draw rows.
+        // The sibling test pins all seven group names; this one catches a hollow heading.
         var kilde = Barnediabetes();
         var cut = Render(kilde, language);
 
@@ -621,10 +615,9 @@ public class KildeViewTest : BunitContext
     [Fact]
     public void Metadata_WhenTheCatalogueHoldsAnEnglishDescription_ThenItIsNotExcludedWithTheNorwegian()
     {
-        // THE SECOND TRAP, in the direction that deletes rather than duplicates. The ingress is the
-        // Norwegian description whatever the reader's language, so BeskrivelseEngelsk is a fact
-        // this view shows nowhere else — excluding it alongside its siblings would remove it from
-        // the panel entirely rather than de-duplicate it.
+        // THE SECOND TRAP, in the direction that deletes rather than duplicates: the ingress is the
+        // Norwegian description whatever the reader's language, so the English text appears nowhere
+        // else and excluding it would remove it from the panel rather than de-duplicate it.
         var kilde = Kilde() with
         {
             PropertyMetadata = [Entry("BeskrivelseEngelsk", 10, "Beskrivelse", "Beskrivelse (engelsk)")],
@@ -659,11 +652,8 @@ public class KildeViewTest : BunitContext
         Assert.Equal(1, Occurrences(cut.Markup, kilde.Description!));
     }
 
-    /// <summary>How many times <paramref name="needle"/> occurs in <paramref name="haystack"/>.</summary>
-    /// <remarks>
-    /// An empty needle would spin for ever — <c>IndexOf("")</c> answers the position it was asked
-    /// from and the stride is zero — so it throws instead of hanging the run.
-    /// </remarks>
+    // Throws on an empty needle rather than hanging the run: IndexOf("") answers the position it
+    // was asked from and the stride is zero.
     private static int Occurrences(string haystack, string needle)
     {
         ArgumentException.ThrowIfNullOrEmpty(needle);
