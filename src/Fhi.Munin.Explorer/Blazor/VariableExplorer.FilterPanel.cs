@@ -824,20 +824,7 @@ public partial class VariableExplorer
         }
     }
 
-    /// <summary>
-    /// Refresh the facets and their counts for the current search and filter.
-    /// </summary>
-    /// <remarks>
-    /// Its own request, and its own failure. The counts are cross-filtered against the whole
-    /// selection, so they move whenever the search or the filter does — but not when the page or
-    /// the ordering does, which is why turning a page does not re-ask for them.
-    /// <para>
-    /// A failure keeps the facets already on screen rather than clearing them. They are the controls
-    /// the reader is using, and the numbers being briefly stale is a far smaller problem than the
-    /// panel emptying under a press.
-    /// </para>
-    /// </remarks>
-    /// <summary>Whether the panel is drawing controls the last non-empty answer supplied.</summary>
+    /// <summary>Whether the panel is drawing controls from the last non-empty answer.</summary>
     /// <remarks>
     /// True only while a selection returns nothing. The controls are the reader's own; the counts
     /// beside them are not ours to state, so they are dropped. (Fhi.Metadata-v2bgr)
@@ -895,6 +882,19 @@ public partial class VariableExplorer
         }
     }
 
+    /// <summary>
+    /// Refresh the facets and their counts for the current search and filter.
+    /// </summary>
+    /// <remarks>
+    /// Its own request, and its own failure. The counts are cross-filtered against the whole
+    /// selection, so they move whenever the search or the filter does — but not when the page or
+    /// the ordering does, which is why turning a page does not re-ask for them.
+    /// <para>
+    /// A failure keeps the facets already on screen rather than clearing them. They are the controls
+    /// the reader is using, and the numbers being briefly stale is a far smaller problem than the
+    /// panel emptying under a press.
+    /// </para>
+    /// </remarks>
     private async Task FetchFacetsAsync()
     {
         _loading = true;
