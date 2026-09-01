@@ -428,6 +428,16 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 }
 .munin-explorer-filters > details > ul { padding-left: 0; }
 
+/* Nivålinjer: one guide line per level of the tree, drawn only while the reader has the toggle on.
+   The package emits `data-level-lines` on the panel instead of a class name of its own — a tree is
+   the one shape Stiler has no name for, and an invented one renders as nothing at all. Nested lists
+   only: the top level has nothing to sit under. The indentation is left where it is, so switching
+   the lines on does not move every value sideways. */
+.munin-explorer-filters[data-level-lines="true"] ul ul {
+  border-left: 1px solid var(--grey30);
+  margin-left: 4px;
+}
+
 /* The clear button is never `disabled` — the same focus reason as the pager's — so its unavailable
    state has to be drawn from aria-disabled. */
 .munin-explorer-filters [aria-disabled="true"] {

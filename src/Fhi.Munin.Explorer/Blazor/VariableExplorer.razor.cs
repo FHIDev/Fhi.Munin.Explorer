@@ -385,6 +385,28 @@ public partial class VariableExplorer : ComponentBase
     /// <inheritdoc cref="Sort"/>
     [Parameter] public EventCallback<SortDirection> DirectionChanged { get; set; }
 
+    /// <summary>
+    /// Whether the filter tree draws a guide line per level. Two-way, and off by default.
+    /// </summary>
+    /// <remarks>
+    /// A way of drawing the panel rather than a filter, so it is deliberately not part of the
+    /// shareable state: a link carries what the reader is looking at, not how they like to look at
+    /// it. The <c>Nivålinjer</c> button in the panel is what the reader presses, and pressing it
+    /// raises <see cref="LevelLinesChanged"/>.
+    /// <para>
+    /// The package does not remember the choice, by decision rather than by omission. Reaching
+    /// <c>localStorage</c> from a Blazor circuit is a JS interop call, and this package makes none —
+    /// it has to run inside a static-SSR host as well as an interactive one, and what is remembered
+    /// about a reader is the host's own policy to set. A host that wants it remembered stores what
+    /// this raises and passes it back on the next render; one that does not gets the lines off on
+    /// every visit, which is the state the panel has had until now.
+    /// </para>
+    /// </remarks>
+    [Parameter] public bool LevelLines { get; set; }
+
+    /// <inheritdoc cref="LevelLines"/>
+    [Parameter] public EventCallback<bool> LevelLinesChanged { get; set; }
+
     /// <summary>Which page of results is showing. Two-way, one-based.</summary>
     /// <remarks>
     /// Restored on first render, so a shared link opens on the page it was shared from. A page past

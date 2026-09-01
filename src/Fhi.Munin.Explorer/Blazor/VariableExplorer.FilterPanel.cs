@@ -557,6 +557,60 @@ public partial class VariableExplorer
     /// <summary>The legend over the whole panel, saying how many filters are in force.</summary>
     private string FiltersLegend => _filter.IsEmpty ? T.FiltersTitle : $"{T.FiltersTitle} ({_filter.ActiveCount})";
 
+    /// <summary>Which way the last Utvid alle / Skjul alle press left every disclosure, if any.</summary>
+    private bool? _foldAll;
+
+    /// <summary>Bumped per press, and part of every disclosure's key, so the press rebuilds them.</summary>
+    /// <remarks>
+    /// A <c>&lt;details&gt;</c> holds its own open state in the DOM, so a facet the reader folded by
+    /// hand no longer matches the <c>open</c> we rendered — and an unchanged value is never patched,
+    /// which is exactly the press that has to land. A new key rebuilds instead of diffing.
+    /// </remarks>
+    private int _foldGeneration;
+
+    /// <summary>A disclosure's key: its facet, and the fold press it was last rebuilt for.</summary>
+    /// <remarks>
+    /// The facet half is what stops a facet the API drops from handing its open state to whichever
+    /// facet takes its place. The generation is unchanged between presses, so a filter change still
+    /// leaves open whatever the reader opened.
+    /// </remarks>
+    private string FacetKey(FacetGroup group) => $"{group.Key}#{_foldGeneration}";
+
+    /// <summary>Whether a facet is drawn open: the last fold press, or the facet's own default.</summary>
+    private bool FacetOpen(FacetGroup group) => _foldAll ?? group.OpenByDefault;
+
+    /// <summary>Open every facet at once, or fold every facet at once.</summary>
+    private void FoldAll(bool open)
+    {
+        _foldAll = open;
+        _foldGeneration++;
+    }
+
+    /// <summary>Whether the tree draws a guide line per level. Seeded from the host's parameter.</summary>
+    private bool _levelLines;
+
+    /// <summary>
+    /// The panel's marker for the level lines, or null — an omitted attribute — while they are off.
+    /// </summary>
+    /// <remarks>
+    /// A data attribute rather than a class name of this package's own: there is no tree in Stiler
+    /// to read a name back from, and an unknown class draws nothing, while a marker on a name Stiler
+    /// does carry costs a host that ignores it nothing. (Fhi.Metadata-wcbxi)
+    /// </remarks>
+    private string? LevelLinesMarker => _levelLines ? "true" : null;
+
+    /// <summary>The level-lines button's classes — filled when on, a ghost when off.</summary>
+    private string LevelLinesClass =>
+        $"hd-button-square {(_levelLines ? "button-square--secondary" : "button-square--ghost")} margin-right margin-bottom";
+
+    /// <summary>Turn the level lines on or off, and tell the host, so it can remember them.</summary>
+    private Task ToggleLevelLinesAsync()
+    {
+        _levelLines = !_levelLines;
+
+        return RaiseAsync(LevelLinesChanged, _levelLines);
+    }
+
     /// <summary>A facet's own label, saying how many of its values are chosen.</summary>
     /// <remarks>
     /// On the summary line, so a collapsed facet still says that something inside it is narrowing

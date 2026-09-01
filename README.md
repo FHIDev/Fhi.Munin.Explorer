@@ -145,6 +145,13 @@ These are not style preferences — each one is a host that breaks otherwise.
   a kilde's datasamlinger in `KildeView`, one per level of that tree. An element degrades to its
   own browser default, where an unknown class name degrades to nothing.
 
+  The panel's `Nivålinjer` toggle is that rule again, with a state to carry rather than a shape: it
+  puts `data-level-lines="true"` on `munin-explorer-filters` and draws nothing itself. A marker on a
+  name Stiler already carries costs a host that ignores it nothing, where a `munin-explorer-tree`
+  nobody has a rule for would render as a raw browser default. Both sample stylesheets show the
+  rule — one `border-left` on the nested lists — and a host that supplies none loses the lines and
+  no information, because the indentation is what carries the hierarchy either way.
+
   Every name in the `munin-explorer` prefix is ours. That is worth saying because it used not to
   be: under the old prefix six names were helsedata's — the container, the results column, the
   header with its `__actions` and `__actions-button`, and the dropdown — and the prefix itself was

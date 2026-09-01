@@ -193,6 +193,11 @@ internal sealed record Texts(
     // of the card fields — deliberately the same word for the same thing in both places.
     string FiltersTitle,
     string ClearFilters,
+    // The panel's toolbar. Three presses that change how the tree is drawn and narrow nothing, so
+    // none of them is named for a filter. (Fhi.Metadata-wcbxi)
+    string ExpandAllFacets,
+    string CollapseAllFacets,
+    string LevelLines,
     string FilterError,
     string RetryFilters,
     string FacetKildeType,
@@ -648,6 +653,9 @@ internal sealed record Texts(
         },
         FiltersTitle: "Filtre",
         ClearFilters: "Fjern alle filtre",
+        ExpandAllFacets: "Utvid alle",
+        CollapseAllFacets: "Skjul alle",
+        LevelLines: "Nivålinjer",
         FilterError: "Kunne ikke oppdatere filtrene nå. Tallene kan være utdaterte.",
         RetryFilters: "Prøv filtrene på nytt",
         // helsedata's own variable page calls it this, rather than Munin's "Kildetype".
@@ -906,6 +914,9 @@ internal sealed record Texts(
         },
         FiltersTitle: "Filters",
         ClearFilters: "Clear all filters",
+        ExpandAllFacets: "Expand all",
+        CollapseAllFacets: "Collapse all",
+        LevelLines: "Level lines",
         FilterError: "Could not refresh the filters right now. The counts may be out of date.",
         RetryFilters: "Try the filters again",
         FacetKildeType: "Type of data source",

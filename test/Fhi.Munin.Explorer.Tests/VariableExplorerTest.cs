@@ -2931,6 +2931,24 @@ public class VariableExplorerTest : BunitContext
         IRenderedComponent<VariableExplorer> cut) =>
         [.. cut.FindAll(".munin-explorer-filters input[type=date]")];
 
+    /// <summary>The filter panel. <c>Panel</c> further down is the opened row's detail panel.</summary>
+    private static AngleSharp.Dom.IElement FilterPanel(IRenderedComponent<VariableExplorer> cut) =>
+        cut.Find(".munin-explorer-filters");
+
+    /// <summary>The facet disclosures, and the ones of them drawn open.</summary>
+    /// <remarks>
+    /// Direct children only: the column picker is a <c>&lt;details&gt;</c> too, and the delkilde
+    /// tree nests lists rather than disclosures, so a descendant query would count neither honestly.
+    /// </remarks>
+    private static IReadOnlyList<AngleSharp.Dom.IElement> Disclosures(
+        IRenderedComponent<VariableExplorer> cut) =>
+        [.. cut.FindAll(".munin-explorer-filters > details")];
+
+    /// <inheritdoc cref="Disclosures"/>
+    private static IReadOnlyList<AngleSharp.Dom.IElement> OpenDisclosures(
+        IRenderedComponent<VariableExplorer> cut) =>
+        [.. cut.FindAll(".munin-explorer-filters > details[open]")];
+
     /// <summary>An answer with nothing in any facet, which is what a selection matching nothing gets.</summary>
     private static FilterOptions NothingLeft() => new() { TotalCount = 0 };
 
@@ -3076,6 +3094,84 @@ public class VariableExplorerTest : BunitContext
         // Two survive for reasons of their own and always did: variabelgruppe says its emptiness
         // out loud, and andre filtre holds the historical toggle rather than API values.
         Assert.Equal(["Variabelgruppe", "Andre filtre"], FacetHeadings(cut));
+    }
+
+    [Fact]
+    public void Filter_WhenUtvidAlleIsPressed_ThenEveryFacetIsOpen()
+    {
+        // The one thing a native <details> cannot do for itself, and the reason the open attribute
+        // stopped being a constant. Only kildetype and kilde start open. (Fhi.Metadata-wcbxi)
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        Assert.NotEqual(Disclosures(cut).Count, OpenDisclosures(cut).Count);
+
+        ClickFacet(cut, "Utvid alle");
+
+        Assert.Equal(Disclosures(cut).Count, OpenDisclosures(cut).Count);
+    }
+
+    [Fact]
+    public void Filter_WhenSkjulAlleIsPressed_ThenNoFacetIsOpen()
+    {
+        // Both directions, because a press that only ever opens is half a control: the panel is
+        // hundreds of buttons expanded, which is what there has to be a way back from.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        ClickFacet(cut, "Utvid alle");
+        ClickFacet(cut, "Skjul alle");
+
+        Assert.Empty(OpenDisclosures(cut));
+    }
+
+    [Fact]
+    public void Filter_WhenAValueIsChosenAfterSkjulAlle_ThenTheFacetsStayFolded()
+    {
+        // The fold is the reader's and a refresh is not allowed to undo it — the same invariant that
+        // has always kept a filter change from collapsing a facet the reader opened.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        ClickFacet(cut, "Skjul alle");
+        ClickFacet(cut, "Vis historiske");
+
+        Assert.Empty(OpenDisclosures(cut));
+    }
+
+    [Fact]
+    public void Filter_WhenNivaalinjerIsPressed_ThenThePanelMarksThemAndTheHostIsTold()
+    {
+        // The package draws no lines and remembers no preference: it emits the marker a host styles
+        // and raises the change, which is the whole storage mechanism it offers. (Fhi.Metadata-wcbxi)
+        List<bool> reported = [];
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))),
+                             b => b.Add(c => c.LevelLinesChanged, reported.Add));
+
+        Assert.Null(FilterPanel(cut).GetAttribute("data-level-lines"));
+
+        ClickFacet(cut, "Nivålinjer");
+
+        Assert.Equal("true", FilterPanel(cut).GetAttribute("data-level-lines"));
+        Assert.Equal("true", Facet(cut, "Nivålinjer").GetAttribute("aria-pressed"));
+
+        ClickFacet(cut, "Nivålinjer");
+
+        // Off is the absence of the attribute rather than "false", so a host styles one selector.
+        // aria-pressed is the opposite and is always spelled out: a stuck "true" would go on
+        // announcing the lines as on after they went off.
+        Assert.Null(FilterPanel(cut).GetAttribute("data-level-lines"));
+        Assert.Equal("false", Facet(cut, "Nivålinjer").GetAttribute("aria-pressed"));
+        Assert.Equal([true, false], reported);
+    }
+
+    [Fact]
+    public void Filter_WhenTheHostSetsLevelLines_ThenTheyStartOn()
+    {
+        // The other half of the mechanism: a host that stored what the press raised passes it back.
+        // Without this the parameter is write-only and remembering it is impossible.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))),
+                             b => b.Add(c => c.LevelLines, true));
+
+        Assert.Equal("true", FilterPanel(cut).GetAttribute("data-level-lines"));
+        Assert.Equal("true", Facet(cut, "Nivålinjer").GetAttribute("aria-pressed"));
     }
 
     [Fact]
