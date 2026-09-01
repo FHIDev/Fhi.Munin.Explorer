@@ -274,11 +274,8 @@ public class VariableListViewTest : BunitContext
         /// <remarks>Settable, not init: a test turns it off to show the view still answers after.</remarks>
         public Exception? RemoveThrows { get; set; }
 
-        /// <summary>Set when the API takes the call and declines it - its 404 for a list not yours.</summary>
-        /// <remarks>
-        /// Its own switch beside <see cref="RemoveThrows"/>, and settable for the same reason: a
-        /// declined removal returns rather than throws, and nothing is taken out of the list.
-        /// </remarks>
+        /// <summary>Set when the API declines the removal: it returns false rather than throwing.</summary>
+        /// <remarks>Settable for the reason <see cref="RemoveThrows"/> is.</remarks>
         public bool RemoveIsDeclined { get; set; }
 
         public override Task<bool> RemoveVariablesFromMyListAsync(
@@ -1205,9 +1202,9 @@ public class VariableListViewTest : BunitContext
     [Fact]
     public async Task View_WhenRemovingAVariableIsDeclined_ThenItSaysSoAndTheRowStays()
     {
-        // Not a throw: the API took the call and answered no - its 404 for a list that is not the
-        // reader's any more. The holder runs no staleness guard on this path, so a false is always
-        // an answer worth passing on, which is what the silent handler did not do.
+        // Not a throw: the API took the call and answered no - a 404 for a list that is no longer
+        // the reader's. The holder runs no staleness guard on this path, so a false is always an
+        // answer worth passing on, which is what the silent handler did not do.
         var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"))
         {
             ListCount = 2,
