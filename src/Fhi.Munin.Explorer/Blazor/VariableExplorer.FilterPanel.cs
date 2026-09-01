@@ -131,7 +131,7 @@ public partial class VariableExplorer
     private FacetValue DataCategoryValue(DataCategoryFacet category) =>
         new($"datakategori:{category.Value}",
             CategoryWord(category.Value),
-            category.Count,
+            Counted(category.Count),
             // Ordinal, like every other string facet here, because that is what ToggleAsync removes
             // with: a case-insensitive mark over a case-sensitive toggle draws a token as chosen
             // and then appends a duplicate when it is pressed.
@@ -284,7 +284,7 @@ public partial class VariableExplorer
             // The facet's own displayName is the raw enum name (SentraltHelseregister), so the
             // prose comes from the component's own translations and falls back to what the API said.
             T.KildeTypeLabel(type.Value, type.DisplayName),
-            type.Count,
+            Counted(type.Count),
             string.Equals(_filter.KildeType, type.Value, StringComparison.OrdinalIgnoreCase),
             () => SetKildeTypeAsync(type.Value),
             []);
@@ -345,7 +345,7 @@ public partial class VariableExplorer
     private FacetValue KildeValue(KildeFacet kilde, ILookup<Guid, DelkildeFacet> delkilderByKilde) =>
         new($"kilde:{kilde.Id}",
             kilde.Name,
-            kilde.Count,
+            Counted(kilde.Count),
             _filter.KildeIds.Contains(kilde.Id),
             () => ToggleAsync(_filter.KildeIds, kilde.Id, ids => _filter with { KildeIds = ids }),
             DelkildeChildren(kilde.Id, delkilderByKilde));
@@ -354,7 +354,7 @@ public partial class VariableExplorer
         Tree(delkilderByKilde[kildeId].Select(d => new TreeNode(d.Id, d.ParentDelkildeId, d.Name, d.Count)),
              "delkilde:",
              IsDelkildeChosen,
-             ToggleDelkilde);
+             ToggleDelkilde, Counted);
 
     private bool IsDelkildeChosen(Guid id) => _filter.DelkildeIds.Contains(id);
 
@@ -378,7 +378,7 @@ public partial class VariableExplorer
             Tree(facets.Variabelgrupper.Select(g => new TreeNode(g.Id, g.ParentId, g.Name, g.Count)),
                  "variabelgruppe:",
                  IsGruppeChosen,
-                 ToggleGruppe),
+                 ToggleGruppe, Counted),
             T.NoVariabelgrupper);
 
     private bool IsGruppeChosen(Guid id) => _filter.VariabelgruppeIds.Contains(id);
@@ -394,7 +394,7 @@ public partial class VariableExplorer
             Tree(facets.Filters.Select(f => new TreeNode(f.Id, f.ParentId, f.Name, f.Count)),
                  "filter:",
                  IsSavedFilterChosen,
-                 ToggleSavedFilter));
+                 ToggleSavedFilter, Counted));
 
     private bool IsSavedFilterChosen(Guid id) => _filter.FilterIds.Contains(id);
 
@@ -408,7 +408,7 @@ public partial class VariableExplorer
         new($"datatype:{dataType.Value}",
             // The API returns the code with no label at all, so the prose is the component's own.
             T.DataTypeLabel(dataType.Value),
-            dataType.Count,
+            Counted(dataType.Count),
             _filter.DataTypes.Contains(dataType.Value),
             () => ToggleAsync(_filter.DataTypes, dataType.Value, values => _filter with { DataTypes = values }),
             []);
@@ -422,7 +422,7 @@ public partial class VariableExplorer
     private FacetValue HelsefagligKodeverkValue(HelsefagligKodeverkFacet kodeverk) =>
         new($"hk:{kodeverk.ShortName}",
             kodeverk.ShortName,
-            kodeverk.Count,
+            Counted(kodeverk.Count),
             _filter.HelsefagligKodeverk.Contains(kodeverk.ShortName),
             () => ToggleAsync(_filter.HelsefagligKodeverk, kodeverk.ShortName,
                               values => _filter with { HelsefagligKodeverk = values }),
@@ -439,7 +439,7 @@ public partial class VariableExplorer
             // The OID when fhi.kodeverk could not be reached, because a nameless button is worse
             // than one labelled with the number the filter actually sends.
             string.IsNullOrWhiteSpace(kodeverk.Name) ? kodeverk.Oid : kodeverk.Name,
-            kodeverk.Count,
+            Counted(kodeverk.Count),
             _filter.AdministrativtKodeverk.Contains(kodeverk.Oid),
             () => ToggleAsync(_filter.AdministrativtKodeverk, kodeverk.Oid,
                               values => _filter with { AdministrativtKodeverk = values }),
@@ -451,7 +451,7 @@ public partial class VariableExplorer
     private FacetValue InstrumentValue(InstrumentFacet instrument) =>
         new($"instrument:{instrument.Id}",
             string.IsNullOrWhiteSpace(instrument.Name) ? instrument.Code : instrument.Name,
-            instrument.Count,
+            Counted(instrument.Count),
             _filter.InstrumentIds.Contains(instrument.Id),
             () => ToggleAsync(_filter.InstrumentIds, instrument.Id, ids => _filter with { InstrumentIds = ids }),
             []);
@@ -462,7 +462,7 @@ public partial class VariableExplorer
             T.FacetOther,
             OpenByDefault: false,
             [
-                new FacetValue("has-kildekodeverk", T.HasKildekodeverk, facets.KildeKodeverkCount,
+                new FacetValue("has-kildekodeverk", T.HasKildekodeverk, Counted(facets.KildeKodeverkCount),
                                _filter.HasKildekodeverk == true, ToggleKildekodeverkAsync, []),
 
                 // No count of its own: the API reports no facet for it, and the number it would
@@ -496,7 +496,8 @@ public partial class VariableExplorer
         IEnumerable<TreeNode> nodes,
         string keyPrefix,
         Func<Guid, bool> selected,
-        Func<Guid, Func<Task>> toggle)
+        Func<Guid, Func<Task>> toggle,
+        Func<int, int?> count)
     {
         var all = nodes.ToList();
 
@@ -549,7 +550,7 @@ public partial class VariableExplorer
                 }
             }
 
-            return new FacetValue($"{keyPrefix}{node.Id}", node.Label, node.Count, selected(node.Id), toggle(node.Id), children);
+            return new FacetValue($"{keyPrefix}{node.Id}", node.Label, count(node.Count), selected(node.Id), toggle(node.Id), children);
         }
     }
 
@@ -823,6 +824,62 @@ public partial class VariableExplorer
         }
     }
 
+    // True only while a selection returns nothing: the controls are the reader's own, the counts
+    // beside them are not ours to state. (Fhi.Metadata-v2bgr)
+    private bool _facetsRetained;
+
+    /// <summary>A count, or none while the counts on screen would describe another moment.</summary>
+    private int? Counted(int count) => _facetsRetained ? null : count;
+
+    /// <summary>Whether an answer offers nothing to choose from, in any facet.</summary>
+    private static bool OffersNothing(FilterOptions facets) =>
+        facets.KildeTyper.Count == 0 && facets.Kilder.Count == 0 && facets.Delkilder.Count == 0
+        && facets.Variabelgrupper.Count == 0 && facets.Filters.Count == 0 && facets.DataTypes.Count == 0
+        && facets.HelsefagligKodeverk.Count == 0 && facets.AdministrativtKodeverk.Count == 0
+        && facets.Instruments.Count == 0 && facets.DataCategories.Count == 0;
+
+    /// <summary>
+    /// The answer to draw the panel from: the fresh one, unless it would leave the reader stranded.
+    /// </summary>
+    /// <remarks>
+    /// A selection matching nothing makes the API report nothing for every facet, chosen values
+    /// included, so storing it would remove the only way to undo the choice that emptied the list.
+    /// (Fhi.Metadata-v2bgr)
+    /// </remarks>
+    private async Task<FilterOptions> RetainedAsync(FilterOptions fresh, string? language)
+    {
+        if (_filter.IsEmpty || !OffersNothing(fresh))
+        {
+            _facetsRetained = false;
+
+            return fresh;
+        }
+
+        _facetsRetained = true;
+
+        if (_facets is not null)
+        {
+            return _facets;
+        }
+
+        // Nothing to keep: the reader arrived on a link that already matches nothing, so there was
+        // never a populated answer on screen. Ask what the catalogue holds at all — without it the
+        // panel has no way to show what they arrived with, which is the state the link put them in.
+        try
+        {
+            return await Client.GetFiltersAsync(_executedSearch, VariableFilter.None, language);
+        }
+        catch (Exception)
+        {
+            // Reported, not swallowed. Returning the empty answer would read as a panel with
+            // nothing to offer when it is a request that failed, and would cost the reader the
+            // retry — the one thing that can bring the controls back. (Fhi.Metadata-v2bgr)
+            _facetsRetained = false;
+
+            throw;
+        }
+    }
+
     /// <summary>
     /// Refresh the facets and their counts for the current search and filter.
     /// </summary>
@@ -849,8 +906,10 @@ public partial class VariableExplorer
             // Norwegian block on an otherwise English page. Norwegian goes out as "nb" and not our
             // "no" for the same reason in reverse: "no" has no parent culture the API's request
             // localization can fall back from, so it would silently take the API's default.
-            _facets = await Client.GetFiltersAsync(
-                _executedSearch, _filter, ReaderLanguage.ForApi(Language));
+            var language = ReaderLanguage.ForApi(Language);
+
+            _facets = await RetainedAsync(
+                await Client.GetFiltersAsync(_executedSearch, _filter, language), language);
             _facetError = null;
             _retryFacetsEnabled = false;
 
