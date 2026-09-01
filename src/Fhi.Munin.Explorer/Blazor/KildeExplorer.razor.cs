@@ -540,6 +540,11 @@ public sealed partial class KildeExplorer : ComponentBase
         _selectedId = kilde.Id;
         _selectedName = kilde.Name;
 
+        // Before the callback rather than inside LoadKildeAsync after it: an asynchronous host —
+        // one writing the URL, say — yields, and ComponentBase draws the open view in that gap.
+        // Without this that frame says aria-busy "false" for a fetch that has not been issued.
+        _detailLoading = true;
+
         await RaiseAsync(SelectedKildeIdChanged, _selectedId);
         await LoadKildeAsync(kilde.Id);
     }
