@@ -143,6 +143,22 @@ public class ExportListClientTest
     }
 
     [Fact]
+    public async Task ExportListAsync_WhenTheApiRateLimits_ThenItThrowsItsOwnExceptionRatherThanTheGenericOne()
+    {
+        // Told apart from a fault the way the my/lists writes are: a caller that cannot tell them
+        // apart has no cause to name, and reports a throttled export as a broken one.
+        var handler = StubHttpHandler.RateLimited(TimeSpan.FromSeconds(30));
+
+        var refused = await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(
+            () => Client(handler).ExportListAsync([One]));
+
+        Assert.Equal(TimeSpan.FromSeconds(30), refused.RetryAfter);
+
+        // No retry of its own, for the same reason none of the other calls get one.
+        Assert.Equal(1, handler.Calls);
+    }
+
+    [Fact]
     public async Task ExportListAsync_WhenTheApiSendsNoFileName_ThenAPlainOneIsUsedRatherThanNothing()
     {
         var handler = new NoDispositionHandler();

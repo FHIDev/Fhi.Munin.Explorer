@@ -81,7 +81,35 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private string _newName = "";
     private bool _includeKodeverk;
     private bool _downloading;
-    private bool _downloadFailed;
+    private DownloadFailure _downloadFailure;
+
+    /// <summary>How the last download ended, when it ended badly.</summary>
+    /// <remarks>
+    /// Worth telling the two apart for the same reason the save button does: a throttled reader
+    /// told to try again shortly does the one thing that keeps the limiter's window full.
+    /// </remarks>
+    private enum DownloadFailure
+    {
+        /// <summary>Nothing has gone wrong — what an untried, or a since retried, download reads as.</summary>
+        None = 0,
+
+        /// <summary>The download threw for a reason the reader can only try again on.</summary>
+        Failed,
+
+        /// <summary>The API refused it because too many requests arrived — HTTP 429.</summary>
+        Throttled
+    }
+
+    /// <summary>
+    /// What the alert says about the last download, or <see langword="null"/> when it has nothing
+    /// to say.
+    /// </summary>
+    private string? DownloadMessage => _downloadFailure switch
+    {
+        DownloadFailure.Throttled => T.RateLimitError,
+        DownloadFailure.Failed => T.DownloadError,
+        _ => null
+    };
 
     private IReadOnlyList<VariableList> Lists => State?.Lists ?? [];
 
@@ -485,7 +513,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         _downloading = true;
-        _downloadFailed = false;
+        _downloadFailure = DownloadFailure.None;
 
         try
         {
@@ -499,11 +527,18 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             var file = await Client.ExportListAsync(ids, format, _includeKodeverk);
             await BrowserDownload.OfferAsync(Js, file);
         }
+        catch (MuninExplorerRateLimitedException)
+        {
+            // The export sits under the browse policy, not the write one the saves use, and the
+            // id walk in front of it counts against that same bucket — keyed per user here, since
+            // the view only renders signed in. The generic sentence names no cause; this one does.
+            _downloadFailure = DownloadFailure.Throttled;
+        }
         catch (Exception)
         {
             // Includes the browser refusing the blob — a Content-Security-Policy without blob:
             // would land here. Said out loud rather than left as a button that does nothing.
-            _downloadFailed = true;
+            _downloadFailure = DownloadFailure.Failed;
         }
         finally
         {
