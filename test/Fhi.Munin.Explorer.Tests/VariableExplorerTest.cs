@@ -3026,6 +3026,37 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
+    public void Filter_WhenTheFallbackAskFails_ThenTheReaderIsToldAndOfferedTheRetry()
+    {
+        // Swallowing it would report a failed request as a panel with nothing to offer, and cost
+        // the reader the retry — the one thing that can bring the controls back. (Fhi.Metadata-v2bgr)
+        var client = new FailingFallbackClient(OnePage());
+        var cut = RenderWith(client,
+            b => b.Add(c => c.Filter, new VariableFilter { KildeIds = [Dodsarsak] }));
+
+        Assert.NotEmpty(cut.FindAll(".infobox"));
+        Assert.NotNull(cut.FindAll("button").SingleOrDefault(b => b.TextContent.Contains("filtre", StringComparison.OrdinalIgnoreCase)
+                                                                 && b.TextContent.Contains("Prøv", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    /// <summary>Answers nothing for the reader's filter, and throws when asked without one.</summary>
+    private sealed class FailingFallbackClient(Page<VariableSummary> answer) : EmptyMuninExplorerClient
+    {
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
+            SortField sort = SortField.Default, SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(answer);
+
+        public override Task<FilterOptions> GetFiltersAsync(
+            string? search = null, VariableFilter? filter = null, string? language = null,
+            CancellationToken cancellationToken = default) =>
+            filter is null || filter.IsEmpty
+                ? Task.FromException<FilterOptions>(new HttpRequestException("nede"))
+                : Task.FromResult(NothingLeft());
+    }
+
+    [Fact]
     public void Filter_WhenNothingIsChosenAndTheApiOffersNothing_ThenNoFacetIsDrawn()
     {
         // THE SECOND TRAP: do not simply always keep the panel. With no selection there is nothing

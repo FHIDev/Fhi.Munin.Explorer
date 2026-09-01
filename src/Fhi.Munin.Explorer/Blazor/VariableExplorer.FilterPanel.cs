@@ -872,13 +872,14 @@ public partial class VariableExplorer
         {
             return await Client.GetFiltersAsync(_executedSearch, VariableFilter.None, language);
         }
-        catch (Exception)
+        catch
         {
-            // Its own failure is not the facets failing: the first answer arrived, it simply had
-            // nothing in it. Reported as the empty panel it is rather than as an error.
+            // Reported, not swallowed. Returning the empty answer would read as a panel with
+            // nothing to offer when it is a request that failed, and would cost the reader the
+            // retry — the one thing that can bring the controls back. (Fhi.Metadata-v2bgr)
             _facetsRetained = false;
 
-            return fresh;
+            throw;
         }
     }
 
