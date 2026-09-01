@@ -29,13 +29,13 @@
    The rest of the `munin-explorer-*` prefix is ours and is not that mistake, because neither
    stylesheet is expected to have a rule for it. Most of those names are handles — the root
    `munin-explorer` class below, the DOM ids the codebehind mints, and `-filters`, `-detail`,
-   `-drilldown`, `-kodeverk*`, `-codes*`, `-group` and the nine `-kilde*` names in KildeView — on
-   elements something else already dresses, a Stiler class they also wear or their own browser
-   default, so an undefined one costs look and not information. Two are not handles and a host
-   outside helsedata has to draw them itself: `munin-explorer-crumb`, which is the only sign
-   the kilde step of the trail can be pressed, and `munin-explorer-period__track` / `__fill` /
-   `__track--ongoing`, which are the period bar itself. README lists every one of them; see also
-   the comment above the `<section>`.
+   `-drilldown`, `-kodeverk*`, `-codes*`, `-group`, the nine `-kilde*` names in KildeView and the
+   eight `-datasamling*` ones in DatasamlingView — on elements something else already dresses, a
+   Stiler class they also wear or their own browser default, so an undefined one costs look and not
+   information. Two are not handles and a host outside helsedata has to draw them itself:
+   `munin-explorer-crumb`, which is the only sign the kilde step of the trail can be pressed, and
+   `munin-explorer-period__track` / `__fill` / `__track--ongoing`, which are the period bar
+   itself. README lists every one of them; see also the comment above the `<section>`.
 
    The result vocabulary is a dependency a host outside helsedata's estate has to meet in full,
    and the component class's remarks say so — including the rule that keeps
@@ -108,11 +108,11 @@ else if (_sourceKind is not null)
                     @onclick="ShowSourceVariablesAsync">@narrowText</button>
         }
 
-        @* Once a kilde has arrived, KildeView owns the heading - the same component Kelda renders
-           on a page of its own, so the two cannot drift. Until then, and for a datasamling, the
-           drill-in keeps its own heading: the region points at it by id, and a landmark whose label
-           does not exist yet is worse than a plain one. *@
-        @if (_kilde is null)
+        @* Once the payload has arrived, its own view owns the heading - the same components Kelda
+           renders on a page of its own, so the two cannot drift. Until then the drill-in keeps its
+           own heading: the region points at it by id, and a landmark whose label does not exist yet
+           is worse than a plain one. *@
+        @if (_kilde is null && _datasamling is null)
         {
             @DrilldownHeading
         }
@@ -129,9 +129,12 @@ else if (_sourceKind is not null)
                        HeadingLevel="@RowLevel"
                        HeadingId="@SourceHeadingId" />
         }
-        else
+        else if (_datasamling is { } datasamling)
         {
-            @SourceFields
+            <DatasamlingView Datasamling="datasamling"
+                             Language="@Language"
+                             HeadingLevel="@RowLevel"
+                             HeadingId="@SourceHeadingId" />
         }
     </div>
 }

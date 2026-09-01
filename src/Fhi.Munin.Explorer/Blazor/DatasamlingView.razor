@@ -1,0 +1,72 @@
+@namespace Fhi.Munin.Explorer.Blazor
+
+@if (Datasamling is { } datasamling)
+{
+    <div class="munin-explorer-datasamling">
+
+        @* The name block, arranged as the kilde view arranges a source's: the identifier under the
+           name rather than beside it, and the description as prose below both. *@
+        <div class="munin-explorer-datasamling__header">
+            @* The catalogue holds one name, in Norwegian, so it is marked when the reader is not. *@
+            @Heading(HeadingLevel, datasamling.PreferredTerm, "headline headline-s margin--bottom",
+                     HeadingId, CatalogueProperties.Foreign("no", Reader))
+
+            @if (!string.IsNullOrWhiteSpace(datasamling.Code))
+            {
+                <p class="caption margin--none munin-explorer-datasamling__identifiers">@datasamling.Code</p>
+            }
+
+            @if (Description is { } description)
+            {
+                <p class="ingress munin-explorer-datasamling__description"
+                   lang="@CatalogueProperties.Foreign("no", Reader)">@description</p>
+            }
+        </div>
+
+        <div class="munin-explorer-datasamling__body">
+            <div class="munin-explorer-datasamling__main">
+
+                @* The catalogue's own metadata, resolved from the payload exactly as the kilde and
+                   variable views resolve theirs. The flat list this view replaced drew none of it,
+                   and every datasamling measured carries between three and eleven curated keys. *@
+                @if (Groups.Count > 0)
+                {
+                    @Heading(BlockLevel, T.HeadingMetadata, "headline headline-s")
+
+                    foreach (var group in Groups)
+                    {
+                        @Group(group)
+                    }
+                }
+
+                @* Who is in the data and who is not — the first question a researcher asks about a
+                   datasamling, and prose rather than a field, so it sits in the main column. *@
+                @if (!string.IsNullOrWhiteSpace(datasamling.InclusionAndExclusionCriteria))
+                {
+                    @Heading(BlockLevel, T.FieldInclusionCriteria, "headline headline-s")
+                    <p class="munin-explorer-datasamling__criteria"
+                       lang="@CatalogueProperties.Foreign("no", Reader)">
+                        @datasamling.InclusionAndExclusionCriteria
+                    </p>
+                }
+
+                @* Whatever the explorer using this view puts after the metadata. This component
+                   never learns which explorer that is. *@
+                @Sections
+            </div>
+
+            <aside class="munin-explorer-datasamling__aside">
+                @Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
+                @Facts(SourceInformation)
+
+                @* Heading and list together or neither: a datasamling that counts nothing gets no
+                   empty block, and the type names the heading rather than filling a row. *@
+                @if (AnyStatistics)
+                {
+                    @Heading(BlockLevel, StatisticsHeading, "headline headline-s")
+                    @Facts(Statistics)
+                }
+            </aside>
+        </div>
+    </div>
+}

@@ -6741,6 +6741,10 @@ public class VariableExplorerTest : BunitContext
         EffectiveLegalBasis = "Forskrift om medisinske kvalitetsregistre § 2-3.",
         EffectiveValidFrom = new DateTimeOffset(2010, 1, 1, 0, 0, 0, TimeSpan.Zero),
         EffectiveKildetype = "nasjonaltMedisinskKvalitetsregister",
+        LastUpdated = new DateTimeOffset(2026, 3, 4, 9, 30, 0, TimeSpan.Zero),
+        // Every datasamling in the test catalogue carries a statistikktype, and it names the
+        // statistics heading rather than filling a row of its own.
+        StatisticsType = "yearly",
         Frequency = "Fortløpende",
         // Observed as an empty string in the captured payload rather than as null, which is a
         // different thing for the markup to get right than a missing field.
@@ -6903,24 +6907,37 @@ public class VariableExplorerTest : BunitContext
         Assert.Equal(1, client.DatasamlingCalls);
         Assert.Equal(InklusjonId, client.LastSourceId);
 
+        // The sidebar, in the order the kilde view puts the same fields in. Beskrivelse and the
+        // criteria are not in it: both are prose and both moved into the main column, where a
+        // description and a page of inclusion criteria can be read (Fhi.Metadata-jgfum).
         Assert.Equal(
-            ["Beskrivelse", "Kilde", "Inklusjons- og eksklusjonskriterier", "Dataansvarlig",
-             "Databehandler", "Grad av personidentifikasjon", "Lovverk", "Gyldighet", "Frekvens",
-             "Telleenhet", "Antall variabler"],
+            ["Kilde", "Type datakilde", "Lovverk", "Dataansvarlig", "Databehandler",
+             "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i Munin",
+             "Frekvens", "Antall variabler"],
             SourceLabels(cut));
 
         var values = SourceValues(cut);
 
-        Assert.Equal("Als registeret", values[1]);
-        Assert.Equal("Alle pasienter som er 18 år eller eldre.", values[2]);
+        Assert.Equal("Als registeret", values[0]);
         Assert.Equal("St. Olavs hospital HF", values[3]);
         Assert.Equal("Indirekte identifiserbar", values[5]);
-        Assert.Equal("2010–", values[7]);
+        Assert.Equal("1. januar 2010 – Pågående", values[6]);
         Assert.Equal("Fortløpende", values[8]);
+        Assert.Equal("99", values[9]);
 
-        // Empty rather than missing, and written out for everyone rather than drawn as a dash.
-        Assert.Equal("Ikke oppgitt", values[9]);
-        Assert.Equal("99", values[10]);
+        var panel = SourcePanel(cut);
+
+        // Telleenhet arrives as an empty string, and an empty string draws no row at all rather
+        // than a label over "Ikke oppgitt" — the rule the two sidebar boxes already follow.
+        Assert.DoesNotContain("Telleenhet", panel.TextContent);
+
+        Assert.Equal(
+            "Skjemaet inneholder opplysninger om utredning og oppstart av behandling.",
+            panel.QuerySelector(".munin-explorer-datasamling__description")!.TextContent.Trim());
+
+        Assert.Equal(
+            "Alle pasienter som er 18 år eller eldre.",
+            panel.QuerySelector(".munin-explorer-datasamling__criteria")!.TextContent.Trim());
     }
 
     [Fact]
@@ -7267,8 +7284,11 @@ public class VariableExplorerTest : BunitContext
         cut.WaitForAssertion(() =>
         {
             Assert.Single(cut.FindAll(".munin-explorer-drilldown"));
-            Assert.Contains("Telleenhet", SourcePanel(cut).TextContent);
-            Assert.DoesNotContain("Antall datasamlinger", SourcePanel(cut).TextContent);
+
+            // Each owner has a view of its own now, so which one is on screen is a question about
+            // the markup rather than about which labels happen to differ between two field lists.
+            Assert.NotNull(SourcePanel(cut).QuerySelector(".munin-explorer-datasamling"));
+            Assert.Null(SourcePanel(cut).QuerySelector(".munin-explorer-kilde"));
         });
     }
 
