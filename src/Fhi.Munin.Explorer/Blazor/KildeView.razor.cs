@@ -101,21 +101,12 @@ public sealed partial class KildeView : ComponentBase
 
     /// <summary>Keys the header renders itself, so the metadata does not repeat them.</summary>
     /// <remarks>
-    /// The description only. The header draws it as the lead ingress, and without this the same
-    /// 1400-odd characters appeared again under "Beskrivelse (flerspråklig)", which made the EHDS
-    /// group look like it held a description of its own. Both spellings, because the multilingual
-    /// key is the one a kilde actually carries and excluding the plain one alone fixes nothing.
-    /// (Fhi.Metadata-8yqoz)
-    /// <para>
-    /// Deliberately NOT <c>BeskrivelseEngelsk</c>: the ingress is the Norwegian description
-    /// whatever the reader's language, so the English text is a fact this view shows nowhere else
-    /// and excluding it would delete it rather than de-duplicate it. Nor <c>PreferredTerm</c>,
-    /// <c>Code</c> or <c>KortNavn</c> — the header draws the typed fields of those names, not these
-    /// keys, and no captured kilde carries them at all.
-    /// </para>
+    /// Both description spellings, since a kilde curates one or the other. Not
+    /// <c>BeskrivelseEngelsk</c> — the ingress is the Norwegian one, so excluding the English text
+    /// would delete a fact rather than de-duplicate it. (Fhi.Metadata-8yqoz)
     /// </remarks>
-    private static readonly HashSet<string> DrawnInTheHeader =
-        new(StringComparer.Ordinal) { "Beskrivelse", "BeskrivelseFlerspraklig" };
+    private static readonly IReadOnlySet<string> DrawnInTheHeader =
+        new HashSet<string>(StringComparer.Ordinal) { "Beskrivelse", "BeskrivelseFlerspraklig" };
 
     /// <summary>
     /// The facts every source has, which is why they are typed fields rather than curated properties.

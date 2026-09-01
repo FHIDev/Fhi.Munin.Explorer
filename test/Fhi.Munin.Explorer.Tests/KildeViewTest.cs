@@ -649,8 +649,14 @@ public class KildeViewTest : BunitContext
     }
 
     /// <summary>How many times <paramref name="needle"/> occurs in <paramref name="haystack"/>.</summary>
+    /// <remarks>
+    /// An empty needle would spin for ever — <c>IndexOf("")</c> answers the position it was asked
+    /// from and the stride is zero — so it throws instead of hanging the run.
+    /// </remarks>
     private static int Occurrences(string haystack, string needle)
     {
+        ArgumentException.ThrowIfNullOrEmpty(needle);
+
         var count = 0;
 
         for (var i = haystack.IndexOf(needle, StringComparison.Ordinal);
