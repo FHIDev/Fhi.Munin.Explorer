@@ -1,11 +1,11 @@
-// The API the accessibility scan reads, served from the drift fixtures instead of the network.
+// The API the accessibility scan reads, served from the contract-drift fixtures.
 //
-// runa.munin.skytest.fhi.no is not reachable from a GitHub runner — the nightly contract-drift job
-// records API-UNREACHABLE against it — so a scan pointed there renders an empty shell, and axe
-// finds no violations in a page with nothing on it (Fhi.Metadata-wr31i).
+// runa.munin.skytest.fhi.no is geo-filtered: Norwegian traffic is admitted and a GitHub runner is
+// not (#127). A scan pointed there renders an empty shell, and axe reports no violations in a page
+// with nothing on it — which is what this gate did until Fhi.Metadata-wr31i.
 //
-// The fixtures are the contract-drift ones, and that nightly job is what keeps them honest against
-// the real API. Reusing them beats a second copy here that nothing would ever re-capture.
+// The fixtures are reused rather than copied: one set for a human to re-capture when a drift
+// report asks for it, instead of a second set here that nothing would ever look at again.
 //
 // Usage:  node scripts/axe-stub-api.mjs <port>
 import { createServer } from 'node:http';
@@ -23,9 +23,10 @@ if (!Number.isInteger(port) || port <= 0) {
 }
 
 // One entry per route the explorer calls, longest first so `variables/{id}` cannot swallow
-// `variables/{id}/timeline`. The literal is the one route with no fixture: an empty vocabulary is
-// already what the client falls back to when that call 404s.
+// `variables/{id}/timeline`. The literal is the one route with no fixture, and it answers with
+// what the client would have fallen back to anyway: an empty vocabulary.
 const routes = [
+  [/^\/api\/explorer\/variables\/[^/]+\/kodeverk\/[^/]+\/[^/]+\/codes$/, 'kodeverk-codes.json'],
   [/^\/api\/explorer\/variables\/[^/]+\/timeline$/, 'timeline.json'],
   [/^\/api\/explorer\/variables\/[^/]+$/, 'variable.json'],
   [/^\/api\/explorer\/variables$/, 'variables.json'],

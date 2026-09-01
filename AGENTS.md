@@ -136,12 +136,12 @@ The states it does **not** enter are listed above `TARGETS` in `check-accessibil
 list is the honest bound on a green run — extend the two together, never one alone.
 
 **And it scans data, not an empty shell.** The sample host reads `scripts/axe-stub-api.mjs`, which
-serves the contract-drift fixtures, because `runa.munin.skytest.fhi.no` is not reachable from a
-GitHub runner — the nightly drift job records `API-UNREACHABLE` against it. Until this was found
-the gate had spent its whole life scanning two pages with nothing on them, and axe finds no
-violations in nothing: on CI, "no violations" meant "no content". Every state now waits for a row
-before axe looks, the two list pages included, so an empty page fails as TOOLING rather than
-passing as clean.
+serves the contract-drift fixtures, because `runa.munin.skytest.fhi.no` is geo-filtered and a
+GitHub runner sits outside it — the same finding that moved the contract-drift check off CI and
+onto the devbox (#127). Until this was noticed the gate had spent its whole life scanning two
+pages with nothing on them, and axe reports no violations in nothing: on CI, "no violations" meant
+"no content". Every state now waits for a row before axe looks, the list pages included, so an
+empty page fails as TOOLING rather than passing as clean.
 
 So the gate catches regressions in the subset it can see. Read a green run as "no detected
 regression", and never write it down as more than that. That sentence is the whole reason the

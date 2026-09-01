@@ -24,9 +24,8 @@ STUB_BASE="http://127.0.0.1:${STUB_PORT}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # What the scan visits, each as `path::state` naming a state in scripts/axe-states.mjs. Every
-# state waits for content before axe looks, the two list pages included: a page whose data never
-# arrived has no violations in it, and that is the false green this whole gate exists to avoid.
-# Why states at all: AGENTS.md, "It scans states, not only pages" (Fhi.Metadata-wcbxi).
+# state waits for content first, the list pages included: axe reports no violations in a page whose
+# data never arrived. Why states at all: AGENTS.md, "It scans states, not only pages".
 #
 # DELIBERATELY NOT COVERED, so nobody reads a green run as more than it is:
 #   - the whole-variable drill-in and the owner panel inside a row, two more presses each;
@@ -56,10 +55,9 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Anything left over from a previous run answers on these ports and is scanned in place of what
-# this run starts, stylesheet and all. Both are checked before either is started: a leftover that
-# merely answers is indistinguishable from success further down, which is how a green run can
-# belong to someone else's page entirely.
+# Anything already answering on these ports is scanned in place of what this run starts,
+# stylesheet and all — an orphan from a previous run is the usual case, and a green run that
+# belongs to someone else's page is the result. Both checked before either is started.
 for occupied in "$BASE/" "${STUB_BASE}/api/explorer/kilder"; do
   if curl -fsS -o /dev/null --max-time 2 "$occupied" 2>/dev/null; then
     echo "something is already listening on ${occupied} - TOOLING failure." >&2
@@ -75,7 +73,9 @@ node "$ROOT/scripts/axe-stub-api.mjs" "$STUB_PORT" >/tmp/accessibility-stub.log 
 stub_pid=$!
 
 for _ in $(seq 1 20); do
-  curl -fsS -o /dev/null --max-time 2 "${STUB_BASE}/api/explorer/kilder" 2>/dev/null && break
+  if curl -fsS -o /dev/null --max-time 2 "${STUB_BASE}/api/explorer/kilder" 2>/dev/null; then
+    break
+  fi
   if ! kill -0 "$stub_pid" 2>/dev/null; then
     break
   fi
@@ -97,7 +97,7 @@ fi
 echo "==> starting ModernHost on ${BASE}"
 (
   cd "$ROOT"
-  MuninExplorer__ApiBaseUrl="$STUB_BASE"     dotnet run --project samples/ModernHost --urls "$BASE" >/tmp/accessibility-host.log 2>&1
+  MuninExplorer__ApiBaseUrl="$STUB_BASE" dotnet run --project samples/ModernHost --urls "$BASE" >/tmp/accessibility-host.log 2>&1
 ) &
 host_pid=$!
 
