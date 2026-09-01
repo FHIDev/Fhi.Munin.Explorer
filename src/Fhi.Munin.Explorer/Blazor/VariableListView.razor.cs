@@ -94,6 +94,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private bool _includeKodeverk;
     private bool _downloading;
     private DownloadFailure _downloadFailure;
+    private ListActionFailure _createFailure;
 
     /// <summary>How the last download ended, when it ended badly.</summary>
     /// <remarks>
@@ -120,6 +121,14 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     {
         DownloadFailure.Throttled => T.RateLimitError,
         DownloadFailure.Failed => T.DownloadError,
+        _ => null
+    };
+
+    /// <summary>What the alert says about a failed create, or <see langword="null"/> after none.</summary>
+    private string? CreateMessage => _createFailure switch
+    {
+        ListActionFailure.Throttled => T.RateLimitError,
+        ListActionFailure.Failed => T.SaveError,
         _ => null
     };
 
@@ -474,6 +483,18 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         _actionFailure = ListActionFailure.None;
     }
 
+    /// <summary>
+    /// Empties the alert region. Four conditions share it, so a handler that clears only its own
+    /// leaves an older one answering for the action the reader just took.
+    /// </summary>
+    private void ForgetFailures()
+    {
+        _failed = false;
+        _createFailure = ListActionFailure.None;
+        _actionFailure = ListActionFailure.None;
+        _downloadFailure = DownloadFailure.None;
+    }
+
     private async Task ChooseListAsync(ChangeEventArgs e)
     {
         if (State is null || !Guid.TryParse(e.Value?.ToString(), out var id))
@@ -484,6 +505,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         _shownList = id;
         _pageNumber = 1;
         ForgetListControls();
+        ForgetFailures();
 
         try
         {
@@ -520,7 +542,28 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             return;
         }
 
-        var created = await State.CreateAsync(name);
+        ForgetFailures();
+
+        VariableList? created;
+
+        try
+        {
+            created = await State.CreateAsync(name);
+        }
+        catch (MuninExplorerRateLimitedException)
+        {
+            // Creating meets the same limiter the saves do, and "prøv igjen om litt" is advice
+            // a throttled reader cannot use.
+            _createFailure = ListActionFailure.Throttled;
+            return;
+        }
+        catch (Exception)
+        {
+            // Uncaught, this leaves the event handler and takes the circuit with it: a blank
+            // page and a reconnect banner in place of the list the reader was building.
+            _createFailure = ListActionFailure.Failed;
+            return;
+        }
 
         if (created is null)
         {
@@ -529,7 +572,19 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         _newName = "";
         ForgetListControls();
-        await State.SetActiveListAsync(created.Id);
+
+        try
+        {
+            await State.SetActiveListAsync(created.Id);
+        }
+        catch (Exception)
+        {
+            // Same reason as ChooseListAsync above. The list was created; it is the switch to
+            // it that did not happen, which is what ListLoadError says.
+            _failed = true;
+            return;
+        }
+
         _shownList = created.Id;
         _pageNumber = 1;
         await LoadPageAsync();
@@ -548,7 +603,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             return;
         }
 
-        _actionFailure = ListActionFailure.None;
+        ForgetFailures();
         _skipOnePageRead = true;
 
         try
@@ -594,7 +649,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         _confirmingDelete = false;
-        _actionFailure = ListActionFailure.None;
+        ForgetFailures();
 
         try
         {
@@ -671,7 +726,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         _downloading = true;
-        _downloadFailure = DownloadFailure.None;
+        ForgetFailures();
 
         try
         {

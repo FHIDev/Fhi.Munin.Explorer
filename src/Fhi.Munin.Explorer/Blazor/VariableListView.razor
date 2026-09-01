@@ -132,7 +132,7 @@
         @* Always in the DOM, empty when nothing is wrong — a role="alert" inserted and filled in the
            same update is announced unreliably. Same shape as the explorer's own alert region. *@
         <div role="alert" aria-live="assertive" aria-atomic="true">
-            @(_failed ? T.ListLoadError : DownloadMessage ?? ActionMessage)
+            @(_failed ? T.ListLoadError : DownloadMessage ?? ActionMessage ?? CreateMessage)
         </div>
 
         @if (Lists.Count == 0)

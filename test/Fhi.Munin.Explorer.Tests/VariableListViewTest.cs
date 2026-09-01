@@ -140,10 +140,38 @@ public class VariableListViewTest : BunitContext
             return Task.FromResult(true);
         }
 
+        /// <summary>Set when the test wants creating a list to fail the way a lost API would.</summary>
+        /// <remarks>Settable, unlike the export switches: a test turns it off to try again after.</remarks>
+        public bool CreateThrows { get; set; }
+
+        /// <summary>Set when the test wants the create refused with the API's 429.</summary>
+        public bool CreateThrottles { get; set; }
+
+        /// <summary>Set when the switch to the list just created is what fails.</summary>
+        /// <remarks>
+        /// Aimed at that one list, so the failure lands on the switch and not on the reads
+        /// around it - the point is that the list was made and only the switch was lost.
+        /// </remarks>
+        public bool ActivateThrows { get; set; }
+
+        private VariableList? _created;
+
         public override Task<VariableList> CreateMyListAsync(string name, CancellationToken cancellationToken = default)
         {
             CreateCalls++;
-            return Task.FromResult(new VariableList { Id = Guid.NewGuid(), Name = name });
+
+            if (CreateThrottles)
+            {
+                throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+            }
+
+            if (CreateThrows)
+            {
+                throw new InvalidOperationException("the API is gone");
+            }
+
+            _created = new VariableList { Id = Guid.NewGuid(), Name = name };
+            return Task.FromResult(_created);
         }
 
         public override Task<Page<VariableListItem>?> GetMyListVariablesAsync(
@@ -159,6 +187,11 @@ public class VariableListViewTest : BunitContext
             if (_deleted.Contains(id))
             {
                 return Task.FromResult<Page<VariableListItem>?>(null);
+            }
+
+            if (ActivateThrows && _created is not null && id == _created.Id)
+            {
+                throw new InvalidOperationException("the membership read is gone");
             }
 
             // Honours the size the component asked for, not the fake's own: slicing by an
@@ -574,6 +607,124 @@ public class VariableListViewTest : BunitContext
         Assert.Equal(1, client.CreateCalls);
     }
 
+    [Fact]
+    public void View_WhenCreatingAListIsRateLimited_ThenItSaysSoRatherThanThatTheSaveFailed()
+    {
+        var client = new ListClient { HasList = false, CreateThrottles = true };
+        var cut = RenderView(client);
+
+        cut.Find("input[type=text]").Change("Hjerte og kar");
+        cut.Find(".munin-explorer-container button").Click();
+
+        Assert.Contains("for mange forespørsler", cut.Markup);
+        Assert.DoesNotContain("Kunne ikke lagre", cut.Markup);
+    }
+
+    [Fact]
+    public void View_WhenCreatingAListThrows_ThenTheAlertSaysTheSaveFailed()
+    {
+        var client = new ListClient { HasList = false, CreateThrows = true };
+        var cut = RenderView(client);
+
+        cut.Find("input[type=text]").Change("Hjerte og kar");
+        cut.Find(".munin-explorer-container button").Click();
+
+        Assert.Contains("Kunne ikke lagre", cut.Markup);
+        Assert.DoesNotContain("for mange forespørsler", cut.Markup);
+    }
+
+    [Fact]
+    public void View_WhenCreatingAListFails_ThenTheViewIsStillThereToTryAgain()
+    {
+        // The message is the smaller half. Unguarded, the throw leaves the event handler and the
+        // circuit goes with it - so what has to be shown is that the view still answers after.
+        var client = new ListClient { HasList = false, CreateThrows = true };
+        var cut = RenderView(client);
+
+        cut.Find("input[type=text]").Change("Hjerte og kar");
+        cut.Find(".munin-explorer-container button").Click();
+
+        client.CreateThrows = false;
+        cut.Find("input[type=text]").Change("Hjerte og kar");
+        cut.Find(".munin-explorer-container button").Click();
+
+        Assert.Equal(2, client.CreateCalls);
+        Assert.DoesNotContain("Kunne ikke lagre", cut.Markup);
+    }
+
+    [Fact]
+    public void View_WhenTheNewListCannotBeSwitchedTo_ThenItSaysSoRatherThanThrowing()
+    {
+        // The list was made and is on the server; it is the switch to it that was lost, which is
+        // what ListLoadError says. ChooseListAsync has guarded its own switch all along.
+        var client = new ListClient { HasList = false, ActivateThrows = true };
+        var cut = RenderView(client);
+
+        cut.Find("input[type=text]").Change("Hjerte og kar");
+        cut.Find(".munin-explorer-container button").Click();
+
+        Assert.Equal(1, client.CreateCalls);
+        Assert.Contains("Kunne ikke hente listen", cut.Markup);
+        Assert.NotNull(cut.Find("input[type=text]"));
+    }
+
+    [Fact]
+    public void View_WhenACreateFailsAfterALoadFailed_ThenTheAlertAnswersForTheCreate()
+    {
+        // Both sentences live in one alert region. Left standing, the older one answers for an
+        // action the reader did not just take - here, "could not fetch" for a failed save.
+        var client = new ListClient { HasList = false, ListsThrow = true, CreateThrows = true };
+        var cut = RenderView(client);
+        Assert.Contains("Kunne ikke hente listen", cut.Markup);
+
+        cut.Find("input[type=text]").Change("Hjerte og kar");
+        cut.Find(".munin-explorer-container button").Click();
+
+        Assert.Contains("Kunne ikke lagre", cut.Markup);
+        Assert.DoesNotContain("Kunne ikke hente listen", cut.Markup);
+    }
+
+    [Fact]
+    public async Task View_WhenACreateFailsAfterARenameFailed_ThenTheAlertAnswersForTheCreate()
+    {
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"))
+        {
+            RenameThrows = new InvalidOperationException("the API is gone"),
+            CreateThrows = true
+        };
+        var cut = RenderView(client);
+
+        cut.FindAll("input[type=text]")[1].Change("Hjertet mitt");
+        await PressAsync(cut, "Gi nytt navn");
+        Assert.Contains("Kunne ikke endre listen", cut.Markup);
+
+        cut.FindAll("input[type=text]")[0].Change("Hjerte og kar");
+        await PressAsync(cut, "Opprett liste");
+
+        Assert.Contains("Kunne ikke lagre", cut.Markup);
+        Assert.DoesNotContain("Kunne ikke endre listen", cut.Markup);
+    }
+
+    [Fact]
+    public async Task View_WhenTheReaderSwitchesListAfterAFailedCreate_ThenTheSentenceGoes()
+    {
+        // Switching list is an action too. The alert would otherwise still be answering for a
+        // save the reader has since moved on from.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"))
+        {
+            ListCount = 2,
+            CreateThrows = true
+        };
+        var cut = RenderView(client);
+
+        cut.FindAll("input[type=text]")[0].Change("Hjerte og kar");
+        await PressAsync(cut, "Opprett liste");
+        Assert.Contains("Kunne ikke lagre", cut.Markup);
+
+        await cut.InvokeAsync(() => cut.Find("select").Change(ListClient.SecondListId.ToString()));
+
+        Assert.DoesNotContain("Kunne ikke lagre", cut.Markup);
+    }
     [Fact]
     public async Task View_WhenAnotherSurfaceRemovesAVariable_ThenItLeavesThisViewToo()
     {
