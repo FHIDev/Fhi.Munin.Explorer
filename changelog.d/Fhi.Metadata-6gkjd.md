@@ -8,4 +8,4 @@ category: Notes for hosts
   (Fhi.Metadata-6gkjd)
 - **`scripts/assert-class-names-listed.sh` keeps that list honest.** It reconciles the whole prefix
   against the README on every CI run, in both directions, where the older check could only ask about
-  names new on a branch.
+  names new on a branch. (Fhi.Metadata-6gkjd)

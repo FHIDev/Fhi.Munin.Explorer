@@ -364,7 +364,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   <!-- class-names:end -->
 
   `Render_Always_ThenNoClassNamesAreInventedApartFromTheDomHandles` pins that prefix for a closed
-  result list, spelling out its eight names exactly; the panel, drill-in and kilde names are past
+  result list, spelling that set out name by name; the panel, drill-in and kilde names are past
   its reach, because nothing is expanded there. For seeing the whole thing dressed, the sample
   hosts' `host.css` stands in for the host stylesheets, divided by comment into which rules stand
   in for which.
