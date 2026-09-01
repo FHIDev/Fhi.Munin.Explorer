@@ -94,6 +94,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private bool _includeKodeverk;
     private bool _downloading;
     private DownloadFailure _downloadFailure;
+    private ListActionFailure _createFailure;
 
     /// <summary>How the last download ended, when it ended badly.</summary>
     /// <remarks>
@@ -120,6 +121,14 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     {
         DownloadFailure.Throttled => T.RateLimitError,
         DownloadFailure.Failed => T.DownloadError,
+        _ => null
+    };
+
+    /// <summary>What the alert says about a failed create, or <see langword="null"/> after none.</summary>
+    private string? CreateMessage => _createFailure switch
+    {
+        ListActionFailure.Throttled => T.RateLimitError,
+        ListActionFailure.Failed => T.SaveError,
         _ => null
     };
 
@@ -520,7 +529,33 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             return;
         }
 
-        var created = await State.CreateAsync(name);
+        // Starting an action clears the other three, so the alert can never answer for one
+        // the reader did not just take. A load that failed has LoadPageAsync to say so again.
+        _createFailure = ListActionFailure.None;
+        _actionFailure = ListActionFailure.None;
+        _downloadFailure = DownloadFailure.None;
+        _failed = false;
+
+        VariableList? created;
+
+        try
+        {
+            created = await State.CreateAsync(name);
+        }
+        catch (MuninExplorerRateLimitedException)
+        {
+            // Creating is a write against the same per-address limiter as saving a row, and
+            // "prøv igjen om litt" is advice a throttled reader cannot use.
+            _createFailure = ListActionFailure.Throttled;
+            return;
+        }
+        catch (Exception)
+        {
+            // Uncaught, this leaves the event handler and takes the circuit with it: a blank
+            // page and a reconnect banner in place of the list the reader was building.
+            _createFailure = ListActionFailure.Failed;
+            return;
+        }
 
         if (created is null)
         {
@@ -529,7 +564,19 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         _newName = "";
         ForgetListControls();
-        await State.SetActiveListAsync(created.Id);
+
+        try
+        {
+            await State.SetActiveListAsync(created.Id);
+        }
+        catch (Exception)
+        {
+            // Same reason as ChooseListAsync above. The list was created; it is the switch to
+            // it that did not happen, which is what ListLoadError says.
+            _failed = true;
+            return;
+        }
+
         _shownList = created.Id;
         _pageNumber = 1;
         await LoadPageAsync();
@@ -672,6 +719,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         _downloading = true;
         _downloadFailure = DownloadFailure.None;
+        _createFailure = ListActionFailure.None;
+        _failed = false;
 
         try
         {
