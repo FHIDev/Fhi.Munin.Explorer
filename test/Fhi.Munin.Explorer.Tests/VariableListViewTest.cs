@@ -106,6 +106,17 @@ public class VariableListViewTest : BunitContext
         /// <summary>How a delete should fail, or null for one the API accepts.</summary>
         public Exception? DeleteThrows { get; init; }
 
+        /// <summary>How a removal should fail, or null for one the API accepts.</summary>
+        public Exception? RemoveThrows { get; init; }
+
+        /// <summary>Set when the API should refuse the removal rather than throw for it.</summary>
+        /// <remarks>
+        /// Its own switch beside <see cref="RemoveThrows"/> because the two arrive by different
+        /// routes - a refusal is the client's <c>false</c>, a throttle is an exception - and one
+        /// flag could not show that both end at the same message.
+        /// </remarks>
+        public bool RemoveRefused { get; init; }
+
         /// <summary>Run while the rename is still in flight, so a test can raise another change.</summary>
         public Func<Task>? DuringRename { get; init; }
 
@@ -262,6 +273,17 @@ public class VariableListViewTest : BunitContext
             Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default)
         {
             RemoveCalls++;
+
+            if (RemoveThrows is not null)
+            {
+                throw RemoveThrows;
+            }
+
+            if (RemoveRefused)
+            {
+                return Task.FromResult(false);
+            }
+
             _items.RemoveAll(i => variableIds.Contains(i.VariableId));
             return Task.FromResult(true);
         }
@@ -591,6 +613,96 @@ public class VariableListViewTest : BunitContext
 
         Assert.Equal(1, client.RemoveCalls);
         Assert.DoesNotContain("Alder ved diagnose", cut.Markup);
+    }
+
+    [Fact]
+    public async Task View_WhenARemovalIsThrottled_ThenItSaysSoAndTheViewIsStillWorking()
+    {
+        // Acceptance 1 and 3. A 429 here is ordinary: remove is one of the four list writes that
+        // meet the per-address limiter. What answers the bead's trap is bUnit's own unhandled-
+        // exception assertion on the click; the switch after it only adds that the view responds.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"))
+        {
+            ListCount = 2,
+            RemoveThrows = new MuninExplorerRateLimitedException()
+        };
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => cut.FindAll(".munin-explorer-dataitem-main button")[0].Click());
+
+        Assert.Contains("for mange forespørsler", cut.Markup);
+        Assert.DoesNotContain("Kunne ikke endre listen", cut.Markup);
+        Assert.Contains("Alder ved diagnose", cut.Markup);
+
+        var before = client.VariablesCalls;
+        await cut.InvokeAsync(() => cut.Find("select").Change(ListClient.SecondListId.ToString()));
+
+        Assert.True(client.VariablesCalls > before, "the view stopped answering after the failure");
+    }
+
+    [Fact]
+    public async Task View_WhenARemovalFails_ThenTheOrdinaryMessageIsShownAndTheViewIsStillWorking()
+    {
+        // Acceptance 2: the other half of the pair above. Not a throttle, so the reader is told to
+        // try again rather than to wait - one flag for both would have let the same message answer
+        // for two different remedies.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"))
+        {
+            ListCount = 2,
+            RemoveThrows = new InvalidOperationException("the API is unreachable")
+        };
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => cut.FindAll(".munin-explorer-dataitem-main button")[0].Click());
+
+        Assert.Contains("Kunne ikke endre listen", cut.Markup);
+        Assert.DoesNotContain("for mange forespørsler", cut.Markup);
+        Assert.Contains("Alder ved diagnose", cut.Markup);
+
+        var before = client.VariablesCalls;
+        await cut.InvokeAsync(() => cut.Find("select").Change(ListClient.SecondListId.ToString()));
+
+        Assert.True(client.VariablesCalls > before, "the view stopped answering after the failure");
+    }
+
+    [Fact]
+    public void View_WhenTheApiRefusesARemoval_ThenTheReaderIsToldRatherThanLeftGuessing()
+    {
+        // A refusal arrives as false, not as a throw, so the circuit was never at risk here - this
+        // is the second way the same handler can fail, and before this it said nothing at all: the
+        // row stayed on screen and looked like a press that had not registered.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { RemoveRefused = true };
+        var cut = RenderView(client);
+
+        cut.FindAll(".munin-explorer-dataitem-main button")[0].Click();
+
+        Assert.Equal(1, client.RemoveCalls);
+        Assert.Contains("Kunne ikke endre listen", cut.Markup);
+        Assert.Contains("Alder ved diagnose", cut.Markup);
+    }
+
+    [Fact]
+    public async Task View_WhenARemovalSucceedsAfterAFailedRename_ThenTheOlderMessageGoesWithIt()
+    {
+        // Four conditions share one alert region, so a handler that sets its own without emptying
+        // it first leaves the older answer standing over what the reader just did: a removal that
+        // worked, reading as "Kunne ikke endre listen". Nothing else here covers that call.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"))
+        {
+            ListCount = 2,
+            RenameThrows = new InvalidOperationException("the API is unreachable")
+        };
+        var cut = RenderView(client);
+
+        cut.FindAll("input[type=text]")[1].Change("Hjertet mitt");
+        await PressAsync(cut, "Gi nytt navn");
+        Assert.Contains("Kunne ikke endre listen", cut.Markup);
+
+        await cut.InvokeAsync(() => cut.FindAll(".munin-explorer-dataitem-main button")[0].Click());
+
+        Assert.Equal(1, client.RemoveCalls);
+        Assert.DoesNotContain("Alder ved diagnose", cut.Markup);
+        Assert.DoesNotContain("Kunne ikke endre listen", cut.Markup);
     }
 
     [Fact]

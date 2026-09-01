@@ -681,10 +681,31 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             return;
         }
 
-        // The holder raises Changed, and OnStateChanged re-reads the page — so no fetch here.
-        if (await State.RemoveVariablesAsync(_shownList.Value, [variableId]))
+        ForgetFailures();
+
+        try
         {
-            await RetreatFromEmptyPageAsync();
+            // The holder raises Changed, and OnStateChanged re-reads the page — so no fetch here.
+            if (await State.RemoveVariablesAsync(_shownList.Value, [variableId]))
+            {
+                await RetreatFromEmptyPageAsync();
+            }
+            else
+            {
+                _actionFailure = ListActionFailure.Failed;
+            }
+        }
+        catch (MuninExplorerRateLimitedException)
+        {
+            // A removal is one of the four writes that meet the per-address limiter, so a refusal
+            // here is ordinary rather than rare — the same reason the rename above gives.
+            _actionFailure = ListActionFailure.Throttled;
+        }
+        catch (Exception)
+        {
+            // Uncaught, this leaves the event handler and takes the circuit with it: a blank page
+            // and a reconnect banner in place of the list the reader was pruning.
+            _actionFailure = ListActionFailure.Failed;
         }
     }
 
