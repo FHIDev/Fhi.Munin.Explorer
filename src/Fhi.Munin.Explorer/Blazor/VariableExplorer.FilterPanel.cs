@@ -158,9 +158,9 @@ public partial class VariableExplorer
     /// The dataperiode facet — two date fields rather than a list of values.
     /// </summary>
     /// <remarks>
-    /// The <c>Body</c> shape, bounded by the range the API reports so the reader cannot ask for a
-    /// year the selection has no data in. Drawn without a range only when a date is already set,
-    /// so the control that applied a filter cannot vanish under it. (Fhi.Metadata-yxhv1)
+    /// The <c>Body</c> shape. Bounds come from the API's range where it reports one; without one
+    /// the fields are unbounded, and drawn at all only when a date is already set — so the control
+    /// that applied a filter cannot vanish under it. (Fhi.Metadata-yxhv1)
     /// </remarks>
     private FacetGroup? DataPeriodGroup(FilterOptions facets)
     {
