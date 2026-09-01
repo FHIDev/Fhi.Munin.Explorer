@@ -20,7 +20,7 @@
 # The first check alone reads as "the samples are right" and does not say that. Delete a block
 # from BOTH copies and they still agree, while both samples render that part of the component at
 # raw browser defaults — the same visible failure, mirrored. That is not hypothetical either: the
-# kilde view arrived in #43 with nine names of its own and no rules for any of them in either
+# kilde view arrived in #43 with a whole prefix of its own and no rules for any of them in either
 # copy, and a check that only compared the two files called that green.
 #
 # So the second clause reads the names out of src/ and asks the stylesheet, for each, for a rule
@@ -28,6 +28,11 @@
 # draws, so a check that stops at the selector reports a rule nobody wrote a declaration into as
 # coverage. The facet fold is the shape to keep in mind — the selector for it was never the
 # missing half, the declaration that undoes the fold on a host with room for a sidebar was.
+#
+# What it does NOT ask is whether a host has been TOLD about the name. That is
+# `assert-class-names-listed.sh`, which reconciles the same extraction against the README's
+# inventory table: a name can have a rule in both samples and appear in no markdown at all, which
+# is how the eight `munin-explorer-whole*` names went unwritten while this script stayed green.
 #
 # Every name in the `munin-explorer` prefix is OURS: the package owns that prefix, and nothing
 # outside this repository is obliged to style any of it. There used to be a second category —

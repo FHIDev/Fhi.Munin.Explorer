@@ -167,3 +167,12 @@ Both halves fail silently — a block landing in one copy only shows the compone
 sample alone, and a name with no rule anywhere shows it broken in both — so
 `scripts/assert-sample-css-in-step.sh` checks each and runs in CI. Edit one copy, copy it over
 the other, and run the script.
+
+A rule is not the same as a host being told. **Adding a `munin-explorer*` name means adding a row
+to the README's inventory table**, between the `<!-- class-names:start -->` markers, with the kind
+that says what an undefined one costs a host — `handle`, `meaning`, `id` or `prose`.
+`scripts/assert-class-names-listed.sh` reconciles that table against `src/` in both directions and
+runs in CI. It exists because the older check diffs the branch and so can only ever ask about names
+that are new on it: three hand-written counts had gone stale and eight `munin-explorer-whole*`
+names were in no markdown file at all, none of them visible through that window. Do not replace the
+table with a count — a count is what drifted.

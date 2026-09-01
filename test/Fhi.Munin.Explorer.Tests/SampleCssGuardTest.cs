@@ -300,23 +300,62 @@ internal static class Guard
                 start.Environment["HOST_CLASS_NAMES"] = fixture;
             }
 
-            using var process = Process.Start(start)
-                ?? throw new InvalidOperationException($"'{Bash}' did not start.");
-
-            // Both pipes are read before waiting: a script that filled one of them while we waited
-            // on the other would deadlock, and this one prints a whole diff on its first clause.
-            var stdout = process.StandardOutput.ReadToEndAsync();
-            var stderr = process.StandardError.ReadToEndAsync();
-
-            Task.WaitAll([stdout, stderr], TimeSpan.FromMinutes(2));
-            process.WaitForExit(TimeSpan.FromMinutes(2));
-
-            return new GuardRun(process.ExitCode, stdout.Result + stderr.Result);
+            return Run(start);
         }
         finally
         {
             dir.Delete(recursive: true);
         }
+    }
+
+    /// <summary>
+    /// One run of a guard script, started from a directory that is not the checkout — which holds
+    /// every one of them to its claim that it anchors on its own location rather than on where the
+    /// caller happens to be standing.
+    /// </summary>
+    internal static GuardRun RunScript(string script, IReadOnlyDictionary<string, string> environment)
+    {
+        var dir = Directory.CreateTempSubdirectory("munin-guard");
+
+        try
+        {
+            var start = new ProcessStartInfo(Bash!)
+            {
+                WorkingDirectory = dir.FullName,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+            };
+
+            start.ArgumentList.Add(Repo.In("scripts", script));
+
+            foreach (var (key, value) in environment)
+            {
+                start.Environment[key] = value;
+            }
+
+            return Run(start);
+        }
+        finally
+        {
+            dir.Delete(recursive: true);
+        }
+    }
+
+    /// <summary>The process plumbing every guard run shares.</summary>
+    private static GuardRun Run(ProcessStartInfo start)
+    {
+        using var process = Process.Start(start)
+            ?? throw new InvalidOperationException($"'{Bash}' did not start.");
+
+        // Both pipes are read before waiting: a script that filled one of them while we waited on
+        // the other would deadlock, and the css one prints a whole diff on its first clause.
+        var stdout = process.StandardOutput.ReadToEndAsync();
+        var stderr = process.StandardError.ReadToEndAsync();
+
+        Task.WaitAll([stdout, stderr], TimeSpan.FromMinutes(2));
+        process.WaitForExit(TimeSpan.FromMinutes(2));
+
+        return new GuardRun(process.ExitCode, stdout.Result + stderr.Result);
     }
 
     /// <summary>
@@ -364,7 +403,7 @@ internal sealed class ShellFactAttribute : FactAttribute
     {
         if (Guard.Bash is null)
         {
-            Skip = "No bash on PATH, so scripts/assert-sample-css-in-step.sh cannot be run here. " +
+            Skip = "No bash on PATH, so the scripts/assert-*.sh guards cannot be run here. " +
                    "CI runs on ubuntu-latest, where it always can.";
         }
     }

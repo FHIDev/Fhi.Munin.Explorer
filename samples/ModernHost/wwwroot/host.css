@@ -41,8 +41,8 @@
    The same script asks a second question, because the first one alone reads as "the samples are
    right" and does not say that: does this file have a rule for every class name the package
    invents? Two copies can agree about a block neither of them has. They did — the kilde view
-   shipped with nine names of its own and no rules for any of them here, so both samples drew it
-   at raw browser defaults while the files matched perfectly. */
+   shipped with a set of names of its own and no rules for any of them here, so both samples drew
+   it at raw browser defaults while the files matched perfectly. */
 
 :root {
   /* Stiler's palette — abstracts/_variables.scss.
@@ -1225,11 +1225,11 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    vocabulary above, and the kildetype badge is named by nobody but us — see the rule for it
    below.
 
-   They arrived unstyled. The view shipped in #43 with nine names and neither sample had a rule
-   for one of them, so both rendered it at raw browser defaults — a sidebar stacked under a main
-   column, a tag reading as a paragraph — while `assert-sample-css-in-step.sh` said the samples
-   were in step, which they were. That is why the script has a second clause: the names are read
-   out of src/ and each one is asked for a rule. */
+   They arrived unstyled. The view shipped in #43 with a whole prefix of its own and neither sample
+   had a rule for one of them, so both rendered it at raw browser defaults — a sidebar stacked under
+   a main column, a tag reading as a paragraph — while `assert-sample-css-in-step.sh` said the
+   samples were in step, which they were. That is why the script has a second clause: the names are
+   read out of src/ and each one is asked for a rule. */
 /* The name is rendered at whatever heading level keeps the host page's outline unbroken, so it is
    matched by level rather than by element — and its top margin comes off, because the drilldown
    above already supplies the gap and `.headline` would add a second one. */

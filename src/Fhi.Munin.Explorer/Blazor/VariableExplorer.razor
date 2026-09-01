@@ -29,13 +29,16 @@
    The rest of the `munin-explorer-*` prefix is ours and is not that mistake, because neither
    stylesheet is expected to have a rule for it. Most of those names are handles — the root
    `munin-explorer` class below, the DOM ids the codebehind mints, and `-filters`, `-detail`,
-   `-drilldown`, `-kodeverk*`, `-codes*`, `-group`, the nine `-kilde*` names in KildeView and the
-   eight `-datasamling*` ones in DatasamlingView — on elements something else already dresses, a
-   Stiler class they also wear or their own browser default, so an undefined one costs look and not
-   information. Two are not handles and a host outside helsedata has to draw them itself:
-   `munin-explorer-crumb`, which is the only sign the kilde step of the trail can be pressed, and
-   `munin-explorer-period__track` / `__fill` / `__track--ongoing`, which are the period bar
-   itself. README lists every one of them; see also the comment above the `<section>`.
+   `-drilldown`, `-kodeverk*`, `-codes*`, `-group`, the `-kilde*` names in KildeView, the
+   `-datasamling*` ones in DatasamlingView and the `-whole*` ones in VariableView — on elements
+   something else already dresses, a Stiler class they also wear or their own browser default, so
+   an undefined one costs look and not information. Two are not handles and a host outside
+   helsedata has to draw them itself: `munin-explorer-crumb`, which is the only sign the kilde step
+   of the trail can be pressed, and `munin-explorer-period__track` / `__fill` /
+   `__track--ongoing`, which are the period bar itself. README lists every one of them, name by
+   name, with the kind that says what an undefined one costs — no count, because a count is what
+   went stale; `scripts/assert-class-names-listed.sh` fails CI when that list and src/ disagree.
+   See also the comment above the `<section>`.
 
    The result vocabulary is a dependency a host outside helsedata's estate has to meet in full,
    and the component class's remarks say so — including the rule that keeps

@@ -11,6 +11,14 @@
 # What this script can do is make the handoff loud: a name that did not exist on the base branch has
 # to be written down where whoever updates Stiler will read it.
 #
+# It only ever asks about names NEW here, which is a window and not a set: a name already missing on
+# the day this check was written stays missing however many branches pass through it. That is not a
+# guard switched off, it is a guard that by construction looks at a window, and three stale README
+# counts plus eight names in no markdown at all sat outside it for months.
+# `assert-class-names-listed.sh` is the half with no window — it reconciles the whole prefix against
+# the README's inventory on every run. Keep both: this one is about the Stiler handoff, that one
+# about the README being complete, and neither implies the other.
+#
 # Usage:
 #   scripts/assert-new-names-noted-for-hosts.sh
 #   BASE_REF=origin/main scripts/assert-new-names-noted-for-hosts.sh
