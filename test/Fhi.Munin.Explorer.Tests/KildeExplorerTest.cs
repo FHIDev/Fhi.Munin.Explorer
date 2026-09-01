@@ -5,6 +5,7 @@ using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Tests;
@@ -1263,6 +1264,38 @@ public class KildeExplorerTest : BunitContext
             Assert.Equal("false", cut.Find(".munin-explorer-drilldown").GetAttribute("aria-busy"));
             Assert.Equal(als.Id, cut.FindComponent<KildeView>().Instance.Kilde?.Id);
         });
+    }
+
+    [Fact]
+    public async Task Select_WhenTheReaderGoesBackBeforeTheHostHasHandledTheSelection_ThenNoDetailIsFetched()
+    {
+        // Back is drawn inside the drilldown while it loads, so it is clickable in the gap an
+        // asynchronous host leaves — and the fetch resuming after that gap used to reopen the kilde
+        // the reader had just closed. With a synchronous callback the gap does not exist at all.
+        var als = Kilde("Als registeret", "K_ALS");
+        var client = new FakeClient(als).Publishing(als);
+
+        // Asynchronous the way the sample hosts are, which write the URL from this callback.
+        var host = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var cut = RenderWith(client, b => b.Add(
+            c => c.SelectedKildeIdChanged, EventCallback.Factory.Create<Guid?>(this, _ => host.Task)));
+
+        var opening = cut.Find(".munin-explorer-kilder tbody th button")
+            .TriggerEventAsync("onclick", new MouseEventArgs());
+        var closing = cut.Find(".munin-explorer-drilldown button")
+            .TriggerEventAsync("onclick", new MouseEventArgs());
+
+        await cut.InvokeAsync(host.SetResult);
+
+        // Awaited rather than polled: both handlers have run to their end, so a fetch asserted
+        // never to have been issued cannot still be on its way.
+        await opening;
+        await closing;
+
+        Assert.Equal(0, client.DetailCalls);
+        Assert.Empty(cut.FindAll(".munin-explorer-drilldown"));
+        Assert.Equal(["Als registeret"], RowNames(cut));
     }
 
     [Fact]
