@@ -576,6 +576,13 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         {
             await State.SetActiveListAsync(created.Id);
         }
+        catch (MuninExplorerRateLimitedException)
+        {
+            // The list was made and the switch met the limiter. Told apart from the ordinary
+            // failure for the reason the create half above gives: the remedy is to wait.
+            _createFailure = ListActionFailure.Throttled;
+            return;
+        }
         catch (Exception)
         {
             // Same reason as ChooseListAsync above. The list was created; it is the switch to
@@ -681,10 +688,27 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             return;
         }
 
-        // The holder raises Changed, and OnStateChanged re-reads the page — so no fetch here.
-        if (await State.RemoveVariablesAsync(_shownList.Value, [variableId]))
+        ForgetFailures();
+
+        try
         {
-            await RetreatFromEmptyPageAsync();
+            // The holder raises Changed, and OnStateChanged re-reads the page — so no fetch here.
+            if (await State.RemoveVariablesAsync(_shownList.Value, [variableId]))
+            {
+                await RetreatFromEmptyPageAsync();
+            }
+        }
+        catch (MuninExplorerRateLimitedException)
+        {
+            // Removing is one of the writes the limiter counts, and "prøv igjen om litt" is
+            // advice a throttled reader cannot use.
+            _actionFailure = ListActionFailure.Throttled;
+        }
+        catch (Exception)
+        {
+            // Uncaught, this leaves the event handler and takes the circuit with it: a blank
+            // page and a reconnect banner in place of the row the reader wanted gone.
+            _actionFailure = ListActionFailure.Failed;
         }
     }
 
