@@ -18,9 +18,9 @@ namespace Fhi.Munin.Explorer.Tests;
 /// sideways, through the explorer's drill-in — so the parameters it exists for had no coverage.
 /// The parameters are the point, in two different ways. <see cref="KildeView.Sections"/> and
 /// <see cref="KildeView.DataCollectionsHeading"/> are the whole reason this is a shared core rather
-/// than two views. Kelda wires both now — <c>KildeExplorer.razor</c> hands it three sections of its
-/// own and its own word for the datasamling table — and Runa still wires neither, which is why they
-/// are exercised here directly as well: the assertions below are about what the core does with them,
+/// than two views. Kelda wires <c>Sections</c> — <c>KildeExplorer.razor</c> hands it three sections
+/// of its own — and neither explorer wires the heading any more (Fhi.Metadata-rhybi), which is why
+/// both are exercised here directly: the assertions below are about what the core does with them,
 /// and <c>KildeSectionsTest</c> is about the difference they make between the two explorers.
 /// <see cref="KildeView.HeadingLevel"/> and <see cref="KildeView.HeadingId"/> are wired — the
 /// explorer passes both at VariableExplorer.razor:104-107 — and the explorer's tests already follow
@@ -915,11 +915,11 @@ public class KildeViewTest : BunitContext
     [Fact]
     public void DataCollections_WhenTheCallerNamesTheSection_ThenItsWordWinsOverTheSourcesOwn()
     {
-        // Kelda passes "Delkilder og datasamlinger" unconditionally, which is what Munin's Kelda
-        // says, and the source-led default must not quietly take that decision back off it. Asked
-        // of a source with NO delkilder, where the default and the override disagree — on Study()
-        // they agree, and a test that could not tell them apart would pass on an implementation
-        // that ignored the parameter entirely.
+        // Neither explorer passes a heading any more (Fhi.Metadata-rhybi), but a host rendering
+        // this view directly still can, and the source-led default must not quietly take that
+        // decision back off it. Asked of a source with NO delkilder, where the default and the
+        // override disagree — on Study() they agree, and a test that could not tell them apart
+        // would pass on an implementation that ignored the parameter entirely.
         Assert.Contains(
             "Delkilder og datasamlinger",
             BlockHeadings(Render(Kilde(), dataCollectionsHeading: "Delkilder og datasamlinger")));
@@ -1016,9 +1016,8 @@ public class KildeViewTest : BunitContext
     [Fact]
     public void DataCollections_WhenTheExplorerCallsThemSomethingElse_ThenItsOwnHeadingIsUsed()
     {
-        // Runa says "Datasamlinger" over this table; Kelda says "Delkilder og datasamlinger" over
-        // the same data. One word of difference is not worth a second table, so the caller supplies
-        // the word — and the default has to survive the caller supplying nothing.
+        // A caller's own word wins over the source's, and the default has to survive the caller
+        // supplying nothing — which is what both explorers do.
         Assert.Contains("Delkilder og datasamlinger",
                         BlockHeadings(Render(Kilde(), dataCollectionsHeading: "Delkilder og datasamlinger")));
 

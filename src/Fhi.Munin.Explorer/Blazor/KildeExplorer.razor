@@ -76,23 +76,13 @@
 
         @if (_kilde is { } kilde)
         {
-            @* Kelda's own sections go in through Sections, and Kelda's own word for the
-               datasamling table goes in through DataCollectionsHeading — Runa says
-               "Datasamlinger" over the same rows. Neither is markup added to KildeView, which is
-               the whole reason that component is a core with slots: a boolean per Kelda section
-               would make that component the one place where the two explorers leak into each
-               other, and every later difference would add another flag.
-
-               Measured on the same kilde in both explorers on 2026-08-20: the name block, the
-               eight metadata groups and the two sidebar boxes are identical, the datasamling
-               section is the same rows under a different word, and the three below are Kelda's
-               alone. They are written here, in Kelda's own markup, so KildeView never learns which
-               explorer is calling it. *@
+            @* Kelda's sections go into KildeView through Sections, never as markup added to it: a
+               flag per section would make it the one place the two explorers leak into each other.
+               No DataCollectionsHeading — the heading follows the source (Fhi.Metadata-rhybi). *@
             <KildeView Kilde="kilde"
                        Language="@Language"
                        HeadingLevel="@KildeLevel"
-                       HeadingId="@DetailHeadingId"
-                       DataCollectionsHeading="@T.HeadingDelkilderAndDataCollections">
+                       HeadingId="@DetailHeadingId">
                 <Sections>
                     @* At SectionLevel rather than a literal h2: these have to land on the level
                        KildeView gives its own block headings, or "Variabler" reads as part of the
