@@ -69,6 +69,15 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// <summary>The name field of the create form, which its label points at.</summary>
     private string NewListNameId => $"munin-explorer-new-list-{_instance}";
 
+    /// <summary>The name field of the rename form, which its own label points at.</summary>
+    private string RenameListNameId => $"munin-explorer-rename-list-{_instance}";
+
+    /// <summary>The one control that arms the deletion question and stands it down again.</summary>
+    private string DeleteButtonId => $"munin-explorer-delete-list-{_instance}";
+
+    /// <summary>The question, which the button that acts on it is described by.</summary>
+    private string ConfirmDeleteId => $"munin-explorer-confirm-delete-{_instance}";
+
     private Page<VariableListItem>? _page;
     private Guid? _shownList;
     private int _pageNumber = 1;
@@ -79,6 +88,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     private string? _dataTypeNamesLanguage;
     private string _newName = "";
+    private string _renameName = "";
+    private bool _confirmingDelete;
+    private ListActionFailure _actionFailure;
     private bool _includeKodeverk;
     private bool _downloading;
     private DownloadFailure _downloadFailure;
@@ -108,6 +120,36 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     {
         DownloadFailure.Throttled => T.RateLimitError,
         DownloadFailure.Failed => T.DownloadError,
+        _ => null
+    };
+
+    /// <summary>
+    /// One page read a rename may skip. Consumed by the first notification rather than held for the
+    /// call, or a removal raised mid-rename would be swallowed with it.
+    /// </summary>
+    private bool _skipOnePageRead;
+
+    /// <summary>Why a rename or a delete did not happen. The shape the save button uses.</summary>
+    private enum ListActionFailure
+    {
+        /// <summary>Nothing has gone wrong.</summary>
+        None = 0,
+
+        /// <summary>It threw or was refused, for a reason the reader can only try again on.</summary>
+        Failed,
+
+        /// <summary>The API refused it because too many requests arrived — HTTP 429.</summary>
+        Throttled
+    }
+
+    /// <summary>
+    /// What the alert region says about the last rename or delete. A throttle is told apart from an
+    /// ordinary failure because the remedy differs: wait, rather than try again.
+    /// </summary>
+    private string? ActionMessage => _actionFailure switch
+    {
+        ListActionFailure.Throttled => T.RateLimitError,
+        ListActionFailure.Failed => T.ListActionError,
         _ => null
     };
 
@@ -360,14 +402,27 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// </summary>
     private void OnStateChanged() => InvokeAsync(async () =>
     {
-        await LoadPageAsync();
+        if (_skipOnePageRead)
+        {
+            _skipOnePageRead = false;
+        }
+        else
+        {
+            await LoadPageAsync();
+        }
+
         StateHasChanged();
     });
 
     /// <summary>Reads the page currently being looked at. Signed out this calls nothing.</summary>
     private async Task LoadPageAsync()
     {
-        if (State?.IsAuthenticated != true || _shownList is null)
+        // A list the holder no longer has is one somebody deleted. Asking for its variables gets
+        // null back — "no such list of yours" — which renders as an empty table for a list that is
+        // gone, so the ask is not made at all and the shown list is repointed by the caller.
+        if (State?.IsAuthenticated != true
+            || _shownList is null
+            || !Lists.Any(l => l.Id == _shownList))
         {
             _page = null;
             return;
@@ -404,7 +459,19 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         _shownList = target;
         _pageNumber = 1;
+        ForgetListControls();
         await LoadPageAsync();
+    }
+
+    /// <summary>
+    /// Drops what the rename and delete controls held for the list that has left the screen. The
+    /// confirmation is the one that matters: armed on one list, it would delete another.
+    /// </summary>
+    private void ForgetListControls()
+    {
+        _confirmingDelete = false;
+        _renameName = "";
+        _actionFailure = ListActionFailure.None;
     }
 
     private async Task ChooseListAsync(ChangeEventArgs e)
@@ -416,6 +483,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         _shownList = id;
         _pageNumber = 1;
+        ForgetListControls();
 
         try
         {
@@ -460,10 +528,100 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         _newName = "";
+        ForgetListControls();
         await State.SetActiveListAsync(created.Id);
         _shownList = created.Id;
         _pageNumber = 1;
         await LoadPageAsync();
+    }
+
+    /// <summary>
+    /// Gives the list on screen the name in the rename field. Nothing is read again: the holder
+    /// patches its own copy and tells the other surfaces.
+    /// </summary>
+    private async Task RenameListAsync()
+    {
+        var name = _renameName.Trim();
+
+        if (State is null || _shownList is null || name.Length == 0)
+        {
+            return;
+        }
+
+        _actionFailure = ListActionFailure.None;
+        _skipOnePageRead = true;
+
+        try
+        {
+            if (await State.RenameAsync(_shownList.Value, name))
+            {
+                _renameName = "";
+            }
+            else
+            {
+                _actionFailure = ListActionFailure.Failed;
+            }
+        }
+        catch (MuninExplorerRateLimitedException)
+        {
+            // These writes go through the client every read on the page uses, and meet the same
+            // per-address limiter, so a refusal here is ordinary rather than rare.
+            _actionFailure = ListActionFailure.Throttled;
+        }
+        catch (Exception)
+        {
+            // An uncaught throw out of an event handler takes the whole circuit down, which is a
+            // far worse answer to a failed rename than a line of text.
+            _actionFailure = ListActionFailure.Failed;
+        }
+        finally
+        {
+            // A rename that never reached the holder raised nothing, so the allowance would
+            // otherwise sit here and be spent on somebody else's notification.
+            _skipOnePageRead = false;
+        }
+    }
+
+    /// <summary>
+    /// Deletes the list on screen, once confirmed. The next list is taken from the holder rather
+    /// than picked here, so this view and the explorer's save button stay on the same one.
+    /// </summary>
+    private async Task DeleteListAsync()
+    {
+        if (State is null || _shownList is null)
+        {
+            return;
+        }
+
+        _confirmingDelete = false;
+        _actionFailure = ListActionFailure.None;
+
+        try
+        {
+            if (!await State.DeleteAsync(_shownList.Value))
+            {
+                _actionFailure = ListActionFailure.Failed;
+                return;
+            }
+
+            await State.EnsureActiveListAsync();
+        }
+        catch (MuninExplorerRateLimitedException)
+        {
+            _actionFailure = ListActionFailure.Throttled;
+        }
+        catch (Exception)
+        {
+            // Caught for the reason the rename above gives. The list may well be gone on the
+            // server, so the view is repointed below whichever of the two calls threw.
+            _actionFailure = ListActionFailure.Failed;
+        }
+
+        // Put back over the clearing the repoint does: that one is for a list leaving the screen
+        // under this view, and this is the answer to what the reader just pressed.
+        var failure = _actionFailure;
+        await ShowActiveListAsync();
+        _actionFailure = failure;
     }
 
     private async Task RemoveAsync(Guid variableId)

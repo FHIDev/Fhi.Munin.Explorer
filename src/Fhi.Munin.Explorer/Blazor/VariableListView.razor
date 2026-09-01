@@ -59,6 +59,47 @@
                     @onclick="CreateListAsync">@T.CreateList</button>
         </div>
 
+        @* Both act on the list on screen, so neither is drawn when there is none. Same shapes as
+           the create form above: a real label with for/id, and aria-disabled rather than disabled
+           so a successful rename does not drop focus to <body> by clearing the field. *@
+        @if (_shownList is not null)
+        {
+            <div>
+                <label class="form-element__label" for="@RenameListNameId">@T.RenameListName</label>
+                <input type="text"
+                       id="@RenameListNameId"
+                       @bind="_renameName"
+                       @bind:event="onchange" />
+                <button class="hd-button-square button-square--ghost"
+                        type="button"
+                        aria-disabled="@AriaDisabled(_renameName.Trim().Length > 0)"
+                        @onclick="RenameListAsync">@T.RenameList</button>
+
+                @* Two steps because the API offers no undo, and in the page rather than a JS
+                   confirm a host's Content-Security-Policy may suppress. One control saying what a
+                   press does now, so neither step removes the element under the reader's focus. *@
+                <button class="hd-button-square button-square--ghost"
+                        type="button"
+                        id="@DeleteButtonId"
+                        aria-expanded="@(_confirmingDelete ? "true" : "false")"
+                        @onclick="() => _confirmingDelete = !_confirmingDelete">
+                    @(_confirmingDelete ? T.ConfirmDeleteNo : T.DeleteList)
+                </button>
+
+                @if (_confirmingDelete)
+                {
+                    @* The question describes the button that acts on it rather than being announced
+                       on its own: a role="alert" inserted and filled in one update is announced
+                       unreliably, which the alert region below is already shaped around. *@
+                    <span id="@ConfirmDeleteId">@T.ConfirmDeleteList</span>
+                    <button class="hd-button-square button-square--ghost"
+                            type="button"
+                            aria-describedby="@ConfirmDeleteId"
+                            @onclick="DeleteListAsync">@T.ConfirmDeleteYes</button>
+                }
+            </div>
+        }
+
         @* Only when there is something to download. A button that exports an empty list would
            produce a file with a header row and nothing under it. *@
         @if (_page is not null && _page.TotalCount > 0)
@@ -91,7 +132,7 @@
         @* Always in the DOM, empty when nothing is wrong — a role="alert" inserted and filled in the
            same update is announced unreliably. Same shape as the explorer's own alert region. *@
         <div role="alert" aria-live="assertive" aria-atomic="true">
-            @(_failed ? T.ListLoadError : DownloadMessage)
+            @(_failed ? T.ListLoadError : DownloadMessage ?? ActionMessage)
         </div>
 
         @if (Lists.Count == 0)

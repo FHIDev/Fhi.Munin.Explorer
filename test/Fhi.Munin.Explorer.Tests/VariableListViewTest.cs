@@ -37,7 +37,20 @@ public class VariableListViewTest : BunitContext
         public int VariablesCalls { get; private set; }
         public int RemoveCalls { get; private set; }
         public int CreateCalls { get; private set; }
+        public int ListsCalls { get; private set; }
+        public int RenameCalls { get; private set; }
+        public int DeleteCalls { get; private set; }
+        public string? LastRenamedTo { get; private set; }
         public int LastPageAsked { get; private set; }
+
+        /// <summary>
+        /// Every list whose variables were asked for. Which list, not how many times: a view asking
+        /// for a deleted list makes exactly as many calls as one asking for a live list.
+        /// </summary>
+        public IReadOnlyList<Guid> VariablesAskedFor => _askedFor;
+
+        private readonly List<Guid> _askedFor = [];
+        private readonly HashSet<Guid> _deleted = [];
         public int PageSize { get; init; } = 25;
         public bool HasList { get; init; } = true;
 
@@ -53,12 +66,15 @@ public class VariableListViewTest : BunitContext
         private readonly List<VariableListItem> _items = [.. items];
 
         public static readonly Guid SecondListId = new("22222222-2222-2222-2222-222222222222");
+        public static readonly Guid ThirdListId = new("33333333-3333-3333-3333-333333333333");
 
         /// <summary>How many lists the reader has. Two of them makes the picker appear.</summary>
         public int ListCount { get; init; } = 1;
 
         public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default)
         {
+            ListsCalls++;
+
             if (ListsThrow)
             {
                 throw new InvalidOperationException("too many requests");
@@ -76,7 +92,52 @@ public class VariableListViewTest : BunitContext
                 lists.Add(new VariableList { Id = SecondListId, Name = "Hjerte og kar" });
             }
 
-            return Task.FromResult<IReadOnlyList<VariableList>>(lists);
+            if (ListCount > 2)
+            {
+                lists.Add(new VariableList { Id = ThirdListId, Name = "Kreft og svulster" });
+            }
+
+            return Task.FromResult<IReadOnlyList<VariableList>>([.. lists.Where(l => !_deleted.Contains(l.Id))]);
+        }
+
+        /// <summary>How a rename should fail, or null for one the API accepts.</summary>
+        public Exception? RenameThrows { get; init; }
+
+        /// <summary>How a delete should fail, or null for one the API accepts.</summary>
+        public Exception? DeleteThrows { get; init; }
+
+        /// <summary>Run while the rename is still in flight, so a test can raise another change.</summary>
+        public Func<Task>? DuringRename { get; init; }
+
+        public override async Task<bool> RenameMyListAsync(Guid id, string name, CancellationToken cancellationToken = default)
+        {
+            RenameCalls++;
+
+            if (RenameThrows is not null)
+            {
+                throw RenameThrows;
+            }
+
+            if (DuringRename is not null)
+            {
+                await DuringRename();
+            }
+
+            LastRenamedTo = name;
+            return true;
+        }
+
+        public override Task<bool> DeleteMyListAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            DeleteCalls++;
+
+            if (DeleteThrows is not null)
+            {
+                throw DeleteThrows;
+            }
+
+            _deleted.Add(id);
+            return Task.FromResult(true);
         }
 
         public override Task<VariableList> CreateMyListAsync(string name, CancellationToken cancellationToken = default)
@@ -90,6 +151,15 @@ public class VariableListViewTest : BunitContext
         {
             VariablesCalls++;
             LastPageAsked = page;
+            _askedFor.Add(id);
+
+            // The API's own answer for a list the caller no longer has: not an error, and not an
+            // empty list either. A view that reads it as "empty" draws a table for a list that is
+            // gone, which is the failure Fhi.Metadata-fjiba is about.
+            if (_deleted.Contains(id))
+            {
+                return Task.FromResult<Page<VariableListItem>?>(null);
+            }
 
             // Honours the size the component asked for, not the fake's own: slicing by an
             // internal number would hide a component that sent an unexpected page size.
@@ -788,6 +858,227 @@ public class VariableListViewTest : BunitContext
 
         Assert.Equal("Navn på ny liste", AccessibleName.Of(first));
         Assert.Equal("Navn på ny liste", AccessibleName.Of(second));
+    }
+
+    /// <summary>Presses the button whose visible word is exactly this, the way a reader finds it.</summary>
+    private static Task PressAsync(IRenderedComponent<VariableListView> cut, string word) =>
+        cut.InvokeAsync(() => cut.FindAll("button")
+            .First(b => b.TextContent.Trim() == word).Click());
+
+    [Fact]
+    public async Task View_WhenTheListIsRenamed_ThenTheNewNameShowsWithoutReadingAnythingAgain()
+    {
+        // Acceptance 1 of Fhi.Metadata-fjiba. The holder patches its own copy and tells the other
+        // surfaces, so a case asserting only that the name changed would pass for a view that
+        // refetched. The call counts are what say it did not.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListCount = 2 };
+        var cut = RenderView(client);
+
+        var lists = client.ListsCalls;
+        var variables = client.VariablesCalls;
+
+        cut.FindAll("input[type=text]")[1].Change("Hjertet mitt");
+        await PressAsync(cut, "Gi nytt navn");
+
+        Assert.Equal(1, client.RenameCalls);
+        Assert.Equal("Hjertet mitt", client.LastRenamedTo);
+        Assert.Equal(lists, client.ListsCalls);
+        Assert.Equal(variables, client.VariablesCalls);
+
+        // On screen in the picker, which is where the reader's own word for a list is shown.
+        Assert.Contains("Hjertet mitt", cut.Markup);
+        Assert.DoesNotContain("Mine hjertevariabler", cut.Markup);
+    }
+
+    [Fact]
+    public async Task View_WhenTheRenameIsThrottled_ThenItSaysSoAndTheViewIsStillWorking()
+    {
+        // A 429 here is ordinary: these writes meet the same limiter as every read on the page.
+        // Asserting the words alone would pass for a handler that threw and took the circuit with
+        // it, so switching list afterwards is what says the handler returned.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"))
+        {
+            ListCount = 2,
+            RenameThrows = new MuninExplorerRateLimitedException()
+        };
+        var cut = RenderView(client);
+
+        cut.FindAll("input[type=text]")[1].Change("Hjertet mitt");
+        await PressAsync(cut, "Gi nytt navn");
+
+        // The throttle's own words: the catalogue is up and the reader is being asked to wait,
+        // which the ordinary "try again shortly" does not say.
+        Assert.Contains("for mange forespørsler", cut.Markup);
+        Assert.DoesNotContain("Kunne ikke endre listen", cut.Markup);
+
+        var before = client.VariablesCalls;
+        await cut.InvokeAsync(() => cut.Find("select").Change(ListClient.SecondListId.ToString()));
+
+        Assert.True(client.VariablesCalls > before, "the view stopped answering after the failure");
+    }
+
+    [Fact]
+    public async Task View_WhenTheDeleteFails_ThenTheOrdinaryMessageIsShownAndTheListStays()
+    {
+        // The other half of the pair above: not a throttle, so the reader is told to try again
+        // rather than to wait, and the list is still on screen because nothing on the server
+        // changed.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"))
+        {
+            ListCount = 2,
+            DeleteThrows = new InvalidOperationException("the API is unreachable")
+        };
+        var cut = RenderView(client);
+
+        await PressAsync(cut, "Slett listen");
+        await PressAsync(cut, "Ja, slett listen");
+
+        Assert.Contains("Kunne ikke endre listen", cut.Markup);
+        Assert.Contains("Mine hjertevariabler", cut.Markup);
+
+        var before = client.VariablesCalls;
+        await cut.InvokeAsync(() => cut.Find("select").Change(ListClient.SecondListId.ToString()));
+
+        Assert.True(client.VariablesCalls > before, "the view stopped answering after the failure");
+    }
+
+    [Fact]
+    public async Task View_WhenDeleteIsPressed_ThenNothingGoesUntilItIsConfirmed()
+    {
+        // Acceptance 4. A list can have taken a long time to build and the API offers no undo, so
+        // the first press only asks.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListCount = 2 };
+        var cut = RenderView(client);
+
+        var armed = cut.Find("button[aria-expanded]").Id;
+
+        await PressAsync(cut, "Slett listen");
+
+        Assert.Equal(0, client.DeleteCalls);
+        Assert.Contains("Slett denne listen?", cut.Markup);
+
+        // The same control, still there, now saying what a second press does. Swapping it for a
+        // different one would drop the focus of whoever just pressed it to <body>.
+        Assert.Equal(armed, cut.Find("button[aria-expanded='true']").Id);
+
+        await PressAsync(cut, "Avbryt");
+
+        Assert.Equal(0, client.DeleteCalls);
+        Assert.Equal(armed, cut.Find("button[aria-expanded='false']").Id);
+        Assert.Contains("Mine hjertevariabler", cut.Markup);
+    }
+
+    [Fact]
+    public async Task View_WhenTheShownListChanges_ThenAnArmedConfirmationDoesNotGoWithIt()
+    {
+        // Two mounts share one holder, so another surface can move the active list under this one.
+        // A confirmation armed on the list that has left would delete a list the reader never
+        // looked at, which is the one press in this view with nothing behind it to undo.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListCount = 2 };
+        var cut = RenderView(client);
+
+        await PressAsync(cut, "Slett listen");
+        Assert.Contains("Slett denne listen?", cut.Markup);
+
+        var state = Services.GetRequiredService<VariableListState>();
+        await cut.InvokeAsync(() => state.SetActiveListAsync(ListClient.SecondListId));
+        cut.Render(p => p.Add(c => c.IsAuthenticated, true));
+
+        Assert.DoesNotContain("Slett denne listen?", cut.Markup);
+        Assert.Equal(0, client.DeleteCalls);
+    }
+
+    [Fact]
+    public async Task View_WhenAVariableGoesWhileARenameIsInFlight_ThenTheRowStillLeaves()
+    {
+        // The rename is allowed one notification without a page read, because a rename cannot change
+        // what is in the list. An allowance held for the whole call rather than spent on the first
+        // notification to arrive swallows the removal's as well, and the row stays on screen.
+        var item = Item("Alder ved diagnose", "V_BDR.ALDER");
+        VariableListState state = null!;
+
+        var client = new ListClient(item)
+        {
+            ListCount = 2,
+            DuringRename = () => state.RemoveVariablesAsync(ListId, [item.VariableId])
+        };
+
+        var cut = RenderView(client);
+        state = Services.GetRequiredService<VariableListState>();
+
+        cut.FindAll("input[type=text]")[1].Change("Hjertet mitt");
+        await PressAsync(cut, "Gi nytt navn");
+
+        Assert.Contains("Hjertet mitt", cut.Markup);
+        Assert.DoesNotContain("Alder ved diagnose", cut.Markup);
+    }
+
+    [Fact]
+    public async Task View_WhenAListIsDeleted_ThenItLeavesThePicker()
+    {
+        // Acceptance 2. Three lists so the picker outlives the deletion — with two it disappears
+        // along with the choice, and the case would pass without the entry ever being removed.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListCount = 3 };
+        var cut = RenderView(client);
+
+        Assert.Equal(3, cut.FindAll("select option").Count);
+
+        await PressAsync(cut, "Slett listen");
+        await PressAsync(cut, "Ja, slett listen");
+
+        Assert.Equal(1, client.DeleteCalls);
+
+        var options = cut.FindAll("select option").Select(o => o.TextContent.Trim()).ToList();
+
+        Assert.Equal(2, options.Count);
+        Assert.DoesNotContain("Mine hjertevariabler", options);
+    }
+
+    [Fact]
+    public async Task View_WhenTheActiveListIsDeleted_ThenAnotherBecomesActiveAndTheDeadOneIsNotAskedFor()
+    {
+        // Acceptance 3, and the trap the bead names. ActiveListId went on pointing at the list just
+        // deleted, so the view asked for its variables; the API answers null — "no such list of
+        // yours" — and a view reading null as "empty" draws a table for a list that is gone.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListCount = 2 };
+        var cut = RenderView(client);
+
+        var state = Services.GetRequiredService<VariableListState>();
+
+        Assert.Equal(ListId, state.ActiveListId);
+
+        var askedBefore = client.VariablesAskedFor.Count;
+
+        await PressAsync(cut, "Slett listen");
+        await PressAsync(cut, "Ja, slett listen");
+
+        // The explorer's save button reads this same field, and would otherwise go on writing into
+        // a list the API no longer has.
+        Assert.Equal(ListClient.SecondListId, state.ActiveListId);
+        Assert.DoesNotContain(ListId, client.VariablesAskedFor.Skip(askedBefore));
+
+        Assert.Contains("Hjerte og kar", cut.Markup);
+        Assert.DoesNotContain("Mine hjertevariabler", cut.Markup);
+    }
+
+    [Fact]
+    public async Task View_WhenTheOnlyListIsDeleted_ThenNothingIsActiveAndTheReaderIsToldTheyHaveNone()
+    {
+        // The other half of "another list becomes active, or none". With nothing left to point at,
+        // a view that kept the deleted id would show an empty table where the reader should be told
+        // they have no lists.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
+        var cut = RenderView(client);
+
+        var state = Services.GetRequiredService<VariableListState>();
+        var askedBefore = client.VariablesAskedFor.Count;
+
+        await PressAsync(cut, "Slett listen");
+        await PressAsync(cut, "Ja, slett listen");
+
+        Assert.Null(state.ActiveListId);
+        Assert.DoesNotContain(ListId, client.VariablesAskedFor.Skip(askedBefore));
+        Assert.Contains("ingen variabellister", cut.Markup);
     }
 
     [Fact]

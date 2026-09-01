@@ -202,6 +202,17 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
         }
 
         _lists = [.. _lists.Where(l => l.Id != id)];
+
+        // Left pointing at the list just deleted, the next ask would read the membership of a list
+        // the API no longer has, and the save button would offer to remove variables from it.
+        // Cleared rather than repointed: which list becomes active is the surface's call.
+        if (_activeListId == id)
+        {
+            _activeListId = null;
+            _membershipLoaded = false;
+            _saved.Clear();
+        }
+
         Changed?.Invoke();
         return true;
     }
