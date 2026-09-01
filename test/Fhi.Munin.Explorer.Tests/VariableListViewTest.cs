@@ -154,6 +154,10 @@ public class VariableListViewTest : BunitContext
         /// </remarks>
         public bool ActivateThrows { get; set; }
 
+        /// <summary>Set when the switch to the list just created is refused with the API's 429.</summary>
+        /// <remarks>Its own switch beside <see cref="ActivateThrows"/>, for the reason the export pair has one.</remarks>
+        public bool ActivateThrottles { get; set; }
+
         private VariableList? _created;
 
         public override Task<VariableList> CreateMyListAsync(string name, CancellationToken cancellationToken = default)
@@ -189,9 +193,17 @@ public class VariableListViewTest : BunitContext
                 return Task.FromResult<Page<VariableListItem>?>(null);
             }
 
-            if (ActivateThrows && _created is not null && id == _created.Id)
+            if (_created is not null && id == _created.Id)
             {
-                throw new InvalidOperationException("the membership read is gone");
+                if (ActivateThrottles)
+                {
+                    throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+                }
+
+                if (ActivateThrows)
+                {
+                    throw new InvalidOperationException("the membership read is gone");
+                }
             }
 
             // Honours the size the component asked for, not the fake's own: slicing by an
@@ -258,10 +270,20 @@ public class VariableListViewTest : BunitContext
             return Task.FromResult(new FilterOptions { DataTypes = DataTypeFacets });
         }
 
+        /// <summary>How a removal should fail, or null for one the API accepts.</summary>
+        /// <remarks>Settable, not init: a test turns it off to show the view still answers after.</remarks>
+        public Exception? RemoveThrows { get; set; }
+
         public override Task<bool> RemoveVariablesFromMyListAsync(
             Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default)
         {
             RemoveCalls++;
+
+            if (RemoveThrows is not null)
+            {
+                throw RemoveThrows;
+            }
+
             _items.RemoveAll(i => variableIds.Contains(i.VariableId));
             return Task.FromResult(true);
         }
@@ -666,6 +688,29 @@ public class VariableListViewTest : BunitContext
         Assert.Equal(1, client.CreateCalls);
         Assert.Contains("Kunne ikke hente listen", cut.Markup);
         Assert.NotNull(cut.Find("input[type=text]"));
+    }
+
+    [Fact]
+    public void View_WhenTheSwitchToTheNewListIsRateLimited_ThenItSaysSoAndTheViewIsStillWorking()
+    {
+        // The other half of the pair above: refused for too many requests, not lost, so the
+        // reader is asked to wait. The words alone would pass for a handler that threw and took
+        // the circuit with it, so the second create is what says it returned.
+        var client = new ListClient { HasList = false, ActivateThrottles = true };
+        var cut = RenderView(client);
+
+        cut.Find("input[type=text]").Change("Hjerte og kar");
+        cut.Find(".munin-explorer-container button").Click();
+
+        Assert.Contains("for mange forespørsler", cut.Markup);
+        Assert.DoesNotContain("Kunne ikke hente listen", cut.Markup);
+
+        client.ActivateThrottles = false;
+        cut.Find("input[type=text]").Change("Hjerte og kar");
+        cut.Find(".munin-explorer-container button").Click();
+
+        Assert.Equal(2, client.CreateCalls);
+        Assert.DoesNotContain("for mange forespørsler", cut.Markup);
     }
 
     [Fact]
@@ -1086,6 +1131,54 @@ public class VariableListViewTest : BunitContext
 
         Assert.Contains("Kunne ikke endre listen", cut.Markup);
         Assert.Contains("Mine hjertevariabler", cut.Markup);
+
+        var before = client.VariablesCalls;
+        await cut.InvokeAsync(() => cut.Find("select").Change(ListClient.SecondListId.ToString()));
+
+        Assert.True(client.VariablesCalls > before, "the view stopped answering after the failure");
+    }
+
+    [Fact]
+    public async Task View_WhenRemovingAVariableIsRateLimited_ThenItSaysSoAndTheViewIsStillWorking()
+    {
+        // Remove is one of the four verbs the limiter counts, and unguarded the 429 left the
+        // event handler and took the circuit with it. The switch of list afterwards is what says
+        // the handler returned - the sentence on its own would be there either way.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"))
+        {
+            ListCount = 2,
+            RemoveThrows = new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30))
+        };
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => cut.FindAll(".munin-explorer-dataitem-main button")[0].Click());
+
+        Assert.Contains("for mange forespørsler", cut.Markup);
+        Assert.DoesNotContain("Kunne ikke endre listen", cut.Markup);
+
+        var before = client.VariablesCalls;
+        await cut.InvokeAsync(() => cut.Find("select").Change(ListClient.SecondListId.ToString()));
+
+        Assert.True(client.VariablesCalls > before, "the view stopped answering after the failure");
+    }
+
+    [Fact]
+    public async Task View_WhenRemovingAVariableFails_ThenTheOrdinaryMessageIsShownAndTheRowStays()
+    {
+        // The converse of the case above: not a throttle, so the reader is told to try again
+        // rather than to wait, and the row is still there because nothing on the server changed.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"))
+        {
+            ListCount = 2,
+            RemoveThrows = new InvalidOperationException("the API is unreachable")
+        };
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => cut.FindAll(".munin-explorer-dataitem-main button")[0].Click());
+
+        Assert.Contains("Kunne ikke endre listen", cut.Markup);
+        Assert.DoesNotContain("for mange forespørsler", cut.Markup);
+        Assert.Contains("Alder ved diagnose", cut.Markup);
 
         var before = client.VariablesCalls;
         await cut.InvokeAsync(() => cut.Find("select").Change(ListClient.SecondListId.ToString()));
