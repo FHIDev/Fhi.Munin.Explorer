@@ -158,28 +158,29 @@ public partial class VariableExplorer
     /// The dataperiode facet — two date fields rather than a list of values.
     /// </summary>
     /// <remarks>
-    /// The <c>Body</c> shape, and the reason it exists. Bounded by the range the API reports for the
-    /// current selection, so the reader cannot ask for a year the selection has no data in.
-    /// <para>
-    /// Drawn only where the API reports a range at all. A pair of unbounded date fields would still
-    /// filter, but the bounds are half of what the facet tells a reader — without them it says
-    /// nothing about what there is to find.
-    /// </para>
+    /// The <c>Body</c> shape. Bounds come from the API's range where it reports one; without one
+    /// the fields are unbounded, and drawn at all only when a date is already set — so the control
+    /// that applied a filter cannot vanish under it. (Fhi.Metadata-yxhv1)
     /// </remarks>
     private FacetGroup? DataPeriodGroup(FilterOptions facets)
     {
-        if (facets.DateRange is not { } range || (range.Min is null && range.Max is null))
-        {
-            return null;
-        }
-
         // One per bound the reader has set, so a folded dataperiode says it is narrowing the way
         // every other facet does. Without it the summary reads plain "Dataperiode" over an active
         // date filter — the facet holds no values to count.
         var chosen = (_filter.DataFrom is null ? 0 : 1) + (_filter.DataTo is null ? 0 : 1);
+        var range = facets.DateRange;
+        var reported = range is { } r && (r.Min is not null || r.Max is not null);
+
+        // Drawn when the API reports a range, and drawn regardless whenever the reader has a date
+        // set. A date filter matching nothing is exactly when the API stops reporting a range, so
+        // dropping the facet then takes away the only control that can undo it. (Fhi.Metadata-yxhv1)
+        if (!reported && chosen == 0)
+        {
+            return null;
+        }
 
         return new FacetGroup("dataperiode", T.FieldDataPeriod, OpenByDefault: false, [],
-                              Body: DateFields(range), ChosenCount: chosen);
+                              Body: DateFields(range ?? new DateInterval()), ChosenCount: chosen);
     }
 
     /// <summary>The from and to fields, each bounded by the range and by the other.</summary>
@@ -230,10 +231,23 @@ public partial class VariableExplorer
         // search would run with no one waiting on it, and the exception would surface as an
         // unobserved task rather than in the panel's own alert region.
         builder.AddAttribute(seq + 16, "onchange",
-            EventCallback.Factory.CreateBinder<string?>(this, raw => set(Parse(raw)), Iso(value)));
+            EventCallback.Factory.CreateBinder<string?>(this, raw =>
+            {
+                var typed = Parse(raw);
+
+                return Within(typed, min, max) ? set(typed) : Task.CompletedTask;
+            }, Iso(value)));
 
         builder.CloseElement();
     }
+
+    /// <summary>Whether a typed date is inside the bounds the field itself advertises.</summary>
+    /// <remarks>
+    /// A date input reports a complete value once all three segments hold digits, so a half-typed
+    /// year arrives as 0002 and would otherwise be applied. (Fhi.Metadata-yxhv1)
+    /// </remarks>
+    private static bool Within(DateOnly? value, DateOnly? min, DateOnly? max) =>
+        value is not { } date || ((min is not { } lo || date >= lo) && (max is not { } hi || date <= hi));
 
     private string DateFromId => $"munin-explorer-date-from-{_instance}";
 
