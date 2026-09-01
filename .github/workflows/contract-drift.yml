@@ -16,11 +16,17 @@ name: Contract drift
 #
 # Splitting the repositories was the decision; this is the thing that makes it safe. Turning it
 # off puts back exactly the gap it was written to close. See docs/contract-drift.md.
+# THE SCHEDULE IS RETIRED, and the job now runs elsewhere. runa.munin.skytest.fhi.no is
+# geo-filtered: Norwegian traffic is admitted, GitHub's Azure-hosted runners are not. This
+# workflow ran 12 times between 2026-08-21 and 2026-09-01 and was never once green — 8 runs
+# hung until the job timeout, 4 timed out explicitly — while the contracts fit the live API
+# perfectly the whole time. It was not checking anything.
+#
+# The check moved to a sidecar on the devbox, which is inside the permitted network:
+# forgeBench/devbox/chart/templates/drift.yaml. Nothing here is deleted, because the
+# unreachable-vs-drift diagnosis below is what stops someone editing correct DTOs, and it is
+# still worth having by hand. Dispatch it if you are on a runner that can reach the host.
 on:
-  schedule:
-    # 04:17 UTC. Off the hour on purpose — the top of the hour is when every scheduled workflow on
-    # GitHub starts at once, and the queue behind it is minutes long.
-    - cron: '17 4 * * *'
   workflow_dispatch:
     inputs:
       api-base-url:
