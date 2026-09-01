@@ -1,5 +1,4 @@
 using Fhi.Munin.Explorer.Contracts;
-using Microsoft.AspNetCore.Components;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>The drill-in view for the kilde or datasamling a variable belongs to.</summary>
@@ -99,34 +98,4 @@ public partial class VariableExplorer
 
     /// <summary>Muted while it is loading, Stiler's infobox when something went wrong.</summary>
     private string SourceStatusClass => _sourceError is null ? "caption" : "infobox infobox--bg-yellow";
-
-    /// <summary>
-    /// The panel's heading: the owner's name as the variable itself records it.
-    /// </summary>
-    /// <remarks>
-    /// Taken from the variable's own detail rather than from the fetched payload, so the heading is
-    /// on screen the moment the panel is — and does not change under the reader when the fetch
-    /// lands. It is also what names the region, which a heading that only appeared with the payload
-    /// could not do without leaving a dangling <c>aria-labelledby</c> while the panel loaded.
-    /// </remarks>
-    private RenderFragment SourceHeading(VariableDetail detail, SourceKind kind) => builder =>
-    {
-        var name = kind == SourceKind.Kilde ? detail.KildeName : detail.DatasamlingName;
-
-        builder.OpenElement(0, $"h{SourceLevel}");
-        builder.AddAttribute(1, "class", "headline headline-s margin--bottom");
-        builder.AddAttribute(2, "id", SourceHeadingId);
-        builder.AddAttribute(3, "lang", "no");
-        builder.AddContent(4, Trimmed(name) ?? SourceFallbackName(kind));
-        builder.CloseElement();
-    };
-
-    /// <summary>What to head the panel with when the variable records no name for its owner.</summary>
-    /// <remarks>
-    /// The field's own label — "Datakilde", "Datasamling" — rather than "Ikke oppgitt": the region
-    /// still has to be named after what it holds, and a region called "Ikke oppgitt" says nothing
-    /// about which of the two the reader opened.
-    /// </remarks>
-    private string SourceFallbackName(SourceKind kind) =>
-        kind == SourceKind.Kilde ? T.FieldSource : T.FieldDataCollection;
 }

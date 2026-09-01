@@ -11,8 +11,8 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// The sibling of <see cref="KildeView"/> and built the same way — a page-shaped view that opens
 /// inside the component rather than at a route of its own, because this package has no router. A
 /// source and a datasamling are the only two things an explorer drills into, and until this
-/// existed only one of them had a view: the other was a flat definition list of ten fields, drawing
-/// none of the curated metadata the payload carries (Fhi.Metadata-jgfum).
+/// existed only one of them had a view: the other was a flat definition list of eleven fields,
+/// drawing none of the curated metadata the payload carries (Fhi.Metadata-jgfum).
 /// <para>
 /// Every inherited field is drawn from its <c>Effective…</c> value. Munin lets a datasamling
 /// inherit dataansvarlig, databehandler, lovverk, identification level and validity from its
@@ -116,9 +116,10 @@ public sealed partial class DatasamlingView : ComponentBase
     /// </summary>
     /// <remarks>
     /// Frekvens is in the contract and in Runa's block, and no datasamling in the test catalogue
-    /// has one — it draws when the catalogue starts carrying it, and costs an empty row until then.
-    /// A count of nothing is left out rather than shown as a zero, which is what lets a datasamling
-    /// with no numbers at all draw no block.
+    /// has one — it draws when the catalogue starts carrying it and no row until then, which is
+    /// what keeps it out of <see cref="AnyStatistics"/>. A count of nothing is left out rather than
+    /// shown as a zero, for the same reason: both are what let a datasamling with no numbers at all
+    /// draw no block.
     /// </remarks>
     private IReadOnlyList<(string Label, string? Value, bool Norwegian)> Statistics =>
         Datasamling is not { } datasamling

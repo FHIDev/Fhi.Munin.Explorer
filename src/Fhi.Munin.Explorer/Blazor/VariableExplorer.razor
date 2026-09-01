@@ -108,8 +108,9 @@ else if (_sourceKind is not null)
                     @onclick="ShowSourceVariablesAsync">@narrowText</button>
         }
 
-        @* Once the payload has arrived, its own view owns the heading - the same components Kelda
-           renders on a page of its own, so the two cannot drift. Until then the drill-in keeps its
+        @* Once the payload has arrived, its own view owns the heading. For a kilde that is the
+           component Kelda renders on a page of its own, so the two cannot drift; the datasamling
+           view has this one call site and nothing to drift from. Until then the drill-in keeps its
            own heading: the region points at it by id, and a landmark whose label does not exist yet
            is worse than a plain one. *@
         @if (_kilde is null && _datasamling is null)

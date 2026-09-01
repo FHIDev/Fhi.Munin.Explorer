@@ -13,7 +13,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// the sidebar of who owns it and how much of it there is.
 /// </summary>
 /// <remarks>
-/// Written with the view itself, which replaced a flat list of ten fields inside the variable
+/// Written with the view itself, which replaced a flat list of eleven fields inside the variable
 /// explorer's drill-in — a list that drew none of the curated metadata the payload carries
 /// (Fhi.Metadata-jgfum). Nearly every fixture here is the captured payload rather than a
 /// hand-written record, mutated where a case needs it: the hand-written one carried only the simple

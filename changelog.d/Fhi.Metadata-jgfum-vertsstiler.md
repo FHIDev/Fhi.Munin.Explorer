@@ -5,8 +5,9 @@ category: Notes for hosts
   `munin-explorer-datasamling__description` are the name block; `munin-explorer-datasamling__body`,
   `munin-explorer-datasamling__main` and `munin-explorer-datasamling__aside` are the main column and
   the sidebar; `munin-explorer-datasamling__criteria` is the inclusion-criteria paragraph. Seven of
-  them want exactly what the kilde view's own seven want, so both sample hosts style the two
-  together in one rule per line rather than twice. (Fhi.Metadata-jgfum)
+  them want exactly what the kilde view and the variable view already want, so both sample hosts
+  carry all three prefixes on one rule rather than writing the layout out three times.
+  (Fhi.Metadata-jgfum)
 - **All eight are handles rather than names carrying meaning nothing else carries.** A host that
   supplies no rule gets the sidebar stacked under the main column and prose at full window width —
   look, not information, and nothing that misreports a state.

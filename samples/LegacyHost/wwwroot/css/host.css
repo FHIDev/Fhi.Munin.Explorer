@@ -1177,9 +1177,8 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    selectors rather than being written out once per view — a layout that drifted between them would
    read as three different components.
 
-   Nine names, and the only block in this file that exists because no other name would have
-   done. Runa gives a kilde a page of its own; a component with no router gives it the
-   component's own area instead, and the arrangement it needs — a name block above, then a main
+   The only block in this file that exists because no other name would have done. Runa gives a
+   kilde a page of its own; a component with no router gives it the component's own area instead, and the arrangement it needs — a name block above, then a main
    column and a sidebar — is a page layout. Stiler had no page layout to take, and helsedata's
    variables.css had no kilde section to read one back off, so there was nothing to copy and
    these had to be invented outright. What the layout HOLDS is named from elsewhere: the headings
@@ -1187,8 +1186,8 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    vocabulary above, and the kildetype badge is named by nobody but us — see the rule for it
    below.
 
-   They arrived unstyled. The view shipped in #43 and neither sample had a rule for any of these
-   nine until now, so both rendered it at raw browser defaults — a sidebar stacked under a main
+   They arrived unstyled. The view shipped in #43 with nine names and neither sample had a rule
+   for one of them, so both rendered it at raw browser defaults — a sidebar stacked under a main
    column, a tag reading as a paragraph — while `assert-sample-css-in-step.sh` said the samples
    were in step, which they were. That is why the script has a second clause: the names are read
    out of src/ and each one is asked for a rule. */
