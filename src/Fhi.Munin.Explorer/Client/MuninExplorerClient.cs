@@ -348,9 +348,9 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
     /// <see cref="MuninExplorerRateLimitedException"/> here, so every write inherits that branch by
     /// going through here at all — the way every read inherits it from
     /// <see cref="GetOrNullAsync{T}"/>. It belongs here rather than in each caller because the
-    /// writes read status in two places, <see cref="CreateMyListAsync"/> and
-    /// <see cref="SendForFoundAsync"/>, and both would otherwise have to remember it; a write added
-    /// later would have to remember it too.
+    /// writes read status in three places — <see cref="CreateMyListAsync"/>,
+    /// <see cref="SendForFoundAsync"/> and <see cref="ExportListAsync"/> — and the export proves
+    /// the point: added later, it sent its own request and did not remember.
     /// <para>
     /// The response is disposed before the throw, since nothing above can dispose one it never
     /// received.
@@ -583,25 +583,22 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
     {
         ArgumentNullException.ThrowIfNull(variableIds);
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, "api/explorer/lists/export")
-        {
-            Content = JsonContent.Create(
-                new ExportRequestBody(
-                    variableIds,
-                    // The lowercase wire name. The API spells these out with
-                    // [JsonStringEnumMemberName("xlsx"/"csv")], and its converter accepts those and
-                    // the numbers — but not "Csv". Sending format.ToString() therefore 400-ed every
-                    // download. Verified against test 2026-08-27: "csv" and 1 both give text/csv,
-                    // "xlsx" and 0 both give a spreadsheet, "Csv" gives 400.
-                    WireName(format),
-                    includeKodeverk,
-                    kildeIdFilter),
-                options: Json)
-        };
+        var body = new ExportRequestBody(
+            variableIds,
+            // The lowercase wire name. The API spells these out with
+            // [JsonStringEnumMemberName("xlsx"/"csv")], and its converter accepts those and
+            // the numbers — but not "Csv". Sending format.ToString() therefore 400-ed every
+            // download. Verified against test 2026-08-27: "csv" and 1 both give text/csv,
+            // "xlsx" and 0 both give a spreadsheet, "Csv" gives 400.
+            WireName(format),
+            includeKodeverk,
+            kildeIdFilter);
 
-        using var response = await httpClient
-            .SendAsync(request, cancellationToken)
-            .ConfigureAwait(false);
+        // Through the shared write helper rather than the HttpClient directly, so this write reads
+        // 429 the way the my/lists writes do. Sending its own request was what left a throttled
+        // download indistinguishable from a 500.
+        using var response = await SendAsync(
+            HttpMethod.Post, "api/explorer/lists/export", body, cancellationToken);
 
         // Not mapped to null the way a missing variable is: a failed export is a failure, and a
         // caller that showed "nothing to download" for a 500 would be lying about why.

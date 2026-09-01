@@ -116,6 +116,14 @@ public class VariableListViewTest : BunitContext
         /// <summary>Set when the test wants the export to fail the way a blocked browser would.</summary>
         public bool ExportThrows { get; init; }
 
+        /// <summary>Set when the test wants the export refused with the API's 429.</summary>
+        /// <remarks>
+        /// Its own switch beside <see cref="ExportThrows"/> so the pair can be asserted against
+        /// each other: the alert has to say something different for each, and one flag could not
+        /// show that.
+        /// </remarks>
+        public bool ExportThrottles { get; init; }
+
         public override Task<ExportedList> ExportListAsync(
             IReadOnlyCollection<Guid> variableIds,
             ExportFormat format = ExportFormat.Xlsx,
@@ -124,6 +132,11 @@ public class VariableListViewTest : BunitContext
             CancellationToken cancellationToken = default)
         {
             ExportedIds = variableIds;
+
+            if (ExportThrottles)
+            {
+                throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+            }
 
             return ExportThrows
                 ? throw new InvalidOperationException("the browser refused")
@@ -567,6 +580,23 @@ public class VariableListViewTest : BunitContext
             .First(b => b.TextContent.Contains("Excel", StringComparison.Ordinal)).Click());
 
         Assert.Contains("Kunne ikke laste ned", cut.Markup);
+        Assert.DoesNotContain("for mange forespørsler", cut.Markup);
+    }
+
+    [Fact]
+    public async Task View_WhenTheDownloadIsRateLimited_ThenItSaysSoRatherThanThatTheDownloadFailed()
+    {
+        // The export and the id walk in front of it both count against the browse policy, so a
+        // long list is a plausible way to meet it. The generic sentence leaves the reader guessing
+        // at a cause the component already knows.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ExportThrottles = true };
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => cut.FindAll("button")
+            .First(b => b.TextContent.Contains("Excel", StringComparison.Ordinal)).Click());
+
+        Assert.Contains("for mange forespørsler", cut.Markup);
+        Assert.DoesNotContain("Kunne ikke laste ned", cut.Markup);
     }
 
     [Fact]
