@@ -480,12 +480,11 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     {
         _confirmingDelete = false;
         _renameName = "";
-        _actionFailure = ListActionFailure.None;
     }
 
     /// <summary>
-    /// Empties the alert region. Four conditions share it, so a handler that clears only its own
-    /// leaves an older one answering for the action the reader just took.
+    /// Empties the alert region — the one place that does. Four conditions share it, so a handler
+    /// clearing only its own leaves an older one answering for what the reader just did.
     /// </summary>
     private void ForgetFailures()
     {
@@ -672,11 +671,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             _actionFailure = ListActionFailure.Failed;
         }
 
-        // Put back over the clearing the repoint does: that one is for a list leaving the screen
-        // under this view, and this is the answer to what the reader just pressed.
-        var failure = _actionFailure;
         await ShowActiveListAsync();
-        _actionFailure = failure;
     }
 
     private async Task RemoveAsync(Guid variableId)
