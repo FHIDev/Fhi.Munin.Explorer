@@ -61,6 +61,11 @@ fi
 # Deliberately over-inclusive — a name written down in prose is a name a reader will go looking for,
 # and the inventory has a `prose` kind for exactly that. `-` and `__` endings are stems finished
 # elsewhere and are not names.
+#
+# That last clause is this check's one blind spot, and it is stated rather than hidden: a stem the
+# package finishes at RUNTIME is a real class no literal extraction can see. `RowCell.Write` builds
+# `munin-explorer-dataitem-main__` plus a column key that way, seven of them, and the README names
+# those seven in prose above the table because no row here could reach them.
 emitted="$(
   grep -rhoE --include='*.cs' --include='*.razor' --exclude-dir=bin --exclude-dir=obj \
          'munin-explorer[A-Za-z0-9_-]*' src/ 2>/dev/null \

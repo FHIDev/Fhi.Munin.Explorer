@@ -226,6 +226,16 @@ These are not style preferences — each one is a host that breaks otherwise.
   `munin-explorer-drilldown`, so a host or a test reaching for `.munin-explorer-source` comes up
   empty.
 
+  One family more is written by interpolation rather than as a literal, so the table below cannot
+  carry it and this paragraph has to: `RowCell.Write` dresses each result column as
+  `munin-explorer-dataitem-main__column` plus `munin-explorer-dataitem-main__` finished with the
+  column key. The keys are a closed set of seven — `code`, `dataCollection`, `dataType`, `period`,
+  `source`, `status` and `theme` — so those seven names are as real as any row below, and
+  `munin-explorer-dataitem-header__` takes the same completions on the header cells above them. The
+  reconciliation reads literals out of `src/`, which is what makes it exact and is also its one
+  limit; a name the package builds a piece at a time is named here instead, and adding a column key
+  means adding it to this sentence.
+
   **The whole list, name by name.** The paragraphs above pick out the names worth an argument.
   They used to end in hand-written counts, and every one of them had gone stale: `kilde*` had grown
   from nine names to twelve, `kilder*` from three to four, and the eight `munin-explorer-whole*`
