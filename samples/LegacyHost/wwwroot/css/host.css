@@ -429,13 +429,22 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .munin-explorer-filters > details > ul { padding-left: 0; }
 
 /* Nivålinjer: one guide line per level of the tree, drawn only while the reader has the toggle on.
-   The package emits `data-level-lines` on the panel instead of a class name of its own — a tree is
-   the one shape Stiler has no name for, and an invented one renders as nothing at all. Nested lists
-   only: the top level has nothing to sit under. The indentation is left where it is, so switching
-   the lines on does not move every value sideways. */
+   The package emits `data-level-lines` on the panel instead of a class name of its own. Not because
+   a class would render badly — one on a <ul> that already exists renders as it does today — but
+   because a name is inventory the README, these two files and the name guard all have to carry, and
+   a state marker owes none of that. Nested lists only: the top level has nothing to sit under.
+
+   --grey60 rather than the --grey30 the other borders in this block use. A guide line is a
+   non-text control under WCAG 1.4.11 and has to clear 3:1 against what is behind it, which here is
+   the page ground --grey10 and not a card: --grey30 measures 1.16:1 on it and is invisible above
+   about 1000px, --grey40 reaches 1.82:1 and still fails, --grey60 gives 6.76:1. A host restyling
+   this owes the same 3:1 against its OWN ground, dark themes included.
+
+   Switching the lines on shifts each nested level right by the width of its own border, 1px. There
+   is no margin on top of that, so the shift stays at one pixel per level rather than compounding
+   into a visible reflow of the tree. */
 .munin-explorer-filters[data-level-lines="true"] ul ul {
-  border-left: 1px solid var(--grey30);
-  margin-left: 4px;
+  border-left: 1px solid var(--grey60);
 }
 
 /* The clear button is never `disabled` — the same focus reason as the pager's — so its unavailable

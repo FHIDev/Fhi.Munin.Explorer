@@ -2882,7 +2882,11 @@ public class VariableExplorerTest : BunitContext
         IRenderedComponent<VariableExplorer> cut) =>
         cut.FindAll(".munin-explorer-filters button");
 
-    /// <summary>The facet button whose visible text starts with <paramref name="label"/>.</summary>
+    /// <summary>
+    /// The button in the panel whose visible text starts with <paramref name="label"/> — a facet
+    /// value, or one of the three toolbar buttons, which this selector also reaches. No label
+    /// collides today, and <c>Single</c> is what says so if one ever starts to.
+    /// </summary>
     private static AngleSharp.Dom.IElement Facet(IRenderedComponent<VariableExplorer> cut, string label) =>
         FacetButtons(cut).Single(b => b.TextContent.StartsWith(label, StringComparison.Ordinal));
 
@@ -3121,6 +3125,25 @@ public class VariableExplorerTest : BunitContext
         ClickFacet(cut, "Skjul alle");
 
         Assert.Empty(OpenDisclosures(cut));
+    }
+
+    [Fact]
+    public void Filter_WhenAFacetIsFoldedOrUnfolded_ThenTheChangeIsAnnounced()
+    {
+        // A press rewrites every disclosure and moves no focus, so without this a screen-reader
+        // reader gets no sign it did anything. Empty before the first press. (Fhi.Metadata-wcbxi)
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+        var region = cut.Find(".munin-explorer-filters p[aria-live='polite']");
+
+        Assert.Equal("", region.TextContent);
+
+        ClickFacet(cut, "Utvid alle");
+
+        Assert.Equal("Alle filtre er utvidet.", region.TextContent);
+
+        ClickFacet(cut, "Skjul alle");
+
+        Assert.Equal("Alle filtre er skjult.", region.TextContent);
     }
 
     [Fact]

@@ -565,6 +565,12 @@ public partial class VariableExplorer
     /// A <c>&lt;details&gt;</c> holds its own open state in the DOM, so a facet the reader folded by
     /// hand no longer matches the <c>open</c> we rendered — and an unchanged value is never patched,
     /// which is exactly the press that has to land. A new key rebuilds instead of diffing.
+    /// <para>
+    /// NO TEST COVERS THIS, and none can: bUnit re-serialises the markup from the render tree, so a
+    /// disclosure's <c>open</c> always equals what was last rendered and the divergence this defeats
+    /// cannot be staged. Deleting it leaves the suite green and breaks a second press in a browser.
+    /// Verified by hand on both sample hosts instead. (Fhi.Metadata-wcbxi)
+    /// </para>
     /// </remarks>
     private int _foldGeneration;
 
@@ -579,7 +585,24 @@ public partial class VariableExplorer
     /// <summary>Whether a facet is drawn open: the last fold press, or the facet's own default.</summary>
     private bool FacetOpen(FacetGroup group) => _foldAll ?? group.OpenByDefault;
 
+    /// <summary>What the last fold press did, for the panel's live region.</summary>
+    /// <remarks>
+    /// Empty until a press, or the region would speak on every mount. A second identical press is
+    /// silent, which is the region working rather than failing: it already said that.
+    /// </remarks>
+    private string FoldAnnouncement => _foldAll switch
+    {
+        true => T.FacetsExpanded,
+        false => T.FacetsCollapsed,
+        _ => string.Empty
+    };
+
     /// <summary>Open every facet at once, or fold every facet at once.</summary>
+    /// <remarks>
+    /// The rebuild costs the dataperiode's date fields whatever was typed into them but not yet
+    /// committed — they bind on change, so a half-typed date lives only in the DOM. Accepted: the
+    /// alternative is keying that one facet apart, and a press that skips a facet is worse.
+    /// </remarks>
     private void FoldAll(bool open)
     {
         _foldAll = open;
@@ -593,9 +616,11 @@ public partial class VariableExplorer
     /// The panel's marker for the level lines, or null — an omitted attribute — while they are off.
     /// </summary>
     /// <remarks>
-    /// A data attribute rather than a class name of this package's own: there is no tree in Stiler
-    /// to read a name back from, and an unknown class draws nothing, while a marker on a name Stiler
-    /// does carry costs a host that ignores it nothing. (Fhi.Metadata-wcbxi)
+    /// A data attribute rather than a class name of this package's own. Not because a class would
+    /// render badly — an unstyled class on the <c>&lt;ul&gt;</c> that is already there renders as it
+    /// does today — but because a name is inventory: the README contract, the sample stylesheets and
+    /// <c>assert-sample-css-in-step.sh</c> all have to carry it. A state marker owes nothing.
+    /// (Fhi.Metadata-wcbxi)
     /// </remarks>
     private string? LevelLinesMarker => _levelLines ? "true" : null;
 

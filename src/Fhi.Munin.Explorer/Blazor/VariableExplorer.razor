@@ -238,9 +238,10 @@ else
        the panel, and nothing this markup relies on. *@
     @if (_facets is not null)
     {
-        @* `data-level-lines` rather than a class of our own: a tree is the one shape Stiler has no
-           name for, and an invented one renders as nothing. A host draws the lines from the marker,
-           and a host that ignores it loses lines and no information. (Fhi.Metadata-wcbxi) *@
+        @* `data-level-lines` rather than a class of our own. A class on the <ul> already there would
+           render fine unstyled; what it would cost is inventory — the README contract, both sample
+           stylesheets and the name guard. A host that ignores the marker loses lines, not
+           information. (Fhi.Metadata-wcbxi) *@
         <fieldset class="form-fieldset munin-explorer-filters" aria-busy="@Busy"
                   data-level-lines="@LevelLinesMarker">
             <legend class="form-element__label">@FiltersLegend</legend>
@@ -258,6 +259,12 @@ else
                     type="button"
                     aria-pressed="@(_levelLines ? "true" : "false")"
                     @onclick="ToggleLevelLinesAsync">@T.LevelLines</button>
+
+            @* A fold press rewrites every disclosure in the panel and is otherwise silent — the same
+               argument the result region makes for announcing a search at all. A bare live region
+               and deliberately NOT a second role="status": that role is the component reporting its
+               own state, there is one of those by design, and this only says what a press just did. *@
+            <p class="screenreader-only" aria-live="polite" aria-atomic="true">@FoldAnnouncement</p>
 
             @foreach (var group in FacetGroups)
             {

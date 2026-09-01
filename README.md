@@ -145,12 +145,24 @@ These are not style preferences — each one is a host that breaks otherwise.
   a kilde's datasamlinger in `KildeView`, one per level of that tree. An element degrades to its
   own browser default, where an unknown class name degrades to nothing.
 
-  The panel's `Nivålinjer` toggle is that rule again, with a state to carry rather than a shape: it
-  puts `data-level-lines="true"` on `munin-explorer-filters` and draws nothing itself. A marker on a
-  name Stiler already carries costs a host that ignores it nothing, where a `munin-explorer-tree`
-  nobody has a rule for would render as a raw browser default. Both sample stylesheets show the
-  rule — one `border-left` on the nested lists — and a host that supplies none loses the lines and
-  no information, because the indentation is what carries the hierarchy either way.
+  The panel's `Nivålinjer` toggle is a neighbouring rule rather than that one: it puts
+  `data-level-lines="true"` on `munin-explorer-filters` and draws nothing itself. The argument above
+  does not apply to it and should not be borrowed for it — a class on the `<ul>` that is already
+  there would render exactly as it does today, unstyled or not, because no element is being replaced.
+  What a class would cost is inventory: this contract, both sample stylesheets and
+  `assert-sample-css-in-step.sh` would each have to carry the name for good. A state marker owes
+  none of that. Both sample stylesheets show the rule — one `border-left` on the nested lists — and
+  a host that supplies none loses the lines and no information, because the indentation is what
+  carries the hierarchy either way.
+
+  **A host writing that rule owes it 3:1.** A guide line is a non-text control under WCAG 1.4.11,
+  and the obvious token is the wrong one: the samples' `--grey30`, which every other border in the
+  filter panel uses, measures **1.16:1** against the page ground `--grey10` and is invisible above
+  about 1000px — the lines exist in the DOM and cannot be seen. `--grey40` reaches 1.82:1 and still
+  fails. The samples use `--grey60`, which gives **6.76:1**. The panel sits directly on the page
+  ground rather than on a card, so the ratio is against whatever the host's own body paints, and a
+  host with a dark theme has to clear 3:1 there too — neither sample defines one, so a host
+  redefining the token for dark is deciding that outcome alone and unverified.
 
   Every name in the `munin-explorer` prefix is ours. That is worth saying because it used not to
   be: under the old prefix six names were helsedata's — the container, the results column, the
