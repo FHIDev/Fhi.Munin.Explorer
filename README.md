@@ -178,19 +178,21 @@ These are not style preferences — each one is a host that breaks otherwise.
     its own browser default — and the name is there so a host or a test can find that part of the
     component in the page: `munin-explorer` (the root `<section>`), `munin-explorer-filters`,
     `munin-explorer-detail`, `munin-explorer-drilldown`, `munin-explorer-kodeverk*`,
-    `munin-explorer-codes*`, `munin-explorer-group`, the nine `munin-explorer-kilde*` names in
-    `KildeView`, the eight `munin-explorer-datasamling*` ones in `DatasamlingView`, and the three
-    `munin-explorer-kilder*` names in `KildeExplorer` — the kilde list's table, the button that
-    opens a row and the three columns that hold a number. The samples style them for arrangement —
-    the root as a grid at desktop width, `-filters`, `-detail`, `-drilldown`, `-kodeverk*` and
-    `-codes*` for spacing, indentation and a rule between rows, the kilde and datasamling views'
-    name block, main column and sidebar as one page layout under two prefixes, the kilde list as a
-    table with its counts right-aligned — and they draw `munin-explorer-group` as Runa's blue
-    uppercase eyebrow. A host that defines none of them loses no information: the group headings, for
-    instance, are already sized by the `headline headline-xxs` they wear, so what an undefined
-    `munin-explorer-group` costs is the eyebrow's look, not the fact that it is a heading. The
-    kilde list is the same bargain twice over, which is why it is a `<table>` of `<button>`s — an
-    undrawn table still lines its columns up and an undrawn button is still visibly a control.
+    `munin-explorer-codes*`, `munin-explorer-group`, the `munin-explorer-kilde*` names in
+    `KildeView`, the `munin-explorer-datasamling*` ones in `DatasamlingView`, the
+    `munin-explorer-whole*` ones in `VariableView`, and the `munin-explorer-kilder*` names in
+    `KildeExplorer` — the kilde list's table, the checkbox column in front of it, the button that
+    opens a row and the columns that hold a number. The samples style them for arrangement — the
+    root as a grid at desktop width, `-filters`, `-detail`, `-drilldown`, `-kodeverk*` and
+    `-codes*` for spacing, indentation and a rule between rows, the kilde, datasamling and variable
+    views' name block, main column and sidebar as one page layout under three prefixes, the kilde
+    list as a table with its counts right-aligned — and they draw `munin-explorer-group` as Runa's
+    blue uppercase eyebrow. A host that defines none of them loses no information: the group
+    headings, for instance, are already sized by the `headline headline-xxs` they wear, so what an
+    undefined `munin-explorer-group` costs is the eyebrow's look, not the fact that it is a
+    heading. The kilde list is the same bargain twice over, which is why it is a `<table>` of
+    `<button>`s — an undrawn table still lines its columns up and an undrawn button is still
+    visibly a control.
     Kelda's facet panel adds two more, `munin-explorer-filters__toggle` and
     `munin-explorer-filters__facets`, and they are handles for the same reason: the folding itself
     is the browser's `hidden` attribute, so a host that defines neither gets a panel that opens and
@@ -224,8 +226,155 @@ These are not style preferences — each one is a host that breaks otherwise.
   `munin-explorer-drilldown`, so a host or a test reaching for `.munin-explorer-source` comes up
   empty.
 
+  One family more is written by interpolation rather than as a literal, so the table below cannot
+  carry it and this paragraph has to: `RowCell.Write` dresses each result column as
+  `munin-explorer-dataitem-main__column` plus `munin-explorer-dataitem-main__` finished with the
+  column key. The keys are a closed set of seven — `code`, `dataCollection`, `dataType`, `period`,
+  `source`, `status` and `theme` — so those seven names are as real as any row below, and
+  `munin-explorer-dataitem-header__` takes the same completions on the header cells above them. The
+  reconciliation reads literals out of `src/`, which is what makes it exact and is also its one
+  limit; a name the package builds a piece at a time is named here instead, and adding a column key
+  means adding it to this sentence.
+
+  **The whole list, name by name.** The paragraphs above pick out the names worth an argument.
+  They used to end in hand-written counts, and every one of them had gone stale: `kilde*` had grown
+  from nine names to twelve, `kilder*` from three to four, and the eight `munin-explorer-whole*`
+  names `VariableView` emits had never been written down here at all. A count is the wrong shape
+  for this — it is a claim about `src/` that lives in a file nobody edits when they add a name — so
+  the counts are gone and the table below is what carries the claim instead.
+  `scripts/assert-class-names-listed.sh` reads every `munin-explorer*` token out of `src/` and
+  fails when the two sets differ in either direction: a name emitted and not listed, or a name
+  listed and no longer emitted. Adding a name to the component without adding it here is a red CI
+  check, which is what a number in a sentence could never be.
+
+  Four kinds, and every name is exactly one of them:
+
+  - `handle` — something else already dresses the element, a Stiler class it also wears or its own
+    browser default, so an undefined one costs look and not information. The large majority.
+  - `meaning` — carries meaning nothing else carries, so a host without Stiler's rules has to draw
+    it. The second sub-list above says what each of these costs undrawn.
+  - `id` — not a class at all: the package writes the stem down and completes it with a
+    per-instance discriminator at runtime, so `.munin-explorer-source` selects nothing.
+  - `prose` — the package writes the name down in a comment and no element wears it.
+    `munin-explorer-dataitem-period` is the whole of this kind: the cell it describes is really
+    `munin-explorer-dataitem-main__period`. It is listed rather than dropped because
+    `assert-sample-css-in-step.sh` reads prose too, so both samples carry a rule for it.
+
+  <!-- class-names:start -->
+  | Class name | Kind |
+  | --- | --- |
+  | `munin-explorer` | handle |
+  | `munin-explorer-alert` | handle |
+  | `munin-explorer-breadcrumb` | meaning |
+  | `munin-explorer-breadcrumb__clear` | meaning |
+  | `munin-explorer-codes` | handle |
+  | `munin-explorer-codes__table` | handle |
+  | `munin-explorer-container` | handle |
+  | `munin-explorer-crumb` | meaning |
+  | `munin-explorer-data-list` | handle |
+  | `munin-explorer-data-list__header` | handle |
+  | `munin-explorer-data-list__item` | handle |
+  | `munin-explorer-data-list__item--expanded` | handle |
+  | `munin-explorer-data-list__item__row` | handle |
+  | `munin-explorer-data-list__item__row--header` | handle |
+  | `munin-explorer-data-list__result` | handle |
+  | `munin-explorer-dataitem-header` | handle |
+  | `munin-explorer-dataitem-header__button` | handle |
+  | `munin-explorer-dataitem-header__code` | handle |
+  | `munin-explorer-dataitem-header__dataCollection` | handle |
+  | `munin-explorer-dataitem-header__dataType` | handle |
+  | `munin-explorer-dataitem-header__name` | handle |
+  | `munin-explorer-dataitem-header__period` | handle |
+  | `munin-explorer-dataitem-header__source` | handle |
+  | `munin-explorer-dataitem-header__theme` | handle |
+  | `munin-explorer-dataitem-main` | handle |
+  | `munin-explorer-dataitem-main__column` | handle |
+  | `munin-explorer-dataitem-main__column__text` | handle |
+  | `munin-explorer-dataitem-main__expand-icon` | handle |
+  | `munin-explorer-dataitem-main__name` | handle |
+  | `munin-explorer-dataitem-period` | prose |
+  | `munin-explorer-datasamling` | handle |
+  | `munin-explorer-datasamling__aside` | handle |
+  | `munin-explorer-datasamling__body` | handle |
+  | `munin-explorer-datasamling__criteria` | handle |
+  | `munin-explorer-datasamling__description` | handle |
+  | `munin-explorer-datasamling__header` | handle |
+  | `munin-explorer-datasamling__identifiers` | handle |
+  | `munin-explorer-datasamling__main` | handle |
+  | `munin-explorer-detail` | handle |
+  | `munin-explorer-drilldown` | handle |
+  | `munin-explorer-filters` | handle |
+  | `munin-explorer-filters__facets` | handle |
+  | `munin-explorer-filters__toggle` | handle |
+  | `munin-explorer-group` | handle |
+  | `munin-explorer-header` | handle |
+  | `munin-explorer-header__actions` | handle |
+  | `munin-explorer-header__actions-button` | handle |
+  | `munin-explorer-kilde` | handle |
+  | `munin-explorer-kilde__aside` | handle |
+  | `munin-explorer-kilde__body` | handle |
+  | `munin-explorer-kilde__datasamlinger` | handle |
+  | `munin-explorer-kilde__delkilde` | handle |
+  | `munin-explorer-kilde__delkilde-name` | handle |
+  | `munin-explorer-kilde__delkilder` | handle |
+  | `munin-explorer-kilde__description` | handle |
+  | `munin-explorer-kilde__header` | handle |
+  | `munin-explorer-kilde__identifiers` | handle |
+  | `munin-explorer-kilde__kildetype` | handle |
+  | `munin-explorer-kilde__main` | handle |
+  | `munin-explorer-kilder` | handle |
+  | `munin-explorer-kilder__count` | handle |
+  | `munin-explorer-kilder__name` | handle |
+  | `munin-explorer-kilder__select` | handle |
+  | `munin-explorer-kodeverk` | handle |
+  | `munin-explorer-kodeverk__item` | handle |
+  | `munin-explorer-kodeverk__name` | handle |
+  | `munin-explorer-kodeverk__reference` | handle |
+  | `munin-explorer-meta` | handle |
+  | `munin-explorer-meta__grid` | handle |
+  | `munin-explorer-meta__grid-1` | handle |
+  | `munin-explorer-meta__grid-2` | handle |
+  | `munin-explorer-meta__tab` | handle |
+  | `munin-explorer-meta__tab--active` | handle |
+  | `munin-explorer-meta__tab-content` | handle |
+  | `munin-explorer-meta__tabs` | handle |
+  | `munin-explorer-pagination` | handle |
+  | `munin-explorer-pagination-content` | handle |
+  | `munin-explorer-pagination-size` | handle |
+  | `munin-explorer-period` | handle |
+  | `munin-explorer-period__fill` | meaning |
+  | `munin-explorer-period__range` | handle |
+  | `munin-explorer-period__track` | meaning |
+  | `munin-explorer-period__track--ongoing` | meaning |
+  | `munin-explorer-results` | handle |
+  | `munin-explorer-retry` | meaning |
+  | `munin-explorer-search` | handle |
+  | `munin-explorer-search__clear` | handle |
+  | `munin-explorer-selection` | handle |
+  | `munin-explorer-selection__explore` | handle |
+  | `munin-explorer-skiplink-pagination` | handle |
+  | `munin-explorer-source` | id |
+  | `munin-explorer-statistics` | handle |
+  | `munin-explorer-versions` | handle |
+  | `munin-explorer-versions__badge` | handle |
+  | `munin-explorer-versions__detail` | handle |
+  | `munin-explorer-versions__from` | handle |
+  | `munin-explorer-versions__name` | handle |
+  | `munin-explorer-versions__to` | handle |
+  | `munin-explorer-versions__toggle` | handle |
+  | `munin-explorer-whole` | handle |
+  | `munin-explorer-whole__aside` | handle |
+  | `munin-explorer-whole__body` | handle |
+  | `munin-explorer-whole__code` | handle |
+  | `munin-explorer-whole__description` | handle |
+  | `munin-explorer-whole__header` | handle |
+  | `munin-explorer-whole__list` | handle |
+  | `munin-explorer-whole__main` | handle |
+  | `munin-explorer__dropdown` | handle |
+  <!-- class-names:end -->
+
   `Render_Always_ThenNoClassNamesAreInventedApartFromTheDomHandles` pins that prefix for a closed
-  result list, spelling out its eight names exactly; the panel, drill-in and kilde names are past
+  result list, spelling that set out name by name; the panel, drill-in and kilde names are past
   its reach, because nothing is expanded there. For seeing the whole thing dressed, the sample
   hosts' `host.css` stands in for the host stylesheets, divided by comment into which rules stand
   in for which.

@@ -149,12 +149,15 @@ internal enum PanelTab
 /// inside the variable's panel, and stopped being one when that panel became this drill-in.
 /// </para>
 /// <para>
-/// <c>KildeView</c> adds nine handles of its own — <c>munin-explorer-kilde</c> with its
-/// <c>__header</c>, <c>__identifiers</c>, <c>__kildetype</c>, <c>__description</c>, <c>__body</c>,
-/// <c>__main</c>, <c>__aside</c> and <c>__datasamlinger</c> parts — and no style name, because
-/// neither stylesheet has a kilde record to borrow one from. Every element wearing them also wears
-/// a Stiler class or is dressed by its own browser default, so a host that defines none of them
-/// loses no information.
+/// <c>KildeView</c> adds handles of its own — <c>munin-explorer-kilde</c> with its <c>__header</c>,
+/// <c>__identifiers</c>, <c>__kildetype</c>, <c>__description</c>, <c>__body</c>, <c>__main</c>,
+/// <c>__aside</c>, <c>__datasamlinger</c> and delkilde-tree parts — and no style name, because
+/// neither stylesheet has a kilde record to borrow one from. <c>VariableView</c> and
+/// <c>DatasamlingView</c> add the same shape under <c>munin-explorer-whole*</c> and
+/// <c>munin-explorer-datasamling*</c>. Every element wearing them also wears a Stiler class or is
+/// dressed by its own browser default, so a host that defines none of them loses no information.
+/// The README's inventory table is the full list; a count here would go stale the next time one is
+/// added, which is how the old one did.
 /// </para>
 /// <para>
 /// The panel's Data tab adds handles of its own — <c>munin-explorer-kodeverk</c> with its

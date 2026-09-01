@@ -249,6 +249,16 @@ internal readonly record struct GuardRun(int ExitCode, string Output);
 internal static class Guard
 {
     /// <summary>
+    /// How long a guard script may take. Far above the seconds they need, so exceeding it means
+    /// stalled rather than slow, and well inside the CI job budget so the test reports the stall
+    /// instead of the runner being cut off with nothing to show for it.
+    /// </summary>
+    private static readonly TimeSpan Budget = TimeSpan.FromMinutes(2);
+
+    /// <summary>How long the kill and the last of the output are given, once already failing.</summary>
+    private static readonly TimeSpan Grace = TimeSpan.FromSeconds(10);
+
+    /// <summary>
     /// <c>bash</c> as PATH resolves it, or null where there is none — a Windows checkout without
     /// Git Bash on PATH, which is the only case the tests above skip for.
     /// </summary>
@@ -300,24 +310,103 @@ internal static class Guard
                 start.Environment["HOST_CLASS_NAMES"] = fixture;
             }
 
-            using var process = Process.Start(start)
-                ?? throw new InvalidOperationException($"'{Bash}' did not start.");
-
-            // Both pipes are read before waiting: a script that filled one of them while we waited
-            // on the other would deadlock, and this one prints a whole diff on its first clause.
-            var stdout = process.StandardOutput.ReadToEndAsync();
-            var stderr = process.StandardError.ReadToEndAsync();
-
-            Task.WaitAll([stdout, stderr], TimeSpan.FromMinutes(2));
-            process.WaitForExit(TimeSpan.FromMinutes(2));
-
-            return new GuardRun(process.ExitCode, stdout.Result + stderr.Result);
+            return Run(start);
         }
         finally
         {
             dir.Delete(recursive: true);
         }
     }
+
+    /// <summary>
+    /// One run of a guard script, started from a directory that is not the checkout — which holds
+    /// every one of them to its claim that it anchors on its own location rather than on where the
+    /// caller happens to be standing.
+    /// </summary>
+    internal static GuardRun RunScript(string script, IReadOnlyDictionary<string, string> environment)
+    {
+        var dir = Directory.CreateTempSubdirectory("munin-guard");
+
+        try
+        {
+            var start = new ProcessStartInfo(Bash!)
+            {
+                WorkingDirectory = dir.FullName,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+            };
+
+            start.ArgumentList.Add(Repo.In("scripts", script));
+
+            foreach (var (key, value) in environment)
+            {
+                start.Environment[key] = value;
+            }
+
+            return Run(start);
+        }
+        finally
+        {
+            dir.Delete(recursive: true);
+        }
+    }
+
+    /// <summary>The process plumbing every guard run shares.</summary>
+    private static GuardRun Run(ProcessStartInfo start)
+    {
+        using var process = Process.Start(start)
+            ?? throw new InvalidOperationException($"'{Bash}' did not start.");
+
+        // Both pipes are read before waiting: a script that filled one of them while we waited on
+        // the other would deadlock, and the css one prints a whole diff on its first clause.
+        var stdout = process.StandardOutput.ReadToEndAsync();
+        var stderr = process.StandardError.ReadToEndAsync();
+
+        // Both of these return whether they finished in time, and both returns are checked. They
+        // were ignored, which left the `.Result` below to block with no timeout of its own — so a
+        // stalled script hung the run and CI read as a stuck runner rather than a stuck script.
+        if (!process.WaitForExit(Budget) || !Task.WaitAll([stdout, stderr], Budget))
+        {
+            var partial = KillStalled(process, stdout, stderr);
+
+            Assert.Fail($"'{ScriptOf(start)}' did not finish within {Budget.TotalSeconds:0}s "
+                        + $"and was killed. A guard that stalls has to fail as one.{Environment.NewLine}"
+                        + $"Output before the kill:{Environment.NewLine}{partial}");
+        }
+
+        return new GuardRun(process.ExitCode, stdout.Result + stderr.Result);
+    }
+
+    /// <summary>
+    /// Kills a script that ran past <see cref="Budget"/>, with its children — bash is the parent of
+    /// the perl and grep the guards shell out to — and returns whatever it managed to print.
+    /// </summary>
+    private static string KillStalled(Process process, Task<string> stdout, Task<string> stderr)
+    {
+        try
+        {
+            process.Kill(entireProcessTree: true);
+            process.WaitForExit(Grace);
+        }
+        catch (InvalidOperationException)
+        {
+            // It exited between the timeout and the kill, so there is nothing left to kill.
+        }
+
+        // The pipes close with the process, so these are done or nearly. Discarded deliberately:
+        // this is assembling a failure message and must not become a second place to hang.
+        _ = Task.WaitAll([stdout, stderr], Grace);
+
+        return (stdout.IsCompletedSuccessfully ? stdout.Result : string.Empty)
+             + (stderr.IsCompletedSuccessfully ? stderr.Result : string.Empty);
+    }
+
+    /// <summary>
+    /// The script a run was started with. Both callers pass it as the first argument to bash, and
+    /// the message is worth nothing if it cannot say which guard stalled.
+    /// </summary>
+    private static string ScriptOf(ProcessStartInfo start) =>
+        start.ArgumentList.Count > 0 ? Path.GetFileName(start.ArgumentList[0]) : Bash ?? "bash";
 
     /// <summary>
     /// The names the script listed under <paramref name="heading"/> — one per indented line, as
@@ -364,7 +453,7 @@ internal sealed class ShellFactAttribute : FactAttribute
     {
         if (Guard.Bash is null)
         {
-            Skip = "No bash on PATH, so scripts/assert-sample-css-in-step.sh cannot be run here. " +
+            Skip = "No bash on PATH, so the scripts/assert-*.sh guards cannot be run here. " +
                    "CI runs on ubuntu-latest, where it always can.";
         }
     }

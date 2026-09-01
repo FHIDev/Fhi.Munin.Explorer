@@ -1386,13 +1386,9 @@ public class VariableExplorerTest : BunitContext
     [Fact]
     public void Render_Always_ThenNoClassNamesAreInventedApartFromTheDomHandles()
     {
-        // Eight names in the munin-explorer prefix. Two are DOM handles rather than style hooks -
-        // nothing in this package or in Stiler defines a rule for either, and nothing should. The
-        // other six were helsedata's until the rename, were read back off their compiled
-        // variables.css, and now live in Stiler under components/munin-explorer/. This is the
-        // guard that says so out loud.
-        // or a name in it that cannot be pointed at in a stylesheet, is the failure this package
-        // exists to avoid, and it has happened twice.
+        // The munin-explorer prefix for a closed result list, pinned name by name so a new one is
+        // news. Each is annotated below with who defines it; an invented name, or one no stylesheet
+        // can point at, is the failure this package exists to avoid, and it has happened twice.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
                             b => b.Add(c => c.Search, "tale"));
 

@@ -231,6 +231,25 @@ jobs:
           git fetch --quiet origin "${BASE_REF#origin/}"
           ./scripts/assert-new-names-noted-for-hosts.sh
 
+  # The host-notes job above is a diff against the base branch, so it only ever asks about names
+  # that are new here. A name already missing when it was written stays missing however many
+  # branches pass it — which is how the README came to promise "the nine munin-explorer-kilde*
+  # names" over twelve of them, and how the eight munin-explorer-whole* names reached no markdown
+  # file at all. This job has no window: it reconciles the whole prefix against the README's
+  # inventory table, both directions, every run.
+  #
+  # No fetch-depth: nothing here reads history. Its own job for the same reason as the two above —
+  # an incomplete README is not a broken build.
+  class-names:
+    name: class names listed in the README
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Assert the README lists every class name the package emits
+        run: ./scripts/assert-class-names-listed.sh
+
   # BannedSymbols.txt is the only thing keeping host-specific types out of a component that has to
   # render in two hosts, and it is wired up by a condition on the RCL's project name. That
   # condition was stale for the whole time the merged project had a different name than it named:
@@ -330,7 +349,7 @@ jobs:
   # this workflow must be added to needs: below and to the table, or it stays invisible here.
   report:
     name: ci summary
-    needs: [build, changelog, sample-css, host-notes, portability-guard, consumer, accessibility]
+    needs: [build, changelog, sample-css, host-notes, class-names, portability-guard, consumer, accessibility]
     # It exists to report failed and skipped jobs, so it must not be skipped by one.
     if: always()
     runs-on: ubuntu-latest
@@ -367,6 +386,7 @@ jobs:
           changelog fragment|${{ needs.changelog.result }}
           sample stylesheets in step|${{ needs['sample-css'].result }}
           host notes for new names|${{ needs['host-notes'].result }}
+          class names listed in the README|${{ needs['class-names'].result }}
           portability guard armed|${{ needs['portability-guard'].result }}
           a host needs no glue|${{ needs.consumer.result }}
           accessibility|${{ needs.accessibility.result }}
