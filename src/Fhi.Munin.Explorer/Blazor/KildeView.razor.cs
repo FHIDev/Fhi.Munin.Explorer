@@ -11,8 +11,9 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <remarks>
 /// Shared deliberately, and built as a core with slots rather than one view with flags. Measured on
 /// 2026-08-20, Runa and Kelda render the same source identically down to the heading order — same
-/// name block, same eight metadata groups, same two sidebar boxes. Kelda then adds sections Runa
-/// does not have, and calls its hierarchy section something else.
+/// name block, same eight metadata groups, same two sidebar boxes, and — since
+/// Fhi.Metadata-rhybi — the same word over the datasamlinger. Kelda then adds sections Runa
+/// does not have.
 /// <para>
 /// A boolean per Kelda section would make this the one place where both explorers leak into each
 /// other, and every later difference would add another flag. Instead each explorer passes its own

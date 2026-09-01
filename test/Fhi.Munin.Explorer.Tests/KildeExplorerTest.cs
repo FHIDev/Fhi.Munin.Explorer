@@ -951,8 +951,8 @@ public class KildeExplorerTest : BunitContext
         Assert.NotNull(view.Instance.Sections);
         Assert.Contains("Fra verten", cut.Markup);
 
-        // Kelda's own, in the same slot. The datasamling heading is the fourth section and arrives
-        // the other way, as DataCollectionsHeading over the core's own table.
+        // Kelda's own, in the same slot. The datasamling section is not one of them: the core
+        // draws it and reads its heading off the source (Fhi.Metadata-rhybi).
         Assert.Contains("Kriterier for tilgang til data", cut.Markup);
         Assert.Contains("Priser", cut.Markup);
     }
