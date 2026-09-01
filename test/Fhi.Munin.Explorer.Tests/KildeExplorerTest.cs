@@ -997,6 +997,23 @@ public class KildeExplorerTest : BunitContext
     }
 
     [Fact]
+    public void Select_WhenTheDrilldownIsOpen_ThenTheWayBackIsBlueRatherThanAPlainGhost()
+    {
+        // The plain ghost has no border and no background until :hover, so it reads as bold text
+        // to a reader without a mouse. --ghost-blue is Stiler's own and says link. (Fhi.Metadata-l9l2n.34)
+        var als = Kilde("Als registeret", "K_ALS");
+
+        var cut = RenderWith(new FakeClient(als).Publishing(als));
+
+        cut.Find(".munin-explorer-kilder tbody th button").Click();
+
+        var classes = cut.Find(".munin-explorer-drilldown button").ClassList;
+
+        Assert.Contains("button-square--ghost-blue", classes);
+        Assert.DoesNotContain("button-square--ghost", classes);
+    }
+
+    [Fact]
     public void Select_WhenTheReaderGoesBack_ThenTheListIsThereAsTheyLeftIt()
     {
         var als = Kilde("Als registeret", "K_ALS");

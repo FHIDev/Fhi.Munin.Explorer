@@ -308,6 +308,26 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .hd-button-square.button-square--ghost { border: none; color: var(--dark); }
 .hd-button-square.button-square--ghost:hover { background-color: var(--grey30); color: var(--dark); }
 
+/* components/buttons/_squarebutton.scss — the blue ghost, Stiler's own. The way out of a
+   drilldown wears it: a plain ghost shows nothing until :hover, and this is navigation.
+   --primary on the page ground is 6.57:1. (Fhi.Metadata-l9l2n.34) */
+.hd-button-square.button-square--ghost-blue { border: none; color: var(--primary); }
+.hd-button-square.button-square--ghost-blue:hover { background-color: var(--grey30); color: var(--primary); }
+
+/* components/munin-explorer/_buttons.scss — the ghost's missing affordance, scoped to the
+   component's root section so the shared class stays helsedata's. --grey60 on the page ground
+   is 6.76:1, over WCAG 1.4.11's 3:1 for a border that identifies a control. */
+.munin-explorer .hd-button-square.button-square--ghost {
+  border: 1px solid var(--grey60);
+}
+
+/* Inert is drawn from aria-disabled, never from `disabled` — the focus reason the pager gives.
+   The text is --grey40 then, and a full-strength border around grey text reads as a control
+   that still works. */
+.munin-explorer .hd-button-square.button-square--ghost[aria-disabled="true"] {
+  border-color: var(--grey40);
+}
+
 /* Stiler's spacing modifiers, which only apply on a square button. The sort buttons need them
    because Razor drops the whitespace between elements, so without a margin they would touch. */
 .hd-button-square.margin-right { margin-right: 16px; }

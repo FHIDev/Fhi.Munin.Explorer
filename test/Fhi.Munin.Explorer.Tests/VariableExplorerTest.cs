@@ -7379,6 +7379,30 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
+    public void Drilldown_WhenAViewIsOpen_ThenBothWaysBackAreBlueRatherThanPlainGhosts()
+    {
+        // Both drilldowns say "Tilbake til variabler", so they cannot look like two different
+        // controls. A plain ghost shows nothing until :hover; blue says link. (Fhi.Metadata-l9l2n.34)
+        var cut = OpenOwner(TwoRows(), 0);
+
+        Assert.Contains("button-square--ghost-blue", BackClasses(cut));
+        Assert.DoesNotContain("button-square--ghost", BackClasses(cut));
+
+        Back(cut);
+
+        cut.FindAll(".munin-explorer-detail > button")
+           .First(b => b.TextContent.Contains("hele variabelen", StringComparison.Ordinal))
+           .Click();
+
+        Assert.Contains("button-square--ghost-blue", BackClasses(cut));
+        Assert.DoesNotContain("button-square--ghost", BackClasses(cut));
+    }
+
+    /// <summary>The class tokens on the way out of whichever drilldown is on screen.</summary>
+    private static AngleSharp.Dom.ITokenList BackClasses(IRenderedComponent<VariableExplorer> cut) =>
+        cut.Find(".munin-explorer-drilldown button").ClassList;
+
+    [Fact]
     public async Task Source_WhenTheOtherOwnerIsOpenedFirst_ThenTheAbandonedFetchIsNotShown()
     {
         // Two owners opened in quick succession are two requests in flight against two endpoints,
