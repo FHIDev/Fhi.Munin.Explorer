@@ -1,7 +1,7 @@
 category: Fixed
 
 - **Creating a list can no longer take the circuit down.** The call was made without a guard, so
-  anything it threw — a 429 from the per-address limiter, an API that had gone away — left the
+  anything it threw — a 429 from the rate limiter, an API that had gone away — left the
   event handler and took the Blazor circuit with it. The reader got a blank page and a reconnect
   banner in place of the list they were building. It now says what happened and stays where it is:
   a throttled attempt says too many requests, anything else says the save failed.
