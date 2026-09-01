@@ -483,6 +483,18 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         _actionFailure = ListActionFailure.None;
     }
 
+    /// <summary>
+    /// Empties the alert region. Four conditions share it, so a handler that clears only its own
+    /// leaves an older one answering for the action the reader just took.
+    /// </summary>
+    private void ForgetFailures()
+    {
+        _failed = false;
+        _createFailure = ListActionFailure.None;
+        _actionFailure = ListActionFailure.None;
+        _downloadFailure = DownloadFailure.None;
+    }
+
     private async Task ChooseListAsync(ChangeEventArgs e)
     {
         if (State is null || !Guid.TryParse(e.Value?.ToString(), out var id))
@@ -529,12 +541,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             return;
         }
 
-        // Starting an action clears the other three, so the alert can never answer for one
-        // the reader did not just take. A load that failed has LoadPageAsync to say so again.
-        _createFailure = ListActionFailure.None;
-        _actionFailure = ListActionFailure.None;
-        _downloadFailure = DownloadFailure.None;
-        _failed = false;
+        ForgetFailures();
 
         VariableList? created;
 
@@ -544,8 +551,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
         catch (MuninExplorerRateLimitedException)
         {
-            // Creating is a write against the same per-address limiter as saving a row, and
-            // "prøv igjen om litt" is advice a throttled reader cannot use.
+            // Creating meets the same limiter the saves do, and "prøv igjen om litt" is advice
+            // a throttled reader cannot use.
             _createFailure = ListActionFailure.Throttled;
             return;
         }
@@ -595,7 +602,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             return;
         }
 
-        _actionFailure = ListActionFailure.None;
+        ForgetFailures();
         _skipOnePageRead = true;
 
         try
@@ -641,7 +648,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         _confirmingDelete = false;
-        _actionFailure = ListActionFailure.None;
+        ForgetFailures();
 
         try
         {
@@ -718,9 +725,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         _downloading = true;
-        _downloadFailure = DownloadFailure.None;
-        _createFailure = ListActionFailure.None;
-        _failed = false;
+        ForgetFailures();
 
         try
         {

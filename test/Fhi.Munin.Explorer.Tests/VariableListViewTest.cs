@@ -683,6 +683,27 @@ public class VariableListViewTest : BunitContext
         Assert.Contains("Kunne ikke lagre", cut.Markup);
         Assert.DoesNotContain("Kunne ikke hente listen", cut.Markup);
     }
+
+    [Fact]
+    public async Task View_WhenACreateFailsAfterARenameFailed_ThenTheAlertAnswersForTheCreate()
+    {
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"))
+        {
+            RenameThrows = new InvalidOperationException("the API is gone"),
+            CreateThrows = true
+        };
+        var cut = RenderView(client);
+
+        cut.FindAll("input[type=text]")[1].Change("Hjertet mitt");
+        await PressAsync(cut, "Gi nytt navn");
+        Assert.Contains("Kunne ikke endre listen", cut.Markup);
+
+        cut.FindAll("input[type=text]")[0].Change("Hjerte og kar");
+        await PressAsync(cut, "Opprett liste");
+
+        Assert.Contains("Kunne ikke lagre", cut.Markup);
+        Assert.DoesNotContain("Kunne ikke endre listen", cut.Markup);
+    }
     [Fact]
     public async Task View_WhenAnotherSurfaceRemovesAVariable_ThenItLeavesThisViewToo()
     {
