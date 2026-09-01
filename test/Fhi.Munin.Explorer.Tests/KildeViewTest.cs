@@ -560,6 +560,110 @@ public class KildeViewTest : BunitContext
     }
 
     [Theory]
+    [InlineData("no")]
+    [InlineData("en")]
+    public void Metadata_WhenARealSourceIsDrawn_ThenItsDescriptionIsPrintedOnceAndNotAgainAsAField(
+        string language)
+    {
+        // The panel drew the whole description twice: as the lead ingress, and again under
+        // "Beskrivelse (flerspråklig)" inside the EHDS group — 1441 identical characters a screen
+        // apart, under a heading suggesting it was something else. (Fhi.Metadata-8yqoz)
+        //
+        // Counted over the rendered text rather than asserted on one element, because where the
+        // second copy comes from is the thing under test: an assertion naming the EHDS group would
+        // pass if the duplicate moved.
+        var kilde = Barnediabetes();
+        var cut = Render(kilde, language);
+
+        var description = kilde.Description!;
+
+        Assert.True(description.Length > 1000, "the captured description should be the long one");
+        Assert.Equal(1, Occurrences(cut.Markup, description));
+
+        // And it is the ingress that kept it, not the field.
+        Assert.Contains(description, cut.Find(".munin-explorer-kilde__description").TextContent,
+                        StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("no", "EHDS / HealthDCAT-AP")]
+    [InlineData("en", "EHDS / HealthDCAT-AP")]
+    public void Metadata_WhenTheDescriptionIsExcluded_ThenItsGroupKeepsTheRestOfItsFields(
+        string language, string group)
+    {
+        // THE TRAP. Groups drops a group whose every key is unset, so excluding a key can take the
+        // group with it when that key was the only one filled in. Here it is not: five of the six
+        // populated EHDS keys survive, so the group must still be drawn and still be populated.
+        // Its sibling test above pins the full list of seven groups, which is what would catch the
+        // group disappearing; this one catches it being drawn hollow.
+        var cut = Render(Barnediabetes(), language);
+
+        var headings = cut.FindAll(".munin-explorer-group").Select(e => e.TextContent).ToList();
+
+        Assert.Contains(group, headings);
+
+        // Rows, not just the heading: a heading over nothing is the shape this bead is about.
+        Assert.True(cut.FindAll("dt").Count > 10,
+                    $"the metadata should still draw its rows, found {cut.FindAll("dt").Count}");
+    }
+
+    [Fact]
+    public void Metadata_WhenTheCatalogueHoldsAnEnglishDescription_ThenItIsNotExcludedWithTheNorwegian()
+    {
+        // THE SECOND TRAP, in the direction that deletes rather than duplicates. The ingress is the
+        // Norwegian description whatever the reader's language, so BeskrivelseEngelsk is a fact
+        // this view shows nowhere else — excluding it alongside its siblings would remove it from
+        // the panel entirely rather than de-duplicate it.
+        var kilde = Kilde() with
+        {
+            PropertyMetadata = [Entry("BeskrivelseEngelsk", 10, "Beskrivelse", "Beskrivelse (engelsk)")],
+            AdditionalProperties = new Dictionary<string, string?>
+            {
+                ["BeskrivelseEngelsk"] = "Norwegian register for ALS and other motor neurone diseases.",
+            },
+        };
+
+        var cut = Render(kilde);
+
+        Assert.Contains("Norwegian register for ALS", cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Metadata_WhenOnlyThePlainDescriptionKeyIsCurated_ThenItIsExcludedToo()
+    {
+        // THE THIRD TRAP. The captured source carries BeskrivelseFlerspraklig, so a fix covering
+        // only that key looks complete against it. A source curating the plain Beskrivelse instead
+        // would keep the duplicate, and nothing here would have said so.
+        var kilde = Kilde() with
+        {
+            PropertyMetadata = [Entry("Beskrivelse", 10, "Beskrivelse")],
+            AdditionalProperties = new Dictionary<string, string?>
+            {
+                ["Beskrivelse"] = "Norsk register for ALS og andre motonevronsykdommer.",
+            },
+        };
+
+        var cut = Render(kilde);
+
+        Assert.Equal(1, Occurrences(cut.Markup, kilde.Description!));
+    }
+
+    /// <summary>How many times <paramref name="needle"/> occurs in <paramref name="haystack"/>.</summary>
+    private static int Occurrences(string haystack, string needle)
+    {
+        var count = 0;
+
+        for (var i = haystack.IndexOf(needle, StringComparison.Ordinal);
+             i >= 0;
+             i = haystack.IndexOf(needle, i + needle.Length, StringComparison.Ordinal))
+        {
+            count++;
+        }
+
+        return count;
+    }
+
+    [Theory]
     [InlineData("no", new[] { "Identifikasjon", "Kvalitet", "Juridisk", "Identifikatorer", "Samsvar" })]
     [InlineData("en", new[] { "Identification", "Quality", "Legal", "Identifiers", "Compliance" })]
     public void Metadata_WhenARealSourceLeavesAGroupUnset_ThenNoHeadingPromisesIt(
