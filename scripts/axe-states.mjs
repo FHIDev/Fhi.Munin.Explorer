@@ -6,10 +6,16 @@
 // both samples mount with `Language="no"`. A control this file cannot find stops the scan as a
 // TOOLING failure rather than leaving the page in a state nobody entered but axe reports under.
 //
-// Every state needs the live API to answer with data, so an API that is down turns the job red.
+// States wait for content, never merely for the page. The data comes from axe-stub-api.mjs, so
+// "no rows yet" means the component is broken rather than that a network call is slow.
 
 /** Playwright's default action timeout is generous; a control that is not there is not coming. */
 const findTimeout = 15_000;
+
+/** The signal that data arrived, not merely that the shell rendered. */
+function rowsArePresent(page, selector) {
+  return page.locator(selector).first().waitFor({ state: 'visible', timeout: findTimeout });
+}
 
 async function press(scope, name) {
   const button = scope.getByRole('button', { name, exact: true }).first();
@@ -18,6 +24,12 @@ async function press(scope, name) {
 }
 
 export const states = {
+  // The two list pages as they load. They wait for a row rather than for the page, because the
+  // data can fail to arrive and an empty list is a page axe reports no violations in — which is
+  // how this gate read green against an unreachable API for as long as it has existed.
+  'variables-list': page => rowsArePresent(page, 'button.munin-explorer-dataitem-main__name'),
+  'kilder-list': page => rowsArePresent(page, 'button.munin-explorer-kilder__name'),
+
   // The filter tree with every facet unfolded and the guide lines drawn. This is the state the
   // 1.16:1 level lines shipped in (Fhi.Metadata-wcbxi): unfolding first matters because axe skips
   // what a closed <details> hides, so the lines have to be on screen to be judged at all.
