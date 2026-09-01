@@ -858,13 +858,9 @@ public partial class VariableExplorer
     /// The answer to draw the panel from: the fresh one, unless it would leave the reader stranded.
     /// </summary>
     /// <remarks>
-    /// The counts are cross-filtered against the whole selection, so a selection matching nothing
-    /// makes the API report nothing for every facet — the chosen value included, name and all.
-    /// Storing that answer removes the controls the reader is using and the only way to undo the
-    /// choice that emptied the list; measured against skytest, ticking one kilde and adding a date
-    /// that matches nothing took the kilde facet from 43 entries to none. So the last answer that
-    /// had something to offer is kept instead, and <see cref="Counted"/> drops its numbers, which
-    /// describe a selection that is no longer on screen. (Fhi.Metadata-v2bgr)
+    /// A selection matching nothing makes the API report nothing for every facet, chosen values
+    /// included, so storing it would remove the only way to undo the choice that emptied the list.
+    /// (Fhi.Metadata-v2bgr)
     /// </remarks>
     private async Task<FilterOptions> RetainedAsync(FilterOptions fresh, string? language)
     {
