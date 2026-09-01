@@ -704,6 +704,27 @@ public class VariableListViewTest : BunitContext
         Assert.Contains("Kunne ikke lagre", cut.Markup);
         Assert.DoesNotContain("Kunne ikke endre listen", cut.Markup);
     }
+
+    [Fact]
+    public async Task View_WhenTheReaderSwitchesListAfterAFailedCreate_ThenTheSentenceGoes()
+    {
+        // Switching list is an action too. The alert would otherwise still be answering for a
+        // save the reader has since moved on from.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"))
+        {
+            ListCount = 2,
+            CreateThrows = true
+        };
+        var cut = RenderView(client);
+
+        cut.FindAll("input[type=text]")[0].Change("Hjerte og kar");
+        await PressAsync(cut, "Opprett liste");
+        Assert.Contains("Kunne ikke lagre", cut.Markup);
+
+        await cut.InvokeAsync(() => cut.Find("select").Change(ListClient.SecondListId.ToString()));
+
+        Assert.DoesNotContain("Kunne ikke lagre", cut.Markup);
+    }
     [Fact]
     public async Task View_WhenAnotherSurfaceRemovesAVariable_ThenItLeavesThisViewToo()
     {

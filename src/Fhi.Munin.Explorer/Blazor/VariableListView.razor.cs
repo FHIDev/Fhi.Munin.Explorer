@@ -505,6 +505,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         _shownList = id;
         _pageNumber = 1;
         ForgetListControls();
+        ForgetFailures();
 
         try
         {
