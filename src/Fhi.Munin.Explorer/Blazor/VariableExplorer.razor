@@ -72,7 +72,10 @@
          id="@WholeVariableId"
          role="region"
          aria-labelledby="@WholeVariableHeadingId">
-        <button class="hd-button-square button-square--ghost margin-bottom"
+        @* --ghost-blue, not --ghost: the plain ghost has no border and no background until :hover,
+           so the way out of a view reads as bold text to anyone not using a mouse. Blue is Stiler's
+           own link colour, and this control is navigation. (Fhi.Metadata-l9l2n.34) *@
+        <button class="hd-button-square button-square--ghost-blue margin-bottom"
                 type="button"
                 @onclick="ToggleWholeVariableAsync">@T.BackToVariables</button>
 
@@ -93,11 +96,10 @@ else if (_sourceKind is not null)
          role="region"
          aria-labelledby="@SourceHeadingId"
          aria-busy="@SourceBusy">
-        @* Two ways out, in the order they undo things: back to the whole list, then back to it
-           narrowed to what is on screen. The narrowing one is filled and the plain one ghosted
-           because it is the one that changes the list — the same pairing Tøm søket already uses.
-           Both names are Stiler's own; this pair invents no class, so it needs no host note. *@
-        <button class="hd-button-square button-square--ghost margin-right margin-bottom"
+        @* Two ways out, in the order they undo things. The narrowing one is filled and this one
+           blue, because one changes the list and the other only navigates. Both names are
+           Stiler's own, so the pair invents no class. (Fhi.Metadata-l9l2n.34) *@
+        <button class="hd-button-square button-square--ghost-blue margin-right margin-bottom"
                 type="button"
                 @onclick="CloseSourceAsync">@T.BackToVariables</button>
 

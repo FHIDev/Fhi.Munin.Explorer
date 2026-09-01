@@ -56,7 +56,9 @@
          role="region"
          aria-labelledby="@DetailHeadingId"
          aria-busy="@DetailBusy">
-        <button class="hd-button-square button-square--ghost margin-bottom"
+        @* --ghost-blue for the same reason the variable explorer's way out wears it: a plain ghost
+           shows nothing until :hover, and this is navigation. (Fhi.Metadata-l9l2n.34) *@
+        <button class="hd-button-square button-square--ghost-blue margin-bottom"
                 type="button"
                 @onclick="CloseAsync">@T.BackToKilder</button>
 

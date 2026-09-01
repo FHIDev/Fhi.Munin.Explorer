@@ -30,7 +30,8 @@ internal enum PanelTab
 /// styled by the site it is embedded in rather than by whatever we guessed. The families used
 /// are <c>form-element__label</c>, <c>form-fieldset</c>, <c>searchbox__freetext*</c>,
 /// <c>hd-button-square</c> with <c>button-square--primary</c>, <c>button-square--secondary</c>,
-/// <c>button-square--ghost</c>, <c>hd-button-reset</c>, <c>margin-right</c>, <c>margin-bottom</c>,
+/// <c>button-square--ghost</c>, <c>button-square--ghost-blue</c>, <c>hd-button-reset</c>,
+/// <c>margin-right</c>, <c>margin-bottom</c>,
 /// <c>margin--bottom</c> and <c>margin--none</c>, <c>headline</c> with <c>headline-3</c>,
 /// <c>headline-s</c> and <c>headline-xxs</c>, <c>caption</c>, <c>ingress</c>, <c>tag</c>,
 /// <c>dot</c>, <c>infobox</c> with <c>infobox--bg-yellow</c>, and <c>screenreader-only</c>.
