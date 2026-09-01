@@ -274,6 +274,13 @@ public class VariableListViewTest : BunitContext
         /// <remarks>Settable, not init: a test turns it off to show the view still answers after.</remarks>
         public Exception? RemoveThrows { get; set; }
 
+        /// <summary>Set when the API takes the call and declines it - its 404 for a list not yours.</summary>
+        /// <remarks>
+        /// Its own switch beside <see cref="RemoveThrows"/>, and settable for the same reason: a
+        /// declined removal returns rather than throws, and nothing is taken out of the list.
+        /// </remarks>
+        public bool RemoveIsDeclined { get; set; }
+
         public override Task<bool> RemoveVariablesFromMyListAsync(
             Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default)
         {
@@ -282,6 +289,11 @@ public class VariableListViewTest : BunitContext
             if (RemoveThrows is not null)
             {
                 throw RemoveThrows;
+            }
+
+            if (RemoveIsDeclined)
+            {
+                return Task.FromResult(false);
             }
 
             _items.RemoveAll(i => variableIds.Contains(i.VariableId));
@@ -613,6 +625,10 @@ public class VariableListViewTest : BunitContext
 
         Assert.Equal(1, client.RemoveCalls);
         Assert.DoesNotContain("Alder ved diagnose", cut.Markup);
+
+        // The converse of the declined removal below. Without it, a handler that reported every
+        // removal as failed would still pass this test on the row alone.
+        Assert.DoesNotContain("Kunne ikke endre listen", cut.Markup);
     }
 
     [Fact]
@@ -1184,6 +1200,53 @@ public class VariableListViewTest : BunitContext
         await cut.InvokeAsync(() => cut.Find("select").Change(ListClient.SecondListId.ToString()));
 
         Assert.True(client.VariablesCalls > before, "the view stopped answering after the failure");
+    }
+
+    [Fact]
+    public async Task View_WhenRemovingAVariableIsDeclined_ThenItSaysSoAndTheRowStays()
+    {
+        // Not a throw: the API took the call and answered no - its 404 for a list that is not the
+        // reader's any more. The holder runs no staleness guard on this path, so a false is always
+        // an answer worth passing on, which is what the silent handler did not do.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"))
+        {
+            ListCount = 2,
+            RemoveIsDeclined = true
+        };
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => cut.FindAll(".munin-explorer-dataitem-main button")[0].Click());
+
+        Assert.Contains("Kunne ikke endre listen", cut.Markup);
+        Assert.DoesNotContain("for mange forespørsler", cut.Markup);
+        Assert.Contains("Alder ved diagnose", cut.Markup);
+
+        // Acceptance 3. The sentence would be on screen either way; only a new interaction says
+        // the handler returned rather than took the circuit with it.
+        var before = client.VariablesCalls;
+        await cut.InvokeAsync(() => cut.Find("select").Change(ListClient.SecondListId.ToString()));
+
+        Assert.True(client.VariablesCalls > before, "the view stopped answering after the failure");
+    }
+
+    [Fact]
+    public async Task View_WhenADeclinedRemovalIsTriedAgainAndAccepted_ThenTheRowGoesAndTheAlertEmpties()
+    {
+        // The other half of acceptance 2: the message belongs to the removal that failed, not to
+        // the view. A handler that set it and never cleared it would leave the reader told their
+        // list could not be changed while looking at the row that just left it.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { RemoveIsDeclined = true };
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => cut.FindAll(".munin-explorer-dataitem-main button")[0].Click());
+        Assert.Contains("Kunne ikke endre listen", cut.Markup);
+
+        client.RemoveIsDeclined = false;
+        await cut.InvokeAsync(() => cut.FindAll(".munin-explorer-dataitem-main button")[0].Click());
+
+        Assert.Equal(2, client.RemoveCalls);
+        Assert.DoesNotContain("Alder ved diagnose", cut.Markup);
+        Assert.DoesNotContain("Kunne ikke endre listen", cut.Markup);
     }
 
     [Fact]

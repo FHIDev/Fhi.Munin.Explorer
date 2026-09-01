@@ -697,6 +697,13 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             {
                 await RetreatFromEmptyPageAsync();
             }
+            else
+            {
+                // Unlike rename and delete, the holder runs no staleness guard on this path, so a
+                // false is never a call that merely arrived late: it is a list the API will not
+                // write to, or a reader signed out under the press.
+                _actionFailure = ListActionFailure.Failed;
+            }
         }
         catch (MuninExplorerRateLimitedException)
         {
