@@ -171,9 +171,8 @@ internal static class CatalogueProperties
             }
 
             // A field the catalogue declares to be a URL exists to be followed, so a value that
-            // is one link - authored as [label](url) or bare - becomes an anchor. A URL shown as
-            // its own label is prose in no language, so it stays unmarked (WCAG 3.1.2); a worded
-            // label is the catalogue's own text like every other value here.
+            // is one link — [label](url) or bare — becomes an anchor. A URL as its own label is
+            // prose in no language, so it stays unmarked (WCAG 3.1.2); a worded one is Norwegian.
             if (Typed(entry, UrlType) && CatalogueMarkdown.Link(raw) is { } link)
             {
                 rows.Add(new PropertyRow(label, labelLanguage, link.Label,
