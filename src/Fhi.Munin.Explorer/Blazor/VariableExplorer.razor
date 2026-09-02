@@ -253,7 +253,8 @@ else
 
             @* The toolbar. Utvid alle and Skjul alle act on every facet at once, which is the one
                thing the native disclosure cannot do for itself; Nivålinjer is a toggle and says so
-               with aria-pressed, the same as a facet value. None of the three narrows anything. *@
+               with aria-pressed. None of the three narrows anything, which is why none is a
+               checkbox — the facet values are. *@
             <button class="hd-button-square button-square--ghost margin-right margin-bottom"
                     type="button"
                     @onclick="() => FoldAll(true)">@T.ExpandAllFacets</button>

@@ -229,8 +229,11 @@ public class ShareableStateTest : BunitContext
 
         client.FailNext = true;
 
-        // A facet is a button here, not a checkbox — the one carrying its count.
-        cut.FindAll(".munin-explorer-filters button").First(b => b.TextContent.Contains("(9)")).Click();
+        // Any facet value will do — the one carrying its count.
+        cut.FindAll(".munin-explorer-filters li > label")
+           .First(l => l.TextContent.Contains("(9)", StringComparison.Ordinal))
+           .QuerySelector("input")!
+           .Change(true);
 
         Assert.Equal(3, reported[^1]);
     }

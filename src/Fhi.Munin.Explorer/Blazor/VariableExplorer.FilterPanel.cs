@@ -42,7 +42,7 @@ public partial class VariableExplorer
     /// </summary>
     /// <remarks>
     /// <c>Count</c> is how many variables the value would leave, or null where there is no count to
-    /// show. <c>Toggle</c> is what pressing it does, or null for a value that is not selectable —
+    /// show. <c>Toggle</c> is what ticking it does, or null for a value that is not selectable —
     /// the kildetype headings the kilder are grouped under are labels rather than filters, because
     /// kildetype has a facet of its own.
     /// </remarks>
@@ -646,22 +646,19 @@ public partial class VariableExplorer
         group.SelectedCount == 0 ? group.Label : $"{group.Label} ({group.SelectedCount})";
 
     /// <summary>
-    /// A facet's values as a nested list of toggle buttons.
+    /// A facet's values as a nested list of checkboxes.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// A plain <c>&lt;ul&gt;</c> with no class of its own, and buttons rather than checkboxes. Both
-    /// follow the rule the rest of this component follows: no class name goes into the markup that
-    /// cannot be read back off the host's stylesheet, and where there is nothing to read back the
-    /// shape changes rather than a stylesheet appearing. Stiler has a square button and this
-    /// component already renders one in two states, so a chosen value is a pressed button; a list
-    /// is an element every base stylesheet styles, and its indentation is what draws the hierarchy
-    /// without a class for a tree that nobody has verified.
+    /// A bare <c>&lt;input type="checkbox"&gt;</c> inside its own <c>&lt;label&gt;</c>, which is
+    /// what Kelda's facets already draw: one explorer, one way to choose a value. The pair is an
+    /// element combination every stylesheet dresses, so there is no class to invent for it, and the
+    /// bare <c>&lt;ul&gt;</c>'s indentation still carries the hierarchy. (Fhi.Metadata-j0a2h)
     /// </para>
     /// <para>
     /// Every value is keyed. Counts move as the reader filters, so the values reorder between
-    /// renders, and without keys the renderer would patch the button under the reader's finger into
-    /// a different filter — leaving focus on a control that is no longer the one they pressed.
+    /// renders, and without keys the renderer would patch the checkbox under the reader's finger
+    /// into a different filter — leaving focus on a control that is no longer the one they ticked.
     /// </para>
     /// </remarks>
     private RenderFragment FacetList(IReadOnlyList<FacetValue> values) => builder =>
@@ -682,16 +679,22 @@ public partial class VariableExplorer
             }
             else
             {
-                builder.OpenElement(3, "button");
-                builder.AddAttribute(4, "class", FacetClass(value));
-                builder.AddAttribute(5, "type", "button");
+                builder.OpenElement(3, "label");
+                builder.OpenElement(4, "input");
+                builder.AddAttribute(5, "type", "checkbox");
+                builder.AddAttribute(6, "checked", value.Selected);
 
-                // aria-pressed, and spelled out as "false" on the values that are not chosen —
-                // unlike the sort buttons' aria-current, which is left off. The attribute is what
-                // says these are toggles at all, so an unselected one carrying nothing would be
-                // announced as an ordinary button that gives no sign of having two states.
-                builder.AddAttribute(6, "aria-pressed", value.Selected ? "true" : "false");
-                builder.AddAttribute(7, "onclick", EventCallback.Factory.Create(this, toggle));
+                // The event's own value is ignored: the toggle flips what the filter holds, which
+                // is the one state a press and the render after it are certain to agree about.
+                builder.AddAttribute(7, "onchange",
+                                     EventCallback.Factory.Create<ChangeEventArgs>(this, _ => toggle()));
+
+                // What a plain onchange does not do and this panel needs: a press it refuses —
+                // dropped mid-fetch, rolled back when one fails — leaves the browser's own tick on
+                // over a filter that is off, and only a forced update of `checked` unsticks it.
+                builder.SetUpdatesAttributeName("checked");
+
+                builder.CloseElement();
                 builder.AddContent(8, FacetText(value));
                 builder.CloseElement();
             }
@@ -709,20 +712,12 @@ public partial class VariableExplorer
 
     /// <summary>A value's visible text — its label, and the count of what it would leave.</summary>
     /// <remarks>
-    /// The count is in the button's own text rather than in a badge beside it, so it is part of the
-    /// accessible name: "Dødsårsaksregisteret (1 234)" is announced whole, where a separate element
-    /// would be read as a stray number or skipped.
+    /// The count is inside the label's own text rather than in a badge beside it, so it is part of
+    /// the checkbox's accessible name: "Dødsårsaksregisteret (1 234)" is announced whole, where a
+    /// separate element would be read as a stray number or skipped.
     /// </remarks>
     private static string FacetText(FacetValue value) =>
         value.Count is { } count ? $"{value.Label} ({count})" : value.Label;
-
-    /// <summary>A value's classes — filled when chosen, a ghost when not, the same pair the sort buttons use.</summary>
-    private static string FacetClass(FacetValue value)
-    {
-        var style = value.Selected ? "button-square--secondary" : "button-square--ghost";
-
-        return $"hd-button-square {style} margin-right margin-bottom";
-    }
 
     /// <summary>Add or remove one value from a facet, and fetch what that leaves.</summary>
     /// <remarks>
@@ -746,9 +741,9 @@ public partial class VariableExplorer
     /// Choose a kildetype, or clear it by choosing the one already chosen.
     /// </summary>
     /// <remarks>
-    /// One at a time, because the API takes one. Pressing the chosen one again clears it, which is
-    /// what the button's own aria-pressed promises — a radio group would say the choice cannot be
-    /// undone, and there is no "any kildetype" value to go back to.
+    /// One at a time, because the API takes one, so ticking a second value unticks the first.
+    /// Unticking the chosen one clears the facet — which a checkbox promises and a radio group
+    /// denies, there being no "any kildetype" value to go back to.
     /// </remarks>
     private Task SetKildeTypeAsync(string value)
     {
