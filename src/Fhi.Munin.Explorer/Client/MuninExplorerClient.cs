@@ -329,9 +329,9 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
     /// <summary>Unpacks a refusal, answering null when the body is not one.</summary>
     /// <remarks>
     /// A 400 with an unreadable body is still a refusal — it is the ceiling that goes missing, not
-    /// the refusal — so this must not throw and take the whole write down with it. A body that
-    /// stops mid-read throws from the socket rather than from the parser, so the filter is what is
-    /// left after cancellation, which belongs to the caller and travels on.
+    /// the refusal — so this must not throw and take the whole write down with it. Wider than the
+    /// parser's own exceptions because not every reason is the parser's: a charset the runtime
+    /// cannot resolve throws an invalid operation. Cancellation is the caller's and travels on.
     /// </remarks>
     private static async Task<DesiredDataRefusal?> ReadRefusalAsync(
         HttpResponseMessage response,

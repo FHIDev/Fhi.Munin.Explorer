@@ -130,6 +130,21 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     private DesiredDataFailure _desiredDataFailure;
 
+    /// <summary>How many writes each row has had, so an older answer can be told from the newest.</summary>
+    /// <remarks>
+    /// Blur is what saves, so two writes to one row overlap whenever a reader corrects a note and
+    /// leaves before the first answer is back. Ordered by arrival, the first answer wins and marks
+    /// a text that was accepted — with nothing after it to take the mark away again.
+    /// </remarks>
+    private readonly Dictionary<Guid, int> _desiredDataWrites = [];
+
+    /// <summary>How many times the fields have been seeded from a page read.</summary>
+    /// <remarks>
+    /// A read landing under a write reseeds every field from the API, which drops the draft — so an
+    /// answer from before it is one about a text the reader can no longer see.
+    /// </remarks>
+    private int _desiredDataSeeds;
+
     /// <summary>The row the API refused for length, the list it was refused in, and the ceiling.</summary>
     /// <remarks>
     /// Held apart from the failures the alert region shares, and outside what
@@ -240,7 +255,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// The sentence naming the ceiling, or <see langword="null"/> while no row stands refused.
     /// </summary>
     /// <remarks>
-    /// Its own region rather than a fifth claimant on the shared one: a refused row keeps its
+    /// Its own region rather than a sixth claimant on the shared one: a refused row keeps its
     /// <c>aria-invalid</c> until it is written again, and a download or a rename failing meanwhile
     /// would take the sentence away and leave a field marked wrong with nothing saying why —
     /// WCAG 3.3.1. The field points at this region, so the two are read together.
@@ -558,6 +573,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// </remarks>
     private void SeedDesiredData()
     {
+        _desiredDataSeeds++;
+
         if (_desiredDataRefusal is { } stale && stale.ListId != _shownList)
         {
             _desiredDataRefusal = null;
@@ -653,6 +670,13 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         var trimmed = text?.Trim() ?? "";
 
         _desiredData[variableId] = trimmed;
+
+        // Numbered per row rather than once for the component: blur saves a row, so a reader typing
+        // down the list has several writes out at once and each row's answer is still about it.
+        var sequence = _desiredDataWrites.GetValueOrDefault(variableId) + 1;
+        _desiredDataWrites[variableId] = sequence;
+        var seeded = _desiredDataSeeds;
+
         ForgetFailures();
 
         if (_desiredDataRefusal?.VariableId == variableId)
@@ -701,21 +725,34 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             failure = DesiredDataFailure.Failed;
         }
 
-        if (_shownList != list)
+        if (_shownList != list || _desiredDataWrites.GetValueOrDefault(variableId) != sequence)
         {
-            // The write stands against the list it named, but the reader has moved on and both the
-            // mark and the sentence are keyed by row alone: applied here they would land on
-            // whatever now holds that variable, about a text nobody can see.
+            // The write stands against the list and row it named, but the mark and the sentence are
+            // keyed by row alone: a reader who has switched lists, or written this row again since,
+            // would have this older answer land on a text nobody is looking at.
             return;
         }
 
         if (ceiling is { } maxLengthToSay)
         {
-            _desiredDataRefusal = new DesiredDataRefusal(list, variableId, maxLengthToSay);
+            // Not over a page read that landed under the write: that reseeds every field from the
+            // API, so the refused text is gone and the mark would sit on the value the server
+            // holds — telling the reader to shorten a text that is no longer on screen.
+            if (_desiredDataSeeds == seeded)
+            {
+                _desiredDataRefusal = new DesiredDataRefusal(list, variableId, maxLengthToSay);
+            }
+
             return;
         }
 
-        _desiredDataFailure = failure;
+        if (failure is not DesiredDataFailure.None)
+        {
+            // A write that succeeded says nothing: the region is shared, and it was cleared for
+            // this row before the call — so assigning None here would take away the sentence
+            // another row's failure put there while this one was in flight.
+            _desiredDataFailure = failure;
+        }
     }
 
     private async Task ShowActiveListAsync()
@@ -744,7 +781,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     }
 
     /// <summary>
-    /// Empties the alert region — the one place that does. Four conditions share it, so a handler
+    /// Empties the alert region — the one place that does. Five conditions share it, so a handler
     /// clearing only its own leaves an older one answering for what the reader just did.
     /// </summary>
     /// <remarks>
@@ -782,6 +819,13 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             // Same reason as the lifecycle read above: an uncaught throw out of an event handler
             // takes the circuit with it. LoadPageAsync below has its own catch and will say so.
             _failed = true;
+
+            // And the rows go with it. _shownList has already moved, so rows left on screen from
+            // the list before it are rows every write here would address to the list now chosen —
+            // an annotation typed into one would land on that list's own row for the variable.
+            _page = null;
+            SeedDesiredData();
+
             return;
         }
 

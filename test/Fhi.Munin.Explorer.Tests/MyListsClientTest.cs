@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Text;
 using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
@@ -384,6 +385,74 @@ public class MyListsClientTest
 
         Assert.Equal(DesiredDataOutcome.Refused, result.Outcome);
         Assert.Null(result.MaxLength);
+    }
+
+    [Fact]
+    public async Task SetMyListDesiredDataAsync_WhenTheRefusalNamesACharsetNothingCanDecode_ThenItIsStillARefusal()
+    {
+        // The half of the catch the parser's own exceptions do not cover: a body can be unreadable
+        // without being unreadable JSON. A charset this runtime has no encoding for throws an
+        // invalid operation out of the read, which escaping takes the reader's circuit down with.
+        var handler = new StubHttpHandler(_ =>
+        {
+            var content = new StringContent("""{"maxLength":500,"received":612}""", Encoding.UTF8, "application/json");
+            content.Headers.ContentType = new MediaTypeHeaderValue("application/json") { CharSet = "utf-99" };
+
+            return new HttpResponseMessage(HttpStatusCode.BadRequest) { Content = content };
+        });
+
+        var result = await Client(handler).SetMyListDesiredDataAsync(ListId, Guid.NewGuid(), "C76");
+
+        Assert.Equal(DesiredDataOutcome.Refused, result.Outcome);
+        Assert.Null(result.MaxLength);
+    }
+
+    /// <summary>A body that cancels the caller's token as it is read, and answers anyway.</summary>
+    /// <remarks>
+    /// Cancelling before the call would end it at the send, which is a different path: the token
+    /// has to be live when the request goes out and cancelled by the time the refusal is read.
+    /// Writing without it is what lets the body arrive despite the cancellation.
+    /// </remarks>
+    private sealed class CancellingContent : HttpContent
+    {
+        private readonly CancellationTokenSource _caller;
+        private readonly byte[] _body;
+
+        public CancellingContent(CancellationTokenSource caller, string json)
+        {
+            _caller = caller;
+            _body = Encoding.UTF8.GetBytes(json);
+            Headers.ContentType = new MediaTypeHeaderValue("application/json");
+        }
+
+        protected override async Task SerializeToStreamAsync(Stream stream, TransportContext? context)
+        {
+            await _caller.CancelAsync();
+            await stream.WriteAsync(_body, CancellationToken.None);
+        }
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = _body.Length;
+            return true;
+        }
+    }
+
+    [Fact]
+    public async Task SetMyListDesiredDataAsync_WhenTheCallerCancelsWhileTheRefusalIsRead_ThenItIsNotSwallowedIntoARefusal()
+    {
+        // The other half of the same catch, and the one a widening would quietly cost: cancellation
+        // is the caller's answer, not the API's. Swallowed, it would tell a reader whose circuit
+        // went away that their text was too long, and hand the caller a refusal it never got.
+        using var caller = new CancellationTokenSource();
+
+        var handler = new StubHttpHandler(_ => new HttpResponseMessage(HttpStatusCode.BadRequest)
+        {
+            Content = new CancellingContent(caller, """{"maxLength":500}""")
+        });
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => Client(handler).SetMyListDesiredDataAsync(ListId, Guid.NewGuid(), "C76", caller.Token));
     }
 
     [Fact]

@@ -20,3 +20,10 @@ category: Added
   field marked wrong with nothing saying why. Both now stand until that row is written again or
   leaves the list, in an alert region of their own that the field points at, and the text survives
   a reload from anywhere.
+- **Two notes written at once no longer answer for each other.** Blur is what saves, so a reader
+  correcting one row and moving to the next has more than one write out at a time. An answer is now
+  applied only if the row, the list and the page it was typed against are still the ones on screen:
+  a late refusal cannot mark a text that was accepted, a late success cannot take away the sentence
+  another row's failure just put on screen, and a page read landing under a write cannot leave the
+  reader told to shorten a text that is no longer there. A list whose switch was refused takes its
+  rows with it, so no row is left on screen against a list it did not come from.
