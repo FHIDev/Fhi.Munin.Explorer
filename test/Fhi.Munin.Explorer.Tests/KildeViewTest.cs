@@ -146,8 +146,12 @@ public class KildeViewTest : BunitContext
         [
             Delkilde("Tromsø 4",
                      [Collection("Spørreskjema")],
-                     [Delkilde("Første besøk", [Collection("Blodprøver")], code: "K_TR.TR4.V1")],
-                     code: "K_TR.TR4"),
+                     [Delkilde("Første besøk", [Collection("Blodprøver")], code: "K_TR.TR4.V1",
+                               description: "Første besøksrunde.")],
+                     code: "K_TR.TR4",
+                     // A markdown link, because the captured Tromsø payload authors this field that
+                     // way and delkilde.beskrivelse carries more of them than any other field.
+                     description: "Fjerde runde av [Tromsøundersøkelsen](https://uit.no/tromsoundersokelsen)."),
         ],
     };
 
@@ -307,9 +311,10 @@ public class KildeViewTest : BunitContext
         // to @Heading rather than as a class attribute, which puts it out of reach of grep and of
         // the CSS checks in scripts/; rendering the component is the only way to see it.
         //
-        // Asked of the study rather than of the plain source: the three names the delkilde tree
+        // Asked of the study rather than of the plain source: the four names the delkilde tree
         // writes are drawn only when there is a tree to draw, so a source with no delkilder checks
-        // every name but those.
+        // every name but those. The study's waves carry a beskrivelse for the same reason — the
+        // fourth name is drawn only where one is authored.
         var cut = Render(Study());
 
         // Compared against an empty list rather than asserted empty, so a failure names the classes
@@ -326,12 +331,13 @@ public class KildeViewTest : BunitContext
         // are all on the explorer, none on this view — so every one is a promise only the sample
         // stylesheet keeps.
         //
-        // It is the second such list: VariableExplorerTest.cs:5719 pins twelve of these thirteen
-        // down the drill-in path, all but munin-explorer-group, which that fixture's kilde has no
-        // metadata groups to produce. Renaming a handle means editing both, and the other one fails
-        // with a message about the explorer rather than about this view.
+        // It is the second such list: VariableExplorerTest.cs pins twelve of these fourteen down the
+        // drill-in path, all but munin-explorer-group, which that fixture's kilde has no metadata
+        // groups to produce, and the delkilde beskrivelse, which its delkilder do not carry.
+        // Renaming a handle means editing both, and the other one fails with a message about the
+        // explorer rather than about this view.
         //
-        // Rendered from the study, so the three delkilde names are inside the list rather than
+        // Rendered from the study, so the four delkilde names are inside the list rather than
         // outside it: they are drawn only when the source has a tree, which makes a source without
         // one exactly the render that would let them ship unnamed and unstyled.
         var cut = Render(Study());
@@ -349,6 +355,7 @@ public class KildeViewTest : BunitContext
             "munin-explorer-kilde__body",
             "munin-explorer-kilde__datasamlinger",
             "munin-explorer-kilde__delkilde",
+            "munin-explorer-kilde__delkilde-description",
             "munin-explorer-kilde__delkilde-name",
             "munin-explorer-kilde__delkilder",
             "munin-explorer-kilde__description",
@@ -829,23 +836,84 @@ public class KildeViewTest : BunitContext
     }
 
     [Fact]
-    public void Delkilder_WhenOneCarriesACode_ThenItSitsUnderItsNameAndTheBeskrivelseDoesNot()
+    public void Delkilder_WhenOneCarriesACode_ThenItSitsUnderItsName()
     {
         // A delkilde is looked up by its code the way the kilde above it is — K_TR.TR4 — so the line
         // wears the same class name as the kilde's own, being the same thing one level down.
-        //
-        // The beskrivelse is left off, and is asserted absent rather than merely not asserted
-        // present, because adding it looks like an improvement until the payload is read. In the
-        // captured Tromsø kilde it is the name again for K_TR.BIODATA and a bare markdown link
-        // whose text is the name again for each of the five waves — and this view renders text, not
-        // markdown, so it would print the brackets and the URL beside every wave.
         var cut = Render(Study(), language: "en");
 
         var wave = cut.Find("ul.munin-explorer-kilde__delkilder > li");
 
         Assert.Equal("K_TR.TR4", wave.QuerySelector(".munin-explorer-kilde__identifiers")?.TextContent);
-        Assert.Null(wave.QuerySelector("p.munin-explorer-kilde__description"));
     }
+
+    [Fact]
+    public void Delkilder_WhenOneCarriesABeskrivelse_ThenItIsDrawnUnderTheNameLine()
+    {
+        // The bead's own claim, and it is asserted as an anchor rather than as text: the beskrivelse
+        // was held back under Fhi.Metadata-wtz80 because the view could only print it raw, so a
+        // check that only found the words would pass on the very rendering that was refused —
+        // "[Tromsøundersøkelsen](https://uit.no/…)" with the brackets and the URL on the page.
+        //
+        // It sits after the identifier line, which is what "under the name line" means in markup:
+        // name, then what it is called elsewhere, then what it is.
+        var cut = Render(Study(), language: "en");
+
+        var wave = cut.Find("ul.munin-explorer-kilde__delkilder > li");
+        var description = wave.QuerySelector("p.munin-explorer-kilde__delkilde-description")!;
+
+        Assert.Equal("Fjerde runde av Tromsøundersøkelsen.", description.TextContent);
+        Assert.Equal("https://uit.no/tromsoundersokelsen",
+                     description.QuerySelector("a")?.GetAttribute("href"));
+
+        Assert.Equal(
+            ["munin-explorer-kilde__delkilde-name",
+             "munin-explorer-kilde__identifiers",
+             "munin-explorer-kilde__delkilde-description"],
+            wave.Children.Take(3).Select(e => e.ClassList.Last()));
+    }
+
+    [Fact]
+    public void Delkilder_WhenOneCarriesABeskrivelse_ThenItIsMarkedAsTheCataloguesLanguage()
+    {
+        // The catalogue stores one beskrivelse, in Norwegian, whatever the reader is reading — so an
+        // English reader gets it marked and a Norwegian one does not, the rule the kilde's own
+        // description and every datasamling cell already follow.
+        Assert.Equal("no", Description(Render(Study(), language: "en"))?.GetAttribute("lang"));
+        Assert.Null(Description(Render(Study(), language: "no"))?.GetAttribute("lang"));
+    }
+
+    [Fact]
+    public void Delkilder_WhenOneCarriesNoBeskrivelse_ThenNoEmptyParagraphIsDrawnForIt()
+    {
+        // Most delkilder in the catalogue have none, and an empty <p> is not nothing: it takes the
+        // rule's own margin, so every wave without a beskrivelse would sit further from its table
+        // than the ones with.
+        var kilde = Kilde() with
+        {
+            Datasamlinger = [],
+            Delkilder = [Delkilde("Biodata", []), Delkilde("Tromsø 4", [], description: "   ")],
+        };
+
+        Assert.Empty(Render(kilde).FindAll("p.munin-explorer-kilde__delkilde-description"));
+    }
+
+    [Fact]
+    public void Delkilder_WhenANestedOneCarriesABeskrivelse_ThenItIsDrawnToo()
+    {
+        // The tree is walked, not just its top: Tromsø's waves nest, and a beskrivelse drawn only at
+        // the first level would leave the deeper ones with the same silence they had before.
+        var cut = Render(Study(), language: "en");
+
+        Assert.Equal(
+            ["Fjerde runde av Tromsøundersøkelsen.", "Første besøksrunde."],
+            cut.FindAll("p.munin-explorer-kilde__delkilde-description").Select(e => e.TextContent));
+    }
+
+    /// <summary>The first delkilde's beskrivelse paragraph, or null where none was drawn.</summary>
+    private static IElement? Description(IRenderedComponent<KildeView> cut) =>
+        cut.Find("ul.munin-explorer-kilde__delkilder > li")
+           .QuerySelector("p.munin-explorer-kilde__delkilde-description");
 
     [Fact]
     public void Delkilder_WhenTheCatalogueHasOrderedThem_ThenThoseComeFirstAndTheRestAlphabetically()

@@ -309,9 +309,17 @@ public sealed partial class KildeView : ComponentBase
                 builder.CloseElement();
             }
 
-            // Beskrivelse is still not drawn. The markdown reason from Fhi.Metadata-wtz80 is gone
-            // since CatalogueMarkdown, but drawing a new field needs its class name styled in
-            // Stiler first, which this repository cannot see (Fhi.Metadata-3osk6).
+            // The delkilde's own words, under its name line. Norwegian whatever the reader's
+            // language, and authored with markdown links more often than any other field
+            // (Fhi.Metadata-3osk6), which is what CatalogueMarkdown is here to draw.
+            if (!string.IsNullOrWhiteSpace(delkilde.Description))
+            {
+                builder.OpenElement(seq++, "p");
+                builder.AddAttribute(seq++, "class", "munin-explorer-kilde__delkilde-description");
+                builder.AddAttribute(seq++, "lang", CatalogueProperties.Foreign("no", Reader));
+                builder.AddContent(seq++, CatalogueMarkdown.Render(delkilde.Description));
+                builder.CloseElement();
+            }
 
             CollectionTable(builder, ref seq, Ordered(delkilde.Datasamlinger));
             DelkildeList(builder, ref seq, Ordered(delkilde.Children), Math.Min(level + 1, 6));

@@ -1569,6 +1569,16 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   margin-top: 0;
 }
 
+/* The delkilde's own words, under its name line and above its table. Sized down from the kilde's
+   ingress because it sits inside the tree rather than over the page, and capped at the same
+   measure: prose the full width of a wide window is unreadable wherever it appears. */
+.munin-explorer-kilde__delkilde-description {
+  margin: 8px 0 0;
+  max-width: 65ch;
+  color: var(--grey60);
+  font-size: 0.9375rem;
+}
+
 .munin-explorer-kilde__delkilde > .munin-explorer-kilde__datasamlinger {
   margin-top: 10px;
 }

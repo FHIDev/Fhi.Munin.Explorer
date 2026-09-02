@@ -345,6 +345,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-kilde__body` | handle |
   | `munin-explorer-kilde__datasamlinger` | handle |
   | `munin-explorer-kilde__delkilde` | handle |
+  | `munin-explorer-kilde__delkilde-description` | handle |
   | `munin-explorer-kilde__delkilde-name` | handle |
   | `munin-explorer-kilde__delkilder` | handle |
   | `munin-explorer-kilde__description` | handle |
