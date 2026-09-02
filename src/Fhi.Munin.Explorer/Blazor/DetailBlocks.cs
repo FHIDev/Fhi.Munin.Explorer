@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Rendering;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -71,10 +72,51 @@ internal static class DetailBlocks
         builder.CloseElement();
     };
 
+    /// <summary>
+    /// A row's value as one <c>dd</c> per language the catalogue holds it in, and the sequence
+    /// number the caller continues from.
+    /// </summary>
+    /// <remarks>
+    /// Named only where there is more than one: <c>lang</c> speaks to a screen reader alone. The
+    /// name sits outside the marked span so it is not announced in the language it names, and is a
+    /// <c>p</c> so a host with no rule for the class still gets one language per line.
+    /// </remarks>
+    internal static int Values(RenderTreeBuilder builder, int seq, PropertyRow row, string reader, Texts text)
+    {
+        foreach (var slot in row.Values)
+        {
+            builder.OpenElement(seq, "dd");
+
+            if (row.Values.Count == 1)
+            {
+                builder.AddAttribute(seq + 1, "lang", CatalogueProperties.Foreign(slot.Language, reader));
+                builder.AddContent(seq + 2, slot.Text);
+            }
+            else
+            {
+                builder.OpenElement(seq + 3, "p");
+                builder.AddAttribute(seq + 4, "class", "munin-explorer-meta__language");
+                builder.AddContent(seq + 5, text.LanguageName(slot.Language));
+                builder.CloseElement();
+
+                builder.OpenElement(seq + 6, "span");
+                builder.AddAttribute(seq + 7, "lang", CatalogueProperties.Foreign(slot.Language, reader));
+                builder.AddContent(seq + 8, slot.Text);
+                builder.CloseElement();
+            }
+
+            builder.CloseElement();
+            seq += 10;
+        }
+
+        return seq;
+    }
+
     /// <summary>One metadata group: its name, then its rows.</summary>
     internal static RenderFragment Group(PropertyGroup group, int level, string? language) => builder =>
     {
         var reader = ReaderLanguage.Of(language);
+        var text = Texts.For(language);
 
         builder.OpenElement(0, $"h{level}");
         builder.AddAttribute(1, "class", "headline headline-xxs margin--none munin-explorer-group");
@@ -97,13 +139,9 @@ internal static class DetailBlocks
             builder.AddContent(seq + 4, row.Label);
             builder.CloseElement();
 
-            builder.OpenElement(seq + 5, "dd");
-            builder.AddAttribute(seq + 6, "lang", CatalogueProperties.Foreign(row.ValueLanguage, reader));
-            builder.AddContent(seq + 7, row.Value);
-            builder.CloseElement();
+            seq = Values(builder, seq + 5, row, reader, text);
 
             builder.CloseElement();
-            seq += 10;
         }
 
         builder.CloseElement();
