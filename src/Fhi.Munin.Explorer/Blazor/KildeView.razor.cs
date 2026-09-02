@@ -309,8 +309,9 @@ public sealed partial class KildeView : ComponentBase
                 builder.CloseElement();
             }
 
-            // Beskrivelse is deliberately not drawn: the catalogue stores it as markdown and this
-            // view renders text, so it would print a bare link beside every wave (Fhi.Metadata-wtz80).
+            // Beskrivelse is still not drawn. The markdown reason from Fhi.Metadata-wtz80 is gone
+            // since CatalogueMarkdown, but drawing a new field needs its class name styled in
+            // Stiler first, which this repository cannot see (Fhi.Metadata-3osk6).
 
             CollectionTable(builder, ref seq, Ordered(delkilde.Datasamlinger));
             DelkildeList(builder, ref seq, Ordered(delkilde.Children), Math.Min(level + 1, 6));
