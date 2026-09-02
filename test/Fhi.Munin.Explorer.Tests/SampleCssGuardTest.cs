@@ -380,13 +380,10 @@ internal static class Guard
         return Run(start, script);
     }
 
-    /// <summary>
-    /// One run of a script that is not the checkout's own copy, from a directory that is neither.
-    /// </summary>
+    /// <summary>One run of a script that is not the checkout's own copy.</summary>
     /// <remarks>
     /// <c>assert-new-names-noted-for-hosts.sh</c> cds to its own <c>$0/..</c> and reads the tree it
-    /// lands in, so a caller-chosen working directory cannot reach it and the only way to point it
-    /// at a fixture is to run a copy that lives inside one.
+    /// lands in, so the only way to aim it at a fixture is to run a copy that lives inside one.
     /// </remarks>
     internal static GuardRun RunAt(string scriptPath, IReadOnlyDictionary<string, string> environment)
     {

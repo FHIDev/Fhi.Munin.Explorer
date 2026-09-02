@@ -3,14 +3,10 @@ using System.Diagnostics;
 namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
-/// A throwaway git repository for the guard tests, with no commit of its own until a caller makes
-/// one.
+/// A throwaway git repository, with no commit of its own until a caller makes one. Shared rather
+/// than copied per guard class: the identity git will not prompt over and the delete Windows can
+/// perform over read-only loose objects are the same wherever a script is driven over history.
 /// </summary>
-/// <remarks>
-/// Shared rather than one copy per guard class. The two subtle halves — an identity git will not
-/// prompt over, and a delete Windows can perform over git's read-only loose objects — are the same
-/// wherever a script is driven over history, and a second copy is a second place for them to rot.
-/// </remarks>
 internal sealed class GuardRepository : IDisposable
 {
     internal GuardRepository(string prefix)

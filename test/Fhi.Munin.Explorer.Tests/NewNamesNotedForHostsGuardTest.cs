@@ -2,20 +2,12 @@ namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
 /// Runs <c>scripts/assert-new-names-noted-for-hosts.sh</c> against throwaway repositories built to
-/// break it and asserts that it goes red, and red for the right reason.
+/// break it and asserts that it goes red, and red for the right reason (Fhi.Metadata-wbm1w).
 /// </summary>
 /// <remarks>
-/// <para>
-/// This check is one of the required status checks and nothing ran it (Fhi.Metadata-wbm1w). A guard
-/// that has stopped working passes every branch, which is indistinguishable from a repository where
-/// everyone noted their names — so nothing about it could be observed until it had to refuse.
-/// </para>
-/// <para>
-/// The script has no environment seam for the tree it reads: it cds to its own <c>$0/..</c> and
-/// takes <c>src/</c>, <c>changelog.d/</c> and the base ref from wherever that lands. So each case
-/// runs a COPY of it placed inside the fixture, which makes the fixture its checkout root and every
-/// path it reads the fixture's own. Only <c>BASE_REF</c> is passed in.
-/// </para>
+/// The script cds to its own <c>$0/..</c>, so no seam can aim it at a fixture: each case runs a COPY
+/// of it inside the repository under test, making that its checkout root and every path it reads the
+/// fixture's own. Only <c>BASE_REF</c> is passed in.
 /// </remarks>
 public class NewNamesNotedForHostsGuardTest
 {
