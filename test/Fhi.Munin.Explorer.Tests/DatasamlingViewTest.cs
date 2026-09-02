@@ -467,4 +467,21 @@ public class DatasamlingViewTest : BunitContext
         Assert.Equal("no", cut.Find(".munin-explorer-datasamling__description").GetAttribute("lang"));
         Assert.Equal("no", cut.Find(".munin-explorer-datasamling__criteria").GetAttribute("lang"));
     }
+
+    [Fact]
+    public void Description_WhenTheCatalogueAuthoredMarkdown_ThenTheIngressRendersItAsElements()
+    {
+        // Datasamling beskrivelser carry the same authored markdown as the kilde's own
+        // (FHIDev/Munin#5385); this pins that this view went through the same renderer.
+        var cut = Render(Datasamling() with
+        {
+            Description = "Spørreskjema.<br>Se [UiT](https://uit.no/research/tromsostudy).",
+        });
+
+        var ingress = cut.Find(".munin-explorer-datasamling__description");
+
+        Assert.Single(ingress.QuerySelectorAll("br"));
+        Assert.Equal("https://uit.no/research/tromsostudy",
+                     Assert.Single(ingress.QuerySelectorAll("a")).GetAttribute("href"));
+    }
 }

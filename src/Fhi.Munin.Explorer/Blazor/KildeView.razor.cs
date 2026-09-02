@@ -260,7 +260,7 @@ public sealed partial class KildeView : ComponentBase
                 : $"{row.Name} ({row.ShortName})");
             builder.CloseElement();
 
-            Cell(builder, ref seq, row.Description, norwegian: true);
+            DescriptionCell(builder, ref seq, row.Description);
             Cell(builder, ref seq,
                  CatalogueDate.Period(row.EffectiveValidFrom, row.EffectiveValidTo, Language, T),
                  norwegian: false);
@@ -326,6 +326,19 @@ public sealed partial class KildeView : ComponentBase
         builder.OpenElement(seq++, "th");
         builder.AddAttribute(seq++, "scope", "col");
         builder.AddContent(seq++, label);
+        builder.CloseElement();
+    }
+
+    /// <summary>
+    /// The beskrivelse column, which the catalogue authors with markdown links and line breaks
+    /// (FHIDev/Munin#5385). The fragment scopes its own sequence numbers, so the varying markdown
+    /// structure never shifts the cells after it.
+    /// </summary>
+    private void DescriptionCell(RenderTreeBuilder builder, ref int seq, string? value)
+    {
+        builder.OpenElement(seq++, "td");
+        builder.AddAttribute(seq++, "lang", CatalogueProperties.Foreign("no", Reader));
+        builder.AddContent(seq++, CatalogueMarkdown.Render(value));
         builder.CloseElement();
     }
 

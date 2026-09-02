@@ -99,11 +99,27 @@ internal static class DetailBlocks
 
             builder.OpenElement(seq + 5, "dd");
             builder.AddAttribute(seq + 6, "lang", CatalogueProperties.Foreign(row.ValueLanguage, reader));
-            builder.AddContent(seq + 7, row.Value);
+
+            // A URL-typed property arrives resolved to label and href, so a field that exists to
+            // be followed can be. rel guards the middle-click and ctrl-click paths; there is no
+            // target, so a reader stays on the page they were reading (FHIDev/Munin#5385).
+            if (row.Href is { } href)
+            {
+                builder.OpenElement(seq + 7, "a");
+                builder.AddAttribute(seq + 8, "href", href);
+                builder.AddAttribute(seq + 9, "rel", "noopener noreferrer");
+                builder.AddContent(seq + 10, row.Value);
+                builder.CloseElement();
+            }
+            else
+            {
+                builder.AddContent(seq + 11, row.Value);
+            }
+
             builder.CloseElement();
 
             builder.CloseElement();
-            seq += 10;
+            seq += 20;
         }
 
         builder.CloseElement();

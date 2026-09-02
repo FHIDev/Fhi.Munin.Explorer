@@ -19,7 +19,7 @@
             @if (Description is { } description)
             {
                 <p class="ingress munin-explorer-datasamling__description"
-                   lang="@CatalogueProperties.Foreign("no", Reader)">@description</p>
+                   lang="@CatalogueProperties.Foreign("no", Reader)">@CatalogueMarkdown.Render(description)</p>
             }
         </div>
 
