@@ -186,10 +186,13 @@ These are not style preferences — each one is a host that breaks otherwise.
     root as a grid at desktop width, `-filters`, `-detail`, `-drilldown`, `-kodeverk*` and
     `-codes*` for spacing, indentation and a rule between rows, the kilde, datasamling and variable
     views' name block, main column and sidebar as one page layout under three prefixes, the kilde
-    list as a table with its counts right-aligned — and they draw `munin-explorer-group` as Runa's
-    blue uppercase eyebrow. A host that defines none of them loses no information: the group
+    list as a table with its counts right-aligned — and `munin-explorer-group` is now the space
+    between one group and the next and nothing else. It used to draw Runa's 11px blue uppercase
+    eyebrow over the `headline headline-xxs` the heading already wears, which is what drew a group
+    heading smaller than the 16px values beneath it; the host's own heading style wins there now
+    (`Fhi.Metadata-gvtt9`). A host that defines none of them loses no information: the group
     headings, for instance, are already sized by the `headline headline-xxs` they wear, so what an
-    undefined `munin-explorer-group` costs is the eyebrow's look, not the fact that it is a
+    undefined `munin-explorer-group` costs is the gap between groups, not the fact that it is a
     heading. The kilde list is the same bargain twice over, which is why it is a `<table>` of
     `<button>`s — an undrawn table still lines its columns up and an undrawn button is still
     visibly a control.

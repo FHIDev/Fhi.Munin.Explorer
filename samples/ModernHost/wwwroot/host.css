@@ -1082,19 +1082,13 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 /* ---- the panel's group headings and period bar ----
 
-   Both are ours to name: helsedata's panel is flat, so it has no group heading, and neither
-   explorer's stylesheet has a period bar. Runa's treatment, translated.
-
-   The group heading is an eyebrow, not a heading-sized heading: 11px, bold, uppercase, wide
-   tracking. Runa draws it in blue. It stays a real <h3> so the panel has an outline. */
+   The period bar is ours to draw: neither explorer's stylesheet has one. The group heading is not.
+   It wears the host's own `headline headline-xxs`, and Runa's 11px uppercase eyebrow was written
+   over the top of that, which is what drew a group heading smaller than the values under it
+   (Fhi.Metadata-gvtt9). What is left here is the space between one group and the next. */
 
 .munin-explorer-group {
   margin: 20px 0 8px;
-  font-size: 0.6875rem;      /* 11px, as Runa */
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--primary-dark);
 }
 
 .munin-explorer-meta [role="tabpanel"] > .munin-explorer-group:first-child {
@@ -1312,12 +1306,13 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   font-size: 0.8125rem;
 }
 
+/* No colour of ours. The host styles `ingress` only inside particular page types and none of those
+   rules set one, so the ingress inherits the body colour the rest of the page reads in. */
 .munin-explorer-kilde__description,
 .munin-explorer-datasamling__description,
 .munin-explorer-whole__description {
   margin: 12px 0 0;
   max-width: 65ch;   /* prose, and prose the full width of a wide window is unreadable */
-  color: var(--grey60);
 }
 
 /* Main column and sidebar, and only once there is room for two of them. Below 1024px the aside
