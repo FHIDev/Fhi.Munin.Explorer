@@ -175,8 +175,10 @@ internal static class CatalogueProperties
             // prose in no language, so it stays unmarked (WCAG 3.1.2); a worded one is Norwegian.
             if (Typed(entry, UrlType) && CatalogueMarkdown.Link(raw) is { } link)
             {
+                var labelIsTheAddress = link.Href == link.Label || link.Href == $"https://{link.Label}";
+
                 rows.Add(new PropertyRow(label, labelLanguage, link.Label,
-                                         link.Label == link.Href ? reader : "no", link.Href));
+                                         labelIsTheAddress ? reader : "no", link.Href));
                 continue;
             }
 

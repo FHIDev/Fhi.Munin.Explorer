@@ -71,9 +71,21 @@ internal static partial class CatalogueMarkdown
 
         var trimmed = raw.Trim();
 
-        if (!trimmed.Any(char.IsWhiteSpace) && AllowedScheme(trimmed))
+        if (!trimmed.Any(char.IsWhiteSpace))
         {
-            return (trimmed, trimmed);
+            if (AllowedScheme(trimmed))
+            {
+                return (trimmed, trimmed);
+            }
+
+            // The catalogue also stores Hjemmeside scheme-less - www.barnediabetes.no - which an
+            // href would treat as a relative path. https is assumed for the address; the label
+            // stays the stored text.
+            if (trimmed.StartsWith("www.", StringComparison.OrdinalIgnoreCase)
+                && AllowedScheme($"https://{trimmed}"))
+            {
+                return (trimmed, $"https://{trimmed}");
+            }
         }
 
         if (trimmed.Length > MaxParsedLength)

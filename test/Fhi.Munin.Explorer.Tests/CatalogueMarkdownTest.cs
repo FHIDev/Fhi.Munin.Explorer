@@ -122,6 +122,7 @@ public class CatalogueMarkdownTest : BunitContext
     [InlineData("[https://uit.no](https://uit.no)", "https://uit.no", "https://uit.no")]
     [InlineData("https://uit.no/research", "https://uit.no/research", "https://uit.no/research")]
     [InlineData("mailto:post@fhi.no", "mailto:post@fhi.no", "mailto:post@fhi.no")]
+    [InlineData("www.barnediabetes.no", "www.barnediabetes.no", "https://www.barnediabetes.no")]
     public void Link_WhenTheValueIsOneAllowedLink_ThenLabelAndHrefResolve(
         string raw, string label, string href)
     {
@@ -132,6 +133,7 @@ public class CatalogueMarkdownTest : BunitContext
     [InlineData("[x](javascript:alert(1))")]
     [InlineData("ftp://uit.no/fil")]
     [InlineData("Hjemmesiden er [UiT](https://uit.no)")]
+    [InlineData("barnediabetes.no")]
     [InlineData("bare prosa")]
     [InlineData("")]
     [InlineData(null)]

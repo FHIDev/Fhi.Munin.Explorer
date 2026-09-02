@@ -1358,4 +1358,22 @@ public class KildeViewTest : BunitContext
         // A URL is prose in no language, so the cell must not claim Norwegian (WCAG 3.1.2).
         Assert.Null(anchor.ParentElement!.GetAttribute("lang"));
     }
+
+    [Fact]
+    public void Properties_WhenAUrlIsStoredSchemeless_ThenHttpsIsAssumedAndTheCellStaysUnmarked()
+    {
+        // The other captured Hjemmeside shape: www.barnediabetes.no, no scheme, which an href
+        // would resolve as a relative path rather than an address.
+        var kilde = Kilde() with
+        {
+            PropertyMetadata = [Entry("Hjemmeside", 10, "Kontakt") with { Type = "Url" }],
+            AdditionalProperties = new Dictionary<string, string?> { ["Hjemmeside"] = "www.barnediabetes.no" },
+        };
+
+        var anchor = Render(kilde).Find(".munin-explorer-meta__grid dd a");
+
+        Assert.Equal("https://www.barnediabetes.no", anchor.GetAttribute("href"));
+        Assert.Equal("www.barnediabetes.no", anchor.TextContent);
+        Assert.Null(anchor.ParentElement!.GetAttribute("lang"));
+    }
 }
