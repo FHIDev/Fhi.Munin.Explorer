@@ -58,10 +58,12 @@ fi
 # The staleness check, and it cannot be a floor on the fragments: changelog.d is emptied at release,
 # so a run with nothing queued is a legitimate pass. src/ is the fixed point — the same regex over
 # the component yields 108 names today, and a regex that has gone stale yields almost none there.
+#
+# stderr kept, not dropped: what the floor is worth is the reason it tripped (Fhi.Metadata-yvldl).
 MIN_NAMES=10
 src_count="$(
   grep -rhoE --include='*.cs' --include='*.razor' --exclude-dir=bin --exclude-dir=obj \
-         'munin-explorer[A-Za-z0-9_-]*' src/ 2>/dev/null \
+         'munin-explorer[A-Za-z0-9_-]*' src/ \
     | grep -vE -- '(-|__)$' \
     | sort -u \
     | grep -cE '^munin-explorer' || true
@@ -94,8 +96,12 @@ noted="$noted$(awk '
 # Whole token, not substring: every name here shares the munin-explorer prefix, so a plain substring
 # test lets a note about munin-explorer-filters__toggle-extra silently satisfy
 # munin-explorer-filters__toggle. Names are [A-Za-z0-9_-] by the extraction, so no metacharacters.
+#
+# A here-string, not `printf … | grep -q`: `-q` leaves on the first match and closes the pipe,
+# printf takes SIGPIPE, and `pipefail` reports that 141 for a name grep had just found. A race
+# at the 47 KB of notes queued today, a certainty past the pipe buffer (Fhi.Metadata-yvldl).
 is_noted() {
-  printf '%s\n' "$noted" | grep -qE "(^|[^A-Za-z0-9_-])${1}([^A-Za-z0-9_-]|\$)"
+  grep -qE "(^|[^A-Za-z0-9_-])${1}([^A-Za-z0-9_-]|\$)" <<< "$noted"
 }
 
 violations=()
@@ -103,8 +109,11 @@ checked=0
 # One recursive grep for the whole directory rather than one per file: `-o` without `-h` prefixes
 # each hit with its path, which is what the report needs anyway, and 130-odd fragments is 130-odd
 # processes saved.
+#
+# stderr kept here too: a fragment this cannot read is a mention it cannot see, and an unseen
+# mention reads as a clean pass (Fhi.Metadata-yvldl).
 mentions="$(
-  grep -roE --include='*.md' 'munin-explorer[A-Za-z0-9_-]*' "$CHANGELOG_DIR" 2>/dev/null \
+  grep -roE --include='*.md' 'munin-explorer[A-Za-z0-9_-]*' "$CHANGELOG_DIR" \
     | grep -vE -- '(-|__)$' \
     | sort -u
 )"

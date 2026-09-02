@@ -44,7 +44,7 @@ public class FragmentHostNotesGuardTest
             ["CHANGELOG_FILE"] = Repo.In("CHANGELOG.md"),
         });
 
-        Assert.Equal(0, run.ExitCode);
+        AssertExit(0, run);
         Assert.Contains("is named for hosts", run.Output, StringComparison.Ordinal);
     }
 
@@ -55,7 +55,7 @@ public class FragmentHostNotesGuardTest
         // simply written down in the section a host does not read for styling.
         var run = RunAgainst(new Dictionary<string, string> { ["facets.md"] = Added });
 
-        Assert.Equal(1, run.ExitCode);
+        AssertExit(1, run);
         Assert.Contains(Name, Guard.NamesUnder(run.Output, "no 'Notes for hosts' fragment names:")[0]);
     }
 
@@ -70,7 +70,7 @@ public class FragmentHostNotesGuardTest
             ["facets-vertsstiler.md"] = Noted,
         });
 
-        Assert.Equal(0, run.ExitCode);
+        AssertExit(0, run);
     }
 
     [ShellFact]
@@ -84,7 +84,7 @@ public class FragmentHostNotesGuardTest
             changelog: $"# Changelog\n\n## 0.2.0 — 2026-09-01\n\n### Added\n\n- Something else.\n\n"
                        + $"### Notes for hosts\n\n- `{Name}` needs `display: none`.\n");
 
-        Assert.Equal(0, run.ExitCode);
+        AssertExit(0, run);
     }
 
     [ShellFact]
@@ -98,8 +98,26 @@ public class FragmentHostNotesGuardTest
             ["facets-vertsstiler.md"] = Noted.Replace(Name, Name + "-extra", StringComparison.Ordinal),
         });
 
-        Assert.Equal(1, run.ExitCode);
+        AssertExit(1, run);
         Assert.Contains(Name, Guard.NamesUnder(run.Output, "no 'Notes for hosts' fragment names:")[0]);
+    }
+
+    [ShellFact]
+    public void Guard_WhenTheNotesRunPastAPipeBufferInLength_ThenTheNameStillCountsAsNoted()
+    {
+        // The flake, pinned (Fhi.Metadata-yvldl): `is_noted` piped the notes into `grep -q` under
+        // `pipefail`, so a noted name came back a violation whenever grep left while printf was
+        // still writing. The padding puts the blob past the pipe buffer, where that race is a
+        // certainty — which is what makes this a test and not a second flake.
+        var filler = string.Join('\n', Enumerable.Repeat("- Filler, naming nothing.", 12_000));
+
+        var run = RunAgainst(new Dictionary<string, string>
+        {
+            ["facets.md"] = Added,
+            ["facets-vertsstiler.md"] = Noted + filler,
+        });
+
+        AssertExit(0, run);
     }
 
     [ShellFact]
@@ -113,9 +131,21 @@ public class FragmentHostNotesGuardTest
             ["CHANGELOG_FILE"] = Repo.In("CHANGELOG.md"),
         });
 
-        Assert.Equal(2, run.ExitCode);
+        AssertExit(2, run);
         Assert.Contains("is missing, so there are no fragments", run.Output, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// The exit code, with everything the script printed — stdout and stderr both — in the message.
+    /// A bare <c>Assert.Equal</c> names the test and nothing else, which is all a morning of red
+    /// runs on this class left to diagnose them by (Fhi.Metadata-yvldl).
+    /// </summary>
+    private static void AssertExit(int expected, GuardRun run) =>
+        Assert.True(
+            run.ExitCode == expected,
+            $"Expected exit {expected} from {Script}, got {run.ExitCode}. It said:"
+            + Environment.NewLine
+            + (run.Output.Length == 0 ? "(nothing at all)" : run.Output));
 
     /// <summary>Runs the script over a fragment directory written for the case under test.</summary>
     private static GuardRun RunAgainst(IReadOnlyDictionary<string, string> fragments, string? changelog = null)

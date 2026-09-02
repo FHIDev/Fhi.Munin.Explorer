@@ -60,7 +60,11 @@ jobs:
         continue-on-error: true
         run: |
           S=$SECONDS
-          dotnet test --configuration Release --no-build --verbosity quiet
+          # --verbosity quiet also swallows a failed test's message and stack, which left four red
+          # runs to be told apart from a real defect by the test's name alone (Fhi.Metadata-yvldl).
+          # minimal prints them for 40 lines on a green run, where normal names all 1135 for 1184.
+          dotnet test --configuration Release --no-build --verbosity quiet \
+            --logger 'console;verbosity=minimal'
           echo "TEST_DUR=$((SECONDS-S))s" >> "$GITHUB_ENV"
 
       - name: Format

@@ -98,7 +98,11 @@ while read -r name; do
   # substring test lets a fragment naming munin-explorer-foo-bar silently satisfy
   # munin-explorer-foo — the miss this script exists to prevent. Names are [A-Za-z0-9_-] by the
   # extraction above, so they carry no regex metacharacters.
-  if ! printf '%s\n' "$notes" | grep -qE "(^|[^A-Za-z0-9_-])${name}([^A-Za-z0-9_-]|\$)"; then
+  #
+  # A here-string for the reason spelled out over the same clause in
+  # assert-fragment-names-noted-for-hosts.sh: `grep -q` leaves, printf takes SIGPIPE, and
+  # `pipefail` calls a found name missing. Same construct, same notes (Fhi.Metadata-yvldl).
+  if ! grep -qE "(^|[^A-Za-z0-9_-])${name}([^A-Za-z0-9_-]|\$)" <<< "$notes"; then
     missing+=("$name")
   fi
 done <<< "$new_names"
