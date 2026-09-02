@@ -1569,9 +1569,9 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   margin-top: 0;
 }
 
-/* The delkilde's own words, under its name line and above its table. Sized down from the kilde's
-   ingress because it sits inside the tree rather than over the page, and capped at the same
-   measure: prose the full width of a wide window is unreadable wherever it appears. */
+/* The delkilde's own words, under its name line and above its table. 0.9375rem is measured against
+   STILER's headline-xxs, 1rem, which is what the name above wears there - the stand-in in this file
+   is smaller, so here alone the prose reads larger than its heading until that is corrected. */
 .munin-explorer-kilde__delkilde-description {
   margin: 8px 0 0;
   max-width: 65ch;
