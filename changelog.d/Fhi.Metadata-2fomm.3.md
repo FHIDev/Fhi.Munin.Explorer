@@ -40,8 +40,8 @@ category: Added
 - **The panel folds away on a narrow screen** - a "Vis filtre" button unfolds it, using the
   browser's own `hidden` attribute so it works on a host that styles none of this; a host with room
   for a sidebar takes the folding away in one rule, which is what both sample stylesheets now do.
-  Two class names are new, `munin-explorer-filters__toggle` and `munin-explorer-filters__facets`,
-  and a host on `Fhi.Helsedata.Stiler` needs rules for them. (Fhi.Metadata-2fomm.3)
+  Two class names are new, and what a host has to declare for them is under Notes for hosts.
+  (Fhi.Metadata-2fomm.3)
 - **The kilde list's empty state names the facets as well as the search** - "Ingen kilder samsvarer
   med søket «als» og filtrene som er valgt". A reader who has narrowed the list twice was being sent
   to fix the wrong one. (Fhi.Metadata-2fomm.3)
