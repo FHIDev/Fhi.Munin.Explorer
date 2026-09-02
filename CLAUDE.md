@@ -107,9 +107,13 @@ carries every bead's labels and is safe.
 ### Starting work
 
 ```bash
-bd update <bead-id> --status in_progress --assignee Claude
+bd update <bead-id> --claim
 bd worktree create .worktrees/<name> --branch feature/<name>
 ```
+
+Claim with `--claim`, never `--assignee Claude` — the pool is shared with other people's agents
+and that string is the same on every box. AGENTS.md, "Claiming a bead names whose agent it is",
+has the reason.
 
 Use `bd worktree` rather than raw `git worktree` — it writes the `.beads/redirect` the new
 checkout needs to find the shared database.
