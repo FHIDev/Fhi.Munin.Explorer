@@ -1,3 +1,4 @@
+using Bunit;
 using Fhi.Munin.Explorer.Blazor;
 
 namespace Fhi.Munin.Explorer.Tests;
@@ -11,7 +12,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// stopped including the last page would still render, still read as a pager, and still leave the
 /// end of a 907-page list unreachable in one press.
 /// </remarks>
-public class PageNumbersTest
+public class PageNumbersTest : BunitContext
 {
     [Fact]
     public void Window_WhenOnTheFirstPageOfMany_ThenItRunsFromOneAndSkipsToTheLast()
@@ -90,5 +91,40 @@ public class PageNumbersTest
                 Assert.Contains(page, numbers);
             }
         }
+    }
+
+    private Microsoft.AspNetCore.Components.RenderFragment Run(int page, int totalPages) =>
+        PageNumbers.Write(
+            this,
+            page,
+            totalPages,
+            _ => Task.CompletedTask,
+            number => $"Gå til side {number}",
+            number => $"Viser side {number}");
+
+    [Fact]
+    public void Write_WhenThePageIsOutOfRange_ThenTheRunStillSaysWhichPageItIsDrawnFor()
+    {
+        // Window clamps and the markup did not, so a run drawn for a page the result no longer has
+        // came out with no aria-current at all and every number labelled as a jump. Reachable: a
+        // shared link carrying page 40 of a result that shrank renders once before the correcting
+        // fetch lands, and that render is a pager that cannot say where the reader is.
+        var cut = Render(Run(page: 99, totalPages: 3));
+
+        var numbers = cut.FindAll("button");
+        var current = Assert.Single(numbers, number => number.GetAttribute("aria-current") == "page");
+
+        Assert.Equal("3", current.TextContent);
+        Assert.Equal("Viser side 3", current.GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void Write_WhenThePageIsInRange_ThenItIsTheOneMarked()
+    {
+        var cut = Render(Run(page: 2, totalPages: 3));
+
+        var current = Assert.Single(cut.FindAll("button"), n => n.GetAttribute("aria-current") == "page");
+
+        Assert.Equal("2", current.TextContent);
     }
 }

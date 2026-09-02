@@ -16,6 +16,15 @@ internal static class PageNumbers
     /// <summary>How many numbers are on screen around the page in force, at most.</summary>
     private const int WindowSize = 3;
 
+    /// <summary>The page a run is drawn for, which is not always the page asked for.</summary>
+    /// <remarks>
+    /// One expression, because <see cref="Window"/> and <see cref="Write"/> both need it and had it
+    /// only in the first: the run came out clamped while the markup compared against the raw number,
+    /// so an out-of-range page drew a pager with nothing marked as current.
+    /// </remarks>
+    private static int InForce(int page, int totalPages) =>
+        Math.Clamp(page, 1, Math.Max(1, totalPages));
+
     /// <summary>The pages to draw, in order, with <c>null</c> where the run skips ahead.</summary>
     /// <remarks>
     /// First, last, and three around the page in force — helsedata's own run, "1 2 3 … 100". The
@@ -25,7 +34,7 @@ internal static class PageNumbers
     internal static IReadOnlyList<int?> Window(int page, int totalPages)
     {
         var last = Math.Max(1, totalPages);
-        var current = Math.Clamp(page, 1, last);
+        var current = InForce(page, totalPages);
 
         var start = Math.Clamp(current - 1, 1, Math.Max(1, last - WindowSize + 1));
         var end = Math.Min(last, start + WindowSize - 1);
@@ -71,6 +80,8 @@ internal static class PageNumbers
         builder.OpenElement(0, "div");
         builder.AddAttribute(1, "class", "munin-explorer-pagination-pages");
 
+        var inForce = InForce(page, totalPages);
+
         foreach (var number in Window(page, totalPages))
         {
             if (number is not { } target)
@@ -86,7 +97,7 @@ internal static class PageNumbers
                 continue;
             }
 
-            var current = target == page;
+            var current = target == inForce;
 
             builder.OpenElement(6, "button");
 
