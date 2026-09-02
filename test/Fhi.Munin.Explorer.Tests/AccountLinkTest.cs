@@ -390,6 +390,28 @@ public class AccountLinkTest : BunitContext
     }
 
     /// <summary>
+    /// The component only ever <em>receives</em> a link. It runs inside a CMS page that is not
+    /// ours, so an entry that unfolded itself — on mount, or because the reader searched — would
+    /// be our panel opening over somebody else's page (Fhi.Metadata-bl448).
+    /// </summary>
+    [Fact]
+    public void Panel_WhenTheReaderHasNotAskedForIt_ThenItStaysFoldedAndCallsNothing()
+    {
+        var client = new LinkClient();
+        var cut = RenderSignedIn(client);
+
+        // Every other test here reaches straight into the panel, which bUnit finds whether or not
+        // the <details> around it is open — so an entry that unfolded itself would pass them all.
+        Assert.False(Panel(cut).Closest("details")!.HasAttribute("open"));
+
+        // Scoped to the search box on purpose: the code field wears searchbox__freetext too.
+        cut.Find(".munin-explorer-search .searchbox__freetext").Change("alder");
+
+        Assert.False(Panel(cut).Closest("details")!.HasAttribute("open"));
+        Assert.Equal(0, client.RedeemCalls);
+    }
+
+    /// <summary>
     /// The alert element is in the DOM from the first render. One inserted and filled in the same
     /// update is announced unreliably; one already there and gaining text is announced.
     /// </summary>
