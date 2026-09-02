@@ -13,6 +13,10 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </remarks>
 public class CataloguePropertiesTest
 {
+    // Most types carry one language, and a row that quietly grew a second is the defect this
+    // suite is now guarding, so the count is asserted rather than indexed past.
+    private static LocalisedText Only(PropertyRow row) => Assert.Single(row.Values);
+
     private static PropertyMetadataEntry Entry(
         string key,
         int sortOrder,
@@ -106,7 +110,7 @@ public class CataloguePropertiesTest
         var group = Assert.Single(CatalogueProperties.Groups(metadata, values, "no"));
         var row = Assert.Single(group.Rows);
 
-        Assert.Equal("Direkte fra skjema", row.Value);
+        Assert.Equal("Direkte fra skjema", Only(row).Text);
     }
 
     [Fact]
@@ -219,7 +223,7 @@ public class CataloguePropertiesTest
         """;
 
     [Fact]
-    public void Rows_WhenAValueIsAMultilingualEnvelope_ThenTheReaderSeesTheirOwnLanguageRatherThanTheJson()
+    public void Rows_WhenAValueIsAMultilingualEnvelope_ThenEveryLanguageIsDrawnAsProseTheReadersFirst()
     {
         // The shape the API really sends: the object is serialised into the string field, so a view
         // that draws the bag verbatim draws braces, key names and escapes at the reader.
@@ -235,11 +239,11 @@ public class CataloguePropertiesTest
 
         var row = Assert.Single(CatalogueProperties.Rows(metadata, values, "en"));
 
-        Assert.Equal("The Tromsø Study", row.Value);
-
-        // And the row can now say which language it ended up in. Marked "no" over English text, as
-        // an unresolved envelope was, it reaches a screen reader in the wrong voice.
-        Assert.Equal("en", row.ValueLanguage);
+        // Both slots, the reader's first. Resolving to one dropped the other with nothing on the
+        // page able to reach it: the toggle only offers the two languages the page itself has.
+        Assert.Equal(
+            [("The Tromsø Study", "en"), ("The Tromsø study", "no")],
+            row.Values.Select(v => (v.Text, v.Language)));
     }
 
     [Fact]
@@ -259,8 +263,8 @@ public class CataloguePropertiesTest
 
         var row = Assert.Single(CatalogueProperties.Rows(metadata, values, "en"));
 
-        Assert.Equal("Nasjonalt register for ablasjonsbehandling", row.Value);
-        Assert.Equal("no", row.ValueLanguage);
+        Assert.Equal("Nasjonalt register for ablasjonsbehandling", Only(row).Text);
+        Assert.Equal("no", Only(row).Language);
     }
 
     [Fact]
@@ -281,8 +285,8 @@ public class CataloguePropertiesTest
 
         var row = Assert.Single(CatalogueProperties.Rows(metadata, values, "no"));
 
-        Assert.Equal("Kvalitetsforbedring; Forskning", row.Value);
-        Assert.Equal("no", row.ValueLanguage);
+        Assert.Equal("Kvalitetsforbedring; Forskning", Only(row).Text);
+        Assert.Equal("no", Only(row).Language);
     }
 
     [Fact]
@@ -307,8 +311,40 @@ public class CataloguePropertiesTest
 
         var row = Assert.Single(CatalogueProperties.Rows(metadata, values, "en"));
 
-        Assert.Equal("Research", row.Value);
-        Assert.Equal("en", row.ValueLanguage);
+        // Both lists, each whole and each tagged, rather than the reader's alone.
+        Assert.Equal(
+            [("Research", "en"), ("Kvalitetsforbedring; Forskning", "no")],
+            row.Values.Select(v => (v.Text, v.Language)));
+    }
+
+    [Fact]
+    public void Rows_WhenATaggedListSpellsNorwegianBothWays_ThenTheEntriesJoinRatherThanOneWinning()
+    {
+        // A tagged list's buckets are list items, not translations of one another, so two spellings
+        // of Norwegian have to be concatenated. Gathered by raw tag they arrived at the resolver as
+        // two slots of one language, and everything after the first was silently dropped —
+        // curated values no toggle could reach, in the bead that exists to stop exactly that
+        // (PR 149 review).
+        List<PropertyMetadataEntry> metadata =
+        [
+            Entry("FormaalFlerspraklig", 131, "EHDS / HealthDCAT-AP", type: "LangTaggedList"),
+        ];
+
+        Dictionary<string, string?> values = new()
+        {
+            ["FormaalFlerspraklig"] =
+                """
+                [{"value":"Forskning","language":"no"},
+                 {"value":"Kvalitetsforbedring","language":"nb"},
+                 {"value":"Research","language":"en"}]
+                """,
+        };
+
+        var row = Assert.Single(CatalogueProperties.Rows(metadata, values, "no"));
+
+        Assert.Equal(
+            [("Forskning; Kvalitetsforbedring", "no"), ("Research", "en")],
+            row.Values.Select(v => (v.Text, v.Language)));
     }
 
     [Fact]
@@ -329,8 +365,8 @@ public class CataloguePropertiesTest
 
         var row = Assert.Single(CatalogueProperties.Rows(metadata, values, "no"));
 
-        Assert.Equal("§ 9 Registre som er samtykkebaserte", row.Value);
-        Assert.Equal("no", row.ValueLanguage);
+        Assert.Equal("§ 9 Registre som er samtykkebaserte", Only(row).Text);
+        Assert.Equal("no", Only(row).Language);
     }
 
     [Fact]
@@ -350,8 +386,8 @@ public class CataloguePropertiesTest
 
         var row = Assert.Single(CatalogueProperties.Rows(metadata, values, "no"));
 
-        Assert.Equal("Legemidler; Sjeldne sykdommer", row.Value);
-        Assert.Equal("no", row.ValueLanguage);
+        Assert.Equal("Legemidler; Sjeldne sykdommer", Only(row).Text);
+        Assert.Equal("no", Only(row).Language);
     }
 
     [Fact]
@@ -371,7 +407,7 @@ public class CataloguePropertiesTest
 
         var row = Assert.Single(CatalogueProperties.Rows(metadata, values, "no"));
 
-        Assert.Equal("Legemidler; healthdcatap:not-curated-yet", row.Value);
+        Assert.Equal("Legemidler; healthdcatap:not-curated-yet", Only(row).Text);
     }
 
     [Fact]
@@ -433,8 +469,8 @@ public class CataloguePropertiesTest
 
         var row = Assert.Single(CatalogueProperties.Rows(metadata, values, "no"));
 
-        Assert.Equal("""{"nb":"unterminated""", row.Value);
-        Assert.Equal("no", row.ValueLanguage);
+        Assert.Equal("""{"nb":"unterminated""", Only(row).Text);
+        Assert.Equal("no", Only(row).Language);
     }
 
     [Fact]
@@ -456,7 +492,93 @@ public class CataloguePropertiesTest
 
         var rows = CatalogueProperties.Rows(metadata, values, "no");
 
-        Assert.Equal(["Kvalitetsforbedring", "eu-access:NON_PUBLIC"], rows.Select(r => r.Value));
-        Assert.Equal(["no", "no"], rows.Select(r => r.ValueLanguage));
+        Assert.Equal(["Kvalitetsforbedring", "eu-access:NON_PUBLIC"], rows.Select(r => Only(r).Text));
+        Assert.Equal(["no", "no"], rows.Select(r => Only(r).Language));
+    }
+
+    [Fact]
+    public void Rows_WhenAnEnvelopeHoldsALanguageBesideNorwegian_ThenTheThirdLanguageIsDrawnRatherThanDropped()
+    {
+        // The bag is open and the page has two languages, so a third was unreachable by
+        // construction: no toggle here could ever have selected it (Fhi.Metadata-l9d5r).
+        List<PropertyMetadataEntry> metadata =
+        [
+            Entry("TittelFlerspraklig", 540, "EHDS / HealthDCAT-AP", type: "MultilingualText"),
+        ];
+
+        Dictionary<string, string?> values = new()
+        {
+            ["TittelFlerspraklig"] = """{"nb":"Kreftregisteret","de":"Krebsregister"}""",
+        };
+
+        var row = Assert.Single(CatalogueProperties.Rows(metadata, values, "no"));
+
+        Assert.Equal(
+            [("Kreftregisteret", "no"), ("Krebsregister", "de")],
+            row.Values.Select(v => (v.Text, v.Language)));
+    }
+
+    [Fact]
+    public void Rows_WhenAnEnvelopeHoldsOnlyALanguageThePackageCannotName_ThenItIsMarkedWithThatLanguage()
+    {
+        // The reader's tag is precisely the one Foreign drops, so returning it left the text with
+        // no lang at all and a Norwegian page announced German as Norwegian. WCAG 3.1.2.
+        List<PropertyMetadataEntry> metadata =
+        [
+            Entry("TittelFlerspraklig", 540, "EHDS / HealthDCAT-AP", type: "MultilingualText"),
+        ];
+
+        Dictionary<string, string?> values = new()
+        {
+            ["TittelFlerspraklig"] = """{"de":"Deutsches Krebsregister"}""",
+        };
+
+        var row = Assert.Single(CatalogueProperties.Rows(metadata, values, "no"));
+
+        Assert.Equal("Deutsches Krebsregister", Only(row).Text);
+        Assert.Equal("de", Only(row).Language);
+        Assert.Equal("de", CatalogueProperties.Foreign(Only(row).Language, "no"));
+    }
+
+    [Fact]
+    public void Rows_WhenAnEnvelopeHoldsOnlyEnglishAndTheReaderIsNorwegian_ThenItIsMarkedEnglish()
+    {
+        // The same defect one tag closer to home, and the one that is already in the catalogue:
+        // 39 fields carry en, so an en-only bag is reachable today rather than hypothetically.
+        List<PropertyMetadataEntry> metadata =
+        [
+            Entry("TittelFlerspraklig", 540, "EHDS / HealthDCAT-AP", type: "MultilingualText"),
+        ];
+
+        Dictionary<string, string?> values = new()
+        {
+            ["TittelFlerspraklig"] = """{"en":"The Cancer Registry"}""",
+        };
+
+        var row = Assert.Single(CatalogueProperties.Rows(metadata, values, "no"));
+
+        Assert.Equal("The Cancer Registry", Only(row).Text);
+        Assert.Equal("en", Only(row).Language);
+    }
+
+    [Fact]
+    public void Rows_WhenAnEnvelopeCarriesBothNoAndNb_ThenTheyAreOneSlotAndNoWins()
+    {
+        // Two spellings of one language would otherwise draw the same row twice, and which text
+        // won would depend on however the dictionary enumerated.
+        List<PropertyMetadataEntry> metadata =
+        [
+            Entry("TittelFlerspraklig", 540, "EHDS / HealthDCAT-AP", type: "MultilingualText"),
+        ];
+
+        Dictionary<string, string?> values = new()
+        {
+            ["TittelFlerspraklig"] = """{"nb":"Fra nb","no":"Fra no"}""",
+        };
+
+        var row = Assert.Single(CatalogueProperties.Rows(metadata, values, "no"));
+
+        Assert.Equal("Fra no", Only(row).Text);
+        Assert.Equal("no", Only(row).Language);
     }
 }

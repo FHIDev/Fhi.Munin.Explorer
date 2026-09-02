@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Rendering;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -71,10 +72,75 @@ internal static class DetailBlocks
         builder.CloseElement();
     };
 
+    /// <summary>
+    /// A row's value as one <c>dd</c> per language the catalogue holds it in, and the sequence
+    /// number the caller continues from.
+    /// </summary>
+    /// <remarks>
+    /// Named only where there is more than one: <c>lang</c> speaks to a screen reader alone. The
+    /// name sits outside the marked span so it is not announced in the language it names, and is a
+    /// <c>p</c> so a host with no rule for the class still gets one language per line.
+    /// </remarks>
+    internal static int Values(RenderTreeBuilder builder, int seq, PropertyRow row, string reader, Texts text)
+    {
+        foreach (var slot in row.Values)
+        {
+            builder.OpenElement(seq, "dd");
+
+            if (row.Values.Count == 1)
+            {
+                builder.AddAttribute(seq + 1, "lang", CatalogueProperties.Foreign(slot.Language, reader));
+                Text(builder, seq + 2, slot.Text, row.Href);
+            }
+            else
+            {
+                builder.OpenElement(seq + 10, "p");
+                builder.AddAttribute(seq + 11, "class", "munin-explorer-meta__language");
+                builder.AddContent(seq + 12, text.LanguageName(slot.Language));
+                builder.CloseElement();
+
+                builder.OpenElement(seq + 13, "span");
+                builder.AddAttribute(seq + 14, "lang", CatalogueProperties.Foreign(slot.Language, reader));
+                Text(builder, seq + 15, slot.Text, row.Href);
+                builder.CloseElement();
+            }
+
+            builder.CloseElement();
+            seq += 30;
+        }
+
+        return seq;
+    }
+
+    /// <summary>
+    /// A value, as a link where the catalogue types the property as a URL. Consumes five sequence
+    /// numbers from <paramref name="seq"/>.
+    /// </summary>
+    /// <remarks>
+    /// A field that exists to be followed should be followable (FHIDev/Munin#5385). <c>rel</c>
+    /// guards the middle-click and ctrl-click paths; there is no <c>target</c>, so a reader stays
+    /// on the page they were reading.
+    /// </remarks>
+    private static void Text(RenderTreeBuilder builder, int seq, string value, string? href)
+    {
+        if (href is null)
+        {
+            builder.AddContent(seq, value);
+            return;
+        }
+
+        builder.OpenElement(seq + 1, "a");
+        builder.AddAttribute(seq + 2, "href", href);
+        builder.AddAttribute(seq + 3, "rel", "noopener noreferrer");
+        builder.AddContent(seq + 4, value);
+        builder.CloseElement();
+    }
+
     /// <summary>One metadata group: its name, then its rows.</summary>
     internal static RenderFragment Group(PropertyGroup group, int level, string? language) => builder =>
     {
         var reader = ReaderLanguage.Of(language);
+        var text = Texts.For(language);
 
         builder.OpenElement(0, $"h{level}");
         builder.AddAttribute(1, "class", "headline headline-xxs margin--none munin-explorer-group");
@@ -97,29 +163,9 @@ internal static class DetailBlocks
             builder.AddContent(seq + 4, row.Label);
             builder.CloseElement();
 
-            builder.OpenElement(seq + 5, "dd");
-            builder.AddAttribute(seq + 6, "lang", CatalogueProperties.Foreign(row.ValueLanguage, reader));
-
-            // A URL-typed property arrives resolved to label and href, so a field that exists to
-            // be followed can be. rel guards the middle-click and ctrl-click paths; there is no
-            // target, so a reader stays on the page they were reading (FHIDev/Munin#5385).
-            if (row.Href is { } href)
-            {
-                builder.OpenElement(seq + 7, "a");
-                builder.AddAttribute(seq + 8, "href", href);
-                builder.AddAttribute(seq + 9, "rel", "noopener noreferrer");
-                builder.AddContent(seq + 10, row.Value);
-                builder.CloseElement();
-            }
-            else
-            {
-                builder.AddContent(seq + 11, row.Value);
-            }
+            seq = Values(builder, seq + 5, row, reader, text);
 
             builder.CloseElement();
-
-            builder.CloseElement();
-            seq += 20;
         }
 
         builder.CloseElement();

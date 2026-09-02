@@ -433,6 +433,21 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 .munin-explorer-filters { margin-bottom: 24px; }
 
+/* The panel's toolbar: own container, spaced by `gap` so nothing trails the last button. Not
+   `flex-wrap: wrap` — the buttons shrink and wrap their own labels instead, so the row survives a
+   longer translation. (Fhi.Metadata-l9l2n.37) */
+
+.munin-explorer-filters__toolbar {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.munin-explorer-filters__toolbar > .hd-button-square {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .munin-explorer-filters details {
   border-bottom: 1px solid var(--grey30);
   padding: 8px 0;
@@ -852,6 +867,19 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   margin: 2px 0 0;
 }
 
+/* ---- the language marker ----
+
+   Drawn only where a field holds more than one language. It is a <p>, so the line break is the
+   browser's and not ours to lose; what this rule adds is the quieter voice of a label, which is
+   look rather than information. */
+.munin-explorer-meta__language {
+  font: normal 600 0.6875rem/150% var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--grey60);
+}
+
+
 /* ---- the column header ----
 
    The header and the rows have to share one grid template, or the columns line up with nothing.
@@ -1200,6 +1228,13 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 .munin-explorer-meta__grid dd {
   margin: 0;
+}
+
+/* Each language of a multilingual field is its own dd, so consecutive ones need separating or
+   the two run together as one block. Descendant rather than `dl > dd`: DetailBlocks wraps every
+   dt/dd pair in a div, so a direct-child selector reaches nothing here. */
+.munin-explorer-meta__grid dd + dd {
+  margin-top: 10px;
 }
 
 /* The drill-in view. A kilde or datasamling takes over the component's area rather than nesting

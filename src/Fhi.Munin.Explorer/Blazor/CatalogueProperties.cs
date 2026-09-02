@@ -5,17 +5,23 @@ using Fhi.Munin.Explorer.Contracts;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
+/// <summary>One language's text out of a translation bag, and the language it is in.</summary>
+/// <param name="Text">The text as that language holds it.</param>
+/// <param name="Language">What to mark it with: <c>no</c>, <c>en</c>, or the catalogue's own tag.</param>
+internal readonly record struct LocalisedText(string Text, string Language);
+
 /// <summary>One curated property, resolved into what a reader should see.</summary>
 /// <param name="Label">The property's name in the reader's language, or the nearest available.</param>
 /// <param name="LabelLanguage">Which language <paramref name="Label"/> actually ended up in.</param>
-/// <param name="Value">The value as a word where the catalogue offers one, otherwise as stored.</param>
-/// <param name="ValueLanguage">Which language <paramref name="Value"/> actually ended up in.</param>
+/// <param name="Values">
+/// Every language the value holds, the reader's first. One entry for all but the multilingual
+/// types, whose bags the catalogue leaves open.
+/// </param>
 /// <param name="Href">Where the value should link, for the properties the catalogue types as a URL.</param>
 internal readonly record struct PropertyRow(
     string Label,
     string LabelLanguage,
-    string Value,
-    string ValueLanguage,
+    IReadOnlyList<LocalisedText> Values,
     string? Href = null);
 
 /// <summary>A named group of properties, as the catalogue arranges them.</summary>
@@ -177,12 +183,13 @@ internal static class CatalogueProperties
             {
                 var labelIsTheAddress = link.Href == link.Label || link.Href == $"https://{link.Label}";
 
-                rows.Add(new PropertyRow(label, labelLanguage, link.Label,
-                                         labelIsTheAddress ? reader : "no", link.Href));
+                rows.Add(new PropertyRow(label, labelLanguage,
+                                         [new LocalisedText(link.Label, labelIsTheAddress ? reader : "no")],
+                                         link.Href));
                 continue;
             }
 
-            rows.Add(new PropertyRow(label, labelLanguage, resolved.Value, resolved.Language));
+            rows.Add(new PropertyRow(label, labelLanguage, resolved));
         }
 
         return rows;
@@ -297,10 +304,14 @@ internal static class CatalogueProperties
         => string.Equals(entry.Type, type, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    /// A stored value as a reader should see it and the language it ended up in, or nothing where
+    /// A stored value as a reader should see it, in every language it holds, or nothing where
     /// there is nothing honest to draw.
     /// </summary>
-    internal static (string Value, string Language)? Value(PropertyMetadataEntry entry, string raw, string reader)
+    /// <remarks>
+    /// Only the two multilingual types carry more than one slot. The rest answer with one, so a
+    /// caller has a single shape to draw rather than a cell here and a list there.
+    /// </remarks>
+    internal static IReadOnlyList<LocalisedText>? Value(PropertyMetadataEntry entry, string raw, string reader)
     {
         // A curated label over uncurated parts: no honest single cell, so the row goes instead.
         if (Typed(entry, ObjectType))
@@ -308,16 +319,25 @@ internal static class CatalogueProperties
             return null;
         }
 
-        var unwrapped =
+        var bag =
             Typed(entry, MultilingualTextType) ? Multilingual(raw, reader)
             : Typed(entry, LangTaggedListType) ? Tagged(raw, reader)
-            : Typed(entry, MultiSelectType) ? Chosen(entry, raw, reader)
             : null;
+
+        if (bag is not null)
+        {
+            return bag;
+        }
 
         // An unwrapping declines on a value that is not the shape its type promises, which the
         // catalogue produces often enough to be the path rather than the net — and a value that
         // disagrees with its type is still a value, so it is shown as it arrived.
-        return unwrapped ?? Word(entry, raw, reader) ?? (raw, "no");
+        var (text, language) =
+            (Typed(entry, MultiSelectType) ? Chosen(entry, raw, reader) : null)
+            ?? Word(entry, raw, reader)
+            ?? (raw, "no");
+
+        return [new LocalisedText(text, language)];
     }
 
     /// <summary>A value parsed as JSON, or nothing where it is not structured.</summary>
@@ -344,12 +364,11 @@ internal static class CatalogueProperties
         }
     }
 
-    /// <summary>The reader's language out of a multilingual envelope, or nothing where it is not one.</summary>
-    private static (string Value, string Language)? Multilingual(string raw, string reader)
+    /// <summary>Every language a multilingual envelope holds, or nothing where it is not one.</summary>
+    private static IReadOnlyList<LocalisedText>? Multilingual(string raw, string reader)
     {
         // The envelope's keys are language tags, so it is a translation bag and resolved by
-        // Localised rather than by a second copy of the fallback. Unresolved it stays marked
-        // lang="no" over whatever it held: an English title in a Norwegian voice (WCAG 3.1.2).
+        // AllLocalised rather than by a second copy of the fallback.
         using var document = Structured(raw);
 
         if (document?.RootElement.ValueKind is not JsonValueKind.Object)
@@ -369,16 +388,16 @@ internal static class CatalogueProperties
             }
         }
 
-        var (value, language) = Localised(translations, reader);
+        var slots = AllLocalised(translations, reader);
 
-        return string.IsNullOrWhiteSpace(value) ? null : (value, language);
+        return slots.Count == 0 ? null : slots;
     }
 
     /// <summary>
-    /// The reader's language out of a list whose entries carry their own language tags, or nothing
-    /// where the value is not such a list.
+    /// Every language a list whose entries carry their own tags holds, or nothing where the value
+    /// is not such a list.
     /// </summary>
-    private static (string Value, string Language)? Tagged(string raw, string reader)
+    private static IReadOnlyList<LocalisedText>? Tagged(string raw, string reader)
     {
         // Gathered per language and joined per language, so a reader gets one language's list whole
         // rather than another's spliced through it.
@@ -393,12 +412,17 @@ internal static class CatalogueProperties
 
         foreach (var element in document.RootElement.EnumerateArray())
         {
-            var (text, language) = Entry(element);
+            var (text, tag) = Entry(element);
 
             if (text is not { } present || string.IsNullOrWhiteSpace(present))
             {
                 continue;
             }
+
+            // By slot rather than by tag: a list holding both a "no" entry and an "nb" one is one
+            // language's list in two spellings, and gathering them apart would drop all but the
+            // first once AllLocalised resolved the two buckets to the same slot.
+            var language = SlotLanguage(tag);
 
             if (!byLanguage.TryGetValue(language, out var texts))
             {
@@ -418,9 +442,9 @@ internal static class CatalogueProperties
             l => string.Join(Separator, l.Value),
             StringComparer.OrdinalIgnoreCase);
 
-        var (value, resolved) = Localised(joined, reader);
+        var slots = AllLocalised(joined, reader);
 
-        return string.IsNullOrWhiteSpace(value) ? null : (value, resolved);
+        return slots.Count == 0 ? null : slots;
     }
 
     /// <summary>One entry of a language-tagged list, as its text and the language it claims.</summary>
@@ -581,30 +605,85 @@ internal static class CatalogueProperties
     }
 
     /// <summary>
-    /// A translation bag's entry for the reader's language, falling back to Norwegian, with the
-    /// language it ended up in.
+    /// A translation bag's entry for the reader's language, falling back to Norwegian and then to
+    /// whatever the bag does hold, with the language it ended up in.
     /// </summary>
+    /// <remarks>
+    /// The first of <see cref="AllLocalised"/> rather than a resolution of its own: two orderings
+    /// of the same bag would answer differently the first time either was edited, and the one a
+    /// label is drawn from must be the one its value is drawn from.
+    /// </remarks>
     internal static (string? Text, string Language) Localised(
         IReadOnlyDictionary<string, string> translations,
         string reader)
     {
-        var english = string.Equals(reader, "en", StringComparison.OrdinalIgnoreCase);
+        var slots = AllLocalised(translations, reader);
 
-        if (english && translations.TryGetValue("en", out var en) && !string.IsNullOrWhiteSpace(en))
-        {
-            return (en, "en");
-        }
+        return slots.Count == 0 ? (null, reader) : (slots[0].Text, slots[0].Language);
+    }
 
-        foreach (var key in new[] { "no", "nb" })
+    /// <summary>
+    /// Every language a translation bag holds, the reader's first and the rest behind it.
+    /// </summary>
+    /// <remarks>
+    /// The bag is open while the page offers two languages, so resolving to the reader's alone
+    /// drops slots nothing here could reach; and a tag this package cannot name keeps the
+    /// catalogue's own, since the reader's is the one <see cref="Foreign"/> drops (Fhi.Metadata-l9d5r).
+    /// </remarks>
+    internal static List<LocalisedText> AllLocalised(
+        IReadOnlyDictionary<string, string> translations,
+        string reader)
+    {
+        var slots = new List<LocalisedText>();
+
+        foreach (var (tag, text) in translations
+                     .Where(t => !string.IsNullOrWhiteSpace(t.Value))
+                     .OrderBy(t => Rank(t.Key))
+                     .ThenBy(t => t.Key, StringComparer.OrdinalIgnoreCase))
         {
-            if (translations.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value))
+            var language = SlotLanguage(tag);
+
+            if (!slots.Any(s => string.Equals(s.Language, language, StringComparison.OrdinalIgnoreCase)))
             {
-                return (value, "no");
+                slots.Add(new LocalisedText(text, language));
             }
         }
 
-        // Some other language entirely. Nothing here can name it, so it is left unmarked rather than
-        // asserted to be Norwegian on no evidence.
-        return (translations.Values.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v)), reader);
+        var readers = slots.FindIndex(s => string.Equals(s.Language, reader, StringComparison.OrdinalIgnoreCase));
+
+        if (readers > 0)
+        {
+            slots.Insert(0, slots[readers]);
+            slots.RemoveAt(readers + 1);
+        }
+
+        return slots;
     }
+
+    /// <summary>
+    /// The slot a bag's tag belongs to: the language its text is shown and marked as.
+    /// </summary>
+    /// <remarks>
+    /// Two spellings of Norwegian are one slot, so a caller that gathers by tag has to gather by
+    /// this instead — <see cref="Tagged"/> holds list items rather than translations, and two
+    /// buckets it kept apart would arrive here as one language with only the first surviving.
+    /// </remarks>
+    private static string SlotLanguage(string tag) => Rank(tag) switch
+    {
+        0 or 1 => ReaderLanguage.Norwegian,
+        2 => ReaderLanguage.English,
+        _ => tag,
+    };
+
+    /// <summary>Where a bag's tag sorts, and which tags are one slot.</summary>
+    /// <remarks>
+    /// <c>no</c> and <c>nb</c> rank apart so a bag holding both resolves to <c>no</c>'s text
+    /// whichever language the reader arrived in, rather than to whichever the dictionary happened
+    /// to enumerate first.
+    /// </remarks>
+    private static int Rank(string tag) =>
+        tag.Equals(ReaderLanguage.Norwegian, StringComparison.OrdinalIgnoreCase) ? 0
+        : tag.Equals(ReaderLanguage.ApiNorwegian, StringComparison.OrdinalIgnoreCase) ? 1
+        : tag.Equals(ReaderLanguage.English, StringComparison.OrdinalIgnoreCase) ? 2
+        : 3;
 }
