@@ -80,8 +80,9 @@ These are not style preferences — each one is a host that breaks otherwise.
     `munin-explorer-dataitem-main*`, the opened panel is `munin-explorer-meta*`, the list around
     them is `munin-explorer-container` / `munin-explorer-results` / `munin-explorer-header*`, the
     column picker hangs in `munin-explorer-header__actions*`, the pager is
-    `munin-explorer-pagination` / `munin-explorer-pagination-content`, and the link that jumps past
-    the results to it is `munin-explorer-skiplink-pagination`.
+    `munin-explorer-pagination` / `munin-explorer-pagination-content`, with the numbered pages in
+    `munin-explorer-pagination-pages` and the size control in `munin-explorer-pagination-size`, and
+    the link that jumps past the results to it is `munin-explorer-skiplink-pagination`.
 
     It was not ours until recently, and the change is the reason a host outside helsedata can style
     this component at all. The package used to write helsedata's own names — `variable-data-list*`,
@@ -353,6 +354,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-meta__tabs` | handle |
   | `munin-explorer-pagination` | handle |
   | `munin-explorer-pagination-content` | handle |
+  | `munin-explorer-pagination-pages` | handle |
   | `munin-explorer-pagination-size` | handle |
   | `munin-explorer-period` | handle |
   | `munin-explorer-period__fill` | meaning |

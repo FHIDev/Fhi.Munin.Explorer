@@ -251,14 +251,15 @@ internal sealed record Texts(
     // user saying what they can see still hits the button (WCAG 2.5.3).
     string PreviousLabel,
     string NextLabel,
-    // The name of the group the size buttons sit in, and each button's own accessible name.
-    // "10" alone says nothing about what ten there are of, and a group name is announced on
-    // entry rather than on every button, so each one carries the whole phrase (WCAG 2.5.3).
+    // The size control's visible label, which is also its accessible name: it is one <select>
+    // named once by a <label for>, so "10" no longer has to say what ten there are of.
     string VariablesPerPage,
-    // (size) — "Vis 20 variabler per side".
-    Func<int, string> VariablesPerPageLabel,
-    // (page, totalPages) — the pager's own "Side 2 av 13".
-    Func<int, int, string> PageOf,
+    // (page) — "Gå til side 4", on every numbered button but the one in force.
+    Func<int, string> GoToPageLabel,
+    // (page) — "Viser side 4", on the one in force. Its own sentence rather than the one above
+    // with a flag, because it says something different in kind: where you already are, not where
+    // pressing would take you.
+    Func<int, string> CurrentPageLabel,
     // (from, to, total, search, filters, field, direction) — the whole result sentence. The
     // ordering clause is part of it rather than appended by the caller, so a language whose
     // grammar puts the ordering first can say it that way instead of inheriting Norwegian's
@@ -766,8 +767,8 @@ internal sealed record Texts(
         PreviousLabel: "Forrige side",
         NextLabel: "Neste side",
         VariablesPerPage: "Variabler per side",
-        VariablesPerPageLabel: size => $"Vis {size} variabler per side",
-        PageOf: (page, totalPages) => $"Side {page} av {totalPages}",
+        GoToPageLabel: page => $"Gå til side {page}",
+        CurrentPageLabel: page => $"Viser side {page}",
         // The whole sentence, ordering clause included, because the comma and where the clause
         // sits are this language's grammar and not something to fix in C#.
         ResultSummary: (from, to, total, search, filters, field, direction) =>
@@ -1059,8 +1060,8 @@ internal sealed record Texts(
         PreviousLabel: "Previous page",
         NextLabel: "Next page",
         VariablesPerPage: "Variables per page",
-        VariablesPerPageLabel: size => $"Show {size} variables per page",
-        PageOf: (page, totalPages) => $"Page {page} of {totalPages}",
+        GoToPageLabel: page => $"Go to page {page}",
+        CurrentPageLabel: page => $"Showing page {page}",
         ResultSummary: (from, to, total, search, filters, field, direction) =>
         {
             var count = total == 1 ? "1 variable" : $"{total} variables";

@@ -820,6 +820,27 @@ public class VariableListViewTest : BunitContext
     }
 
     [Fact]
+    public void View_WhenTheListRunsToManyPages_ThenTheLastOneIsOnePressAwayHereToo()
+    {
+        // The second site of Fhi.Metadata-ejcbi. This pager wears the same two class names as the
+        // result list's and had the same "Side 1 av N" shape, so fixing only the one the bead named
+        // would have left a reader's own saved list walkable a page at a time.
+        var many = Enumerable.Range(1, 130).Select(i => Item($"Variabel {i}", $"V_{i}")).ToArray();
+        var client = new ListClient(many) { PageSize = 25 };
+        var cut = RenderView(client);
+
+        var numbers = cut.FindAll(".munin-explorer-pagination-pages > button");
+
+        Assert.Equal(["1", "2", "3", "6"], numbers.Select(n => n.TextContent));
+        Assert.Equal("Viser side 1", AccessibleName.Of(numbers[0]));
+
+        numbers[^1].Click();
+
+        Assert.Equal(6, client.LastPageAsked);
+        Assert.Contains("Variabel 126", cut.Markup);
+    }
+
+    [Fact]
     public async Task View_WhenTheReaderHasTwoLists_ThenSwitchingShowsTheOtherOne()
     {
         var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListCount = 2 };

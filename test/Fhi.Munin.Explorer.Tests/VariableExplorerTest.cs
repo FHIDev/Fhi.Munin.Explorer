@@ -2004,10 +2004,11 @@ public class VariableExplorerTest : BunitContext
             => Task.FromResult(ResultPage(totalCount, Math.Min(page, maxPage)));
     }
 
-    /// <summary>Forrige and Neste, which are not the only buttons in the pager any more.</summary>
+    /// <summary>Forrige and Neste, which are not the only buttons in the pager.</summary>
     /// <remarks>
-    /// A child selector, so the size group's three stay out of it: they are not page turns, and
-    /// every caller here counts on this being exactly the pair.
+    /// A child selector, so neither the numbered pages nor the size control is caught by it: those
+    /// sit one level down inside their own wrappers, and every caller here counts on this being
+    /// exactly the pair.
     /// </remarks>
     private static IReadOnlyList<AngleSharp.Dom.IElement> PagerButtons(
         IRenderedComponent<VariableExplorer> cut) =>
@@ -2017,11 +2018,29 @@ public class VariableExplorerTest : BunitContext
         PagerButtons(cut)[0];
 
     private static AngleSharp.Dom.IElement Next(IRenderedComponent<VariableExplorer> cut) =>
-        PagerButtons(cut)[1];
+        PagerButtons(cut)[^1];
 
-    /// <summary>The "Side 2 av 13" between the two buttons, and not the size group's own label.</summary>
-    private static string Position(IRenderedComponent<VariableExplorer> cut) =>
-        cut.Find(".munin-explorer-pagination-content > span.caption").TextContent;
+    /// <summary>The numbered buttons, in the order they are drawn.</summary>
+    private static IReadOnlyList<AngleSharp.Dom.IElement> PageNumberButtons(
+        IRenderedComponent<VariableExplorer> cut) =>
+        cut.FindAll("div.munin-explorer-pagination-pages > button");
+
+    /// <summary>Where the pager says the reader is, as <c>"2/13"</c>.</summary>
+    /// <remarks>
+    /// Read off the run of numbers rather than off a caption, which is where the position moved to
+    /// under Fhi.Metadata-ejcbi: the filled number is the page in force, and the run always ends on
+    /// the last page. The separator is this helper's own and not the component's — nothing on
+    /// screen says "2/13", so no caller can mistake this for an assertion about prose, and the one
+    /// English test asserts the numbers' own labels instead. <c>Single</c> is load-bearing: two
+    /// filled numbers, or none, is a pager that has stopped saying where the reader is.
+    /// </remarks>
+    private static string Position(IRenderedComponent<VariableExplorer> cut)
+    {
+        var numbers = PageNumberButtons(cut);
+        var current = numbers.Single(number => number.GetAttribute("aria-current") == "page");
+
+        return $"{current.TextContent}/{numbers[^1].TextContent}";
+    }
 
     private static string StatusLine(IRenderedComponent<VariableExplorer> cut) =>
         cut.Find("p[role='status']").TextContent;
@@ -2043,7 +2062,7 @@ public class VariableExplorerTest : BunitContext
         Assert.Equal(SortField.Kilde, client.LastSort);
         Assert.Equal(SortDirection.Ascending, client.LastDirection);
         Assert.Equal(3, client.Calls); // initial load, the sort, this page turn
-        Assert.Equal("Side 2 av 13", Position(cut));
+        Assert.Equal("2/13", Position(cut));
     }
 
     [Fact]
@@ -2054,12 +2073,12 @@ public class VariableExplorerTest : BunitContext
 
         Next(cut).Click();
         Next(cut).Click();
-        Assert.Equal("Side 3 av 13", Position(cut));
+        Assert.Equal("3/13", Position(cut));
 
         Previous(cut).Click();
 
         Assert.Equal(2, client.LastPage);
-        Assert.Equal("Side 2 av 13", Position(cut));
+        Assert.Equal("2/13", Position(cut));
         Assert.Contains("Variabel 26", cut.Markup);
     }
 
@@ -2075,7 +2094,7 @@ public class VariableExplorerTest : BunitContext
         Previous(cut).Click();
 
         Assert.Equal(1, client.Calls); // the initial load, and nothing since
-        Assert.Equal("Side 1 av 13", Position(cut));
+        Assert.Equal("1/13", Position(cut));
     }
 
     [Fact]
@@ -2088,14 +2107,14 @@ public class VariableExplorerTest : BunitContext
 
         Next(cut).Click();
 
-        Assert.Equal("Side 2 av 2", Position(cut));
+        Assert.Equal("2/2", Position(cut));
         Assert.Equal("true", Next(cut).GetAttribute("aria-disabled"));
         Assert.Null(Previous(cut).GetAttribute("aria-disabled"));
 
         Next(cut).Click();
 
         Assert.Equal(2, client.Calls); // initial load and the one page turn
-        Assert.Equal("Side 2 av 2", Position(cut));
+        Assert.Equal("2/2", Position(cut));
     }
 
     [Fact]
@@ -2153,7 +2172,7 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Equal(1, client.LastPage);
         Assert.Equal("svelging", client.LastSearch);
-        Assert.Equal("Side 1 av 13", Position(cut));
+        Assert.Equal("1/13", Position(cut));
     }
 
     [Fact]
@@ -2170,7 +2189,7 @@ public class VariableExplorerTest : BunitContext
         ClickSort(cut, "Datasamling");
 
         Assert.Equal(1, client.LastPage);
-        Assert.Equal("Side 1 av 13", Position(cut));
+        Assert.Equal("1/13", Position(cut));
     }
 
     [Fact]
@@ -2185,7 +2204,7 @@ public class VariableExplorerTest : BunitContext
         Next(cut).Click();
 
         Assert.Equal(2, client.Calls); // the initial load and the stalled search, not the page turn
-        Assert.Equal("Side 1 av 13", Position(cut));
+        Assert.Equal("1/13", Position(cut));
     }
 
     [Fact]
@@ -2213,7 +2232,7 @@ public class VariableExplorerTest : BunitContext
         Next(cut).Click();
 
         Assert.NotEmpty(cut.FindAll("div.munin-explorer-pagination"));
-        Assert.Equal("Side 1 av 13", Position(cut)); // rolled back, and still describing real rows
+        Assert.Equal("1/13", Position(cut)); // rolled back, and still describing real rows
         Assert.Contains("Variabel 1", cut.Markup);
         Assert.Contains("Viser 1–25 av 312 variabler funnet", StatusLine(cut));
     }
@@ -2253,7 +2272,7 @@ public class VariableExplorerTest : BunitContext
         }
 
         Assert.Equal(8, client.LastPage); // asked for 12, told it was gone, went to the last real one
-        Assert.Equal("Side 8 av 8", Position(cut));
+        Assert.Equal("8/8", Position(cut));
         Assert.Contains("Viser 176–200 av 200 variabler funnet", StatusLine(cut));
         Assert.Equal(25, cut.FindAll("ul.munin-explorer-data-list > li").Count);
     }
@@ -2271,7 +2290,7 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Equal(1, client.LastPage);
         Assert.Equal(3, client.Calls); // the initial load, the missing page 2, and the way back
-        Assert.Equal("Side 1 av 13", Position(cut));
+        Assert.Equal("1/13", Position(cut));
         Assert.Contains("Viser 1–25 av 312 variabler funnet", StatusLine(cut));
     }
 
@@ -2292,7 +2311,7 @@ public class VariableExplorerTest : BunitContext
         }));
 
         Assert.NotEmpty(cut.FindAll("div.munin-explorer-pagination"));
-        Assert.Equal("Side 1 av 13", Position(cut));
+        Assert.Equal("1/13", Position(cut));
         Assert.Null(Next(cut).GetAttribute("aria-disabled"));
     }
 
@@ -2312,7 +2331,7 @@ public class VariableExplorerTest : BunitContext
         // And the caption between the buttons counts from the same answer. Pinning only the range
         // would leave the pager free to say "Side 2 av 13" over page 1's rows — the row range and
         // the position describing two different pages of one result.
-        Assert.Equal("Side 1 av 13", Position(cut));
+        Assert.Equal("1/13", Position(cut));
     }
 
     [Fact]
@@ -2328,7 +2347,7 @@ public class VariableExplorerTest : BunitContext
         Next(cut).Click();
         Next(cut).Click();
 
-        Assert.Equal("Side 1 av 13", Position(cut));
+        Assert.Equal("1/13", Position(cut));
         Assert.Contains("Viser 1–25 av 312 variabler funnet", StatusLine(cut));
         Assert.Contains("Variabel 1", cut.Markup);
     }
@@ -2348,7 +2367,7 @@ public class VariableExplorerTest : BunitContext
 
         Assert.NotEmpty(cut.FindAll("div.munin-explorer-pagination"));
         Assert.NotEmpty(cut.FindAll("a.munin-explorer-skiplink-pagination"));
-        Assert.Equal("Side 1 av 1", Position(cut));
+        Assert.Equal("1/1", Position(cut));
         Assert.Contains("10 variabler funnet", StatusLine(cut)); // the whole result, so no range
         Assert.Equal(10, cut.FindAll("ul.munin-explorer-data-list > li").Count);
 
@@ -2392,7 +2411,7 @@ public class VariableExplorerTest : BunitContext
         Assert.Equal(3, client.Calls); // the initial load, the missing page 2, and the failed way back
         Assert.Contains("Kunne ikke hente variabler", cut.Markup);
         Assert.NotEmpty(cut.FindAll("div.munin-explorer-pagination"));
-        Assert.Equal("Side 1 av 13", Position(cut));
+        Assert.Equal("1/13", Position(cut));
         Assert.Contains("Viser 1–25 av 312 variabler funnet", StatusLine(cut));
         Assert.Contains("Variabel 1", cut.Markup);
         Assert.DoesNotContain("Ingen variabler passet", StatusLine(cut));
@@ -2442,7 +2461,7 @@ public class VariableExplorerTest : BunitContext
             Next(cut).Click();
         }
 
-        Assert.Equal("Side 13 av 13", Position(cut));
+        Assert.Equal("13/13", Position(cut));
         Assert.Contains("Viser 301–312 av 312 variabler funnet", StatusLine(cut));
         Assert.Equal(12, cut.FindAll("ul.munin-explorer-data-list > li").Count);
     }
@@ -2466,8 +2485,8 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Theory]
-    [InlineData(500, "Side 2 av 4", "Viser 101–200 av 312")]
-    [InlineData(0, "Side 2 av 312", "Viser 2–2 av 312")]
+    [InlineData(500, "2/4", "Viser 101–200 av 312")]
+    [InlineData(0, "2/312", "Viser 2–2 av 312")]
     public void Page_WhenTheServerDescribesNoPageSize_ThenTheArithmeticUsesTheClampedOneNotTheAsked(
         int asked, string position, string range)
     {
@@ -2493,9 +2512,108 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Equal("Previous", Previous(cut).TextContent);
         Assert.Equal("Next", Next(cut).TextContent);
-        Assert.Equal("Page 1 of 13", Position(cut));
+
+        // The numbers themselves are digits in any language; what has to be translated is what a
+        // screen reader hears instead of "one", and the two say different things.
+        Assert.Equal("Showing page 1", AccessibleName.Of(PageNumberButtons(cut)[0]));
+        Assert.Equal("Go to page 2", AccessibleName.Of(PageNumberButtons(cut)[1]));
+
+        Assert.Equal(
+            "Variables per page",
+            AccessibleName.Of(cut.Find(".munin-explorer-pagination-size select")));
         Assert.Equal("Skip to pagination", cut.Find("a.munin-explorer-skiplink-pagination").TextContent);
         Assert.Contains("Showing 1–25 of 312 variables found", StatusLine(cut));
+    }
+
+    // ---------------------------------------------------------------------------------
+    // The shape decided in Fhi.Metadata-ejcbi: Forrige, numbered pages, Neste, and a
+    // page-size dropdown. What it replaced was "Side 1 av 907" between two buttons, which
+    // says where the reader is and gives them nowhere to go — page 453 was 452 presses
+    // away, and the last page was unreachable in any practical sense.
+    // ---------------------------------------------------------------------------------
+
+    [Fact]
+    public void Page_WhenTheListIsLong_ThenTheLastPageIsOnePressAwayRatherThanTwelve()
+    {
+        // The defect itself. Forrige and Neste move by one, so before this the only route to the
+        // end of a 13-page list was pressing Neste twelve times.
+        var client = new PagedClient(312);
+        var cut = RenderWith(client);
+
+        var last = PageNumberButtons(cut)[^1];
+
+        Assert.Equal("13", last.TextContent);
+
+        last.Click();
+
+        Assert.Equal(13, client.LastPage);
+        Assert.Equal("13/13", Position(cut));
+    }
+
+    [Fact]
+    public void Page_WhenTheRunIsDrawn_ThenExactlyOneNumberSaysItIsThePageInForce()
+    {
+        // Two would be a pager describing two places at once; none would be a row of numbers with
+        // nothing saying which one the reader is standing on, which is what a screen reader gets
+        // when the fill is the only marker.
+        var cut = RenderWith(new PagedClient(312));
+
+        Assert.Single(PageNumberButtons(cut), n => n.GetAttribute("aria-current") == "page");
+
+        Next(cut).Click();
+
+        var current = PageNumberButtons(cut).Single(n => n.GetAttribute("aria-current") == "page");
+
+        Assert.Equal("2", current.TextContent);
+    }
+
+    [Fact]
+    public void Page_WhenAScreenReaderMeetsTheRun_ThenEachNumberSaysWhetherItMovesOrMarks()
+    {
+        // "1" and "2" are the same word to a screen reader reading a row of digits. What tells them
+        // apart is the sentence each carries, and the two sentences are deliberately different in
+        // kind: where pressing would go, and where the reader already is.
+        var cut = RenderWith(new PagedClient(312));
+
+        var numbers = PageNumberButtons(cut);
+
+        Assert.Equal("Viser side 1", AccessibleName.Of(numbers[0]));
+        Assert.Equal("Gå til side 2", AccessibleName.Of(numbers[1]));
+
+        // The visible digit is inside the sentence, or a speech-input user saying "2" reaches
+        // nothing (WCAG 2.5.3).
+        Assert.All(numbers, number => Assert.Contains(number.TextContent, AccessibleName.Of(number)));
+    }
+
+    [Fact]
+    public void Page_WhenTheRunSkipsPages_ThenTheSkipIsNotSomethingToPressOrHear()
+    {
+        // The ellipsis stands for pages, not for a page. Left announced it is a control that does
+        // nothing; left as a button it is a tab stop that does nothing.
+        var cut = RenderWith(new PagedClient(312));
+
+        var skip = cut.Find(".munin-explorer-pagination-pages > span");
+
+        Assert.Equal("…", skip.TextContent);
+        Assert.Equal("true", skip.GetAttribute("aria-hidden"));
+
+        // 13 pages, the run showing 1 2 3 … 13: six numbers would mean the skip became one.
+        Assert.Equal(["1", "2", "3", "13"], PageNumberButtons(cut).Select(n => n.TextContent));
+    }
+
+    [Fact]
+    public void Page_WhenTheSizeIsChosen_ThenItIsADropdownRatherThanARowOfButtons()
+    {
+        // The other half of the decision, taken from Runa: helsedata.no has no page-size control at
+        // all, and three buttons plus a label was three names wide in a row that already carries a
+        // pager. A <select> is one control, and one an unstyled host still draws as a dropdown.
+        var cut = RenderWith(new PagedClient(312));
+
+        var size = cut.Find(".munin-explorer-pagination-size");
+
+        Assert.Empty(size.QuerySelectorAll("button"));
+        Assert.Equal(["10", "20", "50"], size.QuerySelectorAll("option").Select(o => o.TextContent));
+        Assert.Equal("Variabler per side", AccessibleName.Of(size.QuerySelector("select")!));
     }
 
     // ---------------------------------------------------------------------------------
@@ -2542,13 +2660,14 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Equal(
         [
-            "button-square--ghost",               // Stiler, a size that is not the one in force
-            "button-square--secondary",           // Stiler, the buttons' colour
-            "caption",                            // Stiler, the position and the size group's label
+            "button-square--ghost",               // Stiler, a page that is not the one in force
+            "button-square--secondary",           // Stiler, the two page turns and the page in force
+            "caption",                            // Stiler, the size label and the run's ellipsis
             "hd-button-square",                   // Stiler, the square shape
-            "margin-right",                       // Stiler, what keeps the three sizes apart
+            "margin-right",                       // Stiler, what keeps the numbers apart
             "munin-explorer-pagination",          // ours, Stiler components/munin-explorer/
             "munin-explorer-pagination-content",  // ours, Stiler components/munin-explorer/
+            "munin-explorer-pagination-pages",    // ours, and outstanding with Stiler
             "munin-explorer-pagination-size",     // ours, and outstanding with Stiler
         ], names);
     }
@@ -6493,7 +6612,7 @@ public class VariableExplorerTest : BunitContext
         client.Then(new Page<VariableSummary>()).Then(null);
         Next(cut).Click();
 
-        Assert.Equal("Side 1 av 2", Position(cut));
+        Assert.Equal("1/2", Position(cut));
         Assert.Single(cut.FindAll("ul.munin-explorer-data-list > li"));
         Assert.Equal("true", Toggles(cut)[0].GetAttribute("aria-expanded"));
         Assert.Contains("Angir pasientens grad av utfall", Panel(cut).TextContent);
@@ -6538,7 +6657,7 @@ public class VariableExplorerTest : BunitContext
         Next(cut).Click();
 
         // Reopened and asking again, rather than put back blank and left that way for good.
-        Assert.Equal("Side 1 av 2", Position(cut));
+        Assert.Equal("1/2", Position(cut));
         Assert.Equal("true", Toggles(cut)[0].GetAttribute("aria-expanded"));
         Assert.Equal("true", Panel(cut).GetAttribute("aria-busy"));
         Assert.Contains("Henter detaljer", Panel(cut).TextContent);
@@ -8001,7 +8120,7 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Equal(3, client.LastPage);
         Assert.Equal("tale", client.LastSearch);
-        Assert.Equal("Side 3 av 13", Position(cut));
+        Assert.Equal("3/13", Position(cut));
         Assert.Empty(AlertMessages(cut));
     }
 

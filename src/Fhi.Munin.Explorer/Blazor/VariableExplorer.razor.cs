@@ -625,8 +625,8 @@ public partial class VariableExplorer : ComponentBase
     private string TitleId => $"munin-explorer-title-{_instance}";
     private string PaginationId => $"munin-explorer-pagination-{_instance}";
 
-    /// <summary>The size group's visible label, which is also its accessible name.</summary>
-    private string PageSizeLabelId => $"munin-explorer-pagination-size-{_instance}";
+    /// <summary>The size control, which its visible label points at with <c>for</c>.</summary>
+    private string PageSizeSelectId => $"munin-explorer-pagination-size-{_instance}";
 
     // Per row as well as per instance: the detail panel is wired to its own row with
     // aria-controls and aria-labelledby, and two explorers listing the same variable would
@@ -674,21 +674,45 @@ public partial class VariableExplorer : ComponentBase
     /// <summary>The sizes the reader chooses between, which are Runa's own.</summary>
     private static readonly int[] PageSizeOptions = [10, 20, 50];
 
-    /// <summary>
-    /// A size's classes — filled when it is the size in force, a ghost when not, the same pair the
-    /// facet values and the sort buttons use.
-    /// </summary>
+    /// <summary>The sizes the control offers: the three, and the host's own if it is not one.</summary>
     /// <remarks>
-    /// The state is drawn by swapping Stiler's own names rather than from a rule on
-    /// <c>aria-pressed</c>, so a host with Stiler and nothing else still shows which size is on
-    /// without owing this package a stylesheet. <c>margin-right</c> is theirs too, and is what
-    /// keeps the three apart: Razor drops the whitespace between elements, so without it they touch.
+    /// A host is free to set 30, and a select with no option for the size in force falls back to
+    /// the first — a control reporting 10 rows a page over rows built at 30. The three buttons this
+    /// replaced could say "none of us" by leaving every one unpressed; a select has no such state.
     /// </remarks>
-    private string PageSizeClass(int size)
-    {
-        var style = ClampedPageSize == size ? "button-square--secondary" : "button-square--ghost";
+    private IEnumerable<int> OfferedPageSizes =>
+        PageSizeOptions.Contains(ClampedPageSize)
+            ? PageSizeOptions
+            : PageSizeOptions.Append(ClampedPageSize).Order();
 
-        return $"hd-button-square {style} margin-right";
+    /// <summary>Bumped whenever a change is refused, to key the control below.</summary>
+    /// <remarks>
+    /// A browser moves a select's own selection before <c>onchange</c> runs, so a refused change
+    /// leaves it showing a size the rows were not built with — and re-rendering does not move it
+    /// back, because the tree is unchanged and Blazor patches nothing. A new key discards it.
+    /// </remarks>
+    private int _sizeRefusals;
+
+    /// <summary>Reads the size off the <c>&lt;select&gt;</c> and applies it.</summary>
+    /// <remarks>
+    /// A value the control does not offer is dropped rather than clamped: the only way to send one
+    /// is to have edited the markup, and a paging nobody chose is worse than the one on screen.
+    /// </remarks>
+    private async Task OnPageSizeChangedAsync(ChangeEventArgs args)
+    {
+        // Refused, and the select has already moved itself, so it has to be put back — see
+        // _sizeRefusals. The three buttons this replaced needed none of this: a press that was
+        // dropped changed nothing on screen, because their state was drawn from ours.
+        if (_loading
+            || !int.TryParse(args.Value?.ToString(), out var size)
+            || !OfferedPageSizes.Contains(size))
+        {
+            _sizeRefusals++;
+
+            return;
+        }
+
+        await SetPageSizeAsync(size);
     }
 
     /// <summary>Rows per page as actually requested — see <see cref="PageSize"/>.</summary>

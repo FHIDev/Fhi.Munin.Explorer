@@ -266,7 +266,10 @@
                                 aria-disabled="@AriaDisabled(_pageNumber > 1)"
                                 @onclick="() => GoToPageAsync(_pageNumber - 1)">@T.Previous</button>
 
-                        <span class="caption">@T.PageOf(_pageNumber, TotalPages)</span>
+                        @* The same numbered run the result list draws, from the same renderer.
+                           This pager wears the same two class names, so it had the same unstyled
+                           shape and is the same defect twice (Fhi.Metadata-ejcbi). *@
+                        @PageNumbers.Write(this, _pageNumber, TotalPages, GoToPageAsync, T.GoToPageLabel, T.CurrentPageLabel)
 
                         <button class="hd-button-square button-square--secondary"
                                 type="button"
