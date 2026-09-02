@@ -42,12 +42,34 @@ public partial class VariableExplorer
     private string _linkCode = "";
     private IdentityLinkOutcome? _linkFailure;
 
+    // What the panel knows is one reader's. The generation is what lets a redemption still in
+    // flight recognise, when it comes back, that the reader who asked for it has since left.
+    private bool _linkReaderSignedIn;
+    private int _linkGeneration;
+
     // Told apart from a refusal on purpose: a refusal is an answer about the code, and this is the
     // call never arriving. "Sjekk koden" would be a lie about a network that was down.
     private bool _linkThrew;
     private bool _linkThrottled;
 
     private string AccountLinkCodeId => $"munin-explorer-account-link-code-{_instance}";
+
+    // Carried across a sign-out, the stage and the code would announce one reader's success to the
+    // next and offer them a code they never typed — the disclosure VariableListState drops its
+    // loaded lists to avoid. Called on every parameter set (Fhi.Metadata-bl448).
+    private void ResetAccountLinkIfTheReaderChanged()
+    {
+        if (_linkReaderSignedIn == IsAuthenticated)
+        {
+            return;
+        }
+
+        _linkReaderSignedIn = IsAuthenticated;
+        _linkGeneration++;
+        _linkStage = LinkStage.Entering;
+        _linkCode = "";
+        ClearLinkResult();
+    }
 
     // Drawn only for a signed-in reader, the same rule the save button follows: redeeming is an
     // authenticated write, so signed out there is nothing the control could do.
@@ -242,34 +264,46 @@ public partial class VariableExplorer
         ClearLinkResult();
         _linkStage = LinkStage.Working;
 
+        var generation = _linkGeneration;
+        IdentityLinkOutcome? outcome = null;
+        var throttled = false;
+        var threw = false;
+
         try
         {
-            var outcome = await Client.RedeemIdentityLinkAsync(_linkCode);
-
-            if (outcome == IdentityLinkOutcome.Linked)
-            {
-                _linkStage = LinkStage.Linked;
-
-                // The code is spent and the panel is done with it. Keeping it would leave a
-                // single-use credential in the DOM for the rest of the circuit.
-                _linkCode = "";
-            }
-            else
-            {
-                _linkFailure = outcome;
-                _linkStage = LinkStage.Entering;
-            }
+            outcome = await Client.RedeemIdentityLinkAsync(_linkCode);
         }
         catch (MuninExplorerRateLimitedException)
         {
-            _linkThrottled = true;
-            _linkStage = LinkStage.Entering;
+            throttled = true;
         }
         catch (Exception)
         {
             // Caught the way every other await in this component catches: an unhandled exception
             // out of an EventCallback takes the whole circuit down with it.
-            _linkThrew = true;
+            threw = true;
+        }
+
+        // The answer is the reader's who asked for it. One arriving after they signed out is no
+        // longer anybody's to see, and the panel has already been reset for whoever comes next.
+        if (_linkGeneration != generation)
+        {
+            return;
+        }
+
+        if (outcome == IdentityLinkOutcome.Linked)
+        {
+            _linkStage = LinkStage.Linked;
+
+            // The code is spent and the panel is done with it. Keeping it would leave a
+            // single-use credential in the DOM for the rest of the circuit.
+            _linkCode = "";
+        }
+        else
+        {
+            _linkThrottled = throttled;
+            _linkThrew = threw;
+            _linkFailure = outcome;
             _linkStage = LinkStage.Entering;
         }
 
