@@ -433,6 +433,22 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 .munin-explorer-filters { margin-bottom: 24px; }
 
+/* The panel's toolbar. A container of its own rather than three buttons in inline flow: there the
+   last button's trailing margin counted against the line, and the row broke apart as soon as the
+   expanded panel grew a scrollbar. Not `flex-wrap: wrap` — the buttons shrink and wrap their own
+   labels instead, so a longer translation keeps the row rather than splitting it. */
+
+.munin-explorer-filters__toolbar {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.munin-explorer-filters__toolbar > .hd-button-square {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .munin-explorer-filters details {
   border-bottom: 1px solid var(--grey30);
   padding: 8px 0;

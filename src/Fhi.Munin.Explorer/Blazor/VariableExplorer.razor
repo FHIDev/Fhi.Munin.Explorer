@@ -253,17 +253,23 @@ else
 
             @* The toolbar. Utvid alle and Skjul alle do the one thing a native disclosure cannot do
                for itself; Nivålinjer is a toggle and says so with aria-pressed. None of the three
-               narrows anything, which is why none is a checkbox — the facet values are. *@
-            <button class="hd-button-square button-square--ghost margin-right margin-bottom"
-                    type="button"
-                    @onclick="() => FoldAll(true)">@T.ExpandAllFacets</button>
-            <button class="hd-button-square button-square--ghost margin-right margin-bottom"
-                    type="button"
-                    @onclick="() => FoldAll(false)">@T.CollapseAllFacets</button>
-            <button class="@LevelLinesClass"
-                    type="button"
-                    aria-pressed="@(_levelLines ? "true" : "false")"
-                    @onclick="ToggleLevelLinesAsync">@T.LevelLines</button>
+               narrows anything, which is why none is a checkbox — the facet values are.
+
+               A container of their own, spaced by `gap`: in inline flow the last button's trailing
+               `margin-right` counted against the line, and the row needed 369.05px of the 369.00
+               an expanded panel leaves once it grows a scrollbar. (Fhi.Metadata-l9l2n.37) *@
+            <div class="munin-explorer-filters__toolbar">
+                <button class="hd-button-square button-square--ghost"
+                        type="button"
+                        @onclick="() => FoldAll(true)">@T.ExpandAllFacets</button>
+                <button class="hd-button-square button-square--ghost"
+                        type="button"
+                        @onclick="() => FoldAll(false)">@T.CollapseAllFacets</button>
+                <button class="@LevelLinesClass"
+                        type="button"
+                        aria-pressed="@(_levelLines ? "true" : "false")"
+                        @onclick="ToggleLevelLinesAsync">@T.LevelLines</button>
+            </div>
 
             @* A fold press rewrites every disclosure in the panel and is otherwise silent — the same
                argument the result region makes for announcing a search at all. A bare live region
