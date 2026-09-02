@@ -52,8 +52,10 @@ public class MuninExplorerClientTest
         Assert.Equal(3876, filters.KildeKodeverkCount);
         Assert.Equal(18289, filters.TotalCount);
 
-        // Datatypes arrive as bare codes with no label — the point of the note on DataTypeFacet.
+        // Datatypes arrive labelled: Fhi.Metadata-xxi8k made the endpoint resolve the name in the
+        // request's language, and this capture went unrefreshed until FixtureDriftTest noticed.
         Assert.Equal(["1", "10", "2", "3", "4", "6", "7"], filters.DataTypes.Select(d => d.Value));
+        Assert.Equal("Fødselsnummer (11 siffer)", filters.DataTypes[1].DisplayName);
 
         // Datakategorier are raw EHDS tokens, label and all, so a caller matches whole tokens
         // rather than stripping the prefix off them.

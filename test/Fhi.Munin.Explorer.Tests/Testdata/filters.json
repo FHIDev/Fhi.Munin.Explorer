@@ -354,30 +354,37 @@
   "datatyper": [
     {
       "value": "1",
+      "displayName": "String",
       "count": 3897
     },
     {
       "value": "10",
+      "displayName": "Fødselsnummer (11 siffer)",
       "count": 10
     },
     {
       "value": "2",
+      "displayName": "Integer",
       "count": 9145
     },
     {
       "value": "3",
+      "displayName": "Decimal",
       "count": 2065
     },
     {
       "value": "4",
+      "displayName": "Boolean",
       "count": 2164
     },
     {
       "value": "6",
+      "displayName": "Date",
       "count": 266
     },
     {
       "value": "7",
+      "displayName": "Datetime",
       "count": 681
     }
   ],
