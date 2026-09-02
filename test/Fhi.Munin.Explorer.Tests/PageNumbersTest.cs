@@ -105,10 +105,9 @@ public class PageNumbersTest : BunitContext
     [Fact]
     public void Write_WhenThePageIsOutOfRange_ThenTheRunStillSaysWhichPageItIsDrawnFor()
     {
-        // Window clamps and the markup did not, so a run drawn for a page the result no longer has
-        // came out with no aria-current at all and every number labelled as a jump. Reachable: a
-        // shared link carrying page 40 of a result that shrank renders once before the correcting
-        // fetch lands, and that render is a pager that cannot say where the reader is.
+        // Window clamped and the markup did not, so the run came out with nothing marked current.
+        // Reachable: a link carrying page 40 of a result that shrank renders once before the
+        // correcting fetch lands (Fhi.Metadata-ejcbi).
         var cut = Render(Run(page: 99, totalPages: 3));
 
         var numbers = cut.FindAll("button");

@@ -740,11 +740,11 @@ public class ShareableStateTest : BunitContext
         }
     }
 
-    /// <summary>
-    /// The size control's availability. A single value, not a run: an <c>Assert.All</c> over a
-    /// selector that stopped matching anything is how this check would go green while saying
-    /// nothing, which is what it did the moment the three buttons became one select.
-    /// </summary>
+    /// <summary>The size control's availability — one value, not a run.</summary>
+    /// <remarks>
+    /// An <c>Assert.All</c> over a selector matching nothing goes green saying nothing, which is
+    /// what this check did the moment the three buttons became one select.
+    /// </remarks>
     private static string? SizeControlState(IRenderedComponent<VariableExplorer> cut) =>
         SizeControl(cut).GetAttribute("aria-disabled");
 

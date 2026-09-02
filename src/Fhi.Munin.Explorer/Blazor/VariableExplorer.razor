@@ -867,6 +867,7 @@ else
                        follow: disabling the control the reader has focus in drops that focus to
                        <body>. SetPageSizeAsync is what makes a press during a fetch inert. *@
                     <select id="@PageSizeSelectId"
+                            @key="_sizeRefusals"
                             aria-disabled="@AriaDisabled(!_loading)"
                             @onchange="OnPageSizeChangedAsync">
                         @* `selected` on the option rather than `value` on the select: the second is

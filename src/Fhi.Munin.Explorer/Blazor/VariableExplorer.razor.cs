@@ -685,6 +685,14 @@ public partial class VariableExplorer : ComponentBase
             ? PageSizeOptions
             : PageSizeOptions.Append(ClampedPageSize).Order();
 
+    /// <summary>Bumped whenever a change is refused, to key the control below.</summary>
+    /// <remarks>
+    /// A browser moves a select's own selection before <c>onchange</c> runs, so a refused change
+    /// leaves it showing a size the rows were not built with — and re-rendering does not move it
+    /// back, because the tree is unchanged and Blazor patches nothing. A new key discards it.
+    /// </remarks>
+    private int _sizeRefusals;
+
     /// <summary>Reads the size off the <c>&lt;select&gt;</c> and applies it.</summary>
     /// <remarks>
     /// A value the control does not offer is dropped rather than clamped: the only way to send one
@@ -692,8 +700,15 @@ public partial class VariableExplorer : ComponentBase
     /// </remarks>
     private async Task OnPageSizeChangedAsync(ChangeEventArgs args)
     {
-        if (!int.TryParse(args.Value?.ToString(), out var size) || !OfferedPageSizes.Contains(size))
+        // Refused, and the select has already moved itself, so it has to be put back — see
+        // _sizeRefusals. The three buttons this replaced needed none of this: a press that was
+        // dropped changed nothing on screen, because their state was drawn from ours.
+        if (_loading
+            || !int.TryParse(args.Value?.ToString(), out var size)
+            || !OfferedPageSizes.Contains(size))
         {
+            _sizeRefusals++;
+
             return;
         }
 
