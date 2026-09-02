@@ -246,6 +246,184 @@ public class MyListsClientTest
     }
 
     [Fact]
+    public async Task GetMyListVariablesAsync_WhenAnEntryIsAnnotated_ThenTheReadersOwnWordsComeWithIt()
+    {
+        // "Ønskede data". The API spells the pair desiredDataType/desiredDataFreeText, and a
+        // contract missing either reads as an unannotated list — the reader's note is simply not
+        // there, with nothing to say it was dropped rather than never written.
+        var handler = StubHttpHandler.Ok(TestData.Read("my-list-variables.json"));
+
+        var page = await Client(handler).GetMyListVariablesAsync(ListId);
+
+        Assert.Equal("freeText", page!.Items[0].DesiredDataType);
+        Assert.Equal("C36.2 og C36.4, og C76", page.Items[0].DesiredDataFreeText);
+    }
+
+    [Fact]
+    public async Task GetMyListVariablesAsync_WhenAnOrphanIsAnnotated_ThenTheAnnotationSurvivesTheMissingVariable()
+    {
+        // The annotation is stored on the membership, not resolved per page like the display fields
+        // beside it, so it does NOT go null with them. Grouping it with them — "they are all null
+        // together" — would lose the reader's own words the moment a variable was unpublished,
+        // which is the one thing in the row nobody else can rewrite.
+        var handler = StubHttpHandler.Ok(TestData.Read("my-list-variables.json"));
+
+        var page = await Client(handler).GetMyListVariablesAsync(ListId);
+
+        Assert.Null(page!.Items[1].VariableName);
+        Assert.Equal("Alle registrerte verdier", page.Items[1].DesiredDataFreeText);
+    }
+
+    // -------------------------------------------------------------------------- "Ønskede data"
+
+    /// <summary>The annotation route for one variable in one list.</summary>
+    private static string DesiredDataRoute(Guid variableId) =>
+        $"{Collection}/{ListId}/variables/{variableId}/desired-data";
+
+    [Fact]
+    public async Task SetMyListDesiredDataAsync_WhenTextIsWritten_ThenItIsPutToTheVariablesOwnRoute()
+    {
+        var handler = StubHttpHandler.Status(HttpStatusCode.NoContent);
+        var variableId = new Guid("b7c1f4a2-5d38-4e6b-9c02-8a1e3f7d5b90");
+
+        var result = await Client(handler)
+            .SetMyListDesiredDataAsync(ListId, variableId, "C36.2 og C36.4, og C76");
+
+        Assert.Equal(DesiredDataOutcome.Saved, result.Outcome);
+        Assert.Equal(HttpMethod.Put, handler.LastMethod);
+        Assert.Equal(DesiredDataRoute(variableId), handler.LastUri?.AbsolutePath);
+
+        // The type travels with the text. Any value but "freeText" is a 400 whether or not text
+        // came with it, so this string is not one to guess at — and it is what pins which shape is
+        // being written on the day the API stores a second one.
+        Assert.Equal(
+            """{"type":"freeText","freeText":"C36.2 og C36.4, og C76"}""", handler.LastBody);
+        AssertAuthenticated(handler);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task SetMyListDesiredDataAsync_WhenTheTextIsBlank_ThenTheAnnotationIsCleared(string? blank)
+    {
+        // Clearing and writing are one call, and all three of these are the same request: the API
+        // reads a blank freeText as "no annotation" and puts both stored columns back to null. A
+        // client that skipped the call for an empty string would leave the reader's old note on the
+        // server after they had deleted it on screen.
+        var handler = StubHttpHandler.Status(HttpStatusCode.NoContent);
+
+        var result = await Client(handler).SetMyListDesiredDataAsync(ListId, Guid.NewGuid(), blank);
+
+        Assert.Equal(DesiredDataOutcome.Saved, result.Outcome);
+        Assert.Equal(1, handler.Calls);
+
+        // No type either: there is no annotation left for one to describe.
+        Assert.Equal("""{"type":null,"freeText":null}""", handler.LastBody);
+    }
+
+    [Fact]
+    public async Task SetMyListDesiredDataAsync_WhenTheTextHasWhitespaceAround_ThenItIsTrimmedBeforeItIsMeasured()
+    {
+        // The API trims before it counts, so trimming here is what makes the length the caller is
+        // told about the length the API used. Sending it untrimmed would refuse a 500-character
+        // note for having a trailing newline.
+        var handler = StubHttpHandler.Status(HttpStatusCode.NoContent);
+
+        await Client(handler).SetMyListDesiredDataAsync(ListId, Guid.NewGuid(), "  C76  ");
+
+        Assert.Equal("""{"type":"freeText","freeText":"C76"}""", handler.LastBody);
+    }
+
+    [Fact]
+    public async Task SetMyListDesiredDataAsync_WhenTheTextIsTooLong_ThenTheApisCeilingComesBackRatherThanAThrow()
+    {
+        // The point of the result type. The API caps at 500 and names the ceiling in the refusal;
+        // EnsureSuccessStatusCode would throw that body away and leave the caller "400 (Bad
+        // Request)" — nothing to say to a reader whose text will be refused identically next time.
+        var handler = StubHttpHandler.Answering(
+            HttpStatusCode.BadRequest,
+            """{"error":"Desired data must be 500 characters or fewer.","maxLength":500,"received":612}""");
+
+        var result = await Client(handler)
+            .SetMyListDesiredDataAsync(ListId, Guid.NewGuid(), new string('x', 612));
+
+        Assert.Equal(DesiredDataOutcome.Refused, result.Outcome);
+
+        // Read off the refusal, never written down here: the API owns the number, and a constant in
+        // this package would go on quoting 500 the day the API moved it.
+        Assert.Equal(500, result.MaxLength);
+        Assert.Equal(612, result.Received);
+    }
+
+    [Fact]
+    public async Task SetMyListDesiredDataAsync_WhenTheRefusalNamesNoCeiling_ThenItIsStillARefusalWithNothingInvented()
+    {
+        // A 400 this client cannot provoke today — it never sends a type the API does not know —
+        // but the arm has to exist, and it has to answer with a null ceiling rather than a made-up
+        // one. A caller reads the null as "refused for some other reason" and says so.
+        var handler = StubHttpHandler.Answering(
+            HttpStatusCode.BadRequest, """{"error":"Unknown desired-data type: 'kodeverk'."}""");
+
+        var result = await Client(handler).SetMyListDesiredDataAsync(ListId, Guid.NewGuid(), "C76");
+
+        Assert.Equal(DesiredDataOutcome.Refused, result.Outcome);
+        Assert.Null(result.MaxLength);
+        Assert.Null(result.Received);
+    }
+
+    [Fact]
+    public async Task SetMyListDesiredDataAsync_WhenTheRefusalBodyIsNotJson_ThenItIsStillARefusalRatherThanAThrow()
+    {
+        // A proxy answering the 400 with HTML, say. It is the ceiling that goes missing, not the
+        // refusal, and a parse failure escaping here would take the reader's circuit down over a
+        // note they typed.
+        var handler = StubHttpHandler.Answering(HttpStatusCode.BadRequest, "<html>Bad Request</html>");
+
+        var result = await Client(handler).SetMyListDesiredDataAsync(ListId, Guid.NewGuid(), "C76");
+
+        Assert.Equal(DesiredDataOutcome.Refused, result.Outcome);
+        Assert.Null(result.MaxLength);
+    }
+
+    [Fact]
+    public async Task SetMyListDesiredDataAsync_WhenTheUserHasNoSuchList_ThenNotFoundRatherThanAThrow()
+    {
+        // The same 404 the other writes read as "no such list of yours" — here it also covers a
+        // variable the list does not hold, which the API deliberately does not tell apart.
+        var result = await Client(StubHttpHandler.Status(HttpStatusCode.NotFound))
+            .SetMyListDesiredDataAsync(ListId, Guid.NewGuid(), "C76");
+
+        Assert.Equal(DesiredDataOutcome.NotFound, result.Outcome);
+    }
+
+    [Fact]
+    public async Task SetMyListDesiredDataAsync_WhenTheApiFails_ThenItIsRethrownRatherThanReadAsARefusal()
+    {
+        // A 500 is a fault, and must not arrive as Refused: a caller would tell the reader their
+        // text was rejected when the catalogue never got as far as looking at it.
+        var client = Client(StubHttpHandler.Status(HttpStatusCode.InternalServerError));
+
+        await Assert.ThrowsAsync<HttpRequestException>(
+            () => client.SetMyListDesiredDataAsync(ListId, Guid.NewGuid(), "C76"));
+    }
+
+    [Fact]
+    public async Task SetMyListDesiredDataAsync_WhenTheApiRateLimits_ThenItThrowsRatherThanReadingAsARefusal()
+    {
+        // Saving a note per row is exactly the rhythm the per-address limiter counts. Read as
+        // Refused it would tell the reader their text is too long; read as NotFound it would tell
+        // them their list is gone. Neither is true and both send them somewhere useless.
+        var handler = StubHttpHandler.RateLimited(TimeSpan.FromSeconds(30));
+
+        var refused = await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(
+            () => Client(handler).SetMyListDesiredDataAsync(ListId, Guid.NewGuid(), "C76"));
+
+        Assert.Equal(TimeSpan.FromSeconds(30), refused.RetryAfter);
+        Assert.Equal(1, handler.Calls);
+    }
+
+    [Fact]
     public async Task GetMyListVariablesAsync_WhenAnEntryHasNoRowInTheReadModel_ThenItIsStillReturned()
     {
         // Retracted, unpublished, or not yet projected: the display fields come back null together
@@ -563,7 +741,7 @@ public class MyListsClientTest
     // ------------------------------------------------------------------------------- the trap itself
 
     [Fact]
-    public async Task EveryCall_WhenAHostSuppliesAToken_ThenItIsSentAsBearerOnAllSeven()
+    public async Task EveryCall_WhenAHostSuppliesAToken_ThenItIsSentAsBearerOnAllEight()
     {
         // The point of this file in one test. Every one of these endpoints is [Authorize], and a
         // stub handler answers whatever it is told whether or not a token arrived — so a suite that
@@ -601,7 +779,8 @@ public class MyListsClientTest
             ("DeleteMyListAsync", () => client.DeleteMyListAsync(ListId)),
             ("GetMyListVariablesAsync", () => client.GetMyListVariablesAsync(ListId)),
             ("AddVariablesToMyListAsync", () => client.AddVariablesToMyListAsync(ListId, ids)),
-            ("RemoveVariablesFromMyListAsync", () => client.RemoveVariablesFromMyListAsync(ListId, ids))
+            ("RemoveVariablesFromMyListAsync", () => client.RemoveVariablesFromMyListAsync(ListId, ids)),
+            ("SetMyListDesiredDataAsync", () => client.SetMyListDesiredDataAsync(ListId, ids[0], "C76"))
         };
 
         AssertEveryMyListsMethodIsSwept(calls.Length);
@@ -639,7 +818,8 @@ public class MyListsClientTest
             () => client.DeleteMyListAsync(ListId),
             () => client.GetMyListVariablesAsync(ListId),
             () => client.AddVariablesToMyListAsync(ListId, ids),
-            () => client.RemoveVariablesFromMyListAsync(ListId, ids)
+            () => client.RemoveVariablesFromMyListAsync(ListId, ids),
+            () => client.SetMyListDesiredDataAsync(ListId, ids[0], "C76")
         };
 
         AssertEveryMyListsMethodIsSwept(calls.Length);

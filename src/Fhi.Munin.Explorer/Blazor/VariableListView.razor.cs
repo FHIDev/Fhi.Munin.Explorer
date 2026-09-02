@@ -78,6 +78,23 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// <summary>The question, which the button that acts on it is described by.</summary>
     private string ConfirmDeleteId => $"munin-explorer-confirm-delete-{_instance}";
 
+    /// <summary>The word "Ønskede data" in one row, which that row's field is named from.</summary>
+    private string DesiredDataLabelId(VariableListItem item) =>
+        $"munin-explorer-list-desired-data-label-{_instance}-{item.VariableId:N}";
+
+    /// <summary>
+    /// The annotation field's accessible name, as two elements: the column's word, then the row's
+    /// name.
+    /// </summary>
+    /// <remarks>
+    /// The rule the remove button beside it follows, and for the same reasons: forty fields all
+    /// announcing "Ønskede data" say nothing about which variable the reader is annotating (WCAG
+    /// 4.1.2), and one <c>aria-label</c> would hand our word and Munin's Norwegian name to a single
+    /// voice (WCAG 3.1.2). The column's word first, so the field opens with what it is.
+    /// </remarks>
+    private string DesiredDataLabelledBy(VariableListItem item) =>
+        $"{DesiredDataLabelId(item)} {RowNameId(item)}";
+
     private Page<VariableListItem>? _page;
     private Guid? _shownList;
     private int _pageNumber = 1;
@@ -95,6 +112,22 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private bool _downloading;
     private DownloadFailure _downloadFailure;
     private ListActionFailure _createFailure;
+
+    /// <summary>
+    /// What the reader has typed against each variable, keyed by variable id.
+    /// </summary>
+    /// <remarks>
+    /// The fields render from here rather than from <c>_page</c>, because a refusal must not revert
+    /// the text under the reader: re-rendering the item's stored value would empty the field they
+    /// have just been told is too long, and they would have to type all 500-odd characters again.
+    /// Reseeded from the API on every page read, which is the only thing that knows what was
+    /// actually saved.
+    /// </remarks>
+    private readonly Dictionary<Guid, string> _desiredData = [];
+
+    private DesiredDataFailure _desiredDataFailure;
+    private int? _desiredDataMaxLength;
+    private Guid? _desiredDataRefusedRow;
 
     /// <summary>How the last download ended, when it ended badly.</summary>
     /// <remarks>
@@ -159,6 +192,38 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     {
         ListActionFailure.Throttled => T.RateLimitError,
         ListActionFailure.Failed => T.ListActionError,
+        _ => null
+    };
+
+    /// <summary>How the last annotation write ended, when it ended badly.</summary>
+    /// <remarks>
+    /// A length refusal is its own state rather than a failure like the others, because it is the
+    /// only one the reader can act on: the API names the ceiling and the sentence repeats it, so
+    /// they are told what to shorten to instead of being asked to try again at a length that will
+    /// be refused identically.
+    /// </remarks>
+    private enum DesiredDataFailure
+    {
+        /// <summary>Nothing has gone wrong — what an untried, or a since retried, write reads as.</summary>
+        None = 0,
+
+        /// <summary>It threw, or the API refused it without naming a ceiling.</summary>
+        Failed,
+
+        /// <summary>The API refused it because too many requests arrived — HTTP 429.</summary>
+        Throttled,
+
+        /// <summary>The API refused the text for its length, and said what the length may be.</summary>
+        TooLong
+    }
+
+    /// <summary>What the alert says about the last annotation write, or null after none.</summary>
+    private string? DesiredDataMessage => _desiredDataFailure switch
+    {
+        DesiredDataFailure.Throttled => T.RateLimitError,
+        DesiredDataFailure.TooLong when _desiredDataMaxLength is { } maxLength =>
+            T.DesiredDataTooLong(maxLength),
+        DesiredDataFailure.TooLong or DesiredDataFailure.Failed => T.DesiredDataError,
         _ => null
     };
 
@@ -434,6 +499,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             || !Lists.Any(l => l.Id == _shownList))
         {
             _page = null;
+            SeedDesiredData();
             return;
         }
 
@@ -455,6 +521,101 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         {
             _loading = false;
         }
+
+        SeedDesiredData();
+    }
+
+    /// <summary>
+    /// Fills the annotation fields from what the API just answered with.
+    /// </summary>
+    /// <remarks>
+    /// Emptied first, so a draft against a row that has left the page — removed, or paged past —
+    /// cannot be sent back later against a list it was never typed into.
+    /// </remarks>
+    private void SeedDesiredData()
+    {
+        _desiredData.Clear();
+
+        if (_page is null)
+        {
+            return;
+        }
+
+        foreach (var item in _page.Items)
+        {
+            _desiredData[item.VariableId] = item.DesiredDataFreeText ?? "";
+        }
+    }
+
+    /// <summary>What the annotation field for one row shows.</summary>
+    private string DesiredDataOf(VariableListItem item) =>
+        _desiredData.TryGetValue(item.VariableId, out var text) ? text : item.DesiredDataFreeText ?? "";
+
+    /// <summary>
+    /// <c>"true"</c> for the one row the API last refused, and nothing at all for the rest.
+    /// </summary>
+    /// <remarks>
+    /// A null leaves the attribute off. <c>aria-invalid="false"</c> on every other field is not
+    /// wrong, but it is announced on some readers, so forty rows would say "valid" forty times.
+    /// </remarks>
+    private string? DesiredDataInvalid(VariableListItem item) =>
+        _desiredDataRefusedRow == item.VariableId ? "true" : null;
+
+    /// <summary>
+    /// Writes one row's annotation, or clears it, and says so when the API will not have it.
+    /// </summary>
+    /// <remarks>
+    /// The text is kept here before the call and left alone after a refusal, so the reader is
+    /// looking at their own words while they read why those words were not saved. Re-rendering the
+    /// stored value instead would empty the field, which is the one thing a reader who has just
+    /// typed 500 characters cannot recover from.
+    /// </remarks>
+    private async Task SaveDesiredDataAsync(Guid variableId, string? text)
+    {
+        if (_shownList is null)
+        {
+            return;
+        }
+
+        _desiredData[variableId] = text ?? "";
+        ForgetFailures();
+
+        try
+        {
+            var result = await Client.SetMyListDesiredDataAsync(_shownList.Value, variableId, text);
+
+            switch (result)
+            {
+                case { Outcome: DesiredDataOutcome.Saved }:
+                    return;
+
+                case { Outcome: DesiredDataOutcome.Refused, MaxLength: { } maxLength }:
+                    _desiredDataMaxLength = maxLength;
+                    _desiredDataFailure = DesiredDataFailure.TooLong;
+                    break;
+
+                default:
+                    // A refusal that named no ceiling, or a list the API says is not the reader's
+                    // — both leave the annotation unwritten, and neither is something the reader
+                    // can be told to shorten.
+                    _desiredDataFailure = DesiredDataFailure.Failed;
+                    break;
+            }
+        }
+        catch (MuninExplorerRateLimitedException)
+        {
+            // Typing down a list saves one row after another, which is exactly the rhythm the
+            // per-address limiter counts — so a throttled annotation is ordinary rather than rare.
+            _desiredDataFailure = DesiredDataFailure.Throttled;
+        }
+        catch (Exception)
+        {
+            // Uncaught, this leaves the event handler and takes the circuit with it: a blank page
+            // and a reconnect banner in place of the note the reader was writing.
+            _desiredDataFailure = DesiredDataFailure.Failed;
+        }
+
+        _desiredDataRefusedRow = variableId;
     }
 
     private async Task ShowActiveListAsync()
@@ -492,6 +653,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         _createFailure = ListActionFailure.None;
         _actionFailure = ListActionFailure.None;
         _downloadFailure = DownloadFailure.None;
+        _desiredDataFailure = DesiredDataFailure.None;
+        _desiredDataMaxLength = null;
+        _desiredDataRefusedRow = null;
     }
 
     private async Task ChooseListAsync(ChangeEventArgs e)

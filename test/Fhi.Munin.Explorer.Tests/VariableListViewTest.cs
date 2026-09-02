@@ -296,6 +296,74 @@ public class VariableListViewTest : BunitContext
             _items.RemoveAll(i => variableIds.Contains(i.VariableId));
             return Task.FromResult(true);
         }
+
+        public int DesiredDataCalls { get; private set; }
+
+        public string? LastDesiredDataText { get; private set; }
+
+        /// <summary>
+        /// The ceiling this fake enforces, in characters. Settable so a test can prove the view
+        /// quotes the API's number rather than one written into the component: with 500 on both
+        /// sides a hardcoded sentence passes, and the whole point of carrying the ceiling on the
+        /// result is that the API owns it.
+        /// </summary>
+        public int MaxDesiredDataLength { get; init; } = 500;
+
+        /// <summary>Set when the write should be refused with the API's 429.</summary>
+        public bool DesiredDataThrottles { get; set; }
+
+        /// <summary>Set when the write should fail the way a lost API would.</summary>
+        public bool DesiredDataThrows { get; set; }
+
+        /// <summary>
+        /// The merged endpoint's own behaviour, not an agreeable stub: it trims before it measures,
+        /// refuses over the ceiling with that ceiling and the measured length attached, clears both
+        /// stored fields for a blank text, and answers 404 for a variable the list does not hold.
+        /// Each of those is read off <c>MyListsController.SetDesiredData</c> rather than invented,
+        /// because a fake that accepted whatever the component sent would agree with a component
+        /// that was wrong.
+        /// </summary>
+        public override Task<DesiredDataResult> SetMyListDesiredDataAsync(
+            Guid id, Guid variableId, string? freeText, CancellationToken cancellationToken = default)
+        {
+            DesiredDataCalls++;
+            LastDesiredDataText = freeText;
+
+            if (DesiredDataThrottles)
+            {
+                throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+            }
+
+            if (DesiredDataThrows)
+            {
+                throw new InvalidOperationException("the API is gone");
+            }
+
+            var text = freeText?.Trim();
+
+            if (text is not null && text.Length > MaxDesiredDataLength)
+            {
+                return Task.FromResult(
+                    new DesiredDataResult(DesiredDataOutcome.Refused, MaxDesiredDataLength, text.Length));
+            }
+
+            var index = _items.FindIndex(i => i.VariableId == variableId);
+
+            if (index < 0)
+            {
+                return Task.FromResult(new DesiredDataResult(DesiredDataOutcome.NotFound));
+            }
+
+            var cleared = string.IsNullOrEmpty(text);
+
+            _items[index] = _items[index] with
+            {
+                DesiredDataType = cleared ? null : "freeText",
+                DesiredDataFreeText = cleared ? null : text
+            };
+
+            return Task.FromResult(new DesiredDataResult(DesiredDataOutcome.Saved));
+        }
     }
 
     private IRenderedComponent<VariableListView> RenderView(ListClient client, bool signedIn = true)
@@ -1383,6 +1451,257 @@ public class VariableListViewTest : BunitContext
         Assert.Null(state.ActiveListId);
         Assert.DoesNotContain(ListId, client.VariablesAskedFor.Skip(askedBefore));
         Assert.Contains("ingen variabellister", cut.Markup);
+    }
+
+    // ------------------------------------------------------------------------- "Ønskede data"
+
+    /// <summary>The annotation fields, in row order.</summary>
+    /// <remarks>
+    /// By class rather than by index into every text input on screen: the create and rename fields
+    /// are text inputs too, and an index would quietly start pointing at one of them the day a
+    /// third form appeared above the table.
+    /// </remarks>
+    private static IReadOnlyList<AngleSharp.Dom.IElement> DesiredDataFields(
+        IRenderedComponent<VariableListView> cut) =>
+        cut.FindAll(".munin-explorer-dataitem-main__desiredData input");
+
+    /// <summary>
+    /// Reads the list again from the API, so what is on screen afterwards is what was stored
+    /// rather than what was typed.
+    /// </summary>
+    /// <remarks>
+    /// Through the picker, because it is the one reader-driven path that really refetches: the
+    /// component keeps the page it has when its parameters are set again, so re-rendering proves
+    /// nothing about the server. Away and back, so the list under test is the one reloaded — and
+    /// the fake needs two lists for the picker to be drawn at all.
+    /// </remarks>
+    private static async Task ReloadAsync(IRenderedComponent<VariableListView> cut)
+    {
+        await cut.InvokeAsync(() => cut.Find("select").Change(ListClient.SecondListId.ToString()));
+        await cut.InvokeAsync(() => cut.Find("select").Change(ListId.ToString()));
+    }
+
+    [Fact]
+    public void View_WhenAnEntryIsAnnotated_ThenTheReadersOwnWordsAreInTheField()
+    {
+        // The reader wrote this in Runa; the same list opened through helsedata.no has to show it.
+        // Before this column existed the note was simply invisible here, with nothing to say the
+        // two surfaces were describing the same list.
+        var item = Item("Alder ved diagnose", "V_BDR.ALDER") with
+        {
+            DesiredDataType = "freeText",
+            DesiredDataFreeText = "C36.2 og C36.4, og C76"
+        };
+
+        var cut = RenderView(new ListClient(item));
+
+        Assert.Equal("C36.2 og C36.4, og C76", DesiredDataFields(cut)[0].GetAttribute("value"));
+    }
+
+    [Fact]
+    public async Task View_WhenTheReaderWritesANote_ThenItIsSentAndSurvivesAReload()
+    {
+        // Write, then reload the page from the API — the reload is what tells a stored note from
+        // one that only ever existed in the browser's own DOM. A component that never sent the
+        // write renders identically until the page comes back.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListCount = 2 };
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change("C36.2 og C36.4"));
+
+        Assert.Equal(1, client.DesiredDataCalls);
+        Assert.Equal("C36.2 og C36.4", client.LastDesiredDataText);
+
+        await ReloadAsync(cut);
+
+        Assert.Equal("C36.2 og C36.4", DesiredDataFields(cut)[0].GetAttribute("value"));
+    }
+
+    [Fact]
+    public async Task View_WhenTheReaderEditsANote_ThenTheSecondTextReplacesTheFirst()
+    {
+        var item = Item("Alder ved diagnose", "V_BDR.ALDER") with
+        {
+            DesiredDataType = "freeText",
+            DesiredDataFreeText = "C36.2"
+        };
+
+        var client = new ListClient(item);
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change("C36.2 og C76"));
+
+        Assert.Equal("C36.2 og C76", client.LastDesiredDataText);
+        Assert.Equal("C36.2 og C76", DesiredDataFields(cut)[0].GetAttribute("value"));
+    }
+
+    [Fact]
+    public async Task View_WhenTheReaderEmptiesTheField_ThenTheNoteIsClearedRatherThanLeftStanding()
+    {
+        // The clear is a write, not a skipped one. A component that sent nothing for an empty
+        // string would leave yesterday's note on the server after the reader had deleted it on
+        // screen, and it would come back on the next reload.
+        var item = Item("Alder ved diagnose", "V_BDR.ALDER") with
+        {
+            DesiredDataType = "freeText",
+            DesiredDataFreeText = "C36.2"
+        };
+
+        var client = new ListClient(item) { ListCount = 2 };
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change(""));
+
+        Assert.Equal(1, client.DesiredDataCalls);
+        Assert.Equal("", client.LastDesiredDataText);
+
+        // Reloaded from the API, so this is what was stored rather than what was typed.
+        await ReloadAsync(cut);
+
+        Assert.Equal("", DesiredDataFields(cut)[0].GetAttribute("value"));
+    }
+
+    [Fact]
+    public async Task View_WhenTheNoteIsTooLong_ThenTheReaderIsToldAndTheirTextIsKept()
+    {
+        // The refusal is server side, so a component that swallowed it would leave the reader
+        // typing into a field that silently refuses — and reverting the field would make them
+        // retype 500 characters to find that out again.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
+        var cut = RenderView(client);
+
+        var tooLong = new string('x', 612);
+
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change(tooLong));
+
+        Assert.Contains("kan ikke overstige 500 tegn", cut.Markup);
+        Assert.Equal(tooLong, DesiredDataFields(cut)[0].GetAttribute("value"));
+    }
+
+    [Fact]
+    public async Task View_WhenTheNoteIsTooLong_ThenTheSentenceQuotesTheApisCeilingRatherThanOneOfOurs()
+    {
+        // The assertion a 500-against-500 test cannot make. The cap belongs to the API and travels
+        // on the refusal; a component that wrote 500 into its own sentence would pass every test
+        // above and start lying the day the API moved the number.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { MaxDesiredDataLength = 120 };
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change(new string('x', 200)));
+
+        Assert.Contains("kan ikke overstige 120 tegn", cut.Markup);
+        Assert.DoesNotContain("500 tegn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task View_WhenTheNoteIsRefused_ThenTheFieldItWasTypedIntoIsMarkedInvalid()
+    {
+        // The sentence is in the alert region at the top of the component, which a reader forty
+        // rows down cannot see. aria-invalid is what says which row it is about, and it is on the
+        // refused field alone — every other one carries no such attribute.
+        var client = new ListClient(
+            Item("Alder ved diagnose", "V_BDR.ALDER"), Item("Kjønn", "V_BDR.KJONN"));
+
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[1].Change(new string('x', 612)));
+
+        Assert.Null(DesiredDataFields(cut)[0].GetAttribute("aria-invalid"));
+        Assert.Equal("true", DesiredDataFields(cut)[1].GetAttribute("aria-invalid"));
+    }
+
+    [Fact]
+    public async Task View_WhenANoteIsAcceptedAfterOneWasRefused_ThenTheRefusalIsTakenBack()
+    {
+        // The alert region is shared, so a sentence nobody cleared answers for whatever the reader
+        // does next — and a field left marked invalid says a text the API accepted was refused.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change(new string('x', 612)));
+        Assert.Contains("kan ikke overstige", cut.Markup);
+
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change("C76"));
+
+        Assert.DoesNotContain("kan ikke overstige", cut.Markup);
+        Assert.Null(DesiredDataFields(cut)[0].GetAttribute("aria-invalid"));
+    }
+
+    [Fact]
+    public async Task View_WhenTheNoteIsThrottled_ThenTheReaderIsToldToWaitRatherThanToShorten()
+    {
+        // Saving a note per row is the rhythm the per-address limiter counts. "Shorten your text"
+        // is advice for a text that was never too long, and "try again" is advice a throttled
+        // reader cannot use — the two have to read differently.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { DesiredDataThrottles = true };
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change("C76"));
+
+        Assert.Contains("for mange forespørsler", cut.Markup);
+        Assert.DoesNotContain("kan ikke overstige", cut.Markup);
+    }
+
+    [Fact]
+    public async Task View_WhenTheWriteThrows_ThenItIsSaidOnScreenRatherThanTakingTheCircuitDown()
+    {
+        // Uncaught, a throw out of an event handler ends the circuit: in helsedata's legacy host
+        // that is the whole CMS page replaced by a reconnect banner, over a note.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { DesiredDataThrows = true };
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change("C76"));
+
+        Assert.Contains("Kunne ikke lagre ønskede data", cut.Markup);
+        Assert.Contains("Alder ved diagnose", cut.Markup);
+    }
+
+    [Fact]
+    public void View_WhenTheAnnotationFieldIsDrawn_ThenItAnnouncesTheColumnAndTheVariable()
+    {
+        // Forty fields all announcing "Ønskede data" leave a screen reader user with no way to
+        // tell which variable they are annotating (WCAG 4.1.2). Resolved through AccessibleName
+        // rather than by asserting an attribute is present, because a placeholder satisfies the
+        // latter and is not a name.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        Assert.Equal("Ønskede data Alder ved diagnose", AccessibleName.Of(DesiredDataFields(cut)[0]));
+    }
+
+    [Fact]
+    public void View_WhenAnOrphanIsAnnotated_ThenItStillShowsWhatItsReaderWrote()
+    {
+        // The note is stored on the membership, so it outlives the variable leaving the catalogue.
+        // Dropping the field for a row with no name would lose the one thing in that row nobody
+        // else can write again.
+        var orphan = Orphan() with { DesiredDataType = "freeText", DesiredDataFreeText = "Alle verdier" };
+
+        var cut = RenderView(new ListClient(orphan));
+
+        Assert.Equal("Alle verdier", DesiredDataFields(cut)[0].GetAttribute("value"));
+    }
+
+    [Fact]
+    public void View_WhenTheReaderIsSignedOut_ThenThereIsNoAnnotationFieldAndNothingIsWritten()
+    {
+        // The second half of "signed out this component draws nothing", asserted rather than
+        // assumed: it is the state every helsedata.no visitor starts in, and this change adds the
+        // first control in the component that writes on a plain change event. A field rendered
+        // outside the signed-in branch would post an annotation nobody can be resolved for.
+        var item = Item("Alder ved diagnose", "V_BDR.ALDER") with
+        {
+            DesiredDataType = "freeText",
+            DesiredDataFreeText = "C36.2"
+        };
+
+        var client = new ListClient(item);
+
+        var cut = RenderView(client, signedIn: false);
+
+        Assert.Empty(cut.Markup.Trim());
+        Assert.Empty(DesiredDataFields(cut));
+        Assert.Equal(0, client.DesiredDataCalls);
+        Assert.Equal(0, client.VariablesCalls);
     }
 
     [Fact]

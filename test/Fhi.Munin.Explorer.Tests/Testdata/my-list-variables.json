@@ -13,7 +13,9 @@
       "dataType": "2",
       "dataFrom": "2021-08-01T00:00:00.000Z",
       "dataTo": null,
-      "versjonStatus": "Active"
+      "versjonStatus": "Active",
+      "desiredDataType": "freeText",
+      "desiredDataFreeText": "C36.2 og C36.4, og C76"
     },
     {
       "variabelId": "3e5a8c11-7b42-49df-a6c8-1d904f2e6b73",
@@ -28,7 +30,9 @@
       "dataType": null,
       "dataFrom": null,
       "dataTo": null,
-      "versjonStatus": null
+      "versjonStatus": null,
+      "desiredDataType": "freeText",
+      "desiredDataFreeText": "Alle registrerte verdier"
     }
   ],
   "totalCount": 247,
