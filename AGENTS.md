@@ -94,6 +94,20 @@ have no such reader and stay under the ceiling.
 **No `<summary>` / `<param>` / `<returns>` that restates the name.** Document constraints only —
 units, null semantics, what a host must do, what a null means.
 
+## Claiming a bead names whose agent it is
+
+**Claim with `bd update <id> --claim`. Never `--assignee Claude`.**
+
+`--claim` takes the assignee from the actor `bd` already resolves — `$BEADS_ACTOR`, then
+`git user.name`, then `$USER` — and sets `in_progress` in the same step. Each box sets
+`BEADS_ACTOR` to `claude/<person>`: `claude/robin`, `claude/sophie`.
+
+The assignee exists to say *whose* agent holds the bead, and this repository's beads live in
+Munin's pool, which several people's agents write to. A literal `Claude` is the same string in
+all of them, so `in_progress / Claude` reads identically whether the work is live or abandoned —
+which is how PR #145 came to be opened for `Fhi.Metadata-l9l2n.33` three and a half hours after
+that bead had merged (`Fhi.Metadata-e97p0`).
+
 ## Tests
 
 - Test method names are English and follow `Method_WhenCondition_ThenOutcome`.
