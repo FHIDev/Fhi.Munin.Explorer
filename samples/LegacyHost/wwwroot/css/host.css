@@ -1080,13 +1080,11 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   margin-top: 0;
 }
 
-/* ---- the panel's group headings and period bar ----
+/* ---- the panel's group headings and period bar ---- */
 
-   The period bar is ours to draw: neither explorer's stylesheet has one. The group heading is not.
-   It wears the host's own `headline headline-xxs`, and Runa's 11px uppercase eyebrow was written
-   over the top of that, which is what drew a group heading smaller than the values under it
-   (Fhi.Metadata-gvtt9). What is left here is the space between one group and the next. */
-
+/* The heading wears the host's own `headline headline-xxs`, and Runa's 11px uppercase eyebrow was
+   written over the top of that, which drew a group heading smaller than the values under it
+   (Fhi.Metadata-gvtt9). All that is left is the space between one group and the next. */
 .munin-explorer-group {
   margin: 20px 0 8px;
 }

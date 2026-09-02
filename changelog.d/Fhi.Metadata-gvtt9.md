@@ -16,15 +16,16 @@ category: Notes for hosts
   own heading scale win is the same on both sides, and a second name would be a second thing for
   every host to style. Runa is untouched — this is only about what the component does inside a
   host's pages. (Fhi.Metadata-gvtt9)
-- **The kilde, datasamling and variable ingress no longer has a colour of ours.**
+- **The kilde, datasamling and variable ingress paragraphs no longer carry a colour of ours.**
   `munin-explorer-kilde__description`, `munin-explorer-datasamling__description` and
   `munin-explorer-whole__description` share one rule, and it set a grey the host's own `ingress`
   class never asks for: `ingress` is styled only inside particular page types and none of those
-  rules set a colour. The paragraph inherits the body colour now. Spacing and the `65ch` measure
+  rules set a colour. Each paragraph inherits the body colour now. Spacing and the `65ch` measure
   are unchanged. (Fhi.Metadata-gvtt9)
 - **Nothing in this repository can see Stiler, so green CI here is not evidence of the result on
   helsedata.no.** The two checks read the sample stylesheet and the capture of helsedata's live
   page, and neither is Stiler. Until the same five declarations come out there, a host on Stiler
-  still gets the eyebrow. Note too that the samples' `headline-xxs` is a stand-in at 14px/600 while
-  the real class measures 16px/400, so the samples under-state how much the heading grows.
-  (Fhi.Metadata-gvtt9)
+  still gets the eyebrow — which is why this change alone does not finish the bead, and the
+  matching `Fhi.Helsedata.Stiler` edit has to land before it can be closed. Note too that the
+  samples' `headline-xxs` is a stand-in at 14px/600 while the real class measures 16px/400, so the
+  samples under-state how much the heading grows. (Fhi.Metadata-gvtt9)
