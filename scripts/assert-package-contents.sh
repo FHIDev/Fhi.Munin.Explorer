@@ -135,9 +135,12 @@ for pkg in "${PACKAGES[@]}"; do
       ;;
   esac
 
-  echo "$flat" | grep -q '<license type="expression">MIT</license>' \
+  # Here-strings for the reason spelled out in check-changelog-fragment.sh. `$flat` is one
+  # flattened nuspec, far too small for that SIGPIPE race to fire, so this is the construct
+  # leaving rather than a defect being fixed (Fhi.Metadata-v198s).
+  grep -q '<license type="expression">MIT</license>' <<< "$flat" \
     || bad "license is not the MIT expression we publish under"
-  echo "$flat" | grep -q '<readme>README.md</readme>' \
+  grep -q '<readme>README.md</readme>' <<< "$flat" \
     || bad "README not declared in the nuspec — the package page would render empty"
 
   if [ -n "$EXPECTED_VERSION" ]; then

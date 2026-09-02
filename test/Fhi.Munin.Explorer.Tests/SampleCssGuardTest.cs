@@ -351,6 +351,35 @@ internal static class Guard
         }
     }
 
+    /// <summary>
+    /// One run of a guard script from <paramref name="workingDirectory"/>, with positional
+    /// arguments. <c>check-changelog-fragment.sh</c> judges the tree it is standing in and takes
+    /// its two refs as arguments, so no environment seam can drive it.
+    /// </summary>
+    /// <remarks>
+    /// The directory belongs to the caller here, unlike <see cref="RunScript"/>: the caller has to
+    /// build a git repository in it before there is anything to run against, so it is the caller
+    /// that knows when it may go.
+    /// </remarks>
+    internal static GuardRun RunIn(string script, string workingDirectory, params string[] arguments)
+    {
+        var start = new ProcessStartInfo(Bash!)
+        {
+            WorkingDirectory = workingDirectory,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+
+        start.ArgumentList.Add(Repo.In("scripts", script));
+
+        foreach (var argument in arguments)
+        {
+            start.ArgumentList.Add(argument);
+        }
+
+        return Run(start);
+    }
+
     /// <summary>The process plumbing every guard run shares.</summary>
     private static GuardRun Run(ProcessStartInfo start)
     {

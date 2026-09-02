@@ -29,7 +29,10 @@ fi
 
 changed=$(git diff --name-only "$MERGE_BASE" "$HEAD_REF")
 
-if ! printf '%s\n' "$changed" | grep -q '^src/'; then
+# A here-string, not a pipe into `grep -q`: `-q` leaves on the first match and closes the pipe,
+# printf takes SIGPIPE, and `pipefail` turns that 141 into "no src/ changes" for a branch that has
+# them — this guard waving itself through, silently (Fhi.Metadata-v198s).
+if ! grep -q '^src/' <<< "$changed"; then
   echo "No changes under src/ — no changelog fragment needed."
   exit 0
 fi
