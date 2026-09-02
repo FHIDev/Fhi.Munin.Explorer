@@ -380,6 +380,39 @@ internal static class Guard
         return Run(start, script);
     }
 
+    /// <summary>One run of a script that is not the checkout's own copy.</summary>
+    /// <remarks>
+    /// <c>assert-new-names-noted-for-hosts.sh</c> cds to its own <c>$0/..</c> and reads the tree it
+    /// lands in, so the only way to aim it at a fixture is to run a copy that lives inside one.
+    /// </remarks>
+    internal static GuardRun RunAt(string scriptPath, IReadOnlyDictionary<string, string> environment)
+    {
+        var dir = Directory.CreateTempSubdirectory("munin-guard");
+
+        try
+        {
+            var start = new ProcessStartInfo(Bash!)
+            {
+                WorkingDirectory = dir.FullName,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+            };
+
+            start.ArgumentList.Add(scriptPath);
+
+            foreach (var (key, value) in environment)
+            {
+                start.Environment[key] = value;
+            }
+
+            return Run(start, Path.GetFileName(scriptPath));
+        }
+        finally
+        {
+            dir.Delete(recursive: true);
+        }
+    }
+
     /// <summary>
     /// The process plumbing every guard run shares. <paramref name="label"/> names the thing being
     /// run, for the stall message: it used to be read off the first argument, which only worked
