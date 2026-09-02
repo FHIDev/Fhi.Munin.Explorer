@@ -37,6 +37,7 @@ public class AccountLinkTest : BunitContext
         private readonly Page<VariableSummary> _page = OnePage();
 
         public int RedeemCalls { get; private set; }
+        public int SearchCalls { get; private set; }
         public string? LastCode { get; private set; }
 
         /// <summary>What the API answers a redemption with, when it answers at all.</summary>
@@ -59,8 +60,11 @@ public class AccountLinkTest : BunitContext
             int pageSize = 25,
             SortField sort = SortField.Default,
             SortDirection direction = SortDirection.Ascending,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult(_page);
+            CancellationToken cancellationToken = default)
+        {
+            SearchCalls++;
+            return Task.FromResult(_page);
+        }
 
         public override Task<IdentityLinkOutcome> RedeemIdentityLinkAsync(
             string? code,
@@ -406,7 +410,11 @@ public class AccountLinkTest : BunitContext
 
         // Scoped to the search box on purpose: the code field wears searchbox__freetext too.
         cut.Find(".munin-explorer-search .searchbox__freetext").Change("alder");
+        cut.Find("form").Submit();
 
+        // Typing alone changes nothing; the search that results have arrived from is the moment
+        // an entry that unfolded itself would do so.
+        cut.WaitForAssertion(() => Assert.Equal(2, client.SearchCalls)); // initial load + this one
         Assert.False(Panel(cut).Closest("details")!.HasAttribute("open"));
         Assert.Equal(0, client.RedeemCalls);
     }
