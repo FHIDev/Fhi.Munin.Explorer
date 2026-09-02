@@ -48,6 +48,14 @@ internal static class LiveApi
     /// </remarks>
     public const string ClientName = nameof(IMuninExplorerClient);
 
+    /// <summary>An explorer access token, raw and with no <c>Bearer</c> prefix. Unset by default.</summary>
+    /// <remarks>
+    /// Every <c>my/lists</c> route sits behind the API's authenticated explorer policy, so the arms
+    /// that write a reader's list can only run as somebody. Without one they skip themselves rather
+    /// than reporting a 401 as drift.
+    /// </remarks>
+    public const string TokenVariable = "MUNIN_EXPLORER_TOKEN";
+
     public static bool IsEnabled =>
         Environment.GetEnvironmentVariable(EnabledVariable) is { Length: > 0 } enabled
         && !enabled.Equals("0", StringComparison.OrdinalIgnoreCase)
@@ -55,6 +63,9 @@ internal static class LiveApi
 
     public static string BaseUrl =>
         Environment.GetEnvironmentVariable(BaseUrlVariable) is { Length: > 0 } url ? url : DefaultBaseUrl;
+
+    public static string? Token =>
+        Environment.GetEnvironmentVariable(TokenVariable) is { Length: > 0 } token ? token : null;
 }
 
 /// <summary>
@@ -66,7 +77,7 @@ internal static class LiveApi
 /// everything. Internal like every other helper here: xUnit discovers and honours the attribute
 /// from inside the test assembly, so there is nothing for it to be public for.
 /// </remarks>
-internal sealed class LiveApiFactAttribute : FactAttribute
+internal class LiveApiFactAttribute : FactAttribute
 {
     public LiveApiFactAttribute()
     {
@@ -76,6 +87,33 @@ internal sealed class LiveApiFactAttribute : FactAttribute
                    $"(against {LiveApi.BaseUrl}; override with {LiveApi.BaseUrlVariable}).";
         }
     }
+}
+
+/// <summary>
+/// A <see cref="LiveApiFactAttribute"/> that also needs a token, for the authenticated routes.
+/// </summary>
+/// <remarks>
+/// Skipped separately from the offline gate on purpose: a reader of the output has to be able to
+/// tell "the suite stayed on this machine" from "the suite went out with nobody to go as", because
+/// only the second one leaves the <c>my/lists</c> half of the contract unchecked on a live run.
+/// </remarks>
+internal sealed class LiveListsFactAttribute : LiveApiFactAttribute
+{
+    public LiveListsFactAttribute()
+    {
+        if (Skip is null && LiveApi.Token is null)
+        {
+            Skip = $"Writes to a signed-in reader's own list. Set {LiveApi.TokenVariable} to an " +
+                   $"explorer access token for {LiveApi.BaseUrl} to run it.";
+        }
+    }
+}
+
+/// <summary>Answers with the one token the run was given. No refresh: a test run is short.</summary>
+internal sealed class LiveApiTokenProvider(string token) : IMuninExplorerTokenProvider
+{
+    public Task<string?> GetTokenAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<string?>(token);
 }
 
 /// <summary>One recorded exchange with the API — the body exactly as it arrived.</summary>
@@ -146,12 +184,23 @@ internal sealed class LiveApiConnection : IDisposable
     /// it is what lets the nightly job's whole path — client, recording, comparison, failure — be
     /// proved against a payload we have deliberately broken, on a runner with no network at all.
     /// </param>
-    public static LiveApiConnection Open(HttpMessageHandler? answeredBy = null)
+    /// <param name="token">
+    /// Calls as this explorer user rather than anonymously, which the <c>my/lists</c> routes
+    /// require. Registered ahead of <c>AddMuninExplorer</c>, because that uses <c>TryAdd</c> and
+    /// the anonymous default would otherwise win and the calls would go out unauthenticated.
+    /// </param>
+    public static LiveApiConnection Open(HttpMessageHandler? answeredBy = null, string? token = null)
     {
         var services = new ServiceCollection();
 
         services.AddSingleton<ResponseLog>();
         services.AddTransient<RecordingHandler>();
+
+        if (token is not null)
+        {
+            services.AddSingleton<IMuninExplorerTokenProvider>(new LiveApiTokenProvider(token));
+        }
+
         services.AddMuninExplorer(options => options.ApiBaseUrl = LiveApi.BaseUrl);
 
         // Attached to the pipeline the client already has rather than to one of our own, so the

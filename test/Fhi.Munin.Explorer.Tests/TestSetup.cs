@@ -108,6 +108,12 @@ internal abstract class EmptyMuninExplorerClient : IMuninExplorerClient
     public virtual Task<bool> RemoveVariablesFromMyListAsync(
         Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default) =>
         Task.FromResult(false);
+
+    // "Nothing" for this write is the API's own 404: no such list, or no such variable in it. Not
+    // Saved, which would report an annotation this fake never held.
+    public virtual Task<DesiredDataResult> SetMyListDesiredDataAsync(
+        Guid id, Guid variableId, string? freeText, CancellationToken cancellationToken = default) =>
+        Task.FromResult(new DesiredDataResult(DesiredDataOutcome.NotFound));
 }
 
 /// <summary>

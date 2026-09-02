@@ -186,9 +186,9 @@ internal static class Fixture
 
     /// <summary>Fixtures no anonymous caller can re-fetch, with the reason each is out of reach.</summary>
     /// <remarks>
-    /// Every <c>my/lists</c> endpoint sits behind the API's authenticated explorer policy, so checking
-    /// these live would mean holding an explorer session and creating real lists on a running server.
-    /// They are written from the API's own DTOs, and stay a file somebody has to remember to update.
+    /// Every <c>my/lists</c> endpoint sits behind the API's authenticated explorer policy, so re-fetching
+    /// these means holding an explorer session — which only <c>ContractDriftTest</c>'s desired-data arm
+    /// does, and only when <see cref="LiveApi.TokenVariable"/> is set. Until then they are hand-updated.
     /// </remarks>
     public static readonly IReadOnlyList<string> OutOfReach = ["my-lists.json", "my-list-variables.json"];
 }

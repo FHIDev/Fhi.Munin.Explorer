@@ -166,6 +166,14 @@ internal sealed record Texts(
     string EmptyList,
     string RemoveFromThisList,
     string ListLoadError,
+    // "Ønskede data" — the reader's own note about what they want out of a variable. The heading
+    // names the column and, in every row, the field itself. Only the length refusal earns a
+    // sentence of its own: the API names the ceiling, so the reader can be told what to shorten
+    // to rather than only that something went wrong.
+    string FieldDesiredData,
+    string DesiredDataError,
+    // (maxLength) — "Ønskede data kan ikke overstige 500 tegn."
+    Func<int, string> DesiredDataTooLong,
     // Renaming and deleting the list on screen. The deletion is confirmed first: a list can have
     // taken a long time to build, and neither the API nor this view offers an undo.
     string RenameListName,
@@ -677,6 +685,10 @@ internal sealed record Texts(
         EmptyList: "Denne listen er tom.",
         RemoveFromThisList: "Fjern",
         ListLoadError: "Kunne ikke hente listen nå. Prøv igjen om litt.",
+        FieldDesiredData: "Ønskede data",
+        DesiredDataError: "Kunne ikke lagre ønskede data nå. Prøv igjen om litt.",
+        DesiredDataTooLong: maxLength =>
+            $"Ønskede data kan ikke overstige {maxLength} tegn. Teksten er ikke lagret.",
         RenameListName: "Nytt navn på listen",
         RenameList: "Gi nytt navn",
         DeleteList: "Slett listen",
@@ -971,6 +983,10 @@ internal sealed record Texts(
         EmptyList: "This list is empty.",
         RemoveFromThisList: "Remove",
         ListLoadError: "Could not fetch the list just now. Try again shortly.",
+        FieldDesiredData: "Desired data",
+        DesiredDataError: "Could not save the desired data just now. Try again shortly.",
+        DesiredDataTooLong: maxLength =>
+            $"Desired data must be {maxLength} characters or fewer. Your text has not been saved.",
         RenameListName: "New name for the list",
         RenameList: "Rename",
         DeleteList: "Delete the list",

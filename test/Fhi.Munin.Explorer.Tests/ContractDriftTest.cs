@@ -1,3 +1,5 @@
+using Fhi.Munin.Explorer.Contracts;
+
 namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
@@ -165,5 +167,70 @@ public class ContractDriftTest
         // Every published variable has at least the version it is published as. An empty timeline
         // means the endpoint answered about something else.
         Assert.NotEmpty(timeline);
+    }
+
+    /// <summary>
+    /// The whole life of one annotation — written, edited, refused for length, cleared — against
+    /// the endpoint itself.
+    /// </summary>
+    /// <remarks>
+    /// The one arm here that writes, and the only check anywhere that the component's annotation
+    /// column agrees with the API rather than with a fake we wrote from the same reading of it.
+    /// It works on a list it creates and deletes, so it leaves the reader's own lists alone.
+    /// </remarks>
+    [LiveListsFact]
+    public async Task DesiredData_WhenWrittenToTheLiveApi_ThenItSurvivesAReadBack()
+    {
+        using var api = LiveApiConnection.Open(token: LiveApi.Token);
+
+        var variableId = await LiveCatalogue.AnyVariableIdAsync(api);
+        var list = await api.Client.CreateMyListAsync($"contract drift {DateTimeOffset.UtcNow:O}");
+
+        try
+        {
+            Assert.True(await api.Client.AddVariablesToMyListAsync(list.Id, [variableId]));
+
+            // Padded on purpose: the client trims, the API trims, and a caller that believed
+            // either one alone would report a length the other never measured.
+            var written = await api.Client.SetMyListDesiredDataAsync(list.Id, variableId, "  Kun 2019  ");
+
+            Assert.Equal(DesiredDataOutcome.Saved, written.Outcome);
+            Assert.Equal("Kun 2019", await ReadAnnotationAsync(api, list.Id));
+
+            var edited = await api.Client.SetMyListDesiredDataAsync(list.Id, variableId, "Kun 2020, aggregert");
+
+            Assert.Equal(DesiredDataOutcome.Saved, edited.Outcome);
+            Assert.Equal("Kun 2020, aggregert", await ReadAnnotationAsync(api, list.Id));
+
+            // The ceiling is the API's to name. Asserting a number here would be the constant the
+            // contract deliberately does not carry, so this asks only that a refusal names one.
+            var refused = await api.Client.SetMyListDesiredDataAsync(list.Id, variableId, new string('x', 5_000));
+
+            Assert.Equal(DesiredDataOutcome.Refused, refused.Outcome);
+            Assert.NotNull(refused.MaxLength);
+
+            // A refusal must not have written anything either: a reader whose text was too long
+            // still has the text they had before it.
+            Assert.Equal("Kun 2020, aggregert", await ReadAnnotationAsync(api, list.Id));
+
+            var cleared = await api.Client.SetMyListDesiredDataAsync(list.Id, variableId, null);
+
+            Assert.Equal(DesiredDataOutcome.Saved, cleared.Outcome);
+            Assert.Null(await ReadAnnotationAsync(api, list.Id));
+        }
+        finally
+        {
+            await api.Client.DeleteMyListAsync(list.Id);
+        }
+    }
+
+    /// <summary>Reads the list back and hands over the one item's annotation, shape-checked.</summary>
+    private static async Task<string?> ReadAnnotationAsync(LiveApiConnection api, Guid listId)
+    {
+        var page = await api.RoundTripAsync(async client =>
+            await client.GetMyListVariablesAsync(listId, page: 1, pageSize: 25)
+            ?? throw new InvalidOperationException($"The API does not have list {listId} as ours."));
+
+        return Assert.Single(page.Items).DesiredDataFreeText;
     }
 }

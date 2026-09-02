@@ -328,6 +328,47 @@ public interface IMuninExplorerClient
         Guid id,
         IReadOnlyCollection<Guid> variableIds,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Writes the reader's "Ønskede data" annotation against one variable in one of their lists,
+    /// or clears it.
+    /// </summary>
+    /// <remarks>
+    /// The one write here that answers with more than "was it yours". The API caps the text at 500
+    /// characters and refuses a longer one with a <c>400</c> naming the ceiling, which is a refusal
+    /// of something the reader typed rather than a fault — so it comes back as
+    /// <see cref="DesiredDataOutcome.Refused"/> with the ceiling attached, not as a throw and not
+    /// as a silent success. A caller that cannot draw that distinction leaves the reader typing
+    /// into a field that keeps refusing without saying so.
+    /// <para>
+    /// Clearing and writing are the same call: null, empty, or nothing but whitespace removes the
+    /// annotation, which is what the API does with a blank body. The text is trimmed on the way
+    /// out because the API trims it on the way in, so the caller is told about the length the API
+    /// will actually measure.
+    /// </para>
+    /// <para>
+    /// Carries a default body, like <see cref="ExportListAsync"/> and
+    /// <see cref="GetKildePropertyMetadataAsync"/> and for the same reader: this interface is
+    /// already on the feed, and a host that implements it rather than consuming
+    /// <c>MuninExplorerClient</c> would otherwise stop building on the upgrade. The default refuses
+    /// rather than reporting a save that never happened.
+    /// </para>
+    /// </remarks>
+    /// <param name="id">The list the variable is in.</param>
+    /// <param name="variableId">The variable to annotate. Spelled <c>variabelId</c> in the route.</param>
+    /// <param name="freeText">
+    /// What the reader wants from this variable. Null, empty or whitespace clears the annotation.
+    /// </param>
+    /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
+    Task<DesiredDataResult> SetMyListDesiredDataAsync(
+        Guid id,
+        Guid variableId,
+        string? freeText,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            $"This {nameof(IMuninExplorerClient)} does not implement {nameof(SetMyListDesiredDataAsync)}. " +
+            "Consume MuninExplorerClient, or implement the member.");
+
     /// <summary>
     /// The reader's chosen variables as a file — xlsx, csv, or a zip when codebooks come too.
     /// </summary>

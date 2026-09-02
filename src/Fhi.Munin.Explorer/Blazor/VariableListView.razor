@@ -132,7 +132,15 @@
         @* Always in the DOM, empty when nothing is wrong — a role="alert" inserted and filled in the
            same update is announced unreliably. Same shape as the explorer's own alert region. *@
         <div role="alert" aria-live="assertive" aria-atomic="true">
-            @(_failed ? T.ListLoadError : DownloadMessage ?? ActionMessage ?? CreateMessage)
+            @(_failed ? T.ListLoadError : DownloadMessage ?? ActionMessage ?? CreateMessage ?? DesiredDataMessage)
+        </div>
+
+        @* A refused annotation gets its own region, because it outlasts whatever the reader does
+           next: the field stays marked invalid until that row is written again, and sharing the
+           region above would let a download or a rename failure take the sentence away and leave
+           the mark unexplained (WCAG 3.3.1). The refused field points here by id. *@
+        <div role="alert" aria-live="assertive" aria-atomic="true" id="@DesiredDataRefusalId">
+            @DesiredDataRefusalMessage
         </div>
 
         @if (Lists.Count == 0)
@@ -145,14 +153,14 @@
         }
         else if (_page is not null)
         {
-            @* role="table" over the same seven columns the explorer's own result list draws, and
-               for the same reason. These rows share helsedata's `munin-explorer-data-list` markup
-               with `VariableExplorer`, so they shared its failure too: measured in Chrome's
-               accessibility tree, not one row, column or header of the reader's own saved list
-               reached assistive technology — a flat run of text with no way to hear which column a
-               value was in (WCAG 1.3.1). axe never flagged it, because there is no sortable header
-               here to hang an invalid `aria-sort` on, and missing structure is not a rule
-               violation; it is just missing.
+            @* role="table" over the same seven columns the explorer's own result list draws, plus
+               the annotation column that is this view's alone, and for the same reason. These rows
+               share helsedata's `munin-explorer-data-list` markup with `VariableExplorer`, so they
+               shared its failure too: measured in Chrome's accessibility tree, not one row, column
+               or header of the reader's own saved list reached assistive technology — a flat run
+               of text with no way to hear which column a value was in (WCAG 1.3.1). axe never
+               flagged it, because there is no sortable header here to hang an invalid `aria-sort`
+               on, and missing structure is not a rule violation; it is just missing.
 
                No rowgroups: unlike the explorer's list, the header row and the data rows are
                siblings here, and a table may own rows directly. The wrappers that only lay
@@ -169,6 +177,7 @@
                         <span class="munin-explorer-dataitem-header__theme" role="columnheader">@T.FieldVariableGroup</span>
                         <span class="munin-explorer-dataitem-header__dataType" role="columnheader">@T.FieldDataType</span>
                         <span class="munin-explorer-dataitem-header__period" role="columnheader">@T.FieldDataPeriod</span>
+                        <span class="munin-explorer-dataitem-header__desiredData" role="columnheader">@T.FieldDesiredData</span>
                     </div>
                 </div>
 
@@ -203,6 +212,26 @@
                                    both call — written out here as well, they could gain an attribute
                                    in one place and not the other without anything failing. *@
                                 @Cells(item)
+
+                                @* The one editable cell in the row, and the only column the
+                                   catalogue does not own. value + @onchange rather than @bind for
+                                   the reason the create field gives: inside a Blazor Server circuit
+                                   oninput is a round trip per keystroke. Rendered from the draft
+                                   rather than from the item, which is what keeps a text the API
+                                   refused in the field instead of reverting it under the reader.
+
+                                   Named from two elements — the column's word, then the row's name
+                                   — for exactly the reasons the remove button below gives, and not
+                                   from a placeholder, which is gone the moment the reader types. *@
+                                <div class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__desiredData" role="cell">
+                                    <span class="screenreader-only" id="@DesiredDataLabelId(item)">@T.FieldDesiredData</span>
+                                    <input type="text"
+                                           value="@DesiredDataOf(item)"
+                                           aria-labelledby="@DesiredDataLabelledBy(item)"
+                                           aria-invalid="@DesiredDataInvalid(item)"
+                                           aria-describedby="@DesiredDataDescribedBy(item)"
+                                           @onchange="e => SaveDesiredDataAsync(item.VariableId, e.Value?.ToString())" />
+                                </div>
 
                                 @* The visible word stays "Fjern" — the column is narrow and every
                                    button in it removes something. The accessible name says which

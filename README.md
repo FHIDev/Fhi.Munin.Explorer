@@ -7,15 +7,17 @@ Built for [helsedata.no](https://helsedata.no) as the first consumer — its Opt
 the component into a page — but the package has no helsedata-specific code and any Blazor host
 can consume it.
 
-Data comes from the public Munin Explorer API. **The components are read-only and anonymous**;
-everything they render is public metadata and needs no token.
+Data comes from the public Munin Explorer API. **The browsing components are read-only and
+anonymous**; everything the variable and kilde explorers render is public metadata and needs no
+token.
 
-The client reaches one step further than they do. `IMuninExplorerClient` also carries the seven
+The client reaches one step further than those. `IMuninExplorerClient` also carries the eight
 `api/explorer/my/lists` calls — the signed-in user's saved variable lists — which are the only part
 of it that is authenticated, and therefore the only part that needs a host-supplied
 `IMuninExplorerTokenProvider` registered *before* `AddMuninExplorer`. Without one they answer 401,
-which arrives as a thrown `HttpRequestException` rather than as an empty list. Nothing in this
-package calls them yet: they are here so a host can build the list UI on top.
+which arrives as a thrown `HttpRequestException` rather than as an empty list. `VariableListView`
+is the component built on them — the one this package ships that reads and writes rather than
+browses — and a host is free to build its own instead.
 
 ## Layout
 
@@ -200,6 +202,12 @@ These are not style preferences — each one is a host that breaks otherwise.
     closes at every width. What the rules buy is the sidebar — at desktop the samples take the
     folding away and put the toggle off screen, because a button offering to unfold a panel that is
     already open is a control that does nothing.
+    The saved-list view's `munin-explorer-dataitem-*__desiredData` pair is a handle on the same
+    terms and worth one sentence, because the cell holds a control rather than a value: undefined,
+    the annotation field is a browser-default text box, which is visible, operable and named, so
+    what is lost is the column's width and the border marking a text the API refused. The refusal
+    itself is a sentence in the alert region either way, so no host loses the reason — only the
+    mark saying which row it was about.
     The variable explorer's own panel adds `munin-explorer-filters__toolbar`, the row holding Utvid
     alle, Skjul alle and Nivålinjer. The three buttons used to sit in inline flow carrying margins
     of their own, and the last one's trailing margin counted against the line: at the 369px an
@@ -245,6 +253,13 @@ These are not style preferences — each one is a host that breaks otherwise.
   reconciliation reads literals out of `src/`, which is what makes it exact and is also its one
   limit; a name the package builds a piece at a time is named here instead, and adding a column key
   means adding it to this sentence.
+
+  The saved-list view's `desiredData` column is the exception that shows where the boundary runs.
+  It is an eighth column in that view and it is **not** one of those keys, because it is not drawn by
+  `RowCell.Write` at all — the cell holds an editable field rather than a value, so both halves of
+  it are written out as literals and both are rows in the table below. A column that goes through
+  the helper belongs in the sentence above; one that does not belongs in the table, and no column
+  belongs in both.
 
   **The whole list, name by name.** The paragraphs above pick out the names worth an argument.
   They used to end in hand-written counts, and every one of them had gone stale: `kilde*` had grown
@@ -295,6 +310,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-dataitem-header__code` | handle |
   | `munin-explorer-dataitem-header__dataCollection` | handle |
   | `munin-explorer-dataitem-header__dataType` | handle |
+  | `munin-explorer-dataitem-header__desiredData` | handle |
   | `munin-explorer-dataitem-header__name` | handle |
   | `munin-explorer-dataitem-header__period` | handle |
   | `munin-explorer-dataitem-header__source` | handle |
@@ -302,6 +318,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-dataitem-main` | handle |
   | `munin-explorer-dataitem-main__column` | handle |
   | `munin-explorer-dataitem-main__column__text` | handle |
+  | `munin-explorer-dataitem-main__desiredData` | handle |
   | `munin-explorer-dataitem-main__expand-icon` | handle |
   | `munin-explorer-dataitem-main__name` | handle |
   | `munin-explorer-dataitem-period` | prose |
@@ -531,18 +548,25 @@ services.AddMuninExplorer(o => o.ApiBaseUrl = "https://runa.munin.skytest.fhi.no
 ```
 
 Leave the provider out entirely and calls are anonymous, which is all public metadata browsing
-needs — and all the components this package ships ever do. The variable-list methods
-(`GetMyListsAsync` and the six beside it) are the exception: they call an endpoint the API gates
+needs — and all the browsing components ever do; `VariableListView` is the one that does not,
+because the lists it reads and writes are the signed-in user's own. The variable-list methods
+(`GetMyListsAsync` and the seven beside it) are the exception: they call an endpoint the API gates
 behind a signed-in explorer user, so with no provider registered every one of them throws on the
 401 rather than reporting the user as having nothing saved.
 
-Two things about those seven are worth knowing before writing against them. A call naming a list
+Three things about those eight are worth knowing before writing against them. A call naming a list
 the user does not have answers `false` — or `null`, for the paged read — because the API cannot
-tell "deleted in another tab" from "somebody else's" and deliberately does not try. And the two
+tell "deleted in another tab" from "somebody else's" and deliberately does not try. The two
 batch endpoints take at most `IMuninExplorerClient.MaxVariablesPerBatch` ids, which the client
 refuses above rather than splitting: split them yourself with
 `ids.Chunk(IMuninExplorerClient.MaxVariablesPerBatch)`, so a failure part-way through leaves you
 knowing how far it got.
+
+And `SetMyListDesiredDataAsync` breaks the `false` pattern on purpose, because it is the one write
+the API can refuse for what is *in* it: the "Ønskede data" note is capped at 500 characters server
+side. It answers a `DesiredDataResult` rather than a `bool`, and a refusal carries the ceiling the
+API named — so a caller can tell the reader what to shorten to, and this package never writes the
+number down to drift from. A 429 is still thrown, and so is any fault.
 
 ### Shareable URLs
 

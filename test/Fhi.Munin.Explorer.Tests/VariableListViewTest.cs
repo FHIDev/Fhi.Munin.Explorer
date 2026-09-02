@@ -178,12 +178,36 @@ public class VariableListViewTest : BunitContext
             return Task.FromResult(_created);
         }
 
+        /// <summary>The list whose variables read is refused with the API's 429, or none.</summary>
+        /// <remarks>
+        /// The switch that half-happens: the holder has already moved to the list by the time the
+        /// read it needs is refused, so the view is left holding rows the picker no longer names.
+        /// </remarks>
+        public Guid? ThrottledList { get; set; }
+
+        /// <summary>Set while the variables read should answer as it does for a list gone missing.</summary>
+        /// <remarks>
+        /// Settable both ways, because the case worth showing is the transient one: the read that
+        /// answers nothing and the next one that answers again.
+        /// </remarks>
+        public bool VariablesAreUnreadable { get; set; }
+
         public override Task<Page<VariableListItem>?> GetMyListVariablesAsync(
             Guid id, int page = 1, int pageSize = 100, CancellationToken cancellationToken = default)
         {
             VariablesCalls++;
             LastPageAsked = page;
             _askedFor.Add(id);
+
+            if (VariablesAreUnreadable)
+            {
+                return Task.FromResult<Page<VariableListItem>?>(null);
+            }
+
+            if (ThrottledList == id)
+            {
+                throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+            }
 
             // The API's own answer for a list the caller no longer has: not an error, and not an
             // empty list either. A view that reads it as "empty" draws a table for a list that is
@@ -295,6 +319,85 @@ public class VariableListViewTest : BunitContext
 
             _items.RemoveAll(i => variableIds.Contains(i.VariableId));
             return Task.FromResult(true);
+        }
+
+        public int DesiredDataCalls { get; private set; }
+
+        public string? LastDesiredDataText { get; private set; }
+
+        /// <summary>
+        /// The ceiling this fake enforces, in characters. Settable so a test can prove the view
+        /// quotes the API's number rather than one written into the component: with 500 on both
+        /// sides a hardcoded sentence passes, and the whole point of carrying the ceiling on the
+        /// result is that the API owns it.
+        /// </summary>
+        public int MaxDesiredDataLength { get; init; } = 500;
+
+        /// <summary>Set when the write should be refused with the API's 429.</summary>
+        public bool DesiredDataThrottles { get; set; }
+
+        /// <summary>Set when the write should fail the way a lost API would.</summary>
+        public bool DesiredDataThrows { get; set; }
+
+        /// <summary>Held until a test releases it, so a write can be caught mid-flight.</summary>
+        /// <remarks>
+        /// The only way to show what a reader does while the PUT is out: every other call here
+        /// answers inline, and an answer that has already arrived cannot land on the wrong screen.
+        /// </remarks>
+        public TaskCompletionSource? DesiredDataGate { get; set; }
+
+        /// <summary>
+        /// The merged endpoint's own behaviour, not an agreeable stub: it trims before it measures,
+        /// refuses over the ceiling with that ceiling and the measured length attached, clears both
+        /// stored fields for a blank text, and answers 404 for a variable the list does not hold.
+        /// Each of those is written from <c>MyListsController.SetDesiredData</c> rather than invented,
+        /// because a fake that accepted whatever the component sent would agree with a component that
+        /// was wrong. Nothing here can check that reading — <c>ContractDriftTest</c>'s live arm can.
+        /// </summary>
+        public override async Task<DesiredDataResult> SetMyListDesiredDataAsync(
+            Guid id, Guid variableId, string? freeText, CancellationToken cancellationToken = default)
+        {
+            DesiredDataCalls++;
+            LastDesiredDataText = freeText;
+
+            if (DesiredDataGate is not null)
+            {
+                await DesiredDataGate.Task;
+            }
+
+            if (DesiredDataThrottles)
+            {
+                throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+            }
+
+            if (DesiredDataThrows)
+            {
+                throw new InvalidOperationException("the API is gone");
+            }
+
+            var text = freeText?.Trim();
+
+            if (text is not null && text.Length > MaxDesiredDataLength)
+            {
+                return new DesiredDataResult(DesiredDataOutcome.Refused, MaxDesiredDataLength, text.Length);
+            }
+
+            var index = _items.FindIndex(i => i.VariableId == variableId);
+
+            if (index < 0)
+            {
+                return new DesiredDataResult(DesiredDataOutcome.NotFound);
+            }
+
+            var cleared = string.IsNullOrEmpty(text);
+
+            _items[index] = _items[index] with
+            {
+                DesiredDataType = cleared ? null : "freeText",
+                DesiredDataFreeText = cleared ? null : text
+            };
+
+            return new DesiredDataResult(DesiredDataOutcome.Saved);
         }
     }
 
@@ -494,7 +597,7 @@ public class VariableListViewTest : BunitContext
         // No rowgroups: the header row and the data rows are siblings here, unlike the explorer's
         // list, and a table may own rows directly.
         Assert.Equal("row", table.QuerySelector(".munin-explorer-dataitem-header")!.GetAttribute("role"));
-        Assert.Equal(7, cut.FindAll("[role='columnheader']").Count);
+        Assert.Equal(8, cut.FindAll("[role='columnheader']").Count);
 
         var row = cut.Find(".munin-explorer-data-list__item");
 
@@ -502,11 +605,12 @@ public class VariableListViewTest : BunitContext
         Assert.Equal("rowheader",
                      row.QuerySelector(".munin-explorer-dataitem-main__name")!.GetAttribute("role"));
 
-        // Six value columns and the cell holding the remove button, which is there because a row
-        // owns nothing but cells and a <button> cannot be one without ceasing to be a button.
+        // Six value columns, the "Ønskede data" cell holding the annotation field, and the cell
+        // holding the remove button — the last two are cells because a row owns nothing but cells,
+        // and neither an <input> nor a <button> can be one without ceasing to be what it is.
         var cells = row.QuerySelectorAll("[role='cell']");
 
-        Assert.Equal(7, cells.Length);
+        Assert.Equal(8, cells.Length);
         Assert.Equal("BUTTON", cells[^1].Children[0].TagName);
 
         // The boxes that only lay the columns out step out of the tree, or they sit between the
@@ -916,11 +1020,14 @@ public class VariableListViewTest : BunitContext
     [Fact]
     public void View_WhenNothingHasFailed_ThenTheAlertContainerIsAlreadyInTheDom()
     {
+        // Two of them: the shared one, and the refused annotation's own. Both have to be in the
+        // DOM empty for the same reason — a role="alert" inserted and filled in one update is
+        // announced unreliably.
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
 
-        var alert = cut.FindAll("[role=alert]");
-        Assert.Single(alert);
-        Assert.Equal("", alert[0].TextContent.Trim());
+        var alerts = cut.FindAll("[role=alert]");
+        Assert.Equal(2, alerts.Count);
+        Assert.All(alerts, alert => Assert.Equal("", alert.TextContent.Trim()));
     }
 
     [Fact]
@@ -1404,6 +1511,591 @@ public class VariableListViewTest : BunitContext
         Assert.Null(state.ActiveListId);
         Assert.DoesNotContain(ListId, client.VariablesAskedFor.Skip(askedBefore));
         Assert.Contains("ingen variabellister", cut.Markup);
+    }
+
+    // ------------------------------------------------------------------------- "Ønskede data"
+
+    /// <summary>The annotation fields, in row order.</summary>
+    /// <remarks>
+    /// By class rather than by index into every text input on screen: the create and rename fields
+    /// are text inputs too, and an index would quietly start pointing at one of them the day a
+    /// third form appeared above the table.
+    /// </remarks>
+    private static IReadOnlyList<AngleSharp.Dom.IElement> DesiredDataFields(
+        IRenderedComponent<VariableListView> cut) =>
+        cut.FindAll(".munin-explorer-dataitem-main__desiredData input");
+
+    /// <summary>
+    /// Reads the list again from the API, so what is on screen afterwards is what was stored
+    /// rather than what was typed.
+    /// </summary>
+    /// <remarks>
+    /// Through the picker, because it is the one reader-driven path that really refetches: the
+    /// component keeps the page it has when its parameters are set again, so re-rendering proves
+    /// nothing about the server. Away and back, so the list under test is the one reloaded — and
+    /// the fake needs two lists for the picker to be drawn at all.
+    /// </remarks>
+    private static async Task ReloadAsync(IRenderedComponent<VariableListView> cut)
+    {
+        await cut.InvokeAsync(() => cut.Find("select").Change(ListClient.SecondListId.ToString()));
+        await cut.InvokeAsync(() => cut.Find("select").Change(ListId.ToString()));
+    }
+
+    [Fact]
+    public void View_WhenAnEntryIsAnnotated_ThenTheReadersOwnWordsAreInTheField()
+    {
+        // The reader wrote this in Runa; the same list opened through helsedata.no has to show it.
+        // Before this column existed the note was simply invisible here, with nothing to say the
+        // two surfaces were describing the same list.
+        var item = Item("Alder ved diagnose", "V_BDR.ALDER") with
+        {
+            DesiredDataType = "freeText",
+            DesiredDataFreeText = "C36.2 og C36.4, og C76"
+        };
+
+        var cut = RenderView(new ListClient(item));
+
+        Assert.Equal("C36.2 og C36.4, og C76", DesiredDataFields(cut)[0].GetAttribute("value"));
+    }
+
+    [Fact]
+    public async Task View_WhenTheReaderWritesANote_ThenItIsSentAndSurvivesAReload()
+    {
+        // Write, then reload the page from the API — the reload is what tells a stored note from
+        // one that only ever existed in the browser's own DOM. A component that never sent the
+        // write renders identically until the page comes back.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListCount = 2 };
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change("C36.2 og C36.4"));
+
+        Assert.Equal(1, client.DesiredDataCalls);
+        Assert.Equal("C36.2 og C36.4", client.LastDesiredDataText);
+
+        await ReloadAsync(cut);
+
+        Assert.Equal("C36.2 og C36.4", DesiredDataFields(cut)[0].GetAttribute("value"));
+    }
+
+    [Fact]
+    public async Task View_WhenTheReaderEditsANote_ThenTheSecondTextReplacesTheFirst()
+    {
+        var item = Item("Alder ved diagnose", "V_BDR.ALDER") with
+        {
+            DesiredDataType = "freeText",
+            DesiredDataFreeText = "C36.2"
+        };
+
+        var client = new ListClient(item);
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change("C36.2 og C76"));
+
+        Assert.Equal("C36.2 og C76", client.LastDesiredDataText);
+        Assert.Equal("C36.2 og C76", DesiredDataFields(cut)[0].GetAttribute("value"));
+    }
+
+    [Fact]
+    public async Task View_WhenTheReaderEmptiesTheField_ThenTheNoteIsClearedRatherThanLeftStanding()
+    {
+        // The clear is a write, not a skipped one. A component that sent nothing for an empty
+        // string would leave yesterday's note on the server after the reader had deleted it on
+        // screen, and it would come back on the next reload.
+        var item = Item("Alder ved diagnose", "V_BDR.ALDER") with
+        {
+            DesiredDataType = "freeText",
+            DesiredDataFreeText = "C36.2"
+        };
+
+        var client = new ListClient(item) { ListCount = 2 };
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change(""));
+
+        Assert.Equal(1, client.DesiredDataCalls);
+        Assert.Equal("", client.LastDesiredDataText);
+
+        // Reloaded from the API, so this is what was stored rather than what was typed.
+        await ReloadAsync(cut);
+
+        Assert.Equal("", DesiredDataFields(cut)[0].GetAttribute("value"));
+    }
+
+    [Fact]
+    public async Task View_WhenTheNoteIsTooLong_ThenTheReaderIsToldAndTheirTextIsKept()
+    {
+        // The refusal is server side, so a component that swallowed it would leave the reader
+        // typing into a field that silently refuses — and reverting the field would make them
+        // retype 500 characters to find that out again.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
+        var cut = RenderView(client);
+
+        var tooLong = new string('x', 612);
+
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change(tooLong));
+
+        Assert.Contains("kan ikke overstige 500 tegn", cut.Markup);
+        Assert.Equal(tooLong, DesiredDataFields(cut)[0].GetAttribute("value"));
+    }
+
+    [Fact]
+    public async Task View_WhenTheNoteIsTooLong_ThenTheSentenceQuotesTheApisCeilingRatherThanOneOfOurs()
+    {
+        // The assertion a 500-against-500 test cannot make. The cap belongs to the API and travels
+        // on the refusal; a component that wrote 500 into its own sentence would pass every test
+        // above and start lying the day the API moved the number.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { MaxDesiredDataLength = 120 };
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change(new string('x', 200)));
+
+        Assert.Contains("kan ikke overstige 120 tegn", cut.Markup);
+        Assert.DoesNotContain("500 tegn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task View_WhenTheNoteIsRefused_ThenTheFieldItWasTypedIntoIsMarkedInvalid()
+    {
+        // The sentence is in the alert region at the top of the component, which a reader forty
+        // rows down cannot see. aria-invalid is what says which row it is about, and it is on the
+        // refused field alone — every other one carries no such attribute.
+        var client = new ListClient(
+            Item("Alder ved diagnose", "V_BDR.ALDER"), Item("Kjønn", "V_BDR.KJONN"));
+
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[1].Change(new string('x', 612)));
+
+        Assert.Null(DesiredDataFields(cut)[0].GetAttribute("aria-invalid"));
+        Assert.Equal("true", DesiredDataFields(cut)[1].GetAttribute("aria-invalid"));
+    }
+
+    [Fact]
+    public async Task View_WhenANoteIsAcceptedAfterOneWasRefused_ThenTheRefusalIsTakenBack()
+    {
+        // The alert region is shared, so a sentence nobody cleared answers for whatever the reader
+        // does next — and a field left marked invalid says a text the API accepted was refused.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change(new string('x', 612)));
+        Assert.Contains("kan ikke overstige", cut.Markup);
+
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change("C76"));
+
+        Assert.DoesNotContain("kan ikke overstige", cut.Markup);
+        Assert.Null(DesiredDataFields(cut)[0].GetAttribute("aria-invalid"));
+    }
+
+    [Fact]
+    public async Task View_WhenTheNoteIsThrottled_ThenTheReaderIsToldToWaitRatherThanToShorten()
+    {
+        // Saving a note per row is the rhythm the per-address limiter counts. "Shorten your text"
+        // is advice for a text that was never too long, and "try again" is advice a throttled
+        // reader cannot use — the two have to read differently.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { DesiredDataThrottles = true };
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change("C76"));
+
+        Assert.Contains("for mange forespørsler", cut.Markup);
+        Assert.DoesNotContain("kan ikke overstige", cut.Markup);
+
+        // And the text is not marked invalid: the limiter answered before anything looked at it,
+        // so a reader would be told their own words were wrong about a write that never happened.
+        Assert.Null(DesiredDataFields(cut)[0].GetAttribute("aria-invalid"));
+    }
+
+    [Fact]
+    public async Task View_WhenTheWriteThrows_ThenItIsSaidOnScreenRatherThanTakingTheCircuitDown()
+    {
+        // Uncaught, a throw out of an event handler ends the circuit: in helsedata's legacy host
+        // that is the whole CMS page replaced by a reconnect banner, over a note.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { DesiredDataThrows = true };
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change("C76"));
+
+        Assert.Contains("Kunne ikke lagre ønskede data", cut.Markup);
+        Assert.Contains("Alder ved diagnose", cut.Markup);
+        Assert.Null(DesiredDataFields(cut)[0].GetAttribute("aria-invalid"));
+    }
+
+    [Fact]
+    public async Task View_WhenANoteIsSavedWithPadding_ThenTheFieldShowsWhatTheApiWillHold()
+    {
+        // The client trims on the way out because the API trims on the way in, so a field left
+        // showing the padding shows a value the server does not have until the next page read.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change("  C76  "));
+
+        // The same string in both places: the field and the request body, so a caller-side length
+        // check or a client that stopped trimming cannot leave the two saying different things.
+        Assert.Equal("C76", client.LastDesiredDataText);
+        Assert.Equal("C76", DesiredDataFields(cut)[0].GetAttribute("value"));
+    }
+
+    [Fact]
+    public async Task View_WhenAnotherSurfaceChangesTheListAfterARefusal_ThenTheRefusedTextSurvives()
+    {
+        // A change made elsewhere re-reads every row from the API, which is the one place the
+        // refused text is not. Dropping it there leaves the reader told to shorten a text the
+        // component has just thrown away — the case the draft exists for.
+        var kept = Item("Alder ved diagnose", "V_BDR.ALDER");
+        var other = Item("Kjønn", "V_BDR.KJONN");
+        var cut = RenderView(new ListClient(kept, other));
+
+        var tooLong = new string('x', 612);
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change(tooLong));
+
+        var state = Services.GetRequiredService<VariableListState>();
+        await cut.InvokeAsync(() => state.RemoveVariablesAsync(ListId, [other.VariableId]));
+
+        Assert.Equal(tooLong, DesiredDataFields(cut)[0].GetAttribute("value"));
+        Assert.Equal("true", DesiredDataFields(cut)[0].GetAttribute("aria-invalid"));
+    }
+
+    [Fact]
+    public async Task View_WhenAnotherRowIsRemovedAfterARefusal_ThenTheRefusedTextSurvivesTheReload()
+    {
+        // The reader-facing path the test above cannot reach: pressing "Fjern" runs through the
+        // component's own handler, which clears the shared alert before the removal reloads the
+        // page. A refusal cleared along with it took the reader's 612 characters with it.
+        var kept = Item("Alder ved diagnose", "V_BDR.ALDER");
+        var other = Item("Kjønn", "V_BDR.KJONN");
+        var cut = RenderView(new ListClient(kept, other));
+
+        var tooLong = new string('x', 612);
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change(tooLong));
+
+        await cut.InvokeAsync(() => cut.FindAll(".munin-explorer-dataitem-main button")[1].Click());
+
+        Assert.Equal(tooLong, DesiredDataFields(cut)[0].GetAttribute("value"));
+        Assert.Equal("true", DesiredDataFields(cut)[0].GetAttribute("aria-invalid"));
+        Assert.Contains("kan ikke overstige", cut.Markup);
+    }
+
+    [Fact]
+    public async Task View_WhenAnotherRowIsSavedAfterARefusal_ThenTheRefusedRowStaysMarked()
+    {
+        // Typing down a list is the ordinary rhythm, so a refusal on one row is normally followed
+        // by a save on the next. The refused row is still unsaved and still too long: unmarking it
+        // there leaves a field that presents as saved and is not, which is the whole failure the
+        // mark and the sentence were added for.
+        var client = new ListClient(
+            Item("Alder ved diagnose", "V_BDR.ALDER"), Item("Kjønn", "V_BDR.KJONN"));
+
+        var cut = RenderView(client);
+
+        var tooLong = new string('x', 612);
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change(tooLong));
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[1].Change("C76"));
+
+        Assert.Equal(tooLong, DesiredDataFields(cut)[0].GetAttribute("value"));
+        Assert.Equal("true", DesiredDataFields(cut)[0].GetAttribute("aria-invalid"));
+        Assert.Contains("kan ikke overstige", cut.Markup);
+
+        // And the row that was accepted is not marked by its neighbour's refusal.
+        Assert.Null(DesiredDataFields(cut)[1].GetAttribute("aria-invalid"));
+    }
+
+    [Fact]
+    public async Task View_WhenAFailureFollowsARefusal_ThenTheSentenceExplainingTheMarkIsStillThere()
+    {
+        // The mark outlives the action after it, so the sentence has to as well: a field reading
+        // "invalid" with the reason gone says something is wrong and not what (WCAG 3.3.1). The
+        // two shared the one alert region, where the download failure simply overwrote it.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ExportThrows = true };
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change(new string('x', 612)));
+        await cut.InvokeAsync(() => cut.FindAll("button")
+            .First(b => b.TextContent.Contains("Excel", StringComparison.Ordinal)).Click());
+
+        Assert.Contains("Kunne ikke laste ned", cut.Markup);
+        Assert.Contains("kan ikke overstige", cut.Markup);
+
+        var field = DesiredDataFields(cut)[0];
+        Assert.Equal("true", field.GetAttribute("aria-invalid"));
+
+        // Named by the field rather than merely present: the sentence is above forty rows, and
+        // aria-describedby is what carries it to the reader standing on the one refused field.
+        var describedBy = field.GetAttribute("aria-describedby");
+        Assert.False(string.IsNullOrEmpty(describedBy));
+        Assert.Contains("kan ikke overstige", cut.Find($"#{describedBy}").TextContent);
+    }
+
+    [Fact]
+    public async Task View_WhenTheListChangesWhileTheNoteIsInFlight_ThenTheAnswerDoesNotLandOnTheNewList()
+    {
+        // The write stands against the list it named, but the mark and the sentence are keyed by
+        // row alone — and the same variable sits in both lists here, so a refusal from the first
+        // would otherwise mark the identical row in the second, about a text nobody typed there.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListCount = 2 };
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        client.DesiredDataGate = gate;
+
+        var cut = RenderView(client);
+
+        var writing = cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change(new string('x', 612)));
+
+        // The write is out and unanswered — the refusal has not been drawn — so the switch below
+        // really is one made mid-flight rather than after the fact.
+        Assert.Equal(1, client.DesiredDataCalls);
+        Assert.DoesNotContain("kan ikke overstige", cut.Markup);
+
+        await cut.InvokeAsync(() => cut.Find("select").Change(ListClient.SecondListId.ToString()));
+
+        gate.SetResult();
+        await writing;
+
+        // The answer's continuation is queued on the renderer's dispatcher, so this empty turn
+        // runs behind it and the assertions below are looking at a settled screen.
+        await cut.InvokeAsync(() => { });
+
+        Assert.DoesNotContain("kan ikke overstige", cut.Markup);
+        Assert.Null(DesiredDataFields(cut)[0].GetAttribute("aria-invalid"));
+    }
+
+    [Fact]
+    public async Task View_WhenTheSameRowIsWrittenAgainWhileTheFirstIsInFlight_ThenTheOlderAnswerIsDropped()
+    {
+        // Blur is what saves, so shortening a refused note and leaving puts two writes on one row
+        // out at once. Answered in the order they land, the first would mark the shorter text the
+        // reader went on to save — and nothing after it takes that mark away again.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        client.DesiredDataGate = gate;
+
+        var cut = RenderView(client);
+
+        var refused = cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change(new string('x', 612)));
+
+        // The retry goes out and comes back while the first write is still held.
+        client.DesiredDataGate = null;
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change("C76"));
+
+        gate.SetResult();
+        await refused;
+
+        // The answer's continuation is queued on the renderer's dispatcher, so this empty turn runs
+        // behind it and the assertions below are looking at a settled screen.
+        await cut.InvokeAsync(() => { });
+
+        Assert.Equal("C76", DesiredDataFields(cut)[0].GetAttribute("value"));
+        Assert.Null(DesiredDataFields(cut)[0].GetAttribute("aria-invalid"));
+        Assert.DoesNotContain("kan ikke overstige", cut.Markup);
+    }
+
+    [Fact]
+    public async Task View_WhenAWriteSucceedsAfterAnotherRowsFailed_ThenTheFailureIsStillSaid()
+    {
+        // Typing down the list leaves a slow write on one row while the next row is written, so a
+        // success landing last is ordinary. The region is shared and says nothing about which row,
+        // so a success that emptied it would leave the reader believing both notes were saved.
+        var client = new ListClient(
+            Item("Alder ved diagnose", "V_BDR.ALDER"), Item("Kjønn", "V_BDR.KJONN"));
+
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        client.DesiredDataGate = gate;
+
+        var cut = RenderView(client);
+
+        var slow = cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change("C76"));
+
+        client.DesiredDataGate = null;
+        client.DesiredDataThrows = true;
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[1].Change("C77"));
+
+        Assert.Contains("Kunne ikke lagre ønskede data", cut.Markup);
+
+        // Turned off before the release so the held write is the one that succeeds: the API failing
+        // for one call and not the next is what the two rows are here to show.
+        client.DesiredDataThrows = false;
+        gate.SetResult();
+        await slow;
+        await cut.InvokeAsync(() => { });
+
+        Assert.Contains("Kunne ikke lagre ønskede data", cut.Markup);
+    }
+
+    [Fact]
+    public async Task View_WhenThePageIsReadWhileTheNoteIsInFlight_ThenTheRefusalDoesNotLandOnTheReloadedText()
+    {
+        // Any other surface raising Changed re-reads the page, which reseeds every field from the
+        // API and takes the draft with it. The refusal arriving afterwards would mark the value the
+        // server holds and assertively tell the reader to shorten a text that is no longer there.
+        var kept = Item("Alder ved diagnose", "V_BDR.ALDER");
+        var other = Item("Kjønn", "V_BDR.KJONN");
+        var client = new ListClient(kept, other);
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        client.DesiredDataGate = gate;
+
+        var cut = RenderView(client);
+
+        var writing = cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change(new string('x', 612)));
+
+        var state = Services.GetRequiredService<VariableListState>();
+        await cut.InvokeAsync(() => state.RemoveVariablesAsync(ListId, [other.VariableId]));
+
+        gate.SetResult();
+        await writing;
+        await cut.InvokeAsync(() => { });
+
+        Assert.True(string.IsNullOrEmpty(DesiredDataFields(cut)[0].GetAttribute("value")));
+        Assert.Null(DesiredDataFields(cut)[0].GetAttribute("aria-invalid"));
+        Assert.DoesNotContain("kan ikke overstige", cut.Markup);
+    }
+
+    [Fact]
+    public async Task View_WhenTheListChangesAfterARefusal_ThenTheMarkDoesNotFollowToTheOtherList()
+    {
+        // Variable ids are master data both lists share, so the same row is on screen in the list
+        // the reader switches to. A mark keyed by row alone would land on it there, with the 612
+        // refused characters seeded over the note that list actually holds.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListCount = 2 };
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change(new string('x', 612)));
+        Assert.Contains("kan ikke overstige", cut.Markup);
+
+        await cut.InvokeAsync(() => cut.Find("select").Change(ListClient.SecondListId.ToString()));
+
+        Assert.DoesNotContain("kan ikke overstige", cut.Markup);
+        Assert.Null(DesiredDataFields(cut)[0].GetAttribute("aria-invalid"));
+        Assert.True(string.IsNullOrEmpty(DesiredDataFields(cut)[0].GetAttribute("value")));
+    }
+
+    [Fact]
+    public async Task View_WhenTheRefusedRowLeavesTheList_ThenTheSentenceGoesWithIt()
+    {
+        // The sentence lives in an assertive region and is drawn from the refusal alone, so a
+        // refusal outliving its row would go on announcing a ceiling for a field that is not in the
+        // table — and the aria-describedby that explained it would be pointing from nowhere.
+        var refused = Item("Alder ved diagnose", "V_BDR.ALDER");
+        var kept = Item("Kjønn", "V_BDR.KJONN");
+        var cut = RenderView(new ListClient(refused, kept));
+
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change(new string('x', 612)));
+        Assert.Contains("kan ikke overstige", cut.Markup);
+
+        var state = Services.GetRequiredService<VariableListState>();
+        await cut.InvokeAsync(() => state.RemoveVariablesAsync(ListId, [refused.VariableId]));
+
+        Assert.DoesNotContain("kan ikke overstige", cut.Markup);
+        Assert.Null(DesiredDataFields(cut)[0].GetAttribute("aria-invalid"));
+    }
+
+    [Fact]
+    public async Task View_WhenTheSwitchToAnotherListIsRefused_ThenTheRowsGoWithIt()
+    {
+        // The picker has already moved, and every write here is addressed to what it holds. Rows
+        // left from the list before it would send an annotation typed into one of them to the list
+        // now chosen, over that list's own note for the same variable.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListCount = 2 };
+        var cut = RenderView(client);
+
+        client.ThrottledList = ListClient.SecondListId;
+        await cut.InvokeAsync(() => cut.Find("select").Change(ListClient.SecondListId.ToString()));
+
+        Assert.Contains("Kunne ikke hente listen", cut.Markup);
+        Assert.Empty(DesiredDataFields(cut));
+        Assert.DoesNotContain("Alder ved diagnose", cut.Markup);
+    }
+
+    [Fact]
+    public async Task View_WhenTheRowHasLeftTheListElsewhere_ThenTheWriteIsSaidToHaveFailed()
+    {
+        // The API's 404 for a row the list no longer holds, which reaches the component as an
+        // outcome rather than a throw. Removed behind the component's back, because that is what
+        // it is: the row left the list on another surface and this page has not heard yet.
+        var item = Item("Alder ved diagnose", "V_BDR.ALDER");
+        var client = new ListClient(item);
+        var cut = RenderView(client);
+
+        await client.RemoveVariablesFromMyListAsync(ListId, [item.VariableId]);
+
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change("C76"));
+
+        Assert.Contains("Kunne ikke lagre ønskede data", cut.Markup);
+
+        // Not marked invalid: the API never looked at the text, so nothing says it is wrong.
+        Assert.Null(DesiredDataFields(cut)[0].GetAttribute("aria-invalid"));
+    }
+
+    [Fact]
+    public async Task View_WhenTheListReadAnswersNothingAfterARefusal_ThenTheTextComesBackWithThePage()
+    {
+        // A read that answers nothing is not an answer about the rows — a refresh in flight
+        // elsewhere gives one. Emptying the draft there would throw the reader's 612 unsaved
+        // characters away over a page that comes straight back.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
+        var cut = RenderView(client);
+
+        var tooLong = new string('x', 612);
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change(tooLong));
+
+        var state = Services.GetRequiredService<VariableListState>();
+
+        client.VariablesAreUnreadable = true;
+        await cut.InvokeAsync(() => state.RefreshAsync());
+        Assert.Empty(DesiredDataFields(cut));
+
+        client.VariablesAreUnreadable = false;
+        await cut.InvokeAsync(() => state.RefreshAsync());
+
+        Assert.Equal(tooLong, DesiredDataFields(cut)[0].GetAttribute("value"));
+        Assert.Equal("true", DesiredDataFields(cut)[0].GetAttribute("aria-invalid"));
+    }
+
+    [Fact]
+    public void View_WhenTheAnnotationFieldIsDrawn_ThenItAnnouncesTheColumnAndTheVariable()
+    {
+        // Forty fields all announcing "Ønskede data" leave a screen reader user with no way to
+        // tell which variable they are annotating (WCAG 4.1.2). Resolved through AccessibleName
+        // rather than by asserting an attribute is present, because a placeholder satisfies the
+        // latter and is not a name.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        Assert.Equal("Ønskede data Alder ved diagnose", AccessibleName.Of(DesiredDataFields(cut)[0]));
+    }
+
+    [Fact]
+    public void View_WhenAnOrphanIsAnnotated_ThenItStillShowsWhatItsReaderWrote()
+    {
+        // The note is stored on the membership, so it outlives the variable leaving the catalogue.
+        // Dropping the field for a row with no name would lose the one thing in that row nobody
+        // else can write again.
+        var orphan = Orphan() with { DesiredDataType = "freeText", DesiredDataFreeText = "Alle verdier" };
+
+        var cut = RenderView(new ListClient(orphan));
+
+        Assert.Equal("Alle verdier", DesiredDataFields(cut)[0].GetAttribute("value"));
+    }
+
+    [Fact]
+    public void View_WhenTheReaderIsSignedOut_ThenThereIsNoAnnotationFieldAndNothingIsWritten()
+    {
+        // The second half of "signed out this component draws nothing", asserted rather than
+        // assumed: it is the state every helsedata.no visitor starts in, and this change adds the
+        // first control in the component that writes on a plain change event. A field rendered
+        // outside the signed-in branch would post an annotation nobody can be resolved for.
+        var item = Item("Alder ved diagnose", "V_BDR.ALDER") with
+        {
+            DesiredDataType = "freeText",
+            DesiredDataFreeText = "C36.2"
+        };
+
+        var client = new ListClient(item);
+
+        var cut = RenderView(client, signedIn: false);
+
+        Assert.Empty(cut.Markup.Trim());
+        Assert.Empty(DesiredDataFields(cut));
+        Assert.Equal(0, client.DesiredDataCalls);
+        Assert.Equal(0, client.VariablesCalls);
     }
 
     [Fact]

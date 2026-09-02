@@ -981,6 +981,36 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   flex: 150 1 0;
 }
 
+/* Ønskede data — the reader's own note about a variable, and the only editable column in the
+   saved-list view. Widest of the lot on purpose: it holds a sentence the reader typed rather than
+   a catalogue value, and the API takes up to 500 characters. The field fills the cell so the
+   column width is the field width, which is what stops a row of inputs sizing themselves. */
+.munin-explorer-dataitem-main__desiredData,
+.munin-explorer-dataitem-header__desiredData {
+  flex: 260 1 0;
+}
+
+/* --grey60 rather than the --grey30 every other border in this stylesheet uses. A field's own
+   border is what says there is a field there at all, which makes it a non-text control indicator
+   under WCAG 1.4.11 and owes 3:1: --grey30 measures 1.16:1 against the page ground and --grey40
+   1.82:1, both invisible on a bright desktop. This is the same trap the filter panel's guide
+   lines fell into (Fhi.Metadata-wcbxi). */
+.munin-explorer-dataitem-main__desiredData input {
+  width: 100%;
+  font: inherit;
+  padding: 4px 6px;
+  border: 1px solid var(--grey60);
+  border-radius: 2px;
+}
+
+/* The one field in the component that can be refused for what is in it. The alert region above
+   the list carries the sentence; this is what marks the field it is about, so a reader scrolled
+   past the alert can still see which row to shorten. Not colour alone — the border thickens as
+   well, because 1.4.1 does not accept a hue as the whole signal. */
+.munin-explorer-dataitem-main__desiredData input[aria-invalid="true"] {
+  border: 2px solid var(--error-dark);
+}
+
 
 .sortable-header {
   font-weight: 600;

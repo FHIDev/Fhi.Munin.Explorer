@@ -211,6 +211,50 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
             HttpMethod.Delete, MyListVariables(id), new VariableIdsBody(variableIds), cancellationToken);
     }
 
+    /// <inheritdoc/>
+    public async Task<DesiredDataResult> SetMyListDesiredDataAsync(
+        Guid id,
+        Guid variableId,
+        string? freeText,
+        CancellationToken cancellationToken = default)
+    {
+        // Trimmed here because the API trims before it measures, so a caller told "612 of 500" got
+        // the number the API used rather than one counting whitespace it was about to drop.
+        var text = freeText?.Trim();
+        var clearing = string.IsNullOrEmpty(text);
+
+        // Both null when clearing: there is no annotation left for a type to describe, and the API
+        // reads an absent type and a blank text as the same request. Sending the type when there IS
+        // text is what pins the shape being written, the day the API stores a second one. Null
+        // rather than the empty string the trim produced, so "", "   " and null are one request.
+        var body = new DesiredDataBody(clearing ? null : FreeTextType, clearing ? null : text);
+
+        using var response = await SendAsync(
+            HttpMethod.Put, MyListVariableDesiredData(id, variableId), body, cancellationToken);
+
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return new DesiredDataResult(DesiredDataOutcome.NotFound);
+        }
+
+        if (response.StatusCode == HttpStatusCode.BadRequest)
+        {
+            // Read rather than thrown, unlike CreateMyListAsync's 400: the reader's text is still
+            // in the field they typed it into, and "could not save" would send them retyping
+            // something the API will refuse identically. The ceiling comes out of the refusal so
+            // no number is written down here to drift from the API's.
+            var refusal = await ReadRefusalAsync(response, cancellationToken);
+
+            return new DesiredDataResult(DesiredDataOutcome.Refused, refusal?.MaxLength, refusal?.Received);
+        }
+
+        // A 401 lands here and lands loudly, the same as the writes above: an authenticated
+        // endpoint answering 401 is a host that never registered a token provider.
+        response.EnsureSuccessStatusCode();
+
+        return new DesiredDataResult(DesiredDataOutcome.Saved);
+    }
+
     /// <summary>The create and rename body, spelled the way the API spells it.</summary>
     /// <remarks>
     /// A private record rather than a public contract: a caller passes a name, and the envelope it
@@ -255,11 +299,63 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
     private sealed record VariableIdsBody(
         [property: JsonPropertyName("variabelIds")] IReadOnlyCollection<Guid> VariableIds);
 
+    /// <summary>The "Ønskede data" body, spelled the way the API spells it.</summary>
+    /// <remarks>
+    /// Private for the reason <see cref="NameBody"/> is. Both properties are written even when
+    /// null, which is what the API reads as a clear — a body that omitted them would bind to the
+    /// same thing, but only by accident of the two defaults agreeing.
+    /// </remarks>
+    private sealed record DesiredDataBody(
+        [property: JsonPropertyName("type")] string? Type,
+        [property: JsonPropertyName("freeText")] string? FreeText);
+
+    /// <summary>What the API called the annotation the reader typed, as it spells it.</summary>
+    /// <remarks>
+    /// <c>ExplorerDesiredDataTypes.FreeText</c> on the API's side. Any other value is refused with
+    /// a 400 whether or not text came with it, so this is not a string to guess at.
+    /// </remarks>
+    private const string FreeTextType = "freeText";
+
+    /// <summary>The shape the API refuses with — the sentence, and the numbers behind it.</summary>
+    /// <remarks>
+    /// Only the numbers are read. The sentence follows the request's <c>Accept-Language</c>, which
+    /// this call does not send, so a caller drawing it would show the API's default language to a
+    /// reader who may not be reading in it.
+    /// </remarks>
+    private sealed record DesiredDataRefusal(
+        [property: JsonPropertyName("maxLength")] int? MaxLength,
+        [property: JsonPropertyName("received")] int? Received);
+
+    /// <summary>Unpacks a refusal, answering null when the body is not one.</summary>
+    /// <remarks>
+    /// A 400 with an unreadable body is still a refusal — it is the ceiling that goes missing, not
+    /// the refusal — so this must not throw and take the whole write down with it. Wider than the
+    /// parser's own exceptions because not every reason is the parser's: a charset the runtime
+    /// cannot resolve throws an invalid operation. Cancellation is the caller's and travels on.
+    /// </remarks>
+    private static async Task<DesiredDataRefusal?> ReadRefusalAsync(
+        HttpResponseMessage response,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await response.Content.ReadFromJsonAsync<DesiredDataRefusal>(Json, cancellationToken);
+        }
+        catch (Exception cause) when (cause is not OperationCanceledException)
+        {
+            return null;
+        }
+    }
+
     private const string MyLists = "api/explorer/my/lists";
 
     private static string MyList(Guid id) => $"{MyLists}/{id}";
 
     private static string MyListVariables(Guid id) => $"{MyList(id)}/variables";
+
+    /// <summary>The per-variable annotation route. The API spells the segment <c>variabelId</c>.</summary>
+    private static string MyListVariableDesiredData(Guid id, Guid variableId) =>
+        $"{MyListVariables(id)}/{variableId}/desired-data";
 
     /// <summary>Refuses a batch the API would refuse, before it costs a round trip.</summary>
     /// <remarks>

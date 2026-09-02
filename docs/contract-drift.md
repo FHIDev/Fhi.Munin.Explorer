@@ -76,6 +76,21 @@ MUNIN_EXPLORER_LIVE=1 MuninExplorer__ApiBaseUrl=https://localhost:7134 \
 The default is `https://runa.munin.skytest.fhi.no` — public, anonymous, read-only. There is no secret
 to hold and no token provider to register.
 
+One arm is the exception, and it is skipped rather than failed when it cannot run. The `my/lists`
+routes are behind the API's signed-in explorer policy, so the "Ønskede data" annotation — the one
+field in this package a reader writes rather than reads — cannot be round-tripped anonymously.
+Give it an explorer access token, raw and without the `Bearer` prefix, and it writes, edits,
+over-runs the cap and clears one annotation on a list it creates and deletes again:
+
+```bash
+MUNIN_EXPLORER_LIVE=1 MUNIN_EXPLORER_TOKEN=eyJhbGci... \
+  dotnet test --filter Category=ContractDrift
+```
+
+Without the token that arm says so in the run output. That is the honest state of the nightly job:
+the read half of the contract is checked against the API every night, and the written half is
+checked by whoever runs it with a token in hand.
+
 ## When the nightly job goes red
 
 `.github/workflows/contract-drift.yml` runs at 04:17 UTC and opens an issue when it fails, or
