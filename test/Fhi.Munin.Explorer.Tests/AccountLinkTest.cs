@@ -399,7 +399,7 @@ public class AccountLinkTest : BunitContext
     /// be our panel opening over somebody else's page (Fhi.Metadata-bl448).
     /// </summary>
     [Fact]
-    public void Panel_WhenTheReaderHasNotAskedForIt_ThenItStaysFoldedAndCallsNothing()
+    public void Panel_WhenTheReaderHasNotAskedForIt_ThenItStaysFoldedAndNothingIsRedeemed()
     {
         var client = new LinkClient();
         var cut = RenderSignedIn(client);
@@ -414,7 +414,24 @@ public class AccountLinkTest : BunitContext
 
         // Typing alone changes nothing; the search that results have arrived from is the moment
         // an entry that unfolded itself would do so.
-        cut.WaitForAssertion(() => Assert.Equal(2, client.SearchCalls)); // initial load + this one
+        Assert.Equal(2, client.SearchCalls); // initial load + this one
+        Assert.False(Panel(cut).Closest("details")!.HasAttribute("open"));
+        Assert.Equal(0, client.RedeemCalls);
+    }
+
+    /// <summary>
+    /// The false→true crossing, where the entry first appears — the place a later change would
+    /// most naturally open it to draw attention to it. A component rendered signed in from the
+    /// start never crosses it, so no other test here would notice (Fhi.Metadata-bl448).
+    /// </summary>
+    [Fact]
+    public void Panel_WhenTheReaderSignsInWhileTheExplorerIsOnScreen_ThenTheEntryAppearsFolded()
+    {
+        var client = new LinkClient();
+        var cut = RenderSignedIn(client, signedIn: false);
+
+        cut.Render(p => p.Add(c => c.IsAuthenticated, true));
+
         Assert.False(Panel(cut).Closest("details")!.HasAttribute("open"));
         Assert.Equal(0, client.RedeemCalls);
     }
