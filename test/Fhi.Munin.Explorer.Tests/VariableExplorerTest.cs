@@ -1410,6 +1410,9 @@ public class VariableExplorerTest : BunitContext
             // The toolbar row: a container of its own, because in inline flow the last button's
             // trailing margin counted against the line and the row broke apart under a scrollbar.
             "munin-explorer-filters__toolbar",
+            // The number beside a facet value, in an element of its own so a host can dim it —
+            // the same name the kilde explorer's facets wear. (Fhi.Metadata-cgk85)
+            "munin-explorer-filters__count",
             "munin-explorer-container",  // ours, Stiler components/munin-explorer/
             "munin-explorer-results",    // ours, Stiler components/munin-explorer/
             // The column picker, all four theirs, all four read off the compiled variables.css
@@ -4439,8 +4442,9 @@ public class VariableExplorerTest : BunitContext
     public void Render_Always_ThenAFacetValuesAccessibleNameHoldsItsCountAndItsLabelNamesTheBox()
     {
         // The label wraps the input, so the count is inside the accessible name rather than beside
-        // it — "Dødsårsaksregisteret (30)" is announced whole. A count in a sibling element would be
-        // read as a stray number or skipped, and an unwrapped input would have no name at all.
+        // it — "Dødsårsaksregisteret (30)" is announced whole. The count has an element of its own
+        // now, but INSIDE the label: a span after the label would be read as a stray number or
+        // skipped, and an unwrapped input would have no name at all.
         var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
 
         var label = Facet(cut, "Dødsårsaksregisteret");
@@ -4448,6 +4452,27 @@ public class VariableExplorerTest : BunitContext
         Assert.Equal("label", label.LocalName);
         Assert.Equal("Dødsårsaksregisteret (30)", label.TextContent);
         Assert.NotNull(label.QuerySelector("input[type=checkbox]"));
+
+        // Computed rather than read off the text: the count now sits in an element of its own, and
+        // the whole risk of that change is that it stops being announced. (Fhi.Metadata-cgk85)
+        Assert.Equal(
+            "Dødsårsaksregisteret (30)",
+            AccessibleName.Of(label.QuerySelector("input[type=checkbox]")!));
+    }
+
+    [Fact]
+    public void Render_Always_ThenAFacetValuesCountIsItsOwnElementInsideTheLabel()
+    {
+        // The same element the kilde explorer's facets use, under the same name, so the two panels
+        // cannot drift apart on a detail a host writes one rule for. (Fhi.Metadata-cgk85)
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        var label = Facet(cut, "Dødsårsaksregisteret");
+        var count = label.QuerySelector(".munin-explorer-filters__count")!;
+
+        Assert.Equal("SPAN", count.TagName);
+        Assert.Equal("(30)", count.TextContent.Trim());
+        Assert.True(label.Contains(count));
     }
 
     [Fact]

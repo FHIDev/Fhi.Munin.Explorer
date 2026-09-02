@@ -1641,6 +1641,35 @@ public class KildeExplorerTest : BunitContext
     }
 
     [Fact]
+    public void Facets_Always_ThenTheCountIsItsOwnElementInsideTheLabelAndStillInTheAccessibleName()
+    {
+        // The two halves of Fhi.Metadata-cgk85, which pull in opposite directions and are both
+        // load-bearing. An element of its own is what lets a host dim the number; inside the label
+        // is what keeps it in the name the checkbox announces. A count moved out to a SIBLING of
+        // the label satisfies the first and quietly loses the second, and that shape passes any
+        // assertion written against the text on screen. So both are asserted here, and the
+        // accessible name is computed rather than read off the markup. (Fhi.Metadata-j0a2h)
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", kildetype: "biobank")));
+
+        var label = Facet(cut, "Kildetype").QuerySelector("label")!;
+        var count = label.QuerySelector(".munin-explorer-filters__count")!;
+
+        // Its own element, and under the label rather than after it.
+        Assert.Equal("SPAN", count.TagName);
+        Assert.Equal("(1)", count.TextContent.Trim());
+        Assert.True(label.Contains(count));
+
+        // The words and the number are still one run on screen, with exactly one space between
+        // them: a stray newline from the markup would read as "Biobank\n (1)" here.
+        Assert.Equal("Biobank (1)", label.TextContent.Trim());
+
+        // And the half a sibling element would have cost.
+        Assert.Equal(
+            "Biobank (1)", AccessibleName.Of(label.QuerySelector("input[type=checkbox]")!));
+    }
+
+    [Fact]
     public void Facets_WhenTwoValuesInOneFacetAreTicked_ThenTheListShowsKilderMatchingEither()
     {
         // OR within a facet. An implementation that ANDs them answers two ticked boxes with an empty
@@ -2364,13 +2393,13 @@ public class KildeExplorerTest : BunitContext
     [Fact]
     public void Render_WhenTheListIsOnScreen_ThenNoClassNamesAreInventedApartFromTheDomHandles()
     {
-        // The exact list, for the reason the other two of these are exact: a tenth name appearing
-        // here is news, and news that has to be answered in both sample stylesheets before it
-        // ships. Four of these nine are the explorer's existing structure, reused rather than
-        // reinvented; the three under `munin-explorer-kilder` and the two under
+        // The exact list, for the reason the other two of these are exact: a thirteenth name
+        // appearing here is news, and news that has to be answered in both sample stylesheets
+        // before it ships. Six of these twelve are the explorer's existing structure, reused rather
+        // than reinvented; the three under `munin-explorer-kilder` and the three under
         // `munin-explorer-filters__` are this view's own.
         //
-        // Nine and not ten because nothing here wires ExploreVariablesRequested, so the selection
+        // Twelve and not thirteen because nothing here wires ExploreVariablesRequested, so the selection
         // column and its `munin-explorer-kilder__select` are not rendered at all. That state has
         // its own exact list, in KildeSelectionTest, and the pair of them is what says the column
         // adds one name rather than appears from nowhere.
@@ -2386,6 +2415,7 @@ public class KildeExplorerTest : BunitContext
             "munin-explorer",                    // shared with the variable explorer
             "munin-explorer-container",          // shared
             "munin-explorer-filters",            // shared
+            "munin-explorer-filters__count",     // shared with the variable explorer's facets
             "munin-explorer-filters__facets",
             "munin-explorer-filters__toggle",
             "munin-explorer-kilder",

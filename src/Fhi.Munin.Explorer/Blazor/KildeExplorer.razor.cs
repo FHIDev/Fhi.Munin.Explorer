@@ -57,14 +57,15 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// and <c>munin-explorer-drilldown</c> are the explorer's existing ones, reused rather than
 /// reinvented — two of which, <c>munin-explorer</c> and <c>munin-explorer-filters</c>, are handles
 /// nothing defines a rule for, in this package or in Stiler, so a host that wants the panel placed
-/// beside the results writes that rule itself. Six are new and belong to this view:
+/// beside the results writes that rule itself. Seven are new and belong to this view:
 /// <c>munin-explorer-kilder</c> for the result table,
 /// <c>munin-explorer-kilder__name</c> for the control that opens a kilde,
 /// <c>munin-explorer-kilder__count</c> for the two columns that hold a number,
 /// <c>munin-explorer-kilder__select</c> for the checkbox column a host that wired
 /// <see cref="ExploreVariablesRequested"/> gets in front of them, and
 /// <c>munin-explorer-filters__toggle</c> and <c>munin-explorer-filters__facets</c> for the facet
-/// panel's disclosure — see <c>KildeExplorer.Filters.cs</c> for what those two are for. A host that
+/// panel's disclosure, and <c>munin-explorer-filters__count</c> for the number beside a facet
+/// value — see <c>KildeExplorer.Filters.cs</c> for what those three are for. A host that
 /// styles none of them still gets a usable list, which is why the results are a
 /// <c>&lt;table&gt;</c> and the name is a <c>&lt;button&gt;</c>: an element degrades to its own
 /// browser default — aligned columns, a control that visibly is one — where a class name no
