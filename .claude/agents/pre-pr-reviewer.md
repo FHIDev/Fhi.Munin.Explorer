@@ -208,6 +208,11 @@ The most expensive rule here, and the one already broken more than twice.
   `scripts/assert-new-names-noted-for-hosts.sh` (the `host notes for new names` check) enforces,
   because the rule has to land in `Fhi.Helsedata.Stiler`, which this CI cannot read. If the name
   genuinely needs no rule, the fragment must *say so*. The point is that somebody decided.
+- **A host requirement in an `Added` bullet is in the wrong section.** One category per file, so a
+  change that adds a name and needs a host note is two fragments.
+  `scripts/assert-fragment-names-noted-for-hosts.sh` (the `fragment names noted for hosts` check)
+  fails when any other category's fragment names a class no `Notes for hosts` one names — the half
+  the branch diff above cannot see, because such a name is rarely new on the branch that files it.
 - **Both sample stylesheets are one file, copied.** `samples/ModernHost/wwwroot/host.css` and
   `samples/LegacyHost/wwwroot/css/host.css` must be byte-identical and between them must style
   every `munin-explorer*` name the package invents. Edit one, copy it over the other.

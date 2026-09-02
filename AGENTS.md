@@ -193,3 +193,11 @@ runs in CI. It exists because the older check diffs the branch and so can only e
 that are new on it: three hand-written counts had gone stale and eight `munin-explorer-whole*`
 names were in no markdown file at all, none of them visible through that window. Do not replace the
 table with a count — a count is what drifted.
+
+The changelog is the second place a host reads, and **what a host must style belongs in a
+`Notes for hosts` fragment, not in the `Added` bullet that introduces the name**. One category per
+file, per `changelog.d/README.md`: split it, they end up in different sections anyway.
+`scripts/assert-fragment-names-noted-for-hosts.sh` fails when a fragment of any other category names
+a `munin-explorer*` name that no `Notes for hosts` fragment — or released section — names. It has no
+window either: Kelda's facet panel stated its own host requirement in an `Added` bullet in #72, and
+the branch check landed in #96, so the requirement was never new on a branch that check could see.

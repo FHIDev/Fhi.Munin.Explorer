@@ -250,6 +250,23 @@ jobs:
       - name: Assert the README lists every class name the package emits
         run: ./scripts/assert-class-names-listed.sh
 
+  # The README is one of the two places a host reads; the changelog's Notes for hosts section is the
+  # other, and the host-notes job's window misses it the same way. The facet panel's two names
+  # arrived in #72 stating their own host requirement in an Added bullet, and the branch check
+  # landed in #96 — never new on a branch it could see. This job has no window either: every queued
+  # fragment, every run.
+  #
+  # No fetch-depth: nothing here reads history. Its own job for the same reason as the three above.
+  fragment-host-notes:
+    name: fragment names noted for hosts
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Assert every class name a fragment names is noted for hosts
+        run: ./scripts/assert-fragment-names-noted-for-hosts.sh
+
   # BannedSymbols.txt is the only thing keeping host-specific types out of a component that has to
   # render in two hosts, and it is wired up by a condition on the RCL's project name. That
   # condition was stale for the whole time the merged project had a different name than it named:
@@ -349,7 +366,7 @@ jobs:
   # this workflow must be added to needs: below and to the table, or it stays invisible here.
   report:
     name: ci summary
-    needs: [build, changelog, sample-css, host-notes, class-names, portability-guard, consumer, accessibility]
+    needs: [build, changelog, sample-css, host-notes, class-names, fragment-host-notes, portability-guard, consumer, accessibility]
     # It exists to report failed and skipped jobs, so it must not be skipped by one.
     if: always()
     runs-on: ubuntu-latest
@@ -387,6 +404,7 @@ jobs:
           sample stylesheets in step|${{ needs['sample-css'].result }}
           host notes for new names|${{ needs['host-notes'].result }}
           class names listed in the README|${{ needs['class-names'].result }}
+          fragment names noted for hosts|${{ needs['fragment-host-notes'].result }}
           portability guard armed|${{ needs['portability-guard'].result }}
           a host needs no glue|${{ needs.consumer.result }}
           accessibility|${{ needs.accessibility.result }}
