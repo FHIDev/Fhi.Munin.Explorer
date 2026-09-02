@@ -78,6 +78,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// <summary>The question, which the button that acts on it is described by.</summary>
     private string ConfirmDeleteId => $"munin-explorer-confirm-delete-{_instance}";
 
+    /// <summary>The sentence a refused annotation is explained by, which its field points at.</summary>
+    private string DesiredDataRefusalId => $"munin-explorer-list-desired-data-refusal-{_instance}";
+
     /// <summary>The word "Ønskede data" in one row, which that row's field is named from.</summary>
     private string DesiredDataLabelId(VariableListItem item) =>
         $"munin-explorer-list-desired-data-label-{_instance}-{item.VariableId:N}";
@@ -126,8 +129,19 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private readonly Dictionary<Guid, string> _desiredData = [];
 
     private DesiredDataFailure _desiredDataFailure;
-    private int? _desiredDataMaxLength;
-    private Guid? _desiredDataRefusedRow;
+
+    /// <summary>The row the API refused for length, the list it was refused in, and the ceiling.</summary>
+    /// <remarks>
+    /// Held apart from the failures the alert region shares, and outside what
+    /// <see cref="ForgetFailures"/> drops: this one is a claim about a text still on screen and
+    /// still unsaved, so it stands until that row is written again or leaves the list. The list is
+    /// carried with it because a variable can sit in two of them, and a mark left over from one
+    /// would land on the same row in the other.
+    /// </remarks>
+    private DesiredDataRefusal? _desiredDataRefusal;
+
+    /// <summary>One refused row: which list it is in, which row, and the ceiling to shorten to.</summary>
+    private sealed record DesiredDataRefusal(Guid ListId, Guid VariableId, int MaxLength);
 
     /// <summary>How the last download ended, when it ended badly.</summary>
     /// <remarks>
@@ -211,21 +225,28 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         Failed,
 
         /// <summary>The API refused it because too many requests arrived — HTTP 429.</summary>
-        Throttled,
-
-        /// <summary>The API refused the text for its length, and said what the length may be.</summary>
-        TooLong
+        Throttled
     }
 
     /// <summary>What the alert says about the last annotation write, or null after none.</summary>
     private string? DesiredDataMessage => _desiredDataFailure switch
     {
         DesiredDataFailure.Throttled => T.RateLimitError,
-        DesiredDataFailure.TooLong when _desiredDataMaxLength is { } maxLength =>
-            T.DesiredDataTooLong(maxLength),
-        DesiredDataFailure.TooLong or DesiredDataFailure.Failed => T.DesiredDataError,
+        DesiredDataFailure.Failed => T.DesiredDataError,
         _ => null
     };
+
+    /// <summary>
+    /// The sentence naming the ceiling, or <see langword="null"/> while no row stands refused.
+    /// </summary>
+    /// <remarks>
+    /// Its own region rather than a fifth claimant on the shared one: a refused row keeps its
+    /// <c>aria-invalid</c> until it is written again, and a download or a rename failing meanwhile
+    /// would take the sentence away and leave a field marked wrong with nothing saying why —
+    /// WCAG 3.3.1. The field points at this region, so the two are read together.
+    /// </remarks>
+    private string? DesiredDataRefusalMessage =>
+        _desiredDataRefusal is { } refusal ? T.DesiredDataTooLong(refusal.MaxLength) : null;
 
     private IReadOnlyList<VariableList> Lists => State?.Lists ?? [];
 
@@ -530,18 +551,35 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// </summary>
     /// <remarks>
     /// Emptied first, so a draft against a row that has left the page cannot be sent back later
-    /// against a list it was never typed into. The row the API just refused is the exception: its
-    /// text outlives a reload from elsewhere, because the notice to shorten it is still on screen.
+    /// against a list it was never typed into. The refused row is the exception: its text outlives
+    /// every reload, including the one with no page behind it, because the notice to shorten it is
+    /// still on screen and nowhere else holds those 500-odd characters. The mark goes when the row
+    /// does — off the list, or off the page — since neither leaves a field to mark.
     /// </remarks>
     private void SeedDesiredData()
     {
-        var refused = _desiredDataRefusedRow;
-        var refusedText = refused is { } row && _desiredData.TryGetValue(row, out var typed) ? typed : null;
+        if (_desiredDataRefusal is { } stale && stale.ListId != _shownList)
+        {
+            _desiredDataRefusal = null;
+        }
+
+        var refused = _desiredDataRefusal;
+        var refusedText = refused is not null && _desiredData.TryGetValue(refused.VariableId, out var typed)
+            ? typed
+            : null;
 
         _desiredData.Clear();
 
         if (_page is null)
         {
+            // No page is no answer about the rows, so the refused draft is held rather than
+            // dropped: a list read that fails or is skipped must not empty the field under a
+            // reader who has just been told to shorten it.
+            if (refused is not null && refusedText is not null)
+            {
+                _desiredData[refused.VariableId] = refusedText;
+            }
+
             return;
         }
 
@@ -550,9 +588,20 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             _desiredData[item.VariableId] = item.DesiredDataFreeText ?? "";
         }
 
-        if (refused is { } refusedRow && refusedText is not null && _desiredData.ContainsKey(refusedRow))
+        if (refused is null)
         {
-            _desiredData[refusedRow] = refusedText;
+            return;
+        }
+
+        if (!_desiredData.ContainsKey(refused.VariableId))
+        {
+            _desiredDataRefusal = null;
+            return;
+        }
+
+        if (refusedText is not null)
+        {
+            _desiredData[refused.VariableId] = refusedText;
         }
     }
 
@@ -568,7 +617,19 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// wrong, but it is announced on some readers, so forty rows would say "valid" forty times.
     /// </remarks>
     private string? DesiredDataInvalid(VariableListItem item) =>
-        _desiredDataRefusedRow == item.VariableId ? "true" : null;
+        _desiredDataRefusal?.VariableId == item.VariableId ? "true" : null;
+
+    /// <summary>
+    /// The refusal sentence's id for the one refused field, and nothing at all for the rest.
+    /// </summary>
+    /// <remarks>
+    /// What ties <c>aria-invalid</c> to the reason for it: the sentence sits above forty rows, and
+    /// a field that only announces "invalid" leaves the reader to guess what is wrong with it
+    /// (WCAG 3.3.1). Absent elsewhere, or every field would point at a region describing another
+    /// row's text.
+    /// </remarks>
+    private string? DesiredDataDescribedBy(VariableListItem item) =>
+        _desiredDataRefusal?.VariableId == item.VariableId ? DesiredDataRefusalId : null;
 
     /// <summary>
     /// Writes one row's annotation, or clears it, and says so when the API will not have it.
@@ -586,33 +647,44 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             return;
         }
 
-        // Stored trimmed, because that is what the client sends and so what the API will hold:
-        // an untrimmed draft would show padding the server does not have until the next read.
-        _desiredData[variableId] = text?.Trim() ?? "";
+        // Trimmed once, then both shown and sent: the API trims before it measures, and a draft
+        // holding padding the request did not carry shows a value the server does not have.
+        var list = _shownList.Value;
+        var trimmed = text?.Trim() ?? "";
+
+        _desiredData[variableId] = trimmed;
         ForgetFailures();
+
+        if (_desiredDataRefusal?.VariableId == variableId)
+        {
+            // This row is being tried again, so the older refusal is about a text nobody is
+            // looking at. Another row's refusal stands: its text is still on screen, still unsaved.
+            _desiredDataRefusal = null;
+        }
+
+        var failure = DesiredDataFailure.None;
+        int? ceiling = null;
 
         try
         {
-            var result = await Client.SetMyListDesiredDataAsync(_shownList.Value, variableId, text);
+            var result = await Client.SetMyListDesiredDataAsync(list, variableId, trimmed);
 
             switch (result)
             {
                 case { Outcome: DesiredDataOutcome.Saved }:
-                    return;
+                    break;
 
                 case { Outcome: DesiredDataOutcome.Refused, MaxLength: { } maxLength }:
                     // The only path that marks the field itself: aria-invalid is a claim about the
                     // text, and a throttled or failed write never had its text looked at.
-                    _desiredDataMaxLength = maxLength;
-                    _desiredDataFailure = DesiredDataFailure.TooLong;
-                    _desiredDataRefusedRow = variableId;
+                    ceiling = maxLength;
                     break;
 
                 default:
                     // A refusal that named no ceiling, or a list the API says is not the reader's
                     // — both leave the annotation unwritten, and neither is something the reader
                     // can be told to shorten.
-                    _desiredDataFailure = DesiredDataFailure.Failed;
+                    failure = DesiredDataFailure.Failed;
                     break;
             }
         }
@@ -620,14 +692,30 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         {
             // Typing down a list saves one row after another, which is exactly the rhythm the
             // per-address limiter counts — so a throttled annotation is ordinary rather than rare.
-            _desiredDataFailure = DesiredDataFailure.Throttled;
+            failure = DesiredDataFailure.Throttled;
         }
         catch (Exception)
         {
             // Uncaught, this leaves the event handler and takes the circuit with it: a blank page
             // and a reconnect banner in place of the note the reader was writing.
-            _desiredDataFailure = DesiredDataFailure.Failed;
+            failure = DesiredDataFailure.Failed;
         }
+
+        if (_shownList != list)
+        {
+            // The write stands against the list it named, but the reader has moved on and both the
+            // mark and the sentence are keyed by row alone: applied here they would land on
+            // whatever now holds that variable, about a text nobody can see.
+            return;
+        }
+
+        if (ceiling is { } maxLengthToSay)
+        {
+            _desiredDataRefusal = new DesiredDataRefusal(list, variableId, maxLengthToSay);
+            return;
+        }
+
+        _desiredDataFailure = failure;
     }
 
     private async Task ShowActiveListAsync()
@@ -659,6 +747,11 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// Empties the alert region — the one place that does. Four conditions share it, so a handler
     /// clearing only its own leaves an older one answering for what the reader just did.
     /// </summary>
+    /// <remarks>
+    /// A refused annotation is not among them: it has its own region because it outlives the
+    /// action after it, and clearing it here would unmark a field whose text is still too long and
+    /// still unsaved.
+    /// </remarks>
     private void ForgetFailures()
     {
         _failed = false;
@@ -666,8 +759,6 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         _actionFailure = ListActionFailure.None;
         _downloadFailure = DownloadFailure.None;
         _desiredDataFailure = DesiredDataFailure.None;
-        _desiredDataMaxLength = null;
-        _desiredDataRefusedRow = null;
     }
 
     private async Task ChooseListAsync(ChangeEventArgs e)

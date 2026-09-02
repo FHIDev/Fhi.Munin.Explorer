@@ -14,3 +14,9 @@ category: Added
   characters server side, and the cap is not written down in this package: `DesiredDataResult`
   carries the ceiling the API named, so the sentence the reader sees quotes the API's own number
   and cannot drift from it. Their text stays in the field rather than being reverted under them.
+- **A refused note stays refused until it is rewritten.** The mark on the field and the sentence
+  naming the ceiling used to be dropped by the next thing the reader did — saving another row,
+  removing one, downloading the list — leaving 500-odd unsaved characters looking saved, or the
+  field marked wrong with nothing saying why. Both now stand until that row is written again or
+  leaves the list, in an alert region of their own that the field points at, and the text survives
+  a reload from anywhere.

@@ -135,6 +135,14 @@
             @(_failed ? T.ListLoadError : DownloadMessage ?? ActionMessage ?? CreateMessage ?? DesiredDataMessage)
         </div>
 
+        @* A refused annotation gets its own region, because it outlasts whatever the reader does
+           next: the field stays marked invalid until that row is written again, and sharing the
+           region above would let a download or a rename failure take the sentence away and leave
+           the mark unexplained (WCAG 3.3.1). The refused field points here by id. *@
+        <div role="alert" aria-live="assertive" aria-atomic="true" id="@DesiredDataRefusalId">
+            @DesiredDataRefusalMessage
+        </div>
+
         @if (Lists.Count == 0)
         {
             <p>@T.NoListsYet</p>
@@ -221,6 +229,7 @@
                                            value="@DesiredDataOf(item)"
                                            aria-labelledby="@DesiredDataLabelledBy(item)"
                                            aria-invalid="@DesiredDataInvalid(item)"
+                                           aria-describedby="@DesiredDataDescribedBy(item)"
                                            @onchange="e => SaveDesiredDataAsync(item.VariableId, e.Value?.ToString())" />
                                 </div>
 

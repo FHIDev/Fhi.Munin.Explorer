@@ -211,6 +211,7 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
             HttpMethod.Delete, MyListVariables(id), new VariableIdsBody(variableIds), cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<DesiredDataResult> SetMyListDesiredDataAsync(
         Guid id,
         Guid variableId,
@@ -252,42 +253,6 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
         response.EnsureSuccessStatusCode();
 
         return new DesiredDataResult(DesiredDataOutcome.Saved);
-    }
-
-    /// <summary>What the API called the annotation the reader typed, as it spells it.</summary>
-    /// <remarks>
-    /// <c>ExplorerDesiredDataTypes.FreeText</c> on the API's side. Any other value is refused with
-    /// a 400 whether or not text came with it, so this is not a string to guess at.
-    /// </remarks>
-    private const string FreeTextType = "freeText";
-
-    /// <summary>The shape the API refuses with — the sentence, and the numbers behind it.</summary>
-    /// <remarks>
-    /// Only the numbers are read. The sentence follows the request's <c>Accept-Language</c>, which
-    /// this call does not send, so a caller drawing it would show the API's default language to a
-    /// reader who may not be reading in it.
-    /// </remarks>
-    private sealed record DesiredDataRefusal(
-        [property: JsonPropertyName("maxLength")] int? MaxLength,
-        [property: JsonPropertyName("received")] int? Received);
-
-    /// <summary>Unpacks a refusal, answering null when the body is not one.</summary>
-    /// <remarks>
-    /// A 400 with an unreadable body is still a refusal — it is the ceiling that goes missing, not
-    /// the refusal — so this must not throw and take the whole write down with it.
-    /// </remarks>
-    private static async Task<DesiredDataRefusal?> ReadRefusalAsync(
-        HttpResponseMessage response,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            return await response.Content.ReadFromJsonAsync<DesiredDataRefusal>(Json, cancellationToken);
-        }
-        catch (Exception cause) when (cause is JsonException or NotSupportedException)
-        {
-            return null;
-        }
     }
 
     /// <summary>The create and rename body, spelled the way the API spells it.</summary>
@@ -343,6 +308,44 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
     private sealed record DesiredDataBody(
         [property: JsonPropertyName("type")] string? Type,
         [property: JsonPropertyName("freeText")] string? FreeText);
+
+    /// <summary>What the API called the annotation the reader typed, as it spells it.</summary>
+    /// <remarks>
+    /// <c>ExplorerDesiredDataTypes.FreeText</c> on the API's side. Any other value is refused with
+    /// a 400 whether or not text came with it, so this is not a string to guess at.
+    /// </remarks>
+    private const string FreeTextType = "freeText";
+
+    /// <summary>The shape the API refuses with — the sentence, and the numbers behind it.</summary>
+    /// <remarks>
+    /// Only the numbers are read. The sentence follows the request's <c>Accept-Language</c>, which
+    /// this call does not send, so a caller drawing it would show the API's default language to a
+    /// reader who may not be reading in it.
+    /// </remarks>
+    private sealed record DesiredDataRefusal(
+        [property: JsonPropertyName("maxLength")] int? MaxLength,
+        [property: JsonPropertyName("received")] int? Received);
+
+    /// <summary>Unpacks a refusal, answering null when the body is not one.</summary>
+    /// <remarks>
+    /// A 400 with an unreadable body is still a refusal — it is the ceiling that goes missing, not
+    /// the refusal — so this must not throw and take the whole write down with it. A body that
+    /// stops mid-read throws from the socket rather than from the parser, so the filter is what is
+    /// left after cancellation, which belongs to the caller and travels on.
+    /// </remarks>
+    private static async Task<DesiredDataRefusal?> ReadRefusalAsync(
+        HttpResponseMessage response,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await response.Content.ReadFromJsonAsync<DesiredDataRefusal>(Json, cancellationToken);
+        }
+        catch (Exception cause) when (cause is not OperationCanceledException)
+        {
+            return null;
+        }
+    }
 
     private const string MyLists = "api/explorer/my/lists";
 

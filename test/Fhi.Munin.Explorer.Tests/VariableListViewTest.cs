@@ -178,12 +178,24 @@ public class VariableListViewTest : BunitContext
             return Task.FromResult(_created);
         }
 
+        /// <summary>Set while the variables read should answer as it does for a list gone missing.</summary>
+        /// <remarks>
+        /// Settable both ways, because the case worth showing is the transient one: the read that
+        /// answers nothing and the next one that answers again.
+        /// </remarks>
+        public bool VariablesAreUnreadable { get; set; }
+
         public override Task<Page<VariableListItem>?> GetMyListVariablesAsync(
             Guid id, int page = 1, int pageSize = 100, CancellationToken cancellationToken = default)
         {
             VariablesCalls++;
             LastPageAsked = page;
             _askedFor.Add(id);
+
+            if (VariablesAreUnreadable)
+            {
+                return Task.FromResult<Page<VariableListItem>?>(null);
+            }
 
             // The API's own answer for a list the caller no longer has: not an error, and not an
             // empty list either. A view that reads it as "empty" draws a table for a list that is
@@ -315,6 +327,13 @@ public class VariableListViewTest : BunitContext
         /// <summary>Set when the write should fail the way a lost API would.</summary>
         public bool DesiredDataThrows { get; set; }
 
+        /// <summary>Held until a test releases it, so a write can be caught mid-flight.</summary>
+        /// <remarks>
+        /// The only way to show what a reader does while the PUT is out: every other call here
+        /// answers inline, and an answer that has already arrived cannot land on the wrong screen.
+        /// </remarks>
+        public TaskCompletionSource? DesiredDataGate { get; set; }
+
         /// <summary>
         /// The merged endpoint's own behaviour, not an agreeable stub: it trims before it measures,
         /// refuses over the ceiling with that ceiling and the measured length attached, clears both
@@ -323,11 +342,16 @@ public class VariableListViewTest : BunitContext
         /// because a fake that accepted whatever the component sent would agree with a component that
         /// was wrong. Nothing here can check that reading — <c>ContractDriftTest</c>'s live arm can.
         /// </summary>
-        public override Task<DesiredDataResult> SetMyListDesiredDataAsync(
+        public override async Task<DesiredDataResult> SetMyListDesiredDataAsync(
             Guid id, Guid variableId, string? freeText, CancellationToken cancellationToken = default)
         {
             DesiredDataCalls++;
             LastDesiredDataText = freeText;
+
+            if (DesiredDataGate is not null)
+            {
+                await DesiredDataGate.Task;
+            }
 
             if (DesiredDataThrottles)
             {
@@ -343,15 +367,14 @@ public class VariableListViewTest : BunitContext
 
             if (text is not null && text.Length > MaxDesiredDataLength)
             {
-                return Task.FromResult(
-                    new DesiredDataResult(DesiredDataOutcome.Refused, MaxDesiredDataLength, text.Length));
+                return new DesiredDataResult(DesiredDataOutcome.Refused, MaxDesiredDataLength, text.Length);
             }
 
             var index = _items.FindIndex(i => i.VariableId == variableId);
 
             if (index < 0)
             {
-                return Task.FromResult(new DesiredDataResult(DesiredDataOutcome.NotFound));
+                return new DesiredDataResult(DesiredDataOutcome.NotFound);
             }
 
             var cleared = string.IsNullOrEmpty(text);
@@ -362,7 +385,7 @@ public class VariableListViewTest : BunitContext
                 DesiredDataFreeText = cleared ? null : text
             };
 
-            return Task.FromResult(new DesiredDataResult(DesiredDataOutcome.Saved));
+            return new DesiredDataResult(DesiredDataOutcome.Saved);
         }
     }
 
@@ -964,11 +987,14 @@ public class VariableListViewTest : BunitContext
     [Fact]
     public void View_WhenNothingHasFailed_ThenTheAlertContainerIsAlreadyInTheDom()
     {
+        // Two of them: the shared one, and the refused annotation's own. Both have to be in the
+        // DOM empty for the same reason — a role="alert" inserted and filled in one update is
+        // announced unreliably.
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
 
-        var alert = cut.FindAll("[role=alert]");
-        Assert.Single(alert);
-        Assert.Equal("", alert[0].TextContent.Trim());
+        var alerts = cut.FindAll("[role=alert]");
+        Assert.Equal(2, alerts.Count);
+        Assert.All(alerts, alert => Assert.Equal("", alert.TextContent.Trim()));
     }
 
     [Fact]
@@ -1672,6 +1698,9 @@ public class VariableListViewTest : BunitContext
 
         await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change("  C76  "));
 
+        // The same string in both places: the field and the request body, so a caller-side length
+        // check or a client that stopped trimming cannot leave the two saying different things.
+        Assert.Equal("C76", client.LastDesiredDataText);
         Assert.Equal("C76", DesiredDataFields(cut)[0].GetAttribute("value"));
     }
 
@@ -1690,6 +1719,153 @@ public class VariableListViewTest : BunitContext
 
         var state = Services.GetRequiredService<VariableListState>();
         await cut.InvokeAsync(() => state.RemoveVariablesAsync(ListId, [other.VariableId]));
+
+        Assert.Equal(tooLong, DesiredDataFields(cut)[0].GetAttribute("value"));
+        Assert.Equal("true", DesiredDataFields(cut)[0].GetAttribute("aria-invalid"));
+    }
+
+    [Fact]
+    public async Task View_WhenAnotherRowIsRemovedAfterARefusal_ThenTheRefusedTextSurvivesTheReload()
+    {
+        // The reader-facing path the test above cannot reach: pressing "Fjern" runs through the
+        // component's own handler, which clears the shared alert before the removal reloads the
+        // page. A refusal cleared along with it took the reader's 612 characters with it.
+        var kept = Item("Alder ved diagnose", "V_BDR.ALDER");
+        var other = Item("Kjønn", "V_BDR.KJONN");
+        var cut = RenderView(new ListClient(kept, other));
+
+        var tooLong = new string('x', 612);
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change(tooLong));
+
+        await cut.InvokeAsync(() => cut.FindAll(".munin-explorer-dataitem-main button")[1].Click());
+
+        Assert.Equal(tooLong, DesiredDataFields(cut)[0].GetAttribute("value"));
+        Assert.Equal("true", DesiredDataFields(cut)[0].GetAttribute("aria-invalid"));
+        Assert.Contains("kan ikke overstige", cut.Markup);
+    }
+
+    [Fact]
+    public async Task View_WhenAnotherRowIsSavedAfterARefusal_ThenTheRefusedRowStaysMarked()
+    {
+        // Typing down a list is the ordinary rhythm, so a refusal on one row is normally followed
+        // by a save on the next. The refused row is still unsaved and still too long: unmarking it
+        // there leaves a field that presents as saved and is not, which is the whole failure the
+        // mark and the sentence were added for.
+        var client = new ListClient(
+            Item("Alder ved diagnose", "V_BDR.ALDER"), Item("Kjønn", "V_BDR.KJONN"));
+
+        var cut = RenderView(client);
+
+        var tooLong = new string('x', 612);
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change(tooLong));
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[1].Change("C76"));
+
+        Assert.Equal(tooLong, DesiredDataFields(cut)[0].GetAttribute("value"));
+        Assert.Equal("true", DesiredDataFields(cut)[0].GetAttribute("aria-invalid"));
+        Assert.Contains("kan ikke overstige", cut.Markup);
+
+        // And the row that was accepted is not marked by its neighbour's refusal.
+        Assert.Null(DesiredDataFields(cut)[1].GetAttribute("aria-invalid"));
+    }
+
+    [Fact]
+    public async Task View_WhenAFailureFollowsARefusal_ThenTheSentenceExplainingTheMarkIsStillThere()
+    {
+        // The mark outlives the action after it, so the sentence has to as well: a field reading
+        // "invalid" with the reason gone says something is wrong and not what (WCAG 3.3.1). The
+        // two shared the one alert region, where the download failure simply overwrote it.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ExportThrows = true };
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change(new string('x', 612)));
+        await cut.InvokeAsync(() => cut.FindAll("button")
+            .First(b => b.TextContent.Contains("Excel", StringComparison.Ordinal)).Click());
+
+        Assert.Contains("Kunne ikke laste ned", cut.Markup);
+        Assert.Contains("kan ikke overstige", cut.Markup);
+
+        var field = DesiredDataFields(cut)[0];
+        Assert.Equal("true", field.GetAttribute("aria-invalid"));
+
+        // Named by the field rather than merely present: the sentence is above forty rows, and
+        // aria-describedby is what carries it to the reader standing on the one refused field.
+        var describedBy = field.GetAttribute("aria-describedby");
+        Assert.False(string.IsNullOrEmpty(describedBy));
+        Assert.Contains("kan ikke overstige", cut.Find($"#{describedBy}").TextContent);
+    }
+
+    [Fact]
+    public async Task View_WhenTheListChangesWhileTheNoteIsInFlight_ThenTheAnswerDoesNotLandOnTheNewList()
+    {
+        // The write stands against the list it named, but the mark and the sentence are keyed by
+        // row alone — and the same variable sits in both lists here, so a refusal from the first
+        // would otherwise mark the identical row in the second, about a text nobody typed there.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListCount = 2 };
+        var gate = new TaskCompletionSource();
+        client.DesiredDataGate = gate;
+
+        var cut = RenderView(client);
+
+        var writing = cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change(new string('x', 612)));
+
+        // The write is out and unanswered — the refusal has not been drawn — so the switch below
+        // really is one made mid-flight rather than after the fact.
+        Assert.Equal(1, client.DesiredDataCalls);
+        Assert.DoesNotContain("kan ikke overstige", cut.Markup);
+
+        await cut.InvokeAsync(() => cut.Find("select").Change(ListClient.SecondListId.ToString()));
+
+        gate.SetResult();
+        await writing;
+
+        // The answer's continuation is queued on the renderer's dispatcher, so this empty turn
+        // runs behind it and the assertions below are looking at a settled screen.
+        await cut.InvokeAsync(() => { });
+
+        Assert.DoesNotContain("kan ikke overstige", cut.Markup);
+        Assert.Null(DesiredDataFields(cut)[0].GetAttribute("aria-invalid"));
+    }
+
+    [Fact]
+    public async Task View_WhenTheRowHasLeftTheListElsewhere_ThenTheWriteIsSaidToHaveFailed()
+    {
+        // The API's 404 for a row the list no longer holds, which reaches the component as an
+        // outcome rather than a throw. Removed behind the component's back, because that is what
+        // it is: the row left the list on another surface and this page has not heard yet.
+        var item = Item("Alder ved diagnose", "V_BDR.ALDER");
+        var client = new ListClient(item);
+        var cut = RenderView(client);
+
+        await client.RemoveVariablesFromMyListAsync(ListId, [item.VariableId]);
+
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change("C76"));
+
+        Assert.Contains("Kunne ikke lagre ønskede data", cut.Markup);
+
+        // Not marked invalid: the API never looked at the text, so nothing says it is wrong.
+        Assert.Null(DesiredDataFields(cut)[0].GetAttribute("aria-invalid"));
+    }
+
+    [Fact]
+    public async Task View_WhenTheListReadAnswersNothingAfterARefusal_ThenTheTextComesBackWithThePage()
+    {
+        // A read that answers nothing is not an answer about the rows — a refresh in flight
+        // elsewhere gives one. Emptying the draft there would throw the reader's 612 unsaved
+        // characters away over a page that comes straight back.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
+        var cut = RenderView(client);
+
+        var tooLong = new string('x', 612);
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change(tooLong));
+
+        var state = Services.GetRequiredService<VariableListState>();
+
+        client.VariablesAreUnreadable = true;
+        await cut.InvokeAsync(() => state.RefreshAsync());
+        Assert.Empty(DesiredDataFields(cut));
+
+        client.VariablesAreUnreadable = false;
+        await cut.InvokeAsync(() => state.RefreshAsync());
 
         Assert.Equal(tooLong, DesiredDataFields(cut)[0].GetAttribute("value"));
         Assert.Equal("true", DesiredDataFields(cut)[0].GetAttribute("aria-invalid"));
