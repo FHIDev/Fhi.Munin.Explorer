@@ -305,14 +305,43 @@ public class ShareableStateTest : BunitContext
         }
     }
 
-    private static void ClickSize(IRenderedComponent<VariableExplorer> cut, string size) =>
-        cut.FindAll(".munin-explorer-pagination-size button")
-            .First(b => b.TextContent.Trim() == size)
-            .Click();
+    /// <summary>The size control, which is one <c>&lt;select&gt;</c> and not three buttons.</summary>
+    private static AngleSharp.Dom.IElement SizeControl(IRenderedComponent<VariableExplorer> cut) =>
+        cut.Find(".munin-explorer-pagination-size select");
 
-    /// <summary>The pager's own caption, which the size group's label is not.</summary>
-    private static string Position(IRenderedComponent<VariableExplorer> cut) =>
-        cut.Find(".munin-explorer-pagination-content > .caption").TextContent.Trim();
+    private static void ChooseSize(IRenderedComponent<VariableExplorer> cut, string size) =>
+        SizeControl(cut).Change(size);
+
+    /// <summary>The sizes on offer, as the reader reads them.</summary>
+    private static IReadOnlyList<string> SizeOptions(IRenderedComponent<VariableExplorer> cut) =>
+        [.. cut.FindAll(".munin-explorer-pagination-size option").Select(o => o.TextContent.Trim())];
+
+    /// <summary>The size the control is describing, off the option carrying <c>selected</c>.</summary>
+    /// <remarks>
+    /// Read off the attribute rather than off AngleSharp's <c>SelectedIndex</c>, which falls back
+    /// to the first option when none carries it and would report "10" for a control that is
+    /// describing nothing.
+    /// </remarks>
+    private static string? Selected(IRenderedComponent<VariableExplorer> cut) =>
+        cut.FindAll(".munin-explorer-pagination-size option")
+            .SingleOrDefault(o => o.HasAttribute("selected"))
+            ?.TextContent.Trim();
+
+    /// <summary>Where the pager says the reader is, as <c>"1/2"</c>.</summary>
+    /// <remarks>
+    /// Off the numbered run rather than a caption, which is where the position moved under
+    /// Fhi.Metadata-ejcbi — the filled number is the page in force, and the run always ends on the
+    /// last page. The separator is this helper's own; nothing on screen says "1/2". <c>Single</c>
+    /// is the assertion: a pager with two filled numbers, or none, has stopped saying where the
+    /// reader is.
+    /// </remarks>
+    private static string Position(IRenderedComponent<VariableExplorer> cut)
+    {
+        var numbers = cut.FindAll("div.munin-explorer-pagination-pages > button");
+        var current = numbers.Single(number => number.GetAttribute("aria-current") == "page");
+
+        return $"{current.TextContent}/{numbers[^1].TextContent}";
+    }
 
     [Fact]
     public void PageSize_WhenTheReaderChoosesFifty_ThenFiftyRowsArriveUnderATwoPagePager()
@@ -321,11 +350,11 @@ public class ShareableStateTest : BunitContext
 
         var cut = Render(client);
 
-        ClickSize(cut, "50");
+        ChooseSize(cut, "50");
 
         Assert.Equal(50, client.LastPageSize);
         Assert.Equal(50, cut.FindAll(".munin-explorer-data-list__item").Count);
-        Assert.Equal("Side 1 av 2", Position(cut));
+        Assert.Equal("1/2", Position(cut));
     }
 
     [Fact]
@@ -338,7 +367,7 @@ public class ShareableStateTest : BunitContext
 
         // Not 20: that is the default, and choosing the size already in force is inert by design,
         // so a test pressing it would pass on a component that reported nothing at all.
-        ClickSize(cut, "50");
+        ChooseSize(cut, "50");
 
         Assert.Equal([50], reported);
     }
@@ -353,7 +382,7 @@ public class ShareableStateTest : BunitContext
 
         var fetches = client.Sizes.Count;
 
-        ClickSize(cut, "20");
+        ChooseSize(cut, "20");
 
         Assert.Equal(fetches, client.Sizes.Count);
         Assert.Empty(reported);
@@ -374,10 +403,10 @@ public class ShareableStateTest : BunitContext
 
         Assert.Equal(3, client.LastPage);
 
-        ClickSize(cut, "50");
+        ChooseSize(cut, "50");
 
         Assert.Equal(1, client.LastPage);
-        Assert.Equal("Side 1 av 6", Position(cut));
+        Assert.Equal("1/6", Position(cut));
 
         // And the host is told, or a mirrored URL would still say page=3 over the rows of page 1.
         Assert.Equal(1, reported[^1]);
@@ -401,16 +430,44 @@ public class ShareableStateTest : BunitContext
     public void PageSize_WhenTheControlOffersItsSizes_ThenNoneOfThemBypassesTheClamp()
     {
         // The clamp is one expression in one place and the control reads through it, so the only
-        // way past it is an offered size outside the range: a fourth button saying 250 would fetch
-        // 100 rows and read as pressed, which is the button lying about what it did.
+        // way past it is an offered size outside the range: a fourth option saying 250 would fetch
+        // 100 rows and stay selected, which is the control lying about what it did.
         var client = new SizedClient(total: 300);
 
         var cut = Render(client);
 
-        foreach (var button in cut.FindAll(".munin-explorer-pagination-size button"))
-        {
-            Assert.InRange(int.Parse(button.TextContent.Trim()), 1, 100);
-        }
+        // Not an empty run: the sizes moved from three buttons into one select under
+        // Fhi.Metadata-ejcbi, and a loop over a selector that now matches nothing passes without
+        // asserting anything.
+        Assert.NotEmpty(SizeOptions(cut));
+        Assert.All(SizeOptions(cut), size => Assert.InRange(int.Parse(size), 1, 100));
+    }
+
+    [Fact]
+    public async Task PageSize_WhenAValueTheControlNeverOfferedArrives_ThenItIsDroppedRatherThanFetched()
+    {
+        // Only reachable by editing the markup, which is why the handler does not trust what the
+        // select hands it: clamping instead would fetch 100 rows and leave the control describing a
+        // paging nobody chose. The event is raised directly rather than through ChooseSize, because
+        // AngleSharp resolves an unknown value against the options before the handler sees it and
+        // would deliver "10" — a size that IS offered, so the guard would never be reached and the
+        // test would be asserting the ordinary path under this name.
+        var client = new SizedClient(total: 300);
+        var reported = new List<int>();
+
+        var cut = Render(client, b => b.Add(c => c.PageSizeChanged, reported.Add));
+
+        await SizeControl(cut).TriggerEventAsync(
+            "onchange", new Microsoft.AspNetCore.Components.ChangeEventArgs { Value = "250" });
+
+        // Not a fetch count: the await lets a still-settling initial render land, and a count is
+        // then reporting timing rather than the guard. What 250 becomes if it is let through is the
+        // clamp's 100 — so 100 reaching the wire, or being reported, or appearing in the control,
+        // is the failure, and 250 never appears in any of them either way.
+        Assert.DoesNotContain(100, client.Sizes);
+        Assert.Empty(reported);
+        Assert.Equal("20", Selected(cut));
+        Assert.Equal(["10", "20", "50"], SizeOptions(cut));
     }
 
     [Fact]
@@ -424,7 +481,7 @@ public class ShareableStateTest : BunitContext
 
         var cut = Render(client, b => b.Add(c => c.PageSizeChanged, size => mirrored = size));
 
-        ClickSize(cut, "50");
+        ChooseSize(cut, "50");
 
         Assert.Equal(50, mirrored);
 
@@ -448,7 +505,7 @@ public class ShareableStateTest : BunitContext
         var cut = Render(client, b => b.Add(c => c.PageSizeChanged, reported.Add));
 
         client.FailNext = true;
-        ClickSize(cut, "50");
+        ChooseSize(cut, "50");
 
         Assert.Empty(reported);
 
@@ -474,7 +531,7 @@ public class ShareableStateTest : BunitContext
 
         var cut = Render(client, b => b.Add(c => c.Page, 2));
 
-        ClickSize(cut, "50");
+        ChooseSize(cut, "50");
 
         var box = cut.WaitForElement("div[role='alert'] p.infobox");
 
@@ -508,7 +565,7 @@ public class ShareableStateTest : BunitContext
 
         var cut = Render(client, b => b.Add(c => c.Page, 2));
 
-        ClickSize(cut, "50");
+        ChooseSize(cut, "50");
 
         var rowsFailure = cut.WaitForElement("div.munin-explorer-alert p.infobox").TextContent;
 
@@ -536,7 +593,7 @@ public class ShareableStateTest : BunitContext
 
         var cut = Render(client);
 
-        ClickSize(cut, "50");
+        ChooseSize(cut, "50");
 
         cut.WaitForElement("div[role='alert'][aria-live='assertive'] button").Click();
 
@@ -555,58 +612,55 @@ public class ShareableStateTest : BunitContext
     }
 
     [Fact]
-    public void PageSize_WhenAScreenReaderMeetsTheControl_ThenEachSizeSaysWhatItIsFor()
+    public void PageSize_WhenAScreenReaderMeetsTheControl_ThenItSaysWhatTheSizesAreFor()
     {
-        // "20" is what the button says and not what it means. The group is named by the words on
-        // screen, and each button repeats them, because a reader tabbing straight into the middle
-        // of the group never hears its name.
+        // "20" is what the control shows and not what it means. Three buttons each had to repeat
+        // the whole phrase, because a reader tabbing into the middle of a group never hears its
+        // name; one select is named once, by the words already on screen beside it.
         var client = new SizedClient(total: 300);
 
         var cut = Render(client);
 
-        var group = cut.Find(".munin-explorer-pagination-size");
-        var label = cut.Find($"#{group.GetAttribute("aria-labelledby")}");
+        Assert.Equal("Variabler per side", AccessibleName.Of(SizeControl(cut)));
+        Assert.Equal(["10", "20", "50"], SizeOptions(cut));
 
-        Assert.Equal("Variabler per side", label.TextContent.Trim());
-        Assert.Equal(
-            ["Vis 10 variabler per side", "Vis 20 variabler per side", "Vis 50 variabler per side"],
-            cut.FindAll(".munin-explorer-pagination-size button").Select(AccessibleName.Of));
+        // The label is a real <label for>, which is what carries that name — an adjacent span
+        // would put the same words on screen and name nothing.
+        var label = cut.Find(".munin-explorer-pagination-size label");
+
+        Assert.Equal(SizeControl(cut).Id, label.GetAttribute("for"));
     }
 
     [Fact]
-    public void PageSize_WhenAHostSetsNoSize_ThenTwentyIsFetchedAndReadsAsThePressedOne()
+    public void PageSize_WhenAHostSetsNoSize_ThenTwentyIsFetchedAndIsTheOneSelected()
     {
         // The default is one of the three offered, which is why it moved from 25 when the control
-        // arrived: three buttons with none of them pressed is truthful about a size nobody can
-        // choose and reads as broken. A host that wants the old 25 has to ask for it.
+        // arrived: a control describing a size nobody can choose reads as broken. A host that wants
+        // the old 25 has to ask for it.
         var client = new SizedClient(total: 300);
 
         var cut = Render(client);
 
         Assert.Equal(20, client.LastPageSize);
-        Assert.Equal(
-            ["false", "true", "false"],
-            cut.FindAll(".munin-explorer-pagination-size button").Select(b => b.GetAttribute("aria-pressed")));
+        Assert.Equal("20", Selected(cut));
     }
 
     [Fact]
-    public void PageSize_WhenTheSizeInForceIsNotOneOfTheThree_ThenNoneOfThemReadsAsPressed()
+    public void PageSize_WhenTheSizeInForceIsNotOneOfTheThree_ThenTheControlOffersItRatherThanLying()
     {
-        // A host is free to set 30, and then no button is the size the rows were built with.
-        // Pressing the nearest would say a size is on that is not.
+        // A host is free to set 30. Three buttons could say "none of us" by leaving every one
+        // unpressed; a select has no such state — with no option for 30 the browser falls back to
+        // showing the first, so the control would report 10 rows a page over rows built at 30.
         var client = new SizedClient(total: 300);
 
         var cut = Render(client, b => b.Add(c => c.PageSize, 30));
 
-        Assert.All(
-            cut.FindAll(".munin-explorer-pagination-size button"),
-            b => Assert.Equal("false", b.GetAttribute("aria-pressed")));
+        Assert.Equal(["10", "20", "30", "50"], SizeOptions(cut));
+        Assert.Equal("30", Selected(cut));
 
-        ClickSize(cut, "50");
+        ChooseSize(cut, "50");
 
-        Assert.Equal(
-            ["false", "false", "true"],
-            cut.FindAll(".munin-explorer-pagination-size button").Select(b => b.GetAttribute("aria-pressed")));
+        Assert.Equal("50", Selected(cut));
     }
 
     /// <summary>Answers on demand, so a fetch can be held in flight and looked at.</summary>
@@ -686,30 +740,35 @@ public class ShareableStateTest : BunitContext
         }
     }
 
-    private static IReadOnlyList<string?> SizeButtonState(IRenderedComponent<VariableExplorer> cut) =>
-        [.. cut.FindAll(".munin-explorer-pagination-size button").Select(b => b.GetAttribute("aria-disabled"))];
+    /// <summary>
+    /// The size control's availability. A single value, not a run: an <c>Assert.All</c> over a
+    /// selector that stopped matching anything is how this check would go green while saying
+    /// nothing, which is what it did the moment the three buttons became one select.
+    /// </summary>
+    private static string? SizeControlState(IRenderedComponent<VariableExplorer> cut) =>
+        SizeControl(cut).GetAttribute("aria-disabled");
 
     [Fact]
-    public void PageSize_WhileTheFetchIsStillRunning_ThenTheSizesReadAsInertRatherThanLive()
+    public void PageSize_WhileTheFetchIsStillRunning_ThenTheSizeControlReadsAsInertRatherThanLive()
     {
-        // SetPageSizeAsync drops a press that arrives mid-fetch, and until this it dropped it
-        // behind a control that still looked live — so a reader waiting on a slow answer presses
+        // SetPageSizeAsync drops a change that arrives mid-fetch, and until this it dropped it
+        // behind a control that still looked live — so a reader waiting on a slow answer chooses
         // again, nothing happens, and nothing says why.
         var client = new GatedClient(total: 300) { GateOn = 2 };
 
         var cut = Render(client);
 
-        Assert.All(SizeButtonState(cut), state => Assert.Null(state));
+        Assert.Null(SizeControlState(cut));
 
-        ClickSize(cut, "50");
+        ChooseSize(cut, "50");
 
-        // Waited for rather than read straight after the click: the press sets _loading and asks
-        // for a render, and whether that render has been applied by the next line is a matter of
-        // timing. It held locally and did not on a slower CI runner.
-        cut.WaitForAssertion(() => Assert.All(SizeButtonState(cut), state => Assert.Equal("true", state)));
+        // Waited for rather than read straight after the change: it sets _loading and asks for a
+        // render, and whether that render has been applied by the next line is a matter of timing.
+        // It held locally and did not on a slower CI runner.
+        cut.WaitForAssertion(() => Assert.Equal("true", SizeControlState(cut)));
 
         client.Release();
-        cut.WaitForAssertion(() => Assert.All(SizeButtonState(cut), Assert.Null));
+        cut.WaitForAssertion(() => Assert.Null(SizeControlState(cut)));
     }
 
     [Fact]
@@ -722,7 +781,7 @@ public class ShareableStateTest : BunitContext
 
         var cut = Render(client, b => b.Add(c => c.Page, 2));
 
-        ClickSize(cut, "50");
+        ChooseSize(cut, "50");
 
         // The button arrives with the failure it answers, so wait for it rather than for the click
         // to have finished rendering by the time the next line runs.

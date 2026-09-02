@@ -844,10 +844,10 @@ else
                         aria-disabled="@AriaDisabled(CanGoPrevious)"
                         @onclick="() => GoToPageAsync(_page - 1)">@T.Previous</button>
 
-                @* Not a live region of its own. Turning a page rewrites the status line above,
-                   which is already polite and atomic and already says which rows are on
-                   screen, so a second announcement here would say the same thing twice. *@
-                <span class="caption">@T.PageOf(_page, TotalPages)</span>
+                @* Numbered pages rather than "Side 1 av 907" between the two buttons, which is
+                   helsedata.no's own pager and the shape decided in Fhi.Metadata-ejcbi. A count
+                   the reader can only walk past one page at a time is a count and not a way in. *@
+                @PageNumbers.Write(this, _page, TotalPages, GoToPageAsync, T.GoToPageLabel, T.CurrentPageLabel)
 
                 <button class="hd-button-square button-square--secondary"
                         type="button"
@@ -855,27 +855,29 @@ else
                         aria-disabled="@AriaDisabled(CanGoNext)"
                         @onclick="() => GoToPageAsync(_page + 1)">@T.Next</button>
 
-                @* Buttons rather than a <select>: no name for one can be read back off Stiler, so
-                   the shape changes instead of the package shipping CSS. aria-pressed rather than
-                   a radiogroup, whose arrow-key navigation would need script we do not ship. *@
-                <div class="munin-explorer-pagination-size"
-                     role="group"
-                     aria-labelledby="@PageSizeLabelId">
-                    @* Named by the words on screen rather than by an aria-label, so the group has
-                       one name and sighted readers can see it too. *@
-                    <span class="caption" id="@PageSizeLabelId">@T.VariablesPerPage</span>
-                    @foreach (var size in PageSizeOptions)
-                    {
-                        @* Inert while a fetch is in flight, the same treatment the retry button
-                           gets: SetPageSizeAsync drops the press anyway, and a control that looks
-                           live and does nothing reads as broken rather than busy. *@
-                        <button class="@PageSizeClass(size)"
-                                type="button"
-                                aria-label="@T.VariablesPerPageLabel(size)"
-                                aria-pressed="@(ClampedPageSize == size ? "true" : "false")"
-                                aria-disabled="@AriaDisabled(!_loading)"
-                                @onclick="() => SetPageSizeAsync(size)">@size</button>
-                    }
+                <div class="munin-explorer-pagination-size">
+                    @* A <label for> rather than a group with a labelled span: one control needs one
+                       name, and a <label> is the name a native <select> already knows how to take. *@
+                    <label class="caption" for="@PageSizeSelectId">@T.VariablesPerPage</label>
+
+                    @* An unclassed <select>, which is the point. The sizes were three buttons while
+                       no select name could be read back off Stiler; an element degrades to its own
+                       browser default where an unknown class name degrades to nothing. *@
+                    @* aria-disabled and never the attribute, the same rule the two page buttons
+                       follow: disabling the control the reader has focus in drops that focus to
+                       <body>. SetPageSizeAsync is what makes a press during a fetch inert. *@
+                    <select id="@PageSizeSelectId"
+                            aria-disabled="@AriaDisabled(!_loading)"
+                            @onchange="OnPageSizeChangedAsync">
+                        @* `selected` on the option rather than `value` on the select: the second is
+                           a DOM property the interactive renderer sets, so a statically rendered
+                           first paint — which is how the legacy host mounts us — would show the
+                           first size whatever the host asked for. *@
+                        @foreach (var size in OfferedPageSizes)
+                        {
+                            <option value="@size" selected="@(ClampedPageSize == size)">@size</option>
+                        }
+                    </select>
                 </div>
             </div>
         </div>
