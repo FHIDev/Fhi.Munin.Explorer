@@ -1,6 +1,6 @@
 category: Fixed
 - The catalogue's authored markup now renders instead of printing as source. The kilde and
-  datasamling descriptions and the datasamling table's beskrivelse column turn markdown links
+  datasamling descriptions and the datasamling table's description column turn markdown links
   into real links and `<br>` tags and bare newlines into line breaks, and a property the
   catalogue types as a `Url` — Hjemmeside is the one readers meet — becomes a followable link
   instead of a `[label](url)` printed whole. The grammar is deliberately that small: the text is

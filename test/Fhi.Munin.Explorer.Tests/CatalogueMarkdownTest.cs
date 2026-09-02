@@ -117,6 +117,19 @@ public class CatalogueMarkdownTest : BunitContext
         Assert.Contains("[x](https://uit.no)", cut.Markup, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Render_WhenBrTagsCarryTheTextOverTheCap_ThenItStillRendersAsPlainLines()
+    {
+        // Rewriting <br> shortens the value, so a cap measured after it would let this through.
+        var text = "[x](https://uit.no)"
+            + string.Concat(Enumerable.Repeat("<br />", CatalogueMarkdown.MaxParsedLength / 3));
+
+        var cut = Rendered(text);
+
+        Assert.Empty(cut.FindAll("a"));
+        Assert.Contains("[x](https://uit.no)", cut.Markup, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("[UiT](https://uit.no/forskning)", "UiT", "https://uit.no/forskning")]
     [InlineData("[https://uit.no](https://uit.no)", "https://uit.no", "https://uit.no")]

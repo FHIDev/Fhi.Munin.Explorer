@@ -116,7 +116,9 @@ internal static partial class CatalogueMarkdown
         var source = BrTag().Replace(text.Replace("\r\n", "\n"), "\n");
         var seq = 0;
 
-        if (source.Length > MaxParsedLength)
+        // The cap answers for the stored value, so it is the stored length that is measured:
+        // normalising first would let 24 000 characters of <br> shrink under it and be parsed.
+        if (text.Length > MaxParsedLength)
         {
             PlainLines(builder, ref seq, source);
             return;

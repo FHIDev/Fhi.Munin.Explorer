@@ -1370,7 +1370,7 @@ public class KildeViewTest : BunitContext
     }
 
     [Fact]
-    public void DataCollections_WhenABeskrivelseIsAMarkdownLink_ThenTheCellRendersAnAnchor()
+    public void DataCollections_WhenADescriptionIsAMarkdownLink_ThenTheCellRendersAnAnchor()
     {
         // The datasamling rows are where the catalogue authors bare markdown links most often:
         // '[Tromsø1 - The First Tromsø Study](https://uit.no/...)' printed whole (FHIDev/Munin#5385).
