@@ -364,4 +364,40 @@ public interface IMuninExplorerClient
         throw new NotSupportedException(
             $"This {nameof(IMuninExplorerClient)} does not implement {nameof(ExportListAsync)}. " +
             "Consume MuninExplorerClient, or implement the member.");
+
+    /// <summary>
+    /// Redeem a code minted on the reader's other login, so both logins become one person and the
+    /// lists saved under either are visible from both.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Authenticated, and against the signed-in user the token names: the code says which other
+    /// login to join, never which account is doing the joining. The endpoint is symmetric — either
+    /// side may mint and either may redeem — so this is the redeeming half only, which is the half
+    /// this package needs. Minting belongs where the reader can read the code off the screen.
+    /// </para>
+    /// <para>
+    /// A refusal comes back as an <see cref="IdentityLinkOutcome"/> rather than an exception,
+    /// because every refusal the endpoint is designed to give is something to tell the reader in
+    /// their own language. A 429 still throws
+    /// <see cref="MuninExplorerRateLimitedException"/>, like every other write.
+    /// </para>
+    /// <para>
+    /// Carries a default body for the same reader <see cref="ExportListAsync"/> does: a host that
+    /// implements this contract itself would otherwise stop building on the upgrade, and a version
+    /// already on the feed cannot be taken back from whoever restored it.
+    /// </para>
+    /// </remarks>
+    /// <param name="code">
+    /// The code as the reader typed it. Case, hyphens and the characters people substitute for the
+    /// ones on screen are all the API's to normalise, so it is sent as given rather than cleaned up
+    /// here — two normalisers that disagree refuse codes the server would have taken.
+    /// </param>
+    /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
+    Task<IdentityLinkOutcome> RedeemIdentityLinkAsync(
+        string? code,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            $"This {nameof(IMuninExplorerClient)} does not implement {nameof(RedeemIdentityLinkAsync)}. " +
+            "Consume MuninExplorerClient, or implement the member.");
 }

@@ -615,4 +615,82 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
 
         return new ExportedList(bytes, contentType, fileName);
     }
+
+    /// <inheritdoc />
+    public async Task<IdentityLinkOutcome> RedeemIdentityLinkAsync(
+        string? code,
+        CancellationToken cancellationToken = default)
+    {
+        // Sent as given, including null and blank. The endpoint answers those with its own
+        // invalid_code contract on purpose, so a client-side guard here would only invent a second
+        // way to say the same thing — and one the reader could not tell apart from the server's.
+        using var response = await SendAsync(
+            HttpMethod.Post, LinkRedeem, new CodeBody(code), cancellationToken);
+
+        if (response.IsSuccessStatusCode)
+        {
+            return IdentityLinkOutcome.Linked;
+        }
+
+        // Only the two statuses the endpoint refuses with carry an error body worth reading. A 401,
+        // a 500 or anything else is not a refusal the reader can act on, so it falls through to
+        // EnsureSuccessStatusCode below and throws like every other unplanned failure.
+        if (response.StatusCode is not (HttpStatusCode.BadRequest or HttpStatusCode.Conflict))
+        {
+            response.EnsureSuccessStatusCode();
+        }
+
+        var error = await ReadLinkErrorAsync(response, cancellationToken).ConfigureAwait(false);
+
+        return error switch
+        {
+            "invalid_code" => IdentityLinkOutcome.InvalidCode,
+            "expired_code" => IdentityLinkOutcome.ExpiredCode,
+            "code_already_used" => IdentityLinkOutcome.CodeAlreadyUsed,
+            "cannot_link_to_self" => IdentityLinkOutcome.CannotLinkToSelf,
+            "both_identities_already_linked" => IdentityLinkOutcome.BothIdentitiesAlreadyLinked,
+
+            // A refusal we do not have a word for. Read as "check what you typed", which is the
+            // one instruction that is never actively wrong: it asks for a retry the limiter can
+            // absorb, where "make a new code" would send the reader back to Runa for nothing.
+            _ => IdentityLinkOutcome.InvalidCode
+        };
+    }
+
+    /// <summary>The error string off a refusal, or null when the body did not carry one.</summary>
+    /// <remarks>
+    /// Swallows a malformed body rather than throwing: the status already said the redemption was
+    /// refused, and a caller that threw here would turn a refusal the reader can act on into a
+    /// failure they cannot. The caller maps null to its own fallback.
+    /// </remarks>
+    private static async Task<string?> ReadLinkErrorAsync(
+        HttpResponseMessage response,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var body = await response.Content
+                .ReadFromJsonAsync<LinkErrorBody>(Json, cancellationToken)
+                .ConfigureAwait(false);
+
+            return body?.Error;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private const string LinkRedeem = "api/explorer/my/link/redeem";
+
+    /// <summary>The redeem body, spelled the way the API spells it.</summary>
+    /// <remarks>Private for the same reason <see cref="NameBody"/> is.</remarks>
+    private sealed record CodeBody([property: JsonPropertyName("code")] string? Code);
+
+    /// <summary>The refusal body both failing statuses carry.</summary>
+    /// <remarks>
+    /// The error string only. The endpoint documents no other field, and a caller that bound more
+    /// would be asserting a shape the API never promised.
+    /// </remarks>
+    private sealed record LinkErrorBody([property: JsonPropertyName("error")] string? Error);
 }
