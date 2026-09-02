@@ -2874,20 +2874,50 @@ public class VariableExplorerTest : BunitContext
         }
     }
 
-    private static IReadOnlyList<AngleSharp.Dom.IElement> FacetButtons(
+    /// <summary>
+    /// Every control in the panel a label can name: a facet value's own label, and the toolbar
+    /// buttons, which are the panel's only buttons now the values are checkboxes.
+    /// </summary>
+    private static IReadOnlyList<AngleSharp.Dom.IElement> FacetControls(
         IRenderedComponent<VariableExplorer> cut) =>
-        cut.FindAll(".munin-explorer-filters button");
+        cut.FindAll(".munin-explorer-filters button, .munin-explorer-filters li > label");
 
     /// <summary>
-    /// The button in the panel whose visible text starts with <paramref name="label"/> — a facet
-    /// value, or one of the three toolbar buttons, which this selector also reaches. No label
-    /// collides today, and <c>Single</c> is what says so if one ever starts to.
+    /// The control in the panel whose visible text starts with <paramref name="label"/> — a facet
+    /// value, or one of the toolbar buttons, which this selector also reaches. No label collides
+    /// today, and <c>Single</c> is what says so if one ever starts to.
     /// </summary>
     private static AngleSharp.Dom.IElement Facet(IRenderedComponent<VariableExplorer> cut, string label) =>
-        FacetButtons(cut).Single(b => b.TextContent.StartsWith(label, StringComparison.Ordinal));
+        FacetControls(cut).Single(b => b.TextContent.StartsWith(label, StringComparison.Ordinal));
 
-    private static void ClickFacet(IRenderedComponent<VariableExplorer> cut, string label) =>
-        Facet(cut, label).Click();
+    /// <summary>The checkbox a facet value is chosen with.</summary>
+    private static IElement FacetBox(IRenderedComponent<VariableExplorer> cut, string label) =>
+        Facet(cut, label).QuerySelector("input[type=checkbox]")!;
+
+    /// <summary>Whether a facet value is ticked — the fact <c>aria-pressed</c> used to carry.</summary>
+    private static bool FacetChosen(IRenderedComponent<VariableExplorer> cut, string label) =>
+        FacetBox(cut, label).HasAttribute("checked");
+
+    /// <summary>
+    /// Press a control: a toolbar button is clicked, a facet value is ticked or unticked.
+    /// </summary>
+    /// <remarks>
+    /// A checkbox answers a change event and not a click, so a <c>Click()</c> here would leave the
+    /// filter untouched and every test using it green over a control that does nothing.
+    /// </remarks>
+    private static void ClickFacet(IRenderedComponent<VariableExplorer> cut, string label)
+    {
+        var control = Facet(cut, label);
+
+        if (control.QuerySelector("input[type=checkbox]") is { } box)
+        {
+            box.Change(!box.HasAttribute("checked"));
+
+            return;
+        }
+
+        control.Click();
+    }
 
     // ---- datakategori and dataperiode (Fhi.Metadata-uidue) ----
 
@@ -2991,19 +3021,17 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Contains("0 variabler", cut.Markup, StringComparison.Ordinal);
 
-        // The control is still there and still marked.
-        var still = Facet(cut, chosen);
-
-        Assert.Equal("true", still.GetAttribute("aria-pressed"));
+        // The control is still there and still ticked.
+        Assert.True(FacetChosen(cut, chosen));
 
         // And the counts are gone rather than stale: they described a selection no longer on screen.
-        Assert.DoesNotContain("(", still.TextContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("(", Facet(cut, chosen).TextContent, StringComparison.Ordinal);
 
         // Undone, which is the whole point — present but inert would be the same dead end with
-        // more furniture. Pressing it takes the choice off the filter the host is given.
+        // more furniture. Unticking it takes the choice off the filter the host is given.
         ClickFacet(cut, chosen);
 
-        Assert.Equal("false", Facet(cut, chosen).GetAttribute("aria-pressed"));
+        Assert.False(FacetChosen(cut, chosen));
         Assert.True(reported!.ActiveCount < 2, $"the choice should be off the filter, got {reported}");
     }
 
@@ -3045,10 +3073,8 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Equal(1, client.UnfilteredAsks);
 
-        var chosen = Facet(cut, "Dødsårsaksregisteret");
-
-        Assert.Equal("true", chosen.GetAttribute("aria-pressed"));
-        Assert.DoesNotContain("(", chosen.TextContent, StringComparison.Ordinal);
+        Assert.True(FacetChosen(cut, "Dødsårsaksregisteret"));
+        Assert.DoesNotContain("(", Facet(cut, "Dødsårsaksregisteret").TextContent, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -3261,27 +3287,27 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
-    public void Filter_WhenTheFiltersCasingDiffersFromTheApis_ThenPressingStillInvertsTheFacet()
+    public void Filter_WhenTheFiltersCasingDiffersFromTheApis_ThenTickingStillInvertsTheFacet()
     {
         // How a facet marks itself chosen and how ToggleAsync removes have to be the SAME
         // comparison, and the case that shows it is a token whose casing differs from the API's —
         // which a shared link can carry, since VariableFilter.Parse takes the query string as
         // written. Marked case-insensitively over a case-sensitive removal, such a token draws as
-        // chosen, and pressing it appends the canonical spelling instead of removing anything: the
-        // button stays lit and the filter has grown.
+        // chosen, and ticking it appends the canonical spelling instead of removing anything: the
+        // box stays ticked and the filter has grown.
         //
         // The invariant asserted is the one that holds whichever comparison is chosen, as long as
-        // both ends agree: pressing a facet inverts what it says about itself.
+        // both ends agree: ticking a facet inverts what it says about itself.
         var cut = RenderWith(
             new FilteringClient(OnePage(Variable("1. Tale", "KODE")),
                                 FacetsWith(TwoCategories), vocabulary: CategoryWords()),
             b => b.Add(c => c.Filter, new VariableFilter { Categories = ["EHDS-CAT:BIOBANKS"] }));
 
-        var before = Facet(cut, "ehds-cat:biobanks").GetAttribute("aria-pressed");
+        var before = FacetChosen(cut, "ehds-cat:biobanks");
 
         ClickFacet(cut, "ehds-cat:biobanks");
 
-        Assert.NotEqual(before, Facet(cut, "ehds-cat:biobanks").GetAttribute("aria-pressed"));
+        Assert.NotEqual(before, FacetChosen(cut, "ehds-cat:biobanks"));
     }
 
     [Fact]
@@ -3297,12 +3323,12 @@ public class VariableExplorerTest : BunitContext
                 .Add(c => c.Filter, new VariableFilter { Categories = ["ehds-cat:biobanks"] })
                 .Add(c => c.FilterChanged, f => reported = f));
 
-        Assert.Equal("true", Facet(cut, "ehds-cat:biobanks").GetAttribute("aria-pressed"));
+        Assert.True(FacetChosen(cut, "ehds-cat:biobanks"));
 
         ClickFacet(cut, "ehds-cat:biobanks");
 
         Assert.Empty(reported!.Categories);
-        Assert.Equal("false", Facet(cut, "ehds-cat:biobanks").GetAttribute("aria-pressed"));
+        Assert.False(FacetChosen(cut, "ehds-cat:biobanks"));
     }
 
     [Fact]
@@ -3572,7 +3598,7 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Equal("2015-03-04", inputs[0].GetAttribute("value"));
         Assert.Equal("2020-12-31", inputs[1].GetAttribute("value"));
-        Assert.Equal("true", Facet(cut, "Befolkningsundersøkelser").GetAttribute("aria-pressed"));
+        Assert.True(FacetChosen(cut, "Befolkningsundersøkelser"));
     }
 
     [Fact]
@@ -3709,23 +3735,23 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
-    public void Filter_WhenAValueIsChosen_ThenItsButtonSaysItIsPressed()
+    public void Filter_WhenAValueIsChosen_ThenItsCheckboxIsTicked()
     {
-        // aria-pressed rather than aria-current, and spelled out as "false" on the rest: the
-        // attribute is what says these are two-state controls at all.
+        // The checkbox's own `checked` is the whole state, which is why aria-pressed went with the
+        // buttons: two mechanisms saying the same thing can disagree. (Fhi.Metadata-j0a2h)
         var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        Assert.Equal("false", Facet(cut, "Dødsårsaksregisteret").GetAttribute("aria-pressed"));
+        Assert.False(FacetChosen(cut, "Dødsårsaksregisteret"));
 
         ClickFacet(cut, "Dødsårsaksregisteret");
 
-        Assert.Equal("true", Facet(cut, "Dødsårsaksregisteret").GetAttribute("aria-pressed"));
+        Assert.True(FacetChosen(cut, "Dødsårsaksregisteret"));
     }
 
     [Fact]
     public void Filter_WhenASecondKildetypeIsChosen_ThenItReplacesTheFirstRatherThanJoiningIt()
     {
-        // The API takes one kildetype, not a list. Two pressed buttons would promise a filter it
+        // The API takes one kildetype, not a list. Two ticked boxes would promise a filter it
         // cannot express.
         var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
         var cut = RenderWith(client);
@@ -3734,14 +3760,14 @@ public class VariableExplorerTest : BunitContext
         ClickFacet(cut, "Biobank");
 
         Assert.Equal("biobank", client.SearchFilter?.KildeType);
-        Assert.Equal("false", Facet(cut, "Sentralt helseregister").GetAttribute("aria-pressed"));
+        Assert.False(FacetChosen(cut, "Sentralt helseregister"));
     }
 
     [Fact]
     public void Filter_WhenTheChosenKildetypeIsChosenAgain_ThenItIsCleared()
     {
-        // There is no "any kildetype" value to go back to, so pressing the chosen one has to be
-        // the way out — which is also what its own aria-pressed promises.
+        // There is no "any kildetype" value to go back to, so unticking the chosen one has to be
+        // the way out — which is also what its own checkbox promises.
         var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
         var cut = RenderWith(client);
 
@@ -3775,14 +3801,14 @@ public class VariableExplorerTest : BunitContext
     public void Filter_WhenTheFetchFails_ThenTheSelectionIsRolledBackToWhatTheRowsCameFrom()
     {
         // Same invariant the sort rollback protects: the rows on screen are still the old ones, so
-        // the buttons have to keep saying so rather than claiming a filter that never arrived.
+        // the boxes have to keep saying so rather than claiming a filter that never arrived.
         var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
         var cut = RenderWith(client);
 
         client.FailSearch = true;
         ClickFacet(cut, "Dødsårsaksregisteret");
 
-        Assert.Equal("false", Facet(cut, "Dødsårsaksregisteret").GetAttribute("aria-pressed"));
+        Assert.False(FacetChosen(cut, "Dødsårsaksregisteret"));
         Assert.Equal(1, client.FacetCalls); // not refreshed: the counts still describe what is shown
     }
 
@@ -3798,7 +3824,7 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Equal(filter, client.SearchFilter);
         Assert.Equal(filter, client.FacetFilter);
-        Assert.Equal("true", Facet(cut, "Dødsårsaksregisteret").GetAttribute("aria-pressed"));
+        Assert.True(FacetChosen(cut, "Dødsårsaksregisteret"));
     }
 
     [Fact]
@@ -4100,18 +4126,18 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
-    public void Filter_WhenHarKildekodeverkIsPressedTwice_ThenItStopsFilteringRatherThanAskingForNo()
+    public void Filter_WhenHarKildekodeverkIsTickedTwice_ThenItStopsFilteringRatherThanAskingForNo()
     {
         // Two states, not three, and the difference is invisible on screen: the obvious-looking
-        // negation cycles aria-pressed exactly the same way while sending harKildekodeverk=false,
-        // which inverts the result set to only the variables *without* a kildekodeverk.
+        // negation ticks and unticks the box exactly the same way while sending
+        // harKildekodeverk=false, which inverts the result set to the variables *without* one.
         var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
         var cut = RenderWith(client);
 
         ClickFacet(cut, "Har kildekodeverk");
 
         Assert.True(client.SearchFilter?.HasKildekodeverk);
-        Assert.Equal("true", Facet(cut, "Har kildekodeverk").GetAttribute("aria-pressed"));
+        Assert.True(FacetChosen(cut, "Har kildekodeverk"));
 
         ClickFacet(cut, "Har kildekodeverk");
 
@@ -4120,7 +4146,7 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
-    public void Filter_WhenHistoricalIsChosen_ThenItGoesOnTheWireRatherThanOnlyOnTheButton()
+    public void Filter_WhenHistoricalIsChosen_ThenItGoesOnTheWireRatherThanOnlyOnTheBox()
     {
         // The one filter whose parameter is left out at its default, so a flip in the wrong
         // direction produces a URL that looks unfiltered rather than one that looks wrong.
@@ -4131,7 +4157,7 @@ public class VariableExplorerTest : BunitContext
 
         Assert.True(client.SearchFilter?.IncludeHistorical);
         Assert.Contains("includeHistorical=true", client.SearchFilter!.ToQueryString(), StringComparison.Ordinal);
-        Assert.Equal("true", Facet(cut, "Vis historiske").GetAttribute("aria-pressed"));
+        Assert.True(FacetChosen(cut, "Vis historiske"));
     }
 
     [Fact]
@@ -4160,8 +4186,8 @@ public class VariableExplorerTest : BunitContext
         var orphan = Facet(cut, "Første besøk");
         Assert.Contains(orphan.ParentElement!, Facet(cut, "Tromsøundersøkelsen").ParentElement!.QuerySelectorAll("li"));
 
-        // And still a filter, not just a label: a root that cannot be pressed is the same loss.
-        orphan.Click();
+        // And still a filter, not just text: a root that cannot be ticked is the same loss.
+        ClickFacet(cut, "Første besøk");
         Assert.Equal([Tromso4Visit], client.SearchFilter?.DelkildeIds);
     }
 
@@ -4203,15 +4229,15 @@ public class VariableExplorerTest : BunitContext
 
         var cut = RenderWith(client);
 
-        Assert.Equal(1, Buttons(cut, "GruppeA"));
-        Assert.Equal(1, Buttons(cut, "GruppeB"));
+        Assert.Equal(1, Drawn(cut, "GruppeA"));
+        Assert.Equal(1, Drawn(cut, "GruppeB"));
 
         // And a filter rather than a label: the nested one is the one a duplicate would double.
         ClickFacet(cut, "GruppeB");
         Assert.Equal([Levekaar], client.SearchFilter?.VariabelgruppeIds);
 
-        static int Buttons(IRenderedComponent<VariableExplorer> cut, string label) =>
-            FacetButtons(cut).Count(b => b.TextContent.StartsWith(label, StringComparison.Ordinal));
+        static int Drawn(IRenderedComponent<VariableExplorer> cut, string label) =>
+            FacetControls(cut).Count(b => b.TextContent.StartsWith(label, StringComparison.Ordinal));
     }
 
     [Fact]
@@ -4237,19 +4263,71 @@ public class VariableExplorerTest : BunitContext
     [Fact]
     public void Render_Always_ThenTheFilterPanelIsBuiltFromShapesRatherThanFromNewClassNames()
     {
-        // Stiler has no accordion, no tree and no checkbox this package can verify, so the panel is
-        // <details> for the disclosure, a bare <ul> for the hierarchy and Stiler's own square button
-        // in its two states for the values. A class name for any of those would be one the host
-        // stylesheet has never heard of.
+        // Every shape here is one a host stylesheet already dresses, so none of them needs a class
+        // name invented for it — and a name the host has never heard of renders as nothing.
+        // (Fhi.Metadata-j0a2h)
         var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
 
         var panel = cut.Find(".munin-explorer-filters");
 
         Assert.NotEmpty(panel.QuerySelectorAll("details > summary"));
-        Assert.NotEmpty(panel.QuerySelectorAll("ul li button"));
+        Assert.NotEmpty(panel.QuerySelectorAll("ul li > label > input[type=checkbox]"));
         Assert.All(panel.QuerySelectorAll("details"), d => Assert.False(d.HasAttribute("class")));
         Assert.All(panel.QuerySelectorAll("ul"), u => Assert.False(u.HasAttribute("class")));
-        Assert.All(FacetButtons(cut), b => Assert.Contains("hd-button-square", b.ClassName!));
+        Assert.All(panel.QuerySelectorAll("li > label"), l => Assert.False(l.HasAttribute("class")));
+        Assert.All(panel.QuerySelectorAll("li > label > input"), i => Assert.False(i.HasAttribute("class")));
+
+        // The toolbar is still buttons, and still Stiler's own square one.
+        Assert.All(panel.QuerySelectorAll("button"), b => Assert.Contains("hd-button-square", b.ClassName!));
+    }
+
+    [Fact]
+    public void Render_Always_ThenNoFacetValueCarriesAriaPressed()
+    {
+        // A checkbox holds its state in `checked`, so an aria-pressed beside it would be a second
+        // mechanism that can disagree with the first. (Fhi.Metadata-j0a2h)
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        var panel = cut.Find(".munin-explorer-filters");
+
+        Assert.Empty(panel.QuerySelectorAll("li [aria-pressed]"));
+        Assert.NotEmpty(panel.QuerySelectorAll("li > label > input[type=checkbox][checked]"));
+    }
+
+    [Fact]
+    public void Render_Always_ThenAFacetValuesAccessibleNameHoldsItsCountAndItsLabelNamesTheBox()
+    {
+        // The label wraps the input, so the count is inside the accessible name rather than beside
+        // it — "Dødsårsaksregisteret (30)" is announced whole. A count in a sibling element would be
+        // read as a stray number or skipped, and an unwrapped input would have no name at all.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        var label = Facet(cut, "Dødsårsaksregisteret");
+
+        Assert.Equal("label", label.LocalName);
+        Assert.Equal("Dødsårsaksregisteret (30)", label.TextContent);
+        Assert.NotNull(label.QuerySelector("input[type=checkbox]"));
+    }
+
+    [Fact]
+    public void Filter_WhenTheFacetsRefreshUnderIt_ThenTheTickedValueIsStillTicked()
+    {
+        // The counts move on every refresh, so the values reorder and the ticked one is redrawn
+        // somewhere else in the list. The tick lives on the filter rather than in the DOM, and the
+        // keys are what stop the renderer patching it onto whichever value took its place.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        ClickFacet(cut, "Dødsårsaksregisteret");
+        Assert.True(FacetChosen(cut, "Dødsårsaksregisteret"));
+
+        // A second facet refresh, from a change that leaves the first choice alone.
+        ClickFacet(cut, "Vis historiske");
+
+        Assert.True(FacetChosen(cut, "Dødsårsaksregisteret"));
+        Assert.Equal([Dodsarsak], client.SearchFilter?.KildeIds);
     }
 
     // ---------------------------------------------------------------------------------
