@@ -223,7 +223,7 @@ public class CataloguePropertiesTest
         """;
 
     [Fact]
-    public void Rows_WhenAValueIsAMultilingualEnvelope_ThenTheReaderSeesTheirOwnLanguageRatherThanTheJson()
+    public void Rows_WhenAValueIsAMultilingualEnvelope_ThenEveryLanguageIsDrawnAsProseTheReadersFirst()
     {
         // The shape the API really sends: the object is serialised into the string field, so a view
         // that draws the bag verbatim draws braces, key names and escapes at the reader.
@@ -314,6 +314,36 @@ public class CataloguePropertiesTest
         // Both lists, each whole and each tagged, rather than the reader's alone.
         Assert.Equal(
             [("Research", "en"), ("Kvalitetsforbedring; Forskning", "no")],
+            row.Values.Select(v => (v.Text, v.Language)));
+    }
+
+    [Fact]
+    public void Rows_WhenATaggedListSpellsNorwegianBothWays_ThenTheEntriesJoinRatherThanOneWinning()
+    {
+        // A tagged list's buckets are list items, not translations of one another, so two spellings
+        // of Norwegian have to be concatenated. Gathered by raw tag they arrived at the resolver as
+        // two slots of one language, and everything after the first was silently dropped —
+        // curated values no toggle could reach, in the bead that exists to stop exactly that
+        // (PR 149 review).
+        List<PropertyMetadataEntry> metadata =
+        [
+            Entry("FormaalFlerspraklig", 131, "EHDS / HealthDCAT-AP", type: "LangTaggedList"),
+        ];
+
+        Dictionary<string, string?> values = new()
+        {
+            ["FormaalFlerspraklig"] =
+                """
+                [{"value":"Forskning","language":"no"},
+                 {"value":"Kvalitetsforbedring","language":"nb"},
+                 {"value":"Research","language":"en"}]
+                """,
+        };
+
+        var row = Assert.Single(CatalogueProperties.Rows(metadata, values, "no"));
+
+        Assert.Equal(
+            [("Forskning; Kvalitetsforbedring", "no"), ("Research", "en")],
             row.Values.Select(v => (v.Text, v.Language)));
     }
 

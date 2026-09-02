@@ -396,12 +396,17 @@ internal static class CatalogueProperties
 
         foreach (var element in document.RootElement.EnumerateArray())
         {
-            var (text, language) = Entry(element);
+            var (text, tag) = Entry(element);
 
             if (text is not { } present || string.IsNullOrWhiteSpace(present))
             {
                 continue;
             }
+
+            // By slot rather than by tag: a list holding both a "no" entry and an "nb" one is one
+            // language's list in two spellings, and gathering them apart would drop all but the
+            // first once AllLocalised resolved the two buckets to the same slot.
+            var language = SlotLanguage(tag);
 
             if (!byLanguage.TryGetValue(language, out var texts))
             {
@@ -620,12 +625,7 @@ internal static class CatalogueProperties
                      .OrderBy(t => Rank(t.Key))
                      .ThenBy(t => t.Key, StringComparer.OrdinalIgnoreCase))
         {
-            var language = Rank(tag) switch
-            {
-                0 or 1 => ReaderLanguage.Norwegian,
-                2 => ReaderLanguage.English,
-                _ => tag,
-            };
+            var language = SlotLanguage(tag);
 
             if (!slots.Any(s => string.Equals(s.Language, language, StringComparison.OrdinalIgnoreCase)))
             {
@@ -643,6 +643,21 @@ internal static class CatalogueProperties
 
         return slots;
     }
+
+    /// <summary>
+    /// The slot a bag's tag belongs to: the language its text is shown and marked as.
+    /// </summary>
+    /// <remarks>
+    /// Two spellings of Norwegian are one slot, so a caller that gathers by tag has to gather by
+    /// this instead — <see cref="Tagged"/> holds list items rather than translations, and two
+    /// buckets it kept apart would arrive here as one language with only the first surviving.
+    /// </remarks>
+    private static string SlotLanguage(string tag) => Rank(tag) switch
+    {
+        0 or 1 => ReaderLanguage.Norwegian,
+        2 => ReaderLanguage.English,
+        _ => tag,
+    };
 
     /// <summary>Where a bag's tag sorts, and which tags are one slot.</summary>
     /// <remarks>

@@ -9,3 +9,8 @@ category: Fixed
   element altogether, so the text inherited the host's and a Norwegian page announced German as
   Norwegian to a screen reader (WCAG 3.1.2). The same fix covers an English-only value on a
   Norwegian page, which is reachable in today's catalogue rather than hypothetical.
+- A language-tagged list that spells Norwegian both ways now shows all of its entries. The
+  entries were gathered under the tag each one carried, so a list mixing `no` and `nb` — which
+  includes any list mixing tagged entries with untagged ones, since an untagged entry is read as
+  `no` — became two Norwegian slots, and everything after the first was dropped with nothing on
+  the page able to reach it.
