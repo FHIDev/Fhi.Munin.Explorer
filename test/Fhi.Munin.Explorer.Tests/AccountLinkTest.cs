@@ -37,6 +37,7 @@ public class AccountLinkTest : BunitContext
         private readonly Page<VariableSummary> _page = OnePage();
 
         public int RedeemCalls { get; private set; }
+        public int SearchCalls { get; private set; }
         public string? LastCode { get; private set; }
 
         /// <summary>What the API answers a redemption with, when it answers at all.</summary>
@@ -59,8 +60,11 @@ public class AccountLinkTest : BunitContext
             int pageSize = 25,
             SortField sort = SortField.Default,
             SortDirection direction = SortDirection.Ascending,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult(_page);
+            CancellationToken cancellationToken = default)
+        {
+            SearchCalls++;
+            return Task.FromResult(_page);
+        }
 
         public override Task<IdentityLinkOutcome> RedeemIdentityLinkAsync(
             string? code,
@@ -387,6 +391,121 @@ public class AccountLinkTest : BunitContext
 
         client.Finish();
         cut.WaitForAssertion(() => Assert.Contains("Kontoene er koblet", Alert(cut)));
+    }
+
+    /// <summary>
+    /// The component only ever <em>receives</em> a link. It runs inside a CMS page that is not
+    /// ours, so an entry that unfolded itself — on mount, or because the reader searched — would
+    /// be our panel opening over somebody else's page (Fhi.Metadata-bl448).
+    /// </summary>
+    [Fact]
+    public void Panel_WhenTheReaderHasNotAskedForIt_ThenItStaysFoldedAndNothingIsRedeemed()
+    {
+        var client = new LinkClient();
+        var cut = RenderSignedIn(client);
+
+        // Every other test here reaches straight into the panel, which bUnit finds whether or not
+        // the <details> around it is open — so an entry that unfolded itself would pass them all.
+        Assert.False(Panel(cut).Closest("details")!.HasAttribute("open"));
+
+        // Scoped to the search box on purpose: the code field wears searchbox__freetext too.
+        cut.Find(".munin-explorer-search .searchbox__freetext").Change("alder");
+        cut.Find("form").Submit();
+
+        // Typing alone changes nothing; the search that results have arrived from is the moment
+        // an entry that unfolded itself would do so.
+        Assert.Equal(2, client.SearchCalls); // initial load + this one
+        Assert.False(Panel(cut).Closest("details")!.HasAttribute("open"));
+        Assert.Equal(0, client.RedeemCalls);
+    }
+
+    /// <summary>
+    /// The false→true crossing, where the entry first appears — the place a later change would
+    /// most naturally open it to draw attention to it. The sibling above already covers a crossing
+    /// hooked where the panel is drawn; what only this one reaches is a crossing hooked somewhere a
+    /// first signed-in render never goes, such as an <c>OnAfterRenderAsync</c> guarded by
+    /// <c>!firstRender</c> (Fhi.Metadata-bl448).
+    /// </summary>
+    [Fact]
+    public void Panel_WhenTheReaderSignsInWhileTheExplorerIsOnScreen_ThenTheEntryAppearsFolded()
+    {
+        var client = new LinkClient();
+        var cut = RenderSignedIn(client, signedIn: false);
+
+        cut.Render(p => p.Add(c => c.IsAuthenticated, true));
+
+        Assert.False(Panel(cut).Closest("details")!.HasAttribute("open"));
+        Assert.Equal(0, client.RedeemCalls);
+    }
+
+    /// <summary>
+    /// A circuit outlives a sign-out, and the panel's stage and code field are plain component
+    /// fields. Carried across, the reader who signs in next is told somebody else's link succeeded
+    /// — in an assertive alert, with no code field left to redeem their own (Fhi.Metadata-bl448).
+    /// </summary>
+    [Fact]
+    public void Panel_WhenTheReaderSignsOutAfterLinkingAndBackIn_ThenItStartsOverForTheNextReader()
+    {
+        var client = new LinkClient();
+        var cut = RenderSignedIn(client);
+
+        EnterCode(cut, "ABC123");
+        PressConfirm(cut);
+        Assert.Contains("Kontoene er koblet", Alert(cut));
+
+        cut.Render(p => p.Add(c => c.IsAuthenticated, false));
+        cut.Render(p => p.Add(c => c.IsAuthenticated, true));
+
+        Assert.Equal("", Alert(cut));
+        Assert.Equal("", cut.Find(".munin-explorer-account-link input").GetAttribute("value"));
+    }
+
+    /// <summary>
+    /// The same crossing with a code typed but never spent. RedeemAsync clears a spent code so it
+    /// is not left in the DOM for the rest of the circuit; an unspent one belongs to the reader who
+    /// typed it just as much (Fhi.Metadata-bl448).
+    /// </summary>
+    [Fact]
+    public void Panel_WhenTheReaderSignsOutWithACodeTypedAndBackIn_ThenTheFieldIsEmpty()
+    {
+        var client = new LinkClient();
+        var cut = RenderSignedIn(client);
+
+        cut.Find(".munin-explorer-account-link input").Change("ABC123");
+
+        cut.Render(p => p.Add(c => c.IsAuthenticated, false));
+        cut.Render(p => p.Add(c => c.IsAuthenticated, true));
+
+        Assert.Equal("", cut.Find(".munin-explorer-account-link input").GetAttribute("value"));
+        Assert.Equal(0, client.RedeemCalls);
+    }
+
+    /// <summary>
+    /// The redemption that is still in flight when the reader leaves. Its answer is theirs, so
+    /// writing it into the panel would announce it to whoever signs in next — the same reason
+    /// <see cref="VariableListState"/> bumps a generation on the crossing (Fhi.Metadata-bl448).
+    /// </summary>
+    [Fact]
+    public async Task Panel_WhenTheReaderLeavesMidRedemption_ThenTheNextReaderNeverSeesTheAnswer()
+    {
+        var client = new StallingLinkClient();
+        var cut = RenderStalling(client);
+
+        EnterCode(cut, "ABC123");
+        PressConfirm(cut);
+
+        // Back before the answer arrives, so it lands on a panel that is already the next
+        // reader's. Resetting on the crossing is not enough on its own for this order.
+        cut.Render(p => p.Add(c => c.IsAuthenticated, false));
+        cut.Render(p => p.Add(c => c.IsAuthenticated, true));
+        client.Finish();
+
+        // Queued behind the redemption's own continuation on the renderer's dispatcher, so the
+        // assertions run after the answer has arrived rather than racing it.
+        await cut.InvokeAsync(() => { });
+
+        Assert.Equal("", Alert(cut));
+        Assert.Equal("", cut.Find(".munin-explorer-account-link input").GetAttribute("value"));
     }
 
     /// <summary>

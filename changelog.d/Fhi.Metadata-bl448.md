@@ -5,8 +5,10 @@ category: Added
   minted on the other login, shows what linking will do, and redeems it against
   `POST /api/explorer/my/link/redeem` with the bearer token the component already holds. Signing
   in starts nothing and navigating starts nothing — the component only ever *receives* a link,
-  because it runs inside a CMS page that is not ours. Drawn only when `IsAuthenticated` is true.
-  (Fhi.Metadata-bl448)
+  because it runs inside a CMS page that is not ours. Drawn only when `IsAuthenticated` is true,
+  and reset whenever that crosses: the panel's stage and the code in its field belong to the reader
+  who put them there, so a sign-out drops both and an answer that arrives afterwards is discarded
+  rather than announced to whoever signs in next. (Fhi.Metadata-bl448)
 - **`IMuninExplorerClient.RedeemIdentityLinkAsync` and `IdentityLinkOutcome`.** Each refusal the
   API distinguishes — an unknown code, an expired one, a spent one, one presented by the login
   that minted it, and two logins already linked — comes back as its own `IdentityLinkOutcome`
