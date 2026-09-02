@@ -562,7 +562,7 @@ public class VariableListViewTest : BunitContext
         // No rowgroups: the header row and the data rows are siblings here, unlike the explorer's
         // list, and a table may own rows directly.
         Assert.Equal("row", table.QuerySelector(".munin-explorer-dataitem-header")!.GetAttribute("role"));
-        Assert.Equal(7, cut.FindAll("[role='columnheader']").Count);
+        Assert.Equal(8, cut.FindAll("[role='columnheader']").Count);
 
         var row = cut.Find(".munin-explorer-data-list__item");
 
@@ -570,11 +570,12 @@ public class VariableListViewTest : BunitContext
         Assert.Equal("rowheader",
                      row.QuerySelector(".munin-explorer-dataitem-main__name")!.GetAttribute("role"));
 
-        // Six value columns and the cell holding the remove button, which is there because a row
-        // owns nothing but cells and a <button> cannot be one without ceasing to be a button.
+        // Six value columns, the "Ønskede data" cell holding the annotation field, and the cell
+        // holding the remove button — the last two are cells because a row owns nothing but cells,
+        // and neither an <input> nor a <button> can be one without ceasing to be what it is.
         var cells = row.QuerySelectorAll("[role='cell']");
 
-        Assert.Equal(7, cells.Length);
+        Assert.Equal(8, cells.Length);
         Assert.Equal("BUTTON", cells[^1].Children[0].TagName);
 
         // The boxes that only lay the columns out step out of the tree, or they sit between the
