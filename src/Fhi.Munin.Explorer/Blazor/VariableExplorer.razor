@@ -254,7 +254,9 @@ else
             @* The toolbar. Utvid alle and Skjul alle do the one thing a native disclosure cannot do
                for itself; Nivålinjer is a toggle and says so with aria-pressed. None of the three
                narrows anything, which is why none is a checkbox — the facet values are. *@
-            @* Own container, spaced by `gap` so nothing trails the last. (Fhi.Metadata-l9l2n.37) *@
+            @* Own container: in inline flow the last button's trailing margin was the whole overflow,
+               and `gap` leaves nothing trailing. The buttons shrink and wrap their own labels rather
+               than the row breaking, so it survives a wider label. (Fhi.Metadata-l9l2n.37) *@
             <div class="munin-explorer-filters__toolbar">
                 <button class="hd-button-square button-square--ghost"
                         type="button"
