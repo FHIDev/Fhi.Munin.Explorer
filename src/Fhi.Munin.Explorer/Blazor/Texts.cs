@@ -198,6 +198,10 @@ internal sealed record Texts(
     // Prose for the identification level, which the API reports as a raw token the same way
     // kildetype is. A token missing from this falls back to what the API sent.
     IReadOnlyDictionary<string, string> PersonIdentificationNames,
+
+    // Names for the languages a multilingual field is shown in. Only the two the page itself has:
+    // the catalogue's bags are open, and a tag with no name here is shown as the tag.
+    IReadOnlyDictionary<string, string> LanguageNames,
     // The filter panel. FieldSource and FieldVariableGroup name two of the facets as well as two
     // of the card fields — deliberately the same word for the same thing in both places.
     string FiltersTitle,
@@ -491,6 +495,14 @@ internal sealed record Texts(
         return string.IsNullOrWhiteSpace(value) ? NotSpecified : value;
     }
 
+    /// <summary>A language tag as a name to read, or the tag where there is no name for it.</summary>
+    /// <remarks>
+    /// The tag rather than a culture's own name: a host built with <c>InvariantGlobalization</c>
+    /// answers every culture lookup with a throw, which is why CatalogueProperties avoids them too.
+    /// </remarks>
+    public string LanguageName(string tag) =>
+        LanguageNames.TryGetValue(tag, out var name) ? name : tag;
+
     /// <summary>
     /// Prose for a kodeverk link's type, falling back to the token the API sent.
     /// </summary>
@@ -669,6 +681,11 @@ internal sealed record Texts(
             ["pseudonymous"] = "Pseudonymisert",
             ["deIdentified"] = "Avidentifisert",
             ["anonymous"] = "Anonym"
+        },
+        LanguageNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["no"] = "Norsk",
+            ["en"] = "Engelsk"
         },
         FiltersTitle: "Filtre",
         ClearFilters: "Fjern alle filtre",
@@ -939,6 +956,11 @@ internal sealed record Texts(
             ["pseudonymous"] = "Pseudonymised",
             ["deIdentified"] = "De-identified",
             ["anonymous"] = "Anonymous"
+        },
+        LanguageNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["no"] = "Norwegian",
+            ["en"] = "English"
         },
         FiltersTitle: "Filters",
         ClearFilters: "Clear all filters",

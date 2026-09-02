@@ -867,6 +867,22 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   margin: 2px 0 0;
 }
 
+/* ---- the language marker ----
+
+   Drawn only where a field holds more than one language. It is a <p>, so the line break is the
+   browser's and not ours to lose; what this rule adds is the quieter voice of a label, which is
+   look rather than information. */
+.munin-explorer-meta__language {
+  font: normal 600 0.6875rem/150% var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--grey60);
+}
+
+.munin-explorer-meta dl > dd + dd {
+  margin-top: 10px;
+}
+
 /* ---- the column header ----
 
    The header and the rows have to share one grid template, or the columns line up with nothing.

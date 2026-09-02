@@ -1281,4 +1281,54 @@ public class KildeViewTest : BunitContext
         // And nothing is invented in their place — no heading promising a group that has no rows.
         Assert.Empty(cut.FindAll(".munin-explorer-group"));
     }
+
+    [Fact]
+    public void Metadata_WhenAFieldHoldsTwoLanguages_ThenBothAreDrawnAndEachSaysWhichItIs()
+    {
+        // Rendered rather than resolved, because the resolution is only half the bead: a reader
+        // who cannot see which language they are looking at has gained a second paragraph and
+        // nothing else (Fhi.Metadata-l9d5r).
+        var kilde = Kilde() with
+        {
+            PropertyMetadata =
+            [
+                new PropertyMetadataEntry
+                {
+                    Key = "TittelFlerspraklig",
+                    SortOrder = 540,
+                    GroupTranslations = new Dictionary<string, string> { ["no"] = "EHDS / HealthDCAT-AP" },
+                    DisplayNameTranslations = new Dictionary<string, string> { ["no"] = "Tittel" },
+                    Type = "MultilingualText",
+                },
+            ],
+            AdditionalProperties = new Dictionary<string, string?>
+            {
+                ["TittelFlerspraklig"] = """{"nb":"Als registeret","en":"The ALS registry"}""",
+            },
+        };
+
+        var markers = Render(kilde).FindAll("p.munin-explorer-meta__language");
+
+        Assert.Equal(["Norsk", "Engelsk"], markers.Select(m => m.TextContent.Trim()));
+
+        var cells = markers.Select(m => m.ParentElement!).ToList();
+
+        // One term with two descriptions, which is what a dl says with two dd under one dt — and
+        // not two rows, which would read as two different fields.
+        Assert.All(cells, c => Assert.Equal("DD", c.TagName));
+        Assert.Single(cells.Select(c => c.ParentElement).Distinct());
+
+        var values = cells.Select(c => c.QuerySelector("span")!).ToList();
+
+        Assert.Equal(["Als registeret", "The ALS registry"], values.Select(v => v.TextContent.Trim()));
+
+        // The Norwegian carries no lang at all: it is the reader's, so Foreign drops it and it
+        // inherits the host's. Marking it would be the defect this bead came from, inverted.
+        Assert.Null(values[0].GetAttribute("lang"));
+        Assert.Equal("en", values[1].GetAttribute("lang"));
+
+        // And the name of the language is outside the marked span, so a screen reader does not
+        // announce the Norwegian word "Engelsk" in an English voice.
+        Assert.Null(markers[1].GetAttribute("lang"));
+    }
 }

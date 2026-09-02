@@ -1270,13 +1270,9 @@ public partial class VariableExplorer : ComponentBase
             builder.AddContent(seq + 4, row.Label);
             builder.CloseElement();
 
-            builder.OpenElement(seq + 5, "dd");
-            builder.AddAttribute(seq + 6, "lang", Foreign(row.ValueLanguage));
-            builder.AddContent(seq + 7, row.Value);
-            builder.CloseElement();
+            seq = DetailBlocks.Values(builder, seq + 5, row, Reader, T);
 
             builder.CloseElement();
-            seq += 10;
         }
 
         builder.CloseElement();

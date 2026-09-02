@@ -344,6 +344,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-meta__grid` | handle |
   | `munin-explorer-meta__grid-1` | handle |
   | `munin-explorer-meta__grid-2` | handle |
+  | `munin-explorer-meta__language` | handle |
   | `munin-explorer-meta__tab` | handle |
   | `munin-explorer-meta__tab--active` | handle |
   | `munin-explorer-meta__tab-content` | handle |
