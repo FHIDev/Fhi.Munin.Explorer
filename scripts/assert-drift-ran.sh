@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Fails if the contract-drift tests did not actually run.
+# Fails if a nightly live category did not actually run.
 #
 # The drift tests skip themselves unless MUNIN_EXPLORER_LIVE is set, which is what keeps them out
 # of every ordinary `dotnet test`. That gate is also the way this whole check can quietly stop
@@ -12,23 +12,26 @@
 # all of them executed.
 #
 # Usage:
-#   scripts/assert-drift-ran.sh <trx-file> [minimum-tests]
+#   scripts/assert-drift-ran.sh <trx-file> [minimum-tests] [category]
 #
-# The minimum is how many drift tests are expected — one per endpoint. Passing it means deleting
-# a test is a decision somebody makes here, rather than a number that quietly goes down.
+# The minimum is how many tests are expected — one per endpoint. Passing it means deleting a test
+# is a decision somebody makes here, rather than a number that quietly goes down. The category is
+# named in the diagnostics only, so the same guard serves ContractDrift and FixtureFreshness and
+# points at the right trait when it fires.
 
 set -uo pipefail
 
 TRX="${1:-}"
 MINIMUM="${2:-1}"
+CATEGORY="${3:-ContractDrift}"
 
 if [ -z "$TRX" ]; then
-  echo "Usage: scripts/assert-drift-ran.sh <trx-file> [minimum-tests]" >&2
+  echo "Usage: scripts/assert-drift-ran.sh <trx-file> [minimum-tests] [category]" >&2
   exit 2
 fi
 
 if [ ! -s "$TRX" ]; then
-  echo "::error::No test results at '$TRX'. The drift tests did not run, so nothing was checked against the live API." >&2
+  echo "::error::No test results at '$TRX'. The $CATEGORY tests did not run, so nothing was checked against the live API." >&2
   exit 1
 fi
 
@@ -57,20 +60,20 @@ executed=$(count_of executed)
 # and the diagnostic below a line that says "0 skipped" about eight skipped tests.
 not_executed=$((total - executed))
 
-echo "Drift tests: $total found, $executed executed, $not_executed skipped."
+echo "$CATEGORY tests: $total found, $executed executed, $not_executed skipped."
 
 failures=0
 
 if [ "$executed" -lt "$MINIMUM" ]; then
-  echo "::error::Expected at least $MINIMUM contract-drift tests to run; $executed did." >&2
+  echo "::error::Expected at least $MINIMUM $CATEGORY tests to run; $executed did." >&2
   echo "  * MUNIN_EXPLORER_LIVE must be set for the job, or every test skips itself." >&2
-  echo "  * --filter must still match the [Trait(\"Category\", \"ContractDrift\")] on ContractDriftTest." >&2
+  echo "  * --filter must still match the [Trait(\"Category\", \"$CATEGORY\")] the test class carries." >&2
   echo "  * If a test was removed on purpose, lower the minimum passed to this script." >&2
   failures=1
 fi
 
 if [ "$not_executed" -ne 0 ]; then
-  echo "::error::$not_executed of $total contract-drift tests were skipped. A skipped test checked nothing." >&2
+  echo "::error::$not_executed of $total $CATEGORY tests were skipped. A skipped test checked nothing." >&2
   echo "  * A [LiveApiFact] skips itself when MUNIN_EXPLORER_LIVE is unset — check it reached this job." >&2
   echo "  * A test skipped for any other reason is a Skip= somebody left on a [Fact]." >&2
   failures=1

@@ -319,11 +319,19 @@ internal sealed class StubHttpHandler(Func<HttpRequestMessage, HttpResponseMessa
 /// </remarks>
 internal static class TestData
 {
+    /// <summary>The prefix an embedded fixture carries: the assembly name plus the folder they live in.</summary>
+    /// <remarks><c>Testdata/</c> is a directory name and therefore not renamed with the code.</remarks>
+    private const string Prefix = "Fhi.Munin.Explorer.Tests.Testdata.";
+
+    /// <summary>Every fixture in the directory, so a check can hold a list against what is really there.</summary>
+    public static IEnumerable<string> Names() =>
+        typeof(TestData).Assembly.GetManifestResourceNames()
+            .Where(name => name.StartsWith(Prefix, StringComparison.Ordinal))
+            .Select(name => name[Prefix.Length..]);
+
     public static string Read(string fileName)
     {
-        // The prefix is the assembly name plus the folder the fixtures live in — `Testdata/`,
-        // which is a directory name and therefore not renamed with the code.
-        var resource = $"Fhi.Munin.Explorer.Tests.Testdata.{fileName}";
+        var resource = $"{Prefix}{fileName}";
 
         using var stream = typeof(TestData).Assembly.GetManifestResourceStream(resource)
             ?? throw new InvalidOperationException($"Embedded test data '{resource}' not found.");

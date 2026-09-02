@@ -1,5 +1,3 @@
-using Fhi.Munin.Explorer.Contracts;
-
 namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
@@ -102,7 +100,7 @@ public class ContractDriftTest
         // The kilde with the most delkilder, because the nested half of KildeDetail only exists in
         // the payload of a kilde that has some — and most do not. Picking the first kilde in the
         // list would leave that half unchecked on almost every run.
-        var id = await MostNestedKildeIdAsync(api);
+        var id = await LiveCatalogue.MostNestedKildeIdAsync(api);
 
         var kilde = await api.RoundTripAsync(client => client.GetKildeAsync(id));
 
@@ -114,7 +112,7 @@ public class ContractDriftTest
     {
         using var api = LiveApiConnection.Open();
 
-        var id = await MostNestedKildeIdAsync(api);
+        var id = await LiveCatalogue.MostNestedKildeIdAsync(api);
 
         var hierarchy = await api.RoundTripAsync(client => client.GetKildeHierarchyAsync(id));
 
@@ -126,12 +124,12 @@ public class ContractDriftTest
     {
         using var api = LiveApiConnection.Open();
 
-        var kildeId = await MostNestedKildeIdAsync(api);
+        var kildeId = await LiveCatalogue.MostNestedKildeIdAsync(api);
         var hierarchy = await api.Client.GetKildeHierarchyAsync(kildeId);
 
         Assert.NotNull(hierarchy);
 
-        var datasamlingId = DatasamlingIds(hierarchy).FirstOrDefault();
+        var datasamlingId = LiveCatalogue.DatasamlingIds(hierarchy).FirstOrDefault();
 
         Assert.True(
             datasamlingId != Guid.Empty,
@@ -148,7 +146,7 @@ public class ContractDriftTest
     {
         using var api = LiveApiConnection.Open();
 
-        var id = await AnyVariableIdAsync(api);
+        var id = await LiveCatalogue.AnyVariableIdAsync(api);
 
         var variable = await api.RoundTripAsync(client => client.GetVariableAsync(id));
 
@@ -160,7 +158,7 @@ public class ContractDriftTest
     {
         using var api = LiveApiConnection.Open();
 
-        var id = await AnyVariableIdAsync(api);
+        var id = await LiveCatalogue.AnyVariableIdAsync(api);
 
         var timeline = await api.RoundTripAsync(client => client.GetVariableTimelineAsync(id));
 
@@ -168,34 +166,4 @@ public class ContractDriftTest
         // means the endpoint answered about something else.
         Assert.NotEmpty(timeline);
     }
-
-    private static async Task<Guid> MostNestedKildeIdAsync(LiveApiConnection api)
-    {
-        var kilder = await api.Client.GetKilderAsync();
-
-        Assert.NotEmpty(kilder);
-
-        return kilder.OrderByDescending(kilde => kilde.DelkildeCount)
-                     .ThenByDescending(kilde => kilde.DatasamlingCount)
-                     .First()
-                     .Id;
-    }
-
-    private static async Task<Guid> AnyVariableIdAsync(LiveApiConnection api)
-    {
-        var page = await api.Client.SearchVariablesAsync(null, pageSize: 1);
-
-        Assert.NotEmpty(page.Items);
-
-        return page.Items[0].Id;
-    }
-
-    /// <summary>Every datasamling in the tree, direct ones first, then down through the delkilder.</summary>
-    private static IEnumerable<Guid> DatasamlingIds(KildeHierarchy hierarchy) =>
-        hierarchy.DirectDatasamlinger.Select(datasamling => datasamling.Id)
-            .Concat(hierarchy.Delkilder.SelectMany(delkilde => DatasamlingIds(delkilde)));
-
-    private static IEnumerable<Guid> DatasamlingIds(HierarchyDelkilde delkilde) =>
-        delkilde.Datasamlinger.Select(datasamling => datasamling.Id)
-            .Concat(delkilde.Children.SelectMany(child => DatasamlingIds(child)));
 }

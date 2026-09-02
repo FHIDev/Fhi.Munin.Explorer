@@ -179,6 +179,32 @@ internal sealed class LiveApiConnection : IDisposable
     /// </remarks>
     public async Task<T> RoundTripAsync<T>(Func<IMuninExplorerClient, Task<T>> call)
     {
+        var (value, response) = await SendAsync(call);
+
+        var drift = ShapeDrift.Against(response.Body, value);
+
+        if (drift.Count > 0)
+        {
+            Assert.Fail(Explain(response.Uri, drift));
+        }
+
+        return value;
+    }
+
+    /// <summary>Makes one call and hands back the body exactly as it arrived.</summary>
+    /// <remarks>
+    /// What <see cref="FixtureDriftTest"/> compares a capture against. The contracts are deliberately
+    /// kept out of the way: a fixture is a copy of what the API sent, not of what the DTOs make of it.
+    /// </remarks>
+    public async Task<string> BodyOfAsync<T>(Func<IMuninExplorerClient, Task<T>> call)
+    {
+        var (_, response) = await SendAsync(call);
+
+        return response.Body;
+    }
+
+    private async Task<(T Value, RecordedResponse Response)> SendAsync<T>(Func<IMuninExplorerClient, Task<T>> call)
+    {
         ArgumentNullException.ThrowIfNull(call);
 
         log.Clear();
@@ -216,14 +242,7 @@ internal sealed class LiveApiConnection : IDisposable
             Assert.Fail($"{response.Uri} answered {(int)response.Status} {response.Status}, so there is no response to check.");
         }
 
-        var drift = ShapeDrift.Against(response.Body, value);
-
-        if (drift.Count > 0)
-        {
-            Assert.Fail(Explain(response.Uri, drift));
-        }
-
-        return value;
+        return (value, response);
     }
 
     public void Dispose() => provider.Dispose();
