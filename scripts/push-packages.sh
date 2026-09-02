@@ -139,7 +139,11 @@ while :; do
 
   # Already there. The pre-flight said it was not, so this is almost certainly our own earlier
   # attempt landing without us seeing the answer. The version is in the state we wanted.
-  if printf '%s' "$output" | grep -qiE '409|already exists'; then
+  #
+  # A here-string for the reason spelled out over the same construct in
+  # check-changelog-fragment.sh: a printf killed by SIGPIPE reports 141 under `pipefail`, which
+  # here would read a 409 as some other failure and retry a push that had landed (Fhi.Metadata-v198s).
+  if grep -qiE '409|already exists' <<< "$output"; then
     echo "$PACKAGE $VERSION was already on the feed — a previous attempt landed."
     exit 0
   fi

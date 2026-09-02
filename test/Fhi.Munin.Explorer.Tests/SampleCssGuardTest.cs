@@ -310,7 +310,7 @@ internal static class Guard
                 start.Environment["HOST_CLASS_NAMES"] = fixture;
             }
 
-            return Run(start);
+            return Run(start, "assert-sample-css-in-step.sh");
         }
         finally
         {
@@ -343,7 +343,7 @@ internal static class Guard
                 start.Environment[key] = value;
             }
 
-            return Run(start);
+            return Run(start, script);
         }
         finally
         {
@@ -351,8 +351,41 @@ internal static class Guard
         }
     }
 
-    /// <summary>The process plumbing every guard run shares.</summary>
-    private static GuardRun Run(ProcessStartInfo start)
+    /// <summary>
+    /// One run of a guard script from <paramref name="workingDirectory"/>, with positional
+    /// arguments. <c>check-changelog-fragment.sh</c> judges the tree it is standing in and takes
+    /// its two refs as arguments, so no environment seam can drive it.
+    /// </summary>
+    /// <remarks>
+    /// The directory belongs to the caller here, unlike <see cref="RunScript"/>: the caller has to
+    /// build a git repository in it before there is anything to run against, so it is the caller
+    /// that knows when it may go.
+    /// </remarks>
+    internal static GuardRun RunIn(string script, string workingDirectory, params string[] arguments)
+    {
+        var start = new ProcessStartInfo(Bash!)
+        {
+            WorkingDirectory = workingDirectory,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+
+        start.ArgumentList.Add(Repo.In("scripts", script));
+
+        foreach (var argument in arguments)
+        {
+            start.ArgumentList.Add(argument);
+        }
+
+        return Run(start, script);
+    }
+
+    /// <summary>
+    /// The process plumbing every guard run shares. <paramref name="label"/> names the thing being
+    /// run, for the stall message: it used to be read off the first argument, which only worked
+    /// while every caller passed a script there.
+    /// </summary>
+    internal static GuardRun Run(ProcessStartInfo start, string label)
     {
         using var process = Process.Start(start)
             ?? throw new InvalidOperationException($"'{Bash}' did not start.");
@@ -369,7 +402,7 @@ internal static class Guard
         {
             var partial = KillStalled(process, stdout, stderr);
 
-            Assert.Fail($"'{ScriptOf(start)}' did not finish within {Budget.TotalSeconds:0}s "
+            Assert.Fail($"'{label}' did not finish within {Budget.TotalSeconds:0}s "
                         + $"and was killed. A guard that stalls has to fail as one.{Environment.NewLine}"
                         + $"Output before the kill:{Environment.NewLine}{partial}");
         }
@@ -400,13 +433,6 @@ internal static class Guard
         return (stdout.IsCompletedSuccessfully ? stdout.Result : string.Empty)
              + (stderr.IsCompletedSuccessfully ? stderr.Result : string.Empty);
     }
-
-    /// <summary>
-    /// The script a run was started with. Both callers pass it as the first argument to bash, and
-    /// the message is worth nothing if it cannot say which guard stalled.
-    /// </summary>
-    private static string ScriptOf(ProcessStartInfo start) =>
-        start.ArgumentList.Count > 0 ? Path.GetFileName(start.ArgumentList[0]) : Bash ?? "bash";
 
     /// <summary>
     /// The names the script listed under <paramref name="heading"/> — one per indented line, as
