@@ -90,13 +90,14 @@ public partial class VariableExplorer
                 break;
         }
 
-        // Always in the DOM and empty until there is something to say. A role="alert" inserted and
-        // filled in one update is announced unreliably; one already there and gaining text is not.
-        builder.OpenElement(9, "p");
-        builder.AddAttribute(10, "role", "alert");
-        builder.AddAttribute(11, "aria-live", "assertive");
-        builder.AddAttribute(12, "aria-atomic", "true");
-        builder.AddContent(13, LinkMessage);
+        // Always here and empty until there is something to say: a role="alert" inserted and filled
+        // in one update is announced unreliably. Numbered above both builders above rather than
+        // continuing from 8 — a descending run lets the diff re-add it, which is the same failure.
+        builder.OpenElement(70, "p");
+        builder.AddAttribute(71, "role", "alert");
+        builder.AddAttribute(72, "aria-live", "assertive");
+        builder.AddAttribute(73, "aria-atomic", "true");
+        builder.AddContent(74, LinkMessage);
         builder.CloseElement();
 
         builder.CloseElement();

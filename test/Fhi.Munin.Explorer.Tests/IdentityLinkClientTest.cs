@@ -133,6 +133,23 @@ public class IdentityLinkClientTest
     }
 
     /// <summary>
+    /// The other half of an unreadable refusal, and a different exception: a gateway answering the
+    /// 400 as <c>text/html</c> makes <c>ReadFromJsonAsync</c> throw <see cref="NotSupportedException"/>
+    /// on the content type before it parses a byte. The status still said this was a refusal.
+    /// </summary>
+    [Fact]
+    public async Task Redeem_WhenTheRefusalArrivesAsHtml_ThenItStillReadsAsARefusal()
+    {
+        var handler = new StubHttpHandler(_ => new HttpResponseMessage(HttpStatusCode.BadRequest)
+        {
+            Content = new StringContent(
+                "<html><body>Bad Request</body></html>", System.Text.Encoding.UTF8, "text/html")
+        });
+
+        Assert.Equal(IdentityLinkOutcome.InvalidCode, await Client(handler).RedeemIdentityLinkAsync("ABC123"));
+    }
+
+    /// <summary>
     /// A 429 is not a refusal about the code. Reading it as one would tell the reader their code
     /// was wrong when it was their request that was declined, and send them to mint another.
     /// </summary>
