@@ -4263,10 +4263,9 @@ public class VariableExplorerTest : BunitContext
     [Fact]
     public void Render_Always_ThenTheFilterPanelIsBuiltFromShapesRatherThanFromNewClassNames()
     {
-        // Stiler has no accordion and no tree, so the panel is <details> for the disclosure and a
-        // bare <ul> for the hierarchy. The values are the element pair every stylesheet already
-        // dresses — a checkbox inside its own label, which is Kelda's shape and carries no class of
-        // its own either. A class name for any of those would be one the host has never heard of.
+        // Every shape here is one a host stylesheet already dresses, so none of them needs a class
+        // name invented for it — and a name the host has never heard of renders as nothing.
+        // (Fhi.Metadata-j0a2h)
         var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
 
         var panel = cut.Find(".munin-explorer-filters");

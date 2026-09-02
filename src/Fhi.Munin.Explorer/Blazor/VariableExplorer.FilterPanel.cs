@@ -645,21 +645,11 @@ public partial class VariableExplorer
     private static string GroupLabel(FacetGroup group) =>
         group.SelectedCount == 0 ? group.Label : $"{group.Label} ({group.SelectedCount})";
 
-    /// <summary>
-    /// A facet's values as a nested list of checkboxes.
-    /// </summary>
+    /// <summary>A facet's values as a nested list of checkboxes.</summary>
     /// <remarks>
-    /// <para>
-    /// A bare <c>&lt;input type="checkbox"&gt;</c> inside its own <c>&lt;label&gt;</c>, which is
-    /// what Kelda's facets already draw: one explorer, one way to choose a value. The pair is an
-    /// element combination every stylesheet dresses, so there is no class to invent for it, and the
-    /// bare <c>&lt;ul&gt;</c>'s indentation still carries the hierarchy. (Fhi.Metadata-j0a2h)
-    /// </para>
-    /// <para>
-    /// Every value is keyed. Counts move as the reader filters, so the values reorder between
-    /// renders, and without keys the renderer would patch the checkbox under the reader's finger
-    /// into a different filter — leaving focus on a control that is no longer the one they ticked.
-    /// </para>
+    /// Kelda's shape, and no class of its own: a checkbox in its own label is a pair every
+    /// stylesheet dresses. Keyed because the counts reorder the values between renders, and an
+    /// unkeyed patch would move the box under the reader's finger onto another filter. (Fhi.Metadata-j0a2h)
     /// </remarks>
     private RenderFragment FacetList(IReadOnlyList<FacetValue> values) => builder =>
     {
