@@ -368,6 +368,7 @@ public interface IMuninExplorerClient
         throw new NotSupportedException(
             $"This {nameof(IMuninExplorerClient)} does not implement {nameof(SetMyListDesiredDataAsync)}. " +
             "Consume MuninExplorerClient, or implement the member.");
+
     /// <summary>
     /// The reader's chosen variables as a file — xlsx, csv, or a zip when codebooks come too.
     /// </summary>

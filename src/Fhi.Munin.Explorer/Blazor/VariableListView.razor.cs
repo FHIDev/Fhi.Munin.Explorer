@@ -529,11 +529,15 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// Fills the annotation fields from what the API just answered with.
     /// </summary>
     /// <remarks>
-    /// Emptied first, so a draft against a row that has left the page — removed, or paged past —
-    /// cannot be sent back later against a list it was never typed into.
+    /// Emptied first, so a draft against a row that has left the page cannot be sent back later
+    /// against a list it was never typed into. The row the API just refused is the exception: its
+    /// text outlives a reload from elsewhere, because the notice to shorten it is still on screen.
     /// </remarks>
     private void SeedDesiredData()
     {
+        var refused = _desiredDataRefusedRow;
+        var refusedText = refused is { } row && _desiredData.TryGetValue(row, out var typed) ? typed : null;
+
         _desiredData.Clear();
 
         if (_page is null)
@@ -544,6 +548,11 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         foreach (var item in _page.Items)
         {
             _desiredData[item.VariableId] = item.DesiredDataFreeText ?? "";
+        }
+
+        if (refused is { } refusedRow && refusedText is not null && _desiredData.ContainsKey(refusedRow))
+        {
+            _desiredData[refusedRow] = refusedText;
         }
     }
 
@@ -577,7 +586,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             return;
         }
 
-        _desiredData[variableId] = text ?? "";
+        // Stored trimmed, because that is what the client sends and so what the API will hold:
+        // an untrimmed draft would show padding the server does not have until the next read.
+        _desiredData[variableId] = text?.Trim() ?? "";
         ForgetFailures();
 
         try
@@ -590,8 +601,11 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                     return;
 
                 case { Outcome: DesiredDataOutcome.Refused, MaxLength: { } maxLength }:
+                    // The only path that marks the field itself: aria-invalid is a claim about the
+                    // text, and a throttled or failed write never had its text looked at.
                     _desiredDataMaxLength = maxLength;
                     _desiredDataFailure = DesiredDataFailure.TooLong;
+                    _desiredDataRefusedRow = variableId;
                     break;
 
                 default:
@@ -614,8 +628,6 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             // and a reconnect banner in place of the note the reader was writing.
             _desiredDataFailure = DesiredDataFailure.Failed;
         }
-
-        _desiredDataRefusedRow = variableId;
     }
 
     private async Task ShowActiveListAsync()

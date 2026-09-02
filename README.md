@@ -252,7 +252,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   means adding it to this sentence.
 
   The saved-list view's `desiredData` column is the exception that shows where the boundary runs.
-  It is a ninth column in that view and it is **not** one of those keys, because it is not drawn by
+  It is an eighth column in that view and it is **not** one of those keys, because it is not drawn by
   `RowCell.Write` at all — the cell holds an editable field rather than a value, so both halves of
   it are written out as literals and both are rows in the table below. A column that goes through
   the helper belongs in the sentence above; one that does not belongs in the table, and no column

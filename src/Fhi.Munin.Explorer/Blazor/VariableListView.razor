@@ -146,13 +146,13 @@
         else if (_page is not null)
         {
             @* role="table" over the same seven columns the explorer's own result list draws, plus
-               the annotation column that is this view's alone, and for the same reason. These rows share helsedata's `munin-explorer-data-list` markup
-               with `VariableExplorer`, so they shared its failure too: measured in Chrome's
-               accessibility tree, not one row, column or header of the reader's own saved list
-               reached assistive technology — a flat run of text with no way to hear which column a
-               value was in (WCAG 1.3.1). axe never flagged it, because there is no sortable header
-               here to hang an invalid `aria-sort` on, and missing structure is not a rule
-               violation; it is just missing.
+               the annotation column that is this view's alone, and for the same reason. These rows
+               share helsedata's `munin-explorer-data-list` markup with `VariableExplorer`, so they
+               shared its failure too: measured in Chrome's accessibility tree, not one row, column
+               or header of the reader's own saved list reached assistive technology — a flat run
+               of text with no way to hear which column a value was in (WCAG 1.3.1). axe never
+               flagged it, because there is no sortable header here to hang an invalid `aria-sort`
+               on, and missing structure is not a rule violation; it is just missing.
 
                No rowgroups: unlike the explorer's list, the header row and the data rows are
                siblings here, and a table may own rows directly. The wrappers that only lay

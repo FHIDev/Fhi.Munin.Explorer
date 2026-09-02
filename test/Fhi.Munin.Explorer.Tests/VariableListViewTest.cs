@@ -319,9 +319,9 @@ public class VariableListViewTest : BunitContext
         /// The merged endpoint's own behaviour, not an agreeable stub: it trims before it measures,
         /// refuses over the ceiling with that ceiling and the measured length attached, clears both
         /// stored fields for a blank text, and answers 404 for a variable the list does not hold.
-        /// Each of those is read off <c>MyListsController.SetDesiredData</c> rather than invented,
-        /// because a fake that accepted whatever the component sent would agree with a component
-        /// that was wrong.
+        /// Each of those is written from <c>MyListsController.SetDesiredData</c> rather than invented,
+        /// because a fake that accepted whatever the component sent would agree with a component that
+        /// was wrong. Nothing here can check that reading — <c>ContractDriftTest</c>'s live arm can.
         /// </summary>
         public override Task<DesiredDataResult> SetMyListDesiredDataAsync(
             Guid id, Guid variableId, string? freeText, CancellationToken cancellationToken = default)
@@ -1641,6 +1641,10 @@ public class VariableListViewTest : BunitContext
 
         Assert.Contains("for mange forespørsler", cut.Markup);
         Assert.DoesNotContain("kan ikke overstige", cut.Markup);
+
+        // And the text is not marked invalid: the limiter answered before anything looked at it,
+        // so a reader would be told their own words were wrong about a write that never happened.
+        Assert.Null(DesiredDataFields(cut)[0].GetAttribute("aria-invalid"));
     }
 
     [Fact]
@@ -1655,6 +1659,40 @@ public class VariableListViewTest : BunitContext
 
         Assert.Contains("Kunne ikke lagre ønskede data", cut.Markup);
         Assert.Contains("Alder ved diagnose", cut.Markup);
+        Assert.Null(DesiredDataFields(cut)[0].GetAttribute("aria-invalid"));
+    }
+
+    [Fact]
+    public async Task View_WhenANoteIsSavedWithPadding_ThenTheFieldShowsWhatTheApiWillHold()
+    {
+        // The client trims on the way out because the API trims on the way in, so a field left
+        // showing the padding shows a value the server does not have until the next page read.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change("  C76  "));
+
+        Assert.Equal("C76", DesiredDataFields(cut)[0].GetAttribute("value"));
+    }
+
+    [Fact]
+    public async Task View_WhenAnotherSurfaceChangesTheListAfterARefusal_ThenTheRefusedTextSurvives()
+    {
+        // A change made elsewhere re-reads every row from the API, which is the one place the
+        // refused text is not. Dropping it there leaves the reader told to shorten a text the
+        // component has just thrown away — the case the draft exists for.
+        var kept = Item("Alder ved diagnose", "V_BDR.ALDER");
+        var other = Item("Kjønn", "V_BDR.KJONN");
+        var cut = RenderView(new ListClient(kept, other));
+
+        var tooLong = new string('x', 612);
+        await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change(tooLong));
+
+        var state = Services.GetRequiredService<VariableListState>();
+        await cut.InvokeAsync(() => state.RemoveVariablesAsync(ListId, [other.VariableId]));
+
+        Assert.Equal(tooLong, DesiredDataFields(cut)[0].GetAttribute("value"));
+        Assert.Equal("true", DesiredDataFields(cut)[0].GetAttribute("aria-invalid"));
     }
 
     [Fact]
