@@ -7,15 +7,17 @@ Built for [helsedata.no](https://helsedata.no) as the first consumer — its Opt
 the component into a page — but the package has no helsedata-specific code and any Blazor host
 can consume it.
 
-Data comes from the public Munin Explorer API. **The components are read-only and anonymous**;
-everything they render is public metadata and needs no token.
+Data comes from the public Munin Explorer API. **The browsing components are read-only and
+anonymous**; everything the variable and kilde explorers render is public metadata and needs no
+token.
 
-The client reaches one step further than they do. `IMuninExplorerClient` also carries the eight
+The client reaches one step further than those. `IMuninExplorerClient` also carries the eight
 `api/explorer/my/lists` calls — the signed-in user's saved variable lists — which are the only part
 of it that is authenticated, and therefore the only part that needs a host-supplied
 `IMuninExplorerTokenProvider` registered *before* `AddMuninExplorer`. Without one they answer 401,
 which arrives as a thrown `HttpRequestException` rather than as an empty list. `VariableListView`
-is the component built on them, and a host is free to build its own instead.
+is the component built on them — the one this package ships that reads and writes rather than
+browses — and a host is free to build its own instead.
 
 ## Layout
 
@@ -542,7 +544,8 @@ services.AddMuninExplorer(o => o.ApiBaseUrl = "https://runa.munin.skytest.fhi.no
 ```
 
 Leave the provider out entirely and calls are anonymous, which is all public metadata browsing
-needs — and all the components this package ships ever do. The variable-list methods
+needs — and all the browsing components ever do; `VariableListView` is the one that does not,
+because the lists it reads and writes are the signed-in user's own. The variable-list methods
 (`GetMyListsAsync` and the seven beside it) are the exception: they call an endpoint the API gates
 behind a signed-in explorer user, so with no provider registered every one of them throws on the
 401 rather than reporting the user as having nothing saved.

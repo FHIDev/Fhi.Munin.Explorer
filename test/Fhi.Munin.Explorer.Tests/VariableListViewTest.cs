@@ -1813,7 +1813,7 @@ public class VariableListViewTest : BunitContext
         // row alone — and the same variable sits in both lists here, so a refusal from the first
         // would otherwise mark the identical row in the second, about a text nobody typed there.
         var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListCount = 2 };
-        var gate = new TaskCompletionSource();
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         client.DesiredDataGate = gate;
 
         var cut = RenderView(client);
@@ -1845,7 +1845,7 @@ public class VariableListViewTest : BunitContext
         // out at once. Answered in the order they land, the first would mark the shorter text the
         // reader went on to save — and nothing after it takes that mark away again.
         var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
-        var gate = new TaskCompletionSource();
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         client.DesiredDataGate = gate;
 
         var cut = RenderView(client);
@@ -1877,7 +1877,7 @@ public class VariableListViewTest : BunitContext
         var client = new ListClient(
             Item("Alder ved diagnose", "V_BDR.ALDER"), Item("Kjønn", "V_BDR.KJONN"));
 
-        var gate = new TaskCompletionSource();
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         client.DesiredDataGate = gate;
 
         var cut = RenderView(client);
@@ -1909,7 +1909,7 @@ public class VariableListViewTest : BunitContext
         var kept = Item("Alder ved diagnose", "V_BDR.ALDER");
         var other = Item("Kjønn", "V_BDR.KJONN");
         var client = new ListClient(kept, other);
-        var gate = new TaskCompletionSource();
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         client.DesiredDataGate = gate;
 
         var cut = RenderView(client);
