@@ -625,8 +625,9 @@ public partial class VariableExplorer
     private string? LevelLinesMarker => _levelLines ? "true" : null;
 
     /// <summary>The level-lines button's classes — filled when on, a ghost when off.</summary>
+    /// <remarks>No margin utilities: the toolbar container spaces all three with <c>gap</c>.</remarks>
     private string LevelLinesClass =>
-        $"hd-button-square {(_levelLines ? "button-square--secondary" : "button-square--ghost")} margin-right margin-bottom";
+        $"hd-button-square {(_levelLines ? "button-square--secondary" : "button-square--ghost")}";
 
     /// <summary>Turn the level lines on or off, and tell the host, so it can remember them.</summary>
     private Task ToggleLevelLinesAsync()

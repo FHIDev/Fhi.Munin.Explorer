@@ -1407,6 +1407,9 @@ public class VariableExplorerTest : BunitContext
             "munin-explorer-search",
             "munin-explorer-search__clear",
             "munin-explorer-filters",    // ours, a handle
+            // The toolbar row: a container of its own, because in inline flow the last button's
+            // trailing margin counted against the line and the row broke apart under a scrollbar.
+            "munin-explorer-filters__toolbar",
             "munin-explorer-container",  // ours, Stiler components/munin-explorer/
             "munin-explorer-results",    // ours, Stiler components/munin-explorer/
             // The column picker, all four theirs, all four read off the compiled variables.css
@@ -3179,6 +3182,23 @@ public class VariableExplorerTest : BunitContext
         ClickFacet(cut, "Vis historiske");
 
         Assert.Empty(OpenDisclosures(cut));
+    }
+
+    [Fact]
+    public void Filter_Always_ThenTheThreeToolbarButtonsShareOneContainerAndCarryNoMarginsOfTheirOwn()
+    {
+        // The container is what the host's `gap` hangs on. In inline flow each button carried a
+        // `margin-right` and the last one's trailing 16px counted against the line, so the row
+        // needed 369.05px of the 369.00 an expanded panel leaves. (Fhi.Metadata-l9l2n.37)
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        var toolbar = cut.Find(".munin-explorer-filters__toolbar");
+        var buttons = toolbar.Children;
+
+        Assert.Equal(
+            ["Utvid alle", "Skjul alle", "Nivålinjer"],
+            buttons.Select(b => b.TextContent.Trim()));
+        Assert.All(buttons, b => Assert.DoesNotContain("margin-", b.ClassName!));
     }
 
     [Fact]
@@ -6804,6 +6824,9 @@ public class VariableExplorerTest : BunitContext
             "munin-explorer-search",
             "munin-explorer-search__clear",
             "munin-explorer-filters",    // ours, a handle
+            // The toolbar row: a container of its own, because in inline flow the last button's
+            // trailing margin counted against the line and the row broke apart under a scrollbar.
+            "munin-explorer-filters__toolbar",
             "munin-explorer-breadcrumb", // ours — the trail over the results, which Stiler has
                                             // no breadcrumb rule of any kind to borrow
             "munin-explorer-crumb",      // ours — one step of a trail, and the same name in

@@ -433,6 +433,21 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 .munin-explorer-filters { margin-bottom: 24px; }
 
+/* The panel's toolbar: own container, spaced by `gap` so nothing trails the last button. Not
+   `flex-wrap: wrap` — the buttons shrink and wrap their own labels instead, so the row survives a
+   longer translation. (Fhi.Metadata-l9l2n.37) */
+
+.munin-explorer-filters__toolbar {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.munin-explorer-filters__toolbar > .hd-button-square {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .munin-explorer-filters details {
   border-bottom: 1px solid var(--grey30);
   padding: 8px 0;

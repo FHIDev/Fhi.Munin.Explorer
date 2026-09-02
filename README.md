@@ -199,6 +199,15 @@ These are not style preferences — each one is a host that breaks otherwise.
     closes at every width. What the rules buy is the sidebar — at desktop the samples take the
     folding away and put the toggle off screen, because a button offering to unfold a panel that is
     already open is a control that does nothing.
+    The variable explorer's own panel adds `munin-explorer-filters__toolbar`, the row holding Utvid
+    alle, Skjul alle and Nivålinjer. The three buttons used to sit in inline flow carrying margins
+    of their own, and the last one's trailing margin counted against the line: at the 369px an
+    expanded panel leaves once it grows a scrollbar, the row needed 369.05px and Nivålinjer dropped
+    onto a row by itself. A host that defines nothing for the name gets the three buttons back in
+    inline flow, which is a row until a label grows; what the rule buys is `display: flex` with a
+    `gap`, so nothing trails the last button, and buttons that shrink and wrap their own labels
+    rather than the row breaking apart at the next longer translation. Both sample stylesheets carry
+    it, and it is in `Fhi.Helsedata.Stiler` from the release that follows PR 39046.
   - Names that carry meaning nothing else carries, so a host without Stiler's rules has to draw
     them itself: `munin-explorer-crumb` carries the link affordance for a trail step, which is a
     `<button>` — the kilde step of the panel's kilde trail, and every step of the hierarchy trail
@@ -306,6 +315,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-filters` | handle |
   | `munin-explorer-filters__facets` | handle |
   | `munin-explorer-filters__toggle` | handle |
+  | `munin-explorer-filters__toolbar` | handle |
   | `munin-explorer-group` | handle |
   | `munin-explorer-header` | handle |
   | `munin-explorer-header__actions` | handle |
