@@ -1316,7 +1316,15 @@ public class KildeViewTest : BunitContext
         // One term with two descriptions, which is what a dl says with two dd under one dt — and
         // not two rows, which would read as two different fields.
         Assert.All(cells, c => Assert.Equal("DD", c.TagName));
-        Assert.Single(cells.Select(c => c.ParentElement).Distinct());
+
+        // The pair is wrapped in a div inside the dl. Pinned because a stylesheet cannot see it:
+        // a `dl > dd` rule reaches nothing here, which is how the sample's spacing rule for these
+        // cells was written unmatchable the first time (PR 149 review).
+        var wrapper = Assert.Single(cells.Select(c => c.ParentElement!).Distinct());
+
+        Assert.Equal("DIV", wrapper.TagName);
+        Assert.Equal("DL", wrapper.ParentElement!.TagName);
+        Assert.Contains("munin-explorer-meta__grid", wrapper.ParentElement.ClassName!, StringComparison.Ordinal);
 
         var values = cells.Select(c => c.QuerySelector("span")!).ToList();
 

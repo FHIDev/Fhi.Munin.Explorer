@@ -879,9 +879,6 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   color: var(--grey60);
 }
 
-.munin-explorer-meta dl > dd + dd {
-  margin-top: 10px;
-}
 
 /* ---- the column header ----
 
@@ -1231,6 +1228,13 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 .munin-explorer-meta__grid dd {
   margin: 0;
+}
+
+/* Each language of a multilingual field is its own dd, so consecutive ones need separating or
+   the two run together as one block. Descendant rather than `dl > dd`: DetailBlocks wraps every
+   dt/dd pair in a div, so a direct-child selector reaches nothing here. */
+.munin-explorer-meta__grid dd + dd {
+  margin-top: 10px;
 }
 
 /* The drill-in view. A kilde or datasamling takes over the component's area rather than nesting
