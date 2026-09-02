@@ -27,6 +27,15 @@ internal abstract class EmptyMuninExplorerClient : IMuninExplorerClient
         CancellationToken cancellationToken = default) =>
         throw new NotSupportedException("This fake does not export.");
 
+    /// <summary>
+    /// Refuses, like the interface's own default. A fake that answered <c>Linked</c> would let a
+    /// test pass while the reader's two accounts stayed apart.
+    /// </summary>
+    public virtual Task<IdentityLinkOutcome> RedeemIdentityLinkAsync(
+        string? code,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This fake does not redeem identity links.");
+
     public virtual Task<Page<VariableSummary>> SearchVariablesAsync(
         string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
         SortField sort = SortField.Default,
