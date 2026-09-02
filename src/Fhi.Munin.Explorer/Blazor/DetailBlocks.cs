@@ -90,26 +90,50 @@ internal static class DetailBlocks
             if (row.Values.Count == 1)
             {
                 builder.AddAttribute(seq + 1, "lang", CatalogueProperties.Foreign(slot.Language, reader));
-                builder.AddContent(seq + 2, slot.Text);
+                Text(builder, seq + 2, slot.Text, row.Href);
             }
             else
             {
-                builder.OpenElement(seq + 3, "p");
-                builder.AddAttribute(seq + 4, "class", "munin-explorer-meta__language");
-                builder.AddContent(seq + 5, text.LanguageName(slot.Language));
+                builder.OpenElement(seq + 10, "p");
+                builder.AddAttribute(seq + 11, "class", "munin-explorer-meta__language");
+                builder.AddContent(seq + 12, text.LanguageName(slot.Language));
                 builder.CloseElement();
 
-                builder.OpenElement(seq + 6, "span");
-                builder.AddAttribute(seq + 7, "lang", CatalogueProperties.Foreign(slot.Language, reader));
-                builder.AddContent(seq + 8, slot.Text);
+                builder.OpenElement(seq + 13, "span");
+                builder.AddAttribute(seq + 14, "lang", CatalogueProperties.Foreign(slot.Language, reader));
+                Text(builder, seq + 15, slot.Text, row.Href);
                 builder.CloseElement();
             }
 
             builder.CloseElement();
-            seq += 10;
+            seq += 30;
         }
 
         return seq;
+    }
+
+    /// <summary>
+    /// A value, as a link where the catalogue types the property as a URL. Consumes five sequence
+    /// numbers from <paramref name="seq"/>.
+    /// </summary>
+    /// <remarks>
+    /// A field that exists to be followed should be followable (FHIDev/Munin#5385). <c>rel</c>
+    /// guards the middle-click and ctrl-click paths; there is no <c>target</c>, so a reader stays
+    /// on the page they were reading.
+    /// </remarks>
+    private static void Text(RenderTreeBuilder builder, int seq, string value, string? href)
+    {
+        if (href is null)
+        {
+            builder.AddContent(seq, value);
+            return;
+        }
+
+        builder.OpenElement(seq + 1, "a");
+        builder.AddAttribute(seq + 2, "href", href);
+        builder.AddAttribute(seq + 3, "rel", "noopener noreferrer");
+        builder.AddContent(seq + 4, value);
+        builder.CloseElement();
     }
 
     /// <summary>One metadata group: its name, then its rows.</summary>

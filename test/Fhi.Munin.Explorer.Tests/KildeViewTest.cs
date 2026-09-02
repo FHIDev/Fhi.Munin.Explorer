@@ -574,10 +574,20 @@ public class KildeViewTest : BunitContext
         var description = kilde.Description!;
 
         Assert.True(description.Length > 1000, "the captured description should be the long one");
-        Assert.Equal(1, Occurrences(cut.Markup, description));
+
+        // Line by line since Fhi.Metadata-5bcr7: the ingress renders the description's own line
+        // breaks as elements, so the raw string no longer appears contiguously anywhere.
+        var lines = description.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        Assert.True(lines.Length > 1, "the captured description should span several lines");
+
+        foreach (var line in lines)
+        {
+            Assert.Equal(1, Occurrences(cut.Markup, line));
+        }
 
         // And it is the ingress that kept it, not the field.
-        Assert.Contains(description, cut.Find(".munin-explorer-kilde__description").TextContent,
+        Assert.Contains(lines[0], cut.Find(".munin-explorer-kilde__description").TextContent,
                         StringComparison.Ordinal);
     }
 
@@ -1338,5 +1348,90 @@ public class KildeViewTest : BunitContext
         // And the name of the language is outside the marked span, so a screen reader does not
         // announce the Norwegian word "Engelsk" in an English voice.
         Assert.Null(markers[1].GetAttribute("lang"));
+    }
+
+    [Fact]
+    public void Description_WhenTheCatalogueAuthoredMarkdown_ThenTheIngressRendersItAsElements()
+    {
+        // The Tromsø study's beskrivelse carries <br> tags and markdown links, which the ingress
+        // used to print as source text (FHIDev/Munin#5385).
+        var kilde = Kilde() with
+        {
+            Description = "Befolkningsundersøkelse.<br>Se [UiT](https://uit.no/research/tromsostudy).",
+        };
+
+        var ingress = Render(kilde).Find(".munin-explorer-kilde__description");
+
+        Assert.Single(ingress.QuerySelectorAll("br"));
+        var anchor = Assert.Single(ingress.QuerySelectorAll("a"));
+        Assert.Equal("https://uit.no/research/tromsostudy", anchor.GetAttribute("href"));
+        Assert.Equal("noopener noreferrer", anchor.GetAttribute("rel"));
+        Assert.DoesNotContain("&lt;br&gt;", ingress.InnerHtml, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void DataCollections_WhenADescriptionIsAMarkdownLink_ThenTheCellRendersAnAnchor()
+    {
+        // The datasamling rows are where the catalogue authors bare markdown links most often:
+        // '[Tromsø1 - The First Tromsø Study](https://uit.no/...)' printed whole (FHIDev/Munin#5385).
+        var kilde = Kilde() with
+        {
+            Datasamlinger =
+            [
+                Collection("Tromsø 1",
+                           description: "[Tromsø1 - The First Tromsø Study](https://uit.no/research/tromsostudy/project?pid=708230)"),
+            ],
+        };
+
+        var cell = Render(kilde).Find(".munin-explorer-kilde__datasamlinger tbody td");
+
+        var anchor = Assert.Single(cell.QuerySelectorAll("a"));
+        Assert.Equal("https://uit.no/research/tromsostudy/project?pid=708230", anchor.GetAttribute("href"));
+        Assert.Equal("Tromsø1 - The First Tromsø Study", anchor.TextContent);
+    }
+
+    [Fact]
+    public void Properties_WhenAFieldIsTypedUrl_ThenItsRowLinksInsteadOfPrintingTheMarkdown()
+    {
+        // Hjemmeside is stored as [https://uit.no/...](https://uit.no/...) and declared a Url — a
+        // field that exists to be followed, shown for two years as its own source (FHIDev/Munin#5385).
+        var kilde = Kilde() with
+        {
+            PropertyMetadata =
+            [
+                Entry("Hjemmeside", 10, "Kontakt") with { Type = "Url" },
+            ],
+            AdditionalProperties = new Dictionary<string, string?>
+            {
+                ["Hjemmeside"] = "[https://uit.no/research/tromsostudy](https://uit.no/research/tromsostudy)",
+            },
+        };
+
+        var anchor = Render(kilde).Find(".munin-explorer-meta__grid dd a");
+
+        Assert.Equal("https://uit.no/research/tromsostudy", anchor.GetAttribute("href"));
+        Assert.Equal("noopener noreferrer", anchor.GetAttribute("rel"));
+        Assert.Equal("https://uit.no/research/tromsostudy", anchor.TextContent);
+
+        // A URL is prose in no language, so the cell must not claim Norwegian (WCAG 3.1.2).
+        Assert.Null(anchor.ParentElement!.GetAttribute("lang"));
+    }
+
+    [Fact]
+    public void Properties_WhenAUrlIsStoredSchemeless_ThenHttpsIsAssumedAndTheCellStaysUnmarked()
+    {
+        // The other captured Hjemmeside shape: www.barnediabetes.no, no scheme, which an href
+        // would resolve as a relative path rather than an address.
+        var kilde = Kilde() with
+        {
+            PropertyMetadata = [Entry("Hjemmeside", 10, "Kontakt") with { Type = "Url" }],
+            AdditionalProperties = new Dictionary<string, string?> { ["Hjemmeside"] = "www.barnediabetes.no" },
+        };
+
+        var anchor = Render(kilde).Find(".munin-explorer-meta__grid dd a");
+
+        Assert.Equal("https://www.barnediabetes.no", anchor.GetAttribute("href"));
+        Assert.Equal("www.barnediabetes.no", anchor.TextContent);
+        Assert.Null(anchor.ParentElement!.GetAttribute("lang"));
     }
 }

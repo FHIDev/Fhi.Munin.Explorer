@@ -17,10 +17,12 @@ internal readonly record struct LocalisedText(string Text, string Language);
 /// Every language the value holds, the reader's first. One entry for all but the multilingual
 /// types, whose bags the catalogue leaves open.
 /// </param>
+/// <param name="Href">Where the value should link, for the properties the catalogue types as a URL.</param>
 internal readonly record struct PropertyRow(
     string Label,
     string LabelLanguage,
-    IReadOnlyList<LocalisedText> Values);
+    IReadOnlyList<LocalisedText> Values,
+    string? Href = null);
 
 /// <summary>A named group of properties, as the catalogue arranges them.</summary>
 internal sealed record PropertyGroup(
@@ -174,6 +176,19 @@ internal static class CatalogueProperties
                 continue;
             }
 
+            // A field the catalogue declares to be a URL exists to be followed, so a value that
+            // is one link — [label](url) or bare — becomes an anchor. A URL as its own label is
+            // prose in no language, so it stays unmarked (WCAG 3.1.2); a worded one is Norwegian.
+            if (Typed(entry, UrlType) && CatalogueMarkdown.Link(raw) is { } link)
+            {
+                var labelIsTheAddress = link.Href == link.Label || link.Href == $"https://{link.Label}";
+
+                rows.Add(new PropertyRow(label, labelLanguage,
+                                         [new LocalisedText(link.Label, labelIsTheAddress ? reader : "no")],
+                                         link.Href));
+                continue;
+            }
+
             rows.Add(new PropertyRow(label, labelLanguage, resolved));
         }
 
@@ -276,6 +291,7 @@ internal static class CatalogueProperties
     // case-insensitively: Type is a string so a type added server side cannot break
     // deserialisation, and casing that shifts there must not put the envelope back on the page.
     private const string MultilingualTextType = "MultilingualText";
+    private const string UrlType = "Url";
     private const string LangTaggedListType = "LangTaggedList";
     private const string MultiSelectType = "MultiSelect";
     private const string ObjectType = "Object";

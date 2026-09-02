@@ -28,9 +28,10 @@
 
             @if (!string.IsNullOrWhiteSpace(kilde.Description))
             {
-                @* Norwegian whatever the reader's language: the catalogue stores one description. *@
+                @* Norwegian whatever the reader's language: the catalogue stores one description,
+                   authored with markdown links and line breaks (FHIDev/Munin#5385). *@
                 <p class="ingress munin-explorer-kilde__description" lang="@CatalogueProperties.Foreign("no", Reader)">
-                    @kilde.Description
+                    @CatalogueMarkdown.Render(kilde.Description)
                 </p>
             }
         </div>
