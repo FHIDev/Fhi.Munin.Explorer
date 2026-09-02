@@ -156,14 +156,23 @@ public class ChangelogFragmentGuardTest
 
         public void Dispose()
         {
-            // Git marks its loose objects read-only and Windows refuses to delete a read-only file,
-            // so the attribute has to come off before the tree can go.
-            foreach (var file in Directory.EnumerateFiles(Path, "*", SearchOption.AllDirectories))
+            // Never throwing, because this unwinds alongside a failed assertion: a delete that lost
+            // a race with a lingering git handle would replace "the guard returned the wrong exit
+            // code" with "could not delete a temp directory" (Fhi.Metadata-ze05p).
+            try
             {
-                File.SetAttributes(file, FileAttributes.Normal);
-            }
+                // Git marks its loose objects read-only, and Windows will not delete one of those.
+                foreach (var file in Directory.EnumerateFiles(Path, "*", SearchOption.AllDirectories))
+                {
+                    File.SetAttributes(file, FileAttributes.Normal);
+                }
 
-            Directory.Delete(Path, recursive: true);
+                Directory.Delete(Path, recursive: true);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                // A temp directory left behind is the lesser problem, and the OS clears it.
+            }
         }
 
         private void Write(string relative, string body)
@@ -204,18 +213,14 @@ public class ChangelogFragmentGuardTest
                 start.ArgumentList.Add(argument);
             }
 
-            using var process = Process.Start(start)
-                ?? throw new InvalidOperationException("git did not start.");
-
-            var stdout = process.StandardOutput.ReadToEndAsync();
-            var stderr = process.StandardError.ReadToEndAsync();
-
-            process.WaitForExit();
+            // Guard's plumbing rather than a bare WaitForExit, for the reason written over it: it
+            // budgets the run and kills the tree, so a git blocking on a credential prompt it
+            // inherited fails as a stalled fixture instead of hanging the whole xunit run.
+            var run = Guard.Run(start, "git " + string.Join(' ', arguments));
 
             Assert.True(
-                process.ExitCode == 0,
-                $"git {string.Join(' ', arguments)} failed with {process.ExitCode}: "
-                + stdout.Result + stderr.Result);
+                run.ExitCode == 0,
+                $"git {string.Join(' ', arguments)} failed with {run.ExitCode}: {run.Output}");
         }
     }
 }
