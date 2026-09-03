@@ -5,7 +5,13 @@
    has no business wording. The host knows how its readers sign in; the package does not. *@
 @if (State?.IsAuthenticated == true)
 {
-    <div class="munin-explorer munin-explorer-container">
+    @* `munin-explorer` and nothing else. This root used to carry `munin-explorer-container` as
+       well, which is `display: flex; flex-direction: row` — the rule that lays a filter sidebar
+       beside a results column, and this view is neither. Standalone that only spread the heading
+       and the create form across the page; nested in the explorer's tab panel it ran 500px past
+       the viewport. The shell class stays: it is what scopes the ghost-button rules these controls
+       wear, and it is only `width: 100%` of its own. (Fhi.Metadata-l9l2n.39) *@
+    <div class="munin-explorer">
 
         @* No class on the heading: the package ships no CSS, and the other components leave
            theirs bare too. A name here would be one with no rule behind it. *@
@@ -143,7 +149,11 @@
             @DesiredDataRefusalMessage
         </div>
 
-        @if (Lists.Count == 0)
+        @* Not while the read is known to have failed. The alert above already says so, and
+           "du har ingen variabellister ennå" beside it answers the same question the other way —
+           the reader cannot tell whether they have none or whether we never found out. The two
+           branches below are already unreachable then, because a failure leaves _page null. *@
+        @if (!_failed && Lists.Count == 0)
         {
             <p>@T.NoListsYet</p>
         }

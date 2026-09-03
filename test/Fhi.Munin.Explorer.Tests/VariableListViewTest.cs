@@ -429,6 +429,37 @@ public class VariableListViewTest : BunitContext
     // -----------------------------------------------------------------------
 
     [Fact]
+    public void Root_WhenItIsDrawn_ThenItDoesNotClaimToBeTheResultsRow()
+    {
+        // munin-explorer-container is `display: flex; flex-direction: row` — the rule that puts a
+        // filter sidebar beside a results column. This view is a column of blocks, and wearing it
+        // laid the heading, the create form and the alerts out side by side. Nested in the
+        // explorer's tab panel that ran past the viewport. The shell class stays; it scopes the
+        // ghost-button rules these controls wear.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        var root = cut.Find("div.munin-explorer");
+
+        Assert.DoesNotContain("munin-explorer-container", root.ClassList);
+        Assert.Contains("munin-explorer", root.ClassList);
+    }
+
+    [Fact]
+    public async Task View_WhenTheListsCannotBeRead_ThenItDoesNotAlsoSayThereAreNone()
+    {
+        // Two contradictory answers to one question. The reader cannot tell whether they have no
+        // lists or whether we failed to find out — and a 401 is the ordinary case here, because a
+        // host can say IsAuthenticated without the client having a token.
+        var client = new ListClient { ListsThrow = true };
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => { });
+
+        Assert.Contains("Kunne ikke hente listen", cut.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("Du har ingen variabellister ennå", cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void View_WhenTheReaderIsSignedOut_ThenNothingIsDrawnAndNothingIsAsked()
     {
         // Asserted on the call count, not on the markup: an implementation that fetches and swallows
@@ -759,7 +790,7 @@ public class VariableListViewTest : BunitContext
         // Change, not Input: the field binds on onchange rather than oninput, because one
         // round trip per keystroke drops characters on a paste inside a Blazor Server circuit.
         cut.Find("input[type=text]").Change("Hjerte og kar");
-        cut.Find(".munin-explorer-container button").Click();
+        cut.Find(".munin-explorer button").Click();
 
         Assert.Equal(1, client.CreateCalls);
     }
@@ -771,7 +802,7 @@ public class VariableListViewTest : BunitContext
         var cut = RenderView(client);
 
         cut.Find("input[type=text]").Change("Hjerte og kar");
-        cut.Find(".munin-explorer-container button").Click();
+        cut.Find(".munin-explorer button").Click();
 
         Assert.Contains("for mange forespørsler", cut.Markup);
         Assert.DoesNotContain("Kunne ikke lagre", cut.Markup);
@@ -784,7 +815,7 @@ public class VariableListViewTest : BunitContext
         var cut = RenderView(client);
 
         cut.Find("input[type=text]").Change("Hjerte og kar");
-        cut.Find(".munin-explorer-container button").Click();
+        cut.Find(".munin-explorer button").Click();
 
         Assert.Contains("Kunne ikke lagre", cut.Markup);
         Assert.DoesNotContain("for mange forespørsler", cut.Markup);
@@ -799,11 +830,11 @@ public class VariableListViewTest : BunitContext
         var cut = RenderView(client);
 
         cut.Find("input[type=text]").Change("Hjerte og kar");
-        cut.Find(".munin-explorer-container button").Click();
+        cut.Find(".munin-explorer button").Click();
 
         client.CreateThrows = false;
         cut.Find("input[type=text]").Change("Hjerte og kar");
-        cut.Find(".munin-explorer-container button").Click();
+        cut.Find(".munin-explorer button").Click();
 
         Assert.Equal(2, client.CreateCalls);
         Assert.DoesNotContain("Kunne ikke lagre", cut.Markup);
@@ -818,7 +849,7 @@ public class VariableListViewTest : BunitContext
         var cut = RenderView(client);
 
         cut.Find("input[type=text]").Change("Hjerte og kar");
-        cut.Find(".munin-explorer-container button").Click();
+        cut.Find(".munin-explorer button").Click();
 
         Assert.Equal(1, client.CreateCalls);
         Assert.Contains("Kunne ikke hente listen", cut.Markup);
@@ -835,14 +866,14 @@ public class VariableListViewTest : BunitContext
         var cut = RenderView(client);
 
         cut.Find("input[type=text]").Change("Hjerte og kar");
-        cut.Find(".munin-explorer-container button").Click();
+        cut.Find(".munin-explorer button").Click();
 
         Assert.Contains("for mange forespørsler", cut.Markup);
         Assert.DoesNotContain("Kunne ikke hente listen", cut.Markup);
 
         client.ActivateThrottles = false;
         cut.Find("input[type=text]").Change("Hjerte og kar");
-        cut.Find(".munin-explorer-container button").Click();
+        cut.Find(".munin-explorer button").Click();
 
         Assert.Equal(2, client.CreateCalls);
         Assert.DoesNotContain("for mange forespørsler", cut.Markup);
@@ -858,7 +889,7 @@ public class VariableListViewTest : BunitContext
         Assert.Contains("Kunne ikke hente listen", cut.Markup);
 
         cut.Find("input[type=text]").Change("Hjerte og kar");
-        cut.Find(".munin-explorer-container button").Click();
+        cut.Find(".munin-explorer button").Click();
 
         Assert.Contains("Kunne ikke lagre", cut.Markup);
         Assert.DoesNotContain("Kunne ikke hente listen", cut.Markup);
