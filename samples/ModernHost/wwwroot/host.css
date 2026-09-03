@@ -80,10 +80,15 @@ body {
 }
 
 /* Stiler steps the inherited base on body itself, at the same two breakpoints as the class
-   stand-ins below; html stays 16px throughout, so rem values are unaffected. Everything that
-   does not declare its own size reads this — Fhi.Metadata-vd8uq. */
-@media (max-width: 2881px) { body { font-size: 1.125rem; } }
-@media (max-width: 767px) { body { font-size: 1rem; } }
+   stand-ins below; the root font-size is untouched, so rem values are unaffected. Everything
+   that does not declare its own size reads this — Fhi.Metadata-vd8uq. */
+@media (max-width: 2881px) {
+  body { font-size: 1.125rem; }
+}
+
+@media (max-width: 767px) {
+  body { font-size: 1rem; }
+}
 
 /* ---- host chrome: this sample's own furniture, not the component's ---- */
 
