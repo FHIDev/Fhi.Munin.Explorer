@@ -350,6 +350,9 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-filters__facets` | handle |
   | `munin-explorer-filters__toggle` | handle |
   | `munin-explorer-filters__toolbar` | handle |
+  | `munin-explorer-frequency` | handle |
+  | `munin-explorer-frequency__fill` | meaning |
+  | `munin-explorer-frequency__track` | meaning |
   | `munin-explorer-group` | handle |
   | `munin-explorer-header` | handle |
   | `munin-explorer-header__actions` | handle |

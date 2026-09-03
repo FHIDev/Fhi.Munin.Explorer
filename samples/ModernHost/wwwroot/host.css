@@ -1947,6 +1947,42 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   font-size: 0.875rem;
 }
 
+/* The categorical frequency table and its share bar. The track is the full width the bar can
+   reach, so a fill clipped to 0-100% reads against something; without it a 12% bar and a 96% bar
+   differ only by how far they extend into blank space. */
+.munin-explorer-frequency {
+  border-collapse: collapse;
+  margin: 8px 0 0;
+  width: 100%;
+}
+
+.munin-explorer-frequency th,
+.munin-explorer-frequency td {
+  border-bottom: 1px solid var(--grey30);
+  padding: 6px 12px 6px 0;
+  text-align: left;
+  vertical-align: baseline;
+}
+
+.munin-explorer-frequency thead th {
+  border-bottom: 1px solid var(--grey40);
+  font-weight: 600;
+}
+
+.munin-explorer-frequency__track {
+  background-color: var(--grey20);
+  display: block;
+  height: 6px;
+  margin-top: 4px;
+  width: 100%;
+}
+
+.munin-explorer-frequency__fill {
+  background-color: var(--primary);
+  display: block;
+  height: 100%;
+}
+
 .munin-explorer-statistics th,
 .munin-explorer-statistics td {
   padding: 8px 12px;
