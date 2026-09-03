@@ -408,9 +408,16 @@ public class AccountLinkTest : BunitContext
         // the <details> around it is open — so an entry that unfolded itself would pass them all.
         Assert.False(Panel(cut).Closest("details")!.HasAttribute("open"));
 
-        // Scoped to the search box on purpose: the code field wears searchbox__freetext too.
-        cut.Find(".searchbox__freetext").Change("alder");
-        cut.Find("form").Submit();
+        // Scoped to the search box on purpose: the code field wears searchbox__freetext too. The
+        // scope used to be munin-explorer-search, the wrapper that went when the clear control
+        // moved inside the field; role=search is the landmark that outlives markup like that.
+        //
+        // The premise checked rather than left to the comment, since an unscoped selector reaches
+        // the right field today only by document order.
+        Assert.Equal(2, cut.FindAll(".searchbox__freetext").Count);
+
+        cut.Find("form[role=search] .searchbox__freetext").Change("alder");
+        cut.Find("form[role=search]").Submit();
 
         // Typing alone changes nothing; the search that results have arrived from is the moment
         // an entry that unfolded itself would do so.

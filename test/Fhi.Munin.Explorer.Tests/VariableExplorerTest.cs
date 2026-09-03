@@ -8629,6 +8629,15 @@ public class VariableExplorerTest : BunitContext
         Assert.Empty(cut.FindAll(".munin-explorer-search__clear"));
     }
 
+    /// <summary>The search box, scoped to the search landmark.</summary>
+    /// <remarks>
+    /// <c>searchbox__freetext</c> alone is not unique in this component: the account link's code
+    /// field wears it too, so an unscoped selector reaches whichever comes first in the markup.
+    /// The landmark is the stable scope — it survives a wrapper being retired, which is how this
+    /// went wrong (Fhi.Metadata-ag4n7).
+    /// </remarks>
+    private const string SearchField = "form[role=search] .searchbox__freetext";
+
     [Fact]
     public void ClearSearch_WhenThereIsASearch_ThenTheControlIsInsideTheFieldAheadOfSok()
     {
@@ -8638,9 +8647,9 @@ public class VariableExplorerTest : BunitContext
         // tabbing out of the field meets clear, then submit. (Fhi.Metadata-ag4n7)
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        cut.Find(".searchbox__freetext").Change("tale");
+        cut.Find(SearchField).Change("tale");
 
-        var container = cut.Find(".searchbox__freetext-container");
+        var container = cut.Find("form[role=search] .searchbox__freetext-container");
         var controls = container.QuerySelectorAll("button");
 
         Assert.Equal(
@@ -8650,7 +8659,7 @@ public class VariableExplorerTest : BunitContext
         // Still a text input. The user-agent ✕ that type="search" draws is the defect 5ghur
         // removed — it fires a DOM event Blazor does not bind, so it emptied the box without
         // applying it — and reverting to it would look exactly like this change on a screenshot.
-        Assert.Equal("text", cut.Find(".searchbox__freetext").GetAttribute("type"));
+        Assert.Equal("text", cut.Find(SearchField).GetAttribute("type"));
     }
 
     [Fact]
@@ -8662,7 +8671,7 @@ public class VariableExplorerTest : BunitContext
         // the other door. (Fhi.Metadata-ag4n7)
         var cut = RenderWith(new FakeClient(new Page<VariableSummary>()));
 
-        cut.Find(".searchbox__freetext").Change("alder");
+        cut.Find(SearchField).Change("alder");
         cut.Find("form").Submit();
         cut.Find(".munin-explorer-search__clear").Click();
 
@@ -8676,7 +8685,7 @@ public class VariableExplorerTest : BunitContext
         // reader's focus still on it, so moving focus would be a jump with nothing behind it.
         var cut = RenderWith(new SlowClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        cut.Find(".searchbox__freetext").Change("alder");
+        cut.Find(SearchField).Change("alder");
         cut.Find("form").Submit();
         cut.Find(".munin-explorer-search__clear").Click();
 
@@ -8695,7 +8704,7 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
                             b => b.Add(c => c.Language, language));
 
-        cut.Find(".searchbox__freetext").Change("tale");
+        cut.Find(SearchField).Change("tale");
 
         Assert.Equal(expected, AccessibleName.Of(cut.Find(".munin-explorer-search__clear")));
     }
