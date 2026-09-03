@@ -1610,9 +1610,9 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   margin-top: 0;
 }
 
-/* The delkilde's own words, under its name line and above its table. 0.875rem is Stiler's $font-s,
-   one step below the headline-xxs its name wears — copied from Stiler rather than derived here, so
-   the two repos cannot drift apart on the same element. */
+/* The delkilde's own words, under its name line and above its table. 0.875rem is copied from the
+   $font-s step Fhi.Metadata-p4j8r records for this class in Stiler, one below the headline-xxs its
+   name wears; nothing here can read Stiler, so a change there has to be re-read from there. */
 .munin-explorer-kilde__delkilde-description {
   margin: 8px 0 0;
   max-width: 65ch;
