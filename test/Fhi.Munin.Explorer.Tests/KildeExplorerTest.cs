@@ -710,6 +710,10 @@ public class KildeExplorerTest : BunitContext
         Assert.Equal("false", toggle.GetAttribute("aria-expanded"));
         Assert.Equal("Vis datasamlinger for Als registeret", toggle.GetAttribute("aria-label"));
 
+        // No aria-controls while closed: the panel is not in the DOM, so the IDREF would point at
+        // nothing at all rather than at a collapsed region.
+        Assert.Null(toggle.GetAttribute("aria-controls"));
+
         toggle.Click();
 
         var opened = ExpandToggle(cut, "Als registeret");
@@ -789,6 +793,34 @@ public class KildeExplorerTest : BunitContext
 
         Assert.Empty(panel.QuerySelectorAll("table"));
         Assert.NotEmpty(panel.QuerySelectorAll(".infobox"));
+    }
+
+    [Fact]
+    public async Task Render_WhileTheDatasamlingerAreStillComing_ThenTheOpenRowSaysSoRatherThanSittingEmpty()
+    {
+        // A row that opens on nothing reads as "this kilde has no datasamlinger", which is a
+        // different fact from "they are on their way" — and the row's own count says otherwise.
+        // Asserted against a stalled fetch, because with a fake that answers at once the loading
+        // state has no window to be seen in and any test of it passes for the wrong reason.
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var client = new FakeClient(als).Describing(DetailWithCollections(als));
+        var cut = RenderWith(client);
+
+        client.StallDetail = true;
+
+        ExpandToggle(cut, "Als registeret").Click();
+
+        var waiting = cut.Find(".munin-explorer-kilder__expanded");
+
+        Assert.Equal("Henter datakilden …", waiting.TextContent.Trim());
+        Assert.Empty(waiting.QuerySelectorAll("table"));
+
+        await cut.InvokeAsync(() => client.AnswerStalled(DetailWithCollections(als)));
+
+        var arrived = cut.Find(".munin-explorer-kilder__expanded");
+
+        Assert.Contains("Hoveddatasamling", arrived.TextContent);
+        Assert.Equal(2, arrived.QuerySelectorAll("table").Length);
     }
 
     [Fact]

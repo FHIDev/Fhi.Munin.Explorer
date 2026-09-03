@@ -401,7 +401,10 @@ else
                                 <button type="button"
                                         class="hd-button-reset munin-explorer-kilder__expand-toggle"
                                         aria-expanded="@(IsExpanded(kilde.Id) ? "true" : "false")"
-                                        aria-controls="@PanelId(kilde.Id)"
+                                        @* Only while the panel exists: an IDREF to an element that
+                                           is not in the DOM is not a relationship, it is a dangling
+                                           pointer an a11y linter and a screen reader both follow. *@
+                                        aria-controls="@(IsExpanded(kilde.Id) ? PanelId(kilde.Id) : null)"
                                         aria-label="@ExpandLabel(kilde)"
                                         @onclick="() => ToggleDatasamlingerAsync(kilde)">@(IsExpanded(kilde.Id) ? "−" : "+")</button>
                             }
