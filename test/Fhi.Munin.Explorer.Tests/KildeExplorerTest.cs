@@ -693,11 +693,9 @@ public class KildeExplorerTest : BunitContext
         Assert.Contains("Hoveddatasamling", panel.TextContent);
         Assert.Contains("Bølge 4 - serie 49", panel.TextContent);
 
-        // Grouped, not flattened: the delkilde name heads its own table. Flat is the defect
-        // Fhi.Metadata-wgpeo was filed for — all 14 shown, with nothing saying 11 were a delkildes.
-        //
-        // A real heading, not a styled <p>: a screen reader navigates the panel by these, and it
-        // has to sit one below the component title, since a table row is not a heading.
+        // Grouped and headed by real headings rather than styled paragraphs: flat is the defect
+        // Fhi.Metadata-wgpeo names, and a screen reader navigates this panel by its headings, which
+        // sit one below the component title because a table row is not a heading.
         var heading = panel.QuerySelector("h3.munin-explorer-kilde__delkilde-name")!;
 
         Assert.Equal("Bølge 4", heading.TextContent);
@@ -803,10 +801,9 @@ public class KildeExplorerTest : BunitContext
     [Fact]
     public async Task Render_WhileTheDatasamlingerAreStillComing_ThenTheOpenRowSaysSoRatherThanSittingEmpty()
     {
-        // A row that opens on nothing reads as "this kilde has no datasamlinger", which is a
-        // different fact from "they are on their way" — and the row's own count says otherwise.
-        // Asserted against a stalled fetch, because with a fake that answers at once the loading
-        // state has no window to be seen in and any test of it passes for the wrong reason.
+        // "No datasamlinger" and "still coming" are different facts, and the row's own count says
+        // which. Stalled on purpose: with a fake that answers at once the loading state has no
+        // window to be seen in, and a test of it passes for the wrong reason.
         var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
         var client = new FakeClient(als).Describing(DetailWithCollections(als));
         var cut = RenderWith(client);
