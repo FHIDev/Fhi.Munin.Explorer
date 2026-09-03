@@ -6432,6 +6432,10 @@ public class VariableExplorerTest : BunitContext
         Assert.Equal([SpyttId], client.RequestsFor("2336").Select(request => request.VariableId));
     }
 
+    // The de-duplication in LoadUnnamedCodesAsync has no test, deliberately. The only payload that
+    // reaches it — one kodeverk named twice — gives two <li> the same @key, and diffing that list
+    // throws inside the renderer. Measured on main too, so it is not this branch's (l9l2n.38).
+
     [Fact]
     public void Codes_WhenTheLanguageIsEnAndTheCodesDoNotFit_ThenTheControlIsTranslatedToo()
     {

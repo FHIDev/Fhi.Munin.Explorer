@@ -386,7 +386,9 @@ public partial class VariableExplorer
             var key = KodeverkKey.Of(link);
 
             // A payload can name the same kodeverk twice, and the second mention must not re-ask.
-            if (_codes.ContainsKey(key) || _codesLoading.Contains(key))
+            // A failure counts as asked: the loop awaits, so _codesLoading is already empty again
+            // and a duplicate would retry back to back. The reader's press still retries.
+            if (_codes.ContainsKey(key) || _codesLoading.Contains(key) || _codesError.ContainsKey(key))
             {
                 continue;
             }
