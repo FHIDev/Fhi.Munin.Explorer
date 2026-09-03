@@ -152,6 +152,21 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   margin-bottom: 8px;
 }
 
+/* Stiler sizes these three through its responsiveH3-and-friends mixins, which step them down at
+   2881px and again at 767px; the shorthands above carry only the base, which no viewport narrower
+   than 2882px is ever served. Line-height is 160% at every step, so the steps are size alone. */
+@media (max-width: 2881px) {
+  .headline-3 { font-size: 1.75rem; }
+  .caption { font-size: 0.875rem; }
+  .form-element__label { font-size: 1.125rem; }
+}
+
+@media (max-width: 767px) {
+  .headline-3 { font-size: 1.5rem; }
+  .caption { font-size: 0.8125rem; }
+  .form-element__label { font-size: 1rem; }
+}
+
 /* components/_searchbox.scss — the field reserves 104px on the right for a button that sits
    inside it, which is where searchbox__freetext-submit-button puts one. */
 .searchbox__freetext-container {
