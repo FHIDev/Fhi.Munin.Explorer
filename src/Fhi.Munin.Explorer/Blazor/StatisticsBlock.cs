@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
@@ -41,7 +42,16 @@ internal static class StatisticsBlock
         builder.AddContent(2, Heading(variable.DatasamlingStatisticsType, texts));
         builder.CloseElement();
 
-        Table(builder, variable, texts);
+        var rows = Rows(variable);
+
+        Table(builder, rows, variable.DatasamlingStatisticsType, texts);
+
+        var seq = 10_000;
+
+        foreach (var statistic in rows)
+        {
+            seq = FrequencyTable(builder, seq, statistic, texts);
+        }
     };
 
     /// <summary>
@@ -69,14 +79,16 @@ internal static class StatisticsBlock
     /// An absent number is a dash rather than a blank, so a reader can tell "not measured" from a
     /// cell that failed to draw.
     /// </remarks>
-    private static void Table(RenderTreeBuilder builder, VariableDetail variable, Texts texts)
+    private static void Table(
+        RenderTreeBuilder builder, IReadOnlyList<Statistic> rows, string? statisticsType, Texts texts)
     {
         builder.OpenElement(10, "table");
         builder.AddAttribute(11, "class", "munin-explorer-statistics");
 
         builder.OpenElement(12, "thead");
         builder.OpenElement(13, "tr");
-        HeaderCell(builder, 20, texts.FieldYear);
+        HeaderCell(
+            builder, 20, IsAccumulated(statisticsType) ? texts.ColumnLastUpdated : texts.FieldYear);
         HeaderCell(builder, 30, texts.FieldMinimum);
         HeaderCell(builder, 40, texts.FieldMaximum);
         HeaderCell(builder, 50, texts.FieldMean);
@@ -88,7 +100,7 @@ internal static class StatisticsBlock
 
         var seq = 100;
 
-        foreach (var statistic in variable.Statistics)
+        foreach (var statistic in rows)
         {
             // Null-coalesced although Statistic.AdditionalProperties is declared non-nullable — see
             // that declaration for how a null gets in, and NullAsEmptyCollections for what stops it
@@ -120,6 +132,132 @@ internal static class StatisticsBlock
         builder.CloseElement();
         builder.CloseElement();
     }
+
+    // An accumulated set is a running total, so only its last row describes the data — and in prod
+    // that is the common shape, not an edge (Fhi.Metadata-e3e2d).
+    private static IReadOnlyList<Statistic> Rows(VariableDetail variable) =>
+        IsAccumulated(variable.DatasamlingStatisticsType) && variable.Statistics.Count > 0
+            ? [variable.Statistics[^1]]
+            : variable.Statistics;
+
+    /// <remarks>Both spellings, matching <see cref="Texts.StatisticsTypeLabel"/>.</remarks>
+    private static bool IsAccumulated(string? type) =>
+        type is { } kind
+        && (kind.Equals("accumulated", StringComparison.OrdinalIgnoreCase)
+            || kind.Equals("akkumulert", StringComparison.OrdinalIgnoreCase));
+
+    // Verdi is KodeverkLokalID and NOT Code, which is fully qualified; the share divides by the
+    // statistic's own GyldigeTilfeller, never the row sum, and its bar is clipped where the number
+    // is not; Beskrivelse is null on every row. Measurements for all four: Fhi.Metadata-e3e2d.
+    private static int FrequencyTable(RenderTreeBuilder builder, int seq, Statistic statistic, Texts texts)
+    {
+        var frequencies = statistic.CodeFrequencies;
+
+        if (frequencies is not { Count: > 0 })
+        {
+            return seq;
+        }
+
+        var valid = Number(statistic.AdditionalProperties, "GyldigeTilfeller");
+
+        builder.OpenElement(seq, "table");
+        builder.AddAttribute(seq + 1, "class", "munin-explorer-frequency");
+
+        // Several of these stack on a yearly variable. screenreader-only is Stiler's own class,
+        // so the name is announced without a second visible heading over each table.
+        builder.OpenElement(seq + 2, "caption");
+        builder.AddAttribute(seq + 3, "class", "screenreader-only");
+        builder.AddContent(seq + 4, texts.FrequencyCaption(Raw(statistic.AdditionalProperties, "SisteOppdaterteAarssett")));
+        builder.CloseElement();
+
+        builder.OpenElement(seq + 5, "thead");
+        builder.OpenElement(seq + 6, "tr");
+        HeaderCell(builder, seq + 7, texts.ColumnCodeValue);
+        HeaderCell(builder, seq + 10, texts.ColumnCategory);
+        HeaderCell(builder, seq + 13, texts.ColumnShareOfValid);
+        HeaderCell(builder, seq + 16, texts.ColumnCount);
+        builder.CloseElement();
+        builder.CloseElement();
+
+        builder.OpenElement(seq + 19, "tbody");
+
+        var row = seq + 22;
+
+        foreach (var frequency in frequencies)
+        {
+            var properties = frequency.AdditionalProperties ?? ReadOnlyDictionary<string, string?>.Empty;
+            var count = Number(properties, "GyldigeTilfeller");
+
+            builder.OpenElement(row, "tr");
+
+            // The code value heads its own row: the cells beside it are numbers about that value,
+            // and a screen reader reading one out of context should hear which value it belongs to.
+            builder.OpenElement(row + 1, "th");
+            builder.AddAttribute(row + 2, "scope", "row");
+            builder.AddContent(row + 3, Value(properties, "KodeverkLokalID"));
+            builder.CloseElement();
+
+            Cell(builder, row + 10, string.IsNullOrWhiteSpace(frequency.PreferredTerm) ? "—" : frequency.PreferredTerm);
+            ShareCell(builder, row + 20, count, valid, texts);
+            Cell(builder, row + 40, count is { } number ? Value(properties, "GyldigeTilfeller") : "—");
+
+            builder.CloseElement();
+            row += 50;
+        }
+
+        builder.CloseElement();
+        builder.CloseElement();
+
+        return row + 50;
+    }
+
+    // A missing or zero denominator draws a dash, not a bar of no length: "cannot be worked out"
+    // and "never occurs" are different facts, and an empty bar states the second.
+    private static void ShareCell(
+        RenderTreeBuilder builder, int seq, double? count, double? valid, Texts texts)
+    {
+        builder.OpenElement(seq, "td");
+
+        if (count is { } numerator && valid is { } denominator && denominator > 0)
+        {
+            var share = numerator / denominator * 100;
+
+            builder.AddContent(seq + 1, texts.ShareOfValid(share));
+
+            builder.OpenElement(seq + 2, "span");
+            builder.AddAttribute(seq + 3, "class", "munin-explorer-frequency__track");
+            builder.OpenElement(seq + 4, "span");
+            builder.AddAttribute(seq + 5, "class", "munin-explorer-frequency__fill");
+            builder.AddAttribute(
+                seq + 6,
+                "style",
+                $"width:{Math.Clamp(share, 0, 100).ToString("0.#", CultureInfo.InvariantCulture)}%");
+            builder.CloseElement();
+            builder.CloseElement();
+        }
+        else
+        {
+            builder.AddContent(seq + 7, "—");
+        }
+
+        builder.CloseElement();
+    }
+
+    // Value() answers with a dash, which is right in a cell and wrong inside a sentence.
+    private static string? Raw(IReadOnlyDictionary<string, string?>? properties, string key) =>
+        properties is not null
+        && properties.TryGetValue(key, out var value)
+        && !string.IsNullOrWhiteSpace(value)
+            ? value
+            : null;
+
+    /// <summary>A property as a number, or null where the catalogue holds none that parses.</summary>
+    private static double? Number(IReadOnlyDictionary<string, string?>? properties, string key) =>
+        properties is not null
+        && properties.TryGetValue(key, out var raw)
+        && double.TryParse(raw, NumberStyles.Any, CultureInfo.InvariantCulture, out var value)
+            ? value
+            : null;
 
     /// <summary>A statistic's value, or a dash where the catalogue holds none.</summary>
     private static string Value(IReadOnlyDictionary<string, string?> properties, string key) =>

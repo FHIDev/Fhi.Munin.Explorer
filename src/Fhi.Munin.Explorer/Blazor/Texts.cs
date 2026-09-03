@@ -151,6 +151,15 @@ internal sealed record Texts(
     string FieldStandardDeviation,
     string StatisticsYearly,
     string StatisticsAccumulated,
+    // The categorical frequency table, which reports how a coded variable's values are distributed.
+    // ColumnLastUpdated is not FieldLastUpdated: that one says when Munin's record changed, this
+    // one heads the year set an accumulated statistic was last computed over.
+    string ColumnCategory,
+    string ColumnShareOfValid,
+    string ColumnCount,
+    string ColumnLastUpdated,
+    Func<double, string> ShareOfValid,
+    Func<string?, string> FrequencyCaption,
     string ShowWholeVariable,
     // The row's save action, in both of its states. One control, two words: the button says
     // what pressing it does, not what the variable currently is.
@@ -677,6 +686,14 @@ internal sealed record Texts(
         FieldStandardDeviation: "Standardavvik",
         StatisticsYearly: "\u00c5rsbasert",
         StatisticsAccumulated: "Akkumulert",
+        ColumnCategory: "Kategori",
+        ColumnShareOfValid: "% av gyldige",
+        ColumnCount: "Antall",
+        ColumnLastUpdated: "Sist oppdatert",
+        ShareOfValid: share => $"{share.ToString("0.#", CatalogueProperties.Formatting("nb-NO"))} %",
+        FrequencyCaption: yearSet => string.IsNullOrWhiteSpace(yearSet)
+            ? "Fordeling av gyldige verdier"
+            : $"Fordeling av gyldige verdier ({yearSet})",
         ShowWholeVariable: "Vis hele variabelen",
         SaveToList: "Lagre i liste",
         RemoveFromList: "Fjern fra liste",
@@ -976,6 +993,14 @@ internal sealed record Texts(
         FieldStandardDeviation: "Standard deviation",
         StatisticsYearly: "Yearly",
         StatisticsAccumulated: "Accumulated",
+        ColumnCategory: "Category",
+        ColumnShareOfValid: "% of valid",
+        ColumnCount: "Count",
+        ColumnLastUpdated: "Last updated",
+        ShareOfValid: share => $"{share.ToString("0.#", CatalogueProperties.Formatting("en-GB"))} %",
+        FrequencyCaption: yearSet => string.IsNullOrWhiteSpace(yearSet)
+            ? "Distribution of valid values"
+            : $"Distribution of valid values ({yearSet})",
         ShowWholeVariable: "Show the whole variable",
         SaveToList: "Save to list",
         RemoveFromList: "Remove from list",
