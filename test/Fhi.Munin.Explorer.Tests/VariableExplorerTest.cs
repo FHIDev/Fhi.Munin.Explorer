@@ -6397,6 +6397,42 @@ public class VariableExplorerTest : BunitContext
         Assert.Empty(client.CodeRequests);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Codes_WhenAnAbandonedDetailFetchThrows_ThenItDoesNotAskAgainForTheOpenPanel(
+        bool rateLimited)
+    {
+        // Copilot on #167. LoadDetailAsync's success path returns out of the try, but both catch
+        // branches fall through to the tail — so a call that had lost the panel and then threw
+        // would fetch nameless codes for whichever panel took its place.
+        var client = KodeverkRows();
+        var cut = RenderWith(client);
+
+        // The reader opens Tale, whose detail hangs, and gives up on it.
+        client.StallDetail = true;
+        Toggles(cut)[0].Click();
+
+        // Spytt answers at once, and its own nameless fetch fails — which is what leaves the key in
+        // neither _codes nor _codesLoading, and so re-askable by anyone who wanders past.
+        client.StallDetail = false;
+        client.FailCodes = true;
+        Toggles(cut)[1].Click();
+
+        Assert.Equal([SpyttId], client.RequestsFor("2336").Select(request => request.VariableId));
+
+        // Now Tale's abandoned fetch fails.
+        await cut.InvokeAsync(rateLimited ? client.RateLimitStalled : client.FailStalled);
+
+        // One turn of the dispatcher is enough: the continuation above was queued before this call,
+        // and the codes fetch it would make throws synchronously, so it never yields again. There
+        // is nothing to wait for — a guard that works leaves no trace, which is why this is a flush
+        // and not a WaitForAssertion.
+        await cut.InvokeAsync(() => { });
+
+        Assert.Equal([SpyttId], client.RequestsFor("2336").Select(request => request.VariableId));
+    }
+
     [Fact]
     public void Codes_WhenTheLanguageIsEnAndTheCodesDoNotFit_ThenTheControlIsTranslatedToo()
     {
