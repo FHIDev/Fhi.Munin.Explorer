@@ -40,7 +40,8 @@ behaviour found later by someone else.
    Stiler does carry a rule, read the selector and not just the name. The first attempt at this
    link's rule, on Stiler's unpublished `feature/munin-explorer-scss` branch, was scoped
    `.munin-explorer-header .skiplink-pagination` and could never have matched, since that header
-   opens and closes entirely inside `ColumnPicker()`. Reasoning in `AGENTS.md`.
+   opens and closes entirely inside `ColumnPicker()`. Reasoning in `AGENTS.md`. The Stiler rule for
+   a name you invent is a separate bead of its own — see "Finishing".
 
 3. **The package ships no CSS.** No `wwwroot`, no `.razor.css`. Sample hosts carry their own
    styling because they have no Stiler; the package must not.
@@ -125,6 +126,18 @@ checkout needs to find the shared database.
   to this package by law, and green means no detected regression rather than accessible — what the
   gate cannot see is in AGENTS.md under "Accessibility is a requirement, not a preference". CI runs
   the same script, so a red check there is never a surprise.
+- **A new or renamed `munin-explorer*` name needs a rule in `Fhi.Helsedata.Stiler`, filed as its
+  own bead before this PR merges** — `bd create --label=stiler --label=rcl --label=helsedata` —
+  not as a clause in the RCL bead's criteria, which is in nobody's `bd ready` and cannot be
+  claimed by anyone. Nothing on this side can see that repository, so green here is not evidence the
+  element is styled on helsedata.no. Reasoning in `AGENTS.md` under "Class names in markup".
+- **Working in Stiler is Azure DevOps, not GitHub.** The checkout this workspace uses is
+  `C:\source\fhigit\helsedata\Helsedata.Claude\Fhi.Helsedata.Stiler` — there are other Stiler
+  checkouts on the box and they are not it. Rules go under `Static/scss/components/munin-explorer/`,
+  one file per area (`_trail.scss`, `_filters.scss`, `_results.scss`, and so on). No `gh`, no
+  Copilot review, no `Closes #N`. And `az repos pr create --description` truncates at the first
+  newline and turns æøå into question marks: create the PR, then PATCH title and description over
+  the REST API with explicit UTF-8 bytes, and read it back.
 - Reference the bead with the **cross-repository** form, since the issues live in Munin:
   `Closes FHIDev/Munin#1234`. Use `Refs` when the PR only partly satisfies the bead — `Closes`
   shuts it whether or not the acceptance criteria are met.

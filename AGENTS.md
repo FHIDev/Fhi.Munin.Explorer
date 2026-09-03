@@ -215,3 +215,24 @@ file, per `changelog.d/README.md`: split it, they end up in different sections a
 a `munin-explorer*` name that no `Notes for hosts` fragment — or released section — names. It has no
 window either: Kelda's facet panel stated its own host requirement in an `Added` bullet in #72, and
 the branch check landed in #96, so the requirement was never new on a branch that check could see.
+
+The sample stylesheets, the README table and the changelog are all inside the window this
+repository can check, and not one of them puts a rule where helsedata.no reads it. **A new or
+renamed `munin-explorer*` name has no appearance there until a rule for it lands in
+`Fhi.Helsedata.Stiler`** — a separate Azure DevOps repository no pipeline here can reach. So a
+green Explorer pipeline is not evidence the element is styled; nothing that runs on this side has
+ever looked at the stylesheet that decides it.
+
+**The Stiler rule therefore gets its own bead, filed before the PR that introduces the name
+merges** — labels `stiler`, `rcl` and `helsedata` — and not a clause inside the RCL bead's own
+acceptance criteria. A clause is not work anyone can be handed: it is in nobody's `bd ready`, it
+cannot be claimed, and the bead holding it reads as finished the moment its PR merges. #161
+(`Fhi.Metadata-3osk6`) was careful about exactly this and it still was not enough — it used `Refs`
+rather than `Closes` so the bead would stay open until the Stiler half landed, and the bead is open
+to this day with `munin-explorer-kilde__delkilde-description` shipped unstyled and nobody staffed on
+it until Robin asked. It was filed by hand afterwards as `Fhi.Metadata-8e2ev`. Everything this side
+can check had passed: a rule in both sample stylesheets, a row in the README table, a host note in
+`changelog.d`.
+
+The mechanics of working in Stiler — which of the checkouts on the box is the right one, and why
+`az repos` cannot be trusted with a description — are in `CLAUDE.md` under "Finishing".
