@@ -5333,6 +5333,14 @@ public class VariableExplorerTest : BunitContext
         /// <summary>Every codes fetch made, in order — which is how "not until asked" is tested.</summary>
         public List<(Guid VariableId, string Type, string Reference)> CodeRequests { get; } = [];
 
+        /// <summary>The fetches made for one reference.</summary>
+        /// <remarks>
+        /// A nameless link is fetched with the variable, so a test about a control's own fetching
+        /// can no longer count the whole list (Fhi.Metadata-l9l2n.38).
+        /// </remarks>
+        public IReadOnlyList<(Guid VariableId, string Type, string Reference)> RequestsFor(string reference) =>
+            [.. CodeRequests.Where(request => request.Reference == reference)];
+
         /// <summary>Fail every codes fetch from the next one on.</summary>
         public bool FailCodes { get; set; }
 
@@ -5670,6 +5678,14 @@ public class VariableExplorerTest : BunitContext
         ]
     };
 
+    /// <summary>Skjemastatus' codes: the same shape, behind a control because that link has a name.</summary>
+    /// <remarks>
+    /// Registered so the nameless link is not the only one in this fixture whose codes the fake
+    /// knows. Since Fhi.Metadata-l9l2n.38 a nameless link's codes are drawn without a press, so a
+    /// test about the control has to press a named link's.
+    /// </remarks>
+    private static KodeverkCodes Codes2337() => Codes2336() with { KodeverkReference = "2337" };
+
     /// <summary>Kommunenummer's shape: a kodeverk that records no start dates at all.</summary>
     private static KodeverkCodes Codes3402() => new()
     {
@@ -5691,6 +5707,7 @@ public class VariableExplorerTest : BunitContext
             .Knows(WithKodeverk(TaleId))
             .Knows(WithKodeverk(SpyttId))
             .Knows(Codes2336())
+            .Knows(Codes2337())
             .Knows(Codes3402());
 
     /// <summary>Open the first row and move to the Data tab, where the kodeverk live.</summary>
@@ -5735,18 +5752,24 @@ public class VariableExplorerTest : BunitContext
     [Fact]
     public void Kodeverk_WhenTheApiResolvedNoName_ThenTheReferenceIsLabelledRatherThanStandingIn()
     {
-        // The bead's own case, measured against variable bc8a6515: displayName is null for its one
-        // link, and the flat list this replaces rendered that as "Kildekodeverk: 2336" — which
-        // reads as the kodeverk being called 2336. The name being unknown is said out loud, and the
-        // reference is labelled, so no bare code is the only text on a line.
-        var cut = OpenData(KodeverkRows());
+        // Still the rule for every kind but Kildekodeverk. A V-AK's OId is an official number, so a
+        // missing name is an ordinary lookup miss: it is said out loud and the reference is
+        // labelled, rather than the reference standing in as the name.
+        var id = Guid.NewGuid();
+        var cut = OpenData(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(Detail(id) with
+        {
+            KodeverkLinks =
+            [
+                new() { KodeverkType = "AdministrativtKodeverk", KodeverkReference = "3402", HasCodeValues = true }
+            ]
+        }));
 
         var nameless = KodeverkLines(cut)[0];
 
         Assert.Equal("Ukjent navn", nameless.QuerySelector(".munin-explorer-kodeverk__name")!.TextContent);
-        Assert.Equal("Referanse: 2336",
+        Assert.Equal("Referanse: 3402",
                      nameless.QuerySelector(".munin-explorer-kodeverk__reference")!.TextContent);
-        Assert.DoesNotContain("Kildekodeverk: 2336", Panel(cut).TextContent);
+        Assert.DoesNotContain("Administrativt kodeverk: 3402", Panel(cut).TextContent);
     }
 
     [Fact]
@@ -5778,15 +5801,19 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
-    public void Codes_WhenTheTabIsOpened_ThenNothingIsFetchedUntilAReaderAsks()
+    public void Codes_WhenTheTabIsOpened_ThenOnlyTheNamelessLinksCodesAreFetched()
     {
         // The reason the codes are their own endpoint at all. Kommunenummer is 885 codes and most
-        // readers open none of them, so opening a row must not pay for a list nobody reads.
+        // readers open none of them, so opening a row must not pay for a list nobody reads. The one
+        // exception is a link with no name: its codes are the only thing that identifies it, so
+        // they are fetched with the variable and nothing else is (Fhi.Metadata-l9l2n.38).
         var client = KodeverkRows();
         var cut = OpenData(client);
 
-        Assert.Empty(client.CodeRequests);
-        Assert.Equal(["Vis koder", "Vis koder", "Vis koder"], CodeToggles(cut).Select(b => b.TextContent));
+        Assert.Equal((TaleId, "Kildekodeverk", "2336"), Assert.Single(client.CodeRequests));
+
+        // Both named links keep their collapsed control and have been asked for nothing.
+        Assert.Equal(["Vis koder", "Vis koder"], CodeToggles(cut).Select(b => b.TextContent));
         Assert.All(CodeToggles(cut), b => Assert.Equal("false", b.GetAttribute("aria-expanded")));
     }
 
@@ -5798,8 +5825,12 @@ public class VariableExplorerTest : BunitContext
         var cut = OpenData(KodeverkRows());
 
         Assert.Equal(4, KodeverkLines(cut).Count);
-        Assert.Equal(3, CodeToggles(cut).Count);
         Assert.Empty(KodeverkLines(cut)[3].QuerySelectorAll("button"));
+
+        // Two controls, not three: the nameless link's two codes are already on its line, so there
+        // is nothing a press could reveal. The other reason for no button, and a different one.
+        Assert.Equal(2, CodeToggles(cut).Count);
+        Assert.Empty(KodeverkLines(cut)[0].QuerySelectorAll("button"));
     }
 
     [Fact]
@@ -5812,7 +5843,9 @@ public class VariableExplorerTest : BunitContext
 
         CodeToggles(cut)[0].Click();
 
-        Assert.Equal((TaleId, "Kildekodeverk", "2336"), Assert.Single(client.CodeRequests));
+        // 2337 rather than 2336: the nameless link's codes are on its line already, so the first
+        // control on the page belongs to the named kildekodeverk beneath it.
+        Assert.Equal((TaleId, "Kildekodeverk", "2337"), Assert.Single(client.RequestsFor("2337")));
 
         var table = Panel(cut).QuerySelector(".munin-explorer-codes table")!;
 
@@ -5848,7 +5881,7 @@ public class VariableExplorerTest : BunitContext
         var client = KodeverkRows();
         var cut = OpenData(client);
 
-        CodeToggles(cut)[2].Click();
+        CodeToggles(cut)[1].Click();
 
         var cells = Panel(cut).QuerySelectorAll(".munin-explorer-codes tbody td")
             .Select(td => td.TextContent).ToArray();
@@ -5881,7 +5914,7 @@ public class VariableExplorerTest : BunitContext
 
         // The answer was kept, so re-opening costs nothing. Without the cache a reader comparing
         // two kodeverk pays for the same list every time they look back at it.
-        Assert.Single(client.CodeRequests);
+        Assert.Single(client.RequestsFor("2337"));
         Assert.NotNull(Panel(cut).QuerySelector(".munin-explorer-codes table"));
     }
 
@@ -5894,14 +5927,15 @@ public class VariableExplorerTest : BunitContext
         var cut = OpenData(client);
 
         CodeToggles(cut)[0].Click();
-        CodeToggles(cut)[2].Click();
+        CodeToggles(cut)[1].Click();
 
         var tables = Panel(cut).QuerySelectorAll(".munin-explorer-codes table");
 
         Assert.Equal(2, tables.Length);
         Assert.Contains("Velg verdi", tables[0].TextContent);
         Assert.Contains("Halden", tables[1].TextContent);
-        Assert.Equal(2, client.CodeRequests.Count);
+        Assert.Single(client.RequestsFor("2337"));
+        Assert.Single(client.RequestsFor("3402"));
     }
 
     [Fact]
@@ -5929,17 +5963,33 @@ public class VariableExplorerTest : BunitContext
         // A reference the upstream register does not know answers 404, which the client reports as
         // null. That is not a fault and must not be dressed as one — nor asked for again on every
         // expand, which is why the empty answer is cached like any other.
-        var client = KodeverkRows();
+        //
+        // Its own fixture rather than a link out of KodeverkRows: every named link there is one the
+        // fake now knows, because a named link is the only kind left with a control to press.
+        var id = Guid.NewGuid();
+        var client = new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(Detail(id) with
+        {
+            KodeverkLinks =
+            [
+                new()
+                {
+                    KodeverkType = "Kildekodeverk",
+                    KodeverkReference = "2337",
+                    DisplayName = "Skjemastatus",
+                    HasCodeValues = true
+                }
+            ]
+        });
+
         var cut = OpenData(client);
 
-        // 2337 is a link the fake knows nothing about, the same as an unpublished reference.
-        CodeToggles(cut)[1].Click();
+        CodeToggles(cut)[0].Click();
 
         Assert.Equal("Ingen kodeverdier tilgjengelig",
                      Panel(cut).QuerySelector(".munin-explorer-codes p")!.TextContent);
 
-        CodeToggles(cut)[1].Click();
-        CodeToggles(cut)[1].Click();
+        CodeToggles(cut)[0].Click();
+        CodeToggles(cut)[0].Click();
 
         Assert.Single(client.CodeRequests);
     }
@@ -5963,7 +6013,8 @@ public class VariableExplorerTest : BunitContext
         Assert.Contains("infobox", message.ClassName!);
 
         // The panel around it is untouched: the other lines still offer their codes, and the rows
-        // are still the rows the search returned.
+        // are still the rows the search returned. Three controls, because the nameless link's own
+        // fetch failed too and a failed one keeps its control — that is the reader's retry.
         Assert.Equal(3, CodeToggles(cut).Count);
         Assert.Equal(2, Toggles(cut).Count);
         Assert.Empty(cut.Find("[role='alert']").TextContent.Trim());
@@ -5973,8 +6024,13 @@ public class VariableExplorerTest : BunitContext
         CodeToggles(cut)[0].Click();
         CodeToggles(cut)[0].Click();
 
-        Assert.Equal(2, client.CodeRequests.Count);
-        Assert.NotNull(Panel(cut).QuerySelector(".munin-explorer-codes table"));
+        Assert.Equal(3, client.RequestsFor("2336").Count);
+
+        // And the retry that landed puts the codes where they belonged all along — on the line, in
+        // place of the name — so the control that offered the retry has nothing left to reveal.
+        Assert.Equal("0 Velg verdi · 1 0: Tap av produktiv tale",
+                     KodeverkLines(cut)[0].QuerySelector(".munin-explorer-kodeverk__name")!.TextContent);
+        Assert.Empty(KodeverkLines(cut)[0].QuerySelectorAll("button"));
     }
 
     [Fact]
@@ -5992,7 +6048,7 @@ public class VariableExplorerTest : BunitContext
         Assert.NotNull(Panel(cut).QuerySelector(".munin-explorer-codes table"));
 
         client.RateLimitCodes = true;
-        CodeToggles(cut)[2].Click();
+        CodeToggles(cut)[1].Click();
 
         var lists = Panel(cut).QuerySelectorAll(".munin-explorer-codes");
 
@@ -6017,10 +6073,10 @@ public class VariableExplorerTest : BunitContext
 
         // Pressing again is the only retry a reader has, and nothing was cached over.
         client.RateLimitCodes = false;
-        CodeToggles(cut)[2].Click();
-        CodeToggles(cut)[2].Click();
+        CodeToggles(cut)[1].Click();
+        CodeToggles(cut)[1].Click();
 
-        Assert.Equal(3, client.CodeRequests.Count);
+        Assert.Equal(2, client.RequestsFor("3402").Count);
         Assert.Equal(2, Panel(cut).QuerySelectorAll(".munin-explorer-codes table").Length);
     }
 
@@ -6034,7 +6090,7 @@ public class VariableExplorerTest : BunitContext
 
         CodeToggles(cut)[0].Click();
 
-        Assert.Single(client.CodeRequests);
+        Assert.Equal(TaleId, Assert.Single(client.RequestsFor("2337")).VariableId);
 
         Toggles(cut)[1].Click();
         TabButtons(cut)[1].Click();
@@ -6044,8 +6100,10 @@ public class VariableExplorerTest : BunitContext
 
         CodeToggles(cut)[0].Click();
 
-        Assert.Equal(2, client.CodeRequests.Count);
-        Assert.Equal(SpyttId, client.CodeRequests[1].VariableId);
+        Assert.Equal([TaleId, SpyttId], client.RequestsFor("2337").Select(r => r.VariableId));
+
+        // The nameless link is per variable too, and it was asked once for each without a press.
+        Assert.Equal([TaleId, SpyttId], client.RequestsFor("2336").Select(r => r.VariableId));
     }
 
     [Fact]
@@ -6081,24 +6139,24 @@ public class VariableExplorerTest : BunitContext
         CodeToggles(cut)[0].Click();
         CodeToggles(cut)[0].Click();
 
-        Assert.Single(client.CodeRequests);
+        Assert.Single(client.RequestsFor("2337"));
         Assert.Equal("Henter koder \u2026",
                      Panel(cut).QuerySelector(".munin-explorer-codes p")!.TextContent);
 
         // And the one answer fills the list that was re-opened, rather than being orphaned by it.
-        await cut.InvokeAsync(() => client.AnswerStalledCodes(Codes2336()));
+        await cut.InvokeAsync(() => client.AnswerStalledCodes(Codes2337()));
 
         cut.WaitForAssertion(() =>
             Assert.Contains("Velg verdi", Panel(cut).QuerySelector(".munin-explorer-codes table")!.TextContent));
 
-        Assert.Single(client.CodeRequests);
+        Assert.Single(client.RequestsFor("2337"));
     }
 
     [Fact]
     public async Task Codes_WhenAnotherVariableIsOpenedWhileTheFetchIsOut_ThenTheAbandonedAnswerIsNotShown()
     {
         // The generation guard, and the reason the kilde panel has one. Two variables in this very
-        // fixture link to reference 2336, so an answer that outlives the panel it was asked for
+        // fixture link to reference 2337, so an answer that outlives the panel it was asked for
         // lands in the next variable's list looking entirely correct — and is another variable's
         // codes, never fetched for the one on screen.
         var client = KodeverkRows();
@@ -6113,7 +6171,8 @@ public class VariableExplorerTest : BunitContext
 
         client.StallCodes = false;
 
-        await cut.InvokeAsync(() => client.AnswerStalledCodes(Codes2336() with
+        // The oldest hanging fetch is the one this answers: 2337 for the variable the reader left.
+        await cut.InvokeAsync(() => client.AnswerStalledCodes(Codes2337() with
         {
             Codes = [new() { Value = "9", Name = "STALE" }]
         }));
@@ -6141,8 +6200,7 @@ public class VariableExplorerTest : BunitContext
         // guard and this fails too: the abandoned answer fills _codes for the key about to be
         // opened, so the toggle finds it there and never asks. Checked by removing the guard —
         // the STALE row shows up first, and this line behind it.
-        Assert.Equal(2, client.CodeRequests.Count);
-        Assert.Equal(SpyttId, client.CodeRequests[1].VariableId);
+        Assert.Equal([TaleId, SpyttId], client.RequestsFor("2337").Select(r => r.VariableId));
     }
 
     [Fact]
@@ -6160,12 +6218,318 @@ public class VariableExplorerTest : BunitContext
 
         var region = Panel(cut).QuerySelector(".munin-explorer-codes")!;
 
+        // Line 1, not line 0: the first control on the page belongs to the named kildekodeverk,
+        // because the nameless one above it draws its codes without a control at all.
         Assert.Equal(region.Id, CodeToggles(cut)[0].GetAttribute("aria-controls"));
-        Assert.Equal(KodeverkLines(cut)[0].QuerySelector(".munin-explorer-kodeverk__name")!.Id,
+        Assert.Equal(KodeverkLines(cut)[1].QuerySelector(".munin-explorer-kodeverk__name")!.Id,
                      region.QuerySelector("table")!.GetAttribute("aria-labelledby"));
 
         // Column headers, so a screen reader can say which column a cell is in.
         Assert.All(region.QuerySelectorAll("thead th"), th => Assert.Equal("col", th.GetAttribute("scope")));
+    }
+
+    // ---------------------------------------------------------------------------------
+    // A kildekodeverk with no name (Fhi.Metadata-l9l2n.38). The API stopped sending a name it could
+    // not trust, for the majority of V-KK links on helsedata.no, so what identifies such a link is
+    // its codes — and that is what its line shows.
+    // ---------------------------------------------------------------------------------
+
+    /// <summary>Nine codes behind the nameless link: one more than fits on the line.</summary>
+    private static KodeverkCodes ManyCodes2336() => Codes2336() with
+    {
+        Codes = [.. Enumerable.Range(0, 9).Select(i => new KodeverkCode { Value = $"{i}", Name = $"Verdi {i}" })]
+    };
+
+    /// <summary>One nameless kildekodeverk and nothing else, so a line can be read on its own.</summary>
+    private static DetailClient OneNamelessLink(Guid id, bool hasCodeValues = true) =>
+        new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(Detail(id) with
+        {
+            KodeverkLinks =
+            [
+                new()
+                {
+                    KodeverkType = "Kildekodeverk",
+                    KodeverkReference = "2336",
+                    HasCodeValues = hasCodeValues
+                }
+            ]
+        });
+
+    [Fact]
+    public void Codes_WhenAKildekodeverkHasNoName_ThenItsCodesStandWhereTheNameWould()
+    {
+        // What a helsedata reader used to get instead: "Ukjent navn", an internal Munin id under
+        // it, and the meaning behind a press. Runa has shown the codes inline since #5478.
+        var cut = OpenData(KodeverkRows());
+        var nameless = KodeverkLines(cut)[0];
+
+        // Built from the stub rather than typed out here: a render that happened to print something
+        // plausible would otherwise pass this without ever having drawn the codes it was given.
+        Assert.Equal(string.Join(" · ", Codes2336().Codes.Select(code => $"{code.Value} {code.Name}")),
+                     nameless.QuerySelector(".munin-explorer-kodeverk__name")!.TextContent);
+
+        // None of the three things that stood here before.
+        Assert.DoesNotContain("Ukjent navn", Panel(cut).TextContent);
+        Assert.Null(nameless.QuerySelector(".munin-explorer-kodeverk__reference"));
+        Assert.Empty(nameless.QuerySelectorAll("button"));
+
+        // The catalogue's own words, so an English page still has them said in Norwegian — the rule
+        // the table's own name column follows.
+        Assert.Equal("no", nameless.QuerySelector(".munin-explorer-kodeverk__name span")!.GetAttribute("lang"));
+    }
+
+    [Fact]
+    public void Codes_WhenANamelessLinkHasMoreCodesThanFitInline_ThenAControlOpensTheSameFullList()
+    {
+        var client = KodeverkRows().Knows(ManyCodes2336());
+        var cut = OpenData(client);
+        var all = ManyCodes2336().Codes;
+
+        // Eight, which is Runa's INLINE_CODE_PREVIEW — matched so the two clients do not draw the
+        // same list to different lengths.
+        Assert.Equal(string.Join(" · ", all.Take(8).Select(code => $"{code.Value} {code.Name}")),
+                     KodeverkLines(cut)[0].QuerySelector(".munin-explorer-kodeverk__name")!.TextContent);
+
+        // The total is on the control itself, so it is announced and not merely drawn beside it.
+        Assert.Equal("Vis alle (9)", AccessibleName.Of(CodeToggles(cut)[0]));
+
+        CodeToggles(cut)[0].Click();
+
+        // The list the named links' control opens, drawn by the same fragment — not a second one
+        // holding only what the line left out.
+        var table = Panel(cut).QuerySelector(".munin-explorer-codes table")!;
+
+        Assert.Single(Panel(cut).QuerySelectorAll(".munin-explorer-codes"));
+        Assert.Equal(all.Count, table.QuerySelectorAll("tbody tr").Length);
+        Assert.Equal(["Verdi", "Navn", "Gyldig fra", "Gyldig til"],
+                     table.QuerySelectorAll("thead th").Select(th => th.TextContent));
+
+        // And nothing was fetched twice: the line and the table are the same answer.
+        Assert.Single(client.RequestsFor("2336"));
+        Assert.Equal("Skjul koder", CodeToggles(cut)[0].TextContent);
+    }
+
+    [Fact]
+    public void Codes_WhenAnAdministrativtKodeverkHasAName_ThenNothingAboutItsLineChanged()
+    {
+        // The control on the fix. A change applied to every kind rather than to nameless
+        // kildekodeverk alone would pass the two tests above and break this one — a V-AK's OId is
+        // an official number, so a resolved name is trustworthy and its codes stay behind a press.
+        var client = KodeverkRows();
+        var cut = OpenData(client);
+        var named = KodeverkLines(cut)[2];
+
+        Assert.Equal("Kommunenummer", named.QuerySelector(".munin-explorer-kodeverk__name")!.TextContent);
+        Assert.Equal("Referanse: 3402", named.QuerySelector(".munin-explorer-kodeverk__reference")!.TextContent);
+
+        var control = Assert.Single(named.QuerySelectorAll("button"));
+
+        Assert.Equal("Vis koder", control.TextContent);
+        Assert.Equal("false", control.GetAttribute("aria-expanded"));
+        Assert.Empty(client.RequestsFor("3402"));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Codes_WhenTheNamelessLinksFetchFails_ThenItFallsBackAndTheComponentStaysUp(bool rateLimited)
+    {
+        // This fetch runs without anyone having pressed anything, and helsedata's legacy Blazor
+        // Server host loses the whole CMS page on an unhandled exception — so a throw here takes
+        // down a page the reader never touched. Both kinds: the limiter is the likelier of the two.
+        var client = KodeverkRows();
+
+        client.RateLimitCodes = rateLimited;
+        client.FailCodes = !rateLimited;
+
+        var cut = OpenData(client);
+        var nameless = KodeverkLines(cut)[0];
+
+        // The reference is back, because with no codes and no name it is the only thing telling two
+        // such links apart — and the control with it, which is the only retry a reader has.
+        Assert.Equal("Ukjent navn", nameless.QuerySelector(".munin-explorer-kodeverk__name")!.TextContent);
+        Assert.Equal("Referanse: 2336", nameless.QuerySelector(".munin-explorer-kodeverk__reference")!.TextContent);
+        Assert.Equal("Vis koder", Assert.Single(nameless.QuerySelectorAll("button")).TextContent);
+
+        // Still mounted, and the failure reported nowhere but on its own line: the rows, the rest of
+        // the panel and the component's alert region all say what they said before.
+        Assert.Equal(2, Toggles(cut).Count);
+        Assert.Equal(4, KodeverkLines(cut).Count);
+        Assert.Empty(cut.Find("[role='alert']").TextContent.Trim());
+    }
+
+    [Fact]
+    public void Codes_WhenTheHostSuppliesTheSelectionAndTheFetchFails_ThenTheFirstRenderSurvivesIt()
+    {
+        // The other way in, and the one that runs from a lifecycle method rather than from a click:
+        // a shared link lands with the panel already open, so the failing fetch is the component's
+        // own first render and there is no event handler to carry the exception.
+        var id = Guid.NewGuid();
+        var client = OneNamelessLink(id);
+
+        client.FailCodes = true;
+
+        var cut = RenderWith(client, b => b.Add(c => c.SelectedVariableId, (Guid?)id));
+
+        TabButtons(cut)[1].Click();
+
+        Assert.Equal("Ukjent navn",
+                     KodeverkLines(cut)[0].QuerySelector(".munin-explorer-kodeverk__name")!.TextContent);
+        Assert.Single(client.RequestsFor("2336"));
+    }
+
+    [Fact]
+    public void Codes_WhileTheNamelessLinksFetchIsOut_ThenItsLineSaysSoRatherThanStandingEmpty()
+    {
+        // The window between the ask and the answer. Without it the line falls through to the empty
+        // case and says "Ingen kodeverdier tilgjengelig" about codes that are still on their way.
+        var client = KodeverkRows();
+
+        client.StallCodes = true;
+
+        var cut = OpenData(client);
+        var nameless = KodeverkLines(cut)[0];
+
+        Assert.Equal("Henter koder …", nameless.QuerySelector(".munin-explorer-kodeverk__name")!.TextContent);
+        Assert.Null(nameless.QuerySelector(".munin-explorer-kodeverk__reference"));
+    }
+
+    [Fact]
+    public void Codes_WhenTheNamelessLinkPublishesNone_ThenItsReferenceIsWhatIdentifiesIt()
+    {
+        // A reference the register does not know answers 404, which the client reports as null.
+        // Two such links have nothing else to tell them apart, which is the reference's one job
+        // left here — and it is not a failure, so it must not be dressed as one.
+        var cut = OpenData(OneNamelessLink(Guid.NewGuid()));
+        var nameless = KodeverkLines(cut)[0];
+
+        Assert.Equal("Ingen kodeverdier tilgjengelig",
+                     nameless.QuerySelector(".munin-explorer-kodeverk__name")!.TextContent);
+        Assert.Equal("Referanse: 2336",
+                     nameless.QuerySelector(".munin-explorer-kodeverk__reference")!.TextContent);
+        Assert.Empty(nameless.QuerySelectorAll("button"));
+    }
+
+    [Fact]
+    public void Codes_WhenANamelessKildekodeverkServesNoCodes_ThenItIsLeftAsItWas()
+    {
+        // Runa's guard, and the reason it is there: without harKodeverdier the codes call is a
+        // certain 404, so there is nothing to draw in place of the name and nothing to gain from
+        // asking for it.
+        var client = OneNamelessLink(Guid.NewGuid(), hasCodeValues: false);
+        var cut = OpenData(client);
+        var nameless = KodeverkLines(cut)[0];
+
+        Assert.Equal("Ukjent navn", nameless.QuerySelector(".munin-explorer-kodeverk__name")!.TextContent);
+        Assert.Equal("Referanse: 2336",
+                     nameless.QuerySelector(".munin-explorer-kodeverk__reference")!.TextContent);
+        Assert.Empty(nameless.QuerySelectorAll("button"));
+        Assert.Empty(client.CodeRequests);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Codes_WhenAnAbandonedDetailFetchThrows_ThenItDoesNotAskAgainForTheOpenPanel(
+        bool rateLimited)
+    {
+        // Copilot on #167. LoadDetailAsync's success path returns out of the try, but both catch
+        // branches fall through to the tail — so a call that had lost the panel and then threw
+        // would fetch nameless codes for whichever panel took its place.
+        // Two nameless links, because the loop asks for them one at a time: while the first is out,
+        // the second is in none of the three sets the de-duplication consults, and so is exactly
+        // what a call that has lost the panel would ask for.
+        var twoNameless = new[]
+        {
+            new KodeverkLink { KodeverkType = "Kildekodeverk", KodeverkReference = "2336", HasCodeValues = true },
+            new KodeverkLink { KodeverkType = "Kildekodeverk", KodeverkReference = "9999", HasCodeValues = true }
+        };
+
+        var client = new DetailClient(OnePage(Row(TaleId, "1. Tale"), Row(SpyttId, "2. Spyttsekresjon")))
+            .Knows(Detail(TaleId) with { KodeverkLinks = twoNameless })
+            .Knows(Detail(SpyttId, "2. Spyttsekresjon") with { KodeverkLinks = twoNameless });
+
+        var cut = RenderWith(client);
+
+        // The reader opens Tale, whose detail hangs, and gives up on it.
+        client.StallDetail = true;
+        Toggles(cut)[0].Click();
+
+        // Spytt answers at once, and its first nameless fetch hangs — so its second link has not
+        // been asked for yet, and nothing marks it as spoken for.
+        client.StallDetail = false;
+        client.StallCodes = true;
+        Toggles(cut)[1].Click();
+
+        Assert.Equal([SpyttId], client.RequestsFor("2336").Select(request => request.VariableId));
+        Assert.Empty(client.RequestsFor("9999"));
+
+        // Now Tale's abandoned fetch fails.
+        await cut.InvokeAsync(rateLimited ? client.RateLimitStalled : client.FailStalled);
+
+        // A flush rather than a WaitForAssertion, because a guard that works leaves nothing to wait
+        // for. One turn is enough: that continuation was queued before this call, and the fetch it
+        // would have made records itself before returning its stalled task.
+        await cut.InvokeAsync(() => { });
+
+        // The second link is still unasked. Without the guard the abandoned call reaches it, having
+        // skipped the first only because that one happens to be in flight.
+        Assert.Empty(client.RequestsFor("9999"));
+        Assert.Equal([SpyttId], client.RequestsFor("2336").Select(request => request.VariableId));
+    }
+
+    [Fact]
+    public async Task Kodeverk_WhenThePayloadNamesOneLinkTwice_ThenTheListSurvivesBeingDiffed()
+    {
+        // Two siblings carrying one @key throw inside Blazor's diff — in helsedata's legacy Server
+        // host that is the whole CMS page. Latent on main, where nothing re-renders this list until
+        // a press; reachable on open here, because the nameless fetch re-renders it.
+        var id = Guid.NewGuid();
+        var link = new KodeverkLink
+        {
+            KodeverkType = "Kildekodeverk",
+            KodeverkReference = "2336",
+            HasCodeValues = true
+        };
+
+        var client = new DetailClient(OnePage(Row(id, "1. Tale")))
+            .Knows(Detail(id) with { KodeverkLinks = [link, link] });
+
+        // Stalled on purpose. A fetch that answers at once never lets the list reach the DOM before
+        // the codes do, so the whole open coalesces into one render and nothing is ever diffed —
+        // which is a test of this that passes with the key broken.
+        client.StallCodes = true;
+
+        var cut = OpenData(client);
+
+        Assert.Equal(2, KodeverkLines(cut).Count);
+        Assert.All(KodeverkLines(cut), line => Assert.Equal(
+            "Henter koder …", line.QuerySelector(".munin-explorer-kodeverk__name")!.TextContent));
+
+        // The answer re-renders the list that is already on screen, which is the diff.
+        await cut.InvokeAsync(() => client.AnswerStalledCodes(Codes2336()));
+
+        cut.WaitForAssertion(() => Assert.All(KodeverkLines(cut), line => Assert.Equal(
+            "0 Velg verdi · 1 0: Tap av produktiv tale",
+            line.QuerySelector(".munin-explorer-kodeverk__name")!.TextContent)));
+
+        // Both lines are the same kodeverk, so they share one cache entry and one answer.
+        Assert.Equal(2, KodeverkLines(cut).Count);
+        Assert.Single(client.RequestsFor("2336"));
+    }
+
+    // The de-duplication in LoadUnnamedCodesAsync has no test of its own: the payload that reaches
+    // it is the one above, and there the first fetch succeeds, so the second mention is skipped on
+    // the cache rather than on the error entry the guard was widened for (Fhi.Metadata-l9l2n.38).
+
+    [Fact]
+    public void Codes_WhenTheLanguageIsEnAndTheCodesDoNotFit_ThenTheControlIsTranslatedToo()
+    {
+        // The Texts parity test cannot compare a sentence-building delegate — it has no arguments
+        // there — so each is asserted where it renders, the rule PageOf and ResultSummary follow.
+        var cut = OpenData(KodeverkRows().Knows(ManyCodes2336()), b => b.Add(c => c.Language, "en"));
+
+        Assert.Equal("Show all (9)", AccessibleName.Of(CodeToggles(cut)[0]));
     }
 
     [Fact]
@@ -6178,10 +6542,13 @@ public class VariableExplorerTest : BunitContext
         // the same thing whether it is being filtered on or read off a variable.
         Assert.Equal(["Source code system", "Administrative code system", "Clinical code system"],
                      KodeverkGroupHeadings(cut));
-        Assert.Equal("Unnamed",
+        // The nameless link's codes are the catalogue's own words, so they stay Norwegian on an
+        // English page — and it says nothing about being unnamed, in either language.
+        Assert.Equal("0 Velg verdi · 1 0: Tap av produktiv tale",
                      KodeverkLines(cut)[0].QuerySelector(".munin-explorer-kodeverk__name")!.TextContent);
-        Assert.Equal("Reference: 2336",
-                     KodeverkLines(cut)[0].QuerySelector(".munin-explorer-kodeverk__reference")!.TextContent);
+        Assert.DoesNotContain("Unnamed", Panel(cut).TextContent);
+        Assert.Equal("Reference: 2337",
+                     KodeverkLines(cut)[1].QuerySelector(".munin-explorer-kodeverk__reference")!.TextContent);
 
         CodeToggles(cut)[0].Click();
 
@@ -6229,8 +6596,9 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Contains("hd-button-square", toggle);
         Assert.Contains("button-square--ghost", toggle);
+        // Line 1: the nameless link above it draws no reference, because its codes are its identity.
         Assert.Contains("caption",
-                        KodeverkLines(cut)[0].QuerySelector(".munin-explorer-kodeverk__reference")!.ClassName!);
+                        KodeverkLines(cut)[1].QuerySelector(".munin-explorer-kodeverk__reference")!.ClassName!);
     }
 
     private static IReadOnlyList<AngleSharp.Dom.IElement> Values(IRenderedComponent<VariableExplorer> cut) =>
@@ -6299,7 +6667,10 @@ public class VariableExplorerTest : BunitContext
         cut.Find("[role=tab][aria-selected=false]").Click();
 
         Assert.Equal(["Kildekodeverk", "Administrativt kodeverk"], KodeverkGroupHeadings(cut));
-        Assert.Equal(["Ukjent navn", "ICD-10"],
+
+        // This fake serves no codes for 2336, so the nameless link says the endpoint published none
+        // rather than guessing — and keeps its reference, which is then all that identifies it.
+        Assert.Equal(["Ingen kodeverdier tilgjengelig", "ICD-10"],
                      KodeverkLines(cut).Select(l => l.QuerySelector(".munin-explorer-kodeverk__name")!.TextContent));
         Assert.Equal(["Referanse: 2336", "Referanse: 2.16.578.1.12.4.1.1.7110"],
                      KodeverkLines(cut).Select(l => l.QuerySelector(".munin-explorer-kodeverk__reference")!.TextContent));

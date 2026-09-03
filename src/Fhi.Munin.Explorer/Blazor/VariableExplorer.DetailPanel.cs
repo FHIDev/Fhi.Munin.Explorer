@@ -368,6 +368,35 @@ public partial class VariableExplorer
         }
     }
 
+    /// <summary>Fetch the codes that stand in for a name, for every link that has none.</summary>
+    /// <remarks>
+    /// With the variable rather than on a press, unlike every other code list here: these links
+    /// have no name, so a reader who presses nothing would otherwise be told nothing. One at a
+    /// time, because several at once is the rhythm that meets the limiter.
+    /// </remarks>
+    private async Task LoadUnnamedCodesAsync()
+    {
+        if (_detail is not { } detail)
+        {
+            return;
+        }
+
+        foreach (var link in detail.KodeverkLinks.Where(IsUnnamedKildekodeverk))
+        {
+            var key = KodeverkKey.Of(link);
+
+            // A payload can name the same kodeverk twice, and the second mention must not re-ask.
+            // A failure counts as asked: the loop awaits, so _codesLoading is already empty again
+            // and a duplicate would retry back to back. The reader's press still retries.
+            if (_codes.ContainsKey(key) || _codesLoading.Contains(key) || _codesError.ContainsKey(key))
+            {
+                continue;
+            }
+
+            await LoadCodesAsync(key);
+        }
+    }
+
     /// <summary>Close every open code list and forget what was fetched for them.</summary>
     /// <remarks>
     /// Bumps the generation for the reason <see cref="ClearSource"/> does: closing disowns whatever
@@ -466,51 +495,145 @@ public partial class VariableExplorer
         }
     };
 
+    // Runa's INLINE_CODE_PREVIEW, matched so the two clients do not draw the same list to
+    // different lengths and disagree about what a variable codes.
+    private const int InlineCodePreview = 8;
+
+    /// <summary>Whether this link has no name worth drawing, so its codes are what identify it.</summary>
+    /// <remarks>
+    /// Kildekodeverk only, and only where there are codes to fetch. A missing name on the other
+    /// kinds is an ordinary lookup miss and still says so (Fhi.Metadata-l9l2n.38).
+    /// </remarks>
+    private static bool IsUnnamedKildekodeverk(KodeverkLink link) =>
+        string.Equals(link.KodeverkType, "Kildekodeverk", StringComparison.OrdinalIgnoreCase)
+        && Trimmed(link.DisplayName) is null
+        && link.HasCodeValues;
+
+    /// <summary>What an unnamed link draws where a named one draws its name.</summary>
+    private enum InlineCodes
+    {
+        Loading,
+        Failed,
+        None,
+        Codes
+    }
+
+    private InlineCodes InlineCodesState(KodeverkKey key) =>
+        _codesError.ContainsKey(key) ? InlineCodes.Failed
+        // Nothing fetched yet is the window between the panel rendering and the fetch it started
+        // reaching the client, and it is a loading line rather than an empty one for that window.
+        : !_codes.TryGetValue(key, out var codes) ? InlineCodes.Loading
+        : codes.Count == 0 ? InlineCodes.None
+        : InlineCodes.Codes;
+
+    /// <summary>The codes themselves, up to the preview length, as one line of value and name.</summary>
+    /// <remarks>
+    /// Marked Norwegian for the reason the table's name column is: the words are the catalogue's,
+    /// whatever language the page is in.
+    /// </remarks>
+    private RenderFragment InlineCodesPreview(IReadOnlyList<KodeverkCode> codes) => builder =>
+    {
+        builder.OpenElement(0, "span");
+        builder.AddAttribute(1, "lang", "no");
+
+        var seq = 2;
+        var first = true;
+
+        foreach (var code in codes.Take(InlineCodePreview))
+        {
+            if (!first)
+            {
+                builder.AddContent(seq, " · ");
+            }
+
+            first = false;
+
+            builder.AddContent(seq + 1, Trimmed(code.Name) is { } name ? $"{code.Value} {name}" : code.Value);
+
+            seq += 2;
+        }
+
+        builder.CloseElement();
+    };
+
     /// <summary>One line per link within a kind, with its reference and its codes.</summary>
     private RenderFragment KodeverkItems(IEnumerable<(KodeverkLink Link, int Index)> links) => builder =>
     {
         var seq = 0;
 
+        // How many lines this kind has already given each key, so a repeated one can be told from
+        // the first. An ordinary link is always its key's first, so its count is 0 wherever the
+        // payload puts it — which is what survives a reorder.
+        var occurrences = new Dictionary<KodeverkKey, int>();
+
         foreach (var (link, index) in links)
         {
             var key = KodeverkKey.Of(link);
+            var inline = IsUnnamedKildekodeverk(link) ? InlineCodesState(key) : (InlineCodes?)null;
+            var showAll = inline is InlineCodes.Codes && _codes[key].Count > InlineCodePreview;
+
+            var occurrence = occurrences.GetValueOrDefault(key);
+            occurrences[key] = occurrence + 1;
 
             builder.OpenElement(seq, "li");
             // Keyed on the link rather than left to positional diffing: each line owns an expanded
             // or collapsed code list, and two links reordered under one heading would otherwise
             // swap the lists open beneath them.
-            builder.SetKey(key);
+            //
+            // Paired with the count so the key is unique, which only bites for a kodeverk the
+            // payload names twice: two siblings with one key throw inside the diff — a host's whole
+            // page, in Blazor Server.
+            builder.SetKey((key, occurrence));
             builder.AddAttribute(seq + 1, "class", "munin-explorer-kodeverk__item");
 
             builder.OpenElement(seq + 2, "p");
             builder.AddAttribute(seq + 3, "class", "munin-explorer-kodeverk__name");
             builder.AddAttribute(seq + 4, "id", KodeverkNameId(index));
 
-            if (Trimmed(link.DisplayName) is { } name)
+            if (inline is { } state)
+            {
+                // The codes stand where the name would, so a reader learns what the variable codes
+                // without pressing anything — the whole of Fhi.Metadata-l9l2n.38. A fetch that
+                // failed falls back to today's line, which is the only honest thing left to say.
+                builder.AddContent(seq + 5, state switch
+                {
+                    InlineCodes.Loading => (RenderFragment)(b => b.AddContent(0, T.CodesLoading)),
+                    InlineCodes.Failed => b => b.AddContent(0, T.KodeverkUnnamed),
+                    InlineCodes.None => b => b.AddContent(0, T.NoCodes),
+                    _ => InlineCodesPreview(_codes[key])
+                });
+            }
+            else if (Trimmed(link.DisplayName) is { } name)
             {
                 // The catalogue's own name, so it stays Norwegian whatever the UI language is —
                 // the rule the kilde trail and the variable's own name already follow.
-                builder.AddAttribute(seq + 5, "lang", "no");
-                builder.AddContent(seq + 6, name);
+                builder.AddAttribute(seq + 6, "lang", "no");
+                builder.AddContent(seq + 7, name);
             }
             else
             {
-                builder.AddContent(seq + 7, T.KodeverkUnnamed);
+                builder.AddContent(seq + 8, T.KodeverkUnnamed);
             }
 
             builder.CloseElement();
 
-            builder.OpenElement(seq + 8, "p");
-            builder.AddAttribute(seq + 9, "class", "caption munin-explorer-kodeverk__reference");
-            builder.AddContent(seq + 10, $"{T.FieldKodeverkReference}: {link.KodeverkReference}");
-            builder.CloseElement();
-
-            // No button where the API serves no codes. HelsefagligKodeverk links are the case that
-            // matters — the endpoint answers 404 for every one of them — and a control that could
-            // only ever report "no codes" is worse than no control at all.
-            if (link.HasCodeValues)
+            // Left out where the codes are the identity: the reference is an internal Munin id and
+            // saying it beside them adds nothing. It comes back the moment they cannot be shown,
+            // where it is the only thing telling two unnamed links apart.
+            if (inline is null or InlineCodes.Failed or InlineCodes.None)
             {
-                builder.AddContent(seq + 11, KodeverkCodesToggle(link, key, index));
+                builder.OpenElement(seq + 9, "p");
+                builder.AddAttribute(seq + 10, "class", "caption munin-explorer-kodeverk__reference");
+                builder.AddContent(seq + 11, $"{T.FieldKodeverkReference}: {link.KodeverkReference}");
+                builder.CloseElement();
+            }
+
+            // No button where the API serves no codes — every HelsefagligKodeverk link answers 404,
+            // and one that could only ever report "no codes" is worse than none — nor where the
+            // codes are already inline and all fit. It stays on a failure, the reader's only retry.
+            if (link.HasCodeValues && (inline is null or InlineCodes.Failed || showAll))
+            {
+                builder.AddContent(seq + 12, KodeverkCodesToggle(link, key, index, showAll));
             }
 
             builder.CloseElement();
@@ -524,8 +647,14 @@ public partial class VariableExplorer
     /// The panel is rendered only while it is open, so <c>aria-controls</c> is set only then — the
     /// rule the kilde and datasamling toggles follow, for the same reason: an id naming an element
     /// that is not in the document is worse than no id.
+    /// <para>
+    /// <c>showAll</c> is set where the line above is already showing a preview, which is what makes
+    /// the count worth saying: the control reveals the rest of a list the reader can see the start
+    /// of, rather than opening one they have seen nothing of.
+    /// </para>
     /// </remarks>
-    private RenderFragment KodeverkCodesToggle(KodeverkLink link, KodeverkKey key, int index) => builder =>
+    private RenderFragment KodeverkCodesToggle(
+        KodeverkLink link, KodeverkKey key, int index, bool showAll = false) => builder =>
     {
         var open = _openCodes.Contains(key);
 
@@ -535,7 +664,7 @@ public partial class VariableExplorer
         builder.AddAttribute(3, "aria-expanded", open ? "true" : "false");
         builder.AddAttribute(4, "aria-controls", open ? KodeverkCodesId(index) : null);
         builder.AddAttribute(5, "onclick", EventCallback.Factory.Create(this, () => ToggleCodesAsync(link)));
-        builder.AddContent(6, open ? T.HideCodes : T.ShowCodes);
+        builder.AddContent(6, open ? T.HideCodes : showAll ? T.ShowAllCodes(_codes[key].Count) : T.ShowCodes);
         builder.CloseElement();
 
         if (!open)

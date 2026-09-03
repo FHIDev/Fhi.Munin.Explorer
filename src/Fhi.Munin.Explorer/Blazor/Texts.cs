@@ -86,6 +86,10 @@ internal sealed record Texts(
     string NoKodeverk,
     string ShowCodes,
     string HideCodes,
+    // The control on an unnamed kildekodeverk whose codes do not all fit inline. Runa's wording
+    // and Runa's count, so the two clients do not describe the same list differently — and it
+    // opens the list "Vis koder" opens rather than a second one.
+    Func<int, string> ShowAllCodes,
     string CodesLoading,
     string CodesError,
     string NoCodes,
@@ -621,6 +625,7 @@ internal sealed record Texts(
         NoKodeverk: "Ingen kodeverk registrert",
         ShowCodes: "Vis koder",
         HideCodes: "Skjul koder",
+        ShowAllCodes: count => $"Vis alle ({count})",
         CodesLoading: "Henter koder …",
         CodesError: "Kunne ikke hente kodene nå. Prøv igjen om litt.",
         NoCodes: "Ingen kodeverdier tilgjengelig",
@@ -919,6 +924,7 @@ internal sealed record Texts(
         NoKodeverk: "No code systems registered",
         ShowCodes: "Show codes",
         HideCodes: "Hide codes",
+        ShowAllCodes: count => $"Show all ({count})",
         CodesLoading: "Loading codes …",
         CodesError: "Could not load the codes right now. Please try again shortly.",
         NoCodes: "No code values available",

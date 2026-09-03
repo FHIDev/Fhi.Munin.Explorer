@@ -160,6 +160,14 @@ public partial class VariableExplorer
                 _detailLoading = false;
             }
         }
+
+        // Outside the fetch, so a nameless link's codes do not hold back the lines that are ready.
+        // Its own check, because only an abandoned fetch that SUCCEEDED returns out of the try —
+        // one abandoned and then thrown reaches this line (Fhi.Metadata-l9l2n.38).
+        if (_detailGeneration == generation)
+        {
+            await LoadUnnamedCodesAsync();
+        }
     }
 
     /// <summary>Close the panel and forget what was fetched for it.</summary>
