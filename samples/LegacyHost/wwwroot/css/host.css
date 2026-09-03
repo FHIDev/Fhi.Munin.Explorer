@@ -2175,8 +2175,8 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
    The background is part of it and not decoration. These wear button-square--secondary, which is
    grey60 ON grey60 text once the inert rule recolours the text alone — a caption that is invisible
-   until a hover changes the background under it. Same pair the pager uses above, for the same
-   reason: its buttons are secondary too. */
+   until a hover changes the background under it. The pager's Forrige/Neste were secondary too
+   until `Fhi.Metadata-ejcbi` made them ghosts, which is what helsedata.no draws. */
 .munin-explorer-retry[aria-disabled="true"] {
   background-color: var(--grey30);
   color: var(--grey60);
@@ -2187,14 +2187,22 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   color: var(--grey60);
 }
 
-/* The numbered pages between Forrige and Neste. Which page is in force is drawn by the buttons'
-   own Stiler classes — filled for that one, ghosts for the rest — and they carry Stiler's
-   `margin-right`, so what an undefined name costs is the wrapping and not the spacing: a host
-   without this rule still gets a row of separated buttons in the flow. */
+/* The numbered pages between Forrige and Neste. They wear helsedata's own `hd-button-reset`, which
+   strips the button chrome, so unlike every other control here NOTHING draws which page is in
+   force without a rule: `.current` below is load-bearing and not decoration. Stiler owes the same
+   pair — that is its own bead, and until it lands the run is bare text on a Stiler-only host. */
 .munin-explorer-pagination-pages {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
+}
+.munin-explorer-pagination-pages .hd-button-reset {
+  padding: 4px 8px;
+  text-decoration: underline;
+}
+.munin-explorer-pagination-pages .hd-button-reset.current {
+  font-weight: 700;
+  text-decoration: none;
 }
 
 /* The size control. Which size is in force is the `<select>`'s own business now — it was three

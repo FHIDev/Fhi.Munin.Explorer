@@ -104,11 +104,14 @@ These are not style preferences — each one is a host that breaks otherwise.
     their estate and not about anyone else's — a host with Stiler alone drew 92 of the 95 names
     correctly and the pager at browser defaults — so `variables-pagination` and
     `variables-pagination-content` became `munin-explorer-pagination` and
-    `munin-explorer-pagination-content`, and their rules join the rest of the prefix in Stiler
-    under `components/munin-explorer/`. They are not in 0.1.13, which shipped before this rename:
-    they ship in **0.1.14**, and on 0.1.13 itself the pager renders at browser defaults exactly as
-    it did before. Inside helsedata nothing changes either way — their `variables-pagination` rules
-    are still in `variables.css`, now unused.
+    `munin-explorer-pagination-content`, and their rules belong with the rest of the prefix in
+    Stiler under `components/munin-explorer/`. **They are not written yet.** This paragraph claimed
+    they shipped in 0.1.14; checked against the `Fhi.Helsedata.Stiler` working copy on 2026-09-03,
+    `origin/main` carries exactly one pagination selector — `munin-explorer-skiplink-pagination` —
+    and nothing for `-pagination`, `-pagination-content`, `-pagination-size` or `-pagination-pages`.
+    So the pager renders at browser defaults on **every** Stiler version, 0.1.14 included, and the
+    rules are outstanding as `Fhi.Metadata-ejcbi` records. Inside helsedata nothing changes either
+    way — their `variables-pagination` rules are still in `variables.css`, now unused.
 
     The third of those 95 names was the pager's skip link, and it went the same way under
     `Fhi.Metadata-ja2qu`. It is worth spelling out because it failed backwards from every other
@@ -122,8 +125,8 @@ These are not style preferences — each one is a host that breaks otherwise.
     which declarations the rule needs to carry, which is the question this link turned on. The
     name was in both sources the whole time it was broken, and neither source says anything about
     the host that has neither of them.
-    `skiplink-pagination` is `munin-explorer-skiplink-pagination` now, and Stiler **0.1.14**
-    carries its rule unscoped. A Stiler-only host is down to no rules of its own, not to one.
+    `skiplink-pagination` is `munin-explorer-skiplink-pagination` now, and Stiler carries its rule
+    unscoped — the one pagination selector it does have.
 
     Unscoped is the load-bearing word. The first attempt at a Stiler rule for this link — on the
     `feature/munin-explorer-scss` branch, which was never released under that shape — was scoped
@@ -173,8 +176,8 @@ These are not style preferences — each one is a host that breaks otherwise.
   no guide to which was which, so a reader had to check each one against a list. There is no longer
   a category to check against. The `THEIRS` allowlist in `scripts/assert-sample-css-in-step.sh` is
   empty by construction, and what these names cost a host is now the same question everywhere: a
-  host on Stiler 0.1.13 or later has rules for them — 0.1.14 for the pager and its skip link, which
-  were renamed after 0.1.13 shipped, and none at all yet for `munin-explorer-retry` — any other host
+  host on Stiler 0.1.13 or later has rules for them — 0.1.14 for the pager's skip link, which was
+  renamed after 0.1.13 shipped, and none at all yet for the pager itself — any other host
   draws whatever it wants drawn, and the sub-lists below are about how much drawing nothing costs.
 
   - Handles, where something else already dresses the element — a Stiler class it also wears, or
@@ -239,7 +242,14 @@ These are not style preferences — each one is a host that breaks otherwise.
     undrawn one is a numbered list with a stray × after it; and inside the `munin-explorer-period*`
     wrapper, `__track`, `__fill` and `__track--ongoing` are the period bar itself — only its width
     comes from an inline style, so an undrawn bar renders as nothing at all. The period is still
-    legible without it, because the dates are next to it in words, in `__range`. Last in this list
+    legible without it, because the dates are next to it in words, in `__range`.
+    `munin-explorer-pagination-pages` joined this list under `Fhi.Metadata-ejcbi`, and it is worth
+    saying why it moved out of the handles: the numbered pages wear helsedata's own
+    `hd-button-reset`, which strips the button chrome, so unlike every other control here nothing
+    else is dressing them. Undrawn, the run is a line of bare digits with no sign that the one you
+    are on is the one you are on — the rule that marks `.current` is the only thing that says so.
+    The square-button pair it wore before drew that for free, which is exactly why it is tempting
+    and exactly why helsedata's own pager does not use it. Last in this list
     is `munin-explorer-retry`, on the two retry buttons in the alert region: it draws their inert
     state, and it is the one name here that **no Stiler version carries yet, 0.1.14 included** —
     tracked as `Fhi.Metadata-x6vqc`. The buttons are never `disabled`, because that would drop the
@@ -386,7 +396,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-meta__tabs` | handle |
   | `munin-explorer-pagination` | handle |
   | `munin-explorer-pagination-content` | handle |
-  | `munin-explorer-pagination-pages` | handle |
+  | `munin-explorer-pagination-pages` | meaning |
   | `munin-explorer-pagination-size` | handle |
   | `munin-explorer-period` | handle |
   | `munin-explorer-period__fill` | meaning |

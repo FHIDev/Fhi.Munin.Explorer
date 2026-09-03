@@ -2641,6 +2641,32 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
+    public void Render_WhenThereIsMoreThanOnePage_ThenThePagerWearsTheClassesHelsedatasOwnPagerWears()
+    {
+        // Read off https://helsedata.no/no/variabler/?page=search on 2026-09-03: their two page
+        // turns are `hd-button-square button-square--ghost`, their numbers are `hd-button-reset`,
+        // and the one in force is marked `current`. Pinned because the first shipped version of
+        // this pager used the square pair for the numbers instead — which draws which page is in
+        // force with no rule at all, and is the reason that choice is tempting (Fhi.Metadata-ejcbi).
+        var cut = RenderWith(new PagedClient(312));
+
+        Assert.All(
+            PagerButtons(cut),
+            button => Assert.Equal("hd-button-square button-square--ghost", button.ClassName));
+
+        var numbers = PageNumberButtons(cut);
+
+        Assert.NotEmpty(numbers);
+        Assert.All(numbers, number => Assert.Contains("hd-button-reset", number.ClassName!));
+        Assert.All(numbers, number => Assert.DoesNotContain("hd-button-square", number.ClassName!));
+
+        var inForce = Assert.Single(numbers, number => number.ClassList.Contains("current"));
+
+        Assert.Equal("1", inForce.TextContent);
+        Assert.Equal("page", inForce.GetAttribute("aria-current"));
+    }
+
+    [Fact]
     public void Render_WhenThereIsMoreThanOnePage_ThenThePagerBorrowsNothingFromHelsedatasOwnStylesheet()
     {
         // The whole subtree, not just the two names above, because what this guards against is a
@@ -2652,6 +2678,13 @@ public class VariableExplorerTest : BunitContext
         // An exact list rather than a prefix check: the buttons are deliberately Stiler's own, so
         // "everything here is ours" would be false, and "nothing here is helsedata's" is only
         // checkable by naming what is here.
+        //
+        // `current` is the one name here that is not prefixed and not obviously Stiler's, so it is
+        // worth saying why it passes. It is the token helsedata.no's own pager marks the page in
+        // force with, and Stiler declares `.current` too — unscoped, with every declaration under a
+        // `.page-tabs__tab` descendant, so it applies nothing to a button of ours. It only ever
+        // means anything here through `.munin-explorer-pagination-pages .current`, which is ours
+        // and outstanding with Stiler along with the four names below.
         var cut = RenderWith(new PagedClient(312));
 
         var pager = cut.Find("div.munin-explorer-pagination");
@@ -2663,10 +2696,11 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Equal(
         [
-            "button-square--ghost",               // Stiler, a page that is not the one in force
-            "button-square--secondary",           // Stiler, the two page turns and the page in force
+            "button-square--ghost",               // Stiler, the two page turns
             "caption",                            // Stiler, the size label and the run's ellipsis
-            "hd-button-square",                   // Stiler, the square shape
+            "current",                            // the page in force — see below
+            "hd-button-reset",                    // Stiler, the numbered pages
+            "hd-button-square",                   // Stiler, the square shape of the two page turns
             "margin-right",                       // Stiler, what keeps the numbers apart
             "munin-explorer-pagination",          // ours, Stiler components/munin-explorer/
             "munin-explorer-pagination-content",  // ours, Stiler components/munin-explorer/

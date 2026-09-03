@@ -289,7 +289,7 @@
                        focus to <body>, which a sighted keyboard user has no sign of. The clamp in
                        GoToPageAsync is what makes the press inert. Same rule as the result list. *@
                     <div class="munin-explorer-pagination-content">
-                        <button class="hd-button-square button-square--secondary"
+                        <button class="hd-button-square button-square--ghost"
                                 type="button"
                                 aria-label="@T.PreviousLabel"
                                 aria-disabled="@AriaDisabled(_pageNumber > 1)"
@@ -300,7 +300,7 @@
                            shape and is the same defect twice (Fhi.Metadata-ejcbi). *@
                         @PageNumbers.Write(this, _pageNumber, TotalPages, GoToPageAsync, T.GoToPageLabel, T.CurrentPageLabel)
 
-                        <button class="hd-button-square button-square--secondary"
+                        <button class="hd-button-square button-square--ghost"
                                 type="button"
                                 aria-label="@T.NextLabel"
                                 aria-disabled="@AriaDisabled(_pageNumber < TotalPages)"

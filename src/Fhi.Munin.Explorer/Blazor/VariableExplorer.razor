@@ -838,7 +838,7 @@ else
                    buttons ask for a page that does not exist at the ends of the list; the
                    clamp in GoToPageAsync is what makes that inert, so the boundary is one
                    rule in one place rather than a condition repeated on each button. *@
-                <button class="hd-button-square button-square--secondary"
+                <button class="hd-button-square button-square--ghost"
                         type="button"
                         aria-label="@T.PreviousLabel"
                         aria-disabled="@AriaDisabled(CanGoPrevious)"
@@ -849,7 +849,7 @@ else
                    the reader can only walk past one page at a time is a count and not a way in. *@
                 @PageNumbers.Write(this, _page, TotalPages, GoToPageAsync, T.GoToPageLabel, T.CurrentPageLabel)
 
-                <button class="hd-button-square button-square--secondary"
+                <button class="hd-button-square button-square--ghost"
                         type="button"
                         aria-label="@T.NextLabel"
                         aria-disabled="@AriaDisabled(CanGoNext)"
