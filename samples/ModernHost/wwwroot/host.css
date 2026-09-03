@@ -76,8 +76,14 @@ body {
   margin: 0;
   background: var(--grey10);   /* helsedata's own page ground; their cards read as white *on* this */
   color: var(--dark);
-  font: normal 1rem/160% var(--font);
+  font: normal 1.3125rem/160% var(--font);
 }
+
+/* Stiler steps the inherited base on body itself, at the same two breakpoints as the class
+   stand-ins below; html stays 16px throughout, so rem values are unaffected. Everything that
+   does not declare its own size reads this — Fhi.Metadata-vd8uq. */
+@media (max-width: 2881px) { body { font-size: 1.125rem; } }
+@media (max-width: 767px) { body { font-size: 1rem; } }
 
 /* ---- host chrome: this sample's own furniture, not the component's ---- */
 
@@ -1856,6 +1862,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 .dropdown-choicepicker__item {
   display: flex;
+  font-size: 1rem;
   align-items: center;
   padding: 4px 20px;
   white-space: nowrap;
