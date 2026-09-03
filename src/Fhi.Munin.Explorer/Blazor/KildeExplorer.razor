@@ -356,6 +356,11 @@ else
         <table class="munin-explorer-kilder" aria-label="@summary">
             <thead>
                 <tr>
+                    @* A control column with no visible heading: the name is there for a screen
+                       reader, which announces it when it reaches the toggle below. *@
+                    <th scope="col" class="munin-explorer-kilder__expand">
+                        <span class="screenreader-only">@T.ColumnExpand</span>
+                    </th>
                     @if (Selectable)
                     {
                         @* Over the rows the reader can see, and only those. No indeterminate state:
@@ -386,6 +391,23 @@ else
                        renderer would patch that button into a different kilde's rather than moving
                        it. *@
                     <tr @key="kilde.Id">
+                        @* Only where there is something to open. Kelda draws no toggle on a
+                           kilde with no datasamlinger, and a control that expands to nothing
+                           is worse than no control. *@
+                        <td class="munin-explorer-kilder__expand">
+                            @if (kilde.DatasamlingCount > 0)
+                            {
+                                @* aria-controls only while the panel exists: an IDREF to an element
+                                   that is not in the DOM is not a relationship, it is a dangling
+                                   pointer that an a11y linter and a screen reader both follow. *@
+                                <button type="button"
+                                        class="hd-button-reset munin-explorer-kilder__expand-toggle"
+                                        aria-expanded="@(IsExpanded(kilde.Id) ? "true" : "false")"
+                                        aria-controls="@(IsExpanded(kilde.Id) ? PanelId(kilde.Id) : null)"
+                                        aria-label="@ExpandLabel(kilde)"
+                                        @onclick="() => ToggleDatasamlingerAsync(kilde)">@(IsExpanded(kilde.Id) ? "−" : "+")</button>
+                            }
+                        </td>
                         @if (Selectable)
                         {
                             @* A td, not a th: the box is a control over the row, not its label. Its
@@ -421,6 +443,36 @@ else
                            it is missing the cell holds our "Ikke oppgitt" in the reader's own. *@
                         <td>@Value(Established(kilde))</td>
                     </tr>
+                    @if (IsExpanded(kilde.Id))
+                    {
+                        @* Its own row rather than a region inside the one above: a table row
+                           cannot hold a block, and the panel has to span every column. *@
+                        <tr @key="@($"{kilde.Id}-datasamlinger")">
+                            <td colspan="@RowSpan" id="@PanelId(kilde.Id)" class="munin-explorer-kilder__expanded">
+                                @* One live region for both states, as the drilldown does above and
+                                   the variable explorer's panel does: the panel is inserted after a
+                                   press, so a line that is not announced is a line nobody hears. *@
+                                <p class="@ExpandedStatusClass(kilde.Id)"
+                                   role="status"
+                                   aria-live="polite"
+                                   aria-atomic="true">@ExpandedStatus(kilde.Id)</p>
+
+                                @if (!_datasamlingerLoading.Contains(kilde.Id) && !_datasamlingerError.ContainsKey(kilde.Id))
+                                {
+                                    @PanelHeading(kilde.Name)
+
+                                    @foreach (var group in DatasamlingGroups(kilde.Id))
+                                    {
+                                        @if (group.Heading is { } heading)
+                                        {
+                                            @GroupHeading(heading, group.Depth)
+                                        }
+                                        @DatasamlingTable.For(group.Rows, T, Language, Reader)
+                                    }
+                                }
+                            </td>
+                        </tr>
+                    }
                 }
             </tbody>
         </table>

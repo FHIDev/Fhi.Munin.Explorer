@@ -41,6 +41,7 @@ TARGETS=(
   "/::filters-level-lines"
   "/::variable-detail"
   "/kilder::kilde-drilldown"
+  "/kilder::kilder-expanded"
 )
 
 host_pid=""

@@ -1712,6 +1712,41 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .munin-explorer-kilder .munin-explorer-kilder__select {
   width: 1%;
 }
+/* The expand control column and the row it opens. The toggle wears hd-button-reset, so it has no
+   chrome of its own: without a rule here it is a bare glyph in a column with no width. */
+.munin-explorer-kilder__expand {
+  width: 32px;
+  text-align: center;
+  vertical-align: top;
+}
+
+.munin-explorer-kilder__expand-toggle {
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 4px 6px;
+}
+
+/* Measured in the sample before this was written: on grey10 alone the panel was invisible against
+   the white table, so six datasamlinger read as six more kilder, under a second header row nobody
+   had said was nested. The inset and the rule down the left are what say "inside this row". */
+.munin-explorer-kilder td.munin-explorer-kilder__expanded {
+  background-color: var(--grey20);
+  border-left: 3px solid var(--grey40);
+  padding: 12px 20px 16px 32px;
+}
+
+/* The nested table repeats a header row directly under the list's own. Quieter and smaller so the
+   two read as outer and inner rather than as two lists. */
+.munin-explorer-kilder__expanded .munin-explorer-kilde__datasamlinger {
+  background-color: #fff;
+}
+
+.munin-explorer-kilder__expanded .munin-explorer-kilde__datasamlinger thead th {
+  font-size: 0.8125rem;
+  color: var(--grey60);
+}
+
 
 /* The name opens the kilde, so it has to look like the control it is without wearing a button
    box — the same treatment the variable rows' name button gets above, and for the same reason.

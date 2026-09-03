@@ -330,6 +330,14 @@ internal sealed record Texts(
     // "Established". Named for the year and not for the word, because the word also names
     // KildeSummary.Created — Munin's own row timestamp, and Kelda's Importert, not this column.
     string ColumnEstablished,
+    // The kilde table's expand control. The label carries the kilde's name because "Vis
+    // datasamlinger" repeated down a column says nothing about which row (Fhi.Metadata-mq24y).
+    Func<string, string> ExpandDatasamlinger,
+    Func<string, string> CollapseDatasamlinger,
+    string ColumnExpand,
+    Func<string, string> DatasamlingerFor,
+    Func<int, string> DatasamlingerLoaded,
+    string NoDatasamlinger,
     // Three strings that all undo something and can be on screen together, so each is named for
     // its own noun: ClearSearch empties the box, ClearFilters unticks the facets, ClearSelection
     // drops the row ticks. (Fhi.Metadata-5ghur)
@@ -844,6 +852,12 @@ internal sealed record Texts(
         ColumnKildetype: "Kildetype",
         ColumnVariableCount: "Variabler",
         ColumnEstablished: "Opprettet",
+        ExpandDatasamlinger: name => $"Vis datasamlinger for {name}",
+        CollapseDatasamlinger: name => $"Skjul datasamlinger for {name}",
+        ColumnExpand: "Vis datasamlinger",
+        DatasamlingerFor: name => $"Datasamlinger for {name}",
+        DatasamlingerLoaded: count => count == 1 ? "1 datasamling" : $"{count} datasamlinger",
+        NoDatasamlinger: "Ingen datasamlinger registrert",
         ClearSearch: "Tøm søket",
         SelectAllKilder: "Velg alle synlige kilder",
         ClearSelection: "Nullstill utvalg",
@@ -1146,6 +1160,12 @@ internal sealed record Texts(
         ColumnKildetype: "Source type",
         ColumnVariableCount: "Variables",
         ColumnEstablished: "Established",
+        ExpandDatasamlinger: name => $"Show data collections for {name}",
+        CollapseDatasamlinger: name => $"Hide data collections for {name}",
+        ColumnExpand: "Show data collections",
+        DatasamlingerFor: name => $"Data collections for {name}",
+        DatasamlingerLoaded: count => count == 1 ? "1 data collection" : $"{count} data collections",
+        NoDatasamlinger: "No data collections recorded",
         ClearSearch: "Clear search",
         SelectAllKilder: "Select all visible sources",
         ClearSelection: "Clear selection",

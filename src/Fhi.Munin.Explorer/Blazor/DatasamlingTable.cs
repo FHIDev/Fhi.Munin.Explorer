@@ -1,4 +1,5 @@
 using Fhi.Munin.Explorer.Contracts;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 
 namespace Fhi.Munin.Explorer.Blazor;
@@ -14,6 +15,15 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </remarks>
 internal static class DatasamlingTable
 {
+    /// <summary>The table as a fragment, for callers that write markup rather than build it.</summary>
+    internal static RenderFragment For(
+        IReadOnlyList<KildeDatasamling> rows, Texts texts, string? language, string reader) => builder =>
+    {
+        var seq = 0;
+
+        Render(builder, ref seq, rows, texts, language, reader);
+    };
+
     /// <summary>
     /// Each table keeps its own <c>thead</c>: a table is what ties a cell to its column heading for
     /// a screen reader, so one borrowing another's has none.
