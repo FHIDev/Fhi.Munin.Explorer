@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -258,15 +259,108 @@ internal static class Guard
     /// <summary>How long the kill and the last of the output are given, once already failing.</summary>
     private static readonly TimeSpan Grace = TimeSpan.FromSeconds(10);
 
+    /// <summary>The exit code the probe script reports, chosen so that nothing else says it.</summary>
+    private const int ProbeExitCode = 37;
+
+    private static readonly Lazy<string?> Resolved = new(FindBash);
+
     /// <summary>
-    /// <c>bash</c> as PATH resolves it, or null where there is none — a Windows checkout without
-    /// Git Bash on PATH, which is the only case the tests above skip for.
+    /// A <c>bash</c> from PATH that can run a guard script, or null where PATH holds none — a
+    /// Windows checkout without Git Bash, which is the only case the tests above skip for.
     /// </summary>
-    internal static string? Bash { get; } =
+    internal static string? Bash => Resolved.Value;
+
+    /// <summary>
+    /// The first candidate that passes <see cref="CanRunAScriptByPath"/> rather than the first that
+    /// exists: on a Windows box with WSL the first that exists is an app execution alias for the
+    /// distro's own bash, which cannot open a script named by a Windows path (Fhi.Metadata-ze05p).
+    /// </summary>
+    private static string? FindBash() =>
         (Environment.GetEnvironmentVariable("PATH") ?? string.Empty)
         .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
         .SelectMany(dir => new[] { Path.Combine(dir, "bash"), Path.Combine(dir, "bash.exe") })
-        .FirstOrDefault(File.Exists);
+        .Where(File.Exists)
+        .FirstOrDefault(CanRunAScriptByPath);
+
+    /// <summary>
+    /// Whether <paramref name="candidate"/> runs a script handed over the way every guard run hands
+    /// one over — an absolute path in this OS's own spelling. The script's own exit code is the
+    /// answer, so a candidate that started but never found the file reads as no.
+    /// </summary>
+    private static bool CanRunAScriptByPath(string candidate)
+    {
+        var script = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".sh");
+
+        try
+        {
+            File.WriteAllText(script, $"exit {ProbeExitCode}\n");
+
+            var start = new ProcessStartInfo(candidate)
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+            };
+
+            start.ArgumentList.Add(script);
+
+            using var process = Process.Start(start);
+
+            if (process is null)
+            {
+                return false;
+            }
+
+            var stdout = process.StandardOutput.ReadToEndAsync();
+            var stderr = process.StandardError.ReadToEndAsync();
+
+            // Budgeted like a guard run: a candidate that hangs is unusable, not the answer.
+            if (!process.WaitForExit(Budget) || !Task.WaitAll([stdout, stderr], Budget))
+            {
+                _ = KillStalled(process, stdout, stderr);
+
+                return false;
+            }
+
+            return process.ExitCode == ProbeExitCode;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or Win32Exception)
+        {
+            // A candidate that will not start at all is simply not the one.
+            return false;
+        }
+        finally
+        {
+            try
+            {
+                File.Delete(script);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                // The OS clears its temp directory; refusing to probe over this would be worse.
+            }
+        }
+    }
+
+    /// <summary>
+    /// <see cref="Bash"/>, to be run from <paramref name="workingDirectory"/>, with the directory
+    /// bash itself came from ahead of PATH: the perl, grep and sed the guards shell out to are
+    /// installed beside it and are not otherwise on a Windows PATH (Fhi.Metadata-ze05p).
+    /// </summary>
+    internal static ProcessStartInfo Shell(string workingDirectory)
+    {
+        var start = new ProcessStartInfo(Bash!)
+        {
+            WorkingDirectory = workingDirectory,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+
+        start.Environment["PATH"] = Path.GetDirectoryName(Bash!)
+                                    + Path.PathSeparator
+                                    + Environment.GetEnvironmentVariable("PATH");
+
+        return start;
+    }
 
     /// <summary>
     /// Writes <paramref name="stylesheet"/> out as both sample copies and runs the script over
@@ -291,12 +385,7 @@ internal static class Guard
             File.WriteAllText(modern, stylesheet);
             File.WriteAllText(legacy, stylesheet);
 
-            var start = new ProcessStartInfo(Bash!)
-            {
-                WorkingDirectory = dir.FullName,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-            };
+            var start = Shell(dir.FullName);
 
             start.ArgumentList.Add(Repo.In("scripts", "assert-sample-css-in-step.sh"));
             start.Environment["SAMPLE_CSS_MODERN"] = modern;
@@ -314,7 +403,7 @@ internal static class Guard
         }
         finally
         {
-            dir.Delete(recursive: true);
+            Discard(dir);
         }
     }
 
@@ -329,12 +418,7 @@ internal static class Guard
 
         try
         {
-            var start = new ProcessStartInfo(Bash!)
-            {
-                WorkingDirectory = dir.FullName,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-            };
+            var start = Shell(dir.FullName);
 
             start.ArgumentList.Add(Repo.In("scripts", script));
 
@@ -347,7 +431,7 @@ internal static class Guard
         }
         finally
         {
-            dir.Delete(recursive: true);
+            Discard(dir);
         }
     }
 
@@ -363,12 +447,7 @@ internal static class Guard
     /// </remarks>
     internal static GuardRun RunIn(string script, string workingDirectory, params string[] arguments)
     {
-        var start = new ProcessStartInfo(Bash!)
-        {
-            WorkingDirectory = workingDirectory,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-        };
+        var start = Shell(workingDirectory);
 
         start.ArgumentList.Add(Repo.In("scripts", script));
 
@@ -391,12 +470,7 @@ internal static class Guard
 
         try
         {
-            var start = new ProcessStartInfo(Bash!)
-            {
-                WorkingDirectory = dir.FullName,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-            };
+            var start = Shell(dir.FullName);
 
             start.ArgumentList.Add(scriptPath);
 
@@ -409,7 +483,24 @@ internal static class Guard
         }
         finally
         {
+            Discard(dir);
+        }
+    }
+
+    /// <summary>
+    /// A temp directory the run has finished with, deleted best-effort. Never throws: this runs in
+    /// a <c>finally</c> beside the assertions, so a delete losing a race would report "could not
+    /// delete a temp directory" in place of whatever the guard actually did (Fhi.Metadata-ze05p).
+    /// </summary>
+    internal static void Discard(DirectoryInfo dir)
+    {
+        try
+        {
             dir.Delete(recursive: true);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // A temp directory left behind is the lesser problem, and the OS clears it.
         }
     }
 
@@ -512,8 +603,11 @@ internal sealed class ShellFactAttribute : FactAttribute
     {
         if (Guard.Bash is null)
         {
-            Skip = "No bash on PATH, so the scripts/assert-*.sh guards cannot be run here. " +
-                   "CI runs on ubuntu-latest, where it always can.";
+            // Says "that can run a script by its path" because a WSL alias on PATH is a bash and
+            // is not one of these, and being skipped for a bash you can see is otherwise a puzzle.
+            Skip = "No bash on PATH that can run a script named by its absolute path, so the " +
+                   "scripts/assert-*.sh guards cannot be run here. CI runs on ubuntu-latest, " +
+                   "where it always can.";
         }
     }
 }

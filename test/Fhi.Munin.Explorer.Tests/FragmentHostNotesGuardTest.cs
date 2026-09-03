@@ -178,7 +178,7 @@ public class FragmentHostNotesGuardTest
         }
         finally
         {
-            dir.Delete(recursive: true);
+            Guard.Discard(dir);
 
             if (changelog is not null)
             {
