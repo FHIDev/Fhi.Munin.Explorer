@@ -1570,6 +1570,16 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   margin-top: 0;
 }
 
+/* The delkilde's own words, under its name line and above its table. 0.9375rem is measured against
+   STILER's headline-xxs, 1rem, which is what the name above wears there - the stand-in in this file
+   is smaller, so here alone the prose reads larger than its heading until that is corrected. */
+.munin-explorer-kilde__delkilde-description {
+  margin: 8px 0 0;
+  max-width: 65ch;
+  color: var(--grey60);
+  font-size: 0.9375rem;
+}
+
 .munin-explorer-kilde__delkilde > .munin-explorer-kilde__datasamlinger {
   margin-top: 10px;
 }
