@@ -699,11 +699,10 @@ public class KildeSelectionTest : BunitContext
     /// The first capture of <paramref name="pattern"/> across <paramref name="rules"/>, in pixels.
     /// </summary>
     /// <remarks>
-    /// Read off the rules rather than restated in the test, so a stylesheet that widens one of
-    /// these and not the other fails the arithmetic instead of drifting past it. Rem at 16px, the
-    /// browser default these samples leave alone; 0 for no match, which the caller reports.
+    /// Kept as a double: rounding a width down is the direction that hides an overlap, and 0 for
+    /// no match, which the caller reports. Rem at 16px, the default these samples leave alone.
     /// </remarks>
-    private static int FirstMatch(
+    private static double FirstMatch(
         IReadOnlyList<(string Selector, string Declarations)> rules, string pattern, bool rem = false)
     {
         var match = rules
@@ -716,7 +715,7 @@ public class KildeSelectionTest : BunitContext
             return 0;
         }
 
-        return (int)(rem ? value * 16 : value);
+        return rem ? value * 16 : value;
     }
 
     [Fact]

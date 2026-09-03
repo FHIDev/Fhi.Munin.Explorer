@@ -65,10 +65,9 @@ public partial class VariableExplorer
 
     /// <summary>Take focus off the control about to vanish, then clear the search.</summary>
     /// <remarks>
-    /// Focus moves <em>first</em>. <see cref="SearchAsync"/> yields at the request, and the render
-    /// at that yield takes the control off the page under the reader's focus — so moving focus
-    /// afterwards would hand it back only once the fetch had landed, and to the document until
-    /// then. (Fhi.Metadata-ag4n7)
+    /// Focus moves <em>first</em>: <see cref="SearchAsync"/> yields at the request, and the render
+    /// at that yield takes the control off the page under the reader's focus — so moving it
+    /// afterwards returns focus only once the fetch has landed. (Fhi.Metadata-ag4n7)
     /// </remarks>
     private async Task ClearSearchAndRefocusAsync()
     {

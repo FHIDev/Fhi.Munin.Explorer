@@ -8630,10 +8630,9 @@ public class VariableExplorerTest : BunitContext
 
     /// <summary>The search box, scoped to the search landmark.</summary>
     /// <remarks>
-    /// <c>searchbox__freetext</c> alone is not unique in this component: the account link's code
-    /// field wears it too, so an unscoped selector reaches whichever comes first in the markup.
-    /// The landmark is the stable scope — it survives a wrapper being retired, which is how this
-    /// went wrong (Fhi.Metadata-ag4n7).
+    /// <c>searchbox__freetext</c> is not unique here — the account link's code field wears it too,
+    /// so unscoped reaches whichever comes first. The landmark survives a wrapper being retired,
+    /// which is how this went wrong (Fhi.Metadata-ag4n7).
     /// </remarks>
     private const string SearchField = "form[role=search] .searchbox__freetext";
 
