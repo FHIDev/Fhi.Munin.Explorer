@@ -408,7 +408,6 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-period__track--ongoing` | meaning |
   | `munin-explorer-results` | handle |
   | `munin-explorer-retry` | meaning |
-  | `munin-explorer-search` | handle |
   | `munin-explorer-search__clear` | handle |
   | `munin-explorer-selection` | handle |
   | `munin-explorer-selection__explore` | handle |

@@ -1401,10 +1401,8 @@ public class VariableExplorerTest : BunitContext
         Assert.Equal(
         [
             "munin-explorer",            // ours, a handle
-            // The search row's wrapper and the clear button inside it. Both are drawn on every
-            // render now: the button is always present and greys out when there is nothing to
-            // clear, rather than appearing and disappearing beside a field being typed in.
-            "munin-explorer-search",
+            // The clear control, inside the field. Present here because this render carries a
+            // search — it is drawn only when there is something to clear. (Fhi.Metadata-ag4n7)
             "munin-explorer-search__clear",
             "munin-explorer-filters",    // ours, a handle
             // The toolbar row: a container of its own, because in inline flow the last button's
@@ -7675,11 +7673,9 @@ public class VariableExplorerTest : BunitContext
         Assert.Equal(
         [
             "munin-explorer",            // ours, a handle
-            // The search row's wrapper and the clear button inside it. Both are drawn on every
-            // render now: the button is always present and greys out when there is nothing to
-            // clear, rather than appearing and disappearing beside a field being typed in.
-            "munin-explorer-search",
-            "munin-explorer-search__clear",
+            // No munin-explorer-search__clear here: this render leaves the box empty, and the
+            // clear control is drawn only when there is something to clear. Render_Always is where
+            // that name is pinned, because that one searches. (Fhi.Metadata-ag4n7)
             "munin-explorer-filters",    // ours, a handle
             // The toolbar row: a container of its own, because in inline flow the last button's
             // trailing margin counted against the line and the row broke apart under a scrollbar.
@@ -7825,7 +7821,6 @@ public class VariableExplorerTest : BunitContext
         VariableCount = 99
     };
 
-    /// <summary>The two owner toggles, in the order the panel draws them: kilde, then datasamling.</summary>
     /// <summary>Leaves the kilde view and returns to the list.</summary>
     private static void Back(IRenderedComponent<VariableExplorer> cut) =>
         cut.Find(".munin-explorer-drilldown button").Click();
@@ -8622,15 +8617,141 @@ public class VariableExplorerTest : BunitContext
 
         var cut = RenderWith(client);
 
-        cut.Find(".searchbox__freetext").Change("alder");
-        cut.Find("form").Submit();
+        cut.Find(SearchField).Change("alder");
+        cut.Find(SearchForm).Submit();
 
         Assert.Equal("alder", client.LastSearch);
 
         cut.Find(".munin-explorer-search__clear").Click();
 
         Assert.Null(client.LastSearch);
-        Assert.Equal("true", cut.Find(".munin-explorer-search__clear").GetAttribute("aria-disabled"));
+        Assert.Empty(cut.FindAll(".munin-explorer-search__clear"));
+    }
+
+    /// <summary>The search box, scoped to the search landmark.</summary>
+    /// <remarks>
+    /// <c>searchbox__freetext</c> is not unique here — the account link's code field wears it too,
+    /// so unscoped reaches whichever comes first. The landmark survives a wrapper being retired,
+    /// which is how this went wrong (Fhi.Metadata-ag4n7).
+    /// </remarks>
+    private const string SearchField = "form[role=search] .searchbox__freetext";
+
+    /// <summary>The search form itself, which is not the only form this component can render.</summary>
+    private const string SearchForm = "form[role=search]";
+
+    [Fact]
+    public void ClearSearch_WhenThereIsASearch_ThenTheControlIsInsideTheFieldAheadOfTheSubmit()
+    {
+        // Where it is, asserted as position rather than as styling, because the CSS is a host's and
+        // this is the part the package decides. Before Søk in document order is what puts it to the
+        // left of Søk on screen and, more to the point, ahead of it in the tab order — a reader
+        // tabbing out of the field meets clear, then submit. (Fhi.Metadata-ag4n7)
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        cut.Find(SearchField).Change("tale");
+
+        var container = cut.Find("form[role=search] .searchbox__freetext-container");
+        var controls = container.QuerySelectorAll("button");
+
+        // DOM order and identity, not the order of tokens inside a class attribute: reshuffling
+        // those changes nothing a reader can tell and must not fail this.
+        Assert.Equal(2, controls.Length);
+        Assert.True(controls[0].ClassList.Contains("munin-explorer-search__clear"),
+                    "The clear control is not the first button inside the field.");
+        Assert.True(controls[1].ClassList.Contains("searchbox__freetext-submit-button"),
+                    "The submit button is not the second button inside the field.");
+
+        // Still a text input. The user-agent ✕ that type="search" draws is the defect 5ghur
+        // removed — it fires a DOM event Blazor does not bind, so it emptied the box without
+        // applying it — and reverting to it would look exactly like this change on a screenshot.
+        Assert.Equal("text", cut.Find(SearchField).GetAttribute("type"));
+    }
+
+    [Fact]
+    public void ClearSearch_WhenPressed_ThenFocusGoesToTheFieldRatherThanTheDocument()
+    {
+        // The control removes itself from the DOM as it acts, which drops the reader's focus to
+        // <body> and starts their next Tab at the top of the host's page. It is the same defect
+        // aria-disabled was chosen to avoid while the button stood outside the field, reached by
+        // the other door. (Fhi.Metadata-ag4n7)
+        var cut = RenderWith(new FakeClient(new Page<VariableSummary>()));
+
+        cut.Find(SearchField).Change("alder");
+        cut.Find(SearchForm).Submit();
+        cut.Find(".munin-explorer-search__clear").Click();
+
+        JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus");
+    }
+
+    [Fact]
+    public void ClearSearch_WhenTheSearchItStartsIsSlow_ThenFocusHasMovedBeforeTheWait()
+    {
+        // Ordering, not just destination. Clearing runs a search, SearchAsync yields at the
+        // request, and the render at that yield takes the control off the page — so focus moved
+        // after the await would reach the field only once the answer landed, and sit on <body>
+        // for however long that took. This client never answers, so a late refocus never happens
+        // at all and the assertion below is the difference between the two orders.
+        var client = new SlowClient(OnePage(Variable("1. Tale", "KODE")));
+
+        var cut = RenderWith(client, b => b.Add(c => c.Search, "alder"));
+
+        cut.Find(".munin-explorer-search__clear").Click();
+
+        // The search it started is still out — so this is focus that moved ahead of it.
+        Assert.Equal(2, client.Calls);
+        JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus");
+    }
+
+    [Fact]
+    public void ClearSearch_WhenAFetchIsInFlight_ThenTheControlSaysItWillNotActYet()
+    {
+        // Drawn on having a term but live only while nothing is in flight, so between those two
+        // sits a press that does nothing — silently, without this. aria-disabled, not disabled:
+        // disabled cannot hold focus, which is what moving it inside the field protects (ag4n7).
+        var cut = RenderWith(new SlowClient(OnePage(Variable("1. Tale", "KODE"))),
+                            b => b.Add(c => c.Search, "alder"));
+
+        // Settled: the term is there, nothing is in flight, so the control is live.
+        Assert.Null(cut.Find(".munin-explorer-search__clear").GetAttribute("aria-disabled"));
+
+        // A search that never answers leaves it on screen and inert.
+        cut.Find(SearchForm).Submit();
+
+        var clear = cut.Find(".munin-explorer-search__clear");
+
+        Assert.Equal("true", clear.GetAttribute("aria-disabled"));
+        Assert.False(clear.HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void ClearSearch_WhenAFetchIsInFlight_ThenFocusIsLeftWhereTheReaderPutIt()
+    {
+        // The other half of the guard: a refused clear leaves the control on screen with the
+        // reader's focus still on it, so moving focus would be a jump with nothing behind it.
+        var cut = RenderWith(new SlowClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        cut.Find(SearchField).Change("alder");
+        cut.Find(SearchForm).Submit();
+        cut.Find(".munin-explorer-search__clear").Click();
+
+        Assert.Empty(JSInterop.Invocations["Blazor._internal.domWrapper.focus"]);
+    }
+
+    [Theory]
+    [InlineData("no", "Tøm søket")]
+    [InlineData("en", "Clear search")]
+    public void ClearSearch_WhenItIsAGlyph_ThenItStillAnnouncesAsTheWordsItReplaced(
+        string language, string expected)
+    {
+        // A ✕ with no name announces as "✕" or as nothing, and AccessibleName refuses the
+        // attributes that only look like names. The words that used to be on the button are what
+        // it has to keep saying, in whichever language the host set.
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
+                            b => b.Add(c => c.Language, language));
+
+        cut.Find(SearchField).Change("tale");
+
+        Assert.Equal(expected, AccessibleName.Of(cut.Find(".munin-explorer-search__clear")));
     }
 
     [Fact]
@@ -8653,8 +8774,8 @@ public class VariableExplorerTest : BunitContext
             c => c.SearchChanged, EventCallback.Factory.Create<string?>(this, reported.Add)));
 
         // A search that never answers, so the component is left mid-fetch.
-        cut.Find(".searchbox__freetext").Change("alder");
-        cut.Find("form").Submit();
+        cut.Find(SearchField).Change("alder");
+        cut.Find(SearchForm).Submit();
 
         var callsWhileLoading = client.Calls;
 
@@ -8665,7 +8786,7 @@ public class VariableExplorerTest : BunitContext
         cut.Find(".munin-explorer-search__clear").Click();
 
         // The box still says what the rows on screen came from, and nothing was asked or reported.
-        Assert.Equal("alder", cut.Find(".searchbox__freetext").GetAttribute("value"));
+        Assert.Equal("alder", cut.Find(SearchField).GetAttribute("value"));
         Assert.Equal(callsWhileLoading, client.Calls);
         Assert.Equal(reportsWhileLoading, reported.Count);
     }
@@ -8680,8 +8801,8 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(new FakeClient(new Page<VariableSummary>()), b => b.Add(
             c => c.SearchChanged, EventCallback.Factory.Create<string?>(this, reported.Add)));
 
-        cut.Find(".searchbox__freetext").Change("alder");
-        cut.Find("form").Submit();
+        cut.Find(SearchField).Change("alder");
+        cut.Find(SearchForm).Submit();
         cut.Find(".munin-explorer-search__clear").Click();
 
         Assert.Null(reported[^1]);

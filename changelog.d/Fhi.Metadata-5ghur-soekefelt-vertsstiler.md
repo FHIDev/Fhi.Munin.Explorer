@@ -1,15 +1,11 @@
 category: Notes for hosts
 
-- **Three more class names to style if you are not on Stiler**, all from the search row and the
-  selection bar. `munin-explorer-search` wraps the search field and its clear button — make it a
-  flex line and let `.searchbox__freetext-container` inside it shrink (`flex: 1 1 320px;
-  min-width: 0`), or the field keeps the whole width and the button lands under it.
-  `munin-explorer-search__clear` is the clear button itself, and it needs one thing besides
-  placement: a **greyed appearance under `[aria-disabled="true"]`**, because it is always on screen
-  and that attribute is the only thing saying whether it has anything to do. It is `aria-disabled`
-  rather than `disabled` on purpose — a disabled button cannot hold focus, so pressing it would
-  clear the search and throw the reader's focus to the document — which also means it stays
-  hoverable and focusable, so style those states too. `munin-explorer-selection` is the ribbon under the
+- **Two more class names to style if you are not on Stiler**, both from the selection bar. The
+  search row's two names were here as well and have been superseded before release: the clear
+  control moved inside the search field under `Fhi.Metadata-ag4n7`, `munin-explorer-search` no
+  longer exists, and `munin-explorer-search__clear` is drawn only when there is something to
+  clear, so it has no `[aria-disabled="true"]` state to grey. See that entry for what it needs
+  now. `munin-explorer-selection` is the ribbon under the
   results — the handover button, then *Nullstill utvalg*, then the "{n} kilder valgt" count, in
   that order so that everything which comes and goes sits to the right of everything that does
   not. Make it a flex row. `munin-explorer-selection__explore` is the handover button, and it needs

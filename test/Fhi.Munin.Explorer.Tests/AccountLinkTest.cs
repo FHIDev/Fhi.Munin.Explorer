@@ -408,9 +408,13 @@ public class AccountLinkTest : BunitContext
         // the <details> around it is open — so an entry that unfolded itself would pass them all.
         Assert.False(Panel(cut).Closest("details")!.HasAttribute("open"));
 
-        // Scoped to the search box on purpose: the code field wears searchbox__freetext too.
-        cut.Find(".munin-explorer-search .searchbox__freetext").Change("alder");
-        cut.Find("form").Submit();
+        // Scoped on purpose, and the premise checked rather than left to a comment: the code field
+        // wears searchbox__freetext too, so an unscoped selector reaches the right one only by
+        // document order. role=search outlives a wrapper being retired, which is how this broke.
+        Assert.Equal(2, cut.FindAll(".searchbox__freetext").Count);
+
+        cut.Find("form[role=search] .searchbox__freetext").Change("alder");
+        cut.Find("form[role=search]").Submit();
 
         // Typing alone changes nothing; the search that results have arrived from is the moment
         // an entry that unfolded itself would do so.

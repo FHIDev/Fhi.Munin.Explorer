@@ -40,13 +40,20 @@ public partial class VariableExplorer
         await OpenInitialSelectionAsync();
     }
 
+    /// <summary>Whether a press on the clear control would clear anything.</summary>
+    /// <remarks>
+    /// One predicate read twice — the clear refuses on it, the refocus decides on it. A second
+    /// copy of the condition is the thing that gets inverted later. (Fhi.Metadata-ag4n7)
+    /// </remarks>
+    private bool CanClearSearch => !_loading && !string.IsNullOrWhiteSpace(_search);
+
     /// <summary>Empty the box and run the search that leaves, which is no search at all.</summary>
     private async Task ClearSearchAsync()
     {
         // Guard before mutation, the rule SortAsync states: clearing _search and then being dropped
         // by SearchAsync's own _loading check would leave an empty box over the old rows, with the
         // host still holding the previous search. (Fhi.Metadata-5ghur)
-        if (_loading || string.IsNullOrWhiteSpace(_search))
+        if (!CanClearSearch)
         {
             return;
         }
@@ -54,6 +61,22 @@ public partial class VariableExplorer
         _search = null;
 
         await SearchAsync();
+    }
+
+    /// <summary>Take focus off the control about to vanish, then clear the search.</summary>
+    /// <remarks>
+    /// Focus moves <em>first</em>: <see cref="SearchAsync"/> yields at the request, and the render
+    /// at that yield takes the control off the page under the reader's focus — so moving it
+    /// afterwards returns focus only once the fetch has landed. (Fhi.Metadata-ag4n7)
+    /// </remarks>
+    private async Task ClearSearchAndRefocusAsync()
+    {
+        if (CanClearSearch)
+        {
+            await _searchField.FocusAsync();
+        }
+
+        await ClearSearchAsync();
     }
 
     private async Task SearchAsync()
