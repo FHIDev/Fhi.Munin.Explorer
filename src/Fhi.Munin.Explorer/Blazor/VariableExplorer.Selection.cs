@@ -161,13 +161,9 @@ public partial class VariableExplorer
             }
         }
 
-        // After the panel is drawn rather than inside its fetch: a link with no name has nothing to
-        // show until its codes arrive, and making the whole panel wait for them would hold back
-        // every line that is ready (Fhi.Metadata-l9l2n.38).
-        //
-        // Guarded like every write above it, and not covered by their guards: the success path
-        // returns out of the try, but the two catch branches fall through to here, so a call that
-        // lost the panel and then threw would fetch for whichever panel took its place.
+        // Outside the fetch, so a nameless link's codes do not hold back the lines that are ready,
+        // and guarded again because the guards above do not reach here: the success path returns
+        // out of the try, but both catch branches fall through (Fhi.Metadata-l9l2n.38).
         if (_detailGeneration == generation)
         {
             await LoadUnnamedCodesAsync();

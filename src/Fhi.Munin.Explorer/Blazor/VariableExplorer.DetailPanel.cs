@@ -614,12 +614,9 @@ public partial class VariableExplorer
                 builder.CloseElement();
             }
 
-            // No button where the API serves no codes. HelsefagligKodeverk links are the case that
-            // matters — the endpoint answers 404 for every one of them — and a control that could
-            // only ever report "no codes" is worse than no control at all.
-            //
-            // Nor where the codes are already inline and all of them fit: there is nothing left for
-            // a press to reveal. It stays on a failure, which is the reader's only retry.
+            // No button where the API serves no codes — every HelsefagligKodeverk link answers 404,
+            // and one that could only ever report "no codes" is worse than none — nor where the
+            // codes are already inline and all fit. It stays on a failure, the reader's only retry.
             if (link.HasCodeValues && (inline is null or InlineCodes.Failed || showAll))
             {
                 builder.AddContent(seq + 12, KodeverkCodesToggle(link, key, index, showAll));

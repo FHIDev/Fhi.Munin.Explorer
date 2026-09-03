@@ -6424,10 +6424,9 @@ public class VariableExplorerTest : BunitContext
         // Now Tale's abandoned fetch fails.
         await cut.InvokeAsync(rateLimited ? client.RateLimitStalled : client.FailStalled);
 
-        // One turn of the dispatcher is enough: the continuation above was queued before this call,
-        // and the codes fetch it would make throws synchronously, so it never yields again. There
-        // is nothing to wait for — a guard that works leaves no trace, which is why this is a flush
-        // and not a WaitForAssertion.
+        // A flush rather than a WaitForAssertion, because a guard that works leaves nothing to wait
+        // for. One turn is enough: that continuation was queued before this call, and the codes
+        // fetch it would have made throws synchronously, so it never yields again.
         await cut.InvokeAsync(() => { });
 
         Assert.Equal([SpyttId], client.RequestsFor("2336").Select(request => request.VariableId));
