@@ -400,7 +400,7 @@ else
                             {
                                 @* aria-controls only while the panel exists: an IDREF to an element
                                    that is not in the DOM is not a relationship, it is a dangling
-                                   pointer an a11y linter and a screen reader both follow. *@
+                                   pointer that an a11y linter and a screen reader both follow. *@
                                 <button type="button"
                                         class="hd-button-reset munin-explorer-kilder__expand-toggle"
                                         aria-expanded="@(IsExpanded(kilde.Id) ? "true" : "false")"
@@ -464,8 +464,7 @@ else
                                     {
                                         @if (group.Heading is { } heading)
                                         {
-                                            <p class="headline headline-xxs margin--none"
-                                               lang="@CatalogueProperties.Foreign("no", Reader)">@heading</p>
+                                            @GroupHeading(heading)
                                         }
                                         @DatasamlingTable.For(group.Rows, T, Language, Reader)
                                     }

@@ -232,6 +232,23 @@ public sealed partial class KildeExplorer : ComponentBase
 
     private bool IsExpanded(Guid id) => _expanded.Contains(id);
 
+    // A table row is not a heading, so the nearest one above a group inside an expanded row is the
+    // component's own title; the group sits one step below that.
+    private int ExpandedGroupLevel => Math.Clamp(TitleLevel + 1, 1, 6);
+
+    // A real heading rather than a styled <p>: a screen reader navigates the panel by these, and
+    // KildeView already draws the same delkilde name as h{level} with the same class.
+    private RenderFragment GroupHeading(string name) => builder =>
+    {
+        builder.OpenElement(0, $"h{ExpandedGroupLevel}");
+        builder.AddAttribute(1, "class",
+                             "headline headline-xxs margin--none munin-explorer-kilde__delkilde-name");
+        builder.AddAttribute(2, "lang", CatalogueProperties.Foreign("no", Reader));
+        builder.AddContent(3, name);
+        builder.CloseElement();
+    };
+
+
     private string ExpandLabel(KildeSummary kilde) =>
         IsExpanded(kilde.Id) ? T.CollapseDatasamlinger(kilde.Name) : T.ExpandDatasamlinger(kilde.Name);
 

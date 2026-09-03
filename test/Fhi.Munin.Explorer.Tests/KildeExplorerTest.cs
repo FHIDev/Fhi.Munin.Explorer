@@ -693,9 +693,14 @@ public class KildeExplorerTest : BunitContext
         Assert.Contains("Hoveddatasamling", panel.TextContent);
         Assert.Contains("Bølge 4 - serie 49", panel.TextContent);
 
-        // Grouped, not flattened: the delkilde's name heads its own table. Flat is the defect
-        // Fhi.Metadata-wgpeo was filed for — all 14 shown, with nothing saying 11 were a delkilde's.
-        Assert.Contains("Bølge 4", panel.QuerySelectorAll("p").Select(p => p.TextContent));
+        // Grouped, not flattened: the delkilde name heads its own table. Flat is the defect
+        // Fhi.Metadata-wgpeo was filed for — all 14 shown, with nothing saying 11 were a delkildes.
+        //
+        // A real heading, not a styled <p>: a screen reader navigates the panel by these, and it
+        // has to sit one below the component title, since a table row is not a heading.
+        var heading = panel.QuerySelector("h3.munin-explorer-kilde__delkilde-name")!;
+
+        Assert.Equal("Bølge 4", heading.TextContent);
         Assert.Equal(2, panel.QuerySelectorAll("table.munin-explorer-kilde__datasamlinger").Length);
     }
 
