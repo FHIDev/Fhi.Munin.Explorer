@@ -406,9 +406,11 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .datasourcecard:hover { box-shadow: 0 6px 11px rgba(33, 42, 190, 0.18); }
 .datasourcecard:focus-within { box-shadow: 0 0 0 2px var(--focus); }
 
+/* No size on purpose: production has no rule for this heading either, so it takes the stepped
+   base. The 500 stands in for graphik-medium, as elsewhere — Fhi.Metadata-kgl9f. */
 .datasourcecard__heading {
   margin: 0 40px 0 0;
-  font: normal 500 1.3125rem/160% var(--font);
+  font-weight: 500;
   overflow-wrap: break-word;
 }
 
@@ -417,6 +419,17 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   color: var(--grey60);
   font: normal 1rem/160% var(--font);
 }
+
+/* Placed after the rule above rather than in the shared blocks near the top: this class declares
+   its own base later in the file, so an earlier override loses the cascade — Fhi.Metadata-kgl9f. */
+@media (max-width: 2881px) {
+  .datasourcecard__info { font-size: 0.875rem; }
+}
+
+@media (max-width: 767px) {
+  .datasourcecard__info { font-size: 0.8125rem; }
+}
+
 .datasourcecard__info--text { display: inline-block; }
 .datasourcecard__info .dot {
   display: inline-block;
