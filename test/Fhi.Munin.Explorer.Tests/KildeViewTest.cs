@@ -848,15 +848,11 @@ public class KildeViewTest : BunitContext
     }
 
     [Fact]
-    public void Delkilder_WhenOneCarriesABeskrivelse_ThenItIsDrawnUnderTheNameLine()
+    public void Delkilder_WhenOneCarriesADescription_ThenItIsDrawnUnderTheNameLine()
     {
-        // The bead's own claim, and it is asserted as an anchor rather than as text: the beskrivelse
-        // was held back under Fhi.Metadata-wtz80 because the view could only print it raw, so a
-        // check that only found the words would pass on the very rendering that was refused —
-        // "[Tromsøundersøkelsen](https://uit.no/…)" with the brackets and the URL on the page.
-        //
-        // It sits after the identifier line, which is what "under the name line" means in markup:
-        // name, then what it is called elsewhere, then what it is.
+        // Asserted as an anchor, not as text: the description was held back under
+        // Fhi.Metadata-wtz80 because the view could only print it raw, so a text-only check
+        // would pass on the very rendering that was refused — brackets and URL on the page.
         var cut = Render(Study(), language: "en");
 
         var wave = cut.Find("ul.munin-explorer-kilde__delkilder > li");
@@ -874,9 +870,9 @@ public class KildeViewTest : BunitContext
     }
 
     [Fact]
-    public void Delkilder_WhenOneCarriesABeskrivelse_ThenItIsMarkedAsTheCataloguesLanguage()
+    public void Delkilder_WhenOneCarriesADescription_ThenItIsMarkedAsTheCataloguesLanguage()
     {
-        // The catalogue stores one beskrivelse, in Norwegian, whatever the reader is reading — so an
+        // The catalogue stores one description, in Norwegian, whatever the reader is reading — so an
         // English reader gets it marked and a Norwegian one does not, the rule the kilde's own
         // description and every datasamling cell already follow.
         Assert.Equal("no", Description(Render(Study(), language: "en"))?.GetAttribute("lang"));
@@ -884,10 +880,10 @@ public class KildeViewTest : BunitContext
     }
 
     [Fact]
-    public void Delkilder_WhenOneCarriesNoBeskrivelse_ThenNoEmptyParagraphIsDrawnForIt()
+    public void Delkilder_WhenOneCarriesNoDescription_ThenNoEmptyParagraphIsDrawnForIt()
     {
         // Most delkilder in the catalogue have none, and an empty <p> is not nothing: it takes the
-        // rule's own margin, so every wave without a beskrivelse would sit further from its table
+        // rule's own margin, so every wave without a description would sit further from its table
         // than the ones with.
         var kilde = Kilde() with
         {
@@ -899,9 +895,9 @@ public class KildeViewTest : BunitContext
     }
 
     [Fact]
-    public void Delkilder_WhenANestedOneCarriesABeskrivelse_ThenItIsDrawnToo()
+    public void Delkilder_WhenANestedOneCarriesADescription_ThenItIsDrawnToo()
     {
-        // The tree is walked, not just its top: Tromsø's waves nest, and a beskrivelse drawn only at
+        // The tree is walked, not just its top: Tromsø's waves nest, and a description drawn only at
         // the first level would leave the deeper ones with the same silence they had before.
         var cut = Render(Study(), language: "en");
 
@@ -910,7 +906,7 @@ public class KildeViewTest : BunitContext
             cut.FindAll("p.munin-explorer-kilde__delkilde-description").Select(e => e.TextContent));
     }
 
-    /// <summary>The first delkilde's beskrivelse paragraph, or null where none was drawn.</summary>
+    /// <summary>The first delkilde's description paragraph, or null where none was drawn.</summary>
     private static IElement? Description(IRenderedComponent<KildeView> cut) =>
         cut.Find("ul.munin-explorer-kilde__delkilder > li")
            .QuerySelector("p.munin-explorer-kilde__delkilde-description");
