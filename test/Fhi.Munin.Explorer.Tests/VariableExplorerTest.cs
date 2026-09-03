@@ -301,10 +301,9 @@ public class VariableExplorerTest : BunitContext
     [Fact]
     public void SavedOnTheSearchTab_WhenTheListTabIsOpened_ThenTheVariableIsAlreadyThere()
     {
-        // The failure a wrapper mounting two independent components would pass: both tabs render,
-        // and the list has never heard of the save. Asserted before the tab is even opened, which
-        // is the strongest form of "no reload" — the list surface is already right while it is
-        // still hidden.
+        // Asserted before the tab is opened, which is the strongest form of "no reload": the list
+        // surface is already right while it is still hidden. A wrapper mounting two independent
+        // components renders both tabs and fails exactly here.
         var variable = Variable("Alder ved diagnose", "V_BDR.ALDER");
         var cut = RenderExplorer(new ExplorerClient(variable));
 
@@ -389,14 +388,9 @@ public class VariableExplorerTest : BunitContext
     [Fact]
     public async Task ListTab_WhenTheListsReadIsStillInFlightAsBothTabsMount_ThenItStillShowsTheList()
     {
-        // Measured in a browser against the real component, not derived: with the two surfaces
-        // mounted as siblings, VariableSearch starts the lists read and VariableListView reaches
-        // EnsureLoadedAsync while it is still out. That used to return at once on a _loading flag,
-        // so the list view read an empty Lists, chose no active list, and left the Variabelliste
-        // tab showing the create form and nothing else - for every signed-in reader.
-        //
-        // Every other fake in this file answers synchronously, which closes the window before the
-        // second caller arrives. That is exactly why the suite was green while the page was not.
+        // Every other fake here answers synchronously, which closes this window before the second
+        // surface reaches it — which is why the suite was green while the page was not. Found by
+        // driving the real component in a browser.
         var client = new StallingListsClient();
         Prepare(client);
 

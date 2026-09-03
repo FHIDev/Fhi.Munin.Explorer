@@ -32,12 +32,9 @@
     }
 </div>
 
-@* Both panels are always rendered and the inactive one is hidden, rather than the selected one
-   being the only one built. Mounting the list only when its tab is opened would give it a fresh
-   VariableListView every time, so a variable saved on the search tab would arrive by a refetch
-   instead of from the state both surfaces already share — and would be missing entirely while
-   that fetch was in flight. `hidden` needs no CSS to work, which matters in a package that
-   ships none. *@
+@* Both panels stay in the DOM and the inactive one is hidden, rather than only the selected one
+   being built: a VariableListView rebuilt on every tab switch would refetch its way back to the
+   state it already shares, and show nothing while that fetch was out. `hidden` needs no CSS. *@
 <div class="munin-explorer-meta__tab-content"
      role="tabpanel"
      id="@TabPanelId(ExplorerTab.Search)"
