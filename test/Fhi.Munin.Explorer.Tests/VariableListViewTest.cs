@@ -192,16 +192,34 @@ public class VariableListViewTest : BunitContext
         /// </remarks>
         public bool VariablesAreUnreadable { get; set; }
 
-        public override Task<Page<VariableListItem>?> GetMyListVariablesAsync(
+        /// <summary>Holds every variables read for this list until <see cref="ReleaseVariables"/>.</summary>
+        /// <remarks>
+        /// A real read is still out when the next caller arrives; a fake that answers at once is
+        /// not, which closes the window a duplicate read lives in (Fhi.Metadata-l9l2n.39).
+        /// </remarks>
+        public Guid? StallVariablesFor { get; set; }
+
+        private readonly TaskCompletionSource _variablesGate =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public void ReleaseVariables() => _variablesGate.TrySetResult();
+
+        public override async Task<Page<VariableListItem>?> GetMyListVariablesAsync(
             Guid id, int page = 1, int pageSize = 100, CancellationToken cancellationToken = default)
         {
             VariablesCalls++;
             LastPageAsked = page;
             _askedFor.Add(id);
 
+            // Counted before the wait, so a second caller arriving mid-read is recorded.
+            if (StallVariablesFor == id)
+            {
+                await _variablesGate.Task;
+            }
+
             if (VariablesAreUnreadable)
             {
-                return Task.FromResult<Page<VariableListItem>?>(null);
+                return null;
             }
 
             if (ThrottledList == id)
@@ -214,7 +232,7 @@ public class VariableListViewTest : BunitContext
             // gone, which is the failure Fhi.Metadata-fjiba is about.
             if (_deleted.Contains(id))
             {
-                return Task.FromResult<Page<VariableListItem>?>(null);
+                return null;
             }
 
             if (_created is not null && id == _created.Id)
@@ -234,7 +252,7 @@ public class VariableListViewTest : BunitContext
             // internal number would hide a component that sent an unexpected page size.
             var slice = _items.Skip((page - 1) * pageSize).Take(pageSize).ToList();
 
-            return Task.FromResult<Page<VariableListItem>?>(new Page<VariableListItem>
+            return (new Page<VariableListItem>
             {
                 Items = slice,
                 TotalCount = _items.Count,
@@ -1491,6 +1509,34 @@ public class VariableListViewTest : BunitContext
 
         Assert.Equal(2, options.Count);
         Assert.DoesNotContain("Mine hjertevariabler", options);
+    }
+
+    [Fact]
+    public async Task View_WhenTheActiveListIsDeleted_ThenTheNextOneIsNotReadAThirdTime()
+    {
+        // Two reads of the next list, and both are wanted: the holder walks it for the save
+        // buttons' membership, and this view reads the page it draws. Measured at two on
+        // origin/main as well, so what this pins is that repointing the view from the holder's
+        // notification does not add a third (Fhi.Metadata-l9l2n.39).
+        //
+        // Stalled on purpose: answered at once, the first read is finished before the second
+        // caller arrives and the window a duplicate would live in is never open.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"))
+        {
+            ListCount = 2,
+            StallVariablesFor = ListClient.SecondListId,
+        };
+
+        var cut = RenderView(client);
+
+        await PressAsync(cut, "Slett listen");
+        await PressAsync(cut, "Ja, slett listen");
+
+        client.ReleaseVariables();
+
+        await cut.WaitForAssertionAsync(() => Assert.Contains("Hjerte og kar", cut.Markup));
+
+        Assert.Equal(2, client.VariablesAskedFor.Count(id => id == ListClient.SecondListId));
     }
 
     [Fact]
