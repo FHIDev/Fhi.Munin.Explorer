@@ -1892,35 +1892,6 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 /* The open list, over the header rather than pushing it down: a picker that moved the columns
    while you chose them would be aiming at a moving target. */
-/* The account-link panel, under its own trigger in the same actions row. Positioned like the
-   choicepicker beside it and for the same reason: the row is `position: relative`, so an
-   absolutely positioned panel hangs off the trigger rather than off the host's page. */
-.munin-explorer-account-link {
-  position: absolute;
-  top: 36px;
-  right: 0;
-  z-index: 10;
-  display: flex;
-  width: 320px;
-  max-width: 90vw;
-  flex-direction: column;
-  gap: 8px;
-  padding: 16px;
-  border-radius: 0.5rem;
-  background-color: var(--dark);
-  color: #fff;
-  text-align: left;
-}
-
-/* A row, so the confirm and the cancel sit side by side rather than stacking. Razor drops the
-   whitespace between elements, so the gap is what keeps the two buttons apart. */
-.munin-explorer-account-link__actions {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
 .dropdown-choicepicker {
   position: absolute;
   top: 36px;

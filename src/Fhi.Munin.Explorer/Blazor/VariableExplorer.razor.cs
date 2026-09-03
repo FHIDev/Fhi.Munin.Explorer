@@ -1,19 +1,8 @@
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
 using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Blazor;
-
-/// <summary>The two tabs of the variabelutforsker, in the order they are drawn.</summary>
-internal enum ExplorerTab
-{
-    /// <summary>What the reader is searching for.</summary>
-    Search,
-
-    /// <summary>What the reader has saved.</summary>
-    VariableList,
-}
 
 /// <summary>
 /// The variabelutforsker: search, the reader's own variable lists, and a link that reopens what
@@ -86,58 +75,6 @@ public partial class VariableExplorer : ComponentBase
     /// </remarks>
     /// <exception cref="ArgumentException">A name that is not a key this component maintains.</exception>
     [Parameter] public IReadOnlyCollection<string>? DeclinedKeys { get; set; }
-
-    private Texts T => Texts.For(Language);
-
-    private static readonly ExplorerTab[] Tabs = Enum.GetValues<ExplorerTab>();
-
-    private ExplorerTab _tab = ExplorerTab.Search;
-
-    /// <summary>
-    /// Per-mount discriminator: a host can put two of these on one page, and shared ids would
-    /// leave both panels labelled by the first tablist.
-    /// </summary>
-    private readonly string _instance = Guid.NewGuid().ToString("N")[..8];
-
-    private string TabId(ExplorerTab tab) => $"munin-explorer-tab-{_instance}-{tab}";
-
-    /// <summary>
-    /// One id per panel: both are in the DOM at once here, so a shared id would be two elements
-    /// answering to one <c>aria-controls</c>.
-    /// </summary>
-    private string TabPanelId(ExplorerTab tab) => $"munin-explorer-tabpanel-{_instance}-{tab}";
-
-    private string TabLabel(ExplorerTab tab) => tab switch
-    {
-        ExplorerTab.Search => T.TabSearchResults,
-        ExplorerTab.VariableList => T.TabVariableList,
-        _ => throw new ArgumentOutOfRangeException(nameof(tab), tab, "No label for this tab."),
-    };
-
-    private string TabClass(ExplorerTab tab) =>
-        tab == _tab
-            ? "munin-explorer-meta__tab munin-explorer-meta__tab--active"
-            : "munin-explorer-meta__tab";
-
-    /// <summary>
-    /// Arrow-key movement, as the APG tabs pattern prescribes: the unselected tab carries
-    /// <c>tabindex="-1"</c>, so without this it is unreachable rather than merely awkward.
-    /// </summary>
-    private void TabKey(KeyboardEventArgs e)
-    {
-        var i = Array.IndexOf(Tabs, _tab);
-
-        var next = e.Key switch
-        {
-            "ArrowRight" or "ArrowDown" => (i + 1) % Tabs.Length,
-            "ArrowLeft" or "ArrowUp" => (i - 1 + Tabs.Length) % Tabs.Length,
-            "Home" => 0,
-            "End" => Tabs.Length - 1,
-            _ => i,
-        };
-
-        _tab = Tabs[next];
-    }
 
     // @bind- needs settable properties and ExplorerUrlState is a record, so the binding target is a
     // mutable holder that converts at both ends.

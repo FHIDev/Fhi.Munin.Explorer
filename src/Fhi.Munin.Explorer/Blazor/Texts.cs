@@ -440,30 +440,7 @@ internal sealed record Texts(
     // the reader to do different things. The facet count is in the sentence for the reason it is in
     // NoResults above — nothing matching *with two facets ticked* is a different thing to be told
     // than nothing matching at all, and the second reads as "this catalogue does not have it".
-    Func<string?, int, string> NoKilderMatch,
-
-    // The account-link panel. One string per refusal the API distinguishes, because that is the
-    // whole point of it distinguishing them: "the code has expired, make a new one" and "check
-    // what you typed" send the reader to different places. (Fhi.Metadata-bl448)
-    string LinkAccount,
-    string LinkCodeLabel,
-    string LinkContinue,
-    // Said as the consequence rather than as the accounts involved. Nothing here can name either
-    // side: no endpoint previews the code, and the component is told only *that* somebody is
-    // signed in, never who.
-    string LinkConfirmQuestion,
-    string LinkConfirm,
-    string LinkCancel,
-    string LinkWorking,
-    string LinkSucceeded,
-    string LinkInvalidCode,
-    string LinkExpiredCode,
-    string LinkCodeAlreadyUsed,
-    string LinkCannotLinkToSelf,
-    string LinkBothAlreadyLinked,
-    // The call never arriving, which is not an answer about the code. "Sjekk koden" here would
-    // send the reader to check something that was never the problem.
-    string LinkError)
+    Func<string?, int, string> NoKilderMatch)
 {
     /// <summary>
     /// The label for a sort order. The three that name one field use the same words the result
@@ -902,26 +879,7 @@ internal sealed record Texts(
             var forSearch = $"Ingen kilder samsvarer med søket «{search}»";
 
             return filters == 0 ? $"{forSearch}." : $"{forSearch} og filtrene som er valgt.";
-        },
-        LinkAccount: "Koble konto",
-        LinkCodeLabel: "Koblingskode",
-        LinkContinue: "Fortsett",
-        LinkConfirmQuestion:
-            "Vil du koble kontoen du er logget inn med her til Munin-kontoen som lagde koden? "
-            + "Variabellister lagret på begge kontoene blir synlige begge steder. "
-            + "Koblingen kan ikke angres herfra.",
-        LinkConfirm: "Koble kontoene",
-        LinkCancel: "Avbryt",
-        LinkWorking: "Kobler kontoene …",
-        LinkSucceeded: "Kontoene er koblet. Variabellistene dine er synlige begge steder nå.",
-        LinkInvalidCode: "Koden stemmer ikke. Sjekk det du skrev, og prøv igjen.",
-        LinkExpiredCode: "Koden er utløpt. Lag en ny kode der du kopierte denne fra.",
-        LinkCodeAlreadyUsed: "Koden er allerede brukt. Lag en ny kode der du kopierte denne fra.",
-        LinkCannotLinkToSelf:
-            "Koden ble laget med kontoen du allerede er logget inn med her. "
-            + "Bruk den på den andre innloggingen.",
-        LinkBothAlreadyLinked: "Begge kontoene er koblet til hver sin person allerede.",
-        LinkError: "Kunne ikke koble kontoene nå. Prøv igjen om litt.");
+        });
 
     private static readonly Texts En = new(
         Title: "Variable explorer",
@@ -1212,26 +1170,7 @@ internal sealed record Texts(
             var forSearch = $"No sources match your search for “{search}”";
 
             return filters == 0 ? $"{forSearch}." : $"{forSearch} and the filters you have chosen.";
-        },
-        LinkAccount: "Link account",
-        LinkCodeLabel: "Linking code",
-        LinkContinue: "Continue",
-        LinkConfirmQuestion:
-            "Link the account you are signed in with here to the Munin account that made the code? "
-            + "Variable lists saved on either account become visible in both places. "
-            + "The link cannot be undone from here.",
-        LinkConfirm: "Link the accounts",
-        LinkCancel: "Cancel",
-        LinkWorking: "Linking the accounts …",
-        LinkSucceeded: "The accounts are linked. Your variable lists are visible in both places now.",
-        LinkInvalidCode: "That code does not match. Check what you typed and try again.",
-        LinkExpiredCode: "That code has expired. Make a new one where you copied this from.",
-        LinkCodeAlreadyUsed: "That code has already been used. Make a new one where you copied this from.",
-        LinkCannotLinkToSelf:
-            "The code was made with the account you are already signed in with here. "
-            + "Use it on your other sign-in.",
-        LinkBothAlreadyLinked: "Both accounts already belong to a linked person.",
-        LinkError: "Could not link the accounts just now. Try again shortly.");
+        });
 
     /// <summary>The words for a reader, defaulting to Norwegian for anything that is not English.</summary>
     /// <remarks>

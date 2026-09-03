@@ -9,6 +9,17 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// The panel's tabs. Runa splits the open row into what the variable IS and what its data holds;
 /// this is that split, not helsedata's — their page is the one being replaced.
 /// </summary>
+/// <summary>The two tabs beside the results, in the order they are drawn.</summary>
+internal enum ExplorerTab
+{
+    /// <summary>What the reader is searching for.</summary>
+    Search,
+
+    /// <summary>What the reader has saved.</summary>
+    VariableList,
+}
+
+
 internal enum PanelTab
 {
     /// <summary>Description, placement and properties.</summary>
@@ -283,6 +294,17 @@ public partial class VariableSearch : ComponentBase
     /// </para>
     /// </remarks>
     [Parameter] public string Language { get; set; } = "no";
+
+    /// <summary>
+    /// The reader's own variable lists, drawn behind a second tab beside the results.
+    /// </summary>
+    /// <remarks>
+    /// Left null and there are no tabs at all: the results render where they always did. Passed,
+    /// and the tablist appears between the filters and the results — Runa's own placement, so the
+    /// search box and the facets stay on screen whichever tab is open. <see cref="VariableExplorer"/>
+    /// passes <see cref="VariableListView"/> here; a host composing its own page can pass anything.
+    /// </remarks>
+    [Parameter] public RenderFragment? VariableList { get; set; }
 
     /// <summary>
     /// Whether the host says this reader is signed in. Defaults to <see langword="false"/>.
@@ -1621,5 +1643,54 @@ public partial class VariableSearch : ComponentBase
         }
 
         builder.CloseElement();
+    }
+
+    /// <summary>The two tabs, in the order they are drawn.</summary>
+    private static readonly ExplorerTab[] ResultTabs = Enum.GetValues<ExplorerTab>();
+
+    private ExplorerTab _resultsTab = ExplorerTab.Search;
+
+    /// <summary>
+    /// Whether there is a second tab worth drawing. A signed-out reader has no lists, so the
+    /// tablist would name a panel with nothing in it.
+    /// </summary>
+    private bool ShowTabs => VariableList is not null && IsAuthenticated;
+
+    private string ResultTabId(ExplorerTab tab) => $"munin-explorer-tab-{_instance}-{tab}";
+
+    /// <summary>One id per panel: both are in the DOM at once, so a shared id would be two
+    /// elements answering to one <c>aria-controls</c>.</summary>
+    private string ResultTabPanelId(ExplorerTab tab) => $"munin-explorer-tabpanel-{_instance}-{tab}";
+
+    private string ResultTabLabel(ExplorerTab tab) => tab switch
+    {
+        ExplorerTab.Search => T.TabSearchResults,
+        ExplorerTab.VariableList => T.TabVariableList,
+        _ => throw new ArgumentOutOfRangeException(nameof(tab), tab, "No label for this tab."),
+    };
+
+    private string ResultTabClass(ExplorerTab tab) =>
+        tab == _resultsTab
+            ? "munin-explorer-meta__tab munin-explorer-meta__tab--active"
+            : "munin-explorer-meta__tab";
+
+    /// <summary>
+    /// Arrow-key movement, as the APG tabs pattern prescribes: the unselected tab carries
+    /// <c>tabindex="-1"</c>, so without this it is unreachable rather than merely awkward.
+    /// </summary>
+    private void ResultTabKey(KeyboardEventArgs e)
+    {
+        var i = Array.IndexOf(ResultTabs, _resultsTab);
+
+        var next = e.Key switch
+        {
+            "ArrowRight" or "ArrowDown" => (i + 1) % ResultTabs.Length,
+            "ArrowLeft" or "ArrowUp" => (i - 1 + ResultTabs.Length) % ResultTabs.Length,
+            "Home" => 0,
+            "End" => ResultTabs.Length - 1,
+            _ => i,
+        };
+
+        _resultsTab = ResultTabs[next];
     }
 }

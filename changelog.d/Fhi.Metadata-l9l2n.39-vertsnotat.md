@@ -17,3 +17,8 @@ category: Notes for hosts
   **No new class names.** The tablist wears `munin-explorer-meta__tabs`, `munin-explorer-meta__tab`,
   `munin-explorer-meta__tab--active` and `munin-explorer-meta__tab-content`, which the detail
   panel's tabs already wear, so `Fhi.Helsedata.Stiler` needs no new rule for this change.
+- **`munin-explorer-account-link` and `munin-explorer-account-link__actions` are gone**, with the
+  control that wore them. Any rule for them in `Fhi.Helsedata.Stiler` now matches nothing and can be
+  dropped. No new name replaces them: the tablist wears `munin-explorer-meta__tabs`,
+  `munin-explorer-meta__tab`, `munin-explorer-meta__tab--active` and
+  `munin-explorer-meta__tab-content`, which the detail panel's tabs already wear.

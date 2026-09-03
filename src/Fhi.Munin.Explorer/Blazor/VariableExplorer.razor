@@ -1,59 +1,28 @@
 @namespace Fhi.Munin.Explorer.Blazor
 
-@* The two tabs are Runa's, in Runa's words: client/app/components/ExplorerTabs.tsx in
-   Fhi.Metadata is what runa.munin.skytest.fhi.no/explorer draws.
+@* The variabelutforsker whole: the search, the reader's own lists behind Runa's second tab, and
+   the view in the address bar. The tabs belong to VariableSearch, which is what puts them below
+   the search box and the filters rather than around them.
 
    No @page and no @rendermode, like everything else here; but this one owns the query string, so
-   it must be mounted interactively. The tablist invents no class name — it wears the four the
-   detail panel's tabs already wear, which Stiler already has rules for. *@
+   it must be mounted interactively. *@
 
-<div class="munin-explorer-meta__tabs"
-     role="tablist"
-     aria-label="@T.Title"
-     @onkeydown="TabKey">
-    @foreach (var tab in Tabs)
-    {
-        <div class="@TabClass(tab)" @key="tab">
-            <button class="hd-button-reset"
-                    type="button"
-                    role="tab"
-                    id="@TabId(tab)"
-                    aria-selected="@(tab == _tab ? "true" : "false")"
-                    aria-controls="@TabPanelId(tab)"
-                    tabindex="@(tab == _tab ? 0 : -1)"
-                    @onclick="() => _tab = tab">@TabLabel(tab)</button>
-        </div>
-    }
-</div>
+<VariableSearch @bind-Search="_state.Search"
+                @bind-Filter="_state.Filter"
+                @bind-Sort="_state.Sort"
+                @bind-Direction="_state.Direction"
+                @bind-Page="_state.Page"
+                @bind-PageSize="_state.PageSize"
+                @bind-SelectedVariableId="_state.SelectedVariableId"
+                IsAuthenticated="@IsAuthenticated"
+                HeadingLevel="@HeadingLevel"
+                Language="@Language"
+                VariableList="@ReaderLists" />
 
-@* Both panels stay in the DOM and the inactive one is hidden, rather than only the selected one
-   being built: a VariableListView rebuilt on every tab switch would refetch its way back to the
-   state it already shares, and show nothing while that fetch was out. `hidden` needs no CSS. *@
-<div class="munin-explorer-meta__tab-content"
-     role="tabpanel"
-     id="@TabPanelId(ExplorerTab.Search)"
-     aria-labelledby="@TabId(ExplorerTab.Search)"
-     tabindex="0"
-     hidden="@(_tab != ExplorerTab.Search)">
-    <VariableSearch @bind-Search="_state.Search"
-                    @bind-Filter="_state.Filter"
-                    @bind-Sort="_state.Sort"
-                    @bind-Direction="_state.Direction"
-                    @bind-Page="_state.Page"
-                    @bind-PageSize="_state.PageSize"
-                    @bind-SelectedVariableId="_state.SelectedVariableId"
-                    IsAuthenticated="@IsAuthenticated"
-                    HeadingLevel="@HeadingLevel"
-                    Language="@Language" />
-</div>
-
-<div class="munin-explorer-meta__tab-content"
-     role="tabpanel"
-     id="@TabPanelId(ExplorerTab.VariableList)"
-     aria-labelledby="@TabId(ExplorerTab.VariableList)"
-     tabindex="0"
-     hidden="@(_tab != ExplorerTab.VariableList)">
-    <VariableListView Language="@Language"
-                      IsAuthenticated="@IsAuthenticated"
-                      HeadingLevel="@HeadingLevel" />
-</div>
+@code {
+    // Passed as a fragment rather than mounted beside the search, so the list sits inside the tab
+    // panel and still shares the circuit's VariableListState with the save button.
+    private RenderFragment ReaderLists => @<VariableListView Language="@Language"
+                                                            IsAuthenticated="@IsAuthenticated"
+                                                            HeadingLevel="@HeadingLevel" />;
+}

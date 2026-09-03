@@ -25,10 +25,6 @@ public partial class VariableSearch
 
     protected override async Task OnParametersSetAsync()
     {
-        // Before the early return below, because the account-link panel is the component's own
-        // state rather than the shared list state's, and it has to be dropped either way.
-        ResetAccountLinkIfTheReaderChanged();
-
         if (ListState is null)
         {
             return;

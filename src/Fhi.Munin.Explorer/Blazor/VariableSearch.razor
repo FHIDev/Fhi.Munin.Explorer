@@ -432,6 +432,44 @@ else
         }
     </div>
 
+    @* Runa's two tabs, and they sit HERE rather than around the whole component: the heading, the
+       search box and the filters are above them and shared, so switching to Variabelliste does not
+       take the search away. Only the results and their pager are the first tab's own. Measured off
+       runa.munin.skytest.fhi.no/explorer, where the order is heading, search, filters, tablist,
+       panel. (Fhi.Metadata-l9l2n.39)
+
+       Drawn only for a reader who has lists to switch to. Signed out the second tab would name an
+       empty panel, so there is no tablist at all and the results render as they always did. *@
+    @if (ShowTabs)
+    {
+        <div class="munin-explorer-meta__tabs"
+             role="tablist"
+             aria-label="@T.Title"
+             @onkeydown="ResultTabKey">
+            @foreach (var tab in ResultTabs)
+            {
+                <div class="@ResultTabClass(tab)" @key="tab">
+                    <button class="hd-button-reset"
+                            type="button"
+                            role="tab"
+                            id="@ResultTabId(tab)"
+                            aria-selected="@(tab == _resultsTab ? "true" : "false")"
+                            aria-controls="@ResultTabPanelId(tab)"
+                            tabindex="@(tab == _resultsTab ? 0 : -1)"
+                            @onclick="() => _resultsTab = tab">@ResultTabLabel(tab)</button>
+                </div>
+            }
+        </div>
+    }
+
+    @* The panel the results live in. Unclassed and role-less when there are no tabs, so a
+       signed-out reader gets the same document they always got — the root is a block container
+       with no child-combinator rules onto what is inside, so the extra element draws nothing. *@
+    <div role="@(ShowTabs ? "tabpanel" : null)"
+         id="@(ShowTabs ? ResultTabPanelId(ExplorerTab.Search) : null)"
+         aria-labelledby="@(ShowTabs ? ResultTabId(ExplorerTab.Search) : null)"
+         hidden="@(ShowTabs && _resultsTab != ExplorerTab.Search)">
+
     @* The container and its header render whether or not anything was found. The ordering lives
        in that header, and hiding it when a search comes back empty would take the button the reader
        just pressed out of the document — the same reason the Søk button is never disabled. *@
@@ -884,6 +922,20 @@ else
                     </select>
                 </div>
             </div>
+        </div>
+    }
+
+    </div>@* the results tab panel *@
+
+    @if (ShowTabs)
+    {
+        <div class="munin-explorer-meta__tab-content"
+             role="tabpanel"
+             id="@ResultTabPanelId(ExplorerTab.VariableList)"
+             aria-labelledby="@ResultTabId(ExplorerTab.VariableList)"
+             tabindex="0"
+             hidden="@(_resultsTab != ExplorerTab.VariableList)">
+            @VariableList
         </div>
     }
 }

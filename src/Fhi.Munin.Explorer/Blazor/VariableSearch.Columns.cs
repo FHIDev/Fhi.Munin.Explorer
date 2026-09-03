@@ -298,11 +298,6 @@ public partial class VariableSearch
 
         builder.CloseElement();
 
-        // Beside the picker inside the same actions row, not in a row of its own: a second row
-        // would push the results down for a control most readers use once. It draws nothing at all
-        // for a signed-out reader, so the row is unchanged for them.
-        builder.AddContent(26, AccountLink());
-
         builder.CloseElement();
         builder.CloseElement();
     };

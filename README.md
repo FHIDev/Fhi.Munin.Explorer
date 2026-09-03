@@ -317,8 +317,6 @@ These are not style preferences — each one is a host that breaks otherwise.
   | Class name | Kind |
   | --- | --- |
   | `munin-explorer` | handle |
-  | `munin-explorer-account-link` | handle |
-  | `munin-explorer-account-link__actions` | handle |
   | `munin-explorer-alert` | handle |
   | `munin-explorer-breadcrumb` | meaning |
   | `munin-explorer-breadcrumb__clear` | meaning |

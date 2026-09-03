@@ -261,10 +261,12 @@ public class VariableExplorerTest : BunitContext
         {
             builder.OpenComponent<VariableExplorer>(0);
             builder.AddComponentParameter(1, "Language", "no");
+            builder.AddComponentParameter(2, "IsAuthenticated", true);
             builder.CloseComponent();
 
-            builder.OpenComponent<VariableExplorer>(2);
-            builder.AddComponentParameter(3, "Language", "no");
+            builder.OpenComponent<VariableExplorer>(3);
+            builder.AddComponentParameter(4, "Language", "no");
+            builder.AddComponentParameter(5, "IsAuthenticated", true);
             builder.CloseComponent();
         });
 
@@ -320,22 +322,19 @@ public class VariableExplorerTest : BunitContext
     // Signed out.
 
     [Fact]
-    public void SignedOut_WhenTheListTabIsOpened_ThenItOffersNothingThatNeedsAReader()
+    public void SignedOut_WhenTheExplorerIsDrawn_ThenThereIsNoTablistAtAll()
     {
-        // IsAuthenticated defaults to false and VariableListView already draws nothing at all for
-        // a signed-out reader — not an empty frame, not a sign-in prompt this package has no
-        // business wording. The composition must not put controls back.
+        // A signed-out reader has no lists, so a second tab would name an empty panel. No tablist,
+        // and the results stand where they always did — the shape that host had before the tabs.
         var cut = RenderExplorer(new ExplorerClient(Variable("Alder ved diagnose", "V_BDR.ALDER")), signedIn: false);
 
-        Tab(cut, "Variabelliste").Click();
+        Assert.Empty(cut.FindAll("[role=tablist]"));
+        Assert.Empty(cut.FindAll("[role=tab]"));
+        Assert.Empty(cut.FindAll("[role=tabpanel]"));
+        Assert.DoesNotContain("Variabelliste", cut.Markup, StringComparison.Ordinal);
 
-        var panel = PanelFor(cut, Tab(cut, "Variabelliste"));
-
-        Assert.Empty(panel.QuerySelectorAll("button"));
-        Assert.Empty(panel.QuerySelectorAll("input"));
-        Assert.Equal("", panel.TextContent.Trim());
-
-        // And no save button on the search tab either, for the same reader.
+        // The results are still there, and still offer nothing that needs a reader.
+        Assert.Contains("Alder ved diagnose", cut.Markup, StringComparison.Ordinal);
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]"));
     }
 
@@ -350,7 +349,7 @@ public class VariableExplorerTest : BunitContext
         var cut = Render<VariableExplorer>(p => p.Add(c => c.Language, "no"));
 
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]"));
-        Assert.Equal("", PanelFor(cut, Tab(cut, "Variabelliste")).TextContent.Trim());
+        Assert.Empty(cut.FindAll("[role=tablist]"));
     }
 
     // -----------------------------------------------------------------------
@@ -386,10 +385,51 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Equal("munin-explorer-meta__tabs", cut.Find("[role=tablist]").ClassName);
 
-        foreach (var panel in cut.FindAll("[role=tabpanel]"))
-        {
-            Assert.Equal("munin-explorer-meta__tab-content", panel.ClassName);
-        }
+        // The results panel is deliberately unclassed: it wraps markup that already carries its
+        // own names, and a wrapper with a name would be one more rule for a host to write.
+        var list = PanelFor(cut, Tab(cut, "Variabelliste"));
+        Assert.Equal("munin-explorer-meta__tab-content", list.ClassName);
+        Assert.True(string.IsNullOrEmpty(PanelFor(cut, Tab(cut, "Søkeresultat")).ClassName));
+    }
+
+    [Fact]
+    public void Tabs_WhenTheyAreDrawn_ThenTheSearchBoxAndFiltersAreAboveThemAndOnBothTabs()
+    {
+        // Runa's placement, and the defect this replaces: the tablist used to wrap the whole
+        // component, so it sat at the very top where helsedata's own header covers it — and
+        // switching to Variabelliste took the search box away with it.
+        var cut = RenderExplorer(new ExplorerClient(Variable("Alder ved diagnose", "V_BDR.ALDER")));
+
+        // Document order, read off a flat walk of the rendered tree rather than off the markup
+        // string: what matters is where the tablist lands relative to the search box and the
+        // facets, and only their order in the document decides that.
+        var order = cut.Find("section.munin-explorer").QuerySelectorAll("*").ToList();
+
+        var search = order.FindIndex(e => e.GetAttribute("role") == "search");
+        var filters = order.FindIndex(e => e.ClassList.Contains("munin-explorer-filters"));
+        var tablist = order.FindIndex(e => e.GetAttribute("role") == "tablist");
+
+        Assert.True(search >= 0 && filters >= 0 && tablist >= 0);
+        Assert.True(search < tablist, "the search box must come before the tablist");
+        Assert.True(filters < tablist, "the filters must come before the tablist");
+
+        // And on the other tab the search box is still in the page rather than hidden with it.
+        Tab(cut, "Variabelliste").Click();
+
+        Assert.NotNull(cut.Find("form[role=search]"));
+        Assert.Null(cut.Find("form[role=search]").GetAttribute("hidden"));
+        Assert.Equal("true", Tab(cut, "Variabelliste").GetAttribute("aria-selected"));
+    }
+
+    [Fact]
+    public void Explorer_WhenItIsDrawn_ThenNothingOffersToLinkAnAccount()
+    {
+        // The account link was Munin's own and helsedata does not want it, so it is gone from the
+        // package rather than switched off. Asserted on the rendered words a reader would see.
+        var cut = RenderExplorer(new ExplorerClient(Variable("Alder ved diagnose", "V_BDR.ALDER")));
+
+        Assert.DoesNotContain("Koble konto", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("munin-explorer-account-link", cut.Markup, StringComparison.Ordinal);
     }
 
     // -----------------------------------------------------------------------
