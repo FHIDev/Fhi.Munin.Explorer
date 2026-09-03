@@ -5723,10 +5723,9 @@ public class VariableExplorerTest : BunitContext
     [Fact]
     public void Kodeverk_WhenTheApiResolvedNoName_ThenTheReferenceIsLabelledRatherThanStandingIn()
     {
-        // Still the rule for every kind but Kildekodeverk. A V-AK's OId is an official number and a
-        // resolved name is trustworthy, so a missing one is an ordinary lookup miss: it is said out
-        // loud, and the reference is labelled, so no bare code is the only text on a line. The flat
-        // list this replaced rendered it as "Administrativt kodeverk: 3402".
+        // Still the rule for every kind but Kildekodeverk. A V-AK's OId is an official number, so a
+        // missing name is an ordinary lookup miss: it is said out loud and the reference is
+        // labelled, rather than the reference standing in as the name.
         var id = Guid.NewGuid();
         var cut = OpenData(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(Detail(id) with
         {
@@ -6201,10 +6200,9 @@ public class VariableExplorerTest : BunitContext
     }
 
     // ---------------------------------------------------------------------------------
-    // A kildekodeverk with no name (Fhi.Metadata-l9l2n.38). fhi.kodeverk dedupes V-KK on forvalter
-    // plus code values, so a name looked up per id was borrowed from whichever upload landed last
-    // and the API stopped sending one — for the majority of V-KK links on helsedata.no. What
-    // identifies such a link is its codes, so that is what the line shows.
+    // A kildekodeverk with no name (Fhi.Metadata-l9l2n.38). The API stopped sending a name it could
+    // not trust, for the majority of V-KK links on helsedata.no, so what identifies such a link is
+    // its codes — and that is what its line shows.
 
     /// <summary>Nine codes behind the nameless link: one more than fits on the line.</summary>
     private static KodeverkCodes ManyCodes2336() => Codes2336() with
@@ -6307,9 +6305,8 @@ public class VariableExplorerTest : BunitContext
     public void Codes_WhenTheNamelessLinksFetchFails_ThenItFallsBackAndTheComponentStaysUp(bool rateLimited)
     {
         // This fetch runs without anyone having pressed anything, and helsedata's legacy Blazor
-        // Server host loses the whole CMS page on an unhandled exception — so a throw here would
-        // take down a page the reader never touched. Both kinds, because the limiter is the one a
-        // reader opening row after row is likeliest to meet.
+        // Server host loses the whole CMS page on an unhandled exception — so a throw here takes
+        // down a page the reader never touched. Both kinds: the limiter is the likelier of the two.
         var client = KodeverkRows();
 
         client.RateLimitCodes = rateLimited;
