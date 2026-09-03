@@ -160,6 +160,11 @@ public partial class VariableExplorer
                 _detailLoading = false;
             }
         }
+
+        // After the panel is drawn rather than inside its fetch: a link with no name has nothing to
+        // show until its codes arrive, and making the whole panel wait for them would hold back
+        // every line that is ready (Fhi.Metadata-l9l2n.38).
+        await LoadUnnamedCodesAsync();
     }
 
     /// <summary>Close the panel and forget what was fetched for it.</summary>
