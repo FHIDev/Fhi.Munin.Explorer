@@ -6448,9 +6448,49 @@ public class VariableExplorerTest : BunitContext
         Assert.Equal([SpyttId], client.RequestsFor("2336").Select(request => request.VariableId));
     }
 
-    // The de-duplication in LoadUnnamedCodesAsync has no test, deliberately. The only payload that
-    // reaches it — one kodeverk named twice — gives two <li> the same @key, and diffing that list
-    // throws inside the renderer. Measured on main too, so it is not this branch's (l9l2n.38).
+    [Fact]
+    public async Task Kodeverk_WhenThePayloadNamesOneLinkTwice_ThenTheListSurvivesBeingDiffed()
+    {
+        // Two siblings carrying one @key throw inside Blazor's diff — in helsedata's legacy Server
+        // host that is the whole CMS page. Latent on main, where nothing re-renders this list until
+        // a press; reachable on open here, because the nameless fetch re-renders it.
+        var id = Guid.NewGuid();
+        var link = new KodeverkLink
+        {
+            KodeverkType = "Kildekodeverk",
+            KodeverkReference = "2336",
+            HasCodeValues = true
+        };
+
+        var client = new DetailClient(OnePage(Row(id, "1. Tale")))
+            .Knows(Detail(id) with { KodeverkLinks = [link, link] });
+
+        // Stalled on purpose. A fetch that answers at once never lets the list reach the DOM before
+        // the codes do, so the whole open coalesces into one render and nothing is ever diffed —
+        // which is a test of this that passes with the key broken.
+        client.StallCodes = true;
+
+        var cut = OpenData(client);
+
+        Assert.Equal(2, KodeverkLines(cut).Count);
+        Assert.All(KodeverkLines(cut), line => Assert.Equal(
+            "Henter koder …", line.QuerySelector(".munin-explorer-kodeverk__name")!.TextContent));
+
+        // The answer re-renders the list that is already on screen, which is the diff.
+        await cut.InvokeAsync(() => client.AnswerStalledCodes(Codes2336()));
+
+        cut.WaitForAssertion(() => Assert.All(KodeverkLines(cut), line => Assert.Equal(
+            "0 Velg verdi · 1 0: Tap av produktiv tale",
+            line.QuerySelector(".munin-explorer-kodeverk__name")!.TextContent)));
+
+        // Both lines are the same kodeverk, so they share one cache entry and one answer.
+        Assert.Equal(2, KodeverkLines(cut).Count);
+        Assert.Single(client.RequestsFor("2336"));
+    }
+
+    // The de-duplication in LoadUnnamedCodesAsync has no test of its own: the payload that reaches
+    // it is the one above, and there the first fetch succeeds, so the second mention is skipped on
+    // the cache rather than on the error entry the guard was widened for (Fhi.Metadata-l9l2n.38).
 
     [Fact]
     public void Codes_WhenTheLanguageIsEnAndTheCodesDoNotFit_ThenTheControlIsTranslatedToo()
