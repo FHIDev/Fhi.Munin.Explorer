@@ -159,9 +159,9 @@ else
            invisible one. *@
         <label class="form-element__label" for="@SearchId">@T.SearchLabel</label>
 
-        @* searchbox__freetext reserves 104px of right padding for buttons sitting inside the
-           field, which is where searchbox__freetext-submit-button and the clear control below it
-           go. Both names come from Stiler; this is the arrangement their own search box uses. *@
+        @* searchbox__freetext reserves 104px of right padding for the controls inside the field.
+           The reservation and searchbox__freetext-submit-button are Stiler's, and their own search
+           box is arranged this way; the clear control below borrows the room, not the name. *@
         <div class="searchbox__freetext-container">
             @* @bind (onchange), deliberately NOT value + @oninput.
 

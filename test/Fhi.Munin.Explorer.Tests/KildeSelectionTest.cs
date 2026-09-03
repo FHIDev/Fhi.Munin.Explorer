@@ -693,6 +693,21 @@ public class KildeSelectionTest : BunitContext
             offset + width <= reserved,
             $"The clear button reaches {offset + width}px into a field that reserves only "
             + $"{reserved}px, so it overlaps the reader's own text — the way it did before.");
+
+        // The muted state, which the old always-present button had and this one lost and regained:
+        // the variable explorer marks the control aria-disabled while its own search is out, and
+        // the host note asks hosts to style that. Nothing else here would catch the rule going.
+        var muted = HostClassNames.SampleDeclarationsFor("munin-explorer-search__clear")
+            .Where(rule => rule.Selector.Contains("aria-disabled", StringComparison.Ordinal))
+            .Select(rule => Squeezed(rule.Declarations))
+            .ToList();
+
+        // Split before matching: "background-color:" contains "color:", and the :hover rule beside
+        // this one carries exactly that — so a substring test passes with the muting gone.
+        Assert.True(
+            muted.SelectMany(d => d.Split(';'))
+                 .Any(d => d.StartsWith("color:", StringComparison.Ordinal)),
+            "No rule mutes the clear button while it is on screen and will not act.");
     }
 
     /// <summary>
