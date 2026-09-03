@@ -234,6 +234,14 @@ public class KildeExplorerTest : BunitContext
             return this;
         }
 
+        /// <summary>Publish a detail written by the caller, for the fields Detail() leaves empty.</summary>
+        public FakeClient Describing(KildeDetail detail)
+        {
+            _details[detail.Id] = detail;
+
+            return this;
+        }
+
         /// <summary>Serve this vocabulary in place of the catalogue's current one.</summary>
         public FakeClient Serving(params PropertyMetadataEntry[] vocabulary)
         {
@@ -589,7 +597,11 @@ public class KildeExplorerTest : BunitContext
         // seven Kelda keeps behind its column picker (Fhi.Metadata-ay3zz).
         var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
-        var headers = cut.FindAll(".munin-explorer-kilder thead th").Select(th => th.TextContent.Trim());
+        // The control columns in front are excluded on purpose: this asserts Kelda DEFAULT_VISIBLE
+        // data columns, and the expand toggle and the checkbox are neither.
+        var headers = cut
+            .FindAll(".munin-explorer-kilder thead th:not(.munin-explorer-kilder__expand):not(.munin-explorer-kilder__select)")
+            .Select(th => th.TextContent.Trim());
 
         Assert.Equal(
         [
@@ -614,7 +626,12 @@ public class KildeExplorerTest : BunitContext
             established: "1951")));
 
         var row = cut.Find(".munin-explorer-kilder tbody tr");
-        var cells = row.QuerySelectorAll("th, td").Select(c => c.TextContent.Trim()).ToList();
+        // The expand control is skipped, as in the header assertion above: it is a control column
+        // and not one of the data columns this pins.
+        var cells = row
+            .QuerySelectorAll("th, td:not(.munin-explorer-kilder__expand)")
+            .Select(c => c.TextContent.Trim())
+            .ToList();
 
         // The name cell carries the code under the name, the way Kelda does: it is how a reader who
         // knows K_DAR finds the row whose name they do not know.
@@ -626,6 +643,152 @@ public class KildeExplorerTest : BunitContext
         Assert.Equal("7", cells[3]);
         Assert.Equal("312", cells[4]);
         Assert.Equal("1951", cells[5]);
+    }
+
+    // A kilde with one datasamling of its own and one hanging off a delkilde, which is the shape
+    // that tells a flattened panel from a grouped one.
+    private static KildeDetail DetailWithCollections(KildeSummary summary) =>
+        Detail(summary) with
+        {
+            Datasamlinger = [Collection("Hoveddatasamling")],
+            Delkilder =
+            [
+                new() { Name = "Bølge 4", Datasamlinger = [Collection("Bølge 4 - serie 49")] }
+            ]
+        };
+
+    private static KildeDatasamling Collection(string name) =>
+        new() { Name = name, VariableCount = 12 };
+
+    private static IElement ExpandToggle(IRenderedComponent<KildeExplorer> cut, string kilde) =>
+        cut.FindAll(".munin-explorer-kilder tbody tr")
+           .First(row => row.TextContent.Contains(kilde, StringComparison.Ordinal))
+           .QuerySelector(".munin-explorer-kilder__expand-toggle")!;
+
+    [Fact]
+    public void Render_WhenAKildeHasNoDatasamlinger_ThenItHasNoExpandToggle()
+    {
+        // Kelda draws no toggle where there is nothing to open (canExpand = datasamlingCount > 0),
+        // and a control that expands to an empty panel is worse than no control.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", datasamlinger: 3),
+            Kilde("Tomt register", "K_TOM", datasamlinger: 0)));
+
+        var rows = cut.FindAll(".munin-explorer-kilder tbody tr");
+
+        Assert.NotNull(rows[0].QuerySelector(".munin-explorer-kilder__expand-toggle"));
+        Assert.Null(rows[1].QuerySelector(".munin-explorer-kilder__expand-toggle"));
+    }
+
+    [Fact]
+    public void Render_WhenTheToggleIsPressed_ThenTheRowOpensOnItsDatasamlingerGrouped()
+    {
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        ExpandToggle(cut, "Als registeret").Click();
+
+        var panel = cut.Find(".munin-explorer-kilder__expanded");
+
+        Assert.Contains("Hoveddatasamling", panel.TextContent);
+        Assert.Contains("Bølge 4 - serie 49", panel.TextContent);
+
+        // Grouped, not flattened: the delkilde's name heads its own table. Flat is the defect
+        // Fhi.Metadata-wgpeo was filed for — all 14 shown, with nothing saying 11 were a delkilde's.
+        Assert.Contains("Bølge 4", panel.QuerySelectorAll("p").Select(p => p.TextContent));
+        Assert.Equal(2, panel.QuerySelectorAll("table.munin-explorer-kilde__datasamlinger").Length);
+    }
+
+    [Fact]
+    public void Render_WhenTheToggleIsPressed_ThenItSaysSoToAScreenReader()
+    {
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        var toggle = ExpandToggle(cut, "Als registeret");
+
+        Assert.Equal("false", toggle.GetAttribute("aria-expanded"));
+        Assert.Equal("Vis datasamlinger for Als registeret", toggle.GetAttribute("aria-label"));
+
+        toggle.Click();
+
+        var opened = ExpandToggle(cut, "Als registeret");
+
+        Assert.Equal("true", opened.GetAttribute("aria-expanded"));
+        Assert.Equal("Skjul datasamlinger for Als registeret", opened.GetAttribute("aria-label"));
+
+        // aria-controls has to name the panel that actually arrived, or it points at nothing.
+        Assert.Equal(
+            opened.GetAttribute("aria-controls"),
+            cut.Find(".munin-explorer-kilder__expanded").GetAttribute("id"));
+    }
+
+    [Fact]
+    public void Render_WhenAFacetIsTickedWhileARowIsOpen_ThenTheSameKildeIsStillTheOpenOne()
+    {
+        // THE TRAP this bead names, and it names the facet path specifically. An earlier version of
+        // this test filtered with the search box instead — which passes even when a facet tick
+        // throws the expansion away, because Choose is a different handler entirely.
+        var dar = Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister", datasamlinger: 1);
+        var als = Kilde("Als registeret", "K_ALS", kildetype: "biobank", datasamlinger: 2);
+        var client = new FakeClient(dar, als).Describing(DetailWithCollections(als));
+        var cut = RenderWith(client);
+
+        ExpandToggle(cut, "Als registeret").Click();
+
+        Assert.Contains("Hoveddatasamling", cut.Find(".munin-explorer-kilder__expanded").TextContent);
+
+        // Ticking removes the row ABOVE the open one, so an expansion held by position would shift
+        // the panel onto its neighbour or off the end of the list.
+        Tick(cut, "Kildetype", "Biobank");
+
+        var rows = cut.FindAll(".munin-explorer-kilder tbody tr");
+        var panel = cut.Find(".munin-explorer-kilder__expanded");
+
+        // Still open, still the same kilde, and still holding that kilde's datasamlinger.
+        Assert.Contains("Als registeret", rows[0].TextContent);
+        Assert.Equal("true", ExpandToggle(cut, "Als registeret").GetAttribute("aria-expanded"));
+        Assert.Contains("Hoveddatasamling", panel.TextContent);
+    }
+
+    [Fact]
+    public void Render_WhenARowIsOpenedTwice_ThenTheDatasamlingerAreFetchedOnce()
+    {
+        // Cached per kilde, the way Kelda caches it. Without this every open is a request for
+        // something the component already has.
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var client = new FakeClient(als).Describing(DetailWithCollections(als));
+        var cut = RenderWith(client);
+
+        ExpandToggle(cut, "Als registeret").Click();
+        var afterFirst = client.DetailCalls;
+
+        ExpandToggle(cut, "Als registeret").Click();   // collapse
+        ExpandToggle(cut, "Als registeret").Click();   // and open it again
+
+        Assert.Equal(1, afterFirst);
+        Assert.Equal(afterFirst, client.DetailCalls);
+        Assert.Contains("Hoveddatasamling", cut.Find(".munin-explorer-kilder__expanded").TextContent);
+    }
+
+    [Fact]
+    public void Render_WhenTheFetchFails_ThenTheRowSaysSoRatherThanOpeningEmpty()
+    {
+        // An open panel with nothing in it reads as "this kilde has no datasamlinger", which is a
+        // different fact from "we could not fetch them" — and the row's own count says otherwise.
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var client = new FakeClient(als).Describing(DetailWithCollections(als));
+
+        client.FailDetail = true;
+
+        var cut = RenderWith(client);
+
+        ExpandToggle(cut, "Als registeret").Click();
+
+        var panel = cut.Find(".munin-explorer-kilder__expanded");
+
+        Assert.Empty(panel.QuerySelectorAll("table"));
+        Assert.NotEmpty(panel.QuerySelectorAll(".infobox"));
     }
 
     [Fact]
@@ -647,7 +810,7 @@ public class KildeExplorerTest : BunitContext
         // Kelda's em dash, because that is what every other empty cell in this table says.
         var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
-        var cells = cut.FindAll(".munin-explorer-kilder tbody td").Select(c => c.TextContent.Trim()).ToList();
+        var cells = cut.FindAll(".munin-explorer-kilder tbody td:not(.munin-explorer-kilder__expand)").Select(c => c.TextContent.Trim()).ToList();
 
         Assert.Equal("Ikke oppgitt", cells[4]);
     }
@@ -662,7 +825,7 @@ public class KildeExplorerTest : BunitContext
             Kilde("Als registeret", "K_ALS", established: "1994"),
             Kilde("Kreftregisteret", "K_KREG", established: "2916")));
 
-        var cells = cut.FindAll(".munin-explorer-kilder tbody td").Select(c => c.TextContent.Trim()).ToList();
+        var cells = cut.FindAll(".munin-explorer-kilder tbody td:not(.munin-explorer-kilder__expand)").Select(c => c.TextContent.Trim()).ToList();
 
         Assert.Equal("1994", cells[4]);
         Assert.Equal("2916", cells[9]);
@@ -684,7 +847,7 @@ public class KildeExplorerTest : BunitContext
 
         var row = cut.Find(".munin-explorer-kilder tbody tr");
 
-        Assert.Equal("1994", row.QuerySelectorAll("td")[4].TextContent.Trim());
+        Assert.Equal("1994", row.QuerySelectorAll("td")[^1].TextContent.Trim());
         Assert.DoesNotContain("2026", row.TextContent);
     }
 
@@ -701,7 +864,7 @@ public class KildeExplorerTest : BunitContext
         var cut = RenderWith(new FakeClient([.. kilder]));
 
         var years = cut.FindAll(".munin-explorer-kilder tbody tr")
-            .Select(row => row.QuerySelectorAll("td")[4].TextContent.Trim());
+            .Select(row => row.QuerySelectorAll("td")[^1].TextContent.Trim());
 
         Assert.Equal(["2023", "2006", "2020"], years);
     }
@@ -1486,7 +1649,7 @@ public class KildeExplorerTest : BunitContext
                 Kilde("Dødsårsaksregisteret", "K_DAR")),
             b => b.Add(c => c.Language, "en"));
 
-        var cells = cut.FindAll(".munin-explorer-kilder tbody td");
+        var cells = cut.FindAll(".munin-explorer-kilder tbody td:not(.munin-explorer-kilder__expand)");
 
         Assert.Equal("1994", cells[4].TextContent.Trim());
         Assert.Null(cells[4].GetAttribute("lang"));
@@ -2414,6 +2577,8 @@ public class KildeExplorerTest : BunitContext
             "munin-explorer-filters__toggle",
             "munin-explorer-kilder",
             "munin-explorer-kilder__count",
+            "munin-explorer-kilder__expand",
+            "munin-explorer-kilder__expand-toggle",
             "munin-explorer-kilder__name",
             "munin-explorer-results",            // shared
             "munin-explorer-search",             // shared with the variable explorer

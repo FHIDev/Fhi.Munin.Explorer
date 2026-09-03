@@ -382,6 +382,9 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-kilde__main` | handle |
   | `munin-explorer-kilder` | handle |
   | `munin-explorer-kilder__count` | handle |
+  | `munin-explorer-kilder__expand` | meaning |
+  | `munin-explorer-kilder__expand-toggle` | meaning |
+  | `munin-explorer-kilder__expanded` | handle |
   | `munin-explorer-kilder__name` | handle |
   | `munin-explorer-kilder__select` | handle |
   | `munin-explorer-kodeverk` | handle |

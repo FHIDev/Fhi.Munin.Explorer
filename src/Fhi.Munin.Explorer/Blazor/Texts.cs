@@ -330,6 +330,11 @@ internal sealed record Texts(
     // "Established". Named for the year and not for the word, because the word also names
     // KildeSummary.Created — Munin's own row timestamp, and Kelda's Importert, not this column.
     string ColumnEstablished,
+    // The kilde table's expand control. The label carries the kilde's name because "Vis
+    // datasamlinger" repeated down a column says nothing about which row (Fhi.Metadata-mq24y).
+    Func<string, string> ExpandDatasamlinger,
+    Func<string, string> CollapseDatasamlinger,
+    string ColumnExpand,
     // Three strings that all undo something and can be on screen together, so each is named for
     // its own noun: ClearSearch empties the box, ClearFilters unticks the facets, ClearSelection
     // drops the row ticks. (Fhi.Metadata-5ghur)
@@ -844,6 +849,9 @@ internal sealed record Texts(
         ColumnKildetype: "Kildetype",
         ColumnVariableCount: "Variabler",
         ColumnEstablished: "Opprettet",
+        ExpandDatasamlinger: navn => $"Vis datasamlinger for {navn}",
+        CollapseDatasamlinger: navn => $"Skjul datasamlinger for {navn}",
+        ColumnExpand: "Vis datasamlinger",
         ClearSearch: "Tøm søket",
         SelectAllKilder: "Velg alle synlige kilder",
         ClearSelection: "Nullstill utvalg",
@@ -1146,6 +1154,9 @@ internal sealed record Texts(
         ColumnKildetype: "Source type",
         ColumnVariableCount: "Variables",
         ColumnEstablished: "Established",
+        ExpandDatasamlinger: name => $"Show data collections for {name}",
+        CollapseDatasamlinger: name => $"Hide data collections for {name}",
+        ColumnExpand: "Show data collections",
         ClearSearch: "Clear search",
         SelectAllKilder: "Select all visible sources",
         ClearSelection: "Clear selection",

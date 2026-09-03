@@ -213,6 +213,125 @@ public sealed partial class KildeExplorer : ComponentBase
     // calls carrying one id.
     private int _detailGeneration;
 
+    // Which rows are open, keyed by the kilde's own id and never by position: the list re-renders
+    // on every facet tick, so an index would reopen against whatever kilde has moved into that
+    // slot (Fhi.Metadata-mq24y).
+    private readonly HashSet<Guid> _expanded = [];
+
+    // Cached per kilde so re-opening one costs nothing, the way Kelda's own panel does it. A null
+    // value is a kilde the catalogue does not publish and is cached too — asking again would get
+    // the same answer.
+    private readonly Dictionary<Guid, KildeDetail?> _datasamlinger = [];
+
+    private readonly HashSet<Guid> _datasamlingerLoading = [];
+    private readonly Dictionary<Guid, string> _datasamlingerError = [];
+
+    // Per kilde, not one counter for the table: two rows can be open at once and each fetch has to
+    // be able to tell whether the row it is about to write into is still asking for it.
+    private readonly Dictionary<Guid, int> _datasamlingerGeneration = [];
+
+    private bool IsExpanded(Guid id) => _expanded.Contains(id);
+
+    private string ExpandLabel(KildeSummary kilde) =>
+        IsExpanded(kilde.Id) ? T.CollapseDatasamlinger(kilde.Name) : T.ExpandDatasamlinger(kilde.Name);
+
+    private string PanelId(Guid id) => $"munin-explorer-datasamlinger-{_instance}-{id}";
+
+    // The nested row spans the whole table, so it has to count the columns the mount actually has.
+    private int RowSpan => Selectable ? 8 : 7;
+
+    private async Task ToggleDatasamlingerAsync(KildeSummary kilde)
+    {
+        if (!_expanded.Add(kilde.Id))
+        {
+            _expanded.Remove(kilde.Id);
+            return;
+        }
+
+        if (_datasamlinger.ContainsKey(kilde.Id))
+        {
+            return;
+        }
+
+        await LoadDatasamlingerAsync(kilde.Id);
+    }
+
+    private async Task LoadDatasamlingerAsync(Guid id)
+    {
+        var generation = _datasamlingerGeneration[id] =
+            _datasamlingerGeneration.GetValueOrDefault(id) + 1;
+
+        _datasamlingerError.Remove(id);
+        _datasamlingerLoading.Add(id);
+
+        try
+        {
+            var detail = await Client.GetKildeAsync(id);
+
+            if (_datasamlingerGeneration[id] != generation)
+            {
+                return;
+            }
+
+            _datasamlinger[id] = detail;
+
+            // Null is the answer for a kilde the catalogue does not publish, which is not a fault —
+            // the same reading the drilldown gives it.
+            if (detail is null)
+            {
+                _datasamlingerError[id] = T.KildeMissing;
+            }
+        }
+        catch (Exception ex)
+        {
+            // One branch for both failures so the stale guard is written once: a fetch the reader
+            // has already collapsed must not paint its answer, of either kind, into a row that is
+            // now closed or holding a different kilde.
+            if (_datasamlingerGeneration[id] != generation)
+            {
+                return;
+            }
+
+            _datasamlingerError[id] = ex is MuninExplorerRateLimitedException
+                ? T.RateLimitError
+                : T.KildeError;
+        }
+        finally
+        {
+            if (_datasamlingerGeneration[id] == generation)
+            {
+                _datasamlingerLoading.Remove(id);
+            }
+        }
+    }
+
+    // Direct datasamlinger first, then one group per delkilde that has any — flat would lose which
+    // of them belong to a delkilde, the defect Fhi.Metadata-wgpeo was filed for.
+    private IReadOnlyList<(string? Heading, IReadOnlyList<KildeDatasamling> Rows)> DatasamlingGroups(Guid id)
+    {
+        if (!_datasamlinger.TryGetValue(id, out var detail) || detail is null)
+        {
+            return [];
+        }
+
+        var groups = new List<(string?, IReadOnlyList<KildeDatasamling>)>();
+
+        if (detail.Datasamlinger.Count > 0)
+        {
+            groups.Add((null, detail.Datasamlinger));
+        }
+
+        foreach (var delkilde in detail.Delkilder)
+        {
+            if (delkilde.Datasamlinger.Count > 0)
+            {
+                groups.Add((delkilde.Name, delkilde.Datasamlinger));
+            }
+        }
+
+        return groups;
+    }
+
     // Unique per instance so two explorers on one page cannot collide on DOM ids, which would be a
     // WCAG 4.1.1 failure as well as breaking label association.
     private readonly string _instance = Guid.NewGuid().ToString("N")[..8];
