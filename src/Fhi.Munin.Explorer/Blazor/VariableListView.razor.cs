@@ -12,7 +12,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </summary>
 /// <remarks>
 /// <para>
-/// A separate root component rather than a tab inside <see cref="VariableExplorer"/>, because the
+/// A separate root component rather than a tab inside <see cref="VariableSearch"/>, because the
 /// host decides where it goes: helsedata's stories put "mine variabellister" on its own page, and a
 /// component that assumed otherwise would be unmountable there.
 /// </para>
@@ -32,10 +32,10 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private VariableListState? _state;
     private VariableListState? State => _state ??= ServiceProvider.GetService<VariableListState>();
 
-    /// <inheritdoc cref="VariableExplorer.Language"/>
+    /// <inheritdoc cref="VariableSearch.Language"/>
     [Parameter] public string Language { get; set; } = "no";
 
-    /// <inheritdoc cref="VariableExplorer.IsAuthenticated"/>
+    /// <inheritdoc cref="VariableSearch.IsAuthenticated"/>
     [Parameter] public bool IsAuthenticated { get; set; }
 
     /// <summary>Heading level for this component's own title, 1–6. Defaults to <c>2</c>.</summary>
@@ -56,7 +56,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// <summary>
     /// Per-mount discriminator for every id this component renders: the create form's name field,
     /// and per row the name cell and the remove button that is named from it. The shape the
-    /// explorer's own ids use — see <c>VariableExplorer.razor.cs</c>, where the convention lives.
+    /// explorer's own ids use — see <c>VariableSearch.razor.cs</c>, where the convention lives.
     /// </summary>
     /// <remarks>
     /// The host decides where this component goes and can mount it twice on one page. Two fields
@@ -406,7 +406,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         State.SetAuthenticated(IsAuthenticated);
 
-        // Caught here, like the save button's own read in VariableExplorer.Lists.cs:38. An exception
+        // Caught here, like the save button's own read in VariableSearch.Lists.cs:38. An exception
         // out of a lifecycle method takes the whole circuit down with it, which in helsedata's
         // legacy host means the entire CMS page — and the mount fires this read alongside the search
         // and the facet refresh, which is exactly the burst the per-address limiter counts. A 429
@@ -489,7 +489,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     /// <summary>The readable name for a datatype code, or the code when there is no name.</summary>
     /// <remarks>
-    /// The same shape as <c>VariableExplorer.DataTypeName</c>, and for the same reason: the codes are
+    /// The same shape as <c>VariableSearch.DataTypeName</c>, and for the same reason: the codes are
     /// editable master data on the API's side, so the names are read from it rather than written into
     /// a table that ships to other people and goes stale where nobody is looking.
     /// </remarks>

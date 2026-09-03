@@ -1201,7 +1201,7 @@ public class VariableListViewTest : BunitContext
         // page. Duplicate ids are a WCAG 4.1.1 failure, and here they cost the thing the label was
         // added for: both <label for> would resolve to whichever field rendered first, leaving the
         // second one unnamed again. Nothing catches that in a page with one mount — the shape this
-        // borrows from the explorer's own guard, VariableExplorerTest.cs
+        // borrows from the explorer's own guard, VariableSearchTest.cs
         // Source_WhenTwoExplorersAreOnOnePage_ThenTheirPanelsDoNotShareIds.
         Services.AddSingleton<IMuninExplorerClient>(new ListClient { HasList = false });
         Services.AddScoped<VariableListState>();

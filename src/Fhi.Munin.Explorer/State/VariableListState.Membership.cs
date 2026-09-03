@@ -49,7 +49,7 @@ public sealed partial class VariableListState
     /// something they asked for.
     /// <para>
     /// This overload is the ask a render makes, and it never retries a read that has already been
-    /// refused. <see cref="Blazor.VariableExplorer"/> calls it from <c>OnParametersSetAsync</c>,
+    /// refused. <see cref="Blazor.VariableSearch"/> calls it from <c>OnParametersSetAsync</c>,
     /// which runs on every parameter change and not only on the mount — so a retry here would send
     /// a fresh multi-page membership read alongside every search and every page turn, at the one
     /// moment the address is known to be over the per-address limit. The package deliberately does

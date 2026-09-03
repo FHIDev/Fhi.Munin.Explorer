@@ -85,7 +85,7 @@ these sections are for.
 `src/Fhi.Munin.Explorer` — `<summary>`, `<remarks>`, `<param>` and `<returns>` alike, since
 `GenerateDocumentationFile` is on and `lib/<tfm>/Fhi.Munin.Explorer.xml` ships inside the package —
 are read by host developers who have the package from `Fhi.Helsedata.no` and its IntelliSense, and
-not this repository. `VariableExplorer.SearchChanged` spending a `<remarks>` on how an
+not this repository. `VariableSearch.SearchChanged` spending a `<remarks>` on how an
 `EventCallback` serialises to an empty delegate across a static-SSR boundary is length earned: a
 consumer cannot reconstruct it from the signature and cannot open the file to find out. Being long
 is not what the exception licenses; having a reader who has only the package is. Internal types

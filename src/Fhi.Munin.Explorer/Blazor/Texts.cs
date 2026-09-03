@@ -2,13 +2,13 @@ using Fhi.Munin.Explorer.Contracts;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <remarks>
-/// Lifted out of <see cref="VariableExplorer"/> so a second explorer can share it. Kelda, the
+/// Lifted out of <see cref="VariableSearch"/> so a second explorer can share it. Kelda, the
 /// kildeutforsker, ships from this same package and needs these strings; while this was a private
 /// nested type it could not reach them, and the alternative was a second copy that would have
 /// drifted from this one the first time either was edited.
 /// </remarks>
 /// <summary>
-/// Self-contained translations. Deliberately not IStringLocalizer — see <see cref="VariableExplorer.Language"/>.
+/// Self-contained translations. Deliberately not IStringLocalizer — see <see cref="VariableSearch.Language"/>.
 /// </summary>
 internal sealed record Texts(
     string Title,
@@ -59,6 +59,12 @@ internal sealed record Texts(
     string FieldDataPeriod,
     string TabDetails,
     string TabData,
+
+    // The page's own two tabs, worded as Runa words them (explorer.tabs.search_results,
+    // explorer.tabs.variable_list). Spelled out rather than reusing Title, because the panel's
+    // TabDetails/TabData above are on screen at the same time and the two pairs must read apart.
+    string TabSearchResults,
+    string TabVariableList,
     string GroupIdentification,
     string GroupPlacement,
     string GroupProperties,
@@ -623,6 +629,8 @@ internal sealed record Texts(
         FieldDataPeriod: "Dataperiode",
         TabDetails: "Detaljer",
         TabData: "Data",
+        TabSearchResults: "Søkeresultat",
+        TabVariableList: "Variabelliste",
         GroupIdentification: "Identifikasjon",
         GroupPlacement: "Plassering",
         GroupProperties: "Egenskaper",
@@ -936,6 +944,8 @@ internal sealed record Texts(
         FieldDataPeriod: "Data period",
         TabDetails: "Details",
         TabData: "Data",
+        TabSearchResults: "Search results",
+        TabVariableList: "Variable list",
         GroupIdentification: "Identification",
         GroupPlacement: "Placement",
         GroupProperties: "Properties",

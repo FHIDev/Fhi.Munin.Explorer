@@ -30,7 +30,7 @@ public sealed partial class KildeView : ComponentBase
     [Parameter, EditorRequired]
     public KildeDetail? Kilde { get; set; }
 
-    /// <inheritdoc cref="VariableExplorer.Language"/>
+    /// <inheritdoc cref="VariableSearch.Language"/>
     [Parameter]
     public string? Language { get; set; }
 

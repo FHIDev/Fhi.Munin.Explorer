@@ -87,21 +87,21 @@ public class AccountLinkTest : BunitContext
         }
     }
 
-    private IRenderedComponent<VariableExplorer> RenderSignedIn(LinkClient client, bool signedIn = true)
+    private IRenderedComponent<VariableSearch> RenderSignedIn(LinkClient client, bool signedIn = true)
     {
         Services.AddSingleton<IMuninExplorerClient>(client);
         Services.AddScoped<VariableListState>();
-        return Render<VariableExplorer>(p => p.Add(c => c.IsAuthenticated, signedIn));
+        return Render<VariableSearch>(p => p.Add(c => c.IsAuthenticated, signedIn));
     }
 
-    private static IElement Panel(IRenderedComponent<VariableExplorer> cut) =>
+    private static IElement Panel(IRenderedComponent<VariableSearch> cut) =>
         cut.Find(".munin-explorer-account-link");
 
-    private static IElement Trigger(IRenderedComponent<VariableExplorer> cut) =>
+    private static IElement Trigger(IRenderedComponent<VariableSearch> cut) =>
         cut.FindAll("summary").Single(s => s.TextContent.Contains("Koble konto"));
 
     /// <summary>Types a code and presses Fortsett, which is the whole of the first step.</summary>
-    private static void EnterCode(IRenderedComponent<VariableExplorer> cut, string code)
+    private static void EnterCode(IRenderedComponent<VariableSearch> cut, string code)
     {
         cut.Find(".munin-explorer-account-link input").Change(code);
         cut.FindAll(".munin-explorer-account-link__actions button")
@@ -109,12 +109,12 @@ public class AccountLinkTest : BunitContext
             .Click();
     }
 
-    private static void PressConfirm(IRenderedComponent<VariableExplorer> cut) =>
+    private static void PressConfirm(IRenderedComponent<VariableSearch> cut) =>
         cut.FindAll(".munin-explorer-account-link__actions button")
             .Single(b => b.TextContent.Contains("Koble kontoene"))
             .Click();
 
-    private static string Alert(IRenderedComponent<VariableExplorer> cut) =>
+    private static string Alert(IRenderedComponent<VariableSearch> cut) =>
         cut.Find(".munin-explorer-account-link p[role='alert']").TextContent.Trim();
 
     // -----------------------------------------------------------------------
@@ -318,11 +318,11 @@ public class AccountLinkTest : BunitContext
         public void Finish() => _redeem.SetResult(IdentityLinkOutcome.Linked);
     }
 
-    private IRenderedComponent<VariableExplorer> RenderStalling(StallingLinkClient client)
+    private IRenderedComponent<VariableSearch> RenderStalling(StallingLinkClient client)
     {
         Services.AddSingleton<IMuninExplorerClient>(client);
         Services.AddScoped<VariableListState>();
-        return Render<VariableExplorer>(p => p.Add(c => c.IsAuthenticated, true));
+        return Render<VariableSearch>(p => p.Add(c => c.IsAuthenticated, true));
     }
 
     /// <summary>
@@ -548,7 +548,7 @@ public class AccountLinkTest : BunitContext
         Services.AddSingleton<IMuninExplorerClient>(new LinkClient());
         Services.AddScoped<VariableListState>();
 
-        var cut = Render<VariableExplorer>(p => p
+        var cut = Render<VariableSearch>(p => p
             .Add(c => c.IsAuthenticated, true)
             .Add(c => c.Language, "en"));
 

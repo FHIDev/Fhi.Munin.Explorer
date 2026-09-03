@@ -115,7 +115,7 @@ public class VariableListStateTest : BunitContext
         Services.AddSingleton<IMuninExplorerClient>(client);
         Services.AddScoped<VariableListState>();
 
-        Render<VariableExplorer>();
+        Render<VariableSearch>();
 
         var state = Services.GetRequiredService<VariableListState>();
         Assert.False(state.IsAuthenticated);
@@ -128,7 +128,7 @@ public class VariableListStateTest : BunitContext
         Services.AddSingleton<IMuninExplorerClient>(new CountingClient());
         Services.AddScoped<VariableListState>();
 
-        Render<VariableExplorer>(p => p.Add(c => c.IsAuthenticated, true));
+        Render<VariableSearch>(p => p.Add(c => c.IsAuthenticated, true));
 
         Assert.True(Services.GetRequiredService<VariableListState>().IsAuthenticated);
     }
@@ -140,7 +140,7 @@ public class VariableListStateTest : BunitContext
         // never called AddMuninExplorer loses saved lists, not the explorer.
         Services.AddSingleton<IMuninExplorerClient>(new CountingClient());
 
-        var cut = Render<VariableExplorer>(p => p.Add(c => c.IsAuthenticated, true));
+        var cut = Render<VariableSearch>(p => p.Add(c => c.IsAuthenticated, true));
 
         Assert.NotEmpty(cut.Markup);
     }

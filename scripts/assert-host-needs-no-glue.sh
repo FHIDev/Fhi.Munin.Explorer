@@ -2,7 +2,7 @@
 #
 # Fails if a host cannot get shareable explorer URLs out of the package alone.
 #
-# VariableExplorerWithUrlState and KildeExplorerWithUrlState exist so that a host writes no glue:
+# VariableExplorer and KildeExplorerWithUrlState exist so that a host writes no glue:
 # no wrapper component, no query-string parsing, no history.replaceState. Both sample hosts prove
 # that badly. They sit in this repository and compile against src/, so a parameter that only exists
 # on this branch, a type the package does not actually export, or a component reachable only through
@@ -93,7 +93,7 @@ EOF
 cat > "$CONSUMER/MountedWithNoGlue.razor" <<'EOF'
 @using Fhi.Munin.Explorer.Blazor
 
-<VariableExplorerWithUrlState Language="no" DeclinedKeys="@(new[] { "search" })" />
+<VariableExplorer Language="no" DeclinedKeys="@(new[] { "search" })" />
 
 <KildeExplorerWithUrlState Language="no" VariableExplorerPath="/" />
 EOF
@@ -108,7 +108,7 @@ using Fhi.Munin.Explorer.Contracts;
 internal static class Exported
 {
     internal static readonly Type[] Mounted =
-        [typeof(VariableExplorerWithUrlState), typeof(KildeExplorerWithUrlState)];
+        [typeof(VariableExplorer), typeof(KildeExplorerWithUrlState)];
 
     // The do-it-yourself route stays public beside them: a host that wants to own its own address
     // bar builds the query with these rather than mounting the components above.

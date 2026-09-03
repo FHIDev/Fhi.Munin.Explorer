@@ -5,7 +5,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
 /// Search and browse the catalogue's kilder — Kelda, the kildeutforsker, beside
-/// <see cref="VariableExplorer"/> in the same package.
+/// <see cref="VariableSearch"/> in the same package.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -78,7 +78,7 @@ public sealed partial class KildeExplorer : ComponentBase
     /// Initial search text. Set by the host; the component owns it afterwards.
     /// </summary>
     /// <remarks>
-    /// Read once, on initialisation, exactly as <see cref="VariableExplorer.Search"/> is. There is
+    /// Read once, on initialisation, exactly as <see cref="VariableSearch.Search"/> is. There is
     /// no <c>SearchChanged</c> beside it, and that is the Kelda parity decision rather than an
     /// omission: search, filters and column choices are component state that goes away on refresh,
     /// and the one thing worth putting in a host's URL is which kilde is open — which is what
@@ -86,10 +86,10 @@ public sealed partial class KildeExplorer : ComponentBase
     /// </remarks>
     [Parameter] public string? Search { get; set; }
 
-    /// <inheritdoc cref="VariableExplorer.Language"/>
+    /// <inheritdoc cref="VariableSearch.Language"/>
     [Parameter] public string Language { get; set; } = "no";
 
-    /// <inheritdoc cref="VariableExplorer.HeadingLevel"/>
+    /// <inheritdoc cref="VariableSearch.HeadingLevel"/>
     [Parameter] public int HeadingLevel { get; set; } = 2;
 
     /// <summary>
@@ -128,9 +128,9 @@ public sealed partial class KildeExplorer : ComponentBase
     /// <para>
     /// The handover between the two explorers, and the reason it is a callback rather than a link:
     /// this component has no <c>NavigationManager</c> and no idea where the host mounted a
-    /// <see cref="VariableExplorer"/>, so it says what the reader asked for and the host decides
+    /// <see cref="VariableSearch"/>, so it says what the reader asked for and the host decides
     /// where that goes. <c>new VariableFilter { KildeIds = ids }.ToQueryString()</c> is the pairing
-    /// that lands the ids in <see cref="VariableExplorer.Filter"/> — see
+    /// that lands the ids in <see cref="VariableSearch.Filter"/> — see
     /// <c>KildeExplorer.Selection.cs</c> for the whole of the reasoning, and both sample hosts for
     /// it written out.
     /// </para>
@@ -441,7 +441,7 @@ public sealed partial class KildeExplorer : ComponentBase
     /// <summary>
     /// The heading level for the open kilde: one step below the component's own title, so the
     /// outline stays unbroken however deep the host mounted us. Flattens at <c>h6</c> rather than
-    /// breaking, for the reason <see cref="VariableExplorer.HeadingLevel"/> spells out.
+    /// breaking, for the reason <see cref="VariableSearch.HeadingLevel"/> spells out.
     /// </summary>
     private int KildeLevel => Math.Clamp(TitleLevel + 1, 1, 6);
 
@@ -968,7 +968,7 @@ public sealed partial class KildeExplorer : ComponentBase
     /// Invoke a host callback without letting the host's own exception out.
     /// </summary>
     /// <remarks>
-    /// The reasoning is spelled out once, on <c>VariableExplorer.RaiseAsync</c>: a handler that
+    /// The reasoning is spelled out once, on <c>VariableSearch.RaiseAsync</c>: a handler that
     /// navigates throws <see cref="NavigationException"/> during static SSR and the framework needs
     /// it, while anything else escaping here would tear down the circuit for the whole CMS page
     /// rather than for this component.

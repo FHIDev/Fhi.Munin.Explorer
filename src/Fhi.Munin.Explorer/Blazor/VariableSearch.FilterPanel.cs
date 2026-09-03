@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Components.Rendering;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>The facet sidebar: what can be narrowed, and what narrowing it costs.</summary>
-public partial class VariableExplorer
+public partial class VariableSearch
 {
     /// <summary>One facet, as the panel draws it: a disclosure holding a list of values.</summary>
     /// <remarks>

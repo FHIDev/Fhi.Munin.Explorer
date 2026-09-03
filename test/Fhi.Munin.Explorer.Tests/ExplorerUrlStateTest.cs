@@ -12,7 +12,7 @@ public class ExplorerUrlStateTest
     [Fact]
     public void DefaultPageSize_IsTheSameNumberTheComponentUses()
     {
-        Assert.Equal(ExplorerUrlState.DefaultPageSize, new VariableExplorer().PageSize);
+        Assert.Equal(ExplorerUrlState.DefaultPageSize, new VariableSearch().PageSize);
     }
 
     [Fact]

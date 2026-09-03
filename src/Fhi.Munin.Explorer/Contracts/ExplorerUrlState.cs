@@ -54,7 +54,7 @@ public sealed record ExplorerUrlState
     /// <remarks>
     /// Here rather than in the host because a host cannot read a component parameter's default, and
     /// every host that guessed it kept a second copy of the number to hold in step. Must match
-    /// <c>VariableExplorer.PageSize</c>; a test asserts it does, since the two are far apart and
+    /// <c>VariableSearch.PageSize</c>; a test asserts it does, since the two are far apart and
     /// nothing else would notice them diverging.
     /// </remarks>
     public const int DefaultPageSize = 20;
@@ -68,7 +68,7 @@ public sealed record ExplorerUrlState
     /// honoured, and a URL that names one would describe a page the reader is not looking at: the
     /// component clamps what it sends to the API but reports the raw value back, so an unclamped
     /// <c>?pageSize=99999</c> would be written back into the address bar over a hundred-row page.
-    /// <see cref="Parse"/> drops such a value instead, and <c>VariableExplorer</c> clamps against
+    /// <see cref="Parse"/> drops such a value instead, and <c>VariableSearch</c> clamps against
     /// these same two constants, so there is one range rather than two.
     /// </remarks>
     public const int MaxPageSize = 100;

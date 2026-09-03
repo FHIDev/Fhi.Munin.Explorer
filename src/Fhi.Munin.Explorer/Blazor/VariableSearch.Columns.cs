@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Components;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>Which columns the result rows carry, and the control that turns them on and off.</summary>
-public partial class VariableExplorer
+public partial class VariableSearch
 {
     /// <summary>
     /// A column the reader can turn off.

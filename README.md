@@ -19,6 +19,11 @@ which arrives as a thrown `HttpRequestException` rather than as an empty list. `
 is the component built on them — the one this package ships that reads and writes rather than
 browses — and a host is free to build its own instead.
 
+**Mount `VariableExplorer`.** It is the variabelutforsker whole: search and the reader's lists
+behind Runa's two tabs, with the view in the address bar. `VariableSearch` and `VariableListView`
+are the two halves, public for a host that wants to lay them out itself — see
+[What a host mounts](#what-a-host-mounts).
+
 ## Layout
 
 | Project | What it is |
@@ -598,18 +603,24 @@ side. It answers a `DesiredDataResult` rather than a `bool`, and a refusal carri
 API named — so a caller can tell the reader what to shorten to, and this package never writes the
 number down to drift from. A 429 is still thrown, and so is any fault.
 
-### Shareable URLs
+### What a host mounts
 
-Mount `VariableExplorerWithUrlState` or `KildeExplorerWithUrlState` in place of the explorer itself
-and a link carries the view: opening one restores the search, the facets, the sort, the page, the
-open variable and the open kilde, and every change the reader makes updates the address bar. There
-is no glue to write — no wrapper component, no query parsing, no `history.replaceState`. The
-explorer's own parameters — `Language`, `IsAuthenticated`, `HeadingLevel` — are set on the wrapper
-exactly as they would be on the explorer itself.
+`VariableExplorer` is the whole variabelutforsker: the search, the reader's own variable lists
+behind the second tab, and both of them in the address bar. `Language` and `IsAuthenticated` are
+all it takes.
 
 ```html
-<component type="typeof(VariableExplorerWithUrlState)" render-mode="Server" param-Language="@("no")" />
+<component type="typeof(VariableExplorer)" render-mode="Server"
+           param-Language="@("no")" param-IsAuthenticated="@(User.Identity?.IsAuthenticated == true)" />
 ```
+
+Opening a link restores the search, the facets, the sort, the page and the open variable, and every
+change the reader makes updates the address bar. There is no glue to write — no wrapper component,
+no query parsing, no `history.replaceState`. Which tab is open is deliberately *not* in the link: a
+shared URL that opened on the sender's Variabelliste would be an empty page for everybody else.
+
+`KildeExplorerWithUrlState` is the kildeutforsker's equivalent for now; the kilde side has no
+personal lists, so its bare `KildeExplorer` and its URL-state wrapper are still two names.
 
 Three things are worth knowing before mounting one.
 
@@ -629,8 +640,11 @@ Three things are worth knowing before mounting one.
   taken as given. A path rather than a callback on purpose: an `EventCallback` handed to an
   interactive component by a statically rendered parent serialises to an empty delegate.
 
-Owning the address bar yourself is still supported and unchanged: mount `VariableExplorer` directly
-and build the query with `ExplorerUrlState.Parse` / `.ToQueryString`. `ExplorerUrlState.QueryKeys`
+Owning the address bar — or the page furniture — yourself is still supported: `VariableSearch` and
+`VariableListView` stay public underneath, so a host that wants the two surfaces on separate pages,
+or its own tabs around them, mounts them itself and builds the query with `ExplorerUrlState.Parse` /
+`.ToQueryString`. Mounted apart they still share the circuit's `VariableListState`, so a variable
+saved on one is in the other without a refetch. `ExplorerUrlState.QueryKeys`
 names every parameter it reads and writes, the filter's own included, so you can tell ours from
 yours. Do that and three details are yours to get right — the interactive render mode above, a path
 built from `PathBase + Path` rather than a literal (identical locally, wrong behind a reverse

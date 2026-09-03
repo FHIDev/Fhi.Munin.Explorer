@@ -1,4 +1,4 @@
-﻿@page "/"
+@page "/"
 @using Fhi.Munin.Explorer.Blazor
 @using Fhi.Munin.Explorer.Contracts
 @inject NavigationManager Nav
@@ -31,7 +31,7 @@
        prerender: false for the same reason LegacyHost uses render-mode="Server" rather than
        "ServerPrerendered" — the component fetches on initialise, and prerendering would run
        that call twice against the public API on every page load. *@
-    <VariableExplorer Language="no"
+    <VariableSearch Language="no"
                       Filter="_filter"
                       @rendermode="@(new InteractiveServerRenderMode(prerender: false))" />
 </div>

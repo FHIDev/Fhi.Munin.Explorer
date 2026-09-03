@@ -20,7 +20,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// with no unknowns in it and leaves the deep link to be added once somebody has tested that.
 /// </para>
 /// </remarks>
-public partial class VariableExplorer
+public partial class VariableSearch
 {
     /// <summary>Where the reader is in the two-step redemption.</summary>
     private enum LinkStage

@@ -67,12 +67,12 @@ public class ShareableStateTest : BunitContext
         }
     }
 
-    private IRenderedComponent<VariableExplorer> Render(
+    private IRenderedComponent<VariableSearch> Render(
         IMuninExplorerClient client,
-        Action<ComponentParameterCollectionBuilder<VariableExplorer>>? p = null)
+        Action<ComponentParameterCollectionBuilder<VariableSearch>>? p = null)
     {
         Services.AddSingleton(client);
-        return Render<VariableExplorer>(b => p?.Invoke(b));
+        return Render<VariableSearch>(b => p?.Invoke(b));
     }
 
     [Fact]
@@ -306,14 +306,14 @@ public class ShareableStateTest : BunitContext
     }
 
     /// <summary>The size control, which is one <c>&lt;select&gt;</c> and not three buttons.</summary>
-    private static AngleSharp.Dom.IElement SizeControl(IRenderedComponent<VariableExplorer> cut) =>
+    private static AngleSharp.Dom.IElement SizeControl(IRenderedComponent<VariableSearch> cut) =>
         cut.Find(".munin-explorer-pagination-size select");
 
-    private static void ChooseSize(IRenderedComponent<VariableExplorer> cut, string size) =>
+    private static void ChooseSize(IRenderedComponent<VariableSearch> cut, string size) =>
         SizeControl(cut).Change(size);
 
     /// <summary>The sizes on offer, as the reader reads them.</summary>
-    private static IReadOnlyList<string> SizeOptions(IRenderedComponent<VariableExplorer> cut) =>
+    private static IReadOnlyList<string> SizeOptions(IRenderedComponent<VariableSearch> cut) =>
         [.. cut.FindAll(".munin-explorer-pagination-size option").Select(o => o.TextContent.Trim())];
 
     /// <summary>The size the control is describing, off the option carrying <c>selected</c>.</summary>
@@ -322,7 +322,7 @@ public class ShareableStateTest : BunitContext
     /// to the first option when none carries it and would report "10" for a control that is
     /// describing nothing.
     /// </remarks>
-    private static string? Selected(IRenderedComponent<VariableExplorer> cut) =>
+    private static string? Selected(IRenderedComponent<VariableSearch> cut) =>
         cut.FindAll(".munin-explorer-pagination-size option")
             .SingleOrDefault(o => o.HasAttribute("selected"))
             ?.TextContent.Trim();
@@ -335,7 +335,7 @@ public class ShareableStateTest : BunitContext
     /// is the assertion: a pager with two filled numbers, or none, has stopped saying where the
     /// reader is.
     /// </remarks>
-    private static string Position(IRenderedComponent<VariableExplorer> cut)
+    private static string Position(IRenderedComponent<VariableSearch> cut)
     {
         var numbers = cut.FindAll("div.munin-explorer-pagination-pages > button");
         var current = numbers.Single(number => number.GetAttribute("aria-current") == "page");
@@ -488,7 +488,7 @@ public class ShareableStateTest : BunitContext
         // Rebuilt from what the host wrote down, the way a link opens in someone else's browser.
         var reopenedAt = client.Sizes.Count;
 
-        Render<VariableExplorer>(b => b.Add(c => c.PageSize, mirrored));
+        Render<VariableSearch>(b => b.Add(c => c.PageSize, mirrored));
 
         Assert.Equal(50, client.Sizes[reopenedAt]);
     }
@@ -745,7 +745,7 @@ public class ShareableStateTest : BunitContext
     /// An <c>Assert.All</c> over a selector matching nothing goes green saying nothing, which is
     /// what this check did the moment the three buttons became one select.
     /// </remarks>
-    private static string? SizeControlState(IRenderedComponent<VariableExplorer> cut) =>
+    private static string? SizeControlState(IRenderedComponent<VariableSearch> cut) =>
         SizeControl(cut).GetAttribute("aria-disabled");
 
     [Fact]

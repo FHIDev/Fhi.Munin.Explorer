@@ -9,7 +9,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <see cref="VariableListState"/>, so every surface that touches saved lists agrees on who the
 /// reader is.
 /// </summary>
-public partial class VariableExplorer
+public partial class VariableSearch
 {
     [Inject] private IServiceProvider ServiceProvider { get; set; } = null!;
 
@@ -47,7 +47,7 @@ public partial class VariableExplorer
         {
             // Caught, and nothing said. An exception out of a lifecycle method takes the circuit
             // down with it, which in helsedata's legacy Blazor Server host means the whole CMS page
-            // — see the RaiseAsync remarks in VariableExplorer.Querying.cs. The mount fires this
+            // — see the RaiseAsync remarks in VariableSearch.Querying.cs. The mount fires this
             // read alongside the search and the facet refresh, which is exactly the burst the
             // per-address limiter counts, so a 429 here is an ordinary event rather than a rare one.
             //

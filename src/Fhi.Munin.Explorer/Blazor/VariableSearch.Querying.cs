@@ -6,7 +6,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// Every fetch of the result list - the first one, and each search, sort and page turn after it -
 /// together with the state that has to survive one.
 /// </summary>
-public partial class VariableExplorer
+public partial class VariableSearch
 {
     protected override async Task OnInitializedAsync()
     {
@@ -640,7 +640,7 @@ public partial class VariableExplorer
             // The rows are cleared either way. Leaving the previous page under a failed search would
             // caption somebody else's result with this search's terms; clearing them says nothing
             // about hits, because the summary line only speaks when there is a result at all
-            // (VariableExplorer.razor:275).
+            // (VariableSearch.razor:275).
             if (!keepResult)
             {
                 _result = null;

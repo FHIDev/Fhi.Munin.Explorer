@@ -32,7 +32,7 @@ public sealed partial class DatasamlingView : ComponentBase
     [Parameter, EditorRequired]
     public DatasamlingDetail? Datasamling { get; set; }
 
-    /// <inheritdoc cref="VariableExplorer.Language"/>
+    /// <inheritdoc cref="VariableSearch.Language"/>
     [Parameter]
     public string? Language { get; set; }
 
