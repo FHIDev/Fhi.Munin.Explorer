@@ -15,26 +15,10 @@ namespace Fhi.Munin.Explorer.Tests;
 /// with the view in the address bar.
 /// </summary>
 /// <remarks>
-/// <para>
-/// The failure this file exists to prevent is not "the tabs are missing". It is a host that mounts
-/// the name it has always mounted and silently gets less than the package can do — which is how
-/// helsedata ended up on the bare component with no URL state, and how <c>IsAuthenticated</c> went
-/// unpassed until somebody measured it. So <see cref="ShippedDefault"/> is the literal string
-/// <c>BlazorComponentPage</c> stores, resolved through reflection: a <c>typeof</c> would follow a
-/// rename and go on passing while the CMS field pointed at nothing.
-/// </para>
-/// <para>
-/// The other trap is the one a naive wrapper passes. Two independently mounted components render
-/// two tabs and satisfy any check that only counts them; what they do not do is agree about what
-/// the reader has saved.
-/// </para>
-/// <para>
-/// One direction of that agreement is missing and is deliberately not asserted here: a removal made
-/// in <see cref="VariableListView"/> goes through <c>VariableListState.RemoveVariablesAsync</c>,
-/// which does not touch the membership set the save button draws from — so the search row goes on
-/// offering to remove a variable that is already out. It predates this composition and is reachable
-/// today wherever both components sit on one page. Its own bead: Fhi.Metadata-ehghv.
-/// </para>
+/// The failure guarded here is not "the tabs are missing" but a host mounting the name it always
+/// mounted and silently getting less, so <see cref="ShippedDefault"/> is resolved as a string — a
+/// <c>typeof</c> would follow a rename and pass while the CMS field pointed at nothing. One
+/// direction of the shared state is knowingly unasserted: Fhi.Metadata-ehghv.
 /// </remarks>
 public class VariableExplorerTest : BunitContext
 {
@@ -45,8 +29,8 @@ public class VariableExplorerTest : BunitContext
 
     /// <summary>Answers search and the reader's one list off the same in-memory set.</summary>
     /// <remarks>
-    /// One store behind both endpoints on purpose: a fake that kept the search rows and the list
-    /// rows apart could not tell a surface that shares state from one that refetched.
+    /// One store behind both endpoints: a fake that kept them apart could not tell a surface that
+    /// shares state from one that refetched.
     /// </remarks>
     private sealed class ExplorerClient : EmptyMuninExplorerClient
     {
@@ -115,13 +99,10 @@ public class VariableExplorerTest : BunitContext
     private static VariableSummary Variable(string name, string code) =>
         new() { Id = Guid.NewGuid(), Code = code, PreferredTerm = name, KildeName = "Als registeret" };
 
-    /// <summary>
-    /// The render mode this component requires and the loose JS runtime its URL mirror needs.
-    /// </summary>
+    /// <summary>The render mode this component requires, and the JS runtime its URL mirror needs.</summary>
     /// <remarks>
     /// Called after the client is registered, never from the constructor: bUnit seals its service
-    /// collection the first time anything is resolved, and setting the renderer info resolves the
-    /// renderer. Same order as <c>UrlStateComponentTest.Prepare</c>.
+    /// collection the first time anything is resolved, and the renderer info resolves the renderer.
     /// </remarks>
     private void Prepare(IMuninExplorerClient client)
     {
@@ -338,10 +319,7 @@ public class VariableExplorerTest : BunitContext
     // -----------------------------------------------------------------------
     // The race a synchronous fake cannot see.
 
-    /// <summary>
-    /// Answers <c>GetMyListsAsync</c> only when the test says so, which is what a real HTTP call
-    /// does and <see cref="ExplorerClient"/> does not.
-    /// </summary>
+    /// <summary>Answers <c>GetMyListsAsync</c> only when the test says so, as a real call does.</summary>
     private sealed class StallingListsClient : EmptyMuninExplorerClient
     {
         private readonly TaskCompletionSource _gate = new(TaskCreationOptions.RunContinuationsAsynchronously);

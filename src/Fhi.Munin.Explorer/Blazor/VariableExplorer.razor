@@ -1,17 +1,11 @@
 @namespace Fhi.Munin.Explorer.Blazor
 
-@* The variabelutforsker as a reader meets it: search on one tab, their own variable lists on the
-   other, and both of them in the address bar. The two tabs are Runa's, in Runa's words
-   (explorer.tabs.search_results / explorer.tabs.variable_list) — see client/app/components/
-   ExplorerTabs.tsx in Fhi.Metadata, which is what runa.munin.skytest.fhi.no/explorer draws.
+@* The two tabs are Runa's, in Runa's words: client/app/components/ExplorerTabs.tsx in
+   Fhi.Metadata is what runa.munin.skytest.fhi.no/explorer draws.
 
    No @page and no @rendermode, like everything else here; but this one owns the query string, so
-   it must be mounted interactively. A host that wants to own its own address bar, or its own page
-   furniture, composes VariableSearch and VariableListView itself.
-
-   No class name of its own. The tablist wears the same four names the detail panel's tabs already
-   wear — Stiler has rules for all four, and inventing a second tab family would ship names with no
-   rule behind them until somebody wrote one. *@
+   it must be mounted interactively. The tablist invents no class name — it wears the four the
+   detail panel's tabs already wear, which Stiler already has rules for. *@
 
 <div class="munin-explorer-meta__tabs"
      role="tablist"

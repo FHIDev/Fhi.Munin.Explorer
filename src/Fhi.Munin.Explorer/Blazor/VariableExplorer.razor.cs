@@ -94,16 +94,16 @@ public partial class VariableExplorer : ComponentBase
     private ExplorerTab _tab = ExplorerTab.Search;
 
     /// <summary>
-    /// Per-mount discriminator, the shape the explorer's own ids use: a host can put two of these
-    /// on one page, and two tablists sharing ids would leave both panels labelled by the first.
+    /// Per-mount discriminator: a host can put two of these on one page, and shared ids would
+    /// leave both panels labelled by the first tablist.
     /// </summary>
     private readonly string _instance = Guid.NewGuid().ToString("N")[..8];
 
     private string TabId(ExplorerTab tab) => $"munin-explorer-tab-{_instance}-{tab}";
 
     /// <summary>
-    /// One id per panel, unlike the detail panel's single tabpanel: both panels are in the DOM at
-    /// once here, so a shared id would be two elements answering to one <c>aria-controls</c>.
+    /// One id per panel: both are in the DOM at once here, so a shared id would be two elements
+    /// answering to one <c>aria-controls</c>.
     /// </summary>
     private string TabPanelId(ExplorerTab tab) => $"munin-explorer-tabpanel-{_instance}-{tab}";
 
@@ -120,8 +120,8 @@ public partial class VariableExplorer : ComponentBase
             : "munin-explorer-meta__tab";
 
     /// <summary>
-    /// Arrow-key movement between the tabs, as the APG tabs pattern prescribes. Without it the
-    /// unselected tab carries <c>tabindex="-1"</c> and is unreachable rather than merely awkward.
+    /// Arrow-key movement, as the APG tabs pattern prescribes: the unselected tab carries
+    /// <c>tabindex="-1"</c>, so without this it is unreachable rather than merely awkward.
     /// </summary>
     private void TabKey(KeyboardEventArgs e)
     {
