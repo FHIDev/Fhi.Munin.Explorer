@@ -244,7 +244,12 @@ else
        `munin-explorer-filters` carries no styling, in this package or in Stiler. It is the same
        kind of name as the `munin-explorer` root above it: a hook for a host that wants to place
        the panel, and nothing this markup relies on. *@
-    @if (_facets is not null)
+    @* Not on the Variabelliste tab. These facets narrow a search, and the reader is not looking at
+       one — every one of them would filter nothing. Runa does exactly this: its sidebar and its
+       hierarchy trail are both `activeTab !== "variableList"`, and the list tab renders a sidebar
+       of its own scoped to the list. Ours does not have that second half yet (Fhi.Metadata-mm4hu),
+       so on that tab there is no sidebar rather than one that lies. *@
+    @if (_facets is not null && _resultsTab != ExplorerTab.VariableList)
     {
         @* `data-level-lines` rather than a class of our own. A class on the <ul> already there would
            render fine unstyled; what it would cost is inventory — the README contract, both sample
@@ -321,7 +326,8 @@ else
        piece of state, so it cannot describe a selection the rows below it did not come from — see
        the remarks in the codebehind for why every step is a button and why the × is not one of
        them. *@
-    @if (HierarchyCrumbs is { Count: > 0 } crumbs)
+    @* Hidden on the list tab with the facets it describes, the same as Runa. *@
+    @if (_resultsTab != ExplorerTab.VariableList && HierarchyCrumbs is { Count: > 0 } crumbs)
     {
         @Breadcrumb(crumbs)
     }

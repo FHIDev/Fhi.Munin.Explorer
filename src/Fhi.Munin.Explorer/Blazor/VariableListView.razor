@@ -5,13 +5,17 @@
    has no business wording. The host knows how its readers sign in; the package does not. *@
 @if (State?.IsAuthenticated == true)
 {
-    @* `munin-explorer` and nothing else. This root used to carry `munin-explorer-container` as
-       well, which is `display: flex; flex-direction: row` — the rule that lays a filter sidebar
-       beside a results column, and this view is neither. Standalone that only spread the heading
-       and the create form across the page; nested in the explorer's tab panel it ran 500px past
-       the viewport. The shell class stays: it is what scopes the ghost-button rules these controls
-       wear, and it is only `width: 100%` of its own. (Fhi.Metadata-l9l2n.39) *@
-    <div class="munin-explorer">
+    @* No class. This root carried `munin-explorer munin-explorer-container`, and both are page
+       layout: measured in helsedata, `munin-explorer` computes to
+       `display: grid; grid-template-columns: 384px 576px` — the shell's own sidebar-and-results
+       grid — and `munin-explorer-container` is `display: flex; flex-direction: row`. This view is
+       a column of blocks and is neither, so its heading, create form and alerts were laid out as
+       columns of a page grid. Nested in the explorer's tab panel that ran past the viewport.
+
+       Nothing replaces them: a block is what this wants, and the ghost-button border the samples
+       scope under `.munin-explorer` still applies here through the explorer's own section when
+       this view is mounted inside it. (Fhi.Metadata-l9l2n.39) *@
+    <div>
 
         @* No class on the heading: the package ships no CSS, and the other components leave
            theirs bare too. A name here would be one with no rule behind it. *@

@@ -333,6 +333,27 @@ public class VariableExplorerTest : BunitContext
         Assert.Single(cut.FindComponents<VariableListView>());
     }
 
+    [Fact]
+    public void Filters_WhenTheListTabIsOpen_ThenTheSearchFacetsAndTrailAreNotDrawn()
+    {
+        // They narrow a search the reader is not looking at, so every one of them would filter
+        // nothing. Runa hides both on this tab (explorer.tsx:894 and :912) and renders a sidebar
+        // scoped to the list instead; ours has the first half (Fhi.Metadata-mm4hu has the second).
+        var cut = RenderExplorer(new ExplorerClient(Variable("Alder ved diagnose", "V_BDR.ALDER")));
+
+        Assert.NotEmpty(cut.FindAll(".munin-explorer-filters"));
+
+        Tab(cut, "Variabelliste").Click();
+
+        Assert.Empty(cut.FindAll(".munin-explorer-filters"));
+        Assert.Empty(cut.FindAll(".munin-explorer-breadcrumb"));
+
+        // And back again: hiding them must not be a one-way trip.
+        Tab(cut, "Søkeresultat").Click();
+
+        Assert.NotEmpty(cut.FindAll(".munin-explorer-filters"));
+    }
+
     // -----------------------------------------------------------------------
     // Signed out.
 
