@@ -5569,7 +5569,7 @@ public class VariableExplorerTest : BunitContext
     }
 
     // The payload Fhi.Metadata-e3e2d captured from prod. Its four code counts sum to exactly the
-    // statistic own GyldigeTilfeller, which is what makes it a fair test of the denominator.
+    // statistic's own GyldigeTilfeller, which is what makes it a fair test of the denominator.
     private static VariableDetail DetailWithFrequencies(Guid id) => Detail(id) with
     {
         DatasamlingStatisticsType = "Accumulated",
