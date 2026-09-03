@@ -161,9 +161,9 @@ public partial class VariableExplorer
             }
         }
 
-        // Outside the fetch, so a nameless link's codes do not hold back the lines that are ready,
-        // and guarded again because the guards above do not reach here: the success path returns
-        // out of the try, but both catch branches fall through (Fhi.Metadata-l9l2n.38).
+        // Outside the fetch, so a nameless link's codes do not hold back the lines that are ready.
+        // Its own check, because only an abandoned fetch that SUCCEEDED returns out of the try —
+        // one abandoned and then thrown reaches this line (Fhi.Metadata-l9l2n.38).
         if (_detailGeneration == generation)
         {
             await LoadUnnamedCodesAsync();
