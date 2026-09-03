@@ -6406,29 +6406,45 @@ public class VariableExplorerTest : BunitContext
         // Copilot on #167. LoadDetailAsync's success path returns out of the try, but both catch
         // branches fall through to the tail — so a call that had lost the panel and then threw
         // would fetch nameless codes for whichever panel took its place.
-        var client = KodeverkRows();
+        // Two nameless links, because the loop asks for them one at a time: while the first is out,
+        // the second is in none of the three sets the de-duplication consults, and so is exactly
+        // what a call that has lost the panel would ask for.
+        var twoNameless = new[]
+        {
+            new KodeverkLink { KodeverkType = "Kildekodeverk", KodeverkReference = "2336", HasCodeValues = true },
+            new KodeverkLink { KodeverkType = "Kildekodeverk", KodeverkReference = "9999", HasCodeValues = true }
+        };
+
+        var client = new DetailClient(OnePage(Row(TaleId, "1. Tale"), Row(SpyttId, "2. Spyttsekresjon")))
+            .Knows(Detail(TaleId) with { KodeverkLinks = twoNameless })
+            .Knows(Detail(SpyttId, "2. Spyttsekresjon") with { KodeverkLinks = twoNameless });
+
         var cut = RenderWith(client);
 
         // The reader opens Tale, whose detail hangs, and gives up on it.
         client.StallDetail = true;
         Toggles(cut)[0].Click();
 
-        // Spytt answers at once, and its own nameless fetch fails — which is what leaves the key in
-        // neither _codes nor _codesLoading, and so re-askable by anyone who wanders past.
+        // Spytt answers at once, and its first nameless fetch hangs — so its second link has not
+        // been asked for yet, and nothing marks it as spoken for.
         client.StallDetail = false;
-        client.FailCodes = true;
+        client.StallCodes = true;
         Toggles(cut)[1].Click();
 
         Assert.Equal([SpyttId], client.RequestsFor("2336").Select(request => request.VariableId));
+        Assert.Empty(client.RequestsFor("9999"));
 
         // Now Tale's abandoned fetch fails.
         await cut.InvokeAsync(rateLimited ? client.RateLimitStalled : client.FailStalled);
 
         // A flush rather than a WaitForAssertion, because a guard that works leaves nothing to wait
-        // for. One turn is enough: that continuation was queued before this call, and the codes
-        // fetch it would have made throws synchronously, so it never yields again.
+        // for. One turn is enough: that continuation was queued before this call, and the fetch it
+        // would have made records itself before returning its stalled task.
         await cut.InvokeAsync(() => { });
 
+        // The second link is still unasked. Without the guard the abandoned call reaches it, having
+        // skipped the first only because that one happens to be in flight.
+        Assert.Empty(client.RequestsFor("9999"));
         Assert.Equal([SpyttId], client.RequestsFor("2336").Select(request => request.VariableId));
     }
 
