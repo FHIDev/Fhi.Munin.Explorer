@@ -157,10 +157,14 @@ public class VariableExplorerTest : BunitContext
         // Search.
         Assert.Contains("Alder ved diagnose", cut.Markup, StringComparison.Ordinal);
 
-        // Tabs, and the reader's own lists behind the second one — the heading VariableListView
-        // draws only for a signed-in reader, so finding it proves the list surface is really there
-        // and really believes it has a reader.
+        // Tabs, and the reader's own lists behind the second one. Opened first: the panel holds
+        // nothing until its tab is, which is what keeps it off screen in a host whose stylesheet
+        // defeats `hidden`. The heading is drawn only for a signed-in reader, so finding it proves
+        // the list surface is really there and really believes it has a reader.
         Assert.Equal(2, cut.FindAll("[role=tab]").Count);
+
+        cut.FindAll("[role=tab]").Single(t => t.TextContent.Trim() == "Variabelliste").Click();
+
         Assert.Contains("Mine variabellister", cut.Markup, StringComparison.Ordinal);
 
         // URL state: the component wrote the view into the address bar without a host asking.
@@ -284,16 +288,22 @@ public class VariableExplorerTest : BunitContext
     [Fact]
     public void SavedOnTheSearchTab_WhenTheListTabIsOpened_ThenTheVariableIsAlreadyThere()
     {
-        // Asserted before the tab is opened, which is the strongest form of "no reload": the list
-        // surface is already right while it is still hidden. A wrapper mounting two independent
-        // components renders both tabs and fails exactly here.
+        // The trap: a wrapper that mounts two components which do not agree about what the reader
+        // has saved renders both tabs and fails here. No page reload and no second sign-in — the
+        // save goes through the circuit's VariableListState, and the list reads the same store.
         var variable = Variable("Alder ved diagnose", "V_BDR.ALDER");
         var cut = RenderExplorer(new ExplorerClient(variable));
 
-        var listPanel = PanelFor(cut, Tab(cut, "Variabelliste"));
-        Assert.DoesNotContain("Alder ved diagnose", listPanel.InnerHtml, StringComparison.Ordinal);
+        Tab(cut, "Variabelliste").Click();
+        Assert.DoesNotContain(
+            "Alder ved diagnose",
+            PanelFor(cut, Tab(cut, "Variabelliste")).InnerHtml,
+            StringComparison.Ordinal);
 
+        Tab(cut, "Søkeresultat").Click();
         cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]")[0].Click();
+
+        Tab(cut, "Variabelliste").Click();
 
         Assert.Contains(
             "Alder ved diagnose",
@@ -302,20 +312,25 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
-    public void ListView_WhenTheReaderSwitchesTabs_ThenItIsNotMountedAgain()
+    public void ListView_WhenItsTabIsNotOpen_ThenItIsNotInTheDocumentAtAll()
     {
-        // The half the assertion above cannot make on its own: a component that were rebuilt on
-        // every tab switch would fetch its way back to the same markup and read as correct, while
-        // losing the page the reader was on and everything else it holds.
+        // Not merely `hidden`. helsedata's stylesheet carries a bare `div { display: block }`,
+        // which beats the browser's `[hidden] { display: none }` — so a hidden panel is a visible
+        // panel there. The panel element stays, because a tab's aria-controls has to resolve.
         var cut = RenderExplorer(new ExplorerClient(Variable("Alder ved diagnose", "V_BDR.ALDER")));
 
-        var before = cut.FindComponent<VariableListView>().Instance;
+        var panel = PanelFor(cut, Tab(cut, "Variabelliste"));
 
-        Tab(cut, "Variabelliste").Click();
-        Tab(cut, "Søkeresultat").Click();
+        Assert.Equal("", panel.TextContent.Trim());
+        Assert.Empty(panel.QuerySelectorAll("button"));
+        Assert.Empty(panel.QuerySelectorAll("input"));
+        Assert.Empty(cut.FindComponents<VariableListView>());
+
+        // And the results are the other way round once the list tab is the open one.
         Tab(cut, "Variabelliste").Click();
 
-        Assert.Same(before, cut.FindComponent<VariableListView>().Instance);
+        Assert.Equal("", PanelFor(cut, Tab(cut, "Søkeresultat")).TextContent.Trim());
+        Assert.Single(cut.FindComponents<VariableListView>());
     }
 
     // -----------------------------------------------------------------------

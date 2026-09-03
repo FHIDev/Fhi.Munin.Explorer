@@ -463,12 +463,19 @@ else
     }
 
     @* The panel the results live in. Unclassed and role-less when there are no tabs, so a
-       signed-out reader gets the same document they always got — the root is a block container
-       with no child-combinator rules onto what is inside, so the extra element draws nothing. *@
+       signed-out reader gets the same document they always got.
+
+       The contents are rendered only for the tab that is open, rather than drawn and hidden.
+       `hidden` is not enough: helsedata's stylesheet carries a bare `div { display: block }`,
+       and an author rule beats the browser's own `[hidden] { display: none }` — so a hidden panel
+       stayed on screen in the one host we ship to (measured: 3798px of it). The attribute is kept
+       anyway, because it is right everywhere else and costs nothing here. *@
     <div role="@(ShowTabs ? "tabpanel" : null)"
          id="@(ShowTabs ? ResultTabPanelId(ExplorerTab.Search) : null)"
          aria-labelledby="@(ShowTabs ? ResultTabId(ExplorerTab.Search) : null)"
          hidden="@(ShowTabs && _resultsTab != ExplorerTab.Search)">
+    @if (!ShowTabs || _resultsTab == ExplorerTab.Search)
+    {
 
     @* The container and its header render whether or not anything was found. The ordering lives
        in that header, and hiding it when a search comes back empty would take the button the reader
@@ -925,6 +932,7 @@ else
         </div>
     }
 
+    }
     </div>@* the results tab panel *@
 
     @if (ShowTabs)
@@ -935,7 +943,10 @@ else
              aria-labelledby="@ResultTabId(ExplorerTab.VariableList)"
              tabindex="0"
              hidden="@(_resultsTab != ExplorerTab.VariableList)">
-            @VariableList
+            @if (_resultsTab == ExplorerTab.VariableList)
+            {
+                @VariableList
+            }
         </div>
     }
 }
