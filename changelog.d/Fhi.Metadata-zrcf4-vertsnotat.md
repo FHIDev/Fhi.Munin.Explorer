@@ -1,5 +1,5 @@
 category: Notes for hosts
-- **Shareable search links now need no host code at all.** `VariableExplorerWithUrlState` and
+- **Shareable search links now need no host code at all.** `VariableExplorer` and
   `KildeExplorerWithUrlState` read the query the page was opened with and write it back themselves,
   so the wrapper component, the parsing and the `history.replaceState` a host used to copy out of
   our samples are gone. Both mount at an **interactive render mode only** — `render-mode="Server"`,
