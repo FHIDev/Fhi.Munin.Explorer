@@ -5,6 +5,10 @@ category: Notes for hosts
   Nothing else moves: the CMS field whose default is `Fhi.Munin.Explorer.Blazor.VariableExplorer`
   becomes correct without being touched.
   <br><br>
+  **A page that mounts `VariableExplorer` and `VariableListView` side by side now draws the list
+  twice**, once in the tab and once beside it. That page still compiles, so nothing will tell you:
+  drop the separate `VariableListView`, or mount `VariableSearch` if you want the two apart.
+  <br><br>
   It must be mounted at an **interactive render mode** — `render-mode="Server"`, never
   `ServerPrerendered` — because it now owns the query string, and it throws on initialisation
   rather than drawing a page whose URL never follows the view. Pass `IsAuthenticated`, or the
