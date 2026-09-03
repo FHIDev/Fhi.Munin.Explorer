@@ -818,28 +818,53 @@ public class KildeExplorerTest : BunitContext
     }
 
     [Fact]
-    public void ClearSearch_WhenThereIsNoSearch_ThenTheButtonIsThereAndSaysItHasNothingToDo()
+    public void ClearSearch_WhenThereIsASearch_ThenTheControlIsInsideTheFieldAheadOfSok()
     {
-        // Always on screen, greyed rather than removed: a control that comes and goes beside a
-        // field somebody is typing in moves everything next to it, twice per search.
-        //
-        // aria-disabled and not disabled, so pressing it cannot throw focus to the document - and
-        // because nothing in the DOM then refuses the click, the component has to. Both halves are
-        // asserted here, since the attribute alone would be a claim the code does not keep.
+        // The matched half of the variable explorer's. These two were built as a pair by 5ghur and
+        // half of this shipped would leave the two explorers disagreeing about the same control on
+        // the same page. (Fhi.Metadata-ag4n7)
+        var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
+
+        cut.Find(".searchbox__freetext").Change("als");
+
+        var controls = cut.Find(".searchbox__freetext-container").QuerySelectorAll("button");
+
+        Assert.Equal(
+            ["munin-explorer-search__clear", "searchbox__freetext-submit-button"],
+            controls.Select(b => b.ClassName!.Split(' ').Last()));
+
+        Assert.Equal("text", cut.Find(".searchbox__freetext").GetAttribute("type"));
+        Assert.Equal("Tøm søket", AccessibleName.Of(cut.Find(".munin-explorer-search__clear")));
+    }
+
+    [Fact]
+    public void ClearSearch_WhenPressed_ThenFocusGoesToTheFieldRatherThanTheDocument()
+    {
+        // Same reason as next door: the control takes itself off the page as it acts, so without
+        // this the reader's focus lands on <body> and their next Tab starts at the top of the
+        // host's page. (Fhi.Metadata-ag4n7)
+        var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
+
+        cut.Find(".searchbox__freetext").Change("als");
+        cut.Find(".munin-explorer-search__clear").Click();
+
+        JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus");
+    }
+
+    [Fact]
+    public void ClearSearch_WhenThereIsNoSearch_ThenThereIsNoControlAtAll()
+    {
+        // Inside the field now, so it is drawn only when it has something to do — an x sitting in
+        // a box with nothing in it is an invitation to press something inert. The greyed
+        // always-present button this replaces was the right answer while it stood OUTSIDE the
+        // field, where its coming and going would have shifted the row. (Fhi.Metadata-ag4n7)
         var client = new FakeClient(
             Kilde("Als registeret", "K_ALS"),
             Kilde("Norsk pasientregister", "K_NPR"));
 
         var cut = RenderWith(client);
 
-        var clear = cut.Find(".munin-explorer-search__clear");
-
-        Assert.Equal("true", clear.GetAttribute("aria-disabled"));
-        Assert.False(clear.HasAttribute("disabled"));
-
-        clear.Click();
-
-        Assert.Equal(["Als registeret", "Norsk pasientregister"], RowNames(cut));
+        Assert.Empty(cut.FindAll(".munin-explorer-search__clear"));
     }
 
     [Fact]
@@ -863,7 +888,7 @@ public class KildeExplorerTest : BunitContext
         cut.Find(".munin-explorer-search__clear").Click();
 
         Assert.Equal(["Als registeret", "Norsk pasientregister"], RowNames(cut));
-        Assert.Equal("true", cut.Find(".munin-explorer-search__clear").GetAttribute("aria-disabled"));
+        Assert.Empty(cut.FindAll(".munin-explorer-search__clear"));
 
         // The box on screen has to agree with the list under it - that is the whole bug.
         Assert.Equal(string.Empty, cut.Find(".searchbox__freetext").GetAttribute("value") ?? string.Empty);
@@ -2399,6 +2424,11 @@ public class KildeExplorerTest : BunitContext
         // ExploreVariablesRequested, so munin-explorer-kilder__select is absent (KildeSelectionTest).
         var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
+        // Searched, not idle: the clear control is drawn only when there is something to clear, so
+        // an idle render would leave its name out of this list and out of the orphan check with it
+        // — coverage lost to a state nobody enters. (Fhi.Metadata-ag4n7)
+        cut.Find(".searchbox__freetext").Change("als");
+
         var invented = HostClassNames.Of(cut.FindAll("[class]"))
             .Where(HostClassNames.IsOwnStructureName)
             .Distinct(StringComparer.Ordinal)
@@ -2416,7 +2446,6 @@ public class KildeExplorerTest : BunitContext
             "munin-explorer-kilder__count",
             "munin-explorer-kilder__name",
             "munin-explorer-results",            // shared
-            "munin-explorer-search",             // shared with the variable explorer
             "munin-explorer-search__clear",      // shared
         ], invented);
     }

@@ -409,7 +409,7 @@ public class AccountLinkTest : BunitContext
         Assert.False(Panel(cut).Closest("details")!.HasAttribute("open"));
 
         // Scoped to the search box on purpose: the code field wears searchbox__freetext too.
-        cut.Find(".munin-explorer-search .searchbox__freetext").Change("alder");
+        cut.Find(".searchbox__freetext").Change("alder");
         cut.Find("form").Submit();
 
         // Typing alone changes nothing; the search that results have arrived from is the moment

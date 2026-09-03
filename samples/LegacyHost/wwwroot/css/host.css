@@ -220,56 +220,58 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   margin: 0;
 }
 
-/* ---- the search row and its clear button: two names of ours ----
+/* ---- the clear control, the one name of ours in the search row ----
 
    The field is an <input type="text"> rather than type="search" on purpose — the user-agent ✕
    could not be hooked and left the box empty over a search still in force — so the package draws
-   its own clear button, and these two names are how a host places it.
+   its own, inside the field and left of Søk.
 
-   It was tried as an overlay first, absolutely positioned inside the field beside Søk. That was
-   wrong twice over: it sat on top of the reader's own text, and it could not line up with a
-   button Stiler positions against a different box. The field gives up the room instead, which is
-   what the flex line below does — the container shrinks, the button takes what it needs.
+   An overlay was tried under 5ghur and rejected, and that record is kept because this looks like
+   the same idea: it "sat on top of the reader's own text". It did, and the reason was the word.
+   A button reading Tøm søket is 1rem of padding either side of ~75px of text, so ~107px — more
+   than the whole 104px the field gives up, before Søk has taken its share. A glyph is not a word:
+   Søk occupies the rightmost ~62px of that strip, and 32px sits in what is left with the
+   reservation still covering it. Lining up is the other half of the old objection, and it is
+   answered by positioning against the same container Stiler positions Søk against, not a
+   different box. (Fhi.Metadata-ag4n7)
 
-   min-width: 0 on the container is load-bearing and easy to lose: a flex item will not shrink
-   below its content's minimum without it, so the field would refuse to give up the width and
-   push the button off the row.
+   These numbers are this stylesheet's own. Stiler's Søk may be a different width, and nothing
+   here can read that repository, so a host on Stiler needs its own rule for this name — it is a
+   handle, and an undefined one leaves the control in normal flow after the field, which is
+   roughly where it stood before.
 
-   Wrapping below 640px, where a shortened field and a button beside it leave too little of
-   either. A host that defines none of this gets them stacked, which is the same place. */
-.munin-explorer-search {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.munin-explorer-search > .searchbox__freetext-container {
-  flex: 1 1 320px;
-  min-width: 0;
-  margin-bottom: 0;
-}
-
+   No greyed state to describe: the control is drawn only while there is something to clear. */
 .munin-explorer-search__clear {
-  flex: none;
+  position: absolute;
+  top: 50%;
+  right: 72px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 2rem;
+  height: 2rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0.5rem;
+  background: none;
+  /* --dark on white, not --grey60: a glyph is a non-text control and owes 3:1 under 1.4.11, and
+     the one that reads as "dismiss" should not read as "disabled" while it is doing so. */
+  color: var(--dark);
+  font: normal 1.25rem/1 var(--font);
+  cursor: pointer;
 }
 
-/* The greyed state. The button is always on screen and says with this whether it has anything
-   to do, rather than appearing and disappearing beside a field somebody is typing in.
-
-   It is aria-disabled and not disabled, so that pressing it cannot throw focus to the document
-   — which means it is still focusable and still hoverable, and both have to stop looking like
-   invitations. The component refuses the click itself; this only has to say so. */
-.munin-explorer-search__clear[aria-disabled="true"] {
-  background-color: var(--grey40);
-  color: #fff;
-  cursor: default;
+.munin-explorer-search__clear:hover {
+  background-color: var(--grey30);
 }
 
-.munin-explorer-search__clear[aria-disabled="true"]:hover {
-  background-color: var(--grey40);
-  color: #fff;
+/* The same ring Stiler's own square buttons take, so tabbing along the row does not change shape
+   halfway. Inset rather than outset: this one sits inside a field with its own focus border. */
+.munin-explorer-search__clear:focus-visible {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--focus);
+  outline: none;
 }
 
 /* ---- the selection ribbon ----

@@ -601,6 +601,10 @@ public class KildeSelectionTest : BunitContext
         // here is news that has to be answered in both sample stylesheets before it ships.
         var (cut, _) = RenderSelectable(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
+        // Searched as well as ticked: the clear control is drawn only when there is something to
+        // clear, so an idle box would drop its name out of this list. (Fhi.Metadata-ag4n7)
+        cut.Find(".searchbox__freetext").Change("als");
+
         TickRow(cut, "Als registeret");
 
         var invented = HostClassNames.Of(cut.FindAll("[class]"))
@@ -621,7 +625,6 @@ public class KildeSelectionTest : BunitContext
             "munin-explorer-kilder__name",
             "munin-explorer-kilder__select",     // this bead's
             "munin-explorer-results",            // shared
-            "munin-explorer-search",             // shared with the variable explorer
             "munin-explorer-search__clear",      // shared
             "munin-explorer-selection",          // this bead's
             "munin-explorer-selection__explore", // this bead's
@@ -646,34 +649,74 @@ public class KildeSelectionTest : BunitContext
     }
 
     [Fact]
-    public void ClearButton_WhenAHostStylesIt_ThenTheFieldGivesUpTheRoomForIt()
+    public void ClearButton_WhenAHostStylesIt_ThenItStaysInsideTheRoomTheFieldReserved()
     {
         // Same shape as the guard above: the general checks ask whether a name has a rule that
         // declares SOMETHING, which a rule setting only a colour satisfies. What this needs is
         // particular declarations, and it has already shipped without them twice - once in normal
         // flow under the box, once absolutely positioned on top of the reader's own text.
         //
-        // The row has to be a flex line, or the button is not beside the field at all. The field's
-        // container has to be allowed to shrink, or it refuses to give up the width and pushes the
-        // button off the row - min-width: 0 is the half of that which is easy to lose.
+        // The second of those is what this now has to keep being right about, because the control
+        // is back inside the field (Fhi.Metadata-ag4n7). What made the old attempt sit on the text
+        // was a button carrying the WORD "Tøm søket", which is wider than the whole reservation.
+        // A glyph fits, and the arithmetic below is what says so rather than the eye.
         static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
 
         IReadOnlyList<string> BlocksFor(string name) =>
             [.. HostClassNames.SampleDeclarationsFor(name).Select(r => Squeezed(r.Declarations))];
 
-        Assert.True(
-            BlocksFor("munin-explorer-search").Any(d => d.Contains("display:flex", StringComparison.Ordinal)),
-            "No rule puts the field and its clear button on one line.");
+        var clear = BlocksFor("munin-explorer-search__clear");
 
         Assert.True(
-            BlocksFor("munin-explorer-search").Any(d => d.Contains("min-width:0", StringComparison.Ordinal)),
-            "Nothing lets the field shrink, so the clear button is pushed off the row.");
+            clear.Any(d => d.Contains("position:absolute", StringComparison.Ordinal)),
+            "No rule takes the clear button out of flow, so it is under the field, not inside it.");
 
-        // The greyed state. The button is always on screen, so this is the only thing that says
-        // whether it has anything to do.
+        // The field gives up padding-right for the controls that sit in it. A control whose right
+        // edge starts inside that reservation and ends before it does cannot overlap the text,
+        // whatever the font. Read off the stylesheet rather than restated, so widening one and not
+        // the other fails here.
+        var reserved = FirstMatch(
+            HostClassNames.SampleDeclarationsFor("searchbox__freetext"),
+            @"padding:\s*\d+px\s+(\d+)px");
+
+        var offset = FirstMatch(
+            HostClassNames.SampleDeclarationsFor("munin-explorer-search__clear"), @"right:\s*(\d+)px");
+
+        var width = FirstMatch(
+            HostClassNames.SampleDeclarationsFor("munin-explorer-search__clear"),
+            @"width:\s*([\d.]+)rem", rem: true);
+
+        Assert.True(offset > 0 && width > 0 && reserved > 0,
+                    $"Could not read the geometry: reserved {reserved}, right {offset}, width {width}.");
+
         Assert.True(
-            BlocksFor("munin-explorer-search__clear").Any(d => d.Contains("background-color", StringComparison.Ordinal)),
-            "No rule greys the clear button while there is nothing to clear.");
+            offset + width <= reserved,
+            $"The clear button reaches {offset + width}px into a field that reserves only "
+            + $"{reserved}px, so it overlaps the reader's own text — the way it did before.");
+    }
+
+    /// <summary>
+    /// The first capture of <paramref name="pattern"/> across <paramref name="rules"/>, in pixels.
+    /// </summary>
+    /// <remarks>
+    /// Read off the rules rather than restated in the test, so a stylesheet that widens one of
+    /// these and not the other fails the arithmetic instead of drifting past it. Rem at the 16px
+    /// root this stylesheet sets; 0 for no match, which the caller reports rather than dividing by.
+    /// </remarks>
+    private static int FirstMatch(
+        IReadOnlyList<(string Selector, string Declarations)> rules, string pattern, bool rem = false)
+    {
+        var match = rules
+            .Select(rule => System.Text.RegularExpressions.Regex.Match(rule.Declarations, pattern))
+            .FirstOrDefault(m => m.Success);
+
+        if (match is null || !double.TryParse(
+                match.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture, out var value))
+        {
+            return 0;
+        }
+
+        return (int)(rem ? value * 16 : value);
     }
 
     [Fact]

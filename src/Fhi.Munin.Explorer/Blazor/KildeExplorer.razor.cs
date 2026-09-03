@@ -199,6 +199,10 @@ public sealed partial class KildeExplorer : ComponentBase
     // nothing for a separate "executed search" to be truer about.
     private string? _search;
 
+    // Held so the clear control can hand focus back to the field it emptied. The control is drawn
+    // only while there is something to clear, so pressing it is what takes it off the page.
+    private ElementReference _searchField;
+
     // The kilde whose view is open, what has been fetched for it, and the name the list already
     // knew — which is what the region can be labelled by while the fetch is still running.
     private Guid? _selectedId;
@@ -533,6 +537,23 @@ public sealed partial class KildeExplorer : ComponentBase
         }
 
         _search = null;
+    }
+
+    /// <summary>Clear the search, then put focus where the control that did it used to be.</summary>
+    /// <remarks>
+    /// The x is drawn only while there is something to clear, so a press removes it from the DOM
+    /// under the reader's own focus and the browser drops that focus to the document. Wrapping
+    /// rather than folding into <see cref="ClearSearch"/>: that method's refusal is the contract,
+    /// and only a clear that actually happened should move anyone's focus.
+    /// </remarks>
+    private async Task ClearSearchAndRefocusAsync()
+    {
+        ClearSearch();
+
+        if (SearchText is null)
+        {
+            await _searchField.FocusAsync();
+        }
     }
 
     /// <summary>Open <paramref name="kilde"/>'s view, in place of the list.</summary>

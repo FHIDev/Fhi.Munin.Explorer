@@ -56,6 +56,25 @@ public partial class VariableExplorer
         await SearchAsync();
     }
 
+    /// <summary>Clear the search, then put focus where the control that did it used to be.</summary>
+    /// <remarks>
+    /// The x is drawn only while there is something to clear, so a press removes it from the DOM
+    /// under the reader's own focus and the browser drops that focus to the document. Wrapping
+    /// rather than folding into <see cref="ClearSearchAsync"/>: that method's guards are the
+    /// contract, and only a clear that actually happened should move anyone's focus.
+    /// </remarks>
+    private async Task ClearSearchAndRefocusAsync()
+    {
+        await ClearSearchAsync();
+
+        // Still holding a term means a guard refused the clear, the x is still on screen, and the
+        // reader's focus is still on it — where it should stay.
+        if (string.IsNullOrWhiteSpace(_search))
+        {
+            await _searchField.FocusAsync();
+        }
+    }
+
     private async Task SearchAsync()
     {
         // Nothing disables the submit button while a search runs — see the comment on it in

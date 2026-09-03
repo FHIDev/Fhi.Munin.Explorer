@@ -483,6 +483,11 @@ public partial class VariableExplorer : ComponentBase
     [Inject] private IMuninExplorerClient Client { get; set; } = null!;
 
     private string? _search;
+
+    // Held so the clear control can hand focus back to the field it emptied. The control is drawn
+    // only while there is something to clear, so pressing it is what takes it off the page.
+    private ElementReference _searchField;
+
     private bool _loading;
     private string? _error;
     private Page<VariableSummary>? _result;

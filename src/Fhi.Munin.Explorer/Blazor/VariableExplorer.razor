@@ -159,12 +159,9 @@ else
            invisible one. *@
         <label class="form-element__label" for="@SearchId">@T.SearchLabel</label>
 
-        @* searchbox__freetext reserves 104px of right padding for a button sitting inside the
-           field, which is what searchbox__freetext-submit-button positions there. Both come
-           from Stiler; this is the arrangement their own search box uses. *@
-        @* The field and its clear button on one line. The wrapper is what lets a host shorten
-           the box and put the button beside it rather than under it — see the button below. *@
-        <div class="munin-explorer-search">
+        @* searchbox__freetext reserves 104px of right padding for buttons sitting inside the
+           field, which is where searchbox__freetext-submit-button and the clear control below it
+           go. Both names come from Stiler; this is the arrangement their own search box uses. *@
         <div class="searchbox__freetext-container">
             @* @bind (onchange), deliberately NOT value + @oninput.
 
@@ -187,11 +184,23 @@ else
                    id="@SearchId"
                    type="text"
                    enterkeyhint="search"
+                   @ref="_searchField"
                    @bind="_search"
                    @bind:event="onchange"
                    placeholder="@T.SearchPlaceholder"
                    autocomplete="off"
                    maxlength="200" />
+            @* Drawn only when there is something to clear, which is what an x inside a field
+               means — and why the press has to hand focus back to the field: the control leaves
+               the DOM with the text it cleared. Named by aria-label, because the glyph is not a
+               name. (Fhi.Metadata-ag4n7) *@
+            @if (!string.IsNullOrWhiteSpace(_search))
+            {
+                <button class="munin-explorer-search__clear"
+                        type="button"
+                        aria-label="@T.ClearSearch"
+                        @onclick="ClearSearchAndRefocusAsync">&#xD7;</button>
+            }
             @* Deliberately NOT disabled while a search runs. Disabling the element that
                currently has focus drops focus to <body>, so a keyboard user who just pressed
                Enter on Søk loses their place and starts tabbing from the top of the page
@@ -199,15 +208,6 @@ else
                stops the double request without touching focus. *@
             <button class="hd-button-square button-square--primary searchbox__freetext-submit-button"
                     type="submit">@T.SearchButton</button>
-        </div>
-
-            @* aria-disabled, not disabled: a disabled button cannot hold focus, so pressing this
-               one would clear the search and throw focus to the document. The attribute stops no
-               click, so the handler refuses instead. (Fhi.Metadata-5ghur) *@
-            <button class="hd-button-square button-square--secondary munin-explorer-search__clear"
-                    type="button"
-                    aria-disabled="@(!string.IsNullOrWhiteSpace(_search) ? "false" : "true")"
-                    @onclick="ClearSearchAsync">@T.ClearSearch</button>
         </div>
     </form>
 
