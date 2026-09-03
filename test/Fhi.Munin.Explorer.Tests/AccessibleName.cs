@@ -1,3 +1,4 @@
+using System.Text;
 using AngleSharp.Dom;
 
 namespace Fhi.Munin.Explorer.Tests;
@@ -161,16 +162,46 @@ internal static class AccessibleName
     /// </remarks>
     private static string TextExcept(IElement label, IElement named)
     {
-        var words = label.Descendants<IText>()
-            .Where(text => !named.Contains(text))
-            .Select(text => text.Data);
+        var builder = new StringBuilder();
 
-        // Runs of whitespace collapse to one, the way a screen reader flattens them — otherwise
-        // the newlines and indentation Razor writes around the control land in the middle of the
-        // name and no equality assertion can be written against it.
-        return string.Join(" ", string.Concat(words)
-            .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        Append(builder, label, named);
+
+        return Collapse(builder.ToString());
     }
+
+    // accname computes each ELEMENT's alternative and trims it before joining, while a text node
+    // contributes its data as written. Flattening the label instead invents a space that no
+    // browser announces — Fhi.Metadata-ueiq6.
+    private static void Append(StringBuilder builder, INode node, IElement named)
+    {
+        foreach (var child in node.ChildNodes)
+        {
+            if (named.Contains(child))
+            {
+                continue;
+            }
+
+            if (child is IText text)
+            {
+                builder.Append(text.Data);
+                continue;
+            }
+
+            if (child is IElement element)
+            {
+                var nested = new StringBuilder();
+
+                Append(nested, element, named);
+                builder.Append(Collapse(nested.ToString()));
+            }
+        }
+    }
+
+    // Runs of whitespace collapse to one, the way a screen reader flattens them — otherwise the
+    // newlines and indentation Razor writes around the control land in the middle of the name and
+    // no equality assertion can be written against it.
+    private static string Collapse(string text) =>
+        string.Join(" ", text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
 
     /// <summary>
     /// Every element of the tree the control is rendered in.

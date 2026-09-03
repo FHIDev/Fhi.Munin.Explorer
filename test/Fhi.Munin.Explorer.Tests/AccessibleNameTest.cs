@@ -35,6 +35,41 @@ public class AccessibleNameTest
     }
 
     [Fact]
+    public void Of_WhenAnInlineChildOpensWithASpace_ThenThatSpaceIsNotAnnounced()
+    {
+        // The facet count shape cgk85 shipped. accname computes each ELEMENT's alternative and
+        // trims it, so the span's leading space is discarded and a browser announces "Biobank(1)".
+        // Flattening the label instead invents a separator nobody hears — Fhi.Metadata-ueiq6.
+        var element = Parse(
+            "<label><input type=\"checkbox\"/>Biobank<span> (1)</span></label>", "input");
+
+        Assert.Equal("Biobank(1)", AccessibleName.Of(element));
+    }
+
+    [Fact]
+    public void Of_WhenTheLabelItselfSeparatesItsWords_ThenTheSpaceSurvives()
+    {
+        // The other direction, and the reason the fix is not "trim everything": this space belongs
+        // to the label's own text node rather than to the element beside it, so it is announced.
+        // A fix that dropped it would turn "Velg liste" into "Velgliste" and pass the test above.
+        var element = Parse(
+            "<label><select><option>A</option></select>Velg <b>liste</b></label>", "select");
+
+        Assert.Equal("Velg liste", AccessibleName.Of(element));
+    }
+
+    [Fact]
+    public void Of_WhenRazorIndentationSurroundsTheControl_ThenItIsStillCollapsed()
+    {
+        // What the old implementation got right and this must keep: the newlines and indentation
+        // Razor writes around a control are not part of the name.
+        var element = Parse(
+            "<label>\n    <input type=\"checkbox\"/>\n    Inkluder kodeverk\n</label>", "input");
+
+        Assert.Equal("Inkluder kodeverk", AccessibleName.Of(element));
+    }
+
+    [Fact]
     public void Of_WhenALabelWrapsASecondControl_ThenOnlyTheFirstIsNamedByIt()
     {
         // HTML names the FIRST labelable descendant of a label and no other. A browser leaves the
