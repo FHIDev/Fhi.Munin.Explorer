@@ -265,7 +265,10 @@ public sealed partial class KildeExplorer : ComponentBase
             return;
         }
 
-        if (_datasamlinger.ContainsKey(kilde.Id))
+        // A fetch already in flight counts as cached. Without the second clause, collapsing and
+        // re-expanding before the first answer lands starts a second request for the same kilde -
+        // paid for against the rate limit, and discarded by the generation guard when it arrives.
+        if (_datasamlinger.ContainsKey(kilde.Id) || _datasamlingerLoading.Contains(kilde.Id))
         {
             return;
         }

@@ -779,6 +779,32 @@ public class KildeExplorerTest : BunitContext
     }
 
     [Fact]
+    public async Task Render_WhenARowIsReopenedWhileItsFetchIsInFlight_ThenNoSecondRequestIsMade()
+    {
+        // The cache is keyed on the answer, which does not exist yet while the first call is out —
+        // so without treating an in-flight load as cached, a quick collapse and re-expand pays for
+        // the same kilde twice against a rate limit this client already has to apologise for.
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var client = new FakeClient(als).Describing(DetailWithCollections(als));
+        var cut = RenderWith(client);
+
+        client.StallDetail = true;
+
+        ExpandToggle(cut, "Als registeret").Click();   // starts the fetch
+        ExpandToggle(cut, "Als registeret").Click();   // collapse, fetch still out
+        ExpandToggle(cut, "Als registeret").Click();   // and open it again
+
+        Assert.Equal(1, client.DetailCalls);
+        Assert.Equal(1, client.Stalls);
+
+        await cut.InvokeAsync(() => client.AnswerStalled(DetailWithCollections(als)));
+
+        // The first answer still lands, because nothing newer was started to supersede it.
+        Assert.Contains("Hoveddatasamling", cut.Find(".munin-explorer-kilder__expanded").TextContent);
+        Assert.Equal(1, client.DetailCalls);
+    }
+
+    [Fact]
     public void Render_WhenTheFetchFails_ThenTheRowSaysSoRatherThanOpeningEmpty()
     {
         // An open panel with nothing in it reads as "this kilde has no datasamlinger", which is a
