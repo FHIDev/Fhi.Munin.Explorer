@@ -213,65 +213,13 @@ public sealed partial class KildeView : ComponentBase
 
         if (delkilder.Count == 0)
         {
-            CollectionTable(builder, ref seq, DataCollections);
+            DatasamlingTable.Render(builder, ref seq, DataCollections, T, Language, Reader);
             return;
         }
 
-        CollectionTable(builder, ref seq, DirectDataCollections);
+        DatasamlingTable.Render(builder, ref seq, DirectDataCollections, T, Language, Reader);
         DelkildeList(builder, ref seq, delkilder, DelkildeLevel);
     };
-
-    /// <summary>
-    /// One level's datasamlinger. Each table keeps its own <c>thead</c>: a table is what ties a cell
-    /// to its column heading for a screen reader, so one borrowing another's has none.
-    /// </summary>
-    private void CollectionTable(RenderTreeBuilder builder, ref int seq, IReadOnlyList<KildeDatasamling> rows)
-    {
-        if (rows.Count == 0)
-        {
-            return;
-        }
-
-        builder.OpenElement(seq++, "table");
-        builder.AddAttribute(seq++, "class", "munin-explorer-kilde__datasamlinger");
-
-        builder.OpenElement(seq++, "thead");
-        builder.OpenElement(seq++, "tr");
-        HeaderCell(builder, ref seq, T.FieldName);
-        HeaderCell(builder, ref seq, T.FieldDescription);
-        HeaderCell(builder, ref seq, T.FieldValidity);
-        HeaderCell(builder, ref seq, T.FieldTotalVariables);
-        builder.CloseElement();
-        builder.CloseElement();
-
-        builder.OpenElement(seq++, "tbody");
-
-        foreach (var row in rows)
-        {
-            builder.OpenElement(seq++, "tr");
-
-            // The name is a th, not a td: it is what the rest of the row is about, and a screen
-            // reader reading a cell out of context should hear which datasamling it belongs to.
-            builder.OpenElement(seq++, "th");
-            builder.AddAttribute(seq++, "scope", "row");
-            builder.AddAttribute(seq++, "lang", CatalogueProperties.Foreign("no", Reader));
-            builder.AddContent(seq++, string.IsNullOrWhiteSpace(row.ShortName)
-                ? row.Name
-                : $"{row.Name} ({row.ShortName})");
-            builder.CloseElement();
-
-            DescriptionCell(builder, ref seq, row.Description);
-            Cell(builder, ref seq,
-                 CatalogueDate.Period(row.EffectiveValidFrom, row.EffectiveValidTo, Language, T),
-                 norwegian: false);
-            Cell(builder, ref seq, $"{row.VariableCount} {T.VariableCountSuffix}", norwegian: false);
-
-            builder.CloseElement();
-        }
-
-        builder.CloseElement();
-        builder.CloseElement();
-    }
 
     /// <summary>
     /// One level of the tree. The name wears <c>headline-xxs</c> because Stiler's scale has nothing
@@ -321,46 +269,12 @@ public sealed partial class KildeView : ComponentBase
                 builder.CloseElement();
             }
 
-            CollectionTable(builder, ref seq, Ordered(delkilde.Datasamlinger));
+            DatasamlingTable.Render(builder, ref seq, Ordered(delkilde.Datasamlinger), T, Language, Reader);
             DelkildeList(builder, ref seq, Ordered(delkilde.Children), Math.Min(level + 1, 6));
 
             builder.CloseElement();
         }
 
-        builder.CloseElement();
-    }
-
-    private static void HeaderCell(RenderTreeBuilder builder, ref int seq, string label)
-    {
-        builder.OpenElement(seq++, "th");
-        builder.AddAttribute(seq++, "scope", "col");
-        builder.AddContent(seq++, label);
-        builder.CloseElement();
-    }
-
-    /// <summary>
-    /// The beskrivelse column, which the catalogue authors with markdown links and line breaks
-    /// (FHIDev/Munin#5385). The fragment scopes its own sequence numbers, so the varying markdown
-    /// structure never shifts the cells after it.
-    /// </summary>
-    private void DescriptionCell(RenderTreeBuilder builder, ref int seq, string? value)
-    {
-        builder.OpenElement(seq++, "td");
-        builder.AddAttribute(seq++, "lang", CatalogueProperties.Foreign("no", Reader));
-        builder.AddContent(seq++, CatalogueMarkdown.Render(value));
-        builder.CloseElement();
-    }
-
-    private void Cell(RenderTreeBuilder builder, ref int seq, string? value, bool norwegian)
-    {
-        builder.OpenElement(seq++, "td");
-
-        if (norwegian)
-        {
-            builder.AddAttribute(seq++, "lang", CatalogueProperties.Foreign("no", Reader));
-        }
-
-        builder.AddContent(seq++, value);
         builder.CloseElement();
     }
 }
