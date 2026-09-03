@@ -5807,6 +5807,81 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
+    public void Panel_WhenAYearlyVariableDrawsSeveralFrequencyTables_ThenEachIsNamedByItsYearSet()
+    {
+        // Several tables stack on a yearly variable, and unnamed they are one word — "table" —
+        // repeated, with nothing to tell a screen reader user which year each describes.
+        var detail = Detail(TaleId) with
+        {
+            DatasamlingStatisticsType = "yearly",
+            Statistics =
+            [
+                new()
+                {
+                    AdditionalProperties = new Dictionary<string, string?>
+                    {
+                        ["SisteOppdaterteAarssett"] = "2021",
+                        ["GyldigeTilfeller"] = "100"
+                    },
+                    CodeFrequencies = [Frequency("a", "Yes", "0", "40")]
+                },
+                new()
+                {
+                    AdditionalProperties = new Dictionary<string, string?>
+                    {
+                        ["SisteOppdaterteAarssett"] = "2022",
+                        ["GyldigeTilfeller"] = "100"
+                    },
+                    CodeFrequencies = [Frequency("b", "Yes", "0", "60")]
+                }
+            ]
+        };
+
+        var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale"))).Knows(detail));
+
+        Toggles(cut)[0].Click();
+        TabButtons(cut)[1].Click();
+
+        var captions = Panel(cut)
+            .QuerySelectorAll("table.munin-explorer-frequency caption")
+            .Select(caption => caption.TextContent)
+            .ToArray();
+
+        Assert.Equal(2, captions.Length);
+        Assert.Equal(captions.Length, captions.Distinct().Count());
+        Assert.Contains("2021", captions[0]);
+        Assert.Contains("2022", captions[1]);
+    }
+
+    [Fact]
+    public void Panel_WhenTheStatisticHasNoYearSet_ThenTheCaptionStillNamesTheTable()
+    {
+        // A caption reading "(—)" would be worse than none: the dash is a cell convention and says
+        // nothing here. The name has to stand on its own when the year set is absent.
+        var detail = DetailWithFrequencies(TaleId) with
+        {
+            Statistics =
+            [
+                new()
+                {
+                    AdditionalProperties = new Dictionary<string, string?> { ["GyldigeTilfeller"] = "100" },
+                    CodeFrequencies = [Frequency("a", "Yes", "0", "40")]
+                }
+            ]
+        };
+
+        var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale"))).Knows(detail));
+
+        Toggles(cut)[0].Click();
+        TabButtons(cut)[1].Click();
+
+        var caption = Panel(cut).QuerySelector("table.munin-explorer-frequency caption")!;
+
+        Assert.Equal("Fordeling av gyldige verdier", caption.TextContent);
+        Assert.Contains("screenreader-only", caption.ClassName ?? "");
+    }
+
+    [Fact]
     public void Panel_WhenAnArrowKeyIsPressed_ThenTheTabMoves()
     {
         // The APG tabs pattern. Without it a keyboard user reaches the tablist and cannot leave the

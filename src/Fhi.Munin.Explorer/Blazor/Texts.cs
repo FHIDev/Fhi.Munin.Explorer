@@ -159,6 +159,7 @@ internal sealed record Texts(
     string ColumnCount,
     string ColumnLastUpdated,
     Func<double, string> ShareOfValid,
+    Func<string?, string> FrequencyCaption,
     string ShowWholeVariable,
     // The row's save action, in both of its states. One control, two words: the button says
     // what pressing it does, not what the variable currently is.
@@ -690,6 +691,9 @@ internal sealed record Texts(
         ColumnCount: "Antall",
         ColumnLastUpdated: "Sist oppdatert",
         ShareOfValid: share => $"{share.ToString("0.#", CatalogueProperties.Formatting("nb-NO"))} %",
+        FrequencyCaption: yearSet => string.IsNullOrWhiteSpace(yearSet)
+            ? "Fordeling av gyldige verdier"
+            : $"Fordeling av gyldige verdier ({yearSet})",
         ShowWholeVariable: "Vis hele variabelen",
         SaveToList: "Lagre i liste",
         RemoveFromList: "Fjern fra liste",
@@ -994,6 +998,9 @@ internal sealed record Texts(
         ColumnCount: "Count",
         ColumnLastUpdated: "Last updated",
         ShareOfValid: share => $"{share.ToString("0.#", CatalogueProperties.Formatting("en-GB"))} %",
+        FrequencyCaption: yearSet => string.IsNullOrWhiteSpace(yearSet)
+            ? "Distribution of valid values"
+            : $"Distribution of valid values ({yearSet})",
         ShowWholeVariable: "Show the whole variable",
         SaveToList: "Save to list",
         RemoveFromList: "Remove from list",

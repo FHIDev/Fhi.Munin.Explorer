@@ -163,18 +163,25 @@ internal static class StatisticsBlock
         builder.OpenElement(seq, "table");
         builder.AddAttribute(seq + 1, "class", "munin-explorer-frequency");
 
-        builder.OpenElement(seq + 2, "thead");
-        builder.OpenElement(seq + 3, "tr");
-        HeaderCell(builder, seq + 4, texts.ColumnCodeValue);
-        HeaderCell(builder, seq + 7, texts.ColumnCategory);
-        HeaderCell(builder, seq + 10, texts.ColumnShareOfValid);
-        HeaderCell(builder, seq + 13, texts.ColumnCount);
+        // Several of these stack on a yearly variable. screenreader-only is Stiler's own class,
+        // so the name is announced without a second visible heading over each table.
+        builder.OpenElement(seq + 2, "caption");
+        builder.AddAttribute(seq + 3, "class", "screenreader-only");
+        builder.AddContent(seq + 4, texts.FrequencyCaption(Raw(statistic.AdditionalProperties, "SisteOppdaterteAarssett")));
+        builder.CloseElement();
+
+        builder.OpenElement(seq + 5, "thead");
+        builder.OpenElement(seq + 6, "tr");
+        HeaderCell(builder, seq + 7, texts.ColumnCodeValue);
+        HeaderCell(builder, seq + 10, texts.ColumnCategory);
+        HeaderCell(builder, seq + 13, texts.ColumnShareOfValid);
+        HeaderCell(builder, seq + 16, texts.ColumnCount);
         builder.CloseElement();
         builder.CloseElement();
 
-        builder.OpenElement(seq + 16, "tbody");
+        builder.OpenElement(seq + 19, "tbody");
 
-        var row = seq + 20;
+        var row = seq + 22;
 
         foreach (var frequency in frequencies)
         {
@@ -235,6 +242,14 @@ internal static class StatisticsBlock
 
         builder.CloseElement();
     }
+
+    // Value() answers with a dash, which is right in a cell and wrong inside a sentence.
+    private static string? Raw(IReadOnlyDictionary<string, string?>? properties, string key) =>
+        properties is not null
+        && properties.TryGetValue(key, out var value)
+        && !string.IsNullOrWhiteSpace(value)
+            ? value
+            : null;
 
     /// <summary>A property as a number, or null where the catalogue holds none that parses.</summary>
     private static double? Number(IReadOnlyDictionary<string, string?>? properties, string key) =>
