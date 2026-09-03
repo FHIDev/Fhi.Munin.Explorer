@@ -41,12 +41,19 @@ public partial class VariableExplorer
     }
 
     /// <summary>Empty the box and run the search that leaves, which is no search at all.</summary>
+    /// <summary>Whether a press on the clear control would clear anything.</summary>
+    /// <remarks>
+    /// One predicate read twice — the clear refuses on it, the refocus decides on it. A second
+    /// copy of the condition is the thing that gets inverted later. (Fhi.Metadata-ag4n7)
+    /// </remarks>
+    private bool CanClearSearch => !_loading && !string.IsNullOrWhiteSpace(_search);
+
     private async Task ClearSearchAsync()
     {
         // Guard before mutation, the rule SortAsync states: clearing _search and then being dropped
         // by SearchAsync's own _loading check would leave an empty box over the old rows, with the
         // host still holding the previous search. (Fhi.Metadata-5ghur)
-        if (_loading || string.IsNullOrWhiteSpace(_search))
+        if (!CanClearSearch)
         {
             return;
         }
@@ -56,22 +63,21 @@ public partial class VariableExplorer
         await SearchAsync();
     }
 
-    /// <summary>Clear the search, then put focus where the control that did it used to be.</summary>
+    /// <summary>Take focus off the control about to vanish, then clear the search.</summary>
     /// <remarks>
-    /// A press removes the control from the DOM under the reader's own focus, which the browser
-    /// then drops to the document. Wrapped rather than folded into
-    /// <see cref="ClearSearchAsync"/>, whose guards decide whether a clear happened at all.
+    /// Focus moves <em>first</em>. <see cref="SearchAsync"/> yields at the request, and the render
+    /// at that yield takes the control off the page under the reader's focus — so moving focus
+    /// afterwards would hand it back only once the fetch had landed, and to the document until
+    /// then. (Fhi.Metadata-ag4n7)
     /// </remarks>
     private async Task ClearSearchAndRefocusAsync()
     {
-        await ClearSearchAsync();
-
-        // Still holding a term means a guard refused the clear, the x is still on screen, and the
-        // reader's focus is still on it — where it should stay.
-        if (string.IsNullOrWhiteSpace(_search))
+        if (CanClearSearch)
         {
             await _searchField.FocusAsync();
         }
+
+        await ClearSearchAsync();
     }
 
     private async Task SearchAsync()

@@ -539,20 +539,20 @@ public sealed partial class KildeExplorer : ComponentBase
         _search = null;
     }
 
-    /// <summary>Clear the search, then put focus where the control that did it used to be.</summary>
+    /// <summary>Take focus off the control about to vanish, then clear the search.</summary>
     /// <remarks>
-    /// A press removes the control from the DOM under the reader's own focus, which the browser
-    /// then drops to the document. Wrapped rather than folded into <see cref="ClearSearch"/>,
-    /// whose refusal decides whether a clear happened at all.
+    /// Focus moves first, the same order the variable explorer's follows and for the same reason:
+    /// the render that removes the control must not happen while the reader's focus is still on
+    /// it. Nothing is fetched here, so the window is smaller — not absent. (Fhi.Metadata-ag4n7)
     /// </remarks>
     private async Task ClearSearchAndRefocusAsync()
     {
-        ClearSearch();
-
-        if (SearchText is null)
+        if (SearchText is not null)
         {
             await _searchField.FocusAsync();
         }
+
+        ClearSearch();
     }
 
     /// <summary>Open <paramref name="kilde"/>'s view, in place of the list.</summary>

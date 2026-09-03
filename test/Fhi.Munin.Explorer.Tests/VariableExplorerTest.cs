@@ -8682,6 +8682,25 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
+    public void ClearSearch_WhenTheSearchItStartsIsSlow_ThenFocusHasMovedBeforeTheWait()
+    {
+        // Ordering, not just destination. Clearing runs a search, SearchAsync yields at the
+        // request, and the render at that yield takes the control off the page — so focus moved
+        // after the await would reach the field only once the answer landed, and sit on <body>
+        // for however long that took. This client never answers, so a late refocus never happens
+        // at all and the assertion below is the difference between the two orders.
+        var client = new SlowClient(OnePage(Variable("1. Tale", "KODE")));
+
+        var cut = RenderWith(client, b => b.Add(c => c.Search, "alder"));
+
+        cut.Find(".munin-explorer-search__clear").Click();
+
+        // The search it started is still out — so this is focus that moved ahead of it.
+        Assert.Equal(2, client.Calls);
+        JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus");
+    }
+
+    [Fact]
     public void ClearSearch_WhenAFetchIsInFlight_ThenFocusIsLeftWhereTheReaderPutIt()
     {
         // The other half of the guard: a refused clear leaves the control on screen with the
