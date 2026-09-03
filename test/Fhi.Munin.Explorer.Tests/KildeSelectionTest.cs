@@ -700,8 +700,8 @@ public class KildeSelectionTest : BunitContext
     /// </summary>
     /// <remarks>
     /// Read off the rules rather than restated in the test, so a stylesheet that widens one of
-    /// these and not the other fails the arithmetic instead of drifting past it. Rem at the 16px
-    /// root this stylesheet sets; 0 for no match, which the caller reports rather than dividing by.
+    /// these and not the other fails the arithmetic instead of drifting past it. Rem at 16px, the
+    /// browser default these samples leave alone; 0 for no match, which the caller reports.
     /// </remarks>
     private static int FirstMatch(
         IReadOnlyList<(string Selector, string Declarations)> rules, string pattern, bool rem = false)
