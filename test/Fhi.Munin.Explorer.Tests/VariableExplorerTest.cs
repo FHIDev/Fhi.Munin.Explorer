@@ -8700,6 +8700,29 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
+    public void ClearSearch_WhenAFetchIsInFlight_ThenTheControlSaysItWillNotActYet()
+    {
+        // The control is drawn on having a term and refuses on having one AND nothing in flight,
+        // so between those two there is a press that does nothing. Without this it does nothing
+        // silently, which is the one thing a control must not do. aria-disabled and not disabled,
+        // the rule the pager and the account link follow: disabled cannot hold focus, and focus is
+        // what this control was moved inside the field to protect. (Fhi.Metadata-ag4n7)
+        var cut = RenderWith(new SlowClient(OnePage(Variable("1. Tale", "KODE"))),
+                            b => b.Add(c => c.Search, "alder"));
+
+        // Settled: the term is there, nothing is in flight, so the control is live.
+        Assert.Null(cut.Find(".munin-explorer-search__clear").GetAttribute("aria-disabled"));
+
+        // A search that never answers leaves it on screen and inert.
+        cut.Find(SearchForm).Submit();
+
+        var clear = cut.Find(".munin-explorer-search__clear");
+
+        Assert.Equal("true", clear.GetAttribute("aria-disabled"));
+        Assert.False(clear.HasAttribute("disabled"));
+    }
+
+    [Fact]
     public void ClearSearch_WhenAFetchIsInFlight_ThenFocusIsLeftWhereTheReaderPutIt()
     {
         // The other half of the guard: a refused clear leaves the control on screen with the

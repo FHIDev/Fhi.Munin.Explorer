@@ -193,11 +193,15 @@ else
             @* Drawn only when there is something to clear, so a press takes it off the page under
                the reader's focus — which is why the handler hands that focus back. Named by
                aria-label: the glyph is not a name. (Fhi.Metadata-ag4n7) *@
+            @* Shown on having a term but inert while one is in flight, so the two conditions are
+               not the same and the gap between them is a control that refuses silently. Kelda
+               needs no such attribute: it fetches nothing, so its two conditions are one. *@
             @if (!string.IsNullOrWhiteSpace(_search))
             {
                 <button class="munin-explorer-search__clear"
                         type="button"
                         aria-label="@T.ClearSearch"
+                        aria-disabled="@(CanClearSearch ? null : "true")"
                         @onclick="ClearSearchAndRefocusAsync">&#xD7;</button>
             }
             @* Deliberately NOT disabled while a search runs. Disabling the element that

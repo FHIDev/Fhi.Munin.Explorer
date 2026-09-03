@@ -240,7 +240,10 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    handle, and an undefined one leaves the control in normal flow after the field, which is
    roughly where it stood before.
 
-   No greyed state to describe: the control is drawn only while there is something to clear. */
+   It is drawn only while there is something to clear, so there is no "nothing to do" state — but
+   there is a "not yet" one: the variable explorer refuses the press while its own search is in
+   flight, and says so with aria-disabled rather than disabled, which would drop the focus this
+   control exists to keep. Kelda fetches nothing and never wears it. */
 .munin-explorer-search__clear {
   position: absolute;
   top: 50%;
@@ -265,6 +268,17 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 .munin-explorer-search__clear:hover {
   background-color: var(--grey30);
+}
+
+/* Still focusable and still hoverable, because it is aria-disabled and not disabled — so both
+   have to stop looking like invitations while the press would do nothing. */
+.munin-explorer-search__clear[aria-disabled="true"] {
+  color: var(--grey60);
+  cursor: default;
+}
+
+.munin-explorer-search__clear[aria-disabled="true"]:hover {
+  background-color: transparent;
 }
 
 /* The same ring Stiler's own square buttons take, so tabbing along the row does not change shape

@@ -10,3 +10,10 @@ category: Notes for hosts
   for the name gets the control in normal flow after the field, which is roughly where it stood
   before, so nothing disappears. It carries no visible text — the label is on `aria-label` — so a
   rule that hides it hides the only way to clear the search.
+- **It still needs a muted `[aria-disabled="true"]` appearance, in the variable explorer.** The
+  control is drawn whenever the box has a term, but the variable explorer refuses the press while
+  its own search is in flight, so there is a window where it is on screen and will not act. It
+  says so with `aria-disabled` rather than `disabled`, which would drop the focus this control was
+  moved inside the field to keep — so it stays focusable and hoverable, and both states need to
+  stop looking like invitations. The kildeutforsker fetches nothing and never carries the
+  attribute.
