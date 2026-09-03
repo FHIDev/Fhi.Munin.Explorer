@@ -8618,8 +8618,8 @@ public class VariableExplorerTest : BunitContext
 
         var cut = RenderWith(client);
 
-        cut.Find(".searchbox__freetext").Change("alder");
-        cut.Find("form").Submit();
+        cut.Find(SearchField).Change("alder");
+        cut.Find(SearchForm).Submit();
 
         Assert.Equal("alder", client.LastSearch);
 
@@ -8637,6 +8637,9 @@ public class VariableExplorerTest : BunitContext
     /// went wrong (Fhi.Metadata-ag4n7).
     /// </remarks>
     private const string SearchField = "form[role=search] .searchbox__freetext";
+
+    /// <inheritdoc cref="SearchField"/>
+    private const string SearchForm = "form[role=search]";
 
     [Fact]
     public void ClearSearch_WhenThereIsASearch_ThenTheControlIsInsideTheFieldAheadOfSok()
@@ -8672,7 +8675,7 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(new FakeClient(new Page<VariableSummary>()));
 
         cut.Find(SearchField).Change("alder");
-        cut.Find("form").Submit();
+        cut.Find(SearchForm).Submit();
         cut.Find(".munin-explorer-search__clear").Click();
 
         JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus");
@@ -8686,7 +8689,7 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(new SlowClient(OnePage(Variable("1. Tale", "KODE"))));
 
         cut.Find(SearchField).Change("alder");
-        cut.Find("form").Submit();
+        cut.Find(SearchForm).Submit();
         cut.Find(".munin-explorer-search__clear").Click();
 
         Assert.Empty(JSInterop.Invocations["Blazor._internal.domWrapper.focus"]);
@@ -8729,8 +8732,8 @@ public class VariableExplorerTest : BunitContext
             c => c.SearchChanged, EventCallback.Factory.Create<string?>(this, reported.Add)));
 
         // A search that never answers, so the component is left mid-fetch.
-        cut.Find(".searchbox__freetext").Change("alder");
-        cut.Find("form").Submit();
+        cut.Find(SearchField).Change("alder");
+        cut.Find(SearchForm).Submit();
 
         var callsWhileLoading = client.Calls;
 
@@ -8741,7 +8744,7 @@ public class VariableExplorerTest : BunitContext
         cut.Find(".munin-explorer-search__clear").Click();
 
         // The box still says what the rows on screen came from, and nothing was asked or reported.
-        Assert.Equal("alder", cut.Find(".searchbox__freetext").GetAttribute("value"));
+        Assert.Equal("alder", cut.Find(SearchField).GetAttribute("value"));
         Assert.Equal(callsWhileLoading, client.Calls);
         Assert.Equal(reportsWhileLoading, reported.Count);
     }
@@ -8756,8 +8759,8 @@ public class VariableExplorerTest : BunitContext
         var cut = RenderWith(new FakeClient(new Page<VariableSummary>()), b => b.Add(
             c => c.SearchChanged, EventCallback.Factory.Create<string?>(this, reported.Add)));
 
-        cut.Find(".searchbox__freetext").Change("alder");
-        cut.Find("form").Submit();
+        cut.Find(SearchField).Change("alder");
+        cut.Find(SearchForm).Submit();
         cut.Find(".munin-explorer-search__clear").Click();
 
         Assert.Null(reported[^1]);
