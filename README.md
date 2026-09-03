@@ -207,8 +207,11 @@ These are not style preferences — each one is a host that breaks otherwise.
     has always been, which is exactly what shipped before it had a name of its own. What a rule
     buys is the dimming and the tabular alignment that stop a column of numbers reading as more of
     the words in front of them. It sits inside the `<label>` on purpose — the label is what names
-    the checkbox, so a count moved out of it would stop being announced with the value it counts,
-    and a host must not move it out with `position` or `order` for the same reason.
+    the checkbox, so a count moved out of it would stop being announced with the value it counts.
+    A stylesheet cannot move it out: `position`, `order` and `display: contents` change where the
+    number is drawn, not what the label contains, and Chrome computes the same `Aktiv (3)` under
+    all three. What does drop it from the name is `display: none` or `visibility: hidden` on the
+    count, so a host that hides it visually hides it from screen readers with it.
     The saved-list view's `munin-explorer-dataitem-*__desiredData` pair is a handle on the same
     terms and worth one sentence, because the cell holds a control rather than a value: undefined,
     the annotation field is a browser-default text box, which is visible, operable and named, so

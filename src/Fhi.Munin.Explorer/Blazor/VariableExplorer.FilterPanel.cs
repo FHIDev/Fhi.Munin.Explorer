@@ -648,11 +648,9 @@ public partial class VariableExplorer
 
     /// <summary>A facet's values as a nested list of checkboxes.</summary>
     /// <remarks>
-    /// Kelda's shape: a checkbox in its own label is a pair every stylesheet dresses, so neither
-    /// carries a class. The count does — <c>munin-explorer-filters__count</c>, the kilde
-    /// explorer's name, inside the label for its reason. Keyed because the counts reorder the
-    /// values between renders, and an unkeyed patch would move the box under the reader's finger
-    /// onto another filter. (Fhi.Metadata-j0a2h, Fhi.Metadata-cgk85)
+    /// Only the count carries a class, <c>munin-explorer-filters__count</c>, and it sits inside the
+    /// label — see KildeExplorer.Filters.cs. Keyed because counts reorder the values between
+    /// renders, and an unkeyed patch would move the box under the reader's finger. (Fhi.Metadata-j0a2h)
     /// </remarks>
     private RenderFragment FacetList(IReadOnlyList<FacetValue> values) => builder =>
     {

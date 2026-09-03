@@ -127,10 +127,9 @@ public sealed partial class KildeExplorer
 
         /// <summary>The count as it is drawn: the number in parentheses, and no space.</summary>
         /// <remarks>
-        /// Its own element so a host can dim it, inside the label so it stays in the checkbox's
-        /// accessible name. The separating space is emitted beside this element, not as its first
-        /// character: a name is computed per element, so a space inside it is trimmed off and the
-        /// name announces as "Biobank(1)". (Fhi.Metadata-cgk85, Fhi.Metadata-j0a2h)
+        /// Holds "(1)" alone: the separating space is emitted beside this element, because a name
+        /// is computed per element and a leading space inside it is trimmed off, announcing as
+        /// "Biobank(1)". (Fhi.Metadata-cgk85)
         /// </remarks>
         public string CountText => $"({Count})";
 

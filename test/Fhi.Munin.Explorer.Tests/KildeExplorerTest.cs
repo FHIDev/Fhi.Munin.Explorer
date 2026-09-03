@@ -1643,12 +1643,9 @@ public class KildeExplorerTest : BunitContext
     [Fact]
     public void Facets_Always_ThenTheCountIsItsOwnElementInsideTheLabelAndStillInTheAccessibleName()
     {
-        // The two halves of Fhi.Metadata-cgk85, which pull in opposite directions and are both
-        // load-bearing. An element of its own is what lets a host dim the number; inside the label
-        // is what keeps it in the name the checkbox announces. A count moved out to a SIBLING of
-        // the label satisfies the first and quietly loses the second, and that shape passes any
-        // assertion written against the text on screen. So both are asserted here, and the
-        // accessible name is computed rather than read off the markup. (Fhi.Metadata-j0a2h)
+        // Both halves of Fhi.Metadata-cgk85 pull in opposite directions: an element of its own
+        // lets a host dim the number, inside the label keeps it in the announced name. A count
+        // moved out to a sibling passes every on-screen text assertion, so both are asserted.
         var cut = RenderWith(new FakeClient(
             Kilde("Als registeret", "K_ALS", kildetype: "biobank")));
 
@@ -1659,11 +1656,9 @@ public class KildeExplorerTest : BunitContext
         Assert.Equal("SPAN", count.TagName);
         Assert.True(label.Contains(count));
 
-        // Untrimmed on purpose. The separating space has to be a text node of the label, not the
-        // span's first character: an accessible name is computed per element, so a space inside
-        // the span is trimmed off and the name announces as "Biobank(1)". Trim() here would pass
-        // on both shapes, and AccessibleName.Of cannot tell them apart either — it flattens every
-        // descendant text node before collapsing whitespace. This is the assertion that can fail.
+        // Untrimmed on purpose: the separating space has to be a text node of the label, not the
+        // span's first character, or the name announces as "Biobank(1)". Trim() would pass on both
+        // shapes, and so would AccessibleName.Of, which flattens descendants. This one can fail.
         Assert.Equal("(1)", count.TextContent);
 
         // The words and the number are still one run on screen, with exactly one space between
@@ -2399,16 +2394,9 @@ public class KildeExplorerTest : BunitContext
     [Fact]
     public void Render_WhenTheListIsOnScreen_ThenNoClassNamesAreInventedApartFromTheDomHandles()
     {
-        // The exact list, for the reason the other two of these are exact: a thirteenth name
-        // appearing here is news, and news that has to be answered in both sample stylesheets
-        // before it ships. Six of these twelve are the explorer's existing structure, reused rather
-        // than reinvented; the three under `munin-explorer-kilder` and the three under
-        // `munin-explorer-filters__` are this view's own.
-        //
-        // Twelve and not thirteen because nothing here wires ExploreVariablesRequested, so the selection
-        // column and its `munin-explorer-kilder__select` are not rendered at all. That state has
-        // its own exact list, in KildeSelectionTest, and the pair of them is what says the column
-        // adds one name rather than appears from nowhere.
+        // The exact list on purpose: a thirteenth name is news that has to be answered in both
+        // sample stylesheets before it ships. Twelve and not thirteen because nothing here wires
+        // ExploreVariablesRequested, so munin-explorer-kilder__select is absent (KildeSelectionTest).
         var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
         var invented = HostClassNames.Of(cut.FindAll("[class]"))

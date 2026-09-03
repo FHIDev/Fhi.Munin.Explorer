@@ -522,10 +522,9 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 .munin-explorer-filters__facets > [role="group"] { margin-bottom: 16px; }
 
-/* The count beside a facet value. Dimmed and tabular so a column of them reads as a column of
-   numbers rather than as more of the words in front of them — which is the whole point of giving
-   it an element. It sits inside the <label>, so this changes only how it looks: the checkbox is
-   still announced as "Biobank (1)", count and all. (Fhi.Metadata-cgk85) */
+/* Dimmed and tabular so a column of counts reads as numbers rather than as more of the words in
+   front of them. Cosmetic only: the count is inside the <label>, so the checkbox stays announced
+   as "Biobank (1)". (Fhi.Metadata-cgk85) */
 .munin-explorer-filters__count {
   color: var(--grey60);
   font-variant-numeric: tabular-nums;
