@@ -648,9 +648,9 @@ public partial class VariableExplorer
 
     /// <summary>A facet's values as a nested list of checkboxes.</summary>
     /// <remarks>
-    /// Kelda's shape, and no class of its own: a checkbox in its own label is a pair every
-    /// stylesheet dresses. Keyed because the counts reorder the values between renders, and an
-    /// unkeyed patch would move the box under the reader's finger onto another filter. (Fhi.Metadata-j0a2h)
+    /// Only the count carries a class, <c>munin-explorer-filters__count</c>, and it sits inside the
+    /// label — see KildeExplorer.Filters.cs. Keyed because counts reorder the values between
+    /// renders, and an unkeyed patch would move the box under the reader's finger. (Fhi.Metadata-j0a2h)
     /// </remarks>
     private RenderFragment FacetList(IReadOnlyList<FacetValue> values) => builder =>
     {
@@ -686,13 +686,26 @@ public partial class VariableExplorer
                 builder.SetUpdatesAttributeName("checked");
 
                 builder.CloseElement();
-                builder.AddContent(8, FacetText(value));
+                builder.AddContent(8, value.Label);
+
+                // The space is a text node of the label, not the span's first character: a name is
+                // computed per element, so a space inside the span is trimmed off and the name
+                // announces as "Dødsårsaksregisteret(30)".
+                if (value.Count is { } count)
+                {
+                    builder.AddContent(9, " ");
+                    builder.OpenElement(10, "span");
+                    builder.AddAttribute(11, "class", "munin-explorer-filters__count");
+                    builder.AddContent(12, $"({count})");
+                    builder.CloseElement();
+                }
+
                 builder.CloseElement();
             }
 
             if (value.Children.Count > 0)
             {
-                builder.AddContent(9, FacetList(value.Children));
+                builder.AddContent(13, FacetList(value.Children));
             }
 
             builder.CloseElement();
@@ -700,15 +713,6 @@ public partial class VariableExplorer
 
         builder.CloseElement();
     };
-
-    /// <summary>A value's visible text — its label, and the count of what it would leave.</summary>
-    /// <remarks>
-    /// The count is inside the label's own text rather than in a badge beside it, so it is part of
-    /// the checkbox's accessible name: "Dødsårsaksregisteret (1 234)" is announced whole, where a
-    /// separate element would be read as a stray number or skipped.
-    /// </remarks>
-    private static string FacetText(FacetValue value) =>
-        value.Count is { } count ? $"{value.Label} ({count})" : value.Label;
 
     /// <summary>Add or remove one value from a facet, and fetch what that leaves.</summary>
     /// <remarks>

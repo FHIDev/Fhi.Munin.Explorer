@@ -613,6 +613,7 @@ public class KildeSelectionTest : BunitContext
             "munin-explorer",                    // shared with the variable explorer
             "munin-explorer-container",          // shared
             "munin-explorer-filters",            // shared
+            "munin-explorer-filters__count",     // shared with the variable explorer's facets
             "munin-explorer-filters__facets",
             "munin-explorer-filters__toggle",
             "munin-explorer-kilder",

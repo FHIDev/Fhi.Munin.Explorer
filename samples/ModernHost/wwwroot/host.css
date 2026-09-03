@@ -537,6 +537,14 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 .munin-explorer-filters__facets > [role="group"] { margin-bottom: 16px; }
 
+/* Dimmed and tabular so a column of counts reads as numbers rather than as more of the words in
+   front of them. Cosmetic only: the count is inside the <label>, so the checkbox stays announced
+   as "Biobank (1)". (Fhi.Metadata-cgk85) */
+.munin-explorer-filters__count {
+  color: var(--grey60);
+  font-variant-numeric: tabular-nums;
+}
+
 /* The dataperiode facet: a label and a native date input per end. No class name of our own —
    Stiler has no date-range widget, and inventing one here would render as a raw browser default
    on a Stiler-only host, which is the failure this package exists to avoid. The input is an

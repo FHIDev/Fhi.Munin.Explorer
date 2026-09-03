@@ -13,12 +13,13 @@
    wears the `munin-explorer` prefix this package owns. Five of those are the explorer's existing
    ones, reused rather than reinvented: the root `munin-explorer`, the `munin-explorer-container`
    and `munin-explorer-results` the list sits in, `munin-explorer-filters` for the facet panel and
-   `munin-explorer-drilldown` for the view an opened kilde takes over. Six are this view's own —
+   `munin-explorer-drilldown` for the view an opened kilde takes over. Seven are this view's own —
    `munin-explorer-kilder` for the table, `munin-explorer-kilder__name` for the control that opens a
    row, `munin-explorer-kilder__count` for the columns holding a number,
-   `munin-explorer-kilder__select` for the checkbox column in front of them, and
+   `munin-explorer-kilder__select` for the checkbox column in front of them,
    `munin-explorer-filters__toggle` and `munin-explorer-filters__facets` for the panel that folds
-   away on a narrow screen.
+   away on a narrow screen, and `munin-explorer-filters__count` for the number beside a facet
+   value.
 
    The result list is a <table>, unlike the variable explorer's, and that is the shape rule rather
    than an inconsistency. Runa's rows are helsedata's own `munin-explorer-data-list`, a <ul> with a
@@ -211,7 +212,11 @@ else
 
        Checkboxes, not the toggle buttons the variable explorer's facets use. Kelda's are checkboxes,
        and a bare <input type="checkbox"> inside its own <label> is an element pair every stylesheet
-       already dresses, so there is no class to invent for them either. *@
+       already dresses, so neither the box nor the label carries a class.
+
+       The count does, `munin-explorer-filters__count` — a number that cannot be dimmed or aligned
+       reads as more of the label's words. It goes inside the label, the separating space beside
+       the span: see KildeExplorer.Filters.cs. (Fhi.Metadata-cgk85) *@
     @if (Facets is { Count: > 0 } facets)
     {
         <div class="munin-explorer-filters">
@@ -256,7 +261,7 @@ else
                                         <input type="checkbox"
                                                checked="@IsChosen(facet.Key, option.Value)"
                                                @onchange="e => Choose(facet.Key, option.Value, e.Value is true)" />
-                                        @option.Text
+                                        @option.Text@(" ")<span class="munin-explorer-filters__count">@option.CountText</span>
                                     </label>
                                 </li>
                             }

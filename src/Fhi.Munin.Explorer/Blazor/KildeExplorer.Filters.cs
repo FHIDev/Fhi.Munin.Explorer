@@ -122,14 +122,16 @@ public sealed partial class KildeExplorer
     /// </param>
     private sealed record FacetOption(string Value, string Label, int Count, string? Language)
     {
-        /// <summary>The choice's visible text: its label, cut to length, and its count.</summary>
+        /// <summary>The choice's visible text, cut to length, without its count.</summary>
+        public string Text => Shorten(Label);
+
+        /// <summary>The count as it is drawn: the number in parentheses, and no space.</summary>
         /// <remarks>
-        /// The count is inside the label's own text rather than beside it in an element of its own,
-        /// for the reason the variable explorer's facet buttons put it there: it becomes part of the
-        /// checkbox's accessible name, where a sibling element would be announced as a stray number
-        /// or skipped altogether.
+        /// Holds "(1)" alone: the separating space is emitted beside this element, because a name
+        /// is computed per element and a leading space inside it is trimmed off, announcing as
+        /// "Biobank(1)". (Fhi.Metadata-cgk85)
         /// </remarks>
-        public string Text => $"{Shorten(Label)} ({Count})";
+        public string CountText => $"({Count})";
 
         /// <summary>
         /// The whole label for a choice whose text was cut, and nothing at all for one that was not.
