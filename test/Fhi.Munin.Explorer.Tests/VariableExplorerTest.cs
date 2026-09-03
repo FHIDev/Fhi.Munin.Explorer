@@ -7821,7 +7821,6 @@ public class VariableExplorerTest : BunitContext
         VariableCount = 99
     };
 
-    /// <summary>The two owner toggles, in the order the panel draws them: kilde, then datasamling.</summary>
     /// <summary>Leaves the kilde view and returns to the list.</summary>
     private static void Back(IRenderedComponent<VariableExplorer> cut) =>
         cut.Find(".munin-explorer-drilldown button").Click();

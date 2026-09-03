@@ -40,7 +40,6 @@ public partial class VariableExplorer
         await OpenInitialSelectionAsync();
     }
 
-    /// <summary>Empty the box and run the search that leaves, which is no search at all.</summary>
     /// <summary>Whether a press on the clear control would clear anything.</summary>
     /// <remarks>
     /// One predicate read twice — the clear refuses on it, the refocus decides on it. A second
@@ -48,6 +47,7 @@ public partial class VariableExplorer
     /// </remarks>
     private bool CanClearSearch => !_loading && !string.IsNullOrWhiteSpace(_search);
 
+    /// <summary>Empty the box and run the search that leaves, which is no search at all.</summary>
     private async Task ClearSearchAsync()
     {
         // Guard before mutation, the rule SortAsync states: clearing _search and then being dropped
