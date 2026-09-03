@@ -937,7 +937,9 @@ else
 
     @if (ShowTabs)
     {
-        <div class="munin-explorer-meta__tab-content"
+        @* The class only while the tab is open: it carries `display: flex` with padding of its own
+           in Stiler, so an empty panel wearing it left a 64px gap under the results. *@
+        <div class="@(_resultsTab == ExplorerTab.VariableList ? "munin-explorer-meta__tab-content" : null)"
              role="tabpanel"
              id="@ResultTabPanelId(ExplorerTab.VariableList)"
              aria-labelledby="@ResultTabId(ExplorerTab.VariableList)"

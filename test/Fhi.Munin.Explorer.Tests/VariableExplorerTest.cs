@@ -402,8 +402,15 @@ public class VariableExplorerTest : BunitContext
 
         // The results panel is deliberately unclassed: it wraps markup that already carries its
         // own names, and a wrapper with a name would be one more rule for a host to write.
-        var list = PanelFor(cut, Tab(cut, "Variabelliste"));
-        Assert.Equal("munin-explorer-meta__tab-content", list.ClassName);
+        // The list panel wears the class only while it is the open one — worn empty it carries
+        // Stiler's own padding and leaves a gap under the results.
+        Assert.True(string.IsNullOrEmpty(PanelFor(cut, Tab(cut, "Variabelliste")).ClassName));
+
+        Tab(cut, "Variabelliste").Click();
+        Assert.Equal(
+            "munin-explorer-meta__tab-content",
+            PanelFor(cut, Tab(cut, "Variabelliste")).ClassName);
+        Tab(cut, "Søkeresultat").Click();
         Assert.True(string.IsNullOrEmpty(PanelFor(cut, Tab(cut, "Søkeresultat")).ClassName));
     }
 
