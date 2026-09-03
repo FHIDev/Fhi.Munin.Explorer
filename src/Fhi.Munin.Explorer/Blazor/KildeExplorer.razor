@@ -216,11 +216,8 @@ else
 
        The count does, `munin-explorer-filters__count`, and it is the one name here a host has to
        hear about: a number that cannot be dimmed or aligned reads as more of the label's words.
-       It goes INSIDE the label rather than after it, which is the whole of the care this needs —
-       the label is what names the checkbox, so a count moved outside it stops being announced.
-       The separating space is emitted beside the span, not inside it: an accessible name is
-       computed per element, so a leading space in the span is trimmed off and the name runs
-       together as "Biobank(1)". Kelda's facet panel takes the same shape. (Fhi.Metadata-cgk85) *@
+       It goes INSIDE the label, which is what names the checkbox, and the separating space goes
+       beside the span rather than inside it — see KildeExplorer.Filters.cs. (Fhi.Metadata-cgk85) *@
     @if (Facets is { Count: > 0 } facets)
     {
         <div class="munin-explorer-filters">

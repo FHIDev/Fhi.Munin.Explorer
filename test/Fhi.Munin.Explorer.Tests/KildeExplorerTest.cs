@@ -1657,8 +1657,14 @@ public class KildeExplorerTest : BunitContext
 
         // Its own element, and under the label rather than after it.
         Assert.Equal("SPAN", count.TagName);
-        Assert.Equal("(1)", count.TextContent.Trim());
         Assert.True(label.Contains(count));
+
+        // Untrimmed on purpose. The separating space has to be a text node of the label, not the
+        // span's first character: an accessible name is computed per element, so a space inside
+        // the span is trimmed off and the name announces as "Biobank(1)". Trim() here would pass
+        // on both shapes, and AccessibleName.Of cannot tell them apart either — it flattens every
+        // descendant text node before collapsing whitespace. This is the assertion that can fail.
+        Assert.Equal("(1)", count.TextContent);
 
         // The words and the number are still one run on screen, with exactly one space between
         // them: a stray newline from the markup would read as "Biobank\n (1)" here.

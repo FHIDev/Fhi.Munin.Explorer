@@ -4471,8 +4471,12 @@ public class VariableExplorerTest : BunitContext
         var count = label.QuerySelector(".munin-explorer-filters__count")!;
 
         Assert.Equal("SPAN", count.TagName);
-        Assert.Equal("(30)", count.TextContent.Trim());
         Assert.True(label.Contains(count));
+
+        // Untrimmed: the separating space must be a text node of the label, not the span's first
+        // character, or the name announces as "Dødsårsaksregisteret(30)". Trim() passes on both
+        // shapes, and so does AccessibleName.Of. (Fhi.Metadata-cgk85)
+        Assert.Equal("(30)", count.TextContent);
     }
 
     [Fact]

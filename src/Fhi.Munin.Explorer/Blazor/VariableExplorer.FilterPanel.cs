@@ -649,10 +649,10 @@ public partial class VariableExplorer
     /// <summary>A facet's values as a nested list of checkboxes.</summary>
     /// <remarks>
     /// Kelda's shape: a checkbox in its own label is a pair every stylesheet dresses, so neither
-    /// carries a class. The count does — <c>munin-explorer-filters__count</c>, the same name the
-    /// kilde explorer's facets use, and inside the label for the same reason. Keyed because the
-    /// counts reorder the values between renders, and an unkeyed patch would move the box under
-    /// the reader's finger onto another filter. (Fhi.Metadata-j0a2h, Fhi.Metadata-cgk85)
+    /// carries a class. The count does — <c>munin-explorer-filters__count</c>, the kilde
+    /// explorer's name, inside the label for its reason. Keyed because the counts reorder the
+    /// values between renders, and an unkeyed patch would move the box under the reader's finger
+    /// onto another filter. (Fhi.Metadata-j0a2h, Fhi.Metadata-cgk85)
     /// </remarks>
     private RenderFragment FacetList(IReadOnlyList<FacetValue> values) => builder =>
     {
@@ -690,9 +690,9 @@ public partial class VariableExplorer
                 builder.CloseElement();
                 builder.AddContent(8, value.Label);
 
-                // The separating space is a text node of the label, not the span's first character:
-                // an accessible name is computed per element and a leading space inside the span is
-                // trimmed off, announcing "Dødsårsaksregisteret(30)".
+                // The space is a text node of the label, not the span's first character: a name is
+                // computed per element, so a space inside the span is trimmed off and the name
+                // announces as "Dødsårsaksregisteret(30)".
                 if (value.Count is { } count)
                 {
                     builder.AddContent(9, " ");
