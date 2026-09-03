@@ -1711,9 +1711,24 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   padding: 4px 6px;
 }
 
-.munin-explorer-kilder__expanded {
-  background-color: var(--grey10);
-  padding: 12px 16px 16px;
+/* Measured in the sample before this was written: on grey10 alone the panel was invisible against
+   the white table, so six datasamlinger read as six more kilder, under a second header row nobody
+   had said was nested. The inset and the rule down the left are what say "inside this row". */
+.munin-explorer-kilder td.munin-explorer-kilder__expanded {
+  background-color: var(--grey20);
+  border-left: 3px solid var(--grey40);
+  padding: 12px 20px 16px 32px;
+}
+
+/* The nested table repeats a header row directly under the list's own. Quieter and smaller so the
+   two read as outer and inner rather than as two lists. */
+.munin-explorer-kilder__expanded .munin-explorer-kilde__datasamlinger {
+  background-color: #fff;
+}
+
+.munin-explorer-kilder__expanded .munin-explorer-kilde__datasamlinger thead th {
+  font-size: 0.8125rem;
+  color: var(--grey60);
 }
 
 
