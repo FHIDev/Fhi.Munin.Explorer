@@ -133,11 +133,8 @@ internal static class StatisticsBlock
         builder.CloseElement();
     }
 
-    /// <summary>
-    /// The rows to draw. An accumulated set is a running total, so only its last row describes the
-    /// data — Fhi.Metadata-e3e2d measured max 1 such row per variable in prod, against 3 for a
-    /// yearly set, so this is the shape nearly every variable actually has rather than an edge.
-    /// </summary>
+    // An accumulated set is a running total, so only its last row describes the data — and in prod
+    // that is the common shape, not an edge (Fhi.Metadata-e3e2d).
     private static IReadOnlyList<Statistic> Rows(VariableDetail variable) =>
         IsAccumulated(variable.DatasamlingStatisticsType) && variable.Statistics.Count > 0
             ? [variable.Statistics[^1]]
@@ -149,24 +146,9 @@ internal static class StatisticsBlock
         && (kind.Equals("accumulated", StringComparison.OrdinalIgnoreCase)
             || kind.Equals("akkumulert", StringComparison.OrdinalIgnoreCase));
 
-    /// <summary>
-    /// How a coded variable's values are distributed — Runa's Verdi / Kategori / % av gyldige /
-    /// Antall.
-    /// </summary>
-    /// <remarks>
-    /// The column map is the part worth stating, because three of the four columns could plausibly
-    /// be read off the wrong field. Verdi is <c>KodeverkLokalID</c> and NOT <see cref="CodeFrequency.Code"/>,
-    /// which is fully qualified and 43 characters wide where Runa's column is three; Antall is the
-    /// row's own <c>GyldigeTilfeller</c>; and the percentage divides by the STATISTIC's
-    /// <c>GyldigeTilfeller</c> rather than by the sum of the rows. Fhi.Metadata-e3e2d measured the
-    /// difference: of 15 420 statistics with codes, 857 sum to less than their own valid count and
-    /// one to 22.7 times more, so a bar sized on the row sum would draw 2269% on that one. The bar
-    /// is clipped to 0-100% for that reason; the number beside it is not, because a reader is
-    /// better served seeing an impossible figure than a quietly capped one.
-    /// <para>
-    /// There is no Beskrivelse column: it is null on every one of the 67 253 rows measured.
-    /// </para>
-    /// </remarks>
+    // Verdi is KodeverkLokalID and NOT Code, which is fully qualified; the share divides by the
+    // statistic's own GyldigeTilfeller, never the row sum, and its bar is clipped where the number
+    // is not; Beskrivelse is null on every row. Measurements for all four: Fhi.Metadata-e3e2d.
     private static int FrequencyTable(RenderTreeBuilder builder, int seq, Statistic statistic, Texts texts)
     {
         var frequencies = statistic.CodeFrequencies;
@@ -222,11 +204,8 @@ internal static class StatisticsBlock
         return row + 50;
     }
 
-    /// <summary>The share of valid values, as a number and a bar, or a dash where it cannot be had.</summary>
-    /// <remarks>
-    /// A missing or zero denominator draws the dash rather than a bar of no length: "we cannot work
-    /// this out" and "this value never occurs" are different facts and a 0% bar states the second.
-    /// </remarks>
+    // A missing or zero denominator draws a dash, not a bar of no length: "cannot be worked out"
+    // and "never occurs" are different facts, and an empty bar states the second.
     private static void ShareCell(
         RenderTreeBuilder builder, int seq, double? count, double? valid, Texts texts)
     {

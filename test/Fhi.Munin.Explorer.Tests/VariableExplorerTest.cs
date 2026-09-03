@@ -5568,12 +5568,8 @@ public class VariableExplorerTest : BunitContext
         Assert.Contains("Kildekodeverk", panel.QuerySelectorAll("h4").Select(h => h.TextContent));
     }
 
-    /// <summary>
-    /// The payload Fhi.Metadata-e3e2d captured from prod: V_KK.ALLERGY_DIAGNOSED_KK449, an
-    /// accumulated statistic with four coded answers. Its numbers are real, and the four code
-    /// counts sum to exactly the statistic's own GyldigeTilfeller, which is what makes it a fair
-    /// test of the denominator — a fixture where they differ could not tell the two apart.
-    /// </summary>
+    // The payload Fhi.Metadata-e3e2d captured from prod. Its four code counts sum to exactly the
+    // statistic own GyldigeTilfeller, which is what makes it a fair test of the denominator.
     private static VariableDetail DetailWithFrequencies(Guid id) => Detail(id) with
     {
         DatasamlingStatisticsType = "Accumulated",
@@ -5631,10 +5627,9 @@ public class VariableExplorerTest : BunitContext
             ["Verdi", "Kategori", "% av gyldige", "Antall"],
             table.QuerySelectorAll("thead th").Select(cell => cell.TextContent));
 
-        // THE COLUMN MAP, which is where this could have been built wrong. Verdi is
-        // KodeverkLokalID — "0" — and not Code, which is fully qualified and 43 characters wide in
-        // prod where Runa's column is three. Rendering Code here is the same class of mistake as
-        // "Kildekodeverk: 2336".
+        // THE COLUMN MAP, where this could have been built wrong: Verdi is KodeverkLokalID and not
+        // Code, which is 43 characters wide in prod against a three-wide column. Rendering Code
+        // here is the "Kildekodeverk: 2336" mistake again.
         var first = table.QuerySelectorAll("tbody tr")[0];
 
         Assert.Equal("0", first.Children[0].TextContent);
@@ -5646,10 +5641,9 @@ public class VariableExplorerTest : BunitContext
     [Fact]
     public void Panel_WhenTheRowsDoNotSumToTheValidCount_ThenTheShareStillDividesByTheValidCount()
     {
-        // THE TRAP the bead names. Of 15 420 statistics with codes in prod, 857 sum to less than
-        // their own GyldigeTilfeller and one to 22.7 times more — so a percentage computed from the
-        // row sum agrees with this one on the common case and is wrong on 858 variables. Here the
-        // rows sum to 100 while the statistic says 200: dividing by the sum would draw 50%.
+        // THE TRAP the bead names: a percentage from the row sum agrees on the common case and is
+        // wrong on 858 variables in prod (Fhi.Metadata-e3e2d). Rows sum to 100, the statistic says
+        // 200 — dividing by the sum would draw 50%.
         var detail = DetailWithFrequencies(TaleId) with
         {
             Statistics =
@@ -5738,10 +5732,9 @@ public class VariableExplorerTest : BunitContext
     [Fact]
     public void Panel_WhenTheStatisticsAreAccumulated_ThenOnlyTheLastRowDrawsUnderSistOppdatert()
     {
-        // An accumulated set is a running total: every row but the last is a partial sum of the one
-        // after it, so drawing them all invites a reader to compare numbers that are not
-        // comparable. The column is not "År" either — the value is the year set the total was last
-        // computed over, which is what "Sist oppdatert" says.
+        // Every row but the last is a partial sum of the one after it, so drawing them all invites
+        // a reader to compare numbers that are not comparable. The column is not the year either:
+        // it is the year set the total was last computed over.
         var detail = DetailWithFrequencies(TaleId) with
         {
             Statistics =
