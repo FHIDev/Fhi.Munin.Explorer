@@ -6203,6 +6203,7 @@ public class VariableExplorerTest : BunitContext
     // A kildekodeverk with no name (Fhi.Metadata-l9l2n.38). The API stopped sending a name it could
     // not trust, for the majority of V-KK links on helsedata.no, so what identifies such a link is
     // its codes — and that is what its line shows.
+    // ---------------------------------------------------------------------------------
 
     /// <summary>Nine codes behind the nameless link: one more than fits on the line.</summary>
     private static KodeverkCodes ManyCodes2336() => Codes2336() with

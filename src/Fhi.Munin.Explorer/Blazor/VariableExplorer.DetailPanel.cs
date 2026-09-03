@@ -562,8 +562,8 @@ public partial class VariableExplorer
         var seq = 0;
 
         // How many lines this kind has already given each key, so a repeated one can be told from
-        // the first. Every ordinary link is its key's first, and so keeps a key that is only the
-        // link — which is what survives a reorder.
+        // the first. An ordinary link is always its key's first, so its count is 0 wherever the
+        // payload puts it — which is what survives a reorder.
         var occurrences = new Dictionary<KodeverkKey, int>();
 
         foreach (var (link, index) in links)
@@ -580,8 +580,9 @@ public partial class VariableExplorer
             // or collapsed code list, and two links reordered under one heading would otherwise
             // swap the lists open beneath them.
             //
-            // The occurrence only ever moves off zero for a kodeverk the payload names twice. Two
-            // siblings with one key throw inside the diff — a host's whole page, in Blazor Server.
+            // Paired with the count so the key is unique, which only bites for a kodeverk the
+            // payload names twice: two siblings with one key throw inside the diff — a host's whole
+            // page, in Blazor Server.
             builder.SetKey((key, occurrence));
             builder.AddAttribute(seq + 1, "class", "munin-explorer-kodeverk__item");
 
