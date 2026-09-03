@@ -693,13 +693,103 @@ public class KildeExplorerTest : BunitContext
         Assert.Contains("Hoveddatasamling", panel.TextContent);
         Assert.Contains("Bølge 4 - serie 49", panel.TextContent);
 
-        // Grouped and headed by real headings rather than styled paragraphs: flat is the defect
-        // Fhi.Metadata-wgpeo names, and a screen reader navigates this panel by its headings, which
-        // sit one below the component title because a table row is not a heading.
-        var heading = panel.QuerySelector("h3.munin-explorer-kilde__delkilde-name")!;
+        // The panel names itself and the groups hang under it, so a group is never announced as a
+        // peer of the filter panel and the kilde's own datasamlinger are not left unowned.
+        Assert.Equal("Datasamlinger for Als registeret", panel.QuerySelector("h3")!.TextContent);
+
+        var heading = panel.QuerySelector("h4.munin-explorer-kilde__delkilde-name")!;
 
         Assert.Equal("Bølge 4", heading.TextContent);
         Assert.Equal(2, panel.QuerySelectorAll("table.munin-explorer-kilde__datasamlinger").Length);
+    }
+
+    [Fact]
+    public void Render_WhenADelkildeIsNested_ThenItsDatasamlingerAreDrawnToo()
+    {
+        // The count that decides whether a toggle is drawn at all includes datasamlinger under
+        // delkilder at any depth, so stopping at the first level opens a row on nothing while the
+        // Datasamlinger column still promises them (KildeDetail.cs: "walk it recursively").
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 1);
+        var detail = Detail(als) with
+        {
+            Delkilder =
+            [
+                new()
+                {
+                    Name = "Bølge 4",
+                    Children = [new() { Name = "Serie 49", Datasamlinger = [Collection("Dypt nede")] }]
+                }
+            ]
+        };
+
+        var cut = RenderWith(new FakeClient(als).Describing(detail));
+
+        ExpandToggle(cut, "Als registeret").Click();
+
+        var panel = cut.Find(".munin-explorer-kilder__expanded");
+
+        Assert.Contains("Dypt nede", panel.TextContent);
+
+        // A step deeper in the outline than a first-level delkilde, which is what says it is inside
+        // one rather than beside it.
+        Assert.Equal("Serie 49", panel.QuerySelector("h5.munin-explorer-kilde__delkilde-name")!.TextContent);
+    }
+
+    [Fact]
+    public void Render_WhenTheKildeHasNoDatasamlingerAfterAll_ThenTheRowSaysSoRatherThanOpeningBlank()
+    {
+        // The toggle is drawn from the list endpoint's count and the panel is filled from a second,
+        // separate request; they can disagree. An empty panel with an empty status line says
+        // nothing at all, which is the state this branch's other tests exist to prevent.
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 3);
+        var cut = RenderWith(new FakeClient(als).Describing(Detail(als)));
+
+        ExpandToggle(cut, "Als registeret").Click();
+
+        var panel = cut.Find(".munin-explorer-kilder__expanded");
+
+        Assert.Equal("Ingen datasamlinger registrert", panel.QuerySelector("p[role=status]")!.TextContent);
+        Assert.Empty(panel.QuerySelectorAll("table"));
+    }
+
+    [Fact]
+    public void Render_WhenTheDatasamlingerArrive_ThenTheLiveRegionSaysHowMany()
+    {
+        // A region that empties on success never announces the one outcome the reader pressed for.
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        ExpandToggle(cut, "Als registeret").Click();
+
+        var status = cut.Find(".munin-explorer-kilder__expanded p[role=status]");
+
+        Assert.Equal("2 datasamlinger", status.TextContent);
+        Assert.Equal("polite", status.GetAttribute("aria-live"));
+    }
+
+    [Fact]
+    public void Render_WhenTheCatalogueCuratesAnOrder_ThenThePanelFollowsItAsTheDrilldownDoes()
+    {
+        // DatasamlingTable was shared so the two views agree about the same kilde; order is part of
+        // that agreement, and KildeView sorts every level by PresentationOrder then by name.
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 3);
+        var detail = Detail(als) with
+        {
+            Datasamlinger =
+            [
+                Collection("Siste") with { PresentationOrder = 3 },
+                Collection("Første") with { PresentationOrder = 1 },
+                Collection("Midten") with { PresentationOrder = 2 }
+            ]
+        };
+
+        var cut = RenderWith(new FakeClient(als).Describing(detail));
+
+        ExpandToggle(cut, "Als registeret").Click();
+
+        var names = cut.FindAll(".munin-explorer-kilder__expanded tbody th").Select(c => c.TextContent);
+
+        Assert.Equal(["Første", "Midten", "Siste"], names);
     }
 
     [Fact]

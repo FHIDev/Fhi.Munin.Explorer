@@ -458,13 +458,15 @@ else
                                    aria-live="polite"
                                    aria-atomic="true">@ExpandedStatus(kilde.Id)</p>
 
-                                @if (ExpandedStatus(kilde.Id) is null)
+                                @if (!_datasamlingerLoading.Contains(kilde.Id) && !_datasamlingerError.ContainsKey(kilde.Id))
                                 {
+                                    @PanelHeading(kilde.Name)
+
                                     @foreach (var group in DatasamlingGroups(kilde.Id))
                                     {
                                         @if (group.Heading is { } heading)
                                         {
-                                            @GroupHeading(heading)
+                                            @GroupHeading(heading, group.Depth)
                                         }
                                         @DatasamlingTable.For(group.Rows, T, Language, Reader)
                                     }

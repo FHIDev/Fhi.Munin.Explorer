@@ -232,15 +232,26 @@ public sealed partial class KildeExplorer : ComponentBase
 
     private bool IsExpanded(Guid id) => _expanded.Contains(id);
 
-    // A table row is not a heading, so the nearest one above a group inside an expanded row is the
-    // component's own title; the group sits one step below that.
-    private int ExpandedGroupLevel => Math.Clamp(TitleLevel + 1, 1, 6);
+    // The panel names itself, because a table row carries no heading for its groups to hang under.
+    private int ExpandedPanelLevel => Math.Clamp(TitleLevel + 1, 1, 6);
+
+    // One below the panel's own heading, and a step per level of nesting after that — the shape
+    // KildeView gives the same delkilde names, so the two views agree about depth.
+    private int ExpandedGroupLevel(int depth) => Math.Clamp(ExpandedPanelLevel + 1 + depth, 1, 6);
+
+    internal RenderFragment PanelHeading(string name) => builder =>
+    {
+        builder.OpenElement(0, $"h{ExpandedPanelLevel}");
+        builder.AddAttribute(1, "class", "headline headline-xxs margin--none");
+        builder.AddContent(2, T.DatasamlingerFor(name));
+        builder.CloseElement();
+    };
 
     // A real heading rather than a styled <p>: a screen reader navigates the panel by these, and
-    // KildeView already draws the same delkilde name as h{level} with the same class.
-    private RenderFragment GroupHeading(string name) => builder =>
+    // KildeView draws the same delkilde names as headings too.
+    private RenderFragment GroupHeading(string name, int depth) => builder =>
     {
-        builder.OpenElement(0, $"h{ExpandedGroupLevel}");
+        builder.OpenElement(0, $"h{ExpandedGroupLevel(depth)}");
         builder.AddAttribute(1, "class",
                              "headline headline-xxs margin--none munin-explorer-kilde__delkilde-name");
         builder.AddAttribute(2, "lang", CatalogueProperties.Foreign("no", Reader));
@@ -257,10 +268,30 @@ public sealed partial class KildeExplorer : ComponentBase
     // The same shape as DetailStatus beside it: one line that is the loading sentence, then the
     // error, then nothing — so a single live region announces whichever state the panel is in
     // rather than a second element appearing under a reader who has already been told.
-    private string? ExpandedStatus(Guid id) =>
-        _datasamlingerLoading.Contains(id)
-            ? T.KildeLoading
-            : _datasamlingerError.GetValueOrDefault(id);
+    private string? ExpandedStatus(Guid id)
+    {
+        if (_datasamlingerLoading.Contains(id))
+        {
+            return T.KildeLoading;
+        }
+
+        if (_datasamlingerError.GetValueOrDefault(id) is { } error)
+        {
+            return error;
+        }
+
+        if (!_datasamlinger.ContainsKey(id))
+        {
+            return null;
+        }
+
+        // Success says how much arrived. A region that empties on success is a region that never
+        // announces the one outcome the reader pressed for, and "opened on nothing" and "opened on
+        // seven" are the two answers they cannot tell apart otherwise.
+        var rows = DatasamlingGroups(id).Sum(group => group.Rows.Count);
+
+        return rows == 0 ? T.NoDatasamlinger : T.DatasamlingerLoaded(rows);
+    }
 
     private string ExpandedStatusClass(Guid id) =>
         !_datasamlingerLoading.Contains(id) && _datasamlingerError.ContainsKey(id)
@@ -339,32 +370,53 @@ public sealed partial class KildeExplorer : ComponentBase
         }
     }
 
-    // Direct datasamlinger first, then one group per delkilde that has any — flat would lose which
-    // of them belong to a delkilde, the defect Fhi.Metadata-wgpeo was filed for.
-    private IReadOnlyList<(string? Heading, IReadOnlyList<KildeDatasamling> Rows)> DatasamlingGroups(Guid id)
+    // Direct datasamlinger first, then one group per delkilde that has any, at every depth — flat
+    // would lose which of them belong to a delkilde (Fhi.Metadata-wgpeo), and stopping at the first
+    // level would drop a grandchild's entirely while the row's count still promised them.
+    private IReadOnlyList<(string? Heading, int Depth, IReadOnlyList<KildeDatasamling> Rows)> DatasamlingGroups(Guid id)
     {
         if (!_datasamlinger.TryGetValue(id, out var detail) || detail is null)
         {
             return [];
         }
 
-        var groups = new List<(string?, IReadOnlyList<KildeDatasamling>)>();
+        var groups = new List<(string?, int, IReadOnlyList<KildeDatasamling>)>();
 
         if (detail.Datasamlinger.Count > 0)
         {
-            groups.Add((null, detail.Datasamlinger));
+            groups.Add((null, 0, Ordered(detail.Datasamlinger)));
         }
 
-        foreach (var delkilde in detail.Delkilder)
-        {
-            if (delkilde.Datasamlinger.Count > 0)
-            {
-                groups.Add((delkilde.Name, delkilde.Datasamlinger));
-            }
-        }
+        Collect(Ordered(detail.Delkilder), 0, groups);
 
         return groups;
     }
+
+    private static void Collect(
+        IReadOnlyList<KildeDelkilde> delkilder,
+        int depth,
+        List<(string?, int, IReadOnlyList<KildeDatasamling>)> groups)
+    {
+        foreach (var delkilde in delkilder)
+        {
+            if (delkilde.Datasamlinger.Count > 0)
+            {
+                groups.Add((delkilde.Name, depth, Ordered(delkilde.Datasamlinger)));
+            }
+
+            Collect(Ordered(delkilde.Children), depth + 1, groups);
+        }
+    }
+
+    // The catalogue's curated order, the same sort KildeView applies — the two views report the
+    // same datasamlinger about the same kilde and must not disagree about their order.
+    private static IReadOnlyList<KildeDatasamling> Ordered(IReadOnlyList<KildeDatasamling> rows) =>
+        [.. rows.OrderBy(d => d.PresentationOrder ?? int.MaxValue)
+                .ThenBy(d => d.Name, CatalogueProperties.CatalogueOrder)];
+
+    private static IReadOnlyList<KildeDelkilde> Ordered(IReadOnlyList<KildeDelkilde> delkilder) =>
+        [.. delkilder.OrderBy(d => d.PresentationOrder ?? int.MaxValue)
+                     .ThenBy(d => d.Name, CatalogueProperties.CatalogueOrder)];
 
     // Unique per instance so two explorers on one page cannot collide on DOM ids, which would be a
     // WCAG 4.1.1 failure as well as breaking label association.

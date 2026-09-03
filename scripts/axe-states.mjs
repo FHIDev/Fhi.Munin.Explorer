@@ -72,4 +72,17 @@ export const states = {
       .first()
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
+  // A kilde row opened on its datasamlinger. The panel only exists after a press, so everything
+  // in it - the colspan cell, the nested tables, the headings and the live region - is invisible
+  // to the kilder-list scan above (Fhi.Metadata-mq24y).
+  'kilder-expanded': async page => {
+    const toggle = page.locator('.munin-explorer-kilder__expand-toggle').first();
+    await toggle.waitFor({ state: 'visible', timeout: findTimeout });
+    await toggle.click();
+
+    await page
+      .locator('.munin-explorer-kilder__expanded table')
+      .first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
+  },
 };
