@@ -170,10 +170,9 @@ else
                    placeholder="@T.KildeSearchPlaceholder"
                    autocomplete="off"
                    maxlength="200" />
-            @* Drawn only when there is something to clear, which is what an x inside a field
-               means — and why the press has to hand focus back to the field: the control leaves
-               the DOM with the text it cleared. Named by aria-label, because the glyph is not a
-               name. (Fhi.Metadata-ag4n7) *@
+            @* Drawn only when there is something to clear, so a press takes it off the page under
+               the reader's focus — which is why the handler hands that focus back. Named by
+               aria-label: the glyph is not a name. (Fhi.Metadata-ag4n7) *@
             @if (searchText is not null)
             {
                 <button class="munin-explorer-search__clear"
