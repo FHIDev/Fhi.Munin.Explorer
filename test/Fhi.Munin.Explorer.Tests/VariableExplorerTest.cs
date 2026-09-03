@@ -8654,9 +8654,13 @@ public class VariableExplorerTest : BunitContext
         var container = cut.Find("form[role=search] .searchbox__freetext-container");
         var controls = container.QuerySelectorAll("button");
 
-        Assert.Equal(
-            ["munin-explorer-search__clear", "searchbox__freetext-submit-button"],
-            controls.Select(b => b.ClassName!.Split(' ').Last()));
+        // DOM order and identity, not the order of tokens inside a class attribute: reshuffling
+        // those changes nothing a reader can tell and must not fail this.
+        Assert.Equal(2, controls.Length);
+        Assert.True(controls[0].ClassList.Contains("munin-explorer-search__clear"),
+                    "The clear control is not the first button inside the field.");
+        Assert.True(controls[1].ClassList.Contains("searchbox__freetext-submit-button"),
+                    "The submit button is not the second button inside the field.");
 
         // Still a text input. The user-agent ✕ that type="search" draws is the defect 5ghur
         // removed — it fires a DOM event Blazor does not bind, so it emptied the box without
