@@ -32,9 +32,13 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 #   - the kildeutforsker's own facet panel, which sits behind its `Vis filtre` toggle;
 #   - the pager past page one, and anything reached by searching or by narrowing a facet;
 #   - error and empty states, which need the stub to answer differently than it does;
-#   - the English texts, and samples/LegacyHost, the same component in the other host.
-# Each is another page load and settle, about ten seconds, and none carries the risk the five
+#   - the English texts, and samples/LegacyHost, the same component in the other host;
+#   - the list tab's own create, rename and delete forms, and the annotation field in a row.
+# Each is another page load and settle, about ten seconds, and none carries the risk the
 # targets below do. Add one here and in axe-states.mjs when that stops being true.
+#
+# /utforsker is the only page in either sample that mounts the composed VariableExplorer, so it is
+# the only place the page-level tablist and the reader's list panel are scanned at all.
 TARGETS=(
   "/::variables-list"
   "/kilder::kilder-list"
@@ -42,6 +46,8 @@ TARGETS=(
   "/::variable-detail"
   "/kilder::kilde-drilldown"
   "/kilder::kilder-expanded"
+  "/utforsker::explorer-tabs"
+  "/utforsker::explorer-list-tab"
 )
 
 host_pid=""

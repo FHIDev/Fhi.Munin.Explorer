@@ -24,7 +24,7 @@ public sealed partial class VariableView : ComponentBase
     [Parameter, EditorRequired]
     public VariableDetail? Variable { get; set; }
 
-    /// <inheritdoc cref="VariableExplorer.Language"/>
+    /// <inheritdoc cref="VariableSearch.Language"/>
     [Parameter]
     public string? Language { get; set; }
 
@@ -47,7 +47,7 @@ public sealed partial class VariableView : ComponentBase
     public RenderFragment? Sections { get; set; }
 
     // Unique per instance so two of these views on one page cannot collide on DOM ids, the same
-    // reason VariableExplorer carries one. A host mounting a variable beside the one it replaced
+    // reason VariableSearch carries one. A host mounting a variable beside the one it replaced
     // is the case that makes it real: both views hold the same version ids.
     private readonly string _instance = Guid.NewGuid().ToString("N")[..8];
 

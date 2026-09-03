@@ -5,7 +5,17 @@
    has no business wording. The host knows how its readers sign in; the package does not. *@
 @if (State?.IsAuthenticated == true)
 {
-    <div class="munin-explorer munin-explorer-container">
+    @* No class. This root carried `munin-explorer munin-explorer-container`, and both are page
+       layout: measured in helsedata, `munin-explorer` computes to
+       `display: grid; grid-template-columns: 384px 576px` — the shell's own sidebar-and-results
+       grid — and `munin-explorer-container` is `display: flex; flex-direction: row`. This view is
+       a column of blocks and is neither, so its heading, create form and alerts were laid out as
+       columns of a page grid. Nested in the explorer's tab panel that ran past the viewport.
+
+       Nothing replaces them: a block is what this wants, and the ghost-button border the samples
+       scope under `.munin-explorer` still applies here through the explorer's own section when
+       this view is mounted inside it. (Fhi.Metadata-l9l2n.39) *@
+    <div>
 
         @* No class on the heading: the package ships no CSS, and the other components leave
            theirs bare too. A name here would be one with no rule behind it. *@
@@ -28,21 +38,21 @@
 
         @* @bind with onchange, deliberately NOT value + @oninput: this renders inside a Blazor
            Server circuit, where oninput is one round trip per keystroke and drops characters on a
-           fast paste. The search field says the same thing at VariableExplorer.razor:146.
+           fast paste. The search field says the same thing at VariableSearch.razor:146.
 
            aria-disabled rather than disabled on the button: it becomes unavailable the moment a
            successful create clears the name, and disabling the element that has focus drops focus
            to <body>. CreateListAsync already refuses an empty name, so the press is inert. *@
         <div>
             @* A real label with for/id, the shape the search field uses at
-               VariableExplorer.razor:140 — not a placeholder. A placeholder is not an accessible
+               VariableSearch.razor:140 — not a placeholder. A placeholder is not an accessible
                name: a screen reader announces an unnamed edit field, and the hint disappears the
                moment the reader starts typing, which is the one time they most need to know what
                the field is for. WCAG 4.1.2 and 3.3.2.
 
                `form-element__label` is borrowed, not ours — Stiler's own label style, read back
                off its compiled stylesheet and already worn by the search field and the filter
-               panel's legend (VariableExplorer.razor:140, 209, 216). README's list of borrowed
+               panel's legend (VariableSearch.razor:140, 209, 216). README's list of borrowed
                names carries it. No new name is being invented here; a name Stiler has never heard
                of would render as a raw browser default on a host that has only Stiler.
 
@@ -143,7 +153,11 @@
             @DesiredDataRefusalMessage
         </div>
 
-        @if (Lists.Count == 0)
+        @* Not while the read is known to have failed. The alert above already says so, and
+           "du har ingen variabellister ennå" beside it answers the same question the other way —
+           the reader cannot tell whether they have none or whether we never found out. The two
+           branches below are already unreachable then, because a failure leaves _page null. *@
+        @if (!_failed && Lists.Count == 0)
         {
             <p>@T.NoListsYet</p>
         }
@@ -155,7 +169,7 @@
         {
             @* role="table" over the same seven columns the explorer's own result list draws, plus
                the annotation column that is this view's alone, and for the same reason. These rows
-               share helsedata's `munin-explorer-data-list` markup with `VariableExplorer`, so they
+               share helsedata's `munin-explorer-data-list` markup with `VariableSearch`, so they
                shared its failure too: measured in Chrome's accessibility tree, not one row, column
                or header of the reader's own saved list reached assistive technology — a flat run
                of text with no way to hear which column a value was in (WCAG 1.3.1). axe never

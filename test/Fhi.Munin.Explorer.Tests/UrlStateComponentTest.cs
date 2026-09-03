@@ -91,14 +91,14 @@ public class UrlStateComponentTest : BunitContext
     /// </remarks>
     private RecordingClient RenderExplorer(
         string url,
-        out IRenderedComponent<VariableExplorerWithUrlState> cut,
-        Action<ComponentParameterCollectionBuilder<VariableExplorerWithUrlState>>? parameters = null)
+        out IRenderedComponent<VariableExplorer> cut,
+        Action<ComponentParameterCollectionBuilder<VariableExplorer>>? parameters = null)
     {
         var client = new RecordingClient();
         Services.AddSingleton<IMuninExplorerClient>(client);
         Prepare();
         Navigation.NavigateTo(url);
-        cut = Render<VariableExplorerWithUrlState>(b => parameters?.Invoke(b));
+        cut = Render<VariableExplorer>(b => parameters?.Invoke(b));
 
         return client;
     }
@@ -283,20 +283,20 @@ public class UrlStateComponentTest : BunitContext
     }
 
     /// <inheritdoc cref="RenderExplorer"/>
-    private IRenderedComponent<VariableExplorerWithUrlState> RenderVariables(
+    private IRenderedComponent<VariableExplorer> RenderVariables(
         string url,
-        Action<ComponentParameterCollectionBuilder<VariableExplorerWithUrlState>>? parameters = null)
+        Action<ComponentParameterCollectionBuilder<VariableExplorer>>? parameters = null)
     {
         Services.AddSingleton<IMuninExplorerClient>(new TwoVariableClient());
         Services.AddScoped<VariableListState>();
         Prepare();
         Navigation.NavigateTo(url);
 
-        return Render<VariableExplorerWithUrlState>(b => parameters?.Invoke(b));
+        return Render<VariableExplorer>(b => parameters?.Invoke(b));
     }
 
     /// <summary>The rows, whose names are the disclosures that open a variable.</summary>
-    private static IReadOnlyList<IElement> Rows(IRenderedComponent<VariableExplorerWithUrlState> cut) =>
+    private static IReadOnlyList<IElement> Rows(IRenderedComponent<VariableExplorer> cut) =>
         cut.FindAll("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name");
 
     [Theory]

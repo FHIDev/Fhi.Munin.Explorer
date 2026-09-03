@@ -108,7 +108,7 @@ THEIRS=(
   # Empty by construction, and a list rather than a deletion: the category comes back the moment
   # the package borrows a prefixed name again. Anything added here needs a note saying which
   # stylesheet it was read back off, the way the six used to — and the same note in
-  # VariableExplorerTest's `invented` assertions, which annotate the prefix name by name.
+  # VariableSearchTest's `invented` assertions, which annotate the prefix name by name.
 )
 
 # Names in the prefix that are ours but are not classes: element ids the package writes down in

@@ -143,14 +143,14 @@ public class SaveToListTest : BunitContext
         }
     }
 
-    private IRenderedComponent<VariableExplorer> RenderSignedIn(ListClient client, bool signedIn = true)
+    private IRenderedComponent<VariableSearch> RenderSignedIn(ListClient client, bool signedIn = true)
     {
         Services.AddSingleton<IMuninExplorerClient>(client);
         Services.AddScoped<VariableListState>();
-        return Render<VariableExplorer>(p => p.Add(c => c.IsAuthenticated, signedIn));
+        return Render<VariableSearch>(p => p.Add(c => c.IsAuthenticated, signedIn));
     }
 
-    private static IElement SaveButton(IRenderedComponent<VariableExplorer> cut) =>
+    private static IElement SaveButton(IRenderedComponent<VariableSearch> cut) =>
         cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]")[0];
 
     // -----------------------------------------------------------------------
@@ -220,7 +220,7 @@ public class SaveToListTest : BunitContext
             new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))));
         Services.AddScoped<VariableListState>();
 
-        var cut = Render<VariableExplorer>(p => p
+        var cut = Render<VariableSearch>(p => p
             .Add(c => c.IsAuthenticated, true)
             .Add(c => c.Language, "en"));
 
@@ -337,7 +337,7 @@ public class SaveToListTest : BunitContext
     public void Row_WhenTwoExplorersShareAPage_ThenEverySaveButtonBorrowsItsOwnRowsName()
     {
         // helsedata's CMS can legitimately put two explorers on one page — the reason every id in
-        // this component carries a per-mount discriminator (VariableExplorer.razor.cs, _instance).
+        // this component carries a per-mount discriminator (VariableSearch.razor.cs, _instance).
         // The row's two newest ids are the save button's own and the name span's, and without the
         // discriminator two explorers listing the same variable mint each of them twice: a WCAG
         // 4.1.1 failure, and — because accname takes the first element with a matching id — every
@@ -354,11 +354,11 @@ public class SaveToListTest : BunitContext
 
         var page = Render(builder =>
         {
-            builder.OpenComponent<VariableExplorer>(0);
-            builder.AddComponentParameter(1, nameof(VariableExplorer.IsAuthenticated), true);
+            builder.OpenComponent<VariableSearch>(0);
+            builder.AddComponentParameter(1, nameof(VariableSearch.IsAuthenticated), true);
             builder.CloseComponent();
-            builder.OpenComponent<VariableExplorer>(2);
-            builder.AddComponentParameter(3, nameof(VariableExplorer.IsAuthenticated), true);
+            builder.OpenComponent<VariableSearch>(2);
+            builder.AddComponentParameter(3, nameof(VariableSearch.IsAuthenticated), true);
             builder.CloseComponent();
         });
 

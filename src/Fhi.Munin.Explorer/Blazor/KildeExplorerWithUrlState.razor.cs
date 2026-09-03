@@ -6,13 +6,14 @@ namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
 /// <see cref="KildeExplorer"/> with the open kilde in the host's address bar, and the handover to
-/// <see cref="VariableExplorer"/> wired up.
+/// <see cref="VariableSearch"/> wired up.
 /// </summary>
 /// <remarks>
 /// <para>
-/// The kildeutforsker's half of what <see cref="VariableExplorerWithUrlState"/> does for the
-/// variable explorer, and much smaller because Kelda carries less: the open kilde is the only part
-/// of the view worth linking to. A link opens that kilde; closing it puts the reader back on the
+/// The kildeutforsker's half of what <see cref="VariableExplorer"/> does for the variable side, and
+/// much smaller because Kelda carries less: the open kilde is the only part of the view worth
+/// linking to. Still a separate name, where the variable side has folded its wrapper into
+/// <see cref="VariableExplorer"/>, because Kelda has no personal lists to put behind a second tab. A link opens that kilde; closing it puts the reader back on the
 /// path they arrived on, <c>PathBase</c> included, rather than on the site root.
 /// </para>
 /// <para>
@@ -43,7 +44,7 @@ public partial class KildeExplorerWithUrlState : ComponentBase
     [Parameter] public string Language { get; set; } = "no";
 
     /// <summary>
-    /// Where the host mounted <see cref="VariableExplorer"/>, so the chosen kilder can be handed
+    /// Where the host mounted <see cref="VariableSearch"/>, so the chosen kilder can be handed
     /// over to it. Leave it null and the selection column is not offered at all.
     /// </summary>
     /// <remarks>

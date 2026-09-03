@@ -23,17 +23,17 @@ namespace Fhi.Munin.Explorer.Tests;
 /// both are exercised here directly: the assertions below are about what the core does with them,
 /// and <c>KildeSectionsTest</c> is about the difference they make between the two explorers.
 /// <see cref="KildeView.HeadingLevel"/> and <see cref="KildeView.HeadingId"/> are wired — the
-/// explorer passes both at VariableExplorer.razor:104-107 — and the explorer's tests already follow
+/// explorer passes both at VariableSearch.razor:104-107 — and the explorer's tests already follow
 /// two of the things that come out: the title's level, mounted at h1 and asserted h2
 /// (<c>Source_WhenThePanelIsOpen_ThenItsHeadingSitsBelowTheCardsInTheOutline</c>,
-/// VariableExplorerTest.cs:5763), and the id the landmark is named by, resolved back to this view's
+/// VariableSearchTest.cs:5763), and the id the landmark is named by, resolved back to this view's
 /// name heading (<c>Source_WhenOpened_ThenTheToggleAndTheRegionAreWiredToEachOther</c>, :5478).
 /// What no test covered is narrower: the levels the blocks under the title land on, and either
 /// parameter with the view rendered whole rather than reached through the drill-in.
 /// <para>
 /// The class-name check is the one thing here that was already hanging somewhere: the explorer's
 /// own <c>Source_WhenAPanelIsOpen_ThenItIsBuiltFromShapesRatherThanFromANewStyleName</c>
-/// (VariableExplorerTest.cs:5701) opens the drill-in and pins nine of the ten names this view
+/// (VariableSearchTest.cs:5701) opens the drill-in and pins nine of the ten names this view
 /// emits. Both lists are worth keeping — that one guards the path a reader actually takes, this one
 /// guards the view rendered whole — but they are two hand-maintained lists in two files, so a name
 /// added or renamed here has to be answered in both.
@@ -331,7 +331,7 @@ public class KildeViewTest : BunitContext
         // are all on the explorer, none on this view — so every one is a promise only the sample
         // stylesheet keeps.
         //
-        // It is the second such list: VariableExplorerTest.cs pins twelve of these fourteen down the
+        // It is the second such list: VariableSearchTest.cs pins twelve of these fourteen down the
         // drill-in path, all but munin-explorer-group, which that fixture's kilde has no metadata
         // groups to produce, and the delkilde beskrivelse, which its delkilder do not carry.
         // Renaming a handle means editing both, and the other one fails with a message about the

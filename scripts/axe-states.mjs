@@ -85,4 +85,29 @@ export const states = {
       .first()
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
+
+  // The composed explorer on /utforsker, which is the only page in either sample that draws the
+  // page-level tablist. The front page mounts VariableSearch on its own, so neither the tabs nor
+  // the reader's list panel appears in any state above (Fhi.Metadata-l9l2n.39).
+  //
+  // The wait is on a result row, not on the tablist: the tabs render before the search answers,
+  // so waiting on them would scan a page whose data never arrived.
+  'explorer-tabs': page => rowsArePresent(page, 'button.munin-explorer-dataitem-main__name'),
+
+  // The same page with the second tab open. The list panel is in the DOM from the first render —
+  // `hidden`, so axe skips it — and only becomes something to judge once the tab is pressed.
+  'explorer-list-tab': async page => {
+    await rowsArePresent(page, 'button.munin-explorer-dataitem-main__name');
+
+    // getByRole('tab'), not 'button': an explicit role="tab" replaces the element's implicit
+    // button role, so the press helper above cannot see it.
+    const tab = page.getByRole('tab', { name: 'Variabelliste', exact: true }).first();
+    await tab.waitFor({ state: 'visible', timeout: findTimeout });
+    await tab.click();
+
+    await page
+      .locator('[role=tabpanel]:not([hidden]) .munin-explorer-data-list')
+      .first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
+  },
 };

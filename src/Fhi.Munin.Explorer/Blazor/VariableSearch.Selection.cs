@@ -7,7 +7,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// Separate from the panels themselves: those decide how a payload is drawn, this decides which
 /// payload there is to draw and what happens to it when the rows underneath change.
 /// </summary>
-public partial class VariableExplorer
+public partial class VariableSearch
 {
     /// <summary>Whether the whole variable is showing, rather than the panel's summary of it.</summary>
     /// <remarks>

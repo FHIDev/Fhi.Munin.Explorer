@@ -47,6 +47,7 @@ public class HostContractTest
         var found = ComponentFiles().Select(Path.GetFileName).ToHashSet(StringComparer.Ordinal);
 
         Assert.Contains("VariableExplorer.razor", found);
+        Assert.Contains("VariableSearch.razor", found);
         Assert.Contains("KildeExplorer.razor", found);
         Assert.Contains("KildeView.razor", found);
         Assert.Contains("VariableView.razor", found);

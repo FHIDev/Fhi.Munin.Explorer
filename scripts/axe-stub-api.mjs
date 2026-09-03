@@ -36,6 +36,7 @@ const routes = [
   [/^\/api\/explorer\/kilder\/[^/]+$/, 'kilde.json'],
   [/^\/api\/explorer\/kilder$/, 'kilder.json'],
   [/^\/api\/explorer\/datasamling\/[^/]+$/, 'datasamling.json'],
+  [/^\/api\/explorer\/my\/lists\/[^/]+\/variables$/, 'my-list-variables.json'],
   [/^\/api\/explorer\/my\/lists$/, 'my-lists.json'],
 ];
 
@@ -46,8 +47,31 @@ for (const [pattern, source] of routes) {
   bodies.set(pattern, source.startsWith('[') ? source : readFileSync(join(fixtures, source), 'utf8'));
 }
 
+// The one route whose fixture cannot be served verbatim. my-list-variables.json is a real capture:
+// 247 entries reported, two of them kept. Served as-is for every page, it says "page 1 of 3" every
+// time, and VariableListState walks every page of the active list — so the walk never advances and
+// the circuit asks forever (measured at ~7000 requests a second). The counts are made to agree with
+// the entries actually being served instead.
+const listVariables = /^\/api\/explorer\/my\/lists\/[^/]+\/variables$/;
+
+function pagedListVariables(body, query) {
+  const page = Math.max(1, Number(query.get('page') ?? 1) || 1);
+  const size = Math.max(1, Number(query.get('pageSize') ?? 100) || 100);
+  const items = JSON.parse(body).items ?? [];
+  const slice = items.slice((page - 1) * size, page * size);
+
+  return JSON.stringify({
+    items: slice,
+    totalCount: items.length,
+    page,
+    size,
+    totalPages: Math.max(1, Math.ceil(items.length / size)),
+  });
+}
+
 const server = createServer((request, response) => {
-  const path = new URL(request.url, 'http://localhost').pathname;
+  const url = new URL(request.url, 'http://localhost');
+  const path = url.pathname;
   const route = routes.find(([pattern]) => pattern.test(path));
 
   if (route === undefined) {
@@ -57,7 +81,11 @@ const server = createServer((request, response) => {
     return;
   }
 
-  response.writeHead(200, { 'content-type': 'application/json' }).end(bodies.get(route[0]));
+  const body = listVariables.test(path)
+    ? pagedListVariables(bodies.get(route[0]), url.searchParams)
+    : bodies.get(route[0]);
+
+  response.writeHead(200, { 'content-type': 'application/json' }).end(body);
 });
 
 server.listen(port, '127.0.0.1', () => console.log(`stub: serving the Testdata fixtures on ${port}`));

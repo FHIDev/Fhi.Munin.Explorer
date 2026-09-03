@@ -192,16 +192,34 @@ public class VariableListViewTest : BunitContext
         /// </remarks>
         public bool VariablesAreUnreadable { get; set; }
 
-        public override Task<Page<VariableListItem>?> GetMyListVariablesAsync(
+        /// <summary>Holds every variable read for this list until <see cref="ReleaseVariables"/>.</summary>
+        /// <remarks>
+        /// A real read is still out when the next caller arrives; a fake that answers at once is
+        /// not, which closes the window a duplicate read lives in (Fhi.Metadata-l9l2n.39).
+        /// </remarks>
+        public Guid? StallVariablesFor { get; set; }
+
+        private readonly TaskCompletionSource _variablesGate =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public void ReleaseVariables() => _variablesGate.TrySetResult();
+
+        public override async Task<Page<VariableListItem>?> GetMyListVariablesAsync(
             Guid id, int page = 1, int pageSize = 100, CancellationToken cancellationToken = default)
         {
             VariablesCalls++;
             LastPageAsked = page;
             _askedFor.Add(id);
 
+            // Counted before the wait, so a second caller arriving mid-read is recorded.
+            if (StallVariablesFor == id)
+            {
+                await _variablesGate.Task;
+            }
+
             if (VariablesAreUnreadable)
             {
-                return Task.FromResult<Page<VariableListItem>?>(null);
+                return null;
             }
 
             if (ThrottledList == id)
@@ -214,7 +232,7 @@ public class VariableListViewTest : BunitContext
             // gone, which is the failure Fhi.Metadata-fjiba is about.
             if (_deleted.Contains(id))
             {
-                return Task.FromResult<Page<VariableListItem>?>(null);
+                return null;
             }
 
             if (_created is not null && id == _created.Id)
@@ -234,7 +252,7 @@ public class VariableListViewTest : BunitContext
             // internal number would hide a component that sent an unexpected page size.
             var slice = _items.Skip((page - 1) * pageSize).Take(pageSize).ToList();
 
-            return Task.FromResult<Page<VariableListItem>?>(new Page<VariableListItem>
+            return (new Page<VariableListItem>
             {
                 Items = slice,
                 TotalCount = _items.Count,
@@ -409,6 +427,42 @@ public class VariableListViewTest : BunitContext
     }
 
     // -----------------------------------------------------------------------
+
+    [Fact]
+    public void Root_WhenItIsDrawn_ThenItDoesNotClaimToBeTheResultsRow()
+    {
+        // munin-explorer-container is `display: flex; flex-direction: row` — the rule that puts a
+        // filter sidebar beside a results column. This view is a column of blocks, and wearing it
+        // laid the heading, the create form and the alerts out side by side. Nested in the
+        // explorer's tab panel that ran past the viewport. The shell class stays; it scopes the
+        // ghost-button rules these controls wear.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        // Measured in helsedata: munin-explorer computes to `display: grid` with
+        // `grid-template-columns: 384px 576px` — the page shell's own sidebar-and-results grid —
+        // and munin-explorer-container to `display: flex; flex-direction: row`. Either one lays
+        // this view's blocks out as columns.
+        var root = cut.Find("[role=alert]").Closest("div:not([role])");
+
+        Assert.NotNull(root);
+        Assert.DoesNotContain("munin-explorer-container", root!.ClassList);
+        Assert.DoesNotContain("munin-explorer", root.ClassList);
+    }
+
+    [Fact]
+    public async Task View_WhenTheListsCannotBeRead_ThenItDoesNotAlsoSayThereAreNone()
+    {
+        // Two contradictory answers to one question. The reader cannot tell whether they have no
+        // lists or whether we failed to find out — and a 401 is the ordinary case here, because a
+        // host can say IsAuthenticated without the client having a token.
+        var client = new ListClient { ListsThrow = true };
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => { });
+
+        Assert.Contains("Kunne ikke hente listen", cut.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("Du har ingen variabellister ennå", cut.Markup, StringComparison.Ordinal);
+    }
 
     [Fact]
     public void View_WhenTheReaderIsSignedOut_ThenNothingIsDrawnAndNothingIsAsked()
@@ -741,7 +795,7 @@ public class VariableListViewTest : BunitContext
         // Change, not Input: the field binds on onchange rather than oninput, because one
         // round trip per keystroke drops characters on a paste inside a Blazor Server circuit.
         cut.Find("input[type=text]").Change("Hjerte og kar");
-        cut.Find(".munin-explorer-container button").Click();
+        cut.Find("button").Click();
 
         Assert.Equal(1, client.CreateCalls);
     }
@@ -753,7 +807,7 @@ public class VariableListViewTest : BunitContext
         var cut = RenderView(client);
 
         cut.Find("input[type=text]").Change("Hjerte og kar");
-        cut.Find(".munin-explorer-container button").Click();
+        cut.Find("button").Click();
 
         Assert.Contains("for mange forespørsler", cut.Markup);
         Assert.DoesNotContain("Kunne ikke lagre", cut.Markup);
@@ -766,7 +820,7 @@ public class VariableListViewTest : BunitContext
         var cut = RenderView(client);
 
         cut.Find("input[type=text]").Change("Hjerte og kar");
-        cut.Find(".munin-explorer-container button").Click();
+        cut.Find("button").Click();
 
         Assert.Contains("Kunne ikke lagre", cut.Markup);
         Assert.DoesNotContain("for mange forespørsler", cut.Markup);
@@ -781,11 +835,11 @@ public class VariableListViewTest : BunitContext
         var cut = RenderView(client);
 
         cut.Find("input[type=text]").Change("Hjerte og kar");
-        cut.Find(".munin-explorer-container button").Click();
+        cut.Find("button").Click();
 
         client.CreateThrows = false;
         cut.Find("input[type=text]").Change("Hjerte og kar");
-        cut.Find(".munin-explorer-container button").Click();
+        cut.Find("button").Click();
 
         Assert.Equal(2, client.CreateCalls);
         Assert.DoesNotContain("Kunne ikke lagre", cut.Markup);
@@ -800,7 +854,7 @@ public class VariableListViewTest : BunitContext
         var cut = RenderView(client);
 
         cut.Find("input[type=text]").Change("Hjerte og kar");
-        cut.Find(".munin-explorer-container button").Click();
+        cut.Find("button").Click();
 
         Assert.Equal(1, client.CreateCalls);
         Assert.Contains("Kunne ikke hente listen", cut.Markup);
@@ -817,14 +871,14 @@ public class VariableListViewTest : BunitContext
         var cut = RenderView(client);
 
         cut.Find("input[type=text]").Change("Hjerte og kar");
-        cut.Find(".munin-explorer-container button").Click();
+        cut.Find("button").Click();
 
         Assert.Contains("for mange forespørsler", cut.Markup);
         Assert.DoesNotContain("Kunne ikke hente listen", cut.Markup);
 
         client.ActivateThrottles = false;
         cut.Find("input[type=text]").Change("Hjerte og kar");
-        cut.Find(".munin-explorer-container button").Click();
+        cut.Find("button").Click();
 
         Assert.Equal(2, client.CreateCalls);
         Assert.DoesNotContain("for mange forespørsler", cut.Markup);
@@ -840,7 +894,7 @@ public class VariableListViewTest : BunitContext
         Assert.Contains("Kunne ikke hente listen", cut.Markup);
 
         cut.Find("input[type=text]").Change("Hjerte og kar");
-        cut.Find(".munin-explorer-container button").Click();
+        cut.Find("button").Click();
 
         Assert.Contains("Kunne ikke lagre", cut.Markup);
         Assert.DoesNotContain("Kunne ikke hente listen", cut.Markup);
@@ -1201,7 +1255,7 @@ public class VariableListViewTest : BunitContext
         // page. Duplicate ids are a WCAG 4.1.1 failure, and here they cost the thing the label was
         // added for: both <label for> would resolve to whichever field rendered first, leaving the
         // second one unnamed again. Nothing catches that in a page with one mount — the shape this
-        // borrows from the explorer's own guard, VariableExplorerTest.cs
+        // borrows from the explorer's own guard, VariableSearchTest.cs
         // Source_WhenTwoExplorersAreOnOnePage_ThenTheirPanelsDoNotShareIds.
         Services.AddSingleton<IMuninExplorerClient>(new ListClient { HasList = false });
         Services.AddScoped<VariableListState>();
@@ -1491,6 +1545,34 @@ public class VariableListViewTest : BunitContext
 
         Assert.Equal(2, options.Count);
         Assert.DoesNotContain("Mine hjertevariabler", options);
+    }
+
+    [Fact]
+    public async Task View_WhenTheActiveListIsDeleted_ThenTheNextOneIsNotReadAThirdTime()
+    {
+        // Two reads of the next list, and both are wanted: the holder walks it for the save
+        // buttons' membership, and this view reads the page it draws. Measured at two on
+        // origin/main as well, so what this pins is that repointing the view from the holder's
+        // notification does not add a third (Fhi.Metadata-l9l2n.39).
+        //
+        // Stalled on purpose: answered at once, the first read is finished before the second
+        // caller arrives and the window a duplicate would live in is never open.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"))
+        {
+            ListCount = 2,
+            StallVariablesFor = ListClient.SecondListId,
+        };
+
+        var cut = RenderView(client);
+
+        await PressAsync(cut, "Slett listen");
+        await PressAsync(cut, "Ja, slett listen");
+
+        client.ReleaseVariables();
+
+        await cut.WaitForAssertionAsync(() => Assert.Contains("Hjerte og kar", cut.Markup));
+
+        Assert.Equal(2, client.VariablesAskedFor.Count(id => id == ListClient.SecondListId));
     }
 
     [Fact]

@@ -11,7 +11,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// lines. The trail puts the same selection above the results as a path, which is also the only
 /// way to undo part of it without opening the panel again.
 /// </remarks>
-public partial class VariableExplorer
+public partial class VariableSearch
 {
     /// <summary>
     /// The four levels of the catalogue hierarchy, outermost first.

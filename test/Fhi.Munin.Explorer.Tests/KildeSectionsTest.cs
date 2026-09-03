@@ -179,11 +179,11 @@ public class KildeSectionsTest : BunitContext
     /// a restatement of what this test believes Runa passes — which is the thing that would be
     /// wrong if somebody wired Kelda's sections into the shared view.
     /// </remarks>
-    private IRenderedComponent<VariableExplorer> OpenInRuna(KildeDetail kilde)
+    private IRenderedComponent<VariableSearch> OpenInRuna(KildeDetail kilde)
     {
         Services.AddSingleton<IMuninExplorerClient>(new RunaClient(kilde));
 
-        var cut = Render<VariableExplorer>();
+        var cut = Render<VariableSearch>();
 
         cut.FindAll("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name")[0].Click();
         cut.FindAll(".munin-explorer-detail > button[id]")[0].Click();

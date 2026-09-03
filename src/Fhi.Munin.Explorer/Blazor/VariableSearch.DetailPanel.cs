@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Components;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>The panel that opens under a selected row: what the variable is, and what its data holds.</summary>
-public partial class VariableExplorer
+public partial class VariableSearch
 {
 
     /// <summary>Whether this row is the one whose detail panel is open.</summary>

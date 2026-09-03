@@ -2,7 +2,7 @@ using Fhi.Munin.Explorer.Contracts;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>The drill-in view for the kilde or datasamling a variable belongs to.</summary>
-public partial class VariableExplorer
+public partial class VariableSearch
 {
 
     /// <summary>Which of a variable's two owners a panel is showing.</summary>

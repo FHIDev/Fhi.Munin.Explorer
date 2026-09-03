@@ -58,10 +58,10 @@ public class LanguageTest : BunitContext
         }
     }
 
-    private IRenderedComponent<VariableExplorer> RenderWith(IMuninExplorerClient client, string language)
+    private IRenderedComponent<VariableSearch> RenderWith(IMuninExplorerClient client, string language)
     {
         Services.AddSingleton(client);
-        return Render<VariableExplorer>(b => b.Add(c => c.Language, language));
+        return Render<VariableSearch>(b => b.Add(c => c.Language, language));
     }
 
     [Theory]
@@ -174,7 +174,7 @@ public class LanguageTest : BunitContext
         // The render test above passes whether or not a localiser is injected somewhere that
         // happens not to run — an unopened panel, an error path. This one does not: the reference
         // is in the assembly's metadata the moment anyone types IStringLocalizer.
-        var referenced = typeof(VariableExplorer).Assembly
+        var referenced = typeof(VariableSearch).Assembly
             .GetReferencedAssemblies()
             .Select(a => a.Name ?? "")
             .Where(name => name.Contains("Localization", StringComparison.OrdinalIgnoreCase));

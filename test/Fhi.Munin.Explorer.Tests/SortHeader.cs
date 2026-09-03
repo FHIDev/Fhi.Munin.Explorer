@@ -11,7 +11,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// <para>
 /// Shared rather than owned by one test class because two of them press sorts, and a copy each
 /// meant the header's class name lived in two files. Renaming it in
-/// <c>VariableExplorer.razor.cs</c> would then break them independently, with nothing in the
+/// <c>VariableSearch.razor.cs</c> would then break them independently, with nothing in the
 /// second pointing at the first — which is the same drift the sample stylesheets went through,
 /// in a place with even less to notice it.
 /// </para>
@@ -31,13 +31,13 @@ internal static class SortHeader
     public const string SortControl = ".munin-explorer-data-list__header";
 
     /// <summary>The sort buttons, in the order they are rendered.</summary>
-    public static IReadOnlyList<IElement> SortButtons(IRenderedComponent<VariableExplorer> cut) =>
+    public static IReadOnlyList<IElement> SortButtons(IRenderedComponent<VariableSearch> cut) =>
         cut.FindAll($"{SortControl} button");
 
     /// <summary>
     /// Reorders the list by <paramref name="label"/>, from the column header a reader would press,
     /// whatever direction suffix it currently carries.
     /// </summary>
-    public static void ClickSort(IRenderedComponent<VariableExplorer> cut, string label) =>
+    public static void ClickSort(IRenderedComponent<VariableSearch> cut, string label) =>
         SortButtons(cut).Single(k => k.TextContent.StartsWith(label, StringComparison.Ordinal)).Click();
 }

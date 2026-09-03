@@ -1,0 +1,961 @@
+@namespace Fhi.Munin.Explorer.Blazor
+
+@* No @page — the host owns routing; in helsedata's Optimizely CMS there is no router at all.
+   No @rendermode — the host decides at the mount site, which is what lets this same
+   component render under legacy Blazor Server and under a modern Blazor Web App.
+   No CSS ships from this package.
+
+   Every class name below that is meant to be styled is one helsedata already defines, off one of
+   their two compiled stylesheets: Fhi.Helsedata.Stiler site-wide for the ordinary page furniture,
+   and `variables.css` — which despite the name every page of helsedata.no loads — for the whole
+   result vocabulary. Since `Fhi.Metadata-zs56s` the results are their own variable page's rows
+   (`munin-explorer-data-list*`, `munin-explorer-dataitem-*`) in the list that page builds around them
+   (`munin-explorer-container`, `munin-explorer-results`, `munin-explorer-header*`), with
+   `munin-explorer-meta*` for the panel an open row shows and `munin-explorer-pagination*` for the
+   pager. Nothing is left wearing a name from that file. The pager and the skip link into it held
+   out longest, because Stiler had no pagination rule at all and their stylesheet did:
+   `Fhi.Metadata-hyyxl` moved the pager into the prefix with everything else and
+   `Fhi.Metadata-ja2qu` moved the link, as `munin-explorer-skiplink-pagination`. The
+   searchbox shape — submit button inside the field — is still lifted from helsedata's own
+   datakildeutforsker (Features/DataSources/DataSourceComponent); its `datasourcecard*` card list
+   is not, and no `datasourcecard` name is emitted here any more.
+
+   Inventing `variabelutforsker-*` names — which is what this used to do, twice — meant the host
+   stylesheet had never heard of them, so the Søk button, the search field and the table headers
+   rendered as raw browser defaults inside an otherwise styled page. Matching helsedata without
+   guessing is the entire reason this ships as a component, so the names that carry styling have
+   to be theirs. (The historical spelling is deliberate: it records the mistake as it was made.)
+
+   The rest of the `munin-explorer-*` prefix is ours and is not that mistake, because neither
+   stylesheet is expected to have a rule for it. Most of those names are handles — the root
+   `munin-explorer` class below, the DOM ids the codebehind mints, and `-filters`, `-detail`,
+   `-drilldown`, `-kodeverk*`, `-codes*`, `-group`, the `-kilde*` names in KildeView, the
+   `-datasamling*` ones in DatasamlingView and the `-whole*` ones in VariableView — on elements
+   something else already dresses, a Stiler class they also wear or their own browser default, so
+   an undefined one costs look and not information. Two are not handles and a host outside
+   helsedata has to draw them itself: `munin-explorer-crumb`, which is the only sign the kilde step
+   of the trail can be pressed, and `munin-explorer-period__track` / `__fill` /
+   `__track--ongoing`, which are the period bar itself. README lists every one of them, name by
+   name, with the kind that says what an undefined one costs — no count, because a count is what
+   went stale; `scripts/assert-class-names-listed.sh` fails CI when that list and src/ disagree.
+   See also the comment above the `<section>`.
+
+   The result vocabulary is a dependency a host outside helsedata's estate has to meet in full,
+   and the component class's remarks say so — including the rule that keeps
+   `munin-explorer-skiplink-pagination` out of sight until it is focused, which ships in Stiler
+   0.1.14.
+
+   Accessibility: helsedata.no is a public-sector site, so WCAG 2.1 AA is a legal
+   requirement — and this is our markup on their page. The choices below are the ones
+   markup can make. Visible focus and contrast are the host stylesheet's to get right, and
+   are spelled out for hosts in the doc comment on the component class in the codebehind. *@
+
+@* One of the few names here that is ours rather than helsedata's — the others are
+   `munin-explorer-filters`, `-detail`, `-drilldown` and `-group` further down. None of them
+   carry styling: nothing in this package, in Stiler or in helsedata's `variables.css` defines a
+   rule for any of them. They exist so the component, and the parts of it a host or a test wants
+   to reach, can be found in the DOM of a CMS page that renders a hundred other things. *@
+<section class="munin-explorer" aria-labelledby="@TitleId">
+    @* Rendered from HeadingLevel rather than hard-coded to h2: the level that keeps the
+       document outline unbroken is only knowable at the mount site. *@
+    @Heading
+
+@* A kilde or datasamling opens as its own view, not as a third panel inside an open row.
+   Runa navigates to a page for this; this component has no router, so instead of nesting a
+   panel inside a panel inside a row it takes over its own area and offers a way back. The
+   reader gets a full width to read in, which three levels of nesting cannot give, and the
+   search, filters, page and open row are all still there on return because none of it was
+   torn down. *@
+@if (_wholeVariable && _detail is { } whole)
+{
+    @* The whole variable, in place. Same shape as the kilde drill-in beneath it, and for the same
+       reason: with no router, a detail page is a view this component swaps to rather than a route
+       the host has to own. *@
+    <div class="munin-explorer-drilldown"
+         id="@WholeVariableId"
+         role="region"
+         aria-labelledby="@WholeVariableHeadingId">
+        @* --ghost-blue, not --ghost: the plain ghost has no border and no background until :hover,
+           so the way out of a view reads as bold text to anyone not using a mouse. Blue is Stiler's
+           own link colour, and this control is navigation. (Fhi.Metadata-l9l2n.34) *@
+        <button class="hd-button-square button-square--ghost-blue margin-bottom"
+                type="button"
+                @onclick="ToggleWholeVariableAsync">@T.BackToVariables</button>
+
+        <VariableView Variable="whole"
+                      Language="@Language"
+                      HeadingLevel="@RowLevel"
+                      HeadingId="@WholeVariableHeadingId"
+                      Sections="@KodeverkSection(whole)" />
+    </div>
+}
+else if (_sourceKind is not null)
+{
+    @* A region named after what it shows, so a screen reader moving by landmark finds it and hears
+       which kilde it landed in. The old nested panel carried these; taking them off when it became
+       a view would have quietly removed it from the landmark list. *@
+    <div class="munin-explorer-drilldown"
+         id="@SourceId"
+         role="region"
+         aria-labelledby="@SourceHeadingId"
+         aria-busy="@SourceBusy">
+        @* Two ways out, in the order they undo things. The narrowing one is filled and this one
+           blue, because one changes the list and the other only navigates. Both names are
+           Stiler's own, so the pair invents no class. (Fhi.Metadata-l9l2n.34) *@
+        <button class="hd-button-square button-square--ghost-blue margin-right margin-bottom"
+                type="button"
+                @onclick="CloseSourceAsync">@T.BackToVariables</button>
+
+        @if (SourceVariablesText is { } narrowText)
+        {
+            <button class="hd-button-square button-square--secondary margin-bottom"
+                    type="button"
+                    @onclick="ShowSourceVariablesAsync">@narrowText</button>
+        }
+
+        @* Once the payload has arrived, its own view owns the heading. For a kilde that is the
+           component Kelda renders on a page of its own, so the two cannot drift; the datasamling
+           view has this one call site and nothing to drift from. Until then the drill-in keeps its
+           own heading: the region points at it by id, and a landmark whose label does not exist yet
+           is worse than a plain one. *@
+        @if (_kilde is null && _datasamling is null)
+        {
+            @DrilldownHeading
+        }
+
+        <p class="@SourceStatusClass"
+           role="status"
+           aria-live="polite"
+           aria-atomic="true">@SourceStatus</p>
+
+        @if (_kilde is { } kilde)
+        {
+            <KildeView Kilde="kilde"
+                       Language="@Language"
+                       HeadingLevel="@RowLevel"
+                       HeadingId="@SourceHeadingId" />
+        }
+        else if (_datasamling is { } datasamling)
+        {
+            <DatasamlingView Datasamling="datasamling"
+                             Language="@Language"
+                             HeadingLevel="@RowLevel"
+                             HeadingId="@SourceHeadingId" />
+        }
+    </div>
+}
+else
+{
+
+    @* role="search" makes this a search landmark, and aria-labelledby names it after this
+       instance's title so two explorers on one page are told apart in a landmark list. *@
+    <form role="search"
+          aria-labelledby="@TitleId"
+          @onsubmit="SearchAsync"
+          @onsubmit:preventDefault="true">
+        @* A visible label, deliberately, where helsedata's datakildeutforsker uses a bare
+           aria-label. `form-element__label` is Stiler's own label style, so it costs nothing
+           to keep the text on screen — and a visible label serves far more people than an
+           invisible one. *@
+        <label class="form-element__label" for="@SearchId">@T.SearchLabel</label>
+
+        @* searchbox__freetext reserves 104px of right padding for the controls inside the field.
+           The reservation and searchbox__freetext-submit-button are Stiler's, and their own search
+           box is arranged this way; the clear control below borrows the room, not the name. *@
+        <div class="searchbox__freetext-container">
+            @* @bind (onchange), deliberately NOT value + @oninput.
+
+               This renders inside helsedata.no's Blazor Server circuit, so @oninput means one
+               round-trip per keystroke — for a search that only ever runs on submit, that is
+               traffic for nothing, multiplied by every visitor on a public site. Worse, each
+               round-trip re-renders and rewrites the input while more input is still arriving:
+               a fast paste or a programmatic fill loses characters (typing "svelging" quickly
+               arrived as "sng").
+
+               onchange is enough because searching is always an explicit act here: it fires on
+               implicit submit (Enter), and a click on Søk blurs the field first, so the change
+               event reaches the circuit before @onsubmit does. The event is spelled out rather
+               than left implicit so nobody "helpfully" restores oninput.
+
+               type="text", not type="search": the user-agent ✕ fires the DOM `search` event, which
+               Blazor does not know, so it emptied the box without applying it. enterkeyhint keeps
+               the soft keyboard's search key. (Fhi.Metadata-5ghur) *@
+            <input class="searchbox__freetext"
+                   id="@SearchId"
+                   type="text"
+                   enterkeyhint="search"
+                   @ref="_searchField"
+                   @bind="_search"
+                   @bind:event="onchange"
+                   placeholder="@T.SearchPlaceholder"
+                   autocomplete="off"
+                   maxlength="200" />
+            @* Drawn only when there is something to clear, so a press takes it off the page under
+               the reader's focus — which is why the handler hands that focus back. Named by
+               aria-label: the glyph is not a name. (Fhi.Metadata-ag4n7) *@
+            @* Shown on having a term but inert while one is in flight, so the two conditions are
+               not the same and the gap between them is a control that refuses silently. Kelda
+               needs no such attribute: it fetches nothing, so its two conditions are one. *@
+            @if (!string.IsNullOrWhiteSpace(_search))
+            {
+                <button class="munin-explorer-search__clear"
+                        type="button"
+                        aria-label="@T.ClearSearch"
+                        aria-disabled="@(CanClearSearch ? null : "true")"
+                        @onclick="ClearSearchAndRefocusAsync">&#xD7;</button>
+            }
+            @* Deliberately NOT disabled while a search runs. Disabling the element that
+               currently has focus drops focus to <body>, so a keyboard user who just pressed
+               Enter on Søk loses their place and starts tabbing from the top of the page
+               again. SearchAsync ignores a second submit while one is in flight instead, which
+               stops the double request without touching focus. *@
+            <button class="hd-button-square button-square--primary searchbox__freetext-submit-button"
+                    type="submit">@T.SearchButton</button>
+        </div>
+    </form>
+
+    @* The filters.
+
+       A stack of disclosures above the results, not a sidebar beside them. A sidebar is a layout,
+       and a layout is a class name — helsedata's own variable page styles one from
+       `filter-search-explorer` in its page-specific variables.css, a rule this repository has not
+       read back — the result vocabulary below comes from that same stylesheet, so what is
+       unverified here is the one name and not the file. The standing rule is that a class name
+       goes into this markup only once it has been read off the host's compiled CSS, so the panel
+       is built out of names that have been: `form-fieldset` and `form-element__label` from the
+       sort control, `hd-button-square` with the same filled/ghost pair, `caption` and `infobox`.
+       When those sidebar names can be verified, this block is what moves into it — the markup
+       below is already a list of facets and nothing about it assumes it is stacked.
+
+       Two shapes here are elements rather than classes, for the same reason:
+
+       * `<details>` per facet. With every facet expanded the panel is hundreds of buttons; Munin's
+         explorer uses an accordion, and `<details>` is the one this package can have — native
+         disclosure behaviour, no script, no class name, and the browser draws the marker. Its open
+         state lives in the browser, so filtering does not collapse what the reader opened: the
+         `open` attribute below moves only when Utvid alle or Skjul alle is pressed, and an
+         unchanged value is never patched. (Fhi.Metadata-wcbxi)
+       * A bare `<ul>` for the values, nested for the hierarchy. Indentation is what shows a delkilde
+         sitting under its kilde, and a list is an element every base stylesheet already styles —
+         unlike `variabelutforsker-tree`, which would be exactly the invented name that renders as a
+         raw browser default. Values are toggle buttons rather than checkboxes for the same reason:
+         Stiler has a square button and this component already draws one in two states.
+
+       `munin-explorer-filters` carries no styling, in this package or in Stiler. It is the same
+       kind of name as the `munin-explorer` root above it: a hook for a host that wants to place
+       the panel, and nothing this markup relies on. *@
+    @* Not on the Variabelliste tab. These facets narrow a search, and the reader is not looking at
+       one — every one of them would filter nothing. Runa does exactly this: its sidebar and its
+       hierarchy trail are both `activeTab !== "variableList"`, and the list tab renders a sidebar
+       of its own scoped to the list. Ours does not have that second half yet (Fhi.Metadata-mm4hu),
+       so on that tab there is no sidebar rather than one that lies. *@
+    @if (_facets is not null && _resultsTab != ExplorerTab.VariableList)
+    {
+        @* `data-level-lines` rather than a class of our own. A class on the <ul> already there would
+           render fine unstyled; what it would cost is inventory — the README contract, both sample
+           stylesheets and the name guard. A host that ignores the marker loses lines, not
+           information. (Fhi.Metadata-wcbxi) *@
+        <fieldset class="form-fieldset munin-explorer-filters" aria-busy="@Busy"
+                  data-level-lines="@LevelLinesMarker">
+            <legend class="form-element__label">@FiltersLegend</legend>
+
+            @* The toolbar. Utvid alle and Skjul alle do the one thing a native disclosure cannot do
+               for itself; Nivålinjer is a toggle and says so with aria-pressed. None of the three
+               narrows anything, which is why none is a checkbox — the facet values are. *@
+            @* Own container: in inline flow the last button's trailing margin was the whole overflow,
+               and `gap` leaves nothing trailing. The buttons shrink and wrap their own labels rather
+               than the row breaking, so it survives a wider label. (Fhi.Metadata-l9l2n.37) *@
+            <div class="munin-explorer-filters__toolbar">
+                <button class="hd-button-square button-square--ghost"
+                        type="button"
+                        @onclick="() => FoldAll(true)">@T.ExpandAllFacets</button>
+                <button class="hd-button-square button-square--ghost"
+                        type="button"
+                        @onclick="() => FoldAll(false)">@T.CollapseAllFacets</button>
+                <button class="@LevelLinesClass"
+                        type="button"
+                        aria-pressed="@(_levelLines ? "true" : "false")"
+                        @onclick="ToggleLevelLinesAsync">@T.LevelLines</button>
+            </div>
+
+            @* A fold press rewrites every disclosure in the panel and is otherwise silent — the same
+               argument the result region makes for announcing a search at all. A bare live region
+               and deliberately NOT a second role="status": that role is the component reporting its
+               own state, there is one of those by design, and this only says what a press just did. *@
+            <p class="screenreader-only" aria-live="polite" aria-atomic="true">@FoldAnnouncement</p>
+
+            @foreach (var group in FacetGroups)
+            {
+                @* Keyed, so a facet that drops out of the list — the API omits one with no matches
+                   — cannot hand its open state to whichever facet takes its place. *@
+                <details @key="FacetKey(group)" open="@FacetOpen(group)">
+                    <summary><span class="form-element__label">@GroupLabel(group)</span></summary>
+                    @* A facet's own control first, where it has one: the dataperiode holds no
+                       values and would otherwise draw the empty-state sentence. (Fhi.Metadata-uidue) *@
+                    @if (group.Body is { } body)
+                    {
+                        @body
+                    }
+                    else if (group.Values.Count > 0)
+                    {
+                        @FacetList(group.Values)
+                    }
+                    else
+                    {
+                        <p class="caption">@group.EmptyText</p>
+                    }
+                </details>
+            }
+
+            @* Never taken off the page, only made inert — the same treatment the pager's buttons
+               get, and for the same reason: clearing the filters from a button that then disappears
+               drops focus to <body>. aria-disabled says so; ClearFiltersAsync is what makes it true. *@
+            <button class="hd-button-square button-square--ghost margin-right margin-bottom"
+                    type="button"
+                    aria-disabled="@AriaDisabled(!_filter.IsEmpty)"
+                    @onclick="ClearFiltersAsync">@T.ClearFilters</button>
+        </fieldset>
+    }
+
+    @* The hierarchy trail, above the results and below the filters — which is where Runa puts it,
+       and the only place it can say "these rows are what is left of that kilde".
+
+       Drawn only while something in the hierarchy is chosen. There is no trail to a selection
+       nobody has made, and a permanent empty one would be furniture in the same way "Side 1 av 1"
+       between two dead pager buttons is. It is built from the filter rather than from a second
+       piece of state, so it cannot describe a selection the rows below it did not come from — see
+       the remarks in the codebehind for why every step is a button and why the × is not one of
+       them. *@
+    @* Hidden on the list tab with the facets it describes, the same as Runa. *@
+    @if (_resultsTab != ExplorerTab.VariableList && HierarchyCrumbs is { Count: > 0 } crumbs)
+    {
+        @Breadcrumb(crumbs)
+    }
+
+    @* The ordering used to live in a "Sorter etter" fieldset here. It moved into the column
+       header, which is where helsedata and Runa both put it, and where a reader looks for it:
+       the header cell is the button, and it carries the aria-sort. Keeping both would offer the
+       same choice twice. *@
+
+    @* One polite status line, holding one message at a time: loading, the result summary,
+       or "no matches". aria-atomic makes a screen reader read the whole new sentence rather
+       than only the words that changed — "12" on its own is not information.
+
+       Loading is announced too. That is one extra utterance per search, which is the price
+       of telling a screen-reader user that pressing Søk did something at all when the API
+       is slow; the region is shared rather than stacked so the messages replace each other
+       instead of piling up.
+
+       `caption` is Stiler's muted secondary-text style. It also carries the empty state: a
+       full-page emptystate block would be out of proportion inside a component that is one
+       section of somebody else's page, and duplicating the sentence outside the live region
+       would put it on screen twice. *@
+    <p class="caption" role="status" aria-live="polite" aria-atomic="true">
+        @if (_loading)
+        {
+            @T.Loading
+        }
+        else if (_result is { Items.Count: > 0 })
+        {
+            @Summary
+        }
+        else if (_result is not null)
+        {
+            @T.NoResults(_executedSearch, _filter.ActiveCount, !_filter.IncludeHistorical)
+        }
+    </p>
+
+    @* The failure is worth interrupting for, so it is an alert rather than a polite update.
+       The container is always rendered, empty when there is nothing wrong: a role="alert"
+       element that is inserted and filled in the same DOM update is announced unreliably,
+       while one that is already there when its text arrives is not. It carries no class of
+       its own precisely because it is always present — an `infobox` here would draw an empty
+       coloured box on every page that has nothing to report. *@
+    <div role="alert" aria-live="assertive" aria-atomic="true">
+        @* The sentence and its way out on one row. The wrapper is inside the region and drawn only
+           when there is something to say, so the region itself stays classless and always present
+           — the two things its own note above depends on. (Fhi.Metadata-31ogu) *@
+        @if (RowsAlert is not null || _failedRows is not null)
+        {
+        <div class="munin-explorer-alert">
+        @* The box stays and only its words change while the retry runs. Emptying it would leave the
+           button standing alone, and taking the button with it would drop the focus of whoever
+           pressed it — aria-busy is what a host draws the waiting on. *@
+        @if (RowsAlert is not null)
+        {
+            <p class="infobox infobox--bg-yellow" aria-busy="@(RetryingRows ? "true" : null)">@RowsAlert</p>
+        }
+        @* Inside the region and not beside it, so the failure and the way out of it are announced
+           in one utterance rather than the interruption saying only that something went wrong.
+
+           It outlives the message it answers by exactly one fetch: a successful retry clears the
+           sentence, and a button leaving with it would drop the focus of the reader who just
+           pressed it to <body> — the pager's rule, and Fjern alle filtre's. The next fetch someone
+           else starts takes it away whether it answers or is refused for asking too often, so a
+           dead offer is not read out again with every later failure in this aria-atomic region.
+
+           munin-explorer-retry is what draws the inert state. The region carries no class, so
+           neither the pager's nor the filter panel's [aria-disabled] rule reaches in here, and
+           without one of its own a button that does nothing looks exactly like one that does.
+
+           That rule has to ship in Fhi.Helsedata.Stiler under components/munin-explorer/, which as
+           of 0.1.14 carries none: the sample stylesheets are the samples' own, so a Stiler-only
+           host draws the two states alike until it does. Tracked as Fhi.Metadata-x6vqc. *@
+        @if (_failedRows is not null)
+        {
+            @* Filled, not a ghost: it is the way out of the failure beside it, and Tøm søket is
+               the other control in this component that wears --secondary for the same reason. A
+               ghost on a coloured infobox reads as text rather than as something to press. *@
+            <button class="hd-button-square button-square--secondary margin-right margin-bottom munin-explorer-retry"
+                    type="button"
+                    aria-disabled="@AriaDisabled(_retryRowsEnabled)"
+                    @onclick="RetryRowsAsync">@T.RetrySearch</button>
+        }
+        </div>
+        }
+        @* The facets failing is a different failure from the search failing — the rows are the right
+           rows and it is the numbers beside the filters that may be stale — but it shares this one
+           alert region rather than opening a second. Two assertive regions on one component race to
+           be announced, and the reader has no way to tell which one spoke. *@
+        @if (_facetError is not null || _retryFacetsShown)
+        {
+        <div class="munin-explorer-alert">
+        @if (_facetError is not null)
+        {
+            <p class="infobox infobox--bg-yellow">@_facetError</p>
+        }
+        @* Its own button under its own sentence, named for what it retries: both failures can be
+           reported at once, and two buttons reading "Prøv igjen" in one assertive region would be
+           two identical offers with nothing to choose between them. *@
+        @if (_retryFacetsShown)
+        {
+            <button class="hd-button-square button-square--secondary margin-right margin-bottom munin-explorer-retry"
+                    type="button"
+                    aria-disabled="@AriaDisabled(_retryFacetsEnabled)"
+                    @onclick="RetryFacetsAsync">@T.RetryFilters</button>
+        }
+        </div>
+        }
+    </div>
+
+    @* Runa's two tabs, and they sit HERE rather than around the whole component: the heading, the
+       search box and the filters are above them and shared, so switching to Variabelliste does not
+       take the search away. Only the results and their pager are the first tab's own. Measured off
+       runa.munin.skytest.fhi.no/explorer, where the order is heading, search, filters, tablist,
+       panel. (Fhi.Metadata-l9l2n.39)
+
+       Drawn only for a reader who has lists to switch to. Signed out the second tab would name an
+       empty panel, so there is no tablist at all and the results render as they always did. *@
+    @if (ShowTabs)
+    {
+        <div class="munin-explorer-meta__tabs"
+             role="tablist"
+             aria-label="@T.Title"
+             @onkeydown="ResultTabKey">
+            @foreach (var tab in ResultTabs)
+            {
+                <div class="@ResultTabClass(tab)" @key="tab">
+                    <button class="hd-button-reset"
+                            type="button"
+                            role="tab"
+                            id="@ResultTabId(tab)"
+                            aria-selected="@(tab == _resultsTab ? "true" : "false")"
+                            aria-controls="@ResultTabPanelId(tab)"
+                            tabindex="@(tab == _resultsTab ? 0 : -1)"
+                            @onclick="() => _resultsTab = tab">@ResultTabLabel(tab)</button>
+                </div>
+            }
+        </div>
+    }
+
+    @* The panel the results live in. Unclassed and role-less when there are no tabs, so a
+       signed-out reader gets the same document they always got.
+
+       The contents are rendered only for the tab that is open, rather than drawn and hidden.
+       `hidden` is not enough: helsedata's stylesheet carries a bare `div { display: block }`,
+       and an author rule beats the browser's own `[hidden] { display: none }` — so a hidden panel
+       stayed on screen in the one host we ship to (measured: 3798px of it). The attribute is kept
+       anyway, because it is right everywhere else and costs nothing here. *@
+    <div role="@(ShowTabs ? "tabpanel" : null)"
+         id="@(ShowTabs ? ResultTabPanelId(ExplorerTab.Search) : null)"
+         aria-labelledby="@(ShowTabs ? ResultTabId(ExplorerTab.Search) : null)"
+         hidden="@(ShowTabs && _resultsTab != ExplorerTab.Search)">
+    @if (!ShowTabs || _resultsTab == ExplorerTab.Search)
+    {
+
+    @* The container and its header render whether or not anything was found. The ordering lives
+       in that header, and hiding it when a search comes back empty would take the button the reader
+       just pressed out of the document — the same reason the Søk button is never disabled. *@
+    <div class="munin-explorer-container">
+    <div class="munin-explorer-results">
+    @* The column picker, above the list and inside the results column — which is where
+       helsedata's own variable page puts it, in what they call `variable-explorer-header__actions`. Not inside
+       `munin-explorer-data-list__header` where the bead expected it: that row is the columns themselves,
+       and it is the one element the picker must be able to empty without emptying itself. Not
+       `sortable-dropdown` either, though the bead named it — see the remarks on ColumnPicker: that
+       is their mobile sort control and it is `display: none` above 1280px.
+
+       Rendered whether or not anything was found, for the reason the header is: a control that
+       leaves the document when a search comes back empty takes the reader's place in it with it. *@
+    @ColumnPicker()
+
+    @if (_result is { Items.Count: > 0 } && ShowPager)
+    {
+        @* Without this a keyboard user reaches Neste by tabbing past every card on the page —
+           one stop per row, which the reader can now set as high as fifty. The rule the host
+           supplies for `munin-explorer-skiplink-pagination` keeps it out of sight until it is
+           focused, which is the one place this markup depends on the host hiding something: see
+           the note on the component class. The name was helsedata's `skiplink-pagination` until
+           `Fhi.Metadata-ja2qu`, and no released Stiler ever had a rule that hid it, so on a
+           Stiler-only host the link sat permanently visible over every multi-page result list.
+
+           Rendered only alongside a pager, because with a single page there is nothing to skip to
+           and the link would be a tab stop leading nowhere.
+
+           Above the table now, not between its header and its rows. A `role="table"` may own
+           nothing but rows and rowgroups, so a link inside it is a structure error — axe reports
+           it, and a reader walking the table meets a link where a row should be. It still sits
+           beside the list it skips and is still invisible until focused. *@
+        <a class="munin-explorer-skiplink-pagination" href="#@PaginationId">@T.SkipToPagination</a>
+    }
+
+    @* role="table" over the header row and the result rows together.
+
+       Until this was written the list had no table semantics at all: measured in Chrome's
+       accessibility tree against the sample stylesheet, every row, column and header of it
+       resolved to `generic`, there was no `sort` property anywhere in the document, and the
+       `aria-sort` the sorted header carries sat on an element with no role that may carry one.
+       That is WCAG 1.3.1 and 4.1.2, both Level A.
+
+       Roles rather than a real <table>, which is what Kelda uses: `munin-explorer-dataitem-main`
+       is `display: flex` in Stiler, and flex on a <table> is exactly what strips table semantics
+       from it. Explicit ARIA roles survive it — verified in the accessibility tree with the
+       stylesheet applied, not in the markup — which is why the layout wrappers below wear
+       `role="none"` instead: a row may own nothing but cells, so an element that is only there to
+       lay the columns out has to step aside rather than sit in the tree between them.
+
+       aria-label rather than aria-labelledby: the name is the same sentence the status line above
+       shows, and pointing at that element would make the table's name change under a screen
+       reader every time the status line does. *@
+    <div class="munin-explorer-data-list__result" role="table" aria-label="@Summary">
+    @ResultHeader()
+
+    @if (_result is { Items.Count: > 0 })
+    {
+        @* helsedata's own variable page builds its result grid from a <ul> and a header row of
+           <div>s, not a <table> — there is not a single <table> element on the page. The column
+           layout is theirs; what this markup has to get right is the nesting, because 132 of the
+           292 selectors covering these names are descendant selectors. A class placed at the wrong
+           depth still renders, it just renders unstyled, which looks identical to a class that
+           matched something empty.
+
+           role="rowgroup", which is what a <tbody> is: the <ul> keeps laying the rows out and
+           stops claiming to be a list, since a list inside a table is a structure the reader has
+           to listen past. The name moved up to the table with it — one element names the whole
+           thing, and a rowgroup carrying the same sentence would have it read twice. *@
+        <ul class="munin-explorer-data-list" role="rowgroup" aria-busy="@Busy">
+            @foreach (var v in _result.Items)
+            {
+                @* Keyed by the variable's own id, the same reason the facet values are keyed: a row
+                   carries a control the reader can be standing on — the disclosure below — and the
+                   rows reorder whenever the search, the filter or the ordering moves. Without a key
+                   the renderer would patch that button into a different variable's rather than
+                   moving it. *@
+                @* role="row" on the list item, not on the flex container inside it: the open
+                   panel is the item's second child, and a row owns everything under it — so the
+                   row has to start above both, or the panel ends up beside the rows rather than
+                   in one. The two wrappers below then wear role="none" and the panel becomes the
+                   row's last cell. *@
+                <li class="@RowItemClass(v)" role="row" @key="v.Id">
+                    @* The row is the disclosure. helsedata makes the variable's own name the
+                       button — button.munin-explorer-dataitem-main__name carrying aria-expanded — which
+                       is the APG accordion pattern, and it is what removes the dead affordance the
+                       old card had: a pointer cursor inherited from .datasourcecard, which is a
+                       link on their datakilde page and was never a link here.
+
+                       There is no heading around it. One was tried, so results could be walked
+                       with a screen reader's heading rotor — their selectors all match by descent,
+                       so an element in between styles fine. But their row is a flex container and
+                       the name cell is sized by `munin-explorer-dataitem-main__name`, so a heading
+                       becomes the flex item and the column stops lining up with its header.
+                       Neither reference wraps it. *@
+                    @* Both wrappers are layout and nothing else — one is helsedata's row box, the
+                       other the flex container that lays the columns out — so both step out of the
+                       accessibility tree and let the cells inside become the row's own. *@
+                    <div class="munin-explorer-data-list__item__row" role="none">
+                        <div class="munin-explorer-dataitem-main" role="none">
+                        @RowChevron(v)
+                        @RowHeading(v)
+                        @RowSaveButton(v)
+                        @InfoLine(v)
+                        </div>@* munin-explorer-dataitem-main — the columns end here *@
+
+                    @* No description in the row. Neither reference has one: Runa's rows are a
+                       single table row, and helsedata's are explicitly one line —
+                       `.munin-explorer-dataitem-main { height: 3.5rem; overflow: hidden; text-overflow:
+                       ellipsis }`. A paragraph under the columns fights both. The description is
+                       the first field in the panel, one click away. *@
+
+                    </div>@* munin-explorer-data-list__item__row — the panel below is its SIBLING,
+                              not its child, which is how helsedata nests it *@
+
+                        @* The panel itself, drawn inside the row it belongs to — no routing, no
+                           NavigationManager, nothing for the host's CMS to route. Only one row is
+                           ever open, so this is at most one extra region landmark on the page, and
+                           it is named after the variable rather than left anonymous among the host
+                           page's own.
+
+                           `munin-explorer-detail` is a handle, like `munin-explorer` and
+                           `munin-explorer-filters`: nothing in this package or in Stiler defines
+                           a rule for it. What dresses the panel is base styling for <dl class="munin-explorer-meta__grid munin-explorer-meta__grid-2">, <ol> and
+                           <ul>, for the reason the filter panel is built from <details> and <ul> —
+                           Stiler has no definition list, no breadcrumb and no key/value block whose
+                           names can be read back off its compiled stylesheet, and a name it has
+                           never heard of renders as a raw browser default. *@
+                        @if (IsSelected(v))
+                        {
+                            @* A cell around the panel, wearing nothing else. The row above owns
+                               everything under the list item, and a row owns only cells — the same
+                               rule that puts an expanded panel in a <td colspan> in a real table.
+                               It is this bare wrapper rather than a role on the panel itself so
+                               the panel keeps being a region: a landmark named after the variable
+                               is how a reader finds which one they opened, and a cell cannot be
+                               both. The element carries no class on purpose; it lays nothing out. *@
+                            <div role="cell">
+                            @* aria-labelledby points at the button that opens this panel, which is
+                               the element carrying the variable's name now that no heading wraps it.
+
+                               Note where this comment sits. A Razor comment between an element's
+                               ATTRIBUTES is emitted as an attribute name, and the browser throws
+                               InvalidCharacterError from setAttribute - the panel then never opens.
+                               bUnit renders it without complaint, so the suite stays green and only
+                               a real browser shows the failure. Comments go above the element. *@
+                            <div class="munin-explorer-meta munin-explorer-detail"
+                                 id="@DetailId(v)"
+                                 role="region"
+                                 aria-labelledby="@DetailToggleId(v)"
+                                 aria-busy="@DetailBusy">
+                                @* One line, holding one message at a time: loading, or why the panel
+                                   is empty. Its own region rather than the component's — the status
+                                   line above describes the list, and a panel that failed to load has
+                                   not changed which rows are on screen. Polite, not an alert: the
+                                   reader asked for this one card and nothing else is affected. *@
+                                <p class="@DetailStatusClass"
+                                   role="status"
+                                   aria-live="polite"
+                                   aria-atomic="true">@DetailStatus</p>
+
+                                @if (_detail is { } detail)
+                                {
+                                    @* Runa's two tabs, in helsedata's vocabulary. The split is
+                                       Runa's — what the variable IS, and what its data holds —
+                                       because Runa is what replaces helsedata's variable page, so
+                                       it decides the content. helsedata decides the dress:
+                                       munin-explorer-meta__tabs, __tab, __tab--active, __body and
+                                       Stiler's hd-button-reset are Stiler's, and munin-explorer-meta
+                                       carries 204 rules.
+
+                                       Only the selected tab's button is in the tab order — the
+                                       others carry tabindex="-1" — so the tablist costs one tab
+                                       stop rather than one per tab. Arrow keys move between them,
+                                       which is what the APG tabs pattern replaces those stops
+                                       with; without it the panel would be unreachable by keyboard
+                                       rather than merely awkward. *@
+                                    <div class="munin-explorer-meta__tabs"
+                                         role="tablist"
+                                         aria-label="@T.TabDetails"
+                                         @onkeydown="TabKey">
+                                        @foreach (var tab in Tabs)
+                                        {
+                                            <div class="@TabClass(tab)" @key="tab">
+                                                <button class="hd-button-reset"
+                                                        type="button"
+                                                        role="tab"
+                                                        id="@TabId(tab)"
+                                                        aria-selected="@(tab == _tab ? "true" : "false")"
+                                                        aria-controls="@TabPanelId()"
+                                                        tabindex="@(tab == _tab ? 0 : -1)"
+                                                        @onclick="() => SelectTab(tab)">@TabLabel(tab)</button>
+                                            </div>
+                                        }
+                                    </div>
+
+                                    @* Unnamed on purpose. This wrapper carried a name in helsedata's own meta family
+                                         that they never defined a rule for, so it promised styling that
+                                         existed nowhere. Removed rather than renamed: after the
+                                         munin-explorer rename it would be ours, and we would then owe it
+                                         a rule it does not need.
+
+                                         The name is deliberately not written here. The CSS check reads
+                                         prose as well as markup, on purpose, so a name mentioned in a
+                                         comment is a name it goes looking for a rule for. *@
+                                      <div>
+                                        <div class="munin-explorer-meta__tab-content"
+                                             role="tabpanel"
+                                             id="@TabPanelId()"
+                                             aria-labelledby="@TabId(_tab)"
+                                             tabindex="0">
+                                            @if (_tab is PanelTab.Details)
+                                            {
+                                                @* Runa's three groups: Identifikasjon, Plassering
+                                                   and Egenskaper, in that order. *@
+                                                <h3 class="headline headline-xxs margin--none munin-explorer-group">@T.GroupIdentification</h3>
+
+                                                <dl class="munin-explorer-meta__grid munin-explorer-meta__grid-1">
+                                                    <div>
+                                                        <dt class="headline headline-xxs margin--none">@T.FieldDescription</dt>
+                                                        <dd>@DetailValue(detail.Description)</dd>
+                                                    </div>
+                                                </dl>
+
+                                                <h3 class="headline headline-xxs margin--none munin-explorer-group">@T.GroupPlacement</h3>
+
+                                                @* Side by side rather than stacked, which is how
+                                                   Runa lays these three out — she uses three lanes,
+                                                   helsedata's grid is two (`1fr 1fr`, collapsing to
+                                                   one below 1280px). Two of theirs beats three of
+                                                   ours: the arrangement is Runa's idea, the
+                                                   proportions and the breakpoint are helsedata's,
+                                                   and no new class name is needed for it.
+
+                                                   Each field is wrapped in a <div>, which a grid
+                                                   needs and the HTML spec allows inside <dl>.
+                                                   Without the wrapper the grid would take dt and dd
+                                                   as separate cells and lay out label | value
+                                                   across, instead of label-over-value in a lane. *@
+                                                <dl class="munin-explorer-meta__grid">
+                                                    <div>
+                                                        <dt class="headline headline-xxs margin--none">@T.FieldKildePath</dt>
+                                                        <dd>@KildeTrail(detail)</dd>
+                                                    </div>
+
+                                                    <div>
+                                                        <dt class="headline headline-xxs margin--none">@T.FieldVariableGroup</dt>
+                                                        <dd>@NameList(VariabelgruppeNames(detail))</dd>
+                                                    </div>
+
+                                                    <div>
+                                                        <dt class="headline headline-xxs margin--none">@T.FieldDataPeriod</dt>
+                                                        <dd>@PeriodBar(detail.DataFrom, detail.DataTo)</dd>
+                                                    </div>
+                                                </dl>
+
+                                                @* Runa's third group. Its contents are entirely
+                                                   the catalogue's: which properties exist, what
+                                                   they are called, what order they come in and
+                                                   what their coded values mean all arrive with the
+                                                   payload, so a property added in Munin shows up
+                                                   here without this package being touched.
+
+                                                   The values arrive as codes — "Opprinnelse": "5" —
+                                                   and are resolved against the vocabulary that
+                                                   travels beside them. Nothing is resolved here
+                                                   against a table of our own; see PropertyValue. *@
+                                                @PropertiesGroup(detail)
+                                            }
+                                            else
+                                            {
+                                                @* Runa's arrangement: the links grouped under a
+                                                   heading per kind of kodeverk, each line carrying
+                                                   its own reference and — where the API serves them
+                                                   — the control that fetches the codes.
+
+                                                   No <dl> around it any more. The kind was a label
+                                                   and the kodeverk its value while the panel showed
+                                                   one flat line each; grouped, the kind is a
+                                                   heading over a list, and a definition list whose
+                                                   value is another list of labelled things says
+                                                   less than the headings do.
+
+                                                   The codes themselves are not in this payload and
+                                                   are not asked for until a reader presses for
+                                                   them. Kommunenummer alone is 885 codes. *@
+                                                @KodeverkGroups(detail)
+
+                                                @* Runa shows the two together in this tab; this
+                                                   panel showed kodeverk alone and left the numbers
+                                                   a click further in, inside the whole-variable
+                                                   view. Same block as that view draws, at this
+                                                   tab's own level and in the shape of the kodeverk
+                                                   group headings beside it. (Fhi.Metadata-isvb7) *@
+                                                @StatisticsBlock.For(
+                                                    detail, RowLevel,
+                                                    "headline headline-xxs margin--none munin-explorer-group", T)
+                                            }
+                                        </div>
+                                    </div>
+
+                                    @* The way on to the kilde and the datasamling the variable
+                                       belongs to. One press further in, in the same place and by
+                                       the same means as the panel around it — no routing, no
+                                       NavigationManager, nothing for the host's CMS to route.
+
+                                       Buttons under the trail rather than the trail's own steps
+                                       made clickable. A step here is a <li> in a bare <ol> that a
+                                       host draws as a path with chevrons between the steps, and
+                                       the only button Stiler gives this package is the square
+                                       button — which inside that flex row would break the path
+                                       into a stack of filled blocks. The trail keeps saying where
+                                       the variable sits; these two say what to press.
+
+                                       Rendered only for an owner the variable actually names, so
+                                       neither button can be one that could only ever report "not
+                                       found". Never disabled, including while its own fetch runs,
+                                       for the reason the disclosure above it is not: pressing it
+                                       again is how the panel closes, and disabling the element
+                                       that has focus drops focus to <body>. *@
+                                    @foreach (var kind in SourceTargets(detail))
+                                    {
+                                        <button class="hd-button-square button-square--ghost margin-right margin-bottom"
+                                                type="button"
+                                                id="@SourceToggleId(kind)"
+                                                aria-expanded="@SourceExpanded(kind)"
+                                                aria-controls="@SourceControls(kind)"
+                                                @onclick="() => ToggleSourceAsync(kind)">@SourceToggleText(kind)</button>
+                                    }
+
+                                    @* After the owner buttons, not before. Those two are the
+                                       narrower move — one part of this variable's surroundings —
+                                       and going to the whole variable is the wider one, so it reads
+                                       last. It also keeps the owner buttons where they have always
+                                       been, which the tests that count them rely on. *@
+                                    <button class="hd-button-square button-square--ghost margin-right margin-bottom"
+                                            type="button"
+                                            aria-expanded="false"
+                                            aria-controls="@WholeVariableId"
+                                            @onclick="ToggleWholeVariableAsync">@T.ShowWholeVariable</button>
+
+                                    @* The owner's own record, drawn inside the variable's panel.
+                                       One at a time — pressing Datasamling with Datakilde open
+                                       swaps it — so this is at most one further region on the
+                                       page, named after the thing it describes rather than left
+                                       anonymous among the host page's own.
+
+                                       The drill-in that opens is named by the id
+                                       `munin-explorer-source-<instance>` and wears the class
+                                       `munin-explorer-drilldown` — a handle like the others,
+                                       and like them nothing in this package, in Stiler or in
+                                       helsedata's variables.css defines a rule for it.
+                                       What dresses the panel is base styling for <dl class="munin-explorer-meta__grid munin-explorer-meta__grid-2">, exactly as
+                                       for the variable's own panel above. *@
+                                }
+                            </div>@* munin-explorer-meta munin-explorer-detail *@
+                            </div>@* the row's last cell *@
+                        }
+                </li>
+            }
+        </ul>
+    }
+    </div>@* munin-explorer-data-list__result *@
+    </div>@* munin-explorer-results *@
+    </div>@* munin-explorer-container *@
+
+    @* The pager. Forrige / Neste with the position between them, and no infinite scrolling —
+       Munin's own explorer pages the same way, and a list that grows as you scroll has no end
+       for a keyboard user to reach.
+
+       Only when there is more than one page, or when a pager button is what put the reader here.
+       "Side 1 av 1" between two buttons that can never do anything is furniture, and a single page
+       reached by a new search or a new ordering costs nothing to leave out — neither is started
+       from a pager button. A retreat is: an index that shrank to one page's worth between two
+       requests answers Neste with an empty page and lands back on page 1 with TotalPages == 1, and
+       dropping the pager in that render would take Neste out of the document under the finger that
+       pressed it. ShowPager is where those two cases are told apart.
+
+       Outside the rows' own guard on purpose. Tied to the rows it would vanish under the finger
+       that pressed it the moment a page came back empty — an index that shrank between two
+       requests, or an API that answers an out-of-range page with 404 — taking the focused button
+       with it. RetreatFromEmptyPageAsync is what stops that state from lasting; this is what makes
+       it survivable while it does.
+
+       `munin-explorer-pagination` and `munin-explorer-pagination-content` are ours, like the rest
+       of the prefix. They were helsedata's `variables-pagination*` until `Fhi.Metadata-hyyxl`,
+       kept back when the rest of the vocabulary was renamed because Stiler had no pagination rule
+       of any kind and helsedata's own `variables.css` — loaded on every page of their site,
+       despite the name — did. That reasoning only ever covered hosts inside their estate: a host
+       with Stiler alone drew the pager at browser defaults, which is the whole failure the rename
+       exists to end. The rules ship in Stiler under `components/munin-explorer/` with the rest.
+       The skip link above is the one name from that file left over, and still helsedata's.
+
+       A div with role="navigation" rather than a <nav>: the landmark is worth having, and it
+       is named so it does not sit anonymously among the host page's own. tabindex="-1" makes it
+       the skip link's target — focusable programmatically, and still not a tab stop. *@
+    @if (ShowPager)
+    {
+        <div class="munin-explorer-pagination"
+             id="@PaginationId"
+             tabindex="-1"
+             role="navigation"
+             aria-label="@T.Pagination">
+            <div class="munin-explorer-pagination-content">
+                @* aria-disabled, not disabled — see AriaDisabled in the codebehind. Both
+                   buttons ask for a page that does not exist at the ends of the list; the
+                   clamp in GoToPageAsync is what makes that inert, so the boundary is one
+                   rule in one place rather than a condition repeated on each button. *@
+                <button class="hd-button-square button-square--ghost"
+                        type="button"
+                        aria-label="@T.PreviousLabel"
+                        aria-disabled="@AriaDisabled(CanGoPrevious)"
+                        @onclick="() => GoToPageAsync(_page - 1)">@T.Previous</button>
+
+                @* Numbered pages rather than "Side 1 av 907" between the two buttons, which is
+                   helsedata.no's own pager and the shape decided in Fhi.Metadata-ejcbi. A count
+                   the reader can only walk past one page at a time is a count and not a way in. *@
+                @PageNumbers.Write(this, _page, TotalPages, GoToPageAsync, T.GoToPageLabel, T.CurrentPageLabel)
+
+                <button class="hd-button-square button-square--ghost"
+                        type="button"
+                        aria-label="@T.NextLabel"
+                        aria-disabled="@AriaDisabled(CanGoNext)"
+                        @onclick="() => GoToPageAsync(_page + 1)">@T.Next</button>
+
+                <div class="munin-explorer-pagination-size">
+                    @* A <label for> rather than a group with a labelled span: one control needs one
+                       name, and a <label> is the name a native <select> already knows how to take. *@
+                    <label class="caption" for="@PageSizeSelectId">@T.VariablesPerPage</label>
+
+                    @* An unclassed <select>, which is the point. The sizes were three buttons while
+                       no select name could be read back off Stiler; an element degrades to its own
+                       browser default where an unknown class name degrades to nothing. *@
+                    @* aria-disabled and never the attribute, the same rule the two page buttons
+                       follow: disabling the control the reader has focus in drops that focus to
+                       <body>. SetPageSizeAsync is what makes a press during a fetch inert. *@
+                    <select id="@PageSizeSelectId"
+                            @key="_sizeRefusals"
+                            aria-disabled="@AriaDisabled(!_loading)"
+                            @onchange="OnPageSizeChangedAsync">
+                        @* `selected` on the option rather than `value` on the select: the second is
+                           a DOM property the interactive renderer sets, so a statically rendered
+                           first paint — which is how the legacy host mounts us — would show the
+                           first size whatever the host asked for. *@
+                        @foreach (var size in OfferedPageSizes)
+                        {
+                            <option value="@size" selected="@(ClampedPageSize == size)">@size</option>
+                        }
+                    </select>
+                </div>
+            </div>
+        </div>
+    }
+
+    }
+    </div>@* the results tab panel *@
+
+    @if (ShowTabs)
+    {
+        @* The class only while the tab is open: it carries `display: flex` with padding of its own
+           in Stiler, so an empty panel wearing it left a 64px gap under the results. *@
+        <div class="@(_resultsTab == ExplorerTab.VariableList ? "munin-explorer-meta__tab-content" : null)"
+             role="tabpanel"
+             id="@ResultTabPanelId(ExplorerTab.VariableList)"
+             aria-labelledby="@ResultTabId(ExplorerTab.VariableList)"
+             tabindex="0"
+             hidden="@(_resultsTab != ExplorerTab.VariableList)">
+            @if (_resultsTab == ExplorerTab.VariableList)
+            {
+                @VariableList
+            }
+        </div>
+    }
+}
+</section>

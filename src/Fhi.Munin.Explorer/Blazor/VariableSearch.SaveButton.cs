@@ -20,7 +20,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// variable that is in the list.
 /// </para>
 /// </remarks>
-public partial class VariableExplorer
+public partial class VariableSearch
 {
     private bool ShowSaveButton => ListState?.IsAuthenticated == true;
 
@@ -115,7 +115,7 @@ public partial class VariableExplorer
         // and the reader needs it beside the control that did not do what they asked.
         //
         // The container is always here, empty when nothing is wrong — the same shape the component's
-        // own alert region uses (VariableExplorer.razor:286). A role="alert" element that is
+        // own alert region uses (VariableSearch.razor:286). A role="alert" element that is
         // inserted and filled in the same DOM update is announced unreliably; one that is already
         // there and gains text is announced.
         builder.OpenElement(10, "span");
