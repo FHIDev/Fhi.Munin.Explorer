@@ -2643,11 +2643,9 @@ public class VariableExplorerTest : BunitContext
     [Fact]
     public void Render_WhenThereIsMoreThanOnePage_ThenThePagerWearsTheClassesHelsedatasOwnPagerWears()
     {
-        // Read off https://helsedata.no/no/variabler/?page=search on 2026-09-03: their two page
-        // turns are `hd-button-square button-square--ghost`, their numbers are `hd-button-reset`,
-        // and the one in force is marked `current`. Pinned because the first shipped version of
-        // this pager used the square pair for the numbers instead — which draws which page is in
-        // force with no rule at all, and is the reason that choice is tempting (Fhi.Metadata-ejcbi).
+        // Read off https://helsedata.no/no/variabler/?page=search on 2026-09-03: page turns are
+        // `hd-button-square button-square--ghost`, numbers are `hd-button-reset`, the one in force
+        // is marked `current`. First shipped version used the square pair (Fhi.Metadata-ejcbi).
         var cut = RenderWith(new PagedClient(312));
 
         Assert.All(
@@ -2678,13 +2676,6 @@ public class VariableExplorerTest : BunitContext
         // An exact list rather than a prefix check: the buttons are deliberately Stiler's own, so
         // "everything here is ours" would be false, and "nothing here is helsedata's" is only
         // checkable by naming what is here.
-        //
-        // `current` is the one name here that is not prefixed and not obviously Stiler's, so it is
-        // worth saying why it passes. It is the token helsedata.no's own pager marks the page in
-        // force with, and Stiler declares `.current` too — unscoped, with every declaration under a
-        // `.page-tabs__tab` descendant, so it applies nothing to a button of ours. It only ever
-        // means anything here through `.munin-explorer-pagination-pages .current`, which is ours
-        // and outstanding with Stiler along with the four names below.
         var cut = RenderWith(new PagedClient(312));
 
         var pager = cut.Find("div.munin-explorer-pagination");
@@ -2698,7 +2689,7 @@ public class VariableExplorerTest : BunitContext
         [
             "button-square--ghost",               // Stiler, the two page turns
             "caption",                            // Stiler, the size label and the run's ellipsis
-            "current",                            // the page in force — see below
+            "current",                            // the page in force; Stiler scopes its own .current to .page-tabs__tab
             "hd-button-reset",                    // Stiler, the numbered pages
             "hd-button-square",                   // Stiler, the square shape of the two page turns
             "margin-right",                       // Stiler, what keeps the numbers apart

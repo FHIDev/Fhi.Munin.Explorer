@@ -947,10 +947,9 @@ public class VariableListViewTest : BunitContext
     [Fact]
     public void View_WhenTheListRunsToManyPages_ThenItsPagerWearsHelsedatasClassesHereToo()
     {
-        // The second site again, and the reason this is pinned twice rather than once: the swap to
-        // helsedata's own names was made in both pagers, and only the result list's was asserted.
-        // Both `hd-button-square` and `button-square--secondary` are ordinary names elsewhere in the
-        // component, so this view's own name guard reads a regression here as unremarkable.
+        // Pinned twice because the swap was made in both pagers and only the result list's was
+        // asserted; `hd-button-square` and `button-square--secondary` are ordinary names elsewhere
+        // here, so this view's own name guard reads a regression as unremarkable (Fhi.Metadata-ejcbi).
         var many = Enumerable.Range(1, 130).Select(i => Item($"Variabel {i}", $"V_{i}")).ToArray();
         var client = new ListClient(many) { PageSize = 25 };
         var cut = RenderView(client);
