@@ -8706,11 +8706,9 @@ public class VariableExplorerTest : BunitContext
     [Fact]
     public void ClearSearch_WhenAFetchIsInFlight_ThenTheControlSaysItWillNotActYet()
     {
-        // The control is drawn on having a term and refuses on having one AND nothing in flight,
-        // so between those two there is a press that does nothing. Without this it does nothing
-        // silently, which is the one thing a control must not do. aria-disabled and not disabled,
-        // the rule the pager and the account link follow: disabled cannot hold focus, and focus is
-        // what this control was moved inside the field to protect. (Fhi.Metadata-ag4n7)
+        // Drawn on having a term but live only while nothing is in flight, so between those two
+        // sits a press that does nothing — silently, without this. aria-disabled, not disabled:
+        // disabled cannot hold focus, which is what moving it inside the field protects (ag4n7).
         var cut = RenderWith(new SlowClient(OnePage(Variable("1. Tale", "KODE"))),
                             b => b.Add(c => c.Search, "alder"));
 
