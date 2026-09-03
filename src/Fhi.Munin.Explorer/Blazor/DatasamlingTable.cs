@@ -73,7 +73,7 @@ internal static class DatasamlingTable
         builder.CloseElement();
     }
 
-    internal static void HeaderCell(RenderTreeBuilder builder, ref int seq, string label)
+    private static void HeaderCell(RenderTreeBuilder builder, ref int seq, string label)
     {
         builder.OpenElement(seq++, "th");
         builder.AddAttribute(seq++, "scope", "col");
@@ -82,11 +82,11 @@ internal static class DatasamlingTable
     }
 
     /// <summary>
-    /// The beskrivelse column, which the catalogue authors with markdown links and line breaks
-    /// (FHIDev/Munin#5385). The fragment scopes its own sequence numbers, so the varying markdown
-    /// structure never shifts the cells after it.
+    /// The beskrivelse column. Catalogue authors write markdown links and line breaks into that
+    /// field (FHIDev/Munin#5385), and the fragment scopes its own sequence numbers, so the varying
+    /// markdown structure never shifts the cells after it.
     /// </summary>
-    internal static void DescriptionCell(RenderTreeBuilder builder, ref int seq, string? value, string reader)
+    private static void DescriptionCell(RenderTreeBuilder builder, ref int seq, string? value, string reader)
     {
         builder.OpenElement(seq++, "td");
         builder.AddAttribute(seq++, "lang", CatalogueProperties.Foreign("no", reader));
@@ -94,7 +94,7 @@ internal static class DatasamlingTable
         builder.CloseElement();
     }
 
-    internal static void Cell(
+    private static void Cell(
         RenderTreeBuilder builder, ref int seq, string? value, string reader, bool norwegian)
     {
         builder.OpenElement(seq++, "td");
