@@ -5,7 +5,6 @@ using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Tests;
@@ -32,12 +31,9 @@ public class VariableExplorerTest : BunitContext
     /// One store behind both endpoints: a fake that kept them apart could not tell a surface that
     /// shares state from one that refetched.
     /// </remarks>
-    private sealed class ExplorerClient : EmptyMuninExplorerClient
+    private sealed class ExplorerClient(params VariableSummary[] rows) : EmptyMuninExplorerClient
     {
-        private readonly VariableSummary[] _rows;
-
-        public ExplorerClient(params VariableSummary[] rows) => _rows = rows;
-
+        private readonly VariableSummary[] _rows = rows;
         public readonly HashSet<Guid> Stored = [];
 
         public override Task<Page<VariableSummary>> SearchVariablesAsync(

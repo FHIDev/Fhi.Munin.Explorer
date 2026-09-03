@@ -192,7 +192,7 @@ public class VariableListViewTest : BunitContext
         /// </remarks>
         public bool VariablesAreUnreadable { get; set; }
 
-        /// <summary>Holds every variables read for this list until <see cref="ReleaseVariables"/>.</summary>
+        /// <summary>Holds every variable read for this list until <see cref="ReleaseVariables"/>.</summary>
         /// <remarks>
         /// A real read is still out when the next caller arrives; a fake that answers at once is
         /// not, which closes the window a duplicate read lives in (Fhi.Metadata-l9l2n.39).
