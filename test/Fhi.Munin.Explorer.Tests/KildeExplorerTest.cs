@@ -818,7 +818,7 @@ public class KildeExplorerTest : BunitContext
     }
 
     [Fact]
-    public void ClearSearch_WhenThereIsASearch_ThenTheControlIsInsideTheFieldAheadOfSok()
+    public void ClearSearch_WhenThereIsASearch_ThenTheControlIsInsideTheFieldAheadOfTheSubmit()
     {
         // The matched half of the variable explorer's. These two were built as a pair by 5ghur and
         // half of this shipped would leave the two explorers disagreeing about the same control on

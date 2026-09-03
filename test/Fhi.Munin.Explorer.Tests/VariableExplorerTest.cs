@@ -8638,11 +8638,11 @@ public class VariableExplorerTest : BunitContext
     /// </remarks>
     private const string SearchField = "form[role=search] .searchbox__freetext";
 
-    /// <inheritdoc cref="SearchField"/>
+    /// <summary>The search form itself, which is not the only form this component can render.</summary>
     private const string SearchForm = "form[role=search]";
 
     [Fact]
-    public void ClearSearch_WhenThereIsASearch_ThenTheControlIsInsideTheFieldAheadOfSok()
+    public void ClearSearch_WhenThereIsASearch_ThenTheControlIsInsideTheFieldAheadOfTheSubmit()
     {
         // Where it is, asserted as position rather than as styling, because the CSS is a host's and
         // this is the part the package decides. Before Søk in document order is what puts it to the
