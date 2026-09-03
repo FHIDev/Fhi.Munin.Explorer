@@ -123,7 +123,7 @@ public class VariableExplorerTest : BunitContext
     /// collection the first time anything is resolved, and setting the renderer info resolves the
     /// renderer. Same order as <c>UrlStateComponentTest.Prepare</c>.
     /// </remarks>
-    private void Prepare(ExplorerClient client)
+    private void Prepare(IMuninExplorerClient client)
     {
         Services.AddSingleton<IMuninExplorerClient>(client);
         Services.AddScoped<VariableListState>();
@@ -334,6 +334,85 @@ public class VariableExplorerTest : BunitContext
         Tab(cut, "Variabelliste").Click();
 
         Assert.Same(before, cut.FindComponent<VariableListView>().Instance);
+    }
+
+    // -----------------------------------------------------------------------
+    // The race a synchronous fake cannot see.
+
+    /// <summary>
+    /// Answers <c>GetMyListsAsync</c> only when the test says so, which is what a real HTTP call
+    /// does and <see cref="ExplorerClient"/> does not.
+    /// </summary>
+    private sealed class StallingListsClient : EmptyMuninExplorerClient
+    {
+        private readonly TaskCompletionSource _gate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public int MyListsCalls { get; private set; }
+
+        public void AnswerLists() => _gate.TrySetResult();
+
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
+            SortField sort = SortField.Default, SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new Page<VariableSummary>
+            {
+                Items = [], TotalCount = 0, PageNumber = 1, Size = pageSize, TotalPages = 0,
+            });
+
+        public override async Task<IReadOnlyList<VariableList>> GetMyListsAsync(
+            CancellationToken cancellationToken = default)
+        {
+            MyListsCalls++;
+            await _gate.Task;
+
+            return [new VariableList { Id = ListId, Name = "Mine hjertevariabler" }];
+        }
+
+        public override Task<Page<VariableListItem>?> GetMyListVariablesAsync(
+            Guid id, int page = 1, int pageSize = 100, CancellationToken cancellationToken = default) =>
+            Task.FromResult<Page<VariableListItem>?>(new Page<VariableListItem>
+            {
+                Items = [new VariableListItem
+                {
+                    VariableId = Guid.NewGuid(),
+                    VariableCode = "V_BDR.ALDER",
+                    VariableName = "Alder ved diagnose",
+                }],
+                TotalCount = 1,
+                PageNumber = 1,
+                Size = pageSize,
+                TotalPages = 1,
+            });
+    }
+
+    [Fact]
+    public async Task ListTab_WhenTheListsReadIsStillInFlightAsBothTabsMount_ThenItStillShowsTheList()
+    {
+        // Measured in a browser against the real component, not derived: with the two surfaces
+        // mounted as siblings, VariableSearch starts the lists read and VariableListView reaches
+        // EnsureLoadedAsync while it is still out. That used to return at once on a _loading flag,
+        // so the list view read an empty Lists, chose no active list, and left the Variabelliste
+        // tab showing the create form and nothing else - for every signed-in reader.
+        //
+        // Every other fake in this file answers synchronously, which closes the window before the
+        // second caller arrives. That is exactly why the suite was green while the page was not.
+        var client = new StallingListsClient();
+        Prepare(client);
+
+        var cut = Render<VariableExplorer>(p => p
+            .Add(c => c.IsAuthenticated, true)
+            .Add(c => c.Language, "no"));
+
+        client.AnswerLists();
+
+        await cut.WaitForAssertionAsync(() => Assert.Contains(
+            "Alder ved diagnose",
+            PanelFor(cut, Tab(cut, "Variabelliste")).InnerHtml,
+            StringComparison.Ordinal));
+
+        // And joined rather than sent twice: the second surface waits for the first one's answer.
+        Assert.Equal(1, client.MyListsCalls);
     }
 
     // -----------------------------------------------------------------------

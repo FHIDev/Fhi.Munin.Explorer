@@ -1,0 +1,29 @@
+@page "/utforsker"
+@using Fhi.Munin.Explorer.Blazor
+
+<PageTitle>Modern host — utforskeren</PageTitle>
+
+<div class="hostchrome">
+    <p class="hostchrome-note">
+        <code>VariableExplorer</code> — the whole variabelutforsker, and the one component a host
+        normally mounts: search, the reader's own variable lists behind the second tab, and the view
+        in the address bar. <a href="/">The front page</a> mounts <code>VariableSearch</code>, the
+        search half on its own, because it receives Kelda's handover as a <code>Filter</code>
+        parameter and so has to own its own query string.
+    </p>
+    <p class="hostchrome-note">
+        <code>IsAuthenticated</code> is hardcoded <code>true</code> here. This sample has no sign-in,
+        and the Variabelliste tab renders nothing at all for a signed-out reader — the package has no
+        business wording a sign-in prompt for a host. Saying so at the mount point is how the tab has
+        anything in it to look at.
+    </p>
+</div>
+
+<div class="hostframe">
+    @* prerender: false, like every other mount in this sample — and here it is not a preference:
+       the component owns the query string and throws on initialisation if it is prerendered,
+       rather than drawing a page whose URL never follows the view. *@
+    <VariableExplorer Language="no"
+                      IsAuthenticated="true"
+                      @rendermode="@(new InteractiveServerRenderMode(prerender: false))" />
+</div>

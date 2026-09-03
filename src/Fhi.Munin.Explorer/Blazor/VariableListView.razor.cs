@@ -512,7 +512,17 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// </summary>
     private void OnStateChanged() => InvokeAsync(async () =>
     {
-        if (_skipOnePageRead)
+        // The holder can choose the active list AFTER this view has already looked for one. Mounted
+        // beside the explorer — which is what VariableExplorer does — both surfaces reach
+        // EnsureActiveListAsync while the lists read is still out, and the second one finds no list
+        // to show. Re-reading the page would go on reading nothing, so a list that has appeared
+        // since is shown rather than merely re-rendered (Fhi.Metadata-l9l2n.39).
+        if (State?.ActiveListId != _shownList)
+        {
+            _skipOnePageRead = false;
+            await ShowActiveListAsync();
+        }
+        else if (_skipOnePageRead)
         {
             _skipOnePageRead = false;
         }

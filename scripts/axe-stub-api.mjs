@@ -36,6 +36,7 @@ const routes = [
   [/^\/api\/explorer\/kilder\/[^/]+$/, 'kilde.json'],
   [/^\/api\/explorer\/kilder$/, 'kilder.json'],
   [/^\/api\/explorer\/datasamling\/[^/]+$/, 'datasamling.json'],
+  [/^\/api\/explorer\/my\/lists\/[^/]+\/variables$/, 'my-list-variables.json'],
   [/^\/api\/explorer\/my\/lists$/, 'my-lists.json'],
 ];
 
