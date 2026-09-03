@@ -836,10 +836,11 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    name.
 
    headline-s / headline-xxs / margin--none are Stiler's own headline scale, from the site-wide
-   styles.css, and are what their h4 field labels wear. The sample carries stand-ins. */
+   styles.css, and are what their h4 field labels wear. The stand-ins keep Stiler's sizes; the 500
+   weight substitutes for graphik-medium, which is not redistributed here. Fhi.Metadata-88521. */
 
-.headline-s { font: normal 600 1.25rem/150% var(--font); }
-.headline-xxs { font: normal 600 0.875rem/150% var(--font); }
+.headline-s { font: normal 500 1.3125rem/160% var(--font); }
+.headline-xxs { font: normal 500 1rem/160% var(--font); }
 .margin--none { margin: 0; }
 .margin--bottom { margin: 0 0 12px; }
 
