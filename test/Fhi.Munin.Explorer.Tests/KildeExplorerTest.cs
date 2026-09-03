@@ -818,10 +818,13 @@ public class KildeExplorerTest : BunitContext
 
         ExpandToggle(cut, "Als registeret").Click();
 
-        var panel = cut.Find(".munin-explorer-kilder__expanded");
+        var status = cut.Find(".munin-explorer-kilder__expanded p[role=status]");
 
-        Assert.Empty(panel.QuerySelectorAll("table"));
-        Assert.NotEmpty(panel.QuerySelectorAll(".infobox"));
+        // The same live region the drilldown uses, so a failure that arrives after the press is
+        // announced rather than only drawn.
+        Assert.Equal("polite", status.GetAttribute("aria-live"));
+        Assert.Contains("infobox", status.ClassName ?? "");
+        Assert.Empty(cut.Find(".munin-explorer-kilder__expanded").QuerySelectorAll("table"));
     }
 
     [Fact]
@@ -842,6 +845,7 @@ public class KildeExplorerTest : BunitContext
 
         Assert.Equal("Henter datakilden …", waiting.TextContent.Trim());
         Assert.Empty(waiting.QuerySelectorAll("table"));
+        Assert.Equal("status", waiting.QuerySelector("p")!.GetAttribute("role"));
 
         await cut.InvokeAsync(() => client.AnswerStalled(DetailWithCollections(als)));
 

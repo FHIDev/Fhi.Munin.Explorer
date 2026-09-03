@@ -254,6 +254,20 @@ public sealed partial class KildeExplorer : ComponentBase
 
     private string PanelId(Guid id) => $"munin-explorer-datasamlinger-{_instance}-{id}";
 
+    // The same shape as DetailStatus beside it: one line that is the loading sentence, then the
+    // error, then nothing — so a single live region announces whichever state the panel is in
+    // rather than a second element appearing under a reader who has already been told.
+    private string? ExpandedStatus(Guid id) =>
+        _datasamlingerLoading.Contains(id)
+            ? T.KildeLoading
+            : _datasamlingerError.GetValueOrDefault(id);
+
+    private string ExpandedStatusClass(Guid id) =>
+        !_datasamlingerLoading.Contains(id) && _datasamlingerError.ContainsKey(id)
+            ? "infobox infobox--bg-yellow"
+            : "caption";
+
+
     // The nested row spans the whole table, so it has to count the columns the mount actually has.
     private int RowSpan => Selectable ? 8 : 7;
 

@@ -450,15 +450,15 @@ else
                            cannot hold a block, and the panel has to span every column. *@
                         <tr @key="@($"{kilde.Id}-datasamlinger")">
                             <td colspan="@RowSpan" id="@PanelId(kilde.Id)" class="munin-explorer-kilder__expanded">
-                                @if (_datasamlingerLoading.Contains(kilde.Id))
-                                {
-                                    <p class="caption margin--none">@T.KildeLoading</p>
-                                }
-                                else if (_datasamlingerError.TryGetValue(kilde.Id, out var error))
-                                {
-                                    <p class="infobox infobox--bg-yellow">@error</p>
-                                }
-                                else
+                                @* One live region for both states, as the drilldown does above and
+                                   the variable explorer's panel does: the panel is inserted after a
+                                   press, so a line that is not announced is a line nobody hears. *@
+                                <p class="@ExpandedStatusClass(kilde.Id)"
+                                   role="status"
+                                   aria-live="polite"
+                                   aria-atomic="true">@ExpandedStatus(kilde.Id)</p>
+
+                                @if (ExpandedStatus(kilde.Id) is null)
                                 {
                                     @foreach (var group in DatasamlingGroups(kilde.Id))
                                     {
