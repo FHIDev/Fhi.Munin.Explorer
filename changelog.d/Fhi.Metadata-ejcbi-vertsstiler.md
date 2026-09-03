@@ -1,15 +1,19 @@
 category: Notes for hosts
 - One new class name, `munin-explorer-pagination-pages`, the row of numbered page buttons between
-  `Forrige` and `Neste`. The buttons inside it are Stiler's own `hd-button-square` with
-  `button-square--secondary` for the page in force and `button-square--ghost` for the rest, and
-  they carry Stiler's `margin-right`, so a host that defines nothing for the new name still gets
-  separated buttons in the flow — what the rule buys is the wrapping. Both sample hosts draw it as
-  a wrapping flex row.
+  `Forrige` and `Neste`. **A host has to draw this one.** The buttons inside it wear helsedata.no's
+  own `hd-button-reset`, which strips the button chrome, and the page in force is marked with their
+  `current` — so without a rule the run is a line of bare digits and nothing says which page you
+  are on. `Forrige` and `Neste` are `hd-button-square button-square--ghost`, also helsedata's own
+  pair. All four were read off their live pager on 2026-09-03 rather than guessed at. Both sample
+  hosts draw the run as a wrapping flex row and bold the `.current` digit.
 - **The three names that carry the pager's layout still owe a rule.** `munin-explorer-pagination`,
   `munin-explorer-pagination-content` and `munin-explorer-pagination-size` were measured on the
   helsedata mount on 2026-08-31 computing to `display: block` with `gap: normal`, filling 2025px:
   the whole pager stacked as blocks instead of laid out as a row. Only
-  `munin-explorer-skiplink-pagination` had a rule. `-content` is the one that matters most — it is
+  `munin-explorer-skiplink-pagination` had a rule, and re-checking the `Fhi.Helsedata.Stiler`
+  working copy on 2026-09-03 found `origin/main` still carrying exactly that one and no other.
+  (This repository's README used to say the pager's rules shipped in 0.1.14. They did not, and it
+  no longer says so.) `-content` is the one that matters most — it is
   where `display: flex` with a 16px `gap` belongs — and `-pages` and `-size` want the same
   treatment inside it. Until they land, a host renders this pager as a column of controls whatever
   else it has. Neither guard in this repository can see that: both ask whether a name has a rule in

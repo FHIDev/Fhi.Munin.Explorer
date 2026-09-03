@@ -2641,6 +2641,30 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
+    public void Render_WhenThereIsMoreThanOnePage_ThenThePagerWearsTheClassesHelsedatasOwnPagerWears()
+    {
+        // Read off https://helsedata.no/no/variabler/?page=search on 2026-09-03: page turns are
+        // `hd-button-square button-square--ghost`, numbers are `hd-button-reset`, the one in force
+        // is marked `current`. First shipped version used the square pair (Fhi.Metadata-ejcbi).
+        var cut = RenderWith(new PagedClient(312));
+
+        Assert.All(
+            PagerButtons(cut),
+            button => Assert.Equal("hd-button-square button-square--ghost", button.ClassName));
+
+        var numbers = PageNumberButtons(cut);
+
+        Assert.NotEmpty(numbers);
+        Assert.All(numbers, number => Assert.Contains("hd-button-reset", number.ClassName!));
+        Assert.All(numbers, number => Assert.DoesNotContain("hd-button-square", number.ClassName!));
+
+        var inForce = Assert.Single(numbers, number => number.ClassList.Contains("current"));
+
+        Assert.Equal("1", inForce.TextContent);
+        Assert.Equal("page", inForce.GetAttribute("aria-current"));
+    }
+
+    [Fact]
     public void Render_WhenThereIsMoreThanOnePage_ThenThePagerBorrowsNothingFromHelsedatasOwnStylesheet()
     {
         // The whole subtree, not just the two names above, because what this guards against is a
@@ -2663,10 +2687,11 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Equal(
         [
-            "button-square--ghost",               // Stiler, a page that is not the one in force
-            "button-square--secondary",           // Stiler, the two page turns and the page in force
+            "button-square--ghost",               // Stiler, the two page turns
             "caption",                            // Stiler, the size label and the run's ellipsis
-            "hd-button-square",                   // Stiler, the square shape
+            "current",                            // the page in force; Stiler scopes its own .current to .page-tabs__tab
+            "hd-button-reset",                    // Stiler, the numbered pages
+            "hd-button-square",                   // Stiler, the square shape of the two page turns
             "margin-right",                       // Stiler, what keeps the numbers apart
             "munin-explorer-pagination",          // ours, Stiler components/munin-explorer/
             "munin-explorer-pagination-content",  // ours, Stiler components/munin-explorer/

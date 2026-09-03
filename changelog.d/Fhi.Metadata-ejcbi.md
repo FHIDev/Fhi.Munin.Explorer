@@ -10,3 +10,7 @@ category: Changed
   a select with no option for the size in force falls back to showing the first one.
 - `VariableListView`'s pager changed with it and draws the same run from the same renderer, so a
   reader's own saved list is no longer walkable one page at a time either.
+- The pager's buttons wear the classes helsedata.no's own pager wears: `hd-button-reset` on the
+  numbers with `current` on the page in force, and `hd-button-square button-square--ghost` on
+  `Forrige` and `Neste`. They were square buttons throughout, which looked right without a
+  stylesheet precisely because it is not what helsedata draws.

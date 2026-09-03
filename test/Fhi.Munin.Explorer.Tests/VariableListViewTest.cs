@@ -945,6 +945,33 @@ public class VariableListViewTest : BunitContext
     }
 
     [Fact]
+    public void View_WhenTheListRunsToManyPages_ThenItsPagerWearsHelsedatasClassesHereToo()
+    {
+        // Pinned twice because the swap was made in both pagers and only the result list's was
+        // asserted; `hd-button-square` and `button-square--secondary` are ordinary names elsewhere
+        // here, so this view's own name guard reads a regression as unremarkable (Fhi.Metadata-ejcbi).
+        var many = Enumerable.Range(1, 130).Select(i => Item($"Variabel {i}", $"V_{i}")).ToArray();
+        var client = new ListClient(many) { PageSize = 25 };
+        var cut = RenderView(client);
+
+        var turns = cut.FindAll(".munin-explorer-pagination-content > button");
+
+        Assert.Equal(2, turns.Count);
+        Assert.All(turns, turn => Assert.Equal("hd-button-square button-square--ghost", turn.ClassName));
+
+        var numbers = cut.FindAll(".munin-explorer-pagination-pages > button");
+
+        Assert.NotEmpty(numbers);
+        Assert.All(numbers, number => Assert.Contains("hd-button-reset", number.ClassName!));
+        Assert.All(numbers, number => Assert.DoesNotContain("hd-button-square", number.ClassName!));
+
+        var inForce = Assert.Single(numbers, number => number.ClassList.Contains("current"));
+
+        Assert.Equal("1", inForce.TextContent);
+        Assert.Equal("page", inForce.GetAttribute("aria-current"));
+    }
+
+    [Fact]
     public async Task View_WhenTheReaderHasTwoLists_ThenSwitchingShowsTheOtherOne()
     {
         var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListCount = 2 };

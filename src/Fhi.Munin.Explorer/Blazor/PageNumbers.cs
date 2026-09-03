@@ -65,9 +65,9 @@ internal static class PageNumbers
 
     /// <summary>Draws the run for <paramref name="page"/> of <paramref name="totalPages"/>.</summary>
     /// <remarks>
-    /// The page in force is filled and the rest are ghosts, which is Stiler's own pair: a host with
-    /// Stiler alone shows which page it is on, owing this package no stylesheet. It carries no
-    /// <c>aria-disabled</c> — <c>aria-current</c> says why it does nothing, and grey would fight the fill.
+    /// The numbers are helsedata's own <c>hd-button-reset</c>, and the one in force adds their
+    /// <c>current</c>. That is a class name and not a look, so the run is unstyled until Stiler
+    /// carries a rule for it. It has no <c>aria-disabled</c> — <c>aria-current</c> says why it does nothing.
     /// </remarks>
     internal static RenderFragment Write(
         object receiver,
@@ -106,9 +106,11 @@ internal static class PageNumbers
             // would patch the button under the finger into the page that took its place.
             builder.SetKey(target);
 
+            // hd-button-reset with `current` on the one in force, which is what helsedata.no's own
+            // pager wears (verified against the live page 2026-09-03). The square-button pair drew
+            // which page it was on without a Stiler rule; this needs one, and it has its own bead.
             builder.AddAttribute(7, "class",
-                "hd-button-square margin-right "
-                + (current ? "button-square--secondary" : "button-square--ghost"));
+                "hd-button-reset margin-right" + (current ? " current" : ""));
             builder.AddAttribute(8, "type", "button");
             builder.AddAttribute(9, "aria-current", current ? "page" : null);
 
