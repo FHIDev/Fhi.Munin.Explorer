@@ -1,4 +1,4 @@
-category: Notes for hosts
+category: Changed
 - **A released version now has a curated changelog entry, and the feed shows it.**
   `PackageReleaseNotes` carries that version's own `CHANGELOG.md` section rather than a link to a
   GitHub release page of auto-generated commit titles, and the release for the tag carries the same
