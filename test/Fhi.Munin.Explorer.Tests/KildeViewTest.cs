@@ -1176,6 +1176,17 @@ public class KildeViewTest : BunitContext
     }
 
     [Fact]
+    public void SourceInformation_WhenTheTimestampIsTheDefaultDate_ThenTheRowIsStillAbsent()
+    {
+        // The other arm of DayOrNothing, and the one nothing reached once the contract went
+        // nullable: a host substituting its own IMuninExplorerClient can deserialise with its own
+        // options and hand over MinValue, which is the year 1 this bead removed. (Fhi.Metadata-se0by)
+        var kilde = Kilde() with { LastUpdated = DateTimeOffset.MinValue };
+
+        Assert.DoesNotContain("Sist oppdatert i Munin", Labels(SourceInformation(Render(kilde))));
+    }
+
+    [Fact]
     public void SourceInformation_WhenTheTimestampIsOld_ThenItIsStillADateAndNotAnAbsence()
     {
         // The sentinel is the default, not "long ago". Written because `value.Year < 2000` passes
@@ -1189,9 +1200,9 @@ public class KildeViewTest : BunitContext
     [Fact]
     public void SourceInformation_WhenThePayloadCarriesNoTimestamp_ThenTheRowIsAbsentRatherThanYearOne()
     {
-        // KildeDetail.LastUpdated is not nullable, so a payload that omits sistOppdatert leaves it
-        // at default and the field drew "1. januar 0001" — a date the catalogue never sent, under a
-        // label saying when Munin last changed its own row. (Fhi.Metadata-6r6rf)
+        // A payload without sistOppdatert reads as null (Fhi.Metadata-se0by) and drew "1. januar
+        // 0001" before that, under a label saying when Munin last changed its own row. Either way
+        // the field is an absence and this block draws no row for one. (Fhi.Metadata-6r6rf)
         var kilde = Kilde() with { LastUpdated = default };
 
         // The whole list, not just the absence: dropping the row and everything after it would

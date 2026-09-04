@@ -322,9 +322,9 @@ public class DatasamlingViewTest : BunitContext
     [Fact]
     public void SourceInformation_WhenThePayloadCarriesNoTimestamp_ThenTheRowIsAbsentRatherThanYearOne()
     {
-        // DatasamlingDetail.LastUpdated is not nullable, so an absent sistOppdatert leaves it at
-        // default and the field drew "1. januar 0001". The kilde view had the same line, and the
-        // kilder table's Importert column the same shape. (Fhi.Metadata-6r6rf)
+        // An absent sistOppdatert reads as null (Fhi.Metadata-se0by) and drew "1. januar 0001"
+        // before that. The kilde view had the same line, and the kilder table's Importert column
+        // the same shape. (Fhi.Metadata-6r6rf)
         var cut = Render(Datasamling() with { LastUpdated = default });
 
         // The whole list, for the reason the kilde view test gives: this row is last, so dropping

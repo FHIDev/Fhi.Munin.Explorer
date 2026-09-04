@@ -1,5 +1,7 @@
 using System.Net;
+using System.Reflection;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
 
@@ -858,29 +860,56 @@ public class MuninExplorerClientTest
         Assert.Null(kilde.Created);
     }
 
-    /// <summary>A contract property of the shape these carried before Fhi.Metadata-se0by.</summary>
+
+    /// <summary>A property of the shape these carried before Fhi.Metadata-se0by.</summary>
     private sealed record NonNullableTimestamp
     {
-        [System.Text.Json.Serialization.JsonPropertyName("sistOppdatert")]
-        public DateTimeOffset LastUpdated { get; init; }
+        [JsonPropertyName("sistOppdatert")] public DateTimeOffset LastUpdated { get; init; }
     }
 
     [Fact]
-    public void Deserialize_WhenATimestampIsNullOnANonNullableProperty_ThenTheWholeDocumentIsLost()
+    public void Deserialize_WhenAnExplicitNullMeetsANonNullableDate_ThenItThrowsRatherThanDefaulting()
     {
-        // Why the contracts declare these DateTimeOffset?. Not a hypothetical: the failure is not a
-        // wrong value in one field but an exception before any of the document is read, and the
-        // caller catches it as "the kilde could not be loaded". This pins the reason so that taking
-        // the ? off again fails here rather than in a reader's panel. (Fhi.Metadata-se0by)
-        Assert.Throws<System.Text.Json.JsonException>(() =>
-            System.Text.Json.JsonSerializer.Deserialize<NonNullableTimestamp>(
-                """{"sistOppdatert":null}""", MuninExplorerClient.Json));
-
-        // The same payload against the contract as it now stands.
-        var read = System.Text.Json.JsonSerializer.Deserialize<KildeDetail>(
-            """{"sistOppdatert":null}""", MuninExplorerClient.Json);
-
-        Assert.NotNull(read);
-        Assert.Null(read.LastUpdated);
+        // The mechanism, demonstrated once: System.Text.Json refuses a null for a value type, and
+        // the refusal is an exception out of the whole read rather than a default in one field.
+        // What it does NOT do is pin the contracts — that is the sweep below. (Fhi.Metadata-se0by)
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<NonNullableTimestamp>(
+            """{"sistOppdatert":null}""", MuninExplorerClient.Json));
     }
+
+    [Fact]
+    public void Deserialize_WhenMuninSendsAnExplicitNull_ThenEveryContractTimestampReadsItAsAbsent()
+    {
+        // The sweep, in the shape NullAsEmptyCollectionsTest uses for collections and for its
+        // reason: a per-property spot check leaves the next one added in the position all of these
+        // were in. Every DateTimeOffset under Contracts/ has to tolerate a null on the wire.
+        var offenders = TimestampProperties()
+            .Where(p => Nullable.GetUnderlyingType(p.PropertyType) is null)
+            .Select(p => $"{p.DeclaringType!.Name}.{p.Name}")
+            .ToList();
+
+        Assert.Equal([], offenders);
+
+        // Not merely declared nullable — actually read back from a payload that sends the null.
+        foreach (var property in TimestampProperties())
+        {
+            var name = property.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name ?? property.Name;
+            var read = JsonSerializer.Deserialize(
+                $$"""{"{{name}}":null}""", property.DeclaringType!, MuninExplorerClient.Json);
+
+            Assert.NotNull(read);
+            Assert.Null(property.GetValue(read));
+        }
+    }
+
+    /// <summary>Every public date property under <c>Contracts/</c>, nullable or not.</summary>
+    private static IReadOnlyList<PropertyInfo> TimestampProperties() =>
+        [.. typeof(IMuninExplorerClient).Assembly
+            .GetExportedTypes()
+            .Where(type => type.Namespace == typeof(IMuninExplorerClient).Namespace
+                           && !typeof(Exception).IsAssignableFrom(type))
+            .SelectMany(type => type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+            .Where(property => property.GetMethod is not null
+                               && (property.PropertyType == typeof(DateTimeOffset)
+                                   || property.PropertyType == typeof(DateTimeOffset?)))];
 }
