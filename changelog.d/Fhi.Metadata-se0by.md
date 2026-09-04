@@ -10,6 +10,8 @@ category: Changed
   is told by the compiler. Two things compile unchanged and behave differently. `k.LastUpdated <
   cutoff` — a "not touched since" report — was **true** for a kilde whose payload omitted the field,
   because the property held `0001-01-01`, and is **false** now; those rows leave such a report
-  silently. And `$"{kilde.LastUpdated}"` renders an empty string where it rendered a date. Ordering
-  is *not* affected: `null` sorts exactly where `MinValue` did, so an `OrderBy` on one of these is
-  unchanged. (Fhi.Metadata-se0by)
+  silently. `$"{kilde.LastUpdated}"` renders an empty string where it rendered a date. And
+  `Min()` over a set that includes one now answers the earliest real date rather than `0001-01-01`.
+  `OrderBy` is *not* affected — `null` sorts exactly where `MinValue` did. Nor is `== default`, which
+  stays true for the absent case; it is `== DateTimeOffset.MinValue` that stops matching.
+  (Fhi.Metadata-se0by)

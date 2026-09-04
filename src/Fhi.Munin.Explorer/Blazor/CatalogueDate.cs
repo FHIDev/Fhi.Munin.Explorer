@@ -88,8 +88,9 @@ internal static class CatalogueDate
     /// <remarks>
     /// An end with no start stands alone: an en-dash with nothing before it reads as a value that
     /// failed to draw, and a start the catalogue never gave would be an invention. A <c>default</c>
-    /// end is read as no end, for the reason <see cref="DayOrNothing"/> gives — the two are one row
-    /// apart in the same fact list, so defending one and not the other draws the year 1 anyway.
+    /// at either end is read as no date there, for the reason <see cref="DayOrNothing"/> gives — the
+    /// two are one row apart in the same fact list. So a default START renders as the end standing
+    /// alone, which is what a null start already did (Fhi.Metadata-n39ea) rather than a new rule.
     /// </remarks>
     internal static string? Period(DateTimeOffset? from, DateTimeOffset? to, string? language,
                                    Texts texts, DateWidth width = DateWidth.Full)

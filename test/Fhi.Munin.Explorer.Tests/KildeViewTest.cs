@@ -1176,6 +1176,21 @@ public class KildeViewTest : BunitContext
     }
 
     [Fact]
+    public void SourceInformation_WhenAValidityStartIsTheDefaultDate_ThenTheEndStandsAlone()
+    {
+        // The other end, and the one worth writing down: the row reads "5. mai 2020" with no start,
+        // which is what a null start has always rendered — an end standing alone. It is NOT the year
+        // 1 and it is NOT a start date, and only a test says which. (Fhi.Metadata-se0by)
+        var kilde = Kilde() with
+        {
+            ValidFrom = DateTimeOffset.MinValue,
+            ValidTo = new DateTimeOffset(2020, 5, 5, 0, 0, 0, TimeSpan.Zero),
+        };
+
+        Assert.Equal("5. mai 2020", Value(SourceInformation(Render(kilde)), "Gyldighet"));
+    }
+
+    [Fact]
     public void SourceInformation_WhenAValidityEndIsTheDefaultDate_ThenItReadsAsOngoingRatherThanYearOne()
     {
         // The row directly above Sist oppdatert i Munin, and the same theoretical host: a

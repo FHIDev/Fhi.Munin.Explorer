@@ -895,10 +895,10 @@ public class MuninExplorerClientTest
 
     /// <summary>Every date property on every type this package deserialises.</summary>
     /// <remarks>
-    /// Found by <c>JsonPropertyName</c> rather than by namespace or by <c>public</c>: the client's
-    /// own response bodies are internal and live beside it, a sub-namespace under Contracts would
-    /// pass a namespace test that compares for equality, and <c>DateTime</c> refuses a null exactly
-    /// as <c>DateTimeOffset</c> does.
+    /// Two arms, because neither alone is what "deserialised" means. The attribute reaches the
+    /// client's own internal response bodies and any sub-namespace; the namespace reaches a property
+    /// that binds by the camelCase policy without carrying one, which the attribute arm cannot see.
+    /// <c>DateTime</c> is swept beside <c>DateTimeOffset</c> because it refuses a null identically.
     /// </remarks>
     private static IReadOnlyList<PropertyInfo> TimestampProperties() =>
         [.. typeof(IMuninExplorerClient).Assembly
@@ -906,10 +906,13 @@ public class MuninExplorerClientTest
             .Where(type => !typeof(Exception).IsAssignableFrom(type))
             .SelectMany(type => type.GetProperties(
                 BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
-            .Where(property => property.GetCustomAttribute<JsonPropertyNameAttribute>() is not null
-                               && IsDate(property.PropertyType))];
+            .Where(property => property.GetMethod is not null && IsDate(property.PropertyType)
+                               && (property.GetCustomAttribute<JsonPropertyNameAttribute>() is not null
+                                   || property.DeclaringType!.Namespace
+                                       == typeof(IMuninExplorerClient).Namespace))];
 
     private static bool IsDate(Type type) =>
         (Nullable.GetUnderlyingType(type) ?? type) is var bare
-        && (bare == typeof(DateTimeOffset) || bare == typeof(DateTime));
+        && (bare == typeof(DateTimeOffset) || bare == typeof(DateTime)
+            || bare == typeof(DateOnly) || bare == typeof(TimeOnly));
 }
