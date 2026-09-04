@@ -583,6 +583,12 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .munin-explorer-filters__count {
   color: var(--grey60);
   font-variant-numeric: tabular-nums;
+
+  /* Opting out of the label's overflow-wrap: anywhere, which is inherited and is there so a
+     200-character databehandler breaks inside the sidebar. The count is a shrinkable item beside
+     it, so "(32)" broke between the digits and the bracket. (Fhi.Metadata-z1895) */
+  flex: none;
+  overflow-wrap: normal;
 }
 
 /* The dataperiode facet: a label and a native date input per end. No class name of our own —

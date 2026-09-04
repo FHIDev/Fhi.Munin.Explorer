@@ -4503,6 +4503,41 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
+    public void Count_WhenAHostStylesIt_ThenTheDeclarationsItNeedsHoldItWhole()
+    {
+        // Same shape as the facet fold's guard: the general checks ask whether a name has a rule
+        // that declares SOMETHING, and this one declared a colour and tabular-nums while the number
+        // broke in half - 26 of 107 counts over two lines at 1280px. (Fhi.Metadata-z1895)
+        static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
+
+        var count = HostClassNames.SampleDeclarationsFor("munin-explorer-filters__count")
+            .Select(rule => Squeezed(rule.Declarations))
+            .ToList();
+
+        Assert.True(
+            count.Any(d => d.Contains("flex:none", StringComparison.Ordinal)
+                        || d.Contains("flex-shrink:0", StringComparison.Ordinal)),
+            "Nothing stops the count shrinking, so a long value squeezes it until it breaks.");
+
+        Assert.True(
+            count.Any(d => d.Contains("overflow-wrap:normal", StringComparison.Ordinal)
+                        || d.Contains("white-space:nowrap", StringComparison.Ordinal)),
+            "The count still inherits the label's overflow-wrap: anywhere, which breaks it anywhere.");
+
+        // The other fix, and the tidier-looking one: take the wrapping off the LABEL. It ends the
+        // breaking too, and lets the values it exists for - a databehandler of 200 characters - out
+        // of the sidebar. So the count opts out of an inherited rule that has to stay.
+        var label = HostClassNames.SampleDeclarationsFor("munin-explorer-filters")
+            .Where(rule => rule.Selector.Contains("li > label", StringComparison.Ordinal))
+            .Select(rule => Squeezed(rule.Declarations))
+            .ToList();
+
+        Assert.True(
+            label.Any(d => d.Contains("overflow-wrap:anywhere", StringComparison.Ordinal)),
+            "The facet label no longer wraps its longest values, so they leave the panel instead.");
+    }
+
+    [Fact]
     public void Filter_WhenTheFacetsRefreshUnderIt_ThenTheTickedValueIsStillTicked()
     {
         // The counts move on every refresh, so the values reorder and the ticked one is redrawn
