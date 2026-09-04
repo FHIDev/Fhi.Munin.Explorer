@@ -839,4 +839,25 @@ public class KildeSelectionTest : BunitContext
 
         Assert.Equal(headers.ToString(), panel.GetAttribute("colspan"));
     }
+
+    [Fact]
+    public void SelectColumn_WhenTheHostWiredTheHandover_ThenTheCheckboxIsWhereItsHeaderSaysItIs()
+    {
+        // The ordered-cell assertion in KildeExplorerTest runs without the handover, so the one
+        // column this file adds was pinned by nothing: moving the body's @if(Selectable) block
+        // after the name would put every checkbox under "Navn" and every name under "Velg alle",
+        // with the suite green. A cell's own header is what a screen reader reads it against.
+        var (cut, _) = RenderSelectable(new FakeClient(Kilde("Als registeret", "K_ALS")));
+
+        var row = cut.Find(".munin-explorer-kilder tbody tr");
+        var cells = row.QuerySelectorAll(":scope > *");
+
+        // Second, after the expand control and before the name: the same place the header puts it.
+        Assert.Equal(1, Array.FindIndex(
+            [.. cut.FindAll(".munin-explorer-kilder thead th")],
+            th => th.QuerySelector("input[type=checkbox]") is not null));
+
+        Assert.NotNull(cells[1].QuerySelector("input[type=checkbox]"));
+        Assert.Equal("TH", cells[2].TagName);
+    }
 }
