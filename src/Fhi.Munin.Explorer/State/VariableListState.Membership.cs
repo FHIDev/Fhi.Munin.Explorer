@@ -180,25 +180,10 @@ public sealed partial class VariableListState
         return _saved.Contains(variableId);
     }
 
-    /// <summary>
-    /// Notes a write the API accepted against the membership set, so every surface that draws from
-    /// <see cref="IsSaved"/> agrees about a variable the reader has just added or taken out.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// The set holds the active list and nothing else, so a write addressed elsewhere is noted
-    /// nowhere: <see cref="Blazor.VariableListView"/> writes to the list it is showing, which is
-    /// the active one only while the two agree, and taking a variable out of some other list says
-    /// nothing about the list the save buttons are drawn from.
-    /// </para>
-    /// <para>
-    /// <paramref name="startedAt"/> is the generation read before the write went out, and the
-    /// guard is the one every await in this class carries: a write landing after the reader signed
-    /// out must not put a variable back into the set <see cref="SetAuthenticated"/> has just
-    /// cleared, nor take one out of the next reader's. The write itself stands — the server has it
-    /// either way; it is this circuit's copy that must not keep the answer.
-    /// </para>
-    /// </remarks>
+    /// <summary>Notes an accepted write against the membership set, which is the active list's.</summary>
+    // A write addressed to any other list is dropped: VariableListView writes to the list it is
+    // showing, which is the active one only while the two agree. startedAt carries the same
+    // sign-out guard the press above carries (Fhi.Metadata-ehghv).
     private void RecordMembership(
         Guid listId,
         IReadOnlyCollection<Guid> variableIds,
