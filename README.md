@@ -34,12 +34,21 @@ are the two halves, public for a host that wants to lay them out itself — see
 | `src/Fhi.Munin.Explorer/Client` | Typed `HttpClient` implementation + `AddMuninExplorer()`. |
 | `samples/ModernHost` | Blazor Web App — the everyday development host. |
 | `samples/LegacyHost` | Legacy Blazor Server + MVC — mirrors helsedata's Optimizely host. |
+| `samples/HostileHost` | The same, in helsedata's real stylesheet under their top-anchored header. |
 | `test/Fhi.Munin.Explorer.Tests` | bUnit + xUnit. |
 
-Both sample hosts exist on purpose. helsedata's production site runs **legacy** Blazor Server
-(`AddServerSideBlazor()` + `MapBlazorHub()`), mounting components inside MVC views with the
+The first two sample hosts exist on purpose. helsedata's production site runs **legacy** Blazor
+Server (`AddServerSideBlazor()` + `MapBlazorHub()`), mounting components inside MVC views with the
 `<component>` tag helper. A component that only ever ran in a modern Blazor Web App can break
 there in ways that never show up in development.
+
+The third answers a different question, and answers it because those two could not. `HostileHost`
+has a `PackageReference` to `Fhi.Helsedata.Stiler` and wears their `.main-header`, which is
+`position: absolute; top: 0` over a 64px row and so covers the page's first 64px. It is the only
+place a rule of theirs can collide with our markup before the collision reaches their site;
+`scripts/check-hostile-host.sh` measures it with `getBoundingClientRect` and then runs axe over the
+same page. It needs credentials for helsedata's private feed and is deliberately absent from the
+solution — see [`docs/running-locally.md`](docs/running-locally.md).
 
 The two hosts share one stylesheet, copied — `samples/ModernHost/wwwroot/host.css` and
 `samples/LegacyHost/wwwroot/css/host.css` are byte-for-byte identical, so a difference you see
