@@ -93,9 +93,22 @@ public class PageNumbersTest : BunitContext
         }
     }
 
-    private Microsoft.AspNetCore.Components.RenderFragment Run(int page, int totalPages) =>
+    /// <summary>A receiver for the fragment under test, which is not a component.</summary>
+    /// <remarks>
+    /// The parameter is IHandleEvent because that is what EventCallback dispatches through, and this
+    /// test used to hand it `this` — a fixture that would swallow a press without redrawing. Nothing
+    /// here presses anything, so the stub only has to satisfy the type honestly.
+    /// </remarks>
+    private sealed class Presser : Microsoft.AspNetCore.Components.IHandleEvent
+    {
+        public Task HandleEventAsync(
+            Microsoft.AspNetCore.Components.EventCallbackWorkItem item, object? arg) =>
+            item.InvokeAsync(arg);
+    }
+
+    private static Microsoft.AspNetCore.Components.RenderFragment Run(int page, int totalPages) =>
         PageNumbers.Write(
-            this,
+            new Presser(),
             page,
             totalPages,
             _ => Task.CompletedTask,

@@ -839,4 +839,50 @@ public class KildeSelectionTest : BunitContext
 
         Assert.Equal(headers.ToString(), panel.GetAttribute("colspan"));
     }
+
+    [Fact]
+    public void SelectColumn_WhenTheHostWiredTheHandover_ThenTheCheckboxIsWhereItsHeaderSaysItIs()
+    {
+        // The ordered-cell assertion in KildeExplorerTest runs without the handover, so the one
+        // column this file adds was pinned by nothing: moving the body's @if(Selectable) block
+        // after the name would put every checkbox under "Navn" and every name under "Velg alle",
+        // with the suite green. A cell's own header is what a screen reader reads it against.
+        var (cut, _) = RenderSelectable(new FakeClient(Kilde("Als registeret", "K_ALS")));
+
+        var row = cut.Find(".munin-explorer-kilder tbody tr");
+        var cells = row.QuerySelectorAll(":scope > *");
+
+        // Read off the header rather than written down, so a control column added in front of both
+        // moves this with it. Found by the element and not by munin-explorer-kilder__select, which
+        // would follow the box wherever it went and so could not tell it had moved.
+        var box = Array.FindIndex(
+            [.. cut.FindAll(".munin-explorer-kilder thead th")],
+            th => th.QuerySelector("input[type=checkbox]") is not null);
+
+        Assert.NotEqual(-1, box);
+        Assert.NotNull(cells[box].QuerySelector("input[type=checkbox]"));
+
+        // A td, not a th, which the markup says in a comment and nothing checked: two th
+        // scope="row" in a row makes a screen reader read "Velg Als registeret" as the row's
+        // context in front of every cell in it. (Fhi.Metadata-5ghur)
+        Assert.Equal("TD", cells[box].TagName);
+        Assert.Equal("TH", cells[box + 1].TagName);
+    }
+
+    [Fact]
+    public void Table_Always_ThenEveryHeaderSaysWhatItHeads()
+    {
+        // The element is not the association: a th with no scope leaves the browser to guess which
+        // cells it heads, and every scope attribute in this table could be deleted with the whole
+        // suite green. axe cannot see it either — scope-attr-valid checks the VALUE of a scope that
+        // is there and reports nothing at all for one that is missing, which is the "blind to the
+        // absence of structure" case AGENTS.md describes. WCAG 1.3.1.
+        var (cut, _) = RenderSelectable(new FakeClient(Kilde("Als registeret", "K_ALS")));
+
+        Assert.All(cut.FindAll(".munin-explorer-kilder thead th"),
+                   th => Assert.Equal("col", th.GetAttribute("scope")));
+
+        Assert.All(cut.FindAll(".munin-explorer-kilder tbody tr > th"),
+                   th => Assert.Equal("row", th.GetAttribute("scope")));
+    }
 }

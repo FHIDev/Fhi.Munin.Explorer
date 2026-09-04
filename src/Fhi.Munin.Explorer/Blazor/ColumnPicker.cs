@@ -60,15 +60,18 @@ namespace Fhi.Munin.Explorer.Blazor;
 internal static class ColumnPicker
 {
     /// <summary>One column, as the picker draws it.</summary>
-    /// <param name="Label">The word the header above the column uses, so the picker and the column
-    /// it turns off are never two names for one thing.</param>
-    /// <param name="Visible">Whether the column is on screen.</param>
-    /// <param name="Locked">Whether it refuses to be turned off.</param>
-    /// <param name="Toggle">What a press does. The caller owns the rule; this only draws it.</param>
+    /// <remarks>
+    /// The label is the word the header above the column uses, so the picker and the column it
+    /// turns off are never two names for one thing, and the toggle is the caller's own rule —
+    /// visibility and locking are decided there, and drawn here.
+    /// </remarks>
     internal readonly record struct Choice(string Label, bool Visible, bool Locked, Action Toggle);
 
     /// <summary>The picker.</summary>
-    /// <param name="receiver">The component whose state a press changes, so Blazor re-renders it.</param>
+    /// <param name="receiver">The component whose state a press changes. <c>IHandleEvent</c> and not
+    /// <c>object</c>, because that is what <c>EventCallback.InvokeAsync</c> dispatches through — an
+    /// <c>object</c> receiver is pressed and never redrawn. The interface is the floor, not a
+    /// guarantee: what redraws is <c>ComponentBase</c> handling the event.</param>
     /// <param name="buttonLabel">The trigger's word — "Kolonner".</param>
     /// <param name="choices">The columns, in the order the picker lists them.</param>
     /// <param name="hint">Why the last column refuses, and the id a locked button points at.
@@ -79,7 +82,7 @@ internal static class ColumnPicker
     /// a column: the kilde table draws Navn, Status and Opprettet whatever its picker says.
     /// </remarks>
     internal static RenderFragment For(
-        object receiver,
+        IHandleEvent receiver,
         string buttonLabel,
         IReadOnlyList<Choice> choices,
         (string Id, string Text)? hint = null) => builder =>

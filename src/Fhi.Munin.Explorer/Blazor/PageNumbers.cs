@@ -68,9 +68,14 @@ internal static class PageNumbers
     /// The numbers are helsedata's own <c>hd-button-reset</c>, and the one in force adds their
     /// <c>current</c>. That is a class name and not a look, so the run is unstyled until Stiler
     /// carries a rule for it. It has no <c>aria-disabled</c> — <c>aria-current</c> says why it does nothing.
+    /// <para>
+    /// The receiver is <c>IHandleEvent</c> for the reason <c>ColumnPicker.For</c> gives: it is what
+    /// <c>EventCallback.InvokeAsync</c> dispatches through, and an <c>object</c> is pressed and
+    /// never redrawn.
+    /// </para>
     /// </remarks>
     internal static RenderFragment Write(
-        object receiver,
+        IHandleEvent receiver,
         int page,
         int totalPages,
         Func<int, Task> goToPage,

@@ -3012,7 +3012,7 @@ public class KildeExplorerTest : BunitContext
         Assert.Equal(
         [
             "+",
-            "Als registeret\n\n                            K_ALS",
+            NameCellText(cut),
             "Sentralt helseregister",
             "Aktiv",
             "St. Olavs hospital HF",
@@ -3027,6 +3027,15 @@ public class KildeExplorerTest : BunitContext
             SourceUpdatedText(cut),
         ], FirstRowCells(cut));
     }
+
+    /// <summary>The name cell as the row draws it, name and code together.</summary>
+    /// <remarks>
+    /// Read back rather than written down: the two are separate elements with the markup's own
+    /// indentation between them, so a literal here pins the razor file's whitespace and breaks on a
+    /// reindent with a diff nobody can read. What the caller asserts is its POSITION in the row.
+    /// </remarks>
+    private static string NameCellText(IRenderedComponent<KildeExplorer> cut) =>
+        FirstRowCells(cut).Single(c => c.Contains("K_ALS", StringComparison.Ordinal));
 
     /// <summary>The three date cells as this runtime spells them.</summary>
     /// <remarks>
@@ -3068,6 +3077,71 @@ public class KildeExplorerTest : BunitContext
     }
 
     [Fact]
+    public void DataController_WhenTheCatalogueFilledItIn_ThenTheCellIsMarkedAsNorwegian()
+    {
+        // The other half of the rule above, and the half that was missing: with both `lang`
+        // attributes simply deleted the empty-cell test still passed, and an English reader heard
+        // "St. Olavs hospital HF" read out in an English voice. The catalogue holds one language.
+        var cut = RenderWith(new FakeClient(Furnished()), b => b.Add(c => c.Language, "en"));
+
+        ToggleColumn(cut, "Data controller");
+        ToggleColumn(cut, "Data processor");
+
+        var cells = cut.FindAll(".munin-explorer-kilder tbody td")
+            .Where(td => td.TextContent.Trim() is "St. Olavs hospital HF" or "Folkehelseinstituttet")
+            .ToList();
+
+        Assert.Equal(2, cells.Count);
+        Assert.All(cells, td => Assert.Equal("no", td.GetAttribute("lang")));
+    }
+
+    [Fact]
+    public void Validity_WhenTheCatalogueGaveNoEndDate_ThenTheCellSaysItIsOngoing()
+    {
+        // The wiring, not the formatting: CatalogueDate.Period is pinned elsewhere, but nothing
+        // here noticed which ends were handed to it. Passing ValidFrom twice draws "2013 – 2013",
+        // which every other assertion about this column accepts, since they all look for 2013.
+        var cut = RenderWith(new FakeClient(Furnished()));
+
+        ToggleColumn(cut, "Gyldighet");
+
+        var cell = FirstRowCells(cut).Single(c => c.Contains("2013", StringComparison.Ordinal));
+
+        Assert.EndsWith("Pågående", cell, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Validity_WhenTheKildeHasClosed_ThenTheCellCarriesBothEnds()
+    {
+        // The other end, and the direction that ships a lie rather than a blank: with ValidTo
+        // dropped on the way to the formatter, a register that stopped collecting in 2019 still
+        // reads "Pågående". The test above cannot see that — every fixture here leaves ValidTo
+        // null, so passing null explicitly changes nothing it looks at.
+        var cut = RenderWith(new FakeClient(
+            Furnished() with { ValidTo = new DateTimeOffset(2019, 12, 31, 0, 0, 0, TimeSpan.Zero) }));
+
+        ToggleColumn(cut, "Gyldighet");
+
+        var cell = FirstRowCells(cut).Single(c => c.Contains("2013", StringComparison.Ordinal));
+
+        Assert.Contains("2019", cell, StringComparison.Ordinal);
+        Assert.DoesNotContain("Pågående", cell, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Imported_WhenThePayloadCarriesNoTimestamp_ThenTheCellSaysSoRatherThanDrawingYearOne()
+    {
+        // KildeSummary.Created is not nullable, so a payload that omits `opprettet` leaves it at
+        // default and the column drew "1. januar 0001" — a date the catalogue never wrote, in a
+        // column whose whole job is to say when Munin took the row.
+        var cut = RenderWith(new FakeClient(Furnished() with { Created = default }));
+
+        ToggleColumn(cut, "Importert");
+
+        Assert.Contains("Ikke oppgitt", FirstRowCells(cut));
+    }
+
+    [Fact]
     public void SourceUpdated_WhenTheListIsTheCapturedPayload_ThenItShowsTheYearsTheApiSent()
     {
         // The one Sist endret test that does not write the key it reads. Every other one builds its
@@ -3083,9 +3157,12 @@ public class KildeExplorerTest : BunitContext
         ToggleColumn(cut, "Sist endret");
 
         // Years, not formatted dates: the month's short form is the runtime's. The payload holds
-        // 20260423, 20260813 and 20230131.
+        // 20260423, 20260813 and 20230131. The whole cell is reported when it does not end in a
+        // year, so a fixture re-capture that drops the key fails as "expected 2026, got Ikke
+        // oppgitt" rather than as four characters of it.
         var years = cut.FindAll(".munin-explorer-kilder tbody tr")
-            .Select(row => row.QuerySelectorAll("td")[^1].TextContent.Trim()[^4..]);
+            .Select(row => row.QuerySelectorAll("td")[^1].TextContent.Trim())
+            .Select(text => text.Length >= 4 && text[^4..].All(char.IsAsciiDigit) ? text[^4..] : text);
 
         Assert.Equal(["2026", "2026", "2023"], years);
     }
