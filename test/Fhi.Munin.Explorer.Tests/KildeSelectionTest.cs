@@ -620,6 +620,10 @@ public class KildeSelectionTest : BunitContext
             "munin-explorer-filters__count",     // shared with the variable explorer's facets
             "munin-explorer-filters__facets",
             "munin-explorer-filters__toggle",
+            // The column picker, shared with the variable explorer down to the markup (ColumnPicker).
+            "munin-explorer-header",
+            "munin-explorer-header__actions",
+            "munin-explorer-header__actions-button",
             "munin-explorer-kilder",
             "munin-explorer-kilder__count",
             "munin-explorer-kilder__expand",
@@ -630,6 +634,7 @@ public class KildeSelectionTest : BunitContext
             "munin-explorer-search__clear",      // shared
             "munin-explorer-selection",          // this bead's
             "munin-explorer-selection__explore", // this bead's
+            "munin-explorer__dropdown",          // the picker, shared
         ], invented);
     }
 
@@ -815,5 +820,23 @@ public class KildeSelectionTest : BunitContext
 
         // The half of type="search" worth keeping: a soft keyboard still offers a search key.
         Assert.Equal("search", field.GetAttribute("enterkeyhint"));
+    }
+
+    [Fact]
+    public async Task ExpandedRow_WhenTheHostWiredTheHandover_ThenItSpansTheCheckboxColumnToo()
+    {
+        // The colspan's other arm. KildeExplorerTest covers it without the handover, where the
+        // checkbox column does not exist, so the `Selectable ? 5 : 4` half of the arithmetic was
+        // never executed by a test at all — `Selectable ? 99 : 4` passed the whole suite. Too large
+        // and the table is malformed; too small and the panel leaves dead cells beside it.
+        var (cut, _) = RenderSelectable(new FakeClient(Kilde("Als registeret", "K_ALS")));
+
+        cut.Find(".munin-explorer-kilder__expand-toggle").Click();
+        await cut.InvokeAsync(() => { });
+
+        var headers = cut.FindAll(".munin-explorer-kilder thead th").Count;
+        var panel = cut.Find(".munin-explorer-kilder__expanded");
+
+        Assert.Equal(headers.ToString(), panel.GetAttribute("colspan"));
     }
 }

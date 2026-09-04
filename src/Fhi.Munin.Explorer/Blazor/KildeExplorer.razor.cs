@@ -303,8 +303,10 @@ public sealed partial class KildeExplorer : ComponentBase
             : "caption";
 
 
-    // The nested row spans the whole table, so it has to count the columns the mount actually has.
-    private int RowSpan => Selectable ? 8 : 7;
+    // The nested row spans the whole table, so it has to count the columns the mount actually has —
+    // now the picker's choice as well as the host's. Four are always drawn: the expand control,
+    // Navn, Status and Opprettet.
+    private int RowSpan => (Selectable ? 5 : 4) + OptionalColumns.Count(ColumnVisible);
 
     private async Task ToggleDatasamlingerAsync(KildeSummary kilde)
     {

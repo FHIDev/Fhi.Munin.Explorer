@@ -336,6 +336,14 @@ internal sealed record Texts(
     // "Established". Named for the year and not for the word, because the word also names
     // KildeSummary.Created — Munin's own row timestamp, and Kelda's Importert, not this column.
     string ColumnEstablished,
+    // Three of the ten columns behind the kilde table's picker. The other seven wear names this
+    // record already holds. Both dates below are the ones ColumnEstablished warns about: Imported
+    // is KildeSummary.Created, Munin's own row, and SourceUpdated is the catalogue's own
+    // SistOppdatert — not KildeSummary.LastUpdated, which is Munin's and reads "Sist oppdatert i
+    // Munin" in FieldLastUpdated. Kelda words them "Importert" and "Sist endret".
+    string ColumnDelkildeCount,
+    string ColumnImported,
+    string ColumnSourceUpdated,
     // The kilde table's expand control. The label carries the kilde's name because "Vis
     // datasamlinger" repeated down a column says nothing about which row (Fhi.Metadata-mq24y).
     Func<string, string> ExpandDatasamlinger,
@@ -837,6 +845,9 @@ internal sealed record Texts(
         ColumnKildetype: "Kildetype",
         ColumnVariableCount: "Variabler",
         ColumnEstablished: "Opprettet",
+        ColumnDelkildeCount: "Delkilder",
+        ColumnImported: "Importert",
+        ColumnSourceUpdated: "Sist endret",
         ExpandDatasamlinger: name => $"Vis datasamlinger for {name}",
         CollapseDatasamlinger: name => $"Skjul datasamlinger for {name}",
         ColumnExpand: "Vis datasamlinger",
@@ -1128,6 +1139,9 @@ internal sealed record Texts(
         ColumnKildetype: "Source type",
         ColumnVariableCount: "Variables",
         ColumnEstablished: "Established",
+        ColumnDelkildeCount: "Sub-sources",
+        ColumnImported: "Imported",
+        ColumnSourceUpdated: "Last modified",
         ExpandDatasamlinger: name => $"Show data collections for {name}",
         CollapseDatasamlinger: name => $"Hide data collections for {name}",
         ColumnExpand: "Show data collections",

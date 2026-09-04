@@ -2740,9 +2740,9 @@ public class KildeExplorerTest : BunitContext
     [Fact]
     public void Render_WhenTheListIsOnScreen_ThenNoClassNamesAreInventedApartFromTheDomHandles()
     {
-        // The exact list on purpose: a thirteenth name is news that has to be answered in both
-        // sample stylesheets before it ships. Twelve and not thirteen because nothing here wires
-        // ExploreVariablesRequested, so munin-explorer-kilder__select is absent (KildeSelectionTest).
+        // The exact list on purpose: one more name is news that has to be answered in both sample
+        // stylesheets before it ships. munin-explorer-kilder__select is absent because nothing here
+        // wires ExploreVariablesRequested (KildeSelectionTest).
         var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
         // Searched, not idle: the clear control is drawn only when there is something to clear, so
@@ -2763,6 +2763,10 @@ public class KildeExplorerTest : BunitContext
             "munin-explorer-filters__count",     // shared with the variable explorer's facets
             "munin-explorer-filters__facets",
             "munin-explorer-filters__toggle",
+            // The column picker, shared with the variable explorer down to the markup (ColumnPicker).
+            "munin-explorer-header",
+            "munin-explorer-header__actions",
+            "munin-explorer-header__actions-button",
             "munin-explorer-kilder",
             "munin-explorer-kilder__count",
             "munin-explorer-kilder__expand",
@@ -2770,6 +2774,7 @@ public class KildeExplorerTest : BunitContext
             "munin-explorer-kilder__name",
             "munin-explorer-results",            // shared
             "munin-explorer-search__clear",      // shared
+            "munin-explorer__dropdown",          // the picker, shared
         ], invented);
     }
 
@@ -2818,5 +2823,361 @@ public class KildeExplorerTest : BunitContext
             BlocksFor(".munin-explorer-filters__facets[hidden]")
                 .Any(d => d.Contains("display:block", StringComparison.Ordinal)),
             "No rule undoes [hidden] on the facets once the host has room for a sidebar.");
+    }
+
+    // ---------------------------------------------------------------------------------
+    // The column picker. Kelda's rules, not the variable explorer's: ten optional columns,
+    // three of them on to begin with, and no last-column lock — Navn, Status and Opprettet
+    // are drawn whatever the picker says, so this control cannot empty a row. The choice is
+    // not persisted and not in the host's URL, which is what Kelda does. (Fhi.Metadata-ay3zz)
+    // ---------------------------------------------------------------------------------
+
+    /// <summary>The picker's toggles, in the order it lists them.</summary>
+    private static IReadOnlyList<IElement> ColumnToggles(IRenderedComponent<KildeExplorer> cut) =>
+        cut.FindAll(".dropdown-choicepicker__item button");
+
+    /// <summary>The toggle for one named column, refetched so it is never a stale node.</summary>
+    private static void ToggleColumn(IRenderedComponent<KildeExplorer> cut, string label) =>
+        ColumnToggles(cut).Single(b => b.TextContent.Trim() == label).Click();
+
+    private static IReadOnlyList<string> Headers(IRenderedComponent<KildeExplorer> cut) =>
+        [.. cut.FindAll(".munin-explorer-kilder thead th").Select(th => th.TextContent.Trim())];
+
+    private static IReadOnlyList<string> FirstRowCells(IRenderedComponent<KildeExplorer> cut) =>
+        [.. cut.FindAll(".munin-explorer-kilder tbody tr:first-child > *").Select(c => c.TextContent.Trim())];
+
+    /// <summary>
+    /// One kilde carrying every field the ten optional columns read, each value distinct.
+    /// </summary>
+    /// <remarks>
+    /// The four date-shaped fields are the point. Two are Munin's own — Created and LastUpdated —
+    /// and two are the catalogue's, written into the bag as text: Opprettet, a bare founding year,
+    /// and SistOppdatert as <c>yyyyMMdd</c>. A column drawing the wrong one of the four still
+    /// renders a plausible date, which is why every value here is a different year.
+    /// </remarks>
+    private static KildeSummary Furnished() =>
+        Kilde("Als registeret", "K_ALS", established: "2011") with
+        {
+            DelkildeCount = 7,
+            DataController = "St. Olavs hospital HF",
+            DataProcessor = "Folkehelseinstituttet",
+            PersonIdentificationLevel = "indirectlyIdentifiable",
+            ValidFrom = new DateTimeOffset(2013, 1, 1, 0, 0, 0, TimeSpan.Zero),
+            ValidTo = null,
+            Created = new DateTimeOffset(2015, 3, 4, 9, 0, 0, TimeSpan.Zero),
+            LastUpdated = new DateTimeOffset(2017, 6, 7, 9, 0, 0, TimeSpan.Zero),
+            AdditionalProperties = new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                ["Opprettet"] = "2011",
+                ["SistOppdatert"] = "20190823",
+            },
+        };
+
+    [Fact]
+    public void Columns_WhenTheListLoads_ThenKeldasDefaultSetIsOnScreenAndTheOtherSevenAreNot()
+    {
+        // The set this component already shipped, restated as the picker's defaults so the change
+        // is a control gained rather than a table rearranged. Kelda's DEFAULT_VISIBLE turns on
+        // kildetype, datasamlinger and variabler and leaves the other seven off (kelda.tsx:86).
+        var cut = RenderWith(new FakeClient(Furnished()));
+
+        Assert.Equal(
+        [
+            "Vis datasamlinger",  // the expand control's screenreader-only heading
+            "Navn",
+            "Kildetype",
+            "Status",
+            "Datasamlinger",
+            "Variabler",
+            "Opprettet",
+        ], Headers(cut));
+    }
+
+    [Fact]
+    public void Picker_WhenTheListLoads_ThenItOffersKeldasTenColumnsInKeldasOrder()
+    {
+        // Kelda's OPTIONAL_COLUMNS, in its order (kelda.tsx:74). Navn, Status and Opprettet are
+        // absent for the reason they are absent from Kelda's own list: the name is the row's
+        // drill-in control, and the other two are what the list is read by.
+        var cut = RenderWith(new FakeClient(Furnished()));
+
+        Assert.Equal(
+        [
+            "Kildetype",
+            "Datasamlinger",
+            "Variabler",
+            "Delkilder",
+            "Dataansvarlig",
+            "Databehandler",
+            "Grad av personidentifikasjon",
+            "Gyldighet",
+            "Importert",
+            "Sist endret",
+        ], ColumnToggles(cut).Select(b => b.TextContent.Trim()));
+
+        // aria-pressed is the whole truth about a toggle button, so the defaults have to be
+        // readable off it rather than only off the table.
+        Assert.Equal(
+            ["true", "true", "true", "false", "false", "false", "false", "false", "false", "false"],
+            ColumnToggles(cut).Select(b => b.GetAttribute("aria-pressed")));
+    }
+
+    [Theory]
+    [InlineData("Delkilder", "7")]
+    [InlineData("Dataansvarlig", "St. Olavs hospital HF")]
+    [InlineData("Databehandler", "Folkehelseinstituttet")]
+    [InlineData("Grad av personidentifikasjon", "Indirekte identifiserbar")]
+    public void Picker_WhenAHiddenColumnIsTurnedOn_ThenItsHeaderAndItsOwnValueAppear(
+        string label, string expected)
+    {
+        // One case per column, and the value rather than merely the header, because the seven were
+        // wired to seven different fields and a header proves only that a cell exists. The three
+        // that carry dates are next door: their spelling is not the same everywhere, so they are
+        // asserted on the year rather than on a formatted string.
+        var cut = RenderWith(new FakeClient(Furnished()));
+
+        Assert.DoesNotContain(label, Headers(cut));
+
+        ToggleColumn(cut, label);
+
+        Assert.Contains(label, Headers(cut));
+        Assert.Contains(expected, FirstRowCells(cut));
+    }
+
+    [Theory]
+    [InlineData("Gyldighet", "2013")]
+    [InlineData("Importert", "2015")]
+    [InlineData("Sist endret", "2019")]
+    public void Picker_WhenADateColumnIsTurnedOn_ThenItDrawsItsOwnFieldAndNotOneOfTheOtherThree(
+        string label, string year)
+    {
+        // The trap this fixture exists for. Four date-shaped fields reach this row and any of them
+        // renders a plausible date in any of these columns, so the assertion is on WHICH — each
+        // field carries a different year, and the three it must not have read are named.
+        //
+        // The year and not the formatted date: the month's short form is the runtime's, and CI
+        // spells Norwegian March "mars" where this box writes "mar." — which is how the first
+        // version of this went red there and green here.
+        var cut = RenderWith(new FakeClient(Furnished()));
+
+        ToggleColumn(cut, label);
+
+        var cell = Assert.Single(FirstRowCells(cut), c => c.Contains(year, StringComparison.Ordinal));
+
+        foreach (var other in new[] { "2011", "2013", "2015", "2017", "2019" }.Except([year]))
+        {
+            Assert.DoesNotContain(other, cell);
+        }
+    }
+
+    [Fact]
+    public void Picker_WhenEveryColumnIsTurnedOn_ThenTheTableIsInKeldasHeaderOrderAndNotThePickers()
+    {
+        // The two orders differ in Kelda and so differ here: the picker lists counts before free
+        // text (kelda.tsx:74), the header draws free text first (kelda.tsx:479-535). Nothing else
+        // holds the header order once more than the default three are on, and the header and body
+        // are two handwritten loops — so a column moved in one of them lands here.
+        var cut = RenderWith(new FakeClient(Furnished()));
+
+        foreach (var label in ColumnToggles(cut)
+                     .Where(b => b.GetAttribute("aria-pressed") == "false")
+                     .Select(b => b.TextContent.Trim())
+                     .ToList())
+        {
+            ToggleColumn(cut, label);
+        }
+
+        Assert.Equal(
+        [
+            "Vis datasamlinger",
+            "Navn",
+            "Kildetype",
+            "Status",
+            "Dataansvarlig",
+            "Databehandler",
+            "Grad av personidentifikasjon",
+            "Gyldighet",
+            "Delkilder",
+            "Datasamlinger",
+            "Variabler",
+            "Opprettet",
+            "Importert",
+            "Sist endret",
+        ], Headers(cut));
+
+        // The cells in order, not merely as many of them: `Headers` reads thead alone, so comparing
+        // counts leaves the body free to draw the same columns in a different order — every cell
+        // under the wrong `scope="col"`, for a screen reader as much as for a reader. Every field
+        // in Furnished() has a different value so a swap cannot look like a match.
+        Assert.Equal(
+        [
+            "+",
+            "Als registeret\n\n                            K_ALS",
+            "Sentralt helseregister",
+            "Aktiv",
+            "St. Olavs hospital HF",
+            "Folkehelseinstituttet",
+            "Indirekte identifiserbar",
+            ValidityText(cut),
+            "7",
+            "3",
+            "42",
+            "2011",
+            ImportedText(cut),
+            SourceUpdatedText(cut),
+        ], FirstRowCells(cut));
+    }
+
+    /// <summary>The three date cells as this runtime spells them.</summary>
+    /// <remarks>
+    /// Read back rather than written down, because the month's short form is the runtime's: CI
+    /// spells Norwegian March "mars" where this box writes "mar.". Their year is what says the
+    /// column read the right field, and that is asserted next door in
+    /// <see cref="Picker_WhenADateColumnIsTurnedOn_ThenItDrawsItsOwnFieldAndNotOneOfTheOtherThree"/>.
+    /// What these three hold up is the ORDER of the row, which no spelling affects.
+    /// </remarks>
+    private static string ValidityText(IRenderedComponent<KildeExplorer> cut) =>
+        FirstRowCells(cut).Single(c => c.Contains("2013", StringComparison.Ordinal));
+
+    private static string ImportedText(IRenderedComponent<KildeExplorer> cut) =>
+        FirstRowCells(cut).Single(c => c.Contains("2015", StringComparison.Ordinal));
+
+    private static string SourceUpdatedText(IRenderedComponent<KildeExplorer> cut) =>
+        FirstRowCells(cut).Single(c => c.Contains("2019", StringComparison.Ordinal));
+
+    [Fact]
+    public void DataController_WhenTheCatalogueLeftItEmpty_ThenTheCellIsNotMarkedAsNorwegian()
+    {
+        // A lang the content is not in is worse than none — WCAG 3.1.2. The empty cell holds our
+        // own "Not specified", in the reader's language, so marking it Norwegian would switch a
+        // screen reader's voice for an English phrase. CatalogueLang is what answers null there;
+        // the first version of these two columns reached past it to Foreign() and stamped both.
+        var cut = RenderWith(
+            new FakeClient(Furnished() with { DataController = null, DataProcessor = null }),
+            b => b.Add(c => c.Language, "en"));
+
+        ToggleColumn(cut, "Data controller");
+        ToggleColumn(cut, "Data processor");
+
+        var empty = cut.FindAll(".munin-explorer-kilder tbody td")
+            .Where(td => td.TextContent.Trim() == "Not specified")
+            .ToList();
+
+        Assert.Equal(2, empty.Count);
+        Assert.All(empty, td => Assert.Null(td.GetAttribute("lang")));
+    }
+
+    [Fact]
+    public void SourceUpdated_WhenTheListIsTheCapturedPayload_ThenItShowsTheYearsTheApiSent()
+    {
+        // The one Sist endret test that does not write the key it reads. Every other one builds its
+        // own bag and spells SistOppdatert the way the component looks it up, so all of them pass
+        // just as well against a key the API never sends and a column of "Ikke oppgitt" ships —
+        // which is exactly the hole the Opprettet column has a captured-payload test for.
+        var kilder = JsonSerializer.Deserialize<IReadOnlyList<KildeSummary>>(
+                TestData.Read("kilder.json"), MuninExplorerClient.Json)
+            ?? throw new InvalidOperationException("kilder.json no longer reads as a kilde list.");
+
+        var cut = RenderWith(new FakeClient([.. kilder]));
+
+        ToggleColumn(cut, "Sist endret");
+
+        // Years, not formatted dates: the month's short form is the runtime's. The payload holds
+        // 20260423, 20260813 and 20230131.
+        var years = cut.FindAll(".munin-explorer-kilder tbody tr")
+            .Select(row => row.QuerySelectorAll("td")[^1].TextContent.Trim()[^4..]);
+
+        Assert.Equal(["2026", "2026", "2023"], years);
+    }
+
+    [Fact]
+    public void Picker_WhenAShownColumnIsTurnedOff_ThenItsHeaderAndItsCellsGoTogether()
+    {
+        // Header and body are two loops over the same choice, so a column can be taken out of one
+        // and left in the other — which is not a cosmetic fault: it shifts every cell after it
+        // under the wrong header for a screen reader as well as for a reader.
+        var cut = RenderWith(new FakeClient(Furnished()));
+
+        ToggleColumn(cut, "Kildetype");
+
+        Assert.DoesNotContain("Kildetype", Headers(cut));
+        Assert.Equal(Headers(cut).Count, FirstRowCells(cut).Count);
+    }
+
+    [Fact]
+    public void Picker_WhenEveryOptionalColumnIsTurnedOff_ThenTheRowStillSaysWhatTheKildeIs()
+    {
+        // No last-column lock here, unlike the variable explorer's picker, because there is nothing
+        // for one to prevent: Navn, Status and Opprettet are outside the picker's reach. The test
+        // exists to keep that true — a lock added here would stop the tenth press, and a column
+        // moved INTO the picker would let it empty a row.
+        var cut = RenderWith(new FakeClient(Furnished()));
+
+        // Only the ones that are on, since a press on a hidden column turns it back on.
+        foreach (var label in ColumnToggles(cut)
+                     .Where(b => b.GetAttribute("aria-pressed") == "true")
+                     .Select(b => b.TextContent.Trim())
+                     .ToList())
+        {
+            ToggleColumn(cut, label);
+        }
+
+        Assert.Equal(["Vis datasamlinger", "Navn", "Status", "Opprettet"], Headers(cut));
+        Assert.Equal(Headers(cut).Count, FirstRowCells(cut).Count);
+        Assert.All(ColumnToggles(cut), b => Assert.Equal("false", b.GetAttribute("aria-pressed")));
+    }
+
+    [Fact]
+    public async Task Picker_WhenTheChoiceChanges_ThenTheDatasamlingerPanelStillSpansEveryColumn()
+    {
+        // The nested row carries a colspan, which is a count and not a layout: too small and the
+        // panel leaves a column of dead cells beside it, too large and the table is malformed.
+        // Nothing else here would notice, since both still render.
+        var cut = RenderWith(new FakeClient(Furnished()));
+
+        cut.Find(".munin-explorer-kilder__expand-toggle").Click();
+        await cut.InvokeAsync(() => { });
+
+        // Two on and none off, so the count moves. An earlier version of this turned one on and one
+        // off, which left the table at exactly the seven columns the old constant named — so the
+        // constant survived the mutation and this passed while proving nothing.
+        ToggleColumn(cut, "Delkilder");
+        ToggleColumn(cut, "Dataansvarlig");
+
+        var panel = cut.Find(".munin-explorer-kilder__expanded");
+
+        Assert.Equal(Headers(cut).Count.ToString(), panel.GetAttribute("colspan"));
+    }
+
+    [Fact]
+    public void SourceUpdated_WhenTheCatalogueDateIsNotOne_ThenItIsShownAsTheCatalogueWroteIt()
+    {
+        // The catalogue writes this field as text and writes junk in it. A formatter asked to read
+        // "20260231" answers 2 March, which hides a fault at source behind a plausible date; a
+        // formatter asked to read "ukjent" answers nothing at all. Both are handed on unchanged.
+        var cut = RenderWith(new FakeClient(
+            Furnished() with
+            {
+                AdditionalProperties = new Dictionary<string, string?>(StringComparer.Ordinal)
+                {
+                    ["SistOppdatert"] = "20260231",
+                },
+            }));
+
+        ToggleColumn(cut, "Sist endret");
+
+        Assert.Contains("20260231", FirstRowCells(cut));
+    }
+
+    [Fact]
+    public void Picker_WhenTheListIsEmpty_ThenThereIsNoPickerToOffer()
+    {
+        // The table is what the picker is about, and an empty list has none — so the control would
+        // be offering columns for something that is not there. The variable explorer keeps its own
+        // header on an empty result on purpose, because that header also holds the ordering the
+        // reader just pressed; this one holds nothing else.
+        var cut = RenderWith(new FakeClient());
+
+        Assert.Empty(cut.FindAll(".dropdown-choicepicker__item button"));
     }
 }

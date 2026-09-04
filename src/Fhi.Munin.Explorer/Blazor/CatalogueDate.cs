@@ -39,6 +39,32 @@ internal static class CatalogueDate
     }
 
     /// <summary>
+    /// A source system's own date — <c>yyyyMMdd</c> — as a day, or verbatim when it is not one.
+    /// </summary>
+    /// <remarks>
+    /// The catalogue writes these as text and writes junk among them, so anything that is not eight
+    /// digits naming a real day is handed on unchanged rather than blanked: showing "20260231" as it
+    /// stands gets it fixed at source, where an empty cell reads as a field nobody filled in. Kelda
+    /// carries a round-trip check against calendar roll-over that this does not need — its parse is
+    /// JavaScript's, which turns that same string into 2 March, and <c>TryParseExact</c> refuses it.
+    /// </remarks>
+    internal static string? SourceSystemDay(string? value, string? language,
+                                            DateWidth width = DateWidth.Full)
+    {
+        var raw = value?.Trim();
+
+        if (string.IsNullOrEmpty(raw))
+        {
+            return null;
+        }
+
+        return DateTime.TryParseExact(raw, "yyyyMMdd", System.Globalization.CultureInfo.InvariantCulture,
+                                      System.Globalization.DateTimeStyles.None, out var day)
+            ? Day(new DateTimeOffset(day, TimeSpan.Zero), language, width)
+            : raw;
+    }
+
+    /// <summary>
     /// A period, with an open end shown as ongoing rather than as a blank or a guessed date.
     /// </summary>
     /// <remarks>

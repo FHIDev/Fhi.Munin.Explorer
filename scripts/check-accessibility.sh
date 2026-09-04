@@ -46,6 +46,7 @@ TARGETS=(
   "/::variable-detail"
   "/kilder::kilde-drilldown"
   "/kilder::kilder-expanded"
+  "/kilder::kilder-columns"
   "/utforsker::explorer-tabs"
   "/utforsker::explorer-list-tab"
 )
