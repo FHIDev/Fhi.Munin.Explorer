@@ -4538,6 +4538,23 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
+    public void Count_WhenAHostStylesIt_ThenTheCountsStandInOneColumn()
+    {
+        // The stand-ins measure like Stiler or they are not stand-ins: Stiler pushes the count to
+        // the label's right edge (ADO PR 39101, Fhi.Metadata-j0s3v) and the samples did not, so a
+        // count sat where its own text ended — measured at 81 right edges over 107 values.
+        static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
+
+        var count = HostClassNames.SampleDeclarationsFor("munin-explorer-filters__count")
+            .Select(rule => Squeezed(rule.Declarations))
+            .ToList();
+
+        Assert.True(
+            count.Any(d => d.Contains("margin-left:auto", StringComparison.Ordinal)),
+            "Nothing pushes the count to the labels edge, so tabular-nums lines up nothing.");
+    }
+
+    [Fact]
     public void Filter_WhenTheFacetsRefreshUnderIt_ThenTheTickedValueIsStillTicked()
     {
         // The counts move on every refresh, so the values reorder and the ticked one is redrawn
