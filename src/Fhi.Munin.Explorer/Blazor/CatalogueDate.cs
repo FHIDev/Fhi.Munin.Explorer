@@ -38,6 +38,16 @@ internal static class CatalogueDate
         return value.ToString(pattern, CatalogueProperties.Culture(language));
     }
 
+    /// <summary>A day the payload may not have carried at all, and null where it did not.</summary>
+    /// <remarks>
+    /// Null is what a fact list already means by nothing to say, so the row is dropped as it is for a
+    /// <see cref="Period"/> with no ends. Reachable because Munin's own timestamps are declared
+    /// non-nullable, so an omitted one arrives as <c>default</c> (Fhi.Metadata-6r6rf).
+    /// </remarks>
+    internal static string? DayOrNothing(DateTimeOffset value, string? language,
+                                         DateWidth width = DateWidth.Full) =>
+        value == default ? null : Day(value, language, width);
+
     /// <summary>
     /// A source system's own date — <c>yyyyMMdd</c> — as a day, or verbatim when it is not one.
     /// </summary>

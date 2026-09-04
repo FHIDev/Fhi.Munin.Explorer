@@ -7795,6 +7795,10 @@ public class VariableSearchTest : BunitContext
         DataProcessor = "St. Olavs hospital HF",
         PersonIdentificationLevel = "indirectlyIdentifiable",
         ValidFrom = new DateTimeOffset(2023, 1, 1, 0, 0, 0, TimeSpan.Zero),
+        // Set on purpose: the panel drops this row when the payload carries no timestamp, and
+        // without it the two label lists below asserted a row that only existed because an absent
+        // date formatted as the year 1. (Fhi.Metadata-6r6rf)
+        LastUpdated = new DateTimeOffset(2026, 3, 4, 9, 30, 0, TimeSpan.Zero),
         DataFrom = new DateTimeOffset(2010, 1, 1, 0, 0, 0, TimeSpan.Zero),
         DataTo = new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero),
         TotalVariables = 312,

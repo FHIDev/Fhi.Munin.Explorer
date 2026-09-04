@@ -319,6 +319,22 @@ public class DatasamlingViewTest : BunitContext
             Labels(SourceInformation(cut)));
     }
 
+    [Fact]
+    public void SourceInformation_WhenThePayloadCarriesNoTimestamp_ThenTheRowIsAbsentRatherThanYearOne()
+    {
+        // DatasamlingDetail.LastUpdated is not nullable, so an absent sistOppdatert leaves it at
+        // default and the field drew "1. januar 0001". The kilde view had the same line, and the
+        // kilder table's Importert column the same shape. (Fhi.Metadata-6r6rf)
+        var cut = Render(Datasamling() with { LastUpdated = default });
+
+        // The whole list, for the reason the kilde view test gives: this row is last, so dropping
+        // it and everything after it would pass an assertion that only asks for its absence.
+        Assert.Equal(
+            ["Kilde", "Type datakilde", "Lovverk", "Dataansvarlig", "Databehandler",
+             "Grad av personidentifikasjon", "Gyldighet"],
+            Labels(SourceInformation(cut)));
+    }
+
     // ---------------------------------------------------------------------------------
     // The statistics block — the one Runa has and the flat list had no equivalent of.
     // ---------------------------------------------------------------------------------

@@ -128,7 +128,7 @@ public sealed partial class KildeView : ComponentBase
                 (T.FieldDataProcessor, kilde.DataProcessor, true),
                 (T.FieldPersonIdentification, T.PersonIdentificationLabel(kilde.PersonIdentificationLevel), false),
                 (T.FieldValidity, CatalogueDate.Period(kilde.ValidFrom, kilde.ValidTo, Language, T), false),
-                (T.FieldLastUpdated, CatalogueDate.Day(kilde.LastUpdated, Language), false),
+                (T.FieldLastUpdated, CatalogueDate.DayOrNothing(kilde.LastUpdated, Language), false),
             ];
 
     /// <summary>Counts and dates, which belong to no language.</summary>

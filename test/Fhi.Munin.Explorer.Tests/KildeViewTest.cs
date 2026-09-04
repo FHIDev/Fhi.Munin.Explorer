@@ -1176,6 +1176,33 @@ public class KildeViewTest : BunitContext
     }
 
     [Fact]
+    public void SourceInformation_WhenTheTimestampIsOld_ThenItIsStillADateAndNotAnAbsence()
+    {
+        // The sentinel is the default, not "long ago". Written because `value.Year < 2000` passes
+        // the whole suite otherwise — every other fixture date is 2010 or later — and that reading
+        // would swallow a real date rather than an absent one.
+        var kilde = Kilde() with { LastUpdated = new DateTimeOffset(1995, 6, 2, 0, 0, 0, TimeSpan.Zero) };
+
+        Assert.Equal("2. juni 1995", Value(SourceInformation(Render(kilde)), "Sist oppdatert i Munin"));
+    }
+
+    [Fact]
+    public void SourceInformation_WhenThePayloadCarriesNoTimestamp_ThenTheRowIsAbsentRatherThanYearOne()
+    {
+        // KildeDetail.LastUpdated is not nullable, so a payload that omits sistOppdatert leaves it
+        // at default and the field drew "1. januar 0001" — a date the catalogue never sent, under a
+        // label saying when Munin last changed its own row. (Fhi.Metadata-6r6rf)
+        var kilde = Kilde() with { LastUpdated = default };
+
+        // The whole list, not just the absence: dropping the row and everything after it would
+        // satisfy a DoesNotContain, and LastUpdated is last in this block.
+        Assert.Equal(
+            ["Type datakilde", "Lovverk", "Dataansvarlig", "Databehandler",
+             "Grad av personidentifikasjon", "Gyldighet"],
+            Labels(SourceInformation(Render(kilde))));
+    }
+
+    [Fact]
     public void Statistics_Always_ThenItIsTheVariableCountAndThePeriodTheDataCovers()
     {
         var cut = Render(Kilde());
