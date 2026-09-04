@@ -354,8 +354,9 @@ else
 
            Thirteen columns, in Kelda's order (kelda.tsx:74, OPTIONAL_COLUMNS): Navn, Status and
            Opprettet always, and ten behind the picker above, of which Kelda's DEFAULT_VISIBLE
-           turns three on. Of the two control columns in front, the checkbox is here and the expand
-           toggle is not.
+           turns three on. Two control columns come before all of them — the expand toggle, which
+           is ours alone, and the checkbox, which is Kelda's and is drawn only where the host wired
+           the handover. Both count towards the nested row's colspan.
 
            No aria-busy, unlike the variable explorer's list: there is nothing to be busy with.
            The list is fetched once, on initialisation, and while that fetch is running this table

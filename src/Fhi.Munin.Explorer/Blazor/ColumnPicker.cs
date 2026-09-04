@@ -73,21 +73,20 @@ internal static class ColumnPicker
     /// <param name="receiver">The component whose state a press changes, so Blazor re-renders it.</param>
     /// <param name="buttonLabel">The trigger's word — "Kolonner".</param>
     /// <param name="choices">The columns, in the order the picker lists them.</param>
-    /// <param name="hintId">Where a locked column points. Null when no column can lock.</param>
-    /// <param name="hint">Why the last one refuses. Null when no column can lock.</param>
+    /// <param name="hint">Why the last column refuses, and the id a locked button points at.
+    /// Absent when no column can lock.</param>
     /// <remarks>
-    /// The hint is optional because only one caller can lock a column. The variable explorer's
-    /// seven are every column its rows carry, so hiding all of them would leave rows of nothing but
-    /// names; the kilde table draws Navn, Status and Opprettet whatever the picker says, so there is
-    /// nothing there for a lock to prevent — and a hint no button points at is a paragraph a screen
-    /// reader would meet for no reason.
+    /// One parameter and not two, so an id without a sentence — an <c>aria-describedby</c> pointing
+    /// at nothing — cannot be written by a caller at all. The hint is optional because only one
+    /// caller can lock a column: the variable explorer's seven are every column its rows carry, so
+    /// hiding all of them would leave rows of nothing but names, while the kilde table draws Navn,
+    /// Status and Opprettet whatever the picker says.
     /// </remarks>
     internal static RenderFragment For(
         object receiver,
         string buttonLabel,
         IReadOnlyList<Choice> choices,
-        string? hintId = null,
-        string? hint = null) => builder =>
+        (string Id, string Text)? hint = null) => builder =>
     {
         builder.OpenElement(0, "div");
         builder.AddAttribute(1, "class", "munin-explorer-header");
@@ -132,7 +131,7 @@ internal static class ColumnPicker
             // reader might want to ask about would be the one they could not reach. The caller's
             // own toggle is what makes the refusal true.
             builder.AddAttribute(18, "aria-disabled", choice.Locked ? "true" : null);
-            builder.AddAttribute(19, "aria-describedby", choice.Locked ? hintId : null);
+            builder.AddAttribute(19, "aria-describedby", choice.Locked ? hint?.Id : null);
             builder.AddAttribute(20, "onclick", EventCallback.Factory.Create(receiver, choice.Toggle));
 
             // The label as the button's own text, with no element and so no class name around it.
@@ -155,12 +154,12 @@ internal static class ColumnPicker
         // aria-describedby resolves against hidden text, and a paragraph that appeared only when a
         // column locked would be one more node arriving in the same update as the attribute naming
         // it.
-        if (hintId is not null && hint is not null)
+        if (hint is { } sentence)
         {
             builder.OpenElement(22, "p");
             builder.AddAttribute(23, "class", "screenreader-only");
-            builder.AddAttribute(24, "id", hintId);
-            builder.AddContent(25, hint);
+            builder.AddAttribute(24, "id", sentence.Id);
+            builder.AddContent(25, sentence.Text);
             builder.CloseElement();
         }
 

@@ -2927,17 +2927,13 @@ public class KildeExplorerTest : BunitContext
     [InlineData("Dataansvarlig", "St. Olavs hospital HF")]
     [InlineData("Databehandler", "Folkehelseinstituttet")]
     [InlineData("Grad av personidentifikasjon", "Indirekte identifiserbar")]
-    [InlineData("Gyldighet", "1. jan. 2013 – Pågående")]
-    [InlineData("Importert", "4. mar. 2015")]
-    [InlineData("Sist endret", "23. aug. 2019")]
     public void Picker_WhenAHiddenColumnIsTurnedOn_ThenItsHeaderAndItsOwnValueAppear(
         string label, string expected)
     {
         // One case per column, and the value rather than merely the header, because the seven were
-        // wired to seven different fields and a header proves only that a cell exists. The two
-        // dates are the pair that can be wrong and still look right: Importert is Munin's own row
-        // timestamp and Sist endret is the catalogue's SistOppdatert, and the table already draws
-        // a third date, Opprettet, from a fourth field.
+        // wired to seven different fields and a header proves only that a cell exists. The three
+        // that carry dates are next door: their spelling is not the same everywhere, so they are
+        // asserted on the year rather than on a formatted string.
         var cut = RenderWith(new FakeClient(Furnished()));
 
         Assert.DoesNotContain(label, Headers(cut));
@@ -2946,6 +2942,32 @@ public class KildeExplorerTest : BunitContext
 
         Assert.Contains(label, Headers(cut));
         Assert.Contains(expected, FirstRowCells(cut));
+    }
+
+    [Theory]
+    [InlineData("Gyldighet", "2013")]
+    [InlineData("Importert", "2015")]
+    [InlineData("Sist endret", "2019")]
+    public void Picker_WhenADateColumnIsTurnedOn_ThenItDrawsItsOwnFieldAndNotOneOfTheOtherThree(
+        string label, string year)
+    {
+        // The trap this fixture exists for. Four date-shaped fields reach this row and any of them
+        // renders a plausible date in any of these columns, so the assertion is on WHICH — each
+        // field carries a different year, and the three it must not have read are named.
+        //
+        // The year and not the formatted date: the month's short form is the runtime's, and CI
+        // spells Norwegian March "mars" where this box writes "mar." — which is how the first
+        // version of this went red there and green here.
+        var cut = RenderWith(new FakeClient(Furnished()));
+
+        ToggleColumn(cut, label);
+
+        var cell = Assert.Single(FirstRowCells(cut), c => c.Contains(year, StringComparison.Ordinal));
+
+        foreach (var other in new[] { "2011", "2013", "2015", "2017", "2019" }.Except([year]))
+        {
+            Assert.DoesNotContain(other, cell);
+        }
     }
 
     [Fact]

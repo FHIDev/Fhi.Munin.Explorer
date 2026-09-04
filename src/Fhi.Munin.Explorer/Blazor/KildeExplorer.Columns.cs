@@ -10,24 +10,10 @@ public sealed partial class KildeExplorer
     /// A column the reader can turn off.
     /// </summary>
     /// <remarks>
-    /// <para>
     /// Kelda's ten, in the order its own picker lists them (<c>kelda.tsx</c>,
-    /// <c>OPTIONAL_COLUMNS</c>). Navn, Status and Opprettet are not among them, in Kelda either:
-    /// the name is also the row's own drill-in button, and the other two are the columns its list
-    /// is read by.
-    /// </para>
-    /// <para>
-    /// English identifiers with the catalogue's own terms kept — <c>kilde</c>, <c>datasamling</c>,
-    /// <c>delkilde</c> — as AGENTS.md requires. <see cref="Imported"/> and
-    /// <see cref="SourceUpdated"/> are the pair worth reading twice, because both are called
-    /// "opprettet" or "sist oppdatert" somewhere in the payload and they are four different fields:
-    /// Imported is <see cref="KildeSummary.Created"/>, Munin's own row timestamp, while the always
-    /// drawn Opprettet column is the founding year the catalogue states in
-    /// <c>additionalProperties.Opprettet</c>; SourceUpdated is the catalogue's
-    /// <c>additionalProperties.SistOppdatert</c>, not <see cref="KildeSummary.LastUpdated"/>, which
-    /// is Munin's. Kelda draws exactly this pairing, and the label on
-    /// <see cref="Texts.ColumnEstablished"/> already warned about half of it.
-    /// </para>
+    /// <c>OPTIONAL_COLUMNS</c>). Navn, Status and Opprettet are not among them, in Kelda either.
+    /// Which field each of the two dates reads is on <see cref="Imported"/> and
+    /// <see cref="SourceUpdated"/> below, where a reader meets it.
     /// </remarks>
     private enum KildeColumn
     {
@@ -139,6 +125,10 @@ public sealed partial class KildeExplorer
         Value(CatalogueDate.Period(kilde.ValidFrom, kilde.ValidTo, Language, T, DateWidth.Narrow));
 
     /// <summary>When Munin imported the kilde — its own row, not the catalogue's founding year.</summary>
+    /// <remarks>
+    /// <see cref="KildeSummary.Created"/>, which the Opprettet column beside it does not read: that
+    /// one is <c>additionalProperties.Opprettet</c>, a year the catalogue wrote as text.
+    /// </remarks>
     private string Imported(KildeSummary kilde) =>
         CatalogueDate.Day(kilde.Created, Language, DateWidth.Narrow);
 
