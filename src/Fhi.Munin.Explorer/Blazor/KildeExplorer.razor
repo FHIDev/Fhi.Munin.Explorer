@@ -341,13 +341,21 @@ else
     {
     <div class="munin-explorer-container">
     <div class="munin-explorer-results">
+        @* The column picker, above the table and inside the results column, which is where the
+           variable explorer puts its own and where helsedata's page puts theirs. Drawn only with
+           rows on screen, unlike that one: there the header also carries the ordering a reader
+           pressed, and here an empty list means the fetch failed or the search matched nothing, so
+           the control would be offering columns for a table that is not there. *@
+        @ColumnPicker()
+
         @* aria-label rather than aria-labelledby: the name is the same sentence the status line
            above shows, and pointing at that element would make the table's name change under a
            screen reader every time the status line does.
 
-           Six columns: the set Munin's own Kelda shows by default, in its order (kelda.tsx:61,
-           DEFAULT_VISIBLE :86-100). Seven more sit behind its column picker, Fhi.Metadata-ay3zz;
-           of the two control columns in front, the checkbox is here and the expand toggle is not.
+           Thirteen columns, in Kelda's order (kelda.tsx:74, OPTIONAL_COLUMNS): Navn, Status and
+           Opprettet always, and ten behind the picker above, of which Kelda's DEFAULT_VISIBLE
+           turns three on. Of the two control columns in front, the checkbox is here and the expand
+           toggle is not.
 
            No aria-busy, unlike the variable explorer's list: there is nothing to be busy with.
            The list is fetched once, on initialisation, and while that fetch is running this table
@@ -374,13 +382,50 @@ else
                         </th>
                     }
                     <th scope="col">@T.FieldName</th>
-                    <th scope="col">@T.ColumnKildetype</th>
+                    @if (ColumnVisible(KildeColumn.Kildetype))
+                    {
+                        <th scope="col">@T.ColumnKildetype</th>
+                    }
                     <th scope="col">@T.FieldStatus</th>
-                    <th scope="col" class="munin-explorer-kilder__count">@T.HeadingDataCollections</th>
-                    <th scope="col" class="munin-explorer-kilder__count">@T.ColumnVariableCount</th>
+                    @if (ColumnVisible(KildeColumn.DataController))
+                    {
+                        <th scope="col">@T.FieldDataController</th>
+                    }
+                    @if (ColumnVisible(KildeColumn.DataProcessor))
+                    {
+                        <th scope="col">@T.FieldDataProcessor</th>
+                    }
+                    @if (ColumnVisible(KildeColumn.PersonIdentification))
+                    {
+                        <th scope="col">@T.FieldPersonIdentification</th>
+                    }
+                    @if (ColumnVisible(KildeColumn.Validity))
+                    {
+                        <th scope="col">@T.FieldValidity</th>
+                    }
+                    @if (ColumnVisible(KildeColumn.Delkilder))
+                    {
+                        <th scope="col" class="munin-explorer-kilder__count">@T.ColumnDelkildeCount</th>
+                    }
+                    @if (ColumnVisible(KildeColumn.Datasamlinger))
+                    {
+                        <th scope="col" class="munin-explorer-kilder__count">@T.HeadingDataCollections</th>
+                    }
+                    @if (ColumnVisible(KildeColumn.Variabler))
+                    {
+                        <th scope="col" class="munin-explorer-kilder__count">@T.ColumnVariableCount</th>
+                    }
                     @* No __count on this one: it holds a year the catalogue wrote down as text,
                        not a number this component counted, and the class right-aligns figures. *@
                     <th scope="col">@T.ColumnEstablished</th>
+                    @if (ColumnVisible(KildeColumn.Imported))
+                    {
+                        <th scope="col">@T.ColumnImported</th>
+                    }
+                    @if (ColumnVisible(KildeColumn.SourceUpdated))
+                    {
+                        <th scope="col">@T.ColumnSourceUpdated</th>
+                    }
                 </tr>
             </thead>
             <tbody>
@@ -434,14 +479,54 @@ else
                                reader who knows K_ALS finds the row whose name they do not know. *@
                             <p class="caption margin--none">@kilde.Code</p>
                         </th>
-                        <td>@T.KildeTypeLabel(kilde.Kildetype, kilde.Kildetype)</td>
+                        @if (ColumnVisible(KildeColumn.Kildetype))
+                        {
+                            <td>@T.KildeTypeLabel(kilde.Kildetype, kilde.Kildetype)</td>
+                        }
                         <td>@(kilde.IsActive ? T.StatusActive : T.StatusPassive)</td>
-                        <td class="munin-explorer-kilder__count">@kilde.DatasamlingCount</td>
-                        <td class="munin-explorer-kilder__count">@kilde.TotalVariables</td>
+                        @* lang on these two and not on the ones around them: both are free text the
+                           catalogue wrote in Norwegian, which is the same marking their facets
+                           carry, while kildetype and grad are drawn in this package's own words. *@
+                        @if (ColumnVisible(KildeColumn.DataController))
+                        {
+                            <td lang="@CatalogueProperties.Foreign("no", Reader)">@Value(kilde.DataController)</td>
+                        }
+                        @if (ColumnVisible(KildeColumn.DataProcessor))
+                        {
+                            <td lang="@CatalogueProperties.Foreign("no", Reader)">@Value(kilde.DataProcessor)</td>
+                        }
+                        @if (ColumnVisible(KildeColumn.PersonIdentification))
+                        {
+                            <td>@T.PersonIdentificationLabel(kilde.PersonIdentificationLevel)</td>
+                        }
+                        @if (ColumnVisible(KildeColumn.Validity))
+                        {
+                            <td>@ValidityPeriod(kilde)</td>
+                        }
+                        @if (ColumnVisible(KildeColumn.Delkilder))
+                        {
+                            <td class="munin-explorer-kilder__count">@kilde.DelkildeCount</td>
+                        }
+                        @if (ColumnVisible(KildeColumn.Datasamlinger))
+                        {
+                            <td class="munin-explorer-kilder__count">@kilde.DatasamlingCount</td>
+                        }
+                        @if (ColumnVisible(KildeColumn.Variabler))
+                        {
+                            <td class="munin-explorer-kilder__count">@kilde.TotalVariables</td>
+                        }
                         @* No lang here, unlike the name above: the catalogue writes this field as
                            a four-digit year, which has no language to mark (WCAG 3.1.2), and where
                            it is missing the cell holds our "Ikke oppgitt" in the reader's own. *@
                         <td>@Value(Established(kilde))</td>
+                        @if (ColumnVisible(KildeColumn.Imported))
+                        {
+                            <td>@Imported(kilde)</td>
+                        }
+                        @if (ColumnVisible(KildeColumn.SourceUpdated))
+                        {
+                            <td>@SourceUpdated(kilde)</td>
+                        }
                     </tr>
                     @if (IsExpanded(kilde.Id))
                     {

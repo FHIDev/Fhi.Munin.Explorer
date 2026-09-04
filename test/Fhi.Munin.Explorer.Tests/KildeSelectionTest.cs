@@ -620,6 +620,10 @@ public class KildeSelectionTest : BunitContext
             "munin-explorer-filters__count",     // shared with the variable explorer's facets
             "munin-explorer-filters__facets",
             "munin-explorer-filters__toggle",
+            // The column picker, shared with the variable explorer down to the markup (ColumnPicker).
+            "munin-explorer-header",
+            "munin-explorer-header__actions",
+            "munin-explorer-header__actions-button",
             "munin-explorer-kilder",
             "munin-explorer-kilder__count",
             "munin-explorer-kilder__expand",
@@ -630,6 +634,7 @@ public class KildeSelectionTest : BunitContext
             "munin-explorer-search__clear",      // shared
             "munin-explorer-selection",          // this bead's
             "munin-explorer-selection__explore", // this bead's
+            "munin-explorer__dropdown",          // the picker, shared
         ], invented);
     }
 

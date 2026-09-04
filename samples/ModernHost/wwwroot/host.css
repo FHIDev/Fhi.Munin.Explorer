@@ -1936,13 +1936,16 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   color: inherit;
 }
 
+/* The empty alternative text after the slash is what keeps the glyph out of the accessible name.
+   Chromium folds generated content into it, so the toggle announced as "☑ Kildetype" and said
+   twice what aria-pressed already says once. Found driving the axe state (Fhi.Metadata-ay3zz). */
 .dropdown-choicepicker__item .hd-button-reset::before {
-  content: "\2610";
+  content: "\2610" / "";
   margin-right: 8px;
 }
 
 .dropdown-choicepicker__item .hd-button-reset[aria-pressed="true"]::before {
-  content: "\2611";
+  content: "\2611" / "";
 }
 
 /* The last column left. Inert rather than disabled, so it can still be reached and still says

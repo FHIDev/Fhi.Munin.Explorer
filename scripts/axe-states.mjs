@@ -86,6 +86,31 @@ export const states = {
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
 
+  // The kilde table's column picker, open, with a column turned on that the default view does not
+  // draw. Two things only exist in this state: the disclosure and its toggles, and the cells of
+  // the seven columns behind it - and those cells are what a column added to the header and not to
+  // the body would put under the wrong heading (Fhi.Metadata-ay3zz).
+  'kilder-columns': async page => {
+    const picker = page.locator('.munin-explorer-header details').first();
+    await picker.waitFor({ state: 'visible', timeout: findTimeout });
+    await picker.locator('summary').click();
+
+    // Not press(): these toggles carry the sample stylesheet's ☑/☐ in ::before, and Playwright's
+    // own accessible-name computation folds generated content in while ignoring the empty
+    // alternative text that keeps it out of the browser's. The browser announces "Dataansvarlig";
+    // getByRole(..., { exact: true }) looks for "☐ Dataansvarlig" and finds nothing.
+    const toggle = picker
+      .locator('.dropdown-choicepicker__item button', { hasText: 'Dataansvarlig' })
+      .first();
+    await toggle.waitFor({ state: 'visible', timeout: findTimeout });
+    await toggle.click();
+
+    await page
+      .locator('.munin-explorer-kilder thead th', { hasText: 'Dataansvarlig' })
+      .first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
+  },
+
   // The composed explorer on /utforsker, which is the only page in either sample that draws the
   // page-level tablist. The front page mounts VariableSearch on its own, so neither the tabs nor
   // the reader's list panel appears in any state above (Fhi.Metadata-l9l2n.39).
