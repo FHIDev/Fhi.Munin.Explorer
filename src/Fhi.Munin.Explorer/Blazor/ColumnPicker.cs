@@ -68,9 +68,9 @@ internal static class ColumnPicker
     internal readonly record struct Choice(string Label, bool Visible, bool Locked, Action Toggle);
 
     /// <summary>The picker.</summary>
-    /// <param name="receiver">The component whose state a press changes. Typed as the base rather
-    /// than as <c>object</c>: <c>EventCallback</c> re-renders through <c>IHandleEvent</c>, so any
-    /// other receiver would toggle the column and leave the table as it was.</param>
+    /// <param name="receiver">The component whose state a press changes. <c>IHandleEvent</c> and not
+    /// <c>object</c>, because that is the interface <c>EventCallback.InvokeAsync</c> tests for: any
+    /// other receiver would toggle the column and leave the table exactly as it was.</param>
     /// <param name="buttonLabel">The trigger's word — "Kolonner".</param>
     /// <param name="choices">The columns, in the order the picker lists them.</param>
     /// <param name="hint">Why the last column refuses, and the id a locked button points at.
@@ -81,7 +81,7 @@ internal static class ColumnPicker
     /// a column: the kilde table draws Navn, Status and Opprettet whatever its picker says.
     /// </remarks>
     internal static RenderFragment For(
-        ComponentBase receiver,
+        IHandleEvent receiver,
         string buttonLabel,
         IReadOnlyList<Choice> choices,
         (string Id, string Text)? hint = null) => builder =>

@@ -3012,7 +3012,7 @@ public class KildeExplorerTest : BunitContext
         Assert.Equal(
         [
             "+",
-            "Als registeret\n\n                            K_ALS",
+            NameCellText(cut),
             "Sentralt helseregister",
             "Aktiv",
             "St. Olavs hospital HF",
@@ -3108,6 +3108,24 @@ public class KildeExplorerTest : BunitContext
         var cell = FirstRowCells(cut).Single(c => c.Contains("2013", StringComparison.Ordinal));
 
         Assert.EndsWith("Pågående", cell, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Validity_WhenTheKildeHasClosed_ThenTheCellCarriesBothEnds()
+    {
+        // The other end, and the direction that ships a lie rather than a blank: with ValidTo
+        // dropped on the way to the formatter, a register that stopped collecting in 2019 still
+        // reads "Pågående". The test above cannot see that — every fixture here leaves ValidTo
+        // null, so passing null explicitly changes nothing it looks at.
+        var cut = RenderWith(new FakeClient(
+            Furnished() with { ValidTo = new DateTimeOffset(2019, 12, 31, 0, 0, 0, TimeSpan.Zero) }));
+
+        ToggleColumn(cut, "Gyldighet");
+
+        var cell = FirstRowCells(cut).Single(c => c.Contains("2013", StringComparison.Ordinal));
+
+        Assert.Contains("2019", cell, StringComparison.Ordinal);
+        Assert.DoesNotContain("Pågående", cell, StringComparison.Ordinal);
     }
 
     [Fact]

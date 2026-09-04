@@ -852,12 +852,20 @@ public class KildeSelectionTest : BunitContext
         var row = cut.Find(".munin-explorer-kilder tbody tr");
         var cells = row.QuerySelectorAll(":scope > *");
 
-        // Second, after the expand control and before the name: the same place the header puts it.
-        Assert.Equal(1, Array.FindIndex(
+        // Read off the header rather than written down, so a control column added in front of both
+        // moves this with it. Found by the element and not by munin-explorer-kilder__select, which
+        // would follow the box wherever it went and so could not tell it had moved.
+        var box = Array.FindIndex(
             [.. cut.FindAll(".munin-explorer-kilder thead th")],
-            th => th.QuerySelector("input[type=checkbox]") is not null));
+            th => th.QuerySelector("input[type=checkbox]") is not null);
 
-        Assert.NotNull(cells[1].QuerySelector("input[type=checkbox]"));
-        Assert.Equal("TH", cells[2].TagName);
+        Assert.NotEqual(-1, box);
+        Assert.NotNull(cells[box].QuerySelector("input[type=checkbox]"));
+
+        // A td, not a th, which the markup says in a comment and nothing checked: two th
+        // scope="row" in a row makes a screen reader read "Velg Als registeret" as the row's
+        // context in front of every cell in it. (Fhi.Metadata-5ghur)
+        Assert.Equal("TD", cells[box].TagName);
+        Assert.Equal("TH", cells[box + 1].TagName);
     }
 }
