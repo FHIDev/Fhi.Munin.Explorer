@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Fhi.Munin.Explorer\Fhi.Munin.Explorer.csproj" />
+
+    <!-- helsedata's real stylesheet, as the package that ships it, served from
+         _content/Fhi.Helsedata.Stiler/css/main.css exactly as their own layout links it.
+         A hand-written stand-in is what the other two samples have, and it is precisely
+         what let four layout defects through on 2026-09-03: two of them were collisions
+         with rules only Stiler has (`div { display: block }` and `.munin-explorer`'s
+         384px grid), which no imitation reproduces by accident.
+
+         The version is pinned rather than floating. A floating range would make this
+         fixture change meaning between two runs of the same commit, and "the sample host
+         went red overnight" is the one report nobody can act on. Bump it deliberately when
+         helsedata bump theirs; the geometry assertions are what tell you whether the bump
+         broke anything. -->
+    <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.38" />
+  </ItemGroup>
+
+</Project>

@@ -64,6 +64,7 @@
   <!-- Sample hosts and tests are never published. -->
   <PropertyGroup Condition="$(MSBuildProjectName.StartsWith('ModernHost')) OR
                             $(MSBuildProjectName.StartsWith('LegacyHost')) OR
+                            $(MSBuildProjectName.StartsWith('HostileHost')) OR
                             $(MSBuildProjectName.EndsWith('.Tests'))">
     <IsPackable>false</IsPackable>
   </PropertyGroup>

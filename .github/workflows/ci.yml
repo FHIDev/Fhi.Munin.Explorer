@@ -383,6 +383,163 @@ jobs:
         # never a surprise that only CI knows how to reproduce.
         run: ./scripts/check-accessibility.sh
 
+  # The same component inside helsedata's REAL stylesheet, with their header positioned over the
+  # top of document flow, measured with getBoundingClientRect. The accessibility job above scans
+  # ModernHost, whose stylesheet is a hand-written stand-in; on 2026-09-03 four layout defects
+  # passed 1317 unit tests and eight axe states there, and two of the four were collisions with
+  # rules only Fhi.Helsedata.Stiler has. axe was green through every one. (Fhi.Metadata-l9l2n.40)
+  #
+  # NEEDS A SECRET, and says so and stops rather than failing without one. AZURE_ARTIFACTS_PAT must
+  # be a repository secret holding an Azure DevOps PAT with Packaging (read) on the fhi
+  # organisation; samples/HostileHost has a PackageReference to Fhi.Helsedata.Stiler, which lives
+  # on helsedata's private feed. Nothing else in this repository touches that feed — nuget.config's
+  # packageSourceMapping is what keeps it that way — so every other job here is unaffected either
+  # way. Provisioning the secret is the whole of turning this job on.
+  #
+  # The absence is detected in a STEP and not in the job's `if:`, because the `secrets` context is
+  # not available to a job-level condition. `if: secrets.X != ''` there is not a stricter check
+  # that happens to be unavailable — it evaluates to false and the job never runs at all, secret
+  # or no secret, which is the silent version of exactly what this job exists to prevent.
+  #
+  # NOT YET IN report's needs: BELOW, AND THAT IS DELIBERATE. It is red on main today, for two
+  # defects it found on its first run and neither of which can be fixed from this repository:
+  # Fhi.Metadata-l9l2n.41 (Stiler collapses every result row to zero height below 1280px) and
+  # Fhi.Metadata-l9l2n.42 (Stiler has no rule for the desiredData column, so the annotation field
+  # is a 17px sliver). When those land in Fhi.Helsedata.Stiler and this goes green, add
+  # "hostile-layout" to report's needs: and to its table, and require it in branch protection —
+  # the same three steps the other guards went through on 2026-08-28.
+  hostile-layout:
+    name: layout in helsedata's stylesheet
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      # The credential the private feed needs. It goes in the environment and not in a build
+      # argument, which persists in image history — the same rule that makes a container build of
+      # this host pass it as a BuildKit secret.
+      #
+      # NOTHING IN NUGET READS THIS VARIABLE. It is read by the Azure Artifacts Credential
+      # Provider, a separate plugin, which the next step installs because a GitHub-hosted runner
+      # does not have one. Without the plugin the credential sits in the environment with nothing
+      # to consume it, the restore falls back to anonymous, and the feed answers NU1301 — which
+      # reads like a missing package rather than a missing plugin. This job spent its first real
+      # run failing exactly that way, and it passed locally throughout, because the developer
+      # machine had the provider installed for helsedata's own restore. A local success proves the
+      # PAT and the feed URL and says nothing at all about the runner.
+      - name: Authenticate to helsedata's feed
+        id: feed
+        env:
+          FEED: https://pkgs.dev.azure.com/fhi/Fhi.Helsedata/_packaging/Fhi.Helsedata.no/nuget/v3/index.json
+          PAT: ${{ secrets.AZURE_ARTIFACTS_PAT }}
+        run: |
+          if [ -z "$PAT" ]; then
+            echo "::notice::AZURE_ARTIFACTS_PAT is not set, so this job has measured nothing."
+            echo "have_pat=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Written to the environment file rather than echoed, so the value never reaches a log.
+          printf 'VSS_NUGET_EXTERNAL_FEED_ENDPOINTS={"endpointCredentials":[{"endpoint":"%s","username":"github","password":"%s"}]}\n' "$FEED" "$PAT" >> "$GITHUB_ENV"
+          echo "have_pat=true" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-dotnet@v6
+        if: steps.feed.outputs.have_pat == 'true'
+        with:
+          global-json-file: global.json
+
+      # The plugin that consumes VSS_NUGET_EXTERNAL_FEED_ENDPOINTS. Not present on a
+      # GitHub-hosted runner, and NuGet does not complain about its absence: it simply restores
+      # anonymously.
+      #
+      # A FAILURE HERE IS A FAILURE, NEVER A SKIP. The step above skips this whole job when the
+      # secret is absent, which is right — an unconfigured guard should say so and stop. This is
+      # the opposite case: the secret IS configured and the toolchain cannot use it. Letting that
+      # degrade into the same quiet skip would leave the job green having measured nothing, which
+      # is worse than the red it replaces and is the exact failure this job exists to end.
+      - name: Install the Azure Artifacts credential provider
+        if: steps.feed.outputs.have_pat == 'true'
+        env:
+          # Pinned, for the reason check-accessibility.sh pins Playwright: an unpinned installer
+          # resolves to whatever is newest on the day, which turns an unrelated PR red for a reason
+          # nobody changed. 2.0.4 publishes a linux-x64 asset and is what this was written against.
+          AZURE_ARTIFACTS_CREDENTIAL_PROVIDER_VERSION: 2.0.4
+        run: |
+          set -euo pipefail
+          sh -c "$(curl -fsSL https://aka.ms/install-artifacts-credprovider.sh)"
+
+          # Asserted, not assumed. A failed download leaves `$(curl ...)` empty and `sh -c ""`
+          # exits 0, so without this the step passes having installed nothing — which is the
+          # shape of the bug it is here to prevent, one layer up.
+          plugin="$HOME/.nuget/plugins/netcore/CredentialProvider.Microsoft/CredentialProvider.Microsoft.dll"
+          if [ ! -f "$plugin" ]; then
+            echo "::error::The credential provider did not install. The PAT is present and unusable;"
+            echo "::error::a restore would fall back to anonymous and report NU1301, which reads"
+            echo "::error::like a missing package rather than a missing plugin."
+            exit 1
+          fi
+
+          # The plugin ships self-contained — its runtimeconfig declares an includedFrameworks
+          # entry for Microsoft.NETCore.App — so it does not need a runtime matching global.json's
+          # SDK. An NU1301 AFTER this step is the PAT or the feed, never the plugin.
+          echo "credential provider present at $plugin"
+
+      # A cache slot of its OWN, and the prefix is the whole point. Every other job here keys on
+      # `nuget-<os>-<hash>`, and this is the only job that restores Fhi.Helsedata.Stiler. Sharing
+      # that slot would write a private package into a cache saved on the default branch, which any
+      # later run may restore — a fork PR's `build` job, which gets no secrets, included. NuGet
+      # reads the global-packages folder before it asks a source for credentials, so the PAT that
+      # gates this job would end up gating nothing at all.
+      - name: Cache NuGet
+        if: steps.feed.outputs.have_pat == 'true'
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-hostile-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: nuget-hostile-${{ runner.os }}-
+
+      - name: Cache the scanner's browser
+        if: steps.feed.outputs.have_pat == 'true'
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('scripts/check-hostile-host.sh') }}
+          restore-keys: playwright-${{ runner.os }}-
+
+      # A step of its own so the private-feed restore has a name. Folded into the script below it
+      # is where NU1301 was found the hard way: the script starts a stub, starts a host, and only
+      # then restores, so the credential failure surfaced as a host that never answered.
+      - name: Restore HostileHost against the private feed
+        if: steps.feed.outputs.have_pat == 'true'
+        run: |
+          set -euo pipefail
+          dotnet restore samples/HostileHost/HostileHost.csproj
+
+          # Read the version from the csproj, the only place it is pinned. Hardcoding it here too
+          # means a bump has to be made twice and the second one gets forgotten — which is what
+          # happened on 0.1.37 -> 0.1.38, and the failure named a missing package rather than a
+          # stale assertion.
+          ver=$(sed -n 's/.*Include="Fhi\.Helsedata\.Stiler" Version="\([^"]*\)".*/\1/p' \
+                samples/HostileHost/HostileHost.csproj)
+          if [ -z "$ver" ]; then
+            echo "::error::Could not read the Stiler version from HostileHost.csproj."
+            exit 1
+          fi
+
+          # The package has to be the real one. A restore can succeed against a cache, so this
+          # asks the file on disk rather than the exit code, and asks for a rule no stand-in has.
+          css="$HOME/.nuget/packages/fhi.helsedata.stiler/$ver/staticwebassets/css/main.css"
+          if [ ! -f "$css" ] || ! grep -q 'grid-template-columns: 384px' "$css"; then
+            echo "::error::Fhi.Helsedata.Stiler $ver did not restore, or is not the real stylesheet."
+            exit 1
+          fi
+          echo "Fhi.Helsedata.Stiler $ver restored, $(wc -c < "$css") bytes of it."
+
+      - name: Measure the component inside helsedata's stylesheet
+        if: steps.feed.outputs.have_pat == 'true'
+        # The same script developers can run locally before pushing, so a red check here is
+        # never a surprise that only CI knows how to reproduce.
+        run: ./scripts/check-hostile-host.sh
+
   # A step reads steps.<id>.outcome, which is job-local, so the summary inside "build + test"
   # could only ever report itself and the four guards were never in the comment. A job added to
   # this workflow must be added to needs: below and to the table, or it stays invisible here.
