@@ -162,7 +162,9 @@ public sealed partial class VariableListState
 
         var listId = _activeListId!.Value;
 
-        var accepted = drawnAsSaved
+        // Discarded because the set is no longer maintained here: the two calls record the write
+        // themselves, so a removal from any other surface maintains it as well as this press does.
+        _ = drawnAsSaved
             ? await RemoveVariablesAsync(listId, [variableId], cancellationToken).ConfigureAwait(false)
             : await AddVariablesAsync(listId, [variableId], cancellationToken).ConfigureAwait(false);
 
@@ -174,23 +176,51 @@ public sealed partial class VariableListState
             return false;
         }
 
-        if (accepted)
-        {
-            // Both directions are safe against a set the repair filled: adding an id the list
-            // already holds and removing one it does not are both no-ops on the API's side, and
-            // both are no-ops here too.
-            if (drawnAsSaved)
-            {
-                _saved.Remove(variableId);
-            }
-            else
-            {
-                _saved.Add(variableId);
-            }
-        }
-
         Changed?.Invoke();
         return _saved.Contains(variableId);
+    }
+
+    /// <summary>
+    /// Notes a write the API accepted against the membership set, so every surface that draws from
+    /// <see cref="IsSaved"/> agrees about a variable the reader has just added or taken out.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The set holds the active list and nothing else, so a write addressed elsewhere is noted
+    /// nowhere: <see cref="Blazor.VariableListView"/> writes to the list it is showing, which is
+    /// the active one only while the two agree, and taking a variable out of some other list says
+    /// nothing about the list the save buttons are drawn from.
+    /// </para>
+    /// <para>
+    /// <paramref name="startedAt"/> is the generation read before the write went out, and the
+    /// guard is the one every await in this class carries: a write landing after the reader signed
+    /// out must not put a variable back into the set <see cref="SetAuthenticated"/> has just
+    /// cleared, nor take one out of the next reader's. The write itself stands — the server has it
+    /// either way; it is this circuit's copy that must not keep the answer.
+    /// </para>
+    /// </remarks>
+    private void RecordMembership(
+        Guid listId,
+        IReadOnlyCollection<Guid> variableIds,
+        bool saved,
+        int startedAt)
+    {
+        if (!StillCurrent(startedAt) || listId != _activeListId)
+        {
+            return;
+        }
+
+        // Both directions are safe against a set a membership read filled underneath: adding an id
+        // the list already holds and removing one it does not are no-ops on the API's side, and
+        // no-ops here too.
+        if (saved)
+        {
+            _saved.UnionWith(variableIds);
+        }
+        else
+        {
+            _saved.ExceptWith(variableIds);
+        }
     }
 
     private async Task EnsureActiveListAsync(bool readerAsked, CancellationToken cancellationToken)

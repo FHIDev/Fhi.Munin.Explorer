@@ -326,6 +326,113 @@ public class VariableListStateTest : BunitContext
     }
 
     [Fact]
+    public async Task State_WhenTheReaderSignsOutWhileABatchAddIsInFlight_ThenTheVariableIsNotPutBack()
+    {
+        // The same guard as the press above, at the level the press now delegates to. Asserted on
+        // AddVariablesAsync directly because it is a public entry point of its own — the list view
+        // and the download reach it without going through ToggleSavedAsync, and a guard that only
+        // held on the press would not hold for them.
+        var client = new BlockingAddClient();
+        var state = new VariableListState(client);
+        state.SetAuthenticated(true);
+        await state.EnsureActiveListAsync();
+
+        var listId = state.ActiveListId!.Value;
+        var variableId = Guid.NewGuid();
+
+        var inFlight = state.AddVariablesAsync(listId, [variableId]);
+        state.SetAuthenticated(false);
+        client.Answer();
+        await inFlight;
+
+        // And the reader who arrives next must not inherit it either: signing back in is a new
+        // generation, so nothing the previous reader's call carried may still be in the set.
+        state.SetAuthenticated(true);
+
+        Assert.False(state.IsSaved(variableId));
+    }
+
+    [Fact]
+    public async Task State_WhenAVariableIsRemovedFromTheActiveList_ThenItReadsAsUnsaved()
+    {
+        // Fhi.Metadata-ehghv: VariableListView removes through this method rather than through
+        // ToggleSavedAsync, and the set used to be maintained only on the press — so the search
+        // row went on offering to remove a variable that had already gone.
+        var variableId = Guid.NewGuid();
+        var client = new MembershipClient(variableId);
+        var state = SignedIn(client);
+        await state.EnsureActiveListAsync();
+
+        Assert.True(state.IsSaved(variableId));
+
+        Assert.True(await state.RemoveVariablesAsync(state.ActiveListId!.Value, [variableId]));
+        Assert.False(state.IsSaved(variableId));
+
+        // No second walk of the list: the holder applied the change it just made.
+        Assert.Equal(1, client.MembershipCalls);
+    }
+
+    [Fact]
+    public async Task State_WhenAWriteAddressesAnotherList_ThenTheActiveListsMembershipStands()
+    {
+        // The set holds the active list and nothing else. Taking a variable out of some other list
+        // says nothing about the one the save buttons are drawn from, and a set that took the
+        // removal anyway would draw the variable as gone from a list that still has it.
+        var variableId = Guid.NewGuid();
+        var client = new MembershipClient(variableId);
+        var state = SignedIn(client);
+        await state.EnsureActiveListAsync();
+
+        Assert.True(await state.RemoveVariablesAsync(Guid.NewGuid(), [variableId]));
+
+        Assert.True(state.IsSaved(variableId));
+    }
+
+    /// <summary>One list the reader already has, holding whatever the test seeded it with.</summary>
+    private sealed class MembershipClient(params Guid[] stored) : EmptyMuninExplorerClient
+    {
+        private static readonly Guid TheList = Guid.NewGuid();
+
+        public int MembershipCalls { get; private set; }
+
+        public readonly HashSet<Guid> Stored = [.. stored];
+
+        public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<VariableList>>([new VariableList { Id = TheList, Name = "Mine" }]);
+
+        public override Task<Page<VariableListItem>?> GetMyListVariablesAsync(
+            Guid id, int page = 1, int pageSize = 100, CancellationToken cancellationToken = default)
+        {
+            MembershipCalls++;
+
+            return Task.FromResult<Page<VariableListItem>?>(new Page<VariableListItem>
+            {
+                Items = [.. Stored.Select(v => new VariableListItem { VariableId = v })],
+                TotalCount = Stored.Count,
+                PageNumber = 1,
+                Size = pageSize,
+                TotalPages = 1
+            });
+        }
+
+        public override Task<bool> AddVariablesToMyListAsync(
+            Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default)
+        {
+            if (id == TheList) { foreach (var v in variableIds) { Stored.Add(v); } }
+
+            return Task.FromResult(true);
+        }
+
+        public override Task<bool> RemoveVariablesFromMyListAsync(
+            Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default)
+        {
+            if (id == TheList) { foreach (var v in variableIds) { Stored.Remove(v); } }
+
+            return Task.FromResult(true);
+        }
+    }
+
+    [Fact]
     public async Task State_WhenThreeSurfacesMountTogether_ThenTheListsAreReadOnce()
     {
         var client = new CountingClient();

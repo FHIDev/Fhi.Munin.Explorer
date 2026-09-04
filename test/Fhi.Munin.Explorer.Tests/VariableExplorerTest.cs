@@ -16,8 +16,9 @@ namespace Fhi.Munin.Explorer.Tests;
 /// <remarks>
 /// The failure guarded here is not "the tabs are missing" but a host mounting the name it always
 /// mounted and silently getting less, so <see cref="ShippedDefault"/> is resolved as a string — a
-/// <c>typeof</c> would follow a rename and pass while the CMS field pointed at nothing. One
-/// direction of the shared state is knowingly unasserted: Fhi.Metadata-ehghv.
+/// <c>typeof</c> would follow a rename and pass while the CMS field pointed at nothing. Both
+/// directions of the shared state are asserted now, through the tabs and side by side the way
+/// helsedata's MuninUtforsker mounts them: Fhi.Metadata-ehghv.
 /// </remarks>
 public class VariableExplorerTest : BunitContext
 {
@@ -36,11 +37,17 @@ public class VariableExplorerTest : BunitContext
         private readonly VariableSummary[] _rows = rows;
         public readonly HashSet<Guid> Stored = [];
 
+        /// <summary>Counted so a surface that redrew by refetching can be told from one that did not.</summary>
+        public int SearchCalls { get; private set; }
+
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
             string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default, SortDirection direction = SortDirection.Ascending,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult(new Page<VariableSummary>
+            CancellationToken cancellationToken = default)
+        {
+            SearchCalls++;
+
+            return Task.FromResult(new Page<VariableSummary>
             {
                 Items = _rows,
                 TotalCount = _rows.Length,
@@ -48,6 +55,7 @@ public class VariableExplorerTest : BunitContext
                 Size = pageSize,
                 TotalPages = 1,
             });
+        }
 
         public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<VariableList>>([new VariableList { Id = ListId, Name = "Mine hjertevariabler" }]);
@@ -305,6 +313,109 @@ public class VariableExplorerTest : BunitContext
             "Alder ved diagnose",
             PanelFor(cut, Tab(cut, "Variabelliste")).InnerHtml,
             StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RemovedInTheListView_WhenBothSurfacesAreOnOnePage_ThenTheSearchRowOffersToSaveAgain()
+    {
+        // Fhi.Metadata-ehghv, and the shape helsedata's MuninUtforsker.cshtml already mounts: the
+        // explorer and a VariableListView beside it, two root components in one circuit sharing one
+        // VariableListState. Pressing Fjern in the list left the search row's button still reading
+        // "Fjern fra liste" with aria-pressed=true, offering to take out a variable already gone.
+        //
+        // One render fragment holding both, not two Render calls: two bUnit renders are two
+        // documents that share no circuit, and the defect only exists where one state serves both.
+        var variable = Variable("Alder ved diagnose", "V_BDR.ALDER");
+        var client = new ExplorerClient(variable);
+        client.Stored.Add(variable.Id);
+
+        Prepare(client);
+
+        var page = Render(builder =>
+        {
+            builder.OpenComponent<VariableSearch>(0);
+            builder.AddComponentParameter(1, nameof(VariableSearch.IsAuthenticated), true);
+            builder.CloseComponent();
+            builder.OpenComponent<VariableListView>(2);
+            builder.AddComponentParameter(3, nameof(VariableListView.IsAuthenticated), true);
+            builder.CloseComponent();
+        });
+
+        var save = page.Find(".munin-explorer-dataitem-main button[aria-pressed]");
+
+        Assert.Equal("true", save.GetAttribute("aria-pressed"));
+        Assert.Equal("Fjern fra liste", save.TextContent.Trim());
+
+        var searchesBefore = client.SearchCalls;
+
+        page.Find("[id^=munin-explorer-list-remove-]").Click();
+
+        // Re-found rather than reused: the row is rebuilt, and the stale handle would still be the
+        // element as it read before the removal.
+        save = page.Find(".munin-explorer-dataitem-main button[aria-pressed]");
+
+        Assert.Equal("false", save.GetAttribute("aria-pressed"));
+        Assert.Equal("Lagre i liste", save.TextContent.Trim());
+
+        // Without a reload and without the search being asked again: the holder applied the change
+        // and told both surfaces, which is the whole claim VariableListView's remarks make.
+        Assert.Equal(searchesBefore, client.SearchCalls);
+    }
+
+    [Fact]
+    public void SavedInTheSearchResults_WhenBothSurfacesAreOnOnePage_ThenTheListViewShowsItAtOnce()
+    {
+        // The direction that already worked, asserted at the same level so a fix to the other one
+        // cannot quietly cost it. Same page, no tab switch to force a remount.
+        var variable = Variable("Alder ved diagnose", "V_BDR.ALDER");
+        var client = new ExplorerClient(variable);
+
+        Prepare(client);
+
+        var page = Render(builder =>
+        {
+            builder.OpenComponent<VariableSearch>(0);
+            builder.AddComponentParameter(1, nameof(VariableSearch.IsAuthenticated), true);
+            builder.CloseComponent();
+            builder.OpenComponent<VariableListView>(2);
+            builder.AddComponentParameter(3, nameof(VariableListView.IsAuthenticated), true);
+            builder.CloseComponent();
+        });
+
+        Assert.Empty(page.FindAll("[id^=munin-explorer-list-remove-]"));
+
+        page.Find(".munin-explorer-dataitem-main button[aria-pressed]").Click();
+
+        Assert.Single(page.FindAll("[id^=munin-explorer-list-remove-]"));
+        Assert.Equal(
+            "true",
+            page.Find(".munin-explorer-dataitem-main button[aria-pressed]").GetAttribute("aria-pressed"));
+    }
+
+    [Fact]
+    public void RemovedOnTheListTab_WhenTheSearchTabIsOpenedAgain_ThenTheRowOffersToSaveAgain()
+    {
+        // The same defect through the tabs, where the search is unmounted while the list is open.
+        // A remount is no cure: the membership set is the circuit's and outlives both components,
+        // so a set that kept the removed id draws the returning row wrong on its very first render.
+        var variable = Variable("Alder ved diagnose", "V_BDR.ALDER");
+        var client = new ExplorerClient(variable);
+        client.Stored.Add(variable.Id);
+
+        var cut = RenderExplorer(client);
+
+        Assert.Equal(
+            "Fjern fra liste",
+            cut.Find(".munin-explorer-dataitem-main button[aria-pressed]").TextContent.Trim());
+
+        Tab(cut, "Variabelliste").Click();
+        cut.Find("[id^=munin-explorer-list-remove-]").Click();
+        Tab(cut, "Søkeresultat").Click();
+
+        var save = cut.Find(".munin-explorer-dataitem-main button[aria-pressed]");
+
+        Assert.Equal("false", save.GetAttribute("aria-pressed"));
+        Assert.Equal("Lagre i liste", save.TextContent.Trim());
     }
 
     [Fact]

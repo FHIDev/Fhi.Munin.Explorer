@@ -228,6 +228,8 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
             return false;
         }
 
+        var startedAt = _generation;
+
         // An empty collection is passed through, not short-circuited: the client documents it as a
         // legitimate call whose answer says whether the list exists.
         var accepted = await _client
@@ -236,6 +238,7 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
 
         if (accepted)
         {
+            RecordMembership(id, variableIds, saved: true, startedAt);
             Changed?.Invoke();
         }
 
@@ -253,12 +256,15 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
             return false;
         }
 
+        var startedAt = _generation;
+
         var accepted = await _client
             .RemoveVariablesFromMyListAsync(id, variableIds, cancellationToken)
             .ConfigureAwait(false);
 
         if (accepted)
         {
+            RecordMembership(id, variableIds, saved: false, startedAt);
             Changed?.Invoke();
         }
 
