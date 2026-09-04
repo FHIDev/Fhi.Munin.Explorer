@@ -1,4 +1,3 @@
-using System.Reflection;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
 
