@@ -1300,12 +1300,24 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 /* helsedata's panel grid is `1fr 1fr` above 1280px and one column below. The sample carries a
    stand-in so the fields sit in lanes here too — stacked, they read as a long column of labels
-   and the group headings stop meaning anything. */
+   and the group headings stop meaning anything.
+
+   minmax(0, 1fr) rather than 1fr: a track's automatic minimum is its own min-content, so one
+   unbreakable Norwegian compound - Personopplysningsloven - sets a floor the 320px sidebar cannot
+   meet, and the overflow reaches the document as a horizontal scrollbar. (Fhi.Metadata-hi0po) */
 .munin-explorer-meta__grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 24px 24px;
   margin-bottom: 20px;
+}
+
+/* The tracks can shrink now, and this is what makes the words inside them shrink with it: a label
+   or a value here is Norwegian prose, and one compound - Personopplysningsloven - is wider than a
+   160px lane. Same declaration the facet values carry, for the same reason. (Fhi.Metadata-hi0po) */
+.munin-explorer-meta__grid dt,
+.munin-explorer-meta__grid dd {
+  overflow-wrap: anywhere;
 }
 
 .munin-explorer-meta__grid-1 {
