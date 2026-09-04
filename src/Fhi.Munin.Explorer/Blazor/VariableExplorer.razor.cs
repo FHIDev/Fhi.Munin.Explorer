@@ -34,7 +34,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// link to an empty page for everyone but its author.
 /// </para>
 /// </remarks>
-public partial class VariableExplorer : ComponentBase
+public sealed partial class VariableExplorer : ComponentBase
 {
     [Inject] private NavigationManager Navigation { get; set; } = default!;
 

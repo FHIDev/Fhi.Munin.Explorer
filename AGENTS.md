@@ -180,6 +180,26 @@ announce a control as, and deliberately refuses to count `placeholder` or `title
 naive "has a naming attribute" check and neither is a name. Use it for anything a reader operates.
 `KildeExplorer` is the worked example of a data table done right: a real `<table>`, scoring 100.
 
+## Components are sealed
+
+**Every component this package publishes is `sealed`, roots included.** A host can still mount
+`VariableSearch` or `VariableListView` itself, and sealing changes nothing about that — it is
+derivation the rule is about, not composition. `VariableExplorer` and
+`KildeExplorerWithUrlState` — the two roots that were still unsealed — were open by silence rather
+than by decision: nothing in either file said why, and neither had ever carried the keyword
+(`Fhi.Metadata-l9l2n.43`).
+
+The argument is asymmetry, not taste. Unsealing later is invisible to every consumer; sealing later
+is a binary break for anyone who derived in the meantime. The package is `0.1.0-alpha` and helsedata
+mounts by **type name** out of a CMS field rather than by inheritance, so the open door served no
+consumer that exists — which makes now the only cheap moment, the same reasoning the Norwegian
+rename used before the first publish.
+
+The rule is here, once, rather than as a comment on every component. `SealedComponentsTest` is what
+keeps it true: a component added unsealed is not a compile error and its audience is a host, after
+publication. If a future extension route is genuinely wanted, unseal that one type and say in its
+own remarks what it is for — an exception with a reason is fine, silence is what this replaced.
+
 ## Class names in markup
 
 Two kinds of name reach the DOM, and the rule differs between them.
