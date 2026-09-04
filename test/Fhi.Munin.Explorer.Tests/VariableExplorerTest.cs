@@ -318,13 +318,9 @@ public class VariableExplorerTest : BunitContext
     [Fact]
     public void RemovedInTheListView_WhenBothSurfacesAreOnOnePage_ThenTheSearchRowOffersToSaveAgain()
     {
-        // Fhi.Metadata-ehghv, and the shape helsedata's MuninUtforsker.cshtml already mounts: the
-        // explorer and a VariableListView beside it, two root components in one circuit sharing one
-        // VariableListState. Pressing Fjern in the list left the search row's button still reading
-        // "Fjern fra liste" with aria-pressed=true, offering to take out a variable already gone.
-        //
-        // One render fragment holding both, not two Render calls: two bUnit renders are two
-        // documents that share no circuit, and the defect only exists where one state serves both.
+        // Fhi.Metadata-ehghv, in the shape MuninUtforsker.cshtml mounts. One render fragment holds
+        // both surfaces rather than two Render calls: two bUnit renders are two documents sharing no
+        // circuit, and the defect only exists where one VariableListState serves both.
         var variable = Variable("Alder ved diagnose", "V_BDR.ALDER");
         var client = new ExplorerClient(variable);
         client.Stored.Add(variable.Id);

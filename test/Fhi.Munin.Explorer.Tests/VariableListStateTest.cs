@@ -328,10 +328,9 @@ public class VariableListStateTest : BunitContext
     [Fact]
     public async Task State_WhenTheReaderSignsOutWhileABatchAddIsInFlight_ThenTheVariableIsNotPutBack()
     {
-        // The same guard as the press above, at the level the press now delegates to. Asserted on
-        // AddVariablesAsync directly because it is a public entry point of its own — the list view
-        // and the download reach it without going through ToggleSavedAsync, and a guard that only
-        // held on the press would not hold for them.
+        // The same guard as the press above, at the level it delegates to. Asserted on
+        // AddVariablesAsync directly: the list view and the download reach it without going
+        // through ToggleSavedAsync, so a guard held only on the press would not hold for them.
         var client = new BlockingAddClient();
         var state = new VariableListState(client);
         state.SetAuthenticated(true);
