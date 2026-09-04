@@ -12,7 +12,8 @@ on:
       - 'v*'
 
 permissions:
-  contents: write # create the GitHub Release for the tag
+  contents: write # create the GitHub Release for the tag, and push the changelog branch
+  pull-requests: write # open the pull request that records the assembled changelog on main
 
 concurrency:
   # Deliberately not cancel-in-progress. Cancelling a run mid-push leaves nobody able to say
@@ -29,7 +30,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          # The "tag is on main" check below walks history, so it needs more than the tag.
+          # The "tag is on main" check below walks history, so it needs more than the tag. The
+          # changelog step needs origin/main for the same reason, and the checkout's own
+          # credentials to push its branch — persist-credentials, left at its default.
           fetch-depth: 0
 
       - uses: actions/setup-dotnet@v6
@@ -75,6 +78,65 @@ jobs:
             exit 1
           fi
 
+      - name: Assemble the changelog for this tag
+        id: changelog
+        # Before the pack step, and that ordering is the whole point of this step. The package's
+        # release notes ARE this version's section: packing first would stamp the version with
+        # notes nobody had written yet, and the fix for that is not a link to go and look.
+        #
+        # Eight versions shipped before this ran automatically, because it was a documented
+        # manual step and a documented manual step does not get run (Fhi.Metadata-l9l2n.44).
+        #
+        # It cannot push to main itself — MainRules requires a pull request there and has no
+        # bypass actors — so it prepares the commit on a branch and the next step offers it.
+        # The script's header has the rest.
+        run: |
+          git fetch --quiet origin +refs/heads/main:refs/remotes/origin/main
+          ./scripts/release-changelog.sh "${{ steps.version.outputs.version }}" \
+            --tag-sha "$GITHUB_SHA" \
+            --base origin/main \
+            --notes "$GITHUB_WORKSPACE/release-notes.md"
+
+      - name: Open the pull request that records it on main
+        if: steps.changelog.outputs.assembled == 'true'
+        # Before the push to the feed, not after: this is the recoverable half. A run that dies
+        # here has published nothing and re-running it assembles the same section again, while a
+        # run that died after the push could never come back to record what it shipped — the
+        # feed pre-flight stops a re-run of a version that is already out.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ steps.changelog.outputs.branch }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if [ -n "$(gh pr list --head "$BRANCH" --state open --json number --jq '.[].number')" ]; then
+            echo "A pull request for $BRANCH is already open — left as it is."
+            exit 0
+          fi
+
+          # GitHub does not run workflows for events its own GITHUB_TOKEN caused, so this pull
+          # request arrives with its required checks unreported and cannot merge until a human
+          # reopens it or pushes to the branch. Saying so in the body beats leaving somebody to
+          # work it out from a merge button that never lights up.
+          {
+            echo 'Opened by `.github/workflows/release.yml` when the tag was pushed: this'
+            echo 'version section in `CHANGELOG.md`, and the fragments it consumed removed in the'
+            echo 'same commit.'
+            echo
+            echo 'The package and the GitHub release for this tag already carry these notes.'
+            echo 'Merging this is what puts them in `CHANGELOG.md` on `main` and clears'
+            echo '`changelog.d/`. Until it merges the fragments in it are still queued, and the'
+            echo 'next release would publish them again under its own version.'
+            echo
+            echo '**CI has not reported on this pull request and will not on its own.** GitHub'
+            echo 'suppresses workflow runs for events caused by `GITHUB_TOKEN`, so the required'
+            echo 'checks sit unreported and the merge button stays shut. Close and reopen it, or'
+            echo 'push an empty commit, and they run.'
+          } > "$RUNNER_TEMP/pr-body.md"
+
+          gh pr create --base main --head "$BRANCH" \
+            --title "docs(changelog): assemble v$VERSION" \
+            --body-file "$RUNNER_TEMP/pr-body.md"
+
       - name: Restore
         run: dotnet restore
 
@@ -87,15 +149,33 @@ jobs:
         run: dotnet test --configuration Release --no-build --verbosity quiet
 
       - name: Pack
-        # PackageReleaseNotes is stamped with THIS tag's release rather than left at the default.
-        # A feed shows the string against the version it was packed with, so a link to
-        # the changelog on main would age into pointing an old package at notes describing a later
-        # one. The release for a tag never changes after it is cut, and the workflow creates it
-        # below, so the link is valid by the time anyone can install the package.
+        # PackageReleaseNotes carries THIS version's changelog section, not a link to go and read
+        # one. It was the link alone until Fhi.Metadata-l9l2n.44, which was as good as the notes
+        # it pointed at: auto-generated commit titles, because nothing assembled the changelog.
+        # A consumer taking a breaking version reads this string on the feed, and helsedata took
+        # one — 0.1.0-alpha.8 deleted a component — with nothing curated to read.
+        #
+        # The link stays, after the notes. It points at the release for the tag rather than at
+        # CHANGELOG.md on main, because that release never changes after it is cut while main
+        # moves on: a link to main would age into pointing an old package at a later version's
+        # entry.
+        #
+        # Through a file, not -p:PackageReleaseNotes=: the notes are multi-line and full of
+        # semicolons, and an MSBuild command-line property loses the first and splits on the
+        # second. Directory.Build.props reads the file this writes.
         run: |
+          NOTES="$GITHUB_WORKSPACE/package-release-notes.md"
+          if [ -s "$GITHUB_WORKSPACE/release-notes.md" ]; then
+            cat "$GITHUB_WORKSPACE/release-notes.md" > "$NOTES"
+          else
+            printf 'No changelog entry was assembled for this version.\n' > "$NOTES"
+          fi
+          printf '\nRelease notes for %s: https://github.com/%s/releases/tag/%s\n' \
+            '${{ github.ref_name }}' '${{ github.repository }}' '${{ github.ref_name }}' >> "$NOTES"
+
           dotnet pack --configuration Release --no-build --output artifacts \
             -p:Version=${{ steps.version.outputs.version }} \
-            -p:PackageReleaseNotes="Release notes for ${{ github.ref_name }}: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}"
+            -p:PackageReleaseNotesFile="$NOTES"
 
       - name: Assert package contents
         # Last gate before the irreversible step. Also catches a version mismatch between the
@@ -137,6 +217,11 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           name: v${{ steps.version.outputs.version }}
+          # The assembled section first, then the generated commit titles under it. The section
+          # is what a consumer needs and the commit list is what it was left with for eight
+          # versions; this is also the copy that outlives the branch, since the release for a
+          # tag is fixed and the file on main is not.
+          body_path: release-notes.md
           generate_release_notes: true
           # A prerelease tag (v0.2.0-beta.1) is marked as one on GitHub too, so the release
           # list says the same thing the feed does.

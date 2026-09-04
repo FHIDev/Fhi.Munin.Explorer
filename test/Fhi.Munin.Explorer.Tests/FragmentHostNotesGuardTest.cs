@@ -33,6 +33,14 @@ public class FragmentHostNotesGuardTest
     private const string Noted = $"category: Notes for hosts\n\n- `{Name}` needs `display: none` "
                                  + "once the host has room for a sidebar.\n";
 
+    /// <summary>
+    /// A released changelog naming nothing, so a case about the fragments is only about the
+    /// fragments. The repository's own file notes this very name, and has since the eight alpha
+    /// sections were assembled, so borrowing it would make every unnoted case read as noted.
+    /// </summary>
+    private const string NothingReleased =
+        "# Changelog\n\n## 0.1.0 — 2026-01-01\n\n### Added\n\n- Something else entirely.\n";
+
     [ShellFact]
     public void Guard_WhenTheRealFragmentsArePassedThroughTheSeam_ThenTheyPass()
     {
@@ -147,16 +155,14 @@ public class FragmentHostNotesGuardTest
             + Environment.NewLine
             + (run.Output.Length == 0 ? "(nothing at all)" : run.Output));
 
-    /// <summary>Runs the script over a fragment directory written for the case under test.</summary>
+    /// <summary>Runs the script over a fragment directory and a changelog written for the case.</summary>
     private static GuardRun RunAgainst(IReadOnlyDictionary<string, string> fragments, string? changelog = null)
     {
         var dir = Directory.CreateTempSubdirectory("munin-fragment-guard");
 
         // Outside the fragment directory on purpose: a released changelog left inside it would be
         // read as one more fragment, and the case under test would not be the one written down.
-        var file = changelog is null
-            ? Repo.In("CHANGELOG.md")
-            : Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".md");
+        var file = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".md");
 
         try
         {
@@ -165,10 +171,7 @@ public class FragmentHostNotesGuardTest
                 File.WriteAllText(Path.Combine(dir.FullName, name), body);
             }
 
-            if (changelog is not null)
-            {
-                File.WriteAllText(file, changelog);
-            }
+            File.WriteAllText(file, changelog ?? NothingReleased);
 
             return Guard.RunScript(Script, new Dictionary<string, string>
             {
@@ -179,11 +182,7 @@ public class FragmentHostNotesGuardTest
         finally
         {
             Guard.Discard(dir);
-
-            if (changelog is not null)
-            {
-                File.Delete(file);
-            }
+            File.Delete(file);
         }
     }
 }

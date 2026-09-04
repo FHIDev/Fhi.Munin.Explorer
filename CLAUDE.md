@@ -157,6 +157,15 @@ workflow refuses a tag whose commit is not on `main`, a malformed version, a pac
 disagrees with the tag, and a version already on the feed: deleting one there does not take it
 back from anyone who restored it. See "Releasing" in `README.md` for the rest.
 
+**The tag also assembles the changelog, before it packs** — the version's `changelog.d/` fragments
+become one `CHANGELOG.md` section and that section is the package's `PackageReleaseNotes`. Never
+run `assemble-changelog.ps1` by hand to release: it was a documented manual step for three weeks
+and eight versions shipped without it (`Fhi.Metadata-l9l2n.44`). `-DryRun`, and
+`scripts/release-changelog.sh --dry-run`, are the rehearsals. The commit reaches `main` as a pull
+request the workflow opens, since `MainRules` has no bypass actors — merging it is the one step
+left to a person, and it arrives with its checks unreported because no workflow runs for an event
+`GITHUB_TOKEN` caused.
+
 ## Host constraints worth remembering
 
 The component must render inside helsedata's **legacy** Blazor Server (`AddServerSideBlazor` +

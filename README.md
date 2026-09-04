@@ -688,10 +688,24 @@ Publishing is triggered by a tag, never by a merge:
 git tag v0.2.0 && git push origin v0.2.0
 ```
 
-`.github/workflows/release.yml` derives the version from the tag, builds, tests, packs, asserts
-the package shape and pushes the one package, `Fhi.Munin.Explorer`, to `Fhi.Helsedata.no`, the
-Azure Artifacts feed helsedata's own projects already restore from. The package is internal, not
-public: nothing goes to nuget.org.
+`.github/workflows/release.yml` derives the version from the tag, assembles the changelog,
+builds, tests, packs, asserts the package shape and pushes the one package, `Fhi.Munin.Explorer`,
+to `Fhi.Helsedata.no`, the Azure Artifacts feed helsedata's own projects already restore from. The
+package is internal, not public: nothing goes to nuget.org.
+
+The changelog comes first, and the order is load-bearing: `PackageReleaseNotes` is that version's
+assembled section, and the GitHub release for the tag carries the same text, so packing before
+assembling would stamp a version with notes nobody had written yet. That was the state until
+`Fhi.Metadata-l9l2n.44` — assembly was a documented manual step, eight versions shipped without it
+being run once, and the notes on the feed were a link to auto-generated commit titles.
+
+The section is committed on a `changelog/v<version>` branch and offered to `main` as a pull
+request the workflow opens, because the `MainRules` ruleset requires one and has no bypass actors:
+an unattended push to `main` is refused whoever makes it, and a credential that could bypass it is
+one this public repository deliberately does not hold. Merging it is the one manual step, and it
+is not one anybody has to remember for a release to carry its notes. Re-running a tag is safe —
+the assembler finds the section already there, writes no duplicate, and leaves the fragments
+queued for the next release alone.
 
 The workflow refuses to publish a tag whose commit is not on `main`, a tag that is not a clean
 `vMAJOR.MINOR.PATCH`, and a build whose packed version disagrees with the tag. The feed does allow
@@ -742,6 +756,10 @@ walked back.
 `CHANGELOG.md` is the released record. Unreleased changes live one file per change in
 [`changelog.d/`](changelog.d/README.md) — a shared changelog file is a merge conflict on every
 parallel branch, a new file is never one. A PR touching `src/` needs a fragment, and CI says so.
+
+Pushing a `v*` tag folds the fragments into a version section; nobody runs the assembler by hand.
+See [`changelog.d/README.md`](changelog.d/README.md) for what the tag does, what a re-run does,
+and why the eight `0.1.0-alpha.*` sections were all written on one day.
 
 ## Issue tracking
 
