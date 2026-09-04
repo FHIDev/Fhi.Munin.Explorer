@@ -868,4 +868,21 @@ public class KildeSelectionTest : BunitContext
         Assert.Equal("TD", cells[box].TagName);
         Assert.Equal("TH", cells[box + 1].TagName);
     }
+
+    [Fact]
+    public void Table_Always_ThenEveryHeaderSaysWhatItHeads()
+    {
+        // The element is not the association: a th with no scope leaves the browser to guess which
+        // cells it heads, and every scope attribute in this table could be deleted with the whole
+        // suite green. axe cannot see it either — scope-attr-valid checks the VALUE of a scope that
+        // is there and reports nothing at all for one that is missing, which is the "blind to the
+        // absence of structure" case AGENTS.md describes. WCAG 1.3.1.
+        var (cut, _) = RenderSelectable(new FakeClient(Kilde("Als registeret", "K_ALS")));
+
+        Assert.All(cut.FindAll(".munin-explorer-kilder thead th"),
+                   th => Assert.Equal("col", th.GetAttribute("scope")));
+
+        Assert.All(cut.FindAll(".munin-explorer-kilder tbody tr > th"),
+                   th => Assert.Equal("row", th.GetAttribute("scope")));
+    }
 }

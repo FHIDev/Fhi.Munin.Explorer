@@ -69,8 +69,9 @@ internal static class ColumnPicker
 
     /// <summary>The picker.</summary>
     /// <param name="receiver">The component whose state a press changes. <c>IHandleEvent</c> and not
-    /// <c>object</c>, because that is the interface <c>EventCallback.InvokeAsync</c> tests for: any
-    /// other receiver would toggle the column and leave the table exactly as it was.</param>
+    /// <c>object</c>, because that is what <c>EventCallback.InvokeAsync</c> dispatches through — an
+    /// <c>object</c> receiver is pressed and never redrawn. The interface is the floor, not a
+    /// guarantee: what redraws is <c>ComponentBase</c> handling the event.</param>
     /// <param name="buttonLabel">The trigger's word — "Kolonner".</param>
     /// <param name="choices">The columns, in the order the picker lists them.</param>
     /// <param name="hint">Why the last column refuses, and the id a locked button points at.

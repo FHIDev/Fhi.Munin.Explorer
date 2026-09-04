@@ -3157,10 +3157,12 @@ public class KildeExplorerTest : BunitContext
         ToggleColumn(cut, "Sist endret");
 
         // Years, not formatted dates: the month's short form is the runtime's. The payload holds
-        // 20260423, 20260813 and 20230131.
+        // 20260423, 20260813 and 20230131. The whole cell is reported when it does not end in a
+        // year, so a fixture re-capture that drops the key fails as "expected 2026, got Ikke
+        // oppgitt" rather than as four characters of it.
         var years = cut.FindAll(".munin-explorer-kilder tbody tr")
             .Select(row => row.QuerySelectorAll("td")[^1].TextContent.Trim())
-            .Select(text => text.Length >= 4 ? text[^4..] : text);
+            .Select(text => text.Length >= 4 && text[^4..].All(char.IsAsciiDigit) ? text[^4..] : text);
 
         Assert.Equal(["2026", "2026", "2023"], years);
     }
