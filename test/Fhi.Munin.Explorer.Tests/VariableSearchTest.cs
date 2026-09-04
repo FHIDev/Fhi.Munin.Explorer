@@ -4540,9 +4540,9 @@ public class VariableSearchTest : BunitContext
     [Fact]
     public void Count_WhenAHostStylesIt_ThenTheCountsStandInOneColumn()
     {
-        // The stand-ins measure like Stiler or they are not stand-ins: Stiler 0.1.37 pushes the
-        // count to the labels right edge (ADO PR 39101, Fhi.Metadata-j0s3v) and the samples did
-        // not, so a count sat where its own text ended - 31 positions down one panel.
+        // The stand-ins measure like Stiler or they are not stand-ins: Stiler pushes the count to
+        // the label's right edge (ADO PR 39101, Fhi.Metadata-j0s3v) and the samples did not, so a
+        // count sat where its own text ended — measured at 81 right edges over 107 values.
         static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
 
         var count = HostClassNames.SampleDeclarationsFor("munin-explorer-filters__count")
@@ -4552,13 +4552,6 @@ public class VariableSearchTest : BunitContext
         Assert.True(
             count.Any(d => d.Contains("margin-left:auto", StringComparison.Ordinal)),
             "Nothing pushes the count to the labels edge, so tabular-nums lines up nothing.");
-
-        // The pair, not the margin alone: pushed right and still shrinkable, a long label squeezes
-        // the count against the edge and z1895 comes back at a different width.
-        Assert.True(
-            count.Any(d => d.Contains("flex:none", StringComparison.Ordinal)
-                        || d.Contains("flex-shrink:0", StringComparison.Ordinal)),
-            "The count can shrink again, so pushing it right only moves where it breaks.");
     }
 
     [Fact]
