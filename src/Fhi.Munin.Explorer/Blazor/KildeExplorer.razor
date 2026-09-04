@@ -352,11 +352,18 @@ else
            above shows, and pointing at that element would make the table's name change under a
            screen reader every time the status line does.
 
-           Thirteen columns, in Kelda's order (kelda.tsx:74, OPTIONAL_COLUMNS): Navn, Status and
-           Opprettet always, and ten behind the picker above, of which Kelda's DEFAULT_VISIBLE
-           turns three on. Two control columns come before all of them — the expand toggle, which
-           is ours alone, and the checkbox, which is Kelda's and is drawn only where the host wired
-           the handover. Both count towards the nested row's colspan.
+           Thirteen columns in the order Kelda's own header draws them (kelda.tsx:479-535): Navn,
+           Status and Opprettet always, and ten behind the picker above, of which Kelda's
+           DEFAULT_VISIBLE turns three on.
+
+           The picker lists those ten in a DIFFERENT order (kelda.tsx:74) — counts before free
+           text, where the table puts free text first — and that is Kelda's, not a slip on either
+           side. Copying one order and not the other would make this table Kelda's in the control
+           and not in the columns.
+
+           Two control columns come before all of them: the expand toggle, which is ours alone, and
+           the checkbox, which is Kelda's and is drawn only where the host wired the handover. Both
+           count towards the nested row's colspan.
 
            No aria-busy, unlike the variable explorer's list: there is nothing to be busy with.
            The list is fetched once, on initialisation, and while that fetch is running this table

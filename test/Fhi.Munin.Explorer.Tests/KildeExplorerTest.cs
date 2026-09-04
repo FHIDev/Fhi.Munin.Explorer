@@ -2971,6 +2971,44 @@ public class KildeExplorerTest : BunitContext
     }
 
     [Fact]
+    public void Picker_WhenEveryColumnIsTurnedOn_ThenTheTableIsInKeldasHeaderOrderAndNotThePickers()
+    {
+        // The two orders differ in Kelda and so differ here: the picker lists counts before free
+        // text (kelda.tsx:74), the header draws free text first (kelda.tsx:479-535). Nothing else
+        // holds the header order once more than the default three are on, and the header and body
+        // are two handwritten loops — so a column moved in one of them lands here.
+        var cut = RenderWith(new FakeClient(Furnished()));
+
+        foreach (var label in ColumnToggles(cut)
+                     .Where(b => b.GetAttribute("aria-pressed") == "false")
+                     .Select(b => b.TextContent.Trim())
+                     .ToList())
+        {
+            ToggleColumn(cut, label);
+        }
+
+        Assert.Equal(
+        [
+            "Vis datasamlinger",
+            "Navn",
+            "Kildetype",
+            "Status",
+            "Dataansvarlig",
+            "Databehandler",
+            "Grad av personidentifikasjon",
+            "Gyldighet",
+            "Delkilder",
+            "Datasamlinger",
+            "Variabler",
+            "Opprettet",
+            "Importert",
+            "Sist endret",
+        ], Headers(cut));
+
+        Assert.Equal(Headers(cut).Count, FirstRowCells(cut).Count);
+    }
+
+    [Fact]
     public void Picker_WhenAShownColumnIsTurnedOff_ThenItsHeaderAndItsCellsGoTogether()
     {
         // Header and body are two loops over the same choice, so a column can be taken out of one
