@@ -67,6 +67,13 @@ helsedata's private Azure Artifacts feed. So:
 - **In CI it needs the `AZURE_ARTIFACTS_PAT` repository secret**, which the `layout in helsedata's
   stylesheet` job turns into `VSS_NUGET_EXTERNAL_FEED_ENDPOINTS`. Without the secret that job skips
   itself rather than failing.
+- **The credential provider is a plugin, and a GitHub-hosted runner does not have one.** NuGet
+  reads neither your `az login` nor `VSS_NUGET_EXTERNAL_FEED_ENDPOINTS` itself; it shells out to
+  the provider under `~/.nuget/plugins`. With no provider it restores *anonymously* and says
+  nothing about why, so the feed's `NU1301` is the only symptom — and it reads like a missing
+  package. The job installs the provider before restoring for exactly this reason. It is also why
+  a green local run proves less than it looks: it proves the PAT and the feed URL, and hides
+  whether the runner can use them.
 
 ### What it is for
 
