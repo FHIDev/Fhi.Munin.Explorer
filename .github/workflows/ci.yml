@@ -496,14 +496,25 @@ jobs:
           set -euo pipefail
           dotnet restore samples/HostileHost/HostileHost.csproj
 
-          # The package has to be the real one. A restore can succeed against a cache, so this
-          # asks the file on disk rather than the exit code, and asks for a rule no stand-in has.
-          css="$HOME/.nuget/packages/fhi.helsedata.stiler/0.1.37/staticwebassets/css/main.css"
-          if [ ! -f "$css" ] || ! grep -q 'grid-template-columns: 384px' "$css"; then
-            echo "::error::Fhi.Helsedata.Stiler 0.1.37 did not restore, or is not the real stylesheet."
+          # Read the version from the csproj, the only place it is pinned. Hardcoding it here too
+          # means a bump has to be made twice and the second one gets forgotten — which is what
+          # happened on 0.1.37 -> 0.1.38, and the failure named a missing package rather than a
+          # stale assertion.
+          ver=$(sed -n 's/.*Include="Fhi\.Helsedata\.Stiler" Version="\([^"]*\)".*/\1/p' \
+                samples/HostileHost/HostileHost.csproj)
+          if [ -z "$ver" ]; then
+            echo "::error::Could not read the Stiler version from HostileHost.csproj."
             exit 1
           fi
-          echo "Fhi.Helsedata.Stiler 0.1.37 restored, $(wc -c < "$css") bytes of it."
+
+          # The package has to be the real one. A restore can succeed against a cache, so this
+          # asks the file on disk rather than the exit code, and asks for a rule no stand-in has.
+          css="$HOME/.nuget/packages/fhi.helsedata.stiler/$ver/staticwebassets/css/main.css"
+          if [ ! -f "$css" ] || ! grep -q 'grid-template-columns: 384px' "$css"; then
+            echo "::error::Fhi.Helsedata.Stiler $ver did not restore, or is not the real stylesheet."
+            exit 1
+          fi
+          echo "Fhi.Helsedata.Stiler $ver restored, $(wc -c < "$css") bytes of it."
 
       - name: Measure the component inside helsedata's stylesheet
         if: steps.feed.outputs.have_pat == 'true'
