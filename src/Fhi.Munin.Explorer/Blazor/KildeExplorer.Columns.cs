@@ -129,7 +129,7 @@ public sealed partial class KildeExplorer
     /// <see cref="KildeSummary.Created"/>, which the Opprettet column beside it does not read: that
     /// one is <c>additionalProperties.Opprettet</c>, a year the catalogue wrote as text. Through
     /// <see cref="CatalogueDate.DayOrNothing"/>, since a missing timestamp is not this column's
-    /// problem alone - the kilde and datasamling views draw the same field (Fhi.Metadata-6r6rf).
+    /// problem alone — the kilde and datasamling views draw the same field (Fhi.Metadata-6r6rf).
     /// </remarks>
     private string Imported(KildeSummary kilde) =>
         Value(CatalogueDate.DayOrNothing(kilde.Created, Language, DateWidth.Narrow));
