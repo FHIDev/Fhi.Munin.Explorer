@@ -7,9 +7,9 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <summary>
 /// The bridge between the host's <see cref="IsAuthenticated"/> parameter and the circuit's shared
 /// <see cref="VariableListState"/>, so every surface that touches saved lists agrees on who the
-/// reader is.
+/// reader is — and, through <c>Changed</c>, on what is in the list.
 /// </summary>
-public partial class VariableSearch
+public partial class VariableSearch : IDisposable
 {
     [Inject] private IServiceProvider ServiceProvider { get; set; } = null!;
 
@@ -22,6 +22,31 @@ public partial class VariableSearch
     /// </summary>
     private VariableListState? ListState =>
         _listState ??= ServiceProvider.GetService<VariableListState>();
+
+    protected override void OnInitialized()
+    {
+        if (ListState is not null)
+        {
+            // The rows read IsSaved on every render but nothing re-renders them when another
+            // surface writes: helsedata puts VariableListView on the same page, and a Fjern there
+            // left these buttons still offering to remove a variable that had already gone.
+            ListState.Changed += OnListStateChanged;
+        }
+    }
+
+    /// <summary>
+    /// Re-draws the rows against the shared set. It reads no page and sends nothing — the holder
+    /// has already applied the change, and a fetch here would put a request behind every save.
+    /// </summary>
+    private void OnListStateChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        if (_listState is not null)
+        {
+            _listState.Changed -= OnListStateChanged;
+        }
+    }
 
     protected override async Task OnParametersSetAsync()
     {
