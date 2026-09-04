@@ -38,6 +38,17 @@ internal static class CatalogueDate
         return value.ToString(pattern, CatalogueProperties.Culture(language));
     }
 
+    /// <summary>A day the payload may not have carried at all, and null where it did not.</summary>
+    /// <remarks>
+    /// The DTOs declare Munin's own timestamps non-nullable, so an absent one arrives as
+    /// <c>default</c> and <see cref="Day"/> writes the year 1 — a date the catalogue never sent.
+    /// Null is what a fact list already means by nothing to say: the row is dropped, as it is for a
+    /// <see cref="Period"/> with no ends.
+    /// </remarks>
+    internal static string? DayOrNothing(DateTimeOffset value, string? language,
+                                         DateWidth width = DateWidth.Full) =>
+        value == default ? null : Day(value, language, width);
+
     /// <summary>
     /// A source system's own date — <c>yyyyMMdd</c> — as a day, or verbatim when it is not one.
     /// </summary>

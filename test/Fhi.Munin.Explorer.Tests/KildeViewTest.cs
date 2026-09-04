@@ -1176,6 +1176,18 @@ public class KildeViewTest : BunitContext
     }
 
     [Fact]
+    public void SourceInformation_WhenThePayloadCarriesNoTimestamp_ThenTheRowIsAbsentRatherThanYearOne()
+    {
+        // KildeDetail.LastUpdated is not nullable, so a payload that omits sistOppdatert leaves it
+        // at default and the field drew "1. januar 1" - a date the catalogue never sent, under a
+        // label saying when Munin last changed its own row. (Fhi.Metadata-6r6rf)
+        var kilde = Kilde() with { LastUpdated = default };
+
+        Assert.DoesNotContain("Sist oppdatert i Munin",
+                              Labels(SourceInformation(Render(kilde))));
+    }
+
+    [Fact]
     public void Statistics_Always_ThenItIsTheVariableCountAndThePeriodTheDataCovers()
     {
         var cut = Render(Kilde());

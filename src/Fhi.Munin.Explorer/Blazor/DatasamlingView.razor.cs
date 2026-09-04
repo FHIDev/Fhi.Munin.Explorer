@@ -110,7 +110,7 @@ public sealed partial class DatasamlingView : ComponentBase
                 (T.FieldValidity,
                  CatalogueDate.Period(datasamling.EffectiveValidFrom, datasamling.EffectiveValidTo, Language, T),
                  false),
-                (T.FieldLastUpdated, CatalogueDate.Day(datasamling.LastUpdated, Language), false),
+                (T.FieldLastUpdated, CatalogueDate.DayOrNothing(datasamling.LastUpdated, Language), false),
             ];
 
     /// <summary>

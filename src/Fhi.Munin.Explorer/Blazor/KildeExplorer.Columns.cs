@@ -127,14 +127,12 @@ public sealed partial class KildeExplorer
     /// <summary>When Munin imported the kilde — its own row, not the catalogue's founding year.</summary>
     /// <remarks>
     /// <see cref="KildeSummary.Created"/>, which the Opprettet column beside it does not read: that
-    /// one is <c>additionalProperties.Opprettet</c>, a year the catalogue wrote as text. The
-    /// default check is what a nullable field would give for free: the property is not nullable, so
-    /// a payload without <c>opprettet</c> would otherwise draw the year 1 rather than say nothing.
+    /// one is <c>additionalProperties.Opprettet</c>, a year the catalogue wrote as text. Through
+    /// <see cref="CatalogueDate.DayOrNothing"/>, since a missing timestamp is not this column's
+    /// problem alone - the kilde and datasamling views draw the same field (Fhi.Metadata-6r6rf).
     /// </remarks>
     private string Imported(KildeSummary kilde) =>
-        kilde.Created == default
-            ? T.NotSpecified
-            : CatalogueDate.Day(kilde.Created, Language, DateWidth.Narrow);
+        Value(CatalogueDate.DayOrNothing(kilde.Created, Language, DateWidth.Narrow));
 
     /// <summary>When the source system last changed the kilde, as the catalogue writes it down.</summary>
     /// <remarks>
