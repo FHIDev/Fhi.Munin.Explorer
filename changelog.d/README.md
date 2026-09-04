@@ -83,12 +83,53 @@ Run the same check locally before pushing:
 scripts/check-changelog-fragment.sh
 ```
 
-## Assembly at release time
+## Assembly at release time — automatic, on the tag
+
+Pushing a `v*` tag assembles the fragments. `.github/workflows/release.yml` runs
+`scripts/release-changelog.sh` **before it packs**, because the package's `PackageReleaseNotes`
+is that version's section: packing first would stamp the version with notes nobody had written.
+The section groups the bullets by category, becomes one `## <version> — <date>` in `CHANGELOG.md`,
+and the fragments it consumed are removed in the same commit. This `README.md` is never consumed,
+so it doubles as the directory's `.gitkeep` — `changelog.d/` survives every release.
+
+Nobody has to remember any of that, which is the point of it being on the tag. It was a documented
+manual step for three weeks, and in that time eight versions shipped with the step never once run:
+166 fragments piled up and `CHANGELOG.md` had no version sections at all (`Fhi.Metadata-l9l2n.44`).
+
+**The commit reaches `main` through a pull request the workflow opens.** The `MainRules` ruleset
+requires one for `main` and has no bypass actors, so an unattended push is refused whoever makes
+it — and a credential that could bypass it is one this public repository deliberately does not
+hold. Merging that pull request is the one step left to a person; the package and the GitHub
+release already carry the notes by then. It arrives with its checks unreported, because GitHub
+runs no workflow for an event its own `GITHUB_TOKEN` caused — close and reopen it, or push an
+empty commit, and they run.
+
+Two things to know before running anything by hand:
+
+- **Running it twice for one version is a no-op**, not an error, and not a duplicate section. A
+  release re-run has to reach the pack step, and the fragments queued for the *next* release have
+  to survive it. `scripts/assert-changelog-assembles.sh` asserts both on every pull request, along
+  with the fragments on your branch actually assembling — a malformed one would otherwise stop a
+  release after the tag exists.
+- **The fragments a release consumes are the ones the tagged commit has.** One merged after the
+  tag was cut waits for the next release rather than being published under a version that never
+  contained it.
+
+To preview, or to rehearse a release without spending a version number:
 
 ```powershell
-./scripts/assemble-changelog.ps1 -Version 0.2.0        # or -DryRun to preview
+./scripts/assemble-changelog.ps1 -Version 0.2.0 -DryRun
 ```
 
-It groups the bullets by category, writes one `## <version> — <date>` section into
-`CHANGELOG.md`, and deletes the fragments it consumed. This `README.md` is never consumed, so it
-doubles as the directory's `.gitkeep` — `changelog.d/` survives every release.
+```bash
+scripts/release-changelog.sh 0.2.0 --dry-run     # everything the tag does, minus commit and push
+```
+
+## The 166 that piled up
+
+They were backfilled across the eight `0.1.0-alpha.*` tags on 2026-09-04, rather than folded into
+one section or left for the next release. Which release a fragment shipped in is not a guess: it
+is the first tag whose history contains the commit that added the fragment, so all 166 were
+attributed exactly. The alternative buries a breaking change — `0.1.0-alpha.8` deleted a component
+helsedata mounts — under a version number that never shipped it, and a host bumping alpha.7 to
+alpha.8 is exactly who the file is for.

@@ -27,11 +27,23 @@
     [Unreleased] section. CHANGELOG.md here is the released record; anything not yet released is
     a fragment. That keeps CHANGELOG.md untouched between releases, which is the whole point.
 
+    Running it twice for one version is a no-op, not an error. .github/workflows/release.yml runs
+    it on every run of a tag, re-runs included, and a re-run has to reach the pack step: a second
+    call finds the section already there, writes no duplicate, consumes no fragment — so the
+    fragments queued for the NEXT release survive it — and still answers -NotesOutFile.
+
 .PARAMETER Version
     Version for the new section, e.g. "0.2.0". Defaults to VersionPrefix in Directory.Build.props.
 
 .PARAMETER Date
     Release date as yyyy-MM-dd. Defaults to today.
+
+.PARAMETER NotesOutFile
+    Write this version's section body — the bullets, without the version heading — to this file.
+    The release workflow stamps it into PackageReleaseNotes and into the GitHub release, so a
+    consumer reads the entry itself rather than a link to go and find one. Written on every exit
+    that has an answer: the section just assembled, or the one already in CHANGELOG.md; empty when
+    there is nothing to release.
 
 .PARAMETER DryRun
     Print the section that would be written and leave every file alone.
@@ -49,6 +61,7 @@
 param(
     [string]$Version,
     [string]$Date,
+    [string]$NotesOutFile,
     [switch]$DryRun
 )
 
@@ -98,6 +111,61 @@ if ($Date -notmatch '^\d{4}-\d{2}-\d{2}$') {
     exit 1
 }
 
+# --- Notes -----------------------------------------------------------------------------------
+# Returns the body of an existing version's section — every line under its heading, up to the
+# next one — or $null when the version has no section yet. A string rather than an array so the
+# caller can tell "no section" from "a section with nothing in it": an empty array compared to
+# $null answers false in PowerShell, which would read as absent.
+function Get-SectionBody {
+    param([string[]]$Lines, [string]$Wanted)
+
+    $heading = '^##\s+' + [regex]::Escape($Wanted) + '(\s|$)'
+    $body = [System.Collections.Generic.List[string]]::new()
+    $inside = $false
+    foreach ($line in $Lines) {
+        if ($inside) {
+            if ($line -match '^##\s') { break }
+            $body.Add($line)
+        }
+        elseif ($line -match $heading) { $inside = $true }
+    }
+
+    if (-not $inside) { return $null }
+    return ($body -join "`n")
+}
+
+function Write-Notes {
+    param([string]$Body)
+
+    $text = $Body.Trim()
+    if ($text -ne '') { $text += "`n" }
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText($NotesOutFile, $text, $utf8NoBom)
+}
+
+if (-not (Test-Path $ChangelogPath)) {
+    Write-Err "CHANGELOG.md not found at $ChangelogPath"
+    exit 1
+}
+$changelogLines = @(Get-Content $ChangelogPath -Encoding UTF8)
+
+if ($NotesOutFile -and -not [System.IO.Path]::IsPathRooted($NotesOutFile)) {
+    $NotesOutFile = Join-Path (Get-Location).Path $NotesOutFile
+}
+
+# Already assembled: a no-op, and deliberately not an error. See the header — a re-run of a
+# release has to get past this line, and the fragments waiting for the next release have to
+# survive it.
+$existingBody = Get-SectionBody $changelogLines $Version
+if ($null -ne $existingBody) {
+    Write-Info "CHANGELOG.md already has a section for $Version — nothing to assemble."
+    if ($NotesOutFile) {
+        Write-Notes $existingBody
+        Write-Info "Wrote the section already in CHANGELOG.md to $NotesOutFile"
+    }
+    exit 0
+}
+
 # --- Read fragments ------------------------------------------------------------------------
 if (-not (Test-Path $FragmentDir)) {
     Write-Err "changelog.d/ not found at $FragmentDir"
@@ -110,6 +178,9 @@ $fragments = @(Get-ChildItem -Path $FragmentDir -Filter '*.md' -File |
 
 if ($fragments.Count -eq 0) {
     Write-Info 'No fragments in changelog.d/ — nothing to release.'
+    # An empty notes file, not an absent one: the caller asked for an answer and "this version
+    # has no entry" is one. release.yml tests the file's size to choose its fallback.
+    if ($NotesOutFile) { Write-Notes '' }
     exit 0
 }
 
@@ -177,23 +248,16 @@ if ($DryRun) {
     Write-Host ''
     Write-Host $rendered
     Write-Host ''
+    if ($NotesOutFile) {
+        Write-Notes (($section | Select-Object -Skip 1) -join "`n")
+        Write-Info "Wrote the section that would be released to $NotesOutFile"
+    }
     Write-Info 'Dry run — no files changed.'
     exit 0
 }
 
 # --- Write it ------------------------------------------------------------------------------
-if (-not (Test-Path $ChangelogPath)) {
-    Write-Err "CHANGELOG.md not found at $ChangelogPath"
-    exit 1
-}
-
-$changelog = @(Get-Content $ChangelogPath -Encoding UTF8)
-
-$versionHeadingPattern = '^##\s+' + [regex]::Escape($Version) + '(\s|$)'
-if ($changelog | Where-Object { $_ -match $versionHeadingPattern }) {
-    Write-Err "CHANGELOG.md already has a section for $Version — nothing was assembled."
-    exit 1
-}
+$changelog = $changelogLines
 
 # Insert directly below the marker comment. Falling back to the first existing '## ' heading
 # keeps the script working if the marker is ever edited away.
@@ -226,6 +290,11 @@ foreach ($line in $out) {
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 [System.IO.File]::WriteAllText($ChangelogPath, (($clean -join "`n").TrimEnd() + "`n"), $utf8NoBom)
 Write-Success "Wrote '## $Version — $Date' to CHANGELOG.md"
+
+if ($NotesOutFile) {
+    Write-Notes (($section | Select-Object -Skip 1) -join "`n")
+    Write-Success "Wrote the section for $Version to $NotesOutFile"
+}
 
 foreach ($file in $fragments) { Remove-Item $file.FullName -Force }
 Write-Success "Deleted $($fragments.Count) consumed fragment(s) from changelog.d/"
