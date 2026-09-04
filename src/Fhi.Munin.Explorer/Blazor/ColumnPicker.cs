@@ -53,10 +53,8 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// carries no state of its own, so <c>aria-pressed</c> is the whole truth.
 /// </para>
 /// <para>
-/// One copy for both explorers rather than two, because every paragraph above is either a borrowed
-/// name or a decision about the element itself, and a second copy is a second place for them to
-/// drift from Stiler. What differs between the callers is which columns there are and whether one
-/// can lock, and both arrive as arguments (Fhi.Metadata-ay3zz).
+/// One copy for both explorers: every paragraph above is a borrowed name or a fact about the
+/// element, and a second copy is a second place for those to drift from Stiler (Fhi.Metadata-ay3zz).
 /// </para>
 /// </remarks>
 internal static class ColumnPicker
@@ -77,10 +75,8 @@ internal static class ColumnPicker
     /// Absent when no column can lock.</param>
     /// <remarks>
     /// One parameter and not two, so an id without a sentence — an <c>aria-describedby</c> pointing
-    /// at nothing — cannot be written by a caller at all. The hint is optional because only one
-    /// caller can lock a column: the variable explorer's seven are every column its rows carry, so
-    /// hiding all of them would leave rows of nothing but names, while the kilde table draws Navn,
-    /// Status and Opprettet whatever the picker says.
+    /// at nothing — cannot be written at all. Optional because only the variable explorer can lock
+    /// a column: the kilde table draws Navn, Status and Opprettet whatever its picker says.
     /// </remarks>
     internal static RenderFragment For(
         object receiver,
@@ -149,11 +145,9 @@ internal static class ColumnPicker
 
         builder.CloseElement();
 
-        // Why the last one refuses, said once and pointed at rather than repeated on every button.
-        // Always in the DOM while a column CAN lock, so the reference is never dangling:
-        // aria-describedby resolves against hidden text, and a paragraph that appeared only when a
-        // column locked would be one more node arriving in the same update as the attribute naming
-        // it.
+        // Why the last one refuses, said once rather than on every button. In the DOM whenever a
+        // column CAN lock, so the reference never dangles: one appearing with the attribute that
+        // names it would arrive in the same update, which is where a reader loses it.
         if (hint is { } sentence)
         {
             builder.OpenElement(22, "p");

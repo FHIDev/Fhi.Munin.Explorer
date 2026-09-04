@@ -12,5 +12,7 @@ category: Notes for hosts
   on/off state as `☑`/`☐` in `::before`, and a browser folds generated content into the accessible
   name — so the control announced as "☑ Kildetype" and said in words what `aria-pressed` already
   says. The samples now write `content: "\2611" / ""`, whose empty alternative text keeps the glyph
-  out of the name; a host drawing its own tick owes the same, or it owes no glyph at all.
-  (Fhi.Metadata-ay3zz)
+  out of the name; a host drawing its own tick owes the same, or it owes no glyph at all. That
+  syntax has a floor — Chrome 77, Safari 17.4, Firefox 133 — and below it the whole declaration is
+  invalid, so the tick disappears rather than degrading. A host supporting older browsers should
+  mark the glyph up as `aria-hidden` content instead. (Fhi.Metadata-ay3zz)

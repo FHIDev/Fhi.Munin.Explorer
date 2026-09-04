@@ -3005,7 +3005,89 @@ public class KildeExplorerTest : BunitContext
             "Sist endret",
         ], Headers(cut));
 
-        Assert.Equal(Headers(cut).Count, FirstRowCells(cut).Count);
+        // The cells in order, not merely as many of them: `Headers` reads thead alone, so comparing
+        // counts leaves the body free to draw the same columns in a different order — every cell
+        // under the wrong `scope="col"`, for a screen reader as much as for a reader. Every field
+        // in Furnished() has a different value so a swap cannot look like a match.
+        Assert.Equal(
+        [
+            "+",
+            "Als registeret\n\n                            K_ALS",
+            "Sentralt helseregister",
+            "Aktiv",
+            "St. Olavs hospital HF",
+            "Folkehelseinstituttet",
+            "Indirekte identifiserbar",
+            ValidityText(cut),
+            "7",
+            "3",
+            "42",
+            "2011",
+            ImportedText(cut),
+            SourceUpdatedText(cut),
+        ], FirstRowCells(cut));
+    }
+
+    /// <summary>The three date cells as this runtime spells them.</summary>
+    /// <remarks>
+    /// Read back rather than written down, because the month's short form is the runtime's: CI
+    /// spells Norwegian March "mars" where this box writes "mar.". Their year is what says the
+    /// column read the right field, and that is asserted next door in
+    /// <see cref="Picker_WhenADateColumnIsTurnedOn_ThenItDrawsItsOwnFieldAndNotOneOfTheOtherThree"/>.
+    /// What these three hold up is the ORDER of the row, which no spelling affects.
+    /// </remarks>
+    private static string ValidityText(IRenderedComponent<KildeExplorer> cut) =>
+        FirstRowCells(cut).Single(c => c.Contains("2013", StringComparison.Ordinal));
+
+    private static string ImportedText(IRenderedComponent<KildeExplorer> cut) =>
+        FirstRowCells(cut).Single(c => c.Contains("2015", StringComparison.Ordinal));
+
+    private static string SourceUpdatedText(IRenderedComponent<KildeExplorer> cut) =>
+        FirstRowCells(cut).Single(c => c.Contains("2019", StringComparison.Ordinal));
+
+    [Fact]
+    public void DataController_WhenTheCatalogueLeftItEmpty_ThenTheCellIsNotMarkedAsNorwegian()
+    {
+        // A lang the content is not in is worse than none — WCAG 3.1.2. The empty cell holds our
+        // own "Not specified", in the reader's language, so marking it Norwegian would switch a
+        // screen reader's voice for an English phrase. CatalogueLang is what answers null there;
+        // the first version of these two columns reached past it to Foreign() and stamped both.
+        var cut = RenderWith(
+            new FakeClient(Furnished() with { DataController = null, DataProcessor = null }),
+            b => b.Add(c => c.Language, "en"));
+
+        ToggleColumn(cut, "Data controller");
+        ToggleColumn(cut, "Data processor");
+
+        var empty = cut.FindAll(".munin-explorer-kilder tbody td")
+            .Where(td => td.TextContent.Trim() == "Not specified")
+            .ToList();
+
+        Assert.Equal(2, empty.Count);
+        Assert.All(empty, td => Assert.Null(td.GetAttribute("lang")));
+    }
+
+    [Fact]
+    public void SourceUpdated_WhenTheListIsTheCapturedPayload_ThenItShowsTheYearsTheApiSent()
+    {
+        // The one Sist endret test that does not write the key it reads. Every other one builds its
+        // own bag and spells SistOppdatert the way the component looks it up, so all of them pass
+        // just as well against a key the API never sends and a column of "Ikke oppgitt" ships —
+        // which is exactly the hole the Opprettet column has a captured-payload test for.
+        var kilder = JsonSerializer.Deserialize<IReadOnlyList<KildeSummary>>(
+                TestData.Read("kilder.json"), MuninExplorerClient.Json)
+            ?? throw new InvalidOperationException("kilder.json no longer reads as a kilde list.");
+
+        var cut = RenderWith(new FakeClient([.. kilder]));
+
+        ToggleColumn(cut, "Sist endret");
+
+        // Years, not formatted dates: the month's short form is the runtime's. The payload holds
+        // 20260423, 20260813 and 20230131.
+        var years = cut.FindAll(".munin-explorer-kilder tbody tr")
+            .Select(row => row.QuerySelectorAll("td")[^1].TextContent.Trim()[^4..]);
+
+        Assert.Equal(["2026", "2026", "2023"], years);
     }
 
     [Fact]

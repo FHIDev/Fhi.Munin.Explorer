@@ -492,16 +492,16 @@ else
                             <td>@T.KildeTypeLabel(kilde.Kildetype, kilde.Kildetype)</td>
                         }
                         <td>@(kilde.IsActive ? T.StatusActive : T.StatusPassive)</td>
-                        @* lang on these two and not on the ones around them: both are free text the
-                           catalogue wrote in Norwegian, which is the same marking their facets
-                           carry, while kildetype and grad are drawn in this package's own words. *@
+                        @* CatalogueLang and not Foreign: both are free text the catalogue wrote in Norwegian,
+                           but an empty one is drawn as our own "Ikke oppgitt", and a lang the
+                           content is not in is worse than none (WCAG 3.1.2). *@
                         @if (ColumnVisible(KildeColumn.DataController))
                         {
-                            <td lang="@CatalogueProperties.Foreign("no", Reader)">@Value(kilde.DataController)</td>
+                            <td lang="@CatalogueLang(kilde.DataController)">@Value(kilde.DataController)</td>
                         }
                         @if (ColumnVisible(KildeColumn.DataProcessor))
                         {
-                            <td lang="@CatalogueProperties.Foreign("no", Reader)">@Value(kilde.DataProcessor)</td>
+                            <td lang="@CatalogueLang(kilde.DataProcessor)">@Value(kilde.DataProcessor)</td>
                         }
                         @if (ColumnVisible(KildeColumn.PersonIdentification))
                         {

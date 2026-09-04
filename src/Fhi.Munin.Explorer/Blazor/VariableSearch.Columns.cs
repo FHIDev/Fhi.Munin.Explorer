@@ -170,7 +170,7 @@ public partial class VariableSearch
     /// <summary>The hint the locked column points at, minted per instance like the other ids.</summary>
     private string ColumnsHintId => $"munin-explorer-columns-hint-{_instance}";
 
-    /// <summary>The column picker, drawn by the shared <see cref="ColumnPicker"/>.</summary>
+    /// <summary>The column picker, drawn by the shared <see cref="Fhi.Munin.Explorer.Blazor.ColumnPicker"/>.</summary>
     /// <remarks>
     /// The markup, the borrowed Stiler names and the decisions behind them live there, because the
     /// kilde table hangs the same control over its own columns and a second copy would be a second

@@ -99,7 +99,7 @@ public sealed partial class KildeExplorer
         _ => throw new ArgumentOutOfRangeException(nameof(column), column, "No label for this column.")
     };
 
-    /// <summary>The picker, drawn by the shared <see cref="ColumnPicker"/>.</summary>
+    /// <summary>The picker, drawn by the shared <see cref="Fhi.Munin.Explorer.Blazor.ColumnPicker"/>.</summary>
     /// <remarks>
     /// No hint, because no column here can lock — see <see cref="ToggleColumn"/>. The markup and
     /// the borrowed Stiler names are the variable explorer's, shared rather than copied.
@@ -127,10 +127,14 @@ public sealed partial class KildeExplorer
     /// <summary>When Munin imported the kilde — its own row, not the catalogue's founding year.</summary>
     /// <remarks>
     /// <see cref="KildeSummary.Created"/>, which the Opprettet column beside it does not read: that
-    /// one is <c>additionalProperties.Opprettet</c>, a year the catalogue wrote as text.
+    /// one is <c>additionalProperties.Opprettet</c>, a year the catalogue wrote as text. The
+    /// default check is what a nullable field would give for free: the property is not nullable, so
+    /// a payload without <c>opprettet</c> would otherwise draw the year 1 rather than say nothing.
     /// </remarks>
     private string Imported(KildeSummary kilde) =>
-        CatalogueDate.Day(kilde.Created, Language, DateWidth.Narrow);
+        kilde.Created == default
+            ? T.NotSpecified
+            : CatalogueDate.Day(kilde.Created, Language, DateWidth.Narrow);
 
     /// <summary>When the source system last changed the kilde, as the catalogue writes it down.</summary>
     /// <remarks>
