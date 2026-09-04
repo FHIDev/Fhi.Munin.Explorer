@@ -15,7 +15,7 @@
          went red overnight" is the one report nobody can act on. Bump it deliberately when
          helsedata bump theirs; the geometry assertions are what tell you whether the bump
          broke anything. -->
-    <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.37" />
+    <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.38" />
   </ItemGroup>
 
 </Project>
