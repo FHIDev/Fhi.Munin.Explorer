@@ -840,4 +840,47 @@ public class MuninExplorerClientTest
         Assert.Equal("noe", read.AdditionalProperties["Kommentar"]);
         Assert.Equal("ALSFRSR1Tale", read.Statistics[0].Code);
     }
+
+    [Fact]
+    public async Task GetKildeAsync_WhenMuninSendsAnExplicitNullTimestamp_ThenTheKildeStillReads()
+    {
+        // Munin declares these columns nullable and sends explicit nulls for dates elsewhere —
+        // kodeverk codes do it for gyldigFra. On a non-nullable property that throws inside
+        // ReadFromJsonAsync, and the caller loses the whole kilde rather than one field.
+        var kilde = await WithJson("""
+            {"id":"8ec4c2c4-662d-47a5-a946-f1086a014070","code":"K_ALS","navn":"Als registeret",
+             "opprettet":null,"sistOppdatert":null}
+            """).GetKildeAsync(Guid.NewGuid());
+
+        Assert.NotNull(kilde);
+        Assert.Equal("K_ALS", kilde.Code);
+        Assert.Null(kilde.LastUpdated);
+        Assert.Null(kilde.Created);
+    }
+
+    /// <summary>A contract property of the shape these carried before Fhi.Metadata-se0by.</summary>
+    private sealed record NonNullableTimestamp
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("sistOppdatert")]
+        public DateTimeOffset LastUpdated { get; init; }
+    }
+
+    [Fact]
+    public void Deserialize_WhenATimestampIsNullOnANonNullableProperty_ThenTheWholeDocumentIsLost()
+    {
+        // Why the contracts declare these DateTimeOffset?. Not a hypothetical: the failure is not a
+        // wrong value in one field but an exception before any of the document is read, and the
+        // caller catches it as "the kilde could not be loaded". This pins the reason so that taking
+        // the ? off again fails here rather than in a reader's panel. (Fhi.Metadata-se0by)
+        Assert.Throws<System.Text.Json.JsonException>(() =>
+            System.Text.Json.JsonSerializer.Deserialize<NonNullableTimestamp>(
+                """{"sistOppdatert":null}""", MuninExplorerClient.Json));
+
+        // The same payload against the contract as it now stands.
+        var read = System.Text.Json.JsonSerializer.Deserialize<KildeDetail>(
+            """{"sistOppdatert":null}""", MuninExplorerClient.Json);
+
+        Assert.NotNull(read);
+        Assert.Null(read.LastUpdated);
+    }
 }

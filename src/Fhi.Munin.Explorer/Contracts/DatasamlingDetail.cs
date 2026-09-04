@@ -24,8 +24,8 @@ public sealed record DatasamlingDetail
     [JsonPropertyName("preferredTerm")] public string PreferredTerm { get; init; } = "";
 
     [JsonPropertyName("beskrivelse")] public string? Description { get; init; }
-    [JsonPropertyName("opprettet")] public DateTimeOffset Created { get; init; }
-    [JsonPropertyName("sistOppdatert")] public DateTimeOffset LastUpdated { get; init; }
+    [JsonPropertyName("opprettet")] public DateTimeOffset? Created { get; init; }
+    [JsonPropertyName("sistOppdatert")] public DateTimeOffset? LastUpdated { get; init; }
 
     /// <summary>Own value; null means inherited.</summary>
     [JsonPropertyName("gyldigFra")] public DateTimeOffset? ValidFrom { get; init; }
