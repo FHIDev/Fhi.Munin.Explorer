@@ -31,7 +31,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// is why <see cref="VariableExplorerPath"/> is a path and not a delegate.
 /// </para>
 /// </remarks>
-public partial class KildeExplorerWithUrlState : ComponentBase
+public sealed partial class KildeExplorerWithUrlState : ComponentBase
 {
     /// <summary>The query key this component owns: the id of the kilde the reader has open.</summary>
     public const string QueryKey = "kilde";
