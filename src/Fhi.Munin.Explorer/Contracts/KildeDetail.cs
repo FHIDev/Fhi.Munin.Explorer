@@ -41,8 +41,8 @@ public sealed record KildeDetail
     /// <summary>End of the period of validity; null means ongoing.</summary>
     [JsonPropertyName("gyldigTil")] public DateTimeOffset? ValidTo { get; init; }
 
-    [JsonPropertyName("opprettet")] public DateTimeOffset Created { get; init; }
-    [JsonPropertyName("sistOppdatert")] public DateTimeOffset LastUpdated { get; init; }
+    [JsonPropertyName("opprettet")] public DateTimeOffset? Created { get; init; }
+    [JsonPropertyName("sistOppdatert")] public DateTimeOffset? LastUpdated { get; init; }
 
     /// <summary>Curated free-form metadata; see <see cref="KildeSummary.AdditionalProperties"/>.</summary>
     /// <remarks>

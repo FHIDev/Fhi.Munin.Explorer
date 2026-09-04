@@ -115,7 +115,7 @@ public class MyListsClientTest
         Assert.Equal(2, lists.Count);
         Assert.Equal(ListId, lists[0].Id);
         Assert.Equal("Mine hjertevariabler", lists[0].Name);
-        Assert.Equal(2026, lists[0].CreatedAt.Year);
+        Assert.Equal(2026, lists[0].CreatedAt?.Year);
 
         // Changed since it was made, where the second list has never been touched again. The two
         // timestamps are separate fields on purpose; reading one into both would hide that.
@@ -212,7 +212,7 @@ public class MyListsClientTest
         // The wire spells this one variabelId while the property is VariableId — the rename that a
         // missing [JsonPropertyName] would turn into an all-zero Guid nobody can look up.
         Assert.Equal(new Guid("b7c1f4a2-5d38-4e6b-9c02-8a1e3f7d5b90"), page.Items[0].VariableId);
-        Assert.Equal(2026, page.Items[0].AddedAt.Year);
+        Assert.Equal(2026, page.Items[0].AddedAt?.Year);
     }
 
     [Fact]

@@ -41,12 +41,20 @@ internal static class CatalogueDate
     /// <summary>A day the payload may not have carried at all, and null where it did not.</summary>
     /// <remarks>
     /// Null is what a fact list already means by nothing to say, so the row is dropped as it is for a
-    /// <see cref="Period"/> with no ends. Reachable because Munin's own timestamps are declared
-    /// non-nullable, so an omitted one arrives as <c>default</c> (Fhi.Metadata-6r6rf).
+    /// <see cref="Period"/> with no ends. Both absences reach here: Munin omitting the key, which the
+    /// contracts read as null since Fhi.Metadata-se0by, and a <c>default</c> from any other source.
     /// </remarks>
-    internal static string? DayOrNothing(DateTimeOffset value, string? language,
+    internal static string? DayOrNothing(DateTimeOffset? value, string? language,
                                          DateWidth width = DateWidth.Full) =>
-        value == default ? null : Day(value, language, width);
+        Written(value) is { } day ? Day(day, language, width) : null;
+
+    /// <summary>The value, or null where it is one of the two ways of carrying no date.</summary>
+    /// <remarks>
+    /// Unwrapped before the comparison on purpose: <c>value == default</c> on a nullable compares
+    /// against null rather than against MinValue, so it reads as a guard and is a no-op.
+    /// </remarks>
+    private static DateTimeOffset? Written(DateTimeOffset? value) =>
+        value is { } day && day != default ? day : null;
 
     /// <summary>
     /// A source system's own date — <c>yyyyMMdd</c> — as a day, or verbatim when it is not one.
@@ -79,11 +87,17 @@ internal static class CatalogueDate
     /// </summary>
     /// <remarks>
     /// An end with no start stands alone: an en-dash with nothing before it reads as a value that
-    /// failed to draw, and a start the catalogue never gave would be an invention.
+    /// failed to draw, and a start the catalogue never gave would be an invention. A <c>default</c>
+    /// at either end is read as no date there, for the reason <see cref="DayOrNothing"/> gives — the
+    /// two are one row apart in the same fact list. So a default START renders as the end standing
+    /// alone, which is what a null start already did (Fhi.Metadata-n39ea) rather than a new rule.
     /// </remarks>
     internal static string? Period(DateTimeOffset? from, DateTimeOffset? to, string? language,
                                    Texts texts, DateWidth width = DateWidth.Full)
     {
+        from = Written(from);
+        to = Written(to);
+
         if (from is null && to is null)
         {
             return null;

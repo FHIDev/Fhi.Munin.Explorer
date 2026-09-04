@@ -3131,9 +3131,9 @@ public class KildeExplorerTest : BunitContext
     [Fact]
     public void Imported_WhenThePayloadCarriesNoTimestamp_ThenTheCellSaysSoRatherThanDrawingYearOne()
     {
-        // KildeSummary.Created is not nullable, so a payload that omits `opprettet` leaves it at
-        // default and the column drew "1. januar 0001" — a date the catalogue never wrote, in a
-        // column whose whole job is to say when Munin took the row.
+        // A payload without `opprettet` reads as null (Fhi.Metadata-se0by) and left the property at
+        // default before that; the column drew "1. januar 0001" — a date the catalogue never wrote,
+        // in a column whose whole job is to say when Munin took the row.
         var cut = RenderWith(new FakeClient(Furnished() with { Created = default }));
 
         ToggleColumn(cut, "Importert");

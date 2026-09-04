@@ -1176,6 +1176,50 @@ public class KildeViewTest : BunitContext
     }
 
     [Fact]
+    public void SourceInformation_WhenAValidityStartIsTheDefaultDate_ThenTheEndStandsAlone()
+    {
+        // The other end, and the one worth writing down: the row reads "5. mai 2020" with no start,
+        // which is what a null start has always rendered — an end standing alone. It is NOT the year
+        // 1 and it is NOT a start date, and only a test says which. (Fhi.Metadata-se0by)
+        var kilde = Kilde() with
+        {
+            ValidFrom = DateTimeOffset.MinValue,
+            ValidTo = new DateTimeOffset(2020, 5, 5, 0, 0, 0, TimeSpan.Zero),
+        };
+
+        Assert.Equal("5. mai 2020", Value(SourceInformation(Render(kilde)), "Gyldighet"));
+    }
+
+    [Fact]
+    public void SourceInformation_WhenAValidityEndIsTheDefaultDate_ThenItReadsAsOngoingRatherThanYearOne()
+    {
+        // The row directly above Sist oppdatert i Munin, and the same theoretical host: a
+        // substituted client that hands over MinValue. Guarding one and not the other draws the
+        // year 1 in the fact list anyway, one line up. (Fhi.Metadata-se0by)
+        var kilde = Kilde() with { ValidTo = DateTimeOffset.MinValue };
+
+        Assert.EndsWith("Pågående",
+                        Value(SourceInformation(Render(kilde)), "Gyldighet"),
+                        StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SourceInformation_WhenTheTimestampIsTheDefaultDate_ThenTheRowIsStillAbsent()
+    {
+        // The other arm of DayOrNothing, and the one nothing reached once the contract went
+        // nullable: a host substituting its own IMuninExplorerClient can deserialise with its own
+        // options and hand over MinValue, which is the year 1 this bead removed. (Fhi.Metadata-se0by)
+        var kilde = Kilde() with { LastUpdated = DateTimeOffset.MinValue };
+
+        // The whole list, for the reason the test below gives: this row is last in the block, so an
+        // assertion that only asks for its absence passes on a block that failed to render at all.
+        Assert.Equal(
+            ["Type datakilde", "Lovverk", "Dataansvarlig", "Databehandler",
+             "Grad av personidentifikasjon", "Gyldighet"],
+            Labels(SourceInformation(Render(kilde))));
+    }
+
+    [Fact]
     public void SourceInformation_WhenTheTimestampIsOld_ThenItIsStillADateAndNotAnAbsence()
     {
         // The sentinel is the default, not "long ago". Written because `value.Year < 2000` passes
@@ -1189,9 +1233,9 @@ public class KildeViewTest : BunitContext
     [Fact]
     public void SourceInformation_WhenThePayloadCarriesNoTimestamp_ThenTheRowIsAbsentRatherThanYearOne()
     {
-        // KildeDetail.LastUpdated is not nullable, so a payload that omits sistOppdatert leaves it
-        // at default and the field drew "1. januar 0001" — a date the catalogue never sent, under a
-        // label saying when Munin last changed its own row. (Fhi.Metadata-6r6rf)
+        // A payload without sistOppdatert reads as null (Fhi.Metadata-se0by) and drew "1. januar
+        // 0001" before that, under a label saying when Munin last changed its own row. Either way
+        // the field is an absence and this block draws no row for one. (Fhi.Metadata-6r6rf)
         var kilde = Kilde() with { LastUpdated = default };
 
         // The whole list, not just the absence: dropping the row and everything after it would

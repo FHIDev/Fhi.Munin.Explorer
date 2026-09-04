@@ -31,10 +31,10 @@ public sealed record KildeSummary
     [JsonPropertyName("aktiv")] public bool IsActive { get; init; }
 
     /// <summary>When the kilde was registered in Munin — catalogue bookkeeping, not a data date.</summary>
-    [JsonPropertyName("opprettet")] public DateTimeOffset Created { get; init; }
+    [JsonPropertyName("opprettet")] public DateTimeOffset? Created { get; init; }
 
     /// <summary>Last edit in Munin, again catalogue bookkeeping rather than a statement about the data.</summary>
-    [JsonPropertyName("sistOppdatert")] public DateTimeOffset LastUpdated { get; init; }
+    [JsonPropertyName("sistOppdatert")] public DateTimeOffset? LastUpdated { get; init; }
 
     [JsonPropertyName("dataansvarlig")] public string? DataController { get; init; }
     [JsonPropertyName("databehandler")] public string? DataProcessor { get; init; }

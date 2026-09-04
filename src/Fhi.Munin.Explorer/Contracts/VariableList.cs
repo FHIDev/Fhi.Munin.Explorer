@@ -20,10 +20,10 @@ public sealed record VariableList
     /// <summary>The name the user gave the list. The API trims it and holds it to 200 characters.</summary>
     [JsonPropertyName("name")] public string Name { get; init; } = "";
 
-    [JsonPropertyName("createdAt")] public DateTimeOffset CreatedAt { get; init; }
+    [JsonPropertyName("createdAt")] public DateTimeOffset? CreatedAt { get; init; }
 
     /// <summary>Last change to the list itself or to what is in it.</summary>
-    [JsonPropertyName("updatedAt")] public DateTimeOffset UpdatedAt { get; init; }
+    [JsonPropertyName("updatedAt")] public DateTimeOffset? UpdatedAt { get; init; }
 }
 
 /// <summary>
@@ -52,7 +52,7 @@ public sealed record VariableListItem
     [JsonPropertyName("variabelId")] public Guid VariableId { get; init; }
 
     /// <summary>When the variable was put in the list.</summary>
-    [JsonPropertyName("addedAt")] public DateTimeOffset AddedAt { get; init; }
+    [JsonPropertyName("addedAt")] public DateTimeOffset? AddedAt { get; init; }
 
     // The display fields, resolved by the API as it answers. Named as they are on the wire, which
     // keeps the Norwegian stem the rest of this contract already uses — variabelId, not variableId.

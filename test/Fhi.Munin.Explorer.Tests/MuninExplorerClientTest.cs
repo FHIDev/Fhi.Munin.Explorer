@@ -1,5 +1,7 @@
 using System.Net;
+using System.Reflection;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
 
@@ -840,4 +842,77 @@ public class MuninExplorerClientTest
         Assert.Equal("noe", read.AdditionalProperties["Kommentar"]);
         Assert.Equal("ALSFRSR1Tale", read.Statistics[0].Code);
     }
+
+    [Fact]
+    public async Task GetKildeAsync_WhenMuninSendsAnExplicitNullTimestamp_ThenTheKildeStillReads()
+    {
+        // Munin declares these columns nullable and sends explicit nulls for dates elsewhere —
+        // kodeverk codes do it for gyldigFra. On a non-nullable property that throws inside
+        // ReadFromJsonAsync, and the caller loses the whole kilde rather than one field.
+        var kilde = await WithJson("""
+            {"id":"8ec4c2c4-662d-47a5-a946-f1086a014070","code":"K_ALS","navn":"Als registeret",
+             "opprettet":null,"sistOppdatert":null}
+            """).GetKildeAsync(Guid.NewGuid());
+
+        Assert.NotNull(kilde);
+        Assert.Equal("K_ALS", kilde.Code);
+        Assert.Null(kilde.LastUpdated);
+        Assert.Null(kilde.Created);
+    }
+
+    /// <summary>A property of the shape these carried before Fhi.Metadata-se0by.</summary>
+    private sealed record NonNullableTimestamp
+    {
+        [JsonPropertyName("sistOppdatert")] public DateTimeOffset LastUpdated { get; init; }
+    }
+
+    [Fact]
+    public void Deserialize_WhenAnExplicitNullMeetsANonNullableDate_ThenItThrowsRatherThanDefaulting()
+    {
+        // The mechanism, demonstrated once: System.Text.Json refuses a null for a value type, and
+        // the refusal is an exception out of the whole read rather than a default in one field.
+        // What it does NOT do is pin the contracts — that is the sweep below. (Fhi.Metadata-se0by)
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<NonNullableTimestamp>(
+            """{"sistOppdatert":null}""", MuninExplorerClient.Json));
+    }
+
+    [Fact]
+    public void Deserialize_WhenMuninSendsAnExplicitNull_ThenEveryContractTimestampReadsItAsAbsent()
+    {
+        // The sweep, in the shape NullAsEmptyCollectionsTest uses for collections and for its
+        // reason: a spot check leaves the next property added in the position all of these were in.
+        // A read-back loop sat here too and could only ever agree — null into Nullable<T> with no
+        // converter is null — while breaking the day a contract gains a required member. The real
+        // read is GetKildeAsync_WhenMuninSendsAnExplicitNullTimestamp above.
+        var offenders = TimestampProperties()
+            .Where(p => Nullable.GetUnderlyingType(p.PropertyType) is null)
+            .Select(p => $"{p.DeclaringType!.Name}.{p.Name}")
+            .ToList();
+
+        Assert.Equal([], offenders);
+
+    }
+
+    /// <summary>Every date property on every type this package deserialises.</summary>
+    /// <remarks>
+    /// Two arms, because neither alone is what "deserialised" means. The attribute reaches the
+    /// client's own internal response bodies and any sub-namespace; the namespace reaches a property
+    /// that binds by the camelCase policy without carrying one, which the attribute arm cannot see.
+    /// <c>DateTime</c> is swept beside <c>DateTimeOffset</c> because it refuses a null identically.
+    /// </remarks>
+    private static IReadOnlyList<PropertyInfo> TimestampProperties() =>
+        [.. typeof(IMuninExplorerClient).Assembly
+            .GetTypes()
+            .Where(type => !typeof(Exception).IsAssignableFrom(type))
+            .SelectMany(type => type.GetProperties(
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
+            .Where(property => property.GetMethod is not null && IsDate(property.PropertyType)
+                               && (property.GetCustomAttribute<JsonPropertyNameAttribute>() is not null
+                                   || property.DeclaringType!.Namespace
+                                       == typeof(IMuninExplorerClient).Namespace))];
+
+    private static bool IsDate(Type type) =>
+        (Nullable.GetUnderlyingType(type) ?? type) is var bare
+        && (bare == typeof(DateTimeOffset) || bare == typeof(DateTime)
+            || bare == typeof(DateOnly) || bare == typeof(TimeOnly));
 }
