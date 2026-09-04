@@ -162,7 +162,9 @@ public sealed partial class VariableListState
 
         var listId = _activeListId!.Value;
 
-        var accepted = drawnAsSaved
+        // Discarded because the set is no longer maintained here: the two calls record the write
+        // themselves, so a removal from any other surface maintains it as well as this press does.
+        _ = drawnAsSaved
             ? await RemoveVariablesAsync(listId, [variableId], cancellationToken).ConfigureAwait(false)
             : await AddVariablesAsync(listId, [variableId], cancellationToken).ConfigureAwait(false);
 
@@ -174,23 +176,36 @@ public sealed partial class VariableListState
             return false;
         }
 
-        if (accepted)
-        {
-            // Both directions are safe against a set the repair filled: adding an id the list
-            // already holds and removing one it does not are both no-ops on the API's side, and
-            // both are no-ops here too.
-            if (drawnAsSaved)
-            {
-                _saved.Remove(variableId);
-            }
-            else
-            {
-                _saved.Add(variableId);
-            }
-        }
-
         Changed?.Invoke();
         return _saved.Contains(variableId);
+    }
+
+    /// <summary>Notes an accepted write against the membership set, which is the active list's.</summary>
+    // A write addressed to any other list is dropped: VariableListView writes to the list it is
+    // showing, which is the active one only while the two agree. startedAt carries the same
+    // sign-out guard the press above carries (Fhi.Metadata-ehghv).
+    private void RecordMembership(
+        Guid listId,
+        IReadOnlyCollection<Guid> variableIds,
+        bool saved,
+        int startedAt)
+    {
+        if (!StillCurrent(startedAt) || listId != _activeListId)
+        {
+            return;
+        }
+
+        // Both directions are safe against a set a membership read filled underneath: adding an id
+        // the list already holds and removing one it does not are no-ops on the API's side, and
+        // no-ops here too.
+        if (saved)
+        {
+            _saved.UnionWith(variableIds);
+        }
+        else
+        {
+            _saved.ExceptWith(variableIds);
+        }
     }
 
     private async Task EnsureActiveListAsync(bool readerAsked, CancellationToken cancellationToken)

@@ -205,7 +205,10 @@ internal enum PanelTab
 /// assistive technology.
 /// </para>
 /// </remarks>
-public partial class VariableSearch : ComponentBase
+// Sealed for the reason VariableListView is: it unsubscribes from VariableListState.Changed in
+// Dispose, and CA1063 asks an unsealed disposable for a virtual pattern a component has no use
+// for. Nothing in the package, the samples or helsedata's host derives from it.
+public sealed partial class VariableSearch : ComponentBase
 {
     /// <summary>
     /// Initial search text. Set by the host, typically from a URL query parameter — the
