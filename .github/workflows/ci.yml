@@ -421,13 +421,19 @@ jobs:
         with:
           global-json-file: global.json
 
+      # A cache slot of its OWN, and the prefix is the whole point. Every other job here keys on
+      # `nuget-<os>-<hash>`, and this is the only job that restores Fhi.Helsedata.Stiler. Sharing
+      # that slot would write a private package into a cache saved on the default branch, which any
+      # later run may restore — a fork PR's `build` job, which gets no secrets, included. NuGet
+      # reads the global-packages folder before it asks a source for credentials, so the PAT that
+      # gates this job would end up gating nothing at all.
       - name: Cache NuGet
         if: steps.feed.outputs.have_pat == 'true'
         uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
-          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
-          restore-keys: nuget-${{ runner.os }}-
+          key: nuget-hostile-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: nuget-hostile-${{ runner.os }}-
 
       - name: Cache the scanner's browser
         if: steps.feed.outputs.have_pat == 'true'
