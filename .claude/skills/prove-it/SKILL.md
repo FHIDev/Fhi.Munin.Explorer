@@ -61,7 +61,15 @@ the feed lets you delete a version, but whoever already restored it keeps what t
 ./scripts/assert-sample-css-in-step.sh          # touched samples/ or invented a class name
 ./scripts/assert-portability-guard-armed.sh     # touched Directory.Build.props
 ./scripts/check-accessibility.sh                # touched markup
+./scripts/check-hostile-host.sh                 # touched markup or layout
 ```
+
+`check-hostile-host.sh` is the same component in helsedata's real stylesheet under a header that
+overlaps document flow, measured with `getBoundingClientRect` and then scanned with axe. It needs
+credentials for helsedata's Azure Artifacts feed — the Azure Artifacts Credential Provider locally
+— because `samples/HostileHost` references `Fhi.Helsedata.Stiler`. Run it for anything that changes
+what an element IS or where it sits; axe was green through all four of the layout defects that made
+it exist.
 
 `check-accessibility.sh` needs `dotnet`, `node` and a Chrome on PATH. **A green run means "no
 detected regression" and nothing else.** Automated checking finds on the order of a third of WCAG

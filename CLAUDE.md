@@ -126,6 +126,10 @@ checkout needs to find the shared database.
   to this package by law, and green means no detected regression rather than accessible — what the
   gate cannot see is in AGENTS.md under "Accessibility is a requirement, not a preference". CI runs
   the same script, so a red check there is never a surprise.
+- **If the change touches layout, run `./scripts/check-hostile-host.sh` as well.** It renders the
+  component in helsedata's real stylesheet under their top-anchored header and measures boxes, which
+  is the only thing here that would have caught the four defects of 2026-09-03 — axe was green
+  through every one. It needs Azure Artifacts credentials; see `docs/running-locally.md`.
 - **A new or renamed `munin-explorer*` name needs a rule in `Fhi.Helsedata.Stiler`, filed as its
   own bead before this PR merges** — `bd create --label=stiler --label=rcl --label=helsedata` —
   not as a clause in the RCL bead's criteria, which is in nobody's `bd ready` and cannot be

@@ -1,0 +1,20 @@
+@using Fhi.Munin.Explorer.Blazor
+@{
+    ViewData["Title"] = "Utforskeren i helsedatas stiler";
+}
+
+@* `container` is the wrapper helsedata's own MuninUtforsker.cshtml puts around the mount, and
+   the component is the only thing on the page — no heading, no ingress, no breadcrumb. That is
+   deliberate: their Munin page has nothing above the component either, so the component's own
+   first element is what meets the header. Adding chrome here would pad the measurement and hide
+   the defect this host exists to catch.
+
+   IsAuthenticated is hardcoded true. This host has no sign-in, and with it false there is no
+   tablist and no list panel at all — ShowTabs is `VariableList is not null && IsAuthenticated` —
+   so three of the four assertions would have nothing to measure and would pass vacuously. *@
+<div class="container">
+    <component type="typeof(VariableExplorer)"
+               render-mode="Server"
+               param-Language="@("no")"
+               param-IsAuthenticated="@(true)" />
+</div>

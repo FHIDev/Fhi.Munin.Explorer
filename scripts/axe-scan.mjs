@@ -13,6 +13,19 @@ const targets = process.argv.slice(2);
 const settleMs = Number(process.env.ACCESSIBILITY_SETTLE_MS ?? 4000);
 const tags = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
 
+// Playwright's own default is 1280x720, which is what every caller got before this existed and is
+// what a caller that sets nothing still gets. AXE_VIEWPORT_WIDTH is for the one caller that cannot
+// use it: samples/HostileHost renders against helsedata's real stylesheet, whose
+// `@media (max-width: 1280px)` collapses every result row to zero height (Fhi.Metadata-l9l2n.41),
+// so at the default the rows are never visible and the scan stops as a TOOLING failure before it
+// judges anything.
+const viewport = process.env.AXE_VIEWPORT_WIDTH
+  ? {
+      width: Number(process.env.AXE_VIEWPORT_WIDTH),
+      height: Number(process.env.AXE_VIEWPORT_HEIGHT ?? 900),
+    }
+  : null;
+
 if (targets.length === 0) {
   console.error('usage: node axe-scan.mjs <url|url::state> [...]');
   console.error(`known states: ${Object.keys(states).join(', ')}`);
@@ -50,7 +63,7 @@ let violationCount = 0;
 try {
   for (const { url, state, label } of plan) {
     console.log(`\n==> axe ${label}`);
-    const context = await browser.newContext();
+    const context = await browser.newContext(viewport ? { viewport } : {});
     const page = await context.newPage();
 
     try {

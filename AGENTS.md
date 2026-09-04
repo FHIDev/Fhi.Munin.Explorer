@@ -140,6 +140,20 @@ What it scans is the sample host, and so the sample stylesheet — the copy
 `scripts/assert-sample-css-in-step.sh` keeps in step — not the Stiler rules the component actually
 ships into, which puts the paragraph above outside the gate entirely.
 
+**And axe judges the accessibility tree, not the boxes.** On 2026-09-03 four layout defects shipped
+to a branch having passed 1317 unit tests and all eight axe states: a tablist rendered under
+helsedata's header, both tab panels drawn at once because their `div { display: block }` beats the
+browser's `[hidden] { display: none }`, a nested view wearing the page shell class and laid out as
+a page grid, and facets left on the wrong tab. axe was right to be green through every one — none
+is a rule violation. They were found with `getBoundingClientRect`, by a human. `samples/HostileHost`
+is that condition made reproducible: the real `Fhi.Helsedata.Stiler` package for its CSS, their
+header positioned over the top of document flow, and `scripts/check-hostile-host.sh` measuring
+geometry before it runs axe over the same page. `scripts/geometry-assertions.mjs` says which of its
+assertions are general invariants and which are replays of those four, and why that distinction is
+the difference between a suite and a changelog with an exit code. It found two further defects on
+its first run (`Fhi.Metadata-l9l2n.41`, `Fhi.Metadata-l9l2n.42`), both in Stiler rather than here,
+and both invisible to everything else we run.
+
 **It scans states, not only pages.** A page in its default state is not the page a reader uses,
 and for a while the default state was the whole of this check: the level lines shipped at 1.16:1
 against WCAG 1.4.11's 3:1, invisible on a desktop, with this job green — because the lines only

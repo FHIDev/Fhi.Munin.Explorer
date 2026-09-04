@@ -365,6 +365,71 @@ jobs:
         # never a surprise that only CI knows how to reproduce.
         run: ./scripts/check-accessibility.sh
 
+  # The same component inside helsedata's REAL stylesheet, with their header positioned over the
+  # top of document flow, measured with getBoundingClientRect. The accessibility job above scans
+  # ModernHost, whose stylesheet is a hand-written stand-in; on 2026-09-03 four layout defects
+  # passed 1317 unit tests and eight axe states there, and two of the four were collisions with
+  # rules only Fhi.Helsedata.Stiler has. axe was green through every one. (Fhi.Metadata-l9l2n.40)
+  #
+  # NEEDS A SECRET, and skips itself without one rather than failing. AZURE_ARTIFACTS_PAT must be a
+  # repository secret holding an Azure DevOps PAT with Packaging (read) on the fhi organisation;
+  # samples/HostileHost has a PackageReference to Fhi.Helsedata.Stiler, which lives on helsedata's
+  # private feed. Nothing else in this repository touches that feed — nuget.config's
+  # packageSourceMapping is what keeps it that way — so every other job here is unaffected either
+  # way. Provisioning the secret is the whole of turning this job on.
+  #
+  # NOT YET IN report's needs: BELOW, AND THAT IS DELIBERATE. It is red on main today, for two
+  # defects it found on its first run and neither of which can be fixed from this repository:
+  # Fhi.Metadata-l9l2n.41 (Stiler collapses every result row to zero height below 1280px) and
+  # Fhi.Metadata-l9l2n.42 (Stiler has no rule for the desiredData column, so the annotation field
+  # is a 17px sliver). When those land in Fhi.Helsedata.Stiler and this goes green, add
+  # "hostile-layout" to report's needs: and to its table, and require it in branch protection —
+  # the same three steps the other guards went through on 2026-08-28.
+  hostile-layout:
+    name: layout in helsedata's stylesheet
+    # Skipped, not failed, while the secret is absent: a guard that cannot run should say so once,
+    # not turn every PR red until someone provisions infrastructure.
+    if: ${{ secrets.AZURE_ARTIFACTS_PAT != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      # The credential the private feed needs, as an environment variable read by NuGet's own
+      # Azure Artifacts support. An environment variable and not a build argument: a build argument
+      # persists in image history, and this same rule is why a container build of this host would
+      # have to pass it as a BuildKit secret.
+      - name: Authenticate to helsedata's feed
+        env:
+          FEED: https://pkgs.dev.azure.com/fhi/Fhi.Helsedata/_packaging/Fhi.Helsedata.no/nuget/v3/index.json
+          PAT: ${{ secrets.AZURE_ARTIFACTS_PAT }}
+        run: |
+          # Written to the environment file rather than echoed, so the value never reaches a log.
+          printf 'VSS_NUGET_EXTERNAL_FEED_ENDPOINTS={"endpointCredentials":[{"endpoint":"%s","username":"github","password":"%s"}]}\n' "$FEED" "$PAT" >> "$GITHUB_ENV"
+
+      - name: Cache NuGet
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Cache the scanner's browser
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('scripts/check-hostile-host.sh') }}
+          restore-keys: playwright-${{ runner.os }}-
+
+      - name: Measure the component inside helsedata's stylesheet
+        # The same script developers can run locally before pushing, so a red check here is
+        # never a surprise that only CI knows how to reproduce.
+        run: ./scripts/check-hostile-host.sh
+
   # A step reads steps.<id>.outcome, which is job-local, so the summary inside "build + test"
   # could only ever report itself and the four guards were never in the comment. A job added to
   # this workflow must be added to needs: below and to the table, or it stays invisible here.

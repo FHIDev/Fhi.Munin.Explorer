@@ -42,8 +42,44 @@ Both mount the same component; they differ in *how*, and that difference has cau
 
 - **`samples/LegacyHost`** — legacy Blazor Server: `AddServerSideBlazor()` + `MapBlazorHub()`, component mounted in an MVC view with the `<component>` tag helper. **This is the one that mirrors helsedata.** Prefer it.
 - **`samples/ModernHost`** — a Blazor Web App with `MapRazorComponents<App>()`. <http://localhost:5087>, or `--launch-profile https` for <https://localhost:7079>.
+- **`samples/HostileHost`** — legacy Blazor Server like LegacyHost, but wearing helsedata's own
+  chrome and their **real** stylesheet: a `PackageReference` to `Fhi.Helsedata.Stiler` served at
+  the same `_content/…/main.css` path their layout links, and `.main-header`, which is
+  `position: absolute; top: 0` over a 64px row and therefore covers the page's first 64px.
+  <http://localhost:5121>. Read the next section before reaching for it.
 
 A component that only ever ran in ModernHost can break in LegacyHost. That is why both exist.
+
+### HostileHost needs feed credentials, and is not in the solution
+
+It is the only project here with a `PackageReference` to `Fhi.Helsedata.Stiler`, which lives on
+helsedata's private Azure Artifacts feed. So:
+
+- **It is deliberately absent from `Fhi.Munin.Explorer.slnx`.** A root `dotnet restore` would
+  otherwise drag the private feed into every build on every machine. `nuget.config`'s
+  `packageSourceMapping` does the rest: NuGet consults only the sources whose patterns match a
+  package id, so a restore that never asks for `Fhi.Helsedata.*` never contacts that feed and never
+  needs a token. Verified by restoring the solution with credential providers disabled entirely.
+- **Locally you need the Azure Artifacts Credential Provider**, the same one the "Inside
+  helsedata's own site" section below describes. With it installed, `dotnet run --project
+  samples/HostileHost` just works; without it the restore fails with the 401-shaped `NU1301` that
+  section warns about.
+- **In CI it needs the `AZURE_ARTIFACTS_PAT` repository secret**, which the `layout in helsedata's
+  stylesheet` job turns into `VSS_NUGET_EXTERNAL_FEED_ENDPOINTS`. Without the secret that job skips
+  itself rather than failing.
+
+### What it is for
+
+```bash
+./scripts/check-hostile-host.sh
+```
+
+Starts the stub API and HostileHost, drives the explorer into two states, and measures it with
+`getBoundingClientRect` at three widths before running axe over the same page. It exists because
+four layout defects reached a branch on 2026-09-03 that 1317 unit tests and eight axe states did
+not see, and two of the four were collisions with rules only Stiler has — so no hand-written
+stand-in reproduces them. `scripts/geometry-assertions.mjs` says what it asks and why, including
+which assertions are general invariants and which are replays.
 
 ### Pointing it somewhere else
 
@@ -57,7 +93,9 @@ In Development the samples fall back to the test API if you set nothing. Outside
 
 ### What it will not tell you
 
-The sample hosts carry their **own** CSS in `wwwroot`, hand-written to stand in for helsedata's stylesheet — the package itself ships no CSS at all. So the samples show you *layout and behaviour*, not *what it looks like on helsedata.no*. If a change is about appearance, verify it in the real host (below) or against helsedata's compiled stylesheet; a screenshot from a sample host proves nothing about their site.
+LegacyHost and ModernHost carry their **own** CSS in `wwwroot`, hand-written to stand in for helsedata's stylesheet — the package itself ships no CSS at all. So those two show you *layout and behaviour*, not *what it looks like on helsedata.no*. If a change is about appearance, verify it in HostileHost, in the real host (below), or against helsedata's compiled stylesheet; a screenshot from LegacyHost or ModernHost proves nothing about their site.
+
+HostileHost is the exception and is why it exists: its CSS is the real package. It still proves less than the real host does — it has no CMS chrome around the mount, no sign-in, and one page — but a rule of theirs that collides with our markup shows up there and in nothing else we run.
 
 ---
 
