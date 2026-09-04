@@ -371,12 +371,17 @@ jobs:
   # passed 1317 unit tests and eight axe states there, and two of the four were collisions with
   # rules only Fhi.Helsedata.Stiler has. axe was green through every one. (Fhi.Metadata-l9l2n.40)
   #
-  # NEEDS A SECRET, and skips itself without one rather than failing. AZURE_ARTIFACTS_PAT must be a
-  # repository secret holding an Azure DevOps PAT with Packaging (read) on the fhi organisation;
-  # samples/HostileHost has a PackageReference to Fhi.Helsedata.Stiler, which lives on helsedata's
-  # private feed. Nothing else in this repository touches that feed — nuget.config's
+  # NEEDS A SECRET, and says so and stops rather than failing without one. AZURE_ARTIFACTS_PAT must
+  # be a repository secret holding an Azure DevOps PAT with Packaging (read) on the fhi
+  # organisation; samples/HostileHost has a PackageReference to Fhi.Helsedata.Stiler, which lives
+  # on helsedata's private feed. Nothing else in this repository touches that feed — nuget.config's
   # packageSourceMapping is what keeps it that way — so every other job here is unaffected either
   # way. Provisioning the secret is the whole of turning this job on.
+  #
+  # The absence is detected in a STEP and not in the job's `if:`, because the `secrets` context is
+  # not available to a job-level condition. `if: secrets.X != ''` there is not a stricter check
+  # that happens to be unavailable — it evaluates to false and the job never runs at all, secret
+  # or no secret, which is the silent version of exactly what this job exists to prevent.
   #
   # NOT YET IN report's needs: BELOW, AND THAT IS DELIBERATE. It is red on main today, for two
   # defects it found on its first run and neither of which can be fixed from this repository:
@@ -387,31 +392,37 @@ jobs:
   # the same three steps the other guards went through on 2026-08-28.
   hostile-layout:
     name: layout in helsedata's stylesheet
-    # Skipped, not failed, while the secret is absent: a guard that cannot run should say so once,
-    # not turn every PR red until someone provisions infrastructure.
-    if: ${{ secrets.AZURE_ARTIFACTS_PAT != '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
-
-      - uses: actions/setup-dotnet@v6
-        with:
-          global-json-file: global.json
 
       # The credential the private feed needs, as an environment variable read by NuGet's own
       # Azure Artifacts support. An environment variable and not a build argument: a build argument
       # persists in image history, and this same rule is why a container build of this host would
       # have to pass it as a BuildKit secret.
       - name: Authenticate to helsedata's feed
+        id: feed
         env:
           FEED: https://pkgs.dev.azure.com/fhi/Fhi.Helsedata/_packaging/Fhi.Helsedata.no/nuget/v3/index.json
           PAT: ${{ secrets.AZURE_ARTIFACTS_PAT }}
         run: |
+          if [ -z "$PAT" ]; then
+            echo "::notice::AZURE_ARTIFACTS_PAT is not set, so this job has measured nothing."
+            echo "have_pat=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           # Written to the environment file rather than echoed, so the value never reaches a log.
           printf 'VSS_NUGET_EXTERNAL_FEED_ENDPOINTS={"endpointCredentials":[{"endpoint":"%s","username":"github","password":"%s"}]}\n' "$FEED" "$PAT" >> "$GITHUB_ENV"
+          echo "have_pat=true" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-dotnet@v6
+        if: steps.feed.outputs.have_pat == 'true'
+        with:
+          global-json-file: global.json
 
       - name: Cache NuGet
+        if: steps.feed.outputs.have_pat == 'true'
         uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
@@ -419,6 +430,7 @@ jobs:
           restore-keys: nuget-${{ runner.os }}-
 
       - name: Cache the scanner's browser
+        if: steps.feed.outputs.have_pat == 'true'
         uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
@@ -426,6 +438,7 @@ jobs:
           restore-keys: playwright-${{ runner.os }}-
 
       - name: Measure the component inside helsedata's stylesheet
+        if: steps.feed.outputs.have_pat == 'true'
         # The same script developers can run locally before pushing, so a red check here is
         # never a surprise that only CI knows how to reproduce.
         run: ./scripts/check-hostile-host.sh
