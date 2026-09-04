@@ -860,7 +860,6 @@ public class MuninExplorerClientTest
         Assert.Null(kilde.Created);
     }
 
-
     /// <summary>A property of the shape these carried before Fhi.Metadata-se0by.</summary>
     private sealed record NonNullableTimestamp
     {
@@ -881,8 +880,10 @@ public class MuninExplorerClientTest
     public void Deserialize_WhenMuninSendsAnExplicitNull_ThenEveryContractTimestampReadsItAsAbsent()
     {
         // The sweep, in the shape NullAsEmptyCollectionsTest uses for collections and for its
-        // reason: a per-property spot check leaves the next one added in the position all of these
-        // were in. Every DateTimeOffset under Contracts/ has to tolerate a null on the wire.
+        // reason: a spot check leaves the next property added in the position all of these were in.
+        // A read-back loop sat here too and could only ever agree — null into Nullable<T> with no
+        // converter is null — while breaking the day a contract gains a required member. The real
+        // read is GetKildeAsync_WhenMuninSendsAnExplicitNullTimestamp above.
         var offenders = TimestampProperties()
             .Where(p => Nullable.GetUnderlyingType(p.PropertyType) is null)
             .Select(p => $"{p.DeclaringType!.Name}.{p.Name}")
@@ -890,26 +891,25 @@ public class MuninExplorerClientTest
 
         Assert.Equal([], offenders);
 
-        // Not merely declared nullable — actually read back from a payload that sends the null.
-        foreach (var property in TimestampProperties())
-        {
-            var name = property.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name ?? property.Name;
-            var read = JsonSerializer.Deserialize(
-                $$"""{"{{name}}":null}""", property.DeclaringType!, MuninExplorerClient.Json);
-
-            Assert.NotNull(read);
-            Assert.Null(property.GetValue(read));
-        }
     }
 
-    /// <summary>Every public date property under <c>Contracts/</c>, nullable or not.</summary>
+    /// <summary>Every date property on every type this package deserialises.</summary>
+    /// <remarks>
+    /// Found by <c>JsonPropertyName</c> rather than by namespace or by <c>public</c>: the client's
+    /// own response bodies are internal and live beside it, a sub-namespace under Contracts would
+    /// pass a namespace test that compares for equality, and <c>DateTime</c> refuses a null exactly
+    /// as <c>DateTimeOffset</c> does.
+    /// </remarks>
     private static IReadOnlyList<PropertyInfo> TimestampProperties() =>
         [.. typeof(IMuninExplorerClient).Assembly
-            .GetExportedTypes()
-            .Where(type => type.Namespace == typeof(IMuninExplorerClient).Namespace
-                           && !typeof(Exception).IsAssignableFrom(type))
-            .SelectMany(type => type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
-            .Where(property => property.GetMethod is not null
-                               && (property.PropertyType == typeof(DateTimeOffset)
-                                   || property.PropertyType == typeof(DateTimeOffset?)))];
+            .GetTypes()
+            .Where(type => !typeof(Exception).IsAssignableFrom(type))
+            .SelectMany(type => type.GetProperties(
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
+            .Where(property => property.GetCustomAttribute<JsonPropertyNameAttribute>() is not null
+                               && IsDate(property.PropertyType))];
+
+    private static bool IsDate(Type type) =>
+        (Nullable.GetUnderlyingType(type) ?? type) is var bare
+        && (bare == typeof(DateTimeOffset) || bare == typeof(DateTime));
 }

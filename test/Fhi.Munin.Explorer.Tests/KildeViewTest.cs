@@ -1176,6 +1176,19 @@ public class KildeViewTest : BunitContext
     }
 
     [Fact]
+    public void SourceInformation_WhenAValidityEndIsTheDefaultDate_ThenItReadsAsOngoingRatherThanYearOne()
+    {
+        // The row directly above Sist oppdatert i Munin, and the same theoretical host: a
+        // substituted client that hands over MinValue. Guarding one and not the other draws the
+        // year 1 in the fact list anyway, one line up. (Fhi.Metadata-se0by)
+        var kilde = Kilde() with { ValidTo = DateTimeOffset.MinValue };
+
+        Assert.EndsWith("Pågående",
+                        Value(SourceInformation(Render(kilde)), "Gyldighet"),
+                        StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void SourceInformation_WhenTheTimestampIsTheDefaultDate_ThenTheRowIsStillAbsent()
     {
         // The other arm of DayOrNothing, and the one nothing reached once the contract went
@@ -1183,7 +1196,12 @@ public class KildeViewTest : BunitContext
         // options and hand over MinValue, which is the year 1 this bead removed. (Fhi.Metadata-se0by)
         var kilde = Kilde() with { LastUpdated = DateTimeOffset.MinValue };
 
-        Assert.DoesNotContain("Sist oppdatert i Munin", Labels(SourceInformation(Render(kilde))));
+        // The whole list, for the reason the test below gives: this row is last in the block, so an
+        // assertion that only asks for its absence passes on a block that failed to render at all.
+        Assert.Equal(
+            ["Type datakilde", "Lovverk", "Dataansvarlig", "Databehandler",
+             "Grad av personidentifikasjon", "Gyldighet"],
+            Labels(SourceInformation(Render(kilde))));
     }
 
     [Fact]

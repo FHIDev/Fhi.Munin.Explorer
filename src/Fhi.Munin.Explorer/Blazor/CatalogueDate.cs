@@ -46,7 +46,15 @@ internal static class CatalogueDate
     /// </remarks>
     internal static string? DayOrNothing(DateTimeOffset? value, string? language,
                                          DateWidth width = DateWidth.Full) =>
-        value is { } day && day != default ? Day(day, language, width) : null;
+        Written(value) is { } day ? Day(day, language, width) : null;
+
+    /// <summary>The value, or null where it is one of the two ways of carrying no date.</summary>
+    /// <remarks>
+    /// Unwrapped before the comparison on purpose: <c>value == default</c> on a nullable compares
+    /// against null rather than against MinValue, so it reads as a guard and is a no-op.
+    /// </remarks>
+    private static DateTimeOffset? Written(DateTimeOffset? value) =>
+        value is { } day && day != default ? day : null;
 
     /// <summary>
     /// A source system's own date — <c>yyyyMMdd</c> — as a day, or verbatim when it is not one.
@@ -79,11 +87,16 @@ internal static class CatalogueDate
     /// </summary>
     /// <remarks>
     /// An end with no start stands alone: an en-dash with nothing before it reads as a value that
-    /// failed to draw, and a start the catalogue never gave would be an invention.
+    /// failed to draw, and a start the catalogue never gave would be an invention. A <c>default</c>
+    /// end is read as no end, for the reason <see cref="DayOrNothing"/> gives — the two are one row
+    /// apart in the same fact list, so defending one and not the other draws the year 1 anyway.
     /// </remarks>
     internal static string? Period(DateTimeOffset? from, DateTimeOffset? to, string? language,
                                    Texts texts, DateWidth width = DateWidth.Full)
     {
+        from = Written(from);
+        to = Written(to);
+
         if (from is null && to is null)
         {
             return null;
