@@ -239,7 +239,9 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
 
         if (accepted)
         {
-            Touch(id, RecordMembership(id, variableIds, saved: true, startedAt), startedAt);
+            var delta = RecordMembership(id, variableIds, saved: true, startedAt);
+
+            Touch(id, delta, startedAt);
             Changed?.Invoke();
         }
 
@@ -265,7 +267,9 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
 
         if (accepted)
         {
-            Touch(id, RecordMembership(id, variableIds, saved: false, startedAt), startedAt);
+            var delta = RecordMembership(id, variableIds, saved: false, startedAt);
+
+            Touch(id, delta, startedAt);
             Changed?.Invoke();
         }
 
@@ -273,15 +277,10 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
     }
 
     /// <summary>
-    /// Records that a write the API accepted has just changed one list. The holder patches rather
-    /// than refetches, so without this <c>updatedAt</c> stays at the day the page was loaded and
-    /// <c>variableCount</c> stays at what the list held then.
+    /// Moves one list's stamp and count after a write the API accepted, since the holder patches
+    /// rather than refetches. <c>countDelta</c> is what <see cref="RecordMembership"/> measured,
+    /// never the size of the batch.
     /// </summary>
-    /// <remarks>
-    /// <c>countDelta</c> is how many memberships the write actually made or broke, as
-    /// <see cref="RecordMembership"/> measured it — never the size of the batch, since adding a
-    /// variable the list already holds is a no-op the API answers as accepted.
-    /// </remarks>
     private void Touch(Guid id, int countDelta, int startedAt)
     {
         if (!StillCurrent(startedAt))
@@ -289,8 +288,8 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
             return;
         }
 
-        // A floor, not arithmetic: no path here can drive it under, and "-1 variabler" is a
-        // sentence no reader should ever be shown if one ever does.
+        // A floor, because the count and the membership walk are two reads with a write's worth of
+        // time between them, and "-1 variabler" is a sentence no reader should be shown.
         _lists =
         [
             .. _lists.Select(l => l.Id == id

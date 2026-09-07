@@ -202,8 +202,7 @@ public sealed partial class VariableListState
 
         // Both directions are safe against a set a membership read filled underneath: adding an id
         // the list already holds and removing one it does not are no-ops on the API's side, and
-        // no-ops here too. So the change in size is what the API did, which is why the count moves
-        // by it rather than by variableIds.Count.
+        // no-ops here too — so the change in size is what the API did, and what the count moves by.
         var before = _saved.Count;
 
         if (saved)

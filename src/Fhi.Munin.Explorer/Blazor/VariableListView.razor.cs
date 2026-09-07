@@ -353,10 +353,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// <see langword="null"/> while there is no list on screen.
     /// </summary>
     /// <remarks>
-    /// Both halves come from <c>my/lists</c> now that it carries <c>variableCount</c>, so this line
-    /// no longer waits on the page read — and the list's own entry in the picker cannot disagree
-    /// with it about the same list. Never a tally of the rendered rows, which are one page of them.
-    /// The day and never a clock time: in a Blazor Server circuit the hour is the server's.
+    /// Both halves come from <c>my/lists</c> now, so this line no longer waits on the page read and
+    /// cannot disagree with the same list's entry in the picker. Never a tally of the rendered rows,
+    /// which are one page; and the day, never a clock time a Blazor Server circuit would own.
     /// </remarks>
     private string? ListMeta
     {
