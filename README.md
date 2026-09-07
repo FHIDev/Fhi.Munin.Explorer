@@ -273,8 +273,11 @@ These are not style preferences — each one is a host that breaks otherwise.
     so the whole of helsedata.no scrolls sideways under a component that is part of one page: a
     WCAG 1.4.10 failure on somebody else's site rather than a table that looks wrong on ours
     (`Fhi.Metadata-b3brc`). The markup carries `role="region"`, `tabindex="0"` and the table's own
-    name, so a host that adds `overflow-x` gets a scroll box a keyboard can already reach; a host
-    that adds `overflow-x` and nothing else has still done the whole job.
+    name, so a host that adds `overflow-x` gets a scroll box a keyboard can already reach — and
+    owes it a `:focus-visible` outline as well, because a focus stop the reader cannot see is a
+    WCAG 2.4.7 failure in place of the 1.4.10 one. A host running a CSS reset that strips outlines
+    has to put one back; both sample stylesheets and Stiler use `outline: 2px solid <focus colour>`
+    with `outline-offset: 4px`.
     `munin-explorer-pagination-pages` joined this list under `Fhi.Metadata-ejcbi`, and it is worth
     saying why it moved out of the handles: the numbered pages wear helsedata's own
     `hd-button-reset`, which strips the button chrome, so unlike every other control here nothing
