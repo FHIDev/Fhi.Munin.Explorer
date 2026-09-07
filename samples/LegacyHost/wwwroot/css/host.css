@@ -701,6 +701,20 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .munin-explorer-drilldown > dl > dt { margin-top: 12px; }
 .munin-explorer-drilldown > dl > dd { margin: 0; }
 
+/* Stiler's own base rule for the component root (_detail.scss:113), which the samples did not
+   have at all. The explorer is a <section> the host drops straight into the page, so without a
+   cap it fills whatever it is given - 1624px at a 1718px viewport here, against the 1488px page
+   container helsedata holds it to. The grid below divides what this rule leaves.
+
+   The 24px stacks on this sample's own demo chrome - .hostmain's 24 plus .hostframe's 22 and its
+   border - so the gutter drawn here is 71px where a real host page sees this rule's 24 alone. */
+.munin-explorer {
+  max-width: 1488px;
+  width: 100%;
+  padding: 0 24px;
+  margin: 0 auto;
+}
+
 /* ---- not Stiler either: the two-column layout ----
 
    Stiler styles components, not the arrangement of them — it has no page layout at all, so where
@@ -757,7 +771,16 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
     padding-inline: 6px;
   }
 
-  .munin-explorer > *:not(h2):not(form):not(.munin-explorer-filters) {
+  /* The drill-in replaces the list rather than sitting beside it - the filter panel is not
+     rendered in this state - so it spans both tracks (Stiler _detail.scss:182). Caught by the
+     catch-all it sat in column 2 with the filter track standing empty: 408px of gutter, and 1041px
+     of content in a 1024px viewport. The :not() below is the other half of the same rule. */
+  .munin-explorer > .munin-explorer-drilldown {
+    grid-column: 1 / -1;
+    min-inline-size: 0;
+  }
+
+  .munin-explorer > *:not(h2):not(form):not(.munin-explorer-filters):not(.munin-explorer-drilldown) {
     grid-column: 2;
     min-inline-size: 0;
   }
@@ -1765,11 +1788,18 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   width: 1%;
 }
 /* The expand control column and the row it opens. The toggle wears hd-button-reset, so it has no
-   chrome of its own: without a rule here it is a bare glyph in a column with no width. */
-.munin-explorer-kilder__expand {
-  width: 32px;
+   chrome of its own: without a rule here it is a bare glyph in a column with no width.
+
+   Scoped under the table for the reason the count and select rules above are: the shared cell rule
+   carries a class and an element, so a bare class name loses and the column stayed left-aligned.
+   The narrower side air is what lets width: 32px bite - at the rows' own 12px the column measured
+   47px and was content-driven, so neither declaration did anything (Stiler _kilder.scss:117). */
+.munin-explorer-kilder .munin-explorer-kilder__expand {
+  padding-left: 4px;
+  padding-right: 4px;
   text-align: center;
   vertical-align: top;
+  width: 32px;
 }
 
 .munin-explorer-kilder__expand-toggle {
