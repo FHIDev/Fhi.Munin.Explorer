@@ -958,12 +958,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         VariableList? created;
 
-        // Two notifications answer for the outgoing list before this method ever repoints
-        // _shownList: State.CreateAsync raises Changed as soon as the new list exists in
-        // _lists - before this method sees it back, so moving _shownList earlier here cannot
-        // reach that one - and SetActiveListAsync raises it again when its own membership read
-        // for the NEW list finishes. Both reach OnStateChanged while _shownList still names the
-        // list being left, so they are owed here and skipped by count. Fhi.Metadata-7x62u.
+        // Two notifications below still name the outgoing list in _shownList - one raised
+        // inside State.CreateAsync, one at the end of SetActiveListAsync. See Fhi.Metadata-7x62u.
         _pendingPageReadSkips = 2;
 
         try
