@@ -127,6 +127,13 @@ IDS=(
   munin-explorer-source
 )
 
+# The same idea one attribute further out: names in the prefix that are neither classes nor ids,
+# so no rule is possible for them either. `data-munin-explorer-version` is the whole list — the
+# version every root element carries, which the extraction reads as `munin-explorer-version`.
+ATTRIBUTES=(
+  munin-explorer-version
+)
+
 fail=0
 for f in "$MODERN" "$LEGACY"; do
   if [ ! -f "$f" ]; then
@@ -267,7 +274,7 @@ fi
 missing=()
 empty=()
 for name in "${names[@]}"; do
-  case " ${THEIRS[*]} ${IDS[*]} " in
+  case " ${THEIRS[*]} ${IDS[*]} ${ATTRIBUTES[*]} " in
     *" $name "*) continue ;;
   esac
 
@@ -304,7 +311,8 @@ if [ ${#missing[@]} -gt 0 ] || [ ${#empty[@]} -gt 0 ]; then
   echo "$LEGACY, copy it over $MODERN — or, if the name turns out" >&2
   echo "to be borrowed rather than ours, add it to THEIRS at the top of this script and say which" >&2
   echo "stylesheet you read it back off. If it is not a class at all — an id prefix, the way" >&2
-  echo "munin-explorer-source is — it belongs in IDS instead, with a note saying so." >&2
+  echo "munin-explorer-source is — it belongs in IDS instead, with a note saying so, and a name" >&2
+  echo "that is not even an id belongs in ATTRIBUTES beside it." >&2
   exit 1
 fi
 

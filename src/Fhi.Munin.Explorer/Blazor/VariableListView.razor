@@ -15,7 +15,10 @@
        Nothing replaces them: a block is what this wants, and the ghost-button border the samples
        scope under `.munin-explorer` still applies here through the explorer's own section when
        this view is mounted inside it. (Fhi.Metadata-l9l2n.39) *@
-    <div>
+    @* Still the version, though: a host may mount this view on a page of its own, and a version
+       readable on two of the three mount points is a trap for whoever checks the third.
+       (Fhi.Metadata-sqbei) *@
+    <div data-munin-explorer-version="@ExplorerVersion.Current">
 
         @* No class on the heading: the package ships no CSS, and the other components leave
            theirs bare too. A name here would be one with no rule behind it. *@
