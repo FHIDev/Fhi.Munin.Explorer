@@ -1,6 +1,6 @@
 category: Notes for hosts
 
-- **The sample stylesheets are a stand-in for `Fhi.Helsedata.Stiler`, and 178 of their declarations
+- **The sample stylesheets are a stand-in for `Fhi.Helsedata.Stiler`, and 175 of their declarations
   do not match it.** A host that copies `samples/*/host.css` as a starting point gets those
   differences with it. They are now listed, one per line, in `test/sample-css-known-divergences.txt`
   — the missing row-collapse block below 1280px, the eleven `munin-explorer-meta` table rules, the

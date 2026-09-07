@@ -33,14 +33,22 @@
 # numbers agree: that one counted RULES and named divergences a sentence at a time
 # ("`.munin-explorer-dataitem-main__column` is missing seven declarations"), where this counts each
 # declaration on its own line so it has something a script can reconcile. The 62 missing selectors
-# below are close to the rule-level count on their own.
+# were close to the rule-level count on their own.
+#
+# It is 175 now, and the three that went are worth recording because they are the first proof the
+# stale half of the guard works. #204 landed Fhi.Metadata-cuo0e and -7e7de while this branch was
+# open — the base `.munin-explorer` rule, the drilldown's grid-column, and the sibling rule beside
+# it. The guard went red on the merge with an instruction to delete three lines that no longer
+# described anything, and deleting them by hand is the whole ritual: the list shrank because
+# somebody fixed the stylesheet, not because a script quietly rewrote its own homework.
 #
 # Everything the manual diff named is in here, which is the check that the comparison is not
 # missing cases: the whole `@media (max-width:1280px)` row-collapse block, the eleven
-# `munin-explorer-meta` table rules, the base `.munin-explorer` rule, the drilldown's grid-column,
-# the filters toolbar, `__column`'s seven declarations, `__tab-content`'s three, the expand icon's
-# invented rotate, `.munin-explorer-detail`'s invented border-top, and
-# `.munin-explorer-frequency__track` painting grey20 where Stiler's own comment says not to.
+# `munin-explorer-meta` table rules, the filters toolbar and its `position: sticky`, `__column`'s
+# seven declarations, `__tab-content`'s three, the expand icon's invented rotate,
+# `.munin-explorer-detail`'s invented border-top, and `.munin-explorer-frequency__track` painting
+# grey20 where Stiler's own comment says not to. The base rule and the drilldown's grid-column were
+# in it too, until #204.
 #
 # WHAT THIS LIST DOES NOT COVER, so a short list is never read as a close match: source order and
 # specificity are not compared, so two rules that both exist and both declare the same property can
@@ -50,9 +58,10 @@
 # `font` shorthand and `src` are not compared at all, because Stiler ships a typeface this
 # repository cannot redistribute. `scripts/sample-css-declarations.mjs` has the full statement.
 #
-# Filed separately and already tracked, rather than being fixed under the guard's own bead:
+# Filed separately rather than fixed under the guard's own bead, and both now merged in #204:
 # Fhi.Metadata-cuo0e (kilder__expand loses on specificity) and Fhi.Metadata-7e7de (no base
-# .munin-explorer rule, no drilldown grid-column).
+# .munin-explorer rule, no drilldown grid-column). cuo0e is the reminder that a green line here is
+# not a promise: specificity is not compared, so its shape can recur without this list noticing.
 #
 # DO NOT FIX THESE IN ONE PULL REQUEST. Each one that is not inert changes how the samples draw and
 # needs measuring — see the bead. The guard is what stops the list growing; shrinking it is
@@ -189,8 +198,6 @@ missing-selector|@media (max-width:2881px)|.munin-explorer-pagination-size selec
 missing-selector|@media (max-width:767px)|.munin-explorer-header|
 missing-selector|@media (max-width:767px)|.munin-explorer-pagination-size select|
 missing-selector|@media (max-width:767px)|.munin-explorer-skiplink-pagination|
-missing-selector|@media (min-width:1024px)|.munin-explorer > *:not(h2):not(form):not(.munin-explorer-filters):not(.munin-explorer-drilldown)|
-missing-selector|@media (min-width:1024px)|.munin-explorer > .munin-explorer-drilldown|
 missing-selector|@media (min-width:1024px)|.munin-explorer > .munin-explorer-filters > .munin-explorer-filters__toolbar|
 missing-selector||.headline.munin-explorer-group|
 missing-selector||.munin-explorer .hd-button-square.button-square--ghost:not([aria-pressed])[aria-disabled=true]|
@@ -234,4 +241,3 @@ missing-selector||.munin-explorer-meta__tab|
 missing-selector||.munin-explorer-pagination-pages .hd-button-reset:hover|
 missing-selector||.munin-explorer-retry[aria-disabled=true]:focus|
 missing-selector||.munin-explorer__dropdown|
-missing-selector||.munin-explorer|

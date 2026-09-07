@@ -36,7 +36,7 @@
 # an unconfigured guard should say so and stop rather than go red. But it means a required check
 # passing is not on its own proof that the stylesheets were compared. Read the job, not the tick.
 #
-# THE BASELINE IS NOT SELF-UPDATING, and that is the point of it. 178 declaration-level
+# THE BASELINE IS NOT SELF-UPDATING, and that is the point of it. 175 declaration-level
 # divergences stand today. They are listed in test/sample-css-known-divergences.txt, this script
 # reads that list, and NOTHING here ever writes to it. A guard that records its own failures is
 # decoration. So:

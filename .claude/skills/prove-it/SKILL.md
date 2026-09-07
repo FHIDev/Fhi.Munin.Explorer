@@ -168,7 +168,7 @@ Report what ran, not what you believe:
 ✓ Format:       clean (12 CRLF diffs, same count as main — not mine)
 ✓ Package:      assert-package-contents.sh green
 ✓ Sample CSS:   assert-sample-css-in-step.sh green
-✓ Stiler match: assert-sample-css-matches-stiler.sh green, 178 known divergences, none added
+✓ Stiler match: assert-sample-css-matches-stiler.sh green, 175 known divergences, none added
 – Portability:  not run, Directory.Build.props untouched
 ✓ Accessibility: no detected regression on / and /kilder
 ✓ Changelog:    changelog.d/Fhi.Metadata-abc12.md, category: Fixed
