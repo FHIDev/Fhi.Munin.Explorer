@@ -278,6 +278,13 @@ These are not style preferences — each one is a host that breaks otherwise.
     WCAG 2.4.7 failure in place of the 1.4.10 one. A host running a CSS reset that strips outlines
     has to put one back; both sample stylesheets and Stiler use `outline: 2px solid <focus colour>`
     with `outline-offset: 4px`.
+    `munin-explorer-list-scroll` is that same box around the saved-list table, and it is here for
+    that same reason rather than by analogy: the saved list is a real `<table>` now, with nine
+    columns — seven of the catalogue's, the reader's own note, and the remove button — where the
+    flex row it replaced folded into a card under 1280px on Stiler's own media query. Undrawn,
+    that overflow lands on the document, which is the kilder table's failure a second time. It
+    owes the same focus ring for the same reason, and both sample stylesheets carry both rules —
+    but unlike the kilder box, Stiler has no rule for this name at all as of 0.1.37.
     `munin-explorer-pagination-pages` joined this list under `Fhi.Metadata-ejcbi`, and it is worth
     saying why it moved out of the handles: the numbered pages wear helsedata's own
     `hd-button-reset`, which strips the button chrome, so unlike every other control here nothing
@@ -429,6 +436,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-kodeverk__item` | handle |
   | `munin-explorer-kodeverk__name` | handle |
   | `munin-explorer-kodeverk__reference` | handle |
+  | `munin-explorer-list-scroll` | meaning |
   | `munin-explorer-meta` | handle |
   | `munin-explorer-meta__grid` | handle |
   | `munin-explorer-meta__grid-1` | handle |

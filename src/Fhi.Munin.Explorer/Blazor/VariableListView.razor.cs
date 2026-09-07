@@ -72,6 +72,16 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// <summary>The name field of the rename form, which its own label points at.</summary>
     private string RenameListNameId => $"munin-explorer-rename-list-{_instance}";
 
+    /// <summary>The two controls that reveal the create and the rename field, and fold them away.</summary>
+    /// <remarks>
+    /// Ids for the same reason <see cref="DeleteButtonId"/> is one: a host or a test reaching for
+    /// either would otherwise have to go by the button's words, which follow
+    /// <see cref="Language"/>.
+    /// </remarks>
+    private string CreateToggleId => $"munin-explorer-create-toggle-{_instance}";
+
+    private string RenameToggleId => $"munin-explorer-rename-toggle-{_instance}";
+
     /// <summary>The one control that arms the deletion question and stands it down again.</summary>
     private string DeleteButtonId => $"munin-explorer-delete-list-{_instance}";
 
@@ -109,6 +119,16 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private string? _dataTypeNamesLanguage;
     private string _newName = "";
     private string _renameName = "";
+
+    /// <summary>Whether the create field is revealed, and whether the rename field is.</summary>
+    /// <remarks>
+    /// Both start closed. Neither is closed again by the write that succeeds: the reader is
+    /// standing on the button inside the block, and taking it away drops their focus to
+    /// <c>&lt;body&gt;</c> — the same reason nothing here is ever <c>disabled</c>.
+    /// </remarks>
+    private bool _creating;
+
+    private bool _renaming;
     private bool _confirmingDelete;
     private ListActionFailure _actionFailure;
     private bool _includeKodeverk;
@@ -320,16 +340,55 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// </remarks>
     private RenderFragment Cells(VariableListItem item) => builder =>
     {
-        RowCell.Write(builder, 100, T.FieldCode, item.VariableCode, "code", T.NotSpecified);
-        RowCell.Write(builder, 200, T.FieldSource, item.KildeShortName ?? item.KildeName, "source", T.NotSpecified, tooltip: item.KildeName);
-        RowCell.Write(builder, 300, T.FieldDataCollection, item.DatasamlingName, "dataCollection", T.NotSpecified);
-        RowCell.Write(builder, 400, T.FieldVariableGroup, item.VariabelgruppeName, "theme", T.NotSpecified);
-        RowCell.Write(builder, 500, T.FieldDataType, DataTypeName(item.DataType), "dataType", T.NotSpecified);
+        // tableCell: these are real <td>s under real <th scope="col">s, so the helper leaves out
+        // the per-cell field name the explorer's <div>s need and the flex column class a table
+        // cell cannot wear.
+        RowCell.Write(builder, 100, T.FieldCode, item.VariableCode, "code", T.NotSpecified, tableCell: true);
+        RowCell.Write(builder, 200, T.FieldSource, item.KildeShortName ?? item.KildeName, "source", T.NotSpecified, tooltip: item.KildeName, tableCell: true);
+        RowCell.Write(builder, 300, T.FieldDataCollection, item.DatasamlingName, "dataCollection", T.NotSpecified, tableCell: true);
+        RowCell.Write(builder, 400, T.FieldVariableGroup, item.VariabelgruppeName, "theme", T.NotSpecified, tableCell: true);
+        RowCell.Write(builder, 500, T.FieldDataType, DataTypeName(item.DataType), "dataType", T.NotSpecified, tableCell: true);
 
         // The only column whose words are this component's rather than the catalogue's — the dates
         // are formatted for the reader — so it is left unmarked, exactly as the explorer leaves it.
-        RowCell.Write(builder, 600, T.FieldDataPeriod, Period(item), "period", T.NotSpecified, catalogue: false);
+        RowCell.Write(builder, 600, T.FieldDataPeriod, Period(item), "period", T.NotSpecified, catalogue: false, tableCell: true);
     };
+
+    /// <summary>
+    /// How many variables are in the list on screen and when it last changed, or
+    /// <see langword="null"/> while neither is known.
+    /// </summary>
+    /// <remarks>
+    /// The count is the API's own <c>totalCount</c> for this list, not a tally of the rows on
+    /// screen: the endpoint is paged, so counting them would say 25 for a list of 247. There is no
+    /// count for the lists that are NOT on screen — <c>my/lists</c> carries id, name, createdAt
+    /// and updatedAt and nothing more — so an overview showing one per list cannot be drawn from
+    /// this contract, and is not drawn from a guess either.
+    /// <para>
+    /// The day and never a clock time: this renders inside a Blazor Server circuit, so the hour
+    /// would be the server's rather than the reader's, and the package ships no script to ask.
+    /// </para>
+    /// </remarks>
+    private string? ListMeta
+    {
+        get
+        {
+            if (_page is null)
+            {
+                return null;
+            }
+
+            var count = T.ListVariableCount(_page.TotalCount);
+            var updated = Lists.FirstOrDefault(l => l.Id == _shownList)?.UpdatedAt;
+
+            return CatalogueDate.DayOrNothing(updated, Language, DateWidth.Narrow) is { } day
+                ? $"{count} · {T.ListLastModified(day)}"
+                : count;
+        }
+    }
+
+    /// <summary>Written the way <see cref="AriaDisabled"/> is, so the two toggles read alike.</summary>
+    private static string Expanded(bool open) => open ? "true" : "false";
 
     /// <summary>The name cell of one row, which the row's remove button is named from.</summary>
     private string RowNameId(VariableListItem item) =>
@@ -778,6 +837,12 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     {
         _confirmingDelete = false;
         _renameName = "";
+
+        // Folded away with it, not merely emptied: an open field labelled "nytt navn på listen"
+        // over a list the reader did not open it for reads as a rename already under way. Focus
+        // is never inside it on any path here — the three callers are a list switch, a create, and
+        // the repoint after a delete.
+        _renaming = false;
     }
 
     /// <summary>

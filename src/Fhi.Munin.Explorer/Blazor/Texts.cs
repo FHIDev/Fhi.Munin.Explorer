@@ -185,6 +185,19 @@ internal sealed record Texts(
     string EmptyList,
     string RemoveFromThisList,
     string ListLoadError,
+    // The one control that opens the create form, worded as helsedata's variabellister page words
+    // its own. The act rather than the field it reveals: "Navn på ny liste" is the label inside,
+    // and a button repeating it would name the same field twice.
+    string AddNewList,
+    // The header over the column of remove buttons. Never on screen — each button says "Fjern"
+    // itself — but a screen reader arriving in that column has nothing else to hear.
+    string ColumnRemove,
+    // (count) — "3 variabler", the API's own total for the list on screen. Assembled here for the
+    // reason KildeCount is: the singular is this language's business and not C#'s.
+    Func<int, string> ListVariableCount,
+    // (day) — "Sist endret: 7. sep. 2026". The day and never a clock time: this renders inside a
+    // Blazor Server circuit, so the hour would be the server's rather than the reader's.
+    Func<string, string> ListLastModified,
     // "Ønskede data" — the reader's own note about what they want out of a variable. The heading
     // names the column and, in every row, the field itself. Only the length refusal earns a
     // sentence of its own: the API names the ceiling, so the reader can be told what to shorten
@@ -196,7 +209,11 @@ internal sealed record Texts(
     // Renaming and deleting the list on screen. The deletion is confirmed first: a list can have
     // taken a long time to build, and neither the API nor this view offers an undo.
     string RenameListName,
+    // The button that reveals the rename field, and the one inside it that writes the name. Two
+    // strings because they are two controls: with one word on both, a reader hears the same
+    // button twice and cannot tell the disclosure from the thing it discloses.
     string RenameList,
+    string SaveListName,
     string DeleteList,
     string ConfirmDeleteList,
     string ConfirmDeleteYes,
@@ -723,12 +740,17 @@ internal sealed record Texts(
         EmptyList: "Denne listen er tom.",
         RemoveFromThisList: "Fjern",
         ListLoadError: "Kunne ikke hente listen nå. Prøv igjen om litt.",
+        AddNewList: "Legg til ny liste",
+        ColumnRemove: "Fjern variabel",
+        ListVariableCount: count => count == 1 ? "1 variabel" : $"{count} variabler",
+        ListLastModified: day => $"Sist endret: {day}",
         FieldDesiredData: "Ønskede data",
         DesiredDataError: "Kunne ikke lagre ønskede data nå. Prøv igjen om litt.",
         DesiredDataTooLong: maxLength =>
             $"Ønskede data kan ikke overstige {maxLength} tegn. Teksten er ikke lagret.",
         RenameListName: "Nytt navn på listen",
         RenameList: "Gi nytt navn",
+        SaveListName: "Lagre navnet",
         DeleteList: "Slett listen",
         ConfirmDeleteList: "Slett denne listen? Det kan ikke angres.",
         ConfirmDeleteYes: "Ja, slett listen",
@@ -1022,12 +1044,17 @@ internal sealed record Texts(
         EmptyList: "This list is empty.",
         RemoveFromThisList: "Remove",
         ListLoadError: "Could not fetch the list just now. Try again shortly.",
+        AddNewList: "Add new list",
+        ColumnRemove: "Remove variable",
+        ListVariableCount: count => count == 1 ? "1 variable" : $"{count} variables",
+        ListLastModified: day => $"Last modified: {day}",
         FieldDesiredData: "Desired data",
         DesiredDataError: "Could not save the desired data just now. Try again shortly.",
         DesiredDataTooLong: maxLength =>
             $"Desired data must be {maxLength} characters or fewer. Your text has not been saved.",
         RenameListName: "New name for the list",
         RenameList: "Rename",
+        SaveListName: "Save the name",
         DeleteList: "Delete the list",
         ConfirmDeleteList: "Delete this list? It cannot be undone.",
         ConfirmDeleteYes: "Yes, delete the list",
