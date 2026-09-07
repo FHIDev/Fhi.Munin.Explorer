@@ -431,4 +431,15 @@ public class VariableViewTest : BunitContext
         Assert.Equal("1. Tale", heading.TextContent);
         Assert.Equal("no", heading.GetAttribute("lang"));
     }
+
+    [Fact]
+    public void Aside_Always_ThenItsFactListsWearTheGridTheHostGivesOneLane()
+    {
+        // The markup half of the sidebar's single lane — the stylesheet half is asserted in
+        // KildeViewTest. The version detail below this aside renders into a full-width column and
+        // is deliberately not asserted here. (Fhi.Metadata-hi0po)
+        var aside = Render(Detail()).Find(".munin-explorer-whole__aside");
+
+        Assert.NotEmpty(aside.QuerySelectorAll("dl.munin-explorer-meta__grid"));
+    }
 }

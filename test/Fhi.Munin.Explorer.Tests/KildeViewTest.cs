@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using AngleSharp.Dom;
 using Bunit;
 using Fhi.Munin.Explorer.Blazor;
@@ -1571,12 +1572,27 @@ public class KildeViewTest : BunitContext
     }
 
     [Fact]
-    public void Aside_WhenAHostStylesTheFactLists_ThenOneLaneIsScopedToItRatherThanLeftToTheDefault()
+    public void Aside_Always_ThenItsFactListsWearTheGridAndTheMainColumnKeepsItsTwoLanes()
     {
-        // The component writes `munin-explorer-meta__grid` and no modifier, so one lane in the 320px
-        // sidebar is the host stylesheet's whole job. Without it the tracks go 148px + 196px and
-        // carry the words 64px past the panel edge. (Fhi.Metadata-hi0po)
-        static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
+        // The markup half of the sidebar's single lane. The metadata groups render into the wide
+        // middle column, where two lanes are the right shape and the aside's rule must not reach
+        // them. (Fhi.Metadata-hi0po)
+        var cut = Render(Kilde());
+
+        Assert.NotEmpty(cut.Find(".munin-explorer-kilde__aside").QuerySelectorAll("dl.munin-explorer-meta__grid"));
+        Assert.NotEmpty(cut.Find(".munin-explorer-kilde__main").QuerySelectorAll("dl.munin-explorer-meta__grid"));
+    }
+
+    [Fact]
+    public void Aside_WhenAHostStylesTheFactLists_ThenOneLaneIsScopedToItAndTheDefaultStaysTwo()
+    {
+        // The stylesheet half of the sidebar's single lane, for all three asides. Through
+        // SampleDeclarationsFor so `-1` and `-2` cannot answer for the base class, and anchored on
+        // the whole value so a second track fails it. (Fhi.Metadata-hi0po)
+        const string Base = @"\.munin-explorer-meta__grid(?![\w-])";
+        const string OneLane = @"grid-template-columns:\s*minmax\(\s*0\s*,\s*1fr\s*\)\s*(;|$)";
+
+        var grids = HostClassNames.SampleDeclarationsFor("munin-explorer-meta__grid");
 
         foreach (var aside in (string[])
                  [
@@ -1585,14 +1601,19 @@ public class KildeViewTest : BunitContext
                      "munin-explorer-whole__aside",
                  ])
         {
-            var scoped = HostClassNames.SampleDeclarationsFor(aside)
-                .Where(rule => rule.Selector.Contains("munin-explorer-meta__grid", StringComparison.Ordinal))
-                .Select(rule => Squeezed(rule.Declarations))
-                .ToList();
-
             Assert.True(
-                scoped.Any(d => d.Contains("grid-template-columns:minmax(0,1fr)", StringComparison.Ordinal)),
+                grids.Any(rule => Regex.IsMatch(rule.Declarations, OneLane)
+                                  && rule.Selector.Split(',').Any(
+                                      branch => branch.Contains(aside, StringComparison.Ordinal)
+                                                && Regex.IsMatch(branch, Base))),
                 $"Nothing gives {aside} one shrinkable lane, so its fact lists keep the two-lane default.");
         }
+
+        // The default the aside opts out of. Narrowing the base rule would fix the sidebar by
+        // costing the wide middle column its two lanes, and every assertion above would still pass.
+        Assert.True(
+            grids.Any(rule => !rule.Selector.Contains("__aside", StringComparison.Ordinal)
+                              && Regex.IsMatch(rule.Declarations, @"grid-template-columns:\s*1fr\s+1fr\s*(;|$)")),
+            "No unscoped rule leaves munin-explorer-meta__grid two lanes for the main column.");
     }
 }

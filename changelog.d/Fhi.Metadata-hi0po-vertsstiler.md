@@ -11,7 +11,8 @@ category: Notes for hosts
   copy of that rule, selector for selector, so the stand-in works the way the real one does. A host
   on an older Stiler, or on a stylesheet of its own, needs the equivalent or it gets the scrollbar.
 - **Reach it by scoping to the aside, not by the `munin-explorer-meta__grid-1` modifier.** The
-  package does not write that name here, and a host should not add it: in Stiler the same name also
-  carries `grid-row: 1/3` for the variable page's own layout, so it brings a placement rule along
-  with the single track. The scoped rule out-specifies it in the aside regardless.
-  (Fhi.Metadata-hi0po)
+  package still writes that name in one place — the variable detail panel, where helsedata's own
+  layout expects it — and in none of the asides, so a host should not reach for it there either. In
+  Stiler the same name also carries `grid-row: 1/3` for the variable page's layout, so on an aside it
+  brings a placement rule along with the single track. The scoped rule out-specifies it there
+  regardless. (Fhi.Metadata-hi0po)

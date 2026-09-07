@@ -1312,6 +1312,8 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   grid-template-columns: auto;
 }
 
+/* The three drill-in asides do not come through here: their own rule further down is scoped to
+   them and so wins at every width, the way Stiler's does. (Fhi.Metadata-hi0po) */
 @media (max-width: 1280px) {
   .munin-explorer-meta__grid {
     grid-template-columns: auto;
@@ -1454,13 +1456,10 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   background: var(--grey10);
 }
 
-/* One lane for the sidebar fact lists. The panel grid is two `1fr` tracks and `1fr` floors at
-   min-content, so in a 320px aside the Lovverk prose sized them to 148px + 196px and carried the
-   words 64px past the panel edge, which reached the document as a 17px horizontal scrollbar at
-   every width above 1280px. Copied from Stiler's `_trail.scss` selector for selector, because a
-   stand-in that works differently from the real rule is not standing in for it — and scoped to the
-   aside for Stiler's reason: the same class in the main column keeps its two tracks. Not the
-   `munin-explorer-meta__grid-1` modifier, which Stiler also gives `grid-row: 1/3`. (Fhi.Metadata-hi0po) */
+/* Copied from Stiler's `_trail.scss`, selector for selector: a stand-in that works differently from
+   the rule it stands in for is not standing in for it. Scoped to the aside for Stiler's reason —
+   the same class in the main column keeps its two tracks. Not the `munin-explorer-meta__grid-1`
+   modifier, which Stiler also gives `grid-row: 1/3`. (Fhi.Metadata-hi0po) */
 .munin-explorer-kilde__aside .munin-explorer-meta__grid,
 .munin-explorer-whole__aside .munin-explorer-meta__grid,
 .munin-explorer-datasamling__aside .munin-explorer-meta__grid {

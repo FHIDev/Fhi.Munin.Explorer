@@ -500,4 +500,15 @@ public class DatasamlingViewTest : BunitContext
         Assert.Equal("https://uit.no/research/tromsostudy",
                      Assert.Single(ingress.QuerySelectorAll("a")).GetAttribute("href"));
     }
+
+    [Fact]
+    public void Aside_Always_ThenItsFactListsWearTheGridTheHostGivesOneLane()
+    {
+        // The markup half of the sidebar's single lane — the stylesheet half is asserted in
+        // KildeViewTest. Fact lists that stopped wearing this class, or moved out of the aside,
+        // would leave the host's rule matching nothing and say so nowhere. (Fhi.Metadata-hi0po)
+        var aside = Render(Datasamling()).Find(".munin-explorer-datasamling__aside");
+
+        Assert.NotEmpty(aside.QuerySelectorAll("dl.munin-explorer-meta__grid"));
+    }
 }

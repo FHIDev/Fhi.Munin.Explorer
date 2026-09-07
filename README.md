@@ -191,7 +191,9 @@ These are not style preferences — each one is a host that breaks otherwise.
   a category to check against. The `THEIRS` allowlist in `scripts/assert-sample-css-in-step.sh` is
   empty by construction, and what these names cost a host is now the same question everywhere: a
   host on Stiler 0.1.13 or later has rules for them — 0.1.14 for the pager's skip link, which was
-  renamed after 0.1.13 shipped, and none at all yet for the pager itself — any other host
+  renamed after 0.1.13 shipped, none at all yet for the pager itself, and 0.1.39 for the single
+  lane the three asides' `munin-explorer-meta__grid` needs, without which the sidebar's words push
+  the whole page into horizontal scrolling above 1280px (`Fhi.Metadata-hi0po`) — any other host
   draws whatever it wants drawn, and the sub-lists below are about how much drawing nothing costs.
 
   - Handles, where something else already dresses the element — a Stiler class it also wears, or
