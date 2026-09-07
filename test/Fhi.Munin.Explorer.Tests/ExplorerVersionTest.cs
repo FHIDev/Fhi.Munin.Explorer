@@ -11,37 +11,13 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
-/// The version every root element carries in <c>data-munin-explorer-version</c>, and the one thing
-/// that has to be true of it: it is the ASSEMBLY's version rather than a string somebody wrote down.
+/// The version every root element carries in <c>data-munin-explorer-version</c>, over every mount
+/// point a host can use, signed in and signed out.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Asserting that the attribute is present and non-empty would pass against a hardcoded literal, a
-/// stale csproj property or a placeholder — each of which renders a perfectly convincing version
-/// while telling the reader something false. That is worse than the silence it replaces, because a
-/// reader diagnosing helsedata's deployment will believe it. So the expectation below is read off
-/// <see cref="AssemblyInformationalVersionAttribute"/> at runtime, and
-/// <see cref="Version_WhenItIsRendered_ThenItIsNotTheAssemblyVersionThatDropsThePrereleaseSuffix"/>
-/// rules out the near miss that would survive that: <c>AssemblyVersion</c> is <c>0.1.0.0</c> for
-/// every alpha, so a component reading it could not tell alpha.7 from alpha.8.
-/// </para>
-/// <para>
-/// The mount points are enumerated rather than sampled. A version readable on the variable explorer
-/// and absent on the kildeutforsker is a trap for whoever checks the second one.
-/// </para>
-/// <para>
-/// The source guard at the bottom covers less than it looks like, and the limit is stated rather
-/// than hidden: it finds a root by the literal <c>class="munin-explorer"</c>, so it catches a new
-/// component wearing that class without the attribute and nothing else. A root without the class is
-/// outside it — <see cref="VariableListView"/> is exactly that, having had the class taken off it
-/// deliberately (<c>Fhi.Metadata-l9l2n.39</c>), and it is covered by its own render test above.
-/// Adding a mount point still means adding a test here.
-/// </para>
-/// <para>
-/// Anonymous is its own case, twice over. The explorer renders for logged-out visitors on
-/// helsedata.no, and that view is the one most often reported as broken — a version that needed a
-/// session would be absent from exactly the page somebody is asking about. (Fhi.Metadata-sqbei)
-/// </para>
+/// Present-and-non-empty is not the assertion: that passes against a literal, which renders a
+/// convincing version while telling the reader something false. The expectation is read off the
+/// assembly instead. (Fhi.Metadata-sqbei)
 /// </remarks>
 public class ExplorerVersionTest : BunitContext
 {
@@ -169,11 +145,9 @@ public class ExplorerVersionTest : BunitContext
     [Fact]
     public void Version_WhenAComponentRootIsWritten_ThenItCarriesTheAttribute()
     {
-        // A new component wearing the root class gets no render test until somebody writes one, and
-        // the failure is invisible: the component renders, and only the page nobody can identify is
-        // worse off. Read off MARKUP, never off the file — all three roots explain this attribute in
-        // a comment that names it, so a check reading raw text stays green on a root that has the
-        // prose and not the attribute.
+        // Off MARKUP, never the raw file: every root explains this attribute in a comment that names
+        // it, so a check reading raw text stays green on a root that kept the prose and lost the
+        // attribute. Roots are found by class="munin-explorer" alone — VariableListView wears none.
         var roots = Directory
             .EnumerateFiles(Repo.In("src", "Fhi.Munin.Explorer"), "*.razor", SearchOption.AllDirectories)
             .Where(path => !path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
