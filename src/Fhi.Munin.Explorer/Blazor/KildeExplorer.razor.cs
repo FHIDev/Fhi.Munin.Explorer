@@ -162,6 +162,37 @@ public sealed partial class KildeExplorer : ComponentBase
     [Parameter] public EventCallback<IReadOnlyList<Guid>> ExploreVariablesRequested { get; set; }
 
     /// <summary>
+    /// Draw the two static blocks over an open kilde — "Kriterier for tilgang til data" and
+    /// "Priser". Off unless the host asks for them.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Both blocks send the reader to helsedata.no for how to apply and what data costs, which is
+    /// the route a researcher browsing Munin's own catalogue needs — and the content helsedata
+    /// already publishes itself. Their live navigation carried <c>/no/priser/</c> and
+    /// <c>/no/soknadsveiledning-oversikt/</c> on 2026-09-07, so an embedding that drew these too
+    /// would put a second copy of pages helsedata owns inside a component they cannot edit, and
+    /// theirs is the authoritative one once the two drift.
+    /// </para>
+    /// <para>
+    /// Hence the default: <see langword="false"/>, so a host that has never heard of this
+    /// parameter draws no duplicate. Munin's own hosts opt in by setting it. Defaulting the other
+    /// way would be fail-open in the one place it matters — helsedata's <c>BlazorComponentPage</c>
+    /// offers a fixed candidate list (<c>Language</c>, <c>SkjemaId</c>, <c>IsAuthenticated</c>)
+    /// and drops every name outside it, so it could not turn the blocks off until that list grew
+    /// a key.
+    /// </para>
+    /// <para>
+    /// A <c>[Parameter]</c> on the mounted root rather than an option on the service registration,
+    /// for the same reason <see cref="VariableExplorer.IsAuthenticated"/> is one: a CMS host
+    /// mounts a type by name and can only reach what that type declares.
+    /// <see cref="KildeExplorerWithUrlState"/> declares and forwards it as well, so both of
+    /// Kelda's mounts can be told.
+    /// </para>
+    /// </remarks>
+    [Parameter] public bool ShowAccessAndPrices { get; set; }
+
+    /// <summary>
     /// The host's own sections for an open kilde, placed after Kelda's.
     /// </summary>
     /// <remarks>
@@ -169,9 +200,10 @@ public sealed partial class KildeExplorer : ComponentBase
     /// variables, its access criteria, its prices — are markup that goes <em>into</em> that
     /// component rather than markup added to it, and this parameter is the same door held open for
     /// whoever embedded the explorer. It is not passed straight through: what reaches
-    /// <see cref="KildeView.Sections"/> is Kelda's three sections and then this, in that order,
-    /// because a host's section is an addition to the page it embedded rather than a replacement
-    /// for what the component is.
+    /// <see cref="KildeView.Sections"/> is Kelda's own sections — Variabler always, the other two
+    /// only under <see cref="ShowAccessAndPrices"/> — and then this, in that order, because a
+    /// host's section is an addition to the page it embedded rather than a replacement for what
+    /// the component is.
     /// </remarks>
     [Parameter] public RenderFragment? Sections { get; set; }
 
