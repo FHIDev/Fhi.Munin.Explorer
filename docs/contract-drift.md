@@ -87,15 +87,28 @@ MUNIN_EXPLORER_LIVE=1 MUNIN_EXPLORER_TOKEN=eyJhbGci... \
   dotnet test --filter Category=ContractDrift
 ```
 
-Without the token that arm says so in the run output. That is the honest state of the nightly job:
-the read half of the contract is checked against the API every night, and the written half is
-checked by whoever runs it with a token in hand.
+**No unattended run has that token, and none can.** It is an ID-porten access token: issued by
+`test.idporten.no` to an embedding host's own client, for a person who signed in, and good for
+about two minutes. There is no client-credentials shape of it — the `my/lists` routes key on a
+subject the API resolves by calling ID-porten's UserInfo endpoint with the token, and that fails
+closed without one. So there is no secret a schedule could hold, and one minted by hand would
+expire before the job that carried it finished starting.
+
+That is the honest state of the check, and `scripts/assert-drift-ran.sh` now says it in as many
+words on every run: **the read half of the contract is checked against the live API every night;
+the `my/lists` half is not.** The guard names the arm and quotes the reason the test itself gave,
+and the run is green for what it did check rather than red for what it never could — a check that
+is red every night is one that gets muted, and muting it would lose the read half too. The written
+half is checked by whoever runs it with a token in hand, which is the thing to do before changing
+anything the `my/lists` routes return (`Fhi.Metadata-wpcb3`).
 
 ## When the nightly job goes red
 
-`.github/workflows/contract-drift.yml` runs at 04:17 UTC and opens an issue when it fails, or
-comments on the one already open. The failure message names each difference and the path it sits
-at. Then:
+The check runs from a sidecar on the devbox rather than from GitHub Actions — `runa.` is
+geo-filtered and hosted runners cannot reach it — and opens an issue when it fails, or comments on
+the one already open. `.github/workflows/contract-drift.yml` is the same job, dispatchable by hand
+from a runner that can reach the host. The failure message names each difference and the path it
+sits at. Then:
 
 1. Update the DTO under `src/Fhi.Munin.Explorer.Contracts`.
 2. Re-capture the matching file under `test/Fhi.Munin.Explorer.Tests/Testdata/` — for example
@@ -143,7 +156,18 @@ would then mean "nothing was looked at" while reading as "the contracts are fine
 So the job does not get to decide it passed. `scripts/assert-drift-ran.sh` reads the test results
 afterwards and fails unless every expected test actually executed. If a drift test is deliberately
 removed, the count passed to that script has to come down with it — a decision somebody makes,
-rather than a number that quietly goes down.
+rather than a number that quietly goes down. The count is read off how many tests the run *found*,
+not how many it ran: `executed` cannot fall below zero, so on a run where everything skipped it
+could never notice a deletion.
+
+The one skip it tolerates is the authenticated arm above, and it tolerates it loudly: the caller
+declares how many tests need `MUNIN_EXPLORER_TOKEN`, the guard reports each of them as unchecked
+by name every run, and a test skipped for any other reason is still an error — with the reason the
+test gave, which the results file has been carrying all along. It went four nights without being
+read, while the guard offered two causes that were both wrong (`Fhi.Munin.Explorer#168`).
+
+`DriftRanGuardTest` drives that script over results broken on purpose, so each of those clauses has
+been seen to fire. A guard nothing has ever watched fail is a guard that can say anything.
 
 `ShapeDriftTest` covers the other half of the same worry, on every commit and offline: captured
 payloads broken on purpose — a field added, a field renamed, a field withdrawn — with the
