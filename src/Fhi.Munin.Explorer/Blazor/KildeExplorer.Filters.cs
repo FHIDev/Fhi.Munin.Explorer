@@ -279,7 +279,7 @@ public sealed partial class KildeExplorer
     /// <para>
     /// Which of the three a label is, is <see cref="FacetDefinition.Label"/>'s answer to give — see
     /// there for why the facet cannot be asked instead. This method only turns that answer into the
-    /// attribute, and <see cref="CatalogueProperties.Foreign"/> is what drops it for a reader
+    /// attribute, and <see cref="CatalogueProperties.Foreign(string, string)"/> is what drops it for a reader
     /// already reading the language it names.
     /// </para>
     /// </remarks>

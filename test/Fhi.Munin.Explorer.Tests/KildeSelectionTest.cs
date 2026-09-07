@@ -886,4 +886,16 @@ public class KildeSelectionTest : BunitContext
         Assert.All(cut.FindAll(".munin-explorer-kilder tbody tr > th"),
                    th => Assert.Equal("row", th.GetAttribute("scope")));
     }
+
+    [Fact]
+    public void Checkbox_WhenAKildeHasNoName_ThenItIsNamedByTheCodeRatherThanByVelgAndNothing()
+    {
+        // The checkbox only exists on a selectable render, which is why this cannot live beside the
+        // row's other controls in KildeExplorerTest: that fixture passes no handover callback, so
+        // the column is not drawn there at all. (Fhi.Metadata-w13lk)
+        var (cut, _) = RenderSelectable(new FakeClient(Kilde("", "K_ALS")));
+
+        Assert.Equal("Velg K_ALS",
+                     AccessibleName.Of(cut.Find("tbody .munin-explorer-kilder__select input[type=checkbox]")));
+    }
 }

@@ -994,21 +994,20 @@ public sealed partial class VariableSearch : ComponentBase
         // A name for the shape where the button's own content cannot give it one. PreferredTerm
         // defaults to "" (Contracts/VariableSummary.cs) and the row draws it blank, so the span
         // below is empty and this button — whose only content IS that span — announces as
-        // "button, collapsed" with nothing in front of it. WCAG 4.1.2. The save button beside it
-        // survives the same row for free, because its own words are the first half of its name;
-        // this one has no second source, so it needs a written fallback.
+        // "button, collapsed" with nothing in front of it. WCAG 4.1.2.
         //
-        // An aria-label, and not the two-element aria-labelledby the rest of this row uses. That
-        // rule exists because a Munin name interpolated into our prose is one unmarked string in
-        // two languages — here there is no Munin half at all, only our own sentence, which follows
-        // Language like every other string this component says. And it is not written into the
-        // span, because the save button borrows the span: putting it there would name that button
-        // "Lagre i liste Vis hele variabelen" for a variable neither control can actually name.
+        // The code rather than a written sentence: one sentence names every unnamed row alike, so
+        // nothing says which one the reader is standing in (Fhi.Metadata-w13lk).
+        //
+        // An aria-label, and not the two-element aria-labelledby the rest of this row uses,
+        // because there is no Munin half interpolated into our prose here. And not written into
+        // the span, because the save button borrows it: putting it there would name that button
+        // "Lagre i liste K_ALS.ALDER" for a variable neither control can actually name.
         //
         // Null while the term is there, so the visible words stay the name and a speech-input user
         // saying what they can see still reaches the control (WCAG 2.5.3).
         builder.AddAttribute(9, "aria-label",
-            string.IsNullOrWhiteSpace(v.PreferredTerm) ? T.ShowWholeVariable : null);
+            string.IsNullOrWhiteSpace(v.PreferredTerm) ? T.Named(v.PreferredTerm, v.Code).Text : null);
 
         // Never disabled, including while its own fetch runs: pressing it again is how the panel
         // is closed, and disabling the element that has focus drops focus to <body>.

@@ -238,7 +238,7 @@ public class SaveToListTest : BunitContext
     }
 
     [Fact]
-    public void Row_WhenAVariableHasNoPreferredTerm_ThenItsButtonStillAnnouncesWhatItDoes()
+    public void Row_WhenAVariableHasNoPreferredTerm_ThenItsButtonAnnouncesTheCode()
     {
         // PreferredTerm defaults to "" and the row already renders it blank, so this is a shape
         // the page can reach. Naming the button by pointing at that empty span rather than by
@@ -251,12 +251,11 @@ public class SaveToListTest : BunitContext
         Assert.Equal("Lagre i liste", AccessibleName.Of(SaveButton(cut)));
 
         // And the other control in the same row, which is the row's PRIMARY one: the variable's
-        // name IS the disclosure, so an empty term leaves that button with no content and no
-        // source at all — "button, collapsed" and nothing else, WCAG 4.1.2. Asserted here rather
-        // than in its own fact because this is the one render that reaches the shape, and the
-        // save button's fallback is only half of what the row has to survive.
+        // name IS the disclosure, so an empty term leaves that button with no content and no source
+        // at all. It used to answer "Vis hele variabelen", which every unnamed row answered - a name
+        // that passes a checker and says nothing. Now the code. (Fhi.Metadata-w13lk)
         Assert.Equal(
-            "Vis hele variabelen",
+            "V_BDR.ALDER",
             AccessibleName.Of(cut.Find("button.munin-explorer-dataitem-main__name")));
     }
 

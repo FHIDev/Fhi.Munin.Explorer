@@ -61,12 +61,17 @@ internal static class DatasamlingTable
 
             // The name is a th, not a td: it is what the rest of the row is about, and a screen
             // reader reading a cell out of context should hear which datasamling it belongs to.
+            // A datasamling carries no code, so the short name is what stands in - and an empty th
+            // would cost every other cell in the row its row header, which is the one place the
+            // bead was right about the header (Fhi.Metadata-w13lk).
+            var named = texts.Named(row.Name, row.ShortName);
+
             builder.OpenElement(seq++, "th");
             builder.AddAttribute(seq++, "scope", "row");
-            builder.AddAttribute(seq++, "lang", CatalogueProperties.Foreign("no", reader));
-            builder.AddContent(seq++, string.IsNullOrWhiteSpace(row.ShortName)
-                ? row.Name
-                : $"{row.Name} ({row.ShortName})");
+            builder.AddAttribute(seq++, "lang", CatalogueProperties.Foreign(named.Norwegian, reader));
+            builder.AddContent(seq++, named.Norwegian && !string.IsNullOrWhiteSpace(row.ShortName)
+                ? $"{named.Text} ({row.ShortName})"
+                : named.Text);
             builder.CloseElement();
 
             DescriptionCell(builder, ref seq, row.Description, reader);

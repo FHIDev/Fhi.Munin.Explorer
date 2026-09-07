@@ -511,4 +511,31 @@ public class DatasamlingViewTest : BunitContext
 
         Assert.NotEmpty(aside.QuerySelectorAll("dl.munin-explorer-meta__grid"));
     }
+
+    [Fact]
+    public void Heading_WhenTheCatalogueLeftTheNameEmpty_ThenTheCodeStandsInAndIsNotDrawnTwice()
+    {
+        // The same shape as the kilde view's heading and a different contract property, which is
+        // why it is a test of its own: a fix applied to one of them compiles and passes with the
+        // other left behind. (Fhi.Metadata-w13lk)
+        var cut = Render(Datasamling() with { PreferredTerm = "" });
+
+        var heading = cut.Find("h2");
+
+        Assert.NotEqual("", heading.TextContent.Trim());
+        Assert.Equal(Datasamling().Code, heading.TextContent.Trim());
+        Assert.Empty(cut.FindAll("p.munin-explorer-datasamling__identifiers"));
+    }
+
+    [Fact]
+    public void Heading_WhenTheCodeStandsInForTheName_ThenItIsNotMarkedAsNorwegian()
+    {
+        // A code is not Norwegian prose, and the identifier line that normally carries it is not
+        // marked either. The named case is asserted beside it, so the marker cannot be dropped
+        // wholesale and still pass.
+        Assert.Null(Render(Datasamling() with { PreferredTerm = "" }, language: "en")
+            .Find("h2").GetAttribute("lang"));
+
+        Assert.Equal("no", Render(Datasamling(), language: "en").Find("h2").GetAttribute("lang"));
+    }
 }

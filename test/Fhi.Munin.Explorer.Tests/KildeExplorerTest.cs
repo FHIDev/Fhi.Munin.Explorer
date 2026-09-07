@@ -519,17 +519,16 @@ public class KildeExplorerTest : BunitContext
     }
 
     [Fact]
-    public void Render_WhenAKildeHasNoName_ThenItsRowIsDrawnBlankAndTheRestOfTheTableWithIt()
+    public void Render_WhenAKildeHasNoName_ThenItsRowIsNamedByItsCodeAndItsSiblingsAreUntouched()
     {
-        // What a reader sees for "navn": null, which NullAsEmptyStrings now reads as "" instead of
-        // letting it reach the renderer as a null and take the circuit. The row is visibly empty
-        // rather than plausibly wrong, and its siblings are untouched. (Fhi.Metadata-o355u)
+        // Pinned the other way until now: Fhi.Metadata-o355u made an explicit null navn read as ""
+        // rather than take the circuit down, and asserted the row drew BLANK - which is a button
+        // with no accessible name, the defect this replaces. (Fhi.Metadata-w13lk)
         var cut = RenderWith(new FakeClient(
             Kilde("", "K_ALS"),
             Kilde("Dødsårsaksregisteret", "K_DAR")));
 
-        Assert.Equal(["", "Dødsårsaksregisteret"], RowNames(cut));
-        Assert.Contains("K_ALS", cut.Markup);
+        Assert.Equal(["K_ALS", "Dødsårsaksregisteret"], RowNames(cut));
         Assert.Contains("2 kilder", cut.Markup);
     }
 
@@ -3330,5 +3329,131 @@ public class KildeExplorerTest : BunitContext
         var cut = RenderWith(new FakeClient());
 
         Assert.Empty(cut.FindAll(".dropdown-choicepicker__item button"));
+    }
+
+    [Fact]
+    public void Row_WhenAKildeHasNoName_ThenEveryControlInItIsNamedByTheCodeAndTheHeaderKeepsText()
+    {
+        // One assertion per control, not one per row: the name button, the expand toggle and the
+        // row header each interpolate differently, and a header carrying no text would cost every
+        // other cell in the row its row header. (Fhi.Metadata-w13lk)
+        var cut = RenderWith(new FakeClient(Kilde("", "K_ALS")));
+
+        var header = cut.Find(".munin-explorer-kilder tbody th");
+
+        Assert.Equal("row", header.GetAttribute("scope"));
+        Assert.NotEqual("", header.TextContent.Trim());
+
+        Assert.Equal("K_ALS", AccessibleName.Of(cut.Find("th button.munin-explorer-kilder__name")));
+        Assert.Contains("K_ALS",
+                        AccessibleName.Of(cut.Find("button.munin-explorer-kilder__expand-toggle")),
+                        StringComparison.Ordinal);
+
+        // The code stands in for the name, so the caption that repeats it underneath is not drawn:
+        // a naive fallback shows K_ALS twice, stacked.
+        Assert.Empty(header.QuerySelectorAll("p.caption"));
+    }
+
+    [Fact]
+    public void Row_WhenANamedKildeIsBesideAnUnnamedOne_ThenOnlyTheUnnamedRowFallsBack()
+    {
+        // The fallback is per row. Both rows draw a name either way, so the caption is the only
+        // thing that tells a rule applied to the whole table from one applied to the row that
+        // needs it.
+        var cut = RenderWith(new FakeClient(
+            Kilde("", "K_ALS"),
+            Kilde("Dødsårsaksregisteret", "K_DAR")));
+
+        var headers = cut.FindAll(".munin-explorer-kilder tbody th");
+
+        Assert.Empty(headers[0].QuerySelectorAll("p.caption"));
+        Assert.Equal("K_DAR", headers[1].QuerySelector("p.caption")!.TextContent.Trim());
+    }
+
+    [Fact]
+    public void Panel_WhenADelkildeHasNoName_ThenItsGroupHeadingIsTheCode()
+    {
+        // A fourth interpolation of the same defect, and the one furthest from the bead: the group
+        // headings inside an open panel are built from a tuple assembled by a static method, so the
+        // fallback had to be threaded through it rather than applied at the heading.
+        // (Fhi.Metadata-w13lk)
+        var als = Kilde("Als registeret", "K_ALS");
+        var detail = Detail(als) with
+        {
+            Delkilder = [new() { Code = "K_ALS.SUB", Name = "", Datasamlinger = [Collection("Bølge 4")] }]
+        };
+
+        var cut = RenderWith(new FakeClient(als).Describing(detail));
+
+        ExpandToggle(cut, "Als registeret").Click();
+
+        var heading = cut.Find(".munin-explorer-kilder__expanded .munin-explorer-kilde__delkilde-name");
+
+        Assert.Equal("K_ALS.SUB", heading.TextContent.Trim());
+    }
+
+    [Fact]
+    public void Drilldown_WhenAnUnnamedKildeIsOpened_ThenTheRegionAndItsHeadingStillCarryAName()
+    {
+        // The heading the open view's region is labelled by is written from the name the LIST knew,
+        // so it was the one place the row's own fallback did not reach and the region opened
+        // unnamed for the length of the fetch. (Fhi.Metadata-w13lk)
+        var cut = RenderWith(new FakeClient(Kilde("", "K_ALS")));
+
+        cut.Find("th button.munin-explorer-kilder__name").Click();
+
+        var region = cut.Find("[role=region][aria-labelledby]");
+        var heading = cut.Find($"#{region.GetAttribute("aria-labelledby")}");
+
+        Assert.Equal("K_ALS", heading.TextContent.Trim());
+        Assert.Null(heading.GetAttribute("lang"));
+    }
+
+    [Fact]
+    public void Row_WhenTheCodeStandsInForTheName_ThenTheButtonIsNotMarkedAsNorwegian()
+    {
+        // The marker says which voice to read the text in, and a code is not Norwegian prose. The
+        // named row is asserted beside it, so the marker cannot be dropped wholesale and still pass.
+        var cut = RenderWith(
+            new FakeClient(Kilde("", "K_ALS"), Kilde("Dødsårsaksregisteret", "K_DAR")),
+            b => b.Add(c => c.Language, "en"));
+
+        var buttons = cut.FindAll("th button.munin-explorer-kilder__name");
+
+        Assert.Null(buttons[0].GetAttribute("lang"));
+        Assert.Equal("no", buttons[1].GetAttribute("lang"));
+    }
+
+    [Fact]
+    public void Panel_WhenADatasamlingHasNoName_ThenItsRowHeaderIsNotLeftEmpty()
+    {
+        // The one place the bead's row-header premise is TRUE: a datasamling row's th holds nothing
+        // but the name, so an empty one costs every other cell its header. It carries no code
+        // either, so the short name stands in. (Fhi.Metadata-w13lk)
+        var als = Kilde("Als registeret", "K_ALS");
+        var detail = Detail(als) with
+        {
+            Datasamlinger = [new() { Name = "", ShortName = "BIODATA", VariableCount = 12 }]
+        };
+
+        var cut = RenderWith(new FakeClient(als).Describing(detail));
+
+        ExpandToggle(cut, "Als registeret").Click();
+
+        var header = cut.Find(".munin-explorer-kilder__expanded tbody th");
+
+        Assert.Equal("row", header.GetAttribute("scope"));
+        Assert.Equal("BIODATA", header.TextContent.Trim());
+    }
+
+    [Fact]
+    public void Row_WhenAKildeHasNeitherNameNorCode_ThenTheThirdArmSaysSoRatherThanNothing()
+    {
+        // Reachable, not hypothetical: code and navn default to "" alike, and since
+        // Fhi.Metadata-o355u an explicit null on either reads as "". Two such rows still announce
+        // identically - the fallback cannot invent data that is not there. (Fhi.Metadata-w13lk)
+        var cut = RenderWith(new FakeClient(Kilde("", "")));
+
+        Assert.Equal("Ikke oppgitt", AccessibleName.Of(cut.Find("th button.munin-explorer-kilder__name")));
     }
 }

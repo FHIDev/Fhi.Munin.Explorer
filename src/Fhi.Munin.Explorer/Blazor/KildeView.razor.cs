@@ -241,15 +241,18 @@ public sealed partial class KildeView : ComponentBase
             builder.OpenElement(seq++, "li");
             builder.AddAttribute(seq++, "class", "munin-explorer-kilde__delkilde");
 
+            var named = T.Named(delkilde.Name, delkilde.Code);
+
             builder.OpenElement(seq++, $"h{level}");
             builder.AddAttribute(seq++, "class",
                                  "headline headline-xxs margin--none munin-explorer-kilde__delkilde-name");
-            builder.AddAttribute(seq++, "lang", CatalogueProperties.Foreign("no", Reader));
-            builder.AddContent(seq++, delkilde.Name);
+            builder.AddAttribute(seq++, "lang", CatalogueProperties.Foreign(named.Norwegian, Reader));
+            builder.AddContent(seq++, named.Text);
             builder.CloseElement();
 
-            // The kilde's own identifier line, one level down and wearing the same name.
-            if (Identifier(delkilde.Code, delkilde.ShortName) is { } identifiers)
+            // The kilde's own identifier line, one level down and wearing the same name - unless the
+            // heading above has already fallen back to it (Fhi.Metadata-w13lk).
+            if (named.Norwegian && Identifier(delkilde.Code, delkilde.ShortName) is { } identifiers)
             {
                 builder.OpenElement(seq++, "p");
                 builder.AddAttribute(seq++, "class", "caption margin--none munin-explorer-kilde__identifiers");

@@ -1619,4 +1619,75 @@ public class KildeViewTest : BunitContext
                                             && Regex.IsMatch(branch, Base))),
             "No unscoped rule leaves munin-explorer-meta__grid two lanes for the main column.");
     }
+
+    [Fact]
+    public void Heading_WhenTheCatalogueLeftTheNameEmpty_ThenTheCodeStandsInAndIsNotDrawnTwice()
+    {
+        // The heading is the drill-in's only h — empty, the page has no title and the reader who
+        // followed a link has nothing telling them where they landed. The identifier line under it
+        // usually carries the code, so it goes when the heading has taken it. (Fhi.Metadata-w13lk)
+        // The fixture keeps its kortNavn on purpose. Comparing the caption against the heading TEXT
+        // rather than against the fallback passes only where there is no short name: the caption
+        // reads "K_ALS (ALS)", the heading "K_ALS", and the code lands on the page twice.
+        var cut = Render(Kilde() with { PreferredTerm = "" });
+
+        Assert.Equal("ALS", Kilde().ShortName);
+        Assert.Equal("K_ALS", cut.Find("h2").TextContent.Trim());
+        Assert.Empty(cut.FindAll("p.munin-explorer-kilde__identifiers"));
+    }
+
+    [Fact]
+    public void Heading_WhenTheCodeStandsInForTheName_ThenItIsNotMarkedAsNorwegian()
+    {
+        // The lang marker says which voice to read the text in. A code is not Norwegian prose, and
+        // the identifier line that normally carries it has never been marked either — so marking
+        // it here would have an English reader's screen reader sound out K_ALS in Norwegian.
+        var cut = Render(Kilde() with { PreferredTerm = "" }, language: "en");
+
+        Assert.Null(cut.Find("h2").GetAttribute("lang"));
+
+        // And the marker is still there when the catalogue did give a name, which is the half a
+        // test asserting only the empty case would let anyone delete.
+        Assert.Equal("no", Render(Kilde(), language: "en").Find("h2").GetAttribute("lang"));
+    }
+
+    [Fact]
+    public void Delkilde_WhenItHasNoName_ThenItsHeadingIsTheCode()
+    {
+        // A second site in the same view, interpolating a different contract: the delkilde
+        // headings are built by hand in the tree below rather than through DetailBlocks.
+        var kilde = Kilde() with
+        {
+            Delkilder = [new KildeDelkilde { Id = Guid.NewGuid(), Code = "K_ALS.SUB", Name = "" }]
+        };
+
+        var names = Render(kilde).FindAll(".munin-explorer-kilde__delkilde-name")
+            .Select(e => e.TextContent.Trim())
+            .ToList();
+
+        Assert.Contains("K_ALS.SUB", names);
+    }
+
+    [Fact]
+    public void Delkilde_WhenTheCodeStandsInForItsName_ThenTheIdentifierLineGoesAndTheMarkerWithIt()
+    {
+        // The second half of the delkilde site: the identifier line under the heading is the same
+        // code, so it is not drawn twice, and a code is not Norwegian to be sounded out.
+        // (Fhi.Metadata-w13lk)
+        var kilde = Kilde() with
+        {
+            Delkilder =
+            [
+                new() { Id = Guid.NewGuid(), Code = "K_ALS.SUB", ShortName = "SUB", Name = "" }
+            ]
+        };
+
+        var cut = Render(kilde, language: "en");
+
+        var heading = cut.Find(".munin-explorer-kilde__delkilde-name");
+
+        Assert.Equal("K_ALS.SUB", heading.TextContent.Trim());
+        Assert.Null(heading.GetAttribute("lang"));
+        Assert.Empty(cut.FindAll(".munin-explorer-kilde__delkilde p.munin-explorer-kilde__identifiers"));
+    }
 }

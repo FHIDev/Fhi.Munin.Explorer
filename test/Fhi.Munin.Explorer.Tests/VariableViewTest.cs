@@ -442,4 +442,25 @@ public class VariableViewTest : BunitContext
 
         Assert.NotEmpty(aside.QuerySelectorAll("dl.munin-explorer-meta__grid"));
     }
+
+    [Fact]
+    public void Heading_WhenTheCatalogueLeftTheNameEmpty_ThenTheCodeStandsInAndIsNotDrawnTwice()
+    {
+        // The third view with the same shape and a third contract. The code caption below the
+        // heading goes when the heading has taken it, so the page does not show it stacked twice.
+        // (Fhi.Metadata-w13lk)
+        var cut = Render(Detail() with { PreferredTerm = "" });
+
+        Assert.Equal("ALSFRSR1Tale", cut.Find("h2").TextContent.Trim());
+        Assert.Empty(cut.FindAll("p.munin-explorer-whole__code"));
+    }
+
+    [Fact]
+    public void Heading_WhenTheCodeStandsInForTheName_ThenItIsNotMarkedAsNorwegian()
+    {
+        // A code is not Norwegian prose. The named case is asserted beside it so the marker cannot
+        // be dropped wholesale and still pass.
+        Assert.Null(Render(Detail() with { PreferredTerm = "" }, "en").Find("h2").GetAttribute("lang"));
+        Assert.Equal("no", Render(Detail(), "en").Find("h2").GetAttribute("lang"));
+    }
 }

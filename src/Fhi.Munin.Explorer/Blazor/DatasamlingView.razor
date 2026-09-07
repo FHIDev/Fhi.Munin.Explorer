@@ -7,11 +7,15 @@
         @* The name block, arranged as the kilde view arranges a source's: the identifier under the
            name rather than beside it, and the description as prose below both. *@
         <div class="munin-explorer-datasamling__header">
-            @* The catalogue holds one name, in Norwegian, so it is marked when the reader is not. *@
-            @DetailBlocks.Heading(HeadingLevel, datasamling.PreferredTerm, "headline headline-s margin--bottom",
-                                  HeadingId, CatalogueProperties.Foreign("no", Reader))
+            @{ var named = T.Named(datasamling.PreferredTerm, datasamling.Code); }
 
-            @if (!string.IsNullOrWhiteSpace(datasamling.Code))
+            @* The catalogue holds one name, in Norwegian, so it is marked when the reader is not - and
+               not when the catalogue left the name empty and this is the code standing in for it. *@
+            @DetailBlocks.Heading(HeadingLevel, named.Text, "headline headline-s margin--bottom",
+                                  HeadingId, CatalogueProperties.Foreign(named.Norwegian, Reader))
+
+            @* Not when the heading above has already fallen back to it. (Fhi.Metadata-w13lk) *@
+            @if (named.Norwegian && !string.IsNullOrWhiteSpace(datasamling.Code))
             {
                 <p class="caption margin--none munin-explorer-datasamling__identifiers">@datasamling.Code</p>
             }

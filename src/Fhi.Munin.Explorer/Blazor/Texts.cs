@@ -501,6 +501,21 @@ internal sealed record Texts(
     };
 
     /// <summary>
+    /// What a control or a heading shows for a thing the catalogue left unnamed: its name, else its
+    /// code, else <see cref="NotSpecified"/>. The flag says whether the answer is still the
+    /// catalogue's Norwegian, so a caller does not mark a code with <c>lang</c>.
+    /// </summary>
+    /// <remarks>
+    /// Applied at the render site and never on the contract: the kilde filter matches name and code
+    /// separately, and DatasamlingView hides a description that repeats the name — both read the raw
+    /// value and a fallback underneath them would reach both. (Fhi.Metadata-w13lk)
+    /// </remarks>
+    public (string Text, bool Norwegian) Named(string? name, string? code) =>
+        !string.IsNullOrWhiteSpace(name) ? (name, true)
+        : !string.IsNullOrWhiteSpace(code) ? (code, false)
+        : (NotSpecified, false);
+
+    /// <summary>
     /// Prose for a kildetype token, falling back to what the API called it.
     /// </summary>
     /// <remarks>
