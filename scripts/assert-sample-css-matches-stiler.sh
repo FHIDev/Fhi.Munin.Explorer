@@ -180,9 +180,11 @@ if [ -n "$new" ]; then
   done <<< "$new"
   echo "" >&2
   echo "The sample hosts exist so that a name is drawn here the way it is drawn on helsedata.no." >&2
-  echo "Fix the rule in $LEGACY and copy it over $MODERN — or, if the divergence is deliberate," >&2
-  echo "add its key to $KNOWN with a note saying why. Adding it is a hand edit on purpose: this" >&2
-  echo "script never writes that file." >&2
+  echo "Fix the rule in whichever copy you are editing, then copy that file over the other:" >&2
+  echo "  cp $MODERN $LEGACY     # or the other way round" >&2
+  echo "" >&2
+  echo "Or, if the divergence is deliberate, add its key to $KNOWN with a note saying why. Adding" >&2
+  echo "it is a hand edit on purpose: this script never writes that file." >&2
   status=1
 fi
 
