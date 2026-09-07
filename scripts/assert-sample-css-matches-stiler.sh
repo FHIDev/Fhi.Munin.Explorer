@@ -30,7 +30,13 @@
 # against helsedata's private feed for the layout job and reads exactly this file, which is why
 # this guard needs no new infrastructure, no scheduled job and no credentials of its own.
 #
-# THE BASELINE IS NOT SELF-UPDATING, and that is the point of it. Around 180 declaration-level
+# WHAT THAT COSTS, said plainly: the feed secret is not available to a pull request from a fork, so
+# the whole job SKIPS there and this comparison does not run. The summary job counts a skip as
+# fine, which is right — it is the same bound `check-hostile-host.sh` beside it has always had, and
+# an unconfigured guard should say so and stop rather than go red. But it means a required check
+# passing is not on its own proof that the stylesheets were compared. Read the job, not the tick.
+#
+# THE BASELINE IS NOT SELF-UPDATING, and that is the point of it. 178 declaration-level
 # divergences stand today. They are listed in test/sample-css-known-divergences.txt, this script
 # reads that list, and NOTHING here ever writes to it. A guard that records its own failures is
 # decoration. So:

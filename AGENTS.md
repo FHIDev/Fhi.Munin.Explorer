@@ -278,7 +278,10 @@ the wrong value. `scripts/assert-sample-css-matches-stiler.sh` closes it by comp
 than Stiler's `main` on purpose: it is the Stiler a host actually restores, so a green run means
 "the stand-in matches what helsedata will have" rather than "it matches unreleased work". It runs
 in the `layout in helsedata's stylesheet` job, which is the one job holding the private-feed
-credential, and skips itself where that secret is absent.
+credential, and skips itself where that secret is absent. **A green tick on that job is therefore
+not proof the comparison ran** — a fork pull request gets no secret, the job skips, and the summary
+counts a skip as fine. That is the bound `check-hostile-host.sh` beside it has always had, and this
+guard inherits it rather than closing it; read the job, not the tick.
 
 The 178 divergences standing today are listed in `test/sample-css-known-divergences.txt`. **Nothing
 writes that file.** A divergence not listed fails the build, and a listed line that no longer
