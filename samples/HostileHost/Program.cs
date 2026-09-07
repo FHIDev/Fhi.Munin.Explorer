@@ -35,6 +35,14 @@ app.UseStaticFiles();
 app.UseRouting();
 app.UseAuthorization();
 
+// One segment, the same as LegacyHost's. The layout links blazor.server.js relatively, the way
+// helsedata's own does, so a two-segment path resolves it under /Home/ and the circuit never
+// starts - a page that renders the chrome and nothing else, which every assertion is happy with.
+app.MapControllerRoute(
+    name: "kilder",
+    pattern: "kilder",
+    defaults: new { controller = "Home", action = "Kilder" });
+
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");

@@ -34,7 +34,7 @@ are the two halves, public for a host that wants to lay them out itself — see
 | `src/Fhi.Munin.Explorer/Client` | Typed `HttpClient` implementation + `AddMuninExplorer()`. |
 | `samples/ModernHost` | Blazor Web App — the everyday development host. |
 | `samples/LegacyHost` | Legacy Blazor Server + MVC — mirrors helsedata's Optimizely host. |
-| `samples/HostileHost` | The same, in helsedata's real stylesheet under their top-anchored header. |
+| `samples/HostileHost` | The same, in helsedata's real stylesheet under their top-anchored header. Two pages: the composed explorer on `/`, the kildeutforsker on `/kilder`. |
 | `test/Fhi.Munin.Explorer.Tests` | bUnit + xUnit. |
 
 The first two sample hosts exist on purpose. helsedata's production site runs **legacy** Blazor
@@ -49,6 +49,13 @@ place a rule of theirs can collide with our markup before the collision reaches 
 `scripts/check-hostile-host.sh` measures it with `getBoundingClientRect` and then runs axe over the
 same page. It needs credentials for helsedata's private feed and is deliberately absent from the
 solution — see [`docs/running-locally.md`](docs/running-locally.md).
+
+`/kilder` is rendered and **not** scanned, which the script says out loud where its targets are
+listed. The kilder table is the widest thing the package draws and the only part of it whose
+overflow lands on the host's page, so it is the one page most worth measuring — and today it would
+be red for three reasons that are all about the fixture and the Stiler pin rather than about the
+page. `Fhi.Metadata-fih3y` carries them. The page is there in the meantime so that a human can open
+the kildeutforsker inside helsedata's real stylesheet, which nothing here could do before.
 
 The two hosts share one stylesheet, copied — `samples/ModernHost/wwwroot/host.css` and
 `samples/LegacyHost/wwwroot/css/host.css` are byte-for-byte identical, so a difference you see
@@ -257,6 +264,15 @@ These are not style preferences — each one is a host that breaks otherwise.
     wrapper, `__track`, `__fill` and `__track--ongoing` are the period bar itself — only its width
     comes from an inline style, so an undrawn bar renders as nothing at all. The period is still
     legible without it, because the dates are next to it in words, in `__range`.
+    `munin-explorer-kilder-scroll` is the box the kilder table scrolls in, and it is the one name
+    here whose cost is paid by the HOST's page rather than by the component's own. The table's
+    eight columns want 779px at their narrowest — measured over 66 kilder — and helsedata's content
+    box goes under that at about 827px. Undrawn, the overflow has nowhere to go but the document,
+    so the whole of helsedata.no scrolls sideways under a component that is part of one page: a
+    WCAG 1.4.10 failure on somebody else's site rather than a table that looks wrong on ours
+    (`Fhi.Metadata-b3brc`). The markup carries `role="region"`, `tabindex="0"` and the table's own
+    name, so a host that adds `overflow-x` gets a scroll box a keyboard can already reach; a host
+    that adds `overflow-x` and nothing else has still done the whole job.
     `munin-explorer-pagination-pages` joined this list under `Fhi.Metadata-ejcbi`, and it is worth
     saying why it moved out of the handles: the numbered pages wear helsedata's own
     `hd-button-reset`, which strips the button chrome, so unlike every other control here nothing
@@ -393,6 +409,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-kilde__kildetype` | handle |
   | `munin-explorer-kilde__main` | handle |
   | `munin-explorer-kilder` | handle |
+  | `munin-explorer-kilder-scroll` | meaning |
   | `munin-explorer-kilder__count` | handle |
   | `munin-explorer-kilder__expand` | handle |
   | `munin-explorer-kilder__expand-toggle` | handle |

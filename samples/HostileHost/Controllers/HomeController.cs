@@ -3,10 +3,13 @@ using Microsoft.AspNetCore.Mvc;
 namespace HostileHost.Controllers;
 
 /// <summary>
-/// One page, on purpose. The kildeutforsker and the search-only mount have hosts of their own;
-/// what this sample adds is helsedata's chrome around the composed <c>VariableExplorer</c>.
+/// Two pages: the composed <c>VariableExplorer</c> and the kildeutforsker, both under helsedata's
+/// own chrome and stylesheet. The search-only mount has hosts of its own and is not here.
 /// </summary>
 public class HomeController : Controller
 {
     public IActionResult Index() => View();
+
+    /// <summary>The kilder table, which is the widest thing the package draws.</summary>
+    public IActionResult Kilder() => View();
 }

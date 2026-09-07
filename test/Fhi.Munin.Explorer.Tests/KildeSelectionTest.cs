@@ -625,6 +625,7 @@ public class KildeSelectionTest : BunitContext
             "munin-explorer-header__actions",
             "munin-explorer-header__actions-button",
             "munin-explorer-kilder",
+            "munin-explorer-kilder-scroll",
             "munin-explorer-kilder__count",
             "munin-explorer-kilder__expand",
             "munin-explorer-kilder__expand-toggle",

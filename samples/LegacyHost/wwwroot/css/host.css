@@ -1698,8 +1698,34 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    The overflow this note used to describe — eight columns at a min-content width of 1056px, a
    horizontal scrollbar on the whole page below roughly 1100px — was measured on a table that
    carried Dataansvarlig and Databehandler, and those institution names are what made it that
-   wide. Both sit behind Kelda's column picker now, so the number no longer describes this
-   table; whether the six still overflow is worth measuring before anyone reaches for widths. */
+   wide. Both sit behind Kelda's column picker now, and the measurement was redone over 66 kilder
+   on 2026-09-07: min-content is 779px, and the columns are still not what to reach for. What the
+   remaining 779px needed was a box to scroll inside, which is the rule below. */
+
+/* The box the table scrolls in, and the one name here that is not a handle: with no rule the
+   overflow lands on the PAGE, and helsedata's whole site scrolls sideways under a component that
+   is only part of one page. 779px of min-content against a content box that is 827px at 843px of
+   viewport and shrinking — measured at /MuninKelda (Fhi.Metadata-b3brc).
+
+   Around the table alone. `.munin-explorer-results` looks like the natural place and is not: the
+   column picker is in that column too, and a reader who scrolled the table sideways would take
+   the control for choosing columns off the screen with it.
+
+   `overflow-x: auto` makes overflow-y compute to auto as well. That is harmless here — the box
+   grows to the table's height, so there is never anything to scroll vertically — but it is why
+   this cannot be shortened to `overflow: auto` without saying the same thing.
+
+   The focus ring is not optional decoration: the markup gives this box `tabindex="0"` so a
+   keyboard can scroll it, and a focus stop the reader cannot see is WCAG 2.4.7. Same declaration
+   as the pager's, which is the other container here that takes focus. */
+.munin-explorer-kilder-scroll {
+  overflow-x: auto;
+}
+
+.munin-explorer-kilder-scroll:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 4px;
+}
 
 /* The two columns holding a number, right-aligned and tabular: they are read down the page,
    comparing magnitudes, and proportional digits put the same number in two different widths on

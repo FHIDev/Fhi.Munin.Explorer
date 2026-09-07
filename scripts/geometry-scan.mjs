@@ -16,19 +16,26 @@ import { assertions, selectors } from './geometry-assertions.mjs';
 const targets = process.argv.slice(2);
 const settleMs = Number(process.env.ACCESSIBILITY_SETTLE_MS ?? 4000);
 
-// Three widths across the band in which Stiler's desktop result table applies: above the 1488px
-// page-container cap, inside it, and one pixel above Stiler's own `@media (max-width: 1280px)`
-// breakpoint, which is the narrowest width the desktop layout is used at.
+// Six widths, and the last three are the ones that earn this file. Above the 1488px
+// page-container cap, inside it, one pixel above Stiler's own `@media (max-width: 1280px)`
+// breakpoint - and then 1280, 1024 and 843, which is where the layout actually stops fitting.
 //
-// 1280 AND BELOW ARE DELIBERATELY NOT IN THE DEFAULT, and that is a live defect rather than a
-// choice about coverage. Below the breakpoint Stiler turns the result row into
-// `flex-direction: column` while leaving its per-column `flex: 210 1 0` weights in force, so every
-// cell's flex basis becomes its height and collapses to 0: names, codes and dates all in the DOM
-// and none of them drawn. This fixture found that on its first run, the "text a reader is meant to
-// see has a box" invariant caught it, and the fix is in Fhi.Helsedata.Stiler rather than here
-// (Fhi.Metadata-l9l2n.41). Reproduce it with GEOMETRY_WIDTHS=1280, and put 1280 and 1024 back in
-// this default the day Stiler ships the reset.
-const widths = (process.env.GEOMETRY_WIDTHS ?? '1689,1440,1281')
+// 1280 AND 1024 USED TO BE MISSING, and the note here said why: below the breakpoint Stiler was
+// turning the result row into `flex-direction: column` while leaving its per-column
+// `flex: 210 1 0` weights in force, so every cell's flex basis became its height and collapsed to
+// 0 (Fhi.Metadata-l9l2n.41). Re-measured against Stiler 0.1.38 on 2026-09-07: every assertion
+// holds at both widths on both states, so the reset has shipped and the exclusion has outlived it.
+//
+// What the exclusion cost meanwhile is the point. Fhi.Metadata-b3brc is a page-wide horizontal
+// scrollbar whose whole band is 1024 to 1225, and not one width of it was in the old default -
+// 202px of overflow at 1024, and none at 1023, because Stiler's grid drops away entirely there. A
+// suite that samples only the widths where a layout is comfortable reports success without
+// having looked.
+//
+// 843 is the narrowest of the three and the only one below Stiler's grid: 779px of table
+// min-content plus 48px of page air is 827, so 843 of viewport is the last width that fits and
+// everything under it needs the table's own scroll box.
+const widths = (process.env.GEOMETRY_WIDTHS ?? '1689,1440,1281,1280,1024,843')
   .split(',')
   .map(w => Number(w.trim()))
   .filter(w => Number.isInteger(w) && w > 0);

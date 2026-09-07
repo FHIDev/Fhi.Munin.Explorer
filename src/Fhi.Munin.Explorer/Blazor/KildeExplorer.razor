@@ -348,227 +348,248 @@ else
            the control would be offering columns for a table that is not there. *@
         @ColumnPicker()
 
-        @* aria-label rather than aria-labelledby: the name is the same sentence the status line
-           above shows, and pointing at that element would make the table's name change under a
-           screen reader every time the status line does.
+        @* The table rides in a box of its own, and the box is around the table alone. The
+           results column cannot take it: the column picker above sits in that same column and
+           would scroll sideways out of reach with the table.
 
-           Thirteen columns in the order Kelda's own header draws them (kelda.tsx:479-535): Navn,
-           Status and Opprettet always, and ten behind the picker above, of which Kelda's
-           DEFAULT_VISIBLE turns three on.
+           Eight columns ask for 779px at their narrowest, which is more than the page is wide
+           below about 827px of content box — measured on helsedata at /MuninKelda over 66
+           kilder. Without this the overflow went to the PAGE, and a page that scrolls sideways
+           at 320px is a WCAG 1.4.10 failure on somebody else's site (Fhi.Metadata-b3brc).
 
-           The picker lists those ten in a DIFFERENT order (kelda.tsx:74) — counts before free
-           text, where the table puts free text first — and that is Kelda's, not a slip on either
-           side. Copying one order and not the other would make this table Kelda's in the control
-           and not in the columns.
+           role and tabindex are not decoration on the overflow. A box a mouse can scroll and a
+           keyboard cannot trades 1.4.10 for 2.1.1, and a focus stop with no name is one the
+           reader cannot place. Unconditional rather than applied only when it actually
+           scrolls: knowing that needs script, and this package ships none.
 
-           Two control columns come before all of them: the expand toggle, which is ours alone, and
-           the checkbox, which is Kelda's and is drawn only where the host wired the handover. Both
-           count towards the nested row's colspan.
+           The name is the table's own sentence, and the table keeps its `aria-label` as well, so a
+           screen reader says it twice: once for the region a reader lands in and once for the table
+           inside it. That is accepted rather than overlooked. The alternatives are worse — an
+           unnamed region is a landmark with no name, and taking the label off the table leaves the
+           table unnamed in the table list, which is where a reader looks for it. *@
+        <div class="munin-explorer-kilder-scroll" role="region" tabindex="0" aria-label="@summary">
+            @* aria-label rather than aria-labelledby: the name is the same sentence the status line
+               above shows, and pointing at that element would make the table's name change under a
+               screen reader every time the status line does.
 
-           No aria-busy, unlike the variable explorer's list: there is nothing to be busy with.
-           The list is fetched once, on initialisation, and while that fetch is running this table
-           is not in the DOM at all — so the attribute could only ever have said "false". It is the
-           drilldown, which does refetch on every kilde opened, that carries one. *@
-        <table class="munin-explorer-kilder" aria-label="@summary">
-            <thead>
-                <tr>
-                    @* A control column with no visible heading: the name is there for a screen
-                       reader, which announces it when it reaches the toggle below. *@
-                    <th scope="col" class="munin-explorer-kilder__expand">
-                        <span class="screenreader-only">@T.ColumnExpand</span>
-                    </th>
-                    @if (Selectable)
-                    {
-                        @* Over the rows the reader can see, and only those. No indeterminate state:
-                           it is a DOM property with no attribute behind it, and the count above says
-                           the same thing in words. (Fhi.Metadata-5ghur) *@
-                        <th scope="col" class="munin-explorer-kilder__select">
-                            <input type="checkbox"
-                                   aria-label="@T.SelectAllKilder"
-                                   checked="@AllVisibleTicked(visible)"
-                                   @onchange="() => TickAllVisible(visible)" />
+               Thirteen columns in the order Kelda's own header draws them (kelda.tsx:479-535): Navn,
+               Status and Opprettet always, and ten behind the picker above, of which Kelda's
+               DEFAULT_VISIBLE turns three on.
+
+               The picker lists those ten in a DIFFERENT order (kelda.tsx:74) — counts before free
+               text, where the table puts free text first — and that is Kelda's, not a slip on either
+               side. Copying one order and not the other would make this table Kelda's in the control
+               and not in the columns.
+
+               Two control columns come before all of them: the expand toggle, which is ours alone, and
+               the checkbox, which is Kelda's and is drawn only where the host wired the handover. Both
+               count towards the nested row's colspan.
+
+               No aria-busy, unlike the variable explorer's list: there is nothing to be busy with.
+               The list is fetched once, on initialisation, and while that fetch is running this table
+               is not in the DOM at all — so the attribute could only ever have said "false". It is the
+               drilldown, which does refetch on every kilde opened, that carries one. *@
+            <table class="munin-explorer-kilder" aria-label="@summary">
+                <thead>
+                    <tr>
+                        @* A control column with no visible heading: the name is there for a screen
+                           reader, which announces it when it reaches the toggle below. *@
+                        <th scope="col" class="munin-explorer-kilder__expand">
+                            <span class="screenreader-only">@T.ColumnExpand</span>
                         </th>
-                    }
-                    <th scope="col">@T.FieldName</th>
-                    @if (ColumnVisible(KildeColumn.Kildetype))
-                    {
-                        <th scope="col">@T.ColumnKildetype</th>
-                    }
-                    <th scope="col">@T.FieldStatus</th>
-                    @if (ColumnVisible(KildeColumn.DataController))
-                    {
-                        <th scope="col">@T.FieldDataController</th>
-                    }
-                    @if (ColumnVisible(KildeColumn.DataProcessor))
-                    {
-                        <th scope="col">@T.FieldDataProcessor</th>
-                    }
-                    @if (ColumnVisible(KildeColumn.PersonIdentification))
-                    {
-                        <th scope="col">@T.FieldPersonIdentification</th>
-                    }
-                    @if (ColumnVisible(KildeColumn.Validity))
-                    {
-                        <th scope="col">@T.FieldValidity</th>
-                    }
-                    @if (ColumnVisible(KildeColumn.Delkilder))
-                    {
-                        <th scope="col" class="munin-explorer-kilder__count">@T.ColumnDelkildeCount</th>
-                    }
-                    @if (ColumnVisible(KildeColumn.Datasamlinger))
-                    {
-                        <th scope="col" class="munin-explorer-kilder__count">@T.HeadingDataCollections</th>
-                    }
-                    @if (ColumnVisible(KildeColumn.Variabler))
-                    {
-                        <th scope="col" class="munin-explorer-kilder__count">@T.ColumnVariableCount</th>
-                    }
-                    @* No __count on this one: it holds a year the catalogue wrote down as text,
-                       not a number this component counted, and the class right-aligns figures. *@
-                    <th scope="col">@T.ColumnEstablished</th>
-                    @if (ColumnVisible(KildeColumn.Imported))
-                    {
-                        <th scope="col">@T.ColumnImported</th>
-                    }
-                    @if (ColumnVisible(KildeColumn.SourceUpdated))
-                    {
-                        <th scope="col">@T.ColumnSourceUpdated</th>
-                    }
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var kilde in visible)
-                {
-                    @* Keyed by the kilde's own id: the rows come and go as the reader types, and
-                       one of them holds the control the reader is standing on. Without a key the
-                       renderer would patch that button into a different kilde's rather than moving
-                       it. *@
-                    <tr @key="kilde.Id">
-                        @* Only where there is something to open. Kelda draws no toggle on a
-                           kilde with no datasamlinger, and a control that expands to nothing
-                           is worse than no control. *@
-                        <td class="munin-explorer-kilder__expand">
-                            @if (kilde.DatasamlingCount > 0)
-                            {
-                                @* aria-controls only while the panel exists: an IDREF to an element
-                                   that is not in the DOM is not a relationship, it is a dangling
-                                   pointer that an a11y linter and a screen reader both follow. *@
-                                <button type="button"
-                                        class="hd-button-reset munin-explorer-kilder__expand-toggle"
-                                        aria-expanded="@(IsExpanded(kilde.Id) ? "true" : "false")"
-                                        aria-controls="@(IsExpanded(kilde.Id) ? PanelId(kilde.Id) : null)"
-                                        aria-label="@ExpandLabel(kilde)"
-                                        @onclick="() => ToggleDatasamlingerAsync(kilde)">@(IsExpanded(kilde.Id) ? "−" : "+")</button>
-                            }
-                        </td>
                         @if (Selectable)
                         {
-                            @* A td, not a th: the box is a control over the row, not its label. Its
-                               accessible name carries the kilde's, because "Velg" repeated down a
-                               column says nothing about which row. (Fhi.Metadata-5ghur) *@
-                            <td class="munin-explorer-kilder__select">
+                            @* Over the rows the reader can see, and only those. No indeterminate state:
+                               it is a DOM property with no attribute behind it, and the count above says
+                               the same thing in words. (Fhi.Metadata-5ghur) *@
+                            <th scope="col" class="munin-explorer-kilder__select">
                                 <input type="checkbox"
-                                       aria-label="@T.SelectKilde(kilde.Name)"
-                                       checked="@IsTicked(kilde.Id)"
-                                       @onchange="e => Tick(kilde.Id, e.Value is true)" />
-                            </td>
+                                       aria-label="@T.SelectAllKilder"
+                                       checked="@AllVisibleTicked(visible)"
+                                       @onchange="() => TickAllVisible(visible)" />
+                            </th>
                         }
-                        @* The name is a th, not a td: it is what the rest of the row is about, and
-                           a screen reader reading a cell out of context should hear which kilde it
-                           belongs to. The catalogue holds one name, in Norwegian, so it is marked
-                           when the reader is not. *@
-                        <th scope="row">
-                            <button class="munin-explorer-kilder__name"
-                                    type="button"
-                                    lang="@CatalogueProperties.Foreign("no", Reader)"
-                                    @onclick="() => SelectAsync(kilde)">@kilde.Name</button>
-
-                            @* The code under the name, the way Kelda puts it there — it is how a
-                               reader who knows K_ALS finds the row whose name they do not know. *@
-                            <p class="caption margin--none">@kilde.Code</p>
-                        </th>
+                        <th scope="col">@T.FieldName</th>
                         @if (ColumnVisible(KildeColumn.Kildetype))
                         {
-                            <td>@T.KildeTypeLabel(kilde.Kildetype, kilde.Kildetype)</td>
+                            <th scope="col">@T.ColumnKildetype</th>
                         }
-                        <td>@(kilde.IsActive ? T.StatusActive : T.StatusPassive)</td>
-                        @* CatalogueLang and not Foreign: both are free text the catalogue wrote in Norwegian,
-                           but an empty one is drawn as our own "Ikke oppgitt", and a lang the
-                           content is not in is worse than none (WCAG 3.1.2). *@
+                        <th scope="col">@T.FieldStatus</th>
                         @if (ColumnVisible(KildeColumn.DataController))
                         {
-                            <td lang="@CatalogueLang(kilde.DataController)">@Value(kilde.DataController)</td>
+                            <th scope="col">@T.FieldDataController</th>
                         }
                         @if (ColumnVisible(KildeColumn.DataProcessor))
                         {
-                            <td lang="@CatalogueLang(kilde.DataProcessor)">@Value(kilde.DataProcessor)</td>
+                            <th scope="col">@T.FieldDataProcessor</th>
                         }
                         @if (ColumnVisible(KildeColumn.PersonIdentification))
                         {
-                            <td>@T.PersonIdentificationLabel(kilde.PersonIdentificationLevel)</td>
+                            <th scope="col">@T.FieldPersonIdentification</th>
                         }
                         @if (ColumnVisible(KildeColumn.Validity))
                         {
-                            <td>@ValidityPeriod(kilde)</td>
+                            <th scope="col">@T.FieldValidity</th>
                         }
                         @if (ColumnVisible(KildeColumn.Delkilder))
                         {
-                            <td class="munin-explorer-kilder__count">@kilde.DelkildeCount</td>
+                            <th scope="col" class="munin-explorer-kilder__count">@T.ColumnDelkildeCount</th>
                         }
                         @if (ColumnVisible(KildeColumn.Datasamlinger))
                         {
-                            <td class="munin-explorer-kilder__count">@kilde.DatasamlingCount</td>
+                            <th scope="col" class="munin-explorer-kilder__count">@T.HeadingDataCollections</th>
                         }
                         @if (ColumnVisible(KildeColumn.Variabler))
                         {
-                            <td class="munin-explorer-kilder__count">@kilde.TotalVariables</td>
+                            <th scope="col" class="munin-explorer-kilder__count">@T.ColumnVariableCount</th>
                         }
-                        @* No lang here, unlike the name above: the catalogue writes this field as
-                           a four-digit year, which has no language to mark (WCAG 3.1.2), and where
-                           it is missing the cell holds our "Ikke oppgitt" in the reader's own. *@
-                        <td>@Value(Established(kilde))</td>
+                        @* No __count on this one: it holds a year the catalogue wrote down as text,
+                           not a number this component counted, and the class right-aligns figures. *@
+                        <th scope="col">@T.ColumnEstablished</th>
                         @if (ColumnVisible(KildeColumn.Imported))
                         {
-                            <td>@Imported(kilde)</td>
+                            <th scope="col">@T.ColumnImported</th>
                         }
                         @if (ColumnVisible(KildeColumn.SourceUpdated))
                         {
-                            <td>@SourceUpdated(kilde)</td>
+                            <th scope="col">@T.ColumnSourceUpdated</th>
                         }
                     </tr>
-                    @if (IsExpanded(kilde.Id))
+                </thead>
+                <tbody>
+                    @foreach (var kilde in visible)
                     {
-                        @* Its own row rather than a region inside the one above: a table row
-                           cannot hold a block, and the panel has to span every column. *@
-                        <tr @key="@($"{kilde.Id}-datasamlinger")">
-                            <td colspan="@RowSpan" id="@PanelId(kilde.Id)" class="munin-explorer-kilder__expanded">
-                                @* One live region for both states, as the drilldown does above and
-                                   the variable explorer's panel does: the panel is inserted after a
-                                   press, so a line that is not announced is a line nobody hears. *@
-                                <p class="@ExpandedStatusClass(kilde.Id)"
-                                   role="status"
-                                   aria-live="polite"
-                                   aria-atomic="true">@ExpandedStatus(kilde.Id)</p>
-
-                                @if (!_datasamlingerLoading.Contains(kilde.Id) && !_datasamlingerError.ContainsKey(kilde.Id))
+                        @* Keyed by the kilde's own id: the rows come and go as the reader types, and
+                           one of them holds the control the reader is standing on. Without a key the
+                           renderer would patch that button into a different kilde's rather than moving
+                           it. *@
+                        <tr @key="kilde.Id">
+                            @* Only where there is something to open. Kelda draws no toggle on a
+                               kilde with no datasamlinger, and a control that expands to nothing
+                               is worse than no control. *@
+                            <td class="munin-explorer-kilder__expand">
+                                @if (kilde.DatasamlingCount > 0)
                                 {
-                                    @PanelHeading(kilde.Name)
-
-                                    @foreach (var group in DatasamlingGroups(kilde.Id))
-                                    {
-                                        @if (group.Heading is { } heading)
-                                        {
-                                            @GroupHeading(heading, group.Depth)
-                                        }
-                                        @DatasamlingTable.For(group.Rows, T, Language, Reader)
-                                    }
+                                    @* aria-controls only while the panel exists: an IDREF to an element
+                                       that is not in the DOM is not a relationship, it is a dangling
+                                       pointer that an a11y linter and a screen reader both follow. *@
+                                    <button type="button"
+                                            class="hd-button-reset munin-explorer-kilder__expand-toggle"
+                                            aria-expanded="@(IsExpanded(kilde.Id) ? "true" : "false")"
+                                            aria-controls="@(IsExpanded(kilde.Id) ? PanelId(kilde.Id) : null)"
+                                            aria-label="@ExpandLabel(kilde)"
+                                            @onclick="() => ToggleDatasamlingerAsync(kilde)">@(IsExpanded(kilde.Id) ? "−" : "+")</button>
                                 }
                             </td>
+                            @if (Selectable)
+                            {
+                                @* A td, not a th: the box is a control over the row, not its label. Its
+                                   accessible name carries the kilde's, because "Velg" repeated down a
+                                   column says nothing about which row. (Fhi.Metadata-5ghur) *@
+                                <td class="munin-explorer-kilder__select">
+                                    <input type="checkbox"
+                                           aria-label="@T.SelectKilde(kilde.Name)"
+                                           checked="@IsTicked(kilde.Id)"
+                                           @onchange="e => Tick(kilde.Id, e.Value is true)" />
+                                </td>
+                            }
+                            @* The name is a th, not a td: it is what the rest of the row is about, and
+                               a screen reader reading a cell out of context should hear which kilde it
+                               belongs to. The catalogue holds one name, in Norwegian, so it is marked
+                               when the reader is not. *@
+                            <th scope="row">
+                                <button class="munin-explorer-kilder__name"
+                                        type="button"
+                                        lang="@CatalogueProperties.Foreign("no", Reader)"
+                                        @onclick="() => SelectAsync(kilde)">@kilde.Name</button>
+
+                                @* The code under the name, the way Kelda puts it there — it is how a
+                                   reader who knows K_ALS finds the row whose name they do not know. *@
+                                <p class="caption margin--none">@kilde.Code</p>
+                            </th>
+                            @if (ColumnVisible(KildeColumn.Kildetype))
+                            {
+                                <td>@T.KildeTypeLabel(kilde.Kildetype, kilde.Kildetype)</td>
+                            }
+                            <td>@(kilde.IsActive ? T.StatusActive : T.StatusPassive)</td>
+                            @* CatalogueLang and not Foreign: both are free text the catalogue wrote in Norwegian,
+                               but an empty one is drawn as our own "Ikke oppgitt", and a lang the
+                               content is not in is worse than none (WCAG 3.1.2). *@
+                            @if (ColumnVisible(KildeColumn.DataController))
+                            {
+                                <td lang="@CatalogueLang(kilde.DataController)">@Value(kilde.DataController)</td>
+                            }
+                            @if (ColumnVisible(KildeColumn.DataProcessor))
+                            {
+                                <td lang="@CatalogueLang(kilde.DataProcessor)">@Value(kilde.DataProcessor)</td>
+                            }
+                            @if (ColumnVisible(KildeColumn.PersonIdentification))
+                            {
+                                <td>@T.PersonIdentificationLabel(kilde.PersonIdentificationLevel)</td>
+                            }
+                            @if (ColumnVisible(KildeColumn.Validity))
+                            {
+                                <td>@ValidityPeriod(kilde)</td>
+                            }
+                            @if (ColumnVisible(KildeColumn.Delkilder))
+                            {
+                                <td class="munin-explorer-kilder__count">@kilde.DelkildeCount</td>
+                            }
+                            @if (ColumnVisible(KildeColumn.Datasamlinger))
+                            {
+                                <td class="munin-explorer-kilder__count">@kilde.DatasamlingCount</td>
+                            }
+                            @if (ColumnVisible(KildeColumn.Variabler))
+                            {
+                                <td class="munin-explorer-kilder__count">@kilde.TotalVariables</td>
+                            }
+                            @* No lang here, unlike the name above: the catalogue writes this field as
+                               a four-digit year, which has no language to mark (WCAG 3.1.2), and where
+                               it is missing the cell holds our "Ikke oppgitt" in the reader's own. *@
+                            <td>@Value(Established(kilde))</td>
+                            @if (ColumnVisible(KildeColumn.Imported))
+                            {
+                                <td>@Imported(kilde)</td>
+                            }
+                            @if (ColumnVisible(KildeColumn.SourceUpdated))
+                            {
+                                <td>@SourceUpdated(kilde)</td>
+                            }
                         </tr>
+                        @if (IsExpanded(kilde.Id))
+                        {
+                            @* Its own row rather than a region inside the one above: a table row
+                               cannot hold a block, and the panel has to span every column. *@
+                            <tr @key="@($"{kilde.Id}-datasamlinger")">
+                                <td colspan="@RowSpan" id="@PanelId(kilde.Id)" class="munin-explorer-kilder__expanded">
+                                    @* One live region for both states, as the drilldown does above and
+                                       the variable explorer's panel does: the panel is inserted after a
+                                       press, so a line that is not announced is a line nobody hears. *@
+                                    <p class="@ExpandedStatusClass(kilde.Id)"
+                                       role="status"
+                                       aria-live="polite"
+                                       aria-atomic="true">@ExpandedStatus(kilde.Id)</p>
+
+                                    @if (!_datasamlingerLoading.Contains(kilde.Id) && !_datasamlingerError.ContainsKey(kilde.Id))
+                                    {
+                                        @PanelHeading(kilde.Name)
+
+                                        @foreach (var group in DatasamlingGroups(kilde.Id))
+                                        {
+                                            @if (group.Heading is { } heading)
+                                            {
+                                                @GroupHeading(heading, group.Depth)
+                                            }
+                                            @DatasamlingTable.For(group.Rows, T, Language, Reader)
+                                        }
+                                    }
+                                </td>
+                            </tr>
+                        }
                     }
-                }
-            </tbody>
-        </table>
+                </tbody>
+            </table>
+        </div>
     </div>
     </div>
     }
