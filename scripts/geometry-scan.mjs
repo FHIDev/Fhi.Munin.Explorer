@@ -63,6 +63,17 @@ for (const target of targets) {
   plan.push({ url, state, label: state === null ? url : `${url} [${state}]` });
 }
 
+// A pin scoped to a state name that no longer exists would go quietly inapplicable everywhere and
+// never be run again — the same false green as measuring nothing and reporting success.
+for (const { name, states: appliesTo } of assertions) {
+  for (const scoped of appliesTo ?? []) {
+    if (Object.hasOwn(states, scoped)) continue;
+    console.error(`assertion "${name}" is scoped to unknown state "${scoped}" - TOOLING failure.`);
+    console.error(`known states: ${Object.keys(states).join(', ')}`);
+    process.exit(2);
+  }
+}
+
 let browser;
 try {
   browser = await chromium.launch();
@@ -73,6 +84,7 @@ try {
 }
 
 let failures = 0;
+let inapplicable = 0;
 
 try {
   for (const { url, state, label } of plan) {
@@ -114,7 +126,17 @@ try {
         await page.waitForTimeout(250);
       }
 
-      for (const { name, kind, body } of assertions) {
+      for (const { name, kind, states: appliesTo, body } of assertions) {
+        // Printed, never skipped silently. A pin whose defect cannot occur here is not a pass,
+        // and a run that reported it as one would be the thing this suite exists to prevent.
+        if (appliesTo !== undefined && !appliesTo.includes(state)) {
+          inapplicable += 1;
+          console.log(`    n/a  [${kind}] ${name}`);
+          console.log(`         only measured in ${appliesTo.join(', ')}; ` +
+            `this is ${state === null ? 'no state' : state}`);
+          continue;
+        }
+
         let finding;
         try {
           // One argument, always: page.evaluate takes exactly one, and every body destructures
@@ -156,10 +178,11 @@ try {
 }
 
 console.log('');
+const notRun = inapplicable === 0 ? '' : `, and ${inapplicable} did not apply`;
 if (failures > 0) {
-  console.log(`${failures} geometry assertion(s) failed.`);
+  console.log(`${failures} geometry assertion(s) failed${notRun}.`);
 } else {
-  console.log('every geometry assertion held.');
+  console.log(`every geometry assertion that applies held${notRun}.`);
 }
 
 process.exit(failures > 0 ? 1 : 0);

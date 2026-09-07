@@ -50,12 +50,13 @@ place a rule of theirs can collide with our markup before the collision reaches 
 same page. It needs credentials for helsedata's private feed and is deliberately absent from the
 solution — see [`docs/running-locally.md`](docs/running-locally.md).
 
-`/kilder` is rendered and **not** scanned, which the script says out loud where its targets are
-listed. The kilder table is the widest thing the package draws and the only part of it whose
-overflow lands on the host's page, so it is the one page most worth measuring — and today it would
-be red for three reasons that are all about the fixture and the Stiler pin rather than about the
-page. `Fhi.Metadata-fih3y` carries them. The page is there in the meantime so that a human can open
-the kildeutforsker inside helsedata's real stylesheet, which nothing here could do before.
+`/kilder` is scanned too, and it is the page most worth measuring: the kilder table is the widest
+thing the package draws and the only part of it whose overflow lands on the host's page rather than
+on its own box. Every assertion the scan runs is itself checked by
+`scripts/geometry-negative-control.mjs`, which breaks the page at least once per assertion and
+requires the matching one to say so — a green geometry run means nothing while an assertion has
+quietly stopped measuring anything, and an assertion with no such case is a tooling failure. Assertions printed `n/a` are pins whose defect cannot occur on that page; they
+are stated, not skipped. (`Fhi.Metadata-fih3y`)
 
 The two hosts share one stylesheet, copied — `samples/ModernHost/wwwroot/host.css` and
 `samples/LegacyHost/wwwroot/css/host.css` are byte-for-byte identical, so a difference you see

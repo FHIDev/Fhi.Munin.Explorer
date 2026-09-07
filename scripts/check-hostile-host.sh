@@ -14,9 +14,8 @@
 # WHAT IT DOES NOT SEE, so nobody reads a green run as more than it is:
 #   - anything below the fold that only misbehaves once scrolled; every assertion measures at
 #     scroll offset 0, which is where the absolute header overlaps;
-#   - the search-only mount, which this host does not render, and the kildeutforsker, which it
-#     does render on /kilder and which nothing here measures yet - see TARGETS below for the three
-#     reasons and the bead;
+#   - the search-only mount, which this host does not render. The kildeutforsker IS measured, on
+#     /kilder, as of Fhi.Metadata-fih3y;
 #   - widths other than the six in GEOMETRY_WIDTHS, and any height at all — nothing here asks
 #     about vertical layout;
 #   - whether it LOOKS right. Boxes in the right places can still be the wrong design.
@@ -44,30 +43,15 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # which is the state defect 2 was found in and the only one where a panel is asked to be hidden at
 # all. Both are on the front page.
 #
-# /kilder IS NOT IN THIS LIST, AND THAT IS THE INTERESTING PART. The host renders the
-# kildeutforsker now - the page exists, the route is there, and `kilder-list` is a state
-# axe-states.mjs already knows - but scanning it here today would be red for three reasons, none
-# of which is the page being wrong:
-#
-#   1. Fhi.Metadata-b3brc's own fix is half in Fhi.Helsedata.Stiler, and this host is pinned to
-#      0.1.38, which predates it. Measured 2026-09-07 against 0.1.38: `no horizontal overflow`
-#      fails at 1024 with `document scrollWidth 1172 > clientWidth 1024`. Against a local build of
-#      the Stiler branch, both narrow widths pass. The pin cannot be bumped ahead of the release
-#      because the version is a pipeline counter, not a number anyone here can predict.
-#   2. `hidden means hidden` fails at 1281 and above, and it is right to: Stiler DELIBERATELY
-#      un-hides `.munin-explorer-filters__facets[hidden]` where the host has room for a sidebar,
-#      so the fold is meant to be inert there. The invariant has no way to tell that apart from
-#      the accidental un-hiding it was written for.
-#   3. Both tab pins fail with "nothing was measured" on any page without a tablist, which is
-#      every page that is not the composed explorer. A pin is a replay of one defect and should be
-#      inapplicable rather than failing where that defect cannot occur.
-#
-# Adding the target is Fhi.Metadata-fih3y, which carries the three above. The page is here now so
-# that bead is a one-line change and so a human can open the kildeutforsker in helsedata's real
-# stylesheet, which until today nothing in this repository could do.
+# `/kilder::kilder-list` is the kildeutforsker, and it is the page most worth measuring: the kilder
+# table is the widest thing this package draws and the only part whose overflow lands on the HOST's
+# page. Three fixture problems had to be solved before it could go in - the Stiler pin, a
+# deliberate host un-hide, and pins that need a tablist - and the widths and numbers are recorded
+# on Fhi.Metadata-fih3y.
 TARGETS=(
   "/::explorer-tabs"
   "/::explorer-list-tab"
+  "/kilder::kilder-list"
 )
 
 host_pid=""
@@ -194,6 +178,15 @@ set -e
 
 [ "$geometry_status" -eq 2 ] && exit 2
 
+# An assertion that has quietly stopped measuring anything reports success forever, so each one is
+# handed a page carrying the defect it was written for and required to say so.
+set +e
+ACCESSIBILITY_SETTLE_MS="$SETTLE_MS" node "$ROOT/scripts/geometry-negative-control.mjs" "$BASE"
+control_status=$?
+set -e
+
+[ "$control_status" -eq 2 ] && exit 2
+
 # axe on the same page, and it is not a duplicate of the accessibility job: that one scans
 # ModernHost, where the cascade is the sample stylesheet's. A contrast or focus rule can hold
 # there and fail here, because here the colours are helsedata's.
@@ -208,6 +201,16 @@ set -e
 [ "$axe_status" -eq 2 ] && exit 2
 
 echo
+if [ "$control_status" -ne 0 ]; then
+  cat >&2 <<'EOF'
+A geometry assertion did not fire against the defect it exists for.
+
+Read the geometry result above as unmeasured, whichever way it went: an assertion that holds
+against a page carrying its own defect is not passing, it is absent.
+EOF
+  exit 1
+fi
+
 if [ "$geometry_status" -ne 0 ] || [ "$axe_status" -ne 0 ]; then
   cat >&2 <<'EOF'
 The component does not render correctly inside helsedata's stylesheet and chrome.
@@ -222,9 +225,12 @@ EOF
 fi
 
 cat <<'EOF'
-Every geometry assertion held and axe found no violations, against helsedata's real stylesheet.
+Every geometry assertion that applies held, each one still fires against the defect it exists
+for, and axe found no violations - against helsedata's real stylesheet.
 
 Read that for what it is. It says the boxes are where they should be at six widths and at
-scroll offset 0; it does not say the page looks right, and it says nothing at all about the one
-component this host does not mount. The header of this script lists the rest.
+scroll offset 0, on the front page and on the kildeutforsker; it does not say the page looks
+right, and it says nothing at all about the search-only mount this host does not render. The
+header of this script lists the rest. Assertions printed `n/a` measured nothing on that page and
+say so; they are not passes.
 EOF
