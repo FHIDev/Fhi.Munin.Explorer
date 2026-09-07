@@ -1782,12 +1782,9 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .munin-explorer-kilder .munin-explorer-kilder__select {
   width: 1%;
 }
-/* The expand control column and the row it opens. The toggle wears hd-button-reset, so it has no
-   chrome of its own: without a rule here it is a bare glyph in a column with no width.
-
-   Scoped like __count and __select above: the shared cell rule carries a class and an element, so
-   a bare class name loses and the column stayed left-aligned. The 4px is what lets width: 32px
-   bite. (Stiler _kilder.scss:117, Fhi.Metadata-cuo0e) */
+/* The toggle wears hd-button-reset, so without a rule this is a bare glyph in a column with no
+   width. Scoped like __count and __select: the shared cell rule carries a class and an element, so
+   a bare name loses. The 4px is what lets width bite. (Stiler _kilder.scss:117, Fhi.Metadata-cuo0e) */
 .munin-explorer-kilder .munin-explorer-kilder__expand {
   padding-left: 4px;
   padding-right: 4px;
