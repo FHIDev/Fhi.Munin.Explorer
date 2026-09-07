@@ -297,10 +297,9 @@ public class VariableListViewTest : BunitContext
                     throw new InvalidOperationException("the membership read is gone");
                 }
 
-                // A list made a moment ago holds nothing. The fake pages the same items out for
-                // every other id, which is enough for the cases that only count calls, but a
-                // created list answering with the previous list's rows would make the create race
-                // unfalsifiable here.
+                // A list made a moment ago holds nothing. Every other id pages the same items
+                // out, which suits the cases that only count calls, but a created list answering
+                // with the previous list's rows would make the create race unfalsifiable.
                 return new Page<VariableListItem>
                 {
                     Items = [],

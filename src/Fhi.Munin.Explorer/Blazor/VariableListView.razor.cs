@@ -584,6 +584,10 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             || !Lists.Any(l => l.Id == _shownList))
         {
             _page = null;
+
+            // Cleared here as well now that a superseded read returns without touching it: this
+            // branch is the one place a read in flight can be abandoned by a caller.
+            _loading = false;
             SeedDesiredData();
             return;
         }
