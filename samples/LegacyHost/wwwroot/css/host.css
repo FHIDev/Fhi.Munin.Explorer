@@ -1302,11 +1302,12 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    stand-in so the fields sit in lanes here too — stacked, they read as a long column of labels
    and the group headings stop meaning anything. */
 
-/* `overflow-wrap: anywhere` mirrors Stiler PR 39156. A grid track floors at min-content, and
-   "Gjeldende lovgivning" on ALS-registeret is two ELI-URLs joined with semicolons — one 586px
-   token that sized the whole column and pushed every cell in it 17px past the viewport at 1024px.
-   On the grid rather than on dt/dd, because a label that breaks differently from its value sizes
-   the column twice. (Fhi.Metadata-fv79e) */
+/* `overflow-wrap: anywhere` mirrors Stiler PR 39156, and it is the ONLY thing that fixes this:
+   `break-word` leaves min-content alone, and the track is what needs to shrink. "Gjeldende
+   lovgivning" on ALS-registeret is three ELI-URLs joined with semicolons — measured min-content
+   586px, in a 435px grid — so one value floored the track wider than its own container. It costs
+   13 mid-word breaks in Norwegian prose at 1024px; a page that scrolls sideways hides more.
+   On the grid, not on dd: a dt that breaks differently floors the track instead. (Fhi.Metadata-fv79e) */
 .munin-explorer-meta__grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

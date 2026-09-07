@@ -1692,23 +1692,28 @@ public class KildeViewTest : BunitContext
     }
 
     [Fact]
-    public void Facts_WhenAHostStylesTheGrid_ThenALongValueCanBreakInsideItsColumn()
+    public void Metadata_WhenAHostStylesTheGrid_ThenALongValueCanBreakInsideItsColumn()
     {
-        // A grid track floors at min-content, so one unbreakable token sizes the whole column: two
-        // ELI-URLs joined with semicolons made every cell reach past the viewport at 1024px. Not
-        // minmax - below 1280px the single-track rule overrides it. (Fhi.Metadata-fv79e)
+        // A grid track floors at min-content, and "Gjeldende lovgivning" measures 586px in a 435px
+        // grid, so one value floored the track wider than its own container. Asserted on the rule
+        // that carries the two-lane default, so a copy inside @media does not answer for it.
+        // (Fhi.Metadata-fv79e)
         static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
 
-        var declared = HostClassNames.SampleDeclarationsFor("munin-explorer-meta__grid")
+        var unconditional = HostClassNames.SampleDeclarationsFor("munin-explorer-meta__grid")
             .Where(rule => rule.Selector.Split(',').Any(
                        branch => !branch.Contains("__aside", StringComparison.Ordinal)
                                  && Regex.IsMatch(branch, @"\.munin-explorer-meta__grid(?![\w-])")))
             .Select(rule => Squeezed(rule.Declarations))
+            .Where(d => d.Contains("grid-template-columns:1fr1fr", StringComparison.Ordinal))
             .ToList();
 
+        Assert.True(unconditional.Count > 0, "No rule declares the two-lane default any more.");
+
+        // Not break-word: it leaves min-content alone, so the track stays floored and the page
+        // still scrolls. Measured — 17px before, 17px with break-word, 0 with this.
         Assert.True(
-            declared.Any(d => d.Contains("overflow-wrap:anywhere", StringComparison.Ordinal)
-                           || d.Contains("word-break:break-all", StringComparison.Ordinal)),
-            "Nothing lets a long value break, so one token sizes the column and the page scrolls.");
+            unconditional.Any(d => d.Contains("overflow-wrap:anywhere", StringComparison.Ordinal)),
+            "Nothing unconditional lets a long value break, so one token floors the track.");
     }
 }
