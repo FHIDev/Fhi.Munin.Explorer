@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using AngleSharp.Dom;
 using Bunit;
 using Fhi.Munin.Explorer.Blazor;
@@ -1571,26 +1572,51 @@ public class KildeViewTest : BunitContext
     }
 
     [Fact]
-    public void Aside_Always_ThenItsFactListsAskForOneLaneAndTheMetadataBlocksDoNot()
+    public void Aside_Always_ThenItsFactListsWearTheGridAndTheMainColumnKeepsItsTwoLanes()
     {
-        // The sidebar is 320px and the default panel grid is two lanes, which leaves 148px each —
-        // narrower than "Personopplysningsloven", so the words pushed the whole page into
-        // horizontal scrolling. The wide middle column keeps two lanes; only the aside asks for
-        // one. (Fhi.Metadata-hi0po)
+        // The markup half of the sidebar's single lane. The metadata groups render into the wide
+        // middle column, where two lanes are the right shape and the aside's rule must not reach
+        // them. (Fhi.Metadata-hi0po)
         var cut = Render(Kilde());
 
-        var aside = cut.Find(".munin-explorer-kilde__aside");
+        Assert.NotEmpty(cut.Find(".munin-explorer-kilde__aside").QuerySelectorAll("dl.munin-explorer-meta__grid"));
+        Assert.NotEmpty(cut.Find(".munin-explorer-kilde__main").QuerySelectorAll("dl.munin-explorer-meta__grid"));
+    }
 
-        Assert.NotEmpty(aside.QuerySelectorAll("dl.munin-explorer-meta__grid"));
-        Assert.All(aside.QuerySelectorAll("dl.munin-explorer-meta__grid"),
-                   dl => Assert.Contains("munin-explorer-meta__grid-1", dl.ClassName!, StringComparison.Ordinal));
+    [Fact]
+    public void Aside_WhenAHostStylesTheFactLists_ThenOneLaneIsScopedToItAndTheDefaultStaysTwo()
+    {
+        // The stylesheet half of the sidebar's single lane, for all three asides. Through
+        // SampleDeclarationsFor so `-1` and `-2` cannot answer for the base class, and anchored on
+        // the whole value so a second track fails it. (Fhi.Metadata-hi0po)
+        const string Base = @"\.munin-explorer-meta__grid(?![\w-])";
+        const string OneLane = @"grid-template-columns:\s*minmax\(\s*0\s*,\s*1fr\s*\)\s*(;|$)";
 
-        // The metadata groups render into the main column, where two lanes are the right shape and
-        // the modifier would be a regression rather than a fix.
-        var main = cut.Find(".munin-explorer-kilde__main");
+        var grids = HostClassNames.SampleDeclarationsFor("munin-explorer-meta__grid");
 
-        Assert.NotEmpty(main.QuerySelectorAll("dl.munin-explorer-meta__grid"));
-        Assert.All(main.QuerySelectorAll("dl.munin-explorer-meta__grid"),
-                   dl => Assert.DoesNotContain("munin-explorer-meta__grid-1", dl.ClassName!, StringComparison.Ordinal));
+        foreach (var aside in (string[])
+                 [
+                     "munin-explorer-kilde__aside",
+                     "munin-explorer-datasamling__aside",
+                     "munin-explorer-whole__aside",
+                 ])
+        {
+            Assert.True(
+                grids.Any(rule => Regex.IsMatch(rule.Declarations, OneLane)
+                                  && rule.Selector.Split(',').Any(
+                                      branch => branch.Contains(aside, StringComparison.Ordinal)
+                                                && Regex.IsMatch(branch, Base))),
+                $"Nothing gives {aside} one shrinkable lane, so its fact lists keep the two-lane default.");
+        }
+
+        // The default the aside opts out of. Narrowing the base rule would fix the sidebar by
+        // costing the wide middle column its two lanes, and every assertion above would still pass.
+        // Per branch, so grouping the base rule with a scoped one stays equivalent CSS here.
+        Assert.True(
+            grids.Any(rule => Regex.IsMatch(rule.Declarations, @"grid-template-columns:\s*1fr\s+1fr\s*(;|$)")
+                              && rule.Selector.Split(',').Any(
+                                  branch => !branch.Contains("__aside", StringComparison.Ordinal)
+                                            && Regex.IsMatch(branch, Base))),
+            "No unscoped rule leaves munin-explorer-meta__grid two lanes for the main column.");
     }
 }

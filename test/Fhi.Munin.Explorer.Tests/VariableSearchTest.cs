@@ -8547,16 +8547,12 @@ public class VariableSearchTest : BunitContext
                    k => Assert.Contains(k, (string[])["headline-3", "headline-s", "headline-xxs"]));
 
         // The fact lists borrow the grid the detail panel already uses rather than a shape of their
-        // own — the same pairs of label and value, so the same class. The -1 modifier is a member of
-        // that same family, not a new shape: this panel renders KildeView, whose aside is the same
-        // 320px column, and it asks for one lane there (Fhi.Metadata-hi0po). The sibling assertion
-        // on the variable panel's own lists has allowed exactly this pair since it was written.
+        // own — the same pairs of label and value, so the same class.
         // GetAttribute, not ClassName: AngleSharp reports a missing class attribute as "" rather
         // than null, so the null branch of this list was unreachable and the assertion did not mean
         // what it said.
         Assert.All(panel.QuerySelectorAll("dl"),
-                   e => Assert.Contains(e.GetAttribute("class"), (string?[])
-                       [null, "munin-explorer-meta__grid", "munin-explorer-meta__grid munin-explorer-meta__grid-1"]));
+                   e => Assert.Contains(e.GetAttribute("class"), (string?[])[null, "munin-explorer-meta__grid"]));
 
         Back(cut);
 

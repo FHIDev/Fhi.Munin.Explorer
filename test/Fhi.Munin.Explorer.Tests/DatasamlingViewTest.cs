@@ -502,15 +502,13 @@ public class DatasamlingViewTest : BunitContext
     }
 
     [Fact]
-    public void Aside_Always_ThenItsFactListsAskForOneLane()
+    public void Aside_Always_ThenItsFactListsWearTheGridTheHostGivesOneLane()
     {
-        // The same 320px column the kilde view has, and the same defect if it goes two-lane: only
-        // KildeView's call sites were pinned, so dropping oneLane here compiled and passed.
-        // (Fhi.Metadata-hi0po)
+        // The markup half of the sidebar's single lane — the stylesheet half is asserted in
+        // KildeViewTest. Fact lists that stopped wearing this class, or moved out of the aside,
+        // would leave the host's rule matching nothing and say so nowhere. (Fhi.Metadata-hi0po)
         var aside = Render(Datasamling()).Find(".munin-explorer-datasamling__aside");
 
         Assert.NotEmpty(aside.QuerySelectorAll("dl.munin-explorer-meta__grid"));
-        Assert.All(aside.QuerySelectorAll("dl.munin-explorer-meta__grid"),
-                   dl => Assert.Contains("munin-explorer-meta__grid-1", dl.ClassName!, StringComparison.Ordinal));
     }
 }

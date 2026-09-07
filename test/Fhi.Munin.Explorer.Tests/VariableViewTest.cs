@@ -433,17 +433,13 @@ public class VariableViewTest : BunitContext
     }
 
     [Fact]
-    public void Aside_Always_ThenItsFactListsAskForOneLaneAndTheVersionDetailDoesNot()
+    public void Aside_Always_ThenItsFactListsWearTheGridTheHostGivesOneLane()
     {
-        // The whole-variable aside is the third 320px column, and the version detail below it is the
-        // one Facts caller in a full-width column — the distinction the oneLane parameter exists to
-        // make, and the one my first attempt got wrong. (Fhi.Metadata-hi0po)
-        var cut = Render(Detail());
-
-        var aside = cut.Find(".munin-explorer-whole__aside");
+        // The markup half of the sidebar's single lane — the stylesheet half is asserted in
+        // KildeViewTest. The version detail below this aside renders into a full-width column and
+        // is deliberately not asserted here. (Fhi.Metadata-hi0po)
+        var aside = Render(Detail()).Find(".munin-explorer-whole__aside");
 
         Assert.NotEmpty(aside.QuerySelectorAll("dl.munin-explorer-meta__grid"));
-        Assert.All(aside.QuerySelectorAll("dl.munin-explorer-meta__grid"),
-                   dl => Assert.Contains("munin-explorer-meta__grid-1", dl.ClassName!, StringComparison.Ordinal));
     }
 }

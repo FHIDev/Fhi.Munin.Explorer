@@ -52,7 +52,7 @@
 
             <aside class="munin-explorer-whole__aside">
                 @DetailBlocks.Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
-                @DetailBlocks.Facts(SourceInformation, Language, oneLane: true)
+                @DetailBlocks.Facts(SourceInformation, Language)
 
                 @if (CatalogueDate.Period(variable.DataFrom, variable.DataTo, Language, T, Dates) is { } period)
                 {
