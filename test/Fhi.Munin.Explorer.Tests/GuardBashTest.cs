@@ -7,6 +7,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// can go red on the ubuntu-latest runner; the box they are for is the developer's, where all
 /// three were false at once (Fhi.Metadata-ze05p).
 /// </summary>
+[Collection(GuardScripts.Name)]
 public class GuardBashTest
 {
     [ShellFact]

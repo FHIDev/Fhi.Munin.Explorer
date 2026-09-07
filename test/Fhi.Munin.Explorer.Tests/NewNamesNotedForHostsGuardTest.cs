@@ -9,6 +9,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// of it inside the repository under test, making that its checkout root and every path it reads the
 /// fixture's own. Only <c>BASE_REF</c> is passed in.
 /// </remarks>
+[Collection(GuardScripts.Name)]
 public class NewNamesNotedForHostsGuardTest
 {
     private const string Script = "assert-new-names-noted-for-hosts.sh";

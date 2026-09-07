@@ -16,6 +16,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// over the real component.
 /// </para>
 /// </remarks>
+[Collection(GuardScripts.Name)]
 public class FragmentHostNotesGuardTest
 {
     private const string Script = "assert-fragment-names-noted-for-hosts.sh";

@@ -39,6 +39,23 @@ if [ -z "$TRX" ]; then
   exit 2
 fi
 
+# Checked because a guard switched off by a typo in its own arguments is not a guard: bash reads a
+# non-numeric count as 0 in arithmetic, and an authenticated count above the minimum makes the
+# executed floor negative, which passes a run where nothing at all executed.
+for argument in "minimum-tests:$MINIMUM" "authenticated-tests:$AUTHENTICATED"; do
+  case "${argument#*:}" in
+    '' | *[!0-9]*)
+      echo "::error::${argument%%:*} must be a whole number; got '${argument#*:}'." >&2
+      exit 2
+      ;;
+  esac
+done
+
+if [ "$AUTHENTICATED" -gt "$MINIMUM" ]; then
+  echo "::error::authenticated-tests ($AUTHENTICATED) is above minimum-tests ($MINIMUM), which would leave no floor at all." >&2
+  exit 2
+fi
+
 if [ ! -s "$TRX" ]; then
   echo "::error::No test results at '$TRX'. The $CATEGORY tests did not run, so nothing was checked against the live API." >&2
   exit 1

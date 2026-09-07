@@ -29,6 +29,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// names. A test that reimplemented the extraction and asserted against its own copy would prove
 /// the copy and not the script.
 /// </summary>
+[Collection(GuardScripts.Name)]
 public class SampleCssGuardTest
 {
     /// <summary>
@@ -584,6 +585,18 @@ internal static class Guard
                    .Where(line => line.StartsWith("  ", StringComparison.Ordinal) && line.Trim().Length > 0)
                    .Select(line => line.Trim())];
     }
+}
+
+/// <summary>One guard script at a time: they are the only tests here that spawn processes.</summary>
+/// <remarks>
+/// Each run costs a bash, and inside it a perl or a grep over the whole checkout. On Windows that
+/// is slow enough that two classes of them at once push a run past <see cref="Guard"/>'s stall
+/// budget, and a busy box then reads as a broken guard (<c>Fhi.Metadata-wpcb3</c>).
+/// </remarks>
+[CollectionDefinition(GuardScripts.Name)]
+public sealed class GuardScripts
+{
+    public const string Name = "guard scripts";
 }
 
 /// <summary>

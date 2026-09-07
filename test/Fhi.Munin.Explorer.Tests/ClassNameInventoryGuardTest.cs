@@ -18,6 +18,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// hand-written counts that had all gone stale, and eight names in no markdown file at all.
 /// </para>
 /// </remarks>
+[Collection(GuardScripts.Name)]
 public class ClassNameInventoryGuardTest
 {
     private const string Script = "assert-class-names-listed.sh";

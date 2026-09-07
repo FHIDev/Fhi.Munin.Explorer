@@ -7,6 +7,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// have been read at least once: a guard nothing has ever watched fail can say anything, and this
 /// one said something untrue for four nights (<c>Fhi.Metadata-wpcb3</c>, docs/contract-drift.md).
 /// </summary>
+[Collection(GuardScripts.Name)]
 public class DriftRanGuardTest
 {
     private const string Category = "ContractDrift";
@@ -118,6 +119,32 @@ public class DriftRanGuardTest
         Assert.Contains("the results list 0", run.Output, StringComparison.Ordinal);
     }
 
+    [ShellFact]
+    public void Guard_WhenASkipReasonCarriesMarkup_ThenItIsReportedAsTheTestWroteIt()
+    {
+        // The reason arrives XML-escaped and the guard decodes it. Untested, that decode could
+        // stop working and every reason would still look plausible — just quietly mangled, in the
+        // one line a reader is being asked to act on.
+        var run = RunAgainst(
+            Trx(executed: 9, ("KildeDetail_WhenReadFromTheLiveApi_ThenTheContractStillFitsIt", "Blocked on <ShapeDrift> & the 4xx > 500 rule")),
+            minimum: 10,
+            authenticated: 1);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains("Blocked on <ShapeDrift> & the 4xx > 500 rule", run.Output, StringComparison.Ordinal);
+    }
+
+    [ShellFact]
+    public void Guard_WhenMoreArmsAreDeclaredAuthenticatedThanTestsAreRequired_ThenItRefusesTheArguments()
+    {
+        // Otherwise the executed floor goes negative and the guard passes a run where nothing ran
+        // at all — the exact failure it exists to prevent, reachable by transposing two arguments.
+        var run = RunAgainst(Trx(executed: 0, total: 10, skipped: []), minimum: 1, authenticated: 10);
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.Contains("would leave no floor at all", run.Output, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void TokenVariable_WhenTheGuardSortsSkipsByIt_ThenTheScriptSpellsItTheSameWay()
     {
@@ -153,6 +180,16 @@ public class DriftRanGuardTest
     }
 
     /// <summary>
+    /// The three characters XML element content cannot carry raw, escaped the way VSTest escapes
+    /// them. Apostrophes are deliberately left alone: the real results file carries "reader's"
+    /// unescaped, and the guard has no <c>&amp;apos;</c> to decode.
+    /// </summary>
+    private static string Escaped(string text) =>
+        text.Replace("&", "&amp;", StringComparison.Ordinal)
+            .Replace("<", "&lt;", StringComparison.Ordinal)
+            .Replace(">", "&gt;", StringComparison.Ordinal);
+
+    /// <summary>
     /// A results file holding <paramref name="executed"/> passing tests plus one
     /// <c>NotExecuted</c> result per <paramref name="skipped"/> entry.
     /// </summary>
@@ -176,7 +213,7 @@ public class DriftRanGuardTest
         results += string.Concat(skipped.Select(test =>
             $"""
              <UnitTestResult testName="Fhi.Munin.Explorer.Tests.ContractDriftTest.{test.Name}" outcome="NotExecuted">
-               <Output><ErrorInfo><Message>{test.Reason.Replace("&", "&amp;", StringComparison.Ordinal)}</Message></ErrorInfo></Output>
+               <Output><ErrorInfo><Message>{Escaped(test.Reason)}</Message></ErrorInfo></Output>
              </UnitTestResult>
              """));
 
