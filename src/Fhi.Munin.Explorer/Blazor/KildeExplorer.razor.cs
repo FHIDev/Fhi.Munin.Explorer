@@ -46,7 +46,9 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// groups in the same order and the same two sidebar boxes; the datasamling section was the same
 /// rows under a different word, and Kelda had three sections Runa has not — Variabler, Kriterier
 /// for tilgang til data and Priser. Those three are markup in this component's own file, passed
-/// into the shared core. What a host passes as <see cref="Sections"/> follows them.
+/// into the shared core. What a host passes as <see cref="Sections"/> follows them. The last two
+/// of the three are drawn only under <see cref="ShowAccessAndPrices"/>, which an embedded host
+/// leaves off — that is a decision about who owns the content, not a retraction of the measurement.
 /// </para>
 /// <para>
 /// Class names: the ordinary page furniture wears <c>Fhi.Helsedata.Stiler</c>'s own names —
@@ -162,6 +164,29 @@ public sealed partial class KildeExplorer : ComponentBase
     [Parameter] public EventCallback<IReadOnlyList<Guid>> ExploreVariablesRequested { get; set; }
 
     /// <summary>
+    /// Draw the two static blocks over an open kilde — "Kriterier for tilgang til data" and
+    /// "Priser". Off unless the host asks for them.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Both blocks send the reader to helsedata.no for how to apply and what data costs — the
+    /// route a researcher browsing Munin's own catalogue needs, and content helsedata publishes
+    /// itself (<c>/no/priser/</c> and <c>/no/soknadsveiledning-oversikt/</c> were both in their
+    /// navigation when this was measured, 2026-09-07). Drawing them inside an embedding on that
+    /// site would be a second copy of pages the site owns, in a component it cannot edit.
+    /// </para>
+    /// <para>
+    /// So it defaults to <see langword="false"/> and a host of your own sets it. Defaulting the
+    /// other way could not be undone from the host that matters: helsedata's
+    /// <c>BlazorComponentPage</c> offers a fixed candidate list — <c>Language</c>,
+    /// <c>SkjemaId</c>, <c>IsAuthenticated</c> — and drops every name outside it.
+    /// <see cref="KildeExplorerWithUrlState"/> declares and forwards it too, so either mount can
+    /// be told. (Fhi.Metadata-ay3zz)
+    /// </para>
+    /// </remarks>
+    [Parameter] public bool ShowAccessAndPrices { get; set; }
+
+    /// <summary>
     /// The host's own sections for an open kilde, placed after Kelda's.
     /// </summary>
     /// <remarks>
@@ -169,9 +194,10 @@ public sealed partial class KildeExplorer : ComponentBase
     /// variables, its access criteria, its prices — are markup that goes <em>into</em> that
     /// component rather than markup added to it, and this parameter is the same door held open for
     /// whoever embedded the explorer. It is not passed straight through: what reaches
-    /// <see cref="KildeView.Sections"/> is Kelda's three sections and then this, in that order,
-    /// because a host's section is an addition to the page it embedded rather than a replacement
-    /// for what the component is.
+    /// <see cref="KildeView.Sections"/> is Kelda's own sections — Variabler always, the other two
+    /// only under <see cref="ShowAccessAndPrices"/> — and then this, in that order, because a
+    /// host's section is an addition to the page it embedded rather than a replacement for what
+    /// the component is.
     /// </remarks>
     [Parameter] public RenderFragment? Sections { get; set; }
 

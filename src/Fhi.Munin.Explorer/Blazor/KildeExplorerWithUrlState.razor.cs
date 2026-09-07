@@ -43,6 +43,14 @@ public sealed partial class KildeExplorerWithUrlState : ComponentBase
     /// <inheritdoc cref="KildeExplorer.Language"/>
     [Parameter] public string Language { get; set; } = "no";
 
+    /// <inheritdoc cref="KildeExplorer.ShowAccessAndPrices"/>
+    /// <remarks>
+    /// Declared here as well as on <see cref="KildeExplorer"/>, and forwarded, because this is the
+    /// mount a CMS host names: a parameter the mounted type does not declare is dropped before it
+    /// is set, silently and with everything still compiling.
+    /// </remarks>
+    [Parameter] public bool ShowAccessAndPrices { get; set; }
+
     /// <summary>
     /// Where the host mounted <see cref="VariableSearch"/>, so the chosen kilder can be handed
     /// over to it. Leave it null and the selection column is not offered at all.

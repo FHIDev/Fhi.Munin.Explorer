@@ -1345,16 +1345,18 @@ public class KildeExplorerTest : BunitContext
         // looked for text on screen, and would take down the separation the component is built to
         // hold up. So the assertion is on the parameter as well as on the output.
         //
-        // It is no longer the host's fragment by reference: Kelda's own three sections are markup
-        // in this component, and what reaches the core is those plus whatever the host passed. The
-        // host's own is still asserted, because a composition that dropped it would otherwise read
-        // exactly like one that never had it.
+        // It is no longer the host's fragment by reference: Kelda's own sections are markup in this
+        // component, and what reaches the core is those plus whatever the host passed. The host's
+        // own is still asserted, because a composition that dropped it would otherwise read exactly
+        // like one that never had it.
         var als = Kilde("Als registeret", "K_ALS");
         var client = new FakeClient(als).Publishing(als);
 
         RenderFragment sections = builder => builder.AddMarkupContent(0, "<p>Fra verten</p>");
 
-        var cut = RenderWith(client, b => b.Add(c => c.Sections, sections));
+        var cut = RenderWith(client, b => b
+            .Add(c => c.Sections, sections)
+            .Add(c => c.ShowAccessAndPrices, true));
 
         cut.Find(".munin-explorer-kilder tbody th button").Click();
 
@@ -1375,11 +1377,11 @@ public class KildeExplorerTest : BunitContext
         // The sections are the component's, not the host's: an embedding that passes nothing gets
         // the same kilde page as one that passes something. Worth its own test because the natural
         // way to write the composition — pass the host's fragment when there is one — reads as
-        // correct and leaves a kilde with three sections missing whenever a host stays silent.
+        // correct and leaves a kilde with its own sections missing whenever a host stays silent.
         var als = Kilde("Als registeret", "K_ALS");
         var client = new FakeClient(als).Publishing(als);
 
-        var cut = RenderWith(client);
+        var cut = RenderWith(client, b => b.Add(c => c.ShowAccessAndPrices, true));
 
         cut.Find(".munin-explorer-kilder tbody th button").Click();
 

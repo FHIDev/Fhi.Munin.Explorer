@@ -7,10 +7,14 @@
    so @rendermode on the component tag would not be enough. (Fhi.Metadata-5ghur) *@
 
 <KildeExplorer Language="@Language"
+               ShowAccessAndPrices="@ShowAccessAndPrices"
                ExploreVariablesRequested="ExploreVariables" />
 
 @code {
     [Parameter] public string Language { get; set; } = "no";
+
+    /// <summary>Forwarded so the page above can choose, the way a real host does.</summary>
+    [Parameter] public bool ShowAccessAndPrices { get; set; }
 
     /// <summary>
     /// Turn the reader's chosen kilder into the query the variable explorer already reads, and go
