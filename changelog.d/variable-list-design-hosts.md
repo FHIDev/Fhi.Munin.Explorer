@@ -1,11 +1,13 @@
 category: Notes for hosts
 
-- **`munin-explorer-list-scroll` is new and needs `overflow-x: auto`.** It wraps the saved-list
-  table alone, the way `munin-explorer-kilder-scroll` wraps the kilder table, and it is here for
-  the same reason: nine columns do not fit a narrow viewport, and undrawn the overflow lands on
-  the document, so the host's whole page scrolls sideways. The markup already carries `role`,
-  `tabindex` and the table's own name, so the rule is all a host owes it. Both sample stylesheets
-  carry it and the focus ring; `Fhi.Helsedata.Stiler` does not have it as of 0.1.37.
+- **`munin-explorer-list-scroll` is new, and a host owes it a `:focus-visible` outline.** It wraps
+  the saved-list table alone, the way `munin-explorer-kilder-scroll` wraps the kilder table. Unlike
+  that one it carries its own `overflow-x: auto` inline: measured in `HostileHost`, nine columns
+  put 1323px of table in an 843px page and the *document* scrolled, which is WCAG 1.4.10 on the
+  host's page rather than a table that looks wrong on ours — and no host stylesheet can be assumed
+  to have the name the day it appears. What is still the host's is the focus ring, because the box
+  carries `tabindex="0"` and a focus stop nobody can see is WCAG 2.4.7. Both sample stylesheets
+  have it; `Fhi.Helsedata.Stiler` has neither rule as of 0.1.37.
 - **The saved list's rows are `<table>` markup now, so rules written against the old flex row miss
   them.** `munin-explorer-data-list` is still the name, but on a `<table>`, and the cells wear
   their per-column modifier without `munin-explorer-dataitem-main__column` — that class is

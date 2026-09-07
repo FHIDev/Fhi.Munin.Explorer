@@ -809,6 +809,12 @@ public class VariableListViewTest : BunitContext
         // ships none. A box a mouse can scroll and a keyboard cannot trades 1.4.10 for 2.1.1.
         Assert.Equal("0", box.GetAttribute("tabindex"));
         Assert.NotNull(box.QuerySelector("table.munin-explorer-data-list"));
+
+        // And the overflow is the markup's own, not a rule the host may not have. Left to a
+        // stylesheet it was measured scrolling helsedata's whole document in HostileHost — 1323px
+        // of table in an 843px page — because Stiler has no rule for this name.
+        Assert.Contains("overflow-x:auto", box.GetAttribute("style")?.Replace(" ", "") ?? "",
+                        StringComparison.Ordinal);
     }
 
     [Fact]
@@ -961,13 +967,17 @@ public class VariableListViewTest : BunitContext
 
         Assert.Contains("2020", cut.Find("p.caption").TextContent, StringComparison.Ordinal);
 
+        // Read once, before the writes, and reused: two reads of UtcNow.Year straddling midnight on
+        // 31 December would compare a stamp from one year against a name from the next.
+        var thisYear = DateTimeOffset.UtcNow.Year.ToString();
+
         RenameField(cut).Change("Hjertet mitt");
         await PressAsync(cut, "Lagre navnet");
 
         var afterRename = cut.Find("p.caption").TextContent;
 
         Assert.DoesNotContain("2020", afterRename, StringComparison.Ordinal);
-        Assert.Contains(DateTimeOffset.UtcNow.Year.ToString(), afterRename, StringComparison.Ordinal);
+        Assert.Contains(thisYear, afterRename, StringComparison.Ordinal);
 
         // And the same for taking a variable out, which changes what the list holds rather than
         // what it is called. The count moves with it, off the API's own total.
@@ -976,7 +986,7 @@ public class VariableListViewTest : BunitContext
         var afterRemoval = cut.Find("p.caption").TextContent;
 
         Assert.StartsWith("1 variabel", afterRemoval, StringComparison.Ordinal);
-        Assert.Contains(DateTimeOffset.UtcNow.Year.ToString(), afterRemoval, StringComparison.Ordinal);
+        Assert.Contains(thisYear, afterRemoval, StringComparison.Ordinal);
     }
 
     [Fact]
