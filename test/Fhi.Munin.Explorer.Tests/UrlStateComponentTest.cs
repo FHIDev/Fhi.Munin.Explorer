@@ -448,9 +448,9 @@ public class UrlStateComponentTest : BunitContext
     [Fact]
     public void Kilder_WhenTheLinkCarriesASearchKeldaCannotMaintain_ThenItIsLeftAloneRatherThanErased()
     {
-        // KildeSearch has no SearchChanged, so a ?search= this component adopted would be erased
-        // on the first render after load: the link would work exactly once and could not be shared
-        // onward. It is carried through instead, like any parameter that is not ours.
+        // KildeExplorer owns ?kilde= and nothing else, and cannot own ?search=: the search box is
+        // KildeSearch's and raises no SearchChanged, so a ?search= adopted here would be erased on
+        // the first render after load. Carried through instead, like any key that is not ours.
         var id = Guid.NewGuid();
 
         var cut = RenderKilder(id, $"http://localhost/kilder?search=als&kilde={id}");
