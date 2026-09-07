@@ -1690,4 +1690,25 @@ public class KildeViewTest : BunitContext
         Assert.Null(heading.GetAttribute("lang"));
         Assert.Empty(cut.FindAll(".munin-explorer-kilde__delkilde p.munin-explorer-kilde__identifiers"));
     }
+
+    [Fact]
+    public void Facts_WhenAHostStylesTheGrid_ThenALongValueCanBreakInsideItsColumn()
+    {
+        // A grid track floors at min-content, so one unbreakable token sizes the whole column: two
+        // ELI-URLs joined with semicolons made every cell reach past the viewport at 1024px. Not
+        // minmax - below 1280px the single-track rule overrides it. (Fhi.Metadata-fv79e)
+        static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
+
+        var declared = HostClassNames.SampleDeclarationsFor("munin-explorer-meta__grid")
+            .Where(rule => rule.Selector.Split(',').Any(
+                       branch => !branch.Contains("__aside", StringComparison.Ordinal)
+                                 && Regex.IsMatch(branch, @"\.munin-explorer-meta__grid(?![\w-])")))
+            .Select(rule => Squeezed(rule.Declarations))
+            .ToList();
+
+        Assert.True(
+            declared.Any(d => d.Contains("overflow-wrap:anywhere", StringComparison.Ordinal)
+                           || d.Contains("word-break:break-all", StringComparison.Ordinal)),
+            "Nothing lets a long value break, so one token sizes the column and the page scrolls.");
+    }
 }

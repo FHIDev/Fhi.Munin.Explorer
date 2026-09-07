@@ -1301,11 +1301,18 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 /* helsedata's panel grid is `1fr 1fr` above 1280px and one column below. The sample carries a
    stand-in so the fields sit in lanes here too — stacked, they read as a long column of labels
    and the group headings stop meaning anything. */
+
+/* `overflow-wrap: anywhere` mirrors Stiler PR 39156. A grid track floors at min-content, and
+   "Gjeldende lovgivning" on ALS-registeret is two ELI-URLs joined with semicolons — one 586px
+   token that sized the whole column and pushed every cell in it 17px past the viewport at 1024px.
+   On the grid rather than on dt/dd, because a label that breaks differently from its value sizes
+   the column twice. (Fhi.Metadata-fv79e) */
 .munin-explorer-meta__grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 24px 24px;
   margin-bottom: 20px;
+  overflow-wrap: anywhere;
 }
 
 .munin-explorer-meta__grid-1 {
