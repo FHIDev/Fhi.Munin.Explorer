@@ -1,13 +1,10 @@
-// Breaks the hostile host on purpose, one defect at a time, and insists the matching geometry
-// assertion says so. Exits 1 when an assertion stayed quiet, 2 when it could not run.
-//
-// An assertion that has quietly stopped measuring anything reports success forever, which is what
-// assert-portability-guard-armed.sh guards the RCL's banned symbols against and what this guards
-// geometry-scan.mjs against. Each case measures twice at one width: unbroken, where the assertion
-// must hold, and broken, where it must not. (Fhi.Metadata-fih3y)
+// Breaks the hostile host on purpose and insists the matching geometry assertion says so: one that
+// has quietly stopped measuring anything reports success forever. Each case measures twice at one
+// width - unbroken, where it must hold, and broken, where it must not. (Fhi.Metadata-fih3y)
 //
 // Usage:  node geometry-negative-control.mjs <base-url>
-// Called by check-hostile-host.sh, which owns starting the host.
+// Exits 1 when an assertion stayed quiet, 2 when it could not run. Called by
+// check-hostile-host.sh, which owns starting the host.
 import { chromium } from 'playwright';
 import { states } from './axe-states.mjs';
 import { assertions, selectors } from './geometry-assertions.mjs';
