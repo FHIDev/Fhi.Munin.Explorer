@@ -826,10 +826,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         _confirmingDelete = false;
         _renameName = "";
 
-        // Folded away with it, not merely emptied: an open field labelled "nytt navn på listen"
-        // over a list the reader did not open it for reads as a rename already under way. Focus
-        // is never inside it on any path here — the three callers are a list switch, a create, and
-        // the repoint after a delete.
+        // Folded, not merely emptied: an open rename field over a list the reader did not open it
+        // for reads as a rename under way. No caller here has focus inside it.
         _renaming = false;
     }
 

@@ -99,11 +99,9 @@
         @if (_creating)
         {
             <div>
-                @* A real label and never a placeholder, which is no accessible name and is gone
-                   the moment the reader types (WCAG 4.1.2, 3.3.2). form-element__label is
-                   Stiler's. The id carries the per-mount discriminator, or two mounts tie both
-                   labels to the first field. onchange and never oninput: this is a Blazor Server
-                   circuit, where oninput is a round trip per keystroke. *@
+                @* A real label, never a placeholder: no accessible name, and gone the moment the
+                   reader types (WCAG 4.1.2, 3.3.2). The id is per-mount, or two mounts name one
+                   field twice. onchange, never oninput — a round trip per keystroke on a circuit. *@
                 <label class="form-element__label" for="@NewListNameId">@T.NewListName</label>
                 <input type="text"
                        id="@NewListNameId"

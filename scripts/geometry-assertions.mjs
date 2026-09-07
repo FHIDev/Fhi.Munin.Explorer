@@ -65,10 +65,9 @@ export const assertions = [
     // The tolerance is 1px for subpixel rounding — a 1487.98px child of a 1488px box is not a
     // defect, and reporting it as one would make this file the boy who cried overflow.
     //
-    // ONE EXEMPTION: content inside a scroll box the package declared — role=region, tabindex=0,
-    // scrollable overflow-x — is reachable rather than clipped, which is what this asks about. NOT
-    // "any ancestor whose overflow-x is auto": overflow-y alone computes that too, so it would
-    // exempt the filter panel above. The box itself is still measured.
+    // One exemption: a declared scroll box — role=region, tabindex=0, scrollable overflow-x —
+    // holds content that is reachable rather than clipped. Not overflow-x alone, which overflow-y
+    // also computes to and which would exempt the filter panel above.
     body: ({ mount: mountSel }) => {
       const mount = document.querySelector(mountSel);
       if (!mount) return `no ${mountSel} on the page — nothing was measured`;
