@@ -238,9 +238,12 @@ public class VariableListViewTest : BunitContext
         /// <remarks>
         /// The two differ only while a stalled read is out, which is exactly the window the create
         /// race lives in: a test asserting before every ask has answered asserts on the frame the
-        /// bug has not reached yet.
+        /// bug has not reached yet. Interlocked because this one is incremented from a continuation
+        /// rather than on the way in, and releasing the gate resumes several at once.
         /// </remarks>
-        public int VariablesAnswered { get; private set; }
+        public int VariablesAnswered => Volatile.Read(ref _answered);
+
+        private int _answered;
 
         public override async Task<Page<VariableListItem>?> GetMyListVariablesAsync(
             Guid id, int page = 1, int pageSize = 100, CancellationToken cancellationToken = default)
@@ -251,7 +254,7 @@ public class VariableListViewTest : BunitContext
             }
             finally
             {
-                VariablesAnswered++;
+                Interlocked.Increment(ref _answered);
             }
         }
 
