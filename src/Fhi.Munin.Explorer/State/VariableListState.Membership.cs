@@ -180,11 +180,14 @@ public sealed partial class VariableListState
         return _saved.Contains(variableId);
     }
 
-    /// <summary>Notes an accepted write against the membership set, which is the active list's.</summary>
+    /// <summary>
+    /// Notes an accepted write against the membership set, which is the active list's, and answers
+    /// with how many memberships it made or broke — what the list's count moves by.
+    /// </summary>
     // A write addressed to any other list is dropped: VariableListView writes to the list it is
     // showing, which is the active one only while the two agree. startedAt carries the same
     // sign-out guard the press above carries (Fhi.Metadata-ehghv).
-    private void RecordMembership(
+    private int RecordMembership(
         Guid listId,
         IReadOnlyCollection<Guid> variableIds,
         bool saved,
@@ -192,12 +195,16 @@ public sealed partial class VariableListState
     {
         if (!StillCurrent(startedAt) || listId != _activeListId)
         {
-            return;
+            // Zero rather than the batch size: nothing here knows what that other list already
+            // held, and a guess stands until something reads the lists again.
+            return 0;
         }
 
         // Both directions are safe against a set a membership read filled underneath: adding an id
         // the list already holds and removing one it does not are no-ops on the API's side, and
-        // no-ops here too.
+        // no-ops here too — so the change in size is what the API did, and what the count moves by.
+        var before = _saved.Count;
+
         if (saved)
         {
             _saved.UnionWith(variableIds);
@@ -206,6 +213,8 @@ public sealed partial class VariableListState
         {
             _saved.ExceptWith(variableIds);
         }
+
+        return _saved.Count - before;
     }
 
     private async Task EnsureActiveListAsync(bool readerAsked, CancellationToken cancellationToken)

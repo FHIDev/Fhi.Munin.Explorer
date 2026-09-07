@@ -31,16 +31,18 @@
             <label class="munin-explorer-filters__facets">
                 @T.ChooseList
                 <select value="@_shownList" @onchange="ChooseListAsync">
+                    @* Every option says what its list holds, which is what makes helsedata's own
+                       overview readable at a glance — see the remarks on ListOption. *@
                     @foreach (var list in Lists)
                     {
-                        <option value="@list.Id" selected="@(list.Id == _shownList)">@list.Name</option>
+                        <option value="@list.Id" selected="@(list.Id == _shownList)">@ListOption(list)</option>
                     }
                 </select>
             </label>
         }
 
-        @* Only for the list on screen. `my/lists` carries no count, so the lists behind the
-           picker cannot have one — see the remarks on ListMeta. *@
+        @* The count off the same field the picker's options read, beside the day the list last
+           changed — see the remarks on ListMeta. *@
         @if (ListMeta is { } meta)
         {
             <p class="caption">@meta</p>

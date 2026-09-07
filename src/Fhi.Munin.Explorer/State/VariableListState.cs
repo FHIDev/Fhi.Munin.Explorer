@@ -239,8 +239,9 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
 
         if (accepted)
         {
-            RecordMembership(id, variableIds, saved: true, startedAt);
-            Touch(id, startedAt);
+            var delta = RecordMembership(id, variableIds, saved: true, startedAt);
+
+            Touch(id, delta, startedAt);
             Changed?.Invoke();
         }
 
@@ -266,8 +267,9 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
 
         if (accepted)
         {
-            RecordMembership(id, variableIds, saved: false, startedAt);
-            Touch(id, startedAt);
+            var delta = RecordMembership(id, variableIds, saved: false, startedAt);
+
+            Touch(id, delta, startedAt);
             Changed?.Invoke();
         }
 
@@ -275,17 +277,25 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
     }
 
     /// <summary>
-    /// Records that a write the API accepted has just changed one list. The holder patches rather
-    /// than refetches, so without this <c>updatedAt</c> stays at the day the page was loaded.
+    /// Moves one list's stamp and count after a write the API accepted, since the holder patches
+    /// rather than refetches. <c>countDelta</c> is what <see cref="RecordMembership"/> measured,
+    /// never the size of the batch.
     /// </summary>
-    private void Touch(Guid id, int startedAt)
+    private void Touch(Guid id, int countDelta, int startedAt)
     {
         if (!StillCurrent(startedAt))
         {
             return;
         }
 
-        _lists = [.. _lists.Select(l => l.Id == id ? l with { UpdatedAt = TouchedNow() } : l)];
+        // A floor, because the count and the membership walk are two reads with a write's worth of
+        // time between them, and "-1 variabler" is a sentence no reader should be shown.
+        _lists =
+        [
+            .. _lists.Select(l => l.Id == id
+                ? l with { UpdatedAt = TouchedNow(), VariableCount = Math.Max(0, l.VariableCount + countDelta) }
+                : l)
+        ];
     }
 
     /// <summary>

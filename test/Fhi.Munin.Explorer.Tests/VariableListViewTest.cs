@@ -74,6 +74,14 @@ public class VariableListViewTest : BunitContext
         /// <summary>When the first list last changed, or null the way an omitted key arrives.</summary>
         public DateTimeOffset? Updated { get; init; }
 
+        /// <summary>
+        /// What the second and third lists hold. The first takes its count from the items this fake
+        /// pages out, because the API answers the same total on both endpoints.
+        /// </summary>
+        public int SecondListCount { get; init; }
+
+        public int ThirdListCount { get; init; }
+
         public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default)
         {
             ListsCalls++;
@@ -89,16 +97,34 @@ public class VariableListViewTest : BunitContext
             }
 
             List<VariableList> lists =
-                [new VariableList { Id = ListId, Name = "Mine hjertevariabler", UpdatedAt = Updated }];
+            [
+                new VariableList
+                {
+                    Id = ListId,
+                    Name = "Mine hjertevariabler",
+                    UpdatedAt = Updated,
+                    VariableCount = _items.Count
+                }
+            ];
 
             if (ListCount > 1)
             {
-                lists.Add(new VariableList { Id = SecondListId, Name = "Hjerte og kar" });
+                lists.Add(new VariableList
+                {
+                    Id = SecondListId,
+                    Name = "Hjerte og kar",
+                    VariableCount = SecondListCount
+                });
             }
 
             if (ListCount > 2)
             {
-                lists.Add(new VariableList { Id = ThirdListId, Name = "Kreft og svulster" });
+                lists.Add(new VariableList
+                {
+                    Id = ThirdListId,
+                    Name = "Kreft og svulster",
+                    VariableCount = ThirdListCount
+                });
             }
 
             return Task.FromResult<IReadOnlyList<VariableList>>([.. lists.Where(l => !_deleted.Contains(l.Id))]);
@@ -340,6 +366,25 @@ public class VariableListViewTest : BunitContext
             }
 
             _items.RemoveAll(i => variableIds.Contains(i.VariableId));
+            return Task.FromResult(true);
+        }
+
+        public int AddCalls { get; private set; }
+
+        /// <summary>
+        /// A save made from the explorer's own button. The base declines every add, so nothing until
+        /// now could put a variable IN a list; one the list already holds is accepted and stored once.
+        /// </summary>
+        public override Task<bool> AddVariablesToMyListAsync(
+            Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default)
+        {
+            AddCalls++;
+
+            _items.AddRange(
+                variableIds
+                    .Where(v => !_items.Exists(i => i.VariableId == v))
+                    .Select(v => Item("Lagt til", "V_BDR.NY") with { VariableId = v }));
+
             return Task.FromResult(true);
         }
 
@@ -927,6 +972,85 @@ public class VariableListViewTest : BunitContext
         Assert.Contains("2 variabler", meta, StringComparison.Ordinal);
         Assert.Contains("Sist endret: 7. sep. 2026", meta, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void View_WhenTheReaderHasSeveralLists_ThenEveryOneOfThemSaysHowManyVariablesItHolds()
+    {
+        // Three different sizes, because equal ones pass against a bug that renders one number for
+        // all of them; and 247 against a 25-row page, because a count tallied from the rendered rows
+        // reads 25 and looks entirely plausible. Nothing shorter tells the two apart.
+        var client = new ListClient(
+            [.. Enumerable.Range(1, 247).Select(i => Item($"Variabel {i}", $"V_BDR.{i}"))])
+        {
+            ListCount = 3,
+            SecondListCount = 3,
+            ThirdListCount = 0
+        };
+
+        var cut = RenderView(client);
+
+        Assert.Equal(
+            [
+                "Mine hjertevariabler (247 variabler)",
+                "Hjerte og kar (3 variabler)",
+                "Kreft og svulster (0 variabler)"
+            ],
+            cut.FindAll("select option").Select(o => o.TextContent.Trim()));
+
+        // And the line under the picker says the same number for the same list, off the same field.
+        // Two numbers for one list on one screen could only ever disagree.
+        Assert.StartsWith("247 variabler", cut.Find("p.caption").TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void View_WhenAListHoldsNothing_ThenItReadsZeroRatherThanBlank()
+    {
+        // A list the reader has just made is the common case, and the one most likely to render
+        // nothing at all. Asserted in both places it is written, since they are two call sites.
+        var cut = RenderView(new ListClient { ListCount = 2, SecondListCount = 0 });
+
+        Assert.Equal("0 variabler", cut.Find("p.caption").TextContent.Trim());
+        Assert.Contains(
+            "Hjerte og kar (0 variabler)",
+            cut.FindAll("select option").Select(o => o.TextContent.Trim()));
+    }
+
+    [Fact]
+    public async Task View_WhenAListIsWrittenTo_ThenItsOwnEntryInThePickerMovesWithIt()
+    {
+        // The trap #199's review sprang on "sist endret", in the count's shape: the holder patches
+        // its copy rather than refetching, so a number read at mount would stand for the circuit.
+        // The picker is where that shows, since nothing else redraws it.
+        var client = new ListClient(
+            Item("Alder ved diagnose", "V_BDR.ALDER"),
+            Item("Kjønn", "V_BDR.KJONN"))
+        {
+            ListCount = 2,
+            SecondListCount = 4
+        };
+
+        var cut = RenderView(client);
+        var state = Services.GetRequiredService<VariableListState>();
+
+        Assert.Equal("Mine hjertevariabler (2 variabler)", FirstOption(cut));
+
+        // A save, as the explorer's own button makes it: same holder, different surface.
+        await cut.InvokeAsync(() => state.AddVariablesAsync(ListId, [Guid.NewGuid()]));
+
+        Assert.Equal(1, client.AddCalls);
+        Assert.Equal("Mine hjertevariabler (3 variabler)", FirstOption(cut));
+
+        // And a removal, from this view's own row.
+        await cut.InvokeAsync(() => cut.FindAll("tbody tr td:last-child button")[0].Click());
+
+        Assert.Equal("Mine hjertevariabler (2 variabler)", FirstOption(cut));
+
+        // The list nobody wrote to keeps the number the API gave it.
+        Assert.Equal("Hjerte og kar (4 variabler)", cut.FindAll("select option")[1].TextContent.Trim());
+    }
+
+    private static string FirstOption(IRenderedComponent<VariableListView> cut) =>
+        cut.FindAll("select option")[0].TextContent.Trim();
 
     [Fact]
     public async Task View_WhenAListWasJustRenamed_ThenTheFormStaysOpenUnderTheReadersFocus()

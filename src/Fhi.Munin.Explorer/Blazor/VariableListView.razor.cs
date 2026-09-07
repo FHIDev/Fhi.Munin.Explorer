@@ -349,31 +349,33 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     };
 
     /// <summary>
-    /// How many variables are in the list on screen and when it last changed, or
-    /// <see langword="null"/> while neither is known.
+    /// The list on screen, off <c>my/lists</c> for both halves — so this waits on no page read, and
+    /// no picker entry can contradict it about the same list.
     /// </summary>
-    /// <remarks>
-    /// The API's own <c>totalCount</c> rather than a tally of the rendered rows, which is a page of
-    /// them. <c>my/lists</c> carries no count at all, so the lists behind the picker cannot have
-    /// one. The day and never a clock time: in a Blazor Server circuit the hour is the server's.
-    /// </remarks>
     private string? ListMeta
     {
         get
         {
-            if (_page is null)
+            if (Lists.FirstOrDefault(l => l.Id == _shownList) is not { } shown)
             {
                 return null;
             }
 
-            var count = T.ListVariableCount(_page.TotalCount);
-            var updated = Lists.FirstOrDefault(l => l.Id == _shownList)?.UpdatedAt;
+            var count = T.ListVariableCount(shown.VariableCount);
 
-            return CatalogueDate.DayOrNothing(updated, Language, DateWidth.Narrow) is { } day
+            return CatalogueDate.DayOrNothing(shown.UpdatedAt, Language, DateWidth.Narrow) is { } day
                 ? $"{count} · {T.ListLastModified(day)}"
                 : count;
         }
     }
+
+    /// <summary>What one list reads as in the picker: its name, then how many variables it holds.</summary>
+    /// <remarks>
+    /// helsedata's own overview says this for every list rather than only for the one being looked
+    /// at, and an <c>&lt;option&gt;</c> holds text and nothing else, so the two are one string here.
+    /// </remarks>
+    private string ListOption(VariableList list) =>
+        $"{list.Name} ({T.ListVariableCount(list.VariableCount)})";
 
     /// <summary>Written the way <see cref="AriaDisabled"/> is, so the two toggles read alike.</summary>
     private static string Expanded(bool open) => open ? "true" : "false";

@@ -24,6 +24,15 @@ public sealed record VariableList
 
     /// <summary>Last change to the list itself or to what is in it.</summary>
     [JsonPropertyName("updatedAt")] public DateTimeOffset? UpdatedAt { get; init; }
+
+    /// <summary>How many variables the list holds — its stored memberships, never a page of them.</summary>
+    /// <remarks>
+    /// The same number <c>GET my/lists/{id}/variables</c> answers with as its <c>totalCount</c>,
+    /// memberships whose variable has left the catalogue included, since that endpoint returns
+    /// those rows too. Non-nullable, and 0 for a list with nothing in it: the API sends it for every
+    /// list and sends an explicit 0 for a new one, so a blank here would be this package's doing.
+    /// </remarks>
+    [JsonPropertyName("variableCount")] public int VariableCount { get; init; }
 }
 
 /// <summary>
