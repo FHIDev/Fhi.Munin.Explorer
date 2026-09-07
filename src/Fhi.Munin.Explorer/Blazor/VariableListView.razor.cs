@@ -349,9 +349,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     };
 
     /// <summary>
-    /// How many variables the list on screen holds and when it last changed, both off
-    /// <c>my/lists</c> — so this waits on no page read, and no picker entry can contradict it. Never
-    /// a tally of the rendered rows; and the day, never an hour the server would own.
+    /// The list on screen, off <c>my/lists</c> for both halves — so this waits on no page read, and
+    /// no picker entry can contradict it about the same list.
     /// </summary>
     private string? ListMeta
     {
