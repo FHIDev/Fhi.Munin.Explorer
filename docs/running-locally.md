@@ -74,6 +74,30 @@ helsedata's private Azure Artifacts feed. So:
   package. The job installs the provider before restoring for exactly this reason. It is also why
   a green local run proves less than it looks: it proves the PAT and the feed URL, and hides
   whether the runner can use them.
+- **The package is not the only way to get the stylesheet, and the other way needs no credentials
+  at all.** Stiler's source is readable over the Azure DevOps REST API with an `az` token, so it
+  can be compiled here and dropped where HostileHost already links it:
+
+  ```bash
+  TOKEN=$(az account get-access-token --resource 499b84ac-1321-427f-aa17-267ca6975798 \
+    --query accessToken -o tsv)
+  curl -s -H "Authorization: Bearer $TOKEN" \
+    "https://dev.azure.com/fhi/Fhi.Helsedata/_apis/git/repositories/Fhi.Helsedata.Stiler/items?scopePath=/Static/scss&recursionLevel=full&api-version=7.1&\$format=zip&download=true" \
+    -o scss.zip && unzip -q scss.zip -d stiler
+  npx sass --no-source-map stiler/scss/main.scss \
+    samples/HostileHost/wwwroot/_content/Fhi.Helsedata.Stiler/css/main.css
+  ```
+
+  With the `PackageReference` commented out, `dotnet run --project samples/HostileHost` then serves
+  the real stylesheet from `wwwroot` at the path the layout links. Two things this is *better* at
+  than the package: it is `main` rather than the pinned version, and it needs no feed access. Two
+  things it is worse at: it is not what helsedata restores, and it skips whatever the package's own
+  build does beyond `sass`. Say which one a measurement came from.
+
+  This is not a curiosity. On 2026-09-07 `Fhi.Metadata-fv79e` was filed against Stiler, and a
+  pull request opened there, for a horizontal scrollbar that fifteen minutes of this showed Stiler
+  does not have: the defect was two grid rules missing from the sample stylesheets, and Stiler had
+  carried both all along.
 
 ### What it is for
 
