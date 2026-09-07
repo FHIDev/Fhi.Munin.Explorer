@@ -656,7 +656,7 @@ shared URL that opened on the sender's Variabelliste would be an empty page for 
 `KildeExplorerWithUrlState` is the kildeutforsker's equivalent for now; the kilde side has no
 personal lists, so its bare `KildeExplorer` and its URL-state wrapper are still two names.
 
-Three things are worth knowing before mounting one.
+Four things are worth knowing before mounting one.
 
 - **The render mode has to be interactive** — `render-mode="Server"`, never `ServerPrerendered`;
   in a modern host, `@rendermode` with `prerender: false`. Both components throw on initialisation
@@ -673,6 +673,14 @@ Three things are worth knowing before mounting one.
   and `"/variabler"` mean the same page, and a path base is kept either way — and a full URL is
   taken as given. A path rather than a callback on purpose: an `EventCallback` handed to an
   interactive component by a statically rendered parent serialises to an empty delegate.
+- **The two static blocks over an open kilde are off unless you ask for them.**
+  `ShowAccessAndPrices` — declared on `KildeExplorer` and on `KildeExplorerWithUrlState` — draws
+  "Kriterier for tilgang til data" and "Priser", both of which send the reader to helsedata.no.
+  That is the route a researcher browsing Munin's own catalogue needs, and a duplicate of pages
+  helsedata publishes itself, so it defaults to `false`: a host embedding the explorer inside a
+  site that already covers access and pricing gets neither block without doing anything. Set it
+  to `true` on a host of your own. Nothing else on the kilde page moves with it — the variable
+  count, the metadata, the datasamlinger and the sidebar are drawn either way.
 
 Owning the address bar — or the page furniture — yourself is still supported: `VariableSearch` and
 `VariableListView` stay public underneath, so a host that wants the two surfaces on separate pages,

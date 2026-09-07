@@ -22,6 +22,14 @@
         to: it passes only data, and data crosses the boundary intact.
     </p>
     <p class="hostchrome-note">
+        <strong><code>ShowAccessAndPrices</code> is on here and off in LegacyHost</strong>, which
+        is the difference between a host of Munin's own and a host that has its own pages for
+        the same thing. The two blocks it draws over an open kilde — Kriterier for tilgang til
+        data and Priser — point at helsedata.no, so an embedding on helsedata.no would be
+        publishing a second copy of pages that site already owns. It defaults to off for exactly
+        that reason: a host has to ask.
+    </p>
+    <p class="hostchrome-note">
         <code>prerender: false</code> is separate, and not a preference either:
         <code>KildeExplorer</code> fetches the whole kilde list when it initialises, and
         prerendering would run that call twice against the API on every page load.
@@ -34,5 +42,6 @@
        stay render-mode free either way, which is the rule that lets them mount in LegacyHost's
        MVC view too. *@
     <KildeExplorerWithHandover Language="no"
+                               ShowAccessAndPrices="true"
                                @rendermode="@(new InteractiveServerRenderMode(prerender: false))" />
 </div>

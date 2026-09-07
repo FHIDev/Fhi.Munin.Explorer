@@ -146,9 +146,17 @@ public class KildeSectionsTest : BunitContext
     /// <remarks>
     /// <paramref name="language"/> is left unset rather than defaulted to "no" so the common case
     /// renders the component the way a host that names no language does.
+    /// <para>
+    /// <paramref name="accessAndPrices"/> is left unset for the same reason, so the common case is
+    /// the embedded host that asks for nothing — which is the page most readers of this component
+    /// see (Fhi.Metadata-ay3zz).
+    /// </para>
     /// </remarks>
     private IRenderedComponent<KildeExplorer> OpenInKelda(
-        KildeDetail kilde, int? headingLevel = null, string? language = null)
+        KildeDetail kilde,
+        int? headingLevel = null,
+        string? language = null,
+        bool? accessAndPrices = null)
     {
         Services.AddSingleton<IMuninExplorerClient>(new KeldaClient(kilde));
 
@@ -162,6 +170,11 @@ public class KildeSectionsTest : BunitContext
             if (language is not null)
             {
                 b.Add(c => c.Language, language);
+            }
+
+            if (accessAndPrices is { } show)
+            {
+                b.Add(c => c.ShowAccessAndPrices, show);
             }
         });
 
@@ -213,7 +226,7 @@ public class KildeSectionsTest : BunitContext
     {
         var kilde = Tromso();
 
-        var cut = OpenInKelda(kilde);
+        var cut = OpenInKelda(kilde, accessAndPrices: true);
 
         // The whole page, in order: the shared core's metadata, the datasamling section under
         // Kelda's word for it, Kelda's own three, and the core's two sidebar boxes. Nothing here is
@@ -263,6 +276,35 @@ public class KildeSectionsTest : BunitContext
             "Prisene for utlevering av data fra denne kilden",
             BodyUnder(cut, "Priser"),
             StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Kelda_WhenTheHostAsksForNothing_ThenAccessAndPricesAreNotOnThePage()
+    {
+        // The state an embedded host gets, and the one the decision under Fhi.Metadata-ay3zz is
+        // about: helsedata publishes /no/priser/ and /no/soknadsveiledning-oversikt/ themselves, so
+        // these two blocks inside a component they cannot edit are a second copy of pages they own.
+        //
+        // Asserted as the whole heading list rather than as two DoesNotContain, so a block that
+        // survives under another word is a failure here too — and so that the sections either side
+        // of it are still proved present. Variabler is not part of the decision and stays.
+        var cut = OpenInKelda(Tromso());
+
+        Assert.Equal(
+        [
+            "Metadata",
+            "Delkilder og datasamlinger",
+            "Variabler",
+            "Kildeinformasjon",
+            "Statistikk",
+        ], TextOf(cut.FindAll(BlockHeadings)));
+
+        // Said again over the text, because a heading list cannot see a body that outlived its
+        // heading — and the bodies are the part that duplicates helsedata's own pages.
+        var view = cut.Find(".munin-explorer-kilde").TextContent;
+
+        Assert.DoesNotContain("Kriteriene for tilgang til data fra denne kilden", view, StringComparison.Ordinal);
+        Assert.DoesNotContain("Prisene for utlevering av data fra denne kilden", view, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -437,7 +479,7 @@ public class KildeSectionsTest : BunitContext
         // Asserted pairwise — each body read out of the paragraph that follows its own heading —
         // rather than as two Contains over the markup, because a Contains for each string passes
         // just as happily when the two have swapped places.
-        var cut = OpenInKelda(Tromso(), language: "en");
+        var cut = OpenInKelda(Tromso(), language: "en", accessAndPrices: true);
 
         Assert.Equal(
         [
