@@ -1611,9 +1611,12 @@ public class KildeViewTest : BunitContext
 
         // The default the aside opts out of. Narrowing the base rule would fix the sidebar by
         // costing the wide middle column its two lanes, and every assertion above would still pass.
+        // Per branch, so grouping the base rule with a scoped one stays equivalent CSS here.
         Assert.True(
-            grids.Any(rule => !rule.Selector.Contains("__aside", StringComparison.Ordinal)
-                              && Regex.IsMatch(rule.Declarations, @"grid-template-columns:\s*1fr\s+1fr\s*(;|$)")),
+            grids.Any(rule => Regex.IsMatch(rule.Declarations, @"grid-template-columns:\s*1fr\s+1fr\s*(;|$)")
+                              && rule.Selector.Split(',').Any(
+                                  branch => !branch.Contains("__aside", StringComparison.Ordinal)
+                                            && Regex.IsMatch(branch, Base))),
             "No unscoped rule leaves munin-explorer-meta__grid two lanes for the main column.");
     }
 }
