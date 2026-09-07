@@ -239,8 +239,7 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
 
         if (accepted)
         {
-            RecordMembership(id, variableIds, saved: true, startedAt);
-            Touch(id, startedAt);
+            Touch(id, RecordMembership(id, variableIds, saved: true, startedAt), startedAt);
             Changed?.Invoke();
         }
 
@@ -266,8 +265,7 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
 
         if (accepted)
         {
-            RecordMembership(id, variableIds, saved: false, startedAt);
-            Touch(id, startedAt);
+            Touch(id, RecordMembership(id, variableIds, saved: false, startedAt), startedAt);
             Changed?.Invoke();
         }
 
@@ -276,16 +274,30 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
 
     /// <summary>
     /// Records that a write the API accepted has just changed one list. The holder patches rather
-    /// than refetches, so without this <c>updatedAt</c> stays at the day the page was loaded.
+    /// than refetches, so without this <c>updatedAt</c> stays at the day the page was loaded and
+    /// <c>variableCount</c> stays at what the list held then.
     /// </summary>
-    private void Touch(Guid id, int startedAt)
+    /// <remarks>
+    /// <c>countDelta</c> is how many memberships the write actually made or broke, as
+    /// <see cref="RecordMembership"/> measured it — never the size of the batch, since adding a
+    /// variable the list already holds is a no-op the API answers as accepted.
+    /// </remarks>
+    private void Touch(Guid id, int countDelta, int startedAt)
     {
         if (!StillCurrent(startedAt))
         {
             return;
         }
 
-        _lists = [.. _lists.Select(l => l.Id == id ? l with { UpdatedAt = TouchedNow() } : l)];
+        // Clamped, though the delta itself cannot overshoot a count that was read: a list whose
+        // my/lists read failed carries 0 beside a membership set that is not empty, and one removal
+        // would put it at -1.
+        _lists =
+        [
+            .. _lists.Select(l => l.Id == id
+                ? l with { UpdatedAt = TouchedNow(), VariableCount = Math.Max(0, l.VariableCount + countDelta) }
+                : l)
+        ];
     }
 
     /// <summary>

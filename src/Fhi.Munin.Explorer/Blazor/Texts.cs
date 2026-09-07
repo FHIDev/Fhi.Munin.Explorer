@@ -192,8 +192,9 @@ internal sealed record Texts(
     // The header over the column of remove buttons. Never on screen — each button says "Fjern"
     // itself — but a screen reader arriving in that column has nothing else to hear.
     string ColumnRemove,
-    // (count) — "3 variabler", the API's own total for the list on screen. Assembled here for the
-    // reason KildeCount is: the singular is this language's business and not C#'s.
+    // (count) — "3 variabler", my/lists' own variableCount, for every list and not only the one on
+    // screen. Assembled here for the reason KildeCount is: the singular is this language's business
+    // and not C#'s.
     Func<int, string> ListVariableCount,
     // (day) — "Sist endret: 7. sep. 2026". The day and never a clock time: this renders inside a
     // Blazor Server circuit, so the hour would be the server's rather than the reader's.
