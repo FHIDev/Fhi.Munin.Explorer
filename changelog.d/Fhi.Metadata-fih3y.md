@@ -1,6 +1,7 @@
 category: Notes for hosts
 
-- **The sample stylesheets now re-hide the facet panel below 1024px, as `Fhi.Helsedata.Stiler`
-  does.** A host that copied `samples/*/host.css` got a filter panel that stayed open under the
-  breakpoint while its own toggle still said "Vis filtre" — the browser's `[hidden]` rule loses to
-  any author rule of equal specificity. (`Fhi.Metadata-fih3y`)
+- **A host stylesheet with a bare element rule un-hides everything this package marks `[hidden]`.**
+  The browser's own `[hidden] { display: none }` loses to any author rule of equal specificity, so a
+  reset carrying `div { display: block }` leaves the folded filter panel on screen while the toggle
+  still says "Vis filtre". Put `[hidden] { display: none }` back for the elements you dress; both
+  sample stylesheets now do. (`Fhi.Metadata-fih3y`)

@@ -28,12 +28,9 @@
 // Five of the eight below are invariants. If that ratio ever inverts, this file has become a
 // changelog.
 //
-// A pin may also declare `states: [...]`, naming the states from axe-states.mjs whose page can
-// contain the defect at all. Elsewhere geometry-scan.mjs prints it as inapplicable and says so,
-// rather than running it: the three tab pins below all need a tablist, and on a page that has
-// none — the kildeutforsker on /kilder — "nothing was measured" is a fact about the page and not
-// a finding. An invariant never declares one; an invariant that does not hold everywhere is a pin
-// that has not admitted to it. (Fhi.Metadata-fih3y)
+// A pin may also declare `states: [...]` — the states from axe-states.mjs whose page can contain
+// its defect at all; elsewhere geometry-scan.mjs prints it as inapplicable rather than failing on
+// "nothing was measured". Invariants never declare one. (Fhi.Metadata-fih3y)
 
 /** The component's own root. Everything measured is inside it or is the host chrome around it. */
 const MOUNT = '.munin-explorer';
@@ -72,14 +69,11 @@ export const assertions = [
     // The tolerance is 1px for subpixel rounding — a 1487.98px child of a 1488px box is not a
     // defect, and reporting it as one would make this file the boy who cried overflow.
     //
-    // A declared scroll box — role=region, tabindex=0, scrollable overflow-x — is measured
-    // AGAINST rather than skipped: getBoundingClientRect reports a child of a scroll container
-    // where it sits in the scrollable content, not where it is clipped, so a child of any correct
-    // one reads as outside the mount. Children of one are held to that box's scrollable extent
-    // instead, which still catches content no amount of scrolling reaches. tabindex is the
-    // load-bearing half — an unreachable clip is the defect worth keeping — and not overflow-x
-    // alone, which overflow-y also computes to and which would exempt the filter panel above. The
-    // box itself is still measured against the mount. (Fhi.Metadata-fih3y)
+    // A declared scroll box — role=region, tabindex=0, scrollable overflow-x — is measured AGAINST
+    // rather than skipped: getBoundingClientRect reports a child of a scroll container where it
+    // sits in the scrollable content, not where it is clipped, so a child of any correct one reads
+    // as outside the mount. tabindex is the gate; the box itself still answers to the mount.
+    // (Fhi.Metadata-fih3y)
     body: ({ mount: mountSel }) => {
       const mount = document.querySelector(mountSel);
       if (!mount) return `no ${mountSel} on the page — nothing was measured`;
@@ -149,12 +143,10 @@ export const assertions = [
     // Measured rather than computed from the style: an element can be display:none through a
     // parent, and a box of zero area is the thing that actually matters to a reader.
     //
-    // A HOST MAY UN-HIDE ON PURPOSE — Stiler shows the facet panel wherever there is room for a
-    // sidebar — and the tell is the rule, not the element: a rule whose own selector names
-    // [hidden] was written about this attribute, where `div { display: block }` was not. The fold
-    // must also be inert, so a control still pointing here that has a box of its own fails
-    // anyway: a reader who can press it sees aria-expanded disagree with the panel. Nothing here
-    // names a class, so the invariant stays on for every other element. (Fhi.Metadata-fih3y)
+    // A host may un-hide on purpose, and the tell is the rule rather than the element: one whose
+    // own selector names [hidden] was written about the attribute, where `div { display: block }`
+    // was not. The fold must be inert too, so a control still pointing here that has a box of its
+    // own fails anyway. No class is named. (Fhi.Metadata-fih3y)
     body: ({ mount: mountSel }) => {
       const mount = document.querySelector(mountSel);
       if (!mount) return `no ${mountSel} on the page — nothing was measured`;
@@ -175,16 +167,46 @@ export const assertions = [
           if (c.width * c.height !== 0) return false;
         }
         for (const rule of applicableRules()) {
-          if (!rule.selectorText.includes('[hidden]')) continue;
           const display = rule.style.getPropertyValue('display');
           if (display === '' || display === 'none') continue;
-          try {
-            if (el.matches(rule.selectorText)) return true;
-          } catch {
-            // A selector this browser cannot parse tells us nothing either way.
+          for (const branch of topLevelBranches(rule.selectorText)) {
+            if (!branch.includes('[hidden]')) continue;
+            try {
+              if (el.matches(branch)) return true;
+            } catch {
+              // A selector this browser cannot parse tells us nothing either way.
+            }
           }
         }
         return false;
+      }
+
+      // Per branch, not per rule: `.other, .panel[hidden]` names the attribute in one half and can
+      // match through the other, which would smuggle an accidental override past the check. Split
+      // at the top level only, so `:is(a, b)` and `[x="a,b"]` keep their own commas.
+      function topLevelBranches(selectorText) {
+        const branches = [];
+        let depth = 0;
+        let quote = null;
+        let start = 0;
+        for (let i = 0; i < selectorText.length; i += 1) {
+          const ch = selectorText[i];
+          if (quote !== null) {
+            if (ch === '\\') i += 1;
+            else if (ch === quote) quote = null;
+          } else if (ch === '"' || ch === "'") {
+            quote = ch;
+          } else if (ch === '(' || ch === '[') {
+            depth += 1;
+          } else if (ch === ')' || ch === ']') {
+            depth -= 1;
+          } else if (ch === ',' && depth === 0) {
+            branches.push(selectorText.slice(start, i));
+            start = i + 1;
+          }
+        }
+        branches.push(selectorText.slice(start));
+        return branches;
       }
 
       // Style rules in force at this width. A stylesheet the page cannot read contributes

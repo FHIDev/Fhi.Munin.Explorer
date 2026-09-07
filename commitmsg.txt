@@ -1,0 +1,29 @@
+fix: the [hidden] exemption reads one selector branch at a time, and the comments come down
+
+Two review findings.
+
+THE REAL ONE. `unhiddenOnPurpose` tested `[hidden]` against the whole `selectorText` and then
+matched the element against that same whole string, so a comma-joined rule could smuggle an
+accidental override past the check: `.munin-explorer-filters__facets, .decoy[hidden] { display:
+block }` names the attribute in a branch that matches nothing and un-hides through a branch that
+names nothing. It now splits the selector at top-level commas — `:is(a, b)` and `[x="a,b"]` keep
+their own — and requires the branch that MATCHES to be the branch that names `[hidden]`.
+
+Case 5 of the negative control is that exact rule, so the gap is now measured in both directions
+rather than argued about. Eleven cases, all still caught.
+
+The rest is comment budget: the five new blocks Copilot flagged are down to three or four lines
+each, with the widths, the numbers and the incident history left on Fhi.Metadata-fih3y where
+AGENTS.md says they belong.
+
+The changelog fragment is reframed around the general lesson — any host whose reset carries a bare
+element rule un-hides everything this package marks `[hidden]` — rather than around the sample
+stylesheets, which the repo's own policy calls internal housekeeping.
+
+Measured after the change: check-hostile-host.sh exit 0, every applicable assertion held at all six
+widths on all three targets, 18 pin runs inapplicable, all 11 defects caught, axe clean.
+
+Bead: Fhi.Metadata-fih3y
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Y11JhjJfzCJAqtMkdF4686

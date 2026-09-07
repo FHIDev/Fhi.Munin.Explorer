@@ -577,10 +577,9 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 .munin-explorer-filters__facets > [role="group"] { margin-bottom: 16px; }
 
-/* The browser's own `[hidden] { display: none }` loses to any author rule of equal specificity,
-   and Stiler's normalise block carries a bare `div { display: block }`. This is the line that puts
-   the fold back; it stands BEFORE the media query below on purpose, because the two have the same
-   specificity and order is the only thing that separates them (Fhi.Metadata-b3brc). */
+/* The browser's `[hidden]` rule loses to any author rule of equal specificity, so this is what
+   puts the fold back. BEFORE the media query below on purpose: same specificity, order decides.
+   (Fhi.Metadata-b3brc) */
 .munin-explorer-filters__facets[hidden] { display: none; }
 
 /* Dimmed and tabular so a column of counts reads as numbers rather than as more of the words in

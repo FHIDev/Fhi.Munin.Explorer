@@ -43,21 +43,11 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # which is the state defect 2 was found in and the only one where a panel is asked to be hidden at
 # all. Both are on the front page.
 #
-# `/kilder::kilder-list` is the kildeutforsker, and it is here because the kilder table is the
-# widest thing this package draws and its overflow lands on the HOST's page rather than on its own
-# box. Nothing else in either sample can see that. Three things had to be true before the target
-# could go in, and none of them was the page being wrong (Fhi.Metadata-fih3y, measured 2026-09-07):
-#
-#   1. Fhi.Metadata-b3brc's fix is half in Fhi.Helsedata.Stiler, and the pin was 0.1.38, which
-#      predates it: `no horizontal overflow` failed at 1024 with `document scrollWidth 1172 >
-#      clientWidth 1024`. 0.1.41 is the first release carrying `.munin-explorer-kilder-scroll`;
-#      the pin is now 0.1.42 and all six widths pass.
-#   2. `hidden means hidden` failed at 1024 and above - every width where Stiler's
-#      `@media (min-width: 1024px)` DELIBERATELY un-hides `.munin-explorer-filters__facets`,
-#      reported as a 384x484 box. It now tells that apart from the accidental un-hiding it was
-#      written for; geometry-assertions.mjs says how.
-#   3. Both tab pins failed with "nothing was measured" at all six widths. They now declare the
-#      states they replay a defect in, and the scan prints them as inapplicable here.
+# `/kilder::kilder-list` is the kildeutforsker, and it is the page most worth measuring: the kilder
+# table is the widest thing this package draws and the only part whose overflow lands on the HOST's
+# page. Three fixture problems had to be solved before it could go in - the Stiler pin, a
+# deliberate host un-hide, and pins that need a tablist - and the widths and numbers are recorded
+# on Fhi.Metadata-fih3y.
 TARGETS=(
   "/::explorer-tabs"
   "/::explorer-list-tab"
@@ -188,8 +178,7 @@ set -e
 
 [ "$geometry_status" -eq 2 ] && exit 2
 
-# The green above is worth exactly as much as the assertions behind it still firing, and an
-# assertion that has quietly stopped measuring anything reports success forever. So each one is
+# An assertion that has quietly stopped measuring anything reports success forever, so each one is
 # handed a page carrying the defect it was written for and required to say so.
 set +e
 ACCESSIBILITY_SETTLE_MS="$SETTLE_MS" node "$ROOT/scripts/geometry-negative-control.mjs" "$BASE"

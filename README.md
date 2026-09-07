@@ -53,8 +53,8 @@ solution — see [`docs/running-locally.md`](docs/running-locally.md).
 `/kilder` is scanned too, and it is the page most worth measuring: the kilder table is the widest
 thing the package draws and the only part of it whose overflow lands on the host's page rather than
 on its own box. Every assertion the scan runs is itself checked by
-`scripts/geometry-negative-control.mjs`, which breaks the page ten ways and requires the matching
-assertion to say so — a green geometry run means nothing while an assertion has quietly stopped
+`scripts/geometry-negative-control.mjs`, which breaks the page eleven ways and requires the
+matching assertion to say so — a green geometry run means nothing while an assertion has quietly stopped
 measuring anything. Assertions printed `n/a` are pins whose defect cannot occur on that page; they
 are stated, not skipped. (`Fhi.Metadata-fih3y`)
 

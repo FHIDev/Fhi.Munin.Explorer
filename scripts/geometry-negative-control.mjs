@@ -1,17 +1,10 @@
 // Breaks the hostile host on purpose, one defect at a time, and insists the matching geometry
 // assertion says so. Exits 1 when an assertion stayed quiet, 2 when it could not run.
 //
-// WHY. A scanner that reports success without looking is worse than no scanner, and this
-// repository has already shipped two of them: the drift guard that skipped and said nothing
-// (assert-drift-ran.sh) and the sample stylesheets nothing compared against Stiler
-// (Fhi.Metadata-3dwar). geometry-scan.mjs is the same shape of risk — every assertion in it can
-// only be trusted while something proves it still fires. So this hands each one a page carrying
-// the defect it was written for and requires a finding, exactly as
-// assert-portability-guard-armed.sh hands the compiler a banned symbol.
-//
-// Each case measures TWICE at one width: unbroken, where the assertion must hold, and broken,
-// where it must not. The unbroken half is not ceremony — it is what separates "the assertion
-// fires" from "the assertion always fires here".
+// An assertion that has quietly stopped measuring anything reports success forever, which is what
+// assert-portability-guard-armed.sh guards the RCL's banned symbols against and what this guards
+// geometry-scan.mjs against. Each case measures twice at one width: unbroken, where the assertion
+// must hold, and broken, where it must not. (Fhi.Metadata-fih3y)
 //
 // Usage:  node geometry-negative-control.mjs <base-url>
 // Called by check-hostile-host.sh, which owns starting the host.
@@ -63,6 +56,16 @@ const cases = [
     // what fails: this is the accidental un-hide, wearing the deliberate one's other condition.
     apply: css('.munin-explorer-filters__toggle { display: none !important; }\n' +
       '.munin-explorer-filters__facets { display: block !important; }'),
+  },
+  {
+    assertion: 'hidden means hidden',
+    defect: 'a comma-joined rule naming [hidden] only in the branch that does not match',
+    path: '/kilder', state: 'kilder-list', width: 843,
+    // The branch that matches the panel does not name the attribute; the one that does matches
+    // nothing. Read as a whole selector string this rule looks deliberate, and it is not.
+    apply: css('.munin-explorer-filters__toggle { display: none !important; }\n' +
+      '.munin-explorer-filters__facets, .munin-explorer-decoy[hidden] ' +
+      '{ display: block !important; }'),
   },
   {
     assertion: 'hidden means hidden',
