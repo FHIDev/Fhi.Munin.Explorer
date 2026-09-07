@@ -103,6 +103,10 @@ jobs:
         # here has published nothing and re-running it assembles the same section again, while a
         # run that died after the push could never come back to record what it shipped — the
         # feed pre-flight stops a re-run of a version that is already out.
+        #
+        # The durable half of that recording is the pushed BRANCH, which the assemble step above
+        # has already made. Opening the pull request needs a permission the repository may not
+        # grant Actions, so its failure is reported and stepped over rather than losing the release.
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BRANCH: ${{ steps.changelog.outputs.branch }}
@@ -133,9 +137,25 @@ jobs:
             echo 'push an empty commit, and they run.'
           } > "$RUNNER_TEMP/pr-body.md"
 
-          gh pr create --base main --head "$BRANCH" \
+          if ! gh pr create --base main --head "$BRANCH" \
             --title "docs(changelog): assemble v$VERSION" \
-            --body-file "$RUNNER_TEMP/pr-body.md"
+            --body-file "$RUNNER_TEMP/pr-body.md"; then
+            {
+              echo "### The changelog pull request was not opened"
+              echo
+              echo "Branch \`$BRANCH\` is pushed and holds the assembled section — nothing is lost."
+              echo "Opening the pull request failed, most often because *Allow GitHub Actions to"
+              echo "create and approve pull requests* is off for this repository."
+              echo
+              echo "Open it by hand, or the fragments stay queued and the next release republishes"
+              echo "them under its own version:"
+              echo
+              echo '```'
+              echo "gh pr create --base main --head $BRANCH --title 'docs(changelog): assemble v$VERSION'"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning::changelog pull request not opened for $BRANCH — open it by hand"
+          fi
 
       - name: Restore
         run: dotnet restore
