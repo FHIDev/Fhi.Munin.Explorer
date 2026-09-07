@@ -56,6 +56,14 @@ behaviour found later by someone else.
    in either copy. `scripts/assert-sample-css-in-step.sh` enforces both and runs in CI on every
    PR.
 
+5. **A rule that declares *something* is not a rule that declares the right thing.** The check
+   above stayed green while around forty divergences from `Fhi.Helsedata.Stiler` stood in the
+   samples. `scripts/assert-sample-css-matches-stiler.sh` compares declarations — property and
+   value — against the published package `samples/HostileHost` pins, and the 178 standing today
+   are listed in `test/sample-css-known-divergences.txt`. **Never add a line to that file to get a
+   branch green**: a new divergence and a stale line both fail the build, so the count can only go
+   down. Adding one is a hand edit that needs a reason in the PR.
+
 ---
 
 ## Before opening a PR
@@ -64,8 +72,14 @@ behaviour found later by someone else.
 dotnet build && dotnet test
 dotnet pack -c Release -o artifacts && ./scripts/assert-package-contents.sh artifacts
 ./scripts/assert-sample-css-in-step.sh          # only if you touched samples/ or a class name
+./scripts/assert-sample-css-matches-stiler.sh   # same trigger; needs Stiler restored, see below
 ./scripts/assert-portability-guard-armed.sh     # only if you touched Directory.Build.props
 ```
+
+The Stiler comparison needs the package on disk, which means credentials for helsedata's Azure
+Artifacts feed and `dotnet restore samples/HostileHost/HostileHost.csproj` first — see
+`nuget.config`. Without them it exits 2 saying so rather than passing having read nothing; CI runs
+it in the job that holds the feed secret.
 
 - **A `src/` change needs a changelog fragment** in `changelog.d/`. CI fails without one.
   Fragments here are **English only** — deliberately unlike Munin's bilingual `.en.md`/`.nb.md`

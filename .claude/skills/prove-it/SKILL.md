@@ -59,6 +59,7 @@ the feed lets you delete a version, but whoever already restored it keeps what t
 
 ```bash
 ./scripts/assert-sample-css-in-step.sh          # touched samples/ or invented a class name
+./scripts/assert-sample-css-matches-stiler.sh   # same trigger; needs the Stiler package restored
 ./scripts/assert-portability-guard-armed.sh     # touched Directory.Build.props
 ./scripts/check-accessibility.sh                # touched markup
 ./scripts/check-hostile-host.sh                 # touched markup or layout
@@ -167,6 +168,7 @@ Report what ran, not what you believe:
 ✓ Format:       clean (12 CRLF diffs, same count as main — not mine)
 ✓ Package:      assert-package-contents.sh green
 ✓ Sample CSS:   assert-sample-css-in-step.sh green
+✓ Stiler match: assert-sample-css-matches-stiler.sh green, 178 known divergences, none added
 – Portability:  not run, Directory.Build.props untouched
 ✓ Accessibility: no detected regression on / and /kilder
 ✓ Changelog:    changelog.d/Fhi.Metadata-abc12.md, category: Fixed
