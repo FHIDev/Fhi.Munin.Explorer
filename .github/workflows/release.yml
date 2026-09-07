@@ -99,10 +99,9 @@ jobs:
 
       - name: Open the pull request that records it on main
         if: steps.changelog.outputs.assembled == 'true'
-        # Before the push to the feed, not after: this is the recoverable half. A run that dies
-        # here has published nothing and re-running it assembles the same section again, while a
-        # run that died after the push could never come back to record what it shipped — the
-        # feed pre-flight stops a re-run of a version that is already out.
+        # Before the feed push, so a run that dies here has published nothing and can be re-run.
+        # The durable record is the BRANCH the assemble step pushed, not this pull request, which
+        # needs a permission FHIDev withholds — so failing to open it must not cost the release.
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BRANCH: ${{ steps.changelog.outputs.branch }}
@@ -133,9 +132,31 @@ jobs:
             echo 'push an empty commit, and they run.'
           } > "$RUNNER_TEMP/pr-body.md"
 
-          gh pr create --base main --head "$BRANCH" \
+          if out="$(gh pr create --base main --head "$BRANCH" \
             --title "docs(changelog): assemble v$VERSION" \
-            --body-file "$RUNNER_TEMP/pr-body.md"
+            --body-file "$RUNNER_TEMP/pr-body.md" 2>&1)"; then
+            echo "$out"
+          else
+            {
+              echo "### The changelog pull request was not opened"
+              echo
+              echo "Branch \`$BRANCH\` is pushed and holds the assembled section — nothing is lost."
+              echo
+              echo 'What `gh` reported:'
+              echo
+              echo '```'
+              echo "$out"
+              echo '```'
+              echo
+              echo "Open it by hand, or the fragments stay queued and the next release republishes"
+              echo "them under its own version:"
+              echo
+              echo '```'
+              echo "gh pr create --base main --head $BRANCH --title 'docs(changelog): assemble v$VERSION'"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning::changelog pull request not opened for $BRANCH — open it by hand"
+          fi
 
       - name: Restore
         run: dotnet restore
