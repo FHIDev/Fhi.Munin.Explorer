@@ -190,7 +190,13 @@ if [ -n "$fixed" ]; then
   count=$(printf '%s\n' "$fixed" | wc -l | tr -d ' ')
   echo "::error::$count line(s) in $KNOWN no longer describe a divergence. Delete them:" >&2
   echo "" >&2
-  printf '  %s\n' $fixed >&2
+  # Read line by line rather than letting printf word-split: a key holds a selector, and a
+  # selector holds spaces — `missing-selector|@media (max-width:1280px)|.munin-explorer-meta table|`
+  # would otherwise arrive as five lines of nonsense that match nothing in the file.
+  while IFS= read -r key; do
+    [ -n "$key" ] || continue
+    printf '  %s\n' "$key" >&2
+  done <<< "$fixed"
   echo "" >&2
   echo "This is the good failure — the stylesheet moved closer to Stiler. The list is only worth" >&2
   echo "reading if every line in it is still true, so a stale entry is as much a defect as a new" >&2
