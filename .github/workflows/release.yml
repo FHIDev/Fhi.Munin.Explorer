@@ -137,15 +137,21 @@ jobs:
             echo 'push an empty commit, and they run.'
           } > "$RUNNER_TEMP/pr-body.md"
 
-          if ! gh pr create --base main --head "$BRANCH" \
+          if out="$(gh pr create --base main --head "$BRANCH" \
             --title "docs(changelog): assemble v$VERSION" \
-            --body-file "$RUNNER_TEMP/pr-body.md"; then
+            --body-file "$RUNNER_TEMP/pr-body.md" 2>&1)"; then
+            echo "$out"
+          else
             {
               echo "### The changelog pull request was not opened"
               echo
               echo "Branch \`$BRANCH\` is pushed and holds the assembled section — nothing is lost."
-              echo "Opening the pull request failed, most often because *Allow GitHub Actions to"
-              echo "create and approve pull requests* is off for this repository."
+              echo
+              echo 'What `gh` reported:'
+              echo
+              echo '```'
+              echo "$out"
+              echo '```'
               echo
               echo "Open it by hand, or the fragments stay queued and the next release republishes"
               echo "them under its own version:"
