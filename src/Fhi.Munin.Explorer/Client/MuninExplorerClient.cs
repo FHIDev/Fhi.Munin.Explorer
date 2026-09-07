@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 using Fhi.Munin.Explorer.Contracts;
 
 namespace Fhi.Munin.Explorer.Client;
@@ -20,7 +21,11 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
         // See NullAsEmptyCollections. Without it an explicit "additionalProperties": null in the
         // payload lands in a property the contract declares non-nullable, and the first read of it
         // throws while rendering.
-        Converters = { new NullAsEmptyCollections() }
+        Converters = { new NullAsEmptyCollections() },
+
+        // The same failure in the other shape that does not refuse a null — see NullAsEmptyStrings,
+        // and AGENTS.md under "What an explicit null does" for the properties that still refuse one.
+        TypeInfoResolver = new DefaultJsonTypeInfoResolver { Modifiers = { NullAsEmptyStrings.Modifier } }
     };
 
     public async Task<Page<VariableSummary>> SearchVariablesAsync(

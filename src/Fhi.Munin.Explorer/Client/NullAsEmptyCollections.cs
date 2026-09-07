@@ -40,7 +40,7 @@ namespace Fhi.Munin.Explorer.Client;
 internal sealed class NullAsEmptyCollections : JsonConverterFactory
 {
     /// <summary>
-    /// The two shapes the contracts declare their collections as.
+    /// The three shapes the contracts declare their collections as.
     /// </summary>
     /// <remarks>
     /// Dictionaries only when keyed by string, which every one of them is. A converter has to write
@@ -50,10 +50,17 @@ internal sealed class NullAsEmptyCollections : JsonConverterFactory
     /// Which makes "every collection on every contract" a claim about how the contracts happen to
     /// be spelled, so it is checked rather than asked for: <c>NullAsEmptyCollectionsTest</c> walks
     /// every collection-typed property under <c>Contracts/</c> and fails on the first one this
-    /// method does not match. A property declared <c>IReadOnlyCollection&lt;T&gt;</c>,
-    /// <c>IEnumerable&lt;T&gt;</c>, <c>T[]</c> or a non-string-keyed dictionary would otherwise
-    /// fall through to the old behaviour while its declaration went on promising otherwise — and
-    /// the promise being trusted at the declaration is how this shipped twice.
+    /// method does not match. A property declared <c>IEnumerable&lt;T&gt;</c>, <c>T[]</c> or a
+    /// non-string-keyed dictionary would otherwise fall through to the old behaviour while its
+    /// declaration went on promising otherwise — and the promise being trusted at the declaration
+    /// is how this shipped twice.
+    /// </para>
+    /// <para>
+    /// <c>IReadOnlyCollection&lt;T&gt;</c> is matched too, since it turned out to be in use: the
+    /// request bodies in <see cref="MuninExplorerClient"/> are spelled that way, and only
+    /// <c>ExplicitNullTest</c>'s wider sweep looks at them. They are written and never read, so
+    /// nothing was broken — and nothing would have broken until a contract borrowed the spelling.
+    /// (Fhi.Metadata-o355u)
     /// </para>
     /// </remarks>
     public override bool CanConvert(Type typeToConvert)
@@ -66,6 +73,7 @@ internal sealed class NullAsEmptyCollections : JsonConverterFactory
         var definition = typeToConvert.GetGenericTypeDefinition();
 
         return definition == typeof(IReadOnlyList<>)
+               || definition == typeof(IReadOnlyCollection<>)
                || (definition == typeof(IReadOnlyDictionary<,>)
                    && typeToConvert.GetGenericArguments()[0] == typeof(string));
     }
@@ -73,10 +81,13 @@ internal sealed class NullAsEmptyCollections : JsonConverterFactory
     public override JsonConverter CreateConverter(Type typeToConvert, JsonSerializerOptions options)
     {
         var arguments = typeToConvert.GetGenericArguments();
+        var definition = typeToConvert.GetGenericTypeDefinition();
 
-        var converter = typeToConvert.GetGenericTypeDefinition() == typeof(IReadOnlyList<>)
+        var converter = definition == typeof(IReadOnlyList<>)
             ? typeof(ListConverter<>).MakeGenericType(arguments)
-            : typeof(DictionaryConverter<>).MakeGenericType(arguments[1]);
+            : definition == typeof(IReadOnlyCollection<>)
+                ? typeof(CollectionConverter<>).MakeGenericType(arguments)
+                : typeof(DictionaryConverter<>).MakeGenericType(arguments[1]);
 
         return (JsonConverter)Activator.CreateInstance(converter)!;
     }
@@ -98,6 +109,40 @@ internal sealed class NullAsEmptyCollections : JsonConverterFactory
         // Written out rather than handed back to the serialiser as IReadOnlyList<T>, which would
         // resolve this same converter again and recurse until the stack ran out.
         public override void Write(Utf8JsonWriter writer, IReadOnlyList<T> value, JsonSerializerOptions options)
+        {
+            if (value is null)
+            {
+                writer.WriteNullValue();
+
+                return;
+            }
+
+            writer.WriteStartArray();
+
+            foreach (var item in value)
+            {
+                JsonSerializer.Serialize(writer, item, options);
+            }
+
+            writer.WriteEndArray();
+        }
+    }
+
+    // A separate class rather than a base one for ListConverter: System.Text.Json matches a
+    // converter on the property's declared interface, so IReadOnlyCollection<T> needs its own.
+    private sealed class CollectionConverter<T> : JsonConverter<IReadOnlyCollection<T>>
+    {
+        public override bool HandleNull => true;
+
+        public override IReadOnlyCollection<T> Read(
+            ref Utf8JsonReader reader,
+            Type typeToConvert,
+            JsonSerializerOptions options)
+            => reader.TokenType == JsonTokenType.Null
+                ? []
+                : JsonSerializer.Deserialize<List<T>>(ref reader, options) ?? [];
+
+        public override void Write(Utf8JsonWriter writer, IReadOnlyCollection<T> value, JsonSerializerOptions options)
         {
             if (value is null)
             {
