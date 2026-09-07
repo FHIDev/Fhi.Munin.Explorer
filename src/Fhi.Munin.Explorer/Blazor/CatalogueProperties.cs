@@ -129,6 +129,13 @@ internal static class CatalogueProperties
         => string.Equals(language, reader, StringComparison.OrdinalIgnoreCase) ? null : language;
 
     /// <summary>
+    /// The same, for a value that may have fallen back off the catalogue's Norwegian — a code, or
+    /// this component's own prose. Neither is Norwegian to pronounce, so neither is marked.
+    /// </summary>
+    internal static string? Foreign(bool norwegian, string reader) =>
+        norwegian ? Foreign("no", reader) : null;
+
+    /// <summary>
     /// The properties worth drawing, as label and value, in the catalogue's order.
     /// </summary>
     /// <remarks>
@@ -628,7 +635,7 @@ internal static class CatalogueProperties
     /// <remarks>
     /// The bag is open while the page offers two languages, so resolving to the reader's alone
     /// drops slots nothing here could reach; and a tag this package cannot name keeps the
-    /// catalogue's own, since the reader's is the one <see cref="Foreign"/> drops (Fhi.Metadata-l9d5r).
+    /// catalogue's own, since the reader's is the one <see cref="Foreign(string, string)"/> drops (Fhi.Metadata-l9d5r).
     /// </remarks>
     internal static List<LocalisedText> AllLocalised(
         IReadOnlyDictionary<string, string> translations,

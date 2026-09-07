@@ -253,19 +253,29 @@ public sealed partial class KildeExplorer : ComponentBase
 
     // A real heading rather than a styled <p>: a screen reader navigates the panel by these, and
     // KildeView draws the same delkilde names as headings too.
-    private RenderFragment GroupHeading(string name, int depth) => builder =>
+    private RenderFragment GroupHeading(string? name, string? code, int depth) => builder =>
     {
+        var named = T.Named(name, code);
+
         builder.OpenElement(0, $"h{ExpandedGroupLevel(depth)}");
         builder.AddAttribute(1, "class",
                              "headline headline-xxs margin--none munin-explorer-kilde__delkilde-name");
-        builder.AddAttribute(2, "lang", CatalogueProperties.Foreign("no", Reader));
-        builder.AddContent(3, name);
+        builder.AddAttribute(2, "lang", CatalogueProperties.Foreign(named.Norwegian, Reader));
+        builder.AddContent(3, named.Text);
         builder.CloseElement();
     };
 
 
+
+    // The row's name, and whether it is still the catalogue's Norwegian. An empty navn falls back
+    // to the code, which the row already draws under the name and which is not Norwegian prose, so
+    // the lang marker comes off with it. (Fhi.Metadata-w13lk)
+    private (string Text, bool Norwegian) RowName(KildeSummary kilde) => T.Named(kilde.Name, kilde.Code);
+
     private string ExpandLabel(KildeSummary kilde) =>
-        IsExpanded(kilde.Id) ? T.CollapseDatasamlinger(kilde.Name) : T.ExpandDatasamlinger(kilde.Name);
+        IsExpanded(kilde.Id)
+            ? T.CollapseDatasamlinger(RowName(kilde).Text)
+            : T.ExpandDatasamlinger(RowName(kilde).Text);
 
     private string PanelId(Guid id) => $"munin-explorer-datasamlinger-{_instance}-{id}";
 
@@ -379,18 +389,18 @@ public sealed partial class KildeExplorer : ComponentBase
     // Direct datasamlinger first, then one group per delkilde that has any, at every depth — flat
     // would lose which of them belong to a delkilde (Fhi.Metadata-wgpeo), and stopping at the first
     // level would drop a grandchild's entirely while the row's count still promised them.
-    private IReadOnlyList<(string? Heading, int Depth, IReadOnlyList<KildeDatasamling> Rows)> DatasamlingGroups(Guid id)
+    private IReadOnlyList<(string? Heading, string? Code, int Depth, IReadOnlyList<KildeDatasamling> Rows)> DatasamlingGroups(Guid id)
     {
         if (!_datasamlinger.TryGetValue(id, out var detail) || detail is null)
         {
             return [];
         }
 
-        var groups = new List<(string?, int, IReadOnlyList<KildeDatasamling>)>();
+        var groups = new List<(string?, string?, int, IReadOnlyList<KildeDatasamling>)>();
 
         if (detail.Datasamlinger.Count > 0)
         {
-            groups.Add((null, 0, Ordered(detail.Datasamlinger)));
+            groups.Add((null, null, 0, Ordered(detail.Datasamlinger)));
         }
 
         Collect(Ordered(detail.Delkilder), 0, groups);
@@ -401,13 +411,13 @@ public sealed partial class KildeExplorer : ComponentBase
     private static void Collect(
         IReadOnlyList<KildeDelkilde> delkilder,
         int depth,
-        List<(string?, int, IReadOnlyList<KildeDatasamling>)> groups)
+        List<(string?, string?, int, IReadOnlyList<KildeDatasamling>)> groups)
     {
         foreach (var delkilde in delkilder)
         {
             if (delkilde.Datasamlinger.Count > 0)
             {
-                groups.Add((delkilde.Name, depth, Ordered(delkilde.Datasamlinger)));
+                groups.Add((delkilde.Name, delkilde.Code, depth, Ordered(delkilde.Datasamlinger)));
             }
 
             Collect(Ordered(delkilde.Children), depth + 1, groups);

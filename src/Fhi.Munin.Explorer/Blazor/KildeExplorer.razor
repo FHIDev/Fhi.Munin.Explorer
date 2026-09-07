@@ -488,7 +488,7 @@ else
                                    column says nothing about which row. (Fhi.Metadata-5ghur) *@
                                 <td class="munin-explorer-kilder__select">
                                     <input type="checkbox"
-                                           aria-label="@T.SelectKilde(kilde.Name)"
+                                           aria-label="@T.SelectKilde(RowName(kilde).Text)"
                                            checked="@IsTicked(kilde.Id)"
                                            @onchange="e => Tick(kilde.Id, e.Value is true)" />
                                 </td>
@@ -500,12 +500,16 @@ else
                             <th scope="row">
                                 <button class="munin-explorer-kilder__name"
                                         type="button"
-                                        lang="@CatalogueProperties.Foreign("no", Reader)"
-                                        @onclick="() => SelectAsync(kilde)">@kilde.Name</button>
+                                        lang="@CatalogueProperties.Foreign(RowName(kilde).Norwegian, Reader)"
+                                        @onclick="() => SelectAsync(kilde)">@RowName(kilde).Text</button>
 
-                                @* The code under the name, the way Kelda puts it there — it is how a
-                                   reader who knows K_ALS finds the row whose name they do not know. *@
-                                <p class="caption margin--none">@kilde.Code</p>
+                                @* The code under the name, the way Kelda puts it there — it is how a reader
+                                   who knows K_ALS finds the row whose name they do not know. Not drawn
+                                   when the button above has already fallen back to it. *@
+                                @if (RowName(kilde).Norwegian)
+                                {
+                                    <p class="caption margin--none">@kilde.Code</p>
+                                }
                             </th>
                             @if (ColumnVisible(KildeColumn.Kildetype))
                             {
@@ -572,13 +576,13 @@ else
 
                                     @if (!_datasamlingerLoading.Contains(kilde.Id) && !_datasamlingerError.ContainsKey(kilde.Id))
                                     {
-                                        @PanelHeading(kilde.Name)
+                                        @PanelHeading(RowName(kilde).Text)
 
                                         @foreach (var group in DatasamlingGroups(kilde.Id))
                                         {
                                             @if (group.Heading is { } heading)
                                             {
-                                                @GroupHeading(heading, group.Depth)
+                                                @GroupHeading(heading, group.Code, group.Depth)
                                             }
                                             @DatasamlingTable.For(group.Rows, T, Language, Reader)
                                         }

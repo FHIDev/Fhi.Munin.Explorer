@@ -5,11 +5,15 @@
     <div class="munin-explorer-whole">
 
         <div class="munin-explorer-whole__header">
-            @* The catalogue holds one name, in Norwegian, so it is marked when the reader is not. *@
-            @DetailBlocks.Heading(HeadingLevel, variable.PreferredTerm, "headline headline-s margin--bottom",
-                                  HeadingId, CatalogueProperties.Foreign("no", Reader))
+            @{ var named = T.Named(variable.PreferredTerm, variable.Code); }
 
-            @if (!string.IsNullOrWhiteSpace(variable.Code))
+            @* The catalogue holds one name, in Norwegian, so it is marked when the reader is not - and
+               not when the catalogue left the name empty and this is the code standing in for it. *@
+            @DetailBlocks.Heading(HeadingLevel, named.Text, "headline headline-s margin--bottom",
+                                  HeadingId, CatalogueProperties.Foreign(named.Norwegian, Reader))
+
+            @* Not when the heading above has already fallen back to it. (Fhi.Metadata-w13lk) *@
+            @if (named.Norwegian && !string.IsNullOrWhiteSpace(variable.Code))
             {
                 <p class="caption margin--none munin-explorer-whole__code">@variable.Code</p>
             }
