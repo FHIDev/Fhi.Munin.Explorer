@@ -701,6 +701,16 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .munin-explorer-drilldown > dl > dt { margin-top: 12px; }
 .munin-explorer-drilldown > dl > dd { margin: 0; }
 
+/* Stiler's base rule for the component root (_detail.scss:113), absent here until now: the
+   explorer is a <section> nothing above bounds, so without it the component runs past the 1488px
+   cap helsedata holds it to. This sample's own chrome adds to the 24px. (Fhi.Metadata-7e7de) */
+.munin-explorer {
+  max-width: 1488px;
+  width: 100%;
+  padding: 0 24px;
+  margin: 0 auto;
+}
+
 /* ---- not Stiler either: the two-column layout ----
 
    Stiler styles components, not the arrangement of them — it has no page layout at all, so where
@@ -757,10 +767,9 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
     padding-inline: 6px;
   }
 
-  /* The drill-in replaces the list rather than sitting beside it — the filter panel is not
-     rendered at all in this state — so it spans both tracks. Copied from Stiler, which carries
-     both halves: the catch-all below out-specifies this rule, so without its `:not` this one is
-     inert. (Fhi.Metadata-fv79e) */
+  /* The drill-in replaces the list rather than sitting beside it, so it spans both tracks and is
+     excluded from the catch-all below by :not() - caught by it, it sat in column 2 with the filter
+     track standing empty (Stiler _detail.scss:182, Fhi.Metadata-7e7de). */
   .munin-explorer > .munin-explorer-drilldown {
     grid-column: 1 / -1;
     min-inline-size: 0;
@@ -932,11 +941,6 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   gap: 16px 24px;
 }
 
-.munin-explorer-meta__grid-1,
-.munin-explorer-meta__grid-2 {
-  grid-template-columns: auto;
-}
-
 .munin-explorer-meta__grid p {
   margin: 0;
 }
@@ -1093,6 +1097,61 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    well, because 1.4.1 does not accept a hue as the whole signal. */
 .munin-explorer-dataitem-main__desiredData input[aria-invalid="true"] {
   border: 2px solid var(--error-dark);
+}
+
+/* ---- the saved list, which is the same name drawn as a real <table> ----
+
+   VariableSearch draws munin-explorer-data-list as a <ul> of flex rows, because that is
+   helsedata's own variable page redrawn and their stylesheet dresses exactly that shape.
+   VariableListView draws it as a <table>: nothing on their site dresses a saved list, so it can
+   have the element that brings column alignment with it and needs no rule from anybody to line up.
+
+   Every selector here is scoped on the ELEMENT, which is what keeps the two shapes off each
+   other's rules — the flex row above and the table row below wear the same class names. */
+table.munin-explorer-data-list {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+table.munin-explorer-data-list th,
+table.munin-explorer-data-list td {
+  padding: 8px 12px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--grey30);
+}
+
+table.munin-explorer-data-list thead th {
+  background: var(--grey10);
+  color: var(--grey60);
+  font-weight: 600;
+}
+
+/* The name cell is a <th scope="row">, which browsers centre by default. It is a label for the
+   row rather than a heading over it, so it is left-aligned with the rest and only keeps the
+   weight — same call Kelda's table makes one screen over. */
+table.munin-explorer-data-list tbody th {
+  color: var(--dark);
+  font-weight: 600;
+
+  /* The name is the label the rest of the row is read against, so it must not be the column that
+     gives way when the table is wider than its box: without a floor the browser squeezes it to
+     one word per line — "Variabelen / er ikke / tilgjengelig / lenger" — and the excess belongs
+     in the scroll instead. Measured at 1440: 938px of box against a 1077px table. */
+  min-width: 12rem;
+}
+
+/* The box the saved-list table scrolls in. The overflow-x duplicates what the markup sets inline;
+   the focus ring is the half that is genuinely the host's, and it is owed because the box carries
+   tabindex="0" and a focus stop nobody can see is WCAG 2.4.7. */
+.munin-explorer-list-scroll {
+  overflow-x: auto;
+}
+
+.munin-explorer-list-scroll:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 4px;
 }
 
 
@@ -1317,8 +1376,16 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   margin-bottom: 20px;
 }
 
-.munin-explorer-meta__grid-1 {
+/* After the base rule, the way Stiler orders it: equal specificity, so the copy that used to sit
+   before it lost and `-2` kept two lanes where Stiler gives it one. `grid-row` draws nothing until
+   the panel's parent is a grid, and is here so the samples move the day one does. (Fhi.Metadata-l9txl) */
+.munin-explorer-meta__grid-1,
+.munin-explorer-meta__grid-2 {
   grid-template-columns: auto;
+}
+
+.munin-explorer-meta__grid-1 {
+  grid-row: 1/3;
 }
 
 /* The three drill-in asides do not come through here: their own rule further down is scoped to
@@ -1770,12 +1837,15 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .munin-explorer-kilder .munin-explorer-kilder__select {
   width: 1%;
 }
-/* The expand control column and the row it opens. The toggle wears hd-button-reset, so it has no
-   chrome of its own: without a rule here it is a bare glyph in a column with no width. */
-.munin-explorer-kilder__expand {
-  width: 32px;
+/* The toggle wears hd-button-reset, so without a rule this is a bare glyph in a column with no
+   width. Scoped like __count and __select: the shared cell rule carries a class and an element, so
+   a bare name loses. The 4px is what lets width bite. (Stiler _kilder.scss:117, Fhi.Metadata-cuo0e) */
+.munin-explorer-kilder .munin-explorer-kilder__expand {
+  padding-left: 4px;
+  padding-right: 4px;
   text-align: center;
   vertical-align: top;
+  width: 32px;
 }
 
 .munin-explorer-kilder__expand-toggle {

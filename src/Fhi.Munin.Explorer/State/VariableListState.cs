@@ -175,8 +175,9 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
         }
 
         // Patched in place rather than refetched: the other surfaces are told below, and a round
-        // trip here would make a rename look slower than it is.
-        _lists = [.. _lists.Select(l => l.Id == id ? l with { Name = name } : l)];
+        // trip here would make a rename look slower than it is. The timestamp goes with the name,
+        // for the reason TouchedNow gives.
+        _lists = [.. _lists.Select(l => l.Id == id ? l with { Name = name, UpdatedAt = TouchedNow() } : l)];
         Changed?.Invoke();
         return true;
     }
@@ -239,6 +240,7 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
         if (accepted)
         {
             RecordMembership(id, variableIds, saved: true, startedAt);
+            Touch(id, startedAt);
             Changed?.Invoke();
         }
 
@@ -265,9 +267,30 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
         if (accepted)
         {
             RecordMembership(id, variableIds, saved: false, startedAt);
+            Touch(id, startedAt);
             Changed?.Invoke();
         }
 
         return accepted;
     }
+
+    /// <summary>
+    /// Records that a write the API accepted has just changed one list. The holder patches rather
+    /// than refetches, so without this <c>updatedAt</c> stays at the day the page was loaded.
+    /// </summary>
+    private void Touch(Guid id, int startedAt)
+    {
+        if (!StillCurrent(startedAt))
+        {
+            return;
+        }
+
+        _lists = [.. _lists.Select(l => l.Id == id ? l with { UpdatedAt = TouchedNow() } : l)];
+    }
+
+    /// <summary>
+    /// What an accepted write sets <c>updatedAt</c> to. This clock because none of these endpoints
+    /// answers with the new value, and the alternative is not a truer one but a stale one.
+    /// </summary>
+    private static DateTimeOffset TouchedNow() => DateTimeOffset.UtcNow;
 }

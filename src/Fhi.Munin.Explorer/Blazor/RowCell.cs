@@ -3,7 +3,8 @@ using Microsoft.AspNetCore.Components.Rendering;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
-/// One column of a variable row, in <c>munin-explorer-dataitem-main__column</c> shape.
+/// One column of a variable row: a <c>munin-explorer-dataitem-main__column</c> <c>&lt;div&gt;</c>
+/// for the search results, a <c>&lt;td&gt;</c> for the saved list's real table.
 /// </summary>
 /// <remarks>
 /// Shared by the search results and the reader's saved lists, which draw the same columns of the
@@ -22,9 +23,9 @@ internal static class RowCell
     /// Draws one cell.
     /// </summary>
     /// <remarks>
-    /// The field name is not shown in the cell — the column header names it. It is still emitted
-    /// for assistive technology, because a screen reader moving down a column has no header to
-    /// glance up at.
+    /// The field name is not shown in the cell — the column header names it. In a <c>&lt;div&gt;</c>
+    /// row it is still emitted for assistive technology, because a screen reader moving down a
+    /// column has no header to glance up at; <paramref name="tableCell"/> is the row that has one.
     /// <para>
     /// <paramref name="catalogue"/> says whose words the value is. Nearly always the catalogue's,
     /// which are Norwegian whatever the reader's language is, so they are marked <c>lang="no"</c>.
@@ -41,22 +42,34 @@ internal static class RowCell
         string? key,
         string notSpecified,
         string? tooltip = null,
-        bool catalogue = true)
+        bool catalogue = true,
+        bool tableCell = false)
     {
         // Sequence numbers ascend without gaps or repeats through every path below. Blazor uses
         // them positionally to diff one render against the next, so a number that goes backwards
         // makes the renderer compare the wrong nodes — an earlier version emitted seq+15 before
         // seq+2 and would have diffed the label span against the value span.
-        builder.OpenElement(seq, "div");
-        builder.AddAttribute(seq + 1, "class",
-            key is null
-                ? "munin-explorer-dataitem-main__column"
-                : $"munin-explorer-dataitem-main__column munin-explorer-dataitem-main__{key}");
+        builder.OpenElement(seq, tableCell ? "td" : "div");
 
-        // The cell, which is what this element has always been called in the comments here and is
-        // now what it is. Without the role the value and the header above it were two unrelated
-        // runs of text, so nothing said which column a value belonged to (WCAG 1.3.1).
-        builder.AddAttribute(seq + 2, "role", "cell");
+        // munin-explorer-dataitem-main__column is `display: inline-flex` in Stiler, which on a <td>
+        // takes the cell out of the table it is a cell of. So a real cell wears the per-column
+        // modifier alone, and the row's <th scope="col"> does the work the flex column did.
+        builder.AddAttribute(seq + 1, "class", (key, tableCell) switch
+        {
+            (null, true) => null,
+            (null, false) => "munin-explorer-dataitem-main__column",
+            (_, true) => $"munin-explorer-dataitem-main__{key}",
+            _ => $"munin-explorer-dataitem-main__column munin-explorer-dataitem-main__{key}"
+        });
+
+        if (!tableCell)
+        {
+            // The cell, which is what this element has always been called in the comments here and
+            // is now what it is. Without the role the value and the header above it were two
+            // unrelated runs of text, so nothing said which column a value belonged to (WCAG
+            // 1.3.1). A <td> is one already and may not be told so again.
+            builder.AddAttribute(seq + 2, "role", "cell");
+        }
 
         // The full value as a tooltip on the CELL, because a cell can be clipped — the code column
         // truncates rather than wraps, since a broken identifier is neither readable nor copyable.
@@ -76,10 +89,15 @@ internal static class RowCell
         // NOT an aria-label on the value: aria-label REPLACES the text it labels, so a reader would
         // hear the field name instead of the value. screenreader-only is Stiler's own class for
         // this, 16 rules in the site-wide stylesheet.
-        builder.OpenElement(seq + 4, "span");
-        builder.AddAttribute(seq + 5, "class", "screenreader-only");
-        builder.AddContent(seq + 6, $"{label}: ");
-        builder.CloseElement();
+        //
+        // A real cell needs none of it — its <th scope="col"> is the association.
+        if (!tableCell)
+        {
+            builder.OpenElement(seq + 4, "span");
+            builder.AddAttribute(seq + 5, "class", "screenreader-only");
+            builder.AddContent(seq + 6, $"{label}: ");
+            builder.CloseElement();
+        }
 
         builder.OpenElement(seq + 7, "span");
         builder.AddAttribute(seq + 8, "class", "munin-explorer-dataitem-main__column__text");

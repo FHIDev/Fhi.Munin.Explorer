@@ -64,6 +64,10 @@ export const assertions = [
     //
     // The tolerance is 1px for subpixel rounding — a 1487.98px child of a 1488px box is not a
     // defect, and reporting it as one would make this file the boy who cried overflow.
+    //
+    // One exemption: a declared scroll box — role=region, tabindex=0, scrollable overflow-x —
+    // holds content that is reachable rather than clipped. Not overflow-x alone, which overflow-y
+    // also computes to and which would exempt the filter panel above.
     body: ({ mount: mountSel }) => {
       const mount = document.querySelector(mountSel);
       if (!mount) return `no ${mountSel} on the page — nothing was measured`;
@@ -79,12 +83,26 @@ export const assertions = [
         // `.screenreader-only` is `position: absolute; left: -10000px`. Off-canvas on purpose is
         // not overflow, and there is no way to overflow a container by being at -9875.
         if (r.right <= 0) continue;
+        // Inside a declared scroll region — see the note above. The region itself is not exempt.
+        if (insideAScrollRegion(el)) continue;
         if (r.right > box.right + tolerance || r.left < box.left - tolerance) {
           return `${describe(el)} spans ${Math.round(r.left)}..${Math.round(r.right)}, ` +
             `outside the mount's ${Math.round(box.left)}..${Math.round(box.right)}`;
         }
       }
       return null;
+
+      // Strictly between the element and the mount, so the mount's own overflow — the host's
+      // business, not the package's — exempts nothing.
+      function insideAScrollRegion(el) {
+        for (let p = el.parentElement; p && p !== mount; p = p.parentElement) {
+          if (p.getAttribute('role') !== 'region') continue;
+          if (p.getAttribute('tabindex') !== '0') continue;
+          const overflowX = getComputedStyle(p).overflowX;
+          if (overflowX === 'auto' || overflowX === 'scroll') return true;
+        }
+        return false;
+      }
 
       function describe(el) {
         const cls = typeof el.className === 'string' && el.className
