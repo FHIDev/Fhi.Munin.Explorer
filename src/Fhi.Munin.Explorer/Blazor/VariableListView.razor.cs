@@ -212,10 +212,11 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     };
 
     /// <summary>
-    /// One page read a rename may skip. Consumed by the first notification rather than held for the
-    /// call, or a removal raised mid-rename would be swallowed with it.
+    /// Page reads owed to notifications this component already knows about and does not need to
+    /// act on - a rename owes one, a create-and-switch owes two. Consumed by count, in the order
+    /// the notifications arrive, rather than a flag: two in a row must not be mistaken for one.
     /// </summary>
-    private bool _skipOnePageRead;
+    private int _pendingPageReadSkips;
 
     /// <summary>Why a rename or a delete did not happen. The shape the save button uses.</summary>
     private enum ListActionFailure
@@ -581,9 +582,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             _pageNumber = 1;
         }
 
-        if (_skipOnePageRead)
+        if (_pendingPageReadSkips > 0)
         {
-            _skipOnePageRead = false;
+            _pendingPageReadSkips--;
         }
         else
         {
@@ -957,6 +958,14 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         VariableList? created;
 
+        // Two notifications answer for the outgoing list before this method ever repoints
+        // _shownList: State.CreateAsync raises Changed as soon as the new list exists in
+        // _lists - before this method sees it back, so moving _shownList earlier here cannot
+        // reach that one - and SetActiveListAsync raises it again when its own membership read
+        // for the NEW list finishes. Both reach OnStateChanged while _shownList still names the
+        // list being left, so they are owed here and skipped by count. Fhi.Metadata-7x62u.
+        _pendingPageReadSkips = 2;
+
         try
         {
             created = await State.CreateAsync(name);
@@ -965,6 +974,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         {
             // Creating meets the same limiter the saves do, and "prøv igjen om litt" is advice
             // a throttled reader cannot use.
+            _pendingPageReadSkips = 0;
             _createFailure = ListActionFailure.Throttled;
             return;
         }
@@ -972,12 +982,16 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         {
             // Uncaught, this leaves the event handler and takes the circuit with it: a blank
             // page and a reconnect banner in place of the list the reader was building.
+            _pendingPageReadSkips = 0;
             _createFailure = ListActionFailure.Failed;
             return;
         }
 
         if (created is null)
         {
+            // Signed out mid-call: State.CreateAsync raised no Changed for this generation, so
+            // no notification is coming to spend the allowance either.
+            _pendingPageReadSkips = 0;
             return;
         }
 
@@ -992,6 +1006,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         {
             // The list was made and the switch met the limiter. Told apart from the ordinary
             // failure for the reason the create half above gives: the remedy is to wait.
+            _pendingPageReadSkips = 0;
             _createFailure = ListActionFailure.Throttled;
             return;
         }
@@ -999,9 +1014,15 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         {
             // Same reason as ChooseListAsync above. The list was created; it is the switch to
             // it that did not happen, which is what ListLoadError says.
+            _pendingPageReadSkips = 0;
             _failed = true;
             return;
         }
+
+        // Defensive against ReadMembershipAsync's own early return - a list gone right after
+        // being made answers with no Changed at all - which would otherwise leave an unspent
+        // skip to land on whatever notification comes next.
+        _pendingPageReadSkips = 0;
 
         _shownList = created.Id;
         _pageNumber = 1;
@@ -1022,7 +1043,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         ForgetFailures();
-        _skipOnePageRead = true;
+        _pendingPageReadSkips = 1;
 
         try
         {
@@ -1051,7 +1072,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         {
             // A rename that never reached the holder raised nothing, so the allowance would
             // otherwise sit here and be spent on somebody else's notification.
-            _skipOnePageRead = false;
+            _pendingPageReadSkips = 0;
         }
     }
 

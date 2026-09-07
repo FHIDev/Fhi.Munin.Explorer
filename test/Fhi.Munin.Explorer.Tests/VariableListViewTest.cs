@@ -1274,6 +1274,27 @@ public class VariableListViewTest : BunitContext
     }
 
     [Fact]
+    public void View_WhenAListIsCreated_ThenNoPageReadTargetsTheOutgoingList()
+    {
+        // The cost this bead is about, not the correctness #210 already fixed: #210 discards a
+        // stray answer for the outgoing list if one arrives, so a DOM assertion passes whether
+        // or not that answer is ever asked for. This asserts on the calls themselves instead.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
+        var cut = RenderView(client);
+        var askedBeforeCreate = client.VariablesAskedFor.Count;
+
+        CreateField(cut).Change("Kreft og svulster");
+        Press(cut, "Opprett liste");
+
+        var askedDuringCreate = client.VariablesAskedFor.Skip(askedBeforeCreate).ToList();
+
+        // Exactly the new list, twice - SetActiveListAsync's own membership walk, then this
+        // view's explicit page read - and ListId, the list being left, not at all.
+        Assert.Equal(2, askedDuringCreate.Count);
+        Assert.All(askedDuringCreate, id => Assert.NotEqual(ListId, id));
+    }
+
+    [Fact]
     public void View_WhenCreatingAListIsRateLimited_ThenItSaysSoRatherThanThatTheSaveFailed()
     {
         var client = new ListClient { HasList = false, CreateThrottles = true };
