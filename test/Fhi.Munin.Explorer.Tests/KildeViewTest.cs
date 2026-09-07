@@ -1692,28 +1692,21 @@ public class KildeViewTest : BunitContext
     }
 
     [Fact]
-    public void Metadata_WhenAHostStylesTheGrid_ThenALongValueCanBreakInsideItsColumn()
+    public void Drilldown_WhenAHostLaysOutTheExplorer_ThenItSpansBothTracksRatherThanTheResultsOne()
     {
-        // A grid track floors at min-content, and "Gjeldende lovgivning" measures 586px in a 435px
-        // grid, so one value floored the track wider than its own container. Asserted on the rule
-        // that carries the two-lane default, so a copy inside @media does not answer for it.
-        // (Fhi.Metadata-fv79e)
-        static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
+        // Both halves, because the exclusion alone is worse than neither: dropped out of the
+        // catch-all and placed nowhere, the drill-in auto-flows into the filter track and measures
+        // 40px. Stiler carries the pair; the samples were missing both. (Fhi.Metadata-fv79e)
+        var rules = HostClassNames.SampleDeclarationsFor("munin-explorer-drilldown");
 
-        var unconditional = HostClassNames.SampleDeclarationsFor("munin-explorer-meta__grid")
-            .Where(rule => rule.Selector.Split(',').Any(
-                       branch => !branch.Contains("__aside", StringComparison.Ordinal)
-                                 && Regex.IsMatch(branch, @"\.munin-explorer-meta__grid(?![\w-])")))
-            .Select(rule => Squeezed(rule.Declarations))
-            .Where(d => d.Contains("grid-template-columns:1fr1fr", StringComparison.Ordinal))
-            .ToList();
+        Assert.Contains(rules, rule =>
+            Regex.IsMatch(rule.Declarations, @"grid-column:\s*1\s*/\s*-1")
+            && Regex.IsMatch(rule.Selector, @"\.munin-explorer\s*>\s*\.munin-explorer-drilldown"));
 
-        Assert.True(unconditional.Count > 0, "No rule declares the two-lane default any more.");
-
-        // Not break-word: it leaves min-content alone, so the track stays floored and the page
-        // still scrolls. Measured — 17px before, 17px with break-word, 0 with this.
-        Assert.True(
-            unconditional.Any(d => d.Contains("overflow-wrap:anywhere", StringComparison.Ordinal)),
-            "Nothing unconditional lets a long value break, so one token floors the track.");
+        // And nothing still sweeps it into the results column, which is what put it there.
+        Assert.All(
+            HostClassNames.SampleDeclarationsFor("munin-explorer-filters")
+                .Where(rule => Regex.IsMatch(rule.Declarations, @"grid-column:\s*2")),
+            rule => Assert.Contains(":not(.munin-explorer-drilldown)", rule.Selector, StringComparison.Ordinal));
     }
 }

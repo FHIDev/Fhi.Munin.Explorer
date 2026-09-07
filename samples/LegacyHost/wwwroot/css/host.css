@@ -757,7 +757,18 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
     padding-inline: 6px;
   }
 
-  .munin-explorer > *:not(h2):not(form):not(.munin-explorer-filters) {
+  /* The drill-in replaces the list rather than sitting beside it — the filter panel is not
+     rendered at all in this state — so it spans both tracks, the way the heading and the search
+     form already do. Copied from Stiler, which carries both halves: caught by the catch-all below
+     it, the open view was laid out in the results column beside a 384px filter track that is not
+     there, leaving 178px of main column instead of 632px and pushing the page sideways.
+     (Fhi.Metadata-fv79e) */
+  .munin-explorer > .munin-explorer-drilldown {
+    grid-column: 1 / -1;
+    min-inline-size: 0;
+  }
+
+  .munin-explorer > *:not(h2):not(form):not(.munin-explorer-filters):not(.munin-explorer-drilldown) {
     grid-column: 2;
     min-inline-size: 0;
   }
@@ -1301,19 +1312,11 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 /* helsedata's panel grid is `1fr 1fr` above 1280px and one column below. The sample carries a
    stand-in so the fields sit in lanes here too — stacked, they read as a long column of labels
    and the group headings stop meaning anything. */
-
-/* `overflow-wrap: anywhere` mirrors Stiler PR 39156, and it is the ONLY thing that fixes this:
-   `break-word` leaves min-content alone, and the track is what needs to shrink. "Gjeldende
-   lovgivning" on ALS-registeret is three ELI-URLs joined with semicolons — measured min-content
-   586px, in a 435px grid — so one value floored the track wider than its own container. It costs
-   13 mid-word breaks in Norwegian prose at 1024px; a page that scrolls sideways hides more.
-   On the grid, not on dd: a dt that breaks differently floors the track instead. (Fhi.Metadata-fv79e) */
 .munin-explorer-meta__grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 24px 24px;
   margin-bottom: 20px;
-  overflow-wrap: anywhere;
 }
 
 .munin-explorer-meta__grid-1 {
