@@ -325,7 +325,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   listed and no longer emitted. Adding a name to the component without adding it here is a red CI
   check, which is what a number in a sentence could never be.
 
-  Four kinds, and every name is exactly one of them:
+  Five kinds, and every name is exactly one of them:
 
   - `handle` — something else already dresses the element, a Stiler class it also wears or its own
     browser default, so an undefined one costs look and not information. The large majority.
@@ -337,6 +337,10 @@ These are not style preferences — each one is a host that breaks otherwise.
     `munin-explorer-dataitem-period` is the whole of this kind: the cell it describes is really
     `munin-explorer-dataitem-main__period`. It is listed rather than dropped because
     `assert-sample-css-in-step.sh` reads prose too, so both samples carry a rule for it.
+  - `attribute` — not a class and not an id: part of an attribute name.
+    `munin-explorer-version` is the whole of this kind, read out of
+    `data-munin-explorer-version` on every root element, so `.munin-explorer-version` selects
+    nothing and no stylesheet can have a rule for it.
 
   <!-- class-names:start -->
   | Class name | Kind |
@@ -446,6 +450,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-skiplink-pagination` | handle |
   | `munin-explorer-source` | id |
   | `munin-explorer-statistics` | handle |
+  | `munin-explorer-version` | attribute |
   | `munin-explorer-versions` | handle |
   | `munin-explorer-versions__badge` | handle |
   | `munin-explorer-versions__detail` | handle |
@@ -673,6 +678,25 @@ names every parameter it reads and writes, the filter's own included, so you can
 yours. Do that and three details are yours to get right — the interactive render mode above, a path
 built from `PathBase + Path` rather than a literal (identical locally, wrong behind a reverse
 proxy), and `replaceState` rather than `pushState`.
+
+### Reading which version is deployed
+
+Every root element this package renders carries the package version as
+`data-munin-explorer-version`. From the browser's console, on any page that mounts one, signed in
+or not:
+
+```js
+document.querySelector("[data-munin-explorer-version]").dataset.muninExplorerVersion
+// → "0.1.0-alpha.8+6e4c…"
+```
+
+The value is the assembly's `AssemblyInformationalVersion`: the released version, its prerelease
+suffix, and — where the build recorded one — the commit behind the `+`.
+
+It is an attribute rather than an endpoint, a header or a static asset because those are all
+things a host has to opt into, and this exists precisely for the deployment nobody can ask
+questions of. It has to be read from the rendered DOM rather than from `curl`: an interactive
+mount is not prerendered, so the first HTML response carries a marker comment and nothing else.
 
 ### Writing the token provider for a Blazor Server host
 

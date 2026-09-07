@@ -114,7 +114,7 @@ assert_floor README "$listed"
 
 # Kinds are checked for spelling, not for truth. A row saying `handel` would otherwise sit there
 # looking like an answer.
-KINDS='handle meaning id prose'
+KINDS='handle meaning id prose attribute'
 bad_kinds=()
 while read -r row; do
   [ -n "$row" ] || continue
