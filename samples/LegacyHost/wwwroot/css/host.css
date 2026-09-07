@@ -1129,14 +1129,9 @@ table.munin-explorer-data-list tbody th {
   min-width: 12rem;
 }
 
-/* The box the saved-list table scrolls in. The overflow-x here is a DUPLICATE — the markup sets it
-   inline, because measured in HostileHost the document scrolled at 843px and no host stylesheet can
-   be assumed to carry a name the day it appears. It is repeated so this stylesheet still says what
-   the box is for, and so a host reading it is not left thinking the box needs nothing.
-
-   The focus ring is the half that is genuinely the host's, and it is not decoration: the markup
-   gives this box tabindex="0" so a keyboard can scroll it, and a focus stop the reader cannot see
-   is WCAG 2.4.7. */
+/* The box the saved-list table scrolls in. The overflow-x duplicates what the markup sets inline;
+   the focus ring is the half that is genuinely the host's, and it is owed because the box carries
+   tabindex="0" and a focus stop nobody can see is WCAG 2.4.7. */
 .munin-explorer-list-scroll {
   overflow-x: auto;
 }

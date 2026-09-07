@@ -65,24 +65,10 @@ export const assertions = [
     // The tolerance is 1px for subpixel rounding — a 1487.98px child of a 1488px box is not a
     // defect, and reporting it as one would make this file the boy who cried overflow.
     //
-    // ONE EXEMPTION, and it is narrow on purpose. A table too wide for its column is given a
-    // scroll box of its own — that is what Fhi.Metadata-b3brc did for the kilder table and what
-    // the saved-list table does — and its content is then wider than the mount by design. This
-    // assertion exists to catch content that is clipped and UNREACHABLE; content a reader can
-    // scroll to is neither, and scrolling a box instead of the page is precisely what WCAG 1.4.10
-    // asks for.
-    //
-    // The exemption is NOT "any ancestor whose overflow-x is auto", which would hand back the
-    // defect this assertion was written for. `overflow-y: auto` alone computes overflow-x to
-    // `auto` as well — the two are indistinguishable in the computed style — so that test would
-    // exempt the filter panel absorbing a too-wide child, which is the case named above. What is
-    // exempted is a box the PACKAGE declared a scroll region: role=region plus tabindex=0 plus a
-    // scrollable overflow-x, which is the shape both scroll boxes carry and which nothing that has
-    // ever failed here carries. The box itself is still measured, so a scroll box wider than the
-    // mount is still a defect; only what it scrolls is let through.
-    //
-    // This is the first time the pattern has been scanned at all: /kilder, where the other one
-    // lives, is not a scan target yet (Fhi.Metadata-fih3y).
+    // ONE EXEMPTION: content inside a scroll box the package declared — role=region, tabindex=0,
+    // scrollable overflow-x — is reachable rather than clipped, which is what this asks about. NOT
+    // "any ancestor whose overflow-x is auto": overflow-y alone computes that too, so it would
+    // exempt the filter panel above. The box itself is still measured.
     body: ({ mount: mountSel }) => {
       const mount = document.querySelector(mountSel);
       if (!mount) return `no ${mountSel} on the page — nothing was measured`;
