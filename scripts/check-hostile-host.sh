@@ -14,8 +14,10 @@
 # WHAT IT DOES NOT SEE, so nobody reads a green run as more than it is:
 #   - anything below the fold that only misbehaves once scrolled; every assertion measures at
 #     scroll offset 0, which is where the absolute header overlaps;
-#   - the kildeutforsker and the search-only mount, neither of which this host renders;
-#   - widths other than the three in GEOMETRY_WIDTHS, and any height at all — nothing here asks
+#   - the search-only mount, which this host does not render, and the kildeutforsker, which it
+#     does render on /kilder and which nothing here measures yet - see TARGETS below for the three
+#     reasons and the bead;
+#   - widths other than the six in GEOMETRY_WIDTHS, and any height at all — nothing here asks
 #     about vertical layout;
 #   - whether it LOOKS right. Boxes in the right places can still be the wrong design.
 #
@@ -38,9 +40,31 @@ STUB_PORT="${HOSTILE_STUB_PORT:-5096}"
 STUB_BASE="http://127.0.0.1:${STUB_PORT}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# HostileHost serves one page, and both states are on it. `explorer-tabs` is the search results as
-# they load; `explorer-list-tab` is the second tab open, which is the state defect 2 was found in
-# and the only one where a panel is asked to be hidden at all.
+# `explorer-tabs` is the search results as they load; `explorer-list-tab` is the second tab open,
+# which is the state defect 2 was found in and the only one where a panel is asked to be hidden at
+# all. Both are on the front page.
+#
+# /kilder IS NOT IN THIS LIST, AND THAT IS THE INTERESTING PART. The host renders the
+# kildeutforsker now - the page exists, the route is there, and `kilder-list` is a state
+# axe-states.mjs already knows - but scanning it here today would be red for three reasons, none
+# of which is the page being wrong:
+#
+#   1. Fhi.Metadata-b3brc's own fix is half in Fhi.Helsedata.Stiler, and this host is pinned to
+#      0.1.38, which predates it. Measured 2026-09-07 against 0.1.38: `no horizontal overflow`
+#      fails at 1024 with `document scrollWidth 1172 > clientWidth 1024`. Against a local build of
+#      the Stiler branch, both narrow widths pass. The pin cannot be bumped ahead of the release
+#      because the version is a pipeline counter, not a number anyone here can predict.
+#   2. `hidden means hidden` fails at 1281 and above, and it is right to: Stiler DELIBERATELY
+#      un-hides `.munin-explorer-filters__facets[hidden]` where the host has room for a sidebar,
+#      so the fold is meant to be inert there. The invariant has no way to tell that apart from
+#      the accidental un-hiding it was written for.
+#   3. Both tab pins fail with "nothing was measured" on any page without a tablist, which is
+#      every page that is not the composed explorer. A pin is a replay of one defect and should be
+#      inapplicable rather than failing where that defect cannot occur.
+#
+# Adding the target is Fhi.Metadata-fih3y, which carries the three above. The page is here now so
+# that bead is a one-line change and so a human can open the kildeutforsker in helsedata's real
+# stylesheet, which until today nothing in this repository could do.
 TARGETS=(
   "/::explorer-tabs"
   "/::explorer-list-tab"
@@ -200,7 +224,7 @@ fi
 cat <<'EOF'
 Every geometry assertion held and axe found no violations, against helsedata's real stylesheet.
 
-Read that for what it is. It says the boxes are where they should be at three widths and at
-scroll offset 0; it does not say the page looks right, and it says nothing at all about the two
-components this host does not mount. The header of this script lists the rest.
+Read that for what it is. It says the boxes are where they should be at six widths and at
+scroll offset 0; it does not say the page looks right, and it says nothing at all about the one
+component this host does not mount. The header of this script lists the rest.
 EOF

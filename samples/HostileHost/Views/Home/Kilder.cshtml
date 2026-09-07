@@ -1,0 +1,26 @@
+@using Fhi.Munin.Explorer.Blazor
+@{
+    ViewData["Title"] = "Kildeutforskeren i helsedatas stiler";
+}
+
+@* The kildeutforsker under the same chrome and the same stylesheet as the front page, and it is
+   here for one measurement the front page cannot make: the kilder table is the widest thing this
+   package draws, and what it overflows is the HOST's page rather than its own box.
+
+   Nothing else in either sample host could see that. Both style the component themselves on a
+   page with room to spare; only here does the component get helsedata's real result column —
+   1488px of page container minus 48px of air, minus a 384px filter sidebar and its gutter — and
+   only at a narrow viewport does that column go under the table's min-content width
+   (Fhi.Metadata-b3brc).
+
+   `container` is what helsedata's own MuninUtforsker.cshtml wraps the mount in, copied for the
+   reason the front page copies it: their Munin page has nothing above the component either.
+
+   `KildeExplorerWithUrlState`, not `KildeExplorer`, because that is the mount a legacy MVC host
+   is meant to use — it is the one that reads the query string and writes back to the address. *@
+<div class="container">
+    <component type="typeof(KildeExplorerWithUrlState)"
+               render-mode="Server"
+               param-Language="@("no")"
+               param-VariableExplorerPath="@("/")" />
+</div>

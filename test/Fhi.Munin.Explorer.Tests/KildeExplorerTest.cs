@@ -599,6 +599,62 @@ public class KildeExplorerTest : BunitContext
     }
 
     // ---------------------------------------------------------------------------------
+    // The scroll box around the table.
+    // ---------------------------------------------------------------------------------
+
+    [Fact]
+    public void Render_Always_ThenTheTableSitsInItsOwnScrollRegionAndTheColumnPickerDoesNot()
+    {
+        // The box is what keeps the overflow off the HOST's page: the table wants 779px at its
+        // narrowest and helsedata's content box goes under that around 827px, so without a box of
+        // its own the whole site scrolled sideways (Fhi.Metadata-b3brc).
+        //
+        // The second half of the assertion is the trap, and it is the reason this is a test rather
+        // than a line of CSS nobody reads: `munin-explorer-results` is the obvious element to put
+        // `overflow-x` on and it is the wrong one. The column picker is in that column too, and a
+        // reader who scrolled the table sideways would take the control for choosing columns off
+        // the screen with it.
+        var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
+
+        var table = cut.Find(".munin-explorer-kilder");
+        var box = table.ParentElement;
+
+        Assert.NotNull(box);
+        Assert.Contains("munin-explorer-kilder-scroll", box.ClassList);
+
+        var picker = cut.Find(".munin-explorer-header");
+        Assert.Null(picker.Closest(".munin-explorer-kilder-scroll"));
+    }
+
+    [Fact]
+    public void Render_Always_ThenTheScrollRegionIsNamedAndAKeyboardCanReachIt()
+    {
+        // A box a mouse can scroll and a keyboard cannot trades WCAG 1.4.10 for 2.1.1, and a focus
+        // stop with no name is one the reader cannot place. The name is the table's own sentence,
+        // which is the labelled-region idiom: the region is announced as the thing it holds.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS"),
+            Kilde("Barnediabetes", "K_BDR")));
+
+        var box = cut.Find(".munin-explorer-kilder-scroll");
+
+        Assert.Equal("region", box.GetAttribute("role"));
+        Assert.Equal("0", box.GetAttribute("tabindex"));
+        Assert.Equal("2 kilder", box.GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void RenderWithNoKilder_Always_ThenThereIsNoScrollRegionToTabInto()
+    {
+        // The box is drawn with the table and not before it. An empty list means the fetch failed
+        // or the search matched nothing, and a focus stop holding nothing is a tab press that goes
+        // somewhere and shows the reader nothing.
+        var cut = RenderWith(new FakeClient());
+
+        Assert.Empty(cut.FindAll(".munin-explorer-kilder-scroll"));
+    }
+
+    // ---------------------------------------------------------------------------------
     // The columns.
     // ---------------------------------------------------------------------------------
 
@@ -2784,6 +2840,8 @@ public class KildeExplorerTest : BunitContext
             "munin-explorer-header__actions",
             "munin-explorer-header__actions-button",
             "munin-explorer-kilder",
+            // The box the table scrolls in, so its overflow stops reaching the host page.
+            "munin-explorer-kilder-scroll",
             "munin-explorer-kilder__count",
             "munin-explorer-kilder__expand",
             "munin-explorer-kilder__expand-toggle",
