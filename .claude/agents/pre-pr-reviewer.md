@@ -298,7 +298,7 @@ defect we ship becomes helsedata's to answer for, on their domain.
   ships into, where contrast, focus visibility and whether an element keeps its semantics are
   actually decided. `display: flex` / `display: grid` strip table semantics from a native
   `<table>` and from ARIA table roles alike.
-- `KildeExplorer` is the worked example of a data table done right — a real `<table>`, scoring 100.
+- `KildeSearch` is the worked example of a data table done right — a real `<table>`, scoring 100.
 - Anything a reader operates needs an accessible name, checked with `AccessibleName` in the test
   project, which deliberately refuses to count `placeholder` and `title`.
 - A control that is inert must say so in a way a reader can perceive. `aria-disabled` rather than

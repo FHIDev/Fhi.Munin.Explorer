@@ -2,7 +2,7 @@
 #
 # Fails if a host cannot get shareable explorer URLs out of the package alone.
 #
-# VariableExplorer and KildeExplorerWithUrlState exist so that a host writes no glue:
+# VariableExplorer and KildeExplorer exist so that a host writes no glue:
 # no wrapper component, no query-string parsing, no history.replaceState. Both sample hosts prove
 # that badly. They sit in this repository and compile against src/, so a parameter that only exists
 # on this branch, a type the package does not actually export, or a component reachable only through
@@ -95,7 +95,7 @@ cat > "$CONSUMER/MountedWithNoGlue.razor" <<'EOF'
 
 <VariableExplorer Language="no" DeclinedKeys="@(new[] { "search" })" />
 
-<KildeExplorerWithUrlState Language="no" VariableExplorerPath="/" />
+<KildeExplorer Language="no" VariableExplorerPath="/" />
 EOF
 
 # The same two types from C#, where naming one the package does not export is a hard error rather
@@ -108,10 +108,12 @@ using Fhi.Munin.Explorer.Contracts;
 internal static class Exported
 {
     internal static readonly Type[] Mounted =
-        [typeof(VariableExplorer), typeof(KildeExplorerWithUrlState)];
+        [typeof(VariableExplorer), typeof(KildeExplorer)];
 
     // The do-it-yourself route stays public beside them: a host that wants to own its own address
-    // bar builds the query with these rather than mounting the components above.
+    // bar mounts the bare components and builds the query with these.
+    internal static readonly Type[] Bare = [typeof(VariableSearch), typeof(KildeSearch)];
+
     internal static readonly string Query = ExplorerUrlState.Parse("?search=x").ToQueryString();
 
     internal static readonly IReadOnlySet<string> Keys = ExplorerUrlState.QueryKeys;

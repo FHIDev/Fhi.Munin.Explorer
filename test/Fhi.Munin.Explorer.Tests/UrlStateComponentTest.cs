@@ -395,15 +395,15 @@ public class UrlStateComponentTest : BunitContext
     }
 
     /// <inheritdoc cref="RenderExplorer"/>
-    private IRenderedComponent<KildeExplorerWithUrlState> RenderKilder(
+    private IRenderedComponent<KildeExplorer> RenderKilder(
         Guid id, string url,
-        Action<ComponentParameterCollectionBuilder<KildeExplorerWithUrlState>>? parameters = null)
+        Action<ComponentParameterCollectionBuilder<KildeExplorer>>? parameters = null)
     {
         Services.AddSingleton<IMuninExplorerClient>(new OneKildeClient(id));
         Prepare();
         Navigation.NavigateTo(url);
 
-        return Render<KildeExplorerWithUrlState>(b => parameters?.Invoke(b));
+        return Render<KildeExplorer>(b => parameters?.Invoke(b));
     }
 
     [Fact]
@@ -448,7 +448,7 @@ public class UrlStateComponentTest : BunitContext
     [Fact]
     public void Kilder_WhenTheLinkCarriesASearchKeldaCannotMaintain_ThenItIsLeftAloneRatherThanErased()
     {
-        // KildeExplorer has no SearchChanged, so a ?search= this component adopted would be erased
+        // KildeSearch has no SearchChanged, so a ?search= this component adopted would be erased
         // on the first render after load: the link would work exactly once and could not be shared
         // onward. It is carried through instead, like any parameter that is not ours.
         var id = Guid.NewGuid();
@@ -514,7 +514,7 @@ public class UrlStateComponentTest : BunitContext
         Services.AddSingleton<NavigationManager>(navigation);
         Prepare();
 
-        var cut = Render<KildeExplorerWithUrlState>(b => b.Add(c => c.VariableExplorerPath, "/variabler"));
+        var cut = Render<KildeExplorer>(b => b.Add(c => c.VariableExplorerPath, "/variabler"));
 
         cut.Find(".munin-explorer-kilder__select input").Change(true);
         cut.FindAll("button").First(button => button.TextContent.Contains("Utforsk", StringComparison.Ordinal)).Click();

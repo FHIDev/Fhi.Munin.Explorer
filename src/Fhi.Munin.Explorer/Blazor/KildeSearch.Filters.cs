@@ -44,7 +44,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <c>Fhi.Metadata-4kxfv</c>. Fix it there and this facet improves without being touched.
 /// </para>
 /// </remarks>
-public sealed partial class KildeExplorer
+public sealed partial class KildeSearch
 {
     /// <summary>
     /// How much of a facet label is drawn before it is cut short.
@@ -312,7 +312,7 @@ public sealed partial class KildeExplorer
     /// which was correct on the day it was written and drifted from then on: a category the
     /// catalogue added afterwards showed as <c>ehds-cat:</c> in the panel while the kilde view
     /// showed its Norwegian word. The vocabulary is editable master data, so the only copy that
-    /// cannot go stale is the one the API sends — see <see cref="KildeExplorer.LoadVocabularyAsync"/>
+    /// cannot go stale is the one the API sends — see <see cref="KildeSearch.LoadVocabularyAsync"/>
     /// for how it gets here and what happens when it does not.
     /// <para>
     /// A value the vocabulary does not list keeps its checkbox and shows its token, whole. Dropping

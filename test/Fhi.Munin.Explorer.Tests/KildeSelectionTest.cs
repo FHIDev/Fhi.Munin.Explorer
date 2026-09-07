@@ -26,7 +26,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// selection than the reader made.
 /// </para>
 /// <para>
-/// The column is drawn only where the host wired <see cref="KildeExplorer.ExploreVariablesRequested"/>,
+/// The column is drawn only where the host wired <see cref="KildeSearch.ExploreVariablesRequested"/>,
 /// which is why almost every test here wires it. The one that does not is the one asserting the
 /// column is absent, and that case is not hypothetical — ModernHost reached it once. An
 /// <see cref="EventCallback"/> created in a statically-rendered parent and passed into an
@@ -72,15 +72,15 @@ public class KildeSelectionTest : BunitContext
     /// The list is the assertion surface for most of this file: what the host is handed is the
     /// whole of the contract, and the only place the three handover cases are told apart.
     /// </remarks>
-    private (IRenderedComponent<KildeExplorer> Cut, List<IReadOnlyList<Guid>> Handovers) RenderSelectable(
+    private (IRenderedComponent<KildeSearch> Cut, List<IReadOnlyList<Guid>> Handovers) RenderSelectable(
         IMuninExplorerClient client,
-        Action<ComponentParameterCollectionBuilder<KildeExplorer>>? parameters = null)
+        Action<ComponentParameterCollectionBuilder<KildeSearch>>? parameters = null)
     {
         Services.AddSingleton(client);
 
         var handovers = new List<IReadOnlyList<Guid>>();
 
-        var cut = Render<KildeExplorer>(b =>
+        var cut = Render<KildeSearch>(b =>
         {
             b.Add(c => c.ExploreVariablesRequested,
                 EventCallback.Factory.Create<IReadOnlyList<Guid>>(this, handovers.Add));
@@ -91,10 +91,10 @@ public class KildeSelectionTest : BunitContext
         return (cut, handovers);
     }
 
-    private static IReadOnlyList<IElement> RowBoxes(IRenderedComponent<KildeExplorer> cut) =>
+    private static IReadOnlyList<IElement> RowBoxes(IRenderedComponent<KildeSearch> cut) =>
         [.. cut.FindAll(".munin-explorer-kilder tbody .munin-explorer-kilder__select input")];
 
-    private static IElement HeaderBox(IRenderedComponent<KildeExplorer> cut) =>
+    private static IElement HeaderBox(IRenderedComponent<KildeSearch> cut) =>
         cut.Find(".munin-explorer-kilder thead .munin-explorer-kilder__select input");
 
     /// <summary>Tick the row whose name button reads <paramref name="name"/>.</summary>
@@ -102,13 +102,13 @@ public class KildeSelectionTest : BunitContext
     /// Found by name on every call rather than held, for the reason the facet helper next door
     /// gives: ticking re-renders, and an element found before that belongs to the markup as it was.
     /// </remarks>
-    private static void TickRow(IRenderedComponent<KildeExplorer> cut, string name, bool ticked = true) =>
+    private static void TickRow(IRenderedComponent<KildeSearch> cut, string name, bool ticked = true) =>
         cut.FindAll(".munin-explorer-kilder tbody tr")
            .Single(row => row.QuerySelector("th button")!.TextContent.Trim() == name)
            .QuerySelector(".munin-explorer-kilder__select input")!
            .Change(ticked);
 
-    private static string SelectionLine(IRenderedComponent<KildeExplorer> cut) =>
+    private static string SelectionLine(IRenderedComponent<KildeSearch> cut) =>
         cut.FindAll("p[role=status]")
            .Last()
            .TextContent
@@ -122,14 +122,14 @@ public class KildeSelectionTest : BunitContext
     /// visible — the list is already in hand — so every handover assertion failed on an empty list
     /// rather than on a wrong one.
     /// </remarks>
-    private static IElement ExploreButton(IRenderedComponent<KildeExplorer> cut) =>
+    private static IElement ExploreButton(IRenderedComponent<KildeSearch> cut) =>
         cut.Find(".munin-explorer-selection button.button-square--primary");
 
     /// <inheritdoc cref="ExploreButton"/>
-    private static IReadOnlyList<IElement> ResetButtons(IRenderedComponent<KildeExplorer> cut) =>
+    private static IReadOnlyList<IElement> ResetButtons(IRenderedComponent<KildeSearch> cut) =>
         [.. cut.FindAll(".munin-explorer-selection button.button-square--secondary")];
 
-    private static IReadOnlyList<string> RowNames(IRenderedComponent<KildeExplorer> cut) =>
+    private static IReadOnlyList<string> RowNames(IRenderedComponent<KildeSearch> cut) =>
         [.. cut.FindAll(".munin-explorer-kilder tbody th button").Select(b => b.TextContent.Trim())];
 
     // ---------------------------------------------------------------------------------
@@ -144,7 +144,7 @@ public class KildeSelectionTest : BunitContext
         // telling them there was nothing to choose for.
         Services.AddSingleton<IMuninExplorerClient>(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
-        var cut = Render<KildeExplorer>();
+        var cut = Render<KildeSearch>();
 
         Assert.Empty(cut.FindAll(".munin-explorer-kilder__select"));
         Assert.Empty(cut.FindAll(".munin-explorer-selection"));
@@ -549,7 +549,7 @@ public class KildeSelectionTest : BunitContext
         // reasoning RaiseAsync carries, asserted at the one new door into it.
         Services.AddSingleton<IMuninExplorerClient>(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
-        var cut = Render<KildeExplorer>(b => b.Add(
+        var cut = Render<KildeSearch>(b => b.Add(
             c => c.ExploreVariablesRequested,
             EventCallback.Factory.Create<IReadOnlyList<Guid>>(
                 this, _ => throw new InvalidOperationException("the host's own routing"))));
@@ -584,7 +584,7 @@ public class KildeSelectionTest : BunitContext
     [Fact]
     public void Render_WhenTheColumnIsOnScreen_ThenEveryClassNameIsOneSomeStylesheetDefines()
     {
-        // The state KildeExplorerTest's own guards cannot reach: they render without the handover
+        // The state KildeSearchTest's own guards cannot reach: they render without the handover
         // wired, so the selection column and its bar are not in their DOM at all.
         var (cut, _) = RenderSelectable(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
@@ -775,7 +775,7 @@ public class KildeSelectionTest : BunitContext
             Kilde("Als registeret", "K_ALS"),
             Kilde("Dødsårsaksregisteret", "K_DAR")));
 
-        static IReadOnlyList<string> Parts(IRenderedComponent<KildeExplorer> c) =>
+        static IReadOnlyList<string> Parts(IRenderedComponent<KildeSearch> c) =>
             [.. c.Find(".munin-explorer-selection").Children.Select(e => e.LocalName + ":" + e.ClassName)];
 
         // Nothing ticked: the handover, and the count sitting empty so its live region is already
@@ -826,7 +826,7 @@ public class KildeSelectionTest : BunitContext
     [Fact]
     public async Task ExpandedRow_WhenTheHostWiredTheHandover_ThenItSpansTheCheckboxColumnToo()
     {
-        // The colspan's other arm. KildeExplorerTest covers it without the handover, where the
+        // The colspan's other arm. KildeSearchTest covers it without the handover, where the
         // checkbox column does not exist, so the `Selectable ? 5 : 4` half of the arithmetic was
         // never executed by a test at all — `Selectable ? 99 : 4` passed the whole suite. Too large
         // and the table is malformed; too small and the panel leaves dead cells beside it.
@@ -844,7 +844,7 @@ public class KildeSelectionTest : BunitContext
     [Fact]
     public void SelectColumn_WhenTheHostWiredTheHandover_ThenTheCheckboxIsWhereItsHeaderSaysItIs()
     {
-        // The ordered-cell assertion in KildeExplorerTest runs without the handover, so the one
+        // The ordered-cell assertion in KildeSearchTest runs without the handover, so the one
         // column this file adds was pinned by nothing: moving the body's @if(Selectable) block
         // after the name would put every checkbox under "Navn" and every name under "Velg alle",
         // with the suite green. A cell's own header is what a screen reader reads it against.
@@ -891,7 +891,7 @@ public class KildeSelectionTest : BunitContext
     public void Checkbox_WhenAKildeHasNoName_ThenItIsNamedByTheCodeRatherThanByVelgAndNothing()
     {
         // The checkbox only exists on a selectable render, which is why this cannot live beside the
-        // row's other controls in KildeExplorerTest: that fixture passes no handover callback, so
+        // row's other controls in KildeSearchTest: that fixture passes no handover callback, so
         // the column is not drawn there at all. (Fhi.Metadata-w13lk)
         var (cut, _) = RenderSelectable(new FakeClient(Kilde("", "K_ALS")));
 

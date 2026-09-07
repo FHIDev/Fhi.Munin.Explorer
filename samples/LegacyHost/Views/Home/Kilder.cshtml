@@ -5,7 +5,7 @@
 
 <div class="hostchrome">
     <p class="hostchrome-note">
-        The same MVC mount as the front page, for the package's other root component —
+        The same MVC mount as the front page, for the package's other whole explorer —
         <code>KildeExplorer</code>, the kildeutforsker. <a href="/">The variable explorer</a> is on
         the front page.
     </p>
@@ -13,7 +13,7 @@
 
 <div class="hostframe">
     @* render-mode is set HERE, by the host. Server rather than ServerPrerendered for the reason
-       the front page gives, and for one that applies only to this component: KildeExplorer raises
+       the front page gives, and for one that applies only to this component: KildeSearch raises
        SelectedKildeIdChanged, and an EventCallback serialises to an empty delegate across a
        static-SSR boundary. That is what a host wrapper could not survive and this component does
        not have to — the callbacks are created inside it — and it refuses a prerendered mount
@@ -25,7 +25,7 @@
        (Fhi.Metadata-zrcf4). It takes the path from the circuit's address, which already carries
        PathBase, so closing a kilde behind a reverse proxy no longer sends the reader out of the
        application. *@
-    <component type="typeof(KildeExplorerWithUrlState)"
+    <component type="typeof(KildeExplorer)"
                render-mode="Server"
                param-Language="@("no")"
                param-VariableExplorerPath="@("/")" />

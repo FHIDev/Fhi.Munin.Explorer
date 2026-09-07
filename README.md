@@ -210,7 +210,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     `munin-explorer-codes*`, `munin-explorer-group`, the `munin-explorer-kilde*` names in
     `KildeView`, the `munin-explorer-datasamling*` ones in `DatasamlingView`, the
     `munin-explorer-whole*` ones in `VariableView`, and the `munin-explorer-kilder*` names in
-    `KildeExplorer` — the kilde list's table, the checkbox column in front of it, the button that
+    `KildeSearch` — the kilde list's table, the checkbox column in front of it, the button that
     opens a row and the columns that hold a number. The samples style them for arrangement — the
     root as a grid at desktop width, `-filters`, `-detail`, `-drilldown`, `-kodeverk*` and
     `-codes*` for spacing, indentation and a rule between rows, the kilde, datasamling and variable
@@ -666,8 +666,15 @@ change the reader makes updates the address bar. There is no glue to write — n
 no query parsing, no `history.replaceState`. Which tab is open is deliberately *not* in the link: a
 shared URL that opened on the sender's Variabelliste would be an empty page for everybody else.
 
-`KildeExplorerWithUrlState` is the kildeutforsker's equivalent for now; the kilde side has no
-personal lists, so its bare `KildeExplorer` and its URL-state wrapper are still two names.
+`KildeExplorer` is the kildeutforsker's equivalent, and `Language` is all it takes:
+
+```html
+<component type="typeof(KildeExplorer)" render-mode="Server" param-Language="@("no")" />
+```
+
+The open kilde goes in the address bar and a link reopens it. It is much the smaller of the two,
+because Kelda carries less — no personal lists, no sort, no pager, so `?kilde=` is the whole of
+what it owns and the rest is component state that goes away on refresh.
 
 Four things are worth knowing before mounting one.
 
@@ -680,14 +687,16 @@ Four things are worth knowing before mounting one.
   carries everything else through untouched. `DeclinedKeys` keeps one of ours as well, for a page
   that already means something else by `?page=`; a declined key is left where it is rather than
   overwritten.
-- **`KildeExplorerWithUrlState` needs `VariableExplorerPath`** to offer the handover to the variable
+- **`KildeExplorer` needs `VariableExplorerPath`** to offer the handover to the variable
   explorer, because only the host knows where it mounted one. Leave it out and the selection column
-  is not drawn at all. It is relative to your application rather than to the domain — `"variabler"`
-  and `"/variabler"` mean the same page, and a path base is kept either way — and a full URL is
-  taken as given. A path rather than a callback on purpose: an `EventCallback` handed to an
-  interactive component by a statically rendered parent serialises to an empty delegate.
+  is not drawn at all — which is deliberate, and the right answer for a CMS host that cannot set it
+  at all: a column whose button lands on a page that host may not have would be worse than no
+  column. It is relative to your application rather than to the domain — `"variabler"` and
+  `"/variabler"` mean the same page, and a path base is kept either way — and a full URL is taken
+  as given. A path rather than a callback on purpose: an `EventCallback` handed to an interactive
+  component by a statically rendered parent serialises to an empty delegate.
 - **The two static blocks over an open kilde are off unless you ask for them.**
-  `ShowAccessAndPrices` — declared on `KildeExplorer` and on `KildeExplorerWithUrlState` — draws
+  `ShowAccessAndPrices` — declared on `KildeSearch` and on `KildeExplorer` — draws
   "Kriterier for tilgang til data" and "Priser", both of which send the reader to helsedata.no.
   That is the route a researcher browsing Munin's own catalogue needs, and a duplicate of pages
   helsedata publishes itself, so it defaults to `false`: a host embedding the explorer inside a
@@ -695,9 +704,10 @@ Four things are worth knowing before mounting one.
   to `true` on a host of your own. Nothing else on the kilde page moves with it — the variable
   count, the metadata, the datasamlinger and the sidebar are drawn either way.
 
-Owning the address bar — or the page furniture — yourself is still supported: `VariableSearch` and
-`VariableListView` stay public underneath, so a host that wants the two surfaces on separate pages,
-or its own tabs around them, mounts them itself and builds the query with `ExplorerUrlState.Parse` /
+Owning the address bar — or the page furniture — yourself is still supported: `VariableSearch`,
+`VariableListView` and `KildeSearch` stay public underneath, so a host that wants the two variable
+surfaces on separate pages, its own tabs around them, or the kilde list with no `?kilde=` at all,
+mounts them itself and builds the query with `ExplorerUrlState.Parse` /
 `.ToQueryString`. Mounted apart they still share the circuit's `VariableListState`, so a variable
 saved on one is in the other without a refetch. `ExplorerUrlState.QueryKeys`
 names every parameter it reads and writes, the filter's own included, so you can tell ours from
