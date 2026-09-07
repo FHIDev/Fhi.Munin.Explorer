@@ -1,0 +1,243 @@
+# Divergences between the sample stand-in stylesheet and Fhi.Helsedata.Stiler that are KNOWN to
+# stand today. `scripts/assert-sample-css-matches-stiler.sh` reads this file and fails a pull
+# request that introduces a divergence not listed here.
+#
+# NOTHING WRITES THIS FILE. Every line is a hand edit, and that is the whole design. A guard that
+# records its own failures records them instead of reporting them, and the count then only ever
+# goes up. Two rules keep it honest, and both are enforced by the script:
+#
+#   - a divergence not listed here fails the build;
+#   - a line here that no longer describes a divergence ALSO fails the build, with an instruction
+#     to delete it. A list nobody prunes is a claim nobody has checked.
+#
+# So the count can only go down, and every step down is a decision somebody made.
+#
+# FORMAT, one per line:
+#
+#   <kind>|<at-rule context>|<selector>|<property>
+#
+#   missing-selector      Stiler has a rule for this selector under the munin-explorer prefix and
+#                         the sample has none at all. The property field is empty.
+#   missing-declaration   Both have the rule; Stiler declares this property and the sample does not.
+#   different-value       Both declare the property, with values that differ after normalisation
+#                         (rem to px, var() resolved, hex to rgb — see the engine).
+#   invented-declaration  The sample declares a property under a selector where Stiler does not.
+#                         A stand-in that draws something the real stylesheet does not is as
+#                         misleading as one that draws nothing.
+#
+# The context field is the normalised at-rule the rule sits inside, empty at the top level.
+#
+# WHERE THIS LIST CAME FROM. 178 divergences, measured 2026-09-07 against Fhi.Helsedata.Stiler
+# 0.1.38 — the version samples/HostileHost/HostileHost.csproj pins, which is the version a host
+# restores. The manual diff filed under Fhi.Metadata-3dwar counted "around forty", and the two
+# numbers agree: that one counted RULES and named divergences a sentence at a time
+# ("`.munin-explorer-dataitem-main__column` is missing seven declarations"), where this counts each
+# declaration on its own line so it has something a script can reconcile. The 62 missing selectors
+# were close to the rule-level count on their own.
+#
+# It is 175 now, and the three that went are worth recording because they are the first proof the
+# stale half of the guard works. #204 landed Fhi.Metadata-cuo0e and -7e7de while this branch was
+# open — the base `.munin-explorer` rule, the drilldown's grid-column, and the sibling rule beside
+# it. The guard went red on the merge with an instruction to delete three lines that no longer
+# described anything, and deleting them by hand is the whole ritual: the list shrank because
+# somebody fixed the stylesheet, not because a script quietly rewrote its own homework.
+#
+# Everything the manual diff named is in here, which is the check that the comparison is not
+# missing cases: the whole `@media (max-width:1280px)` row-collapse block, the eleven
+# `munin-explorer-meta` table rules, the filters toolbar and its `position: sticky`, `__column`'s
+# seven declarations, `__tab-content`'s three, the expand icon's invented rotate,
+# `.munin-explorer-detail`'s invented border-top, and `.munin-explorer-frequency__track` painting
+# grey20 where Stiler's own comment says not to. The base rule and the drilldown's grid-column were
+# in it too, until #204.
+#
+# WHAT THIS LIST DOES NOT COVER, so a short list is never read as a close match: source order and
+# specificity are not compared, so two rules that both exist and both declare the same property can
+# still draw differently — Fhi.Metadata-cuo0e is that shape. Shorthands are compared as written and
+# not expanded, so `padding: 8px 0` does not answer for `padding-left: 8px`; a line below may
+# therefore describe two spellings of one value rather than a real difference. font-family, the
+# `font` shorthand and `src` are not compared at all, because Stiler ships a typeface this
+# repository cannot redistribute. `scripts/sample-css-declarations.mjs` has the full statement.
+#
+# Filed separately rather than fixed under the guard's own bead, and both now merged in #204:
+# Fhi.Metadata-cuo0e (kilder__expand loses on specificity) and Fhi.Metadata-7e7de (no base
+# .munin-explorer rule, no drilldown grid-column). cuo0e is the reminder that a green line here is
+# not a promise: specificity is not compared, so its shape can recur without this list noticing.
+#
+# DO NOT FIX THESE IN ONE PULL REQUEST. Each one that is not inert changes how the samples draw and
+# needs measuring — see the bead. The guard is what stops the list growing; shrinking it is
+# separate work.
+different-value|@media (min-width:1024px)|.munin-explorer > .munin-explorer-filters|max-height
+different-value||.munin-explorer-frequency td|padding
+different-value||.munin-explorer-frequency td|vertical-align
+different-value||.munin-explorer-frequency th|padding
+different-value||.munin-explorer-frequency th|vertical-align
+different-value||.munin-explorer-frequency__track|background-color
+different-value||.munin-explorer-meta__grid|margin-bottom
+different-value||.munin-explorer-meta__tabs|border-bottom
+different-value||.munin-explorer-meta|padding
+different-value||.munin-explorer-pagination-content [aria-disabled=true]:hover|color
+different-value||.munin-explorer-pagination-content [aria-disabled=true]|color
+different-value||.munin-explorer-search__clear:focus-visible|box-shadow
+invented-declaration|@media (min-width:1024px)|.munin-explorer > .munin-explorer-filters|padding-inline
+invented-declaration||.munin-explorer-data-list__header|border-bottom
+invented-declaration||.munin-explorer-data-list__item--expanded|background
+invented-declaration||.munin-explorer-data-list__item__row--header|padding-bottom
+invented-declaration||.munin-explorer-data-list__item__row|padding
+invented-declaration||.munin-explorer-data-list__item|border-bottom
+invented-declaration||.munin-explorer-dataitem-main__desiredData input|border
+invented-declaration||.munin-explorer-dataitem-main__desiredData input|border-radius
+invented-declaration||.munin-explorer-dataitem-main__desiredData input|padding
+invented-declaration||.munin-explorer-dataitem-main__expand-icon|color
+invented-declaration||.munin-explorer-dataitem-main__expand-icon|display
+invented-declaration||.munin-explorer-dataitem-main__expand-icon|transition
+invented-declaration||.munin-explorer-dataitem-main__expand-icon|width
+invented-declaration||.munin-explorer-datasamling__criteria|margin
+invented-declaration||.munin-explorer-detail|border-top
+invented-declaration||.munin-explorer-filters__count|overflow-wrap
+invented-declaration||.munin-explorer-frequency thead th|border-bottom
+invented-declaration||.munin-explorer-frequency thead th|font-weight
+invented-declaration||.munin-explorer-frequency|margin
+invented-declaration||.munin-explorer-header__actions|justify-content
+invented-declaration||.munin-explorer-kilde__delkilde-description|font-size
+invented-declaration||.munin-explorer-meta__grid|gap
+invented-declaration||.munin-explorer-meta__tabs|gap
+invented-declaration||.munin-explorer-meta__tabs|margin
+invented-declaration||.munin-explorer-meta|background
+invented-declaration||.munin-explorer-pagination-content [aria-disabled=true]:hover|background-color
+invented-declaration||.munin-explorer-pagination-content [aria-disabled=true]|background-color
+invented-declaration||.munin-explorer-pagination-pages .hd-button-reset.current|font-weight
+invented-declaration||.munin-explorer-pagination-size select|background-color
+invented-declaration||.munin-explorer-pagination-size select|border
+invented-declaration||.munin-explorer-pagination-size select|border-radius
+invented-declaration||.munin-explorer-pagination-size select|color
+invented-declaration||.munin-explorer-pagination-size select|padding
+missing-declaration|@media (max-width:1280px)|.munin-explorer-meta__grid|margin-bottom
+missing-declaration|@media (max-width:1280px)|.munin-explorer-meta__grid|width
+missing-declaration|@media (min-width:1024px)|.munin-explorer > .munin-explorer-filters|position
+missing-declaration|@media (min-width:1024px)|.munin-explorer > .munin-explorer-filters|top
+missing-declaration||.munin-explorer-data-list__header|background-color
+missing-declaration||.munin-explorer-data-list__item--expanded|background-color
+missing-declaration||.munin-explorer-data-list__item--expanded|border-bottom
+missing-declaration||.munin-explorer-data-list__item__row--header|border-bottom
+missing-declaration||.munin-explorer-data-list__item__row:hover .munin-explorer-dataitem-main__name|color
+missing-declaration||.munin-explorer-data-list__item__row|align-items
+missing-declaration||.munin-explorer-data-list__item__row|border-bottom
+missing-declaration||.munin-explorer-data-list__item__row|display
+missing-declaration||.munin-explorer-data-list__item__row|font-size
+missing-declaration||.munin-explorer-data-list__item__row|position
+missing-declaration||.munin-explorer-data-list__item|background-color
+missing-declaration||.munin-explorer-data-list|border-top
+missing-declaration||.munin-explorer-dataitem-header__dataCollection|padding-left
+missing-declaration||.munin-explorer-dataitem-header__name|padding
+missing-declaration||.munin-explorer-dataitem-header__period|padding-left
+missing-declaration||.munin-explorer-dataitem-header__source|padding-left
+missing-declaration||.munin-explorer-dataitem-header__theme|padding-left
+missing-declaration||.munin-explorer-dataitem-header|height
+missing-declaration||.munin-explorer-dataitem-main__column__text|line-height
+missing-declaration||.munin-explorer-dataitem-main__column__text|overflow
+missing-declaration||.munin-explorer-dataitem-main__column__text|text-overflow
+missing-declaration||.munin-explorer-dataitem-main__column__text|white-space
+missing-declaration||.munin-explorer-dataitem-main__column|align-items
+missing-declaration||.munin-explorer-dataitem-main__column|color
+missing-declaration||.munin-explorer-dataitem-main__column|display
+missing-declaration||.munin-explorer-dataitem-main__column|justify-content
+missing-declaration||.munin-explorer-dataitem-main__column|overflow
+missing-declaration||.munin-explorer-dataitem-main__column|padding
+missing-declaration||.munin-explorer-dataitem-main__column|padding-left
+missing-declaration||.munin-explorer-dataitem-main__column|text-overflow
+missing-declaration||.munin-explorer-dataitem-main__column|white-space
+missing-declaration||.munin-explorer-dataitem-main__expand-icon|margin
+missing-declaration||.munin-explorer-dataitem-main__name|display
+missing-declaration||.munin-explorer-dataitem-main__name|overflow
+missing-declaration||.munin-explorer-dataitem-main__name|text-overflow
+missing-declaration||.munin-explorer-dataitem-main__name|white-space
+missing-declaration||.munin-explorer-dataitem-main|cursor
+missing-declaration||.munin-explorer-dataitem-main|height
+missing-declaration||.munin-explorer-dataitem-main|overflow
+missing-declaration||.munin-explorer-dataitem-main|text-overflow
+missing-declaration||.munin-explorer-frequency thead th|background
+missing-declaration||.munin-explorer-frequency|font-size
+missing-declaration||.munin-explorer-frequency|margin-top
+missing-declaration||.munin-explorer-header__actions|left
+missing-declaration||.munin-explorer-header__actions|margin
+missing-declaration||.munin-explorer-header__actions|position
+missing-declaration||.munin-explorer-header__actions|row-gap
+missing-declaration||.munin-explorer-header__actions|width
+missing-declaration||.munin-explorer-header|display
+missing-declaration||.munin-explorer-header|padding-left
+missing-declaration||.munin-explorer-meta__grid|grid-column-gap
+missing-declaration||.munin-explorer-meta__grid|grid-row-gap
+missing-declaration||.munin-explorer-meta__tabs|list-style
+missing-declaration||.munin-explorer-meta__tabs|margin-left
+missing-declaration||.munin-explorer-meta__tabs|padding
+missing-declaration||.munin-explorer-pagination-content [aria-disabled=true]:hover|background
+missing-declaration||.munin-explorer-pagination-pages .hd-button-reset.current|border-color
+missing-declaration||.munin-explorer-pagination-pages .hd-button-reset.current|color
+missing-declaration||.munin-explorer-pagination-pages .hd-button-reset.current|cursor
+missing-declaration||.munin-explorer-pagination-pages .hd-button-reset|border
+missing-declaration||.munin-explorer-pagination-pages .hd-button-reset|border-radius
+missing-declaration||.munin-explorer-pagination-pages .hd-button-reset|color
+missing-declaration||.munin-explorer-pagination-pages|gap
+missing-declaration||.munin-explorer-pagination-size|gap
+missing-declaration||.munin-explorer-search__clear|font-size
+missing-declaration||.munin-explorer-search__clear|line-height
+missing-declaration||.munin-explorer-skiplink-pagination:focus|font-size
+missing-selector|@media (max-width:1024px)|.munin-explorer-meta td|
+missing-selector|@media (max-width:1024px)|.munin-explorer-meta th|
+missing-selector|@media (max-width:1280px)|.munin-explorer-data-list__header|
+missing-selector|@media (max-width:1280px)|.munin-explorer-dataitem-main .icon|
+missing-selector|@media (max-width:1280px)|.munin-explorer-dataitem-main > *|
+missing-selector|@media (max-width:1280px)|.munin-explorer-dataitem-main__column|
+missing-selector|@media (max-width:1280px)|.munin-explorer-dataitem-main__name|
+missing-selector|@media (max-width:1280px)|.munin-explorer-dataitem-main|
+missing-selector|@media (max-width:1280px)|.munin-explorer-meta table|
+missing-selector|@media (max-width:1280px)|.munin-explorer-meta|
+missing-selector|@media (max-width:1439px)|.munin-explorer-header__actions-button|
+missing-selector|@media (max-width:1439px)|.munin-explorer-header__actions|
+missing-selector|@media (max-width:2881px)|.munin-explorer-pagination-size select|
+missing-selector|@media (max-width:767px)|.munin-explorer-header|
+missing-selector|@media (max-width:767px)|.munin-explorer-pagination-size select|
+missing-selector|@media (max-width:767px)|.munin-explorer-skiplink-pagination|
+missing-selector|@media (min-width:1024px)|.munin-explorer > .munin-explorer-filters > .munin-explorer-filters__toolbar|
+missing-selector||.headline.munin-explorer-group|
+missing-selector||.munin-explorer .hd-button-square.button-square--ghost:not([aria-pressed])[aria-disabled=true]|
+missing-selector||.munin-explorer .hd-button-square.button-square--ghost:not([aria-pressed])|
+missing-selector||.munin-explorer-data-list__item--expanded .munin-explorer-dataitem-main|
+missing-selector||.munin-explorer-data-list__item:hover|
+missing-selector||.munin-explorer-data-list__item:last-of-type|
+missing-selector||.munin-explorer-data-list__item__row:hover .munin-explorer-dataitem-main__expand-icon.icon-keyboard-arrow-down|
+missing-selector||.munin-explorer-data-list__item__row:hover .munin-explorer-dataitem-main__expand-icon.icon-keyboard-arrow-right|
+missing-selector||.munin-explorer-dataitem-header > *|
+missing-selector||.munin-explorer-dataitem-header__button:focus|
+missing-selector||.munin-explorer-dataitem-header__button|
+missing-selector||.munin-explorer-dataitem-main__name::after|
+missing-selector||.munin-explorer-dataitem-main__name:focus|
+missing-selector||.munin-explorer-frequency td:last-child|
+missing-selector||.munin-explorer-header__actions .dropdown-choicepicker|
+missing-selector||.munin-explorer-header__actions .dropdown|
+missing-selector||.munin-explorer-header__actions-button > .icon|
+missing-selector||.munin-explorer-meta .munin-explorer-codes__table tbody tr|
+missing-selector||.munin-explorer-meta .munin-explorer-codes__table td|
+missing-selector||.munin-explorer-meta .munin-explorer-codes__table th|
+missing-selector||.munin-explorer-meta .munin-explorer-frequency td:last-child|
+missing-selector||.munin-explorer-meta table.munin-explorer-frequency td|
+missing-selector||.munin-explorer-meta table.munin-explorer-frequency th|
+missing-selector||.munin-explorer-meta table|
+missing-selector||.munin-explorer-meta tbody tr:nth-child(odd)|
+missing-selector||.munin-explorer-meta td:first-child|
+missing-selector||.munin-explorer-meta td:last-child|
+missing-selector||.munin-explorer-meta td:nth-child(2)|
+missing-selector||.munin-explorer-meta td|
+missing-selector||.munin-explorer-meta tfoot tr:first-child|
+missing-selector||.munin-explorer-meta th:first-child|
+missing-selector||.munin-explorer-meta th:last-child|
+missing-selector||.munin-explorer-meta th|
+missing-selector||.munin-explorer-meta__tab button|
+missing-selector||.munin-explorer-meta__tab--active button|
+missing-selector||.munin-explorer-meta__tab-content h4|
+missing-selector||.munin-explorer-meta__tab-content select option|
+missing-selector||.munin-explorer-meta__tab-content|
+missing-selector||.munin-explorer-meta__tab|
+missing-selector||.munin-explorer-pagination-pages .hd-button-reset:hover|
+missing-selector||.munin-explorer-retry[aria-disabled=true]:focus|
+missing-selector||.munin-explorer__dropdown|
