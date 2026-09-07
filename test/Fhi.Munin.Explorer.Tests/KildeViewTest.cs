@@ -1569,4 +1569,28 @@ public class KildeViewTest : BunitContext
         Assert.Equal("www.barnediabetes.no", anchor.TextContent);
         Assert.Null(anchor.ParentElement!.GetAttribute("lang"));
     }
+
+    [Fact]
+    public void Aside_Always_ThenItsFactListsAskForOneLaneAndTheMetadataBlocksDoNot()
+    {
+        // The sidebar is 320px and the default panel grid is two lanes, which leaves 148px each —
+        // narrower than "Personopplysningsloven", so the words pushed the whole page into
+        // horizontal scrolling. The wide middle column keeps two lanes; only the aside asks for
+        // one. (Fhi.Metadata-hi0po)
+        var cut = Render(Kilde());
+
+        var aside = cut.Find(".munin-explorer-kilde__aside");
+
+        Assert.NotEmpty(aside.QuerySelectorAll("dl.munin-explorer-meta__grid"));
+        Assert.All(aside.QuerySelectorAll("dl.munin-explorer-meta__grid"),
+                   dl => Assert.Contains("munin-explorer-meta__grid-1", dl.ClassName!, StringComparison.Ordinal));
+
+        // The metadata groups render into the main column, where two lanes are the right shape and
+        // the modifier would be a regression rather than a fix.
+        var main = cut.Find(".munin-explorer-kilde__main");
+
+        Assert.NotEmpty(main.QuerySelectorAll("dl.munin-explorer-meta__grid"));
+        Assert.All(main.QuerySelectorAll("dl.munin-explorer-meta__grid"),
+                   dl => Assert.DoesNotContain("munin-explorer-meta__grid-1", dl.ClassName!, StringComparison.Ordinal));
+    }
 }

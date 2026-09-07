@@ -33,9 +33,16 @@ internal static class DetailBlocks
     /// The emptiness question is answered here rather than at each call site, for the reason
     /// <see cref="StatisticsBlock"/> gives: a heading over an empty list passes any test written
     /// with rich data only.
+    /// <para>
+    /// <c>oneLane</c> adds <c>munin-explorer-meta__grid-1</c>, and the five callers that render into
+    /// a 320px aside ask for it: the two-lane default leaves 148px a lane there, narrower than
+    /// "Personopplysningsloven", and the words pushed the whole page into horizontal scrolling
+    /// (Fhi.Metadata-hi0po). A caller in a full-width column wants the default.
+    /// </para>
     /// </remarks>
     internal static RenderFragment Facts(
-        IReadOnlyList<(string Label, string? Value, bool Norwegian)> facts, string? language) => builder =>
+        IReadOnlyList<(string Label, string? Value, bool Norwegian)> facts, string? language,
+        bool oneLane = false) => builder =>
     {
         var shown = facts.Where(f => !string.IsNullOrWhiteSpace(f.Value)).ToList();
 
@@ -47,7 +54,9 @@ internal static class DetailBlocks
         var reader = ReaderLanguage.Of(language);
 
         builder.OpenElement(0, "dl");
-        builder.AddAttribute(1, "class", "munin-explorer-meta__grid");
+        builder.AddAttribute(1, "class", oneLane
+            ? "munin-explorer-meta__grid munin-explorer-meta__grid-1"
+            : "munin-explorer-meta__grid");
 
         var seq = 10;
 
