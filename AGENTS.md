@@ -269,6 +269,26 @@ sample alone, and a name with no rule anywhere shows it broken in both — so
 `scripts/assert-sample-css-in-step.sh` checks each and runs in CI. Edit one copy, copy it over
 the other, and run the script.
 
+**That check asks whether a name declares SOMETHING, not whether it declares the right thing**, and
+the gap between those two is wide enough to have held around forty divergences while it stayed
+green. A rule carrying half of Stiler's declarations passes it; so does the right property carrying
+the wrong value. `scripts/assert-sample-css-matches-stiler.sh` closes it by comparing
+**declarations** — property and value — for every selector under the prefix, against the published
+`Fhi.Helsedata.Stiler` `main.css` that `samples/HostileHost` pins. The published package rather
+than Stiler's `main` on purpose: it is the Stiler a host actually restores, so a green run means
+"the stand-in matches what helsedata will have" rather than "it matches unreleased work". It runs
+in the `layout in helsedata's stylesheet` job, which is the one job holding the private-feed
+credential, and skips itself where that secret is absent.
+
+The 178 divergences standing today are listed in `test/sample-css-known-divergences.txt`. **Nothing
+writes that file.** A divergence not listed fails the build, and a listed line that no longer
+diverges also fails it with an instruction to delete the line, so the count can only go down.
+Adding a line is a hand edit that needs a reason; do not add one to get a branch green. What the
+comparison does **not** see is source order and specificity — two rules can both exist, both
+declare the property, and still draw differently (`Fhi.Metadata-cuo0e`) — and shorthands, which are
+compared as written rather than expanded. `font-family`, the `font` shorthand and `src` are not
+compared at all, because Stiler ships a typeface this repository cannot redistribute.
+
 A rule is not the same as a host being told. **Adding a `munin-explorer*` name means adding a row
 to the README's inventory table**, between the `<!-- class-names:start -->` markers, with the kind
 that says what an undefined one costs a host — `handle`, `meaning`, `id` or `prose`.
