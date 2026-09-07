@@ -27,6 +27,13 @@
 //
 // Five of the eight below are invariants. If that ratio ever inverts, this file has become a
 // changelog.
+//
+// A pin may also declare `states: [...]`, naming the states from axe-states.mjs whose page can
+// contain the defect at all. Elsewhere geometry-scan.mjs prints it as inapplicable and says so,
+// rather than running it: the three tab pins below all need a tablist, and on a page that has
+// none — the kildeutforsker on /kilder — "nothing was measured" is a fact about the page and not
+// a finding. An invariant never declares one; an invariant that does not hold everywhere is a pin
+// that has not admitted to it. (Fhi.Metadata-fih3y)
 
 /** The component's own root. Everything measured is inside it or is the host chrome around it. */
 const MOUNT = '.munin-explorer';
@@ -65,9 +72,14 @@ export const assertions = [
     // The tolerance is 1px for subpixel rounding — a 1487.98px child of a 1488px box is not a
     // defect, and reporting it as one would make this file the boy who cried overflow.
     //
-    // One exemption: a declared scroll box — role=region, tabindex=0, scrollable overflow-x —
-    // holds content that is reachable rather than clipped. Not overflow-x alone, which overflow-y
-    // also computes to and which would exempt the filter panel above.
+    // A declared scroll box — role=region, tabindex=0, scrollable overflow-x — is measured
+    // AGAINST rather than skipped: getBoundingClientRect reports a child of a scroll container
+    // where it sits in the scrollable content, not where it is clipped, so a child of any correct
+    // one reads as outside the mount. Children of one are held to that box's scrollable extent
+    // instead, which still catches content no amount of scrolling reaches. tabindex is the
+    // load-bearing half — an unreachable clip is the defect worth keeping — and not overflow-x
+    // alone, which overflow-y also computes to and which would exempt the filter panel above. The
+    // box itself is still measured against the mount. (Fhi.Metadata-fih3y)
     body: ({ mount: mountSel }) => {
       const mount = document.querySelector(mountSel);
       if (!mount) return `no ${mountSel} on the page — nothing was measured`;
@@ -83,25 +95,37 @@ export const assertions = [
         // `.screenreader-only` is `position: absolute; left: -10000px`. Off-canvas on purpose is
         // not overflow, and there is no way to overflow a container by being at -9875.
         if (r.right <= 0) continue;
-        // Inside a declared scroll region — see the note above. The region itself is not exempt.
-        if (insideAScrollRegion(el)) continue;
-        if (r.right > box.right + tolerance || r.left < box.left - tolerance) {
+        // Inside a scroll region the reader can reach, the box to fit is that region's scrollable
+        // extent — see the note above. The region itself is not exempt.
+        const scroller = nearestReachableScroller(el);
+        const bounds = scroller === null ? box : scrollableBounds(scroller);
+        if (r.right > bounds.right + tolerance || r.left < bounds.left - tolerance) {
+          const whose = scroller === null ? "the mount's" : `${describe(scroller)}'s scrollable`;
           return `${describe(el)} spans ${Math.round(r.left)}..${Math.round(r.right)}, ` +
-            `outside the mount's ${Math.round(box.left)}..${Math.round(box.right)}`;
+            `outside ${whose} ${Math.round(bounds.left)}..${Math.round(bounds.right)}`;
         }
       }
       return null;
 
       // Strictly between the element and the mount, so the mount's own overflow — the host's
       // business, not the package's — exempts nothing.
-      function insideAScrollRegion(el) {
+      function nearestReachableScroller(el) {
         for (let p = el.parentElement; p && p !== mount; p = p.parentElement) {
           if (p.getAttribute('role') !== 'region') continue;
           if (p.getAttribute('tabindex') !== '0') continue;
           const overflowX = getComputedStyle(p).overflowX;
-          if (overflowX === 'auto' || overflowX === 'scroll') return true;
+          if (overflowX === 'auto' || overflowX === 'scroll') return p;
         }
-        return false;
+        return null;
+      }
+
+      // Where the scrollable content begins and ends in viewport coordinates, which is the frame
+      // a child's own rect is already reported in: the padding edge, shifted by whatever is
+      // scrolled out of view, and as wide as there is content to scroll.
+      function scrollableBounds(p) {
+        const rect = p.getBoundingClientRect();
+        const left = rect.left + p.clientLeft - p.scrollLeft;
+        return { left, right: left + p.scrollWidth };
       }
 
       function describe(el) {
@@ -124,17 +148,67 @@ export const assertions = [
     //
     // Measured rather than computed from the style: an element can be display:none through a
     // parent, and a box of zero area is the thing that actually matters to a reader.
+    //
+    // A HOST MAY UN-HIDE ON PURPOSE — Stiler shows the facet panel wherever there is room for a
+    // sidebar — and the tell is the rule, not the element: a rule whose own selector names
+    // [hidden] was written about this attribute, where `div { display: block }` was not. The fold
+    // must also be inert, so a control still pointing here that has a box of its own fails
+    // anyway: a reader who can press it sees aria-expanded disagree with the panel. Nothing here
+    // names a class, so the invariant stays on for every other element. (Fhi.Metadata-fih3y)
     body: ({ mount: mountSel }) => {
       const mount = document.querySelector(mountSel);
       if (!mount) return `no ${mountSel} on the page — nothing was measured`;
       for (const el of mount.querySelectorAll('[hidden]')) {
         const r = el.getBoundingClientRect();
-        if (r.width * r.height !== 0) {
-          return `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''} carries [hidden] and ` +
-            `still has a ${Math.round(r.width)}x${Math.round(r.height)} box`;
-        }
+        if (r.width * r.height === 0) continue;
+        if (unhiddenOnPurpose(el)) continue;
+        return `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''} carries [hidden] and ` +
+          `still has a ${Math.round(r.width)}x${Math.round(r.height)} box`;
       }
       return null;
+
+      function unhiddenOnPurpose(el) {
+        for (const control of document.querySelectorAll('[aria-controls]')) {
+          const names = (control.getAttribute('aria-controls') ?? '').split(/\s+/);
+          if (!el.id || !names.includes(el.id)) continue;
+          const c = control.getBoundingClientRect();
+          if (c.width * c.height !== 0) return false;
+        }
+        for (const rule of applicableRules()) {
+          if (!rule.selectorText.includes('[hidden]')) continue;
+          const display = rule.style.getPropertyValue('display');
+          if (display === '' || display === 'none') continue;
+          try {
+            if (el.matches(rule.selectorText)) return true;
+          } catch {
+            // A selector this browser cannot parse tells us nothing either way.
+          }
+        }
+        return false;
+      }
+
+      // Style rules in force at this width. A stylesheet the page cannot read contributes
+      // nothing, so an unreadable one leaves the check failing rather than exempting.
+      function applicableRules() {
+        const found = [];
+        walk([...document.styleSheets].flatMap(sheet => {
+          try { return [...sheet.cssRules]; } catch { return []; }
+        }));
+        return found;
+
+        function walk(rules) {
+          for (const rule of rules) {
+            if (rule.selectorText && rule.style) found.push(rule);
+            else if (rule.cssRules && inForce(rule)) walk([...rule.cssRules]);
+          }
+        }
+
+        function inForce(rule) {
+          if (rule.media) return matchMedia(rule.conditionText).matches;
+          if (rule.conditionText) return CSS.supports(rule.conditionText);
+          return true;
+        }
+      }
     },
   },
 
@@ -216,6 +290,7 @@ export const assertions = [
   {
     name: 'the tablist clears the header',
     kind: 'pin',
+    states: ['explorer-tabs', 'explorer-list-tab'],
     // A replay of defect 1, kept beside the invariant above for the same reason as the two pins
     // below it: when the tablist is what moved, this names the tablist and the two numbers, where
     // the invariant reports whichever of its buttons it reached first. Nothing else measures the
@@ -235,6 +310,7 @@ export const assertions = [
   {
     name: 'exactly one tab panel has content',
     kind: 'pin',
+    states: ['explorer-tabs', 'explorer-list-tab'],
     // A replay of defect 2, and it stays because it fails with a far more useful message than
     // "hidden means hidden" does when the two panels are the thing that broke: it names how many
     // panels had text and how much. The invariant above is what would catch a NEW instance of the
@@ -257,6 +333,7 @@ export const assertions = [
   {
     name: 'no page shell class inside a tab panel',
     kind: 'pin',
+    states: ['explorer-tabs', 'explorer-list-tab'],
     // A replay of defect 3. `munin-explorer` is the component's OWN root class and Stiler dresses
     // it as the page's sidebar-and-results grid — `display: grid; grid-template-columns: 384px
     // minmax(0, 1fr)` above 1024px. A view nested inside a tab panel that also wore it got its

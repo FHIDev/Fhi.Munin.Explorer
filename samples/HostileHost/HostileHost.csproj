@@ -14,8 +14,11 @@
          fixture change meaning between two runs of the same commit, and "the sample host
          went red overnight" is the one report nobody can act on. Bump it deliberately when
          helsedata bump theirs; the geometry assertions are what tell you whether the bump
-         broke anything. -->
-    <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.38" />
+         broke anything.
+
+         0.1.41 is the first release carrying `.munin-explorer-kilder-scroll`, which is the
+         Stiler half of Fhi.Metadata-b3brc and what /kilder needs to fit at 1024 and 843. -->
+    <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.42" />
   </ItemGroup>
 
 </Project>
