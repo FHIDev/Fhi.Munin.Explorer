@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Components;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>Which columns the kilde table carries, and the control that turns them on and off.</summary>
-public sealed partial class KildeExplorer
+public sealed partial class KildeSearch
 {
     /// <summary>
     /// A column the reader can turn off.

@@ -608,32 +608,56 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             || !Lists.Any(l => l.Id == _shownList))
         {
             _page = null;
+
+            // Cleared here as well now that a superseded read returns without touching it: this
+            // branch is the one place a read in flight can be abandoned by a caller.
+            _loading = false;
             SeedDesiredData();
             return;
         }
 
+        // What this read is for, taken before the await: several run at once, because the holder
+        // raises Changed while a create is still going and each notification starts one. The
+        // narrowing is part of what it is for — a tick raises Changed too, so an answer can land
+        // for kilder the reader has already unticked.
+        var readList = _shownList.Value;
+        var readPage = _pageNumber;
+        var readKilder = State.KildeFilter;
+        var readFilter = State.KildeFilterVersion;
+
         _loading = true;
         _failed = false;
+
+        Page<VariableListItem>? read = null;
+        var failed = false;
 
         try
         {
             // Narrowed by the API, not here: the endpoint pages, so a sieve over the page it
             // answered with would leave TotalCount — and the pager on it — describing the whole
             // list. The ticks live in the holder; the boxes are in the other grid column.
-            _page = await Client.GetMyListVariablesAsync(
-                _shownList.Value, _pageNumber, PageSize, State.KildeFilter);
+            read = await Client.GetMyListVariablesAsync(readList, readPage, PageSize, readKilder);
         }
         catch (Exception)
         {
             // Said here rather than thrown on: an unhandled exception out of a lifecycle method
             // takes the circuit down, which is a worse answer than a line of text.
-            _page = null;
-            _failed = true;
+            failed = true;
         }
-        finally
+
+        // An answer for a list, a page or a narrowing the view has since left is dropped, _loading
+        // included. Creating repoints _shownList while reads for the previous list are still out,
+        // and the later answer won — old rows under the new name, as though create had copied
+        // them. A tick is the same race: rows for a kilde no longer ticked, under boxes that say
+        // otherwise.
+        if (_shownList != readList || _pageNumber != readPage || State.KildeFilterVersion != readFilter)
         {
-            _loading = false;
+            return;
         }
+
+        _loading = false;
+        _failed = failed;
+        _page = failed ? null : read;
 
         SeedDesiredData();
     }

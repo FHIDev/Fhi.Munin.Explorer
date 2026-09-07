@@ -383,7 +383,7 @@ internal sealed record Texts(
     string ClearSearch,
     string SelectAllKilder,
     string ClearSelection,
-    // One button, three payloads — see Handover in KildeExplorer.Selection.cs. "Alle" over a
+    // One button, three payloads — see Handover in KildeSearch.Selection.cs. "Alle" over a
     // filtered list would promise the catalogue and hand over a slice. (Fhi.Metadata-5ghur)
     string ExploreVariables,
     string ExploreAllVariables,

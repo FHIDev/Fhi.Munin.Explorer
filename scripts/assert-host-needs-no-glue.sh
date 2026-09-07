@@ -2,7 +2,7 @@
 #
 # Fails if a host cannot get shareable explorer URLs out of the package alone.
 #
-# VariableExplorer and KildeExplorerWithUrlState exist so that a host writes no glue:
+# VariableExplorer and KildeExplorer exist so that a host writes no glue:
 # no wrapper component, no query-string parsing, no history.replaceState. Both sample hosts prove
 # that badly. They sit in this repository and compile against src/, so a parameter that only exists
 # on this branch, a type the package does not actually export, or a component reachable only through
@@ -43,7 +43,16 @@ mkdir -p "$FEED" "$CONSUMER"
 
 echo "Packing the package a host would install."
 
-if ! pack=$(dotnet pack "$PROJECT" --configuration Release --output "$FEED" --nologo -v quiet 2>&1); then
+# A version nothing has ever restored, and that is load-bearing rather than tidy. The repository's
+# own version is a fixed 0.1.0, NuGet extracts by id and version, and CI restores ~/.nuget/packages
+# from a cache keyed on the csproj files — so a probe pinned to 0.1.0 silently gets whichever build
+# reached the cache first. That is not a slow check, it is a blind one: a public type added today is
+# absent from a copy extracted last week, and the check reports it missing from the package. Found
+# on Fhi.Metadata-8uwtd, where a new `KildeSearch` failed here and was in the package all along.
+VERSION="0.1.0-glueprobe.$(date -u +%Y%m%d%H%M%S).$$"
+
+if ! pack=$(dotnet pack "$PROJECT" --configuration Release --output "$FEED" \
+              -p:Version="$VERSION" --nologo -v quiet 2>&1); then
   echo "::error::The package would not pack, so no consumer could install it." >&2
   echo "$pack" >&2
   exit 2
@@ -64,7 +73,7 @@ cat > "$CONSUMER/nuget.config" <<'EOF'
 </configuration>
 EOF
 
-cat > "$CONSUMER/Consumer.csproj" <<'EOF'
+cat > "$CONSUMER/Consumer.csproj" <<EOF
 <Project Sdk="Microsoft.NET.Sdk.Razor">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -74,11 +83,12 @@ cat > "$CONSUMER/Consumer.csproj" <<'EOF'
          error when a component tag names a type it cannot find: the tag is emitted as literal HTML
          and the build stays green. Without this the probe below would pass against a package that
          ships neither component. -->
-    <WarningsAsErrors>$(WarningsAsErrors);RZ10012</WarningsAsErrors>
+    <WarningsAsErrors>\$(WarningsAsErrors);RZ10012</WarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
-    <!-- A PackageReference and nothing else. No ProjectReference: that is the whole point. -->
-    <PackageReference Include="Fhi.Munin.Explorer" Version="*" />
+    <!-- A PackageReference and nothing else. No ProjectReference: that is the whole point. The
+         version is pinned to the one just packed rather than "*", so no cache can answer it. -->
+    <PackageReference Include="Fhi.Munin.Explorer" Version="$VERSION" />
   </ItemGroup>
 </Project>
 EOF
@@ -95,7 +105,7 @@ cat > "$CONSUMER/MountedWithNoGlue.razor" <<'EOF'
 
 <VariableExplorer Language="no" DeclinedKeys="@(new[] { "search" })" />
 
-<KildeExplorerWithUrlState Language="no" VariableExplorerPath="/" />
+<KildeExplorer Language="no" VariableExplorerPath="/" />
 EOF
 
 # The same two types from C#, where naming one the package does not export is a hard error rather
@@ -108,10 +118,12 @@ using Fhi.Munin.Explorer.Contracts;
 internal static class Exported
 {
     internal static readonly Type[] Mounted =
-        [typeof(VariableExplorer), typeof(KildeExplorerWithUrlState)];
+        [typeof(VariableExplorer), typeof(KildeExplorer)];
 
     // The do-it-yourself route stays public beside them: a host that wants to own its own address
-    // bar builds the query with these rather than mounting the components above.
+    // bar mounts the bare components and builds the query with these.
+    internal static readonly Type[] Bare = [typeof(VariableSearch), typeof(KildeSearch)];
+
     internal static readonly string Query = ExplorerUrlState.Parse("?search=x").ToQueryString();
 
     internal static readonly IReadOnlySet<string> Keys = ExplorerUrlState.QueryKeys;

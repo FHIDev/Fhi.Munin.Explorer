@@ -147,7 +147,7 @@ Adding a string means adding both halves. A missing English half is not a compil
 
 WCAG 2.1 AA applies to this package by law. Two things to carry while writing markup:
 
-- `KildeExplorer` is the worked example of a data table done right — a real `<table>`, scoring
+- `KildeSearch` is the worked example of a data table done right — a real `<table>`, scoring
   100. Copy its shape rather than inventing one.
 - Use `AccessibleName` in the test project for anything a reader operates. It resolves what a
   screen reader would announce and deliberately refuses to count `placeholder` or `title`, both

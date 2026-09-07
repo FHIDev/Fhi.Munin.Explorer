@@ -9,7 +9,7 @@
 # that is switched off; it is a guard that by construction sees a window.
 #
 # What went unseen: README said "the nine munin-explorer-kilde* names in KildeView" while KildeView
-# emitted twelve, said three munin-explorer-kilder* names while KildeExplorer emitted four, and the
+# emitted twelve, said three munin-explorer-kilder* names while KildeSearch emitted four, and the
 # eight munin-explorer-whole* names VariableView emits appeared in no markdown file in the
 # repository at all. Both stale counts were written before the branch diff existed and the whole*
 # names arrived with the view itself, so every one of them was outside that window.

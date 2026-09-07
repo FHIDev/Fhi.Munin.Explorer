@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
-/// Whether a CMS host can actually reach <see cref="KildeExplorer.ShowAccessAndPrices"/>, on both
+/// Whether a CMS host can actually reach <see cref="KildeSearch.ShowAccessAndPrices"/>, on both
 /// of Kelda's mounts, and whether the page follows it either way (Fhi.Metadata-ay3zz).
 /// </summary>
 /// <remarks>
@@ -69,7 +69,7 @@ public class KildeHostParameterTest : BunitContext
         return cut;
     }
 
-    public static TheoryData<Type> Mounts() => [typeof(KildeExplorer), typeof(KildeExplorerWithUrlState)];
+    public static TheoryData<Type> Mounts() => [typeof(KildeSearch), typeof(KildeExplorer)];
 
     [Theory]
     [MemberData(nameof(Mounts))]

@@ -30,7 +30,16 @@ public sealed record KildeInList(Guid Id, string Name, int Count);
 public sealed partial class VariableListState
 {
     private readonly List<KildeInList> _kilder = [];
-    private readonly HashSet<Guid> _kildeFilter = [];
+
+    /// <summary>
+    /// Replaced on every change, never mutated in place.
+    /// </summary>
+    /// <remarks>
+    /// A caller holds this while it awaits — the view carries it into a read that is in flight —
+    /// and a set that changed underneath would make the request it describes disagree with the
+    /// request it made. Rebuilding costs a handful of Guids; these are the kilder of one list.
+    /// </remarks>
+    private IReadOnlyCollection<Guid> _kildeFilter = [];
 
     /// <summary>
     /// The kilder in the active list, in no particular order. Empty until the walk finishes, which
@@ -45,8 +54,13 @@ public sealed partial class VariableListState
     /// </summary>
     public bool KilderInListKnown => _membershipLoaded;
 
-    /// <summary>The kilder the reader has ticked. Empty means every kilde, never none.</summary>
+    /// <summary>
+    /// The kilder the reader has ticked, as a snapshot. Empty means every kilde, never none.
+    /// </summary>
     public IReadOnlyCollection<Guid> KildeFilter => _kildeFilter;
+
+    /// <summary>Whether the reader has ticked this kilde. A plain read, called on every render.</summary>
+    public bool IsKildeChosen(Guid kildeId) => _kildeFilter.Contains(kildeId);
 
     /// <summary>
     /// Bumped by every change to <see cref="KildeFilter"/>, so a surface holding a page number can
@@ -57,11 +71,14 @@ public sealed partial class VariableListState
     /// <summary>Ticks the kilde, or unticks it when it is already ticked.</summary>
     public void ToggleKildeFilter(Guid kildeId)
     {
-        if (!_kildeFilter.Remove(kildeId))
+        var next = new HashSet<Guid>(_kildeFilter);
+
+        if (!next.Remove(kildeId))
         {
-            _kildeFilter.Add(kildeId);
+            next.Add(kildeId);
         }
 
+        _kildeFilter = next;
         KildeFilterVersion++;
         Changed?.Invoke();
     }
@@ -74,7 +91,7 @@ public sealed partial class VariableListState
             return;
         }
 
-        _kildeFilter.Clear();
+        _kildeFilter = [];
         KildeFilterVersion++;
         Changed?.Invoke();
     }
@@ -93,7 +110,7 @@ public sealed partial class VariableListState
 
         if (_kildeFilter.Count > 0)
         {
-            _kildeFilter.Clear();
+            _kildeFilter = [];
             KildeFilterVersion++;
         }
     }

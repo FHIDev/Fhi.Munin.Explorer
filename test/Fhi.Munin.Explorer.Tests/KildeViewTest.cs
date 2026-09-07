@@ -19,7 +19,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// sideways, through the explorer's drill-in — so the parameters it exists for had no coverage.
 /// The parameters are the point, in two different ways. <see cref="KildeView.Sections"/> and
 /// <see cref="KildeView.DataCollectionsHeading"/> are the whole reason this is a shared core rather
-/// than two views. Kelda wires <c>Sections</c> — <c>KildeExplorer.razor</c> hands it three sections
+/// than two views. Kelda wires <c>Sections</c> — <c>KildeSearch.razor</c> hands it three sections
 /// of its own — and neither explorer wires the heading any more (Fhi.Metadata-rhybi), which is why
 /// both are exercised here directly: the assertions below are about what the core does with them,
 /// and <c>KildeSectionsTest</c> is about the difference they make between the two explorers.
@@ -1395,7 +1395,7 @@ public class KildeViewTest : BunitContext
         // Both halves are needed to reach the fault. An empty propertyMetadata never looks a key up,
         // so the entry below is what turns the null into a dereference — one that happens while
         // rendering, past the try/catch around the fetch, taking the whole detail view down where a
-        // failed load would have been reported. KildeExplorer.Property guards the list against the
+        // failed load would have been reported. KildeSearch.Property guards the list against the
         // same shape one click earlier; this is the other half of that answer.
         var kilde = JsonSerializer.Deserialize<KildeDetail>(
             """

@@ -39,7 +39,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// kilde open, because the two states share almost no markup.
 /// </para>
 /// </remarks>
-public class KildeExplorerTest : BunitContext
+public class KildeSearchTest : BunitContext
 {
     private static KildeSummary Kilde(
         string name,
@@ -408,16 +408,16 @@ public class KildeExplorerTest : BunitContext
         }
     }
 
-    private IRenderedComponent<KildeExplorer> RenderWith(
+    private IRenderedComponent<KildeSearch> RenderWith(
         IMuninExplorerClient client,
-        Action<ComponentParameterCollectionBuilder<KildeExplorer>>? parameters = null)
+        Action<ComponentParameterCollectionBuilder<KildeSearch>>? parameters = null)
     {
         Services.AddSingleton(client);
 
-        return parameters is null ? Render<KildeExplorer>() : Render<KildeExplorer>(parameters);
+        return parameters is null ? Render<KildeSearch>() : Render<KildeSearch>(parameters);
     }
 
-    private static IReadOnlyList<string> RowNames(IRenderedComponent<KildeExplorer> cut) =>
+    private static IReadOnlyList<string> RowNames(IRenderedComponent<KildeSearch> cut) =>
         [.. cut.FindAll(".munin-explorer-kilder tbody th button").Select(b => b.TextContent.Trim())];
 
     /// <summary>
@@ -429,11 +429,11 @@ public class KildeExplorerTest : BunitContext
     /// on purpose — the empty-facet assertions are about what is in the DOM, and a heading with no
     /// class would slip past a selector that asked for one.
     /// </remarks>
-    private static IReadOnlyList<string> FacetHeadings(IRenderedComponent<KildeExplorer> cut) =>
+    private static IReadOnlyList<string> FacetHeadings(IRenderedComponent<KildeSearch> cut) =>
         [.. cut.FindAll(".munin-explorer-filters__facets [role=group] h4").Select(h => h.TextContent.Trim())];
 
     /// <summary>One facet's group, found by the heading over it.</summary>
-    private static IElement Facet(IRenderedComponent<KildeExplorer> cut, string heading) =>
+    private static IElement Facet(IRenderedComponent<KildeSearch> cut, string heading) =>
         cut.FindAll(".munin-explorer-filters__facets [role=group]")
            .Single(group => group.QuerySelector("h4")!.TextContent.Trim() == heading);
 
@@ -460,7 +460,7 @@ public class KildeExplorerTest : BunitContext
     /// element found before that belongs to the markup as it was.
     /// </para>
     /// </remarks>
-    private static void Tick(IRenderedComponent<KildeExplorer> cut, string heading, string choice) =>
+    private static void Tick(IRenderedComponent<KildeSearch> cut, string heading, string choice) =>
         Facet(cut, heading)
             .QuerySelectorAll("label")
             .First(label => label.TextContent.Trim().StartsWith(choice, StringComparison.Ordinal))
@@ -587,8 +587,8 @@ public class KildeExplorerTest : BunitContext
         // more than one explorer on a page.
         Services.AddSingleton<IMuninExplorerClient>(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
-        var a = Render<KildeExplorer>();
-        var b = Render<KildeExplorer>();
+        var a = Render<KildeSearch>();
+        var b = Render<KildeSearch>();
 
         var idA = a.Find(".searchbox__freetext").Id;
         var idB = b.Find(".searchbox__freetext").Id;
@@ -725,7 +725,7 @@ public class KildeExplorerTest : BunitContext
     private static KildeDatasamling Collection(string name) =>
         new() { Name = name, VariableCount = 12 };
 
-    private static IElement ExpandToggle(IRenderedComponent<KildeExplorer> cut, string kilde) =>
+    private static IElement ExpandToggle(IRenderedComponent<KildeSearch> cut, string kilde) =>
         cut.FindAll(".munin-explorer-kilder tbody tr")
            .First(row => row.TextContent.Contains(kilde, StringComparison.Ordinal))
            .QuerySelector(".munin-explorer-kilder__expand-toggle")!;
@@ -2902,17 +2902,17 @@ public class KildeExplorerTest : BunitContext
     // ---------------------------------------------------------------------------------
 
     /// <summary>The picker's toggles, in the order it lists them.</summary>
-    private static IReadOnlyList<IElement> ColumnToggles(IRenderedComponent<KildeExplorer> cut) =>
+    private static IReadOnlyList<IElement> ColumnToggles(IRenderedComponent<KildeSearch> cut) =>
         cut.FindAll(".dropdown-choicepicker__item button");
 
     /// <summary>The toggle for one named column, refetched so it is never a stale node.</summary>
-    private static void ToggleColumn(IRenderedComponent<KildeExplorer> cut, string label) =>
+    private static void ToggleColumn(IRenderedComponent<KildeSearch> cut, string label) =>
         ColumnToggles(cut).Single(b => b.TextContent.Trim() == label).Click();
 
-    private static IReadOnlyList<string> Headers(IRenderedComponent<KildeExplorer> cut) =>
+    private static IReadOnlyList<string> Headers(IRenderedComponent<KildeSearch> cut) =>
         [.. cut.FindAll(".munin-explorer-kilder thead th").Select(th => th.TextContent.Trim())];
 
-    private static IReadOnlyList<string> FirstRowCells(IRenderedComponent<KildeExplorer> cut) =>
+    private static IReadOnlyList<string> FirstRowCells(IRenderedComponent<KildeSearch> cut) =>
         [.. cut.FindAll(".munin-explorer-kilder tbody tr:first-child > *").Select(c => c.TextContent.Trim())];
 
     /// <summary>
@@ -3103,7 +3103,7 @@ public class KildeExplorerTest : BunitContext
     /// indentation between them, so a literal here pins the razor file's whitespace and breaks on a
     /// reindent with a diff nobody can read. What the caller asserts is its POSITION in the row.
     /// </remarks>
-    private static string NameCellText(IRenderedComponent<KildeExplorer> cut) =>
+    private static string NameCellText(IRenderedComponent<KildeSearch> cut) =>
         FirstRowCells(cut).Single(c => c.Contains("K_ALS", StringComparison.Ordinal));
 
     /// <summary>The three date cells as this runtime spells them.</summary>
@@ -3114,13 +3114,13 @@ public class KildeExplorerTest : BunitContext
     /// <see cref="Picker_WhenADateColumnIsTurnedOn_ThenItDrawsItsOwnFieldAndNotOneOfTheOtherThree"/>.
     /// What these three hold up is the ORDER of the row, which no spelling affects.
     /// </remarks>
-    private static string ValidityText(IRenderedComponent<KildeExplorer> cut) =>
+    private static string ValidityText(IRenderedComponent<KildeSearch> cut) =>
         FirstRowCells(cut).Single(c => c.Contains("2013", StringComparison.Ordinal));
 
-    private static string ImportedText(IRenderedComponent<KildeExplorer> cut) =>
+    private static string ImportedText(IRenderedComponent<KildeSearch> cut) =>
         FirstRowCells(cut).Single(c => c.Contains("2015", StringComparison.Ordinal));
 
-    private static string SourceUpdatedText(IRenderedComponent<KildeExplorer> cut) =>
+    private static string SourceUpdatedText(IRenderedComponent<KildeSearch> cut) =>
         FirstRowCells(cut).Single(c => c.Contains("2019", StringComparison.Ordinal));
 
     [Fact]

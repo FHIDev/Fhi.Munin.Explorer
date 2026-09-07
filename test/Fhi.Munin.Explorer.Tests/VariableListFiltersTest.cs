@@ -56,6 +56,20 @@ public class VariableListFiltersTest : BunitContext
         /// <summary>What the export was handed, so a test can see what would be in the file.</summary>
         public IReadOnlyCollection<Guid>? ExportedIds { get; private set; }
 
+        /// <summary>Holds every read narrowed by this kilde, so a test can land one late.</summary>
+        public Guid? StallReadsFor { get; set; }
+
+        private readonly TaskCompletionSource _gate =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public void ReleaseReads() => _gate.TrySetResult();
+
+        /// <summary>Completes once the held answer has been handed back, so a test can wait for it.</summary>
+        public Task Delivered => _delivered.Task;
+
+        private readonly TaskCompletionSource _delivered =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
         /// <summary>The second list, whose variables are all of a kilde the first does not hold.</summary>
         public static readonly Guid SecondListId = new("22222222-2222-2222-2222-222222222222");
 
@@ -103,23 +117,43 @@ public class VariableListFiltersTest : BunitContext
             Narrowings.Add(kildeIds is null ? [] : [.. kildeIds]);
             PagesAsked.Add(page);
 
+            if (StallReadsFor is { } stalled && kildeIds is not null && kildeIds.Contains(stalled))
+            {
+                return ReadWhenReleasedAsync(id, page, pageSize, kildeIds);
+            }
+
             // Narrowed, then counted, then cut — the order the API uses. A fake that sieved the
             // page it had already cut would answer a whole-list total for a narrowed read, and
             // every assertion below about the pager would pass against the wrong component.
+            return Task.FromResult<Page<VariableListItem>?>(Answer(id, page, pageSize, kildeIds));
+        }
+
+        private async Task<Page<VariableListItem>?> ReadWhenReleasedAsync(
+            Guid id, int page, int pageSize, IReadOnlyCollection<Guid>? kildeIds)
+        {
+            await _gate.Task;
+            var answer = Answer(id, page, pageSize, kildeIds);
+            _delivered.TrySetResult();
+            return answer;
+        }
+
+        private Page<VariableListItem> Answer(
+            Guid id, int page, int pageSize, IReadOnlyCollection<Guid>? kildeIds)
+        {
             var all = id == SecondListId ? _second : _items;
 
             var matching = kildeIds is { Count: > 0 }
                 ? all.Where(i => i.KildeId is { } k && kildeIds.Contains(k)).ToList()
                 : all;
 
-            return Task.FromResult<Page<VariableListItem>?>(new Page<VariableListItem>
+            return new Page<VariableListItem>
             {
                 Items = [.. matching.Skip((page - 1) * pageSize).Take(pageSize)],
                 TotalCount = matching.Count,
                 PageNumber = page,
                 Size = pageSize,
                 TotalPages = Math.Max(1, (int)Math.Ceiling(matching.Count / (double)pageSize)),
-            });
+            };
         }
     }
 
@@ -389,6 +423,35 @@ public class VariableListFiltersTest : BunitContext
 
         Assert.NotNull(client.ExportedIds);
         Assert.Equal(15, client.ExportedIds!.Count);
+    }
+
+    [Fact]
+    public async Task Tick_WhenTheAnswerLandsAfterItIsUnticked_ThenItIsDropped()
+    {
+        // The same race #210 fixed for a list switch, arriving through a different door: a tick
+        // raises Changed, so a read is in flight when the reader unticks it. Its answer holds only
+        // Reseptregisteret's rows, and taking it would put them under boxes that say otherwise.
+        var client = new ListClient(List((Kreftregisteret, 40), (Reseptregisteret, 15)))
+        {
+            StallReadsFor = Reseptregisteret,
+        };
+
+        var cut = RenderBoth(client, pageSize: 100);
+        var state = Services.GetRequiredService<VariableListState>();
+
+        Boxes(cut.Filters)[1].Change(true);
+        Boxes(cut.Filters)[1].Change(false);
+
+        client.ReleaseReads();
+        await client.Delivered;
+
+        // Drained on the renderer's own dispatcher, so the stalled read's continuation — the one
+        // that would overwrite the rows — has run by the time the assertion looks.
+        await cut.View.InvokeAsync(() => { });
+        await cut.View.InvokeAsync(() => { });
+
+        Assert.Empty(state.KildeFilter);
+        Assert.Equal(55, RowCount(cut.View));
     }
 
     // -----------------------------------------------------------------------

@@ -150,7 +150,7 @@ public class KildeSectionsTest : BunitContext
     /// than defaulted, so the common case renders the component the way an embedded host that names
     /// neither does (Fhi.Metadata-ay3zz).
     /// </remarks>
-    private IRenderedComponent<KildeExplorer> OpenInKelda(
+    private IRenderedComponent<KildeSearch> OpenInKelda(
         KildeDetail kilde,
         int? headingLevel = null,
         string? language = null,
@@ -158,7 +158,7 @@ public class KildeSectionsTest : BunitContext
     {
         Services.AddSingleton<IMuninExplorerClient>(new KeldaClient(kilde));
 
-        var cut = Render<KildeExplorer>(b =>
+        var cut = Render<KildeSearch>(b =>
         {
             if (headingLevel is { } level)
             {
@@ -358,7 +358,7 @@ public class KildeSectionsTest : BunitContext
     /// datasamlinger of every wave nested below it as its own, which is the flattening this section
     /// exists to undo — and the test would pass on the implementation that has it.
     /// </remarks>
-    private static IReadOnlyList<string> Waves(IRenderedComponent<KildeExplorer> cut) =>
+    private static IReadOnlyList<string> Waves(IRenderedComponent<KildeSearch> cut) =>
         [.. cut.FindAll("li.munin-explorer-kilde__delkilde")
                .Select(item =>
                {
@@ -508,7 +508,7 @@ public class KildeSectionsTest : BunitContext
     /// assertion pairwise: it can only answer with the body of the section it was asked about, so
     /// two bodies that swapped places fail rather than both still being somewhere on the page.
     /// </remarks>
-    private static string BodyUnder(IRenderedComponent<KildeExplorer> cut, string heading)
+    private static string BodyUnder(IRenderedComponent<KildeSearch> cut, string heading)
     {
         var block = cut.FindAll(BlockHeadings)
                        .First(e => string.Equals(e.TextContent.Trim(), heading, StringComparison.Ordinal));

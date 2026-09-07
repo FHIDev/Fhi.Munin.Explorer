@@ -577,6 +577,11 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 .munin-explorer-filters__facets > [role="group"] { margin-bottom: 16px; }
 
+/* The browser's `[hidden]` rule loses to any author rule of equal specificity, so this is what
+   puts the fold back. BEFORE the media query below on purpose: same specificity, order decides.
+   (Fhi.Metadata-b3brc) */
+.munin-explorer-filters__facets[hidden] { display: none; }
+
 /* Dimmed and tabular so a column of counts reads as numbers rather than as more of the words in
    front of them. Cosmetic only: the count is inside the <label>, so the checkbox stays announced
    as "Biobank (1)". (Fhi.Metadata-cgk85) */
@@ -1859,7 +1864,7 @@ table.munin-explorer-data-list tbody th {
    the white table, so six datasamlinger read as six more kilder, under a second header row nobody
    had said was nested. The inset and the rule down the left are what say "inside this row". */
 .munin-explorer-kilder td.munin-explorer-kilder__expanded {
-  background-color: var(--grey20);
+  background: var(--grey20);
   border-left: 3px solid var(--grey40);
   padding: 12px 20px 16px 32px;
 }
@@ -1867,12 +1872,11 @@ table.munin-explorer-data-list tbody th {
 /* The nested table repeats a header row directly under the list's own. Quieter and smaller so the
    two read as outer and inner rather than as two lists. */
 .munin-explorer-kilder__expanded .munin-explorer-kilde__datasamlinger {
-  background-color: #fff;
+  background: #fff;
 }
 
 .munin-explorer-kilder__expanded .munin-explorer-kilde__datasamlinger thead th {
   font-size: 0.8125rem;
-  color: var(--grey60);
 }
 
 

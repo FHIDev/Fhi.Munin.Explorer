@@ -63,6 +63,8 @@ public sealed partial class VariableListFilters : ComponentBase, IDisposable
 
     private IReadOnlyCollection<Guid> Chosen => State?.KildeFilter ?? [];
 
+    private bool IsChosen(Guid kildeId) => State?.IsKildeChosen(kildeId) == true;
+
     /// <summary>Whether the whole list has been read, which is what makes the empty sentence true.</summary>
     private bool Known => State?.KilderInListKnown == true;
 

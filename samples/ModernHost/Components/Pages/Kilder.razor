@@ -5,13 +5,22 @@
 
 <div class="hostchrome">
     <p class="hostchrome-note">
-        The other root component the package ships: <code>KildeExplorer</code>, the
-        kildeutforsker. <code>VariableSearch</code> is on <a href="/">the front page</a> — the
-        two are separate entry points, not two tabs of one thing, so each gets a page here.
+        <code>KildeSearch</code>, the kilde half of the catalogue on its own.
+        <code>VariableSearch</code> is on <a href="/">the front page</a> — the two are separate
+        entry points, not two tabs of one thing, so each gets a page here.
+    </p>
+    <p class="hostchrome-note">
+        <strong>This is the compose-your-own route, not the mount a host normally wants.</strong>
+        <code>KildeExplorer</code> is the whole kildeutforsker — the same list with
+        <code>?kilde=</code> in the address bar and the handover already wired — and
+        <code>samples/LegacyHost</code> and <code>samples/HostileHost</code> mount that. This page
+        keeps the bare component alive instead, because a host that owns its own address bar has to
+        be able to mount it, and because the wrapper below is what the handover looks like when the
+        host wires it by hand.
     </p>
     <p class="hostchrome-note">
         <strong>The component is behind a wrapper here, not mounted straight onto the tag</strong>,
-        and that is forced rather than chosen. <code>KildeExplorer</code> raises
+        and that is forced rather than chosen. <code>KildeSearch</code> raises
         <code>ExploreVariablesRequested</code>, and an <code>EventCallback</code> does not survive
         being passed from a statically-rendered parent into an interactive island: it is
         serialised as <code>{"HasDelegate":true}</code> and read back as an empty delegate, so the
@@ -31,17 +40,17 @@
     </p>
     <p class="hostchrome-note">
         <code>prerender: false</code> is separate, and not a preference either:
-        <code>KildeExplorer</code> fetches the whole kilde list when it initialises, and
+        <code>KildeSearch</code> fetches the whole kilde list when it initialises, and
         prerendering would run that call twice against the API on every page load.
     </p>
 </div>
 
 <div class="hostframe">
     @* render-mode is set HERE, by the host, on the wrapper that owns the handover — see the note
-       above for why it cannot go on the KildeExplorer tag inside it. The package's own components
+       above for why it cannot go on the KildeSearch tag inside it. The package's own components
        stay render-mode free either way, which is the rule that lets them mount in LegacyHost's
        MVC view too. *@
-    <KildeExplorerWithHandover Language="no"
-                               ShowAccessAndPrices="true"
-                               @rendermode="@(new InteractiveServerRenderMode(prerender: false))" />
+    <KildeSearchWithHandover Language="no"
+                             ShowAccessAndPrices="true"
+                             @rendermode="@(new InteractiveServerRenderMode(prerender: false))" />
 </div>

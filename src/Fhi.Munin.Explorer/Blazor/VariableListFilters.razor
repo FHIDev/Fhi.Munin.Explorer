@@ -41,7 +41,7 @@
                                table's kilde cells carry. *@
                             <label lang="@CatalogueLang(kilde.Name)">
                                 <input type="checkbox"
-                                       checked="@Chosen.Contains(kilde.Id)"
+                                       checked="@IsChosen(kilde.Id)"
                                        @onchange="() => Toggle(kilde.Id)" />
                                 @kilde.Name@(" ")<span class="munin-explorer-filters__count">@Count(kilde.Count)</span>
                             </label>

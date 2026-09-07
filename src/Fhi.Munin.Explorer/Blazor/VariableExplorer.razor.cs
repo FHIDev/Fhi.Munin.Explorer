@@ -46,7 +46,7 @@ public sealed partial class VariableExplorer : ComponentBase
     /// <inheritdoc cref="VariableSearch.IsAuthenticated"/>
     /// <remarks>
     /// Passed to both tabs. It is a <see langword="bool"/> rather than a callback, so it crosses a
-    /// static-SSR boundary intact — see <see cref="KildeExplorerWithUrlState"/> for why that
+    /// static-SSR boundary intact — see <see cref="KildeExplorer"/> for why that
     /// distinction matters here. Signed out, <see cref="VariableListView"/> renders nothing at all,
     /// and this component does not second-guess it: the tab is still there, and it is empty.
     /// </remarks>

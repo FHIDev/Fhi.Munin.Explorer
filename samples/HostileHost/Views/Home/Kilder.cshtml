@@ -16,10 +16,10 @@
    `container` is what helsedata's own MuninUtforsker.cshtml wraps the mount in, copied for the
    reason the front page copies it: their Munin page has nothing above the component either.
 
-   `KildeExplorerWithUrlState`, not `KildeExplorer`, because that is the mount a legacy MVC host
-   is meant to use — it is the one that reads the query string and writes back to the address. *@
+   `KildeExplorer`, not `KildeSearch`, because that is the mount a legacy MVC host is meant to
+   use — it is the one that reads the query string and writes back to the address. *@
 <div class="container">
-    <component type="typeof(KildeExplorerWithUrlState)"
+    <component type="typeof(KildeExplorer)"
                render-mode="Server"
                param-Language="@("no")"
                param-VariableExplorerPath="@("/")" />

@@ -107,7 +107,7 @@ public class ExplicitNullTest
     [Fact]
     public async Task GetKilderAsync_WhenARowHasANullCount_ThenTheReadFailsRatherThanReporting0()
     {
-        // The decision, pinned. It costs the reader the whole table — KildeExplorer catches this and
+        // The decision, pinned. It costs the reader the whole table — KildeSearch catches this and
         // draws "Kunne ikke laste kilder nå" — and that is the intended trade: a count of 0 for a
         // kilde with fourteen datasamlinger is a number a reader would believe.
         await Assert.ThrowsAsync<JsonException>(() => WithJson("""
