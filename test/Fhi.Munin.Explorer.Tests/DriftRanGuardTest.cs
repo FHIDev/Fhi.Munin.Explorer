@@ -3,20 +3,9 @@ using System.Globalization;
 namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
-/// Runs <c>scripts/assert-drift-ran.sh</c> against results broken on purpose and asserts it goes
-/// red, and red for the right reason.
-///
-/// The guard is the only thing standing between "the nightly checked the contracts" and "the
-/// nightly ran nothing and said so in green", and until this file nothing had ever seen it fail.
-/// That is not academic: it spent four nights on <c>Fhi.Munin.Explorer#168</c> reporting a skipped
-/// test under two causes that were both wrong — the variable had reached the job and nobody had
-/// left a stray <c>Skip=</c> — while the test's own reason sat in the results file it was already
-/// reading. A guard whose diagnostics have never been read is a guard that can say anything
-/// (<c>Fhi.Metadata-wpcb3</c>).
-///
-/// The TRX bodies below are the shape VSTest really writes, taken from a live run: a
-/// <c>&lt;Counters&gt;</c> whose <c>notExecuted</c> stays 0 through a skip, and the skip reason in
-/// an <c>&lt;ErrorInfo&gt;&lt;Message&gt;</c> on a result marked <c>NotExecuted</c>.
+/// Runs <c>scripts/assert-drift-ran.sh</c> against results broken on purpose, so its diagnostics
+/// have been read at least once: a guard nothing has ever watched fail can say anything, and this
+/// one said something untrue for four nights (<c>Fhi.Metadata-wpcb3</c>, docs/contract-drift.md).
 /// </summary>
 public class DriftRanGuardTest
 {
@@ -175,8 +164,9 @@ public class DriftRanGuardTest
     /// the only way to reach the fail-closed clause.
     /// </summary>
     /// <remarks>
-    /// <c>notExecuted</c> is written as 0 however many skipped, because that is what VSTest writes
-    /// for an xUnit skip decided at construction: the quirk the guard subtracts around.
+    /// Copied from what VSTest really writes: the skip reason in an <c>ErrorInfo/Message</c>, and
+    /// <c>notExecuted</c> at 0 however many skipped, because an xUnit skip decided at construction
+    /// never reaches the logger as a test — the quirk the guard subtracts around.
     /// </remarks>
     private static string Trx(int executed, int total, (string Name, string Reason)[] skipped)
     {
