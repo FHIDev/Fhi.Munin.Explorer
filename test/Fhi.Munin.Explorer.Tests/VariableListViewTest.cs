@@ -234,13 +234,8 @@ public class VariableListViewTest : BunitContext
 
         public void ReleaseVariables() => _variablesGate.TrySetResult();
 
-        /// <summary>Reads that have answered, as against <see cref="VariablesCalls"/> which counts asks.</summary>
-        /// <remarks>
-        /// The two differ only while a stalled read is out, which is exactly the window the create
-        /// race lives in: a test asserting before every ask has answered asserts on the frame the
-        /// bug has not reached yet. Interlocked because this one is incremented from a continuation
-        /// rather than on the way in, and releasing the gate resumes several at once.
-        /// </remarks>
+        // Answers, not asks. The two differ only while a stalled read is out, which is the window
+        // the create race lives in. Interlocked: this one counts up from a continuation.
         public int VariablesAnswered => Volatile.Read(ref _answered);
 
         private int _answered;
