@@ -758,11 +758,9 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   }
 
   /* The drill-in replaces the list rather than sitting beside it — the filter panel is not
-     rendered at all in this state — so it spans both tracks, the way the heading and the search
-     form already do. Copied from Stiler, which carries both halves: caught by the catch-all below
-     it, the open view was laid out in the results column beside a 384px filter track that is not
-     there, leaving 178px of main column instead of 632px and pushing the page sideways.
-     (Fhi.Metadata-fv79e) */
+     rendered at all in this state — so it spans both tracks. Copied from Stiler, which carries
+     both halves: the catch-all below out-specifies this rule, so without its `:not` this one is
+     inert. (Fhi.Metadata-fv79e) */
   .munin-explorer > .munin-explorer-drilldown {
     grid-column: 1 / -1;
     min-inline-size: 0;

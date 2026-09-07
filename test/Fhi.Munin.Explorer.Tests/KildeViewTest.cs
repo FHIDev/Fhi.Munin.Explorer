@@ -1694,19 +1694,59 @@ public class KildeViewTest : BunitContext
     [Fact]
     public void Drilldown_WhenAHostLaysOutTheExplorer_ThenItSpansBothTracksRatherThanTheResultsOne()
     {
-        // Both halves, because the exclusion alone is worse than neither: dropped out of the
-        // catch-all and placed nowhere, the drill-in auto-flows into the filter track and measures
-        // 40px. Stiler carries the pair; the samples were missing both. (Fhi.Metadata-fv79e)
-        var rules = HostClassNames.SampleDeclarationsFor("munin-explorer-drilldown");
+        // Both halves, inside the breakpoint that gives the grid two tracks: the catch-all
+        // out-specifies the placing rule, so without the `:not` the placement is inert, and the
+        // `:not` without the placement drops the drill-in into the 384px filter track.
+        // (Fhi.Metadata-fv79e)
+        var wide = WideBlock(HostClassNames.SampleCss);
 
-        Assert.Contains(rules, rule =>
-            Regex.IsMatch(rule.Declarations, @"grid-column:\s*1\s*/\s*-1")
-            && Regex.IsMatch(rule.Selector, @"\.munin-explorer\s*>\s*\.munin-explorer-drilldown"));
+        Assert.Matches(
+            @"\.munin-explorer\s*>\s*\.munin-explorer-drilldown(?![\w-])\s*\{[^}]*grid-column:\s*1\s*/\s*-1",
+            wide);
 
-        // And nothing still sweeps it into the results column, which is what put it there.
-        Assert.All(
-            HostClassNames.SampleDeclarationsFor("munin-explorer-filters")
-                .Where(rule => Regex.IsMatch(rule.Declarations, @"grid-column:\s*2")),
-            rule => Assert.Contains(":not(.munin-explorer-drilldown)", rule.Selector, StringComparison.Ordinal));
+        Assert.Matches(
+            @"\.munin-explorer\s*>\s*\.munin-explorer-drilldown(?![\w-])\s*\{[^}]*min-inline-size:\s*0",
+            wide);
+
+        // And nothing in there still sweeps it into the results column. Anchored on the drilldown
+        // rather than on the filter panel, so rewriting the catch-all cannot empty the set and
+        // pass by saying nothing.
+        var sweeping = Regex.Matches(wide, @"(?<selector>[^{}]*)\{(?<declarations>[^{}]*)\}")
+            .Where(rule => Regex.IsMatch(rule.Groups["declarations"].Value, @"grid-column:\s*2\b"))
+            .Select(rule => rule.Groups["selector"].Value)
+            .ToList();
+
+        Assert.NotEmpty(sweeping);
+        Assert.All(sweeping, selector => Assert.Contains(
+            ":not(.munin-explorer-drilldown)", selector, StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// The body of the sample's <c>@media (min-width: 1024px)</c> block.
+    /// </summary>
+    /// <remarks>
+    /// HostClassNames matches innermost blocks, so a rule inside an at-rule comes back with a bare
+    /// selector and nothing says which breakpoint it sits in. These rules mean nothing outside this
+    /// one — below it the grid has a single track — so the guard reads the block itself.
+    /// </remarks>
+    private static string WideBlock(string css)
+    {
+        var start = css.IndexOf("@media (min-width: 1024px)", StringComparison.Ordinal);
+
+        Assert.True(start >= 0, "The sample no longer has a min-width: 1024px block.");
+
+        var depth = 0;
+
+        for (var i = css.IndexOf('{', start); i < css.Length; i++)
+        {
+            depth += css[i] switch { '{' => 1, '}' => -1, _ => 0 };
+
+            if (depth == 0)
+            {
+                return css[start..i];
+            }
+        }
+
+        throw new InvalidOperationException("The min-width: 1024px block is never closed.");
     }
 }
