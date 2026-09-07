@@ -74,12 +74,10 @@ public class VariableListViewTest : BunitContext
         /// <summary>When the first list last changed, or null the way an omitted key arrives.</summary>
         public DateTimeOffset? Updated { get; init; }
 
-        /// <summary>What the second and third lists hold. The first holds what it was built with.</summary>
-        /// <remarks>
-        /// The API guarantees variableCount is the same number the variables endpoint reports as
-        /// its totalCount, so the first list's is taken from the very items this fake pages out —
-        /// a fake that let the two disagree would be testing against a server that cannot exist.
-        /// </remarks>
+        /// <summary>
+        /// What the second and third lists hold. The first takes its count from the items this fake
+        /// pages out, because the API answers the same total on both endpoints.
+        /// </summary>
         public int SecondListCount { get; init; }
 
         public int ThirdListCount { get; init; }
@@ -373,12 +371,10 @@ public class VariableListViewTest : BunitContext
 
         public int AddCalls { get; private set; }
 
-        /// <summary>Stands in for a save made from the explorer's own button, which writes to this list.</summary>
-        /// <remarks>
-        /// The base declines every add, so nothing until now could put a variable IN a list through
-        /// this fake. A variable the list already holds is accepted and changes nothing, which is
-        /// what the API does — and the case a count moved by the batch size would get wrong.
-        /// </remarks>
+        /// <summary>
+        /// A save made from the explorer's own button. The base declines every add, so nothing until
+        /// now could put a variable IN a list; one the list already holds is accepted and stored once.
+        /// </summary>
         public override Task<bool> AddVariablesToMyListAsync(
             Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default)
         {
@@ -980,13 +976,9 @@ public class VariableListViewTest : BunitContext
     [Fact]
     public void View_WhenTheReaderHasSeveralLists_ThenEveryOneOfThemSaysHowManyVariablesItHolds()
     {
-        // The half-measure this closes: my/lists carries variableCount now, so the lists behind the
-        // picker each say what they hold rather than only the one on screen. Three different sizes,
-        // because equal ones pass against a bug that renders the same number for all of them.
-        //
-        // The list on screen is deliberately longer than a page: a count tallied from the rendered
-        // rows would read 25 here and look entirely plausible. Nothing shorter can tell the two
-        // implementations apart.
+        // Three different sizes, because equal ones pass against a bug that renders one number for
+        // all of them; and 247 against a 25-row page, because a count tallied from the rendered rows
+        // reads 25 and looks entirely plausible. Nothing shorter tells the two apart.
         var client = new ListClient(
             [.. Enumerable.Range(1, 247).Select(i => Item($"Variabel {i}", $"V_BDR.{i}"))])
         {
@@ -1026,10 +1018,9 @@ public class VariableListViewTest : BunitContext
     [Fact]
     public async Task View_WhenAListIsWrittenTo_ThenItsOwnEntryInThePickerMovesWithIt()
     {
-        // The trap #199's review sprang on "sist endret", and the count has its shape: the holder
-        // patches its own copy rather than refetching, so a number read once at mount would stand
-        // for the rest of the circuit. The picker is where that shows — the line under it is
-        // redrawn by the page read either way.
+        // The trap #199's review sprang on "sist endret", in the count's shape: the holder patches
+        // its copy rather than refetching, so a number read at mount would stand for the circuit.
+        // The picker is where that shows, since nothing else redraws it.
         var client = new ListClient(
             Item("Alder ved diagnose", "V_BDR.ALDER"),
             Item("Kjønn", "V_BDR.KJONN"))

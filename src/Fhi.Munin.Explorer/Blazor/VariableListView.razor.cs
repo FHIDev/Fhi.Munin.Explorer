@@ -349,14 +349,10 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     };
 
     /// <summary>
-    /// How many variables are in the list on screen and when it last changed, or
-    /// <see langword="null"/> while there is no list on screen.
+    /// How many variables the list on screen holds and when it last changed, both off
+    /// <c>my/lists</c> — so this waits on no page read, and no picker entry can contradict it. Never
+    /// a tally of the rendered rows; and the day, never an hour the server would own.
     /// </summary>
-    /// <remarks>
-    /// Both halves come from <c>my/lists</c> now, so this line no longer waits on the page read and
-    /// cannot disagree with the same list's entry in the picker. Never a tally of the rendered rows,
-    /// which are one page; and the day, never a clock time a Blazor Server circuit would own.
-    /// </remarks>
     private string? ListMeta
     {
         get
