@@ -74,9 +74,15 @@ helsedata's private Azure Artifacts feed. So:
   package. The job installs the provider before restoring for exactly this reason. It is also why
   a green local run proves less than it looks: it proves the PAT and the feed URL, and hides
   whether the runner can use them.
-- **The package is not the only way to get the stylesheet, and the other way needs no credentials
-  at all.** Stiler's source is readable over the Azure DevOps REST API with an `az` token, so it
-  can be compiled here and dropped where HostileHost already links it:
+- **The package is not the only way to get the stylesheet, and the other way needs no *feed*
+  credentials.** It is not credential-free: it needs `az login` and membership of the
+  `Fhi.Helsedata` project, because it reads the repository over the Azure DevOps items API. Without
+  that access the failure is quiet and misdirecting — a 401, or a zip containing an empty tree, with
+  nothing to separate "I am not a member of that project" from a mistyped URL or an expired login.
+  Check `az account get-access-token --resource 499b84ac-1321-427f-aa17-267ca6975798` returns a
+  token, and that the `curl` below writes more than a few hundred bytes, before believing anything
+  downstream of it. With that access, Stiler's source compiles here and drops where HostileHost
+  already links it:
 
   ```bash
   TOKEN=$(az account get-access-token --resource 499b84ac-1321-427f-aa17-267ca6975798 \
