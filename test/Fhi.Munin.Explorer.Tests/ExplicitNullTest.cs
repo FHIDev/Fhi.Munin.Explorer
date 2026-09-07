@@ -11,18 +11,9 @@ namespace Fhi.Munin.Explorer.Tests;
 /// Every property this package deserialises has a decided answer to <c>"key": null</c>.
 /// </summary>
 /// <remarks>
-/// Three mechanisms decide it, and the sweep below is what stops a fourth kind of property from
-/// arriving with no answer at all: <c>NullAsEmptyCollections</c> for collections,
-/// <c>NullAsEmptyStrings</c> for the strings the contract declares non-nullable, and
-/// <c>System.Text.Json</c>'s own refusal for the non-nullable value types — deliberately kept, since
-/// <c>0</c>, <c>false</c>, <c>Guid.Empty</c> and the zeroth enum member are each a claim the payload
-/// did not make. AGENTS.md, "What an explicit null does", carries the argument. (Fhi.Metadata-o355u)
-/// <para>
-/// A property outside all three — a nested contract record declared non-nullable, say — takes the
-/// null over its initialiser in silence and throws at the first read while rendering, which is past
-/// the try/catch around the fetch and takes a Blazor Server circuit with it. That is the failure
-/// this repository has now shipped twice, and it is invisible at the declaration both times.
-/// </para>
+/// A property in none of the four classes takes the null over its initialiser in silence - no
+/// failure until something reads it while rendering - so neither review nor a fixture catches
+/// it. AGENTS.md, "What an explicit null does", has the classes. (Fhi.Metadata-o355u)
 /// </remarks>
 public class ExplicitNullTest
 {
@@ -51,18 +42,11 @@ public class ExplicitNullTest
         // attribute convention that stopped being followed would leave it looking at.
         Assert.NotEmpty(DeserialisedProperties());
 
-    /// <summary>The contract types the sweep is allowed not to see, and why.</summary>
+    /// <summary>The contract types the sweep is allowed not to see.</summary>
     /// <remarks>
-    /// None of them is read from JSON. <see cref="ExplorerUrlState"/> and <see cref="VariableFilter"/>
-    /// are built from a query string, <see cref="ExportedList"/> from a response the client reads as
-    /// bytes and headers, and <see cref="DesiredDataResult"/> is assembled from status codes — the
-    /// body behind it is the client's internal <c>DesiredDataRefusal</c>, which is swept.
-    /// <para>
-    /// Named rather than inferred because the sweep identifies a contract by its
-    /// <c>[JsonPropertyName]</c> attributes, so a type carrying none drops out of it in silence —
-    /// and "no attributes" is what a type looks like both when it is not deserialised and when its
-    /// author forgot the convention. This list is where that difference has to be stated out loud.
-    /// </para>
+    /// Hand-maintained because the sweep identifies a contract by its <c>[JsonPropertyName]</c>
+    /// attributes, and a type carrying none looks the same whether it is not deserialised or its
+    /// author forgot the convention. None of these is read from JSON. (Fhi.Metadata-o355u)
     /// </remarks>
     private static readonly string[] NotDeserialised =
     [
@@ -224,15 +208,9 @@ public class ExplicitNullTest
 
     /// <summary>Every settable property on every type this package reads from JSON.</summary>
     /// <remarks>
-    /// By type rather than by property, which is the difference that matters: a contract spells
-    /// <c>[JsonPropertyName]</c> on every property (AGENTS.md says so), so one attribute anywhere on
-    /// the type is enough to identify it, and then a property that forgot its attribute — and binds
-    /// by the camelCase policy of <c>JsonSerializerDefaults.Web</c> anyway — is swept with it.
-    /// <para>
-    /// It also keeps out the types that carry no attribute at all and are never deserialised:
-    /// <see cref="ExplorerUrlState"/> and <see cref="VariableFilter"/> are built from a query string,
-    /// and <see cref="ExportedList"/> from a response the client reads as bytes and headers.
-    /// </para>
+    /// By type rather than by property: a contract spells <c>[JsonPropertyName]</c> on every one,
+    /// so a single attribute identifies the type, and a property that forgot its own - binding by
+    /// the Web camelCase policy anyway - is swept with it. Exclusions: <see cref="NotDeserialised"/>.
     /// </remarks>
     private static IReadOnlyList<PropertyInfo> DeserialisedProperties() =>
         [.. typeof(IMuninExplorerClient).Assembly

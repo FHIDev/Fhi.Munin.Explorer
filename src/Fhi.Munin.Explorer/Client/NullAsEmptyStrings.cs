@@ -9,12 +9,9 @@ namespace Fhi.Munin.Explorer.Client;
 /// Reads an explicit JSON <c>null</c> as <c>""</c> for a string the contract declares non-nullable.
 /// </summary>
 /// <remarks>
-/// Why <c>""</c> and not a refusal, and why the value types are left refusing, is in AGENTS.md
-/// under "What an explicit null does". A modifier rather than a converter on the options because
-/// nullable reference annotations are erased: <c>string</c> and <c>string?</c> are one
-/// <see cref="Type"/>, so a <c>JsonConverter&lt;string&gt;</c> would flatten the 71 properties
-/// declared <c>string?</c> to <c>""</c> as well and stop the components falling back on them.
-/// (Fhi.Metadata-o355u)
+/// A modifier and not a <c>JsonConverter&lt;string&gt;</c> because NRT annotations are erased:
+/// <c>string</c> and <c>string?</c> are one <see cref="Type"/>, so a converter would flatten the
+/// nullable ones too. Why empty and not a refusal: AGENTS.md, "What an explicit null does".
 /// </remarks>
 internal static class NullAsEmptyStrings
 {
