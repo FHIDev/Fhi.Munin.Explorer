@@ -145,6 +145,21 @@ public class DriftRanGuardTest
         Assert.Contains("would leave no floor at all", run.Output, StringComparison.Ordinal);
     }
 
+    [ShellFact]
+    public void Guard_WhenACountIsWrittenWithALeadingZero_ThenItIsReadInBaseTenRatherThanOctal()
+    {
+        // Bash reads 010 as octal 8, so a floor written that way would sit two below what it says
+        // and let two deleted tests through — the number quietly going down, in the one script
+        // whose whole job is to stop that.
+        var run = RunAgainst(
+            Trx(executed: 8, ("DesiredData_WhenWrittenToTheLiveApi_ThenItSurvivesAReadBack", TokenReason)),
+            minimum: "010",
+            authenticated: "1");
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains("Expected 10 ContractDrift tests to exist; the run found 9", run.Output, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void TokenVariable_WhenTheGuardSortsSkipsByIt_ThenTheScriptSpellsItTheSameWay()
     {
@@ -155,7 +170,14 @@ public class DriftRanGuardTest
         Assert.Contains($"TOKEN_VARIABLE={LiveApi.TokenVariable}", script, StringComparison.Ordinal);
     }
 
-    private static GuardRun RunAgainst(string trx, int minimum, int authenticated)
+    private static GuardRun RunAgainst(string trx, int minimum, int authenticated) =>
+        RunAgainst(
+            trx,
+            minimum.ToString(CultureInfo.InvariantCulture),
+            authenticated.ToString(CultureInfo.InvariantCulture));
+
+    /// <summary>The same, with the counts spelled the way a caller would spell them.</summary>
+    private static GuardRun RunAgainst(string trx, string minimum, string authenticated)
     {
         var dir = Directory.CreateTempSubdirectory("munin-drift-guard");
 
@@ -165,13 +187,7 @@ public class DriftRanGuardTest
 
             File.WriteAllText(path, trx);
 
-            return Guard.RunIn(
-                "assert-drift-ran.sh",
-                dir.FullName,
-                path,
-                minimum.ToString(CultureInfo.InvariantCulture),
-                Category,
-                authenticated.ToString(CultureInfo.InvariantCulture));
+            return Guard.RunIn("assert-drift-ran.sh", dir.FullName, path, minimum, Category, authenticated);
         }
         finally
         {
