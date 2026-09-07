@@ -431,36 +431,29 @@ public class VariableListViewTest : BunitContext
     }
 
     /// <summary>
-    /// Presses the one control that reveals the create field, and answers with the field.
+    /// Presses the control that reveals the create field, and answers with the field. It starts
+    /// closed now, so every case that types a name opens it first.
     /// </summary>
-    /// <remarks>
-    /// The field used to be on screen unconditionally, beside a label and a button, whether or not
-    /// the reader wanted a new list. helsedata's own variabellister page draws one button, and so
-    /// does this now — so every test that types a name opens it first. The primary square button
-    /// is the only one on this screen: the rest are ghosts.
-    /// </remarks>
     private static AngleSharp.Dom.IElement CreateField(IRenderedComponent<VariableListView> cut)
     {
         Reveal(cut, "button[id^='munin-explorer-create-toggle-']");
         return cut.Find("input[id^='munin-explorer-new-list-']");
     }
 
-    /// <summary>The same for the rename field, which is behind its own button.</summary>
-    /// <remarks>
-    /// By id rather than by the button's words, the way the delete confirmation is already reached:
-    /// the words follow <c>Language</c>, and one of these tests renders the view in English.
-    /// </remarks>
+    /// <summary>
+    /// The same for the rename field. By id rather than by the button's words, which follow
+    /// <c>Language</c> — one case here renders the view in English.
+    /// </summary>
     private static AngleSharp.Dom.IElement RenameField(IRenderedComponent<VariableListView> cut)
     {
         Reveal(cut, "button[id^='munin-explorer-rename-toggle-']");
         return cut.Find("input[id^='munin-explorer-rename-list-']");
     }
 
-    /// <summary>Presses a disclosure only when it is closed — pressing it again would fold it.</summary>
-    /// <remarks>
-    /// Several cases here open the same form twice, to create a second list after a failure. The
-    /// button is one control saying what a press does now, so an unconditional press is a close.
-    /// </remarks>
+    /// <summary>
+    /// Presses a disclosure only when it is closed. Several cases open the same form twice, and
+    /// the button is one control, so an unconditional second press would fold it away.
+    /// </summary>
     private static void Reveal(IRenderedComponent<VariableListView> cut, string selector)
     {
         var toggle = cut.Find(selector);

@@ -72,12 +72,10 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// <summary>The name field of the rename form, which its own label points at.</summary>
     private string RenameListNameId => $"munin-explorer-rename-list-{_instance}";
 
-    /// <summary>The two controls that reveal the create and the rename field, and fold them away.</summary>
-    /// <remarks>
-    /// Ids for the same reason <see cref="DeleteButtonId"/> is one: a host or a test reaching for
-    /// either would otherwise have to go by the button's words, which follow
-    /// <see cref="Language"/>.
-    /// </remarks>
+    /// <summary>
+    /// The two controls that reveal the create and the rename field. Ids for the reason
+    /// <see cref="DeleteButtonId"/> is one: the words follow <see cref="Language"/>.
+    /// </summary>
     private string CreateToggleId => $"munin-explorer-create-toggle-{_instance}";
 
     private string RenameToggleId => $"munin-explorer-rename-toggle-{_instance}";
@@ -120,12 +118,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private string _newName = "";
     private string _renameName = "";
 
-    /// <summary>Whether the create field is revealed, and whether the rename field is.</summary>
-    /// <remarks>
-    /// Both start closed. Neither is closed again by the write that succeeds: the reader is
-    /// standing on the button inside the block, and taking it away drops their focus to
-    /// <c>&lt;body&gt;</c> — the same reason nothing here is ever <c>disabled</c>.
-    /// </remarks>
+    // Both start closed, and neither is closed again by the write that succeeds: the reader is
+    // standing on the button inside the block, and removing it drops focus to <body>.
     private bool _creating;
 
     private bool _renaming;
@@ -359,15 +353,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// <see langword="null"/> while neither is known.
     /// </summary>
     /// <remarks>
-    /// The count is the API's own <c>totalCount</c> for this list, not a tally of the rows on
-    /// screen: the endpoint is paged, so counting them would say 25 for a list of 247. There is no
-    /// count for the lists that are NOT on screen — <c>my/lists</c> carries id, name, createdAt
-    /// and updatedAt and nothing more — so an overview showing one per list cannot be drawn from
-    /// this contract, and is not drawn from a guess either.
-    /// <para>
-    /// The day and never a clock time: this renders inside a Blazor Server circuit, so the hour
-    /// would be the server's rather than the reader's, and the package ships no script to ask.
-    /// </para>
+    /// The API's own <c>totalCount</c> rather than a tally of the rendered rows, which is a page of
+    /// them. <c>my/lists</c> carries no count at all, so the lists behind the picker cannot have
+    /// one. The day and never a clock time: in a Blazor Server circuit the hour is the server's.
     /// </remarks>
     private string? ListMeta
     {

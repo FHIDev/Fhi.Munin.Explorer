@@ -39,26 +39,15 @@
             </label>
         }
 
-        @* What the list on screen is, before what can be done to it. helsedata's variabellister
-           page carries the same two facts on every list it draws.
-
-           The count is the API's own TotalCount for this list, not a tally of the rows rendered —
-           the endpoint is paged, so counting them would say 25 for a list of 247. There is no
-           count for the lists NOT on screen: `my/lists` answers with id, name, createdAt and
-           updatedAt and nothing else, so an overview showing one per list would have to invent it
-           (Fhi.Metadata-2ifw8 is about the same endpoint, and is not this). *@
+        @* Only for the list on screen. `my/lists` carries no count, so the lists behind the
+           picker cannot have one — see the remarks on ListMeta. *@
         @if (ListMeta is { } meta)
         {
             <p class="caption">@meta</p>
         }
 
-        @* One row of actions, drawn the way helsedata draws its own: a single primary button for
-           the one thing that makes something new, and ghost-blue for the rest. Ours wore
-           button-square--ghost for all of them, which is neither variant helsedata uses here.
-
-           Create and rename used to be standing forms — a label, a field and a button each, on
-           screen whether or not the reader wanted either. They are behind their own button now,
-           which is what a page with one list looked like it needed and three of. *@
+        @* helsedata's own variants: primary for the one action that makes something new,
+           ghost-blue for the rest. Create and rename were standing forms and are disclosures. *@
         <div>
             <button class="hd-button-square button-square--primary"
                     type="button"
@@ -110,25 +99,11 @@
         @if (_creating)
         {
             <div>
-                @* A real label with for/id, the shape the search field uses at
-                   VariableSearch.razor:140 — not a placeholder. A placeholder is not an accessible
-                   name: a screen reader announces an unnamed edit field, and the hint disappears
-                   the moment the reader starts typing, which is the one time they most need to
-                   know what the field is for. WCAG 4.1.2 and 3.3.2.
-
-                   `form-element__label` is borrowed, not ours — Stiler's own label style, read back
-                   off its compiled stylesheet and already worn by the search field and the filter
-                   panel's legend (VariableSearch.razor:140, 209, 216). README's list of borrowed
-                   names carries it. No new name is being invented here; a name Stiler has never
-                   heard of would render as a raw browser default on a host that has only Stiler.
-
-                   The id carries a per-mount discriminator, the shape the explorer's own ids use,
-                   so two of this component on one page do not tie both labels to the first field.
-
-                   @bind with onchange, deliberately NOT value + @oninput: this renders inside a
-                   Blazor Server circuit, where oninput is one round trip per keystroke and drops
-                   characters on a fast paste. The search field says the same at
-                   VariableSearch.razor:146. *@
+                @* A real label and never a placeholder, which is no accessible name and is gone
+                   the moment the reader types (WCAG 4.1.2, 3.3.2). form-element__label is
+                   Stiler's. The id carries the per-mount discriminator, or two mounts tie both
+                   labels to the first field. onchange and never oninput: this is a Blazor Server
+                   circuit, where oninput is a round trip per keystroke. *@
                 <label class="form-element__label" for="@NewListNameId">@T.NewListName</label>
                 <input type="text"
                        id="@NewListNameId"
@@ -221,22 +196,11 @@
         }
         else if (_page is not null)
         {
-            @* A real <table>, the shape Kelda's kilder list uses and the explorer's result list
-               cannot: `munin-explorer-dataitem-main` is `display: flex` in Stiler, and flex on a
-               table strips the table semantics from it (VariableSearch.razor:530). That view has
-               to keep the flex row, because it is helsedata's own variable page redrawn. This one
-               is not — nothing over there dresses a saved list — so it can have the element that
-               brings its own structure and its own column alignment, with no rule required from
-               anybody.
-
-               The role="table" scaffolding it replaces did reach assistive technology; what it
-               could not do is stop each row repeating all seven field names for a screen reader,
-               because a div has no header to be associated with. Eight <th scope="col"> do that
-               once, and RowCell drops the per-cell label when it is writing real cells.
-
-               The cells wear the per-column modifier ALONE. `munin-explorer-dataitem-main__column`
-               is `display: inline-flex`, which on a <td> takes the cell out of its own table; the
-               modifiers are widths and the browser's table layout ignores them harmlessly. *@
+            @* A real <table>, which the explorer's own list cannot be: munin-explorer-dataitem-main
+               is `display: flex` in Stiler, and flex on a table strips its semantics
+               (VariableSearch.razor:530). Nothing in helsedata dresses a SAVED list, so this one
+               is free of that. The scaffolding it replaces could not stop every row repeating all
+               seven field names — a div has no header to be associated with. *@
             <div class="munin-explorer-list-scroll" role="region" tabindex="0" aria-label="@ShownListName">
                 <table class="munin-explorer-data-list" aria-label="@ShownListName">
                     <thead>
@@ -261,24 +225,12 @@
                         {
                             <tr class="munin-explorer-data-list__item">
 
-                                @* An entry whose variable has no row in the read model keeps its
-                                   place rather than being filtered out: the API returns it on
-                                   purpose so the paging totals stay honest, and a list of 247 that
-                                   answered with 246 would hide that something went. It says so
-                                   instead.
-
-                                   RowName decides which of the two it is, in one place: written
-                                   out twice, the cell and the remove button below — which is named
-                                   from these very words — could come to say different things about
-                                   the same row. CatalogueLang leaves the attribute off for the
-                                   sentence, which is ours and in the reader's language, not
-                                   Norwegian catalogue text.
-
-                                   <th scope="row">, the call Kelda's own table makes: the
-                                   variable's name is what the rest of the row is about, so a
-                                   reader hearing one cell out of context is told which variable it
-                                   belongs to. No class — `munin-explorer-dataitem-main__name` is
-                                   `display: inline-flex`, which a table header cell cannot be. *@
+                                @* An orphaned entry keeps its place, so the paging totals stay
+                                   honest; RowName decides in one place what it reads as, because
+                                   the remove button is named from these very words. <th scope=row>
+                                   the way Kelda's table does, and with no class:
+                                   munin-explorer-dataitem-main__name is `display: inline-flex`,
+                                   which a table header cell cannot be. *@
                                 <th scope="row">
                                     <span class="munin-explorer-dataitem-main__column__text"
                                           id="@RowNameId(item)"
@@ -291,17 +243,10 @@
                                    failing. *@
                                 @Cells(item)
 
-                                @* The one editable cell in the row, and the only column the
-                                   catalogue does not own. value + @onchange rather than @bind for
-                                   the reason the create field gives: inside a Blazor Server circuit
-                                   oninput is a round trip per keystroke. Rendered from the draft
-                                   rather than from the item, which is what keeps a text the API
-                                   refused in the field instead of reverting it under the reader.
-
-                                   The column header names the column; this span names the FIELD,
-                                   which a header does not do — a control still owes an accessible
-                                   name of its own (WCAG 4.1.2), and it is two elements rather than
-                                   an aria-label for the reasons the remove button below gives. *@
+                                @* Rendered from the draft rather than from the item, which keeps a
+                                   text the API refused in the field instead of reverting it under
+                                   the reader. The column header names the COLUMN; this span names
+                                   the field, which a control still owes on its own (WCAG 4.1.2). *@
                                 <td class="munin-explorer-dataitem-main__desiredData">
                                     <span class="screenreader-only" id="@DesiredDataLabelId(item)">@T.FieldDesiredData</span>
                                     <input type="text"

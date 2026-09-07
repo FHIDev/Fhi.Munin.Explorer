@@ -274,12 +274,10 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
         return accepted;
     }
 
-    /// <summary>Records that a write the API accepted has just changed one list.</summary>
-    /// <remarks>
-    /// The API stamps <c>updatedAt</c> on exactly these writes, and the holder patches its own copy
-    /// rather than refetching — so without this the "sist endret" line beside a list would keep
-    /// showing the day the page was loaded while the name above it changed under the reader.
-    /// </remarks>
+    /// <summary>
+    /// Records that a write the API accepted has just changed one list. The holder patches rather
+    /// than refetches, so without this <c>updatedAt</c> stays at the day the page was loaded.
+    /// </summary>
     private void Touch(Guid id, int startedAt)
     {
         if (!StillCurrent(startedAt))
@@ -291,12 +289,8 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
     }
 
     /// <summary>
-    /// What a write that has just been accepted sets <c>updatedAt</c> to.
+    /// What an accepted write sets <c>updatedAt</c> to. This clock because none of these endpoints
+    /// answers with the new value, and the alternative is not a truer one but a stale one.
     /// </summary>
-    /// <remarks>
-    /// This clock rather than the API's, which does not answer with the new value on any of these
-    /// endpoints. The two can only disagree by the round trip, and the surfaces that show it show a
-    /// day — so the alternative is not a truer timestamp, it is a visibly stale one.
-    /// </remarks>
     private static DateTimeOffset TouchedNow() => DateTimeOffset.UtcNow;
 }
