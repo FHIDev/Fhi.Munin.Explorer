@@ -289,9 +289,8 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
             return;
         }
 
-        // Clamped, though the delta itself cannot overshoot a count that was read: a list whose
-        // my/lists read failed carries 0 beside a membership set that is not empty, and one removal
-        // would put it at -1.
+        // A floor, not arithmetic: no path here can drive it under, and "-1 variabler" is a
+        // sentence no reader should ever be shown if one ever does.
         _lists =
         [
             .. _lists.Select(l => l.Id == id

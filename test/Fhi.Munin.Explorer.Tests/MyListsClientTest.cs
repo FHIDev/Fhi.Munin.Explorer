@@ -121,6 +121,11 @@ public class MyListsClientTest
         // timestamps are separate fields on purpose; reading one into both would hide that.
         Assert.NotEqual(lists[0].CreatedAt, lists[0].UpdatedAt);
         Assert.Equal(lists[1].CreatedAt, lists[1].UpdatedAt);
+
+        // Read per row, and the second list is empty on purpose: a contract that had dropped the
+        // field would answer 0 for both, which a fixture with two equal counts cannot tell apart.
+        Assert.Equal(247, lists[0].VariableCount);
+        Assert.Equal(0, lists[1].VariableCount);
     }
 
     [Fact]

@@ -385,6 +385,49 @@ public class VariableListStateTest : BunitContext
         Assert.True(await state.RemoveVariablesAsync(Guid.NewGuid(), [variableId]));
 
         Assert.True(state.IsSaved(variableId));
+
+        // And no count is invented for it either. Only the active list's membership is known here,
+        // so a number moved for any other list would stand until something read my/lists again.
+        Assert.Equal(1, state.Lists[0].VariableCount);
+    }
+
+    [Fact]
+    public async Task State_WhenVariablesAreAddedAndRemoved_ThenTheListsOwnCountMovesWithThem()
+    {
+        // my/lists carries the count now, and nothing refetches it after a write — the holder
+        // patches its copy, which is what makes a save feel instant. So a count read at the mount
+        // would be the number every surface showed for the rest of the circuit.
+        var alreadyThere = Guid.NewGuid();
+        var client = new MembershipClient(alreadyThere, Guid.NewGuid(), Guid.NewGuid());
+        var state = SignedIn(client);
+        await state.EnsureActiveListAsync();
+
+        var listId = state.ActiveListId!.Value;
+
+        Assert.Equal(3, state.Lists[0].VariableCount);
+
+        Assert.True(await state.AddVariablesAsync(listId, [Guid.NewGuid(), Guid.NewGuid()]));
+        Assert.Equal(5, state.Lists[0].VariableCount);
+
+        Assert.True(await state.RemoveVariablesAsync(listId, [alreadyThere]));
+        Assert.Equal(4, state.Lists[0].VariableCount);
+    }
+
+    [Fact]
+    public async Task State_WhenAVariableTheListAlreadyHoldsIsAddedAgain_ThenTheCountStandsStill()
+    {
+        // The API accepts it and stores nothing — the batch is a set, not a tally. A count moved by
+        // variableIds.Count would climb past what the list holds and stay there, and the reader has
+        // no way to press it back down. The delta is measured off the membership set instead.
+        var alreadyThere = Guid.NewGuid();
+        var client = new MembershipClient(alreadyThere);
+        var state = SignedIn(client);
+        await state.EnsureActiveListAsync();
+
+        Assert.True(await state.AddVariablesAsync(state.ActiveListId!.Value, [alreadyThere]));
+
+        Assert.Equal(1, state.Lists[0].VariableCount);
+        Assert.Single(client.Stored);
     }
 
     /// <summary>One list the reader already has, holding whatever the test seeded it with.</summary>
@@ -396,8 +439,12 @@ public class VariableListStateTest : BunitContext
 
         public readonly HashSet<Guid> Stored = [.. stored];
 
+        // VariableCount off Stored, never a number of its own: the API answers the same total for
+        // this endpoint and for the variables endpoint, so a fake that let them differ would be
+        // testing against a server that cannot exist.
         public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<VariableList>>([new VariableList { Id = TheList, Name = "Mine" }]);
+            Task.FromResult<IReadOnlyList<VariableList>>(
+                [new VariableList { Id = TheList, Name = "Mine", VariableCount = Stored.Count }]);
 
         public override Task<Page<VariableListItem>?> GetMyListVariablesAsync(
             Guid id, int page = 1, int pageSize = 100, CancellationToken cancellationToken = default)
