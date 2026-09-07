@@ -18,9 +18,11 @@ namespace Fhi.Munin.Explorer.Tests;
 /// <see cref="KildeView"/> is one component both explorers render a source with — measured on
 /// 2026-08-20, the same kilde drew the same name block, the same eight metadata groups in the same
 /// order and the same two sidebar boxes in both. Kelda then adds Variabler, Kriterier for tilgang
-/// til data and Priser. That difference is markup Kelda passes <em>into</em> the shared core —
-/// never markup added to the core. The datasamling section is not part of it: its heading follows
-/// the source, so both explorers pass none and get the same word (Fhi.Metadata-rhybi).
+/// til data and Priser — the last two only when the host sets <c>ShowAccessAndPrices</c>, which is
+/// its own trap and lives in <see cref="KildeHostParameterTest"/>. That difference is markup Kelda
+/// passes <em>into</em> the shared core — never markup added to the core. The datasamling section
+/// is not part of it: its heading follows the source, so both explorers pass none and get the same
+/// word (Fhi.Metadata-rhybi).
 /// </para>
 /// <para>
 /// The trap is not in the first test, and it takes three more to close. An implementation that

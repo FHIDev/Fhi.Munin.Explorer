@@ -46,7 +46,9 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// groups in the same order and the same two sidebar boxes; the datasamling section was the same
 /// rows under a different word, and Kelda had three sections Runa has not — Variabler, Kriterier
 /// for tilgang til data and Priser. Those three are markup in this component's own file, passed
-/// into the shared core. What a host passes as <see cref="Sections"/> follows them.
+/// into the shared core. What a host passes as <see cref="Sections"/> follows them. The last two
+/// of the three are drawn only under <see cref="ShowAccessAndPrices"/>, which an embedded host
+/// leaves off — that is a decision about who owns the content, not a retraction of the measurement.
 /// </para>
 /// <para>
 /// Class names: the ordinary page furniture wears <c>Fhi.Helsedata.Stiler</c>'s own names —
