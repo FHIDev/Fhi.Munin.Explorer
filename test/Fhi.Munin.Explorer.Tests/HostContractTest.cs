@@ -60,8 +60,7 @@ public class HostContractTest
         // Razor comments are stripped first, because these files explain in prose why they have no
         // @page and no @rendermode — a check that a comment can break is one that gets deleted the
         // first time somebody documents the rule it enforces.
-        var markup = Regex.Replace(
-            File.ReadAllText(Path.Combine(SourceRoot, component)), @"@\*.*?\*@", " ", RegexOptions.Singleline);
+        var markup = RazorSource.WithoutComments(File.ReadAllText(Path.Combine(SourceRoot, component)));
 
         Assert.DoesNotContain("@page", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("@rendermode", markup, StringComparison.OrdinalIgnoreCase);

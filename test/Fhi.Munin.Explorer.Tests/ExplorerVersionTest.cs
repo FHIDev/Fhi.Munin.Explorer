@@ -27,8 +27,15 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </para>
 /// <para>
 /// The mount points are enumerated rather than sampled. A version readable on the variable explorer
-/// and absent on the kildeutforsker is a trap for whoever checks the second one, and the source
-/// guard at the bottom is what covers a root component nobody has written a render test for yet.
+/// and absent on the kildeutforsker is a trap for whoever checks the second one.
+/// </para>
+/// <para>
+/// The source guard at the bottom covers less than it looks like, and the limit is stated rather
+/// than hidden: it finds a root by the literal <c>class="munin-explorer"</c>, so it catches a new
+/// component wearing that class without the attribute and nothing else. A root without the class is
+/// outside it — <see cref="VariableListView"/> is exactly that, having had the class taken off it
+/// deliberately (<c>Fhi.Metadata-l9l2n.39</c>), and it is covered by its own render test above.
+/// Adding a mount point still means adding a test here.
 /// </para>
 /// <para>
 /// Anonymous is its own case, twice over. The explorer renders for logged-out visitors on
@@ -162,14 +169,17 @@ public class ExplorerVersionTest : BunitContext
     [Fact]
     public void Version_WhenAComponentRootIsWritten_ThenItCarriesTheAttribute()
     {
-        // The guard the render tests above cannot be: a third root element added later gets no
-        // test of its own until somebody writes one, and the failure is invisible — the component
-        // renders, and only the page nobody can identify is worse off.
+        // A new component wearing the root class gets no render test until somebody writes one, and
+        // the failure is invisible: the component renders, and only the page nobody can identify is
+        // worse off. Read off MARKUP, never off the file — all three roots explain this attribute in
+        // a comment that names it, so a check reading raw text stays green on a root that has the
+        // prose and not the attribute.
         var roots = Directory
             .EnumerateFiles(Repo.In("src", "Fhi.Munin.Explorer"), "*.razor", SearchOption.AllDirectories)
             .Where(path => !path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
                                 .Any(segment => segment is "bin" or "obj"))
-            .Where(path => Roots(File.ReadAllText(path)) > 0)
+            .Select(path => (Name: Path.GetFileName(path), Markup: RazorSource.WithoutComments(File.ReadAllText(path))))
+            .Where(file => RootCount(file.Markup) > 0)
             .ToList();
 
         // A floor before the verdict. An extraction that found nothing would report every root as
@@ -178,21 +188,14 @@ public class ExplorerVersionTest : BunitContext
         Assert.True(roots.Count >= 2, $"Found {roots.Count} root element(s) under src/, so nothing was checked.");
 
         var missing = roots
-            .Where(path => !File.ReadAllText(path).Contains(Attribute, StringComparison.Ordinal))
-            .Select(Path.GetFileName)
+            .Where(file => !file.Markup.Contains(Attribute, StringComparison.Ordinal))
+            .Select(file => file.Name)
             .Order(StringComparer.Ordinal);
 
         Assert.Equal([], missing);
     }
 
     /// <summary>How many <c>class="munin-explorer"</c> root elements the markup opens.</summary>
-    /// <remarks>
-    /// Razor comments are stripped first, for the reason <c>HostContractTest</c> strips them: these
-    /// files explain the root class in prose, and a check a comment can trip is one that gets
-    /// deleted the first time somebody documents the rule it enforces.
-    /// </remarks>
-    private static int Roots(string markup) =>
-        Regex.Matches(
-            Regex.Replace(markup, @"@\*.*?\*@", " ", RegexOptions.Singleline),
-            @"class=""munin-explorer""").Count;
+    private static int RootCount(string markup) =>
+        Regex.Matches(markup, @"class=""munin-explorer""").Count;
 }
