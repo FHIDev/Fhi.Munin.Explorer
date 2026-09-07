@@ -291,7 +291,8 @@ public class VariableListStateTest : BunitContext
             Task.FromResult<IReadOnlyList<VariableList>>([new VariableList { Id = Guid.NewGuid(), Name = "Mine" }]);
 
         public override Task<Page<VariableListItem>?> GetMyListVariablesAsync(
-            Guid id, int page = 1, int pageSize = 100, CancellationToken cancellationToken = default) =>
+            Guid id, int page = 1, int pageSize = 100, IReadOnlyCollection<Guid>? kildeIds = null,
+            CancellationToken cancellationToken = default) =>
             Task.FromResult<Page<VariableListItem>?>(new Page<VariableListItem>
             {
                 Items = [],
@@ -447,7 +448,8 @@ public class VariableListStateTest : BunitContext
                 [new VariableList { Id = TheList, Name = "Mine", VariableCount = Stored.Count }]);
 
         public override Task<Page<VariableListItem>?> GetMyListVariablesAsync(
-            Guid id, int page = 1, int pageSize = 100, CancellationToken cancellationToken = default)
+            Guid id, int page = 1, int pageSize = 100, IReadOnlyCollection<Guid>? kildeIds = null,
+            CancellationToken cancellationToken = default)
         {
             MembershipCalls++;
 
@@ -518,7 +520,8 @@ public class VariableListStateTest : BunitContext
             Task.FromResult<IReadOnlyList<VariableList>>([new VariableList { Id = _listId, Name = "Mine" }]);
 
         public override Task<Page<VariableListItem>?> GetMyListVariablesAsync(
-            Guid id, int page = 1, int pageSize = 100, CancellationToken cancellationToken = default)
+            Guid id, int page = 1, int pageSize = 100, IReadOnlyCollection<Guid>? kildeIds = null,
+            CancellationToken cancellationToken = default)
         {
             MembershipCalls++;
 
@@ -696,7 +699,8 @@ public class VariableListStateTest : BunitContext
             Task.FromResult<IReadOnlyList<VariableList>>([new VariableList { Id = _listId, Name = "Mine" }]);
 
         public override async Task<Page<VariableListItem>?> GetMyListVariablesAsync(
-            Guid id, int page = 1, int pageSize = 100, CancellationToken cancellationToken = default)
+            Guid id, int page = 1, int pageSize = 100, IReadOnlyCollection<Guid>? kildeIds = null,
+            CancellationToken cancellationToken = default)
         {
             MembershipCalls++;
 

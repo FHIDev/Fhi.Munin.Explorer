@@ -61,7 +61,8 @@ public class VariableExplorerTest : BunitContext
             Task.FromResult<IReadOnlyList<VariableList>>([new VariableList { Id = ListId, Name = "Mine hjertevariabler" }]);
 
         public override Task<Page<VariableListItem>?> GetMyListVariablesAsync(
-            Guid id, int page = 1, int pageSize = 100, CancellationToken cancellationToken = default)
+            Guid id, int page = 1, int pageSize = 100, IReadOnlyCollection<Guid>? kildeIds = null,
+            CancellationToken cancellationToken = default)
         {
             var items = _rows
                 .Where(r => Stored.Contains(r.Id))
@@ -437,24 +438,34 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
-    public void Filters_WhenTheListTabIsOpen_ThenTheSearchFacetsAndTrailAreNotDrawn()
+    public void Filters_WhenTheListTabIsOpen_ThenTheSearchFacetsAndTrailGiveWayToTheListsOwnPanel()
     {
-        // They narrow a search the reader is not looking at, so every one of them would filter
-        // nothing. Runa hides both on this tab (explorer.tsx:894 and :912) and renders a sidebar
-        // scoped to the list instead; ours has the first half (Fhi.Metadata-mm4hu has the second).
+        // The search facets narrow a search the reader is not looking at, so every one of them
+        // would filter nothing. Runa hides both on this tab (explorer.tsx:894 and :912) and renders
+        // a sidebar scoped to the list in their place, which is what this asserts: not that the
+        // filter column empties, but that it changes hands. An empty column is the layout defect
+        // Fhi.Metadata-mm4hu was filed for — Stiler reserves the 384px track regardless.
         var cut = RenderExplorer(new ExplorerClient(Variable("Alder ved diagnose", "V_BDR.ALDER")));
 
-        Assert.NotEmpty(cut.FindAll(".munin-explorer-filters"));
+        Assert.Empty(cut.FindComponents<VariableListFilters>());
+        Assert.Single(cut.FindAll("fieldset.munin-explorer-filters"));
 
         Tab(cut, "Variabelliste").Click();
 
-        Assert.Empty(cut.FindAll(".munin-explorer-filters"));
+        // The search's own panel is gone, and so is the trail over the results.
+        Assert.Empty(cut.FindAll("fieldset.munin-explorer-filters"));
         Assert.Empty(cut.FindAll(".munin-explorer-breadcrumb"));
 
-        // And back again: hiding them must not be a one-way trip.
+        // The track is filled all the same, by the list's panel and under the same class name —
+        // which is what Stiler's `.munin-explorer > .munin-explorer-filters` places.
+        Assert.Single(cut.FindComponents<VariableListFilters>());
+        Assert.NotEmpty(cut.FindAll(".munin-explorer-filters"));
+
+        // And back again: the handover must not be a one-way trip.
         Tab(cut, "Søkeresultat").Click();
 
-        Assert.NotEmpty(cut.FindAll(".munin-explorer-filters"));
+        Assert.Single(cut.FindAll("fieldset.munin-explorer-filters"));
+        Assert.Empty(cut.FindComponents<VariableListFilters>());
     }
 
     // -----------------------------------------------------------------------

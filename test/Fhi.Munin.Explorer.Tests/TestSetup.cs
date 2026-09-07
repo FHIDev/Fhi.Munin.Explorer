@@ -98,7 +98,8 @@ internal abstract class EmptyMuninExplorerClient : IMuninExplorerClient
         Task.FromResult(false);
 
     public virtual Task<Page<VariableListItem>?> GetMyListVariablesAsync(
-        Guid id, int page = 1, int pageSize = 100, CancellationToken cancellationToken = default) =>
+        Guid id, int page = 1, int pageSize = 100, IReadOnlyCollection<Guid>? kildeIds = null,
+        CancellationToken cancellationToken = default) =>
         Task.FromResult<Page<VariableListItem>?>(null);
 
     public virtual Task<bool> AddVariablesToMyListAsync(
@@ -196,7 +197,8 @@ internal sealed class UnupgradedHostClient(params KildeSummary[] kilder) : IMuni
         Task.FromResult(false);
 
     public Task<Page<VariableListItem>?> GetMyListVariablesAsync(
-        Guid id, int page = 1, int pageSize = 100, CancellationToken cancellationToken = default) =>
+        Guid id, int page = 1, int pageSize = 100, IReadOnlyCollection<Guid>? kildeIds = null,
+        CancellationToken cancellationToken = default) =>
         Task.FromResult<Page<VariableListItem>?>(null);
 
     public Task<bool> AddVariablesToMyListAsync(

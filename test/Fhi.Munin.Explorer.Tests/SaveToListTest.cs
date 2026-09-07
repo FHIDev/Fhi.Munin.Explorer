@@ -96,7 +96,8 @@ public class SaveToListTest : BunitContext
         }
 
         public override Task<Page<VariableListItem>?> GetMyListVariablesAsync(
-            Guid id, int page = 1, int pageSize = 100, CancellationToken cancellationToken = default)
+            Guid id, int page = 1, int pageSize = 100, IReadOnlyCollection<Guid>? kildeIds = null,
+            CancellationToken cancellationToken = default)
         {
             MembershipCalls++;
 

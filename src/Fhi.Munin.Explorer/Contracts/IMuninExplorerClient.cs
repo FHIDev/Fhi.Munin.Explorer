@@ -286,11 +286,23 @@ public interface IMuninExplorerClient
     /// <param name="id">The list to read.</param>
     /// <param name="page">1-based page number.</param>
     /// <param name="pageSize">Entries per page. The API's own default is 100 and its ceiling is 1000.</param>
+    /// <param name="kildeIds">
+    /// Optional: only the entries whose variable belongs to one of these kilder, and several of
+    /// them union rather than intersect. Null or empty is every kilde, never none.
+    /// <para>
+    /// The API narrows before it counts and pages, so <c>TotalCount</c> and the pages describe the
+    /// same rows — this is not a filter a caller could get the same answer from by sieving a page
+    /// it already has. What it cannot return is an entry whose variable has left the catalogue:
+    /// with no row in the read model it belongs to no kilde, so only an unfiltered read carries
+    /// those.
+    /// </para>
+    /// </param>
     /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
     Task<Page<VariableListItem>?> GetMyListVariablesAsync(
         Guid id,
         int page = 1,
         int pageSize = 100,
+        IReadOnlyCollection<Guid>? kildeIds = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

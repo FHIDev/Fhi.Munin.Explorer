@@ -192,6 +192,13 @@ internal sealed record Texts(
     // The header over the column of remove buttons. Never on screen — each button says "Fjern"
     // itself — but a screen reader arriving in that column has nothing else to hear.
     string ColumnRemove,
+    // The saved-list tab's own filter panel, where the search facets are hidden. Only the empty
+    // case earns a string of its own: the panel's title and the Kilde heading are FiltersTitle and
+    // FieldSource, the same words for the same things the search panel uses.
+    string NoKilderInList,
+    // Said in place of EmptyList when the reader has narrowed to a kilde nothing survived. A list
+    // of 247 is not empty because one filter matched none of it.
+    string NoVariablesForTheseKilder,
     // (count) — "3 variabler", my/lists' own variableCount, for every list and not only the one on
     // screen. Assembled here for the reason KildeCount is: the singular is this language's business
     // and not C#'s.
@@ -743,6 +750,8 @@ internal sealed record Texts(
         ListLoadError: "Kunne ikke hente listen nå. Prøv igjen om litt.",
         AddNewList: "Legg til ny liste",
         ColumnRemove: "Fjern variabel",
+        NoKilderInList: "Ingen kilder i listen ennå.",
+        NoVariablesForTheseKilder: "Ingen variabler fra de valgte kildene.",
         ListVariableCount: count => count == 1 ? "1 variabel" : $"{count} variabler",
         ListLastModified: day => $"Sist endret: {day}",
         FieldDesiredData: "Ønskede data",
@@ -1047,6 +1056,8 @@ internal sealed record Texts(
         ListLoadError: "Could not fetch the list just now. Try again shortly.",
         AddNewList: "Add new list",
         ColumnRemove: "Remove variable",
+        NoKilderInList: "No sources in the list yet.",
+        NoVariablesForTheseKilder: "No variables from the selected sources.",
         ListVariableCount: count => count == 1 ? "1 variable" : $"{count} variables",
         ListLastModified: day => $"Last modified: {day}",
         FieldDesiredData: "Desired data",

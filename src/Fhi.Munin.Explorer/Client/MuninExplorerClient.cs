@@ -176,14 +176,22 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
         Guid id,
         int page = 1,
         int pageSize = 100,
+        IReadOnlyCollection<Guid>? kildeIds = null,
         CancellationToken cancellationToken = default)
     {
         // Both always sent, unlike the optional parameters on the read endpoints: this one is
         // behind a token and never cached publicly, so there is no shorter URL worth having, and a
         // page that says which page it is beats one that leaves it implied.
-        var url = $"{MyListVariables(id)}?page={page}&size={pageSize}";
+        var url = new StringBuilder($"{MyListVariables(id)}?page={page}&size={pageSize}");
 
-        var result = await GetOrNullAsync<Page<VariableListItem>>(url, cancellationToken);
+        // Repeated rather than comma-joined: that is what the API's Guid[] binder reads, and it is
+        // the spelling a reader of the network tab can check against the endpoint.
+        foreach (var kildeId in kildeIds ?? [])
+        {
+            url.Append("&kildeId=").Append(kildeId.ToString("D"));
+        }
+
+        var result = await GetOrNullAsync<Page<VariableListItem>>(url.ToString(), cancellationToken);
 
         return result is null ? null : WithDerivedTotalPages(result);
     }

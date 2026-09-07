@@ -76,6 +76,7 @@ public sealed partial class VariableListState
         // IsSaved while the new list is being walked would draw rows against a list nobody chose.
         // The read itself does not clear — see the remarks on ReadMembershipAsync.
         _saved.Clear();
+        ForgetKilder();
         await LoadMembershipAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -330,10 +331,18 @@ public sealed partial class VariableListState
         var startedAt = _generation;
         var found = new HashSet<Guid>();
 
+        // Tallied here rather than by a call of its own: this walk already reads every page of the
+        // list, kildeId and kildeName travel on each entry, and a tally taken anywhere cheaper
+        // would be one taken over a page. Collected alongside `found` and published with it.
+        var kilder = new Dictionary<Guid, KildeTally>();
+
         while (true)
         {
+            // Deliberately unfiltered, whatever the reader has ticked: this walk is what the kilde
+            // tally is built from, and a narrowed walk would leave the sidebar listing only the
+            // kilde already chosen — no way back to the others.
             var result = await _client
-                .GetMyListVariablesAsync(listId, page, pageSize, cancellationToken)
+                .GetMyListVariablesAsync(listId, page, pageSize, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             // A sign-out between pages ends the read: the rest of this list is not this reader's.
@@ -352,7 +361,17 @@ public sealed partial class VariableListState
 
             foreach (var item in result.Items)
             {
-                found.Add(item.VariableId);
+                // Only an entry this walk has not seen before is tallied. The list can be written
+                // to in another tab while these pages are read, and an entry that drifts across a
+                // page boundary arrives twice — deduplicated in the set, doubled in the counts.
+                if (!found.Add(item.VariableId) || item.KildeId is not { } kildeId)
+                {
+                    continue;
+                }
+
+                kilder[kildeId] = kilder.TryGetValue(kildeId, out var tally)
+                    ? tally with { Count = tally.Count + 1 }
+                    : new KildeTally(item.KildeName ?? item.KildeShortName ?? "", 1);
             }
 
             if (result.Items.Count == 0 || found.Count >= result.TotalCount)
@@ -365,7 +384,16 @@ public sealed partial class VariableListState
 
         _saved.Clear();
         _saved.UnionWith(found);
+
+        // Published with the set and on the same terms: a walk that returned early published
+        // neither, so the sidebar cannot read a half-filled tally as the list's own kilder.
+        _kilder.Clear();
+        _kilder.AddRange(kilder.Select(k => new KildeInList(k.Key, k.Value.Name, k.Value.Count)));
+
         _membershipLoaded = true;
         Changed?.Invoke();
     }
+
+    /// <summary>One kilde's running total while the walk is under way.</summary>
+    private readonly record struct KildeTally(string Name, int Count);
 }

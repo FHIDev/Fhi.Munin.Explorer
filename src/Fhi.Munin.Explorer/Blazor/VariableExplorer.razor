@@ -17,7 +17,8 @@
                 IsAuthenticated="@IsAuthenticated"
                 HeadingLevel="@HeadingLevel"
                 Language="@Language"
-                VariableList="@ReaderLists" />
+                VariableList="@ReaderLists"
+                VariableListFilters="@ReaderListFilters" />
 
 @code {
     // Passed as a fragment rather than mounted beside the search, so the list sits inside the tab
@@ -25,4 +26,10 @@
     private RenderFragment ReaderLists => @<VariableListView Language="@Language"
                                                             IsAuthenticated="@IsAuthenticated"
                                                             HeadingLevel="@HeadingLevel" />;
+
+    // The list's own filter panel, which cannot travel inside the fragment above: it belongs in the
+    // filter column, and the fragment above is drawn in the result one.
+    private RenderFragment ReaderListFilters => @<VariableListFilters Language="@Language"
+                                                                      IsAuthenticated="@IsAuthenticated"
+                                                                      HeadingLevel="@HeadingLevel" />;
 }
