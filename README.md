@@ -706,11 +706,13 @@ Four things are worth knowing before mounting one.
   count, the metadata, the datasamlinger and the sidebar are drawn either way.
 
 Owning the address bar — or the page furniture — yourself is still supported: `VariableSearch`,
-`VariableListView` and `KildeSearch` stay public underneath, so a host that wants the two variable
-surfaces on separate pages, its own tabs around them, or the kilde list with no `?kilde=` at all,
-mounts them itself and builds the query with `ExplorerUrlState.Parse` /
+`VariableListView`, `VariableListFilters` and `KildeSearch` stay public underneath, so a host that
+wants the two variable surfaces on separate pages, its own tabs around them, or the kilde list with
+no `?kilde=` at all, mounts them itself and builds the query with `ExplorerUrlState.Parse` /
 `.ToQueryString`. Mounted apart they still share the circuit's `VariableListState`, so a variable
-saved on one is in the other without a refetch. `ExplorerUrlState.QueryKeys`
+saved on one is in the other without a refetch — and a kilde ticked in `VariableListFilters`
+narrows `VariableListView` through that same holder, which is why the two need no wiring between
+them but do need to be on one circuit. `ExplorerUrlState.QueryKeys`
 names every parameter it reads and writes, the filter's own included, so you can tell ours from
 yours. Do that and three details are yours to get right — the interactive render mode above, a path
 built from `PathBase + Path` rather than a literal (identical locally, wrong behind a reverse

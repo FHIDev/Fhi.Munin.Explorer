@@ -241,11 +241,12 @@ public class VariableListViewTest : BunitContext
         private int _answered;
 
         public override async Task<Page<VariableListItem>?> GetMyListVariablesAsync(
-            Guid id, int page = 1, int pageSize = 100, CancellationToken cancellationToken = default)
+            Guid id, int page = 1, int pageSize = 100, IReadOnlyCollection<Guid>? kildeIds = null,
+            CancellationToken cancellationToken = default)
         {
             try
             {
-                return await ReadVariablesAsync(id, page, pageSize);
+                return await ReadVariablesAsync(id, page, pageSize, kildeIds);
             }
             finally
             {
@@ -253,7 +254,8 @@ public class VariableListViewTest : BunitContext
             }
         }
 
-        private async Task<Page<VariableListItem>?> ReadVariablesAsync(Guid id, int page, int pageSize)
+        private async Task<Page<VariableListItem>?> ReadVariablesAsync(
+            Guid id, int page, int pageSize, IReadOnlyCollection<Guid>? kildeIds)
         {
             VariablesCalls++;
             LastPageAsked = page;
@@ -308,19 +310,26 @@ public class VariableListViewTest : BunitContext
                 };
             }
 
+            // Narrowed before counted and before cut, which is what the API does — a fake that
+            // filtered the page it had already sliced would let a component reading the whole
+            // list's total pass a test about a narrowed one.
+            var matching = kildeIds is { Count: > 0 }
+                ? _items.Where(i => i.KildeId is { } k && kildeIds.Contains(k)).ToList()
+                : _items;
+
             // Honours the size the component asked for, not the fake's own: slicing by an
             // internal number would hide a component that sent an unexpected page size.
-            var slice = _items.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+            var slice = matching.Skip((page - 1) * pageSize).Take(pageSize).ToList();
 
             return (new Page<VariableListItem>
             {
                 Items = slice,
-                TotalCount = _items.Count,
+                TotalCount = matching.Count,
                 PageNumber = page,
                 Size = pageSize,
                 // Computed, not hardcoded: a fake that always said one page let a component
                 // ignoring the field pass its own paging test.
-                TotalPages = Math.Max(1, (int)Math.Ceiling(_items.Count / (double)pageSize))
+                TotalPages = Math.Max(1, (int)Math.Ceiling(matching.Count / (double)pageSize))
             });
         }
 

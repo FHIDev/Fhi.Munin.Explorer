@@ -109,6 +109,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private Page<VariableListItem>? _page;
     private Guid? _shownList;
     private int _pageNumber = 1;
+
+    /// <summary>The holder's filter version as of the last change this view acted on.</summary>
+    private int _seenKildeFilter;
     private bool _loading;
     private bool _failed;
 
@@ -436,6 +439,14 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// <summary>Written the way the result list writes it, so the pager reads the same on both.</summary>
     private static string AriaDisabled(bool enabled) => enabled ? "false" : "true";
 
+    /// <summary>
+    /// What a page with no rows on it means: an empty list, or a narrowing nothing survived.
+    /// "Denne listen er tom" over a list of 247 sends the reader looking for variables they still
+    /// have. (Fhi.Metadata-mm4hu)
+    /// </summary>
+    private string EmptyMessage =>
+        State?.KildeFilter.Count > 0 ? T.NoVariablesForTheseKilder : T.EmptyList;
+
     protected override void OnInitialized()
     {
         if (State is not null)
@@ -561,6 +572,15 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// </summary>
     private void OnStateChanged() => InvokeAsync(async () =>
     {
+        // A narrowing shortens the list, so the page number has to go back to the start: a reader
+        // on page 4 of ten who ticks a kilde with two pages would otherwise be handed an empty
+        // page and no sign of why. Every other change leaves them where they were standing.
+        if (State is { KildeFilterVersion: var version } && version != _seenKildeFilter)
+        {
+            _seenKildeFilter = version;
+            _pageNumber = 1;
+        }
+
         if (_skipOnePageRead)
         {
             _skipOnePageRead = false;
@@ -593,9 +613,13 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         // What this read is for, taken before the await: several run at once, because the holder
-        // raises Changed while a create is still going and each notification starts one.
+        // raises Changed while a create is still going and each notification starts one. The
+        // narrowing is part of what it is for — a tick raises Changed too, so an answer can land
+        // for kilder the reader has already unticked.
         var readList = _shownList.Value;
         var readPage = _pageNumber;
+        var readKilder = State.KildeFilter;
+        var readFilter = State.KildeFilterVersion;
 
         _loading = true;
         _failed = false;
@@ -605,7 +629,10 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         try
         {
-            read = await Client.GetMyListVariablesAsync(readList, readPage, PageSize);
+            // Narrowed by the API, not here: the endpoint pages, so a sieve over the page it
+            // answered with would leave TotalCount — and the pager on it — describing the whole
+            // list. The ticks live in the holder; the boxes are in the other grid column.
+            read = await Client.GetMyListVariablesAsync(readList, readPage, PageSize, readKilder);
         }
         catch (Exception)
         {
@@ -614,10 +641,12 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             failed = true;
         }
 
-        // An answer for a list or a page the view has since left is dropped, _loading included.
-        // Creating repoints _shownList while reads for the previous list are still out, and the
-        // later answer won — old rows under the new name, as though create had copied them.
-        if (_shownList != readList || _pageNumber != readPage)
+        // An answer for a list, a page or a narrowing the view has since left is dropped, _loading
+        // included. Creating repoints _shownList while reads for the previous list are still out,
+        // and the later answer won — old rows under the new name, as though create had copied
+        // them. A tick is the same race: rows for a kilde no longer ticked, under boxes that say
+        // otherwise.
+        if (_shownList != readList || _pageNumber != readPage || State.KildeFilterVersion != readFilter)
         {
             return;
         }
@@ -1179,8 +1208,11 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         while (true)
         {
-            // The API's own ceiling per page, so a long list costs few round trips.
-            var slice = await Client.GetMyListVariablesAsync(_shownList!.Value, page, 1000);
+            // The API's own ceiling per page, so a long list costs few round trips. Narrowed the
+            // same way the rows are: the button sits under a table showing 47 of 247, and a file
+            // holding the other 200 as well is not the list the reader was looking at.
+            var slice = await Client.GetMyListVariablesAsync(
+                _shownList!.Value, page, 1000, State?.KildeFilter);
 
             if (slice is null || slice.Items.Count == 0)
             {

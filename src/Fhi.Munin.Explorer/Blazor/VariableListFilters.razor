@@ -1,0 +1,58 @@
+@namespace Fhi.Munin.Explorer.Blazor
+
+@* Signed out there is nothing here, the same as the view beside it: a filter panel over a list
+   nobody can read is a control with nothing behind it. *@
+@if (State?.IsAuthenticated == true)
+{
+    @* `munin-explorer-filters` and nothing invented: Stiler places this name in the grid's filters
+       track, through a CHILD combinator on `.munin-explorer` — see the note in VariableSearch.razor
+       where this fragment is drawn, which is why it is drawn there. *@
+    <div class="munin-explorer-filters">
+        @((MarkupString)$"<h{TitleLevel} class=\"form-element__label\">{T.FiltersTitle}</h{TitleLevel}>")
+
+        @* Only when there is something to clear. A button that unticks nothing says the reader has
+           narrowed something when they have not. Ghost, like the search panel's own presses. *@
+        @if (Chosen.Count > 0)
+        {
+            <button class="hd-button-square button-square--ghost margin-bottom"
+                    type="button"
+                    @onclick="ClearAll">@T.ClearFilters</button>
+        }
+
+        @* role="group" named by the heading rather than a fieldset and a legend, the shape Kelda's
+           facets use: a reader moves through a filter panel by heading, and a legend is not one. *@
+        <div role="group" aria-labelledby="@KildeHeadingId">
+            @((MarkupString)$"<h{SubTitleLevel} class=\"form-element__label\" id=\"{KildeHeadingId}\">{T.FieldSource}</h{SubTitleLevel}>")
+
+            @* Three states, not two. The sentence is only true once the whole list has been read —
+               said while the walk is still running, or after one that was refused, it would report
+               an empty list for one we never managed to look at. *@
+            @if (Kilder.Count > 0)
+            {
+                <ul>
+                    @foreach (var kilde in Kilder)
+                    {
+                        @* Keyed on the kilde: the tally is built off the unfiltered walk so the
+                           options never move under a tick, and the key is what keeps a checkbox
+                           with its own kilde if they ever do. *@
+                        <li @key="kilde.Id">
+                            @* lang, because these are the catalogue's own Norwegian names and this
+                               package's words around them may be English — the same marking the
+                               table's kilde cells carry. *@
+                            <label lang="@CatalogueLang(kilde.Name)">
+                                <input type="checkbox"
+                                       checked="@IsChosen(kilde.Id)"
+                                       @onchange="() => Toggle(kilde.Id)" />
+                                @kilde.Name@(" ")<span class="munin-explorer-filters__count">@Count(kilde.Count)</span>
+                            </label>
+                        </li>
+                    }
+                </ul>
+            }
+            else if (Known)
+            {
+                <p>@T.NoKilderInList</p>
+            }
+        </div>
+    </div>
+}

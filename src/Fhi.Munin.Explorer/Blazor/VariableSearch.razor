@@ -249,11 +249,18 @@ else
        `munin-explorer-filters` carries no styling, in this package or in Stiler. It is the same
        kind of name as the `munin-explorer` root above it: a hook for a host that wants to place
        the panel, and nothing this markup relies on. *@
+    @* The saved list's own panel takes this slot, and has to be HERE rather than beside the rows:
+       Stiler places the filter column with `.munin-explorer > .munin-explorer-filters`, a child
+       combinator, and the rows render two levels down in the tab panel. (Fhi.Metadata-mm4hu) *@
+    @if (ShowTabs && _resultsTab == ExplorerTab.VariableList && VariableListFilters is not null)
+    {
+        @VariableListFilters
+    }
+
     @* Not on the Variabelliste tab. These facets narrow a search, and the reader is not looking at
        one — every one of them would filter nothing. Runa does exactly this: its sidebar and its
        hierarchy trail are both `activeTab !== "variableList"`, and the list tab renders a sidebar
-       of its own scoped to the list. Ours does not have that second half yet (Fhi.Metadata-mm4hu),
-       so on that tab there is no sidebar rather than one that lies. *@
+       of its own scoped to the list. *@
     @if (_facets is not null && _resultsTab != ExplorerTab.VariableList)
     {
         @* `data-level-lines` rather than a class of our own. A class on the <ul> already there would

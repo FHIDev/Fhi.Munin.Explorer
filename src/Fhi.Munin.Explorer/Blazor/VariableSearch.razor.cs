@@ -310,6 +310,19 @@ public sealed partial class VariableSearch : ComponentBase
     [Parameter] public RenderFragment? VariableList { get; set; }
 
     /// <summary>
+    /// The filter panel that belongs to <see cref="VariableList"/>, drawn in the filter column
+    /// while that tab is open and in place of the search's own facets.
+    /// </summary>
+    /// <remarks>
+    /// A second fragment rather than something the list fragment draws for itself, because the two
+    /// land in different columns of Stiler's grid and only a child of this component's own section
+    /// reaches the filter one. Ignored unless <see cref="VariableList"/> is passed too: without it
+    /// there is no tab for this to belong to. <see cref="VariableExplorer"/> passes
+    /// <see cref="VariableListFilters"/> here; a host composing its own page can pass anything.
+    /// </remarks>
+    [Parameter] public RenderFragment? VariableListFilters { get; set; }
+
+    /// <summary>
     /// Whether the host says this reader is signed in. Defaults to <see langword="false"/>.
     /// </summary>
     /// <remarks>

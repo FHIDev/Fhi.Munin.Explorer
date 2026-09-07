@@ -66,6 +66,7 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
             _saved.Clear();
             _activeListId = null;
             _membershipLoaded = false;
+            ForgetKilder();
 
             // Dropped rather than awaited: a read still walking pages belongs to the reader who
             // has just left, and the generation guard already stops it writing anything. Keeping
@@ -212,6 +213,7 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
             _activeListId = null;
             _membershipLoaded = false;
             _saved.Clear();
+            ForgetKilder();
         }
 
         Changed?.Invoke();
