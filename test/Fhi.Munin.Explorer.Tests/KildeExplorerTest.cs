@@ -519,6 +519,21 @@ public class KildeExplorerTest : BunitContext
     }
 
     [Fact]
+    public void Render_WhenAKildeHasNoName_ThenItsRowIsDrawnBlankAndTheRestOfTheTableWithIt()
+    {
+        // What a reader sees for "navn": null, which NullAsEmptyStrings now reads as "" instead of
+        // letting it reach the renderer as a null and take the circuit. The row is visibly empty
+        // rather than plausibly wrong, and its siblings are untouched. (Fhi.Metadata-o355u)
+        var cut = RenderWith(new FakeClient(
+            Kilde("", "K_ALS"),
+            Kilde("Dødsårsaksregisteret", "K_DAR")));
+
+        Assert.Equal(["", "Dødsårsaksregisteret"], RowNames(cut));
+        Assert.Contains("K_ALS", cut.Markup);
+        Assert.Contains("2 kilder", cut.Markup);
+    }
+
+    [Fact]
     public void Render_Always_ThenTheListIsAskedForOnceAndUnfiltered()
     {
         // The endpoint is not paged and the list is small, so it is fetched whole and everything the

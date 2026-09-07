@@ -65,6 +65,42 @@ shape here, and the JSON side must keep spelling it Munin's way.
 Changelog fragments are **English only** — see [`changelog.d/README.md`](changelog.d/README.md),
 which explains why this repository deliberately differs from Munin's bilingual pair.
 
+## What an explicit null does
+
+Munin sets no `DefaultIgnoreCondition`, so it writes `"key": null` rather than leaving the key
+out — `healthDcatScore` arrives that way on every row of `GET /api/explorer/kilder`. A contract
+property therefore has to answer a null, and which answer it gets is decided by how it is
+declared. `ExplicitNullTest` sweeps every deserialised property and fails on one that fits none
+of these.
+
+| Declared as | An explicit null reads as | Mechanism |
+| --- | --- | --- |
+| `IReadOnlyList<T>`, `IReadOnlyCollection<T>`, `IReadOnlyDictionary<string, T>` | the empty collection | `NullAsEmptyCollections` |
+| `string` | `""` | `NullAsEmptyStrings` |
+| `string?`, `T?` | `null` | the annotation |
+| `int`, `bool`, `Guid`, an enum | **nothing — the whole read throws** | `System.Text.Json` |
+
+**The last row is a decision, not an omission.** `""` and `[]` render as the absence they are, so
+tolerating a null there costs a reader one blank cell. `0`, `false`, `Guid.Empty` and the zeroth
+enum member render as facts the payload never stated — a kilde with `0` datasamlinger that has
+fourteen, a row whose link goes nowhere — and a reader believes those. It is the sentinel
+`Fhi.Metadata-6r6rf` spent a fix removing, in a new coat. So a null count costs the whole list and
+the reader is told "Kunne ikke laste kilder nå", which is at least true.
+
+The API side backs that up: every one of those is a primary key, a `NOT NULL` column or a
+`Count()` aggregate, so a null in one is a broken payload rather than a shape Munin can produce.
+The nullable columns it does have — `kortNavn`, `gyldigFra`, the timestamps
+(`Fhi.Metadata-se0by`) — are already annotated `?` here, and that is when to reach for **must be
+nullable**: because Munin's column is, not to make a value type tolerate a null.
+
+The strings are the ones worth machinery, because they are the only shape that fails *silently*.
+`System.Text.Json` writes the null over the `= ""` initialiser, the fetch's try/catch sees
+nothing, and the first read throws while rendering — which on a Blazor Server host takes the
+circuit and the page this package is mounted in. Same likelihood as the others, a different blast
+radius. `RespectNullableAnnotations` is the other answer .NET offers and was rejected: it makes a
+null string throw, which trades the dead page for the whole list disappearing over one blank name.
+(`Fhi.Metadata-o355u`)
+
 ## Comments
 
 Comment the **why**, never the **what**. If a reader can derive it from the signature, delete it.
