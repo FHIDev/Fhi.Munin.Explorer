@@ -146,13 +146,9 @@ public class KildeSectionsTest : BunitContext
 
     /// <summary>Open the fixture's kilde in Kelda, the way a reader does: from a row in the list.</summary>
     /// <remarks>
-    /// <paramref name="language"/> is left unset rather than defaulted to "no" so the common case
-    /// renders the component the way a host that names no language does.
-    /// <para>
-    /// <paramref name="accessAndPrices"/> is left unset for the same reason, so the common case is
-    /// the embedded host that asks for nothing — which is the page most readers of this component
-    /// see (Fhi.Metadata-ay3zz).
-    /// </para>
+    /// <paramref name="language"/> and <paramref name="accessAndPrices"/> are left unset rather
+    /// than defaulted, so the common case renders the component the way an embedded host that names
+    /// neither does (Fhi.Metadata-ay3zz).
     /// </remarks>
     private IRenderedComponent<KildeExplorer> OpenInKelda(
         KildeDetail kilde,
@@ -283,13 +279,9 @@ public class KildeSectionsTest : BunitContext
     [Fact]
     public void Kelda_WhenTheHostAsksForNothing_ThenAccessAndPricesAreNotOnThePage()
     {
-        // The state an embedded host gets, and the one the decision under Fhi.Metadata-ay3zz is
-        // about: helsedata publishes /no/priser/ and /no/soknadsveiledning-oversikt/ themselves, so
-        // these two blocks inside a component they cannot edit are a second copy of pages they own.
-        //
-        // Asserted as the whole heading list rather than as two DoesNotContain, so a block that
-        // survives under another word is a failure here too — and so that the sections either side
-        // of it are still proved present. Variabler is not part of the decision and stays.
+        // The page an embedded host gets (Fhi.Metadata-ay3zz). Read as the whole heading list rather
+        // than as two DoesNotContain, so a block that survives under another word fails here too and
+        // the sections either side of it are still proved present.
         var cut = OpenInKelda(Tromso());
 
         Assert.Equal(

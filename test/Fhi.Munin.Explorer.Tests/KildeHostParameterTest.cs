@@ -12,26 +12,10 @@ namespace Fhi.Munin.Explorer.Tests;
 /// of Kelda's mounts, and whether the page follows it either way (Fhi.Metadata-ay3zz).
 /// </summary>
 /// <remarks>
-/// <para>
-/// THE TRAP. helsedata mounts a component by type name and sets it from a fixed candidate list
-/// through <c>KomponentParameterVelger</c>, which drops every candidate the mounted type does not
-/// declare as a public <c>[Parameter]</c> — silently, by design, so that a component without a
-/// <c>Language</c> stops throwing on mount. A parameter declared on the wrong type therefore
-/// compiles, the host sets it, and the blocks appear anyway. That is indistinguishable from
-/// success unless something looks at the markup.
-/// </para>
-/// <para>
-/// So every case here sets the parameter <em>by its string name</em>, the way the host does, and
-/// asserts on the rendered page. And both values are asserted, not only the new one: a check that
-/// looked at the off state alone would pass against a parameter that does nothing at all, since
-/// off is what a parameter nobody reads produces.
-/// </para>
-/// <para>
-/// Both mounts, because Kelda ships two roots and a host picks either — the samples in this
-/// repository mount <see cref="KildeExplorerWithUrlState"/>, so declaring this on
-/// <see cref="KildeExplorer"/> alone would leave the parameter unreachable exactly where it is
-/// used.
-/// </para>
+/// THE TRAP: helsedata's <c>KomponentParameterVelger</c> drops every candidate the mounted type
+/// does not declare as a public <c>[Parameter]</c>, silently, so a parameter declared on the wrong
+/// type compiles and the blocks appear anyway. Hence: both roots, set by string name, asserted on
+/// the markup — and both values, since off is also what a parameter nobody reads produces.
 /// </remarks>
 public class KildeHostParameterTest : BunitContext
 {

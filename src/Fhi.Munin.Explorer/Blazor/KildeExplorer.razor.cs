@@ -169,27 +169,19 @@ public sealed partial class KildeExplorer : ComponentBase
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Both blocks send the reader to helsedata.no for how to apply and what data costs, which is
-    /// the route a researcher browsing Munin's own catalogue needs — and the content helsedata
-    /// already publishes itself. Their live navigation carried <c>/no/priser/</c> and
-    /// <c>/no/soknadsveiledning-oversikt/</c> on 2026-09-07, so an embedding that drew these too
-    /// would put a second copy of pages helsedata owns inside a component they cannot edit, and
-    /// theirs is the authoritative one once the two drift.
+    /// Both blocks send the reader to helsedata.no for how to apply and what data costs — the
+    /// route a researcher browsing Munin's own catalogue needs, and content helsedata publishes
+    /// itself (<c>/no/priser/</c> and <c>/no/soknadsveiledning-oversikt/</c> were both in their
+    /// navigation when this was measured, 2026-09-07). Drawing them inside an embedding on that
+    /// site would be a second copy of pages the site owns, in a component it cannot edit.
     /// </para>
     /// <para>
-    /// Hence the default: <see langword="false"/>, so a host that has never heard of this
-    /// parameter draws no duplicate. Munin's own hosts opt in by setting it. Defaulting the other
-    /// way would be fail-open in the one place it matters — helsedata's <c>BlazorComponentPage</c>
-    /// offers a fixed candidate list (<c>Language</c>, <c>SkjemaId</c>, <c>IsAuthenticated</c>)
-    /// and drops every name outside it, so it could not turn the blocks off until that list grew
-    /// a key.
-    /// </para>
-    /// <para>
-    /// A <c>[Parameter]</c> on the mounted root rather than an option on the service registration,
-    /// for the same reason <see cref="VariableExplorer.IsAuthenticated"/> is one: a CMS host
-    /// mounts a type by name and can only reach what that type declares.
-    /// <see cref="KildeExplorerWithUrlState"/> declares and forwards it as well, so both of
-    /// Kelda's mounts can be told.
+    /// So it defaults to <see langword="false"/> and a host of your own sets it. Defaulting the
+    /// other way could not be undone from the host that matters: helsedata's
+    /// <c>BlazorComponentPage</c> offers a fixed candidate list — <c>Language</c>,
+    /// <c>SkjemaId</c>, <c>IsAuthenticated</c> — and drops every name outside it.
+    /// <see cref="KildeExplorerWithUrlState"/> declares and forwards it too, so either mount can
+    /// be told. (Fhi.Metadata-ay3zz)
     /// </para>
     /// </remarks>
     [Parameter] public bool ShowAccessAndPrices { get; set; }
