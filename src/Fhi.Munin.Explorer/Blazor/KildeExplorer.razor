@@ -353,25 +353,9 @@ else
            the control would be offering columns for a table that is not there. *@
         @ColumnPicker()
 
-        @* The table rides in a box of its own, and the box is around the table alone. The
-           results column cannot take it: the column picker above sits in that same column and
-           would scroll sideways out of reach with the table.
-
-           Eight columns ask for 779px at their narrowest, which is more than the page is wide
-           below about 827px of content box — measured on helsedata at /MuninKelda over 66
-           kilder. Without this the overflow went to the PAGE, and a page that scrolls sideways
-           at 320px is a WCAG 1.4.10 failure on somebody else's site (Fhi.Metadata-b3brc).
-
-           role and tabindex are not decoration on the overflow. A box a mouse can scroll and a
-           keyboard cannot trades 1.4.10 for 2.1.1, and a focus stop with no name is one the
-           reader cannot place. Unconditional rather than applied only when it actually
-           scrolls: knowing that needs script, and this package ships none.
-
-           The name is the table's own sentence, and the table keeps its `aria-label` as well, so a
-           screen reader says it twice: once for the region a reader lands in and once for the table
-           inside it. That is accepted rather than overlooked. The alternatives are worse — an
-           unnamed region is a landmark with no name, and taking the label off the table leaves the
-           table unnamed in the table list, which is where a reader looks for it. *@
+        @* Around the table alone: the column picker shares `munin-explorer-results` and would
+           scroll out of reach with it. tabindex is unconditional because detecting overflow needs
+           script; region and table share one name so neither is nameless. (Fhi.Metadata-b3brc) *@
         <div class="munin-explorer-kilder-scroll" role="region" tabindex="0" aria-label="@summary">
             @* aria-label rather than aria-labelledby: the name is the same sentence the status line
                above shows, and pointing at that element would make the table's name change under a

@@ -605,15 +605,9 @@ public class KildeExplorerTest : BunitContext
     [Fact]
     public void Render_Always_ThenTheTableSitsInItsOwnScrollRegionAndTheColumnPickerDoesNot()
     {
-        // The box is what keeps the overflow off the HOST's page: the table wants 779px at its
-        // narrowest and helsedata's content box goes under that around 827px, so without a box of
-        // its own the whole site scrolled sideways (Fhi.Metadata-b3brc).
-        //
-        // The second half of the assertion is the trap, and it is the reason this is a test rather
-        // than a line of CSS nobody reads: `munin-explorer-results` is the obvious element to put
-        // `overflow-x` on and it is the wrong one. The column picker is in that column too, and a
-        // reader who scrolled the table sideways would take the control for choosing columns off
-        // the screen with it.
+        // The second assertion is the trap: `munin-explorer-results` is the obvious element to put
+        // `overflow-x` on and it is the wrong one, because the column picker is in that column and
+        // would scroll off screen with the table (Fhi.Metadata-b3brc).
         var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
         var table = cut.Find(".munin-explorer-kilder");
