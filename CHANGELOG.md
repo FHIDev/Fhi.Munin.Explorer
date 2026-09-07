@@ -29,6 +29,326 @@ under alpha.8, which is the whole reason this file exists.
 
 <!-- assemble-changelog: new version sections are inserted directly below this line, newest first. -->
 
+## 0.1.0-alpha.10 — 2026-09-07
+
+### Added
+
+- **The kilde table has a column picker**, the one Munin's own kildeutforsker has. Ten optional
+  columns in its order — Kildetype, Datasamlinger, Variabler, Delkilder, Dataansvarlig,
+  Databehandler, Grad av personidentifikasjon, Gyldighet, Importert and Sist endret — of which the
+  first three start on, which is the table hosts already have. Navn, Status and Opprettet are
+  outside the picker's reach, so no choice can empty a row. The choice is not persisted and is not
+  in the URL: it lasts as long as the page, exactly as it does in the kildeutforsker.
+- **Seven of those columns are new data on this table**, and two of them are dates the payload
+  spells confusingly: `Importert` is `opprettet`, Munin's own row timestamp, while the
+  always-visible `Opprettet` column stays the founding year the catalogue states in
+  `additionalProperties.Opprettet`; `Sist endret` is the catalogue's own
+  `additionalProperties.SistOppdatert`, not `sistOppdatert`, which is Munin's. A source date the
+  catalogue did not write as `yyyyMMdd` is shown exactly as it stands rather than blanked or
+  guessed at. (Fhi.Metadata-ay3zz)
+- **The Variabelliste tab has a filter panel of its own: the kilder the reader's list draws from,
+  each with a count, and a tick that narrows the rows.** `VariableSearch` gained
+  `VariableListFilters`, a second `RenderFragment` beside `VariableList`, drawn in the filter column
+  while that tab is open and in place of the search's own facets. `VariableExplorer` passes the new
+  `VariableListFilters` component there; a host composing its own page must pass it too, or that
+  tab keeps the empty filter column it has today. The tally is built over the whole list, never the
+  page on screen, and the narrowing is the API's — so the pager and the row count stay its answer.
+- **`IMuninExplorerClient.GetMyListVariablesAsync` takes an optional `kildeIds`.** Several of them
+  union rather than intersect, and null or empty is every kilde. A host implementing the interface
+  rather than consuming `MuninExplorerClient` must widen its own signature. **Requires Munin API
+  5658 or later**: an older API does not know the parameter, ignores it, and answers with the whole
+  list.
+- **`VariableList` gained `VariableCount`, and the saved-list picker now says what every list
+  holds** rather than only the one on screen. Munin's `GET api/explorer/my/lists` started sending
+  `variableCount` and nothing read it; the picker's options read `Mine hjertevariabler (247
+  variabler)` now, and a list with nothing in it reads `0 variabler`. The line under the picker
+  takes its count from the same field, so the two cannot disagree about the same list.
+  (Fhi.Metadata-uiqfs)
+
+### Changed
+
+- **BREAKING for hosts: `KildeExplorer` is the whole kildeutforsker.** The kilde list, the drill-in
+  and the open kilde in the address bar, from one mount — `Language` is all it takes. The list on
+  its own, with no `?kilde=` handling, is now `KildeSearch`, and the separate
+  `KildeExplorerWithUrlState` is gone — `KildeExplorer` is now the component that name used to
+  mean, so mounting `KildeExplorer` now gets you the wrapper's behaviour rather than the old bare
+  list. Both mounts still declare `ShowAccessAndPrices`, and the merged one still takes
+  `VariableExplorerPath`. This is the same fold the variable side had in the previous release, so a
+  host that upgrades once renames both.
+- **`VariableSearch` is sealed.** It now unsubscribes from `VariableListState.Changed` in
+  `Dispose`, and an unsealed disposable owes CA1063 a virtual pattern a Blazor component has no use
+  for — the same reason `VariableListView` is sealed. Mounting it is unaffected; only a host that
+  derived from it has to stop. (Fhi.Metadata-ehghv)
+- **BREAKING for a host that derives from a component: every published component is now `sealed`.**
+  Counting from the released `0.1.0-alpha.8`, three change in this release — `VariableSearch` (see
+  the bullet above), `VariableExplorer` and `KildeExplorer` — and five were already
+  sealed. The last two were open by silence rather than by decision: neither file said why, and
+  neither had ever carried the keyword. Nothing in this package or its samples derives from either,
+  and helsedata mounts by type name out of a CMS field rather than by inheritance, so the door was
+  open for no consumer we know of. Unsealing later is invisible to a consumer; sealing later is a
+  binary break, which is why alpha is the moment to decide it. If you do need to derive from one,
+  say so and it can be reopened with a reason attached. (Fhi.Metadata-l9l2n.43)
+- **A released version now has a curated changelog entry, and the feed shows it.**
+  `PackageReleaseNotes` carries that version's own `CHANGELOG.md` section rather than a link to a
+  GitHub release page of auto-generated commit titles, and the release for the tag carries the same
+  text. `CHANGELOG.md` also gained the eight `0.1.0-alpha.*` sections it never had: a host bumping
+  `0.1.0-alpha.7` to `0.1.0-alpha.8` can now read that `VariableExplorerWithUrlState` was removed
+  and the bare component renamed to `VariableSearch` where it would look for it. (Fhi.Metadata-l9l2n.44)
+- **BREAKING for hosts that read Munin's own timestamps: they are `DateTimeOffset?` now.**
+  `opprettet` and `sistOppdatert` on `KildeDetail`, `DatasamlingDetail` and `KildeSummary`, and
+  `createdAt`, `updatedAt` and `addedAt` on the variable-list types. The wire format is unchanged —
+  every `[JsonPropertyName]` is untouched — and so is what the component renders. A host that does
+  not recompile at all gets a `MissingMethodException` on the getter, since the return type is part
+  of the signature.
+- **The half that does not compile is the easy half.** A host reading one into a non-nullable local
+  is told by the compiler. Two things compile unchanged and behave differently. `k.LastUpdated <
+  cutoff` — a "not touched since" report — was **true** for a kilde whose payload omitted the field,
+  because the property held `0001-01-01`, and is **false** now; those rows leave such a report
+  silently. `$"{kilde.LastUpdated}"` renders an empty string where it rendered a date. And
+  `Min()` over a set that includes one now answers the earliest real date rather than `0001-01-01`.
+  `OrderBy` is *not* affected — `null` sorts exactly where `MinValue` did. Nor is `== default`, which
+  stays true for the absent case; it is `== DateTimeOffset.MinValue` that stops matching.
+  (Fhi.Metadata-se0by)
+- **The saved-list view reads as part of helsedata rather than as default markup.** Its variables
+  are a real `<table>` with one row of `<th scope="col">` instead of a header line over a stack of
+  `<div>`s that repeated all seven field names in every row; creating and renaming a list are
+  behind their own buttons instead of two standing forms; the list on screen says how many
+  variables it holds and when it last changed; and the buttons wear helsedata's own
+  `button-square--primary` and `button-square--ghost-blue` where every one of them used to be
+  `button-square--ghost`. The export block is unchanged — it is per-list, and helsedata has no
+  equivalent to copy.
+- **A rename or a removal now moves the list's "sist endret" as well as its name.**
+  `VariableListState` patches its own copy of a list rather than refetching it, which is what makes
+  a rename look instant — so the timestamp is patched with it. Without that the new line would keep
+  naming the day the page was loaded while the name above it changed under the reader.
+
+### Fixed
+
+- **Creating a variable list no longer leaves the previous list's rows on screen under the new
+  list's name.** Making a list starts page reads for the list being left, and a late answer from
+  one of them overwrote the new list's own — so the reader saw their old variables under the new
+  name and had every reason to think creating had copied them across. (Fhi.Metadata-2ifw8)
+- **A kilde or datasamling whose payload carries no `sistOppdatert` no longer shows "1. januar
+  0001".** The DTOs declare Munin's own timestamp non-nullable, so an absent one arrived as
+  `default` and the source-information block rendered the year 1 under "Sist oppdatert i Munin" — a
+  date the catalogue never sent, stated as fact. The row is now dropped instead, which is what that
+  block already does for every other field the payload leaves out. The kilde table's `Importert`
+  column reads through the same guard now and behaves exactly as it did. (Fhi.Metadata-6r6rf)
+- **The kilder table scrolls in a box of its own instead of scrolling the host's page.** Its eight
+  columns want 779px at their narrowest, which is more than helsedata's content box below about
+  827px, and the overflow used to land on the document — a WCAG 1.4.10 failure on the whole site
+  rather than a table that looks wrong. The table now sits in a `region` with `overflow-x`,
+  `tabindex="0"` and the table's own name, so a keyboard can reach it; the column picker stays
+  outside the box and on screen. (Fhi.Metadata-b3brc)
+- **Removing a variable in `VariableListView` now reads as removed in the search results too.** The
+  save button beside the same variable went on saying "Fjern fra liste" with `aria-pressed="true"`,
+  offering to take out something already gone — reachable on any page that mounts both surfaces.
+  The membership set is now maintained by `AddVariablesAsync` and `RemoveVariablesAsync` rather than
+  only by the save press, and `VariableSearch` redraws on `VariableListState.Changed`. No host
+  change needed, and no extra request: neither surface refetches. (Fhi.Metadata-ehghv)
+- **A payload carrying `"navn": null` — or a null on any other string the contracts declare
+  non-nullable — no longer takes the host's Blazor circuit down.** The null used to pass
+  deserialisation and throw at render time instead, past the try/catch around the fetch, so the
+  component's own error message never appeared. Those properties now read an explicit null as
+  `""`, exactly as they already read an absent key; properties declared `string?` are untouched.
+  (Fhi.Metadata-o355u)
+- **A kilde or datasamling whose payload carries `"sistOppdatert": null` no longer fails to load
+  at all.** The property was non-nullable, so an explicit null threw inside deserialisation and the
+  component reported "Kunne ikke hente datakilden" — the reader lost the whole panel over one
+  field. Munin declares these columns nullable and already sends explicit nulls for dates
+  elsewhere, so this was reachable from the live API. An absent key and an explicit null now mean
+  the same thing: the field is simply not shown. (Fhi.Metadata-se0by)
+- **A catalogue entry with no name no longer leaves the control that carries it unnamed.** A kilde,
+  delkilde, datasamling or variable whose name is empty — reachable two ways: the catalogue can hold
+  an empty `preferredTerm`, and since `Fhi.Metadata-o355u` an explicit `navn: null` from the API
+  reads as the empty string rather than taking the host's circuit down — drew a row button with no
+  text, a checkbox announcing "Velg " with nothing after it, a facet whose checkbox announced only
+  its count, a datasamling row whose header cell was empty, and headings with nothing in them. Every
+  such control and heading now falls back to the entry's **code** — or its short name, where the
+  contract carries no code — which is the identifier already drawn beside it and the one the API
+  itself falls back to. Where that stands in for the name, the line that usually repeats it
+  underneath is not drawn, and the `lang="no"` marker comes off: a code is not Norwegian prose for a
+  screen reader to sound out. (Fhi.Metadata-w13lk)
+- **The variable row's disclosure button says which variable it opens.** It answered "Vis hele
+  variabelen" for every unnamed variable — a name that satisfies a checker and leaves a reader no
+  way to tell one row from the next. It now answers with the variable's code. (Fhi.Metadata-w13lk)
+- **An entry with neither a name nor a code reads "Ikke oppgitt".** That is the last arm and it is
+  reachable, since a code can be empty exactly as a name can. Two such entries still announce
+  identically — a fallback cannot invent an identifier the catalogue does not hold — so the data
+  problem underneath is filed separately as `Fhi.Metadata-xku9b`. (Fhi.Metadata-w13lk)
+
+### Notes for hosts
+
+- **The sample stylesheets are a stand-in for `Fhi.Helsedata.Stiler`, and 175 of their declarations
+  do not match it.** A host that copies `samples/*/host.css` as a starting point gets those
+  differences with it. They are now listed, one per line, in `test/sample-css-known-divergences.txt`
+  — the missing row-collapse block below 1280px, the eleven `munin-explorer-meta` table rules, the
+  absent base `.munin-explorer` rule, and the rest — so the list can be read before the stylesheet
+  is trusted. A new guard compares the two files' declarations against the published package on
+  every pull request, so the count can only go down from here. Hosts that link Stiler itself are
+  unaffected; this is about what the samples claim to reproduce. (`Fhi.Metadata-3dwar`)
+- **The sample stylesheets now push the facet count to the label's right edge**, with
+  `margin-left: auto` on `munin-explorer-filters__count`. Without it a count sits wherever its own
+  label's text ended — measured in the samples at 81 distinct right edges across the variable
+  explorer's 107 facet values, and 7 across the kildeutforsker's 8 — so the `font-variant-numeric:
+  tabular-nums` that rule already carried had no column to line its digits up in.
+  `Fhi.Helsedata.Stiler` carries the same declaration (ADO PR 39101), so a host on that stylesheet
+  already had the column and the samples were the ones out of step; a host copying its rules from
+  the samples should take it. It is a physical `margin-left` rather than `margin-inline-start`,
+  matching the declaration it stands in for — a host serving `dir="rtl"` wants the logical form.
+  (Fhi.Metadata-7bchj)
+- **The explorer's root element carries its own width, and the drill-in spans the whole grid.**
+  `Fhi.Helsedata.Stiler` gives `.munin-explorer` a base rule of its own — `max-width: 1488px;
+  width: 100%; padding: 0 24px; margin: 0 auto` — because the component is a `<section>` a host
+  drops straight into the page and nothing above it bounds the width; and it lifts
+  `.munin-explorer-drilldown` to `grid-column: 1 / -1`, excluding it from the catch-all that places
+  everything else in the results column. A host laying the component out in two columns needs both.
+  Without the first the component runs to the window edge; without the second the drill-in renders
+  in the results column with the filter track standing empty — measured in the sample at 408px of
+  dead gutter, and 1041px of content in a 1024px viewport. (Fhi.Metadata-7e7de)
+- **Two renames, one line each.** A host mounting `KildeExplorerWithUrlState` mounts
+  `KildeExplorer` instead — same three parameters, same behaviour. A host that deliberately wanted
+  the bare list under the old `KildeExplorer` name now names `KildeSearch`. A CMS field holding
+  `Fhi.Munin.Explorer.Blazor.KildeExplorerWithUrlState` resolves to nothing after this release and
+  renders no component: it is a string, so nothing fails to compile first.
+  <br><br>
+  **`KildeExplorer` must be mounted at an interactive render mode** — `render-mode="Server"`, never
+  `ServerPrerendered`; `@rendermode` with `prerender: false` in a modern host. It owns `?kilde=`
+  and throws on initialisation rather than drawing a page whose URL never follows the view.
+  `KildeSearch` has no such requirement, and no query handling either: a link to it always lands on
+  the list.
+  <br><br>
+  **`VariableExplorerPath` is unchanged and still optional.** It is the one thing only the host
+  knows, so a CMS that mounts by type name and cannot pass it gets no selection column and no
+  handover button — the same page that mount renders today. Set it from a host you write yourself
+  to offer the handover; it is not defaulted to a guess, because a button leading to a page you may
+  not have is worse than no button.
+  <br><br>
+  **No new or removed class names**, and no `Fhi.Helsedata.Stiler` rule changes with this: the
+  markup is the same component under a different name.
+- **The two static blocks over an open kilde are now off by default.** "Kriterier for tilgang til
+  data" and "Priser" draw only when the host sets `ShowAccessAndPrices="true"`, which is declared
+  on both of Kelda's mounts — `KildeSearch` and `KildeExplorer`. Both blocks send
+  the reader to helsedata.no, so a host embedded on a site that already publishes its own access
+  and pricing pages was shipping a second copy of content it does not own, inside a component it
+  cannot edit. **A host mounting the kildeutforsker on its own site has to add the parameter to
+  keep the blocks it had.** Nothing else on the kilde page moves with it: the variable count, the
+  metadata, the datasamlinger and the sidebar are drawn either way. (Fhi.Metadata-ay3zz)
+- **The column picker's names now appear on the kilde table too**, unchanged:
+  `munin-explorer-header`, `munin-explorer-header__actions`,
+  `munin-explorer-header__actions-button` and `munin-explorer__dropdown`, plus Stiler's own
+  `dropdown-choicepicker`. No name is new, so a host that styles the variable explorer's picker
+  has nothing to add — **unless its rules are scoped to that explorer's own container**, in which
+  case the same control renders undressed above the kilde table. Worth reading the selector rather
+  than the name: a rule reaching this picker has to match a `<details>` inside
+  `munin-explorer-header`, wherever that header sits.
+- **A toggle in that picker should not have its tick read out.** The sample stylesheets draw the
+  on/off state as `☑`/`☐` in `::before`, and a browser folds generated content into the accessible
+  name — so the control announced as "☑ Kildetype" and said in words what `aria-pressed` already
+  says. The samples now write `content: "\2611" / ""`, whose empty alternative text keeps the glyph
+  out of the name; a host drawing its own tick owes the same, or it owes no glyph at all. That
+  syntax has a floor — Chrome 77, Safari 17.4, Firefox 133 — and below it the whole declaration is
+  invalid, so the tick disappears rather than degrading. A host supporting older browsers should
+  mark the glyph up as `aria-hidden` content instead. (Fhi.Metadata-ay3zz)
+- **`munin-explorer-kilder-scroll` is new and needs `overflow-x: auto`.** It wraps the kilder table
+  alone. Undrawn, the table's overflow goes to the document and the host's whole page scrolls
+  sideways; the markup already carries `role`, `tabindex` and the name. Both sample stylesheets
+  carry it, and it ships in `Fhi.Helsedata.Stiler` from 0.1.41 onward. (Fhi.Metadata-b3brc)
+- **The same box is focusable, so it also needs a visible focus indicator.** `tabindex="0"` is
+  unconditional, so a keyboard lands on the box whether or not it has anything to scroll, and a
+  focus stop the reader cannot see is WCAG 2.4.7 — one failure traded for another. A host whose CSS
+  reset strips outlines must put one back. Both sample stylesheets and `Fhi.Helsedata.Stiler` use
+  `outline: 2px solid <focus colour>; outline-offset: 4px` on `:focus-visible`. (Fhi.Metadata-b3brc)
+- **`munin-explorer-kilder__expand` needs a rule that out-specifies the host's own cell rule, and
+  less side padding than the rows carry.** In `Fhi.Helsedata.Stiler` it is written scoped —
+  `.munin-explorer-kilder .munin-explorer-kilder__expand` — because a stylesheet that pads `th, td`
+  under the table's class is (0,1,1) and a bare class name loses to it. A host that writes the rule
+  bare gets a left-aligned column that keeps the rows' 12px of side air, and at that padding the
+  column is content-driven, so `width: 32px` does nothing either. Measured in the sample: 46.95px
+  wide with the glyph flush left, against 32px and centred once the rule is scoped and the padding
+  is 4px. (Fhi.Metadata-cuo0e)
+- **A host stylesheet with a bare element rule un-hides everything this package marks `[hidden]`.**
+  The browser's own `[hidden] { display: none }` loses to any author rule of equal specificity, so a
+  reset carrying `div { display: block }` leaves the folded filter panel on screen while the toggle
+  still says "Vis filtre". Put `[hidden] { display: none }` back for the elements you dress; both
+  sample stylesheets now do. (`Fhi.Metadata-fih3y`)
+- **One lane in the sidebar is the host stylesheet's job, and `Fhi.Helsedata.Stiler` has done it
+  since 0.1.39.** The fact lists in the kilde, datasamling and whole-variable asides wear
+  `munin-explorer-meta__grid`, the same class the package draws every fact list with. That grid is
+  two `1fr` tracks and `1fr` floors at min-content, so in a 320px sidebar the Lovverk prose sizes the
+  tracks past the panel edge, and the reader sees the whole page scroll sideways at any width above
+  1280px. Stiler closes it with a rule scoped to the three asides —
+  `.munin-explorer-kilde__aside .munin-explorer-meta__grid` and its `__whole__`/`__datasamling__`
+  siblings, `grid-template-columns: minmax(0, 1fr)` — and the sample stylesheets here now carry a
+  copy of that rule, selector for selector, so the stand-in works the way the real one does. A host
+  on an older Stiler, or on a stylesheet of its own, needs the equivalent or it gets the scrollbar.
+- **Reach it by scoping to the aside, not by the `munin-explorer-meta__grid-1` modifier.** The
+  package still writes that name in one place — the variable detail panel, where helsedata's own
+  layout expects it — and in none of the asides, so a host should not reach for it there either. In
+  Stiler the same name also carries `grid-row: 1/3` for the variable page's layout, so on an aside it
+  brings a placement rule along with the single track. The scoped rule out-specifies it there
+  regardless. (Fhi.Metadata-hi0po)
+- **`munin-explorer-meta__grid-1` carries a placement rule as well as a track count, and
+  `munin-explorer-meta__grid-2` only gets its one lane if the override is ordered after the base
+  rule.** In `Fhi.Helsedata.Stiler` the two modifiers share `grid-template-columns: auto` and
+  `-1` additionally has `grid-row: 1/3`, both declared after `.munin-explorer-meta__grid`'s own
+  `1fr 1fr`. A host writing its own stylesheet needs the same two things: the placement rule, which
+  is inert wherever the element's parent is not a grid container and stops being inert the moment
+  it is, and the source order, because the modifier and the base rule are equally specific and the
+  later one wins. The sample stylesheets had neither, so `-1` lost its row span and `-2` silently
+  kept two lanes. (Fhi.Metadata-l9txl)
+- **The saved-list filter panel has to be a direct child of the explorer's own section, which is why
+  it is a fragment `VariableSearch` draws and not something `VariableListView` draws for itself.**
+  `Fhi.Helsedata.Stiler` places the filter column with `.munin-explorer > .munin-explorer-filters`,
+  a child combinator, and the saved list renders two levels down inside the tab panel. A host
+  mounting `VariableListFilters` on a page of its own must put it where the search's own panel would
+  go, or the panel lands in the result column and the 384px filter track stands empty — which is
+  what that tab looked like before this: 408px of gutter on the left and none on the right.
+- **No new class name.** The panel wears `munin-explorer-filters`, `form-element__label`,
+  `munin-explorer-filters__count` and `hd-button-square button-square--ghost`, all of which Stiler
+  and both sample stylesheets already draw. Nothing to add.
+- **A null `int`, `bool`, `Guid` or enum still fails the whole call, on purpose.** Unlike a name or
+  a list, those have no value that means "nothing" — a kilde reported as having `0` datasamlinger
+  when it has fourteen is worse than the "could not load" the component draws instead. Munin backs
+  that up: each is a primary key, a `NOT NULL` column or a `Count()` aggregate, so a null in one is
+  a broken payload rather than a shape the API can send. (Fhi.Metadata-o355u)
+- **Every root element now carries the package version in `data-munin-explorer-version`, so you can
+  tell which version is serving a page from the browser alone.** Read it with
+  `document.querySelector("[data-munin-explorer-version]").dataset.muninExplorerVersion` — signed in
+  or not, on any page that mounts one. The value is the assembly's `AssemblyInformationalVersion`,
+  so it carries the prerelease suffix and the commit behind the `+`. Read it from the rendered DOM
+  rather than from `curl`: an interactive mount is not prerendered.
+- **`munin-explorer-version` is part of an attribute name and not a class**, so no stylesheet rule
+  is possible for it and none is wanted. (Fhi.Metadata-sqbei)
+- **A rule for `munin-explorer-filters__count` has to switch off shrinking and wrapping.** The
+  facet value's `<label>` is a flex row carrying `overflow-wrap: anywhere`, so that a
+  200-character databehandler breaks inside the sidebar rather than leaving it. The count sits in
+  that row as a shrinkable item and inherits the wrapping, so a long value squeezed it until
+  `(32)` broke between the digits and the closing bracket — two lines, reading as two numbers.
+  `flex: none` and `overflow-wrap: normal` on the count are what hold it whole, and the sample
+  stylesheets now carry both. Taking the wrapping off the label instead fixes the count and lets
+  the long values out of the panel. (Fhi.Metadata-z1895)
+- **`munin-explorer-list-scroll` is new, and a host owes it a `:focus-visible` outline.** It wraps
+  the saved-list table alone, the way `munin-explorer-kilder-scroll` wraps the kilder table. Unlike
+  that one it carries its own `overflow-x: auto` inline: measured in `HostileHost`, nine columns
+  put 1323px of table in an 843px page and the *document* scrolled, which is WCAG 1.4.10 on the
+  host's page rather than a table that looks wrong on ours — and no host stylesheet can be assumed
+  to have the name the day it appears. It carries `position: relative` inline too, which is what
+  makes it the containing block that clips: without it every row's absolutely positioned
+  `screenreader-only` label escapes the box, and a host whose visually-hidden idiom is `clip`
+  rather than a negative offset gets the sideways scroll back through it — 292px of it, measured.
+  What is still the host's is the focus ring, because the box carries `tabindex="0"` and a focus
+  stop nobody can see is WCAG 2.4.7. Both sample stylesheets have it; `Fhi.Helsedata.Stiler` has
+  no rule for the name at all as of 0.1.37.
+- **The saved list's rows are `<table>` markup now, so rules written against the old flex row miss
+  them.** `munin-explorer-data-list` is still the name, but on a `<table>`, and the cells wear
+  their per-column modifier without `munin-explorer-dataitem-main__column` — that class is
+  `display: inline-flex`, which on a `<td>` takes the cell out of its own table. A host with rules
+  of its own should scope them on the element: `VariableSearch` still draws the same names as a
+  `<ul>` of flex rows and must keep doing so, because that shape is helsedata's own variable page.
+  Stiler needs no change for the table to be legible — an element brings its own default where a
+  class name brings nothing — but it has no rule for a `<table>` under this name either.
+
 ## 0.1.0-alpha.8 — 2026-09-03
 
 ### Added
