@@ -996,10 +996,8 @@ public sealed partial class VariableSearch : ComponentBase
         // below is empty and this button — whose only content IS that span — announces as
         // "button, collapsed" with nothing in front of it. WCAG 4.1.2.
         //
-        // The code, not a written sentence. "Vis hele variabelen" was here and passed every
-        // checker while telling a reader nothing: every unnamed row announced identically, so
-        // nothing said which one they were standing in. The code is drawn in the row already and
-        // is what the API itself falls back to (Fhi.Metadata-w13lk).
+        // The code rather than a written sentence: one sentence names every unnamed row alike, so
+        // nothing says which one the reader is standing in (Fhi.Metadata-w13lk).
         //
         // An aria-label, and not the two-element aria-labelledby the rest of this row uses,
         // because there is no Munin half interpolated into our prose here. And not written into

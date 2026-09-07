@@ -206,7 +206,7 @@ public sealed partial class KildeExplorer : ComponentBase
     // The kilde whose view is open, what has been fetched for it, and the name the list already
     // knew — which is what the region can be labelled by while the fetch is still running.
     private Guid? _selectedId;
-    private string? _selectedName;
+    private (string Text, bool Norwegian)? _selectedName;
     private KildeDetail? _kilde;
     private bool _detailLoading;
     private string? _detailError;
@@ -264,8 +264,6 @@ public sealed partial class KildeExplorer : ComponentBase
         builder.AddContent(3, named.Text);
         builder.CloseElement();
     };
-
-
 
     // The row's name, and whether it is still the catalogue's Norwegian. An empty navn falls back
     // to the code, which the row already draws under the name and which is not Norwegian prose, so
@@ -595,9 +593,11 @@ public sealed partial class KildeExplorer : ComponentBase
         // After the list, not before: the list is what knows the kilde's name, which is what the
         // open view's region is labelled by while its own fetch is still running. Read before the
         // render below rather than after it, so that render is the one that carries the name.
-        _selectedName = _selectedId is { } named
-            ? _kilder.FirstOrDefault(kilde => kilde.Id == named)?.Name
+        var reopened = _selectedId is { } named
+            ? _kilder.FirstOrDefault(kilde => kilde.Id == named)
             : null;
+
+        _selectedName = reopened is null ? null : RowName(reopened);
 
         // The render that puts the list on screen — or, on a deep link, the named drilldown that
         // has replaced it.
@@ -776,7 +776,7 @@ public sealed partial class KildeExplorer : ComponentBase
     private async Task SelectAsync(KildeSummary kilde)
     {
         _selectedId = kilde.Id;
-        _selectedName = kilde.Name;
+        _selectedName = RowName(kilde);
 
         // Before the callback rather than inside LoadKildeAsync after it: an asynchronous host —
         // one writing the URL, say — yields, and ComponentBase draws the open view in that gap.
@@ -924,8 +924,9 @@ public sealed partial class KildeExplorer : ComponentBase
         builder.OpenElement(0, $"h{KildeLevel}");
         builder.AddAttribute(1, "class", "headline headline-s");
         builder.AddAttribute(2, "id", DetailHeadingId);
-        builder.AddAttribute(3, "lang", CatalogueLang(_selectedName));
-        builder.AddContent(4, _selectedName ?? DetailStatus ?? T.KildeLoading);
+        builder.AddAttribute(3, "lang",
+                             _selectedName is { } open ? CatalogueProperties.Foreign(open.Norwegian, Reader) : null);
+        builder.AddContent(4, _selectedName?.Text ?? DetailStatus ?? T.KildeLoading);
         builder.CloseElement();
     };
 

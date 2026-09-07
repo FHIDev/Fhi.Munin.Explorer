@@ -523,7 +523,7 @@ public class DatasamlingViewTest : BunitContext
         var heading = cut.Find("h2");
 
         Assert.NotEqual("", heading.TextContent.Trim());
-        Assert.Equal(heading.TextContent.Trim(), Datasamling().Code);
+        Assert.Equal(Datasamling().Code, heading.TextContent.Trim());
         Assert.Empty(cut.FindAll("p.munin-explorer-datasamling__identifiers"));
     }
 

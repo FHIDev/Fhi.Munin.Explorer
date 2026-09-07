@@ -501,23 +501,14 @@ internal sealed record Texts(
     };
 
     /// <summary>
-    /// What a control or a heading shows for something the catalogue has left unnamed: its own
-    /// name, else its code, else <see cref="NotSpecified"/>. The flag says whether the answer is
-    /// the catalogue's Norwegian, so a caller marking text with <c>lang</c> knows not to mark a
-    /// code or this component's own prose as Norwegian.
+    /// What a control or a heading shows for a thing the catalogue left unnamed: its name, else its
+    /// code, else <see cref="NotSpecified"/>. The flag says whether the answer is still the
+    /// catalogue's Norwegian, so a caller does not mark a code with <c>lang</c>.
     /// </summary>
     /// <remarks>
-    /// The code, because it is a real identifier a reader can act on and is already drawn under the
-    /// name — and because the API takes the same step, mapping a version's missing preferred term
-    /// to <c>variabel.Code</c>. A name like "Ikke oppgitt" on a button passes a checker and leaves
-    /// the reader no way to tell one unnamed row from the next; it is here only for the row that
-    /// has no code either, which no captured payload has ever held.
-    /// <para>
-    /// At the render site rather than on the contract, deliberately. Two things read the raw value
-    /// and have to keep seeing the truth: the kilde filter matches name and code separately, so a
-    /// name that had quietly become the code would match twice, and DatasamlingView hides a
-    /// description that repeats the name. A fallback on the contract would reach both.
-    /// </para>
+    /// Applied at the render site and never on the contract: the kilde filter matches name and code
+    /// separately, and DatasamlingView hides a description that repeats the name — both read the raw
+    /// value and a fallback underneath them would reach both. (Fhi.Metadata-w13lk)
     /// </remarks>
     public (string Text, bool Norwegian) Named(string? name, string? code) =>
         !string.IsNullOrWhiteSpace(name) ? (name, true)

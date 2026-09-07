@@ -17,7 +17,7 @@
 
             @* Not when the heading above has already fallen back to it: the code twice, stacked, is
                what a naive fallback draws. (Fhi.Metadata-w13lk) *@
-            @if (Identifiers is { } identifiers && !string.Equals(identifiers, named.Text, StringComparison.Ordinal))
+            @if (named.Norwegian && Identifiers is { } identifiers)
             {
                 <p class="caption margin--none munin-explorer-kilde__identifiers">@identifiers</p>
             }

@@ -344,14 +344,15 @@ public partial class VariableSearch
 
     private FacetValue KildeValue(KildeFacet kilde, ILookup<Guid, DelkildeFacet> delkilderByKilde) =>
         new($"kilde:{kilde.Id}",
-            kilde.Name,
+            T.Named(kilde.Name, kilde.ShortName).Text,
             Counted(kilde.Count),
             _filter.KildeIds.Contains(kilde.Id),
             () => ToggleAsync(_filter.KildeIds, kilde.Id, ids => _filter with { KildeIds = ids }),
             DelkildeChildren(kilde.Id, delkilderByKilde));
 
     private IReadOnlyList<FacetValue> DelkildeChildren(Guid kildeId, ILookup<Guid, DelkildeFacet> delkilderByKilde) =>
-        Tree(delkilderByKilde[kildeId].Select(d => new TreeNode(d.Id, d.ParentDelkildeId, d.Name, d.Count)),
+        Tree(delkilderByKilde[kildeId]
+                 .Select(d => new TreeNode(d.Id, d.ParentDelkildeId, T.Named(d.Name, null).Text, d.Count)),
              "delkilde:",
              IsDelkildeChosen,
              ToggleDelkilde, Counted);
@@ -375,7 +376,8 @@ public partial class VariableSearch
         new("variabelgruppe",
             T.FieldVariableGroup,
             OpenByDefault: false,
-            Tree(facets.Variabelgrupper.Select(g => new TreeNode(g.Id, g.ParentId, g.Name, g.Count)),
+            Tree(facets.Variabelgrupper
+                     .Select(g => new TreeNode(g.Id, g.ParentId, T.Named(g.Name, null).Text, g.Count)),
                  "variabelgruppe:",
                  IsGruppeChosen,
                  ToggleGruppe, Counted),
@@ -391,7 +393,8 @@ public partial class VariableSearch
         new("filter",
             T.FacetFilter,
             OpenByDefault: false,
-            Tree(facets.Filters.Select(f => new TreeNode(f.Id, f.ParentId, f.Name, f.Count)),
+            Tree(facets.Filters
+                     .Select(f => new TreeNode(f.Id, f.ParentId, T.Named(f.Name, null).Text, f.Count)),
                  "filter:",
                  IsSavedFilterChosen,
                  ToggleSavedFilter, Counted));
@@ -438,7 +441,7 @@ public partial class VariableSearch
         new($"ak:{kodeverk.Oid}",
             // The OID when fhi.kodeverk could not be reached, because a nameless button is worse
             // than one labelled with the number the filter actually sends.
-            string.IsNullOrWhiteSpace(kodeverk.Name) ? kodeverk.Oid : kodeverk.Name,
+            T.Named(kodeverk.Name, kodeverk.Oid).Text,
             Counted(kodeverk.Count),
             _filter.AdministrativtKodeverk.Contains(kodeverk.Oid),
             () => ToggleAsync(_filter.AdministrativtKodeverk, kodeverk.Oid,
@@ -450,7 +453,7 @@ public partial class VariableSearch
 
     private FacetValue InstrumentValue(InstrumentFacet instrument) =>
         new($"instrument:{instrument.Id}",
-            string.IsNullOrWhiteSpace(instrument.Name) ? instrument.Code : instrument.Name,
+            T.Named(instrument.Name, instrument.Code).Text,
             Counted(instrument.Count),
             _filter.InstrumentIds.Contains(instrument.Id),
             () => ToggleAsync(_filter.InstrumentIds, instrument.Id, ids => _filter with { InstrumentIds = ids }),

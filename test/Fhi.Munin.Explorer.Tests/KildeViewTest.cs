@@ -1626,11 +1626,13 @@ public class KildeViewTest : BunitContext
         // The heading is the drill-in's only h — empty, the page has no title and the reader who
         // followed a link has nothing telling them where they landed. The identifier line under it
         // usually carries the code, so it goes when the heading has taken it. (Fhi.Metadata-w13lk)
-        var cut = Render(Kilde() with { PreferredTerm = "", ShortName = null });
+        // The fixture keeps its kortNavn on purpose. Comparing the caption against the heading TEXT
+        // rather than against the fallback passes only where there is no short name: the caption
+        // reads "K_ALS (ALS)", the heading "K_ALS", and the code lands on the page twice.
+        var cut = Render(Kilde() with { PreferredTerm = "" });
 
-        var heading = cut.Find("h2");
-
-        Assert.Equal("K_ALS", heading.TextContent.Trim());
+        Assert.Equal("ALS", Kilde().ShortName);
+        Assert.Equal("K_ALS", cut.Find("h2").TextContent.Trim());
         Assert.Empty(cut.FindAll("p.munin-explorer-kilde__identifiers"));
     }
 
@@ -1664,5 +1666,28 @@ public class KildeViewTest : BunitContext
             .ToList();
 
         Assert.Contains("K_ALS.SUB", names);
+    }
+
+    [Fact]
+    public void Delkilde_WhenTheCodeStandsInForItsName_ThenTheIdentifierLineGoesAndTheMarkerWithIt()
+    {
+        // The second half of the delkilde site: the identifier line under the heading is the same
+        // code, so it is not drawn twice, and a code is not Norwegian to be sounded out.
+        // (Fhi.Metadata-w13lk)
+        var kilde = Kilde() with
+        {
+            Delkilder =
+            [
+                new() { Id = Guid.NewGuid(), Code = "K_ALS.SUB", ShortName = "SUB", Name = "" }
+            ]
+        };
+
+        var cut = Render(kilde, language: "en");
+
+        var heading = cut.Find(".munin-explorer-kilde__delkilde-name");
+
+        Assert.Equal("K_ALS.SUB", heading.TextContent.Trim());
+        Assert.Null(heading.GetAttribute("lang"));
+        Assert.Empty(cut.FindAll(".munin-explorer-kilde__delkilde p.munin-explorer-kilde__identifiers"));
     }
 }

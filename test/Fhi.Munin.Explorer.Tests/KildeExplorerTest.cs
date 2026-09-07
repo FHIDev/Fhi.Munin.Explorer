@@ -3391,4 +3391,69 @@ public class KildeExplorerTest : BunitContext
 
         Assert.Equal("K_ALS.SUB", heading.TextContent.Trim());
     }
+
+    [Fact]
+    public void Drilldown_WhenAnUnnamedKildeIsOpened_ThenTheRegionAndItsHeadingStillCarryAName()
+    {
+        // The heading the open view's region is labelled by is written from the name the LIST knew,
+        // so it was the one place the row's own fallback did not reach and the region opened
+        // unnamed for the length of the fetch. (Fhi.Metadata-w13lk)
+        var cut = RenderWith(new FakeClient(Kilde("", "K_ALS")));
+
+        cut.Find("th button.munin-explorer-kilder__name").Click();
+
+        var region = cut.Find("[role=region][aria-labelledby]");
+        var heading = cut.Find($"#{region.GetAttribute("aria-labelledby")}");
+
+        Assert.Equal("K_ALS", heading.TextContent.Trim());
+        Assert.Null(heading.GetAttribute("lang"));
+    }
+
+    [Fact]
+    public void Row_WhenTheCodeStandsInForTheName_ThenTheButtonIsNotMarkedAsNorwegian()
+    {
+        // The marker says which voice to read the text in, and a code is not Norwegian prose. The
+        // named row is asserted beside it, so the marker cannot be dropped wholesale and still pass.
+        var cut = RenderWith(
+            new FakeClient(Kilde("", "K_ALS"), Kilde("Dødsårsaksregisteret", "K_DAR")),
+            b => b.Add(c => c.Language, "en"));
+
+        var buttons = cut.FindAll("th button.munin-explorer-kilder__name");
+
+        Assert.Null(buttons[0].GetAttribute("lang"));
+        Assert.Equal("no", buttons[1].GetAttribute("lang"));
+    }
+
+    [Fact]
+    public void Panel_WhenADatasamlingHasNoName_ThenItsRowHeaderIsNotLeftEmpty()
+    {
+        // The one place the bead's row-header premise is TRUE: a datasamling row's th holds nothing
+        // but the name, so an empty one costs every other cell its header. It carries no code
+        // either, so the short name stands in. (Fhi.Metadata-w13lk)
+        var als = Kilde("Als registeret", "K_ALS");
+        var detail = Detail(als) with
+        {
+            Datasamlinger = [new() { Name = "", ShortName = "BIODATA", VariableCount = 12 }]
+        };
+
+        var cut = RenderWith(new FakeClient(als).Describing(detail));
+
+        ExpandToggle(cut, "Als registeret").Click();
+
+        var header = cut.Find(".munin-explorer-kilder__expanded tbody th");
+
+        Assert.Equal("row", header.GetAttribute("scope"));
+        Assert.Equal("BIODATA", header.TextContent.Trim());
+    }
+
+    [Fact]
+    public void Row_WhenAKildeHasNeitherNameNorCode_ThenTheThirdArmSaysSoRatherThanNothing()
+    {
+        // Reachable, not hypothetical: code and navn default to "" alike, and since
+        // Fhi.Metadata-o355u an explicit null on either reads as "". Two such rows still announce
+        // identically - the fallback cannot invent data that is not there. (Fhi.Metadata-w13lk)
+        var cut = RenderWith(new FakeClient(Kilde("", "")));
+
+        Assert.Equal("Ikke oppgitt", AccessibleName.Of(cut.Find("th button.munin-explorer-kilder__name")));
+    }
 }

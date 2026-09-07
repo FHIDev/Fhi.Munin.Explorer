@@ -9433,4 +9433,26 @@ public class VariableSearchTest : BunitContext
         Assert.Equal("Try the search again", buttons[0].TextContent);
         Assert.Equal("Try the filters again", buttons[1].TextContent);
     }
+
+    [Fact]
+    public void Facet_WhenAValueHasNoName_ThenItsCheckboxIsNamedRatherThanLeftAsACount()
+    {
+        // A facet value's label IS its checkbox's accessible name, so an unnamed kilde announced as
+        // "(30)". The kodeverk and instrument facets below already fall back this way; four of
+        // their siblings did not. (Fhi.Metadata-w13lk)
+        var facets = Facets() with
+        {
+            Kilder = [new() { Id = Dodsarsak, Name = "", ShortName = "DAR", Count = 30 }],
+            Variabelgrupper = [new() { Id = Bakgrunn, Name = "", Count = 7 }]
+        };
+
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE")), facets));
+
+        var names = cut.FindAll(".munin-explorer-filters li > label input[type=checkbox]")
+            .Select(AccessibleName.Of)
+            .ToList();
+
+        Assert.Contains(names, n => n.Contains("DAR", StringComparison.Ordinal));
+        Assert.Contains(names, n => n.Contains("Ikke oppgitt", StringComparison.Ordinal));
+    }
 }
