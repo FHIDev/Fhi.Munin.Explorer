@@ -98,11 +98,7 @@
                     @SectionHeading(T.HeadingVariables)
                     <p class="caption">@T.KildeVariableCount(kilde.TotalVariables)</p>
 
-                    @* Two static blocks, off unless the host asks for them — see
-                       ShowAccessAndPrices for why an embedded host must not get them by default.
-
-                       `caption` for the same reason the variable count above it wears it, and not
-                       bare: a classless <p> is the one text block in this package that picks no
+                    @* `caption` for the reason the count above wears it: a classless <p> picks no
                        size at all, so on a host carrying Stiler and nothing else these two would
                        land at the browser's own paragraph size beside a sibling that is dressed. *@
                     @if (ShowAccessAndPrices)
