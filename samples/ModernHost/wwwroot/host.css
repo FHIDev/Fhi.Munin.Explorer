@@ -1304,8 +1304,8 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 }
 
 /* After the base rule, the way Stiler orders it: equal specificity, so the copy that used to sit
-   before it lost and `-2` kept two lanes where Stiler gives it one. `grid-row` is inert while the
-   parent is no grid, and is here so it stops being. (Fhi.Metadata-l9txl) */
+   before it lost and `-2` kept two lanes where Stiler gives it one. `grid-row` draws nothing until
+   the panel's parent is a grid, and is here so the samples move the day one does. (Fhi.Metadata-l9txl) */
 .munin-explorer-meta__grid-1,
 .munin-explorer-meta__grid-2 {
   grid-template-columns: auto;
