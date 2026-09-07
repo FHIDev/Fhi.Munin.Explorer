@@ -56,11 +56,8 @@ internal sealed class NullAsEmptyCollections : JsonConverterFactory
     /// is how this shipped twice.
     /// </para>
     /// <para>
-    /// <c>IReadOnlyCollection&lt;T&gt;</c> is matched too, since it turned out to be in use: the
-    /// request bodies in <see cref="MuninExplorerClient"/> are spelled that way, and only
-    /// <c>ExplicitNullTest</c>'s wider sweep looks at them. They are written and never read, so
-    /// nothing was broken — and nothing would have broken until a contract borrowed the spelling.
-    /// (Fhi.Metadata-o355u)
+    /// <c>IReadOnlyCollection&lt;T&gt;</c> is matched because the request bodies in
+    /// <see cref="MuninExplorerClient"/> use it; they are written, never read. (Fhi.Metadata-o355u)
     /// </para>
     /// </remarks>
     public override bool CanConvert(Type typeToConvert)
