@@ -71,11 +71,11 @@ public class ExplorerVersionTest : BunitContext
     }
 
     [Fact]
-    public void Version_WhenTheKildeExplorerIsRendered_ThenItIsTheAssemblysOwnInformationalVersion()
+    public void Version_WhenTheKildeSearchIsRendered_ThenItIsTheAssemblysOwnInformationalVersion()
     {
         Prepare(new OneKildeClient());
 
-        var cut = Render<KildeExplorer>();
+        var cut = Render<KildeSearch>();
 
         Assert.Equal(Expected, VersionOn(cut.Find($"[{Attribute}]")));
     }
@@ -88,7 +88,7 @@ public class ExplorerVersionTest : BunitContext
         // renders something that looks like a version and cannot tell two releases apart.
         Prepare(new OneKildeClient());
 
-        var cut = Render<KildeExplorer>();
+        var cut = Render<KildeSearch>();
         var assemblyVersion = typeof(VariableExplorer).Assembly.GetName().Version?.ToString();
 
         Assert.NotEqual(assemblyVersion, VersionOn(cut.Find($"[{Attribute}]")));
@@ -114,7 +114,7 @@ public class ExplorerVersionTest : BunitContext
         // that the version rides on the markup rather than on anything a session supplies.
         Prepare(new OneKildeClient());
 
-        var cut = Render<KildeExplorerWithUrlState>();
+        var cut = Render<KildeExplorer>();
 
         Assert.Equal(Expected, VersionOn(cut.Find($"[{Attribute}]")));
     }

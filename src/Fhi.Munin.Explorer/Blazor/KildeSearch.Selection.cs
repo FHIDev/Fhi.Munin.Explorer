@@ -8,7 +8,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// leaves through <see cref="ExploreVariablesRequested"/> and the host writes the URL. Kept out
 /// of the URL itself, like the search text and the facets. (Fhi.Metadata-5ghur)
 /// </remarks>
-public sealed partial class KildeExplorer
+public sealed partial class KildeSearch
 {
     /// <summary>The kilder the reader has ticked, by id.</summary>
     /// <remarks>

@@ -147,7 +147,7 @@ internal static class CatalogueProperties
     /// <see cref="Contracts.KildeSummary.AdditionalProperties"/> for how a null gets in, and
     /// <c>NullAsEmptyCollections</c> for what stops it arriving from this package's own client. A
     /// host can substitute that client, so it is taken here as well: as the empty bag, which is
-    /// what the payload means by it, and which is the same answer <c>KildeExplorer.Property</c>
+    /// what the payload means by it, and which is the same answer <c>KildeSearch.Property</c>
     /// gives on the list side. Guarded here rather than at each call site because all three of them
     /// pass a field declared that way: <c>KildeView</c>, <c>VariableView</c> and the variable
     /// panel's own rows. Unguarded it throws while rendering, where the try/catch around the fetch

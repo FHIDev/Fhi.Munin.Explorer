@@ -131,7 +131,7 @@ public interface IMuninExplorerClient
     /// instead of consuming <c>MuninExplorerClient</c> stops compiling on upgrade when a member
     /// arrives without a default. Empty is a working answer rather than a placeholder: it is the
     /// state a caller reaches anyway when the endpoint is unreachable, and
-    /// <c>KildeExplorer</c> already treats that as labels lost and nothing else — the coded facets
+    /// <c>KildeSearch</c> already treats that as labels lost and nothing else — the coded facets
     /// show the catalogue's own tokens. What it costs is that a host which never overrides it gets
     /// CURIEs on two facets silently, which is the price of not breaking the ones that have not
     /// caught up; anything louder would be a page-level failure over a label.

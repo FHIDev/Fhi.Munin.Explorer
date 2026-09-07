@@ -214,14 +214,14 @@ script and the CI job carry no argument of their own: this is where it is writte
 **What exists to help.** `AccessibleName` in the test project resolves what a screen reader would
 announce a control as, and deliberately refuses to count `placeholder` or `title` — both satisfy a
 naive "has a naming attribute" check and neither is a name. Use it for anything a reader operates.
-`KildeExplorer` is the worked example of a data table done right: a real `<table>`, scoring 100.
+`KildeSearch` is the worked example of a data table done right: a real `<table>`, scoring 100.
 
 ## Components are sealed
 
 **Every component this package publishes is `sealed`, roots included.** A host can still mount
 `VariableSearch` or `VariableListView` itself, and sealing changes nothing about that — it is
 derivation the rule is about, not composition. `VariableExplorer` and
-`KildeExplorerWithUrlState` — the two roots that were still unsealed — were open by silence rather
+`KildeExplorer` — the two roots that were still unsealed — were open by silence rather
 than by decision: nothing in either file said why, and neither had ever carried the keyword
 (`Fhi.Metadata-l9l2n.43`).
 
