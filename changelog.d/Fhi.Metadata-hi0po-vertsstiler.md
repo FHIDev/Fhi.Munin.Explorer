@@ -1,15 +1,17 @@
 category: Notes for hosts
 
-- **`munin-explorer-meta__grid-1` is now written in a second place, and a rule scoped to the first
-  one will not reach it.** The single-lane modifier used to appear only inside the variable detail
-  panel, under `munin-explorer-meta`. It is now also on the fact lists in the kilde, datasamling and
-  whole-variable asides, which sit under `munin-explorer-kilde__aside` and its siblings inside
-  `munin-explorer-drilldown` — no `munin-explorer-meta` ancestor anywhere above them. A host whose
-  rule reads `.munin-explorer-meta .munin-explorer-meta__grid-1` therefore styles nothing here, and
-  the sidebar keeps the two-lane default that made the page scroll sideways. Check the selector, not
-  the name.
-- **It needs to beat the base class, and it only has equal specificity to do it with.** Both are
-  single-class selectors, so `munin-explorer-meta__grid-1` wins only where it is declared after
-  `munin-explorer-meta__grid`'s own `grid-template-columns`. The sample stylesheets get that right by
-  source order; a host that declares the base last loses the modifier silently.
+- **One lane in the sidebar is the host stylesheet's job, and `Fhi.Helsedata.Stiler` has done it
+  since 0.1.39.** The fact lists in the kilde, datasamling and whole-variable asides wear
+  `munin-explorer-meta__grid`, the same class the package draws every fact list with. That grid is
+  two `1fr` tracks and `1fr` floors at min-content, so in a 320px sidebar the Lovverk prose sizes the
+  tracks past the panel edge, and the reader sees the whole page scroll sideways at any width above
+  1280px. Stiler closes it with a rule scoped to the three asides —
+  `.munin-explorer-kilde__aside .munin-explorer-meta__grid` and its `__whole__`/`__datasamling__`
+  siblings, `grid-template-columns: minmax(0, 1fr)` — and the sample stylesheets here now carry a
+  copy of that rule, selector for selector, so the stand-in works the way the real one does. A host
+  on an older Stiler, or on a stylesheet of its own, needs the equivalent or it gets the scrollbar.
+- **Reach it by scoping to the aside, not by the `munin-explorer-meta__grid-1` modifier.** The
+  package does not write that name here, and a host should not add it: in Stiler the same name also
+  carries `grid-row: 1/3` for the variable page's own layout, so it brings a placement rule along
+  with the single track. The scoped rule out-specifies it in the aside regardless.
   (Fhi.Metadata-hi0po)

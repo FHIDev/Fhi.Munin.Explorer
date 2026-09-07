@@ -500,17 +500,4 @@ public class DatasamlingViewTest : BunitContext
         Assert.Equal("https://uit.no/research/tromsostudy",
                      Assert.Single(ingress.QuerySelectorAll("a")).GetAttribute("href"));
     }
-
-    [Fact]
-    public void Aside_Always_ThenItsFactListsAskForOneLane()
-    {
-        // The same 320px column the kilde view has, and the same defect if it goes two-lane: only
-        // KildeView's call sites were pinned, so dropping oneLane here compiled and passed.
-        // (Fhi.Metadata-hi0po)
-        var aside = Render(Datasamling()).Find(".munin-explorer-datasamling__aside");
-
-        Assert.NotEmpty(aside.QuerySelectorAll("dl.munin-explorer-meta__grid"));
-        Assert.All(aside.QuerySelectorAll("dl.munin-explorer-meta__grid"),
-                   dl => Assert.Contains("munin-explorer-meta__grid-1", dl.ClassName!, StringComparison.Ordinal));
-    }
 }

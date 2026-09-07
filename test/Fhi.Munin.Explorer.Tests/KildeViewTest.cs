@@ -1571,26 +1571,28 @@ public class KildeViewTest : BunitContext
     }
 
     [Fact]
-    public void Aside_Always_ThenItsFactListsAskForOneLaneAndTheMetadataBlocksDoNot()
+    public void Aside_WhenAHostStylesTheFactLists_ThenOneLaneIsScopedToItRatherThanLeftToTheDefault()
     {
-        // The sidebar is 320px and the default panel grid is two lanes, which leaves 148px each —
-        // narrower than "Personopplysningsloven", so the words pushed the whole page into
-        // horizontal scrolling. The wide middle column keeps two lanes; only the aside asks for
-        // one. (Fhi.Metadata-hi0po)
-        var cut = Render(Kilde());
+        // The component writes `munin-explorer-meta__grid` and no modifier, so one lane in the 320px
+        // sidebar is the host stylesheet's whole job. Without it the tracks go 148px + 196px and
+        // carry the words 64px past the panel edge. (Fhi.Metadata-hi0po)
+        static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
 
-        var aside = cut.Find(".munin-explorer-kilde__aside");
+        foreach (var aside in (string[])
+                 [
+                     "munin-explorer-kilde__aside",
+                     "munin-explorer-datasamling__aside",
+                     "munin-explorer-whole__aside",
+                 ])
+        {
+            var scoped = HostClassNames.SampleDeclarationsFor(aside)
+                .Where(rule => rule.Selector.Contains("munin-explorer-meta__grid", StringComparison.Ordinal))
+                .Select(rule => Squeezed(rule.Declarations))
+                .ToList();
 
-        Assert.NotEmpty(aside.QuerySelectorAll("dl.munin-explorer-meta__grid"));
-        Assert.All(aside.QuerySelectorAll("dl.munin-explorer-meta__grid"),
-                   dl => Assert.Contains("munin-explorer-meta__grid-1", dl.ClassName!, StringComparison.Ordinal));
-
-        // The metadata groups render into the main column, where two lanes are the right shape and
-        // the modifier would be a regression rather than a fix.
-        var main = cut.Find(".munin-explorer-kilde__main");
-
-        Assert.NotEmpty(main.QuerySelectorAll("dl.munin-explorer-meta__grid"));
-        Assert.All(main.QuerySelectorAll("dl.munin-explorer-meta__grid"),
-                   dl => Assert.DoesNotContain("munin-explorer-meta__grid-1", dl.ClassName!, StringComparison.Ordinal));
+            Assert.True(
+                scoped.Any(d => d.Contains("grid-template-columns:minmax(0,1fr)", StringComparison.Ordinal)),
+                $"Nothing gives {aside} one shrinkable lane, so its fact lists keep the two-lane default.");
+        }
     }
 }

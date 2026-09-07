@@ -57,14 +57,14 @@
 
             <aside class="munin-explorer-datasamling__aside">
                 @DetailBlocks.Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
-                @DetailBlocks.Facts(SourceInformation, Language, oneLane: true)
+                @DetailBlocks.Facts(SourceInformation, Language)
 
                 @* Heading and list together or neither: a datasamling that counts nothing gets no
                    empty block, and the type names the heading rather than filling a row. *@
                 @if (AnyStatistics)
                 {
                     @DetailBlocks.Heading(BlockLevel, StatisticsHeading, "headline headline-s")
-                    @DetailBlocks.Facts(Statistics, Language, oneLane: true)
+                    @DetailBlocks.Facts(Statistics, Language)
                 }
             </aside>
         </div>
