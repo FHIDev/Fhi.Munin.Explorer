@@ -278,6 +278,18 @@ These are not style preferences — each one is a host that breaks otherwise.
     WCAG 2.4.7 failure in place of the 1.4.10 one. A host running a CSS reset that strips outlines
     has to put one back; both sample stylesheets and Stiler use `outline: 2px solid <focus colour>`
     with `outline-offset: 4px`.
+    `munin-explorer-list-scroll` is that same box around the saved-list table, and the one place
+    this package does **not** leave the overflow to a host: the saved list is a real `<table>` now,
+    nine columns wide where the flex row it replaced folded into a card under 1280px, and measured
+    in `HostileHost` it put 1323px of table in an 843px page with the document scrolling. Stiler
+    has no rule for the name, so `overflow-x: auto` is set inline on the box — the shape the column
+    picker's own inline `position: relative` already uses, for the same reason: without it the
+    markup is wrong rather than plain. `position: relative` is inline here as well, and is the
+    half that is easy to miss: an `overflow` clips an absolutely positioned descendant only where
+    it is that descendant's containing block, and every row's `screenreader-only` label is one, so
+    without it a host using the `clip` idiom rather than a negative offset scrolls sideways through
+    them anyway. The class is still the hook, and the `:focus-visible` outline under it is still
+    the host's, for the reason the kilder box gives.
     `munin-explorer-pagination-pages` joined this list under `Fhi.Metadata-ejcbi`, and it is worth
     saying why it moved out of the handles: the numbered pages wear helsedata's own
     `hd-button-reset`, which strips the button chrome, so unlike every other control here nothing
@@ -429,6 +441,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-kodeverk__item` | handle |
   | `munin-explorer-kodeverk__name` | handle |
   | `munin-explorer-kodeverk__reference` | handle |
+  | `munin-explorer-list-scroll` | meaning |
   | `munin-explorer-meta` | handle |
   | `munin-explorer-meta__grid` | handle |
   | `munin-explorer-meta__grid-1` | handle |

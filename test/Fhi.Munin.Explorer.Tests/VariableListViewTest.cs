@@ -71,6 +71,9 @@ public class VariableListViewTest : BunitContext
         /// <summary>How many lists the reader has. Two of them makes the picker appear.</summary>
         public int ListCount { get; init; } = 1;
 
+        /// <summary>When the first list last changed, or null the way an omitted key arrives.</summary>
+        public DateTimeOffset? Updated { get; init; }
+
         public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default)
         {
             ListsCalls++;
@@ -85,7 +88,8 @@ public class VariableListViewTest : BunitContext
                 return Task.FromResult<IReadOnlyList<VariableList>>([]);
             }
 
-            List<VariableList> lists = [new VariableList { Id = ListId, Name = "Mine hjertevariabler" }];
+            List<VariableList> lists =
+                [new VariableList { Id = ListId, Name = "Mine hjertevariabler", UpdatedAt = Updated }];
 
             if (ListCount > 1)
             {
@@ -426,6 +430,40 @@ public class VariableListViewTest : BunitContext
         return Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, signedIn));
     }
 
+    /// <summary>
+    /// Presses the control that reveals the create field, and answers with the field. It starts
+    /// closed now, so every case that types a name opens it first.
+    /// </summary>
+    private static AngleSharp.Dom.IElement CreateField(IRenderedComponent<VariableListView> cut)
+    {
+        Reveal(cut, "button[id^='munin-explorer-create-toggle-']");
+        return cut.Find("input[id^='munin-explorer-new-list-']");
+    }
+
+    /// <summary>
+    /// The same for the rename field. By id rather than by the button's words, which follow
+    /// <c>Language</c> — one case here renders the view in English.
+    /// </summary>
+    private static AngleSharp.Dom.IElement RenameField(IRenderedComponent<VariableListView> cut)
+    {
+        Reveal(cut, "button[id^='munin-explorer-rename-toggle-']");
+        return cut.Find("input[id^='munin-explorer-rename-list-']");
+    }
+
+    /// <summary>
+    /// Presses a disclosure only when it is closed. Several cases open the same form twice, and
+    /// the button is one control, so an unconditional second press would fold it away.
+    /// </summary>
+    private static void Reveal(IRenderedComponent<VariableListView> cut, string selector)
+    {
+        var toggle = cut.Find(selector);
+
+        if (toggle.GetAttribute("aria-expanded") == "false")
+        {
+            toggle.Click();
+        }
+    }
+
     // -----------------------------------------------------------------------
 
     [Fact]
@@ -646,31 +684,60 @@ public class VariableListViewTest : BunitContext
         // with the sample stylesheet and with Stiler's own compiled main.css.
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
 
-        var table = cut.Find(".munin-explorer-data-list[role='table']");
+        // It is a real <table> now rather than that scaffolding. The explorer's own result list
+        // cannot be one — munin-explorer-dataitem-main is `display: flex` in Stiler, and flex on a
+        // <table> strips the semantics straight back off — but nothing in helsedata dresses a saved
+        // list, so this view can have the element that brings the structure with it.
+        var table = cut.Find("table.munin-explorer-data-list");
 
-        // No rowgroups: the header row and the data rows are siblings here, unlike the explorer's
-        // list, and a table may own rows directly.
-        Assert.Equal("row", table.QuerySelector(".munin-explorer-dataitem-header")!.GetAttribute("role"));
-        Assert.Equal(8, cut.FindAll("[role='columnheader']").Count);
+        // Nine headers, each a real <th scope="col">: the seven catalogue columns, the reader's
+        // own annotation, and the control column over the remove buttons.
+        var headers = table.QuerySelectorAll("thead th");
 
-        var row = cut.Find(".munin-explorer-data-list__item");
+        Assert.Equal(9, headers.Length);
+        Assert.All(headers, h => Assert.Equal("col", h.GetAttribute("scope")));
+        Assert.Equal("Navn", headers[0].TextContent.Trim());
 
-        Assert.Equal("row", row.GetAttribute("role"));
-        Assert.Equal("rowheader",
-                     row.QuerySelector(".munin-explorer-dataitem-main__name")!.GetAttribute("role"));
+        var row = Assert.Single(table.QuerySelectorAll("tbody tr"));
 
-        // Six value columns, the "Ønskede data" cell holding the annotation field, and the cell
-        // holding the remove button — the last two are cells because a row owns nothing but cells,
-        // and neither an <input> nor a <button> can be one without ceasing to be what it is.
-        var cells = row.QuerySelectorAll("[role='cell']");
+        // The name is a <th scope="row">, the call Kelda's own table makes: the rest of the row is
+        // about that variable, so a reader hearing one cell out of context is told which.
+        var rowHeader = row.QuerySelector("th");
+
+        Assert.NotNull(rowHeader);
+        Assert.Equal("row", rowHeader!.GetAttribute("scope"));
+        Assert.Equal("Alder ved diagnose", rowHeader.TextContent.Trim());
+
+        // Eight <td> under it: six catalogue columns, the annotation field, the remove button.
+        var cells = row.QuerySelectorAll("td");
 
         Assert.Equal(8, cells.Length);
         Assert.Equal("BUTTON", cells[^1].Children[0].TagName);
 
-        // The boxes that only lay the columns out step out of the tree, or they sit between the
-        // row and the cells it owns.
-        Assert.Equal("none", row.QuerySelector(".munin-explorer-data-list__item__row")!.GetAttribute("role"));
-        Assert.Equal("none", row.QuerySelector(".munin-explorer-dataitem-main")!.GetAttribute("role"));
+        // And nothing left claiming to be a table in ARIA. A role over a real table is at best a
+        // duplicate of what the element already says and at worst a contradiction of it.
+        Assert.Empty(cut.FindAll(
+            "[role='table'], [role='row'], [role='cell'], [role='columnheader'], [role='rowheader']"));
+    }
+
+    [Fact]
+    public void View_WhenTheRowsAreDrawn_ThenTheFieldNamesAreNotRepeatedInEveryRow()
+    {
+        // The header used to head nothing: every cell carried its own "Kode: ", "Kilde: " … for a
+        // screen reader, because a <div> has no header to be associated with. Three variables meant
+        // eighteen of them. A <th scope="col"> says it once and the reader does the association.
+        var cut = RenderView(new ListClient(
+            Item("Alder ved diagnose", "V_BDR.ALDER"),
+            Item("Kjønn", "V_BDR.KJONN"),
+            Item("Diagnoseår", "V_BDR.DIAGAR")));
+
+        // The one piece of screenreader-only text left in the body is the annotation field's own
+        // name, which no column header can supply: a control owes an accessible name of its own.
+        var hidden = cut.FindAll("tbody .screenreader-only");
+
+        Assert.Equal(3, hidden.Count);
+        Assert.All(hidden, h => Assert.Equal("Ønskede data", h.TextContent.Trim()));
+        Assert.DoesNotContain("Kode: ", cut.Markup, StringComparison.Ordinal);
     }
 
     /// <summary>The text of one named column's cell in the first row of the list.</summary>
@@ -682,14 +749,18 @@ public class VariableListViewTest : BunitContext
     public void View_WhenACellIsDrawn_ThenItIsTheCellTheResultListDraws()
     {
         // Both surfaces draw these columns, and now from one helper. Written out twice they looked
-        // alike and could stop being alike without anything failing: the hidden field name and the
-        // full kilde name on hover were in the explorer's cells and in none of these.
+        // alike and could stop being alike without anything failing: the full kilde name on hover
+        // was in the explorer's cells and in none of these.
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
 
         var cell = cut.Find(".munin-explorer-dataitem-main__source");
 
-        Assert.Equal("cell", cell.GetAttribute("role"));
-        Assert.Equal("Kilde: ", cell.QuerySelector(".screenreader-only")!.TextContent);
+        // A real cell here, and NOT wearing munin-explorer-dataitem-main__column: that class is
+        // `display: inline-flex` in Stiler, which on a <td> takes the cell out of its own table.
+        // The explorer's <div> version keeps both, which is what the helper's flag is for.
+        Assert.Equal("TD", cell.TagName);
+        Assert.DoesNotContain("munin-explorer-dataitem-main__column", cell.ClassList);
+        Assert.Null(cell.QuerySelector(".screenreader-only"));
         Assert.Equal("ALS", cell.QuerySelector(".munin-explorer-dataitem-main__column__text")!.TextContent);
         Assert.Equal("Als registeret", cell.GetAttribute("title"));
     }
@@ -713,9 +784,220 @@ public class VariableListViewTest : BunitContext
         Assert.Equal("Samling 26", CellText(cut, "dataCollection"));
         Assert.Equal("Gruppe 26", CellText(cut, "theme"));
 
-        // The hidden field name travels with the value, not with the position it was drawn in.
-        Assert.Equal("Datasamling: ",
-                     cut.Find(".munin-explorer-dataitem-main__dataCollection .screenreader-only").TextContent);
+        // And the header the second page's cells are read under is still the one over that column,
+        // which is what the hidden per-cell field name used to say and a <th scope="col"> now does.
+        var headers = cut.FindAll("thead th");
+
+        Assert.Equal("Datasamling", headers[3].TextContent.Trim());
+    }
+
+    [Fact]
+    public void View_WhenTheTableIsDrawn_ThenItSitsInABoxThatCanScrollSideways()
+    {
+        // Nine columns do not fit a narrow viewport, and with no box the overflow lands on the
+        // DOCUMENT — helsedata.no scrolling sideways under a component that is part of one page,
+        // which is WCAG 1.4.10 on somebody else's site. Same failure the kilder table had
+        // (Fhi.Metadata-b3brc), and the same answer.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        var box = cut.Find(".munin-explorer-list-scroll");
+
+        Assert.Equal("region", box.GetAttribute("role"));
+        Assert.Equal("Mine hjertevariabler", box.GetAttribute("aria-label"));
+
+        // Unconditional: knowing whether a box actually scrolls needs script, and this package
+        // ships none. A box a mouse can scroll and a keyboard cannot trades 1.4.10 for 2.1.1.
+        Assert.Equal("0", box.GetAttribute("tabindex"));
+        Assert.NotNull(box.QuerySelector("table.munin-explorer-data-list"));
+
+        // Both are the markup's own, not rules a host may not have: without them the table
+        // scrolls the host's page, measured in both sample hosts.
+        var style = box.GetAttribute("style")?.Replace(" ", "") ?? "";
+
+        Assert.Contains("overflow-x:auto", style, StringComparison.Ordinal);
+        Assert.Contains("position:relative", style, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void View_WhenTheViewIsDrawn_ThenCreatingAListIsOneButtonRatherThanAStandingForm()
+    {
+        // helsedata's variabellister page draws a single "Legg til ny liste". Ours drew a label, a
+        // field and a button, on screen whether or not the reader wanted a second list.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        var toggle = cut.Find("button[id^='munin-explorer-create-toggle-']");
+
+        Assert.Equal("Legg til ny liste", toggle.TextContent.Trim());
+        Assert.Equal("false", toggle.GetAttribute("aria-expanded"));
+        Assert.Empty(cut.FindAll("input[id^='munin-explorer-new-list-']"));
+
+        toggle.Click();
+
+        Assert.Equal("true",
+                     cut.Find("button[id^='munin-explorer-create-toggle-']").GetAttribute("aria-expanded"));
+        Assert.Single(cut.FindAll("input[id^='munin-explorer-new-list-']"));
+    }
+
+    [Fact]
+    public void View_WhenAListWasJustCreated_ThenTheFormStaysOpenUnderTheReadersFocus()
+    {
+        // The one thing a disclosure must not do: fold away the control the reader is standing on.
+        // Removing a focused element drops focus to <body>, which is the reason nothing here is
+        // ever `disabled` either — so a create that succeeds clears the field and leaves the block.
+        var client = new ListClient { HasList = false };
+        var cut = RenderView(client);
+
+        CreateField(cut).Change("Hjerte og kar");
+        Press(cut, "Opprett liste");
+
+        Assert.Equal(1, client.CreateCalls);
+
+        var field = cut.Find("input[id^='munin-explorer-new-list-']");
+
+        Assert.Equal("", field.GetAttribute("value") ?? "");
+        Assert.Equal("true",
+                     cut.Find("button.button-square--ghost-blue[aria-disabled]").GetAttribute("aria-disabled"));
+    }
+
+    [Fact]
+    public void View_WhenAListIsShown_ThenRenamingItIsAnActionOnItRatherThanAStandingForm()
+    {
+        // Same change as the create form. The disclosure and the write are two controls with two
+        // words: one saying "gi nytt navn" twice would be the same button announced twice.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        Assert.Empty(cut.FindAll("input[id^='munin-explorer-rename-list-']"));
+
+        RenameField(cut);
+
+        Assert.Equal("Nytt navn på listen",
+                     cut.Find("label[for^='munin-explorer-rename-list-']").TextContent.Trim());
+        Assert.Contains(cut.FindAll("button"), b => b.TextContent.Trim() == "Lagre navnet");
+    }
+
+    [Fact]
+    public void View_WhenTheReaderHasNoListSelected_ThenOnlyTheCreateActionIsOffered()
+    {
+        // Rename and delete both act on the list on screen, so neither is drawn when there is none.
+        var cut = RenderView(new ListClient { HasList = false });
+
+        Assert.Single(cut.FindAll("button[id^='munin-explorer-create-toggle-']"));
+        Assert.Empty(cut.FindAll("button[id^='munin-explorer-rename-toggle-']"));
+        Assert.Empty(cut.FindAll("button[id^='munin-explorer-delete-list-']"));
+    }
+
+    [Fact]
+    public void View_WhenTheActionsAreDrawn_ThenTheyWearHelsedatasOwnButtonVariants()
+    {
+        // Measured off helsedata's variabellister page: the one action that makes something new is
+        // button-square--primary, the rest are button-square--ghost-blue. Every one of ours was
+        // button-square--ghost, which is neither. Both variants are in Stiler 0.1.37.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        var primary = Assert.Single(cut.FindAll("button.button-square--primary"));
+
+        Assert.Equal("Legg til ny liste", primary.TextContent.Trim());
+        Assert.Contains("hd-button-square", primary.ClassList);
+
+        // Deleting stays a plain ghost: it is the one control here that destroys something, and
+        // the same blue as "gi nytt navn" would say the two cost the same to press.
+        var destructive = cut.Find("button[id^='munin-explorer-delete-list-']");
+
+        Assert.Contains("button-square--ghost", destructive.ClassList);
+        Assert.DoesNotContain("button-square--ghost-blue", destructive.ClassList);
+    }
+
+    [Fact]
+    public void View_WhenAListIsShown_ThenItSaysHowManyVariablesItHoldsAndWhenItLastChanged()
+    {
+        // What makes helsedata's overview read as real. The count is the API's own totalCount and
+        // not a tally of the rows on screen: the endpoint is paged, so counting them would say 25
+        // for a list of 247.
+        var client = new ListClient(
+            Item("Alder ved diagnose", "V_BDR.ALDER"),
+            Item("Kjønn", "V_BDR.KJONN"))
+        {
+            Updated = new DateTimeOffset(2026, 9, 7, 10, 39, 0, TimeSpan.Zero)
+        };
+
+        var cut = RenderView(client);
+
+        var meta = cut.Find("p.caption").TextContent;
+
+        Assert.Contains("2 variabler", meta, StringComparison.Ordinal);
+        Assert.Contains("Sist endret: 7. sep. 2026", meta, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task View_WhenAListWasJustRenamed_ThenTheFormStaysOpenUnderTheReadersFocus()
+    {
+        // The mirror of the create case above, and it needs its own: the holder patches the name in
+        // place rather than refetching, so this path never re-renders from an API answer and could
+        // fold the block away without any create test noticing.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
+        var cut = RenderView(client);
+
+        RenameField(cut).Change("Hjertet mitt");
+        await PressAsync(cut, "Lagre navnet");
+
+        Assert.Equal(1, client.RenameCalls);
+
+        var field = cut.Find("input[id^='munin-explorer-rename-list-']");
+
+        Assert.Equal("", field.GetAttribute("value") ?? "");
+        Assert.Equal("true",
+                     cut.Find("input[id^='munin-explorer-rename-list-'] + button")
+                        .GetAttribute("aria-disabled"));
+    }
+
+    [Fact]
+    public async Task View_WhenTheListIsWrittenTo_ThenSistEndretStopsSayingTheDayThePageLoaded()
+    {
+        // The holder patches its own copy on a rename and on a removal rather than refetching, so
+        // without a timestamp patched alongside, "Sist endret" would keep naming the day the page
+        // was loaded while the name above it changed under the reader — the two facts this line
+        // exists to show together, contradicting each other.
+        var client = new ListClient(
+            Item("Alder ved diagnose", "V_BDR.ALDER"),
+            Item("Kjønn", "V_BDR.KJONN"))
+        {
+            Updated = new DateTimeOffset(2020, 3, 4, 9, 0, 0, TimeSpan.Zero)
+        };
+
+        var cut = RenderView(client);
+
+        Assert.Contains("2020", cut.Find("p.caption").TextContent, StringComparison.Ordinal);
+
+        // Read once, before the writes, and reused: two reads of UtcNow.Year straddling midnight on
+        // 31 December would compare a stamp from one year against a name from the next.
+        var thisYear = DateTimeOffset.UtcNow.Year.ToString();
+
+        RenameField(cut).Change("Hjertet mitt");
+        await PressAsync(cut, "Lagre navnet");
+
+        var afterRename = cut.Find("p.caption").TextContent;
+
+        Assert.DoesNotContain("2020", afterRename, StringComparison.Ordinal);
+        Assert.Contains(thisYear, afterRename, StringComparison.Ordinal);
+
+        // And the same for taking a variable out, which changes what the list holds rather than
+        // what it is called. The count moves with it, off the API's own total.
+        await cut.InvokeAsync(() => cut.FindAll("tbody tr td:last-child button")[0].Click());
+
+        var afterRemoval = cut.Find("p.caption").TextContent;
+
+        Assert.StartsWith("1 variabel", afterRemoval, StringComparison.Ordinal);
+        Assert.Contains(thisYear, afterRemoval, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void View_WhenTheListHasNeverBeenChanged_ThenTheCountStandsWithoutAnInventedDate()
+    {
+        // updatedAt is nullable on the contract and Munin has omitted it before
+        // (Fhi.Metadata-se0by). A missing timestamp costs the sentence, not the line.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        Assert.Equal("1 variabel", cut.Find("p.caption").TextContent.Trim());
     }
 
     [Fact]
@@ -726,7 +1008,7 @@ public class VariableListViewTest : BunitContext
         // could not tell which one is on screen.
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
 
-        Assert.Equal("Mine hjertevariabler", cut.Find("[role='table']").GetAttribute("aria-label"));
+        Assert.Equal("Mine hjertevariabler", cut.Find("table.munin-explorer-data-list").GetAttribute("aria-label"));
     }
 
     [Fact]
@@ -739,13 +1021,13 @@ public class VariableListViewTest : BunitContext
 
         var cut = RenderView(client);
 
-        Assert.Equal(2, cut.FindAll(".munin-explorer-data-list__item").Count);
+        Assert.Equal(2, cut.FindAll("tbody tr").Count);
 
         // Scoped to the cell, not to the document. The remove button on that same row is named
         // from these words, so a substring assertion over cut.Markup is satisfied by the button
         // alone — and RowName could return "" for an orphan, leaving a blank name cell under a
         // count that says two, with every case in this file still green.
-        var names = cut.FindAll(".munin-explorer-dataitem-main__name");
+        var names = cut.FindAll("tbody th[scope=row]");
 
         Assert.Equal(2, names.Count);
         Assert.Equal("Alder ved diagnose", names[0].TextContent.Trim());
@@ -776,7 +1058,7 @@ public class VariableListViewTest : BunitContext
         var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
         var cut = RenderView(client);
 
-        cut.FindAll(".munin-explorer-dataitem-main button")[0].Click();
+        cut.FindAll("tbody tr td:last-child button")[0].Click();
 
         Assert.Equal(1, client.RemoveCalls);
         Assert.DoesNotContain("Alder ved diagnose", cut.Markup);
@@ -794,8 +1076,8 @@ public class VariableListViewTest : BunitContext
 
         // Change, not Input: the field binds on onchange rather than oninput, because one
         // round trip per keystroke drops characters on a paste inside a Blazor Server circuit.
-        cut.Find("input[type=text]").Change("Hjerte og kar");
-        cut.Find("button").Click();
+        CreateField(cut).Change("Hjerte og kar");
+        Press(cut, "Opprett liste");
 
         Assert.Equal(1, client.CreateCalls);
     }
@@ -806,8 +1088,8 @@ public class VariableListViewTest : BunitContext
         var client = new ListClient { HasList = false, CreateThrottles = true };
         var cut = RenderView(client);
 
-        cut.Find("input[type=text]").Change("Hjerte og kar");
-        cut.Find("button").Click();
+        CreateField(cut).Change("Hjerte og kar");
+        Press(cut, "Opprett liste");
 
         Assert.Contains("for mange forespørsler", cut.Markup);
         Assert.DoesNotContain("Kunne ikke lagre", cut.Markup);
@@ -819,8 +1101,8 @@ public class VariableListViewTest : BunitContext
         var client = new ListClient { HasList = false, CreateThrows = true };
         var cut = RenderView(client);
 
-        cut.Find("input[type=text]").Change("Hjerte og kar");
-        cut.Find("button").Click();
+        CreateField(cut).Change("Hjerte og kar");
+        Press(cut, "Opprett liste");
 
         Assert.Contains("Kunne ikke lagre", cut.Markup);
         Assert.DoesNotContain("for mange forespørsler", cut.Markup);
@@ -834,12 +1116,12 @@ public class VariableListViewTest : BunitContext
         var client = new ListClient { HasList = false, CreateThrows = true };
         var cut = RenderView(client);
 
-        cut.Find("input[type=text]").Change("Hjerte og kar");
-        cut.Find("button").Click();
+        CreateField(cut).Change("Hjerte og kar");
+        Press(cut, "Opprett liste");
 
         client.CreateThrows = false;
-        cut.Find("input[type=text]").Change("Hjerte og kar");
-        cut.Find("button").Click();
+        CreateField(cut).Change("Hjerte og kar");
+        Press(cut, "Opprett liste");
 
         Assert.Equal(2, client.CreateCalls);
         Assert.DoesNotContain("Kunne ikke lagre", cut.Markup);
@@ -853,8 +1135,8 @@ public class VariableListViewTest : BunitContext
         var client = new ListClient { HasList = false, ActivateThrows = true };
         var cut = RenderView(client);
 
-        cut.Find("input[type=text]").Change("Hjerte og kar");
-        cut.Find("button").Click();
+        CreateField(cut).Change("Hjerte og kar");
+        Press(cut, "Opprett liste");
 
         Assert.Equal(1, client.CreateCalls);
         Assert.Contains("Kunne ikke hente listen", cut.Markup);
@@ -870,15 +1152,15 @@ public class VariableListViewTest : BunitContext
         var client = new ListClient { HasList = false, ActivateThrottles = true };
         var cut = RenderView(client);
 
-        cut.Find("input[type=text]").Change("Hjerte og kar");
-        cut.Find("button").Click();
+        CreateField(cut).Change("Hjerte og kar");
+        Press(cut, "Opprett liste");
 
         Assert.Contains("for mange forespørsler", cut.Markup);
         Assert.DoesNotContain("Kunne ikke hente listen", cut.Markup);
 
         client.ActivateThrottles = false;
-        cut.Find("input[type=text]").Change("Hjerte og kar");
-        cut.Find("button").Click();
+        CreateField(cut).Change("Hjerte og kar");
+        Press(cut, "Opprett liste");
 
         Assert.Equal(2, client.CreateCalls);
         Assert.DoesNotContain("for mange forespørsler", cut.Markup);
@@ -893,8 +1175,8 @@ public class VariableListViewTest : BunitContext
         var cut = RenderView(client);
         Assert.Contains("Kunne ikke hente listen", cut.Markup);
 
-        cut.Find("input[type=text]").Change("Hjerte og kar");
-        cut.Find("button").Click();
+        CreateField(cut).Change("Hjerte og kar");
+        Press(cut, "Opprett liste");
 
         Assert.Contains("Kunne ikke lagre", cut.Markup);
         Assert.DoesNotContain("Kunne ikke hente listen", cut.Markup);
@@ -910,11 +1192,11 @@ public class VariableListViewTest : BunitContext
         };
         var cut = RenderView(client);
 
-        cut.FindAll("input[type=text]")[1].Change("Hjertet mitt");
-        await PressAsync(cut, "Gi nytt navn");
+        RenameField(cut).Change("Hjertet mitt");
+        await PressAsync(cut, "Lagre navnet");
         Assert.Contains("Kunne ikke endre listen", cut.Markup);
 
-        cut.FindAll("input[type=text]")[0].Change("Hjerte og kar");
+        CreateField(cut).Change("Hjerte og kar");
         await PressAsync(cut, "Opprett liste");
 
         Assert.Contains("Kunne ikke lagre", cut.Markup);
@@ -933,7 +1215,7 @@ public class VariableListViewTest : BunitContext
         };
         var cut = RenderView(client);
 
-        cut.FindAll("input[type=text]")[0].Change("Hjerte og kar");
+        CreateField(cut).Change("Hjerte og kar");
         await PressAsync(cut, "Opprett liste");
         Assert.Contains("Kunne ikke lagre", cut.Markup);
 
@@ -971,7 +1253,7 @@ public class VariableListViewTest : BunitContext
         await cut.InvokeAsync(() => cut.FindAll(".munin-explorer-pagination-content button")[^1].Click());
         Assert.Contains("Variabel 26", cut.Markup);
 
-        cut.FindAll(".munin-explorer-dataitem-main button")[0].Click();
+        cut.FindAll("tbody tr td:last-child button")[0].Click();
 
         Assert.Contains("Variabel 1", cut.Markup);
         Assert.DoesNotContain("Denne listen er tom", cut.Markup);
@@ -1121,7 +1403,7 @@ public class VariableListViewTest : BunitContext
         // AccessibleName resolves only the sources that really are names, which is the point of it.
         var cut = RenderView(new ListClient { HasList = false });
 
-        var field = cut.Find("input[type=text]");
+        var field = CreateField(cut);
 
         Assert.Equal("Navn på ny liste", AccessibleName.Of(field));
 
@@ -1132,7 +1414,8 @@ public class VariableListViewTest : BunitContext
         // The half a placeholder cannot do: the name has to survive the reader typing into the
         // field, which is the moment a placeholder disappears.
         field.Change("Hjerte og kar");
-        Assert.Equal("Navn på ny liste", AccessibleName.Of(cut.Find("input[type=text]")));
+        Assert.Equal("Navn på ny liste",
+                     AccessibleName.Of(cut.Find("input[id^='munin-explorer-new-list-']")));
     }
 
     [Fact]
@@ -1145,7 +1428,7 @@ public class VariableListViewTest : BunitContext
             Item("Alder ved diagnose", "V_BDR.ALDER"),
             Item("Skjemastatus", "V_BDR.FORMSTATUS")));
 
-        var names = cut.FindAll(".munin-explorer-dataitem-main button")
+        var names = cut.FindAll("tbody tr td:last-child button")
             .Select(AccessibleName.Of)
             .ToList();
 
@@ -1175,7 +1458,7 @@ public class VariableListViewTest : BunitContext
             .Add(c => c.IsAuthenticated, true)
             .Add(c => c.Language, "en"));
 
-        var button = cut.Find(".munin-explorer-dataitem-main button");
+        var button = cut.Find("tbody tr td:last-child button");
 
         Assert.Equal("Remove Alder ved diagnose", AccessibleName.Of(button));
 
@@ -1206,7 +1489,7 @@ public class VariableListViewTest : BunitContext
         var orphan = Orphan();
         var cut = RenderView(new ListClient(orphan));
 
-        var name = AccessibleName.Of(cut.Find(".munin-explorer-dataitem-main button"));
+        var name = AccessibleName.Of(cut.Find("tbody tr td:last-child button"));
 
         Assert.Contains("ikke tilgjengelig lenger", name, StringComparison.Ordinal);
         Assert.Contains("Fjern", name, StringComparison.Ordinal);
@@ -1227,7 +1510,7 @@ public class VariableListViewTest : BunitContext
         var second = Orphan();
         var cut = RenderView(new ListClient(first, second));
 
-        var buttons = cut.FindAll(".munin-explorer-dataitem-main button");
+        var buttons = cut.FindAll("tbody tr td:last-child button");
 
         Assert.Equal(2, buttons.Count);
         Assert.Equal(AccessibleName.Of(buttons[0]), AccessibleName.Of(buttons[1]));
@@ -1263,8 +1546,8 @@ public class VariableListViewTest : BunitContext
         var a = Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, true));
         var b = Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, true));
 
-        var first = a.Find("input[type=text]");
-        var second = b.Find("input[type=text]");
+        var first = CreateField(a);
+        var second = CreateField(b);
 
         Assert.NotEqual(first.Id, second.Id);
 
@@ -1280,8 +1563,11 @@ public class VariableListViewTest : BunitContext
 
     /// <summary>Presses the button whose visible word is exactly this, the way a reader finds it.</summary>
     private static Task PressAsync(IRenderedComponent<VariableListView> cut, string word) =>
-        cut.InvokeAsync(() => cut.FindAll("button")
-            .First(b => b.TextContent.Trim() == word).Click());
+        cut.InvokeAsync(() => Press(cut, word));
+
+    /// <inheritdoc cref="PressAsync"/>
+    private static void Press(IRenderedComponent<VariableListView> cut, string word) =>
+        cut.FindAll("button").First(b => b.TextContent.Trim() == word).Click();
 
     [Fact]
     public async Task View_WhenTheListIsRenamed_ThenTheNewNameShowsWithoutReadingAnythingAgain()
@@ -1295,8 +1581,8 @@ public class VariableListViewTest : BunitContext
         var lists = client.ListsCalls;
         var variables = client.VariablesCalls;
 
-        cut.FindAll("input[type=text]")[1].Change("Hjertet mitt");
-        await PressAsync(cut, "Gi nytt navn");
+        RenameField(cut).Change("Hjertet mitt");
+        await PressAsync(cut, "Lagre navnet");
 
         Assert.Equal(1, client.RenameCalls);
         Assert.Equal("Hjertet mitt", client.LastRenamedTo);
@@ -1321,8 +1607,8 @@ public class VariableListViewTest : BunitContext
         };
         var cut = RenderView(client);
 
-        cut.FindAll("input[type=text]")[1].Change("Hjertet mitt");
-        await PressAsync(cut, "Gi nytt navn");
+        RenameField(cut).Change("Hjertet mitt");
+        await PressAsync(cut, "Lagre navnet");
 
         // The throttle's own words: the catalogue is up and the reader is being asked to wait,
         // which the ordinary "try again shortly" does not say.
@@ -1373,7 +1659,7 @@ public class VariableListViewTest : BunitContext
         };
         var cut = RenderView(client);
 
-        await cut.InvokeAsync(() => cut.FindAll(".munin-explorer-dataitem-main button")[0].Click());
+        await cut.InvokeAsync(() => cut.FindAll("tbody tr td:last-child button")[0].Click());
 
         Assert.Contains("for mange forespørsler", cut.Markup);
         Assert.DoesNotContain("Kunne ikke endre listen", cut.Markup);
@@ -1396,7 +1682,7 @@ public class VariableListViewTest : BunitContext
         };
         var cut = RenderView(client);
 
-        await cut.InvokeAsync(() => cut.FindAll(".munin-explorer-dataitem-main button")[0].Click());
+        await cut.InvokeAsync(() => cut.FindAll("tbody tr td:last-child button")[0].Click());
 
         Assert.Contains("Kunne ikke endre listen", cut.Markup);
         Assert.DoesNotContain("for mange forespørsler", cut.Markup);
@@ -1421,7 +1707,7 @@ public class VariableListViewTest : BunitContext
         };
         var cut = RenderView(client);
 
-        await cut.InvokeAsync(() => cut.FindAll(".munin-explorer-dataitem-main button")[0].Click());
+        await cut.InvokeAsync(() => cut.FindAll("tbody tr td:last-child button")[0].Click());
 
         Assert.Contains("Kunne ikke endre listen", cut.Markup);
         Assert.DoesNotContain("for mange forespørsler", cut.Markup);
@@ -1444,11 +1730,11 @@ public class VariableListViewTest : BunitContext
         var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { RemoveIsDeclined = true };
         var cut = RenderView(client);
 
-        await cut.InvokeAsync(() => cut.FindAll(".munin-explorer-dataitem-main button")[0].Click());
+        await cut.InvokeAsync(() => cut.FindAll("tbody tr td:last-child button")[0].Click());
         Assert.Contains("Kunne ikke endre listen", cut.Markup);
 
         client.RemoveIsDeclined = false;
-        await cut.InvokeAsync(() => cut.FindAll(".munin-explorer-dataitem-main button")[0].Click());
+        await cut.InvokeAsync(() => cut.FindAll("tbody tr td:last-child button")[0].Click());
 
         Assert.Equal(2, client.RemoveCalls);
         Assert.DoesNotContain("Alder ved diagnose", cut.Markup);
@@ -1463,7 +1749,9 @@ public class VariableListViewTest : BunitContext
         var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListCount = 2 };
         var cut = RenderView(client);
 
-        var armed = cut.Find("button[aria-expanded]").Id;
+        // By id: create and rename are disclosures too now, so the bare attribute selector picks
+        // whichever comes first rather than the one this case is about.
+        var armed = cut.Find("button[id^='munin-explorer-delete-list-']").Id;
 
         await PressAsync(cut, "Slett listen");
 
@@ -1472,12 +1760,12 @@ public class VariableListViewTest : BunitContext
 
         // The same control, still there, now saying what a second press does. Swapping it for a
         // different one would drop the focus of whoever just pressed it to <body>.
-        Assert.Equal(armed, cut.Find("button[aria-expanded='true']").Id);
+        Assert.Equal(armed, cut.Find("button[id^='munin-explorer-delete-list-'][aria-expanded='true']").Id);
 
         await PressAsync(cut, "Avbryt");
 
         Assert.Equal(0, client.DeleteCalls);
-        Assert.Equal(armed, cut.Find("button[aria-expanded='false']").Id);
+        Assert.Equal(armed, cut.Find("button[id^='munin-explorer-delete-list-'][aria-expanded='false']").Id);
         Assert.Contains("Mine hjertevariabler", cut.Markup);
     }
 
@@ -1519,8 +1807,8 @@ public class VariableListViewTest : BunitContext
         var cut = RenderView(client);
         state = Services.GetRequiredService<VariableListState>();
 
-        cut.FindAll("input[type=text]")[1].Change("Hjertet mitt");
-        await PressAsync(cut, "Gi nytt navn");
+        RenameField(cut).Change("Hjertet mitt");
+        await PressAsync(cut, "Lagre navnet");
 
         Assert.Contains("Hjertet mitt", cut.Markup);
         Assert.DoesNotContain("Alder ved diagnose", cut.Markup);
@@ -1879,7 +2167,7 @@ public class VariableListViewTest : BunitContext
         var tooLong = new string('x', 612);
         await cut.InvokeAsync(() => DesiredDataFields(cut)[0].Change(tooLong));
 
-        await cut.InvokeAsync(() => cut.FindAll(".munin-explorer-dataitem-main button")[1].Click());
+        await cut.InvokeAsync(() => cut.FindAll("tbody tr td:last-child button")[1].Click());
 
         Assert.Equal(tooLong, DesiredDataFields(cut)[0].GetAttribute("value"));
         Assert.Equal("true", DesiredDataFields(cut)[0].GetAttribute("aria-invalid"));

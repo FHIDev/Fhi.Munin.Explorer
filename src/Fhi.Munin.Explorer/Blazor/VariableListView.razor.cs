@@ -72,6 +72,14 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// <summary>The name field of the rename form, which its own label points at.</summary>
     private string RenameListNameId => $"munin-explorer-rename-list-{_instance}";
 
+    /// <summary>
+    /// The two controls that reveal the create and the rename field. Ids for the reason
+    /// <see cref="DeleteButtonId"/> is one: the words follow <see cref="Language"/>.
+    /// </summary>
+    private string CreateToggleId => $"munin-explorer-create-toggle-{_instance}";
+
+    private string RenameToggleId => $"munin-explorer-rename-toggle-{_instance}";
+
     /// <summary>The one control that arms the deletion question and stands it down again.</summary>
     private string DeleteButtonId => $"munin-explorer-delete-list-{_instance}";
 
@@ -109,6 +117,12 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private string? _dataTypeNamesLanguage;
     private string _newName = "";
     private string _renameName = "";
+
+    // Both start closed, and neither is closed again by the write that succeeds: the reader is
+    // standing on the button inside the block, and removing it drops focus to <body>.
+    private bool _creating;
+
+    private bool _renaming;
     private bool _confirmingDelete;
     private ListActionFailure _actionFailure;
     private bool _includeKodeverk;
@@ -320,16 +334,49 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// </remarks>
     private RenderFragment Cells(VariableListItem item) => builder =>
     {
-        RowCell.Write(builder, 100, T.FieldCode, item.VariableCode, "code", T.NotSpecified);
-        RowCell.Write(builder, 200, T.FieldSource, item.KildeShortName ?? item.KildeName, "source", T.NotSpecified, tooltip: item.KildeName);
-        RowCell.Write(builder, 300, T.FieldDataCollection, item.DatasamlingName, "dataCollection", T.NotSpecified);
-        RowCell.Write(builder, 400, T.FieldVariableGroup, item.VariabelgruppeName, "theme", T.NotSpecified);
-        RowCell.Write(builder, 500, T.FieldDataType, DataTypeName(item.DataType), "dataType", T.NotSpecified);
+        // tableCell: these are real <td>s under real <th scope="col">s, so the helper leaves out
+        // the per-cell field name the explorer's <div>s need and the flex column class a table
+        // cell cannot wear.
+        RowCell.Write(builder, 100, T.FieldCode, item.VariableCode, "code", T.NotSpecified, tableCell: true);
+        RowCell.Write(builder, 200, T.FieldSource, item.KildeShortName ?? item.KildeName, "source", T.NotSpecified, tooltip: item.KildeName, tableCell: true);
+        RowCell.Write(builder, 300, T.FieldDataCollection, item.DatasamlingName, "dataCollection", T.NotSpecified, tableCell: true);
+        RowCell.Write(builder, 400, T.FieldVariableGroup, item.VariabelgruppeName, "theme", T.NotSpecified, tableCell: true);
+        RowCell.Write(builder, 500, T.FieldDataType, DataTypeName(item.DataType), "dataType", T.NotSpecified, tableCell: true);
 
         // The only column whose words are this component's rather than the catalogue's — the dates
         // are formatted for the reader — so it is left unmarked, exactly as the explorer leaves it.
-        RowCell.Write(builder, 600, T.FieldDataPeriod, Period(item), "period", T.NotSpecified, catalogue: false);
+        RowCell.Write(builder, 600, T.FieldDataPeriod, Period(item), "period", T.NotSpecified, catalogue: false, tableCell: true);
     };
+
+    /// <summary>
+    /// How many variables are in the list on screen and when it last changed, or
+    /// <see langword="null"/> while neither is known.
+    /// </summary>
+    /// <remarks>
+    /// The API's own <c>totalCount</c> rather than a tally of the rendered rows, which is a page of
+    /// them. <c>my/lists</c> carries no count at all, so the lists behind the picker cannot have
+    /// one. The day and never a clock time: in a Blazor Server circuit the hour is the server's.
+    /// </remarks>
+    private string? ListMeta
+    {
+        get
+        {
+            if (_page is null)
+            {
+                return null;
+            }
+
+            var count = T.ListVariableCount(_page.TotalCount);
+            var updated = Lists.FirstOrDefault(l => l.Id == _shownList)?.UpdatedAt;
+
+            return CatalogueDate.DayOrNothing(updated, Language, DateWidth.Narrow) is { } day
+                ? $"{count} · {T.ListLastModified(day)}"
+                : count;
+        }
+    }
+
+    /// <summary>Written the way <see cref="AriaDisabled"/> is, so the two toggles read alike.</summary>
+    private static string Expanded(bool open) => open ? "true" : "false";
 
     /// <summary>The name cell of one row, which the row's remove button is named from.</summary>
     private string RowNameId(VariableListItem item) =>
@@ -778,6 +825,10 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     {
         _confirmingDelete = false;
         _renameName = "";
+
+        // Folded, not merely emptied: an open rename field over a list the reader did not open it
+        // for reads as a rename under way. No caller here has focus inside it.
+        _renaming = false;
     }
 
     /// <summary>

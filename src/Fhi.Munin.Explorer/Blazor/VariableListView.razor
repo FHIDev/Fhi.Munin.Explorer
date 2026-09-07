@@ -39,62 +39,38 @@
             </label>
         }
 
-        @* @bind with onchange, deliberately NOT value + @oninput: this renders inside a Blazor
-           Server circuit, where oninput is one round trip per keystroke and drops characters on a
-           fast paste. The search field says the same thing at VariableSearch.razor:146.
-
-           aria-disabled rather than disabled on the button: it becomes unavailable the moment a
-           successful create clears the name, and disabling the element that has focus drops focus
-           to <body>. CreateListAsync already refuses an empty name, so the press is inert. *@
-        <div>
-            @* A real label with for/id, the shape the search field uses at
-               VariableSearch.razor:140 — not a placeholder. A placeholder is not an accessible
-               name: a screen reader announces an unnamed edit field, and the hint disappears the
-               moment the reader starts typing, which is the one time they most need to know what
-               the field is for. WCAG 4.1.2 and 3.3.2.
-
-               `form-element__label` is borrowed, not ours — Stiler's own label style, read back
-               off its compiled stylesheet and already worn by the search field and the filter
-               panel's legend (VariableSearch.razor:140, 209, 216). README's list of borrowed
-               names carries it. No new name is being invented here; a name Stiler has never heard
-               of would render as a raw browser default on a host that has only Stiler.
-
-               The id carries a per-mount discriminator, the shape the explorer's own ids use, so
-               two of this component on one page do not tie both labels to the first field. *@
-            <label class="form-element__label" for="@NewListNameId">@T.NewListName</label>
-            <input type="text"
-                   id="@NewListNameId"
-                   @bind="_newName"
-                   @bind:event="onchange" />
-            <button class="hd-button-square button-square--ghost"
-                    type="button"
-                    aria-disabled="@AriaDisabled(_newName.Trim().Length > 0)"
-                    @onclick="CreateListAsync">@T.CreateList</button>
-        </div>
-
-        @* Both act on the list on screen, so neither is drawn when there is none. Same shapes as
-           the create form above: a real label with for/id, and aria-disabled rather than disabled
-           so a successful rename does not drop focus to <body> by clearing the field. *@
-        @if (_shownList is not null)
+        @* Only for the list on screen. `my/lists` carries no count, so the lists behind the
+           picker cannot have one — see the remarks on ListMeta. *@
+        @if (ListMeta is { } meta)
         {
-            <div>
-                <label class="form-element__label" for="@RenameListNameId">@T.RenameListName</label>
-                <input type="text"
-                       id="@RenameListNameId"
-                       @bind="_renameName"
-                       @bind:event="onchange" />
-                <button class="hd-button-square button-square--ghost"
+            <p class="caption">@meta</p>
+        }
+
+        @* helsedata's own variants: primary for the one action that makes something new,
+           ghost-blue for the rest. Create and rename were standing forms and are disclosures. *@
+        <div>
+            <button class="hd-button-square button-square--primary"
+                    type="button"
+                    id="@CreateToggleId"
+                    aria-expanded="@Expanded(_creating)"
+                    @onclick="() => _creating = !_creating">@T.AddNewList</button>
+
+            @* Both act on the list on screen, so neither is drawn when there is none. *@
+            @if (_shownList is not null)
+            {
+                <button class="hd-button-square button-square--ghost-blue"
                         type="button"
-                        aria-disabled="@AriaDisabled(_renameName.Trim().Length > 0)"
-                        @onclick="RenameListAsync">@T.RenameList</button>
+                        id="@RenameToggleId"
+                        aria-expanded="@Expanded(_renaming)"
+                        @onclick="() => _renaming = !_renaming">@T.RenameList</button>
 
                 @* Two steps because the API offers no undo, and in the page rather than a JS
-                   confirm a host's Content-Security-Policy may suppress. One control saying what a
-                   press does now, so neither step removes the element under the reader's focus. *@
+                   confirm a host's CSP may suppress. One control, so neither step removes the
+                   element under the reader's focus. Ghost, not ghost-blue: it destroys something. *@
                 <button class="hd-button-square button-square--ghost"
                         type="button"
                         id="@DeleteButtonId"
-                        aria-expanded="@(_confirmingDelete ? "true" : "false")"
+                        aria-expanded="@Expanded(_confirmingDelete)"
                         @onclick="() => _confirmingDelete = !_confirmingDelete">
                     @(_confirmingDelete ? T.ConfirmDeleteNo : T.DeleteList)
                 </button>
@@ -110,6 +86,49 @@
                             aria-describedby="@ConfirmDeleteId"
                             @onclick="DeleteListAsync">@T.ConfirmDeleteYes</button>
                 }
+            }
+        </div>
+
+        @* Revealed by the button above, and NOT closed again by a create that succeeds: the reader
+           is standing on the button inside this block, and removing it would drop their focus to
+           <body> — the same reason nothing here is ever `disabled`. *@
+        @if (_creating)
+        {
+            <div>
+                @* A real label, never a placeholder: no accessible name, and gone the moment the
+                   reader types (WCAG 4.1.2, 3.3.2). The id is per-mount, or two mounts name one
+                   field twice. onchange, never oninput — a round trip per keystroke on a circuit. *@
+                <label class="form-element__label" for="@NewListNameId">@T.NewListName</label>
+                <input type="text"
+                       id="@NewListNameId"
+                       @bind="_newName"
+                       @bind:event="onchange" />
+
+                @* aria-disabled rather than disabled: it becomes unavailable the moment a
+                   successful create clears the name, and disabling the element that has focus
+                   drops focus to <body>. CreateListAsync already refuses an empty name, so the
+                   press is inert. *@
+                <button class="hd-button-square button-square--ghost-blue"
+                        type="button"
+                        aria-disabled="@AriaDisabled(_newName.Trim().Length > 0)"
+                        @onclick="CreateListAsync">@T.CreateList</button>
+            </div>
+        }
+
+        @* The same shape, for the list on screen. Left open after a rename that succeeds for the
+           reason the create block gives. *@
+        @if (_renaming && _shownList is not null)
+        {
+            <div>
+                <label class="form-element__label" for="@RenameListNameId">@T.RenameListName</label>
+                <input type="text"
+                       id="@RenameListNameId"
+                       @bind="_renameName"
+                       @bind:event="onchange" />
+                <button class="hd-button-square button-square--ghost-blue"
+                        type="button"
+                        aria-disabled="@AriaDisabled(_renameName.Trim().Length > 0)"
+                        @onclick="RenameListAsync">@T.SaveListName</button>
             </div>
         }
 
@@ -129,13 +148,14 @@
 
                 @* Two formats, two buttons. aria-disabled while a download is in flight rather
                    than disabled, for the reason the pager gives: disabling the element that has
-                   focus drops focus to <body>. *@
-                <button class="hd-button-square button-square--ghost"
+                   focus drops focus to <body>. Secondary actions, so ghost-blue — the same
+                   variant helsedata gives "Åpne variabelliste" on their own page. *@
+                <button class="hd-button-square button-square--ghost-blue"
                         type="button"
                         aria-disabled="@AriaDisabled(!_downloading)"
                         @onclick="() => DownloadAsync(ExportFormat.Xlsx)">@T.DownloadXlsx</button>
 
-                <button class="hd-button-square button-square--ghost"
+                <button class="hd-button-square button-square--ghost-blue"
                         type="button"
                         aria-disabled="@AriaDisabled(!_downloading)"
                         @onclick="() => DownloadAsync(ExportFormat.Csv)">@T.DownloadCsv</button>
@@ -170,77 +190,66 @@
         }
         else if (_page is not null)
         {
-            @* role="table" over the same seven columns the explorer's own result list draws, plus
-               the annotation column that is this view's alone, and for the same reason. These rows
-               share helsedata's `munin-explorer-data-list` markup with `VariableSearch`, so they
-               shared its failure too: measured in Chrome's accessibility tree, not one row, column
-               or header of the reader's own saved list reached assistive technology — a flat run
-               of text with no way to hear which column a value was in (WCAG 1.3.1). axe never
-               flagged it, because there is no sortable header here to hang an invalid `aria-sort`
-               on, and missing structure is not a rule violation; it is just missing.
+            @* A real <table>, which the explorer's own list cannot be: munin-explorer-dataitem-main
+               is `display: flex` in Stiler, and flex on a table strips its semantics
+               (VariableSearch.razor:530). Nothing in helsedata dresses a SAVED list, so this one
+               is free of that. The scaffolding it replaces could not stop every row repeating all
+               seven field names — a div has no header to be associated with. *@
+            @* Inline, not left to the host: Stiler has no rule for this name, and undrawn the
+               table scrolls the host's whole page. `position` is what makes the box the containing
+               block that clips the rows' absolutely positioned labels. Only the focus ring is the
+               host's. *@
+            <div class="munin-explorer-list-scroll"
+                 style="overflow-x:auto;position:relative"
+                 role="region"
+                 tabindex="0"
+                 aria-label="@ShownListName">
+                <table class="munin-explorer-data-list" aria-label="@ShownListName">
+                    <thead>
+                        <tr class="munin-explorer-data-list__item__row--header">
+                            <th scope="col" class="munin-explorer-dataitem-header__name">@T.ColumnVariable</th>
+                            <th scope="col" class="munin-explorer-dataitem-header__code">@T.FieldCode</th>
+                            <th scope="col" class="munin-explorer-dataitem-header__source">@T.FieldSource</th>
+                            <th scope="col" class="munin-explorer-dataitem-header__dataCollection">@T.FieldDataCollection</th>
+                            <th scope="col" class="munin-explorer-dataitem-header__theme">@T.FieldVariableGroup</th>
+                            <th scope="col" class="munin-explorer-dataitem-header__dataType">@T.FieldDataType</th>
+                            <th scope="col" class="munin-explorer-dataitem-header__period">@T.FieldDataPeriod</th>
+                            <th scope="col" class="munin-explorer-dataitem-header__desiredData">@T.FieldDesiredData</th>
 
-               No rowgroups: unlike the explorer's list, the header row and the data rows are
-               siblings here, and a table may own rows directly. The wrappers that only lay
-               something out wear `role="none"` so the cells inside reach the row they belong to —
-               a row owns nothing but cells. *@
-            <div class="munin-explorer-data-list" role="table" aria-label="@ShownListName">
+                            @* A control column with no visible heading, the shape Kelda's expand
+                               column uses: every button under it says "Fjern" already, and a
+                               screen reader arriving in the column has nothing else to hear. *@
+                            <th scope="col"><span class="screenreader-only">@T.ColumnRemove</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in _page.Items)
+                        {
+                            <tr class="munin-explorer-data-list__item">
 
-                <div class="munin-explorer-data-list__item__row munin-explorer-data-list__item__row--header" role="none">
-                    <div class="munin-explorer-dataitem-header" role="row">
-                        <span class="munin-explorer-dataitem-header__name" role="columnheader">@T.ColumnVariable</span>
-                        <span class="munin-explorer-dataitem-header__code" role="columnheader">@T.FieldCode</span>
-                        <span class="munin-explorer-dataitem-header__source" role="columnheader">@T.FieldSource</span>
-                        <span class="munin-explorer-dataitem-header__dataCollection" role="columnheader">@T.FieldDataCollection</span>
-                        <span class="munin-explorer-dataitem-header__theme" role="columnheader">@T.FieldVariableGroup</span>
-                        <span class="munin-explorer-dataitem-header__dataType" role="columnheader">@T.FieldDataType</span>
-                        <span class="munin-explorer-dataitem-header__period" role="columnheader">@T.FieldDataPeriod</span>
-                        <span class="munin-explorer-dataitem-header__desiredData" role="columnheader">@T.FieldDesiredData</span>
-                    </div>
-                </div>
-
-                @foreach (var item in _page.Items)
-                {
-                    <div class="munin-explorer-data-list__item" role="row">
-                        <div class="munin-explorer-data-list__item__row" role="none">
-                            <div class="munin-explorer-dataitem-main" role="none">
-
-                                @* An entry whose variable has no row in the read model keeps its place
-                                   rather than being filtered out: the API returns it on purpose so the
-                                   paging totals stay honest, and a list of 247 that answered with 246
-                                   would hide that something went. It says so instead.
-
-                                   RowName decides which of the two it is, in one place: written
-                                   out twice, the cell and the remove button below — which is
-                                   named from these very words — could come to say different
-                                   things about the same row. CatalogueLang leaves the attribute
-                                   off for the sentence, which is ours and in the reader's
-                                   language, not Norwegian catalogue text. *@
-                                @* rowheader rather than cell, the call Kelda's own table makes with
-                                   <th scope="row">: the variable's name is what the rest of the row
-                                   is about, so a reader hearing one cell out of context is told
-                                   which variable it belongs to. *@
-                                <span class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__name" role="rowheader">
+                                @* An orphaned entry keeps its place, so the paging totals stay
+                                   honest; RowName decides in one place what it reads as, because
+                                   the remove button is named from these very words. <th scope=row>
+                                   the way Kelda's table does, and with no class:
+                                   munin-explorer-dataitem-main__name is `display: inline-flex`,
+                                   which a table header cell cannot be. *@
+                                <th scope="row">
                                     <span class="munin-explorer-dataitem-main__column__text"
                                           id="@RowNameId(item)"
                                           lang="@CatalogueLang(item.VariableName)">@RowName(item)</span>
-                                </span>
+                                </th>
 
-                                @* The six columns the result list draws too, built by the cell helper
-                                   both call — written out here as well, they could gain an attribute
-                                   in one place and not the other without anything failing. *@
+                                @* The six columns the result list draws too, built by the cell
+                                   helper both call — written out here as well, they could gain an
+                                   attribute in one place and not the other without anything
+                                   failing. *@
                                 @Cells(item)
 
-                                @* The one editable cell in the row, and the only column the
-                                   catalogue does not own. value + @onchange rather than @bind for
-                                   the reason the create field gives: inside a Blazor Server circuit
-                                   oninput is a round trip per keystroke. Rendered from the draft
-                                   rather than from the item, which is what keeps a text the API
-                                   refused in the field instead of reverting it under the reader.
-
-                                   Named from two elements — the column's word, then the row's name
-                                   — for exactly the reasons the remove button below gives, and not
-                                   from a placeholder, which is gone the moment the reader types. *@
-                                <div class="munin-explorer-dataitem-main__column munin-explorer-dataitem-main__desiredData" role="cell">
+                                @* Rendered from the draft rather than from the item, which keeps a
+                                   text the API refused in the field instead of reverting it under
+                                   the reader. The column header names the COLUMN; this span names
+                                   the field, which a control still owes on its own (WCAG 4.1.2). *@
+                                <td class="munin-explorer-dataitem-main__desiredData">
                                     <span class="screenreader-only" id="@DesiredDataLabelId(item)">@T.FieldDesiredData</span>
                                     <input type="text"
                                            value="@DesiredDataOf(item)"
@@ -248,46 +257,23 @@
                                            aria-invalid="@DesiredDataInvalid(item)"
                                            aria-describedby="@DesiredDataDescribedBy(item)"
                                            @onchange="e => SaveDesiredDataAsync(item.VariableId, e.Value?.ToString())" />
-                                </div>
+                                </td>
 
-                                @* The visible word stays "Fjern" — the column is narrow and every
-                                   button in it removes something. The accessible name says which
-                                   one: without it a list of forty is forty controls that read
-                                   "Fjern", and a screen reader user has no way to tell which row
-                                   they are standing on. WCAG 4.1.2.
-
-                                   Two elements rather than an aria-label, the rule the explorer's
-                                   own save button follows: this button points at itself and then
-                                   at the name cell, so "Fjern" stays ours and in the reader's
-                                   language while the variable's name stays Munin's and marked
-                                   lang="no" — one aria-label string would be a single unmarked
-                                   sentence an English voice pronounces the Norwegian half of with
-                                   English phonetics (WCAG 3.1.2). Itself first keeps the visible
-                                   word at the front for speech input (WCAG 2.5.3).
-
-                                   An orphaned row borrows the sentence its name cell shows
-                                   instead, so the button says what it removes without reading an
-                                   id out. Two orphans do then announce alike — a duplicate name
-                                   on two controls is not a WCAG failure, and ten seconds of
-                                   spelt-out GUID for a value the row does not show anywhere is
-                                   worse than one.
-
-                                   The <span role="cell"> around it is the row's last cell. A row
-                                   owns nothing but cells, and a <button> cannot be one without
-                                   ceasing to be a button; the wrapper carries no class, so it
-                                   becomes the flex item the button already was and the column
-                                   still sizes the same. *@
-                                <span role="cell">
-                                    <button class="hd-button-square button-square--ghost"
+                                @* "Fjern" on every button in the column, so the accessible name
+                                   has to say which row (WCAG 4.1.2). Two elements rather than one
+                                   aria-label, because each half is in its own language — see
+                                   RemoveLabelledBy, which decides the order and why. *@
+                                <td>
+                                    <button class="hd-button-square button-square--ghost-blue"
                                             type="button"
                                             id="@RemoveButtonId(item)"
                                             aria-labelledby="@RemoveLabelledBy(item)"
                                             @onclick="() => RemoveAsync(item.VariableId)">@T.RemoveFromThisList</button>
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
             </div>
 
             @* The list is as long as the reader made it, and the endpoint is paged. A view that

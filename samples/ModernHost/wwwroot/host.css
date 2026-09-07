@@ -1081,6 +1081,61 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   border: 2px solid var(--error-dark);
 }
 
+/* ---- the saved list, which is the same name drawn as a real <table> ----
+
+   VariableSearch draws munin-explorer-data-list as a <ul> of flex rows, because that is
+   helsedata's own variable page redrawn and their stylesheet dresses exactly that shape.
+   VariableListView draws it as a <table>: nothing on their site dresses a saved list, so it can
+   have the element that brings column alignment with it and needs no rule from anybody to line up.
+
+   Every selector here is scoped on the ELEMENT, which is what keeps the two shapes off each
+   other's rules — the flex row above and the table row below wear the same class names. */
+table.munin-explorer-data-list {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+table.munin-explorer-data-list th,
+table.munin-explorer-data-list td {
+  padding: 8px 12px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--grey30);
+}
+
+table.munin-explorer-data-list thead th {
+  background: var(--grey10);
+  color: var(--grey60);
+  font-weight: 600;
+}
+
+/* The name cell is a <th scope="row">, which browsers centre by default. It is a label for the
+   row rather than a heading over it, so it is left-aligned with the rest and only keeps the
+   weight — same call Kelda's table makes one screen over. */
+table.munin-explorer-data-list tbody th {
+  color: var(--dark);
+  font-weight: 600;
+
+  /* The name is the label the rest of the row is read against, so it must not be the column that
+     gives way when the table is wider than its box: without a floor the browser squeezes it to
+     one word per line — "Variabelen / er ikke / tilgjengelig / lenger" — and the excess belongs
+     in the scroll instead. Measured at 1440: 938px of box against a 1077px table. */
+  min-width: 12rem;
+}
+
+/* The box the saved-list table scrolls in. The overflow-x duplicates what the markup sets inline;
+   the focus ring is the half that is genuinely the host's, and it is owed because the box carries
+   tabindex="0" and a focus stop nobody can see is WCAG 2.4.7. */
+.munin-explorer-list-scroll {
+  overflow-x: auto;
+}
+
+.munin-explorer-list-scroll:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 4px;
+}
+
 
 .sortable-header {
   font-weight: 600;
