@@ -16,6 +16,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// this class carries a builder instead of a constant.
 /// </para>
 /// </remarks>
+[Collection(GuardScripts.Name)]
 public class ChangelogFragmentGuardTest
 {
     private const string Script = "check-changelog-fragment.sh";

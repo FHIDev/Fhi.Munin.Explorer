@@ -39,6 +39,26 @@ if [ -z "$TRX" ]; then
   exit 2
 fi
 
+# Checked, then re-read in base 10: bash reads a non-numeric count as 0 in arithmetic and a leading
+# zero as octal, so `010` would quietly become a floor of 8. An authenticated count above the
+# minimum would make the executed floor negative, which passes a run where nothing executed at all.
+for argument in "minimum-tests:$MINIMUM" "authenticated-tests:$AUTHENTICATED"; do
+  case "${argument#*:}" in
+    '' | *[!0-9]*)
+      echo "::error::${argument%%:*} must be a whole number; got '${argument#*:}'." >&2
+      exit 2
+      ;;
+  esac
+done
+
+MINIMUM=$((10#$MINIMUM))
+AUTHENTICATED=$((10#$AUTHENTICATED))
+
+if [ "$AUTHENTICATED" -gt "$MINIMUM" ]; then
+  echo "::error::authenticated-tests ($AUTHENTICATED) is above minimum-tests ($MINIMUM), which would leave no floor at all." >&2
+  exit 2
+fi
+
 if [ ! -s "$TRX" ]; then
   echo "::error::No test results at '$TRX'. The $CATEGORY tests did not run, so nothing was checked against the live API." >&2
   exit 1
