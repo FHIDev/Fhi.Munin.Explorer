@@ -43,9 +43,6 @@ public class VariableListViewTest : BunitContext
         public string? LastRenamedTo { get; private set; }
         public int LastPageAsked { get; private set; }
 
-        /// <summary>What the last read narrowed by, so a test can see the ticks reached the API.</summary>
-        public IReadOnlyList<Guid>? LastKildeIdsAsked { get; private set; }
-
         /// <summary>
         /// Every list whose variables were asked for. Which list, not how many times: a view asking
         /// for a deleted list makes exactly as many calls as one asking for a live list.
@@ -243,7 +240,6 @@ public class VariableListViewTest : BunitContext
         {
             VariablesCalls++;
             LastPageAsked = page;
-            LastKildeIdsAsked = kildeIds is null ? null : [.. kildeIds];
             _askedFor.Add(id);
 
             // Counted before the wait, so a second caller arriving mid-read is recorded.

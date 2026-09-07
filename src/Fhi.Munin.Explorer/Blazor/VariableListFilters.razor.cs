@@ -83,7 +83,29 @@ public sealed partial class VariableListFilters : ComponentBase, IDisposable
         }
     }
 
-    protected override void OnParametersSet() => State?.SetAuthenticated(IsAuthenticated);
+    protected override async Task OnParametersSetAsync()
+    {
+        if (State is null)
+        {
+            return;
+        }
+
+        State.SetAuthenticated(IsAuthenticated);
+
+        // Asked for here as well as by the view, so a host that mounts this panel on a page of its
+        // own gets a tally rather than an empty heading. The ask joins a walk already running and
+        // never retries one that was refused, which is the same shape VariableSearch already has.
+        try
+        {
+            await State.EnsureActiveListAsync();
+        }
+        catch (Exception)
+        {
+            // Caught for the reason the view catches its own: a throw out of a lifecycle method
+            // takes the circuit down, and on the legacy host that is the whole CMS page. The panel
+            // draws nothing under the heading, and the view beside it says what went wrong.
+        }
+    }
 
     private void OnStateChanged() => InvokeAsync(StateHasChanged);
 

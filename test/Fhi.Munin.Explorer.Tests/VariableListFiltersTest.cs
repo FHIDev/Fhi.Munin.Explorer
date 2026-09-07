@@ -53,9 +53,48 @@ public class VariableListFiltersTest : BunitContext
         /// <summary>The pages asked for, so a narrowing that forgot to go back to page 1 shows.</summary>
         public List<int> PagesAsked { get; } = [];
 
-        public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<VariableList>>(
-                [new VariableList { Id = ListId, Name = "Mine hjertevariabler", VariableCount = _items.Count }]);
+        /// <summary>What the export was handed, so a test can see what would be in the file.</summary>
+        public IReadOnlyCollection<Guid>? ExportedIds { get; private set; }
+
+        /// <summary>The second list, whose variables are all of a kilde the first does not hold.</summary>
+        public static readonly Guid SecondListId = new("22222222-2222-2222-2222-222222222222");
+
+        /// <summary>Two lists rather than one, which is what puts the picker on screen.</summary>
+        public bool TwoLists { get; init; }
+
+        private readonly List<VariableListItem> _second = [Item(Årsaksregisteret, 1)];
+
+        public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default)
+        {
+            List<VariableList> lists =
+                [new VariableList { Id = ListId, Name = "Mine hjertevariabler", VariableCount = _items.Count }];
+
+            if (TwoLists)
+            {
+                lists.Add(new VariableList
+                {
+                    Id = SecondListId,
+                    Name = "Hjerte og kar",
+                    VariableCount = _second.Count,
+                });
+            }
+
+            return Task.FromResult<IReadOnlyList<VariableList>>(lists);
+        }
+
+        /// <summary>Accepted, unlike the base's refusal — the state only forgets a delete the API took.</summary>
+        public override Task<bool> DeleteMyListAsync(Guid id, CancellationToken cancellationToken = default) =>
+            Task.FromResult(true);
+
+        public override Task<ExportedList> ExportListAsync(
+            IReadOnlyCollection<Guid> variableIds, ExportFormat format = ExportFormat.Xlsx,
+            bool includeKodeverk = false, Guid? kildeIdFilter = null,
+            CancellationToken cancellationToken = default)
+        {
+            ExportedIds = variableIds;
+
+            return Task.FromResult(new ExportedList([1], "application/vnd.ms-excel", "liste.xlsx"));
+        }
 
         public override Task<Page<VariableListItem>?> GetMyListVariablesAsync(
             Guid id, int page = 1, int pageSize = 100, IReadOnlyCollection<Guid>? kildeIds = null,
@@ -67,9 +106,11 @@ public class VariableListFiltersTest : BunitContext
             // Narrowed, then counted, then cut — the order the API uses. A fake that sieved the
             // page it had already cut would answer a whole-list total for a narrowed read, and
             // every assertion below about the pager would pass against the wrong component.
+            var all = id == SecondListId ? _second : _items;
+
             var matching = kildeIds is { Count: > 0 }
-                ? _items.Where(i => i.KildeId is { } k && kildeIds.Contains(k)).ToList()
-                : _items;
+                ? all.Where(i => i.KildeId is { } k && kildeIds.Contains(k)).ToList()
+                : all;
 
             return Task.FromResult<Page<VariableListItem>?>(new Page<VariableListItem>
             {
@@ -329,6 +370,81 @@ public class VariableListFiltersTest : BunitContext
 
         Assert.Contains("Ingen variabler fra de valgte kildene.", cut.View.Markup, StringComparison.Ordinal);
         Assert.DoesNotContain("Denne listen er tom.", cut.View.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Download_WhenAKildeIsTicked_ThenTheFileHoldsWhatTheTableShows()
+    {
+        // The button sits under a table showing 15 of 55. A file holding the other 40 as well is
+        // not the list the reader was looking at, and nobody notices until they open it.
+        var client = new ListClient(List((Kreftregisteret, 40), (Reseptregisteret, 15)));
+
+        var cut = RenderBoth(client);
+
+        Boxes(cut.Filters)[1].Change(true);
+
+        await cut.View.InvokeAsync(() => cut.View.FindAll("button")
+            .First(b => b.TextContent.Contains("Excel", StringComparison.Ordinal))
+            .Click());
+
+        Assert.NotNull(client.ExportedIds);
+        Assert.Equal(15, client.ExportedIds!.Count);
+    }
+
+    // -----------------------------------------------------------------------
+    // What clears the narrowing.
+
+    [Fact]
+    public void Ticks_WhenTheReaderSwitchesList_ThenTheyDoNotFollowThem()
+    {
+        // A kilde ticked in one list is an id the next may not hold at all. Left standing it would
+        // narrow that list to nothing with no ticked box on screen to explain it.
+        var client = new ListClient(List((Kreftregisteret, 3), (Reseptregisteret, 2))) { TwoLists = true };
+
+        var cut = RenderBoth(client);
+        var state = Services.GetRequiredService<VariableListState>();
+
+        Boxes(cut.Filters)[1].Change(true);
+        Assert.NotEmpty(state.KildeFilter);
+
+        cut.View.Find("select").Change(ListClient.SecondListId.ToString());
+
+        Assert.Empty(state.KildeFilter);
+        Assert.Equal(["Årsaksregisteret (1)"], Facets(cut.Filters));
+    }
+
+    [Fact]
+    public void Ticks_WhenTheReaderSignsOut_ThenTheyGoWithTheirList()
+    {
+        // Leaving one reader's kilder on screen after a sign-out is a disclosure, not staleness.
+        var client = new ListClient(List((Kreftregisteret, 3)));
+
+        var cut = RenderBoth(client);
+        var state = Services.GetRequiredService<VariableListState>();
+
+        Boxes(cut.Filters)[0].Change(true);
+
+        cut.Filters.InvokeAsync(() => state.SetAuthenticated(false));
+
+        Assert.Empty(state.KildeFilter);
+        Assert.Empty(state.KilderInList);
+    }
+
+    [Fact]
+    public async Task Ticks_WhenTheListIsDeleted_ThenTheyGoWithIt()
+    {
+        // The holder stops pointing at that list, so the tally behind the boxes is gone too.
+        var client = new ListClient(List((Kreftregisteret, 3)));
+
+        var cut = RenderBoth(client);
+        var state = Services.GetRequiredService<VariableListState>();
+
+        Boxes(cut.Filters)[0].Change(true);
+
+        await cut.Filters.InvokeAsync(() => state.DeleteAsync(ListId));
+
+        Assert.Empty(state.KildeFilter);
+        Assert.Empty(state.KilderInList);
     }
 
     // -----------------------------------------------------------------------

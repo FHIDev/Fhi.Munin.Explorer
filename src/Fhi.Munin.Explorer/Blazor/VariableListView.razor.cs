@@ -617,10 +617,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         try
         {
-            // Narrowed by the API rather than here: the endpoint pages, so a sieve applied to the
-            // page it answered with would leave TotalCount — and the pager built on it — describing
-            // the whole list. What the reader has ticked lives in the holder, because the panel
-            // holding the boxes is in the other grid column.
+            // Narrowed by the API, not here: the endpoint pages, so a sieve over the page it
+            // answered with would leave TotalCount — and the pager on it — describing the whole
+            // list. The ticks live in the holder; the boxes are in the other grid column.
             _page = await Client.GetMyListVariablesAsync(
                 _shownList.Value, _pageNumber, PageSize, State.KildeFilter);
         }

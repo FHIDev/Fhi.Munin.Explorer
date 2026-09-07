@@ -1,4 +1,4 @@
-﻿# Fhi.Munin.Explorer
+# Fhi.Munin.Explorer
 
 The Munin **variabelutforsker** (variable explorer) as a Blazor Razor Class Library, so a host
 application can embed Norwegian health-metadata browsing on its own pages.

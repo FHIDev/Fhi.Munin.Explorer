@@ -249,11 +249,9 @@ else
        `munin-explorer-filters` carries no styling, in this package or in Stiler. It is the same
        kind of name as the `munin-explorer` root above it: a hook for a host that wants to place
        the panel, and nothing this markup relies on. *@
-    @* The saved list's own panel takes this slot on the Variabelliste tab, and it has to be HERE
-       rather than beside the rows: Stiler places the filter column with `.munin-explorer >
-       .munin-explorer-filters`, a child combinator, and the rows render two levels down inside the
-       tab panel. While the tab held no panel at all the 384px track stood empty and the list sat
-       behind 408px of gutter with none on the right. (Fhi.Metadata-mm4hu) *@
+    @* The saved list's own panel takes this slot, and has to be HERE rather than beside the rows:
+       Stiler places the filter column with `.munin-explorer > .munin-explorer-filters`, a child
+       combinator, and the rows render two levels down in the tab panel. (Fhi.Metadata-mm4hu) *@
     @if (ShowTabs && _resultsTab == ExplorerTab.VariableList && VariableListFilters is not null)
     {
         @VariableListFilters

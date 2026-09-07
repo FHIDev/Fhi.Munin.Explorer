@@ -4,11 +4,9 @@
    nobody can read is a control with nothing behind it. *@
 @if (State?.IsAuthenticated == true)
 {
-    @* `munin-explorer-filters` and nothing invented. Stiler places this name in the grid's filters
-       track — `grid-area: filters`, sticky, its own scrollbar (components/munin-explorer/_detail) —
-       and it does so through a CHILD combinator on `.munin-explorer`, so this has to render where
-       the search's own panel does rather than inside the tab panel. Without it the track stands
-       empty on this tab and the list sits behind 408px of gutter with none on the right. *@
+    @* `munin-explorer-filters` and nothing invented: Stiler places this name in the grid's filters
+       track, through a CHILD combinator on `.munin-explorer` — see the note in VariableSearch.razor
+       where this fragment is drawn, which is why it is drawn there. *@
     <div class="munin-explorer-filters">
         @((MarkupString)$"<h{TitleLevel} class=\"form-element__label\">{T.FiltersTitle}</h{TitleLevel}>")
 
