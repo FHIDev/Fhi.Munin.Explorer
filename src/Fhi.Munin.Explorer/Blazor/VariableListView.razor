@@ -65,12 +65,8 @@
                         @onclick="() => _renaming = !_renaming">@T.RenameList</button>
 
                 @* Two steps because the API offers no undo, and in the page rather than a JS
-                   confirm a host's Content-Security-Policy may suppress. One control saying what a
-                   press does now, so neither step removes the element under the reader's focus.
-
-                   Ghost rather than ghost-blue: it is the one control here that destroys
-                   something, and drawing it in the same blue as "gi nytt navn" would say the two
-                   cost the same to press. *@
+                   confirm a host's CSP may suppress. One control, so neither step removes the
+                   element under the reader's focus. Ghost, not ghost-blue: it destroys something. *@
                 <button class="hd-button-square button-square--ghost"
                         type="button"
                         id="@DeleteButtonId"
@@ -263,27 +259,10 @@
                                            @onchange="e => SaveDesiredDataAsync(item.VariableId, e.Value?.ToString())" />
                                 </td>
 
-                                @* The visible word stays "Fjern" — the column is narrow and every
-                                   button in it removes something. The accessible name says which
-                                   one: without it a list of forty is forty controls that read
-                                   "Fjern", and a screen reader user has no way to tell which row
-                                   they are standing on. WCAG 4.1.2.
-
-                                   Two elements rather than an aria-label, the rule the explorer's
-                                   own save button follows: this button points at itself and then
-                                   at the name cell, so "Fjern" stays ours and in the reader's
-                                   language while the variable's name stays Munin's and marked
-                                   lang="no" — one aria-label string would be a single unmarked
-                                   sentence an English voice pronounces the Norwegian half of with
-                                   English phonetics (WCAG 3.1.2). Itself first keeps the visible
-                                   word at the front for speech input (WCAG 2.5.3).
-
-                                   An orphaned row borrows the sentence its name cell shows
-                                   instead, so the button says what it removes without reading an
-                                   id out. Two orphans do then announce alike — a duplicate name
-                                   on two controls is not a WCAG failure, and ten seconds of
-                                   spelt-out GUID for a value the row does not show anywhere is
-                                   worse than one. *@
+                                @* "Fjern" on every button in the column, so the accessible name
+                                   has to say which row (WCAG 4.1.2). Two elements rather than one
+                                   aria-label, because each half is in its own language — see
+                                   RemoveLabelledBy, which decides the order and why. *@
                                 <td>
                                     <button class="hd-button-square button-square--ghost-blue"
                                             type="button"
