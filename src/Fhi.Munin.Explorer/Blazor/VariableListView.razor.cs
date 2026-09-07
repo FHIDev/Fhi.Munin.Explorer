@@ -441,13 +441,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     /// <summary>
     /// What a page with no rows on it means: an empty list, or a narrowing nothing survived.
+    /// "Denne listen er tom" over a list of 247 sends the reader looking for variables they still
+    /// have. (Fhi.Metadata-mm4hu)
     /// </summary>
-    /// <remarks>
-    /// The two are different facts and the reader can act on only one of them. Saying "denne listen
-    /// er tom" over a list of 247 the reader has narrowed to a kilde it no longer holds — the tally
-    /// is a moment older than the rows, so another tab can empty a kilde between them — would send
-    /// them looking for variables they have not lost.
-    /// </remarks>
     private string EmptyMessage =>
         State?.KildeFilter.Count > 0 ? T.NoVariablesForTheseKilder : T.EmptyList;
 
