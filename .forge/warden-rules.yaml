@@ -30,17 +30,14 @@ rules:
       pattern: >-
         A `TaskCompletionSource` is created without `TaskCreationOptions.RunContinuationsAsynchronously` and is later awaited while another thread (e.g. a renderer callback) calls `SetResult`/`SetException`/`SetCanceled` on it
       check: >-
-        Verify the TaskCompletionSource is constructed with `TaskCreationOptions.RunContinuationsAsynchronously` so the awaiter's continuation runs asynchronously instead of inline on the thread calling Set*, preventing reentrancy and flakiness in renderer-driven or otherwise concurrent tests
+        Verify the TaskCompletionSource is constructed with `TaskCreationOptions.RunContinuationsAsynchronously` so the awaiter's continuation runs asynchronously instead of inline on the thread calling Set*, preventing reentrancy and flakiness in renderer-driven or otherwise concurrent tests. Inline completion is the correct choice, and this rule does not apply, when a test has to observe an answer the code under test is expected to discard: a dropped answer leaves nothing to poll, so the test can only know it has landed by the continuation having run before Set* returned. Such a stall says so at its construction — see `AnswerStalledCodes` in `test/Fhi.Munin.Explorer.Tests/VariableExplorerTest.cs`
       source: copilot:PR#154
       added: "2026-09-02"
       paths:
         - '**/*.cs'
-        - '**/*.css'
-        - '**/*.json'
-        - '**/*.md'
         - '**/*.razor'
     - id: readme-accuracy-with-code-changes
-      category: other
+      category: documentation
       pattern: >-
         A PR changes behavior (e.g., adds writes, authentication, or new capabilities) that contradicts a claim in README.md or other docs
       check: >-
@@ -50,6 +47,5 @@ rules:
       paths:
         - '**/*.cs'
         - '**/*.css'
-        - '**/*.json'
         - '**/*.md'
         - '**/*.razor'
