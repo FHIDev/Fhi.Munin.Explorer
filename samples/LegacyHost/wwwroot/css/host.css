@@ -701,6 +701,16 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .munin-explorer-drilldown > dl > dt { margin-top: 12px; }
 .munin-explorer-drilldown > dl > dd { margin: 0; }
 
+/* Stiler's base rule for the component root (_detail.scss:113), absent here until now: the
+   explorer is a <section> nothing above bounds, so without it the component runs past the 1488px
+   cap helsedata holds it to. This sample's own chrome adds to the 24px. (Fhi.Metadata-7e7de) */
+.munin-explorer {
+  max-width: 1488px;
+  width: 100%;
+  padding: 0 24px;
+  margin: 0 auto;
+}
+
 /* ---- not Stiler either: the two-column layout ----
 
    Stiler styles components, not the arrangement of them — it has no page layout at all, so where
@@ -757,7 +767,15 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
     padding-inline: 6px;
   }
 
-  .munin-explorer > *:not(h2):not(form):not(.munin-explorer-filters) {
+  /* The drill-in replaces the list rather than sitting beside it, so it spans both tracks and is
+     excluded from the catch-all below by :not() - caught by it, it sat in column 2 with the filter
+     track standing empty (Stiler _detail.scss:182, Fhi.Metadata-7e7de). */
+  .munin-explorer > .munin-explorer-drilldown {
+    grid-column: 1 / -1;
+    min-inline-size: 0;
+  }
+
+  .munin-explorer > *:not(h2):not(form):not(.munin-explorer-filters):not(.munin-explorer-drilldown) {
     grid-column: 2;
     min-inline-size: 0;
   }
@@ -1819,12 +1837,15 @@ table.munin-explorer-data-list tbody th {
 .munin-explorer-kilder .munin-explorer-kilder__select {
   width: 1%;
 }
-/* The expand control column and the row it opens. The toggle wears hd-button-reset, so it has no
-   chrome of its own: without a rule here it is a bare glyph in a column with no width. */
-.munin-explorer-kilder__expand {
-  width: 32px;
+/* The toggle wears hd-button-reset, so without a rule this is a bare glyph in a column with no
+   width. Scoped like __count and __select: the shared cell rule carries a class and an element, so
+   a bare name loses. The 4px is what lets width bite. (Stiler _kilder.scss:117, Fhi.Metadata-cuo0e) */
+.munin-explorer-kilder .munin-explorer-kilder__expand {
+  padding-left: 4px;
+  padding-right: 4px;
   text-align: center;
   vertical-align: top;
+  width: 32px;
 }
 
 .munin-explorer-kilder__expand-toggle {
