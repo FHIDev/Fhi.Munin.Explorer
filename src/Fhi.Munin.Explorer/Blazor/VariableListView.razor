@@ -201,14 +201,16 @@
                (VariableSearch.razor:530). Nothing in helsedata dresses a SAVED list, so this one
                is free of that. The scaffolding it replaces could not stop every row repeating all
                seven field names — a div has no header to be associated with. *@
-            @* overflow-x inline rather than left to the host, which is not how the kilder box does
-               it and is deliberate: measured in HostileHost, nine columns put 1323px of table in
-               an 843px page and the DOCUMENT scrolled — WCAG 1.4.10 on helsedata's own page until
-               Stiler carries the name. The same shape as the column picker's position:relative,
-               and for the same reason: without it the markup is wrong rather than plain. The class
-               stays, and the focus ring under it is still the host's. *@
+            @* Both declarations inline rather than left to the host, which is not how the kilder
+               box does it and is deliberate. overflow-x: measured in HostileHost, nine columns put
+               1323px of table in an 843px page and the DOCUMENT scrolled, and Stiler has no rule
+               for this name. position: relative: without it the box is no containing block, so an
+               absolutely positioned descendant escapes the clip — every row's screenreader-only
+               label is one, and a host whose visually-hidden idiom is `clip` rather than a
+               negative offset gets the sideways scroll back through it. Measured in ModernHost:
+               292px of it. The class stays, and the focus ring under it is still the host's. *@
             <div class="munin-explorer-list-scroll"
-                 style="overflow-x:auto"
+                 style="overflow-x:auto;position:relative"
                  role="region"
                  tabindex="0"
                  aria-label="@ShownListName">

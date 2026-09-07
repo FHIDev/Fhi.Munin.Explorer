@@ -810,11 +810,15 @@ public class VariableListViewTest : BunitContext
         Assert.Equal("0", box.GetAttribute("tabindex"));
         Assert.NotNull(box.QuerySelector("table.munin-explorer-data-list"));
 
-        // And the overflow is the markup's own, not a rule the host may not have. Left to a
-        // stylesheet it was measured scrolling helsedata's whole document in HostileHost — 1323px
-        // of table in an 843px page — because Stiler has no rule for this name.
-        Assert.Contains("overflow-x:auto", box.GetAttribute("style")?.Replace(" ", "") ?? "",
-                        StringComparison.Ordinal);
+        // Both declarations are the markup's own, not rules the host may not have. overflow-x was
+        // measured scrolling helsedata's whole document in HostileHost — 1323px of table in an
+        // 843px page — and position turns the box into the containing block that clips it: without
+        // it every row's absolutely positioned screenreader-only label escapes, which is 292px of
+        // sideways scroll on any host whose visually-hidden idiom is `clip` rather than an offset.
+        var style = box.GetAttribute("style")?.Replace(" ", "") ?? "";
+
+        Assert.Contains("overflow-x:auto", style, StringComparison.Ordinal);
+        Assert.Contains("position:relative", style, StringComparison.Ordinal);
     }
 
     [Fact]

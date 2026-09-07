@@ -5,9 +5,13 @@ category: Notes for hosts
   that one it carries its own `overflow-x: auto` inline: measured in `HostileHost`, nine columns
   put 1323px of table in an 843px page and the *document* scrolled, which is WCAG 1.4.10 on the
   host's page rather than a table that looks wrong on ours — and no host stylesheet can be assumed
-  to have the name the day it appears. What is still the host's is the focus ring, because the box
-  carries `tabindex="0"` and a focus stop nobody can see is WCAG 2.4.7. Both sample stylesheets
-  have it; `Fhi.Helsedata.Stiler` has neither rule as of 0.1.37.
+  to have the name the day it appears. It carries `position: relative` inline too, which is what
+  makes it the containing block that clips: without it every row's absolutely positioned
+  `screenreader-only` label escapes the box, and a host whose visually-hidden idiom is `clip`
+  rather than a negative offset gets the sideways scroll back through it — 292px of it, measured.
+  What is still the host's is the focus ring, because the box carries `tabindex="0"` and a focus
+  stop nobody can see is WCAG 2.4.7. Both sample stylesheets have it; `Fhi.Helsedata.Stiler` has
+  no rule for the name at all as of 0.1.37.
 - **The saved list's rows are `<table>` markup now, so rules written against the old flex row miss
   them.** `munin-explorer-data-list` is still the name, but on a `<table>`, and the cells wear
   their per-column modifier without `munin-explorer-dataitem-main__column` — that class is
