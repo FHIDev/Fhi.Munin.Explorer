@@ -584,28 +584,47 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             || !Lists.Any(l => l.Id == _shownList))
         {
             _page = null;
+
+            // Cleared here as well now that a superseded read returns without touching it: this
+            // branch is the one place a read in flight can be abandoned by a caller.
+            _loading = false;
             SeedDesiredData();
             return;
         }
 
+        // What this read is for, taken before the await: several run at once, because the holder
+        // raises Changed while a create is still going and each notification starts one.
+        var readList = _shownList.Value;
+        var readPage = _pageNumber;
+
         _loading = true;
         _failed = false;
 
+        Page<VariableListItem>? read = null;
+        var failed = false;
+
         try
         {
-            _page = await Client.GetMyListVariablesAsync(_shownList.Value, _pageNumber, PageSize);
+            read = await Client.GetMyListVariablesAsync(readList, readPage, PageSize);
         }
         catch (Exception)
         {
             // Said here rather than thrown on: an unhandled exception out of a lifecycle method
             // takes the circuit down, which is a worse answer than a line of text.
-            _page = null;
-            _failed = true;
+            failed = true;
         }
-        finally
+
+        // An answer for a list or a page the view has since left is dropped, _loading included.
+        // Creating repoints _shownList while reads for the previous list are still out, and the
+        // later answer won — old rows under the new name, as though create had copied them.
+        if (_shownList != readList || _pageNumber != readPage)
         {
-            _loading = false;
+            return;
         }
+
+        _loading = false;
+        _failed = failed;
+        _page = failed ? null : read;
 
         SeedDesiredData();
     }
