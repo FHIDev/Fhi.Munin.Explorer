@@ -234,8 +234,28 @@ public class VariableListViewTest : BunitContext
 
         public void ReleaseVariables() => _variablesGate.TrySetResult();
 
+        /// <summary>Reads that have answered, as against <see cref="VariablesCalls"/> which counts asks.</summary>
+        /// <remarks>
+        /// The two differ only while a stalled read is out, which is exactly the window the create
+        /// race lives in: a test asserting before every ask has answered asserts on the frame the
+        /// bug has not reached yet.
+        /// </remarks>
+        public int VariablesAnswered { get; private set; }
+
         public override async Task<Page<VariableListItem>?> GetMyListVariablesAsync(
             Guid id, int page = 1, int pageSize = 100, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                return await ReadVariablesAsync(id, page, pageSize);
+            }
+            finally
+            {
+                VariablesAnswered++;
+            }
+        }
+
+        private async Task<Page<VariableListItem>?> ReadVariablesAsync(Guid id, int page, int pageSize)
         {
             VariablesCalls++;
             LastPageAsked = page;
@@ -276,6 +296,19 @@ public class VariableListViewTest : BunitContext
                 {
                     throw new InvalidOperationException("the membership read is gone");
                 }
+
+                // A list made a moment ago holds nothing. The fake pages the same items out for
+                // every other id, which is enough for the cases that only count calls, but a
+                // created list answering with the previous list's rows would make the create race
+                // unfalsifiable here.
+                return new Page<VariableListItem>
+                {
+                    Items = [],
+                    TotalCount = 0,
+                    PageNumber = page,
+                    Size = pageSize,
+                    TotalPages = 1
+                };
             }
 
             // Honours the size the component asked for, not the fake's own: slicing by an
@@ -1204,6 +1237,34 @@ public class VariableListViewTest : BunitContext
         Press(cut, "Opprett liste");
 
         Assert.Equal(1, client.CreateCalls);
+    }
+
+    [Fact]
+    public async Task View_WhenAListIsCreated_ThenAReadStillOutForThePreviousOneDoesNotPutItsRowsBack()
+    {
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
+        var cut = RenderView(client);
+
+        // Held open from here on, so the two reads the create raises for the list on screen answer
+        // after the new list's own — the order a remote API gives when the older page is the bigger
+        // of the two. Answered at once they land in the order they were asked and the window closes.
+        client.StallVariablesFor = ListId;
+
+        CreateField(cut).Change("Kreft og svulster");
+        await PressAsync(cut, "Opprett liste");
+
+        client.ReleaseVariables();
+
+        // Waited for the asks to have ANSWERED, not merely been made: asserting while they are
+        // still out asserts on the frame before the bug, which passes against the broken code.
+        await cut.WaitForStateAsync(() => client.VariablesAnswered == client.VariablesCalls);
+        await cut.InvokeAsync(() => { });
+
+        // The name moved on its own — the picker reads it off the holder — so the rows are the
+        // whole of what is asserted here. Empty, there is no table at all to be named.
+        Assert.Contains("Kreft og svulster", cut.Markup);
+        Assert.DoesNotContain("Alder ved diagnose", cut.Markup);
+        Assert.Contains("Denne listen er tom.", cut.Markup);
     }
 
     [Fact]
