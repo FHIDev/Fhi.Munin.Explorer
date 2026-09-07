@@ -175,8 +175,9 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
         }
 
         // Patched in place rather than refetched: the other surfaces are told below, and a round
-        // trip here would make a rename look slower than it is.
-        _lists = [.. _lists.Select(l => l.Id == id ? l with { Name = name } : l)];
+        // trip here would make a rename look slower than it is. The timestamp goes with the name,
+        // for the reason TouchedNow gives.
+        _lists = [.. _lists.Select(l => l.Id == id ? l with { Name = name, UpdatedAt = TouchedNow() } : l)];
         Changed?.Invoke();
         return true;
     }
@@ -239,6 +240,7 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
         if (accepted)
         {
             RecordMembership(id, variableIds, saved: true, startedAt);
+            Touch(id, startedAt);
             Changed?.Invoke();
         }
 
@@ -265,9 +267,36 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
         if (accepted)
         {
             RecordMembership(id, variableIds, saved: false, startedAt);
+            Touch(id, startedAt);
             Changed?.Invoke();
         }
 
         return accepted;
     }
+
+    /// <summary>Records that a write the API accepted has just changed one list.</summary>
+    /// <remarks>
+    /// The API stamps <c>updatedAt</c> on exactly these writes, and the holder patches its own copy
+    /// rather than refetching — so without this the "sist endret" line beside a list would keep
+    /// showing the day the page was loaded while the name above it changed under the reader.
+    /// </remarks>
+    private void Touch(Guid id, int startedAt)
+    {
+        if (!StillCurrent(startedAt))
+        {
+            return;
+        }
+
+        _lists = [.. _lists.Select(l => l.Id == id ? l with { UpdatedAt = TouchedNow() } : l)];
+    }
+
+    /// <summary>
+    /// What a write that has just been accepted sets <c>updatedAt</c> to.
+    /// </summary>
+    /// <remarks>
+    /// This clock rather than the API's, which does not answer with the new value on any of these
+    /// endpoints. The two can only disagree by the round trip, and the surfaces that show it show a
+    /// day — so the alternative is not a truer timestamp, it is a visibly stale one.
+    /// </remarks>
+    private static DateTimeOffset TouchedNow() => DateTimeOffset.UtcNow;
 }

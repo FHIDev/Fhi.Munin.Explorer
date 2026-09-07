@@ -929,6 +929,64 @@ public class VariableListViewTest : BunitContext
     }
 
     [Fact]
+    public async Task View_WhenAListWasJustRenamed_ThenTheFormStaysOpenUnderTheReadersFocus()
+    {
+        // The mirror of the create case above, and it needs its own: the holder patches the name in
+        // place rather than refetching, so this path never re-renders from an API answer and could
+        // fold the block away without any create test noticing.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
+        var cut = RenderView(client);
+
+        RenameField(cut).Change("Hjertet mitt");
+        await PressAsync(cut, "Lagre navnet");
+
+        Assert.Equal(1, client.RenameCalls);
+
+        var field = cut.Find("input[id^='munin-explorer-rename-list-']");
+
+        Assert.Equal("", field.GetAttribute("value") ?? "");
+        Assert.Equal("true",
+                     cut.Find("input[id^='munin-explorer-rename-list-'] + button")
+                        .GetAttribute("aria-disabled"));
+    }
+
+    [Fact]
+    public async Task View_WhenTheListIsWrittenTo_ThenSistEndretStopsSayingTheDayThePageLoaded()
+    {
+        // The holder patches its own copy on a rename and on a removal rather than refetching, so
+        // without a timestamp patched alongside, "Sist endret" would keep naming the day the page
+        // was loaded while the name above it changed under the reader — the two facts this line
+        // exists to show together, contradicting each other.
+        var client = new ListClient(
+            Item("Alder ved diagnose", "V_BDR.ALDER"),
+            Item("Kjønn", "V_BDR.KJONN"))
+        {
+            Updated = new DateTimeOffset(2020, 3, 4, 9, 0, 0, TimeSpan.Zero)
+        };
+
+        var cut = RenderView(client);
+
+        Assert.Contains("2020", cut.Find("p.caption").TextContent, StringComparison.Ordinal);
+
+        RenameField(cut).Change("Hjertet mitt");
+        await PressAsync(cut, "Lagre navnet");
+
+        var afterRename = cut.Find("p.caption").TextContent;
+
+        Assert.DoesNotContain("2020", afterRename, StringComparison.Ordinal);
+        Assert.Contains(DateTimeOffset.UtcNow.Year.ToString(), afterRename, StringComparison.Ordinal);
+
+        // And the same for taking a variable out, which changes what the list holds rather than
+        // what it is called. The count moves with it, off the API's own total.
+        await cut.InvokeAsync(() => cut.FindAll("tbody tr td:last-child button")[0].Click());
+
+        var afterRemoval = cut.Find("p.caption").TextContent;
+
+        Assert.StartsWith("1 variabel", afterRemoval, StringComparison.Ordinal);
+        Assert.Contains(DateTimeOffset.UtcNow.Year.ToString(), afterRemoval, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void View_WhenTheListHasNeverBeenChanged_ThenTheCountStandsWithoutAnInventedDate()
     {
         // updatedAt is nullable on the contract and Munin has omitted it before

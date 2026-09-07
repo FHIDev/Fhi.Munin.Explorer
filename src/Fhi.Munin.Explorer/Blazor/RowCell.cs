@@ -3,7 +3,8 @@ using Microsoft.AspNetCore.Components.Rendering;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
-/// One column of a variable row, in <c>munin-explorer-dataitem-main__column</c> shape.
+/// One column of a variable row: a <c>munin-explorer-dataitem-main__column</c> <c>&lt;div&gt;</c>
+/// for the search results, a <c>&lt;td&gt;</c> for the saved list's real table.
 /// </summary>
 /// <remarks>
 /// Shared by the search results and the reader's saved lists, which draw the same columns of the
@@ -22,9 +23,9 @@ internal static class RowCell
     /// Draws one cell.
     /// </summary>
     /// <remarks>
-    /// The field name is not shown in the cell — the column header names it. It is still emitted
-    /// for assistive technology, because a screen reader moving down a column has no header to
-    /// glance up at.
+    /// The field name is not shown in the cell — the column header names it. In a <c>&lt;div&gt;</c>
+    /// row it is still emitted for assistive technology, because a screen reader moving down a
+    /// column has no header to glance up at; <paramref name="tableCell"/> is the row that has one.
     /// <para>
     /// <paramref name="catalogue"/> says whose words the value is. Nearly always the catalogue's,
     /// which are Norwegian whatever the reader's language is, so they are marked <c>lang="no"</c>.
@@ -89,8 +90,7 @@ internal static class RowCell
         // hear the field name instead of the value. screenreader-only is Stiler's own class for
         // this, 16 rules in the site-wide stylesheet.
         //
-        // A real cell needs none of it: its <th scope="col"> is the association, announced by the
-        // reader itself. Repeated here it would be the field name twice per cell.
+        // A real cell needs none of it — its <th scope="col"> is the association.
         if (!tableCell)
         {
             builder.OpenElement(seq + 4, "span");
