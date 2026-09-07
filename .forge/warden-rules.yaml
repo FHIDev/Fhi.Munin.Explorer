@@ -46,6 +46,6 @@ rules:
       added: "2026-09-02"
       paths:
         - '**/*.cs'
-        - '**/*.css'
+        - '**/*.json'
         - '**/*.md'
         - '**/*.razor'

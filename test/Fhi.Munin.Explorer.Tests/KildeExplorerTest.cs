@@ -295,6 +295,7 @@ public class KildeExplorerTest : BunitContext
 
             if (StallDetail)
             {
+                // Continuations inline deliberately - see AnswerStalledCodes in VariableExplorerTest.
                 var stall = new TaskCompletionSource<KildeDetail?>();
                 _stalls.Add(stall);
 
