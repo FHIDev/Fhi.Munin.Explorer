@@ -1423,9 +1423,9 @@ public sealed partial class VariableSearch : ComponentBase
     /// </summary>
     /// <remarks>
     /// The row endpoint sends the code — "2" — and nothing else, while the filters endpoint sends
-    /// the same codes WITH their names and the panel fetches those anyway, so the name is already
-    /// in memory. Canonicalise then normalise: AGENTS.md, "The API names a datatype, not this
-    /// package". (Fhi.Metadata-l9l2n.49)
+    /// the same codes WITH their names, already fetched by the panel. Falling back other than the
+    /// facet beside it does puts two words for one datatype on one screen. AGENTS.md, "The API
+    /// names a datatype, not this package". (Fhi.Metadata-l9l2n.49)
     /// </remarks>
     private string? DataTypeName(string? code)
     {
@@ -1437,7 +1437,9 @@ public sealed partial class VariableSearch : ComponentBase
         var canonical = T.CanonicalDataTypeCode(code);
         var named = _facets?.DataTypes.FirstOrDefault(d => d.Value == canonical)?.DisplayName;
 
-        return T.NormalizeDataTypeDisplayName(string.IsNullOrWhiteSpace(named) ? code : named);
+        return T.NormalizeDataTypeDisplayName(named) is { } name && !string.IsNullOrWhiteSpace(name)
+            ? name
+            : T.DataTypeLabel(canonical);
     }
 
     /// <summary>

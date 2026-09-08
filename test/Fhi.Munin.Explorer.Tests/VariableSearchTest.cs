@@ -4010,6 +4010,67 @@ public class VariableSearchTest : BunitContext
         Assert.Equal("Kvasistreng (2)", Facet(cut, "Kvasistreng").TextContent);
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Render_WhenADatatypeFacetArrivesWithABlankName_ThenTheRowSaysWhatTheButtonSays(
+        string? name)
+    {
+        // The button's blank-name guard used to have no counterpart on the row, so the one facet
+        // this fixture models — an API predating displayName — put "Streng" on the button and "1"
+        // on every row beside it. Both fall back to the shipped table now. (Fhi.Metadata-l9l2n.49)
+        var facets = Facets() with
+        {
+            DataTypes = [new() { Value = "1", DisplayName = name, Count = 9 }]
+        };
+        var row = Variable("1. Tale", "V_ALS.F1.ALSFRSR1TALE") with { DataType = "1" };
+
+        var cut = RenderWith(new FilteringClient(OnePage(row), facets));
+
+        Assert.Equal("Streng", CellText(cut, "dataType"));
+        Assert.Equal("Streng (9)", Facet(cut, "Streng").TextContent);
+    }
+
+    [Theory]
+    [InlineData("String", "Streng")]
+    [InlineData("tekst", "Streng")]
+    [InlineData("2", "Heltall")]
+    [InlineData("11", "11")]
+    public void Render_WhenTheFacetsCannotBeFetched_ThenTheRowsStillNameTheirDatatype(
+        string stored, string expected)
+    {
+        // A first-load facets failure leaves _facets null while the rows render anyway, so this is
+        // the branch every other row assertion here skips by supplying a matching facet. Both
+        // halves are pinned: a legacy spelling resolves to its code's word, and a code the shipped
+        // table has never heard of survives as itself rather than becoming another code's word —
+        // which is what "tidying" the lookup key onto the fallback would do.
+        // (Fhi.Metadata-l9l2n.49)
+        var row = Variable("1. Tale", "V_ALS.F1.ALSFRSR1TALE") with { DataType = stored };
+        var client = new FilteringClient(OnePage(row)) { FailFacets = true };
+
+        var cut = RenderWith(client);
+
+        Assert.Equal(expected, CellText(cut, "dataType"));
+    }
+
+    [Fact]
+    public void Render_WhenNoFacetMatchesTheRowsDatatype_ThenTheRowFallsBackAsThePanelDoes()
+    {
+        // Facets that landed but name only the codes the current search matched. A row outside
+        // that set has no API name of its own, which is the panel's situation exactly, so it reads
+        // the panel's word rather than a bare number. (Fhi.Metadata-l9l2n.49)
+        var facets = Facets() with
+        {
+            DataTypes = [new() { Value = "1", DisplayName = "Streng", Count = 9 }]
+        };
+        var row = Variable("1. Tale", "V_ALS.F1.ALSFRSR1TALE") with { DataType = "2" };
+
+        var cut = RenderWith(new FilteringClient(OnePage(row), facets));
+
+        Assert.Equal("Heltall", CellText(cut, "dataType"));
+    }
+
     [Fact]
     public void Render_WhenAKildeHasDelkilder_ThenTheyAreNestedUnderIt()
     {

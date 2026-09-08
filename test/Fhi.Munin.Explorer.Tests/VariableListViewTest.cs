@@ -813,7 +813,7 @@ public class VariableListViewTest : BunitContext
     [Theory]
     [InlineData("String", "Streng")]
     [InlineData("tekst", "Streng")]
-    [InlineData("2", "2")]
+    [InlineData("2", "Heltall")]
     [InlineData("11", "11")]
     public void View_WhenTheNamesHaveNotLandedYet_ThenTheRowsAreStillReadable(
         string stored, string expected)
@@ -821,8 +821,8 @@ public class VariableListViewTest : BunitContext
         // The rows draw before the filters answer, so this is the one render where the names are
         // null rather than empty — and it is the render the early return this method used to open
         // with would take. Reinstating it would put "String" back on the row. The two codes are
-        // asserted beside the spellings because neither may be turned into the other's word.
-        // (Fhi.Metadata-l9l2n.49)
+        // asserted beside the spellings because a code the shipped table knows reads as its word
+        // and one it does not may not be turned into anything else. (Fhi.Metadata-l9l2n.49)
         var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER") with { DataType = stored })
         {
             FiltersHang = true
@@ -836,15 +836,15 @@ public class VariableListViewTest : BunitContext
     [Theory]
     [InlineData("String", "Streng")]
     [InlineData("tekst", "Streng")]
-    [InlineData("2", "2")]
+    [InlineData("2", "Heltall")]
     [InlineData("11", "11")]
     public void View_WhenTheNamesNeverArrive_ThenALegacySpellingStillReadsAsAWordAndACodeSurvives(
         string stored, string expected)
     {
         // This method used to return the stored value untouched the moment the names were missing,
-        // and dropping that early return is what lets a legacy spelling resolve here at all. Both
-        // halves are pinned: the spelling becomes a word, and a code — one the shipped table knows
-        // and one it does not — is not quietly turned into something else. (Fhi.Metadata-l9l2n.49)
+        // and dropping that early return is what lets a legacy spelling resolve here at all. The
+        // fallback is the shipped table, as it is on the search rows and the panel; a code that
+        // table has never heard of is still not turned into something else. (Fhi.Metadata-l9l2n.49)
         var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER") with { DataType = stored });
 
         var cut = RenderView(client);
@@ -872,13 +872,13 @@ public class VariableListViewTest : BunitContext
     }
 
     [Fact]
-    public void View_WhenTheApiHasNoNameForTheCode_ThenTheCodeIsShownRatherThanNothing()
+    public void View_WhenTheApiHasNoNameForTheCode_ThenTheShippedWordIsShownRatherThanNothing()
     {
         var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
 
         var cut = RenderView(client);
 
-        Assert.Contains(">2<", cut.Markup);
+        Assert.Contains(">Heltall<", cut.Markup);
     }
 
     [Fact]

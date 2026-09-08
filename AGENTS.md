@@ -122,9 +122,22 @@ table has never heard of reaches the page exactly as the API sent it.
 The rule that keeps the surfaces agreeing: **canonicalise a stored value before looking it up, and
 normalise every name after.** Skipping the first step is what made a row read "String" beside a
 facet reading "Streng"; skipping the second is what made the facet read a bare code. A datatype
-word rendered any other way is a bug. `Texts.DataTypeLabel` is the one exception and is for the
-surfaces that have no API name at all — `VariableView`'s panel, which holds the stored code alone,
-and a facet from an API predating `displayName`. (`Fhi.Metadata-l9l2n.49`)
+word rendered any other way is a bug.
+
+`Texts.DataTypeLabel` is the one exception, and it is **every** surface's fallback for a code no
+API name reached — `VariableView`'s panel, which holds the stored code alone; a facet from an API
+predating `displayName`; and either view's rows, whose names arrive from the filters endpoint and
+so are missing whenever that call hangs, fails, or answers without one. The fallback has to be the
+same on all of them: a row falling back to the bare code beside a facet falling back to the table
+put "1" and "Streng" on one screen for one datatype, which is the defect this whole section exists
+to prevent. Never fall back to the raw stored value — canonicalise first, so a legacy spelling and
+its code land on the same word.
+
+One surface still escapes the rule: `VariableSearch`'s expanded row panel draws `DataType` out of
+`AdditionalProperties` through `CatalogueProperties`, in the catalogue's own vocabulary, so a
+Norwegian reader can see "Heltall" in the row and "Datatype: Integer" in the panel below it.
+`VariableView` excludes the key for exactly this reason (`DrawnInTheSidebar`); the search panel does
+not, and closing that is its own bead. (`Fhi.Metadata-l9l2n.49`)
 
 ## Comments
 

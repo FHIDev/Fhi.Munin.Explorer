@@ -9,6 +9,9 @@ category: Fixed
   stored spelling, English or Norwegian, becomes the shipped table's name for the code it means,
   in the reader's own language — "Streng" under `no`, "String" under `en`. Every other name
   reaches the page exactly as the API sent it, so a datatype added on the API's side is named by
-  the API rather than by a table frozen inside this package. The detail panel cannot follow that
-  far, because the variable carries the code and no name, so a datatype the shipped table has
-  never heard of still reads there as its code. (Fhi.Metadata-l9l2n.49)
+  the API rather than by a table frozen inside this package. When no API name reaches a row at all
+  — the filters call failed, or has not answered yet, or answered without a name for that code —
+  the row now falls back where the facet and the detail panel already did, to the shipped word for
+  the code, rather than showing the bare number beside a facet showing a word. A datatype the
+  shipped table has never heard of still reads as its code there, as it does on the panel.
+  (Fhi.Metadata-l9l2n.49)
