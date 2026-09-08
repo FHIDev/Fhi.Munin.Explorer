@@ -617,10 +617,8 @@ internal sealed record Texts(
     private static bool Is(string value, string token) =>
         string.Equals(value, token, StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>
-    /// Legacy string aliases onto canonical DataType codes — mirrors <c>DatatypeNormalizer.Aliases</c>
-    /// in the API and <c>DATATYPE_ALIAS_KEY</c> in Runa (Fhi.Metadata-88fui).
-    /// </summary>
+    /// <summary>Legacy string aliases onto canonical DataType codes — mirrors
+    /// <c>DatatypeNormalizer.Aliases</c> in the API and <c>DATATYPE_ALIAS_KEY</c> in Runa.</summary>
     private static readonly Dictionary<string, string> DataTypeAliases = new(StringComparer.OrdinalIgnoreCase)
     {
         ["string"] = "1",

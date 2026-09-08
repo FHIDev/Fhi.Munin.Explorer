@@ -471,8 +471,9 @@ public class VariableViewTest : BunitContext
     [InlineData("BOOLEAN", "Boolsk")]
     public void DataType_OnANorwegianPage_NeverShowsTheApisEnglishName(string rawValue, string expected)
     {
-        // Fhi.Metadata-88fui: the read model is not fully re-normalized, so a legacy raw value can
-        // still arrive alongside the canonical numeric codes. Either shape must resolve to Norwegian.
+        // The read model is not fully re-normalized, so a legacy raw value can
+        // still arrive alongside the canonical numeric codes. Either shape must resolve to
+        // Norwegian. (Fhi.Metadata-88fui)
         var cut = Render(Detail() with { DataType = rawValue });
 
         Assert.Contains(expected, cut.Markup, StringComparison.Ordinal);
