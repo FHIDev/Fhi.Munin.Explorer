@@ -47,8 +47,8 @@ public sealed partial class VariableExplorer : ComponentBase
     /// <remarks>
     /// Passed to both tabs. It is a <see langword="bool"/> rather than a callback, so it crosses a
     /// static-SSR boundary intact — see <see cref="KildeExplorer"/> for why that
-    /// distinction matters here. Signed out, <see cref="VariableListView"/> renders nothing at all,
-    /// and this component does not second-guess it: the tab is still there, and it is empty.
+    /// distinction matters here. Signed out, there is no tab at all — <see cref="VariableSearch"/>
+    /// draws one sentence in its place instead (Fhi.Metadata-4ifsa).
     /// </remarks>
     [Parameter] public bool IsAuthenticated { get; set; }
 
