@@ -208,10 +208,10 @@ jobs:
         # never a surprise that only CI knows how to reproduce.
         run: ./scripts/assert-changelog-assembles.sh
 
-      - name: Assert the flattener keeps every entry the assembly produced
-        # Here rather than in its own job: the flattener reads exactly what the step above
-        # writes, and the failure it guards is an entry silently missing from the package's
-        # release notes — invisible until a host reads the feed.
+      - name: Assert the flattener keeps every bullet shape the assembler accepts
+        # Beside the assembly check because it guards the step after it, though it runs against
+        # its own fixture rather than that step's output. The failure it catches is an entry
+        # silently missing from the package's release notes, invisible until a host reads the feed.
         run: ./scripts/test-flatten-release-notes.sh
 
   # The two sample hosts share one stylesheet, copied. Nothing about a build notices when the
