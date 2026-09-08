@@ -593,10 +593,9 @@ public class KildeViewTest : BunitContext
     public void Metadata_WhenARealSourceIsDrawn_ThenEveryGroupItFilledInIsThereInTheReadersLanguage(
         string language, string[] expected)
     {
-        // Read as a list rather than searched for, so a group that stops being drawn is a failure
-        // and not merely unreported, and so the catalogue's own order is asserted with it. Formål
-        // is gone rather than renamed: its only member, Formaal, duplicates FormaalFlerspraklig,
-        // which now carries the label alone from inside EHDS / HealthDCAT-AP (Fhi.Metadata-43jrq).
+        // A list, not a search: a group that stops being drawn fails here rather than going
+        // unreported, and the catalogue's own order is asserted with it. Formål is absent because
+        // its only member duplicates FormaalFlerspraklig (Fhi.Metadata-43jrq).
         var cut = Render(Barnediabetes(), language);
 
         Assert.Equal(expected, cut.FindAll(".munin-explorer-group").Select(e => e.TextContent));
