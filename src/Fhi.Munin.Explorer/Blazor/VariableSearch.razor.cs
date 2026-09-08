@@ -1422,14 +1422,10 @@ public sealed partial class VariableSearch : ComponentBase
     /// A datatype code as its name, from the facets the filter panel has already loaded.
     /// </summary>
     /// <remarks>
-    /// The row endpoint sends the code — "2" — and nothing else. The filters endpoint sends the
-    /// same codes WITH their names, and the component fetches those anyway to draw the filter
-    /// panel, so the name is already in memory and costs no second request.
-    /// <para>
-    /// Falls back to the raw code when the facets have not arrived yet, or against an API that
-    /// predates the names. A code is poor, but it is true; a lookup table here would freeze a copy
-    /// of editable master data inside a package that ships to other people.
-    /// </para>
+    /// The row endpoint sends the code — "2" — and nothing else, while the filters endpoint sends
+    /// the same codes WITH their names, already fetched by the panel. Falling back other than the
+    /// facet beside it does puts two words for one datatype on one screen. AGENTS.md, "The API
+    /// names a datatype, not this package". (Fhi.Metadata-l9l2n.49)
     /// </remarks>
     private string? DataTypeName(string? code)
     {
@@ -1438,9 +1434,12 @@ public sealed partial class VariableSearch : ComponentBase
             return code;
         }
 
-        var named = _facets?.DataTypes.FirstOrDefault(d => d.Value == code)?.DisplayName;
+        var canonical = T.CanonicalDataTypeCode(code);
+        var named = _facets?.DataTypes.FirstOrDefault(d => d.Value == canonical)?.DisplayName;
 
-        return string.IsNullOrWhiteSpace(named) ? code : named;
+        return T.NormalizeDataTypeDisplayName(named) is { } name && !string.IsNullOrWhiteSpace(name)
+            ? name
+            : T.DataTypeLabel(canonical);
     }
 
     /// <summary>

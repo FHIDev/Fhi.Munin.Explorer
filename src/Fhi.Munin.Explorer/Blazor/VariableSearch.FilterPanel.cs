@@ -410,12 +410,22 @@ public partial class VariableSearch
 
     private FacetValue DataTypeValue(DataTypeFacet dataType) =>
         new($"datatype:{dataType.Value}",
-            // The API returns the code with no label at all, so the prose is the component's own.
-            T.DataTypeLabel(dataType.Value),
+            DataTypeFacetLabel(dataType),
             Counted(dataType.Count),
             _filter.DataTypes.Contains(dataType.Value),
             () => ToggleAsync(_filter.DataTypes, dataType.Value, values => _filter with { DataTypes = values }),
             []);
+
+    /// <summary>The word on a datatype facet button, on the same terms as the result rows.</summary>
+    /// <remarks>
+    /// AGENTS.md, "The API names a datatype, not this package". A facet carrying no name at all —
+    /// an API predating them — falls back to the shipped table keyed by the code, because a button
+    /// labelled with a blank string is an empty accessible name. (Fhi.Metadata-l9l2n.49)
+    /// </remarks>
+    private string DataTypeFacetLabel(DataTypeFacet dataType) =>
+        T.NormalizeDataTypeDisplayName(dataType.DisplayName) is { } named && !string.IsNullOrWhiteSpace(named)
+            ? named
+            : T.DataTypeLabel(dataType.Value);
 
     private FacetGroup HelsefagligKodeverkGroup(FilterOptions facets) =>
         new("helsefaglig-kodeverk",

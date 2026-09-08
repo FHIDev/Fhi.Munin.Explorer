@@ -3839,11 +3839,236 @@ public class VariableSearchTest : BunitContext
     [Fact]
     public void Render_WhenADatatypeArrivesAsABareCode_ThenTheButtonSaysWhatTheCodeMeans()
     {
-        // The API returns "1" with no label at all, so a UI has to carry its own mapping or put a
-        // button reading "1" on the page.
+        // A facet carrying no label at all — what an API predating the names sends, and what this
+        // fixture holds — is the one case the button still resolves from the shipped table keyed
+        // by the code. A facet that does carry a name shows that name. (Fhi.Metadata-l9l2n.49)
         var cut = RenderWith(new FilteringClient(OnePage()));
 
         Assert.Equal("Streng (9)", Facet(cut, "Streng").TextContent);
+    }
+
+    [Theory]
+    [InlineData("1")]
+    [InlineData("String")]
+    public void Render_WhenTheApiNamesADatatypeInEnglish_ThenTheRowSaysItTheWayTheFacetDoes(
+        string stored)
+    {
+        // The bug: the filters endpoint answers a Norwegian call with displayName "String" for code
+        // "1", and the row rendered that beside a facet and a detail panel both reading "Streng".
+        // The stored legacy form is the case that proves it — a row already holding "1" read
+        // correctly on the panel before this and proved nothing. (Fhi.Metadata-l9l2n.49)
+        var facets = Facets() with
+        {
+            DataTypes = [new() { Value = "1", DisplayName = "String", Count = 9 }]
+        };
+        var row = Variable("1. Tale", "V_ALS.F1.ALSFRSR1TALE") with { DataType = stored };
+
+        var cut = RenderWith(new FilteringClient(OnePage(row), facets));
+
+        Assert.Equal("Streng", CellText(cut, "dataType"));
+        Assert.Equal("Streng (9)", Facet(cut, "Streng").TextContent);
+    }
+
+    [Fact]
+    public void Render_WhenADatatypeFacetIsNamedInALegacyForm_ThenTheButtonSaysTheReadersWord()
+    {
+        // The facet's own branch, asserted apart from the row: the API's word is what shows, and
+        // the shipped table is consulted for the one word that is not a name. (Fhi.Metadata-l9l2n.49)
+        var facets = Facets() with
+        {
+            DataTypes = [new() { Value = "1", DisplayName = "String", Count = 9 }]
+        };
+
+        var cut = RenderWith(new FilteringClient(OnePage(), facets));
+
+        Assert.Equal("Streng (9)", Facet(cut, "Streng").TextContent);
+    }
+
+    [Fact]
+    public void Render_WhenADatatypeFacetIsNamedSomethingTheShippedTableHasNeverHeardOf_ThenItSaysIt()
+    {
+        // The pass-through branch. A name the alias table does not know reaches the button
+        // unaltered, which is what keeps the API owning the vocabulary. (Fhi.Metadata-l9l2n.49)
+        var facets = Facets() with
+        {
+            DataTypes = [new() { Value = "11", DisplayName = "Kvasistreng", Count = 2 }]
+        };
+
+        var cut = RenderWith(new FilteringClient(OnePage(), facets));
+
+        Assert.Equal("Kvasistreng (2)", Facet(cut, "Kvasistreng").TextContent);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Render_WhenADatatypeFacetArrivesWithABlankName_ThenTheButtonIsNotBlank(string? name)
+    {
+        // The subtle branch. Normalisation returns a blank string as it found it, so the
+        // IsNullOrWhiteSpace guard is the only thing between a facet named "" and a button with an
+        // empty accessible name — unreadable to a screen reader and unclickable-looking to
+        // everyone else. Asserted twice: the word is there, and no facet is left labelled by its
+        // count alone. (Fhi.Metadata-l9l2n.49)
+        var facets = Facets() with
+        {
+            DataTypes = [new() { Value = "1", DisplayName = name, Count = 9 }]
+        };
+
+        var cut = RenderWith(new FilteringClient(OnePage(), facets));
+
+        Assert.Equal("Streng (9)", Facet(cut, "Streng").TextContent);
+        Assert.DoesNotContain(FacetControls(cut),
+                              c => c.TextContent.TrimStart().StartsWith('('));
+    }
+
+    [Theory]
+    [InlineData("1")]
+    [InlineData("String")]
+    [InlineData("tekst")]
+    public void Render_WhenTheApisNameForACodeIsNotTheShippedWord_ThenTheRowStillSaysWhatTheFacetDoes(
+        string stored)
+    {
+        // The row and the facet are the two API-driven surfaces, so they have to agree whatever the
+        // API calls a code. The name here is one the shipped table has never heard of on purpose:
+        // while the API's Norwegian for code 1 happens to be "Streng", a row that never reached the
+        // facets at all still landed on the right word through the shipped table, and the
+        // disagreement would only appear the day someone edited the name. The stored spelling has
+        // to be resolved to its code before the facets are searched. (Fhi.Metadata-l9l2n.49)
+        var facets = Facets() with
+        {
+            DataTypes = [new() { Value = "1", DisplayName = "Tekststreng", Count = 9 }]
+        };
+        var row = Variable("1. Tale", "V_ALS.F1.ALSFRSR1TALE") with { DataType = stored };
+
+        var cut = RenderWith(new FilteringClient(OnePage(row), facets));
+
+        Assert.Equal("Tekststreng", CellText(cut, "dataType"));
+        Assert.Equal("Tekststreng (9)", Facet(cut, "Tekststreng").TextContent);
+    }
+
+    [Theory]
+    [InlineData("1")]
+    [InlineData("String")]
+    [InlineData("tekst")]
+    public void Render_WhenADatatypeIsShownOnEverySurface_ThenAllThreeSayTheSameWord(string stored)
+    {
+        // The reported bug, asserted once across the three surfaces rather than three times inside
+        // one of them: the row resolves through the facets, the facet through its own displayName,
+        // and the panel through the stored code alone. The panel can only reach as far as the
+        // shipped table, so this is the invariant while the API's word for a code is that table's
+        // word; the test above is the one that holds when it stops being. (Fhi.Metadata-l9l2n.49)
+        var facets = Facets() with
+        {
+            DataTypes = [new() { Value = "1", DisplayName = "String", Count = 9 }]
+        };
+        var row = Variable("1. Tale", "V_ALS.F1.ALSFRSR1TALE") with { DataType = stored };
+
+        var cut = RenderWith(new FilteringClient(OnePage(row), facets));
+        var panel = Render<VariableView>(b => b.Add(c => c.Variable, WholeVariable(stored)));
+
+        var word = CellText(cut, "dataType");
+
+        Assert.Equal("Streng", word);
+        Assert.Equal($"{word} (9)", Facet(cut, word).TextContent);
+        Assert.Equal(word, PanelDataType(panel));
+    }
+
+    /// <summary>The same variable as a whole, which is what the detail view is handed.</summary>
+    private static VariableDetail WholeVariable(string dataType) => new()
+    {
+        Id = Guid.NewGuid(),
+        Code = "V_ALS.F1.ALSFRSR1TALE",
+        PreferredTerm = "1. Tale",
+        KildeName = "Als registeret",
+        DataType = dataType,
+    };
+
+    /// <summary>The word under the panel's Datatype heading, which is a sibling rather than a
+    /// child of it — the aside is a flat run of headings and paragraphs.</summary>
+    private static string PanelDataType(IRenderedComponent<VariableView> cut) =>
+        cut.FindAll(".munin-explorer-whole__aside .headline-s")
+           .Single(h => h.TextContent == "Datatype")
+           .NextElementSibling!.TextContent;
+
+    [Fact]
+    public void Render_WhenTheApiNamesADatatypeWeHaveNoAliasFor_ThenTheRowAndTheFacetShowIt()
+    {
+        // The API owns the vocabulary: a datatype added on its side reaches the row unaltered, and
+        // is not routed through a table shipped inside this package. The facet is asserted beside
+        // the row because it was the surface still keyed by the code, drawing "11" against the
+        // row's "Kvasistreng" until this. (Fhi.Metadata-l9l2n.49)
+        var facets = Facets() with
+        {
+            DataTypes = [new() { Value = "11", DisplayName = "Kvasistreng", Count = 2 }]
+        };
+        var row = Variable("1. Tale", "V_ALS.F1.ALSFRSR1TALE") with { DataType = "11" };
+
+        var cut = RenderWith(new FilteringClient(OnePage(row), facets));
+
+        Assert.Equal("Kvasistreng", CellText(cut, "dataType"));
+        Assert.Equal("Kvasistreng (2)", Facet(cut, "Kvasistreng").TextContent);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Render_WhenADatatypeFacetArrivesWithABlankName_ThenTheRowSaysWhatTheButtonSays(
+        string? name)
+    {
+        // The button's blank-name guard used to have no counterpart on the row, so the one facet
+        // this fixture models — an API predating displayName — put "Streng" on the button and "1"
+        // on every row beside it. Both fall back to the shipped table now. (Fhi.Metadata-l9l2n.49)
+        var facets = Facets() with
+        {
+            DataTypes = [new() { Value = "1", DisplayName = name, Count = 9 }]
+        };
+        var row = Variable("1. Tale", "V_ALS.F1.ALSFRSR1TALE") with { DataType = "1" };
+
+        var cut = RenderWith(new FilteringClient(OnePage(row), facets));
+
+        Assert.Equal("Streng", CellText(cut, "dataType"));
+        Assert.Equal("Streng (9)", Facet(cut, "Streng").TextContent);
+    }
+
+    [Theory]
+    [InlineData("String", "Streng")]
+    [InlineData("tekst", "Streng")]
+    [InlineData("2", "Heltall")]
+    [InlineData("11", "11")]
+    public void Render_WhenTheFacetsCannotBeFetched_ThenTheRowsStillNameTheirDatatype(
+        string stored, string expected)
+    {
+        // A first-load facets failure leaves _facets null while the rows render anyway, so this is
+        // the branch every other row assertion here skips by supplying a matching facet. Both
+        // halves are pinned: a legacy spelling resolves to its code's word, and a code the shipped
+        // table has never heard of survives as itself rather than becoming another code's word —
+        // which is what "tidying" the lookup key onto the fallback would do.
+        // (Fhi.Metadata-l9l2n.49)
+        var row = Variable("1. Tale", "V_ALS.F1.ALSFRSR1TALE") with { DataType = stored };
+        var client = new FilteringClient(OnePage(row)) { FailFacets = true };
+
+        var cut = RenderWith(client);
+
+        Assert.Equal(expected, CellText(cut, "dataType"));
+    }
+
+    [Fact]
+    public void Render_WhenNoFacetMatchesTheRowsDatatype_ThenTheRowFallsBackAsThePanelDoes()
+    {
+        // Facets that landed but name only the codes the current search matched. A row outside
+        // that set has no API name of its own, which is the panel's situation exactly, so it reads
+        // the panel's word rather than a bare number. (Fhi.Metadata-l9l2n.49)
+        var facets = Facets() with
+        {
+            DataTypes = [new() { Value = "1", DisplayName = "Streng", Count = 9 }]
+        };
+        var row = Variable("1. Tale", "V_ALS.F1.ALSFRSR1TALE") with { DataType = "2" };
+
+        var cut = RenderWith(new FilteringClient(OnePage(row), facets));
+
+        Assert.Equal("Heltall", CellText(cut, "dataType"));
     }
 
     [Fact]

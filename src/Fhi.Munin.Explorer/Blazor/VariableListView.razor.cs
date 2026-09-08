@@ -511,9 +511,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// saved at some other time, under some other search.
     /// </para>
     /// <para>
-    /// Failure leaves the map empty, and an empty map renders the code. A list saying 2 where it
-    /// could say Heltall is worse than the explorer beside it, but it is still the reader's list;
-    /// losing the whole view over a label would not be.
+    /// Failure leaves the map empty, and an empty map falls back to the shipped table — the same
+    /// word the panel shows for a code no API named. A list read from a snapshot is worse than one
+    /// read from the API; losing the whole view over a label would be worse still.
     /// </para>
     /// </remarks>
     private async Task LoadDataTypeNamesAsync()
@@ -562,20 +562,26 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
     }
 
-    /// <summary>The readable name for a datatype code, or the code when there is no name.</summary>
+    /// <summary>The readable name for a datatype code, from the names read on mount.</summary>
     /// <remarks>
-    /// The same shape as <c>VariableExplorer.DataTypeName</c>, and for the same reason: the codes are
-    /// editable master data on the API's side, so the names are read from it rather than written into
-    /// a table that ships to other people and goes stale where nobody is looking.
+    /// The same shape and the same fallback as <c>VariableSearch.DataTypeName</c> — AGENTS.md,
+    /// "The API names a datatype, not this package". The names can be absent here in a way they
+    /// are not there, since this view renders before them and drops them on a failed fetch, so
+    /// that fallback carries far more rows here than there. (Fhi.Metadata-l9l2n.49)
     /// </remarks>
     private string? DataTypeName(string? code)
     {
-        if (string.IsNullOrWhiteSpace(code) || _dataTypeNames is null)
+        if (string.IsNullOrWhiteSpace(code))
         {
             return code;
         }
 
-        return _dataTypeNames.TryGetValue(code, out var named) ? named : code;
+        var canonical = T.CanonicalDataTypeCode(code);
+        var named = _dataTypeNames is not null && _dataTypeNames.TryGetValue(canonical, out var name)
+            ? T.NormalizeDataTypeDisplayName(name)
+            : null;
+
+        return string.IsNullOrWhiteSpace(named) ? T.DataTypeLabel(canonical) : named;
     }
 
 
