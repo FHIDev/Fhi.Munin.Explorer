@@ -190,7 +190,10 @@ public class VariableListViewTest : BunitContext
 
         private VariableList? _created;
 
-        public override Task<VariableList> CreateMyListAsync(string name, CancellationToken cancellationToken = default)
+        /// <summary>Run while the create is still in flight, so a test can raise another change.</summary>
+        public Func<Task>? DuringCreate { get; init; }
+
+        public override async Task<VariableList> CreateMyListAsync(string name, CancellationToken cancellationToken = default)
         {
             CreateCalls++;
 
@@ -204,8 +207,13 @@ public class VariableListViewTest : BunitContext
                 throw new InvalidOperationException("the API is gone");
             }
 
+            if (DuringCreate is not null)
+            {
+                await DuringCreate();
+            }
+
             _created = new VariableList { Id = Guid.NewGuid(), Name = name };
-            return Task.FromResult(_created);
+            return _created;
         }
 
         /// <summary>The list whose variables read is refused with the API's 429, or none.</summary>
@@ -1333,6 +1341,39 @@ public class VariableListViewTest : BunitContext
         // view's explicit page read - and ListId, the list being left, not at all.
         Assert.Equal(2, askedDuringCreate.Count);
         Assert.All(askedDuringCreate, id => Assert.NotEqual(ListId, id));
+    }
+
+    [Fact]
+    public async Task View_WhenASecondHolderRemovesWhileAListIsBeingCreated_ThenTheRowStillLeaves()
+    {
+        // Fhi.Metadata-wuxkn. A count of notifications cannot tell this removal, raised by a second
+        // holder of the same state, from one of the create's own two - so counting swallows it and
+        // the row would sit on screen until the create finishes. Identity is what tells them apart.
+        var item = Item("Alder ved diagnose", "V_BDR.ALDER");
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        VariableListState state = null!;
+
+        var client = new ListClient(item)
+        {
+            DuringCreate = async () =>
+            {
+                await state.RemoveVariablesAsync(ListId, [item.VariableId]);
+                await gate.Task;
+            }
+        };
+
+        var cut = RenderView(client);
+        state = Services.GetRequiredService<VariableListState>();
+
+        CreateField(cut).Change("Kreft og svulster");
+        await PressAsync(cut, "Opprett liste");
+
+        // The create is still stalled inside CreateMyListAsync at this point - the row leaving
+        // here, rather than only once the create finishes, is what a count cannot guarantee.
+        await cut.WaitForAssertionAsync(() => Assert.DoesNotContain("Alder ved diagnose", cut.Markup));
+
+        gate.SetResult();
+        await cut.WaitForAssertionAsync(() => Assert.Contains("Kreft og svulster", cut.Markup));
     }
 
     [Fact]

@@ -211,13 +211,6 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         _ => null
     };
 
-    /// <summary>
-    /// Page reads owed to notifications this component already knows about and does not need to
-    /// act on - a rename owes one, a create-and-switch owes two. Consumed by count, in the order
-    /// the notifications arrive, rather than a flag: two in a row must not be mistaken for one.
-    /// </summary>
-    private int _pendingPageReadSkips;
-
     /// <summary>Why a rename or a delete did not happen. The shape the save button uses.</summary>
     private enum ListActionFailure
     {
@@ -571,28 +564,33 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// variable would otherwise leave it on screen here — the very thing this subscription exists
     /// to prevent.
     /// </summary>
-    private void OnStateChanged() => InvokeAsync(async () =>
+    private void OnStateChanged(VariableListState.ListChange? change)
     {
-        // A narrowing shortens the list, so the page number has to go back to the start: a reader
-        // on page 4 of ten who ticks a kilde with two pages would otherwise be handed an empty
-        // page and no sign of why. Every other change leaves them where they were standing.
-        if (State is { KildeFilterVersion: var version } && version != _seenKildeFilter)
+        InvokeAsync(async () =>
         {
-            _seenKildeFilter = version;
-            _pageNumber = 1;
-        }
+            // A narrowing shortens the list, so the page number has to go back to the start: a
+            // reader on page 4 of ten who ticks a kilde with two pages would otherwise be handed
+            // an empty page and no sign of why. Every other change leaves them where they stood.
+            if (State is { KildeFilterVersion: var version } && version != _seenKildeFilter)
+            {
+                _seenKildeFilter = version;
+                _pageNumber = 1;
+            }
 
-        if (_pendingPageReadSkips > 0)
-        {
-            _pendingPageReadSkips--;
-        }
-        else
-        {
-            await LoadPageAsync();
-        }
+            if (ShouldReloadFor(change))
+            {
+                await LoadPageAsync();
+            }
 
-        StateHasChanged();
-    });
+            StateHasChanged();
+        });
+    }
+
+    /// <summary>Whether this notification could have changed the rows on screen, identified by the
+    /// list it names rather than counted — a count an unrelated notification could also spend
+    /// (Fhi.Metadata-wuxkn).</summary>
+    private bool ShouldReloadFor(VariableListState.ListChange? change) =>
+        change is not { } known || (known.AffectsRows && (known.ListId is null || known.ListId == _shownList));
 
     /// <summary>Reads the page currently being looked at. Signed out this calls nothing.</summary>
     private async Task LoadPageAsync()
@@ -958,10 +956,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         VariableList? created;
 
-        // Two notifications below still name the outgoing list in _shownList - one raised
-        // inside State.CreateAsync, one at the end of SetActiveListAsync. See Fhi.Metadata-7x62u.
-        _pendingPageReadSkips = 2;
-
+        // The two notifications this raises - one from State.CreateAsync, one from the membership
+        // walk inside SetActiveListAsync - both name the new list, never _shownList, so
+        // ShouldReloadFor skips them on that identity and nothing here has to account for them.
         try
         {
             created = await State.CreateAsync(name);
@@ -970,7 +967,6 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         {
             // Creating meets the same limiter the saves do, and "prøv igjen om litt" is advice
             // a throttled reader cannot use.
-            _pendingPageReadSkips = 0;
             _createFailure = ListActionFailure.Throttled;
             return;
         }
@@ -978,16 +974,13 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         {
             // Uncaught, this leaves the event handler and takes the circuit with it: a blank
             // page and a reconnect banner in place of the list the reader was building.
-            _pendingPageReadSkips = 0;
             _createFailure = ListActionFailure.Failed;
             return;
         }
 
         if (created is null)
         {
-            // Signed out mid-call: State.CreateAsync raised no Changed for this generation, so
-            // no notification is coming to spend the allowance either.
-            _pendingPageReadSkips = 0;
+            // Signed out mid-call.
             return;
         }
 
@@ -1002,7 +995,6 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         {
             // The list was made and the switch met the limiter. Told apart from the ordinary
             // failure for the reason the create half above gives: the remedy is to wait.
-            _pendingPageReadSkips = 0;
             _createFailure = ListActionFailure.Throttled;
             return;
         }
@@ -1010,15 +1002,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         {
             // Same reason as ChooseListAsync above. The list was created; it is the switch to
             // it that did not happen, which is what ListLoadError says.
-            _pendingPageReadSkips = 0;
             _failed = true;
             return;
         }
-
-        // Defensive against ReadMembershipAsync's own early return - a list gone right after
-        // being made answers with no Changed at all - which would otherwise leave an unspent
-        // skip to land on whatever notification comes next.
-        _pendingPageReadSkips = 0;
 
         _shownList = created.Id;
         _pageNumber = 1;
@@ -1039,8 +1025,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         ForgetFailures();
-        _pendingPageReadSkips = 1;
 
+        // Renaming never reads the page again: its own notification names _shownList but carries
+        // AffectsRows: false, so ShouldReloadFor skips it without anything armed here for it.
         try
         {
             if (await State.RenameAsync(_shownList.Value, name))
@@ -1063,12 +1050,6 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             // An uncaught throw out of an event handler takes the whole circuit down, which is a
             // far worse answer to a failed rename than a line of text.
             _actionFailure = ListActionFailure.Failed;
-        }
-        finally
-        {
-            // A rename that never reached the holder raised nothing, so the allowance would
-            // otherwise sit here and be spent on somebody else's notification.
-            _pendingPageReadSkips = 0;
         }
     }
 

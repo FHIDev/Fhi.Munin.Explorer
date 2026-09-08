@@ -38,7 +38,7 @@ public partial class VariableSearch : IDisposable
     /// Re-draws the rows against the shared set. It reads no page and sends nothing — the holder
     /// has already applied the change, and a fetch here would put a request behind every save.
     /// </summary>
-    private void OnListStateChanged() => InvokeAsync(StateHasChanged);
+    private void OnListStateChanged(VariableListState.ListChange? change) => InvokeAsync(StateHasChanged);
 
     public void Dispose()
     {

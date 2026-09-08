@@ -109,7 +109,7 @@ public sealed partial class VariableListFilters : ComponentBase, IDisposable
         }
     }
 
-    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+    private void OnStateChanged(VariableListState.ListChange? change) => InvokeAsync(StateHasChanged);
 
     private void Toggle(Guid kildeId) => State?.ToggleKildeFilter(kildeId);
 

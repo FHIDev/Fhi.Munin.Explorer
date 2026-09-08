@@ -80,7 +80,7 @@ public sealed partial class VariableListState
 
         _kildeFilter = next;
         KildeFilterVersion++;
-        Changed?.Invoke();
+        RaiseChanged(listId: null, affectsRows: true);
     }
 
     /// <summary>Unticks every kilde. Silent when none was ticked, so no surface re-reads for nothing.</summary>
@@ -93,7 +93,7 @@ public sealed partial class VariableListState
 
         _kildeFilter = [];
         KildeFilterVersion++;
-        Changed?.Invoke();
+        RaiseChanged(listId: null, affectsRows: true);
     }
 
     /// <summary>
