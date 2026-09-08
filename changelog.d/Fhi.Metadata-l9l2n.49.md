@@ -1,12 +1,14 @@
 category: Fixed
 - **A datatype no longer reads "String" in a result row beside "Streng" on the variable's detail
   panel and on the datatype facet.** The list rows in the search results and in the reader's saved
-  list name a datatype from the API's own facets, and the filters endpoint answers a Norwegian
-  call with `displayName` "String" for code `1`. Both list paths now pass the API's name through
-  the same legacy-alias table the panel already used, and the facet reads its own `displayName`
-  the same way rather than resolving the shipped table by the code — so a datatype the API adds on
-  its side is named by the API in the rows and on the facet alike, instead of the facet showing a
-  bare code. The API stays authoritative: only a known legacy English form is replaced, and any
-  other name renders exactly as it arrived. The detail panel cannot follow it that far, because
-  the variable carries the code and no name, so a datatype the shipped table has never heard of
-  still reads there as its code. (Fhi.Metadata-l9l2n.49)
+  list name a datatype from the API's own facets, and the filters endpoint echoes back the word a
+  variable predating the codes was stored as — `displayName` "String" for code `1`, whatever
+  language the call asked for. A stored value is now resolved to its code before the facet is
+  looked up, so a row holding "String" finds the same facet a row holding "1" does, and both list
+  paths and the facet itself then pass the API's word through the same alias table: a legacy
+  stored spelling, English or Norwegian, becomes the shipped table's name for the code it means,
+  in the reader's own language — "Streng" under `no`, "String" under `en`. Every other name
+  reaches the page exactly as the API sent it, so a datatype added on the API's side is named by
+  the API rather than by a table frozen inside this package. The detail panel cannot follow that
+  far, because the variable carries the code and no name, so a datatype the shipped table has
+  never heard of still reads there as its code. (Fhi.Metadata-l9l2n.49)

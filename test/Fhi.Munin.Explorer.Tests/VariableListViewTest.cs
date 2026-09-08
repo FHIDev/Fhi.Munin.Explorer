@@ -57,6 +57,17 @@ public class VariableListViewTest : BunitContext
         /// <summary>Datatype names as the filters endpoint answers them, or none at all.</summary>
         public IReadOnlyList<DataTypeFacet> DataTypeFacets { get; init; } = [];
 
+        /// <summary>How the filters fetch fails, or null for one the API answers.</summary>
+        /// <remarks>The view keeps its rows and shows the stored values, so the failure is a
+        /// rendering path of its own rather than an absence of one.</remarks>
+        public Exception? FiltersThrow { get; init; }
+
+        /// <summary>Leave the filters fetch in flight, which is the state the rows first render
+        /// in: the names are not merely empty here, they are still null.</summary>
+        public bool FiltersHang { get; init; }
+
+        private readonly TaskCompletionSource<FilterOptions> _hangingFilters = new();
+
         public int FilterCalls { get; private set; }
 
         public string? LastFilterSearch { get; private set; }
@@ -386,6 +397,17 @@ public class VariableListViewTest : BunitContext
             FilterCalls++;
             LastFilterSearch = search;
             LastFilterFilter = filter;
+
+            if (FiltersThrow is not null)
+            {
+                throw FiltersThrow;
+            }
+
+            if (FiltersHang)
+            {
+                return _hangingFilters.Task;
+            }
+
             return Task.FromResult(new FilterOptions { DataTypes = DataTypeFacets });
         }
 
@@ -765,6 +787,88 @@ public class VariableListViewTest : BunitContext
         var cut = RenderView(client);
 
         Assert.Equal("Kvasistreng", CellText(cut, "dataType"));
+    }
+
+    [Theory]
+    [InlineData("1")]
+    [InlineData("String")]
+    [InlineData("tekst")]
+    public void View_WhenTheApisNameForACodeIsNotTheShippedWord_ThenTheRowStillSaysIt(string stored)
+    {
+        // The same gap as VariableSearch had, against _dataTypeNames rather than the facets: a
+        // stored spelling never matched a name keyed by the code, so the row fell through to the
+        // shipped table and only agreed with the API while the two words happened to be equal. The
+        // name here is one the shipped table has never heard of, so that coincidence cannot carry
+        // the assertion. (Fhi.Metadata-l9l2n.49)
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER") with { DataType = stored })
+        {
+            DataTypeFacets = [new DataTypeFacet { Value = "1", DisplayName = "Tekststreng" }]
+        };
+
+        var cut = RenderView(client);
+
+        Assert.Equal("Tekststreng", CellText(cut, "dataType"));
+    }
+
+    [Theory]
+    [InlineData("String", "Streng")]
+    [InlineData("tekst", "Streng")]
+    [InlineData("2", "2")]
+    [InlineData("11", "11")]
+    public void View_WhenTheNamesHaveNotLandedYet_ThenTheRowsAreStillReadable(
+        string stored, string expected)
+    {
+        // The rows draw before the filters answer, so this is the one render where the names are
+        // null rather than empty — and it is the render the early return this method used to open
+        // with would take. Reinstating it would put "String" back on the row. The two codes are
+        // asserted beside the spellings because neither may be turned into the other's word.
+        // (Fhi.Metadata-l9l2n.49)
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER") with { DataType = stored })
+        {
+            FiltersHang = true
+        };
+
+        var cut = RenderView(client);
+
+        Assert.Equal(expected, CellText(cut, "dataType"));
+    }
+
+    [Theory]
+    [InlineData("String", "Streng")]
+    [InlineData("tekst", "Streng")]
+    [InlineData("2", "2")]
+    [InlineData("11", "11")]
+    public void View_WhenTheNamesNeverArrive_ThenALegacySpellingStillReadsAsAWordAndACodeSurvives(
+        string stored, string expected)
+    {
+        // This method used to return the stored value untouched the moment the names were missing,
+        // and dropping that early return is what lets a legacy spelling resolve here at all. Both
+        // halves are pinned: the spelling becomes a word, and a code — one the shipped table knows
+        // and one it does not — is not quietly turned into something else. (Fhi.Metadata-l9l2n.49)
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER") with { DataType = stored });
+
+        var cut = RenderView(client);
+
+        Assert.Equal(expected, CellText(cut, "dataType"));
+    }
+
+    [Theory]
+    [InlineData("String", "Streng")]
+    [InlineData("11", "11")]
+    public void View_WhenTheNamesCannotBeFetched_ThenTheRowsReadTheSameAsWithNoNamesAtAll(
+        string stored, string expected)
+    {
+        // The failed fetch is its own path — the names are replaced with an empty table so the
+        // endpoint is asked once — and it has to land on the same words as the fetch that simply
+        // returned nothing. (Fhi.Metadata-l9l2n.49)
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER") with { DataType = stored })
+        {
+            FiltersThrow = new HttpRequestException("the API is down")
+        };
+
+        var cut = RenderView(client);
+
+        Assert.Equal(expected, CellText(cut, "dataType"));
     }
 
     [Fact]

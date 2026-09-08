@@ -101,6 +101,31 @@ radius. `RespectNullableAnnotations` is the other answer .NET offers and was rej
 null string throw, which trades the dead page for the whole list disappearing over one blank name.
 (`Fhi.Metadata-o355u`)
 
+## The API names a datatype, not this package
+
+**The datatype vocabulary belongs to the API.** The codes are editable master data on Munin's
+side, so a table of names written here freezes a snapshot in one language and drifts the moment
+someone edits a definition, in a package other people ship and cannot patch. Every surface that
+shows a datatype word — the result rows in `VariableSearch` and `VariableListView`, the datatype
+facet in the filter panel — therefore renders the name the filters endpoint sent, and the shipped
+`Texts.DataTypeNames` table is asked for one thing only.
+
+That one thing is a **legacy stored spelling**. Variables predating the codes hold words rather
+than numbers — `"String"`, `"tekst"`, `"Integer"` — and the filters endpoint echoes such a word
+back as the facet's `displayName` whatever `Accept-Language` asked for, so code `1` arrives named
+"String" on a Norwegian call. `Texts.DataTypeAliases` maps those spellings, in either language, to
+their code; `Texts.CanonicalDataTypeCode` is how a stored value finds its facet, and
+`Texts.NormalizeDataTypeDisplayName` is how such a word becomes the shipped table's name for that
+code **in the reader's own language** — "Streng" under `no`, "String" under `en`. A name the alias
+table has never heard of reaches the page exactly as the API sent it.
+
+The rule that keeps the surfaces agreeing: **canonicalise a stored value before looking it up, and
+normalise every name after.** Skipping the first step is what made a row read "String" beside a
+facet reading "Streng"; skipping the second is what made the facet read a bare code. A datatype
+word rendered any other way is a bug. `Texts.DataTypeLabel` is the one exception and is for the
+surfaces that have no API name at all — `VariableView`'s panel, which holds the stored code alone,
+and a facet from an API predating `displayName`. (`Fhi.Metadata-l9l2n.49`)
+
 ## Comments
 
 Comment the **why**, never the **what**. If a reader can derive it from the signature, delete it.

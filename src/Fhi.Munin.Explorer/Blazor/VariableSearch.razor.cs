@@ -1422,17 +1422,10 @@ public sealed partial class VariableSearch : ComponentBase
     /// A datatype code as its name, from the facets the filter panel has already loaded.
     /// </summary>
     /// <remarks>
-    /// The row endpoint sends the code — "2" — and nothing else. The filters endpoint sends the
-    /// same codes WITH their names, and the component fetches those anyway to draw the filter
-    /// panel, so the name is already in memory and costs no second request.
-    /// <para>
-    /// The API owns the vocabulary — a table here would freeze a copy of editable master data in a
-    /// package that ships to other people — so the shipped table is asked one thing only, through
-    /// <see cref="Texts.NormaliseDataTypeDisplayName"/>: the Norwegian behind a known legacy
-    /// English form. Anything else renders as it arrived. The facet resolves its own label the
-    /// same way; the detail panel holds the stored code alone and reads the shipped table, so it
-    /// says the code for a datatype that table has no name for. (Fhi.Metadata-l9l2n.49)
-    /// </para>
+    /// The row endpoint sends the code — "2" — and nothing else, while the filters endpoint sends
+    /// the same codes WITH their names and the panel fetches those anyway, so the name is already
+    /// in memory. Canonicalise then normalise: AGENTS.md, "The API names a datatype, not this
+    /// package". (Fhi.Metadata-l9l2n.49)
     /// </remarks>
     private string? DataTypeName(string? code)
     {
@@ -1441,9 +1434,10 @@ public sealed partial class VariableSearch : ComponentBase
             return code;
         }
 
-        var named = _facets?.DataTypes.FirstOrDefault(d => d.Value == code)?.DisplayName;
+        var canonical = T.CanonicalDataTypeCode(code);
+        var named = _facets?.DataTypes.FirstOrDefault(d => d.Value == canonical)?.DisplayName;
 
-        return T.NormaliseDataTypeDisplayName(string.IsNullOrWhiteSpace(named) ? code : named);
+        return T.NormalizeDataTypeDisplayName(string.IsNullOrWhiteSpace(named) ? code : named);
     }
 
     /// <summary>

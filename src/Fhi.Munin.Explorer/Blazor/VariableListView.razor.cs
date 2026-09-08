@@ -564,16 +564,10 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     /// <summary>The readable name for a datatype code, or the code when there is no name.</summary>
     /// <remarks>
-    /// The same shape as <c>VariableSearch.DataTypeName</c>, and for the same reason: the codes are
-    /// editable master data on the API's side, so the names are read from it rather than written into
-    /// a table that ships to other people and goes stale where nobody is looking.
-    /// <para>
-    /// The shipped table is asked one thing only, through
-    /// <see cref="Texts.NormaliseDataTypeDisplayName"/>: the Norwegian behind a known legacy English
-    /// form, which is what the explorer's rows and its datatype facet show for that same value.
-    /// Anything else renders as the API sent it; the detail panel holds the stored code alone, so
-    /// it says the code for a datatype the shipped table has no name for. (Fhi.Metadata-l9l2n.49)
-    /// </para>
+    /// The same shape as <c>VariableSearch.DataTypeName</c> and for the same reason — AGENTS.md,
+    /// "The API names a datatype, not this package". The names can be absent here in a way they
+    /// are not there, since this view renders before them and drops them on a failed fetch, so the
+    /// stored value has to survive the lookup untouched. (Fhi.Metadata-l9l2n.49)
     /// </remarks>
     private string? DataTypeName(string? code)
     {
@@ -582,9 +576,12 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             return code;
         }
 
-        var named = _dataTypeNames is not null && _dataTypeNames.TryGetValue(code, out var name) ? name : code;
+        var canonical = T.CanonicalDataTypeCode(code);
+        var named = _dataTypeNames is not null && _dataTypeNames.TryGetValue(canonical, out var name)
+            ? name
+            : code;
 
-        return T.NormaliseDataTypeDisplayName(named);
+        return T.NormalizeDataTypeDisplayName(named);
     }
 
 
