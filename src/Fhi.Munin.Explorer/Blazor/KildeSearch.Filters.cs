@@ -100,9 +100,10 @@ public sealed partial class KildeSearch
 
     /// <summary>A facet as the panel draws it: a disclosure holding a heading and the choices under it.</summary>
     /// <remarks>
-    /// <c>OpenByDefault</c> is the first facet only. Every facet open is the length this fixes —
-    /// databehandler alone runs to 39 values — and every facet shut hides the affordance from a
-    /// reader who has never used it.
+    /// <c>OpenByDefault</c> is the first facet only, and it is the same on every render, so it
+    /// seeds the disclosure and the fold is the reader's from there. Every facet open is the length
+    /// this fixes — databehandler alone runs to 39 values — and every facet shut hides the
+    /// affordance from a reader new to the panel.
     /// </remarks>
     private sealed record Facet(
         string Key, string Heading, IReadOnlyList<FacetOption> Options, bool OpenByDefault = false);
@@ -161,13 +162,6 @@ public sealed partial class KildeSearch
 
     /// <summary>Whether the panel is unfolded. See the markup for why the reader can still see it while this is false.</summary>
     private bool _filtersOpen;
-
-    /// <summary>Which facets the reader has folded open or shut; absent means the facet's own default.</summary>
-    /// <remarks>
-    /// Held here rather than left to the DOM alone, because a folded facet's values are not rendered
-    /// at all — see the markup for why drawing them and hiding them is not enough on this host.
-    /// </remarks>
-    private readonly Dictionary<string, bool> _facetOpen = new(StringComparer.Ordinal);
 
     /// <summary>The four definitions, built once — see <see cref="Definitions"/> for why they are held at all.</summary>
     private IReadOnlyList<FacetDefinition>? _definitions;
@@ -243,6 +237,11 @@ public sealed partial class KildeSearch
     /// Built per render rather than cached, for the reason the variable explorer's are: a cached
     /// facet and the rows beside it can describe two different moments. It is four passes over some
     /// tens of records.
+    /// <para>
+    /// <c>OpenByDefault</c> is applied after the empty facets are dropped, so it names the first
+    /// facet <em>drawn</em> rather than the first defined: a catalogue whose kilder carry no
+    /// kildetype would otherwise render every facet folded.
+    /// </para>
     /// </remarks>
     private IReadOnlyList<Facet> Facets =>
     [
@@ -251,17 +250,6 @@ public sealed partial class KildeSearch
             .Where(facet => facet.Options.Count > 0)
             .Select((facet, index) => facet with { OpenByDefault = index == 0 })
     ];
-
-    /// <summary>Whether a facet is drawn open: what the reader last left it at, or its own default.</summary>
-    private bool FacetOpen(Facet facet) =>
-        _facetOpen.TryGetValue(facet.Key, out var open) ? open : facet.OpenByDefault;
-
-    /// <summary>Fold one facet the other way, from the click its summary makes.</summary>
-    /// <remarks>
-    /// A flip rather than a reading of the element: the click arrives before the browser applies its
-    /// own toggle, so what was last rendered is what the reader is acting on.
-    /// </remarks>
-    private void ToggleFacet(Facet facet) => _facetOpen[facet.Key] = !FacetOpen(facet);
 
     /// <summary>How many values are ticked across every facet — what the folded panel is hiding.</summary>
     private int ChosenCount => _chosen.Values.Sum(values => values.Count);

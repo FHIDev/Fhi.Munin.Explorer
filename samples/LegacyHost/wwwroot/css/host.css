@@ -572,8 +572,8 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    of these rules still gets a panel that opens and closes — what it does not get is the sidebar,
    and the media query further down is where a host that has room for one takes the folding away
    again. The toggle goes with it: a button reading "Vis filtre" over an unfoldable panel is a
-   control that does nothing. That trade is the panel's alone: a facet's own values are rendered
-   only while it is open, because a bare element has no class a host could put the fold back on. */
+   control that does nothing. A facet's own fold needs none of that: <details> hides its values
+   itself, and the browser does it whether or not any of these rules arrived. */
 
 .munin-explorer-filters__toggle { margin-bottom: 8px; }
 

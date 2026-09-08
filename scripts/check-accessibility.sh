@@ -29,7 +29,6 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 #
 # DELIBERATELY NOT COVERED, so nobody reads a green run as more than it is:
 #   - the whole-variable drill-in and the owner panel inside a row, two more presses each;
-#   - the kildeutforsker's own facet panel, which sits behind its `Vis filtre` toggle;
 #   - the pager past page one, and anything reached by searching or by narrowing a facet;
 #   - error and empty states, which need the stub to answer differently than it does;
 #   - hierarchy branches beyond the two opened levels in kilde-hierarchy-expanded;
@@ -51,6 +50,7 @@ TARGETS=(
   "/kilder::kilde-hierarchy-metadata"
   "/kilder::kilder-expanded"
   "/kilder::kilder-columns"
+  "/kilder::kilde-facets"
   "/utforsker::explorer-tabs"
   "/utforsker::explorer-list-tab"
 )

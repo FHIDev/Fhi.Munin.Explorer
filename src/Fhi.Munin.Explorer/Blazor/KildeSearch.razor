@@ -238,43 +238,42 @@ else
                     @* A native <details> per facet, the shape the variable explorer's panel already
                        uses under this same handle. Keyed so a facet that is not drawn cannot hand
                        its open state to whichever facet takes its place. *@
-                    <details @key="facet.Key" open="@FacetOpen(facet)">
+                    <details @key="facet.Key" open="@facet.OpenByDefault">
                         @* <summary> is the disclosure control natively — focusable, Enter and Space
                            toggle it, its open attribute is the state, so there is no aria-expanded
                            to drift. The heading stays one: a panel is navigated by heading. *@
-                        <summary @onclick="() => ToggleFacet(facet)">@FacetHeading(facet)</summary>
+                        <summary>@FacetHeading(facet)</summary>
 
-                        @* Drawn only while open, never drawn and hidden. helsedata's stylesheet
-                           carries a bare `div { display: block }` and an author rule beats a browser
-                           default — a folded panel stayed on screen there, 3798px of it. *@
-                        @if (FacetOpen(facet))
-                        {
-                            <ul>
-                                @foreach (var option in facet.Options)
-                                {
-                                    @* The whole value in title, and only where the text on screen was
-                                       cut — one databehandler on the live catalogue is over 200
-                                       characters of free text, and a reader who wants to know which one
-                                       it is has nowhere else to read it. Keyed on the value: the options are built
-                                       off the unfiltered list so they never move, and the key is what
-                                       keeps that true if they ever do. *@
-                                    <li @key="option.Value">
-                                        @* lang where the choice is drawn in the catalogue's own words
-                                           rather than in this package's — databehandler, which is free
-                                           text, and any token no vocabulary had a word for. It is the
-                                           same marking the table's cells carry for the same strings,
-                                           and it covers the title as well as the text. See
-                                           KildeSearch.Filters.cs for which labels are which. *@
-                                        <label title="@option.Title" lang="@option.Language">
-                                            <input type="checkbox"
-                                                   checked="@IsChosen(facet.Key, option.Value)"
-                                                   @onchange="e => Choose(facet.Key, option.Value, e.Value is true)" />
-                                            @option.Text@(" ")<span class="munin-explorer-filters__count">@option.CountText</span>
-                                        </label>
-                                    </li>
-                                }
-                            </ul>
-                        }
+                        @* Rendered whether or not the facet is open, and hidden by the disclosure
+                           itself rather than by us. `open` is the same on every render — the facets
+                           are counted over the unfiltered list — so Blazor writes it once and never
+                           again, and the fold is the reader's after that: narrowing cannot collapse
+                           what they opened, and each facet folds alone. *@
+                        <ul>
+                            @foreach (var option in facet.Options)
+                            {
+                                @* The whole value in title, and only where the text on screen was
+                                   cut — one databehandler on the live catalogue is over 200
+                                   characters of free text, and a reader who wants to know which one
+                                   it is has nowhere else to read it. Keyed on the value: the options are built
+                                   off the unfiltered list so they never move, and the key is what
+                                   keeps that true if they ever do. *@
+                                <li @key="option.Value">
+                                    @* lang where the choice is drawn in the catalogue's own words
+                                       rather than in this package's — databehandler, which is free
+                                       text, and any token no vocabulary had a word for. It is the
+                                       same marking the table's cells carry for the same strings,
+                                       and it covers the title as well as the text. See
+                                       KildeSearch.Filters.cs for which labels are which. *@
+                                    <label title="@option.Title" lang="@option.Language">
+                                        <input type="checkbox"
+                                               checked="@IsChosen(facet.Key, option.Value)"
+                                               @onchange="e => Choose(facet.Key, option.Value, e.Value is true)" />
+                                        @option.Text@(" ")<span class="munin-explorer-filters__count">@option.CountText</span>
+                                    </label>
+                                </li>
+                            }
+                        </ul>
                     </details>
                 }
             </div>

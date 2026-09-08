@@ -449,27 +449,13 @@ public class KildeSearchTest : BunitContext
         return count < 0 ? heading : heading[..count];
     }
 
-    /// <summary>
-    /// One facet, found by the heading over it, unfolded.
-    /// </summary>
+    /// <summary>One facet's disclosure, found by the heading over it.</summary>
     /// <remarks>
-    /// Unfolded because a folded facet renders none of its values — the panel opens one facet and
-    /// folds the rest (Fhi.Metadata-co3sf), so a test about what a facet offers has to open it, and
-    /// making every one of them say so would be the same three lines thirty times.
+    /// A lookup and nothing else: a folded facet renders every one of its values just as an open
+    /// one does, so a test can read what a facet offers without opening it first.
     /// </remarks>
-    private static IElement Facet(IRenderedComponent<KildeSearch> cut, string heading)
-    {
-        var facet = Facets(cut).Single(details => FacetName(details) == heading);
-
-        if (facet.HasAttribute("open"))
-        {
-            return facet;
-        }
-
-        facet.QuerySelector("summary")!.Click();
-
-        return Facets(cut).Single(details => FacetName(details) == heading);
-    }
+    private static IElement Facet(IRenderedComponent<KildeSearch> cut, string heading) =>
+        Facets(cut).Single(details => FacetName(details) == heading);
 
     /// <summary>The visible text of every choice in a facet, count and all.</summary>
     private static IReadOnlyList<string> Choices(IElement facet) =>
@@ -2826,75 +2812,78 @@ public class KildeSearchTest : BunitContext
     }
 
     [Fact]
-    public void Facets_WhenAFacetIsFolded_ThenItsValuesAreOutOfTheDomRatherThanHidden()
+    public void Facets_WhenTheFirstDefinedFacetHasNoValues_ThenTheFirstFacetDrawnIsTheOpenOne()
     {
-        // THE TRAP. `hidden` is not enough in the one host this package ships to: helsedata's
-        // stylesheet carries a bare `div { display: block }`, an author rule beats a browser
-        // default, and a folded panel stayed on screen there — 3798px of it. So a folded facet is
-        // asserted to hold no checkbox at all, which no stylesheet anywhere can undo.
+        // The flag is handed out after the empty facets are dropped, and that ordering is the whole
+        // of its correctness: index it over the definitions instead and a catalogue whose kilder
+        // carry no kildetype opens nothing at all, which is the state the panel must never be in.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS",
+                  kildetype: "", accessRights: "eu-access:NON_PUBLIC",
+                  dataProcessor: "Folkehelseinstituttet")));
+
+        Assert.Equal(["Tilgangsnivå", "Databehandler"], FacetHeadings(cut));
+        Assert.Equal([true, false], Facets(cut).Select(f => f.HasAttribute("open")).ToArray());
+    }
+
+    [Fact]
+    public void Facets_WhenAFacetIsFolded_ThenItsValuesAreRenderedForTheDisclosureToHide()
+    {
+        // Deliberately NOT rendered-only-while-open. <details> hides its own children, so the fold
+        // belongs to the browser: no mirrored open flag here to race the native toggle, and a press
+        // costs no round trip. The sibling panel in VariableSearch does the same on the same host.
         var cut = RenderWith(new FakeClient(
             Kilde("Als registeret", "K_ALS",
                   kildetype: "biobank", dataProcessor: "Folkehelseinstituttet")));
 
-        var databehandler = Facets(cut).Single(f => FacetName(f) == "Databehandler");
+        var databehandler = Facet(cut, "Databehandler");
 
         Assert.False(databehandler.HasAttribute("open"));
-        Assert.Empty(databehandler.QuerySelectorAll("ul"));
-        Assert.Empty(databehandler.QuerySelectorAll("input[type=checkbox]"));
-
-        // And the same facet opened, so "renders nothing" cannot be how it passes.
-        Assert.Equal(["Folkehelseinstituttet (1)"], Choices(Facet(cut, "Databehandler")));
+        Assert.Equal(["Folkehelseinstituttet (1)"], Choices(databehandler));
     }
 
     [Fact]
-    public void Facets_WhenAFoldedFacetHasTickedValues_ThenItsHeadingSaysHowMany()
+    public void Facets_WhenAFacetHasTickedValues_ThenItsHeadingSaysHowMany()
     {
         // The reason a folding panel is allowed to fold at all: a facet that is narrowing the list
         // from behind a closed disclosure has to say so, or the reader loses the filter and keeps
-        // its effect — the rows are short and nothing on screen explains why. The count is in the
-        // <summary>, which is the one part of a folded facet that is still drawn.
+        // its effect. The count goes in the <summary>, which is what a folded facet still draws —
+        // asserted here, because a count anywhere else is invisible the moment the facet folds.
         var cut = RenderWith(new FakeClient(
             Kilde("Als registeret", "K_ALS", kildetype: "nasjonaltMedisinskKvalitetsregister"),
             Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister"),
             Kilde("Den norske mor, far og barn-undersøkelsen", "K_MOBA", kildetype: "biobank")));
 
+        Assert.Equal("Kildetype", Facet(cut, "Kildetype").QuerySelector("summary h4")!.TextContent.Trim());
+
         Tick(cut, "Kildetype", "Biobank");
         Tick(cut, "Kildetype", "Sentralt helseregister");
 
-        var kildetype = Facets(cut).Single(f => FacetName(f) == "Kildetype");
-
-        kildetype.QuerySelector("summary")!.Click();
-
-        kildetype = Facets(cut).Single(f => FacetName(f) == "Kildetype");
-
-        Assert.False(kildetype.HasAttribute("open"));
-        Assert.Empty(kildetype.QuerySelectorAll("input[type=checkbox]"));
-        Assert.Equal("Kildetype (2)", kildetype.QuerySelector("summary h4")!.TextContent.Trim());
-
-        // Folding it changed nothing about what is filtered. The two facets pull in opposite
-        // directions on purpose: one says the filter is still on, the other says it still bites.
+        Assert.Equal("Kildetype (2)", Facet(cut, "Kildetype").QuerySelector("summary h4")!.TextContent.Trim());
         Assert.Equal(["Dødsårsaksregisteret", "Den norske mor, far og barn-undersøkelsen"], RowNames(cut));
     }
 
     [Fact]
-    public void Facets_WhenAFacetIsFoldedAndOpenedAgain_ThenItsTickedValuesAreStillTicked()
+    public void Facets_WhenAValueIsTicked_ThenNoFacetIsFoldedOrUnfoldedByIt()
     {
-        // The state is the component's rather than the DOM's, because a folded facet renders no
-        // checkboxes to hold it. An implementation keeping the open flag and losing the ticks would
-        // pass every assertion about the heading above and empty the filter the moment it reopened.
+        // The folds are the reader's and independent of each other: `open` is seeded on the first
+        // facet and never rewritten — the facets are counted over the unfiltered list — so opening
+        // a second facet leaves the first open and narrowing the list collapses nothing. Only the
+        // second half is stageable here: bUnit re-serialises the markup from the render tree and
+        // never runs a native <details> toggle, so the press itself is pinned in the browser by
+        // kilde-facets in axe-states.mjs.
         var cut = RenderWith(new FakeClient(
-            Kilde("Als registeret", "K_ALS", kildetype: "biobank"),
-            Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister")));
+            Kilde("Als registeret", "K_ALS",
+                  kildetype: "biobank", accessRights: "eu-access:NON_PUBLIC",
+                  dataProcessor: "Folkehelseinstituttet"),
+            Kilde("Dødsårsaksregisteret", "K_DAR",
+                  kildetype: "sentraltHelseregister", accessRights: "eu-access:PUBLIC",
+                  dataProcessor: "Helsedirektoratet")));
 
-        Tick(cut, "Kildetype", "Biobank");
+        Tick(cut, "Databehandler", "Helsedirektoratet");
 
-        Facets(cut).Single(f => FacetName(f) == "Kildetype").QuerySelector("summary")!.Click();
-
-        var reopened = Facet(cut, "Kildetype");
-
-        Assert.True(reopened.HasAttribute("open"));
-        Assert.True(reopened.QuerySelectorAll("input[type=checkbox]").First().HasAttribute("checked"));
-        Assert.Equal(["Als registeret"], RowNames(cut));
+        Assert.Equal(["Dødsårsaksregisteret"], RowNames(cut));
+        Assert.Equal([true, false, false], Facets(cut).Select(f => f.HasAttribute("open")).ToArray());
     }
 
     // ---------------------------------------------------------------------------------

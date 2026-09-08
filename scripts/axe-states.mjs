@@ -150,6 +150,43 @@ export const states = {
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
 
+  // The kildeutforsker's facet panel, with a second facet opened from the keyboard. Nothing in the
+  // component mirrors the folds — `open` is seeded once and never rewritten — so this is the only
+  // place the press is exercised at all: bUnit re-serialises the markup from the render tree and
+  // never runs a browser's native <details> toggle (Fhi.Metadata-co3sf).
+  'kilde-facets': async page => {
+    await rowsArePresent(page, 'button.munin-explorer-kilder__name');
+
+    // Pressed only where it is on screen. Above the sample's 1024px sidebar breakpoint the toggle
+    // is display:none and the panel is unfolded already, and a click on it there would fold the
+    // very thing this state is here to scan.
+    const toggle = page.locator('.munin-explorer-filters__toggle');
+    if (await toggle.isVisible()) {
+      await toggle.click();
+    }
+
+    const facets = page.locator('.munin-explorer-filters__facets > details');
+    await facets.first().waitFor({ state: 'visible', timeout: findTimeout });
+
+    const open = () => page.locator('.munin-explorer-filters__facets > details[open]').count();
+    if (await open() !== 1) {
+      throw new Error('The facet panel must open exactly one facet and fold the rest');
+    }
+
+    const folded = page.locator('.munin-explorer-filters__facets > details:not([open])').first();
+    const summary = folded.locator(':scope > summary');
+    await summary.focus();
+    await page.keyboard.press('Enter');
+    await folded.locator(':scope > ul').waitFor({ state: 'visible', timeout: findTimeout });
+
+    if (!await summary.evaluate(el => el === document.activeElement)) {
+      throw new Error('Opening a facet moved focus away from its summary');
+    }
+    if (await open() !== 2) {
+      throw new Error('Opening a second facet folded the one already open');
+    }
+  },
+
   // The composed explorer on /utforsker, which is the only page in either sample that draws the
   // page-level tablist. The front page mounts VariableSearch on its own, so neither the tabs nor
   // the reader's list panel appears in any state above (Fhi.Metadata-l9l2n.39).

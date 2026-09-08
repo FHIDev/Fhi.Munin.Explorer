@@ -475,8 +475,11 @@ public class KildeSelectionTest : BunitContext
 
         var (cut, handovers) = RenderSelectable(new FakeClient(als, kvalitet));
 
+        // By prefix, not by whole text: a facet's heading gains a " (n)" the moment one of its
+        // values is ticked, so an equality here would work exactly until this test ticked a second.
         cut.FindAll(".munin-explorer-filters__facets > details")
-           .Single(facet => facet.QuerySelector("summary h4")!.TextContent.Trim() == "Kildetype")
+           .Single(facet => facet.QuerySelector("summary h4")!.TextContent.Trim()
+                                 .StartsWith("Kildetype", StringComparison.Ordinal))
            .QuerySelectorAll("label")
            .First(label => label.TextContent.Trim().StartsWith("Sentralt helseregister", StringComparison.Ordinal))
            .QuerySelector("input")!
