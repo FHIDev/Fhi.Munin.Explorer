@@ -7022,6 +7022,41 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
+    public void Detail_WhenTheChevronItselfIsClicked_ThenTheRowExpands()
+    {
+        // The reported bug: the chevron used to be a sibling span with no handler of its own, so
+        // a reader aiming at the icon hit nothing (Fhi.Metadata-zqe14). Dispatching on the row or
+        // the name would pass whether or not the chevron itself is wired up, so the click has to
+        // land on the icon.
+        var cut = RenderWith(TwoRows());
+        var chevron = Toggles(cut)[0].QuerySelector(".munin-explorer-dataitem-main__expand-icon");
+
+        Assert.NotNull(chevron);
+        chevron!.Click();
+
+        // Re-fetched rather than a captured reference: the click re-renders the row.
+        Assert.Equal("true", Toggles(cut)[0].GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void Detail_WhenTheChevronMovesInsideTheButton_ThenThereIsExactlyOneControl()
+    {
+        // The trap: a click handler on the aria-hidden span would give assistive tech one control
+        // and a mouse two. The chevron has to be a child of the button, still aria-hidden, and the
+        // button keeps its own accessible state — never a second, competing control.
+        var cut = RenderWith(TwoRows());
+        var toggle = Toggles(cut)[0];
+        var chevron = toggle.QuerySelector(".munin-explorer-dataitem-main__expand-icon");
+
+        Assert.NotNull(chevron);
+        // A child of the button, not a sibling — the fix, restated as a structural assertion.
+        Assert.Same(toggle, chevron!.ParentElement);
+        Assert.Equal("true", chevron.GetAttribute("aria-hidden"));
+        Assert.Equal("false", toggle.GetAttribute("aria-expanded"));
+        Assert.Equal("1. Tale", toggle.TextContent);
+    }
+
+    [Fact]
     public void Detail_WhenTheDetailArrives_ThenItSaysWhatTheVariableIsAndWhereItSits()
     {
         // The five things the panel exists to show. The labels are the card's own words for the
