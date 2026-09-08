@@ -8525,6 +8525,8 @@ public class VariableSearchTest : BunitContext
                 "munin-explorer-kilde__description",
                 "munin-explorer-kilde__body",
                 "munin-explorer-kilde__main",
+                "munin-explorer-hierarchy",
+                "munin-explorer-hierarchy__metadata",
                 "munin-explorer-kilde__datasamlinger",
                 "munin-explorer-kilde__delkilder",
                 "munin-explorer-kilde__delkilde",

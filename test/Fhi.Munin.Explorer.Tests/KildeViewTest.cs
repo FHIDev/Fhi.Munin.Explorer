@@ -6,6 +6,7 @@ using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -42,6 +43,13 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </remarks>
 public class KildeViewTest : BunitContext
 {
+    public KildeViewTest() => Services.AddSingleton<IMuninExplorerClient>(new HierarchyClient());
+
+    private sealed class HierarchyClient : EmptyMuninExplorerClient
+    {
+        public override Task<KildeHierarchy?> GetKildeHierarchyAsync(Guid id, CancellationToken cancellationToken = default) =>
+            Task.FromResult<KildeHierarchy?>(new() { KildeId = id });
+    }
 
     private static PropertyMetadataEntry Entry(string key, int sortOrder, string group, string? displayName = null) =>
         new()
@@ -288,7 +296,7 @@ public class KildeViewTest : BunitContext
             }
         }
 
-        Walk(cut.Find(".munin-explorer-kilde__main"), 0);
+        Walk(cut.Find(".munin-explorer-hierarchy__metadata"), 0);
 
         return lines;
     }
@@ -351,6 +359,8 @@ public class KildeViewTest : BunitContext
         Assert.Equal(
         [
             "munin-explorer-group",                  // shared with the variable view
+            "munin-explorer-hierarchy",
+            "munin-explorer-hierarchy__metadata",
             "munin-explorer-kilde",
             "munin-explorer-kilde__aside",
             "munin-explorer-kilde__body",
@@ -758,12 +768,9 @@ public class KildeViewTest : BunitContext
     }
 
     [Fact]
-    public void DataCollections_WhenTheKildeHasNoDelkilder_ThenTheTableIsStillTheWholeSection()
+    public void DataCollections_WhenTheKildeHasNoDelkilder_ThenItsMetadataTableRetainsEveryCollection()
     {
-        // THE SECOND TRAP. Most kilder have no delkilder at all, so replacing the table with a tree
-        // unconditionally would trade a missing structure for missing data on the majority of
-        // sources — and every assertion about the tree above would still pass, because none of them
-        // renders a source like this one.
+        // Sources without delkilder must retain their collection metadata too.
         var kilde = Kilde() with
         {
             Datasamlinger = [Collection("Inklusjon"), Collection("Oppfølging")],
@@ -1079,13 +1086,14 @@ public class KildeViewTest : BunitContext
     }
 
     [Fact]
-    public void DataCollections_WhenTheKildeHasNone_ThenNoHeadingPromisesAny()
+    public void DataCollections_WhenTheKildeHasNone_ThenTheHierarchyReportsItsEmptyState()
     {
         var cut = Render(Kilde() with { Datasamlinger = [], Delkilder = [] });
 
         Assert.Empty(cut.FindAll("table.munin-explorer-kilde__datasamlinger"));
         Assert.Empty(cut.FindAll("ul.munin-explorer-kilde__delkilder"));
-        Assert.DoesNotContain("Datasamlinger", BlockHeadings(cut));
+        Assert.Contains("Datasamlinger", BlockHeadings(cut));
+        Assert.Contains("Ingen delkilder", cut.Find(".munin-explorer-hierarchy [role=status]").TextContent);
     }
 
     [Fact]
@@ -1120,11 +1128,10 @@ public class KildeViewTest : BunitContext
     [Fact]
     public void Sections_WhenNoExplorerPassesAny_ThenNothingIsDrawnWhereTheyWouldHaveGone()
     {
-        // The datasamling table is the last thing in the column when the slot is empty — no empty
-        // wrapper, which would be a stray margin under every source Runa shows.
+        // The shared metadata disclosure is last; an empty Sections slot must add no wrapper.
         var cut = Render(Kilde());
 
-        Assert.Equal("table", cut.Find(".munin-explorer-kilde__main").Children.Last().TagName,
+        Assert.Equal("details", cut.Find(".munin-explorer-kilde__main").Children.Last().TagName,
                      ignoreCase: true);
     }
 

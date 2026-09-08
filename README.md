@@ -686,9 +686,10 @@ what it owns and the rest is component state that goes away on refresh.
 An open kilde's collection section loads its hierarchy separately: delkilder, datasamlinger and
 variabelgrupper appear as nested lists with native disclosures, initially collapsed. Tab visits
 each summary; Enter or Space toggles it. Descriptions and validity periods remain in a separate
-disclosure below the hierarchy. The variable explorer's source view keeps its existing structure.
-`KildeView.Hierarchy` is the optional slot for hosts composing their own detail view, and
-`KildeHierarchyView` takes `KildeId` and `Language`. The new hierarchy class names are listed above;
+disclosure below the hierarchy. `KildeView` owns this presentation, so it is the same when reached
+through either explorer or mounted directly. Register the client with `AddMuninExplorer` before
+mounting `KildeView`. `KildeHierarchyView` can also be mounted with `KildeId` and `Language`.
+The new hierarchy class names are listed above;
 their helsedata styling is tracked in `Fhi.Metadata-wihod` and is not supplied by this package.
 
 Four things are worth knowing before mounting one.

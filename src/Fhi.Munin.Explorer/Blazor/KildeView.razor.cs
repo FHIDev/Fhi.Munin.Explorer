@@ -23,6 +23,11 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// Ships no CSS, like everything else in this package: it emits the host's class names so the
 /// surrounding site styles it.
 /// </para>
+/// <para>
+/// Register IMuninExplorerClient through AddMuninExplorer before mounting. The collection
+/// hierarchy is fetched separately and uses the same collapsed disclosures in every explorer.
+/// Descriptions and validity tables remain available in a separate metadata disclosure.
+/// </para>
 /// </remarks>
 public sealed partial class KildeView : ComponentBase
 {
@@ -51,20 +56,11 @@ public sealed partial class KildeView : ComponentBase
     /// </summary>
     /// <remarks>
     /// Kelda passes its variables, access criteria and prices here, and after them whatever its own
-    /// host hung on the explorer. Runa passes nothing at all. The collection structure belongs
-    /// before these sections; use <see cref="Hierarchy"/> to replace its presentation.
+    /// host hung on the explorer. Runa passes nothing at all. The shared collection hierarchy
+    /// and its metadata disclosure always come before these sections.
     /// </remarks>
     [Parameter]
     public RenderFragment? Sections { get; set; }
-
-    /// <remarks>
-    /// Optional replacement for the always-open collection structure. When supplied, this view
-    /// keeps the original descriptions and validity tables in a separate disclosure below it.
-    /// The kilde explorer supplies KildeHierarchyView; other callers retain the existing structure.
-    /// This fragment owns its loading, error and empty states and renders even without collections.
-    /// </remarks>
-    [Parameter]
-    public RenderFragment? Hierarchy { get; set; }
 
     /// <summary>
     /// An id for the name heading, so a surrounding region can label itself by it.

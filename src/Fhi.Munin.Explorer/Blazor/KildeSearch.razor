@@ -81,15 +81,11 @@
 
         @if (_kilde is { } kilde)
         {
-            @* Slots keep the hierarchy and extra sections out of the variable explorer's view.
-               The heading still follows the source (Fhi.Metadata-rhybi). *@
+            @* Only the additional sections belong to this explorer; KildeView owns the hierarchy. *@
             <KildeView Kilde="kilde"
                        Language="@Language"
                        HeadingLevel="@KildeLevel"
                        HeadingId="@DetailHeadingId">
-                <Hierarchy>
-                    <KildeHierarchyView KildeId="@kilde.Id" Language="@Language" />
-                </Hierarchy>
                 <Sections>
                     @* At SectionLevel rather than a literal h2: these have to land on the level
                        KildeView gives its own block headings, or "Variabler" reads as part of the
