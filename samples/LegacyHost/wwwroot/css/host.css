@@ -564,17 +564,22 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   color: var(--grey40);
 }
 
-/* Kelda's facet panel, which is the same handle holding a different shape: a heading per facet and
-   a checkbox per value, with no <details> anywhere. Its two names below are the package's own.
+/* Kelda's facet panel, which is the same handle holding nearly the same shape: a <details> per
+   facet, dressed by the disclosure rules above, with a checkbox per value instead of a nested tree.
+   Its two names below are the package's own.
 
    The folding is the browser's `hidden` attribute rather than a class, so a host that supplies none
    of these rules still gets a panel that opens and closes — what it does not get is the sidebar,
    and the media query further down is where a host that has room for one takes the folding away
    again. The toggle goes with it: a button reading "Vis filtre" over an unfoldable panel is a
-   control that does nothing. */
+   control that does nothing. A facet's own fold needs none of that: <details> hides its values
+   itself, and the browser does it whether or not any of these rules arrived. */
 
 .munin-explorer-filters__toggle { margin-bottom: 8px; }
 
+/* Kept because Stiler has it, and this file is the stand-in for Stiler. It matches nothing since
+   Kelda's facets became disclosures — the border and padding on `details` above space them now.
+   Removing it from Stiler first, then from here, is Fhi.Metadata-2er4n. */
 .munin-explorer-filters__facets > [role="group"] { margin-bottom: 16px; }
 
 /* The browser's `[hidden]` rule loses to any author rule of equal specificity, so this is what

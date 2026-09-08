@@ -98,8 +98,15 @@ public sealed partial class KildeSearch
     /// </param>
     private readonly record struct FacetLabel(string Text, string? Language);
 
-    /// <summary>A facet as the panel draws it: a heading and the choices under it.</summary>
-    private sealed record Facet(string Key, string Heading, IReadOnlyList<FacetOption> Options);
+    /// <summary>A facet as the panel draws it: a disclosure holding a heading and the choices under it.</summary>
+    /// <remarks>
+    /// <c>OpenByDefault</c> is the first facet only, and it is the same on every render, so it
+    /// seeds the disclosure and the fold is the reader's from there — until a drill-in removes the
+    /// panel and it is seeded again. Every facet open is the length this fixes — databehandler
+    /// alone runs to 39 values — and every facet shut hides the affordance from a reader new to it.
+    /// </remarks>
+    private sealed record Facet(
+        string Key, string Heading, IReadOnlyList<FacetOption> Options, bool OpenByDefault = false);
 
     /// <summary>
     /// One choice inside a facet.
@@ -163,8 +170,6 @@ public sealed partial class KildeSearch
     private string? _definitionsReader;
 
     private string FacetsId => $"munin-explorer-filters-{_instance}";
-
-    private string FacetHeadingId(string key) => $"munin-explorer-facet-{key}-{_instance}";
 
     /// <summary>
     /// The panel heading's level: one below the component's own title, so the outline stays
@@ -232,12 +237,25 @@ public sealed partial class KildeSearch
     /// Built per render rather than cached, for the reason the variable explorer's are: a cached
     /// facet and the rows beside it can describe two different moments. It is four passes over some
     /// tens of records.
+    /// <para>
+    /// <c>OpenByDefault</c> is applied after the empty facets are dropped, so it names the first
+    /// facet <em>drawn</em> rather than the first defined: a catalogue whose kilder carry no
+    /// kildetype would otherwise render every facet folded.
+    /// </para>
     /// </remarks>
     private IReadOnlyList<Facet> Facets =>
-        [.. Definitions.Select(Build).Where(facet => facet.Options.Count > 0)];
+    [
+        .. Definitions
+            .Select(Build)
+            .Where(facet => facet.Options.Count > 0)
+            .Select((facet, index) => facet with { OpenByDefault = index == 0 })
+    ];
 
     /// <summary>How many values are ticked across every facet — what the folded panel is hiding.</summary>
     private int ChosenCount => _chosen.Values.Sum(values => values.Count);
+
+    /// <summary>How many values are ticked in one facet — what a folded facet is hiding.</summary>
+    private int ChosenIn(string key) => _chosen.TryGetValue(key, out var values) ? values.Count : 0;
 
     /// <summary>One facet, counted.</summary>
     /// <remarks>
@@ -530,19 +548,25 @@ public sealed partial class KildeSearch
     };
 
     /// <summary>
-    /// One facet's heading, at <see cref="FacetLevel"/> and carrying the id its group is named by.
+    /// One facet's heading, at <see cref="FacetLevel"/>, saying how many of its values are ticked.
     /// </summary>
     /// <remarks>
     /// <c>headline-xxs</c>, which is what <see cref="KildeView"/> gives a group of facts — so the
     /// panel's headings and the kilde's read as the same kind of thing rather than as two
     /// vocabularies in one component.
+    /// <para>
+    /// The count is in the <c>&lt;summary&gt;</c>, which is what a folded facet still draws: a facet
+    /// narrowing the list from behind a closed disclosure would otherwise take the filter off screen
+    /// and leave its effect. Same form as the panel's own heading and the variable explorer's facets.
+    /// </para>
     /// </remarks>
     private RenderFragment FacetHeading(Facet facet) => builder =>
     {
+        var chosen = ChosenIn(facet.Key);
+
         builder.OpenElement(0, $"h{FacetLevel}");
         builder.AddAttribute(1, "class", "headline headline-xxs margin--none");
-        builder.AddAttribute(2, "id", FacetHeadingId(facet.Key));
-        builder.AddContent(3, facet.Heading);
+        builder.AddContent(2, chosen == 0 ? facet.Heading : $"{facet.Heading} ({chosen})");
         builder.CloseElement();
     };
 }

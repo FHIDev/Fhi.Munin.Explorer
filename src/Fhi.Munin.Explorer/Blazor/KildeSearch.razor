@@ -54,8 +54,11 @@
 {
     @* A kilde opens as its own view, not as a panel inside a row. Runa navigates to a page for
        this; this component has no router, so instead it takes over its own area and offers a way
-       back. The search text and the list are all still there on return because none of it was torn
-       down — the list was never refetched to begin with.
+       back. The search text, the ticked values and the list are all still there on return because
+       every one of them is held here rather than in the DOM — the list was never refetched to begin
+       with. The facet folds are the one exception, and deliberately: they belong to the <details>
+       elements this branch replaces, so the panel comes back seeded at its own defaults. See the
+       facets below.
 
        A region named after what it shows, so a screen reader moving by landmark hears which kilde
        it landed in. *@
@@ -207,6 +210,10 @@ else
        this component makes — an element degrades to its own browser default, where a class name no
        stylesheet has heard of degrades to nothing.
 
+       One <details> per facet, the shape the variable explorer's panel already has under this same
+       handle: `.munin-explorer-filters details` and `summary` are dressed unscoped to either panel,
+       in both sample stylesheets and in Stiler 0.1.42, so no new class name is introduced here.
+
        Checkboxes, not the toggle buttons the variable explorer's facets use. Kelda's are checkboxes,
        and a bare <input type="checkbox"> inside its own <label> is an element pair every stylesheet
        already dresses, so neither the box nor the label carries a class.
@@ -231,13 +238,23 @@ else
             <div class="munin-explorer-filters__facets" id="@FacetsId" hidden="@(!_filtersOpen)">
                 @foreach (var facet in facets)
                 {
-                    @* role="group" with the heading as its name, rather than a fieldset and a
-                       legend: the heading has to be a heading, because a reader moving by heading is
-                       how a facet panel is navigated, and a legend is not one. Keyed so a facet that
-                       is not drawn cannot hand its checkboxes to whichever facet takes its place. *@
-                    <div @key="facet.Key" role="group" aria-labelledby="@FacetHeadingId(facet.Key)">
-                        @FacetHeading(facet)
+                    @* A native <details> per facet, the shape the variable explorer's panel already
+                       uses under this same handle. Keyed because the fold is the element's own: a
+                       facet dropped from the middle would otherwise leave the one that slides up
+                       into its place wearing whatever the reader had done to the old one. *@
+                    <details @key="facet.Key" open="@facet.OpenByDefault">
+                        @* <summary> is the disclosure control natively — focusable, Enter and Space
+                           toggle it, its open attribute is the state, so there is no aria-expanded
+                           to drift. The heading stays one: a panel is navigated by heading. *@
+                        <summary>@FacetHeading(facet)</summary>
 
+                        @* Rendered whether or not the facet is open, and hidden by the disclosure
+                           itself rather than by us. `open` is the same on every render — the facets
+                           are counted over the unfiltered list — so Blazor writes it once and never
+                           again, and the fold is the reader's for as long as these elements live:
+                           narrowing cannot collapse what they opened, and each facet folds alone.
+                           They do not survive a drill-in, which removes the panel; the ticks and
+                           the search do, so the reader loses only the shape of the panel. *@
                         <ul>
                             @foreach (var option in facet.Options)
                             {
@@ -263,7 +280,7 @@ else
                                 </li>
                             }
                         </ul>
-                    </div>
+                    </details>
                 }
             </div>
         </div>

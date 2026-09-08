@@ -48,6 +48,12 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # page. Three fixture problems had to be solved before it could go in - the Stiler pin, a
 # deliberate host un-hide, and pins that need a tablist - and the widths and numbers are recorded
 # on Fhi.Metadata-fih3y.
+#
+# `/kilder::kilde-facets` is here rather than only in check-accessibility.sh because the fold it
+# stages is the browser's own and an author rule can beat it: helsedata's bare `div { display:
+# block }` is what left a folded panel on screen at 3798px, and ModernHost's stylesheet cannot
+# reproduce that. The state asserts a folded facet's values are off screen before it opens one, so
+# this is the run where that assertion means anything (Fhi.Metadata-co3sf).
 TARGETS=(
   "/::explorer-tabs"
   "/::explorer-list-tab"
@@ -55,6 +61,7 @@ TARGETS=(
   "/kilder::kilde-hierarchy-collapsed"
   "/kilder::kilde-hierarchy-expanded"
   "/kilder::kilde-hierarchy-metadata"
+  "/kilder::kilde-facets"
 )
 
 host_pid=""
