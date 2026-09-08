@@ -7024,10 +7024,9 @@ public class VariableSearchTest : BunitContext
     [Fact]
     public void Detail_WhenTheChevronItselfIsClicked_ThenTheRowExpands()
     {
-        // The reported bug: the chevron used to be a sibling span with no handler of its own, so
-        // a reader aiming at the icon hit nothing (Fhi.Metadata-zqe14). Dispatching on the row or
-        // the name would pass whether or not the chevron itself is wired up, so the click has to
-        // land on the icon.
+        // The reported bug: the chevron was a sibling span with no handler, so aiming at it hit
+        // nothing (Fhi.Metadata-zqe14). Clicking the row or the name would pass either way, so
+        // the click has to land on the icon itself to mean anything.
         var cut = RenderWith(TwoRows());
         var chevron = Toggles(cut)[0].QuerySelector(".munin-explorer-dataitem-main__expand-icon");
 
