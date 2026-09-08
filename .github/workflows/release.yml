@@ -184,13 +184,13 @@ jobs:
         # Through a file, not -p:PackageReleaseNotes=: the notes are multi-line and full of
         # semicolons, and an MSBuild command-line property loses the first and splits on the
         # second. Directory.Build.props reads the file this writes.
+        #
+        # Flattened first: the feed shows this as plain text, so the markdown arrives literal.
+        # scripts/flatten-release-notes.sh carries the reasoning. The GitHub release below keeps
+        # the markdown, which it renders.
         run: |
           NOTES="$GITHUB_WORKSPACE/package-release-notes.md"
-          if [ -s "$GITHUB_WORKSPACE/release-notes.md" ]; then
-            cat "$GITHUB_WORKSPACE/release-notes.md" > "$NOTES"
-          else
-            printf 'No changelog entry was assembled for this version.\n' > "$NOTES"
-          fi
+          bash scripts/flatten-release-notes.sh "$GITHUB_WORKSPACE/release-notes.md" > "$NOTES"
           printf '\nRelease notes for %s: https://github.com/%s/releases/tag/%s\n' \
             '${{ github.ref_name }}' '${{ github.repository }}' '${{ github.ref_name }}' >> "$NOTES"
 
