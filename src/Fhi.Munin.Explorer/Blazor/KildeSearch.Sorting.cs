@@ -79,16 +79,16 @@ public sealed partial class KildeSearch
     /// </remarks>
     internal static IReadOnlyList<KildeSummary> Sorted(
         IReadOnlyList<KildeSummary> kilder, KildeSortOrder order) => order switch
-    {
-        // Handed back untouched, not copied into a new list of the same rows: this is the order the
-        // API sent, and it is what the list has always shown.
-        KildeSortOrder.Standard => kilder,
-        KildeSortOrder.Name => [.. ByName(kilder)],
-        KildeSortOrder.Variables => [.. ByValue(kilder, kilde => (int?)kilde.TotalVariables)],
-        KildeSortOrder.SourceUpdated => [.. ByValue(kilder, SourceChangedOn)],
-        KildeSortOrder.Established => [.. ByValue(kilder, EstablishedYear)],
-        _ => throw new ArgumentOutOfRangeException(nameof(order), order, "No ordering for this kilde order.")
-    };
+        {
+            // Handed back untouched, not copied into a new list of the same rows: this is
+            // the order the API sent, and it is what the list has always shown.
+            KildeSortOrder.Standard => kilder,
+            KildeSortOrder.Name => [.. ByName(kilder)],
+            KildeSortOrder.Variables => [.. ByValue(kilder, kilde => (int?)kilde.TotalVariables)],
+            KildeSortOrder.SourceUpdated => [.. ByValue(kilder, SourceChangedOn)],
+            KildeSortOrder.Established => [.. ByValue(kilder, EstablishedYear)],
+            _ => throw new ArgumentOutOfRangeException(nameof(order), order, "No ordering for this kilde order.")
+        };
 
     /// <summary>Ascending by the name on screen, in the catalogue's own collation.</summary>
     /// <remarks>

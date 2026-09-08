@@ -547,11 +547,11 @@ public sealed partial class KildeSearch : ComponentBase
         {
             var searched = Searched(SearchText);
 
-            IReadOnlyList<KildeSummary> narrowed = _chosen.Values.All(values => values.Count == 0)
-                ? searched
-                : [.. searched.Where(MatchesFacets)];
-
-            return Sorted(narrowed, _order);
+            return Sorted(
+                _chosen.Values.All(values => values.Count == 0)
+                    ? searched
+                    : [.. searched.Where(MatchesFacets)],
+                _order);
         }
     }
 
