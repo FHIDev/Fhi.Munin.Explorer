@@ -879,12 +879,9 @@ public class MyListsClientTest
     public async Task EveryCall_WhenNoHostRegistersAProvider_ThenTheApisRefusalIsThrownAsUnauthorized(
         HttpStatusCode status)
     {
-        // The other half. With the anonymous default in place — a host that never registered a
-        // provider, or registered one after AddMuninExplorer and lost to TryAdd — every one of
-        // these answers 401 or 403. That must arrive as MuninExplorerUnauthorizedException rather
-        // than the general failure, because "you have no saved lists" sends the user looking for
-        // lists they saved yesterday, and the general failure tells them to retry a call that can
-        // never succeed without a token (Fhi.Metadata-h5o3o).
+        // A host with no token provider answers every my/lists call with 401 or 403, which must
+        // throw rather than read as "no saved lists" — that reading would send the reader looking
+        // for lists they saved yesterday (Fhi.Metadata-h5o3o).
         var handler = StubHttpHandler.Status(status);
         var client = Client(handler, token: null);
         var ids = new[] { Guid.NewGuid() };
