@@ -41,11 +41,7 @@ public partial class VariableSearch
         /// <summary>The API refused the save because too many requests arrived — HTTP 429.</summary>
         Throttled,
 
-        /// <summary>
-        /// The API refused the save as unauthenticated — HTTP 401 or 403 — even though the host
-        /// declared the reader signed in. Driven by that response, never by re-reading
-        /// <see cref="IsAuthenticated"/>, which is exactly the claim the API just contradicted.
-        /// </summary>
+        /// <summary>The API refused the save as unauthenticated (HTTP 401/403), despite the host's own claim that the reader is signed in.</summary>
         SignInRequired
     }
 
