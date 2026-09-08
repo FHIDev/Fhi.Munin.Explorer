@@ -243,7 +243,7 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
         {
             var delta = RecordMembership(id, variableIds, saved: true, startedAt);
 
-            Touch(id, delta, startedAt);
+            RecordCountChange(id, delta, startedAt);
             Changed?.Invoke();
         }
 
@@ -271,7 +271,7 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
         {
             var delta = RecordMembership(id, variableIds, saved: false, startedAt);
 
-            Touch(id, delta, startedAt);
+            RecordCountChange(id, delta, startedAt);
             Changed?.Invoke();
         }
 
@@ -279,11 +279,11 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
     }
 
     /// <summary>
-    /// Moves one list's stamp and count after a write the API accepted, since the holder patches
-    /// rather than refetches. <c>countDelta</c> is what <see cref="RecordMembership"/> measured,
+    /// Moves one list's count — never its stamp, which Munin moves on a rename only
+    /// (Fhi.Metadata-l9l2n.45). <c>countDelta</c> is what <see cref="RecordMembership"/> measured,
     /// never the size of the batch.
     /// </summary>
-    private void Touch(Guid id, int countDelta, int startedAt)
+    private void RecordCountChange(Guid id, int countDelta, int startedAt)
     {
         if (!StillCurrent(startedAt))
         {
@@ -295,14 +295,14 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
         _lists =
         [
             .. _lists.Select(l => l.Id == id
-                ? l with { UpdatedAt = TouchedNow(), VariableCount = Math.Max(0, l.VariableCount + countDelta) }
+                ? l with { VariableCount = Math.Max(0, l.VariableCount + countDelta) }
                 : l)
         ];
     }
 
     /// <summary>
-    /// What an accepted write sets <c>updatedAt</c> to. This clock because none of these endpoints
-    /// answers with the new value, and the alternative is not a truer one but a stale one.
+    /// What an accepted rename sets <c>updatedAt</c> to. This clock because the endpoint does not
+    /// answer with the new value, and the alternative is not a truer one but a stale one.
     /// </summary>
     private static DateTimeOffset TouchedNow() => DateTimeOffset.UtcNow;
 }
