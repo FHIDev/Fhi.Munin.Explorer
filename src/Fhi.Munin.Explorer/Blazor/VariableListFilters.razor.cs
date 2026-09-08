@@ -112,7 +112,7 @@ public sealed partial class VariableListFilters : ComponentBase, IDisposable
             // Caught for the reason the view catches its own: a throw out of a lifecycle method
             // takes the circuit down, and on the legacy host that is the whole CMS page. The panel
             // draws nothing under the heading, and the view beside it says what went wrong.
-            Log?.LogError(ex, "VariableListFilters: could not read the reader's list membership");
+            Log?.LogError(ex, "could not read the reader's list membership");
         }
     }
 

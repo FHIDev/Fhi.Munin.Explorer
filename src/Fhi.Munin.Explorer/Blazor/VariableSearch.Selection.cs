@@ -57,7 +57,7 @@ public partial class VariableSearch
         if (IsSelected(v))
         {
             ClearSelection();
-            await RaiseAsync<Guid?>(SelectedVariableIdChanged, null);
+            await RaiseAsync<Guid?>(SelectedVariableIdChanged, null, Log);
 
             return;
         }
@@ -74,7 +74,7 @@ public partial class VariableSearch
         // _selectedId rather than v.Id: the fetch above yields, so another row may have been opened
         // while it ran, and what the host is told has to be what is open — the same rule
         // FilterChanged follows after a rollback.
-        await RaiseAsync(SelectedVariableIdChanged, _selectedId);
+        await RaiseAsync(SelectedVariableIdChanged, _selectedId, Log);
     }
 
     /// <summary>
@@ -137,7 +137,7 @@ public partial class VariableSearch
         }
         catch (MuninExplorerRateLimitedException ex)
         {
-            Log?.LogWarning(ex, "VariableSearch: the rate limiter refused variable {VariableId}", id);
+            Log?.LogWarning(ex, "the rate limiter refused variable {VariableId}", id);
 
             if (_detailGeneration == generation)
             {
@@ -148,7 +148,7 @@ public partial class VariableSearch
         }
         catch (Exception ex)
         {
-            Log?.LogError(ex, "VariableSearch: could not load variable {VariableId}", id);
+            Log?.LogError(ex, "could not load variable {VariableId}", id);
 
             if (_detailGeneration == generation)
             {
@@ -351,7 +351,7 @@ public partial class VariableSearch
         catch (MuninExplorerRateLimitedException ex)
         {
             Log?.LogWarning(
-                ex, "VariableSearch: the rate limiter refused {SourceKind} {SourceId}", kind, id);
+                ex, "the rate limiter refused {SourceKind} {SourceId}", kind, id);
 
             if (_sourceGeneration == generation)
             {
@@ -362,7 +362,7 @@ public partial class VariableSearch
         }
         catch (Exception ex)
         {
-            Log?.LogError(ex, "VariableSearch: could not load {SourceKind} {SourceId}", kind, id);
+            Log?.LogError(ex, "could not load {SourceKind} {SourceId}", kind, id);
 
             if (_sourceGeneration == generation)
             {
@@ -400,7 +400,7 @@ public partial class VariableSearch
         }
 
         ClearSelection();
-        await RaiseAsync<Guid?>(SelectedVariableIdChanged, null);
+        await RaiseAsync<Guid?>(SelectedVariableIdChanged, null, Log);
     }
 
     private bool IsOnScreen(Guid id) => _result?.Items.Any(v => v.Id == id) is true;

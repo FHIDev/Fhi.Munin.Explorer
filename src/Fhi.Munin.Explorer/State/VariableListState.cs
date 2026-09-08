@@ -29,9 +29,10 @@ public sealed partial class VariableListState(
 {
     private readonly IMuninExplorerClient _client = client;
 
-    // Optional and defaulted, so a host that resolves this without logging registered still gets a
-    // holder rather than a resolution failure — AddMuninExplorer calls AddLogging for the rest.
-    private readonly ILogger<VariableListState>? _logger = logger;
+    // Defaulted for the tests, which new this up directly; AddMuninExplorer's AddLogging is what
+    // makes it resolvable through the container. Guarded so a host's failing sink costs a log line
+    // rather than the circuit — see ExplorerLog.
+    private readonly ILogger? _logger = ExplorerLog.Guard(logger);
 
     private IReadOnlyList<VariableList> _lists = [];
     private bool _loaded;

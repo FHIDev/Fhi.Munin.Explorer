@@ -638,7 +638,7 @@ public partial class VariableSearch
     {
         _levelLines = !_levelLines;
 
-        return RaiseAsync(LevelLinesChanged, _levelLines);
+        return RaiseAsync(LevelLinesChanged, _levelLines, Log);
     }
 
     /// <summary>A facet's own label, saying how many of its values are chosen.</summary>
@@ -830,7 +830,7 @@ public partial class VariableSearch
         }
 
         // _filter and not next: what the host is told is what is in force, rolled back or not.
-        await RaiseAsync(FilterChanged, _filter);
+        await RaiseAsync(FilterChanged, _filter, Log);
 
         // Narrowing renumbers the pages, so a host mirroring this into a URL has to drop the page
         // it was holding. Same rule as the filter: whatever is in force, rolled back or not.
@@ -893,7 +893,7 @@ public partial class VariableSearch
             // Warning, not Error: the panel is not broken without it — every choice still filters
             // and the reader sees the token rather than the word. Deliberately silent on screen,
             // so the log line is the only trace a degraded label leaves.
-            Log?.LogWarning(ex, "VariableSearch: could not load the data-category vocabulary");
+            Log?.LogWarning(ex, "could not load the data-category vocabulary");
         }
     }
 
@@ -993,7 +993,7 @@ public partial class VariableSearch
         }
         catch (MuninExplorerRateLimitedException ex)
         {
-            Log?.LogWarning(ex, "VariableSearch: the rate limiter refused the facet counts");
+            Log?.LogWarning(ex, "the rate limiter refused the facet counts");
 
             // This refresh goes out alongside every search, so a throttled reader meets this panel
             // and the result list in the same render. "The counts may be out of date" beside "you
@@ -1007,7 +1007,7 @@ public partial class VariableSearch
         }
         catch (Exception ex)
         {
-            Log?.LogError(ex, "VariableSearch: could not load the facets");
+            Log?.LogError(ex, "could not load the facets");
 
             _facetError = T.FilterError;
             _retryFacetsShown = true;

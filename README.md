@@ -671,9 +671,12 @@ Two things follow that are worth stating. `AddLogging` is idempotent and `TryAdd
 a host that has already configured logging keeps every provider, filter and minimum level it set —
 this adds a default factory for the host that has none, and takes nothing from the host that has
 one. And the logger is resolved with `GetService` rather than injected, so a component mounted in a
-host that never called `AddMuninExplorer` still renders: it simply writes nothing. The message
-templates carry ids, page numbers and the like, never a URL, a token, a response body or anything
-the reader typed — the user's access token reaches the wire through `BearerTokenHandler`'s
+host that never called `AddMuninExplorer` still renders: it simply writes nothing. What comes back
+is wrapped, so a provider that throws — a file sink on a full disk, say — costs a log line rather
+than the page, since `Logger<T>` rethrows a provider's failure and the call sites are inside the
+catches that keep the circuit up. The message templates name no component, because the category
+already is the component's type; they carry ids, page numbers and the like, never a URL, a token, a
+response body or anything the reader typed — the user's access token reaches the wire through `BearerTokenHandler`'s
 `Authorization` header, which no exception message here repeats.
 
 ### What a host mounts

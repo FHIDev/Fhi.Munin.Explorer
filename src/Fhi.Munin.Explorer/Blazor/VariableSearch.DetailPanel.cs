@@ -347,7 +347,7 @@ public partial class VariableSearch
         {
             Log?.LogWarning(
                 ex,
-                "VariableSearch: the rate limiter refused the kodeverk codes of variable {VariableId}",
+                "the rate limiter refused the kodeverk codes of variable {VariableId}",
                 variableId);
 
             if (_codesGeneration == generation)
@@ -361,7 +361,7 @@ public partial class VariableSearch
         catch (Exception ex)
         {
             Log?.LogError(
-                ex, "VariableSearch: could not load the kodeverk codes of variable {VariableId}", variableId);
+                ex, "could not load the kodeverk codes of variable {VariableId}", variableId);
 
             if (_codesGeneration == generation)
             {

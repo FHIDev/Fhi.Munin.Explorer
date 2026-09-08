@@ -72,7 +72,7 @@ public partial class VariableSearch : IDisposable
         }
         catch (Exception ex)
         {
-            Log?.LogError(ex, "VariableSearch: could not read the reader's list membership");
+            Log?.LogError(ex, "could not read the reader's list membership");
 
             // Caught, and nothing said. An exception out of a lifecycle method takes the circuit
             // down with it, which in helsedata's legacy Blazor Server host means the whole CMS page

@@ -16,10 +16,10 @@ namespace Fhi.Munin.Explorer.Client;
 internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninExplorerClient>? logger = null)
     : IMuninExplorerClient
 {
-    // Optional and defaulted, so a host that builds this without logging registered still gets a
-    // client rather than a resolution failure. AddMuninExplorer calls AddLogging, so the ordinary
-    // host has one — see ExplorerLog for the same bargain on the component side.
-    private readonly ILogger<MuninExplorerClient>? _logger = logger;
+    // AddMuninExplorer's AddLogging is what makes this resolvable, not the default: ActivatorUtilities,
+    // which AddHttpClient builds a typed client with, throws rather than substituting one for a
+    // service it cannot satisfy. The default is for the tests, which new this up. Guarded: ExplorerLog.
+    private readonly ILogger? _logger = ExplorerLog.Guard(logger);
 
     // Shared by the client and any test host, so a serialisation difference cannot
     // quietly appear between them.
@@ -378,7 +378,7 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
             // Warning: the refusal stands, and what is lost is the ceiling the caller would have
             // named to the reader. The body is not logged — it is the API's, and reading it again
             // here is the very thing that just failed.
-            _logger?.LogWarning(cause, "MuninExplorerClient: a refusal body could not be read");
+            _logger?.LogWarning(cause, "a refusal body could not be read");
 
             return null;
         }

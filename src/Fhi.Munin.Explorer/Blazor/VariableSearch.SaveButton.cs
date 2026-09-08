@@ -157,7 +157,7 @@ public partial class VariableSearch
         catch (MuninExplorerRateLimitedException ex)
         {
             Log?.LogWarning(
-                ex, "VariableSearch: the rate limiter refused the save of variable {VariableId}", v.Id);
+                ex, "the rate limiter refused the save of variable {VariableId}", v.Id);
 
             // The writes go through the same client as the reads and meet the same per-address
             // limiter, so this row's save can be refused while the catalogue is perfectly up.
@@ -166,7 +166,7 @@ public partial class VariableSearch
         catch (MuninExplorerUnauthorizedException ex)
         {
             Log?.LogWarning(
-                ex, "VariableSearch: the API refused the save of variable {VariableId} as unauthorised", v.Id);
+                ex, "the API refused the save of variable {VariableId} as unauthorised", v.Id);
 
             // The API's own answer, not IsAuthenticated read again — that is the host's claim the
             // API just contradicted, and asking it a second time would repeat the same wrong word.
@@ -174,7 +174,7 @@ public partial class VariableSearch
         }
         catch (Exception ex)
         {
-            Log?.LogError(ex, "VariableSearch: could not save variable {VariableId}", v.Id);
+            Log?.LogError(ex, "could not save variable {VariableId}", v.Id);
 
             _saveError[v.Id] = SaveFailure.Failed;
         }

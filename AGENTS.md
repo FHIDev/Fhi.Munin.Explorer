@@ -248,18 +248,27 @@ package had ever written to a log (`Fhi.Metadata-l9l2n.47`).
 The shape, which is helsedata's own newer code and not an invention of ours:
 
 ```csharp
-Log?.LogError(ex, "KildeSearch: could not load kilde {KildeId}", id);
+Log?.LogError(ex, "could not load kilde {KildeId}", id);
 ```
 
 - **The exception is the first argument, never a template argument.** `LogError("… {ex}", ex)` is
   the same line minus the stack, and their older sites do it that way — do not copy those.
+- **No component name in the template.** `Log` is `ILogger<KildeSearch>`, so the category already
+  is the type; every sink renders it, and `"KildeSearch: could not load …"` writes it twice.
 - **Named PascalCase placeholders, never interpolation.** No `LoggerMessage` source generator, no
   `EventId`, no `BeginScope`: their solution has none of the three and this is not the place to
   introduce one.
 - **`Error` for a failure, `Warning` for an outcome that is expected and handled** — a 429, a 401,
   a vocabulary that only costs labels. The `MuninExplorerRateLimitedException` branch stays a
   branch of its own: telling throttling apart from failure from outside is what ruled rate limiting
-  out of the incident above.
+  out of the incident above. A catch that folds the two for the sake of one shared sentence still
+  splits the level, the way `FetchRowsAsync` does — the guard reads the clause's type and refuses
+  anything but `Warning` on one of ours.
+- **Log where the failure is, not where the method is.** `KildeHierarchyView` cancels its own
+  calls on every new `KildeId`, and a superseded one arrives as a `TaskCanceledException` that
+  nothing failed: log inside the `IsCancellationRequested` guard rather than above it. A blanket
+  `OperationCanceledException` filter would be wrong — `HttpClient`'s own timeout is that type too,
+  and it is a fault.
 - **Nothing a log must not carry.** No request URI, no query string, no response body, no bearer
   token, no text the reader typed — a kilde, variable or list id and a page number say which call
   it was without any of that.
@@ -268,8 +277,17 @@ Log?.LogError(ex, "KildeSearch: could not load kilde {KildeId}", id);
 `[Inject]` on a non-nullable `ILogger<T>` **throws at render** in a host that registered no logging
 — turning a silent data error into a dead component, which is worse than the blindness this
 replaced. `AddMuninExplorer` calls `AddLogging` so the ordinary host has one; the nullable
-resolution is what covers the host that never called it. Both halves are tested, and a change that
-only proves the first passes CI and breaks a hostile host.
+resolution is what covers the host that never called it. `services` is the `[Inject]
+IServiceProvider` three components already carried before any of this — every container
+self-registers it, so it is the one seam that costs a host nothing. Both halves are tested, and a
+change that only proves the first passes CI and breaks a hostile host.
+
+What comes back is **wrapped**, and that is the second half of the same argument. `Logger<T>.Log`
+does not swallow a provider's failure — it rethrows it as an `AggregateException` — and every call
+here is the first statement of a catch written so that nothing escapes and takes the circuit with
+it. A host on a full disk would otherwise lose the page, and skip the sentence on screen too.
+`ExplorerLog` is the one file in `src/` allowed to swallow: an exception thrown by logging has
+nowhere left to be written down, and the guard names that file and asserts it is the only one.
 
 `SwallowedExceptionGuardTest` is what keeps this true, since the next site added is not a compile
 error and its cost only shows up on somebody else's server.

@@ -482,7 +482,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
         catch (Exception ex)
         {
-            Log?.LogError(ex, "VariableListView: could not read the reader's lists on mount");
+            Log?.LogError(ex, "could not read the reader's lists on mount");
 
             _page = null;
             _failed = true;
@@ -544,7 +544,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             // Warning, not Error: the reader sees the raw codes rather than nothing. Recorded as
             // attempted for this language, so a failing endpoint is asked once rather than on
             // every parameter change.
-            Log?.LogWarning(ex, "VariableListView: could not load the datatype names for {Language}", Language);
+            Log?.LogWarning(ex, "could not load the datatype names for {Language}", Language);
 
             _dataTypeNames = new Dictionary<string, string>(StringComparer.Ordinal);
             _dataTypeNamesLanguage = Language;
@@ -647,7 +647,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         {
             // Said here rather than thrown on: an unhandled exception out of a lifecycle method
             // takes the circuit down, which is a worse answer than a line of text.
-            Log?.LogError(ex, "VariableListView: could not read page {Page} of list {ListId}", readPage, readList);
+            Log?.LogError(ex, "could not read page {Page} of list {ListId}", readPage, readList);
 
             failed = true;
         }
@@ -826,7 +826,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             // per-address limiter counts — so a throttled annotation is ordinary rather than rare.
             Log?.LogWarning(
                 ex,
-                "VariableListView: the rate limiter refused the annotation of variable {VariableId} in list {ListId}",
+                "the rate limiter refused the annotation of variable {VariableId} in list {ListId}",
                 variableId,
                 list);
 
@@ -839,7 +839,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             // itself is the reader's own text and stays out of the log.
             Log?.LogError(
                 ex,
-                "VariableListView: could not write the annotation of variable {VariableId} in list {ListId}",
+                "could not write the annotation of variable {VariableId} in list {ListId}",
                 variableId,
                 list);
 
@@ -943,7 +943,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         {
             // Same reason as the lifecycle read above: an uncaught throw out of an event handler
             // takes the circuit with it. LoadPageAsync below has its own catch and will say so.
-            Log?.LogError(ex, "VariableListView: could not switch to list {ListId}", id);
+            Log?.LogError(ex, "could not switch to list {ListId}", id);
 
             _failed = true;
 
@@ -994,7 +994,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         {
             // Creating meets the same limiter the saves do, and "prøv igjen om litt" is advice
             // a throttled reader cannot use.
-            Log?.LogWarning(ex, "VariableListView: the rate limiter refused a list creation");
+            Log?.LogWarning(ex, "the rate limiter refused a list creation");
             _createFailure = ListActionFailure.Throttled;
             return;
         }
@@ -1003,7 +1003,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             // Uncaught, this leaves the event handler and takes the circuit with it: a blank
             // page and a reconnect banner in place of the list the reader was building. The name
             // the reader typed stays out of the log.
-            Log?.LogError(ex, "VariableListView: could not create a list");
+            Log?.LogError(ex, "could not create a list");
             _createFailure = ListActionFailure.Failed;
             return;
         }
@@ -1027,7 +1027,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             // failure for the reason the create half above gives: the remedy is to wait.
             Log?.LogWarning(
                 ex,
-                "VariableListView: the rate limiter refused the switch to the new list {ListId}",
+                "the rate limiter refused the switch to the new list {ListId}",
                 created.Id);
             _createFailure = ListActionFailure.Throttled;
             return;
@@ -1036,7 +1036,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         {
             // Same reason as ChooseListAsync above. The list was created; it is the switch to
             // it that did not happen, which is what ListLoadError says.
-            Log?.LogError(ex, "VariableListView: could not switch to the new list {ListId}", created.Id);
+            Log?.LogError(ex, "could not switch to the new list {ListId}", created.Id);
             _failed = true;
             return;
         }
@@ -1079,7 +1079,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             // These writes go through the client every read on the page uses, and meet the same
             // per-address limiter, so a refusal here is ordinary rather than rare.
             Log?.LogWarning(
-                ex, "VariableListView: the rate limiter refused the rename of list {ListId}", _shownList);
+                ex, "the rate limiter refused the rename of list {ListId}", _shownList);
 
             _actionFailure = ListActionFailure.Throttled;
         }
@@ -1088,7 +1088,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             // An uncaught throw out of an event handler takes the whole circuit down, which is a
             // far worse answer to a failed rename than a line of text. The name the reader typed
             // stays out of the log.
-            Log?.LogError(ex, "VariableListView: could not rename list {ListId}", _shownList);
+            Log?.LogError(ex, "could not rename list {ListId}", _shownList);
 
             _actionFailure = ListActionFailure.Failed;
         }
@@ -1121,7 +1121,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         catch (MuninExplorerRateLimitedException ex)
         {
             Log?.LogWarning(
-                ex, "VariableListView: the rate limiter refused the deletion of list {ListId}", _shownList);
+                ex, "the rate limiter refused the deletion of list {ListId}", _shownList);
 
             _actionFailure = ListActionFailure.Throttled;
         }
@@ -1129,7 +1129,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         {
             // Caught for the reason the rename above gives. The list may well be gone on the
             // server, so the view is repointed below whichever of the two calls threw.
-            Log?.LogError(ex, "VariableListView: could not delete list {ListId}", _shownList);
+            Log?.LogError(ex, "could not delete list {ListId}", _shownList);
 
             _actionFailure = ListActionFailure.Failed;
         }
@@ -1167,7 +1167,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             // advice a throttled reader cannot use.
             Log?.LogWarning(
                 ex,
-                "VariableListView: the rate limiter refused the removal of variable {VariableId} from list {ListId}",
+                "the rate limiter refused the removal of variable {VariableId} from list {ListId}",
                 variableId,
                 _shownList);
 
@@ -1179,7 +1179,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             // page and a reconnect banner in place of the row the reader wanted gone.
             Log?.LogError(
                 ex,
-                "VariableListView: could not remove variable {VariableId} from list {ListId}",
+                "could not remove variable {VariableId} from list {ListId}",
                 variableId,
                 _shownList);
 
@@ -1241,7 +1241,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             // the view only renders signed in. The generic sentence names no cause; this one does.
             Log?.LogWarning(
                 ex,
-                "VariableListView: the rate limiter refused the {Format} export of list {ListId}",
+                "the rate limiter refused the {Format} export of list {ListId}",
                 format,
                 _shownList);
 
@@ -1252,7 +1252,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             // Includes the browser refusing the blob — a Content-Security-Policy without blob:
             // would land here. Said out loud rather than left as a button that does nothing.
             Log?.LogError(
-                ex, "VariableListView: could not export list {ListId} as {Format}", _shownList, format);
+                ex, "could not export list {ListId} as {Format}", _shownList, format);
 
             _downloadFailure = DownloadFailure.Failed;
         }

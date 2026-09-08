@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
-/// That no <c>catch (Exception)</c> in the package throws the exception away.
+/// That no <c>catch</c> in the package the explorer's own failures reach throws the exception away.
 /// </summary>
 /// <remarks>
 /// Thirty of them did, and the one that mattered took an afternoon across two repositories, the
@@ -15,8 +15,14 @@ namespace Fhi.Munin.Explorer.Tests;
 public class SwallowedExceptionGuardTest
 {
     /// <summary>The clause, with the identifier it binds — none, where it binds nothing.</summary>
+    /// <remarks>
+    /// The package's own exception types as well as <c>Exception</c>. Fifteen typed handlers carry
+    /// the <c>Warning</c> half of the split, and reading only <c>catch (Exception)</c> left every
+    /// one of them free to discard a 429 — the distinction the incident actually needed.
+    /// </remarks>
     private static readonly Regex CatchClause =
-        new(@"catch\s*\(\s*Exception\s*(?<name>[A-Za-z_]\w*)?\s*\)", RegexOptions.Compiled);
+        new(@"catch\s*\(\s*(?<type>Exception|MuninExplorer\w*Exception)\s*(?<name>[A-Za-z_]\w*)?\s*\)",
+            RegexOptions.Compiled);
 
     /// <summary>What counts as recording it: a log call the caught exception itself is passed to.</summary>
     /// <remarks>
@@ -24,8 +30,21 @@ public class SwallowedExceptionGuardTest
     /// reader-facing sentence and drops the stack, which is the defect wearing a hat.
     /// </remarks>
     private static Regex LoggedWith(string name) =>
-        new(@"\bLog(Critical|Error|Warning|Information|Debug|Trace)\s*\(\s*" + Regex.Escape(name) + @"\s*,",
-            RegexOptions.Compiled);
+        LoggedAt("Critical|Error|Warning|Information|Debug|Trace", name);
+
+    /// <summary>The same, narrowed to the levels a clause of that kind is allowed to write at.</summary>
+    private static Regex LoggedAt(string levels, string name) =>
+        new(@"\bLog(" + levels + @")\s*\(\s*" + Regex.Escape(name) + @"\s*,", RegexOptions.Compiled);
+
+    /// <summary>
+    /// What the package's own exception types may be written at: <c>Warning</c>, and only that.
+    /// </summary>
+    /// <remarks>
+    /// A 429 and a 401 are expected, handled outcomes and the catalogue is up in both — reading
+    /// either as <c>Error</c> is the reading that wasted an afternoon on the incident this came
+    /// from. Fifteen typed handlers carry that half of the split, and one of them is tested.
+    /// </remarks>
+    private static Regex ExpectedOutcome(string name) => LoggedAt("Warning", name);
 
     [Fact]
     public void Catches_WhenTheyAreInThePackage_ThenEveryOneRecordsTheExceptionOrLetsItTravelOn()
@@ -82,11 +101,24 @@ public class SwallowedExceptionGuardTest
     [InlineData("catch (Exception cause) when (cause is not X) { _logger?.LogWarning(cause, \"x\"); }", 0)]
     [InlineData("catch (Exception cause) when (cause is not X) { return null; }", 1)]
     [InlineData("catch (Exception) { _retained = false; throw; }", 0)]
-    [InlineData("catch (Exception ex) { if (stale) { return; } Log?.LogError(ex, \"x\"); }", 0)]
+    // Half-logged is the shape these are one edit away from, so both of its faces are fed in too:
+    // a log the early return jumps over, and a rethrow that only one branch reaches.
+    [InlineData("catch (Exception ex) { if (stale) { return; } Log?.LogError(ex, \"x\"); }", 1)]
+    [InlineData("catch (Exception ex) { Log?.LogError(ex, \"x\"); if (stale) { return; } _e = 1; }", 0)]
     [InlineData("catch (Exception ex) { if (stale) { return; } _error = T.Error; }", 1)]
+    [InlineData("catch (Exception ex) { if (handled) { throw; } _error = T.Error; }", 1)]
+    [InlineData("catch (Exception ex) { if (handled) { throw; } Log?.LogError(ex, \"x\"); }", 0)]
+    [InlineData("catch (Exception) { if (stale) { return; } throw; }", 1)]
     [InlineData("catch (Exception ex) { Log?.LogError(ex, \"a } brace\"); }", 0)]
     [InlineData("catch (JsonException) { return null; }", 0)]
-    [InlineData("catch (MuninExplorerRateLimitedException) { _error = T.RateLimitError; }", 0)]
+    // The package's own types are walked as well, so the Warning half of the split cannot be
+    // dropped silently — and a discarding one of those is an offender like any other.
+    [InlineData("catch (MuninExplorerRateLimitedException) { _error = T.RateLimitError; }", 1)]
+    [InlineData("catch (MuninExplorerRateLimitedException ex) { Log?.LogWarning(ex, \"x\"); }", 0)]
+    [InlineData("catch (MuninExplorerUnauthorizedException ex) { Log?.LogWarning(ex, \"x\"); }", 0)]
+    // And the level is the whole point of keeping them their own branch, so Error there is a
+    // discard of the one distinction the incident needed rather than a note in the wrong column.
+    [InlineData("catch (MuninExplorerRateLimitedException ex) { Log?.LogError(ex, \"x\"); }", 1)]
     [InlineData("nothing here catches anything", 0)]
     public void Source_WhenItIsScanned_ThenOnlyADiscardedExceptionIsReported(string source, int expected) =>
         Assert.Equal(expected, Offenders(source).Count);
@@ -120,13 +152,53 @@ public class SwallowedExceptionGuardTest
                 source.Take(found.Clause.Index).Count(c => c == '\n') + 1,
                 found.Clause.Value))];
 
-    // A rethrow is not a discard: the exception travels on to whoever swallows it, and that one
-    // logs it. Logging here as well would put the same stack in the host's log twice.
-    private static bool Records(Match clause, string body) =>
-        Rethrows.IsMatch(body)
-        || (clause.Groups["name"].Success && LoggedWith(clause.Groups["name"].Value).IsMatch(body));
+    /// <summary>Whether every path out of the body writes the exception down or hands it on.</summary>
+    /// <remarks>
+    /// A rethrow is not a discard: the exception travels on to whoever swallows it, and logging
+    /// here as well would put the same stack in the host's log twice. Both halves ask about a path
+    /// rather than a token, because half-logged is the shape these are one edit away from.
+    /// </remarks>
+    private static bool Records(Match clause, string body)
+    {
+        var leaves = Leaves.Match(body);
+
+        // TopLevel blanks rather than removes, so an index into it is an index into the body.
+        return Reached(Rethrows.Match(TopLevel(body)), leaves)
+            || (clause.Groups["name"].Success
+                && Reached(Level(clause)(clause.Groups["name"].Value).Match(body), leaves));
+    }
+
+    /// <summary>Whether the body gets here on every path: it is there, and no return precedes it.</summary>
+    /// <remarks>
+    /// Several of these already branch on a stale generation, so a log or a rethrow the early
+    /// return jumps over is the near miss worth refusing — the real sites log first, and this is
+    /// what holds them there.
+    /// </remarks>
+    private static bool Reached(Match found, Match leaves) =>
+        found.Success && (!leaves.Success || found.Index < leaves.Index);
+
+    private static Func<string, Regex> Level(Match clause) =>
+        clause.Groups["type"].Value == "Exception" ? LoggedWith : ExpectedOutcome;
 
     private static readonly Regex Rethrows = new(@"(^|[^.\w])throw\s*;", RegexOptions.Compiled);
+
+    private static readonly Regex Leaves = new(@"\breturn\b", RegexOptions.Compiled);
+
+    /// <summary>The body with every nested block blanked, so a token in it is one no branch guards.</summary>
+    private static string TopLevel(string body)
+    {
+        var top = new StringBuilder(body.Length);
+        var depth = 0;
+
+        foreach (var c in body)
+        {
+            var outer = c == '{' ? depth++ : c == '}' ? --depth : depth;
+
+            top.Append(outer <= 1 ? c : ' ');
+        }
+
+        return top.ToString();
+    }
 
     /// <summary>
     /// The block starting at <paramref name="open"/>, brace-matched past strings and comments.
@@ -230,5 +302,24 @@ public class SwallowedExceptionGuardTest
             .Concat(Directory.EnumerateFiles(
                 Repo.In("src", "Fhi.Munin.Explorer"), "*.razor", SearchOption.AllDirectories))
             .Where(file => !file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}")
-                && !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"));
+                && !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
+                && Path.GetFileName(file) != TheSeam);
+
+    /// <summary>The one file that may swallow, and the test below is why it is only that one.</summary>
+    private const string TheSeam = "ExplorerLog.cs";
+
+    [Fact]
+    public void TheSeam_WhenItIsExcused_ThenItIsBecauseItIsTheLoggerAndNothingElseIsExcused()
+    {
+        // The excuse is narrow and has to be shown to be: what ExplorerLog catches is the host's
+        // logging failing, which by definition cannot be written down, and letting it out would
+        // take the circuit the catch below it exists to keep. Any second file is a hole.
+        var excused = Directory
+            .EnumerateFiles(Repo.In("src", "Fhi.Munin.Explorer"), TheSeam, SearchOption.AllDirectories)
+            .ToList();
+
+        var file = Assert.Single(excused);
+
+        Assert.NotEmpty(Offenders(File.ReadAllText(file)));
+    }
 }

@@ -79,21 +79,27 @@ public sealed partial class KildeHierarchyView : ComponentBase, IDisposable
         }
         catch (MuninExplorerRateLimitedException ex)
         {
-            Log?.LogWarning(
-                ex, "KildeHierarchyView: the rate limiter refused the hierarchy of kilde {KildeId}", KildeId);
-
+            // Inside the guard, not above it. This is the one place in the package that cancels its
+            // own calls — on every new KildeId and again on dispose — and a superseded call comes
+            // back here as a TaskCanceledException that nothing failed and nobody should read about.
             if (!_disposed && !request.IsCancellationRequested)
             {
+                Log?.LogWarning(
+                    ex, "the rate limiter refused the hierarchy of kilde {KildeId}", KildeId);
+
                 _rateLimited = true;
                 _failed = false;
             }
         }
         catch (Exception ex)
         {
-            Log?.LogError(ex, "KildeHierarchyView: could not load the hierarchy of kilde {KildeId}", KildeId);
-
+            // The same guard, and for the same reason: HttpClient's own 30-second timeout is a
+            // TaskCanceledException worth logging, and this component's own Cancel is not, so the
+            // question asked is who cancelled rather than which type arrived.
             if (!_disposed && !request.IsCancellationRequested)
             {
+                Log?.LogError(ex, "could not load the hierarchy of kilde {KildeId}", KildeId);
+
                 _failed = true;
             }
         }

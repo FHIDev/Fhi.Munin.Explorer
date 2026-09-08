@@ -413,7 +413,17 @@ public sealed partial class KildeSearch : ComponentBase
         }
         catch (Exception ex)
         {
-            Log?.LogError(ex, "KildeSearch: could not load the datasamlinger of kilde {KildeId}", id);
+            // The branch below folds the two failures because everything but the sentence is the
+            // same; the level is the one thing that is not. A 429 is the catalogue up and the
+            // reader asking too often, and reading that as Error is what wasted the incident.
+            if (ex is MuninExplorerRateLimitedException)
+            {
+                Log?.LogWarning(ex, "the rate limiter refused the datasamlinger of kilde {KildeId}", id);
+            }
+            else
+            {
+                Log?.LogError(ex, "could not load the datasamlinger of kilde {KildeId}", id);
+            }
 
             // One branch for both failures so the stale guard is written once: a fetch the reader
             // has already collapsed must not paint its answer, of either kind, into a row that is
@@ -718,7 +728,7 @@ public sealed partial class KildeSearch : ComponentBase
         }
         catch (MuninExplorerRateLimitedException ex)
         {
-            Log?.LogWarning(ex, "KildeSearch: the rate limiter refused the kilde list");
+            Log?.LogWarning(ex, "the rate limiter refused the kilde list");
 
             // Throttled, not down — and the difference is the whole point of saying so: the text
             // below invites the reader to try again, which is what the limiter is counting.
@@ -729,7 +739,7 @@ public sealed partial class KildeSearch : ComponentBase
             // The reader is told only that the list is not there and that trying again is worth
             // doing, so the log line is the only place the cause survives. The list is left as it
             // was, which on the first load is empty.
-            Log?.LogError(ex, "KildeSearch: could not load the kilde list");
+            Log?.LogError(ex, "could not load the kilde list");
 
             _error = T.KildeListError;
         }
@@ -793,7 +803,7 @@ public sealed partial class KildeSearch : ComponentBase
         {
             // Warning rather than Error: the facets fall back to the catalogue's own tokens, so
             // what is lost is labels and not the list. Left as it was, empty on the first load.
-            Log?.LogWarning(ex, "KildeSearch: could not load the kilde property vocabulary");
+            Log?.LogWarning(ex, "could not load the kilde property vocabulary");
         }
     }
 
@@ -854,7 +864,7 @@ public sealed partial class KildeSearch : ComponentBase
         // Without this that frame says aria-busy "false" for a fetch that has not been issued.
         _detailLoading = true;
 
-        await RaiseAsync(SelectedKildeIdChanged, _selectedId);
+        await RaiseAsync(SelectedKildeIdChanged, _selectedId, Log);
 
         // _selectedId rather than the captured id — the rule ToggleDetailAsync follows for what the
         // host is told, here for what is fetched: the callback above yields with Back drawn and
@@ -879,7 +889,7 @@ public sealed partial class KildeSearch : ComponentBase
         _detailError = null;
         _detailLoading = false;
 
-        await RaiseAsync(SelectedKildeIdChanged, null);
+        await RaiseAsync(SelectedKildeIdChanged, null, Log);
     }
 
     private async Task LoadKildeAsync(Guid id)
@@ -908,7 +918,16 @@ public sealed partial class KildeSearch : ComponentBase
         }
         catch (Exception ex)
         {
-            Log?.LogError(ex, "KildeSearch: could not load kilde {KildeId}", id);
+            // Split the way the sentence below is split, and for the same reason: throttled is not
+            // down, and only the log says so to anyone outside the browser.
+            if (ex is MuninExplorerRateLimitedException)
+            {
+                Log?.LogWarning(ex, "the rate limiter refused kilde {KildeId}", id);
+            }
+            else
+            {
+                Log?.LogError(ex, "could not load kilde {KildeId}", id);
+            }
 
             // One branch for both failures, so the stale-fetch guard is written once: a fetch the
             // reader has already moved on from must not paint its answer — of either kind — into the
@@ -1057,9 +1076,10 @@ public sealed partial class KildeSearch : ComponentBase
     /// The reasoning is spelled out once, on <c>VariableSearch.RaiseAsync</c>: a handler that
     /// navigates throws <see cref="NavigationException"/> during static SSR and the framework needs
     /// it, while anything else escaping here would tear down the circuit for the whole CMS page
-    /// rather than for this component.
+    /// rather than for this component. The logger is a parameter rather than a read of <c>Log</c>,
+    /// so the helper stays <see langword="static"/> and free of component state.
     /// </remarks>
-    private async Task RaiseAsync<TValue>(EventCallback<TValue> callback, TValue value)
+    private static async Task RaiseAsync<TValue>(EventCallback<TValue> callback, TValue value, ILogger? log)
     {
         if (!callback.HasDelegate)
         {
@@ -1078,7 +1098,7 @@ public sealed partial class KildeSearch : ComponentBase
         {
             // Nothing is said to the reader: what broke is the host's own URL handling, so the log
             // line is the whole of what this failure leaves behind.
-            Log?.LogError(ex, "KildeSearch: a host callback threw");
+            log?.LogError(ex, "a host callback threw");
         }
     }
 }

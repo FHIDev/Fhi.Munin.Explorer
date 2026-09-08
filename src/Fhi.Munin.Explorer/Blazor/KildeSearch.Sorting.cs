@@ -78,7 +78,7 @@ public sealed partial class KildeSearch
 
         _order = chosen;
 
-        await RaiseAsync(OrderChanged, _order);
+        await RaiseAsync(OrderChanged, _order, Log);
     }
 
     /// <summary>

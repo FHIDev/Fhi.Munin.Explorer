@@ -131,7 +131,7 @@ public sealed partial class VariableListState
         catch (Exception e) when (_activeListId is not null && e is not OperationCanceledException)
         {
             _logger?.LogWarning(
-                e, "VariableListState: could not refresh the membership of list {ListId}", _activeListId);
+                e, "could not refresh the membership of list {ListId}", _activeListId);
 
             // The list is known, so the write can go out; only the membership read failed. Letting
             // that throw would cost the reader the save as well as the labels, and the limiter is
