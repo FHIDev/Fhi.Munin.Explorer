@@ -6,8 +6,9 @@
 # mid-sentence. alpha.10 shipped 27654 characters of it. Only the package is flattened; the
 # GitHub release keeps the markdown, which it renders.
 #
-# One line per entry, taken from the bolded lead every fragment starts with (changelog.d/README.md
-# asks for a bolded title). A bullet without one falls back to its first sentence.
+# One line per entry, taken from the bolded sentence each bullet opens with — changelog.d/README.md
+# asks for one and says it is published alone. A bullet without one falls back to its first
+# sentence, which is why an unbolded fragment still releases rather than failing the run.
 set -euo pipefail
 
 IN="${1:?usage: flatten-release-notes.sh <release-notes.md>}"
@@ -17,8 +18,10 @@ awk '
   function flush(   line, lead) {
     if (buf == "") return
     line = buf
-    # The bolded lead is the entry title. Prefer it; fall back to the first sentence.
-    if (match(line, /\*\*[^*]+\*\*/)) {
+    # The LEADING bold is the entry title. Anchored: bold later in a bullet that does not
+    # open with one is emphasis inside a sentence, and lifting it would title the entry with
+    # a fragment of its own middle.
+    if (match(line, /^\*\*[^*]+\*\*/)) {
       lead = substr(line, RSTART + 2, RLENGTH - 4)
     } else {
       lead = line
