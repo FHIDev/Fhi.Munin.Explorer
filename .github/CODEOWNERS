@@ -23,9 +23,9 @@
 /.github/workflows/       @FHIDev/fhi-munin-maintainer
 /Directory.Build.props    @FHIDev/fhi-munin-maintainer
 
-# Named one by one rather than as `/scripts/`: of its 26 files only these five put something out
-# that cannot be taken back, and the other 21 are checks the next commit can fix — the test above.
-# A new script is then unowned by default, which is the recoverable direction.
+# Named one by one rather than as `/scripts/`: only these five put something out that cannot be
+# taken back, and the rest are checks a later commit can fix — the test above. Naming them also
+# leaves a new script unowned by default, which is the recoverable direction.
 /scripts/push-packages.sh       @FHIDev/fhi-munin-maintainer
 /scripts/release-changelog.sh   @FHIDev/fhi-munin-maintainer
 /scripts/assemble-changelog.ps1 @FHIDev/fhi-munin-maintainer
