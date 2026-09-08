@@ -143,7 +143,12 @@ checkout needs to find the shared database.
 - **If the change touches layout, run `./scripts/check-hostile-host.sh` as well.** It renders the
   component in helsedata's real stylesheet under their top-anchored header and measures boxes, which
   is the only thing here that would have caught the four defects of 2026-09-03 — axe was green
-  through every one. It needs Azure Artifacts credentials; see `docs/running-locally.md`.
+  through every one. It does **not** need Azure Artifacts credentials any more:
+  `STILER_FROM_SOURCE=1 ./scripts/check-hostile-host.sh` builds Stiler from a checkout beside
+  this repository instead of restoring the pinned package. Add
+  `PLAYWRIGHT_BROWSER_CHANNEL=msedge` if `playwright install chromium` will not complete — on
+  Node 26 it cannot. Both flags change what is being measured and CI sets neither; the run prints
+  which it used. See `docs/running-locally.md`.
 - **A new or renamed `munin-explorer*` name needs a rule in `Fhi.Helsedata.Stiler`, filed as its
   own bead before this PR merges** — `bd create --label=stiler --label=rcl --label=helsedata` —
   not as a clause in the RCL bead's criteria, which is in nobody's `bd ready` and cannot be
