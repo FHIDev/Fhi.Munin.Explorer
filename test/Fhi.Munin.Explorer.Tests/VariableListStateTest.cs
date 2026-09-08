@@ -169,7 +169,7 @@ public class VariableListStateTest : BunitContext
     {
         var state = SignedIn(new CountingClient());
         var notifications = 0;
-        state.Changed += () => notifications++;
+        state.Changed += _ => notifications++;
 
         await state.CreateAsync("Hjerte og kar");
 

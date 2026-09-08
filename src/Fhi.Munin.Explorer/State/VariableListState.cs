@@ -31,23 +31,19 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
     private bool _loading;
     private int _generation;
 
-    /// <summary>Raised after any change, so every surface can re-render without refetching.</summary>
-    public event Action? Changed;
+    /// <summary>Raised after any change, so every surface can re-render without refetching. What
+    /// changed is the argument rather than a property beside it: these methods await with
+    /// ConfigureAwait(false), so a shared one could be the next raise's before a handler read it.</summary>
+    public event Action<ListChange?>? Changed;
 
     /// <summary>Which list a <see cref="Changed"/> named, and whether it could have altered its rows.</summary>
     /// <param name="ListId">The list, or <see langword="null"/> when the change names none in particular.</param>
     /// <param name="AffectsRows">False for a rename or a brand-new list — neither touches a row.</param>
     public readonly record struct ListChange(Guid? ListId, bool AffectsRows);
 
-    /// <summary>What the <see cref="Changed"/> a subscriber is handling was raised for.</summary>
-    public ListChange? LastChange { get; private set; }
-
-    /// <summary>Publishes what changed, then raises <see cref="Changed"/> the way every caller already did.</summary>
-    private void RaiseChanged(Guid? listId, bool affectsRows)
-    {
-        LastChange = new ListChange(listId, affectsRows);
-        Changed?.Invoke();
-    }
+    /// <summary>Raises <see cref="Changed"/> with what it was raised for.</summary>
+    private void RaiseChanged(Guid? listId, bool affectsRows) =>
+        Changed?.Invoke(new ListChange(listId, affectsRows));
 
     /// <summary>
     /// Whether the host says the reader is signed in. False until the host says otherwise — see the

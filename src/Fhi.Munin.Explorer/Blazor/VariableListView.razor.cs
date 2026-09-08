@@ -564,13 +564,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// variable would otherwise leave it on screen here — the very thing this subscription exists
     /// to prevent.
     /// </summary>
-    private void OnStateChanged()
+    private void OnStateChanged(VariableListState.ListChange? change)
     {
-        // Captured here, not inside the callback below: the event invokes this synchronously,
-        // so this is the only point guaranteed to see the change this call was raised for. A
-        // read inside the callback would see whatever is latest once it finally runs instead.
-        var change = State?.LastChange;
-
         InvokeAsync(async () =>
         {
             // A narrowing shortens the list, so the page number has to go back to the start: a
