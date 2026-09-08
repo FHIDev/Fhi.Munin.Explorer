@@ -51,12 +51,20 @@ public sealed partial class KildeView : ComponentBase
     /// </summary>
     /// <remarks>
     /// Kelda passes its variables, access criteria and prices here, and after them whatever its own
-    /// host hung on the explorer. Runa passes nothing at all. The datasamling hierarchy is in
-    /// neither: this view draws that itself, from the source it was given. Neither explorer is named
-    /// in this component.
+    /// host hung on the explorer. Runa passes nothing at all. The collection structure belongs
+    /// before these sections; use <see cref="Hierarchy"/> to replace its presentation.
     /// </remarks>
     [Parameter]
     public RenderFragment? Sections { get; set; }
+
+    /// <remarks>
+    /// Optional replacement for the always-open collection structure. When supplied, this view
+    /// keeps the original descriptions and validity tables in a separate disclosure below it.
+    /// The kilde explorer supplies KildeHierarchyView; other callers retain the existing structure.
+    /// This fragment owns its loading, error and empty states and renders even without collections.
+    /// </remarks>
+    [Parameter]
+    public RenderFragment? Hierarchy { get; set; }
 
     /// <summary>
     /// An id for the name heading, so a surrounding region can label itself by it.

@@ -52,6 +52,9 @@ TARGETS=(
   "/::explorer-tabs"
   "/::explorer-list-tab"
   "/kilder::kilder-list"
+  "/kilder::kilde-hierarchy-collapsed"
+  "/kilder::kilde-hierarchy-expanded"
+  "/kilder::kilde-hierarchy-metadata"
 )
 
 host_pid=""

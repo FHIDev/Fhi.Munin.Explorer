@@ -65,10 +65,24 @@
 
                 @* The source's own datasamlinger, then its delkilder each carrying theirs. A study
                    series' organising fact is its waves; one flat table destroys it. *@
-                @if (DataCollections.Count > 0 || Delkilder.Count > 0)
+                @if (Hierarchy is not null || DataCollections.Count > 0 || Delkilder.Count > 0)
                 {
                     @DetailBlocks.Heading(BlockLevel, DataCollectionsHeading ?? DefaultDataCollectionsHeading, "headline headline-s")
-                    @DataCollectionStructure
+                    @if (Hierarchy is not null)
+                    {
+                        @Hierarchy
+                        @if (DataCollections.Count > 0 || Delkilder.Count > 0)
+                        {
+                            <details class="munin-explorer-hierarchy__metadata" @key="kilde.Id">
+                                <summary>@T.HierarchyMetadata</summary>
+                                @DataCollectionStructure
+                            </details>
+                        }
+                    }
+                    else
+                    {
+                        @DataCollectionStructure
+                    }
                 }
 
                 @* Whatever the explorer using this view puts after the metadata. This component

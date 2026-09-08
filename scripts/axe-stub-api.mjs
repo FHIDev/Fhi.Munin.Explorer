@@ -26,6 +26,7 @@ if (!Number.isInteger(port) || port <= 0) {
 // `variables/{id}/timeline`. The literal is the one route with no fixture, and it answers with
 // what the client would have fallen back to anyway: an empty vocabulary.
 const routes = [
+  [/^\/api\/explorer\/kilder\/e358db40-0efa-47bb-893a-40ee00ccde12$/, 'kilde-med-delkilder.json'],
   [/^\/api\/explorer\/variables\/[^/]+\/kodeverk\/[^/]+\/[^/]+\/codes$/, 'kodeverk-codes.json'],
   [/^\/api\/explorer\/variables\/[^/]+\/timeline$/, 'timeline.json'],
   [/^\/api\/explorer\/variables\/[^/]+$/, 'variable.json'],
@@ -46,6 +47,18 @@ const bodies = new Map();
 for (const [pattern, source] of routes) {
   bodies.set(pattern, source.startsWith('[') ? source : readFileSync(join(fixtures, source), 'utf8'));
 }
+
+// The hierarchy capture belongs to Tromsø, which the short list capture omits. Make that source
+// reachable without relabelling another source's hierarchy or changing the captured JSON files.
+const study = JSON.parse(readFileSync(join(fixtures, 'kilde-med-delkilder.json'), 'utf8'));
+const listRoute = routes.find(([, source]) => source === 'kilder.json')[0];
+const countCollections = node => node.datasamlinger.length +
+  (node.delkilder ?? node.children ?? []).reduce((count, child) => count + countCollections(child), 0);
+bodies.set(listRoute, JSON.stringify([
+  ...JSON.parse(bodies.get(listRoute)),
+  { ...study, navn: study.preferredTerm, aktiv: true, harVariabelbeskrivelse: study.totalVariables > 0,
+    datasamlingCount: countCollections(study), delkildeCount: study.delkilder.length },
+]));
 
 // The one route whose fixture cannot be served verbatim. my-list-variables.json is a real capture:
 // 247 entries reported, two of them kept. Served as-is for every page, it says "page 1 of 3" every

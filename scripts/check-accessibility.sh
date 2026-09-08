@@ -32,6 +32,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 #   - the kildeutforsker's own facet panel, which sits behind its `Vis filtre` toggle;
 #   - the pager past page one, and anything reached by searching or by narrowing a facet;
 #   - error and empty states, which need the stub to answer differently than it does;
+#   - hierarchy branches beyond the two opened levels in kilde-hierarchy-expanded;
 #   - the English texts, and samples/LegacyHost, the same component in the other host;
 #   - the list tab's own create, rename and delete forms, and the annotation field in a row.
 # Each is another page load and settle, about ten seconds, and none carries the risk the
@@ -45,6 +46,9 @@ TARGETS=(
   "/::filters-level-lines"
   "/::variable-detail"
   "/kilder::kilde-drilldown"
+  "/kilder::kilde-hierarchy-collapsed"
+  "/kilder::kilde-hierarchy-expanded"
+  "/kilder::kilde-hierarchy-metadata"
   "/kilder::kilder-expanded"
   "/kilder::kilder-columns"
   "/utforsker::explorer-tabs"

@@ -324,7 +324,7 @@ public class KildeSectionsTest : BunitContext
             "Tromsø2 - The Second Tromsø Study",
             "Tromsø3 - The Third Tromsø Study",
         ], TextOf(cut.FindAll(
-            ".munin-explorer-kilde__main > table.munin-explorer-kilde__datasamlinger tbody th")));
+            ".munin-explorer-hierarchy__metadata > table.munin-explorer-kilde__datasamlinger tbody th")));
 
         // Then the five waves, in the catalogue's order, each with what is inside it. K_TR.BIODATA
         // holds nothing and is a wave of the study all the same: drawing only the delkilder that
