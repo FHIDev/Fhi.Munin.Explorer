@@ -123,6 +123,96 @@ public class SwallowedExceptionGuardTest
     public void Source_WhenItIsScanned_ThenOnlyADiscardedExceptionIsReported(string source, int expected) =>
         Assert.Equal(expected, Offenders(source).Count);
 
+    /// <summary>
+    /// That every call to the host-callback helper hands it the component's logger.
+    /// </summary>
+    /// <remarks>
+    /// The one place the logger is threaded by hand rather than read off the component, at fourteen
+    /// call sites across three files. The catch inside the helper satisfies the walk above whatever
+    /// its callers pass, so a site written <c>RaiseAsync(SearchChanged, _search, null)</c> — or a new
+    /// one that simply forgets — restores the blindness on the path most likely to break.
+    /// </remarks>
+    [Fact]
+    public void RaiseAsync_WhereItIsCalled_ThenTheLoggerIsPassedRatherThanLeftOut()
+    {
+        var offenders = Sources()
+            .SelectMany(file => Unlogged(File.ReadAllText(file))
+                .Select(call => $"{Relative(file)}: {call}"))
+            .ToList();
+
+        Assert.True(
+            offenders.Count == 0,
+            "These raise a host callback without handing the helper a logger, so a handler that "
+            + "throws there is swallowed as silently as before. Pass Log as the last argument:"
+            + Environment.NewLine
+            + string.Join(Environment.NewLine, offenders));
+    }
+
+    [Theory]
+    [InlineData("await RaiseAsync(SortChanged, _sort, Log);", 0)]
+    [InlineData("return RaiseAsync(SearchChanged, _search, Log);", 0)]
+    [InlineData("RaiseAsync(ExploreVariablesRequested, Handover(visible), Log);", 0)]
+    [InlineData("await RaiseAsync(SortChanged, _sort, null);", 1)]
+    [InlineData("await RaiseAsync(SortChanged, _sort);", 1)]
+    // The backing field, not the property: it is null until the property has resolved it once, so
+    // a site passing it logs nothing on the first raise — which is the mount, and the initial URL.
+    [InlineData("await RaiseAsync(SortChanged, _sort, _log);", 1)]
+    [InlineData(
+        "private static async Task RaiseAsync<TValue>("
+        + "EventCallback<TValue> callback, TValue value, ILogger? log)", 0)]
+    [InlineData("// see the RaiseAsync remarks in VariableSearch.Querying.cs", 0)]
+    public void RaiseAsyncCalls_WhenTheyAreScanned_ThenOnlyOneWithoutALoggerIsReported(
+        string source, int expected) =>
+        Assert.Equal(expected, Unlogged(source).Count);
+
+    private static readonly Regex RaiseCall =
+        new(@"\bRaiseAsync\s*(?:<[^<>()]*>)?\s*\(", RegexOptions.Compiled);
+
+    /// <summary>Every call to the helper whose last argument is not the component's logger.</summary>
+    private static List<string> Unlogged(string source)
+    {
+        var found = new List<string>();
+
+        foreach (Match call in RaiseCall.Matches(source))
+        {
+            // The helper's own declaration reads as a call and is not one, and the prose about it
+            // has no parentheses to walk at all.
+            var arguments = Arguments(source, call.Index + call.Length - 1);
+
+            if (arguments is null || arguments.Contains("ILogger", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (!arguments.TrimEnd().EndsWith("Log", StringComparison.Ordinal))
+            {
+                found.Add($"RaiseAsync({arguments})");
+            }
+        }
+
+        return found;
+    }
+
+    /// <summary>The argument list at <paramref name="open"/>, or null where it never closes.</summary>
+    private static string? Arguments(string source, int open)
+    {
+        var depth = 0;
+
+        for (var i = open; i < source.Length; i++)
+        {
+            if (source[i] == '(')
+            {
+                depth++;
+            }
+            else if (source[i] == ')' && --depth == 0)
+            {
+                return source[(open + 1)..i];
+            }
+        }
+
+        return null;
+    }
+
     private sealed record Offender(int Line, string Clause);
 
     /// <summary>Every <c>catch (Exception …)</c> in a source, with the body it guards.</summary>

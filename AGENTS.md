@@ -263,7 +263,16 @@ Log?.LogError(ex, "could not load kilde {KildeId}", id);
   branch of its own: telling throttling apart from failure from outside is what ruled rate limiting
   out of the incident above. A catch that folds the two for the sake of one shared sentence still
   splits the level, the way `FetchRowsAsync` does — the guard reads the clause's type and refuses
-  anything but `Warning` on one of ours.
+  anything but `Warning` on one of ours. `MuninExplorerUnauthorizedException` is the same rule and
+  is easier to miss, because it reaches every one of the my/lists paths and no other: a host can
+  declare `IsAuthenticated` true while its token provider sends nothing the API accepts, and
+  reading that as `Error` fills the channel with an outcome the reader was already told about.
+  Nine of those paths recorded it at `Error` while the save button beside them recorded it at
+  `Warning`, which is how easily a rule stated once drifts (`Fhi.Metadata-l9l2n.47`).
+- **A folded split is a test, because the guard cannot read one.** For a clause typed `Exception`
+  the guard accepts any level, so inverting the `if` or deleting it leaves the suite green while a
+  429 is reported as a fault. Each of the eight folded sites has a throttled test of its own in
+  `ExceptionLoggingTest`; a new one owes the same.
 - **Log where the failure is, not where the method is.** `KildeHierarchyView` cancels its own
   calls on every new `KildeId`, and a superseded one arrives as a `TaskCanceledException` that
   nothing failed: log inside the `IsCancellationRequested` guard rather than above it. A blanket
@@ -288,6 +297,19 @@ here is the first statement of a catch written so that nothing escapes and takes
 it. A host on a full disk would otherwise lose the page, and skip the sentence on screen too.
 `ExplorerLog` is the one file in `src/` allowed to swallow: an exception thrown by logging has
 nowhere left to be written down, and the guard names that file and asserts it is the only one.
+
+It lives in `Logging/`, in `Fhi.Munin.Explorer.Logging`, and not at the root of `src/` and not
+under `Blazor/`. Three layers read it — the components, `MuninExplorerClient` and
+`VariableListState` — so putting it under any one of them would have a `Client/` file depending on
+the `Blazor` namespace, which is the inversion the folder split exists to prevent; and a root-level
+implementation type is an invitation to treat the root namespace as a place to put things. One
+folder, one namespace, as everywhere else here.
+
+The one call the logger is **passed** to rather than read off the component is `RaiseAsync`, which
+is static and takes it as an argument at fourteen sites in three files. Pass `Log`, never `_log` —
+the backing field is null until the property has resolved it once, and that once is the mount.
+`SwallowedExceptionGuardTest` reads the call sites for exactly this, because the helper's own catch
+satisfies every other check whatever its callers hand it.
 
 `SwallowedExceptionGuardTest` is what keeps this true, since the next site added is not a compile
 error and its cost only shows up on somebody else's server.

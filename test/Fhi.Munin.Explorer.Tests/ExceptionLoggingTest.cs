@@ -55,6 +55,87 @@ public class ExceptionLoggingTest : BunitContext
             throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
     }
 
+    private sealed class ThrottledSearchClient : EmptyMuninExplorerClient
+    {
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
+            SortField sort = SortField.Default, SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default) =>
+            throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+    }
+
+    /// <summary>One kilde in the list, and whatever the caller chose out of the detail endpoint.</summary>
+    /// <remarks>
+    /// Both folded splits in <c>KildeSearch</c> read that one endpoint — the drilldown and the
+    /// expanded row's datasamlinger — so the same fake drives each from the click that reaches it.
+    /// </remarks>
+    private sealed class RefusingKildeDetailClient(Exception refusal) : EmptyMuninExplorerClient
+    {
+        internal KildeSummary Kilde { get; } = new()
+        {
+            Id = Guid.NewGuid(),
+            Code = "K_ALS",
+            Name = "Als registeret",
+            Kildetype = "sentraltHelseregister",
+            IsActive = true,
+            DatasamlingCount = 2,
+            TotalVariables = 42,
+        };
+
+        public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
+            string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<KildeSummary>>([Kilde]);
+
+        public override Task<KildeDetail?> GetKildeAsync(
+            Guid id, CancellationToken cancellationToken = default) =>
+            Task.FromException<KildeDetail?>(refusal);
+    }
+
+    /// <summary>A reader whose lists the API will not hand over, for the reason the test chose.</summary>
+    private sealed class RefusingListsClient(Exception refusal) : EmptyMuninExplorerClient
+    {
+        public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(
+            CancellationToken cancellationToken = default) =>
+            Task.FromException<IReadOnlyList<VariableList>>(refusal);
+    }
+
+    /// <summary>Two lists, whose pages the API refuses wherever the test says it does.</summary>
+    private sealed class RefusedPagesClient : EmptyMuninExplorerClient
+    {
+        internal Guid First { get; } = Guid.NewGuid();
+
+        internal Guid Second { get; } = Guid.NewGuid();
+
+        /// <summary>Which page reads are refused, by list and by the size asked for.</summary>
+        internal Func<Guid, int, bool> Refuses { get; set; } = (_, _) => false;
+
+        public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<VariableList>>(
+            [
+                new VariableList { Id = First, Name = "Første liste" },
+                new VariableList { Id = Second, Name = "Andre liste" },
+            ]);
+
+        public override Task<Page<VariableListItem>?> GetMyListVariablesAsync(
+            Guid id, int page = 1, int pageSize = 100, IReadOnlyCollection<Guid>? kildeIds = null,
+            CancellationToken cancellationToken = default) =>
+            Refuses(id, pageSize)
+                ? Task.FromException<Page<VariableListItem>?>(
+                    new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30)))
+                : Task.FromResult<Page<VariableListItem>?>(new Page<VariableListItem>());
+    }
+
+    /// <summary>Every endpoint answering "nothing", so the only thing that can fail is the host.</summary>
+    private sealed class QuietClient : EmptyMuninExplorerClient;
+
+    private sealed class UnauthorizedCreateClient : EmptyMuninExplorerClient
+    {
+        public override Task<VariableList> CreateMyListAsync(
+            string name, CancellationToken cancellationToken = default) =>
+            throw new MuninExplorerUnauthorizedException();
+    }
+
     /// <summary>A hierarchy whose every call is left open for the test to fail when it chooses.</summary>
     /// <remarks>
     /// Deliberately without <c>RunContinuationsAsynchronously</c>: the component's catch then runs
@@ -247,6 +328,239 @@ public class ExceptionLoggingTest : BunitContext
         provider.GetRequiredService<ILogger<KildeSearch>>().LogError("host provider still installed");
 
         Assert.Single(recorder.Entries);
+    }
+
+    [Fact]
+    public void VariableSearch_WhenTheHostsOwnCallbackThrows_ThenTheExceptionReachesTheHostsLogger()
+    {
+        // The one path where the logger is threaded by hand rather than read off the component:
+        // RaiseAsync is static and takes it as an argument at fourteen call sites, so a site that
+        // passed null would be a hole no guard over catch clauses could see.
+        var recorder = Recording();
+
+        Services.AddSingleton<IMuninExplorerClient>(new QuietClient());
+
+        // A host rewriting a CMS URL from this handler is the case the remarks call most likely to
+        // break, and it fires on the initial render as well as on every later search.
+        var cut = Render<VariableSearch>(p => p.Add<string?>(c => c.SearchChanged, _ => throw Sentinel));
+
+        var entry = Assert.Single(recorder.Entries, e => e.Level == LogLevel.Error);
+
+        Assert.Same(Sentinel, entry.Exception);
+        Assert.Equal(typeof(VariableSearch).FullName, entry.Category);
+
+        // And the host's broken handler is the host's to find: the component says nothing about it
+        // on top of what the search itself reported.
+        Assert.DoesNotContain(Texts.For("no").Error, cut.Markup);
+    }
+
+    [Fact]
+    public void VariableSearch_WhenTheResultPageIsThrottled_ThenItIsAWarningRatherThanAFault()
+    {
+        // The first of the three folded splits, where Warning-versus-Error is hand-written logic in
+        // a catch (Exception) body rather than a clause the guard can read. Inverting the condition
+        // or dropping the branch leaves the guard green, so each of the three has a test of its own.
+        var recorder = Recording();
+
+        var cut = RenderWith<VariableSearch>(new ThrottledSearchClient());
+
+        var entry = Assert.Single(recorder.Entries);
+
+        Assert.Equal(LogLevel.Warning, entry.Level);
+        Assert.IsType<MuninExplorerRateLimitedException>(entry.Exception);
+        Assert.Contains(Texts.For("no").RateLimitError, cut.Markup);
+    }
+
+    [Fact]
+    public void KildeSearch_WhenTheDrilldownIsThrottled_ThenItIsAWarningRatherThanAFault()
+    {
+        // The second: the kilde the reader opened. The list arrives and the detail is refused,
+        // which is what opening one kilde after another meets while the catalogue is perfectly up.
+        var recorder = Recording();
+        var client = new RefusingKildeDetailClient(
+            new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30)));
+
+        var cut = RenderWith<KildeSearch>(client);
+
+        cut.Find(".munin-explorer-kilder tbody th button").Click();
+
+        var entry = Assert.Single(recorder.Entries);
+
+        Assert.Equal(LogLevel.Warning, entry.Level);
+        Assert.IsType<MuninExplorerRateLimitedException>(entry.Exception);
+        Assert.Contains(client.Kilde.Id.ToString(), entry.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void KildeSearch_WhenTheDatasamlingerAreThrottled_ThenItIsAWarningRatherThanAFault()
+    {
+        // The third, and the one the reader reaches most often: expanding a row sends a request per
+        // press, which is exactly the rhythm the per-address limiter counts.
+        var recorder = Recording();
+        var client = new RefusingKildeDetailClient(
+            new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30)));
+
+        var cut = RenderWith<KildeSearch>(client);
+
+        cut.Find(".munin-explorer-kilder__expand-toggle").Click();
+
+        var entry = Assert.Single(recorder.Entries);
+
+        Assert.Equal(LogLevel.Warning, entry.Level);
+        Assert.IsType<MuninExplorerRateLimitedException>(entry.Exception);
+    }
+
+    [Fact]
+    public void VariableListView_WhenTheListsReadOnMountIsThrottled_ThenItIsAWarning()
+    {
+        // The my-lists paths reach the same limiter as everything else, and the mount fires this
+        // read alongside the search and the facet refresh — the burst the limiter is counting.
+        var entry = MountedWith(new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30)));
+
+        Assert.Equal(LogLevel.Warning, entry.Level);
+        Assert.IsType<MuninExplorerRateLimitedException>(entry.Exception);
+    }
+
+    [Fact]
+    public void VariableListView_WhenTheApiRefusesTheReaderOnMount_ThenItIsAWarningToo()
+    {
+        // The 401 half. A host can declare IsAuthenticated true while its token provider sends
+        // nothing the API accepts, which fills the Error channel with an expected, handled outcome.
+        var entry = MountedWith(new MuninExplorerUnauthorizedException());
+
+        Assert.Equal(LogLevel.Warning, entry.Level);
+        Assert.IsType<MuninExplorerUnauthorizedException>(entry.Exception);
+    }
+
+    [Fact]
+    public void VariableListView_WhenTheListsReadOnMountFails_ThenItIsStillAnError()
+    {
+        // The other half of the same branch, so a split that always said Warning would fail here:
+        // the API being down is a fault, and the level is the only thing telling the two apart.
+        var entry = MountedWith(Sentinel);
+
+        Assert.Equal(LogLevel.Error, entry.Level);
+        Assert.Same(Sentinel, entry.Exception);
+    }
+
+    [Fact]
+    public void VariableListView_WhenAPageOfTheListIsThrottled_ThenItIsAWarning()
+    {
+        // Refused by the size asked for, which is what separates this site from the mount's: the
+        // membership walk asks for the API's ceiling of 1000 and the view's own page read for 25.
+        var recorder = Recording();
+
+        Services.AddSingleton<IMuninExplorerClient>(
+            new RefusedPagesClient { Refuses = (_, size) => size == 25 });
+        Services.AddScoped<VariableListState>();
+
+        Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, true));
+
+        var entry = Assert.Single(recorder.Entries);
+
+        Assert.Equal(LogLevel.Warning, entry.Level);
+        Assert.IsType<MuninExplorerRateLimitedException>(entry.Exception);
+    }
+
+    [Fact]
+    public async Task VariableListView_WhenTheSwitchToAnotherListIsThrottled_ThenItIsAWarning()
+    {
+        // The picker, which is a press per list the reader looks at — and the last of the folded
+        // sites on these paths. The mount is let through so the failure is the switch and nothing
+        // around it.
+        var recorder = Recording();
+        var client = new RefusedPagesClient();
+
+        Services.AddSingleton<IMuninExplorerClient>(client);
+        Services.AddScoped<VariableListState>();
+
+        var cut = Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, true));
+
+        client.Refuses = (id, _) => id == client.Second;
+
+        await cut.InvokeAsync(() => cut.Find("select").Change(client.Second.ToString()));
+
+        var entry = Assert.Single(recorder.Entries);
+
+        Assert.Equal(LogLevel.Warning, entry.Level);
+        Assert.IsType<MuninExplorerRateLimitedException>(entry.Exception);
+    }
+
+    [Fact]
+    public async Task VariableSearch_WhenTheMembershipReadIsRefused_ThenItIsAWarning()
+    {
+        // This one runs on every parameter set — every search and every page turn — so an Error
+        // here is the loudest line in a host's channel for a reader who is merely signed out.
+        var recorder = Recording();
+
+        Services.AddSingleton<IMuninExplorerClient>(
+            new RefusingListsClient(new MuninExplorerUnauthorizedException()));
+        Services.AddScoped<VariableListState>();
+
+        var cut = Render<VariableSearch>(p => p.Add(c => c.IsAuthenticated, true));
+
+        // Rendered again, because "every parameter set" is the part that makes the level matter.
+        await cut.InvokeAsync(() => cut.Render(p => p.Add(c => c.IsAuthenticated, true)));
+
+        Assert.All(recorder.Entries, e => Assert.Equal(LogLevel.Warning, e.Level));
+        Assert.NotEmpty(recorder.Entries);
+        Assert.All(recorder.Entries, e => Assert.IsType<MuninExplorerUnauthorizedException>(e.Exception));
+    }
+
+    [Fact]
+    public void VariableListFilters_WhenTheMembershipReadIsRefused_ThenItIsAWarning()
+    {
+        // The third surface asking the same question on mount, and the third copy of the split.
+        var recorder = Recording();
+
+        Services.AddSingleton<IMuninExplorerClient>(
+            new RefusingListsClient(new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30))));
+        Services.AddScoped<VariableListState>();
+
+        Render<VariableListFilters>(p => p.Add(c => c.IsAuthenticated, true));
+
+        var entry = Assert.Single(recorder.Entries);
+
+        Assert.Equal(LogLevel.Warning, entry.Level);
+        Assert.Equal(typeof(VariableListFilters).FullName, entry.Category);
+    }
+
+    [Fact]
+    public async Task VariableListView_WhenCreatingAListIsRefusedAsUnauthorised_ThenItIsAWarning()
+    {
+        // The write half of the 401, told apart from a fault the way the save button already tells
+        // it apart. What the reader is shown does not move: there is nothing more to say than that
+        // the list was not made.
+        var recorder = Recording();
+
+        Services.AddSingleton<IMuninExplorerClient>(new UnauthorizedCreateClient());
+        Services.AddScoped<VariableListState>();
+
+        var cut = Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, true));
+
+        cut.Find("button[id^='munin-explorer-create-toggle-']").Click();
+        cut.Find("input[id^='munin-explorer-new-list-']").Change("Ny liste");
+        await cut.InvokeAsync(() =>
+            cut.FindAll("button").First(b => b.TextContent.Trim() == Texts.For("no").CreateList).Click());
+
+        var entry = Assert.Single(recorder.Entries);
+
+        Assert.Equal(LogLevel.Warning, entry.Level);
+        Assert.IsType<MuninExplorerUnauthorizedException>(entry.Exception);
+        Assert.DoesNotContain("Ny liste", entry.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>The one entry a saved-list view writes when its lists cannot be read on mount.</summary>
+    private LogEntry MountedWith(Exception refusal)
+    {
+        var recorder = Recording();
+
+        Services.AddSingleton<IMuninExplorerClient>(new RefusingListsClient(refusal));
+        Services.AddScoped<VariableListState>();
+
+        Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, true));
+
+        return Assert.Single(recorder.Entries);
     }
 
     private RecordingLoggerProvider Recording()

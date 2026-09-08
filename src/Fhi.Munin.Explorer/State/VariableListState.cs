@@ -1,4 +1,5 @@
 using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.Logging;
 using Microsoft.Extensions.Logging;
 
 namespace Fhi.Munin.Explorer.State;

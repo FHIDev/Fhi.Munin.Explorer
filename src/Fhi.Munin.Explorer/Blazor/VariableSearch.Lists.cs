@@ -1,3 +1,5 @@
+using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.Logging;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -72,7 +74,17 @@ public partial class VariableSearch : IDisposable
         }
         catch (Exception ex)
         {
-            Log?.LogError(ex, "could not read the reader's list membership");
+            // The 429 and the 401 the comment below describes are expected outcomes rather than
+            // faults, so they are the Warning half of the split — and this read runs on every
+            // parameter set, which would make an Error here the loudest line in the channel.
+            if (ex is MuninExplorerRateLimitedException or MuninExplorerUnauthorizedException)
+            {
+                Log?.LogWarning(ex, "the API refused the reader's list membership");
+            }
+            else
+            {
+                Log?.LogError(ex, "could not read the reader's list membership");
+            }
 
             // Caught, and nothing said. An exception out of a lifecycle method takes the circuit
             // down with it, which in helsedata's legacy Blazor Server host means the whole CMS page

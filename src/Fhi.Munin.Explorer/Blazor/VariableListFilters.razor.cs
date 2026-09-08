@@ -1,3 +1,5 @@
+using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.Logging;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -112,7 +114,14 @@ public sealed partial class VariableListFilters : ComponentBase, IDisposable
             // Caught for the reason the view catches its own: a throw out of a lifecycle method
             // takes the circuit down, and on the legacy host that is the whole CMS page. The panel
             // draws nothing under the heading, and the view beside it says what went wrong.
-            Log?.LogError(ex, "could not read the reader's list membership");
+            if (ex is MuninExplorerRateLimitedException or MuninExplorerUnauthorizedException)
+            {
+                Log?.LogWarning(ex, "the API refused the reader's list membership");
+            }
+            else
+            {
+                Log?.LogError(ex, "could not read the reader's list membership");
+            }
         }
     }
 

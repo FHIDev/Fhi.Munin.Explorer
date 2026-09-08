@@ -1,4 +1,5 @@
 using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.Logging;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -482,7 +483,17 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
         catch (Exception ex)
         {
-            Log?.LogError(ex, "could not read the reader's lists on mount");
+            // Split the way the comment above says it has to be: the burst this read is part of is
+            // what the limiter counts, and a 401 is the host's own token, so both are expected
+            // outcomes the reader is told about and neither is a fault to go and find.
+            if (ex is MuninExplorerRateLimitedException or MuninExplorerUnauthorizedException)
+            {
+                Log?.LogWarning(ex, "the API refused the reader's lists on mount");
+            }
+            else
+            {
+                Log?.LogError(ex, "could not read the reader's lists on mount");
+            }
 
             _page = null;
             _failed = true;
@@ -646,8 +657,18 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         catch (Exception ex)
         {
             // Said here rather than thrown on: an unhandled exception out of a lifecycle method
-            // takes the circuit down, which is a worse answer than a line of text.
-            Log?.LogError(ex, "could not read page {Page} of list {ListId}", readPage, readList);
+            // takes the circuit down, which is a worse answer than a line of text. A page turn is
+            // one of the calls the limiter counts, so the level splits the way every other does.
+            if (ex is MuninExplorerRateLimitedException or MuninExplorerUnauthorizedException)
+            {
+                Log?.LogWarning(
+                    ex, "the API refused page {Page} of list {ListId}", readPage, readList);
+            }
+            else
+            {
+                Log?.LogError(
+                    ex, "could not read page {Page} of list {ListId}", readPage, readList);
+            }
 
             failed = true;
         }
@@ -832,6 +853,17 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
             failure = DesiredDataFailure.Throttled;
         }
+        catch (MuninExplorerUnauthorizedException ex)
+        {
+            // As above: the caller was declined, which is the host's token rather than a fault.
+            Log?.LogWarning(
+                ex,
+                "the API refused the annotation of variable {VariableId} in list {ListId} as unauthorised",
+                variableId,
+                list);
+
+            failure = DesiredDataFailure.Failed;
+        }
         catch (Exception ex)
         {
             // Uncaught, this leaves the event handler and takes the circuit with it: a blank page
@@ -943,7 +975,14 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         {
             // Same reason as the lifecycle read above: an uncaught throw out of an event handler
             // takes the circuit with it. LoadPageAsync below has its own catch and will say so.
-            Log?.LogError(ex, "could not switch to list {ListId}", id);
+            if (ex is MuninExplorerRateLimitedException or MuninExplorerUnauthorizedException)
+            {
+                Log?.LogWarning(ex, "the API refused the switch to list {ListId}", id);
+            }
+            else
+            {
+                Log?.LogError(ex, "could not switch to list {ListId}", id);
+            }
 
             _failed = true;
 
@@ -998,6 +1037,15 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             _createFailure = ListActionFailure.Throttled;
             return;
         }
+        catch (MuninExplorerUnauthorizedException ex)
+        {
+            // The API's own answer to a host that says the reader is signed in, which is a token
+            // to go and fix rather than a fault here — the same reading the save button gives it.
+            // The reader is told what every other failure tells them, since there is no more.
+            Log?.LogWarning(ex, "the API refused a list creation as unauthorised");
+            _createFailure = ListActionFailure.Failed;
+            return;
+        }
         catch (Exception ex)
         {
             // Uncaught, this leaves the event handler and takes the circuit with it: a blank
@@ -1030,6 +1078,15 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 "the rate limiter refused the switch to the new list {ListId}",
                 created.Id);
             _createFailure = ListActionFailure.Throttled;
+            return;
+        }
+        catch (MuninExplorerUnauthorizedException ex)
+        {
+            // Expected in the same way the creation's own 401 is, and told apart from a fault for
+            // the same reason. The list was made either way, so the reader sees ListLoadError.
+            Log?.LogWarning(
+                ex, "the API refused the switch to the new list {ListId} as unauthorised", created.Id);
+            _failed = true;
             return;
         }
         catch (Exception ex)
@@ -1083,6 +1140,14 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
             _actionFailure = ListActionFailure.Throttled;
         }
+        catch (MuninExplorerUnauthorizedException ex)
+        {
+            // A write the API declined to accept the caller for, not a write that broke.
+            Log?.LogWarning(
+                ex, "the API refused the rename of list {ListId} as unauthorised", _shownList);
+
+            _actionFailure = ListActionFailure.Failed;
+        }
         catch (Exception ex)
         {
             // An uncaught throw out of an event handler takes the whole circuit down, which is a
@@ -1124,6 +1189,14 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 ex, "the rate limiter refused the deletion of list {ListId}", _shownList);
 
             _actionFailure = ListActionFailure.Throttled;
+        }
+        catch (MuninExplorerUnauthorizedException ex)
+        {
+            // As above: the caller was declined, which is the host's token rather than a fault.
+            Log?.LogWarning(
+                ex, "the API refused the deletion of list {ListId} as unauthorised", _shownList);
+
+            _actionFailure = ListActionFailure.Failed;
         }
         catch (Exception ex)
         {
@@ -1172,6 +1245,17 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 _shownList);
 
             _actionFailure = ListActionFailure.Throttled;
+        }
+        catch (MuninExplorerUnauthorizedException ex)
+        {
+            // As above: the caller was declined, which is the host's token rather than a fault.
+            Log?.LogWarning(
+                ex,
+                "the API refused the removal of variable {VariableId} from list {ListId} as unauthorised",
+                variableId,
+                _shownList);
+
+            _actionFailure = ListActionFailure.Failed;
         }
         catch (Exception ex)
         {
@@ -1246,6 +1330,18 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 _shownList);
 
             _downloadFailure = DownloadFailure.Throttled;
+        }
+        catch (MuninExplorerUnauthorizedException ex)
+        {
+            // The id walk in front of the export reads my/lists, so a declined caller lands here
+            // rather than on a broken download.
+            Log?.LogWarning(
+                ex,
+                "the API refused the {Format} export of list {ListId} as unauthorised",
+                format,
+                _shownList);
+
+            _downloadFailure = DownloadFailure.Failed;
         }
         catch (Exception ex)
         {

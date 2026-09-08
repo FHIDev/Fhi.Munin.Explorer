@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace Fhi.Munin.Explorer;
+namespace Fhi.Munin.Explorer.Logging;
 
 /// <summary>The host's logger for a component, or none when the host registered no logging.</summary>
 /// <remarks>
