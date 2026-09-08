@@ -215,7 +215,7 @@ public class CataloguePropertiesTest
     {
         // A label that is nothing but the qualifier strips to the empty string, not to prose. An
         // empty <dt> would be worse than the qualifier it replaced, so the row goes instead
-        // (Fhi.Metadata-43jrq, Copilot review on #220).
+        // (Fhi.Metadata-43jrq).
         List<PropertyMetadataEntry> metadata =
         [
             new()

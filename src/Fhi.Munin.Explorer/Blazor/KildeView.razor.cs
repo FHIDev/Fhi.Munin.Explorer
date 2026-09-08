@@ -103,7 +103,7 @@ public sealed partial class KildeView : ComponentBase
     /// <remarks>
     /// Cached against the (Kilde, Reader) pair rather than recomputed per access: the markup reads
     /// this twice per render — the empty check, then the loop — and each call was rebuilding
-    /// DrawnElsewhere's set and re-walking every property (Copilot review on #220).
+    /// DrawnElsewhere's set and re-walking every property (Fhi.Metadata-43jrq).
     /// </remarks>
     private IReadOnlyList<PropertyGroup> Groups
     {
