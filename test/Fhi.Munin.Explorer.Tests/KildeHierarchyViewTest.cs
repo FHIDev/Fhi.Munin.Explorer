@@ -23,7 +23,9 @@ public sealed class KildeHierarchyViewTest : BunitContext
         public override Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default) =>
             Task.FromResult<KildeDetail?>(new()
             {
-                Id = id, PreferredTerm = "Register", Datasamlinger =
+                Id = id,
+                PreferredTerm = "Register",
+                Datasamlinger =
                 [new() { Id = Guid.NewGuid(), Name = "Collection", Description = "Retained description" }]
             });
     }
