@@ -80,6 +80,11 @@ public static class ServiceCollectionExtensions
                 "outside it reaches nothing and the reader is told only that variables could not be fetched.");
         }
 
+        // So the components have somewhere to write the exceptions they swallow. Idempotent and
+        // TryAdd-based inside, so a host that already configured logging keeps every provider and
+        // filter it set; a host that configured none stops being one this package cannot report to.
+        services.AddLogging();
+
         // TryAdd, so a host that wants real tokens registers its own provider BEFORE
         // calling AddMuninExplorer and wins. Registered as a singleton on purpose: the
         // handler pipeline below is built and cached by IHttpClientFactory in its own

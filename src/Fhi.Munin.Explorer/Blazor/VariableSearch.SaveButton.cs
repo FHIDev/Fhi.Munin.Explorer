@@ -1,6 +1,7 @@
 using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Logging;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -153,20 +154,28 @@ public partial class VariableSearch
             _saveError.Remove(v.Id);
             await ListState.ToggleSavedAsync(v.Id, T.FirstListName);
         }
-        catch (MuninExplorerRateLimitedException)
+        catch (MuninExplorerRateLimitedException ex)
         {
+            Log?.LogWarning(
+                ex, "the rate limiter refused the save of variable {VariableId}", v.Id);
+
             // The writes go through the same client as the reads and meet the same per-address
             // limiter, so this row's save can be refused while the catalogue is perfectly up.
             _saveError[v.Id] = SaveFailure.Throttled;
         }
-        catch (MuninExplorerUnauthorizedException)
+        catch (MuninExplorerUnauthorizedException ex)
         {
+            Log?.LogWarning(
+                ex, "the API refused the save of variable {VariableId} as unauthorised", v.Id);
+
             // The API's own answer, not IsAuthenticated read again — that is the host's claim the
             // API just contradicted, and asking it a second time would repeat the same wrong word.
             _saveError[v.Id] = SaveFailure.SignInRequired;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Log?.LogError(ex, "could not save variable {VariableId}", v.Id);
+
             _saveError[v.Id] = SaveFailure.Failed;
         }
 

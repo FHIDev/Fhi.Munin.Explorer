@@ -6,14 +6,22 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace Fhi.Munin.Explorer.Client;
 
 /// <summary>
 /// <see cref="IMuninExplorerClient"/> over the public Munin Explorer API.
 /// </summary>
-internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplorerClient
+internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninExplorerClient>? logger = null)
+    : IMuninExplorerClient
 {
+    // AddMuninExplorer's AddLogging is what makes this resolvable, not the default: ActivatorUtilities,
+    // which AddHttpClient builds a typed client with, throws rather than substituting one for a
+    // service it cannot satisfy. The default is for the tests, which new this up. Guarded: ExplorerLog.
+    private readonly ILogger? _logger = ExplorerLog.Guard(logger);
+
     // Shared by the client and any test host, so a serialisation difference cannot
     // quietly appear between them.
     internal static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
@@ -358,7 +366,7 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
     /// parser's own exceptions because not every reason is the parser's: a charset the runtime
     /// cannot resolve throws an invalid operation. Cancellation is the caller's and travels on.
     /// </remarks>
-    private static async Task<DesiredDataRefusal?> ReadRefusalAsync(
+    private async Task<DesiredDataRefusal?> ReadRefusalAsync(
         HttpResponseMessage response,
         CancellationToken cancellationToken)
     {
@@ -368,6 +376,11 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
         }
         catch (Exception cause) when (cause is not OperationCanceledException)
         {
+            // Warning: the refusal stands, and what is lost is the ceiling the caller would have
+            // named to the reader. The body is not logged — it is the API's, and reading it again
+            // here is the very thing that just failed.
+            _logger?.LogWarning(cause, "a refusal body could not be read");
+
             return null;
         }
     }

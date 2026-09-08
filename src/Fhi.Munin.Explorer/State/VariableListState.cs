@@ -1,4 +1,6 @@
 using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace Fhi.Munin.Explorer.State;
 
@@ -22,9 +24,16 @@ namespace Fhi.Munin.Explorer.State;
 /// forgets the parameter gets no lists rather than unauthorised calls.
 /// </para>
 /// </remarks>
-public sealed partial class VariableListState(IMuninExplorerClient client)
+public sealed partial class VariableListState(
+    IMuninExplorerClient client,
+    ILogger<VariableListState>? logger = null)
 {
     private readonly IMuninExplorerClient _client = client;
+
+    // Defaulted for the tests, which new this up directly; AddMuninExplorer's AddLogging is what
+    // makes it resolvable through the container. Guarded so a host's failing sink costs a log line
+    // rather than the circuit — see ExplorerLog.
+    private readonly ILogger? _logger = ExplorerLog.Guard(logger);
 
     private IReadOnlyList<VariableList> _lists = [];
     private bool _loaded;

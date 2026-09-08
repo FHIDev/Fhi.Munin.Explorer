@@ -1,5 +1,6 @@
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Logging;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
@@ -163,8 +164,8 @@ public partial class VariableSearch
             return;
         }
 
-        await RaiseAsync(SortChanged, _sort);
-        await RaiseAsync(DirectionChanged, _direction);
+        await RaiseAsync(SortChanged, _sort, Log);
+        await RaiseAsync(DirectionChanged, _direction, Log);
 
         // Reordering renumbered the pages and sent the reader back to the first one.
         await NotifyPageChangedAsync();
@@ -291,7 +292,7 @@ public partial class VariableSearch
 
         // No retreat is needed on this path: page 1 is the one page that can never be out of range,
         // so an empty answer here is a result with no rows rather than a reader past the end.
-        await RaiseAsync(PageSizeChanged, _pageSize);
+        await RaiseAsync(PageSizeChanged, _pageSize, Log);
         await NotifyPageChangedAsync();
     }
 
@@ -409,7 +410,7 @@ public partial class VariableSearch
         // _selectedId rather than id, for the reason ToggleDetailAsync gives: the fetch above
         // yields with the rows already back on screen and clickable, so another row may have been
         // opened while it ran, and what the host is told has to be what is open.
-        await RaiseAsync(SelectedVariableIdChanged, _selectedId);
+        await RaiseAsync(SelectedVariableIdChanged, _selectedId, Log);
     }
 
     /// <summary>
@@ -470,7 +471,7 @@ public partial class VariableSearch
     /// documents: a host whose URL kept the previous query after a failed search would hand out a
     /// link that reloads into a different search than the box on screen is showing.
     /// </remarks>
-    private Task NotifySearchChangedAsync() => RaiseAsync(SearchChanged, _search);
+    private Task NotifySearchChangedAsync() => RaiseAsync(SearchChanged, _search, Log);
 
     /// <summary>
     /// Move to the last real page when a restored link asks for one past the end.
@@ -504,7 +505,7 @@ public partial class VariableSearch
     }
 
     /// <summary>Tell the host which page is showing, whether it turned, reset or was clamped.</summary>
-    private Task NotifyPageChangedAsync() => RaiseAsync(PageChanged, _page);
+    private Task NotifyPageChangedAsync() => RaiseAsync(PageChanged, _page, Log);
 
     /// <summary>
     /// Hand a value to one of the host's callbacks without letting the host's own failure out.
@@ -512,9 +513,10 @@ public partial class VariableSearch
     /// <remarks>
     /// Shared by <see cref="SearchChanged"/> and <see cref="FilterChanged"/>, because what has to be
     /// survived is the same for both: the handler is the host's, and what it most often does is
-    /// rewrite a URL.
+    /// rewrite a URL. The logger is a parameter rather than a read of <c>Log</c>,
+    /// so the helper stays <see langword="static"/> and free of component state.
     /// </remarks>
-    private static async Task RaiseAsync<TValue>(EventCallback<TValue> callback, TValue value)
+    private static async Task RaiseAsync<TValue>(EventCallback<TValue> callback, TValue value, ILogger? log)
     {
         if (!callback.HasDelegate)
         {
@@ -532,8 +534,10 @@ public partial class VariableSearch
             // the navigation on the floor.
             throw;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            log?.LogError(ex, "a host callback threw");
+
             // The host's handler threw, and a NavigationManager call or a CMS URL rewrite is
             // exactly the kind that does. Left unhandled it would propagate out of Blazor's event
             // dispatch — and this same path runs from OnInitializedAsync, so during initial render
@@ -629,6 +633,18 @@ public partial class VariableSearch
         }
         catch (Exception ex)
         {
+            // Split the way the sentence below is split: a 429 is the catalogue up and the reader
+            // asking too often, which is nobody's fault to go and fix. The search text stays out of
+            // it — the page number is what says which request this was.
+            if (ex is MuninExplorerRateLimitedException)
+            {
+                Log?.LogWarning(ex, "the rate limiter refused result page {Page}", _page);
+            }
+            else
+            {
+                Log?.LogError(ex, "could not load result page {Page}", _page);
+            }
+
             // One branch for both failures, because everything except the sentence is the same: say
             // what the reader can do about it and clear the rows. The detail belongs in the host's
             // logs, not on the page.
@@ -815,22 +831,22 @@ public partial class VariableSearch
         // until this answer arrived that was the rolled-back state it was already told about.
         if (_sort != previousSort)
         {
-            await RaiseAsync(SortChanged, _sort);
+            await RaiseAsync(SortChanged, _sort, Log);
         }
 
         if (_direction != previousDirection)
         {
-            await RaiseAsync(DirectionChanged, _direction);
+            await RaiseAsync(DirectionChanged, _direction, Log);
         }
 
         if (_filter != previousFilter)
         {
-            await RaiseAsync(FilterChanged, _filter);
+            await RaiseAsync(FilterChanged, _filter, Log);
         }
 
         if (_pageSize != previousSize)
         {
-            await RaiseAsync(PageSizeChanged, _pageSize);
+            await RaiseAsync(PageSizeChanged, _pageSize, Log);
         }
 
         await NotifyPageChangedAsync();

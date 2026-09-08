@@ -1,5 +1,7 @@
 using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.Logging;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Logging;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -12,6 +14,13 @@ namespace Fhi.Munin.Explorer.Blazor;
 public sealed partial class KildeHierarchyView : ComponentBase, IDisposable
 {
     [Inject] private IMuninExplorerClient Client { get; set; } = default!;
+
+    [Inject] private IServiceProvider Services { get; set; } = default!;
+
+    private ILogger? _log;
+
+    /// <summary>The host's logger, or none — see <see cref="ExplorerLog"/>.</summary>
+    private ILogger? Log => _log ??= ExplorerLog.For<KildeHierarchyView>(Services);
 
     [Parameter, EditorRequired] public Guid KildeId { get; set; }
 
@@ -69,18 +78,29 @@ public sealed partial class KildeHierarchyView : ComponentBase, IDisposable
             _failed = hierarchy is null || hierarchy.KildeId != KildeId;
             _nodes = _failed ? [] : KildeHierarchyNode.From(hierarchy!);
         }
-        catch (MuninExplorerRateLimitedException)
+        catch (MuninExplorerRateLimitedException ex)
         {
+            // Inside the guard, not above it. This is the one place in the package that cancels its
+            // own calls — on every new KildeId and again on dispose — and a superseded call comes
+            // back here as a TaskCanceledException that nothing failed and nobody should read about.
             if (!_disposed && !request.IsCancellationRequested)
             {
+                Log?.LogWarning(
+                    ex, "the rate limiter refused the hierarchy of kilde {KildeId}", KildeId);
+
                 _rateLimited = true;
                 _failed = false;
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            // The same guard, and for the same reason: HttpClient's own 30-second timeout is a
+            // TaskCanceledException worth logging, and this component's own Cancel is not, so the
+            // question asked is who cancelled rather than which type arrived.
             if (!_disposed && !request.IsCancellationRequested)
             {
+                Log?.LogError(ex, "could not load the hierarchy of kilde {KildeId}", KildeId);
+
                 _failed = true;
             }
         }

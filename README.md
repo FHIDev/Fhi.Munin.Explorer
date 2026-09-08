@@ -657,6 +657,28 @@ side. It answers a `DesiredDataResult` rather than a `bool`, and a refusal carri
 API named — so a caller can tell the reader what to shorten to, and this package never writes the
 number down to drift from. A 429 is still thrown, and so is any fault.
 
+`AddMuninExplorer` also calls `AddLogging`, and that is where the component's own diagnostics go.
+The browsing surfaces never let an exception out — an unhandled one inside a Blazor circuit takes
+the whole page down with it, which on helsedata's Optimizely host means the CMS page and not just
+this component — so a failed call becomes a sentence in the alert region and nothing more on
+screen. It used to become nothing at all anywhere else either, which made a fault on a host's own
+server diagnosable only by elimination. Every one of those places now writes the exception through
+`ILogger<T>` first, at `Error`, or at `Warning` where the outcome is an expected one such as a 429.
+Filter on `Fhi.Munin.Explorer.Blazor.*`, `Fhi.Munin.Explorer.Client.*` and
+`Fhi.Munin.Explorer.State.*`.
+
+Two things follow that are worth stating. `AddLogging` is idempotent and `TryAdd`-based inside, so
+a host that has already configured logging keeps every provider, filter and minimum level it set —
+this adds a default factory for the host that has none, and takes nothing from the host that has
+one. And the logger is resolved with `GetService` rather than injected, so a component mounted in a
+host that never called `AddMuninExplorer` still renders: it simply writes nothing. What comes back
+is wrapped, so a provider that throws — a file sink on a full disk, say — costs a log line rather
+than the page, since `Logger<T>` rethrows a provider's failure and the call sites are inside the
+catches that keep the circuit up. The message templates name no component, because the category
+already is the component's type; they carry ids, page numbers and the like, never a URL, a token, a
+response body or anything the reader typed — the user's access token reaches the wire through `BearerTokenHandler`'s
+`Authorization` header, which no exception message here repeats.
+
 ### What a host mounts
 
 `VariableExplorer` is the whole variabelutforsker: the search, the reader's own variable lists
