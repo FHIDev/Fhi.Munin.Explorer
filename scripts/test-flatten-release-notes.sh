@@ -48,11 +48,16 @@ cat > "$tmp" <<'EOF'
 - A bullet with **emphasis in the middle** rather than a leading title.
 EOF
 
+# A tab after the marker, written as a real tab rather than an escape — the case
+# [ \t] was meant to cover and did not portably.
+printf -- '-\t**A tab-separated bullet.** Detail after it.\n' >> "$tmp"
+
 out="$("$flatten" "$tmp")"
 
 check  "dash bullet keeps its title"        "A dash bullet with a bolded lead"   "$out"
 check  "STAR bullet is not dropped"         "A star bullet with a bolded lead"   "$out"
 check  "INDENTED bullet is its own entry"   "  * An indented bullet"             "$out"
+check  "TAB-separated bullet is its own"    "  * A tab-separated bullet"         "$out"
 check  "unbolded bullet falls back"         "A bullet with no bolded lead at all" "$out"
 check  "wrapped lead is joined"             "A lead wrapped across two source lines" "$out"
 check  "categories survive"                 "Added"                              "$out"
@@ -63,7 +68,7 @@ refute "mid-text emphasis is not lifted"    "  * emphasis in the middle"        
 
 # Every bullet in must produce exactly one line out. Catches silent drops generically,
 # not only the two markers this fixture happens to use.
-bullets_in="$(grep -cE '^[[:space:]]*[-*][ \t]' "$tmp")"
+bullets_in="$(grep -cE '^[[:space:]]*[-*][[:blank:]]' "$tmp")"
 lines_out="$(printf '%s\n' "$out" | grep -c '^  \* ' || true)"
 if [ "$bullets_in" -eq "$lines_out" ]; then
   printf '  ok    every bullet produced a line (%s)\n' "$bullets_in"

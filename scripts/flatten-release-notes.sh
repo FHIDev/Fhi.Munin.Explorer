@@ -41,10 +41,12 @@ awk '
   # Both markers and any leading indent: assemble-changelog.ps1 validates with TrimStart(),
   # so `  * x` is as legal a bullet as `- x`, and reading it as a continuation would fold a
   # whole entry into the one above it.
-  /^[[:space:]]*[-*][ \t]/ {
+  # [[:blank:]] not [ \t]: in a POSIX bracket expression the escape is literal, so [ \t]
+  # matches the letter t and misses a real tab — silently, and in both directions.
+  /^[[:space:]]*[-*][[:blank:]]/ {
     flush()
     line = $0
-    sub(/^[[:space:]]*[-*][ \t]+/, "", line)
+    sub(/^[[:space:]]*[-*][[:blank:]]+/, "", line)
     buf = line
     next
   }
