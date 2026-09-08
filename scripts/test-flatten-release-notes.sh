@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+# Guard for flatten-release-notes.sh. Every bullet the assembler accepts must produce exactly
+# one line: an entry dropped here is invisible until a host reads the feed and finds it missing.
+# Bullet shapes are taken from scripts/assemble-changelog.ps1, which is what defines them.
+set -euo pipefail
+
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+flatten="$here/flatten-release-notes.sh"
+fail=0
+
+check () { # name, expected-substring, actual
+  if printf '%s' "$3" | grep -qF -- "$2"; then
+    printf '  ok    %s\n' "$1"
+  else
+    printf '  FAIL  %s\n     wanted to find: %s\n     in:\n%s\n' "$1" "$2" "$3"
+    fail=1
+  fi
+}
+
+refute () { # name, forbidden-substring, actual
+  if printf '%s' "$3" | grep -qF -- "$2"; then
+    printf '  FAIL  %s\n     should not contain: %s\n' "$1" "$2"
+    fail=1
+  else
+    printf '  ok    %s\n' "$1"
+  fi
+}
+
+tmp="$(mktemp)"
+trap 'rm -f "$tmp"' EXIT
+
+cat > "$tmp" <<'EOF'
+### Added
+
+- **A dash bullet with a bolded lead.** Detail that must not reach the flattened line.
+* **A star bullet with a bolded lead.** assemble-changelog.ps1 accepts these too.
+  - **An indented bullet.** assemble-changelog.ps1 TrimStart()s before matching, so this is
+    a legal entry and must not fold into the one above it.
+
+### Changed
+
+- A bullet with no bolded lead at all. Its second sentence must not appear.
+- **A lead wrapped across
+  two source lines.** Detail after it.
+- A bullet with **emphasis in the middle** rather than a leading title.
+- Does an unbolded lead end in a question mark? Then this second sentence must not follow it.
+EOF
+
+# A tab after the marker, written as a real tab rather than an escape — the case
+# [ \t] was meant to cover and did not portably.
+printf -- '-\t**A tab-separated bullet.** Detail after it.\n' >> "$tmp"
+
+# Invoked via bash, not directly: the first CI run on this branch died on Permission
+# denied because the exec bit was not in the index. Nothing here should depend on
+# git file mode.
+out="$(bash "$flatten" "$tmp")"
+
+check  "dash bullet keeps its title"        "A dash bullet with a bolded lead"   "$out"
+check  "STAR bullet is not dropped"         "A star bullet with a bolded lead"   "$out"
+check  "INDENTED bullet is its own entry"   "  * An indented bullet"             "$out"
+check  "TAB-separated bullet is its own"    "  * A tab-separated bullet"         "$out"
+check  "unbolded bullet falls back"         "A bullet with no bolded lead at all" "$out"
+check  "wrapped lead is joined"             "A lead wrapped across two source lines" "$out"
+check  "the Added category survives"        "Added"                              "$out"
+check  "the Changed category survives"      "Changed"                            "$out"
+refute "detail after the lead is dropped"   "must not reach the flattened line"  "$out"
+refute "second sentence is dropped"         "Its second sentence must not appear" "$out"
+refute "mid-text emphasis is not lifted"    "  * emphasis in the middle"         "$out"
+check  "a lead ending in ? is kept"         "Does an unbolded lead end in a question mark" "$out"
+refute "and its second sentence is not"     "must not follow it"                 "$out"
+
+# Bullets in must equal lines out — catches a silent drop generically, not only the
+# markers this fixture uses. Both counts need || true: grep exits 1 on a zero count,
+# which under set -e would abort before the comparison could report it.
+bullets_in="$(grep -cE '^[[:space:]]*[-*][[:blank:]]' "$tmp" || true)"
+lines_out="$(printf '%s\n' "$out" | grep -c '^  \* ' || true)"
+if [ "$bullets_in" -eq "$lines_out" ]; then
+  printf '  ok    every bullet produced a line (%s)\n' "$bullets_in"
+else
+  printf '  FAIL  %s bullets in, %s lines out — entries were dropped\n' "$bullets_in" "$lines_out"
+  fail=1
+fi
+
+empty="$(bash "$flatten" /dev/null)"
+check  "empty input has a stand-in"         "No changelog entry was assembled"   "$empty"
+
+# The feed reads these from line one, so a blank first line is a visible fault.
+first="$(printf '%s\n' "$out" | head -1)"
+if [ -n "$first" ]; then
+  printf '  ok    first line is not blank\n'
+else
+  printf '  FAIL  first line is blank — the feed shows an empty line before the first category\n'
+  fail=1
+fi
+
+[ "$fail" -eq 0 ] || { echo "flatten-release-notes: FAILED"; exit 1; }
+echo "flatten-release-notes: all checks passed"
