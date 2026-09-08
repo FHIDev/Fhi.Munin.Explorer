@@ -3,8 +3,8 @@ using System.Text.RegularExpressions;
 namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>The tracked <c>.beads/redirect</c>, which ties this repo's beads to the shared Munin
-/// pool. Something keeps replacing it with an absolute path — four times, cause unestablished — and
-/// both failures are silent: a second database, and a broken Windows checkout (Fhi.Metadata-l9l2n.46).</summary>
+/// pool. Replacing it with an absolute path fails silently in both directions — a second database
+/// rather than an error, and a broken Windows checkout (Fhi.Metadata-l9l2n.46).</summary>
 public class BeadsRedirectGuardTest
 {
     /// <summary>Where the Munin checkout sits relative to this one, lower-case for Linux.</summary>
@@ -50,9 +50,9 @@ public class BeadsRedirectGuardTest
 
     private static string Text() => File.ReadAllText(Repo.In(".beads", "redirect"));
 
-    /// <summary>The redirect target: lines that are neither comment nor blank. Split on '\n' with
-    /// the return trimmed, not Environment.NewLine — LF on disk, CRLF under autocrlf, and this runs
-    /// on Windows and on CI's Linux both.</summary>
+    /// <summary>The redirect target: lines that are neither comment nor blank, trimmed as bd's own
+    /// resolver trims them — padding resolves fine, so failing the build on it would be a false
+    /// alarm. Split on '\n' too, since the file is LF on disk and CRLF under autocrlf.</summary>
     private static IReadOnlyList<string> PathLines() =>
         [.. Text()
             .Split('\n')
