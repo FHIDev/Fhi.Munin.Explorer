@@ -74,15 +74,35 @@ helsedata's private Azure Artifacts feed. So:
   package. The job installs the provider before restoring for exactly this reason. It is also why
   a green local run proves less than it looks: it proves the PAT and the feed URL, and hides
   whether the runner can use them.
-- **The package is not the only way to get the stylesheet, and the other way needs no *feed*
-  credentials.** It is not credential-free: it needs `az login` and membership of the
-  `Fhi.Helsedata` project, because it reads the repository over the Azure DevOps items API. Without
-  that access the failure is quiet and misdirecting — a 401, or a zip containing an empty tree, with
-  nothing to separate "I am not a member of that project" from a mistyped URL or an expired login.
-  Check `az account get-access-token --resource 499b84ac-1321-427f-aa17-267ca6975798` returns a
-  token, and that the `curl` below writes more than a few hundred bytes, before believing anything
-  downstream of it. With that access, Stiler's source compiles here and drops where HostileHost
-  already links it:
+- **The package is not the only way to get the stylesheet, and neither other way needs *feed*
+  credentials.** There are two, and they are not interchangeable — pick by whether you want a
+  Stiler checkout on disk.
+
+  **A clone, if you will keep one.** The shorter one, and the only one that runs the whole port:
+
+  ```bash
+  git -c http.extraHeader="Authorization: Bearer $(az account get-access-token \
+    --resource 499b84ac-1321-427f-aa17-267ca6975798 --query accessToken -o tsv)" \
+    clone https://dev.azure.com/fhi/Fhi.Helsedata/_git/Fhi.Helsedata.Stiler
+  cd Fhi.Helsedata.Stiler && npm install && npm run build   # writes wwwroot/css/main.css
+  ```
+
+  Then, from this repository:
+
+  ```bash
+  dotnet run --project samples/HostileHost -p:UseLocalStiler=true       # look at it
+  STILER_FROM_SOURCE=1 ./scripts/check-hostile-host.sh                  # measure it
+  ```
+
+  `UseLocalStiler` swaps the pinned `PackageReference` for a `ProjectReference`, which maps
+  `_content/Fhi.Helsedata.Stiler/` straight at the checkout's `wwwroot` — so `npm run watch` there
+  plus a browser refresh is a live loop. It expects the checkout beside this repository;
+  `-p:StilerRepoPath=<path>` if it is elsewhere. This is the same opt-in flag helsedata's own
+  consumers use, which is why it is spelled the same (`Fhi.Metadata-wgwa0`). Note the section
+  further down uses that name too, for `Helsedata.AppHost` in *their* umbrella — same flag, a
+  different host.
+
+  **A zip, if you will not.** Fetches only the SCSS, leaves nothing on disk to keep current:
 
   ```bash
   TOKEN=$(az account get-access-token --resource 499b84ac-1321-427f-aa17-267ca6975798 \
@@ -95,15 +115,36 @@ helsedata's private Azure Artifacts feed. So:
   ```
 
   With the `PackageReference` commented out, `dotnet run --project samples/HostileHost` then serves
-  the real stylesheet from `wwwroot` at the path the layout links. Two things this is *better* at
-  than the package: it is `main` rather than the pinned version, and it needs no feed access. Two
-  things it is worse at: it is not what helsedata restores, and it skips whatever the package's own
-  build does beyond `sass`. Say which one a measurement came from.
+  the real stylesheet from `wwwroot` at the path the layout links.
+
+  **Neither is credential-free**, and the credential is not the feed's: both need `az login` and
+  membership of the `Fhi.Helsedata` project. Without that access the failure is quiet and
+  misdirecting — a 401, or a zip containing an empty tree, with nothing to separate "I am not a
+  member of that project" from a mistyped URL or an expired login. Check
+  `az account get-access-token --resource 499b84ac-1321-427f-aa17-267ca6975798` returns a token,
+  and that the `curl` or the clone writes more than a few hundred bytes, before believing anything
+  downstream of it.
+
+  **What both are worse at, and say so when you report a number.** Each builds Stiler `main`, not
+  the pinned version helsedata restore, and each skips whatever the package's own build does beyond
+  `sass`. `check-hostile-host.sh` prints whether it restored the pinned package or built from a
+  checkout, so a log settles that much — but it cannot see the zip route at all, and with the
+  `PackageReference` commented out it will report the package while serving the zip's CSS from
+  `wwwroot`. Under the zip route, that line is wrong and only you can say so.
 
   This is not a curiosity. On 2026-09-07 `Fhi.Metadata-fv79e` was filed against Stiler, and a
   pull request opened there, for a horizontal scrollbar that fifteen minutes of this showed Stiler
   does not have: the defect was two grid rules missing from the sample stylesheets, and Stiler had
   carried both all along.
+
+- **`playwright install chromium` cannot complete on Node 26, and it does not look like that.**
+  The pinned fetcher calls `fs.rmdir(path, { recursive: true })`, removed in that version, so it
+  aborts with `ERR_INVALID_ARG_VALUE` partway and leaves
+  `%LOCALAPPDATA%\ms-playwright\chromium-<n>\chrome-win\` holding a `chrome.dll` and no
+  `chrome.exe`. Every later launch then fails as though the download had hung, and clearing the
+  cache does not help. `PLAYWRIGHT_BROWSER_CHANNEL=msedge` runs an installed browser instead —
+  opt-in, unset in CI, and a different engine build, so its geometry numbers are not
+  interchangeable with the bundled chromium's.
 
 ### What it is for
 
