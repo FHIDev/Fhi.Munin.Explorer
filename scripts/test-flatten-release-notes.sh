@@ -63,10 +63,9 @@ refute "detail after the lead is dropped"   "must not reach the flattened line" 
 refute "second sentence is dropped"         "Its second sentence must not appear" "$out"
 refute "mid-text emphasis is not lifted"    "  * emphasis in the middle"         "$out"
 
-# Every bullet in must produce exactly one line out. Catches silent drops generically,
-# not only the two markers this fixture happens to use.
-# || true because grep exits 1 on a zero count under set -e, aborting before the
-# comparison below could report it as the failure it is.
+# Bullets in must equal lines out — catches a silent drop generically, not only the
+# markers this fixture uses. Both counts need || true: grep exits 1 on a zero count,
+# which under set -e would abort before the comparison could report it.
 bullets_in="$(grep -cE '^[[:space:]]*[-*][[:blank:]]' "$tmp" || true)"
 lines_out="$(printf '%s\n' "$out" | grep -c '^  \* ' || true)"
 if [ "$bullets_in" -eq "$lines_out" ]; then
