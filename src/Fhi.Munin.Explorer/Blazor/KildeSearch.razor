@@ -30,9 +30,11 @@
    degrades to its own browser default where an unknown class name degrades to nothing. The name
    is a <button> for the same reason.
 
-   No pager, no sortable headers and no URL state. All three are Kelda parity decisions recorded
-   under the epic, not omissions — the endpoint is not paged, the API returns the list ordered by
-   name, and the only shareable thing here is which kilde is open. See the component class.
+   No pager and no sortable headers, and no URL state written from here. The first two are Kelda
+   parity decisions recorded under the epic, not omissions — the endpoint is not paged, and the
+   order is chosen from one control above the table rather than from thirteen column headings.
+   The third is this component's contract: the order and the open kilde are what a host puts in
+   its URL, and KildeExplorer is the mount that does it. See the component class.
 
    Accessibility: helsedata.no is a public-sector site, so WCAG 2.1 AA is a legal requirement, and
    this is our markup on their page. Visible focus and contrast are the host stylesheet's to get
@@ -337,6 +339,37 @@ else
     {
     <div class="munin-explorer-container">
     <div class="munin-explorer-results">
+        @* The order the list is in. Above the table with the column picker, and drawn on the same
+           condition: an order control over no rows orders nothing.
+
+           A <select> and not the proposal's chips: the mockup styles its own names from an inline
+           <style> block, so nothing in it carries across, and an element degrades to its own
+           browser default where a class no stylesheet has heard of degrades to nothing.
+
+           The select and the wrapper both go unclassed. The form-element family in
+           `test/host-class-names.txt` is __label, __sublabel, __caption and --error with nothing
+           for the control itself, which is why the pager's size control is bare too; and
+           `munin-explorer-results` is a column flex box that would stretch a classless child to
+           the width of the table. The label wears Stiler's `form-element__label`, the same name
+           the search box above it does. *@
+        <div>
+            <label class="form-element__label" for="@SortSelectId">@T.SortBy</label>
+
+            @* `selected` on the option rather than `value` on the select, for the reason the size
+               control gives: `value` is a DOM property the interactive renderer sets, so a
+               statically rendered first paint would show the first order whatever the host asked
+               for — and this one arrives from a link. *@
+            @* Keyed on the refusal count, the same reason the size control is: a browser moves a
+               select's own selection before `onchange` runs, and a refused value that leaves the
+               order where it was renders nothing to move it back. See _orderRefusals. *@
+            <select id="@SortSelectId" @key="_orderRefusals" @onchange="ChooseOrderAsync">
+                @foreach (var offered in OfferedOrders)
+                {
+                    <option value="@offered" selected="@(_order == offered)">@T.KildeOrderLabel(offered)</option>
+                }
+            </select>
+        </div>
+
         @* The column picker, above the table and inside the results column, which is where the
            variable explorer puts its own and where helsedata's page puts theirs. Drawn only with
            rows on screen, unlike that one: there the header also carries the ordering a reader

@@ -679,9 +679,11 @@ shared URL that opened on the sender's Variabelliste would be an empty page for 
 <component type="typeof(KildeExplorer)" render-mode="Server" param-Language="@("no")" />
 ```
 
-The open kilde goes in the address bar and a link reopens it. It is much the smaller of the two,
-because Kelda carries less — no personal lists, no sort, no pager, so `?kilde=` is the whole of
-what it owns and the rest is component state that goes away on refresh.
+The open kilde and the order the list is in go in the address bar, and a link restores both. It is
+much the smaller of the two, because Kelda carries less — no personal lists and no pager, so
+`?kilde=` and `?sort=` are the whole of what it owns and the rest is component state that goes away
+on refresh. `?sort=` is omitted while the list is in the order the catalogue sent, so a link made
+before the list could be sorted still means what it did.
 
 An open kilde's collection section loads its hierarchy separately: delkilder, datasamlinger and
 variabelgrupper appear as nested lists with native disclosures, initially collapsed. Tab visits
@@ -699,8 +701,8 @@ Four things are worth knowing before mounting one.
   otherwise, because the failure they replace is invisible: prerendered, the page renders and the
   URL simply never follows the view.
 - **Your own parameters are safe.** Each component reads and rewrites only the keys it owns —
-  `ExplorerUrlState.QueryKeys` for the variable explorer, `?kilde=` for the kildeutforsker — and
-  carries everything else through untouched. `DeclinedKeys` keeps one of ours as well, for a page
+  `ExplorerUrlState.QueryKeys` for the variable explorer, `?kilde=` and `?sort=` for the
+  kildeutforsker — and carries everything else through untouched. `DeclinedKeys` keeps one of ours as well, for a page
   that already means something else by `?page=`; a declined key is left where it is rather than
   overwritten.
 - **`KildeExplorer` needs `VariableExplorerPath`** to offer the handover to the variable
