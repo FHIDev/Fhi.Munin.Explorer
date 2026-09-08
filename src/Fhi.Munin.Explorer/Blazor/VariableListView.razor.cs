@@ -591,11 +591,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         });
     }
 
-    /// <summary>
-    /// Whether the notification just raised could have changed the rows on screen - identified by
-    /// which list it names and whether it could touch membership, not counted as the Nth
-    /// notification since some caller armed an allowance an unrelated one could also spend.
-    /// </summary>
+    /// <summary>Whether this notification could have changed the rows on screen, identified by the
+    /// list it names rather than counted — a count an unrelated notification could also spend
+    /// (Fhi.Metadata-wuxkn).</summary>
     private bool ShouldReloadFor(VariableListState.ListChange? change) =>
         change is not { } known || (known.AffectsRows && (known.ListId is null || known.ListId == _shownList));
 
