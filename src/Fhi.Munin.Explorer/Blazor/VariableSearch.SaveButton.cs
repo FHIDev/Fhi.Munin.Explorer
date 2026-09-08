@@ -26,9 +26,9 @@ public partial class VariableSearch
 
     /// <summary>How a row's last save attempt ended, when it ended badly.</summary>
     /// <remarks>
-    /// Worth telling the two failures apart: saving one row after another is the rhythm that meets
-    /// the limiter, and "prøv igjen om litt" is the one piece of advice that cannot help a reader
-    /// who is being throttled.
+    /// Three failures, not two: throttled and unauthenticated both need words other than "prøv
+    /// igjen om litt", but not the same words as each other — one reader should wait, the other
+    /// cannot succeed by waiting at all.
     /// </remarks>
     private enum SaveFailure
     {
@@ -39,7 +39,14 @@ public partial class VariableSearch
         Failed,
 
         /// <summary>The API refused the save because too many requests arrived — HTTP 429.</summary>
-        Throttled
+        Throttled,
+
+        /// <summary>
+        /// The API refused the save as unauthenticated — HTTP 401 or 403 — even though the host
+        /// declared the reader signed in. Driven by that response, never by re-reading
+        /// <see cref="IsAuthenticated"/>, which is exactly the claim the API just contradicted.
+        /// </summary>
+        SignInRequired
     }
 
     /// <summary>
@@ -125,6 +132,7 @@ public partial class VariableSearch
         builder.AddContent(14, failure switch
         {
             SaveFailure.Throttled => T.RateLimitError,
+            SaveFailure.SignInRequired => T.SignInRequiredError,
             SaveFailure.Failed => T.SaveError,
             _ => null
         });
@@ -154,6 +162,12 @@ public partial class VariableSearch
             // The writes go through the same client as the reads and meet the same per-address
             // limiter, so this row's save can be refused while the catalogue is perfectly up.
             _saveError[v.Id] = SaveFailure.Throttled;
+        }
+        catch (MuninExplorerUnauthorizedException)
+        {
+            // The API's own answer, not IsAuthenticated read again — that is the host's claim the
+            // API just contradicted, and asking it a second time would repeat the same wrong word.
+            _saveError[v.Id] = SaveFailure.SignInRequired;
         }
         catch (Exception)
         {

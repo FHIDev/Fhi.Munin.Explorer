@@ -66,6 +66,14 @@ public class SaveToListTest : BunitContext
         /// </remarks>
         public bool FailAdd { get; init; }
 
+        /// <summary>
+        /// Refuse every add with the API's 401/403 — the answer a host gets for declaring
+        /// <c>IsAuthenticated</c> true while sending no token the API accepts. Set alongside
+        /// <c>signedIn: true</c> in the test that uses it: re-checking <c>IsAuthenticated</c> would
+        /// see the host's claim, not the API's contradiction of it.
+        /// </summary>
+        public bool UnauthorizedAdd { get; init; }
+
         /// <summary>Refuse every membership read with the API's 429 while set.</summary>
         /// <remarks>
         /// Settable rather than <c>init</c>, unlike the two above: the point of the tests using it
@@ -124,6 +132,11 @@ public class SaveToListTest : BunitContext
             if (RateLimitAdd)
             {
                 throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+            }
+
+            if (UnauthorizedAdd)
+            {
+                throw new MuninExplorerUnauthorizedException();
             }
 
             if (FailAdd)
@@ -530,6 +543,28 @@ public class SaveToListTest : BunitContext
         var alert = cut.Find(".munin-explorer-dataitem-main [role=alert]");
 
         Assert.Contains("Kunne ikke lagre", alert.TextContent);
+        Assert.DoesNotContain("for mange forespørsler", alert.TextContent);
+    }
+
+    [Fact]
+    public void Row_WhenTheHostClaimsSignInButTheApiAnswersUnauthorized_ThenTheRowSaysToSignIn()
+    {
+        // The trap this test exists to catch: the host still declares the reader signed in
+        // (signedIn: true below), the same way MuninRuna's hard-coded IsAuthenticated does. Only
+        // the API's 401/403 — carried here as MuninExplorerUnauthorizedException — can be trusted,
+        // because re-reading IsAuthenticated would repeat the host's own wrong claim.
+        var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER")))
+        {
+            UnauthorizedAdd = true
+        };
+        var cut = RenderSignedIn(client, signedIn: true);
+
+        SaveButton(cut).Click();
+
+        var alert = cut.Find(".munin-explorer-dataitem-main [role=alert]");
+
+        Assert.Contains("ikke logget inn", alert.TextContent);
+        Assert.DoesNotContain("Kunne ikke lagre nå", alert.TextContent);
         Assert.DoesNotContain("for mange forespørsler", alert.TextContent);
     }
 

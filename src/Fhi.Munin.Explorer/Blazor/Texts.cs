@@ -175,6 +175,9 @@ internal sealed record Texts(
     string FirstListName,
     // Said in the row, beside the button that failed - the rest of the results are unaffected.
     string SaveError,
+    // Said in the row when the save answers 401/403 despite the host's own claim that the reader
+    // is signed in — a different sentence from SaveError, because retrying this one cannot work.
+    string SignInRequiredError,
     // The saved-list view: its heading, the picker, the create form, and what it says when
     // there is nothing to show yet.
     string MyListsHeading,
@@ -740,6 +743,7 @@ internal sealed record Texts(
         RemoveFromList: "Fjern fra liste",
         FirstListName: "Min variabelliste",
         SaveError: "Kunne ikke lagre nå. Prøv igjen om litt.",
+        SignInRequiredError: "Du er ikke logget inn. Logg inn for å lagre i listen.",
         MyListsHeading: "Mine variabellister",
         ChooseList: "Velg liste",
         NewListName: "Navn på ny liste",
@@ -1046,6 +1050,7 @@ internal sealed record Texts(
         RemoveFromList: "Remove from list",
         FirstListName: "My variable list",
         SaveError: "Could not save just now. Try again shortly.",
+        SignInRequiredError: "You are not signed in. Sign in to save to the list.",
         MyListsHeading: "My variable lists",
         ChooseList: "Choose list",
         NewListName: "Name of new list",

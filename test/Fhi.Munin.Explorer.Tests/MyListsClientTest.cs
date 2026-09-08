@@ -23,7 +23,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// helper here that builds an unauthenticated client, so a test added later cannot quietly skip it.
 /// </para>
 /// <para>
-/// <see cref="EveryCall_WhenNoHostRegistersAProvider_ThenTheApisRefusalIsThrownRatherThanReadAsNothing"/>
+/// <see cref="EveryCall_WhenNoHostRegistersAProvider_ThenTheApisRefusalIsThrownAsUnauthorized"/>
 /// is the other side of the same point: with the anonymous default in place these calls must fail
 /// loudly rather than answer "you have no lists".
 /// </para>
@@ -873,14 +873,19 @@ public class MyListsClientTest
         Assert.Equal(calls.Length, handler.Calls);
     }
 
-    [Fact]
-    public async Task EveryCall_WhenNoHostRegistersAProvider_ThenTheApisRefusalIsThrownRatherThanReadAsNothing()
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized)]
+    [InlineData(HttpStatusCode.Forbidden)]
+    public async Task EveryCall_WhenNoHostRegistersAProvider_ThenTheApisRefusalIsThrownAsUnauthorized(
+        HttpStatusCode status)
     {
         // The other half. With the anonymous default in place — a host that never registered a
         // provider, or registered one after AddMuninExplorer and lost to TryAdd — every one of
-        // these answers 401. That must arrive as a fault, because the alternative reads as "you
-        // have no saved lists" and sends the user looking for the lists they saved yesterday.
-        var handler = StubHttpHandler.Status(HttpStatusCode.Unauthorized);
+        // these answers 401 or 403. That must arrive as MuninExplorerUnauthorizedException rather
+        // than the general failure, because "you have no saved lists" sends the user looking for
+        // lists they saved yesterday, and the general failure tells them to retry a call that can
+        // never succeed without a token (Fhi.Metadata-h5o3o).
+        var handler = StubHttpHandler.Status(status);
         var client = Client(handler, token: null);
         var ids = new[] { Guid.NewGuid() };
 
@@ -900,7 +905,7 @@ public class MyListsClientTest
 
         foreach (var call in calls)
         {
-            await Assert.ThrowsAsync<HttpRequestException>(call);
+            await Assert.ThrowsAsync<MuninExplorerUnauthorizedException>(call);
         }
 
         Assert.Null(handler.LastAuthorization);
