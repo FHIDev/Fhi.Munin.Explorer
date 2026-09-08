@@ -177,7 +177,7 @@ public sealed partial class VariableListState
             return false;
         }
 
-        Changed?.Invoke();
+        RaiseChanged(listId, affectsRows: true);
         return _saved.Contains(variableId);
     }
 
@@ -391,7 +391,7 @@ public sealed partial class VariableListState
         _kilder.AddRange(kilder.Select(k => new KildeInList(k.Key, k.Value.Name, k.Value.Count)));
 
         _membershipLoaded = true;
-        Changed?.Invoke();
+        RaiseChanged(listId, affectsRows: true);
     }
 
     /// <summary>One kilde's running total while the walk is under way.</summary>

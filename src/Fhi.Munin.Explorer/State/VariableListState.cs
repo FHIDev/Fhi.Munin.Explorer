@@ -34,6 +34,21 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
     /// <summary>Raised after any change, so every surface can re-render without refetching.</summary>
     public event Action? Changed;
 
+    /// <summary>Which list a <see cref="Changed"/> named, and whether it could have altered its rows.</summary>
+    /// <param name="ListId">The list, or <see langword="null"/> when the change names none in particular.</param>
+    /// <param name="AffectsRows">False for a rename or a brand-new list — neither touches a row.</param>
+    public readonly record struct ListChange(Guid? ListId, bool AffectsRows);
+
+    /// <summary>What the <see cref="Changed"/> a subscriber is handling was raised for.</summary>
+    public ListChange? LastChange { get; private set; }
+
+    /// <summary>Publishes what changed, then raises <see cref="Changed"/> the way every caller already did.</summary>
+    private void RaiseChanged(Guid? listId, bool affectsRows)
+    {
+        LastChange = new ListChange(listId, affectsRows);
+        Changed?.Invoke();
+    }
+
     /// <summary>
     /// Whether the host says the reader is signed in. False until the host says otherwise — see the
     /// remarks on the class for why this is told rather than discovered.
@@ -75,7 +90,7 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
         }
 
         _loaded = false;
-        Changed?.Invoke();
+        RaiseChanged(listId: null, affectsRows: true);
     }
 
     /// <summary>
@@ -122,7 +137,7 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
             _loading = false;
         }
 
-        Changed?.Invoke();
+        RaiseChanged(listId: null, affectsRows: true);
     }
 
     /// <summary>Forces the next <see cref="EnsureLoadedAsync"/> to read again.</summary>
@@ -151,7 +166,10 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
         }
 
         _lists = [.. _lists, created];
-        Changed?.Invoke();
+
+        // A list this fresh has never held a row for anybody to have shown - the identity below is
+        // what lets a subscriber skip the read on it, not this flag, but it is honestly false too.
+        RaiseChanged(created.Id, affectsRows: false);
         return created;
     }
 
@@ -179,7 +197,9 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
         // trip here would make a rename look slower than it is. The timestamp goes with the name,
         // for the reason TouchedNow gives.
         _lists = [.. _lists.Select(l => l.Id == id ? l with { Name = name, UpdatedAt = TouchedNow() } : l)];
-        Changed?.Invoke();
+
+        // A rename touches the list's own name and stamp, never a row in it.
+        RaiseChanged(id, affectsRows: false);
         return true;
     }
 
@@ -216,7 +236,8 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
             ForgetKilder();
         }
 
-        Changed?.Invoke();
+        // A subscriber still showing this id has to notice it is gone, not merely that it changed.
+        RaiseChanged(id, affectsRows: true);
         return true;
     }
 
@@ -244,7 +265,7 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
             var delta = RecordMembership(id, variableIds, saved: true, startedAt);
 
             RecordCountChange(id, delta, startedAt);
-            Changed?.Invoke();
+            RaiseChanged(id, affectsRows: true);
         }
 
         return accepted;
@@ -272,7 +293,7 @@ public sealed partial class VariableListState(IMuninExplorerClient client)
             var delta = RecordMembership(id, variableIds, saved: false, startedAt);
 
             RecordCountChange(id, delta, startedAt);
-            Changed?.Invoke();
+            RaiseChanged(id, affectsRows: true);
         }
 
         return accepted;
