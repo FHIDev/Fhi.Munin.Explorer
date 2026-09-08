@@ -104,10 +104,9 @@ public sealed partial class KildeView : ComponentBase
 
     /// <summary>Keys whose value already appears elsewhere on the page, so the metadata does not repeat them.</summary>
     /// <remarks>
-    /// Beskrivelse and Tittel always duplicate the ingress and the name heading, whichever spelling
-    /// curated them (Fhi.Metadata-8yqoz). FormaalFlerspraklig and hasLegalBasis are the catalogue's
-    /// EHDS/HealthDCAT-AP mirrors of Formål and Lovverk, dropped only when the plain field they
-    /// mirror also has a value — a source curating just the EHDS field still shows it (Fhi.Metadata-43jrq).
+    /// Beskrivelse and Tittel always duplicate the ingress and the name heading (Fhi.Metadata-8yqoz).
+    /// Formaal is dropped in favour of its richer EHDS mirror, and hasLegalBasis in favour of the
+    /// sidebar's Lovverk, but only once both twins actually hold a value (Fhi.Metadata-43jrq).
     /// </remarks>
     private static IReadOnlySet<string> DrawnElsewhere(KildeDetail kilde)
     {

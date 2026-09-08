@@ -641,9 +641,8 @@ public class KildeViewTest : BunitContext
         string language, string group)
     {
         // THE TRAP: Groups drops a group whose every key is unset, so an exclusion can take the
-        // group with it. Three of the six populated EHDS keys survive — BeskrivelseFlerspraklig,
-        // TittelFlerspraklig and hasLegalBasis are now excluded too (Fhi.Metadata-43jrq) — so it
-        // must still draw rows. The sibling test pins the surviving group names.
+        // group with it. Three of the six populated EHDS keys survive the three now excluded
+        // (Fhi.Metadata-43jrq), so it must still draw rows — the sibling test pins the survivors.
         var kilde = Barnediabetes();
         var cut = Render(kilde, language);
 
@@ -755,9 +754,8 @@ public class KildeViewTest : BunitContext
         string language)
     {
         // FormaalFlerspraklig is the only one of this source's three Flerspraklig siblings still
-        // drawn as its own row — Tittel and Beskrivelse now duplicate the header (Fhi.Metadata-43jrq).
-        // Its value is stored under nb alone, so an English host falls back to it rather than to
-        // blanks or to the raw envelope.
+        // drawn as its own row — Tittel and Beskrivelse now duplicate the header (Fhi.Metadata-43jrq),
+        // and its value, stored under nb alone, is what an English host falls back to.
         var cut = Render(Barnediabetes(), language);
 
         var values = cut.FindAll(".munin-explorer-kilde__main dd").Select(e => e.TextContent).ToList();

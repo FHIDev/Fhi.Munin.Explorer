@@ -135,10 +135,8 @@ internal static class CatalogueProperties
     internal static string? Foreign(bool norwegian, string reader) =>
         norwegian ? Foreign("no", reader) : null;
 
-    // How the catalogue spells "this is one value per language" and "this is a set of them" onto a
-    // display name, in both curated languages. A storage detail a curator needs and a reader does
-    // not (Fhi.Metadata-43jrq) — stripped rather than curated away, since the catalogue itself still
-    // needs the distinction to know which editor to open.
+    // How the catalogue marks "one value per language" vs. "a set of them" onto a display name, in
+    // both curated languages — a storage detail for the curator, not the reader (Fhi.Metadata-43jrq).
     private static readonly string[] StorageQualifiers =
     [
         " (språkmerket)", " (language-tagged)",
