@@ -564,18 +564,26 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     /// <summary>The readable name for a datatype code, or the code when there is no name.</summary>
     /// <remarks>
-    /// The same shape as <c>VariableExplorer.DataTypeName</c>, and for the same reason: the codes are
+    /// The same shape as <c>VariableSearch.DataTypeName</c>, and for the same reason: the codes are
     /// editable master data on the API's side, so the names are read from it rather than written into
     /// a table that ships to other people and goes stale where nobody is looking.
+    /// <para>
+    /// The shipped table is asked one thing only, through
+    /// <see cref="Texts.NormaliseDataTypeDisplayName"/>: the Norwegian behind a name that arrived in
+    /// a known legacy English form, which is what the panel and the facet show for that same value.
+    /// Anything else renders as the API sent it. (Fhi.Metadata-l9l2n.49)
+    /// </para>
     /// </remarks>
     private string? DataTypeName(string? code)
     {
-        if (string.IsNullOrWhiteSpace(code) || _dataTypeNames is null)
+        if (string.IsNullOrWhiteSpace(code))
         {
             return code;
         }
 
-        return _dataTypeNames.TryGetValue(code, out var named) ? named : code;
+        var named = _dataTypeNames is not null && _dataTypeNames.TryGetValue(code, out var name) ? name : code;
+
+        return T.NormaliseDataTypeDisplayName(named);
     }
 
 

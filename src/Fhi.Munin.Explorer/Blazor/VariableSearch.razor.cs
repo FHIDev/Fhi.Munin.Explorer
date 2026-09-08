@@ -1426,9 +1426,11 @@ public sealed partial class VariableSearch : ComponentBase
     /// same codes WITH their names, and the component fetches those anyway to draw the filter
     /// panel, so the name is already in memory and costs no second request.
     /// <para>
-    /// Falls back to the raw code when the facets have not arrived yet, or against an API that
-    /// predates the names. A code is poor, but it is true; a lookup table here would freeze a copy
-    /// of editable master data inside a package that ships to other people.
+    /// The API owns the vocabulary — a table here would freeze a copy of editable master data in a
+    /// package that ships to other people — so the shipped table is asked one thing only, through
+    /// <see cref="Texts.NormaliseDataTypeDisplayName"/>: the Norwegian behind a name that arrived
+    /// in a known legacy English form, which is what the panel and the facet show for that value.
+    /// Anything else renders as it arrived, the raw code included. (Fhi.Metadata-l9l2n.49)
     /// </para>
     /// </remarks>
     private string? DataTypeName(string? code)
@@ -1440,7 +1442,7 @@ public sealed partial class VariableSearch : ComponentBase
 
         var named = _facets?.DataTypes.FirstOrDefault(d => d.Value == code)?.DisplayName;
 
-        return string.IsNullOrWhiteSpace(named) ? code : named;
+        return T.NormaliseDataTypeDisplayName(string.IsNullOrWhiteSpace(named) ? code : named);
     }
 
     /// <summary>

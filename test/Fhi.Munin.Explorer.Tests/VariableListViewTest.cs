@@ -732,6 +732,41 @@ public class VariableListViewTest : BunitContext
         Assert.Null(client.LastFilterFilter);
     }
 
+    [Theory]
+    [InlineData("1")]
+    [InlineData("String")]
+    public void View_WhenTheApiNamesADatatypeInEnglish_ThenTheRowSaysItInNorwegian(string stored)
+    {
+        // The filters endpoint answers a Norwegian call with displayName "String" for code "1", so
+        // this row read "String" where the explorer's detail panel read "Streng" for the same
+        // variable. The stored legacy form is the case that proves the fix reached this path:
+        // a row holding "1" was already right on the panel and proved nothing.
+        // (Fhi.Metadata-l9l2n.49)
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER") with { DataType = stored })
+        {
+            DataTypeFacets = [new DataTypeFacet { Value = "1", DisplayName = "String" }]
+        };
+
+        var cut = RenderView(client);
+
+        Assert.Equal("Streng", CellText(cut, "dataType"));
+    }
+
+    [Fact]
+    public void View_WhenTheApiNamesADatatypeWeHaveNoAliasFor_ThenTheRowShowsWhatTheApiSent()
+    {
+        // The API owns the vocabulary: a datatype added on its side reaches the row unaltered
+        // rather than through a table shipped inside this package. (Fhi.Metadata-l9l2n.49)
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER") with { DataType = "11" })
+        {
+            DataTypeFacets = [new DataTypeFacet { Value = "11", DisplayName = "Kvasistreng" }]
+        };
+
+        var cut = RenderView(client);
+
+        Assert.Equal("Kvasistreng", CellText(cut, "dataType"));
+    }
+
     [Fact]
     public void View_WhenTheApiHasNoNameForTheCode_ThenTheCodeIsShownRatherThanNothing()
     {

@@ -262,4 +262,37 @@ public class LanguageTest : BunitContext
                 $"The rate-limit text in {language} names a number: \"{texts.RateLimitError}\".");
         }
     }
+
+    [Theory]
+    [InlineData("no", "String", "Streng")]
+    [InlineData("no", "tekst", "Streng")]
+    [InlineData("no", "BOOLEAN", "Boolsk")]
+    [InlineData("en", "String", "String")]
+    public void Texts_WhenTheApiNamesADatatypeInALegacyForm_ThenEverySurfaceSaysTheSameWord(
+        string language, string apiName, string expected)
+    {
+        // The filters endpoint answers a Norwegian call with displayName "String" for code "1", so
+        // the rows drew an English word beside a panel and a facet drawing the Norwegian one. The
+        // two paths are asserted together because fixing one alone is how that shipped.
+        // (Fhi.Metadata-l9l2n.49)
+        var texts = Texts.For(language);
+
+        Assert.Equal(expected, texts.NormaliseDataTypeDisplayName(apiName));
+        Assert.Equal(expected, texts.DataTypeLabel(apiName));
+    }
+
+    [Theory]
+    [InlineData("Kvasistreng")]
+    [InlineData("Fødselsnummer (11 siffer)")]
+    [InlineData("")]
+    public void Texts_WhenTheApiNamesADatatypeWeHaveNoAliasFor_ThenItIsShownExactlyAsItArrived(
+        string apiName)
+    {
+        // The decision this pins: the API owns the vocabulary, and the shipped table only supplies
+        // the Norwegian behind a known legacy English form. Routing every name through that table
+        // would fix the word above by freezing editable master data in a package other people
+        // ship, so a datatype added on the API's side has to reach the page unaltered.
+        Assert.Equal(apiName, Texts.For("no").NormaliseDataTypeDisplayName(apiName));
+        Assert.Null(Texts.For("no").NormaliseDataTypeDisplayName(null));
+    }
 }

@@ -410,7 +410,9 @@ public partial class VariableSearch
 
     private FacetValue DataTypeValue(DataTypeFacet dataType) =>
         new($"datatype:{dataType.Value}",
-            // The API returns the code with no label at all, so the prose is the component's own.
+            // The facet carries a DisplayName, and it is the English word for the legacy codes, so
+            // the label comes from the shipped table keyed by code instead — the same word the rows
+            // and the detail panel show for that value. (Fhi.Metadata-l9l2n.49)
             T.DataTypeLabel(dataType.Value),
             Counted(dataType.Count),
             _filter.DataTypes.Contains(dataType.Value),

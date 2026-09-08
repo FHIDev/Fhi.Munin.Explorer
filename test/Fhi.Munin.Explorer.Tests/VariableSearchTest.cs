@@ -3839,11 +3839,49 @@ public class VariableSearchTest : BunitContext
     [Fact]
     public void Render_WhenADatatypeArrivesAsABareCode_ThenTheButtonSaysWhatTheCodeMeans()
     {
-        // The API returns "1" with no label at all, so a UI has to carry its own mapping or put a
-        // button reading "1" on the page.
+        // A facet carrying no label at all is what this fixture holds; the live one carries the
+        // English word. Either way the button is drawn from the shipped table keyed by the code.
         var cut = RenderWith(new FilteringClient(OnePage()));
 
         Assert.Equal("Streng (9)", Facet(cut, "Streng").TextContent);
+    }
+
+    [Theory]
+    [InlineData("1")]
+    [InlineData("String")]
+    public void Render_WhenTheApiNamesADatatypeInEnglish_ThenTheRowSaysItTheWayTheFacetDoes(
+        string stored)
+    {
+        // The bug: the filters endpoint answers a Norwegian call with displayName "String" for code
+        // "1", and the row rendered that beside a facet and a detail panel both reading "Streng".
+        // The stored legacy form is the case that proves it — a row already holding "1" read
+        // correctly on the panel before this and proved nothing. (Fhi.Metadata-l9l2n.49)
+        var facets = Facets() with
+        {
+            DataTypes = [new() { Value = "1", DisplayName = "String", Count = 9 }]
+        };
+        var row = Variable("1. Tale", "V_ALS.F1.ALSFRSR1TALE") with { DataType = stored };
+
+        var cut = RenderWith(new FilteringClient(OnePage(row), facets));
+
+        Assert.Equal("Streng", CellText(cut, "dataType"));
+        Assert.Equal("Streng (9)", Facet(cut, "Streng").TextContent);
+    }
+
+    [Fact]
+    public void Render_WhenTheApiNamesADatatypeWeHaveNoAliasFor_ThenTheRowShowsWhatTheApiSent()
+    {
+        // The API owns the vocabulary: a datatype added on its side reaches the row unaltered, and
+        // is not routed through a table shipped inside this package. (Fhi.Metadata-l9l2n.49)
+        var facets = Facets() with
+        {
+            DataTypes = [new() { Value = "11", DisplayName = "Kvasistreng", Count = 2 }]
+        };
+        var row = Variable("1. Tale", "V_ALS.F1.ALSFRSR1TALE") with { DataType = "11" };
+
+        var cut = RenderWith(new FilteringClient(OnePage(row), facets));
+
+        Assert.Equal("Kvasistreng", CellText(cut, "dataType"));
     }
 
     [Fact]
