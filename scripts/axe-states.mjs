@@ -173,7 +173,15 @@ export const states = {
       throw new Error('The facet panel must open exactly one facet and fold the rest');
     }
 
-    const folded = page.locator('.munin-explorer-filters__facets > details:not([open])').first();
+    // Held by position, never by `:not([open])`: a locator written on the fold re-resolves on every
+    // use, so the moment the press lands it names the NEXT folded facet and the wait below sits on
+    // a <ul> that is hidden by design.
+    const foldedIndex = await facets.evaluateAll(all => all.findIndex(facet => !facet.open));
+    if (foldedIndex < 0) {
+      throw new Error('The facet panel drew no folded facet to open');
+    }
+
+    const folded = facets.nth(foldedIndex);
     const summary = folded.locator(':scope > summary');
     await summary.focus();
     await page.keyboard.press('Enter');
