@@ -18,13 +18,13 @@ awk '
       lead = substr(line, RSTART + 2, RLENGTH - 4)
     } else {
       lead = line
-      sub(/\. .*$/, "", lead)
+      sub(/[.?!] .*$/, "", lead)   # a sentence can end in ? or ! too
     }
     gsub(/`/, "", lead)          # code spans
     gsub(/\*\*/, "", lead)       # any stray bold inside the lead
     gsub(/  +/, " ", lead)
     sub(/[[:space:]]+$/, "", lead)
-    sub(/[.:,;]+$/, "", lead)
+    sub(/[.:,;?!]+$/, "", lead)
     if (lead != "") print "  * " lead
     buf = ""
   }

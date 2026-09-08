@@ -43,6 +43,7 @@ cat > "$tmp" <<'EOF'
 - **A lead wrapped across
   two source lines.** Detail after it.
 - A bullet with **emphasis in the middle** rather than a leading title.
+- Does an unbolded lead end in a question mark? Then this second sentence must not follow it.
 EOF
 
 # A tab after the marker, written as a real tab rather than an escape — the case
@@ -62,6 +63,8 @@ check  "the Changed category survives"      "Changed"                           
 refute "detail after the lead is dropped"   "must not reach the flattened line"  "$out"
 refute "second sentence is dropped"         "Its second sentence must not appear" "$out"
 refute "mid-text emphasis is not lifted"    "  * emphasis in the middle"         "$out"
+check  "a lead ending in ? is kept"         "Does an unbolded lead end in a question mark" "$out"
+refute "and its second sentence is not"     "must not follow it"                 "$out"
 
 # Bullets in must equal lines out — catches a silent drop generically, not only the
 # markers this fixture uses. Both counts need || true: grep exits 1 on a zero count,
