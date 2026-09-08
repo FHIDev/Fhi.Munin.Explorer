@@ -213,6 +213,18 @@ perl -0ne '
 cut -f2- < "$RULES" > "$NAMED"
 grep $'^drawn\t' "$RULES" | cut -f2- > "$DRAWN"
 
+# The class token of every selector, cut out once so the two loops below can ask about a name
+# without spawning anything. They used to run a grep per name — around 370 of them, which is under
+# a second on a runner and 45 seconds on a Windows checkout, where a process spawn is the whole
+# cost and SampleCssGuardTest's two-minute budget is what runs out.
+#
+# `\.[A-Za-z0-9_-]+` takes the maximal run after a dot, so the lookup is exact where the greps were
+# anchored: `.munin-explorer-period__fill` yields that whole name and never answers for
+# `.munin-explorer-period`, because a rule for the part is not a rule for the whole. Each list is
+# wrapped in newlines so a `case` can match a whole entry rather than a prefix of one.
+DRAWN_CLASSES=$'\n'"$(grep -oE '\.[A-Za-z0-9_-]+' "$DRAWN" | cut -c2- | sort -u)"$'\n'
+NAMED_CLASSES=$'\n'"$(grep -oE '\.[A-Za-z0-9_-]+' "$NAMED" | cut -c2- | sort -u)"$'\n'
+
 # The same guard the stripping above gets, for the same reason: an extraction that finds nothing
 # would report every name as unstyled, loudly and about the wrong thing. A floor rather than a
 # count — the stylesheet yields 228 rules today, and a stale regex yields a handful.
@@ -278,17 +290,14 @@ for name in "${names[@]}"; do
     *" $name "*) continue ;;
   esac
 
-  # Anchored on both sides so `.munin-explorer-period__fill` does not answer for
-  # `.munin-explorer-period`: a rule for the part is not a rule for the whole.
-  if grep -qE "\.${name}([^A-Za-z0-9_-]|\$)" "$DRAWN"; then
-    continue
-  fi
+  case "$DRAWN_CLASSES" in
+    *$'\n'"$name"$'\n'*) continue ;;
+  esac
 
-  if grep -qE "\.${name}([^A-Za-z0-9_-]|\$)" "$NAMED"; then
-    empty+=("$name")
-  else
-    missing+=("$name")
-  fi
+  case "$NAMED_CLASSES" in
+    *$'\n'"$name"$'\n'*) empty+=("$name") ;;
+    *) missing+=("$name") ;;
+  esac
 done
 
 if [ ${#missing[@]} -gt 0 ] || [ ${#empty[@]} -gt 0 ]; then
@@ -385,13 +394,22 @@ if [ "${#emitted[@]}" -lt "$MIN_EMITTED" ]; then
 fi
 
 # Against DRAWN rather than STRIPPED, same as clause two: a rule the samples wrote with an empty
-# block is not styling, here either. The fixture on the next line is a list of names and not a
+# block is not styling, here either. The fixture below is a list of names and not a
 # stylesheet, so nothing can be asked of helsedata's declarations — what that half claims is only
 # that the name is one their stylesheets define.
+#
+# The fixture is read in one go for the reason DRAWN_CLASSES above is: a whole-line `case` match
+# says what `grep -qxF` said, without a process per name.
+HOST_NAMES_LIST=$'\n'"$(cat "$HOST_NAMES")"$'\n'
+
 orphans=()
 for name in "${emitted[@]}"; do
-  grep -qE "\.${name}([^A-Za-z0-9_-]|\$)" "$DRAWN" && continue
-  grep -qxF "$name" "$HOST_NAMES" && continue
+  case "$DRAWN_CLASSES" in
+    *$'\n'"$name"$'\n'*) continue ;;
+  esac
+  case "$HOST_NAMES_LIST" in
+    *$'\n'"$name"$'\n'*) continue ;;
+  esac
   orphans+=("$name")
 done
 
