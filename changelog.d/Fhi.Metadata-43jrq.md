@@ -1,6 +1,6 @@
 category: Fixed
 
-- **Kilde and variabel detail pages no longer show the catalogue's storage vocabulary in a
+- **Kilde and variable detail pages no longer show the catalogue's storage vocabulary in a
   field's label.** "(språkmerket)" and "(flerspråklig)" - and the English "(language-tagged)" /
   "(multilingual)" - describe how the catalogue stores a value, not something a reader needs;
   they are stripped from every label and group name at render time, in both languages.
