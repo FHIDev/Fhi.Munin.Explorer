@@ -420,8 +420,12 @@ public class KildeSearchTest : BunitContext
     private static IReadOnlyList<string> RowNames(IRenderedComponent<KildeSearch> cut) =>
         [.. cut.FindAll(".munin-explorer-kilder tbody th button").Select(b => b.TextContent.Trim())];
 
+    /// <summary>Every facet's disclosure, in the order the panel draws them.</summary>
+    private static IReadOnlyList<IElement> Facets(IRenderedComponent<KildeSearch> cut) =>
+        [.. cut.FindAll(".munin-explorer-filters__facets > details")];
+
     /// <summary>
-    /// The facet headings on screen, in the order the panel draws them.
+    /// The facet headings on screen, in the order the panel draws them, without their counts.
     /// </summary>
     /// <remarks>
     /// <c>h4</c> because the component's own title defaults to <c>h2</c>: the panel's heading is one
@@ -430,12 +434,42 @@ public class KildeSearchTest : BunitContext
     /// class would slip past a selector that asked for one.
     /// </remarks>
     private static IReadOnlyList<string> FacetHeadings(IRenderedComponent<KildeSearch> cut) =>
-        [.. cut.FindAll(".munin-explorer-filters__facets [role=group] h4").Select(h => h.TextContent.Trim())];
+        [.. Facets(cut).Select(FacetName)];
 
-    /// <summary>One facet's group, found by the heading over it.</summary>
-    private static IElement Facet(IRenderedComponent<KildeSearch> cut, string heading) =>
-        cut.FindAll(".munin-explorer-filters__facets [role=group]")
-           .Single(group => group.QuerySelector("h4")!.TextContent.Trim() == heading);
+    /// <summary>A facet's heading with the ticked-value count the summary carries stripped off.</summary>
+    /// <remarks>
+    /// So a test can name a facet without naming how many of its values it has ticked so far — the
+    /// count is asserted where it is the subject, and is noise everywhere else.
+    /// </remarks>
+    private static string FacetName(IElement facet)
+    {
+        var heading = facet.QuerySelector("summary h4")!.TextContent.Trim();
+        var count = heading.LastIndexOf(" (", StringComparison.Ordinal);
+
+        return count < 0 ? heading : heading[..count];
+    }
+
+    /// <summary>
+    /// One facet, found by the heading over it, unfolded.
+    /// </summary>
+    /// <remarks>
+    /// Unfolded because a folded facet renders none of its values — the panel opens one facet and
+    /// folds the rest (Fhi.Metadata-co3sf), so a test about what a facet offers has to open it, and
+    /// making every one of them say so would be the same three lines thirty times.
+    /// </remarks>
+    private static IElement Facet(IRenderedComponent<KildeSearch> cut, string heading)
+    {
+        var facet = Facets(cut).Single(details => FacetName(details) == heading);
+
+        if (facet.HasAttribute("open"))
+        {
+            return facet;
+        }
+
+        facet.QuerySelector("summary")!.Click();
+
+        return Facets(cut).Single(details => FacetName(details) == heading);
+    }
 
     /// <summary>The visible text of every choice in a facet, count and all.</summary>
     private static IReadOnlyList<string> Choices(IElement facet) =>
@@ -1984,14 +2018,14 @@ public class KildeSearchTest : BunitContext
         // So this fixture has one facet where every kilde carries the SAME value, which must still
         // be drawn with its one choice, and one where no kilde carries any, which must not be drawn
         // at all. Asserted on the headings and on the group count rather than on the markup as a
-        // string: an empty <div role="group"> with an empty heading in it is what a component that
-        // renders every facet unconditionally produces, and it contains no text to search for.
+        // string: an empty disclosure with an empty heading in it is what a component that renders
+        // every facet unconditionally produces, and it contains no text to search for.
         var cut = RenderWith(new FakeClient(
             Kilde("Als registeret", "K_ALS", accessRights: "eu-access:NON_PUBLIC"),
             Kilde("Dødsårsaksregisteret", "K_DAR", accessRights: "eu-access:NON_PUBLIC")));
 
         Assert.Equal(["Kildetype", "Tilgangsnivå", "Databehandler"], FacetHeadings(cut));
-        Assert.Equal(3, cut.FindAll(".munin-explorer-filters__facets [role=group]").Count);
+        Assert.Equal(3, Facets(cut).Count);
         Assert.DoesNotContain("Kategori", cut.Markup);
 
         // The other half, so "drop the empty one" cannot become "drop the one with a single value":
@@ -2755,20 +2789,112 @@ public class KildeSearchTest : BunitContext
     }
 
     [Fact]
-    public void Facets_Always_ThenEachGroupIsNamedByItsOwnHeading()
+    public void Facets_Always_ThenEachFacetIsANativeDisclosureWithItsHeadingInTheSummary()
     {
-        // role="group" with no accessible name is a group of nothing in particular. The id is what
-        // ties the heading to it, and it carries this instance's discriminator so two explorers on
-        // one page cannot point at each other's headings.
+        // The header has to be a real control and not something that only looks like one, which is
+        // what Fhi.Metadata-zqe14 was filed for. <summary> is that control natively — focusable,
+        // toggled by Enter and Space — so there is no aria-expanded here to drift out of step with
+        // the open attribute beside it, and the heading stays a heading inside it because a reader
+        // moves through a filter panel by heading.
         var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
-        foreach (var group in cut.FindAll(".munin-explorer-filters__facets [role=group]"))
-        {
-            var heading = group.QuerySelector("h4")!;
+        Assert.NotEmpty(Facets(cut));
 
-            Assert.Equal(heading.Id, group.GetAttribute("aria-labelledby"));
-            Assert.False(string.IsNullOrWhiteSpace(heading.Id));
+        foreach (var facet in Facets(cut))
+        {
+            var summary = facet.QuerySelector("summary")!;
+
+            Assert.NotNull(summary.QuerySelector("h4"));
+            Assert.Null(summary.GetAttribute("aria-expanded"));
         }
+    }
+
+    [Fact]
+    public void Facets_Always_ThenTheFirstFacetIsOpenAndTheRestAreFolded()
+    {
+        // The default, stated: one facet open and the rest folded. All four open is the length this
+        // bead is about — databehandler alone runs to 39 values on the live catalogue, which makes
+        // the filter column longer than the list it filters — and all four folded would hide the
+        // filtering affordance altogether from a reader who has never seen this panel.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS",
+                  kildetype: "biobank", accessRights: "eu-access:NON_PUBLIC",
+                  dataProcessor: "Folkehelseinstituttet")));
+
+        Assert.Equal(["Kildetype", "Tilgangsnivå", "Databehandler"], FacetHeadings(cut));
+        Assert.Equal([true, false, false], Facets(cut).Select(f => f.HasAttribute("open")).ToArray());
+    }
+
+    [Fact]
+    public void Facets_WhenAFacetIsFolded_ThenItsValuesAreOutOfTheDomRatherThanHidden()
+    {
+        // THE TRAP. `hidden` is not enough in the one host this package ships to: helsedata's
+        // stylesheet carries a bare `div { display: block }`, an author rule beats a browser
+        // default, and a folded panel stayed on screen there — 3798px of it. So a folded facet is
+        // asserted to hold no checkbox at all, which no stylesheet anywhere can undo.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS",
+                  kildetype: "biobank", dataProcessor: "Folkehelseinstituttet")));
+
+        var databehandler = Facets(cut).Single(f => FacetName(f) == "Databehandler");
+
+        Assert.False(databehandler.HasAttribute("open"));
+        Assert.Empty(databehandler.QuerySelectorAll("ul"));
+        Assert.Empty(databehandler.QuerySelectorAll("input[type=checkbox]"));
+
+        // And the same facet opened, so "renders nothing" cannot be how it passes.
+        Assert.Equal(["Folkehelseinstituttet (1)"], Choices(Facet(cut, "Databehandler")));
+    }
+
+    [Fact]
+    public void Facets_WhenAFoldedFacetHasTickedValues_ThenItsHeadingSaysHowMany()
+    {
+        // The reason a folding panel is allowed to fold at all: a facet that is narrowing the list
+        // from behind a closed disclosure has to say so, or the reader loses the filter and keeps
+        // its effect — the rows are short and nothing on screen explains why. The count is in the
+        // <summary>, which is the one part of a folded facet that is still drawn.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", kildetype: "nasjonaltMedisinskKvalitetsregister"),
+            Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister"),
+            Kilde("Den norske mor, far og barn-undersøkelsen", "K_MOBA", kildetype: "biobank")));
+
+        Tick(cut, "Kildetype", "Biobank");
+        Tick(cut, "Kildetype", "Sentralt helseregister");
+
+        var kildetype = Facets(cut).Single(f => FacetName(f) == "Kildetype");
+
+        kildetype.QuerySelector("summary")!.Click();
+
+        kildetype = Facets(cut).Single(f => FacetName(f) == "Kildetype");
+
+        Assert.False(kildetype.HasAttribute("open"));
+        Assert.Empty(kildetype.QuerySelectorAll("input[type=checkbox]"));
+        Assert.Equal("Kildetype (2)", kildetype.QuerySelector("summary h4")!.TextContent.Trim());
+
+        // Folding it changed nothing about what is filtered. The two facets pull in opposite
+        // directions on purpose: one says the filter is still on, the other says it still bites.
+        Assert.Equal(["Dødsårsaksregisteret", "Den norske mor, far og barn-undersøkelsen"], RowNames(cut));
+    }
+
+    [Fact]
+    public void Facets_WhenAFacetIsFoldedAndOpenedAgain_ThenItsTickedValuesAreStillTicked()
+    {
+        // The state is the component's rather than the DOM's, because a folded facet renders no
+        // checkboxes to hold it. An implementation keeping the open flag and losing the ticks would
+        // pass every assertion about the heading above and empty the filter the moment it reopened.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", kildetype: "biobank"),
+            Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister")));
+
+        Tick(cut, "Kildetype", "Biobank");
+
+        Facets(cut).Single(f => FacetName(f) == "Kildetype").QuerySelector("summary")!.Click();
+
+        var reopened = Facet(cut, "Kildetype");
+
+        Assert.True(reopened.HasAttribute("open"));
+        Assert.True(reopened.QuerySelectorAll("input[type=checkbox]").First().HasAttribute("checked"));
+        Assert.Equal(["Als registeret"], RowNames(cut));
     }
 
     // ---------------------------------------------------------------------------------

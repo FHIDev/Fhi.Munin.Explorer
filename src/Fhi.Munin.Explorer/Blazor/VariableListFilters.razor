@@ -19,8 +19,9 @@
                     @onclick="ClearAll">@T.ClearFilters</button>
         }
 
-        @* role="group" named by the heading rather than a fieldset and a legend, the shape Kelda's
-           facets use: a reader moves through a filter panel by heading, and a legend is not one. *@
+        @* role="group" named by the heading rather than a fieldset and a legend: a reader moves
+           through a filter panel by heading, and a legend is not one. One facet only, so it is not
+           a disclosure the way Kelda's four and the variable explorer's are. *@
         <div role="group" aria-labelledby="@KildeHeadingId">
             @((MarkupString)$"<h{SubTitleLevel} class=\"form-element__label\" id=\"{KildeHeadingId}\">{T.FieldSource}</h{SubTitleLevel}>")
 

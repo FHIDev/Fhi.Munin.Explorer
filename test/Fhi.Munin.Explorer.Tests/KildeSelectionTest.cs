@@ -475,8 +475,8 @@ public class KildeSelectionTest : BunitContext
 
         var (cut, handovers) = RenderSelectable(new FakeClient(als, kvalitet));
 
-        cut.FindAll(".munin-explorer-filters__facets [role=group]")
-           .Single(group => group.QuerySelector("h4")!.TextContent.Trim() == "Kildetype")
+        cut.FindAll(".munin-explorer-filters__facets > details")
+           .Single(facet => facet.QuerySelector("summary h4")!.TextContent.Trim() == "Kildetype")
            .QuerySelectorAll("label")
            .First(label => label.TextContent.Trim().StartsWith("Sentralt helseregister", StringComparison.Ordinal))
            .QuerySelector("input")!

@@ -98,8 +98,13 @@ public sealed partial class KildeSearch
     /// </param>
     private readonly record struct FacetLabel(string Text, string? Language);
 
-    /// <summary>A facet as the panel draws it: a heading and the choices under it.</summary>
-    private sealed record Facet(string Key, string Heading, IReadOnlyList<FacetOption> Options);
+    /// <summary>A facet as the panel draws it: a disclosure holding a heading and the choices under it.</summary>
+    /// <param name="OpenByDefault">
+    /// The first facet only. Every facet open is the length this fixes — databehandler alone runs to
+    /// 39 values — and every facet shut hides the affordance from a reader who has never used it.
+    /// </param>
+    private sealed record Facet(
+        string Key, string Heading, IReadOnlyList<FacetOption> Options, bool OpenByDefault = false);
 
     /// <summary>
     /// One choice inside a facet.
@@ -156,6 +161,13 @@ public sealed partial class KildeSearch
     /// <summary>Whether the panel is unfolded. See the markup for why the reader can still see it while this is false.</summary>
     private bool _filtersOpen;
 
+    /// <summary>Which facets the reader has folded open or shut; absent means the facet's own default.</summary>
+    /// <remarks>
+    /// Held here rather than left to the DOM alone, because a folded facet's values are not rendered
+    /// at all — see the markup for why drawing them and hiding them is not enough on this host.
+    /// </remarks>
+    private readonly Dictionary<string, bool> _facetOpen = new(StringComparer.Ordinal);
+
     /// <summary>The four definitions, built once — see <see cref="Definitions"/> for why they are held at all.</summary>
     private IReadOnlyList<FacetDefinition>? _definitions;
 
@@ -163,8 +175,6 @@ public sealed partial class KildeSearch
     private string? _definitionsReader;
 
     private string FacetsId => $"munin-explorer-filters-{_instance}";
-
-    private string FacetHeadingId(string key) => $"munin-explorer-facet-{key}-{_instance}";
 
     /// <summary>
     /// The panel heading's level: one below the component's own title, so the outline stays
@@ -234,10 +244,29 @@ public sealed partial class KildeSearch
     /// tens of records.
     /// </remarks>
     private IReadOnlyList<Facet> Facets =>
-        [.. Definitions.Select(Build).Where(facet => facet.Options.Count > 0)];
+    [
+        .. Definitions
+            .Select(Build)
+            .Where(facet => facet.Options.Count > 0)
+            .Select((facet, index) => facet with { OpenByDefault = index == 0 })
+    ];
+
+    /// <summary>Whether a facet is drawn open: what the reader last left it at, or its own default.</summary>
+    private bool FacetOpen(Facet facet) =>
+        _facetOpen.TryGetValue(facet.Key, out var open) ? open : facet.OpenByDefault;
+
+    /// <summary>Fold one facet the other way, from the click its summary makes.</summary>
+    /// <remarks>
+    /// A flip rather than a reading of the element: the click arrives before the browser applies its
+    /// own toggle, so what was last rendered is what the reader is acting on.
+    /// </remarks>
+    private void ToggleFacet(Facet facet) => _facetOpen[facet.Key] = !FacetOpen(facet);
 
     /// <summary>How many values are ticked across every facet — what the folded panel is hiding.</summary>
     private int ChosenCount => _chosen.Values.Sum(values => values.Count);
+
+    /// <summary>How many values are ticked in one facet — what a folded facet is hiding.</summary>
+    private int ChosenIn(string key) => _chosen.TryGetValue(key, out var values) ? values.Count : 0;
 
     /// <summary>One facet, counted.</summary>
     /// <remarks>
@@ -530,19 +559,25 @@ public sealed partial class KildeSearch
     };
 
     /// <summary>
-    /// One facet's heading, at <see cref="FacetLevel"/> and carrying the id its group is named by.
+    /// One facet's heading, at <see cref="FacetLevel"/>, saying how many of its values are ticked.
     /// </summary>
     /// <remarks>
     /// <c>headline-xxs</c>, which is what <see cref="KildeView"/> gives a group of facts — so the
     /// panel's headings and the kilde's read as the same kind of thing rather than as two
     /// vocabularies in one component.
+    /// <para>
+    /// The count is in the <c>&lt;summary&gt;</c>, which is what a folded facet still draws: a facet
+    /// narrowing the list from behind a closed disclosure would otherwise take the filter off screen
+    /// and leave its effect. Same form as the panel's own heading and the variable explorer's facets.
+    /// </para>
     /// </remarks>
     private RenderFragment FacetHeading(Facet facet) => builder =>
     {
+        var chosen = ChosenIn(facet.Key);
+
         builder.OpenElement(0, $"h{FacetLevel}");
         builder.AddAttribute(1, "class", "headline headline-xxs margin--none");
-        builder.AddAttribute(2, "id", FacetHeadingId(facet.Key));
-        builder.AddContent(3, facet.Heading);
+        builder.AddContent(2, chosen == 0 ? facet.Heading : $"{facet.Heading} ({chosen})");
         builder.CloseElement();
     };
 }

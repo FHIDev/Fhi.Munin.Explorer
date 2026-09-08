@@ -207,6 +207,10 @@ else
        this component makes — an element degrades to its own browser default, where a class name no
        stylesheet has heard of degrades to nothing.
 
+       One <details> per facet, the shape the variable explorer's panel already has under this same
+       handle: `.munin-explorer-filters details` and `summary` are dressed unscoped to either panel,
+       in both sample stylesheets and in Stiler 0.1.42, so no new class name is introduced here.
+
        Checkboxes, not the toggle buttons the variable explorer's facets use. Kelda's are checkboxes,
        and a bare <input type="checkbox"> inside its own <label> is an element pair every stylesheet
        already dresses, so neither the box nor the label carries a class.
@@ -231,39 +235,47 @@ else
             <div class="munin-explorer-filters__facets" id="@FacetsId" hidden="@(!_filtersOpen)">
                 @foreach (var facet in facets)
                 {
-                    @* role="group" with the heading as its name, rather than a fieldset and a
-                       legend: the heading has to be a heading, because a reader moving by heading is
-                       how a facet panel is navigated, and a legend is not one. Keyed so a facet that
-                       is not drawn cannot hand its checkboxes to whichever facet takes its place. *@
-                    <div @key="facet.Key" role="group" aria-labelledby="@FacetHeadingId(facet.Key)">
-                        @FacetHeading(facet)
+                    @* A native <details> per facet, the shape the variable explorer's panel already
+                       uses under this same handle. Keyed so a facet that is not drawn cannot hand
+                       its open state to whichever facet takes its place. *@
+                    <details @key="facet.Key" open="@FacetOpen(facet)">
+                        @* <summary> is the disclosure control natively — focusable, Enter and Space
+                           toggle it, its open attribute is the state, so there is no aria-expanded
+                           to drift. The heading stays one: a panel is navigated by heading. *@
+                        <summary @onclick="() => ToggleFacet(facet)">@FacetHeading(facet)</summary>
 
-                        <ul>
-                            @foreach (var option in facet.Options)
-                            {
-                                @* The whole value in title, and only where the text on screen was
-                                   cut — one databehandler on the live catalogue is over 200
-                                   characters of free text, and a reader who wants to know which one
-                                   it is has nowhere else to read it. Keyed on the value: the options are built
-                                   off the unfiltered list so they never move, and the key is what
-                                   keeps that true if they ever do. *@
-                                <li @key="option.Value">
-                                    @* lang where the choice is drawn in the catalogue's own words
-                                       rather than in this package's — databehandler, which is free
-                                       text, and any token no vocabulary had a word for. It is the
-                                       same marking the table's cells carry for the same strings,
-                                       and it covers the title as well as the text. See
-                                       KildeSearch.Filters.cs for which labels are which. *@
-                                    <label title="@option.Title" lang="@option.Language">
-                                        <input type="checkbox"
-                                               checked="@IsChosen(facet.Key, option.Value)"
-                                               @onchange="e => Choose(facet.Key, option.Value, e.Value is true)" />
-                                        @option.Text@(" ")<span class="munin-explorer-filters__count">@option.CountText</span>
-                                    </label>
-                                </li>
-                            }
-                        </ul>
-                    </div>
+                        @* Drawn only while open, never drawn and hidden. helsedata's stylesheet
+                           carries a bare `div { display: block }` and an author rule beats a browser
+                           default — a folded panel stayed on screen there, 3798px of it. *@
+                        @if (FacetOpen(facet))
+                        {
+                            <ul>
+                                @foreach (var option in facet.Options)
+                                {
+                                    @* The whole value in title, and only where the text on screen was
+                                       cut — one databehandler on the live catalogue is over 200
+                                       characters of free text, and a reader who wants to know which one
+                                       it is has nowhere else to read it. Keyed on the value: the options are built
+                                       off the unfiltered list so they never move, and the key is what
+                                       keeps that true if they ever do. *@
+                                    <li @key="option.Value">
+                                        @* lang where the choice is drawn in the catalogue's own words
+                                           rather than in this package's — databehandler, which is free
+                                           text, and any token no vocabulary had a word for. It is the
+                                           same marking the table's cells carry for the same strings,
+                                           and it covers the title as well as the text. See
+                                           KildeSearch.Filters.cs for which labels are which. *@
+                                        <label title="@option.Title" lang="@option.Language">
+                                            <input type="checkbox"
+                                                   checked="@IsChosen(facet.Key, option.Value)"
+                                                   @onchange="e => Choose(facet.Key, option.Value, e.Value is true)" />
+                                            @option.Text@(" ")<span class="munin-explorer-filters__count">@option.CountText</span>
+                                        </label>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </details>
                 }
             </div>
         </div>
