@@ -10,6 +10,16 @@
 // axe-states.mjs first. A width is only interesting because layout changes with it: Stiler's
 // `.munin-explorer` grid switches on at 1024px, so a page that fits at 1689 can overflow at 1024.
 import { chromium } from 'playwright';
+
+// PLAYWRIGHT_BROWSER_CHANNEL=msedge runs an installed browser instead of the bundled chromium.
+// Opt-in and unset in CI: a channel renders a different engine build, so a geometry number from
+// one is not interchangeable with a number from the other. It exists because `playwright install
+// chromium` cannot complete on Node 26 - the pinned fetcher calls fs.rmdir(recursive), removed in
+// that version - which leaves the port unrunnable on a developer machine (Fhi.Metadata-wgwa0).
+const launchOptions = () => {
+  const channel = process.env.PLAYWRIGHT_BROWSER_CHANNEL;
+  return channel ? { channel } : {};
+};
 import { states } from './axe-states.mjs';
 import { assertions, selectors } from './geometry-assertions.mjs';
 
@@ -76,7 +86,7 @@ for (const { name, states: appliesTo } of assertions) {
 
 let browser;
 try {
-  browser = await chromium.launch();
+  browser = await chromium.launch(launchOptions());
 } catch (err) {
   console.error('could not start a browser - this is a TOOLING failure, not a finding.');
   console.error(String(err?.message ?? err));

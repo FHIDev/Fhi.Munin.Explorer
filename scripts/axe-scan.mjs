@@ -6,6 +6,16 @@
 // A target is a URL, or `URL::state` to drive the loaded page into a named state from
 // `axe-states.mjs` first: what a reader reaches by pressing is invisible to the plain form.
 import { chromium } from 'playwright';
+
+// PLAYWRIGHT_BROWSER_CHANNEL=msedge runs an installed browser instead of the bundled chromium.
+// Opt-in and unset in CI: a channel renders a different engine build, so a geometry number from
+// one is not interchangeable with a number from the other. It exists because `playwright install
+// chromium` cannot complete on Node 26 - the pinned fetcher calls fs.rmdir(recursive), removed in
+// that version - which leaves the port unrunnable on a developer machine (Fhi.Metadata-wgwa0).
+const launchOptions = () => {
+  const channel = process.env.PLAYWRIGHT_BROWSER_CHANNEL;
+  return channel ? { channel } : {};
+};
 import AxeBuilder from '@axe-core/playwright';
 import { states } from './axe-states.mjs';
 
@@ -51,7 +61,7 @@ for (const target of targets) {
 
 let browser;
 try {
-  browser = await chromium.launch();
+  browser = await chromium.launch(launchOptions());
 } catch (err) {
   console.error('could not start a browser - this is a TOOLING failure, not a finding.');
   console.error(String(err?.message ?? err));
