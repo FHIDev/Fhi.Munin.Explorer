@@ -95,12 +95,35 @@ public sealed partial class KildeView : ComponentBase
         : string.IsNullOrWhiteSpace(shortName) ? code
         : $"{code} ({shortName})";
 
+    private KildeDetail? _groupsKilde;
+    private string? _groupsReader;
+    private IReadOnlyList<PropertyGroup> _groups = [];
+
     /// <summary>The catalogue's metadata, grouped and ordered as the catalogue arranges it.</summary>
-    private IReadOnlyList<PropertyGroup> Groups =>
-        Kilde is { } kilde
-            ? CatalogueProperties.Groups(kilde.PropertyMetadata, kilde.AdditionalProperties, Reader,
-                                         DrawnElsewhere(kilde))
-            : [];
+    /// <remarks>
+    /// Cached against the (Kilde, Reader) pair rather than recomputed per access: the markup reads
+    /// this twice per render — the empty check, then the loop — and each call was rebuilding
+    /// DrawnElsewhere's set and re-walking every property (Copilot review on #220).
+    /// </remarks>
+    private IReadOnlyList<PropertyGroup> Groups
+    {
+        get
+        {
+            if (ReferenceEquals(_groupsKilde, Kilde) && _groupsReader == Reader)
+            {
+                return _groups;
+            }
+
+            _groupsKilde = Kilde;
+            _groupsReader = Reader;
+            _groups = Kilde is { } kilde
+                ? CatalogueProperties.Groups(kilde.PropertyMetadata, kilde.AdditionalProperties, Reader,
+                                             DrawnElsewhere(kilde))
+                : [];
+
+            return _groups;
+        }
+    }
 
     /// <summary>Keys whose value already appears elsewhere on the page, so the metadata does not repeat them.</summary>
     /// <remarks>

@@ -211,6 +211,47 @@ public class CataloguePropertiesTest
     }
 
     [Fact]
+    public void Rows_WhenTheCuratedLabelIsOnlyTheStorageQualifier_ThenTheRowIsDroppedRatherThanBlank()
+    {
+        // A label that is nothing but the qualifier strips to the empty string, not to prose. An
+        // empty <dt> would be worse than the qualifier it replaced, so the row goes instead
+        // (Fhi.Metadata-43jrq, Copilot review on #220).
+        List<PropertyMetadataEntry> metadata =
+        [
+            new()
+            {
+                Key = "X",
+                SortOrder = 10,
+                GroupTranslations = new Dictionary<string, string> { ["no"] = "Gruppe" },
+                DisplayNameTranslations = new Dictionary<string, string> { ["no"] = " (språkmerket)" },
+            },
+        ];
+
+        Dictionary<string, string?> values = new() { ["X"] = "verdi" };
+
+        Assert.Empty(CatalogueProperties.Rows(metadata, values, "no"));
+    }
+
+    [Fact]
+    public void Groups_WhenTheCuratedGroupNameIsOnlyTheStorageQualifier_ThenTheGroupIsDroppedRatherThanBlank()
+    {
+        List<PropertyMetadataEntry> metadata =
+        [
+            new()
+            {
+                Key = "X",
+                SortOrder = 10,
+                GroupTranslations = new Dictionary<string, string> { ["no"] = " (flerspråklig)" },
+                DisplayNameTranslations = new Dictionary<string, string> { ["no"] = "Felt" },
+            },
+        ];
+
+        Dictionary<string, string?> values = new() { ["X"] = "verdi" };
+
+        Assert.Empty(CatalogueProperties.Groups(metadata, values, "no"));
+    }
+
+    [Fact]
     public void Rows_WhenTheBagIsNull_ThenThereAreNoRowsRatherThanAThrow()
     {
         // Every contract declares AdditionalProperties non-nullable with an initialiser, and

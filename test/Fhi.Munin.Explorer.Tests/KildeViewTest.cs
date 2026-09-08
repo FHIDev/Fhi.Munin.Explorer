@@ -773,11 +773,20 @@ public class KildeViewTest : BunitContext
     {
         // "språkmerket"/"flerspråklig" — and their English spellings — say how the catalogue stores
         // a value, not something a reader needs (Fhi.Metadata-43jrq).
+        //
+        // Restricted to labels and group headings rather than the whole markup: a curated VALUE is
+        // free text the catalogue does not control, and one that happened to say "multilingual"
+        // would fail this test for a reason that has nothing to do with the bug (Copilot review on
+        // #220).
         var cut = Render(Barnediabetes(), language);
+
+        var labelsAndHeadings = cut.FindAll("dt").Select(e => e.TextContent)
+            .Concat(cut.FindAll(".munin-explorer-group").Select(e => e.TextContent));
 
         foreach (var qualifier in new[] { "språkmerket", "flerspråklig", "language-tagged", "multilingual" })
         {
-            Assert.DoesNotContain(qualifier, cut.Markup, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(labelsAndHeadings,
+                text => text.Contains(qualifier, StringComparison.OrdinalIgnoreCase));
         }
     }
 

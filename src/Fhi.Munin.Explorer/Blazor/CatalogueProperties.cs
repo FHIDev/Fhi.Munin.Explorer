@@ -200,6 +200,14 @@ internal static class CatalogueProperties
 
             var label = WithoutStorageQualifier(rawLabel);
 
+            // A curated label that was ONLY the qualifier — "(språkmerket)" with nothing before
+            // it — strips to nothing rather than to prose, and an empty <dt> is worse than the
+            // qualifier it replaced.
+            if (string.IsNullOrWhiteSpace(label))
+            {
+                continue;
+            }
+
             // A key whose value the view has nothing honest to draw is dropped rather than drawn
             // empty. Only the structured types answer this way — see Value.
             if (Value(entry, raw, reader) is not { } resolved)
@@ -284,6 +292,13 @@ internal static class CatalogueProperties
             }
 
             var name = WithoutStorageQualifier(rawName);
+
+            // Same reasoning as the label above: a group named only the qualifier strips to an
+            // empty heading, which the "every key empty" rule below cannot catch on its own.
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                continue;
+            }
 
             var existing = groups.FindIndex(g => string.Equals(g.Name, name, StringComparison.Ordinal));
 
