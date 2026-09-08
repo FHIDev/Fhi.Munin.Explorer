@@ -359,7 +359,10 @@ else
                control gives: `value` is a DOM property the interactive renderer sets, so a
                statically rendered first paint would show the first order whatever the host asked
                for — and this one arrives from a link. *@
-            <select id="@SortSelectId" @onchange="ChooseOrderAsync">
+            @* Keyed on the refusal count, the same reason the size control is: a browser moves a
+               select's own selection before `onchange` runs, and a refused value that leaves the
+               order where it was renders nothing to move it back. See _orderRefusals. *@
+            <select id="@SortSelectId" @key="_orderRefusals" @onchange="ChooseOrderAsync">
                 @foreach (var offered in OfferedOrders)
                 {
                     <option value="@offered" selected="@(_order == offered)">@T.KildeOrderLabel(offered)</option>

@@ -20,9 +20,8 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// The kildeutforsker's half of what <see cref="VariableExplorer"/> does for the variable side, and
 /// much smaller because Kelda carries less: the open kilde and the order the list is in are the
 /// parts of the view worth linking to, and there are no personal lists to put behind a second tab.
-/// A link opens that kilde;
-/// closing it puts the reader back on the path they arrived on, <c>PathBase</c> included, rather
-/// than on the site root.
+/// A link opens that kilde; closing it puts the reader back on the path they arrived on,
+/// <c>PathBase</c> included, rather than on the site root.
 /// </para>
 /// <para>
 /// <b>It reads and writes <c>?kilde=</c> and <c>?sort=</c>, and nothing else.</b> A host's own
@@ -151,15 +150,17 @@ public sealed partial class KildeExplorer : ComponentBase
     /// </remarks>
     private string Query()
     {
-        var kilde = _selectedKildeId is { } id
-            ? QueryKey + "=" + Uri.EscapeDataString(id.ToString())
-            : "";
+        string[] owned =
+        [
+            _selectedKildeId is { } id
+                ? QueryKey + "=" + Uri.EscapeDataString(id.ToString())
+                : "",
+            _order == KildeSortOrder.Standard
+                ? ""
+                : OrderQueryKey + "=" + Uri.EscapeDataString(_order.ToString()),
+        ];
 
-        var order = _order == KildeSortOrder.Standard
-            ? ""
-            : OrderQueryKey + "=" + Uri.EscapeDataString(_order.ToString());
-
-        return kilde.Length == 0 ? order : order.Length == 0 ? kilde : kilde + "&" + order;
+        return string.Join("&", owned.Where(pair => pair.Length != 0));
     }
 
     /// <summary>Turn the chosen kilder into the query the variable explorer reads, and go there.</summary>

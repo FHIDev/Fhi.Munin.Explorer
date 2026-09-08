@@ -473,10 +473,10 @@ internal sealed record Texts(
     // screen. Swapped, each would read as a true sentence in the wrong place — the failure neither
     // one's own test can see.
     Func<int, string> SelectedKildeCount,
-    // The four orders the kilde list offers, worded so each says which way it runs: a bare
-    // "Opprettet" over a select names a column and not an order, and a reader cannot tell from it
-    // whether the oldest or the newest kilde is about to come first. The fifth, the order the
-    // catalogue sent, wears SortDefault — the same word the variable explorer's own default does.
+    // Four labels here plus SortDefault for the catalogue's own order, which is the five members of
+    // KildeSortOrder: the default reuses that word rather than adding a fifth label, so it reads as
+    // the variable explorer's own default does. Each of the four says which way it runs, because a
+    // bare "Opprettet" over a select names a column and not an order.
     string KildeOrderName,
     string KildeOrderVariables,
     string KildeOrderSourceUpdated,
@@ -972,12 +972,8 @@ internal sealed record Texts(
         KildeVariableCount: count => count == 1
             ? "1 publisert variabel i denne kilden."
             : $"{count} publiserte variabler i denne kilden.",
-        KildeCount: (count, order) =>
-        {
-            var kilder = count == 1 ? "1 kilde" : $"{count} kilder";
-
-            return order is null ? kilder : $"{kilder}, sortert etter {order}";
-        },
+        KildeCount: (count, order) => (count == 1 ? "1 kilde" : $"{count} kilder")
+                                      + (order is null ? "" : $", sortert etter {order}"),
         SelectedKildeCount: count => count == 1 ? "1 kilde valgt" : $"{count} kilder valgt",
         KildeOrderName: "Navn A–Å",
         KildeOrderVariables: "Flest variabler",
@@ -1290,12 +1286,8 @@ internal sealed record Texts(
         KildeVariableCount: count => count == 1
             ? "1 published variable in this source."
             : $"{count} published variables in this source.",
-        KildeCount: (count, order) =>
-        {
-            var sources = count == 1 ? "1 source" : $"{count} sources";
-
-            return order is null ? sources : $"{sources}, sorted by {order}";
-        },
+        KildeCount: (count, order) => (count == 1 ? "1 source" : $"{count} sources")
+                                      + (order is null ? "" : $", sorted by {order}"),
         SelectedKildeCount: count => count == 1 ? "1 source selected" : $"{count} sources selected",
         KildeOrderName: "Name A–Z",
         KildeOrderVariables: "Most variables",

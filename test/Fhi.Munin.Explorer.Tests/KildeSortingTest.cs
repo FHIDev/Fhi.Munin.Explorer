@@ -94,6 +94,12 @@ public class KildeSortingTest : BunitContext
     private static void Choose(IRenderedComponent<KildeSearch> cut, KildeSortOrder order) =>
         cut.Find("select[id^='munin-explorer-sort']").Change(order.ToString());
 
+    /// <summary>The order the control is showing, read off the option the markup marks.</summary>
+    private static string SelectedOrder(IRenderedComponent<KildeSearch> cut) =>
+        cut.FindAll("select[id^='munin-explorer-sort'] option")
+           .Single(option => option.HasAttribute("selected"))
+           .TextContent.Trim();
+
     [Fact]
     public void Order_WhenNobodyHasChosenOne_ThenTheListIsInTheOrderTheCatalogueSentIt()
     {
@@ -243,6 +249,30 @@ public class KildeSortingTest : BunitContext
     }
 
     [Fact]
+    public void Order_WhenTheReaderHasSearchedFirst_ThenTheOrderRunsOverEverythingTheSearchLeft()
+    {
+        // The facet half of AC1 is above; this is the search half, and the two narrow through
+        // different code. A sort moved ahead of the search, or into the facet branch alone, gives
+        // the same answer everywhere except here — a filter and a non-default order both in force.
+        var cut = RenderWith(
+            Kilde("Als registeret", "K_ALS", variables: 3),
+            Kilde("Barnediabetes", "K_BDR", variables: 900),
+            Kilde("Dødsårsaksregisteret", "K_DAR", variables: 12),
+            Kilde("Reseptregisteret", "K_NORPD", variables: 40),
+            Kilde("Kreftregisteret", "K_KRG", variables: 7));
+
+        cut.Find(".searchbox__freetext").Change("register");
+
+        Choose(cut, KildeSortOrder.Variables);
+
+        // Barnediabetes has the most variables of the five and matches none of the search, so a
+        // sort that ran over the catalogue rather than over the matches would head this list.
+        Assert.Equal(
+            ["Reseptregisteret", "Dødsårsaksregisteret", "Kreftregisteret", "Als registeret"],
+            RowNames(cut));
+    }
+
+    [Fact]
     public void Order_WhenTheReaderSorts_ThenTheStatusLineSaysWhichOrderTheRowsAreIn()
     {
         // The rows move under a screen reader with nothing announcing it otherwise: the status line
@@ -330,6 +360,15 @@ public class KildeSortingTest : BunitContext
         cut.Find("select[id^='munin-explorer-sort']").Change("999");
 
         Assert.Equal("2 kilder", cut.Find("p[role=status]").TextContent.Trim());
+        Assert.Equal("Standard", SelectedOrder(cut));
+
+        // Again from the catalogue's own order, where the fallback is what is already in force: no
+        // state changes and nothing re-renders, so only the refusal key puts the control back. A
+        // browser moves the selection itself before onchange and bUnit does not, hence the key.
+        cut.Find("select[id^='munin-explorer-sort']").Change("999");
+
+        Assert.Equal("2 kilder", cut.Find("p[role=status]").TextContent.Trim());
+        Assert.Equal("Standard", SelectedOrder(cut));
     }
 
     [Fact]

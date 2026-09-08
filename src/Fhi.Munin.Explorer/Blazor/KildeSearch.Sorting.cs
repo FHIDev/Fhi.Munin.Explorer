@@ -45,6 +45,14 @@ public sealed partial class KildeSearch
 
     private string SortSelectId => $"munin-explorer-sort-{_instance}";
 
+    /// <summary>Bumped whenever a value is refused, to key the control below.</summary>
+    /// <remarks>
+    /// A browser moves a select's own selection before <c>onchange</c> runs, so a refused value
+    /// leaves it naming an order the rows are not in — and where the fallback is the order already
+    /// in force nothing changes, so re-rendering moves nothing back. A new key discards it.
+    /// </remarks>
+    private int _orderRefusals;
+
     /// <summary>The order the reader picked, or the catalogue's own for anything unreadable.</summary>
     /// <remarks>
     /// A <c>&lt;select&gt;</c> can only send a value this component wrote into it, so the fallback
@@ -53,10 +61,15 @@ public sealed partial class KildeSearch
     /// </remarks>
     private async Task ChooseOrderAsync(ChangeEventArgs args)
     {
-        var chosen = Enum.TryParse<KildeSortOrder>(args.Value as string, ignoreCase: true, out var parsed)
-                     && Enum.IsDefined(parsed)
-            ? parsed
-            : KildeSortOrder.Standard;
+        // Refused, and the select has already moved itself, so it has to be put back — see
+        // _orderRefusals. Falling back is not enough on its own: where the fallback is the order
+        // already in force, the early return below leaves the control naming the rejected one.
+        if (!Enum.TryParse<KildeSortOrder>(args.Value as string, ignoreCase: true, out var chosen)
+            || !Enum.IsDefined(chosen))
+        {
+            _orderRefusals++;
+            chosen = KildeSortOrder.Standard;
+        }
 
         if (chosen == _order)
         {

@@ -495,6 +495,58 @@ public class UrlStateComponentTest : BunitContext
     private static string? Selected(IRenderedComponent<KildeExplorer> cut) =>
         Sort(cut).QuerySelectorAll("option").Single(option => option.HasAttribute("selected")).GetAttribute("value");
 
+    /// <summary>The names down the table, which is the only place the order is actually visible.</summary>
+    private static IReadOnlyList<string> RowNames(IRenderedComponent<KildeExplorer> cut) =>
+        [.. cut.FindAll(".munin-explorer-kilder__name").Select(button => button.TextContent.Trim())];
+
+    /// <summary>Three kilder in an order that is neither alphabetical nor its reverse.</summary>
+    private sealed class ThreeKilderClient : EmptyMuninExplorerClient
+    {
+        public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
+            string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<KildeSummary>>(
+            [
+                Kilde(Guid.NewGuid(), "Reseptregisteret"),
+                Kilde(Guid.NewGuid(), "Als registeret"),
+                Kilde(Guid.NewGuid(), "Barnediabetes"),
+            ]);
+    }
+
+    /// <inheritdoc cref="RenderKilder"/>
+    private IRenderedComponent<KildeExplorer> RenderThreeKilder(string url)
+    {
+        Services.AddSingleton<IMuninExplorerClient>(new ThreeKilderClient());
+        Prepare();
+        Navigation.NavigateTo(url);
+
+        return Render<KildeExplorer>();
+    }
+
+    [Fact]
+    public void Kilder_WhenTheReaderSortsTheList_ThenTheRowsThemselvesMoveAndNotOnlyTheControl()
+    {
+        // Every other sort test here reads the control or the address bar back, and both would go
+        // on agreeing with a component that never handed the order down to the table it draws.
+        var cut = RenderThreeKilder("http://localhost/kilder");
+
+        Assert.Equal(["Reseptregisteret", "Als registeret", "Barnediabetes"], RowNames(cut));
+
+        Sort(cut).Change(KildeSortOrder.Name.ToString());
+
+        Assert.Equal(["Als registeret", "Barnediabetes", "Reseptregisteret"], RowNames(cut));
+    }
+
+    [Fact]
+    public void Kilder_WhenALinkCarriesAnOrder_ThenTheRowsArriveInItOnTheFirstPaint()
+    {
+        // The other half of the same thread, and the half a control-only assertion cannot see: the
+        // order has to reach KildeSearch's Order parameter before the child reads it, so a parent
+        // that set its own field after that read would still show a control naming this order.
+        var cut = RenderThreeKilder("http://localhost/kilder?sort=Name");
+
+        Assert.Equal(["Als registeret", "Barnediabetes", "Reseptregisteret"], RowNames(cut));
+    }
+
     [Fact]
     public void Kilder_WhenTheListIsInTheOrderItArrivedIn_ThenNothingIsWrittenToTheUrl()
     {
