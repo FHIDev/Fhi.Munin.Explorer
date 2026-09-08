@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
-# Guard for flatten-release-notes.sh. It feeds the package's release notes, and a silently
-# dropped entry is invisible until a host reads the feed and finds a version missing from it.
-#
-# The case that motivated this: the flattener matched only "- " bullets while
-# scripts/assemble-changelog.ps1 accepts "^[-*]\s". A fragment written with "*" reached
-# CHANGELOG.md and the GitHub release and vanished from the package notes.
+# Guard for flatten-release-notes.sh. Every bullet the assembler accepts must produce exactly
+# one line: an entry dropped here is invisible until a host reads the feed and finds it missing.
+# Bullet shapes are taken from scripts/assemble-changelog.ps1, which is what defines them.
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

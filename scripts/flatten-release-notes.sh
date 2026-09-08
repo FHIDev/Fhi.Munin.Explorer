@@ -1,14 +1,7 @@
 #!/usr/bin/env bash
-# Flatten an assembled changelog section into the plain text a NuGet feed can show.
-#
-# The feed page renders PackageReleaseNotes as PLAIN TEXT, so the markdown that reads well
-# in CHANGELOG.md and on the GitHub release arrives as literal ###, ** and backticks, wrapped
-# mid-sentence. alpha.10 shipped 27654 characters of it. Only the package is flattened; the
-# GitHub release keeps the markdown, which it renders.
-#
-# One line per entry, taken from the bolded sentence each bullet opens with — changelog.d/README.md
-# asks for one and says it is published alone. A bullet without one falls back to its first
-# sentence, which is why an unbolded fragment still releases rather than failing the run.
+# One line per entry, for the package's release notes: the feed renders them as PLAIN TEXT,
+# so markdown arrives literal. Each line is the bolded sentence a bullet opens with, or its
+# first sentence if it has none. The GitHub release keeps the markdown and is unaffected.
 set -euo pipefail
 
 IN="${1:?usage: flatten-release-notes.sh <release-notes.md>}"
