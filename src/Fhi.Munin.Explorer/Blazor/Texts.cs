@@ -623,8 +623,10 @@ internal sealed record Texts(
     /// </summary>
     private static readonly Dictionary<string, string> DataTypeAliases = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["string"] = "1", ["tekst"] = "1",
-        ["integer"] = "2", ["int"] = "2",
+        ["string"] = "1",
+        ["tekst"] = "1",
+        ["integer"] = "2",
+        ["int"] = "2",
         ["decimal"] = "3",
         ["boolean"] = "4",
         ["time"] = "5",
