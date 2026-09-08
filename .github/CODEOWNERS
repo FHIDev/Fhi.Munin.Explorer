@@ -18,11 +18,19 @@
 # the artefact is not what is permanent — the restore is: whoever already pulled 0.4.0 keeps the
 # bytes they got, and no deletion reaches them. A version number that has gone out is therefore
 # spent whether or not it is still on the feed. That covers the workflow that publishes, the
-# scripts that guard what goes into the package, and the version and metadata the package is
+# scripts that decide what goes out under a version, and the version and metadata the package is
 # stamped with.
 /.github/workflows/       @FHIDev/fhi-munin-maintainer
-/scripts/                 @FHIDev/fhi-munin-maintainer
 /Directory.Build.props    @FHIDev/fhi-munin-maintainer
+
+# Named one by one rather than as `/scripts/`: only these five put something out that cannot be
+# taken back, and the rest are checks a later commit can fix — the test above. Naming them also
+# leaves a new script unowned by default, which is the recoverable direction.
+/scripts/push-packages.sh       @FHIDev/fhi-munin-maintainer
+/scripts/release-changelog.sh   @FHIDev/fhi-munin-maintainer
+/scripts/assemble-changelog.ps1 @FHIDev/fhi-munin-maintainer
+/scripts/assert-package-contents.sh @FHIDev/fhi-munin-maintainer
+/scripts/flatten-release-notes.sh   @FHIDev/fhi-munin-maintainer
 
 # The build error that keeps host-specific APIs out of a library that has to render inside
 # helsedata's legacy Blazor Server. Weakening it does not fail anything here; it fails later,
