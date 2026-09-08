@@ -410,14 +410,22 @@ public partial class VariableSearch
 
     private FacetValue DataTypeValue(DataTypeFacet dataType) =>
         new($"datatype:{dataType.Value}",
-            // The facet carries a DisplayName, and it is the English word for the legacy codes, so
-            // the label comes from the shipped table keyed by code instead — the same word the rows
-            // and the detail panel show for that value. (Fhi.Metadata-l9l2n.49)
-            T.DataTypeLabel(dataType.Value),
+            DataTypeFacetLabel(dataType),
             Counted(dataType.Count),
             _filter.DataTypes.Contains(dataType.Value),
             () => ToggleAsync(_filter.DataTypes, dataType.Value, values => _filter with { DataTypes = values }),
             []);
+
+    /// <summary>The word on a datatype facet button, on the same terms as the result rows.</summary>
+    /// <remarks>
+    /// The API names the facet and owns that vocabulary, so its name is what shows, with the
+    /// shipped table asked for one thing only — the Norwegian behind a known legacy English form.
+    /// A facet carrying no name at all falls back to the table keyed by the code.
+    /// </remarks>
+    private string DataTypeFacetLabel(DataTypeFacet dataType) =>
+        T.NormaliseDataTypeDisplayName(dataType.DisplayName) is { } named && !string.IsNullOrWhiteSpace(named)
+            ? named
+            : T.DataTypeLabel(dataType.Value);
 
     private FacetGroup HelsefagligKodeverkGroup(FilterOptions facets) =>
         new("helsefaglig-kodeverk",

@@ -569,9 +569,10 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// a table that ships to other people and goes stale where nobody is looking.
     /// <para>
     /// The shipped table is asked one thing only, through
-    /// <see cref="Texts.NormaliseDataTypeDisplayName"/>: the Norwegian behind a name that arrived in
-    /// a known legacy English form, which is what the panel and the facet show for that same value.
-    /// Anything else renders as the API sent it. (Fhi.Metadata-l9l2n.49)
+    /// <see cref="Texts.NormaliseDataTypeDisplayName"/>: the Norwegian behind a known legacy English
+    /// form, which is what the explorer's rows and its datatype facet show for that same value.
+    /// Anything else renders as the API sent it; the detail panel holds the stored code alone, so
+    /// it says the code for a datatype the shipped table has no name for. (Fhi.Metadata-l9l2n.49)
     /// </para>
     /// </remarks>
     private string? DataTypeName(string? code)

@@ -1428,9 +1428,10 @@ public sealed partial class VariableSearch : ComponentBase
     /// <para>
     /// The API owns the vocabulary — a table here would freeze a copy of editable master data in a
     /// package that ships to other people — so the shipped table is asked one thing only, through
-    /// <see cref="Texts.NormaliseDataTypeDisplayName"/>: the Norwegian behind a name that arrived
-    /// in a known legacy English form, which is what the panel and the facet show for that value.
-    /// Anything else renders as it arrived, the raw code included. (Fhi.Metadata-l9l2n.49)
+    /// <see cref="Texts.NormaliseDataTypeDisplayName"/>: the Norwegian behind a known legacy
+    /// English form. Anything else renders as it arrived. The facet resolves its own label the
+    /// same way; the detail panel holds the stored code alone and reads the shipped table, so it
+    /// says the code for a datatype that table has no name for. (Fhi.Metadata-l9l2n.49)
     /// </para>
     /// </remarks>
     private string? DataTypeName(string? code)

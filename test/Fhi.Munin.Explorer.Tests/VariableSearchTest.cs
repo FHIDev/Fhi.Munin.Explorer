@@ -3839,8 +3839,9 @@ public class VariableSearchTest : BunitContext
     [Fact]
     public void Render_WhenADatatypeArrivesAsABareCode_ThenTheButtonSaysWhatTheCodeMeans()
     {
-        // A facet carrying no label at all is what this fixture holds; the live one carries the
-        // English word. Either way the button is drawn from the shipped table keyed by the code.
+        // A facet carrying no label at all — what an API predating the names sends, and what this
+        // fixture holds — is the one case the button still resolves from the shipped table keyed
+        // by the code. A facet that does carry a name shows that name. (Fhi.Metadata-l9l2n.49)
         var cut = RenderWith(new FilteringClient(OnePage()));
 
         Assert.Equal("Streng (9)", Facet(cut, "Streng").TextContent);
@@ -3869,10 +3870,12 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
-    public void Render_WhenTheApiNamesADatatypeWeHaveNoAliasFor_ThenTheRowShowsWhatTheApiSent()
+    public void Render_WhenTheApiNamesADatatypeWeHaveNoAliasFor_ThenTheRowAndTheFacetShowIt()
     {
         // The API owns the vocabulary: a datatype added on its side reaches the row unaltered, and
-        // is not routed through a table shipped inside this package. (Fhi.Metadata-l9l2n.49)
+        // is not routed through a table shipped inside this package. The facet is asserted beside
+        // the row because it was the surface still keyed by the code, drawing "11" against the
+        // row's "Kvasistreng" until this. (Fhi.Metadata-l9l2n.49)
         var facets = Facets() with
         {
             DataTypes = [new() { Value = "11", DisplayName = "Kvasistreng", Count = 2 }]
@@ -3882,6 +3885,7 @@ public class VariableSearchTest : BunitContext
         var cut = RenderWith(new FilteringClient(OnePage(row), facets));
 
         Assert.Equal("Kvasistreng", CellText(cut, "dataType"));
+        Assert.Equal("Kvasistreng (2)", Facet(cut, "Kvasistreng").TextContent);
     }
 
     [Fact]

@@ -667,17 +667,18 @@ internal sealed record Texts(
         ["base64binary"] = "9",
     };
 
-    /// <summary>Prose for a datatype code or legacy alias, for the two surfaces holding a stored
-    /// value rather than an API name: the detail panel and the facet. Falls back to the canonical
-    /// code — never to the English word an alias arrived as. (Fhi.Metadata-l9l2n.49)</summary>
+    /// <summary>Prose for a datatype code or legacy alias, for the detail panel, which holds the
+    /// stored value and no name from the API, and for a facet that arrived without one. Falls back
+    /// to the canonical code — never to the English word an alias arrived as.
+    /// (Fhi.Metadata-l9l2n.49)</summary>
     public string DataTypeLabel(string value)
     {
         var code = DataTypeAliases.TryGetValue(value, out var canonical) ? canonical : value;
         return DataTypeNames.TryGetValue(code, out var name) ? name : code;
     }
 
-    /// <summary>What a row shows for a datatype the API has already named. The API owns the
-    /// vocabulary: only a known legacy English form is replaced, by the Norwegian the shipped
+    /// <summary>What a row or a facet shows for a datatype the API has already named. The API owns
+    /// the vocabulary: only a known legacy English form is replaced, by the Norwegian the shipped
     /// table has for the code it aliases, and anything else is returned as it arrived.</summary>
     public string? NormaliseDataTypeDisplayName(string? apiName)
     {
