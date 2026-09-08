@@ -1127,6 +1127,7 @@ public class VariableListViewTest : BunitContext
         };
 
         var cut = RenderView(client);
+        var state = Services.GetRequiredService<VariableListState>();
 
         Assert.StartsWith("2 variabler", cut.Find("p.caption").TextContent, StringComparison.Ordinal);
         Assert.Contains("2020", cut.Find("p.caption").TextContent, StringComparison.Ordinal);
@@ -1135,13 +1136,22 @@ public class VariableListViewTest : BunitContext
         // 31 December would compare a stamp from one year against a name from the next.
         var thisYear = DateTimeOffset.UtcNow.Year.ToString();
 
-        // The removal first, and deliberately: after a rename the stamp already says today, so a
-        // removal that moved it too would be indistinguishable from one that left it alone.
+        // Both writes before the rename, and deliberately: once a rename has moved the stamp to
+        // today, an add or a remove that moved it too would be indistinguishable from one that did
+        // not. The add is here because a regression on that path alone passed the whole suite.
+        await cut.InvokeAsync(() => state.AddVariablesAsync(ListId, [Guid.NewGuid()]));
+
+        var afterAdd = cut.Find("p.caption").TextContent;
+
+        Assert.StartsWith("3 variabler", afterAdd, StringComparison.Ordinal);
+        Assert.Contains("2020", afterAdd, StringComparison.Ordinal);
+        Assert.DoesNotContain(thisYear, afterAdd, StringComparison.Ordinal);
+
         await cut.InvokeAsync(() => cut.FindAll("tbody tr td:last-child button")[0].Click());
 
         var afterRemoval = cut.Find("p.caption").TextContent;
 
-        Assert.StartsWith("1 variabel", afterRemoval, StringComparison.Ordinal);
+        Assert.StartsWith("2 variabler", afterRemoval, StringComparison.Ordinal);
         Assert.Contains("2020", afterRemoval, StringComparison.Ordinal);
         Assert.DoesNotContain(thisYear, afterRemoval, StringComparison.Ordinal);
 
@@ -1177,6 +1187,9 @@ public class VariableListViewTest : BunitContext
 
         await cut.InvokeAsync(() => state.RefreshAsync());
 
+        // The refetch has to have happened, or a RefreshAsync that quietly became a no-op would
+        // satisfy the equality below by changing nothing at all.
+        Assert.Equal(2, client.ListsCalls);
         Assert.Equal(afterRemoval, cut.Find("p.caption").TextContent);
         Assert.Contains("2020", cut.Find("p.caption").TextContent, StringComparison.Ordinal);
     }
