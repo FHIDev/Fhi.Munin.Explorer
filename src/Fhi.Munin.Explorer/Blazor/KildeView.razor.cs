@@ -127,26 +127,17 @@ public sealed partial class KildeView : ComponentBase
 
     /// <summary>Keys whose value already appears elsewhere on the page, so the metadata does not repeat them.</summary>
     /// <remarks>
-    /// Beskrivelse and Tittel always duplicate the ingress and the name heading (Fhi.Metadata-8yqoz).
-    /// Formaal is dropped in favour of its richer EHDS mirror, and hasLegalBasis in favour of the
-    /// sidebar's Lovverk, but only once both twins actually hold a value (Fhi.Metadata-43jrq).
+    /// Beskrivelse always duplicates the ingress (Fhi.Metadata-8yqoz). Formaal is safely dropped
+    /// when FormaalFlerspraklig also holds a value; Tittel and hasLegalBasis are not, since their
+    /// EHDS mirrors can hold content PreferredTerm and Lovverk lack (Fhi.Metadata-43jrq).
     /// </remarks>
     private static IReadOnlySet<string> DrawnElsewhere(KildeDetail kilde)
     {
-        var keys = new HashSet<string>(StringComparer.Ordinal)
-        {
-            "Beskrivelse", "BeskrivelseFlerspraklig",
-            "Tittel", "TittelFlerspraklig",
-        };
+        var keys = new HashSet<string>(StringComparer.Ordinal) { "Beskrivelse", "BeskrivelseFlerspraklig" };
 
         if (Filled(kilde, "Formaal") && Filled(kilde, "FormaalFlerspraklig"))
         {
             keys.Add("Formaal");
-        }
-
-        if (!string.IsNullOrWhiteSpace(kilde.LegalBasis) && Filled(kilde, "hasLegalBasis"))
-        {
-            keys.Add("hasLegalBasis");
         }
 
         return keys;
