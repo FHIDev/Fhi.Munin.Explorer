@@ -550,7 +550,7 @@ public class UrlStateComponentTest : BunitContext
         // often as it is copied.
         var id = Guid.NewGuid();
 
-        var cut = RenderKilder(id, "http://localhost/kilder?SORT=variabler");
+        var cut = RenderKilder(id, "http://localhost/kilder?SORT=variables");
 
         Assert.Equal(KildeSortOrder.Variables.ToString(), Selected(cut));
     }
