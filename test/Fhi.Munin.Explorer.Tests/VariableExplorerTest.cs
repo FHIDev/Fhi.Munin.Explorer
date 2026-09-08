@@ -232,6 +232,19 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
+    public void SignedIn_WhenThePageOpens_ThenTheSignInMessageIsNotDrawn()
+    {
+        // Fhi.Metadata-4ifsa's else branch must not leak into the signed-in case, where the real
+        // tab already does the job the sentence stands in for when signed out.
+        var cut = RenderExplorer(new ExplorerClient(Variable("Alder ved diagnose", "V_BDR.ALDER")));
+
+        Assert.DoesNotContain(
+            cut.FindAll("p.caption"),
+            p => p.TextContent == "Logg inn for å lage og bruke egne variabellister.");
+        Assert.NotEmpty(cut.FindAll("[role=tablist]"));
+    }
+
+    [Fact]
     public void Tabs_WhenTheOtherOneIsPressed_ThenItIsSelectedAndItsPanelIsShown()
     {
         var cut = RenderExplorer(new ExplorerClient());
@@ -474,8 +487,8 @@ public class VariableExplorerTest : BunitContext
     [Fact]
     public void SignedOut_WhenTheExplorerIsDrawn_ThenThereIsNoTablistAtAll()
     {
-        // A signed-out reader has no lists, so a second tab would name an empty panel. No tablist,
-        // and the results stand where they always did — the shape that host had before the tabs.
+        // A signed-out reader has no lists, so a second tab would name an empty panel. No tablist —
+        // Fhi.Metadata-4ifsa is the sentence that stands in its place, asserted below.
         var cut = RenderExplorer(new ExplorerClient(Variable("Alder ved diagnose", "V_BDR.ALDER")), signedIn: false);
 
         Assert.Empty(cut.FindAll("[role=tablist]"));
@@ -486,6 +499,25 @@ public class VariableExplorerTest : BunitContext
         // The results are still there, and still offer nothing that needs a reader.
         Assert.Contains("Alder ved diagnose", cut.Markup, StringComparison.Ordinal);
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]"));
+    }
+
+    [Fact]
+    public void SignedOut_WhereTheTabWouldBe_ThenAReaderIsToldListsRequireSigningIn()
+    {
+        // Fhi.Metadata-4ifsa: the feature was invisible to a reader who had never signed in — no
+        // tab, no sentence, nothing. This asserts the sentence, with IsAuthenticated passed false
+        // explicitly, not the always-true /MuninRuna stand-in that would pass regardless. `.caption`
+        // is shared with other captions on the page, so the message is matched by its own text.
+        var cut = RenderExplorer(new ExplorerClient(Variable("Alder ved diagnose", "V_BDR.ALDER")), signedIn: false);
+
+        Assert.Contains(
+            cut.FindAll("p.caption"),
+            p => p.TextContent == "Logg inn for å lage og bruke egne variabellister.");
+
+        // Not a second login control: nothing on the signed-out page names itself that way.
+        Assert.DoesNotContain(
+            cut.FindAll("button,a"),
+            el => el.TextContent.Contains("logg inn", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -500,6 +532,9 @@ public class VariableExplorerTest : BunitContext
 
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]"));
         Assert.Empty(cut.FindAll("[role=tablist]"));
+        Assert.Contains(
+            cut.FindAll("p.caption"),
+            p => p.TextContent == "Logg inn for å lage og bruke egne variabellister.");
     }
 
     // -----------------------------------------------------------------------

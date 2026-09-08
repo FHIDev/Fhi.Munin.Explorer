@@ -473,7 +473,12 @@ internal sealed record Texts(
     // the reader to do different things. The facet count is in the sentence for the reason it is in
     // NoResults above — nothing matching *with two facets ticked* is a different thing to be told
     // than nothing matching at all, and the second reads as "this catalogue does not have it".
-    Func<string?, int, string> NoKilderMatch)
+    Func<string?, int, string> NoKilderMatch,
+
+    // Shown where the Variabelliste tab would otherwise sit, for a signed-out reader: helsedata's
+    // own header already has a working Log in, so this names what it unlocks rather than
+    // duplicating it. (Fhi.Metadata-4ifsa)
+    string SignInForVariableLists)
 {
     /// <summary>
     /// The label for a sort order. The three that name one field use the same words the result
@@ -937,7 +942,8 @@ internal sealed record Texts(
             var forSearch = $"Ingen kilder samsvarer med søket «{search}»";
 
             return filters == 0 ? $"{forSearch}." : $"{forSearch} og filtrene som er valgt.";
-        });
+        },
+        SignInForVariableLists: "Logg inn for å lage og bruke egne variabellister.");
 
     private static readonly Texts En = new(
         Title: "Variable explorer",
@@ -1238,7 +1244,8 @@ internal sealed record Texts(
             var forSearch = $"No sources match your search for “{search}”";
 
             return filters == 0 ? $"{forSearch}." : $"{forSearch} and the filters you have chosen.";
-        });
+        },
+        SignInForVariableLists: "Sign in to create and use your own variable lists.");
 
     /// <summary>The words for a reader, defaulting to Norwegian for anything that is not English.</summary>
     /// <remarks>

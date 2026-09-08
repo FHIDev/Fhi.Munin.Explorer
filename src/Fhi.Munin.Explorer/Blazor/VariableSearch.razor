@@ -457,7 +457,8 @@ else
        panel. (Fhi.Metadata-l9l2n.39)
 
        Drawn only for a reader who has lists to switch to. Signed out the second tab would name an
-       empty panel, so there is no tablist at all and the results render as they always did. *@
+       empty panel, so there is no tablist at all — instead, the line below says what it would have
+       opened onto (Fhi.Metadata-4ifsa). *@
     @if (ShowTabs)
     {
         <div class="munin-explorer-meta__tabs"
@@ -478,6 +479,14 @@ else
                 </div>
             }
         </div>
+    }
+    else if (VariableList is not null && !IsAuthenticated)
+    {
+        @* Not a login control — helsedata's own header already has one, and a second would be a
+           regression dressed as a fix. This is the one sentence that says variabellister exist at
+           all to a reader who has never signed in to see them (Fhi.Metadata-4ifsa). `.caption` is
+           already pinned: VariableListView draws its list-meta line with the same class. *@
+        <p class="caption">@T.SignInForVariableLists</p>
     }
 
     @* The panel the results live in. Unclassed and role-less when there are no tabs, so a
