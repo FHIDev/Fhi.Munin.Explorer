@@ -212,7 +212,7 @@ jobs:
         # Beside the assembly check because it guards the step after it, though it runs against
         # its own fixture rather than that step's output. The failure it catches is an entry
         # silently missing from the package's release notes, invisible until a host reads the feed.
-        run: ./scripts/test-flatten-release-notes.sh
+        run: bash scripts/test-flatten-release-notes.sh
 
   # The two sample hosts share one stylesheet, copied. Nothing about a build notices when the
   # copies stop agreeing — the drift shows up as a component that looks broken in one sample and

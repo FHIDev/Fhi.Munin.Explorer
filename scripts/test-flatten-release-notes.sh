@@ -50,7 +50,10 @@ EOF
 # [ \t] was meant to cover and did not portably.
 printf -- '-\t**A tab-separated bullet.** Detail after it.\n' >> "$tmp"
 
-out="$("$flatten" "$tmp")"
+# Invoked via bash, not directly: the first CI run on this branch died on Permission
+# denied because the exec bit was not in the index. Nothing here should depend on
+# git file mode.
+out="$(bash "$flatten" "$tmp")"
 
 check  "dash bullet keeps its title"        "A dash bullet with a bolded lead"   "$out"
 check  "STAR bullet is not dropped"         "A star bullet with a bolded lead"   "$out"
@@ -78,7 +81,7 @@ else
   fail=1
 fi
 
-empty="$("$flatten" /dev/null)"
+empty="$(bash "$flatten" /dev/null)"
 check  "empty input has a stand-in"         "No changelog entry was assembled"   "$empty"
 
 # The feed reads these from line one, so a blank first line is a visible fault.
