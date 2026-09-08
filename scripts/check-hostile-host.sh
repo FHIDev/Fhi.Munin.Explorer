@@ -106,10 +106,32 @@ if ! curl -fsS -o /dev/null --max-time 5 "${STUB_BASE}/api/explorer/kilder" 2>/d
   exit 2
 fi
 
+# STILER_FROM_SOURCE=1 swaps the pinned package for the Stiler checkout beside this repository,
+# which is the only way this port runs on a machine without the Azure Artifacts Credential
+# Provider. What it then measures is Stiler MAIN, not the pinned 0.1.42 helsedata restore, so the
+# run says which of the two it used and CI never sets it (Fhi.Metadata-wgwa0).
+STILER_ARGS=()
+if [ "${STILER_FROM_SOURCE:-0}" = "1" ]; then
+  STILER_REPO="${STILER_REPO_PATH:-$ROOT/../Fhi.Helsedata.Stiler}"
+  if [ ! -f "$STILER_REPO/Fhi.Helsedata.Stiler.csproj" ]; then
+    echo "STILER_FROM_SOURCE=1 but no Stiler checkout at $STILER_REPO - TOOLING failure." >&2
+    exit 2
+  fi
+  if [ ! -f "$STILER_REPO/wwwroot/css/main.css" ]; then
+    echo "==> building Stiler from source in $STILER_REPO"
+    (cd "$STILER_REPO" && npm install --silent && npm run build) || {
+      echo "Stiler would not build - TOOLING failure." >&2; exit 2; }
+  fi
+  STILER_ARGS=(-p:UseLocalStiler=true "-p:StilerRepoPath=$STILER_REPO")
+  echo "==> STILER: built from source at $STILER_REPO (main, NOT the pinned package)"
+else
+  echo "==> STILER: the pinned Fhi.Helsedata.Stiler package, as helsedata restore it"
+fi
+
 echo "==> starting HostileHost on ${BASE}"
 (
   cd "$ROOT"
-  MuninExplorer__ApiBaseUrl="$STUB_BASE" dotnet run --project samples/HostileHost --urls "$BASE" >/tmp/hostile-host.log 2>&1
+  MuninExplorer__ApiBaseUrl="$STUB_BASE" dotnet run --project samples/HostileHost "${STILER_ARGS[@]}" --urls "$BASE" >/tmp/hostile-host.log 2>&1
 ) &
 host_pid=$!
 
@@ -162,11 +184,19 @@ npm install --no-save --silent \
   exit 2
 }
 
-npx --yes playwright install chromium >/tmp/hostile-pw-install.log 2>&1 || {
-  echo "could not install chromium - TOOLING failure." >&2
-  tail -10 /tmp/hostile-pw-install.log >&2
-  exit 2
-}
+# Skipped when a channel is set: that browser is already installed, and on Node 26 this step
+# cannot succeed at all - the pinned fetcher calls fs.rmdir(recursive), removed in that version,
+# which leaves a half-written cache with a chrome.dll and no chrome.exe (Fhi.Metadata-wgwa0).
+if [ -z "${PLAYWRIGHT_BROWSER_CHANNEL:-}" ]; then
+  npx --yes playwright install chromium >/tmp/hostile-pw-install.log 2>&1 || {
+    echo "could not install chromium - TOOLING failure." >&2
+    echo "on Node 26 try PLAYWRIGHT_BROWSER_CHANNEL=msedge to use an installed browser." >&2
+    tail -10 /tmp/hostile-pw-install.log >&2
+    exit 2
+  }
+else
+  echo "==> BROWSER: ${PLAYWRIGHT_BROWSER_CHANNEL} (not the bundled chromium)"
+fi
 
 urls=()
 for t in "${TARGETS[@]}"; do urls+=("${BASE}${t}"); done

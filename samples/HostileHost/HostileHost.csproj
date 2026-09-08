@@ -2,23 +2,53 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Fhi.Munin.Explorer\Fhi.Munin.Explorer.csproj" />
+  </ItemGroup>
 
-    <!-- helsedata's real stylesheet, as the package that ships it, served from
-         _content/Fhi.Helsedata.Stiler/css/main.css exactly as their own layout links it.
-         A hand-written stand-in is what the other two samples have, and it is precisely
-         what let four layout defects through on 2026-09-03: two of them were collisions
-         with rules only Stiler has (`div { display: block }` and `.munin-explorer`'s
-         384px grid), which no imitation reproduces by accident.
+  <!-- helsedata's real stylesheet, as the package that ships it, served from
+       _content/Fhi.Helsedata.Stiler/css/main.css exactly as their own layout links it.
+       A hand-written stand-in is what the other two samples have, and it is precisely
+       what let four layout defects through on 2026-09-03: two of them were collisions
+       with rules only Stiler has (`div { display: block }` and `.munin-explorer`'s
+       384px grid), which no imitation reproduces by accident.
 
-         The version is pinned rather than floating. A floating range would make this
-         fixture change meaning between two runs of the same commit, and "the sample host
-         went red overnight" is the one report nobody can act on. Bump it deliberately when
-         helsedata bump theirs; the geometry assertions are what tell you whether the bump
-         broke anything.
+       The version is pinned rather than floating. A floating range would make this
+       fixture change meaning between two runs of the same commit, and "the sample host
+       went red overnight" is the one report nobody can act on. Bump it deliberately when
+       helsedata bump theirs; the geometry assertions are what tell you whether the bump
+       broke anything.
 
-         0.1.41 is the first release carrying `.munin-explorer-kilder-scroll`, which is the
-         Stiler half of Fhi.Metadata-b3brc and what /kilder needs to fit at 1024 and 843. -->
+       0.1.41 is the first release carrying `.munin-explorer-kilder-scroll`, which is the
+       Stiler half of Fhi.Metadata-b3brc and what /kilder needs to fit at 1024 and 843. -->
+  <ItemGroup Condition="'$(UseLocalStiler)' != 'true'">
     <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.42" />
   </ItemGroup>
+
+  <!-- The opt-in dev loop, the same flag and the same shape helsedata's own consumers use
+       (Helsedata.Claude, docs/plans/2026-08-10-felles-stilbibliotek-plan.md fase 5). It swaps
+       the package for the Stiler checkout, whose ProjectReference maps
+       _content/Fhi.Helsedata.Stiler/ straight at that repo's wwwroot on disk — so `npm run
+       build` there is all it takes, with no feed and no Azure Artifacts Credential Provider.
+
+       WHY IT IS OPT-IN AND CI NEVER SETS IT. What this builds is main, not the published
+       0.1.42, and it skips whatever the package's own build does beyond sass. A measurement
+       taken here is not a measurement of what helsedata restore, so the gate keeps the
+       package and this exists for looking at the layout (Fhi.Metadata-wgwa0). -->
+  <PropertyGroup Condition="'$(UseLocalStiler)' == 'true'">
+    <StilerRepoPath Condition="'$(StilerRepoPath)' == ''">$(MSBuildProjectDirectory)\..\..\..\Fhi.Helsedata.Stiler</StilerRepoPath>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(UseLocalStiler)' == 'true'">
+    <ProjectReference Include="$(StilerRepoPath)\Fhi.Helsedata.Stiler.csproj" />
+  </ItemGroup>
+
+  <!-- Without this the failure is "project file not found" against a path the reader never
+       typed, which reads as a broken repository rather than a missing sibling checkout. -->
+  <Target Name="RequireStilerCheckout" BeforeTargets="CollectPackageReferences"
+          Condition="'$(UseLocalStiler)' == 'true'">
+    <Error Condition="!Exists('$(StilerRepoPath)\Fhi.Helsedata.Stiler.csproj')"
+           Text="UseLocalStiler=true, but no Stiler checkout at $(StilerRepoPath). Clone Fhi.Helsedata.Stiler beside this repository, or pass -p:StilerRepoPath=&lt;path&gt;." />
+    <Warning Condition="Exists('$(StilerRepoPath)\Fhi.Helsedata.Stiler.csproj') And !Exists('$(StilerRepoPath)\wwwroot\css\main.css')"
+             Text="Stiler is checked out but not built: no wwwroot/css/main.css. Run 'npm install &amp;&amp; npm run build' in $(StilerRepoPath), or the page renders unstyled." />
+  </Target>
 
 </Project>
