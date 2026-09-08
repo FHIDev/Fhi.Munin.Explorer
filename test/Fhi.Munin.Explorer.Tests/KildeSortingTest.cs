@@ -144,7 +144,7 @@ public class KildeSortingTest : BunitContext
     }
 
     [Fact]
-    public void Order_WhenSortedByVariabler_ThenTheMostComeFirstAndZeroIsAValueAndNotAnAbsence()
+    public void Order_WhenSortedByVariableCount_ThenTheMostComeFirstAndZeroIsAValueAndNotAnAbsence()
     {
         // TotalVariables is a non-nullable int, so the contract cannot say "not counted" — an
         // absent count arrives as 0 (Fhi.Metadata-kbfqs). What this pins is that 0 is ordered as 0,
@@ -154,7 +154,7 @@ public class KildeSortingTest : BunitContext
             Kilde("Stort register", "K_STO", variables: 240),
             Kilde("Lite register", "K_LIT", variables: 7));
 
-        Choose(cut, KildeSortOrder.Variabler);
+        Choose(cut, KildeSortOrder.Variables);
 
         Assert.Equal(["Stort register", "Lite register", "Tomt register"], RowNames(cut));
     }
@@ -208,7 +208,7 @@ public class KildeSortingTest : BunitContext
             Kilde("Als registeret", "K_ALS", variables: 42),
             Kilde("Dødsårsaksregisteret", "K_DAR", variables: 42));
 
-        Choose(cut, KildeSortOrder.Variabler);
+        Choose(cut, KildeSortOrder.Variables);
 
         Assert.Equal(["Als registeret", "Dødsårsaksregisteret", "Ørret-registeret"], RowNames(cut));
     }
@@ -232,7 +232,7 @@ public class KildeSortingTest : BunitContext
            .First(box => box.ParentElement!.TextContent.Contains("Biobank", StringComparison.Ordinal))
            .Change(true);
 
-        Choose(cut, KildeSortOrder.Variabler);
+        Choose(cut, KildeSortOrder.Variables);
 
         // The even indices, most variables first: Y (24), W (22) … A (0).
         var expected = Enumerable.Range(0, 13)
@@ -251,7 +251,7 @@ public class KildeSortingTest : BunitContext
 
         Assert.Equal("2 kilder", cut.Find("p[role=status]").TextContent.Trim());
 
-        Choose(cut, KildeSortOrder.Variabler);
+        Choose(cut, KildeSortOrder.Variables);
 
         Assert.Equal("2 kilder, sortert etter Flest variabler", cut.Find("p[role=status]").TextContent.Trim());
     }
@@ -312,10 +312,10 @@ public class KildeSortingTest : BunitContext
 
         var cut = Render<KildeSearch>(b => b.Add(c => c.OrderChanged, order => chosen.Add(order)));
 
-        Choose(cut, KildeSortOrder.Variabler);
+        Choose(cut, KildeSortOrder.Variables);
         Choose(cut, KildeSortOrder.Standard);
 
-        Assert.Equal([KildeSortOrder.Variabler, KildeSortOrder.Standard], chosen);
+        Assert.Equal([KildeSortOrder.Variables, KildeSortOrder.Standard], chosen);
     }
 
     [Fact]

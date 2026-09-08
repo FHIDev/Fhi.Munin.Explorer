@@ -342,17 +342,16 @@ else
         @* The order the list is in. Above the table with the column picker, and drawn on the same
            condition: an order control over no rows orders nothing.
 
-           A <select> and not the proposal's chips. The mockup styles its own names from an inline
-           <style> block, so nothing in it can be carried across — a class no host stylesheet has
-           heard of draws nothing, where a native select carries its own appearance. It is the
-           shape the pager's size control already settled on here for that reason.
+           A <select> and not the proposal's chips: the mockup styles its own names from an inline
+           <style> block, so nothing in it carries across, and an element degrades to its own
+           browser default where a class no stylesheet has heard of degrades to nothing.
 
-           The wrapper deliberately carries no class. `munin-explorer-results` is a column flex
-           box, so a select placed straight into it would be stretched to the full width of the
-           table; a plain block is what gives it back its own. A name would buy nothing beyond
-           that and would owe a rule in Stiler, in both sample stylesheets and in the README's
-           inventory for good. `form-element__label` on the label is Stiler's own, the same name
-           the search box above wears. *@
+           The select and the wrapper both go unclassed. The form-element family in
+           `test/host-class-names.txt` is __label, __sublabel, __caption and --error with nothing
+           for the control itself, which is why the pager's size control is bare too; and
+           `munin-explorer-results` is a column flex box that would stretch a classless child to
+           the width of the table. The label wears Stiler's `form-element__label`, the same name
+           the search box above it does. *@
         <div>
             <label class="form-element__label" for="@SortSelectId">@T.SortBy</label>
 

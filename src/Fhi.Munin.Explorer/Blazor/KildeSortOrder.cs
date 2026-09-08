@@ -47,7 +47,7 @@ public enum KildeSortOrder
     Name,
 
     /// <summary>Most variables first, counting the kilde's visible published variables.</summary>
-    Variabler,
+    Variables,
 
     /// <summary>
     /// Most recently changed in the source system first — the catalogue's own

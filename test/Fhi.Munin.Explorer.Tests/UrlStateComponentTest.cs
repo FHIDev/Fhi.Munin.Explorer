@@ -466,7 +466,7 @@ public class UrlStateComponentTest : BunitContext
 
     [Theory]
     [InlineData(KildeSortOrder.Name)]
-    [InlineData(KildeSortOrder.Variabler)]
+    [InlineData(KildeSortOrder.Variables)]
     [InlineData(KildeSortOrder.SourceUpdated)]
     [InlineData(KildeSortOrder.Established)]
     public void Kilder_WhenTheReaderSortsTheList_ThenTheOrderIsInTheUrlAndComesBackFromIt(KildeSortOrder order)
@@ -518,11 +518,11 @@ public class UrlStateComponentTest : BunitContext
         // list resetting itself for no reason.
         var id = Guid.NewGuid();
 
-        var cut = RenderKilder(id, $"http://localhost/kilder?kilde={id}&sort=Variabler");
+        var cut = RenderKilder(id, $"http://localhost/kilder?kilde={id}&sort=Variables");
 
         cut.FindAll("button").First(button => button.TextContent.Contains("Tilbake", StringComparison.Ordinal)).Click();
 
-        Assert.Equal("/kilder?sort=Variabler", Mirrored());
+        Assert.Equal("/kilder?sort=Variables", Mirrored());
     }
 
     [Theory]
@@ -552,7 +552,7 @@ public class UrlStateComponentTest : BunitContext
 
         var cut = RenderKilder(id, "http://localhost/kilder?SORT=variabler");
 
-        Assert.Equal(KildeSortOrder.Variabler.ToString(), Selected(cut));
+        Assert.Equal(KildeSortOrder.Variables.ToString(), Selected(cut));
     }
 
     [Fact]

@@ -12,10 +12,13 @@ public sealed partial class KildeSearch
     /// owns it afterwards.
     /// </summary>
     /// <remarks>
-    /// Read once, on initialisation, the way <see cref="SelectedKildeId"/> is. Unlike
-    /// <see cref="Search"/> it has an <see cref="OrderChanged"/> beside it, because an order is
-    /// worth linking to: a reader who sorted by Flest variabler and sent the link would otherwise
-    /// hand over the list as it arrived.
+    /// Read once, on initialisation, and owned by the component afterwards, exactly as
+    /// <see cref="SelectedKildeId"/> is: re-rendering this mount with a different value changes
+    /// nothing on screen, so it is a starting point rather than a live parameter. To follow the
+    /// reader instead, take <see cref="OrderChanged"/> — or write the pair as
+    /// <c>@bind-Order</c>. Unlike <see cref="Search"/> this one has that callback beside it,
+    /// because an order is worth linking to: a reader who sorted by Flest variabler and sent the
+    /// link would otherwise hand over the list as it arrived.
     /// </remarks>
     [Parameter] public KildeSortOrder Order { get; set; }
 
@@ -81,7 +84,7 @@ public sealed partial class KildeSearch
         // API sent, and it is what the list has always shown.
         KildeSortOrder.Standard => kilder,
         KildeSortOrder.Name => [.. ByName(kilder)],
-        KildeSortOrder.Variabler => [.. ByValue(kilder, kilde => (int?)kilde.TotalVariables)],
+        KildeSortOrder.Variables => [.. ByValue(kilder, kilde => (int?)kilde.TotalVariables)],
         KildeSortOrder.SourceUpdated => [.. ByValue(kilder, SourceChangedOn)],
         KildeSortOrder.Established => [.. ByValue(kilder, EstablishedYear)],
         _ => throw new ArgumentOutOfRangeException(nameof(order), order, "No ordering for this kilde order.")

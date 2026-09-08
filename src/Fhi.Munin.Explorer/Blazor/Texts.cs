@@ -478,7 +478,7 @@ internal sealed record Texts(
     // whether the oldest or the newest kilde is about to come first. The fifth, the order the
     // catalogue sent, wears SortDefault — the same word the variable explorer's own default does.
     string KildeOrderName,
-    string KildeOrderVariabler,
+    string KildeOrderVariables,
     string KildeOrderSourceUpdated,
     string KildeOrderEstablished,
     // (name) — the accessible name of one row's checkbox. Every checkbox in a table needs one of
@@ -531,7 +531,7 @@ internal sealed record Texts(
     {
         KildeSortOrder.Standard => SortDefault,
         KildeSortOrder.Name => KildeOrderName,
-        KildeSortOrder.Variabler => KildeOrderVariabler,
+        KildeSortOrder.Variables => KildeOrderVariables,
         KildeSortOrder.SourceUpdated => KildeOrderSourceUpdated,
         KildeSortOrder.Established => KildeOrderEstablished,
         _ => throw new ArgumentOutOfRangeException(nameof(order), order, "No label for this kilde order.")
@@ -980,7 +980,7 @@ internal sealed record Texts(
         },
         SelectedKildeCount: count => count == 1 ? "1 kilde valgt" : $"{count} kilder valgt",
         KildeOrderName: "Navn A–Å",
-        KildeOrderVariabler: "Flest variabler",
+        KildeOrderVariables: "Flest variabler",
         KildeOrderSourceUpdated: "Sist endret (nyest først)",
         KildeOrderEstablished: "Opprettet (nyest først)",
         SelectKilde: name => $"Velg {name}",
@@ -1298,7 +1298,7 @@ internal sealed record Texts(
         },
         SelectedKildeCount: count => count == 1 ? "1 source selected" : $"{count} sources selected",
         KildeOrderName: "Name A–Z",
-        KildeOrderVariabler: "Most variables",
+        KildeOrderVariables: "Most variables",
         KildeOrderSourceUpdated: "Last modified (newest first)",
         KildeOrderEstablished: "Established (newest first)",
         SelectKilde: name => $"Select {name}",
