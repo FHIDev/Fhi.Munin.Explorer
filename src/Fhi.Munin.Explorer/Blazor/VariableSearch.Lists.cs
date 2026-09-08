@@ -1,6 +1,7 @@
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -12,6 +13,11 @@ namespace Fhi.Munin.Explorer.Blazor;
 public partial class VariableSearch : IDisposable
 {
     [Inject] private IServiceProvider ServiceProvider { get; set; } = null!;
+
+    private ILogger? _log;
+
+    /// <summary>The host's logger, or none — see <see cref="ExplorerLog"/>.</summary>
+    private ILogger? Log => _log ??= ExplorerLog.For<VariableSearch>(ServiceProvider);
 
     private VariableListState? _listState;
 
@@ -64,8 +70,10 @@ public partial class VariableSearch : IDisposable
         {
             await ListState.EnsureActiveListAsync();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Log?.LogError(ex, "VariableSearch: could not read the reader's list membership");
+
             // Caught, and nothing said. An exception out of a lifecycle method takes the circuit
             // down with it, which in helsedata's legacy Blazor Server host means the whole CMS page
             // — see the RaiseAsync remarks in VariableSearch.Querying.cs. The mount fires this

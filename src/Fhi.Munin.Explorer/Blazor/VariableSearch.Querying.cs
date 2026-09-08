@@ -1,5 +1,6 @@
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Logging;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
@@ -514,7 +515,7 @@ public partial class VariableSearch
     /// survived is the same for both: the handler is the host's, and what it most often does is
     /// rewrite a URL.
     /// </remarks>
-    private static async Task RaiseAsync<TValue>(EventCallback<TValue> callback, TValue value)
+    private async Task RaiseAsync<TValue>(EventCallback<TValue> callback, TValue value)
     {
         if (!callback.HasDelegate)
         {
@@ -532,8 +533,10 @@ public partial class VariableSearch
             // the navigation on the floor.
             throw;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Log?.LogError(ex, "VariableSearch: a host callback threw");
+
             // The host's handler threw, and a NavigationManager call or a CMS URL rewrite is
             // exactly the kind that does. Left unhandled it would propagate out of Blazor's event
             // dispatch — and this same path runs from OnInitializedAsync, so during initial render
@@ -629,6 +632,18 @@ public partial class VariableSearch
         }
         catch (Exception ex)
         {
+            // Split the way the sentence below is split: a 429 is the catalogue up and the reader
+            // asking too often, which is nobody's fault to go and fix. The search text stays out of
+            // it — the page number is what says which request this was.
+            if (ex is MuninExplorerRateLimitedException)
+            {
+                Log?.LogWarning(ex, "VariableSearch: the rate limiter refused result page {Page}", _page);
+            }
+            else
+            {
+                Log?.LogError(ex, "VariableSearch: could not load result page {Page}", _page);
+            }
+
             // One branch for both failures, because everything except the sentence is the same: say
             // what the reader can do about it and clear the rows. The detail belongs in the host's
             // logs, not on the page.

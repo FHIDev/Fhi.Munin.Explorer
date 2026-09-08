@@ -236,6 +236,44 @@ keeps it true: a component added unsealed is not a compile error and its audienc
 publication. If a future extension route is genuinely wanted, unseal that one type and say in its
 own remarks what it is for — an exception with a reason is fine, silence is what this replaced.
 
+## A swallowed exception is written down before it is swallowed
+
+**Every `catch (Exception)` in `src/` either logs the exception or lets it travel on.** Swallowing
+is right here and stays: an unhandled exception inside a Blazor circuit tears down the whole CMS
+page on helsedata's host, so the browsing surfaces catch everything and say one sentence in the
+alert region. What was wrong is that the exception then went nowhere. Thirty sites threw one away,
+two of them under a comment saying the detail belonged in the host's logs, while nothing in the
+package had ever written to a log (`Fhi.Metadata-l9l2n.47`).
+
+The shape, which is helsedata's own newer code and not an invention of ours:
+
+```csharp
+Log?.LogError(ex, "KildeSearch: could not load kilde {KildeId}", id);
+```
+
+- **The exception is the first argument, never a template argument.** `LogError("… {ex}", ex)` is
+  the same line minus the stack, and their older sites do it that way — do not copy those.
+- **Named PascalCase placeholders, never interpolation.** No `LoggerMessage` source generator, no
+  `EventId`, no `BeginScope`: their solution has none of the three and this is not the place to
+  introduce one.
+- **`Error` for a failure, `Warning` for an outcome that is expected and handled** — a 429, a 401,
+  a vocabulary that only costs labels. The `MuninExplorerRateLimitedException` branch stays a
+  branch of its own: telling throttling apart from failure from outside is what ruled rate limiting
+  out of the incident above.
+- **Nothing a log must not carry.** No request URI, no query string, no response body, no bearer
+  token, no text the reader typed — a kilde, variable or list id and a page number say which call
+  it was without any of that.
+
+`Log` is `ExplorerLog.For<T>(services)`, which is `GetService` and can answer null, because
+`[Inject]` on a non-nullable `ILogger<T>` **throws at render** in a host that registered no logging
+— turning a silent data error into a dead component, which is worse than the blindness this
+replaced. `AddMuninExplorer` calls `AddLogging` so the ordinary host has one; the nullable
+resolution is what covers the host that never called it. Both halves are tested, and a change that
+only proves the first passes CI and breaks a hostile host.
+
+`SwallowedExceptionGuardTest` is what keeps this true, since the next site added is not a compile
+error and its cost only shows up on somebody else's server.
+
 ## Class names in markup
 
 Two kinds of name reach the DOM, and the rule differs between them.

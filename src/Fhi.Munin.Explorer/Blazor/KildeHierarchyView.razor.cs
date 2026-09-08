@@ -1,5 +1,6 @@
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Logging;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -12,6 +13,13 @@ namespace Fhi.Munin.Explorer.Blazor;
 public sealed partial class KildeHierarchyView : ComponentBase, IDisposable
 {
     [Inject] private IMuninExplorerClient Client { get; set; } = default!;
+
+    [Inject] private IServiceProvider Services { get; set; } = default!;
+
+    private ILogger? _log;
+
+    /// <summary>The host's logger, or none — see <see cref="ExplorerLog"/>.</summary>
+    private ILogger? Log => _log ??= ExplorerLog.For<KildeHierarchyView>(Services);
 
     [Parameter, EditorRequired] public Guid KildeId { get; set; }
 
@@ -69,16 +77,21 @@ public sealed partial class KildeHierarchyView : ComponentBase, IDisposable
             _failed = hierarchy is null || hierarchy.KildeId != KildeId;
             _nodes = _failed ? [] : KildeHierarchyNode.From(hierarchy!);
         }
-        catch (MuninExplorerRateLimitedException)
+        catch (MuninExplorerRateLimitedException ex)
         {
+            Log?.LogWarning(
+                ex, "KildeHierarchyView: the rate limiter refused the hierarchy of kilde {KildeId}", KildeId);
+
             if (!_disposed && !request.IsCancellationRequested)
             {
                 _rateLimited = true;
                 _failed = false;
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Log?.LogError(ex, "KildeHierarchyView: could not load the hierarchy of kilde {KildeId}", KildeId);
+
             if (!_disposed && !request.IsCancellationRequested)
             {
                 _failed = true;

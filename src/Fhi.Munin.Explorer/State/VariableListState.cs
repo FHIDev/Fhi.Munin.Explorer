@@ -1,4 +1,5 @@
 using Fhi.Munin.Explorer.Contracts;
+using Microsoft.Extensions.Logging;
 
 namespace Fhi.Munin.Explorer.State;
 
@@ -22,9 +23,15 @@ namespace Fhi.Munin.Explorer.State;
 /// forgets the parameter gets no lists rather than unauthorised calls.
 /// </para>
 /// </remarks>
-public sealed partial class VariableListState(IMuninExplorerClient client)
+public sealed partial class VariableListState(
+    IMuninExplorerClient client,
+    ILogger<VariableListState>? logger = null)
 {
     private readonly IMuninExplorerClient _client = client;
+
+    // Optional and defaulted, so a host that resolves this without logging registered still gets a
+    // holder rather than a resolution failure — AddMuninExplorer calls AddLogging for the rest.
+    private readonly ILogger<VariableListState>? _logger = logger;
 
     private IReadOnlyList<VariableList> _lists = [];
     private bool _loaded;

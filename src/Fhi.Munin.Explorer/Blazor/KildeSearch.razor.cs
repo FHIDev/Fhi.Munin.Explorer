@@ -1,5 +1,6 @@
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Logging;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -219,6 +220,13 @@ public sealed partial class KildeSearch : ComponentBase
 
     [Inject] private IMuninExplorerClient Client { get; set; } = null!;
 
+    [Inject] private IServiceProvider Services { get; set; } = null!;
+
+    private ILogger? _log;
+
+    /// <summary>The host's logger, or none — see <see cref="ExplorerLog"/>.</summary>
+    private ILogger? Log => _log ??= ExplorerLog.For<KildeSearch>(Services);
+
     // The whole list, fetched once. Never refetched: nothing the reader can do to this component
     // asks the API a different question, which is the point of an endpoint that is not paged.
     private IReadOnlyList<KildeSummary> _kilder = [];
@@ -405,6 +413,8 @@ public sealed partial class KildeSearch : ComponentBase
         }
         catch (Exception ex)
         {
+            Log?.LogError(ex, "KildeSearch: could not load the datasamlinger of kilde {KildeId}", id);
+
             // One branch for both failures so the stale guard is written once: a fetch the reader
             // has already collapsed must not paint its answer, of either kind, into a row that is
             // now closed or holding a different kilde.
@@ -706,17 +716,21 @@ public sealed partial class KildeSearch : ComponentBase
         {
             _kilder = await Client.GetKilderAsync();
         }
-        catch (MuninExplorerRateLimitedException)
+        catch (MuninExplorerRateLimitedException ex)
         {
+            Log?.LogWarning(ex, "KildeSearch: the rate limiter refused the kilde list");
+
             // Throttled, not down — and the difference is the whole point of saying so: the text
             // below invites the reader to try again, which is what the limiter is counting.
             _error = T.RateLimitError;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // What went wrong is the API's business and the host's logs'; what the reader needs is
-            // a sentence saying the list is not there and that trying again is worth doing. The
-            // list is left as it was, which on the first load is empty.
+            // The reader is told only that the list is not there and that trying again is worth
+            // doing, so the log line is the only place the cause survives. The list is left as it
+            // was, which on the first load is empty.
+            Log?.LogError(ex, "KildeSearch: could not load the kilde list");
+
             _error = T.KildeListError;
         }
         finally
@@ -775,9 +789,11 @@ public sealed partial class KildeSearch : ComponentBase
                 .GroupBy(entry => entry.Key, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Left as it was, which on the first load is empty.
+            // Warning rather than Error: the facets fall back to the catalogue's own tokens, so
+            // what is lost is labels and not the list. Left as it was, empty on the first load.
+            Log?.LogWarning(ex, "KildeSearch: could not load the kilde property vocabulary");
         }
     }
 
@@ -892,6 +908,8 @@ public sealed partial class KildeSearch : ComponentBase
         }
         catch (Exception ex)
         {
+            Log?.LogError(ex, "KildeSearch: could not load kilde {KildeId}", id);
+
             // One branch for both failures, so the stale-fetch guard is written once: a fetch the
             // reader has already moved on from must not paint its answer — of either kind — into the
             // panel now showing something else.
@@ -1041,7 +1059,7 @@ public sealed partial class KildeSearch : ComponentBase
     /// it, while anything else escaping here would tear down the circuit for the whole CMS page
     /// rather than for this component.
     /// </remarks>
-    private static async Task RaiseAsync<TValue>(EventCallback<TValue> callback, TValue value)
+    private async Task RaiseAsync<TValue>(EventCallback<TValue> callback, TValue value)
     {
         if (!callback.HasDelegate)
         {
@@ -1056,10 +1074,11 @@ public sealed partial class KildeSearch : ComponentBase
         {
             throw;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Nothing is said to the reader: what broke is the host's own URL handling, which is
-            // the host's bug to find in the host's logs.
+            // Nothing is said to the reader: what broke is the host's own URL handling, so the log
+            // line is the whole of what this failure leaves behind.
+            Log?.LogError(ex, "KildeSearch: a host callback threw");
         }
     }
 }

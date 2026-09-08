@@ -1,5 +1,6 @@
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Logging;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>The panel that opens under a selected row: what the variable is, and what its data holds.</summary>
@@ -342,8 +343,13 @@ public partial class VariableSearch
 
             _codes[key] = codes?.Codes ?? [];
         }
-        catch (MuninExplorerRateLimitedException)
+        catch (MuninExplorerRateLimitedException ex)
         {
+            Log?.LogWarning(
+                ex,
+                "VariableSearch: the rate limiter refused the kodeverk codes of variable {VariableId}",
+                variableId);
+
             if (_codesGeneration == generation)
             {
                 // Expanding one kodeverk after another is exactly the rhythm that meets the
@@ -352,8 +358,11 @@ public partial class VariableSearch
                 _codesError[key] = T.RateLimitError;
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Log?.LogError(
+                ex, "VariableSearch: could not load the kodeverk codes of variable {VariableId}", variableId);
+
             if (_codesGeneration == generation)
             {
                 _codesError[key] = T.CodesError;

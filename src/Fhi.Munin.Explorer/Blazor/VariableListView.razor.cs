@@ -2,6 +2,7 @@ using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Blazor;
@@ -28,6 +29,11 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     [Inject] private IServiceProvider ServiceProvider { get; set; } = null!;
     [Inject] private IMuninExplorerClient Client { get; set; } = null!;
     [Inject] private IJSRuntime Js { get; set; } = null!;
+
+    private ILogger? _log;
+
+    /// <summary>The host's logger, or none — see <see cref="ExplorerLog"/>.</summary>
+    private ILogger? Log => _log ??= ExplorerLog.For<VariableListView>(ServiceProvider);
 
     private VariableListState? _state;
     private VariableListState? State => _state ??= ServiceProvider.GetService<VariableListState>();
@@ -474,8 +480,10 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             await State.EnsureActiveListAsync();
             await ShowActiveListAsync();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Log?.LogError(ex, "VariableListView: could not read the reader's lists on mount");
+
             _page = null;
             _failed = true;
         }
@@ -531,11 +539,13 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             _dataTypeNamesLanguage = Language;
             StateHasChanged();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Recorded as attempted for this language, so a failing endpoint is asked once rather
-            // than on every parameter change. The reader sees the codes until the language changes
-            // or the page is loaded again, which is the same fallback an empty map gives.
+            // Warning, not Error: the reader sees the raw codes rather than nothing. Recorded as
+            // attempted for this language, so a failing endpoint is asked once rather than on
+            // every parameter change.
+            Log?.LogWarning(ex, "VariableListView: could not load the datatype names for {Language}", Language);
+
             _dataTypeNames = new Dictionary<string, string>(StringComparer.Ordinal);
             _dataTypeNamesLanguage = Language;
         }
@@ -633,10 +643,12 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             // list. The ticks live in the holder; the boxes are in the other grid column.
             read = await Client.GetMyListVariablesAsync(readList, readPage, PageSize, readKilder);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             // Said here rather than thrown on: an unhandled exception out of a lifecycle method
             // takes the circuit down, which is a worse answer than a line of text.
+            Log?.LogError(ex, "VariableListView: could not read page {Page} of list {ListId}", readPage, readList);
+
             failed = true;
         }
 
@@ -808,16 +820,29 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                     break;
             }
         }
-        catch (MuninExplorerRateLimitedException)
+        catch (MuninExplorerRateLimitedException ex)
         {
             // Typing down a list saves one row after another, which is exactly the rhythm the
             // per-address limiter counts — so a throttled annotation is ordinary rather than rare.
+            Log?.LogWarning(
+                ex,
+                "VariableListView: the rate limiter refused the annotation of variable {VariableId} in list {ListId}",
+                variableId,
+                list);
+
             failure = DesiredDataFailure.Throttled;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             // Uncaught, this leaves the event handler and takes the circuit with it: a blank page
-            // and a reconnect banner in place of the note the reader was writing.
+            // and a reconnect banner in place of the note the reader was writing. The annotation
+            // itself is the reader's own text and stays out of the log.
+            Log?.LogError(
+                ex,
+                "VariableListView: could not write the annotation of variable {VariableId} in list {ListId}",
+                variableId,
+                list);
+
             failure = DesiredDataFailure.Failed;
         }
 
@@ -914,10 +939,12 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         {
             await State.SetActiveListAsync(id);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             // Same reason as the lifecycle read above: an uncaught throw out of an event handler
             // takes the circuit with it. LoadPageAsync below has its own catch and will say so.
+            Log?.LogError(ex, "VariableListView: could not switch to list {ListId}", id);
+
             _failed = true;
 
             // And the rows go with it. _shownList has already moved, so rows left on screen from
@@ -963,17 +990,20 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         {
             created = await State.CreateAsync(name);
         }
-        catch (MuninExplorerRateLimitedException)
+        catch (MuninExplorerRateLimitedException ex)
         {
             // Creating meets the same limiter the saves do, and "prøv igjen om litt" is advice
             // a throttled reader cannot use.
+            Log?.LogWarning(ex, "VariableListView: the rate limiter refused a list creation");
             _createFailure = ListActionFailure.Throttled;
             return;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             // Uncaught, this leaves the event handler and takes the circuit with it: a blank
-            // page and a reconnect banner in place of the list the reader was building.
+            // page and a reconnect banner in place of the list the reader was building. The name
+            // the reader typed stays out of the log.
+            Log?.LogError(ex, "VariableListView: could not create a list");
             _createFailure = ListActionFailure.Failed;
             return;
         }
@@ -991,17 +1021,22 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         {
             await State.SetActiveListAsync(created.Id);
         }
-        catch (MuninExplorerRateLimitedException)
+        catch (MuninExplorerRateLimitedException ex)
         {
             // The list was made and the switch met the limiter. Told apart from the ordinary
             // failure for the reason the create half above gives: the remedy is to wait.
+            Log?.LogWarning(
+                ex,
+                "VariableListView: the rate limiter refused the switch to the new list {ListId}",
+                created.Id);
             _createFailure = ListActionFailure.Throttled;
             return;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             // Same reason as ChooseListAsync above. The list was created; it is the switch to
             // it that did not happen, which is what ListLoadError says.
+            Log?.LogError(ex, "VariableListView: could not switch to the new list {ListId}", created.Id);
             _failed = true;
             return;
         }
@@ -1039,16 +1074,22 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 _actionFailure = ListActionFailure.Failed;
             }
         }
-        catch (MuninExplorerRateLimitedException)
+        catch (MuninExplorerRateLimitedException ex)
         {
             // These writes go through the client every read on the page uses, and meet the same
             // per-address limiter, so a refusal here is ordinary rather than rare.
+            Log?.LogWarning(
+                ex, "VariableListView: the rate limiter refused the rename of list {ListId}", _shownList);
+
             _actionFailure = ListActionFailure.Throttled;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             // An uncaught throw out of an event handler takes the whole circuit down, which is a
-            // far worse answer to a failed rename than a line of text.
+            // far worse answer to a failed rename than a line of text. The name the reader typed
+            // stays out of the log.
+            Log?.LogError(ex, "VariableListView: could not rename list {ListId}", _shownList);
+
             _actionFailure = ListActionFailure.Failed;
         }
     }
@@ -1077,14 +1118,19 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
             await State.EnsureActiveListAsync();
         }
-        catch (MuninExplorerRateLimitedException)
+        catch (MuninExplorerRateLimitedException ex)
         {
+            Log?.LogWarning(
+                ex, "VariableListView: the rate limiter refused the deletion of list {ListId}", _shownList);
+
             _actionFailure = ListActionFailure.Throttled;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             // Caught for the reason the rename above gives. The list may well be gone on the
             // server, so the view is repointed below whichever of the two calls threw.
+            Log?.LogError(ex, "VariableListView: could not delete list {ListId}", _shownList);
+
             _actionFailure = ListActionFailure.Failed;
         }
 
@@ -1115,16 +1161,28 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 _actionFailure = ListActionFailure.Failed;
             }
         }
-        catch (MuninExplorerRateLimitedException)
+        catch (MuninExplorerRateLimitedException ex)
         {
             // Removing is one of the writes the limiter counts, and "prøv igjen om litt" is
             // advice a throttled reader cannot use.
+            Log?.LogWarning(
+                ex,
+                "VariableListView: the rate limiter refused the removal of variable {VariableId} from list {ListId}",
+                variableId,
+                _shownList);
+
             _actionFailure = ListActionFailure.Throttled;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             // Uncaught, this leaves the event handler and takes the circuit with it: a blank
             // page and a reconnect banner in place of the row the reader wanted gone.
+            Log?.LogError(
+                ex,
+                "VariableListView: could not remove variable {VariableId} from list {ListId}",
+                variableId,
+                _shownList);
+
             _actionFailure = ListActionFailure.Failed;
         }
     }
@@ -1176,17 +1234,26 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             var file = await Client.ExportListAsync(ids, format, _includeKodeverk);
             await BrowserDownload.OfferAsync(Js, file);
         }
-        catch (MuninExplorerRateLimitedException)
+        catch (MuninExplorerRateLimitedException ex)
         {
             // The export sits under the browse policy, not the write one the saves use, and the
             // id walk in front of it counts against that same bucket — keyed per user here, since
             // the view only renders signed in. The generic sentence names no cause; this one does.
+            Log?.LogWarning(
+                ex,
+                "VariableListView: the rate limiter refused the {Format} export of list {ListId}",
+                format,
+                _shownList);
+
             _downloadFailure = DownloadFailure.Throttled;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             // Includes the browser refusing the blob — a Content-Security-Policy without blob:
             // would land here. Said out loud rather than left as a button that does nothing.
+            Log?.LogError(
+                ex, "VariableListView: could not export list {ListId} as {Format}", _shownList, format);
+
             _downloadFailure = DownloadFailure.Failed;
         }
         finally
