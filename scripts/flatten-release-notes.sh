@@ -38,11 +38,9 @@ awk '
   # Blank line BETWEEN categories, never before the first — the notes are read from their
   # first line on the feed, and an empty one there reads as a formatting fault.
   /^### /  { flush(); if (seen++) printf "\n"; printf "%s\n", substr($0, 5); next }
-  # Both markers and any leading indent: assemble-changelog.ps1 validates with TrimStart(),
-  # so `  * x` is as legal a bullet as `- x`, and reading it as a continuation would fold a
-  # whole entry into the one above it.
-  # [[:blank:]] not [ \t]: in a POSIX bracket expression the escape is literal, so [ \t]
-  # matches the letter t and misses a real tab — silently, and in both directions.
+  # Mirrors assemble-changelog.ps1, which TrimStart()s before matching: an indented bullet is
+  # a bullet, not a continuation of the one above. [[:blank:]] rather than [ \t] because a
+  # POSIX bracket reads that escape literally — it matches "t" and misses a real tab.
   /^[[:space:]]*[-*][[:blank:]]/ {
     flush()
     line = $0
