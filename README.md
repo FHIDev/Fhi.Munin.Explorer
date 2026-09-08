@@ -216,7 +216,9 @@ These are not style preferences — each one is a host that breaks otherwise.
     root as a grid at desktop width, `-filters`, `-detail`, `-drilldown`, `-kodeverk*` and
     `-codes*` for spacing, indentation and a rule between rows, the kilde, datasamling and variable
     views' name block, main column and sidebar as one page layout under three prefixes, the kilde
-    list as a table with its counts right-aligned — and `munin-explorer-group` is now the space
+    list as a table with its counts right-aligned, and a count of nought dimmed under
+    `munin-explorer-kilder__count--zero` so an empty register reads as empty rather than as a
+    measured value — and `munin-explorer-group` is now the space
     between one group and the next and nothing else. It used to draw Runa's 11px blue uppercase
     eyebrow over the `headline headline-xxs` the heading already wears, which is what drew a group
     heading smaller than the 16px values beneath it; the host's own heading style wins there now
@@ -439,6 +441,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-kilder` | handle |
   | `munin-explorer-kilder-scroll` | meaning |
   | `munin-explorer-kilder__count` | handle |
+  | `munin-explorer-kilder__count--zero` | handle |
   | `munin-explorer-kilder__expand` | handle |
   | `munin-explorer-kilder__expand-icon` | handle |
   | `munin-explorer-kilder__expand-toggle` | handle |

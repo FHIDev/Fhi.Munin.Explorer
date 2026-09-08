@@ -730,6 +730,61 @@ public class KildeSearchTest : BunitContext
         Assert.Equal("1951", cells[5]);
     }
 
+    [Fact]
+    public void Counts_WhenARowCountsNothing_ThenOnlyThatRowsCountCellsAreMarked()
+    {
+        // Rows and not the header, which wears __count too: PR #228 shipped sort tests that asserted
+        // the control and never the rows, and a query that does not say `tbody` passes on markup no
+        // reader is looking at. Three digit counts in one render, because the alignment this class
+        // carries is only visible down a column whose values are of different widths.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Hjerte- og karregisteret", "K_HKR", datasamlinger: 0, variables: 0),
+            Kilde("Als registeret", "K_ALS", datasamlinger: 23, variables: 23),
+            Kilde("Dødsårsaksregisteret", "K_DAR", datasamlinger: 2506, variables: 2506)));
+
+        var cells = cut.FindAll(".munin-explorer-kilder tbody td.munin-explorer-kilder__count");
+
+        // Two visible count columns over three rows. Asserted so that dropping the class from a
+        // cell fails here rather than quietly shrinking what the loop below looks at.
+        Assert.Equal(6, cells.Count);
+
+        foreach (var cell in cells)
+        {
+            Assert.Equal(
+                cell.TextContent.Trim() == "0",
+                cell.ClassList.Contains("munin-explorer-kilder__count--zero"));
+        }
+
+        // The nought is still a nought on screen. A dash or an empty cell would say "nobody filled
+        // this in", which is what "Ikke oppgitt" says in the columns beside these — and a register
+        // that holds no datasamlinger is a measurement, not a gap.
+        Assert.Equal(
+            ["0", "0", "23", "23", "2506", "2506"],
+            cells.Select(cell => cell.TextContent.Trim()).Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void ZeroCount_WhenAHostStylesIt_ThenTheDeclarationItNeedsRecessesRatherThanHides()
+    {
+        // Same shape as the checkbox column's guard in KildeSelectionTest: the general checks ask
+        // whether a name has a rule that declares SOMETHING, and `display: none` declares something.
+        // Hiding the digit takes away the one thing this marking exists to preserve — that a reader
+        // can tell nought from absent — and it takes it away from a screen reader as well.
+        var declarations = HostClassNames
+            .SampleDeclarationsFor("munin-explorer-kilder__count--zero")
+            .Select(rule => new string([.. rule.Declarations.Where(c => !char.IsWhiteSpace(c))]))
+            .ToList();
+
+        Assert.True(
+            declarations.Any(d => d.Contains("color:", StringComparison.Ordinal)),
+            "No rule recesses the nought, so a count of zero reads exactly like a measured one.");
+
+        Assert.DoesNotContain(
+            declarations,
+            d => d.Contains("display:none", StringComparison.Ordinal)
+                 || d.Contains("visibility:hidden", StringComparison.Ordinal));
+    }
+
     // A kilde with one datasamling of its own and one hanging off a delkilde, which is the shape
     // that tells a flattened panel from a grouped one.
     private static KildeDetail DetailWithCollections(KildeSummary summary) =>

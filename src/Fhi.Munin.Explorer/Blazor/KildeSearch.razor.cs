@@ -77,10 +77,12 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// and <c>munin-explorer-drilldown</c> are the explorer's existing ones, reused rather than
 /// reinvented — two of which, <c>munin-explorer</c> and <c>munin-explorer-filters</c>, are handles
 /// nothing defines a rule for, in this package or in Stiler, so a host that wants the panel placed
-/// beside the results writes that rule itself. Seven are new and belong to this view:
+/// beside the results writes that rule itself. Others are new and belong to this view:
 /// <c>munin-explorer-kilder</c> for the result table,
 /// <c>munin-explorer-kilder__name</c> for the control that opens a kilde,
-/// <c>munin-explorer-kilder__count</c> for the two columns that hold a number,
+/// <c>munin-explorer-kilder__count</c> for the three columns that hold a number, joined by
+/// <c>munin-explorer-kilder__count--zero</c> on a cell whose count is nought — the digit is still
+/// drawn, so a host's rule for it dims rather than hides,
 /// <c>munin-explorer-kilder__select</c> for the checkbox column a host that wired
 /// <see cref="ExploreVariablesRequested"/> gets in front of them, and
 /// <c>munin-explorer-filters__toggle</c> and <c>munin-explorer-filters__facets</c> for the facet
@@ -1063,6 +1065,17 @@ public sealed partial class KildeSearch : ComponentBase
 
     /// <summary>A cell's value, with the package's own words for one the catalogue left empty.</summary>
     private string Value(string? value) => string.IsNullOrWhiteSpace(value) ? T.NotSpecified : value;
+
+    /// <summary>The classes for a cell holding a count, marked when the count is nought.</summary>
+    /// <remarks>
+    /// A modifier and not a replacement value: nought is a measurement here — a register with no
+    /// datasamlinger — and the reader has to be able to tell it from the "Ikke oppgitt" that means
+    /// nobody filled the field in, so the digit stays and only its weight changes.
+    /// </remarks>
+    private static string CountClass(int count) =>
+        count == 0
+            ? "munin-explorer-kilder__count munin-explorer-kilder__count--zero"
+            : "munin-explorer-kilder__count";
 
     /// <summary>The year the kilde was founded, as the import file states it.</summary>
     /// <remarks>

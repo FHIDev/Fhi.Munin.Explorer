@@ -1835,6 +1835,23 @@ table.munin-explorer-data-list tbody th {
   font-variant-numeric: tabular-nums;
 }
 
+/* A count of nought, dimmed so an empty register recedes instead of reading as a measured finding
+   — Hjerte- og karregisteret holds 0 datasamlinger and 0 variabler, and a reader scanning for
+   kilder they can use should be able to skip it at a glance.
+
+   A colour and not `opacity`, `display: none` or a dash: the digit has to stay readable, because
+   nought is a measurement and the columns beside it say "Ikke oppgitt" for a field nobody filled
+   in — a reader who cannot tell those apart has lost the distinction the table is making. This is
+   the same --grey60 the facet counts use, and it measures 6.76:1 against the page ground these
+   rows sit on, so the recession is against the body text rather than against legibility.
+
+   Scoped under the table for the reason __count above is: the rule it has to beat is the shared
+   cell rule, which carries a class and an element. It follows __count on purpose: the two have the
+   same specificity, so source order is what would settle any property they both set. */
+.munin-explorer-kilder .munin-explorer-kilder__count--zero {
+  color: var(--grey60);
+}
+
 /* The checkbox column, in front of the eight. It is only ever rendered by a host that wired
    ExploreVariablesRequested, which is the handover the ticks exist for.
 

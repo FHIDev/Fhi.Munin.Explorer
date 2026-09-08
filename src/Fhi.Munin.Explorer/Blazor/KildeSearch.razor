@@ -13,9 +13,10 @@
    wears the `munin-explorer` prefix this package owns. Five of those are the explorer's existing
    ones, reused rather than reinvented: the root `munin-explorer`, the `munin-explorer-container`
    and `munin-explorer-results` the list sits in, `munin-explorer-filters` for the facet panel and
-   `munin-explorer-drilldown` for the view an opened kilde takes over. Seven are this view's own —
+   `munin-explorer-drilldown` for the view an opened kilde takes over. Others are this view's own —
    `munin-explorer-kilder` for the table, `munin-explorer-kilder__name` for the control that opens a
-   row, `munin-explorer-kilder__count` for the columns holding a number,
+   row, `munin-explorer-kilder__count` for the columns holding a number with
+   `munin-explorer-kilder__count--zero` on a cell whose count is nought,
    `munin-explorer-kilder__select` for the checkbox column in front of them,
    `munin-explorer-filters__toggle` and `munin-explorer-filters__facets` for the panel that folds
    away on a narrow screen, and `munin-explorer-filters__count` for the number beside a facet
@@ -570,17 +571,20 @@ else
                             {
                                 <td>@ValidityPeriod(kilde)</td>
                             }
+                            @* The count still reads "0" — CountClass only adds a modifier, so a reader
+                               can tell a register that holds nothing from one nobody filled in, which
+                               is what "Ikke oppgitt" says in the columns beside these. *@
                             @if (ColumnVisible(KildeColumn.Delkilder))
                             {
-                                <td class="munin-explorer-kilder__count">@kilde.DelkildeCount</td>
+                                <td class="@CountClass(kilde.DelkildeCount)">@kilde.DelkildeCount</td>
                             }
                             @if (ColumnVisible(KildeColumn.Datasamlinger))
                             {
-                                <td class="munin-explorer-kilder__count">@kilde.DatasamlingCount</td>
+                                <td class="@CountClass(kilde.DatasamlingCount)">@kilde.DatasamlingCount</td>
                             }
                             @if (ColumnVisible(KildeColumn.Variabler))
                             {
-                                <td class="munin-explorer-kilder__count">@kilde.TotalVariables</td>
+                                <td class="@CountClass(kilde.TotalVariables)">@kilde.TotalVariables</td>
                             }
                             @* No lang here, unlike the name above: the catalogue writes this field as
                                a four-digit year, which has no language to mark (WCAG 3.1.2), and where
