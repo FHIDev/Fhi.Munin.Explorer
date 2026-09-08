@@ -65,7 +65,9 @@ refute "mid-text emphasis is not lifted"    "  * emphasis in the middle"        
 
 # Every bullet in must produce exactly one line out. Catches silent drops generically,
 # not only the two markers this fixture happens to use.
-bullets_in="$(grep -cE '^[[:space:]]*[-*][[:blank:]]' "$tmp")"
+# || true because grep exits 1 on a zero count under set -e, aborting before the
+# comparison below could report it as the failure it is.
+bullets_in="$(grep -cE '^[[:space:]]*[-*][[:blank:]]' "$tmp" || true)"
 lines_out="$(printf '%s\n' "$out" | grep -c '^  \* ' || true)"
 if [ "$bullets_in" -eq "$lines_out" ]; then
   printf '  ok    every bullet produced a line (%s)\n' "$bullets_in"

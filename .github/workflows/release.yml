@@ -184,10 +184,8 @@ jobs:
         # Through a file, not -p:PackageReleaseNotes=: the notes are multi-line and full of
         # semicolons, and an MSBuild command-line property loses the first and splits on the
         # second. Directory.Build.props reads the file this writes.
-        #
-        # Flattened first: the feed shows this as plain text, so the markdown arrives literal.
-        # scripts/flatten-release-notes.sh carries the reasoning. The GitHub release below keeps
-        # the markdown, which it renders.
+        # Flattened first because the feed shows plain text; the GitHub release below keeps the
+        # markdown. scripts/flatten-release-notes.sh carries the reasoning.
         run: |
           NOTES="$GITHUB_WORKSPACE/package-release-notes.md"
           bash scripts/flatten-release-notes.sh "$GITHUB_WORKSPACE/release-notes.md" > "$NOTES"
