@@ -43,6 +43,33 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </remarks>
 public class KildeSectionsTest : BunitContext
 {
+    private static KildeHierarchy? Hierarchy(Guid id)
+    {
+        var hierarchy = JsonSerializer.Deserialize<KildeHierarchy>(TestData.Read("hierarchy.json"), MuninExplorerClient.Json)!;
+        return hierarchy.KildeId == id ? hierarchy : new() { KildeId = id };
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Source_WhenOpenedThroughEitherExplorer_ThenTheSameCollapsedHierarchyAndMetadataAreAvailable(bool fromKildeExplorer)
+    {
+        // Driving both entry points catches a caller opting out of the shared source presentation.
+        var view = fromKildeExplorer
+            ? OpenInKelda(Tromso()).Find(".munin-explorer-kilde")
+            : OpenInRuna(Tromso()).Find(".munin-explorer-kilde");
+
+        var hierarchy = view.QuerySelector(".munin-explorer-hierarchy")!;
+        Assert.Equal(8, hierarchy.QuerySelectorAll(":scope > ul > li").Length);
+        Assert.Contains("Tromsø5", hierarchy.TextContent);
+        Assert.Contains("ALCOHOL", hierarchy.TextContent);
+        Assert.All(hierarchy.QuerySelectorAll("details"), branch => Assert.False(branch.HasAttribute("open")));
+        var metadata = view.QuerySelector("details.munin-explorer-hierarchy__metadata")!;
+        Assert.False(metadata.HasAttribute("open"));
+        Assert.Equal(14, metadata.QuerySelectorAll("table tbody tr").Length);
+        Assert.Equal("Beskrivelser og gyldighetsperioder", AccessibleName.Of(metadata.QuerySelector("summary")!));
+    }
+
     /// <summary>
     /// The Tromsø study, out of the captured payload — a kilde with a real delkilde tree.
     /// </summary>
@@ -73,6 +100,9 @@ public class KildeSectionsTest : BunitContext
     /// <summary>Answers Kelda's one list call with the fixture's kilde, and its detail call with the fixture.</summary>
     private sealed class KeldaClient(KildeDetail kilde) : EmptyMuninExplorerClient
     {
+        public override Task<KildeHierarchy?> GetKildeHierarchyAsync(Guid id, CancellationToken cancellationToken = default) =>
+            Task.FromResult(Hierarchy(id));
+
         public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
             string? search = null, string? kildeType = null, CancellationToken cancellationToken = default)
         {
@@ -101,6 +131,9 @@ public class KildeSectionsTest : BunitContext
     /// </summary>
     private sealed class RunaClient(KildeDetail kilde) : EmptyMuninExplorerClient
     {
+        public override Task<KildeHierarchy?> GetKildeHierarchyAsync(Guid id, CancellationToken cancellationToken = default) =>
+            Task.FromResult(Hierarchy(id));
+
         private static readonly Guid VariableId = new("aaaaaaaa-0000-0000-0000-000000000001");
 
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
@@ -324,7 +357,7 @@ public class KildeSectionsTest : BunitContext
             "Tromsø2 - The Second Tromsø Study",
             "Tromsø3 - The Third Tromsø Study",
         ], TextOf(cut.FindAll(
-            ".munin-explorer-kilde__main > table.munin-explorer-kilde__datasamlinger tbody th")));
+            ".munin-explorer-hierarchy__metadata > table.munin-explorer-kilde__datasamlinger tbody th")));
 
         // Then the five waves, in the catalogue's order, each with what is inside it. K_TR.BIODATA
         // holds nothing and is a wave of the study all the same: drawing only the delkilder that
@@ -443,6 +476,7 @@ public class KildeSectionsTest : BunitContext
         // that its own blocks are the whole of what it draws — rather than a second copy of what an
         // explorer is believed to pass. The only thing that makes these headings appear is markup
         // inside KildeView, which is exactly what must not be there.
+        Services.AddSingleton<IMuninExplorerClient>(new KeldaClient(Tromso()));
         var cut = Render<KildeView>(b => b
             .Add(c => c.Kilde, Tromso())
             .Add(c => c.Language, (string?)null)

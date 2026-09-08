@@ -431,6 +431,12 @@ internal sealed record Texts(
     // so the word is about the source rather than about who renders it. See
     // KildeView.DefaultDataCollectionsHeading.
     string HeadingDelkilderAndDataCollections,
+    string HierarchyLoading,
+    string HierarchyLoaded,
+    string HierarchyError,
+    string HierarchyEmpty,
+    string HierarchyRetry,
+    string HierarchyMetadata,
     // The sections Kelda has over a kilde and Runa has not, measured on the same source in both on
     // 2026-08-20. They are markup Kelda hands to KildeView.Sections rather than markup inside that
     // component, so their words sit here beside the rest of Kelda's rather than in the shared core.
@@ -924,6 +930,12 @@ internal sealed record Texts(
         ShowFilters: "Vis filtre",
         HideFilters: "Skjul filtre",
         HeadingDelkilderAndDataCollections: "Delkilder og datasamlinger",
+        HierarchyLoaded: "Strukturen er lastet. Du kan nå utforske delkilder, datasamlinger og variabelgrupper.",
+        HierarchyLoading: "Laster delkilder, datasamlinger og variabelgrupper …",
+        HierarchyError: "Kunne ikke laste delkilder, datasamlinger og variabelgrupper nå.",
+        HierarchyEmpty: "Ingen delkilder, datasamlinger eller variabelgrupper er tilgjengelige.",
+        HierarchyRetry: "Prøv å laste strukturen på nytt",
+        HierarchyMetadata: "Beskrivelser og gyldighetsperioder",
         HeadingVariables: "Variabler",
         HeadingAccessCriteria: "Kriterier for tilgang til data",
         HeadingPrices: "Priser",
@@ -1227,6 +1239,12 @@ internal sealed record Texts(
         ShowFilters: "Show filters",
         HideFilters: "Hide filters",
         HeadingDelkilderAndDataCollections: "Sub-sources and data collections",
+        HierarchyLoaded: "The hierarchy has loaded. You can now explore sub-sources, data collections and variable groups.",
+        HierarchyLoading: "Loading sub-sources, data collections and variable groups …",
+        HierarchyError: "Could not load sub-sources, data collections and variable groups right now.",
+        HierarchyEmpty: "No sub-sources, data collections or variable groups are available.",
+        HierarchyRetry: "Retry loading the structure",
+        HierarchyMetadata: "Descriptions and validity periods",
         HeadingVariables: "Variables",
         HeadingAccessCriteria: "Criteria for access to data",
         HeadingPrices: "Prices",

@@ -23,6 +23,11 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// Ships no CSS, like everything else in this package: it emits the host's class names so the
 /// surrounding site styles it.
 /// </para>
+/// <para>
+/// Register IMuninExplorerClient through AddMuninExplorer before mounting. The collection
+/// hierarchy is fetched separately and uses the same collapsed disclosures in every explorer.
+/// Descriptions and validity tables remain available in a separate metadata disclosure.
+/// </para>
 /// </remarks>
 public sealed partial class KildeView : ComponentBase
 {
@@ -51,9 +56,8 @@ public sealed partial class KildeView : ComponentBase
     /// </summary>
     /// <remarks>
     /// Kelda passes its variables, access criteria and prices here, and after them whatever its own
-    /// host hung on the explorer. Runa passes nothing at all. The datasamling hierarchy is in
-    /// neither: this view draws that itself, from the source it was given. Neither explorer is named
-    /// in this component.
+    /// host hung on the explorer. Runa passes nothing at all. The shared collection hierarchy
+    /// and its metadata disclosure always come before these sections.
     /// </remarks>
     [Parameter]
     public RenderFragment? Sections { get; set; }

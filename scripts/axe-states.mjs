@@ -24,6 +24,45 @@ async function press(scope, name) {
 }
 
 export const states = {
+  'kilde-hierarchy-collapsed': async page => {
+    const name = page.getByRole('button', { name: 'The Tromsø study', exact: true });
+    await name.waitFor({ state: 'visible', timeout: findTimeout });
+    await name.click();
+    await page.locator('.munin-explorer-hierarchy > ul > li').first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
+    if (await page.locator('.munin-explorer-hierarchy details[open]').count()) {
+      throw new Error('Hierarchy branches must start collapsed');
+    }
+  },
+  'kilde-hierarchy-expanded': async page => {
+    await states['kilde-hierarchy-collapsed'](page);
+    const branch = page.locator('.munin-explorer-hierarchy > ul > li > details')
+      .filter({ has: page.locator('ul > li > details') }).first();
+    const summary = branch.locator(':scope > summary');
+    await summary.focus();
+    await page.keyboard.press('Enter');
+    await branch.locator(':scope > ul').waitFor({ state: 'visible', timeout: findTimeout });
+    await page.keyboard.press('Space');
+    await branch.locator(':scope > ul').waitFor({ state: 'hidden', timeout: findTimeout });
+    if (!await summary.evaluate(el => el === document.activeElement)) {
+      throw new Error('Collapsing a branch moved focus away from its summary');
+    }
+    await page.keyboard.press('Enter');
+    const child = branch.locator(':scope > ul > li > details').first();
+    await child.locator(':scope > summary').waitFor({ state: 'visible', timeout: findTimeout });
+    await child.locator(':scope > summary').focus();
+    await page.keyboard.press('Space');
+    await child.locator(':scope > ul > li').first().waitFor({ state: 'visible', timeout: findTimeout });
+    if (await page.locator('.munin-explorer-hierarchy > ul > li > details[open]').count() !== 1) {
+      throw new Error('Opening one branch changed a sibling disclosure');
+    }
+  },
+  'kilde-hierarchy-metadata': async page => {
+    await states['kilde-hierarchy-collapsed'](page);
+    const metadata = page.locator('.munin-explorer-hierarchy__metadata');
+    await metadata.locator(':scope > summary').click();
+    await metadata.locator('table').first().waitFor({ state: 'visible', timeout: findTimeout });
+  },
   // The two list pages as they load. They wait for a row rather than for the page, because the
   // data can fail to arrive and an empty list is a page axe reports no violations in — which is
   // how this gate read green against an unreachable API for as long as it has existed.

@@ -68,10 +68,7 @@
                 type="button"
                 @onclick="CloseAsync">@T.BackToKilder</button>
 
-        @* Once the kilde has arrived, KildeView owns the heading — the same component the variable
-           explorer drills into, so the two cannot render one source two ways. Until then the view
-           keeps its own: the region points at that id, and a landmark whose label does not exist
-           yet is worse than a plain one. *@
+        @* Keep the landmark named while the shared detail heading is still loading. *@
         @if (_kilde is null)
         {
             @DrilldownHeading
@@ -84,9 +81,7 @@
 
         @if (_kilde is { } kilde)
         {
-            @* Kelda's sections go into KildeView through Sections, never as markup added to it: a
-               flag per section would make it the one place the two explorers leak into each other.
-               No DataCollectionsHeading — the heading follows the source (Fhi.Metadata-rhybi). *@
+            @* Only the additional sections belong to this explorer; KildeView owns the hierarchy. *@
             <KildeView Kilde="kilde"
                        Language="@Language"
                        HeadingLevel="@KildeLevel"

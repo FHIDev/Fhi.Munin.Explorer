@@ -2489,3 +2489,48 @@ table.munin-explorer-data-list tbody th {
 
 }
 
+
+/* Provisional helsedata-based stand-in; published rules are tracked by Fhi.Metadata-wihod. */
+.munin-explorer-hierarchy {
+  color: var(--dark);
+  font-size: 0.875rem;
+  margin-bottom: 16px;
+  overflow-wrap: anywhere;
+}
+.munin-explorer-hierarchy__nodes {
+  list-style: none;
+  margin: 0;
+  padding-left: 20px;
+}
+.munin-explorer-hierarchy > .munin-explorer-hierarchy__nodes {
+  padding-left: 0;
+}
+.munin-explorer-hierarchy__branch {
+  margin: 4px 0;
+}
+.munin-explorer-hierarchy__branch > summary,
+.munin-explorer-hierarchy__metadata > summary {
+  cursor: pointer;
+  padding: 8px 4px;
+}
+.munin-explorer-hierarchy__branch > summary:focus-visible,
+.munin-explorer-hierarchy__metadata > summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.munin-explorer-hierarchy__leaf {
+  display: block;
+  padding: 8px 4px 8px 20px;
+}
+.munin-explorer-hierarchy__count {
+  background: var(--grey20);
+  border-radius: 4px;
+  color: var(--grey60);
+  font-variant-numeric: tabular-nums;
+  padding: 0 4px;
+  white-space: nowrap;
+}
+.munin-explorer-hierarchy__metadata {
+  border-top: 1px solid var(--grey30);
+  margin-bottom: 16px;
+}
