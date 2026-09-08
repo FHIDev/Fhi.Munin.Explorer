@@ -26,7 +26,8 @@ category: Added
   released line, because that is exactly what they become.
 - **Open every bullet with a bolded sentence that stands on its own.** It is the entry's title
   and it is published alone: `scripts/flatten-release-notes.sh` lifts it into the package's
-  release notes, because the NuGet feed page renders them as plain text rather than markdown.
+  release notes, and the Azure Artifacts feed this package publishes to renders those as plain
+  text rather than markdown.
   A reader deciding whether a version affects them sees that sentence and nothing else, so
   "**No new class name**" tells them nothing while "**The kilde table gains a column picker**"
   does. Say what changed, not that something did. Put the detail in the sentences after it —
