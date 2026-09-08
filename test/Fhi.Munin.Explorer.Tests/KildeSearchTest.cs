@@ -2866,12 +2866,12 @@ public class KildeSearchTest : BunitContext
     [Fact]
     public void Facets_WhenAValueIsTicked_ThenNoFacetIsFoldedOrUnfoldedByIt()
     {
-        // The folds are the reader's and independent of each other: `open` is seeded on the first
-        // facet and never rewritten — the facets are counted over the unfiltered list — so opening
-        // a second facet leaves the first open and narrowing the list collapses nothing. Only the
-        // second half is stageable here: bUnit re-serialises the markup from the render tree and
-        // never runs a native <details> toggle, so the press itself is pinned in the browser by
-        // kilde-facets in axe-states.mjs.
+        // What this can see: a narrowing render writes `open` on the first facet and on no other,
+        // so an implementation that rewrote the attribute per render would have to keep agreeing
+        // with the seed. What it cannot: bUnit re-serialises from the render tree and never runs a
+        // native <details> toggle, so a facet the READER opened is unstageable here. The fold
+        // surviving the diff is pinned in a browser by kilde-facets in axe-states.mjs, which ticks
+        // a value inside one.
         var cut = RenderWith(new FakeClient(
             Kilde("Als registeret", "K_ALS",
                   kildetype: "biobank", accessRights: "eu-access:NON_PUBLIC",
@@ -2883,6 +2883,37 @@ public class KildeSearchTest : BunitContext
         Tick(cut, "Databehandler", "Helsedirektoratet");
 
         Assert.Equal(["Dødsårsaksregisteret"], RowNames(cut));
+        Assert.Equal([true, false, false], Facets(cut).Select(f => f.HasAttribute("open")).ToArray());
+    }
+
+    [Fact]
+    public void Facets_WhenAKildeIsOpenedAndClosed_ThenTheTicksSurviveAndTheFoldsAreSeededAgain()
+    {
+        // The one thing a drill-in does not carry back, pinned so it is a decision rather than a
+        // surprise: the fold is in the <details> elements that branch removes, while the ticks and
+        // the search are the component's own. The reader comes back to the panel's default shape
+        // with every filter still on — and still counted on the heading, which is what keeps a
+        // folded facet from hiding one.
+        var als = Kilde("Als registeret", "K_ALS",
+                        kildetype: "biobank", accessRights: "eu-access:NON_PUBLIC",
+                        dataProcessor: "Folkehelseinstituttet");
+        var client = new FakeClient(
+            als,
+            Kilde("Dødsårsaksregisteret", "K_DAR",
+                  kildetype: "sentraltHelseregister", accessRights: "eu-access:PUBLIC",
+                  dataProcessor: "Helsedirektoratet")).Publishing(als);
+
+        var cut = RenderWith(client);
+
+        Tick(cut, "Databehandler", "Folkehelseinstituttet");
+
+        cut.Find(".munin-explorer-kilder tbody th button").Click();
+        cut.Find(".munin-explorer-drilldown button").Click();
+
+        Assert.Equal(["Als registeret"], RowNames(cut));
+        Assert.Equal(
+            "Databehandler (1)",
+            Facet(cut, "Databehandler").QuerySelector("summary h4")!.TextContent.Trim());
         Assert.Equal([true, false, false], Facets(cut).Select(f => f.HasAttribute("open")).ToArray());
     }
 

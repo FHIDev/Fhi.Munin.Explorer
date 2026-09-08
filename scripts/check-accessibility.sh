@@ -29,7 +29,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 #
 # DELIBERATELY NOT COVERED, so nobody reads a green run as more than it is:
 #   - the whole-variable drill-in and the owner panel inside a row, two more presses each;
-#   - the pager past page one, and anything reached by searching or by narrowing a facet;
+#   - the pager past page one, and anything reached by searching; the kildeutforsker's own list
+#     narrowed by a facet IS covered, in kilde-facets, and the variable explorer's is not;
 #   - error and empty states, which need the stub to answer differently than it does;
 #   - hierarchy branches beyond the two opened levels in kilde-hierarchy-expanded;
 #   - the English texts, and samples/LegacyHost, the same component in the other host;

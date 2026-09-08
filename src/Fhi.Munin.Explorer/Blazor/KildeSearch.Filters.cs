@@ -101,9 +101,9 @@ public sealed partial class KildeSearch
     /// <summary>A facet as the panel draws it: a disclosure holding a heading and the choices under it.</summary>
     /// <remarks>
     /// <c>OpenByDefault</c> is the first facet only, and it is the same on every render, so it
-    /// seeds the disclosure and the fold is the reader's from there. Every facet open is the length
-    /// this fixes — databehandler alone runs to 39 values — and every facet shut hides the
-    /// affordance from a reader new to the panel.
+    /// seeds the disclosure and the fold is the reader's from there — until a drill-in removes the
+    /// panel and it is seeded again. Every facet open is the length this fixes — databehandler
+    /// alone runs to 39 values — and every facet shut hides the affordance from a reader new to it.
     /// </remarks>
     private sealed record Facet(
         string Key, string Heading, IReadOnlyList<FacetOption> Options, bool OpenByDefault = false);

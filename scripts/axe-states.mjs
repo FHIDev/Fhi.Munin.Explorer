@@ -8,6 +8,12 @@
 //
 // States wait for content, never merely for the page. The data comes from axe-stub-api.mjs, so
 // "no rows yet" means the component is broken rather than that a network call is slow.
+//
+// A state may also ASSERT, and the disclosure states here do: `kilde-hierarchy-*` and
+// `kilde-facets` check what the press did rather than only staging it, because a browser is the
+// only runner that has a native <details> toggle, the focus it leaves behind and a Blazor
+// re-render landing on top of it. Such a failure reports as a state error rather than as a failing
+// test, so the bUnit test that cannot stage the press names the state it defers to.
 
 /** Playwright's default action timeout is generous; a control that is not there is not coming. */
 const findTimeout = 15_000;
@@ -150,10 +156,11 @@ export const states = {
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
 
-  // The kildeutforsker's facet panel, with a second facet opened from the keyboard. Nothing in the
-  // component mirrors the folds — `open` is seeded once and never rewritten — so this is the only
-  // place the press is exercised at all: bUnit re-serialises the markup from the render tree and
-  // never runs a browser's native <details> toggle (Fhi.Metadata-co3sf).
+  // The kildeutforsker's facet panel: a second facet opened from the keyboard, then a value ticked
+  // inside it. Nothing in the component mirrors the folds — `open` is seeded once and never
+  // rewritten — so this is the only place either half is exercised at all: bUnit re-serialises the
+  // markup from the render tree and never runs a browser's native <details> toggle, let alone a
+  // Blazor diff arriving over one (Fhi.Metadata-co3sf).
   'kilde-facets': async page => {
     await rowsArePresent(page, 'button.munin-explorer-kilder__name');
 
@@ -182,16 +189,38 @@ export const states = {
     }
 
     const folded = facets.nth(foldedIndex);
+    const values = folded.locator(':scope > ul');
+
+    // Asserted BEFORE the press, and this is the half that matters: the values are rendered whether
+    // or not the facet is open, so a host stylesheet that beats the browser's own hiding leaves 39
+    // databehandlere on screen under a shut disclosure. That is how the first attempt at this panel
+    // shipped 3798px of folded facet to helsedata (Fhi.Metadata-co3sf).
+    if (await values.isVisible()) {
+      throw new Error('A folded facet is showing its values — the disclosure is hiding nothing');
+    }
+
     const summary = folded.locator(':scope > summary');
     await summary.focus();
     await page.keyboard.press('Enter');
-    await folded.locator(':scope > ul').waitFor({ state: 'visible', timeout: findTimeout });
+    await values.waitFor({ state: 'visible', timeout: findTimeout });
 
     if (!await summary.evaluate(el => el === document.activeElement)) {
       throw new Error('Opening a facet moved focus away from its summary');
     }
     if (await open() !== 2) {
       throw new Error('Opening a second facet folded the one already open');
+    }
+
+    // And then a re-render over the top of it, which is the claim the component rests on: `open` is
+    // seeded once and never rewritten, so narrowing the list cannot collapse what the reader opened.
+    // The wait is on the heading gaining its count, because that text comes back over the circuit —
+    // the tick alone lands in the browser before Blazor has diffed anything.
+    await values.locator('input[type=checkbox]').first().check();
+    await folded.locator(':scope > summary h4', { hasText: '(1)' })
+      .waitFor({ state: 'visible', timeout: findTimeout });
+
+    if (await open() !== 2) {
+      throw new Error('Narrowing the list folded a facet the reader had opened');
     }
   },
 

@@ -54,8 +54,11 @@
 {
     @* A kilde opens as its own view, not as a panel inside a row. Runa navigates to a page for
        this; this component has no router, so instead it takes over its own area and offers a way
-       back. The search text and the list are all still there on return because none of it was torn
-       down — the list was never refetched to begin with.
+       back. The search text, the ticked values and the list are all still there on return because
+       every one of them is held here rather than in the DOM — the list was never refetched to begin
+       with. The facet folds are the one exception, and deliberately: they belong to the <details>
+       elements this branch replaces, so the panel comes back seeded at its own defaults. See the
+       facets below.
 
        A region named after what it shows, so a screen reader moving by landmark hears which kilde
        it landed in. *@
@@ -236,8 +239,9 @@ else
                 @foreach (var facet in facets)
                 {
                     @* A native <details> per facet, the shape the variable explorer's panel already
-                       uses under this same handle. Keyed so a facet that is not drawn cannot hand
-                       its open state to whichever facet takes its place. *@
+                       uses under this same handle. Keyed because the fold is the element's own: a
+                       facet dropped from the middle would otherwise leave the one that slides up
+                       into its place wearing whatever the reader had done to the old one. *@
                     <details @key="facet.Key" open="@facet.OpenByDefault">
                         @* <summary> is the disclosure control natively — focusable, Enter and Space
                            toggle it, its open attribute is the state, so there is no aria-expanded
@@ -247,8 +251,10 @@ else
                         @* Rendered whether or not the facet is open, and hidden by the disclosure
                            itself rather than by us. `open` is the same on every render — the facets
                            are counted over the unfiltered list — so Blazor writes it once and never
-                           again, and the fold is the reader's after that: narrowing cannot collapse
-                           what they opened, and each facet folds alone. *@
+                           again, and the fold is the reader's for as long as these elements live:
+                           narrowing cannot collapse what they opened, and each facet folds alone.
+                           They do not survive a drill-in, which removes the panel; the ticks and
+                           the search do, so the reader loses only the shape of the panel. *@
                         <ul>
                             @foreach (var option in facet.Options)
                             {
