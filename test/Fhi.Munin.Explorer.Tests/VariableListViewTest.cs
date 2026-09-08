@@ -1350,7 +1350,7 @@ public class VariableListViewTest : BunitContext
         // holder of the same state, from one of the create's own two - so counting swallows it and
         // the row would sit on screen until the create finishes. Identity is what tells them apart.
         var item = Item("Alder ved diagnose", "V_BDR.ALDER");
-        var gate = new TaskCompletionSource();
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         VariableListState state = null!;
 
         var client = new ListClient(item)

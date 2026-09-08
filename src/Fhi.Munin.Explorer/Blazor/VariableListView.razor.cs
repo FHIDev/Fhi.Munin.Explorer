@@ -564,24 +564,32 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// variable would otherwise leave it on screen here — the very thing this subscription exists
     /// to prevent.
     /// </summary>
-    private void OnStateChanged() => InvokeAsync(async () =>
+    private void OnStateChanged()
     {
-        // A narrowing shortens the list, so the page number has to go back to the start: a reader
-        // on page 4 of ten who ticks a kilde with two pages would otherwise be handed an empty
-        // page and no sign of why. Every other change leaves them where they were standing.
-        if (State is { KildeFilterVersion: var version } && version != _seenKildeFilter)
-        {
-            _seenKildeFilter = version;
-            _pageNumber = 1;
-        }
+        // Captured here, not inside the callback below: the event invokes this synchronously,
+        // so this is the only point guaranteed to see the change this call was raised for. A
+        // read inside the callback would see whatever is latest once it finally runs instead.
+        var change = State?.LastChange;
 
-        if (ShouldReloadFor(State?.LastChange))
+        InvokeAsync(async () =>
         {
-            await LoadPageAsync();
-        }
+            // A narrowing shortens the list, so the page number has to go back to the start: a
+            // reader on page 4 of ten who ticks a kilde with two pages would otherwise be handed
+            // an empty page and no sign of why. Every other change leaves them where they stood.
+            if (State is { KildeFilterVersion: var version } && version != _seenKildeFilter)
+            {
+                _seenKildeFilter = version;
+                _pageNumber = 1;
+            }
 
-        StateHasChanged();
-    });
+            if (ShouldReloadFor(change))
+            {
+                await LoadPageAsync();
+            }
+
+            StateHasChanged();
+        });
+    }
 
     /// <summary>
     /// Whether the notification just raised could have changed the rows on screen - identified by
