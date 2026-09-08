@@ -147,15 +147,21 @@ checkout needs to find the shared database.
 - **A new or renamed `munin-explorer*` name needs a rule in `Fhi.Helsedata.Stiler`, filed as its
   own bead before this PR merges** — `bd create --label=stiler --label=rcl --label=helsedata` —
   not as a clause in the RCL bead's criteria, which is in nobody's `bd ready` and cannot be
-  claimed by anyone. Nothing on this side can see that repository, so green here is not evidence the
-  element is styled on helsedata.no. Reasoning in `AGENTS.md` under "Class names in markup".
-- **Working in Stiler is Azure DevOps, not GitHub.** The checkout this workspace uses is
-  `C:\source\fhigit\helsedata\Helsedata.Claude\Fhi.Helsedata.Stiler` — there are other Stiler
-  checkouts on the box and they are not it. Rules go under `Static/scss/components/munin-explorer/`,
-  one file per area (`_trail.scss`, `_filters.scss`, `_results.scss`, and so on). No `gh`, no
-  Copilot review, no `Closes #N`. And `az repos pr create --description` truncates at the first
-  newline and turns æøå into question marks: create the PR, then PATCH title and description over
-  the REST API with explicit UTF-8 bytes, and read it back.
+  claimed by anyone. Green here is still not evidence the element is styled on helsedata.no —
+  nothing in this repository reads Stiler — but you can go and look, and
+  `docs/running-locally.md` says how without needing feed credentials. Do that before asserting
+  what Stiler does or does not have. Reasoning in `AGENTS.md` under "Class names in markup".
+- **Working in Stiler is Azure DevOps, not GitHub.** Clone it from
+  `https://dev.azure.com/fhi/Fhi.Helsedata/_git/Fhi.Helsedata.Stiler` wherever you keep checkouts;
+  it is not a submodule of this one and this file deliberately does not name a path, because the
+  last one it named had rotted. It needs a bearer header rather than a credential helper:
+  `git -c http.extraHeader="Authorization: Bearer $(az account get-access-token --resource
+  499b84ac-1321-427f-aa17-267ca6975798 --query accessToken -o tsv)" clone …`, and fetches need it
+  too. Rules go under `Static/scss/components/munin-explorer/`, one file per area (`_trail.scss`,
+  `_filters.scss`, `_results.scss`, and so on). No `gh`, no Copilot review, no
+  `Closes #N`. And `az repos pr create --description` truncates at the first newline and turns æøå
+  into question marks: create the PR, then PATCH title and description over the REST API with
+  explicit UTF-8 bytes, and read it back.
 - Reference the bead with the **cross-repository** form, since the issues live in Munin:
   `Closes FHIDev/Munin#1234`. Use `Refs` when the PR only partly satisfies the bead — `Closes`
   shuts it whether or not the acceptance criteria are met.
