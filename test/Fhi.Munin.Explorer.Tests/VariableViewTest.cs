@@ -463,4 +463,22 @@ public class VariableViewTest : BunitContext
         Assert.Null(Render(Detail() with { PreferredTerm = "" }, "en").Find("h2").GetAttribute("lang"));
         Assert.Equal("no", Render(Detail(), "en").Find("h2").GetAttribute("lang"));
     }
+
+    [Theory]
+    [InlineData("2", "Heltall")]
+    [InlineData("Integer", "Heltall")]
+    [InlineData("string", "Streng")]
+    [InlineData("BOOLEAN", "Boolsk")]
+    public void DataType_OnANorwegianPage_NeverShowsTheApisEnglishName(string rawValue, string expected)
+    {
+        // Fhi.Metadata-88fui: the read model is not fully re-normalized, so a legacy raw value can
+        // still arrive alongside the canonical numeric codes. Either shape must resolve to Norwegian.
+        var cut = Render(Detail() with { DataType = rawValue });
+
+        Assert.Contains(expected, cut.Markup, StringComparison.Ordinal);
+        foreach (var english in new[] { "String", "Integer", "Boolean", "Decimal", "DateTime" })
+        {
+            Assert.DoesNotContain(english, cut.Markup, StringComparison.Ordinal);
+        }
+    }
 }
