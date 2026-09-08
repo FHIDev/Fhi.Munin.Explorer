@@ -1114,12 +1114,11 @@ public class VariableListViewTest : BunitContext
     }
 
     [Fact]
-    public async Task View_WhenTheListIsWrittenTo_ThenSistEndretStopsSayingTheDayThePageLoaded()
+    public async Task View_WhenTheListIsWrittenTo_ThenOnlyARenameMovesSistEndret()
     {
-        // The holder patches its own copy on a rename and on a removal rather than refetching, so
-        // without a timestamp patched alongside, "Sist endret" would keep naming the day the page
-        // was loaded while the name above it changed under the reader — the two facts this line
-        // exists to show together, contradicting each other.
+        // Two facts share this one line and move on opposite triggers: Munin holds updatedAt to the
+        // list row, while the count beside it moves on an add or a remove (Fhi.Metadata-l9l2n.45,
+        // Fhi.Metadata-uiqfs). One case, so nobody satisfies one half by breaking the other.
         var client = new ListClient(
             Item("Alder ved diagnose", "V_BDR.ALDER"),
             Item("Kjønn", "V_BDR.KJONN"))
@@ -1128,13 +1127,35 @@ public class VariableListViewTest : BunitContext
         };
 
         var cut = RenderView(client);
+        var state = Services.GetRequiredService<VariableListState>();
 
+        Assert.StartsWith("2 variabler", cut.Find("p.caption").TextContent, StringComparison.Ordinal);
         Assert.Contains("2020", cut.Find("p.caption").TextContent, StringComparison.Ordinal);
 
         // Read once, before the writes, and reused: two reads of UtcNow.Year straddling midnight on
         // 31 December would compare a stamp from one year against a name from the next.
         var thisYear = DateTimeOffset.UtcNow.Year.ToString();
 
+        // Both writes before the rename, and deliberately: once a rename has moved the stamp to
+        // today, an add or a remove that moved it too would be indistinguishable from one that did
+        // not. The add is here because a regression on that path alone passed the whole suite.
+        await cut.InvokeAsync(() => state.AddVariablesAsync(ListId, [Guid.NewGuid()]));
+
+        var afterAdd = cut.Find("p.caption").TextContent;
+
+        Assert.StartsWith("3 variabler", afterAdd, StringComparison.Ordinal);
+        Assert.Contains("2020", afterAdd, StringComparison.Ordinal);
+        Assert.DoesNotContain(thisYear, afterAdd, StringComparison.Ordinal);
+
+        await cut.InvokeAsync(() => cut.FindAll("tbody tr td:last-child button")[0].Click());
+
+        var afterRemoval = cut.Find("p.caption").TextContent;
+
+        Assert.StartsWith("2 variabler", afterRemoval, StringComparison.Ordinal);
+        Assert.Contains("2020", afterRemoval, StringComparison.Ordinal);
+        Assert.DoesNotContain(thisYear, afterRemoval, StringComparison.Ordinal);
+
+        // The rename half, which is the one trigger Munin does move the stamp on.
         RenameField(cut).Change("Hjertet mitt");
         await PressAsync(cut, "Lagre navnet");
 
@@ -1142,15 +1163,35 @@ public class VariableListViewTest : BunitContext
 
         Assert.DoesNotContain("2020", afterRename, StringComparison.Ordinal);
         Assert.Contains(thisYear, afterRename, StringComparison.Ordinal);
+    }
 
-        // And the same for taking a variable out, which changes what the list holds rather than
-        // what it is called. The count moves with it, off the API's own total.
+    [Fact]
+    public async Task View_WhenAListIsRefreshedAfterARemoval_ThenSistEndretDoesNotJumpBack()
+    {
+        // The jump-back is what the reader actually sees: a patched stamp stands until something
+        // refetches, and then the API's own value replaces it. A stamp the holder invented on a
+        // removal reads as today until the next read and as 2020 after it.
+        var client = new ListClient(
+            Item("Alder ved diagnose", "V_BDR.ALDER"),
+            Item("Kjønn", "V_BDR.KJONN"))
+        {
+            Updated = new DateTimeOffset(2020, 3, 4, 9, 0, 0, TimeSpan.Zero)
+        };
+
+        var cut = RenderView(client);
+        var state = Services.GetRequiredService<VariableListState>();
+
         await cut.InvokeAsync(() => cut.FindAll("tbody tr td:last-child button")[0].Click());
 
         var afterRemoval = cut.Find("p.caption").TextContent;
 
-        Assert.StartsWith("1 variabel", afterRemoval, StringComparison.Ordinal);
-        Assert.Contains(thisYear, afterRemoval, StringComparison.Ordinal);
+        await cut.InvokeAsync(() => state.RefreshAsync());
+
+        // The refetch has to have happened, or a RefreshAsync that quietly became a no-op would
+        // satisfy the equality below by changing nothing at all.
+        Assert.Equal(2, client.ListsCalls);
+        Assert.Equal(afterRemoval, cut.Find("p.caption").TextContent);
+        Assert.Contains("2020", cut.Find("p.caption").TextContent, StringComparison.Ordinal);
     }
 
     [Fact]

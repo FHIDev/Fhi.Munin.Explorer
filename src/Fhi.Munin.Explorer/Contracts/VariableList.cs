@@ -22,7 +22,10 @@ public sealed record VariableList
 
     [JsonPropertyName("createdAt")] public DateTimeOffset? CreatedAt { get; init; }
 
-    /// <summary>Last change to the list itself or to what is in it.</summary>
+    /// <summary>
+    /// Last change to the list row, which a rename is and an add or a remove is not. Munin holds it
+    /// to that meaning, so putting a variable in a list leaves this where it was.
+    /// </summary>
     [JsonPropertyName("updatedAt")] public DateTimeOffset? UpdatedAt { get; init; }
 
     /// <summary>How many variables the list holds — its stored memberships, never a page of them.</summary>
