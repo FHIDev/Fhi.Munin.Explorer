@@ -476,9 +476,9 @@ public class VariableViewTest : BunitContext
         var cut = Render(Detail() with { DataType = rawValue });
 
         Assert.Contains(expected, cut.Markup, StringComparison.Ordinal);
-        foreach (var english in new[] { "String", "Integer", "Boolean", "Decimal", "DateTime" })
+        foreach (var english in new[] { "String", "Integer", "Boolean", "Decimal", "Datetime" })
         {
-            Assert.DoesNotContain(english, cut.Markup, StringComparison.Ordinal);
+            Assert.DoesNotContain(english, cut.Markup, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

@@ -640,7 +640,7 @@ internal sealed record Texts(
     public string DataTypeLabel(string value)
     {
         var code = DataTypeAliases.TryGetValue(value, out var canonical) ? canonical : value;
-        return DataTypeNames.TryGetValue(code, out var name) ? name : value;
+        return DataTypeNames.TryGetValue(code, out var name) ? name : code;
     }
 
     /// <summary>The word for a direction, as the status line and the active button say it.</summary>
