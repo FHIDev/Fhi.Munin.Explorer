@@ -326,6 +326,13 @@ public sealed partial class KildeSearch : ComponentBase
             ? T.CollapseDatasamlinger(RowName(kilde).Text)
             : T.ExpandDatasamlinger(RowName(kilde).Text);
 
+    // Stiler's own chevron, and where the toggle's size comes from: the button pads by only 4px/6px,
+    // so its content carries the target size — `.icon` is a 1.5rem box, where the "+" this replaced
+    // was a 7px glyph and the control measured 20 x 24. (Fhi.Metadata-mpx2p)
+    private string ExpandChevronClass(Guid id) =>
+        "icon icon--nomargin munin-explorer-kilder__expand-icon "
+        + (IsExpanded(id) ? "icon-keyboard-arrow-down" : "icon-keyboard-arrow-right");
+
     private string PanelId(Guid id) => $"munin-explorer-datasamlinger-{_instance}-{id}";
 
     // The same shape as DetailStatus beside it: one line that is the loading sentence, then the

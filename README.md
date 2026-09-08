@@ -440,6 +440,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-kilder-scroll` | meaning |
   | `munin-explorer-kilder__count` | handle |
   | `munin-explorer-kilder__expand` | handle |
+  | `munin-explorer-kilder__expand-icon` | handle |
   | `munin-explorer-kilder__expand-toggle` | handle |
   | `munin-explorer-kilder__expanded` | handle |
   | `munin-explorer-kilder__name` | handle |

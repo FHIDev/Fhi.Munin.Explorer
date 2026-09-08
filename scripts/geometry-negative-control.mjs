@@ -99,6 +99,16 @@ const cases = [
       'overflow: hidden; }'),
   },
   {
+    assertion: "the kilder table's expand control is big enough to hit",
+    defect: 'a toggle whose glyph is the whole of its size, as the literal "+" was',
+    path: '/kilder', state: 'kilder-list', width: 1440,
+    // Both halves, because either alone leaves the control over the minimum on one axis and the
+    // assertion is meant to fail on either.
+    apply: css('.munin-explorer-kilder__expand-icon { height: 8px !important; ' +
+      'width: 8px !important; }\n' +
+      '.munin-explorer-kilder__expand-toggle { padding: 0 !important; }'),
+  },
+  {
     assertion: 'the tablist clears the header',
     defect: 'the tablist back at document top, under the header',
     path: '/', state: 'explorer-tabs', width: 1440,

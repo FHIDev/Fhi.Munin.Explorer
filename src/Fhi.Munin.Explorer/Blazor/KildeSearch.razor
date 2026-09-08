@@ -491,7 +491,12 @@ else
                                             aria-expanded="@(IsExpanded(kilde.Id) ? "true" : "false")"
                                             aria-controls="@(IsExpanded(kilde.Id) ? PanelId(kilde.Id) : null)"
                                             aria-label="@ExpandLabel(kilde)"
-                                            @onclick="() => ToggleDatasamlingerAsync(kilde)">@(IsExpanded(kilde.Id) ? "−" : "+")</button>
+                                            @onclick="() => ToggleDatasamlingerAsync(kilde)">
+                                        @* Decorative: aria-expanded above already says which way it
+                                           points, and the button is named for the kilde it opens.
+                                           Why a chevron rather than a "+" is on ExpandChevronClass. *@
+                                        <span class="@ExpandChevronClass(kilde.Id)" aria-hidden="true"></span>
+                                    </button>
                                 }
                             </td>
                             @if (Selectable)

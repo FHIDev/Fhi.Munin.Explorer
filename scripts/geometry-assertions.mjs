@@ -25,7 +25,7 @@
 //                       still the composition we ship, and because a pin fails with a much more
 //                       useful message than the invariant that would also have caught it.
 //
-// Five of the eight below are invariants. If that ratio ever inverts, this file has become a
+// Five of the nine below are invariants. If that ratio ever inverts, this file has become a
 // changelog.
 //
 // A pin may also declare `states: [...]` — the states from axe-states.mjs whose page can contain
@@ -369,6 +369,28 @@ export const assertions = [
       if (offenders.length === 0) return null;
       return `${offenders.length} element(s) inside a tab panel carry ${mountSel}: ` +
         offenders.map(el => el.tagName.toLowerCase()).join(', ');
+    },
+  },
+
+  {
+    name: "the kilder table's expand control is big enough to hit",
+    kind: 'pin',
+    states: ['kilder-list'],
+    // A pin, not an invariant: Fhi.Metadata-mpx2p measured 20 x 24 against WCAG 2.5.8's 24 x 24.
+    // The invariant it resembles — every control at least 24 x 24 — does not pass this page today,
+    // because the selection checkbox is a native 13 x 13 (Fhi.Metadata-ycv15, a different fix).
+    body: () => {
+      const toggles = [...document.querySelectorAll('.munin-explorer-kilder__expand-toggle')];
+      if (toggles.length === 0) return 'no expand toggle on the page — nothing was measured';
+      const minimum = 24;
+      for (const toggle of toggles) {
+        const r = toggle.getBoundingClientRect();
+        if (r.width < minimum || r.height < minimum) {
+          return `expand toggle measures ${r.width.toFixed(1)} x ${r.height.toFixed(1)}, ` +
+            `under the ${minimum} x ${minimum} minimum target size`;
+        }
+      }
+      return null;
     },
   },
 ];
