@@ -2,10 +2,10 @@
 
 <div class="munin-explorer-hierarchy" aria-busy="@(_loading ? "true" : "false")">
     <p class="caption" role="status">@Status</p>
-    @if (_failed)
+    @if (_retryShown)
     {
         <button type="button" class="hd-button-square button-square--ghost-blue"
-                disabled="@_loading" @onclick="LoadAsync">@T.HierarchyRetry</button>
+                aria-disabled="@(CanRetry ? null : "true")" @onclick="RetryAsync">@T.HierarchyRetry</button>
     }
     @if (!_loading && !_failed && _nodes.Count > 0)
     {

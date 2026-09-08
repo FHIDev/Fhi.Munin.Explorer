@@ -5,3 +5,6 @@ category: Added
   source view, and hosts mounting `KildeView` directly.
 - Hosts can also render `KildeHierarchyView` with a `KildeId` and optional `Language`.
   `KildeView` now needs the registered `IMuninExplorerClient` to load the hierarchy.
+- Hierarchy retries retain keyboard focus and announce completion. Rate-limited requests
+  show the throttling message without enabling another retry; nested lists keep explicit
+  list semantics when hosts hide their markers.

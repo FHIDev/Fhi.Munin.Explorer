@@ -43,6 +43,7 @@ public sealed class KildeHierarchyViewTest : BunitContext
         var cut = Mount(new Client { Fetch = (_, _) => Task.FromResult<KildeHierarchy?>(Hierarchy(id)) }, id);
 
         Assert.Equal(7, cut.FindAll("li").Count);
+        Assert.All(cut.FindAll("ul"), list => Assert.Equal("list", list.GetAttribute("role")));
         Assert.Equal(3, cut.FindAll("details").Count);
         Assert.All(cut.FindAll("details"), d => Assert.False(d.HasAttribute("open")));
         Assert.Empty(cut.FindAll("[role=tree], input, button"));
@@ -96,15 +97,17 @@ public sealed class KildeHierarchyViewTest : BunitContext
         Assert.Equal("false", cut.Find(".munin-explorer-hierarchy").GetAttribute("aria-busy"));
     }
 
-    [Fact]
-    public async Task Render_WhenAnOldRequestFailsAfterSwitching_ThenTheCurrentHierarchyStillRenders()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Render_WhenAnOldRequestFailsAfterSwitching_ThenTheCurrentHierarchyStillRenders(bool rateLimited)
     {
         var first = Guid.NewGuid();
         var pending = new TaskCompletionSource<KildeHierarchy?>();
         var client = new Client { Fetch = (id, _) => id == first ? pending.Task : Task.FromResult<KildeHierarchy?>(Hierarchy(id)) };
         var cut = Mount(client, first);
         cut.Render(p => p.Add(c => c.KildeId, Guid.NewGuid()));
-        await cut.InvokeAsync(() => pending.SetException(new HttpRequestException("Late failure")));
+        await cut.InvokeAsync(() => pending.SetException(rateLimited ? new MuninExplorerRateLimitedException() : new HttpRequestException("Late failure")));
         Assert.Equal(7, cut.FindAll("li").Count);
         Assert.Empty(cut.FindAll("button"));
     }
@@ -142,6 +145,63 @@ public sealed class KildeHierarchyViewTest : BunitContext
         await cut.Find("button").ClickAsync(new());
         Assert.Equal(2, client.Calls.Count);
         Assert.Equal(7, cut.FindAll("li").Count);
+    }
+
+    [Theory]
+    [InlineData("nb")]
+    [InlineData("en")]
+    public async Task Retry_WhenItSucceeds_ThenTheControlRemainsAndCompletionIsAnnounced(string language)
+    {
+        var id = Guid.NewGuid();
+        var client = new Client { Fetch = (_, _) => throw new HttpRequestException() };
+        var cut = Mount(client, id, language);
+        var button = cut.Find("button");
+        var pending = new TaskCompletionSource<KildeHierarchy?>();
+        client.Fetch = (_, _) => pending.Task;
+        var retry = button.ClickAsync(new());
+        cut.WaitForAssertion(() => Assert.Equal("true", button.GetAttribute("aria-disabled")));
+        Assert.False(button.HasAttribute("disabled"));
+        await button.ClickAsync(new());
+        Assert.Equal(2, client.Calls.Count);
+        await cut.InvokeAsync(() => pending.SetResult(Hierarchy(id)));
+        await retry;
+        Assert.Single(cut.FindAll("button"));
+        Assert.Equal("true", button.GetAttribute("aria-disabled"));
+        Assert.Equal(Texts.For(language).HierarchyLoaded, cut.Find("[role=status]").TextContent);
+        await button.ClickAsync(new());
+        Assert.Equal(2, client.Calls.Count);
+    }
+
+    [Theory]
+    [InlineData("nb")]
+    [InlineData("en")]
+    public void Render_WhenRateLimited_ThenItExplainsThrottlingWithoutOfferingRetry(string language)
+    {
+        var client = new Client { Fetch = (_, _) => throw new MuninExplorerRateLimitedException() };
+        var cut = Mount(client, Guid.NewGuid(), language);
+        Assert.Equal(Texts.For(language).RateLimitError, cut.Find("[role=status]").TextContent);
+        Assert.Empty(cut.FindAll("button"));
+        cut.Render();
+        Assert.Single(client.Calls);
+        client.Fetch = (id, _) => Task.FromResult<KildeHierarchy?>(Hierarchy(id));
+        cut.Render(p => p.Add(c => c.KildeId, Guid.NewGuid()));
+        Assert.Equal(7, cut.FindAll("li").Count);
+        Assert.Empty(cut.FindAll("button"));
+    }
+
+    [Fact]
+    public async Task Retry_WhenRateLimited_ThenTheFocusedControlRemainsButCannotRequestAgain()
+    {
+        var client = new Client { Fetch = (_, _) => throw new HttpRequestException() };
+        var cut = Mount(client, Guid.NewGuid());
+        var button = cut.Find("button");
+        client.Fetch = (_, _) => throw new MuninExplorerRateLimitedException();
+        await button.ClickAsync(new());
+        Assert.Single(cut.FindAll("button"));
+        Assert.Equal("true", button.GetAttribute("aria-disabled"));
+        Assert.Equal(Texts.For("nb").RateLimitError, cut.Find("[role=status]").TextContent);
+        await button.ClickAsync(new());
+        Assert.Equal(2, client.Calls.Count);
     }
 
     [Fact]

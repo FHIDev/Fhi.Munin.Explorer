@@ -24,11 +24,15 @@ public sealed partial class KildeHierarchyView : ComponentBase, IDisposable
     private IReadOnlyList<KildeHierarchyNode> _nodes = [];
     private bool _loading;
     private bool _failed;
+    private bool _rateLimited;
+    private bool _retryShown;
+    private bool CanRetry => _failed && !_loading && !_rateLimited;
     private bool _disposed;
 
     private string Status => _loading ? T.HierarchyLoading
+        : _rateLimited ? T.RateLimitError
         : _failed ? T.HierarchyError
-        : _nodes.Count == 0 ? T.HierarchyEmpty : "";
+        : _nodes.Count == 0 ? T.HierarchyEmpty : _retryShown ? T.HierarchyLoaded : "";
 
     protected override Task OnParametersSetAsync()
     {
@@ -39,8 +43,12 @@ public sealed partial class KildeHierarchyView : ComponentBase, IDisposable
 
         _requestedId = KildeId;
         _failed = false;
+        _rateLimited = false;
+        _retryShown = false;
         return LoadAsync();
     }
+
+    private Task RetryAsync() => CanRetry ? LoadAsync() : Task.CompletedTask;
 
     private async Task LoadAsync()
     {
@@ -61,6 +69,14 @@ public sealed partial class KildeHierarchyView : ComponentBase, IDisposable
             _failed = hierarchy is null || hierarchy.KildeId != KildeId;
             _nodes = _failed ? [] : KildeHierarchyNode.From(hierarchy!);
         }
+        catch (MuninExplorerRateLimitedException)
+        {
+            if (!_disposed && !request.IsCancellationRequested)
+            {
+                _rateLimited = true;
+                _failed = false;
+            }
+        }
         catch (Exception)
         {
             if (!_disposed && !request.IsCancellationRequested)
@@ -74,6 +90,7 @@ public sealed partial class KildeHierarchyView : ComponentBase, IDisposable
             {
                 _request = null;
                 _loading = false;
+                _retryShown |= _failed;
             }
         }
     }
@@ -82,26 +99,28 @@ public sealed partial class KildeHierarchyView : ComponentBase, IDisposable
     {
         builder.OpenElement(0, "ul");
         builder.AddAttribute(1, "class", "munin-explorer-hierarchy__nodes");
+        // Explicit semantics survive hosts removing list markers in Safari/VoiceOver.
+        builder.AddAttribute(2, "role", "list");
         foreach (var node in nodes)
         {
-            builder.OpenElement(2, "li");
+            builder.OpenElement(3, "li");
             builder.SetKey(node.Key);
             if (node.Children.Count > 0)
             {
                 // Native details owns expansion and focus locally, including on legacy Server hosts.
-                builder.OpenElement(3, "details");
-                builder.AddAttribute(4, "class", "munin-explorer-hierarchy__branch");
-                builder.OpenElement(5, "summary");
-                builder.AddContent(6, Label(node));
+                builder.OpenElement(4, "details");
+                builder.AddAttribute(5, "class", "munin-explorer-hierarchy__branch");
+                builder.OpenElement(6, "summary");
+                builder.AddContent(7, Label(node));
                 builder.CloseElement();
-                builder.AddContent(7, Nodes(node.Children));
+                builder.AddContent(8, Nodes(node.Children));
                 builder.CloseElement();
             }
             else
             {
-                builder.OpenElement(8, "span");
-                builder.AddAttribute(9, "class", "munin-explorer-hierarchy__leaf");
-                builder.AddContent(10, Label(node));
+                builder.OpenElement(9, "span");
+                builder.AddAttribute(10, "class", "munin-explorer-hierarchy__leaf");
+                builder.AddContent(11, Label(node));
                 builder.CloseElement();
             }
             builder.CloseElement();

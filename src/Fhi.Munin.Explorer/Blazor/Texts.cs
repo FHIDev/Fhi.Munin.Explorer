@@ -429,6 +429,7 @@ internal sealed record Texts(
     // KildeView.DefaultDataCollectionsHeading.
     string HeadingDelkilderAndDataCollections,
     string HierarchyLoading,
+    string HierarchyLoaded,
     string HierarchyError,
     string HierarchyEmpty,
     string HierarchyRetry,
@@ -920,6 +921,7 @@ internal sealed record Texts(
         ShowFilters: "Vis filtre",
         HideFilters: "Skjul filtre",
         HeadingDelkilderAndDataCollections: "Delkilder og datasamlinger",
+        HierarchyLoaded: "Strukturen er lastet. Du kan nå utforske delkilder, datasamlinger og variabelgrupper.",
         HierarchyLoading: "Laster delkilder, datasamlinger og variabelgrupper …",
         HierarchyError: "Kunne ikke laste delkilder, datasamlinger og variabelgrupper nå.",
         HierarchyEmpty: "Ingen delkilder, datasamlinger eller variabelgrupper er tilgjengelige.",
@@ -1226,6 +1228,7 @@ internal sealed record Texts(
         ShowFilters: "Show filters",
         HideFilters: "Hide filters",
         HeadingDelkilderAndDataCollections: "Sub-sources and data collections",
+        HierarchyLoaded: "The hierarchy has loaded. You can now explore sub-sources, data collections and variable groups.",
         HierarchyLoading: "Loading sub-sources, data collections and variable groups …",
         HierarchyError: "Could not load sub-sources, data collections and variable groups right now.",
         HierarchyEmpty: "No sub-sources, data collections or variable groups are available.",
