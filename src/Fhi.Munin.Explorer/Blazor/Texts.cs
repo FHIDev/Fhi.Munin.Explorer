@@ -650,9 +650,31 @@ internal sealed record Texts(
     private static bool Is(string value, string token) =>
         string.Equals(value, token, StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>Prose for a datatype code, falling back to the code — same reasoning as above.</summary>
-    public string DataTypeLabel(string value) =>
-        DataTypeNames.TryGetValue(value, out var name) ? name : value;
+    /// <summary>Legacy string aliases onto canonical DataType codes — mirrors
+    /// <c>DatatypeNormalizer.Aliases</c> in the API and <c>DATATYPE_ALIAS_KEY</c> in Runa.</summary>
+    private static readonly Dictionary<string, string> DataTypeAliases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["string"] = "1",
+        ["tekst"] = "1",
+        ["integer"] = "2",
+        ["int"] = "2",
+        ["decimal"] = "3",
+        ["boolean"] = "4",
+        ["time"] = "5",
+        ["date"] = "6",
+        ["datetime"] = "7",
+        ["uri"] = "8",
+        ["base64binary"] = "9",
+    };
+
+    /// <summary>Prose for a datatype code or legacy alias. Falls back to the canonical code,
+    /// which is the input itself when that was not an alias — never to the English word an alias
+    /// arrived as, since printing that is the defect the aliases exist to remove.</summary>
+    public string DataTypeLabel(string value)
+    {
+        var code = DataTypeAliases.TryGetValue(value, out var canonical) ? canonical : value;
+        return DataTypeNames.TryGetValue(code, out var name) ? name : code;
+    }
 
     /// <summary>The word for a direction, as the status line and the active button say it.</summary>
     /// <remarks>
