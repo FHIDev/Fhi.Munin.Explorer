@@ -1860,6 +1860,27 @@ table.munin-explorer-data-list tbody th {
   padding: 4px 6px;
 }
 
+/* A sample has no icon font, so this stands in for Stiler's `.icon` — the same character the
+   variable rows' chevron is drawn from. The 24px box is the load-bearing part: the padding above
+   is 12px, so the glyph is what has to carry the 24px target size. (Fhi.Metadata-mpx2p) */
+.munin-explorer-kilder__expand-icon {
+  color: var(--primary);
+  display: inline-block;
+  height: 24px;
+  transition: transform 120ms ease;
+  width: 24px;
+}
+
+.munin-explorer-kilder__expand-icon::before {
+  content: "\203A";           /* › */
+  font-size: 1.25rem;
+  line-height: 24px;
+}
+
+.icon-keyboard-arrow-down.munin-explorer-kilder__expand-icon {
+  transform: rotate(90deg);
+}
+
 /* Measured in the sample before this was written: on grey10 alone the panel was invisible against
    the white table, so six datasamlinger read as six more kilder, under a second header row nobody
    had said was nested. The inset and the rule down the left are what say "inside this row". */

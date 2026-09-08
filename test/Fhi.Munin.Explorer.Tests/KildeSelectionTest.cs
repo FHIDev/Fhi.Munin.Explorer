@@ -628,6 +628,7 @@ public class KildeSelectionTest : BunitContext
             "munin-explorer-kilder-scroll",
             "munin-explorer-kilder__count",
             "munin-explorer-kilder__expand",
+            "munin-explorer-kilder__expand-icon",
             "munin-explorer-kilder__expand-toggle",
             "munin-explorer-kilder__name",
             "munin-explorer-kilder__select",     // this bead's

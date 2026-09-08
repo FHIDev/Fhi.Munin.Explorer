@@ -746,6 +746,34 @@ public class KildeSearchTest : BunitContext
     }
 
     [Fact]
+    public void ExpandToggle_WhenARowCanOpen_ThenItDisclosesWithTheChevronRatherThanAGlyph()
+    {
+        // The toggle wears hd-button-reset, so its own content is the whole of its size: a literal
+        // "+" measured 20 x 24, under the 24 x 24 WCAG 2.5.8 asks for. Stiler's `.icon` is a 24px
+        // box, and it is also what the variable table discloses with. (Fhi.Metadata-mpx2p)
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        var toggle = ExpandToggle(cut, "Als registeret");
+        var chevron = toggle.QuerySelector("span.munin-explorer-kilder__expand-icon")!;
+
+        Assert.Equal("", toggle.TextContent.Trim());
+        Assert.Contains("icon", chevron.ClassList);
+        Assert.Contains("icon-keyboard-arrow-right", chevron.ClassList);
+
+        // Decorative: aria-expanded on the button already says which way it points, and the button
+        // is named by the kilde it opens.
+        Assert.Equal("true", chevron.GetAttribute("aria-hidden"));
+
+        toggle.Click();
+
+        Assert.Contains(
+            "icon-keyboard-arrow-down",
+            ExpandToggle(cut, "Als registeret")
+                .QuerySelector("span.munin-explorer-kilder__expand-icon")!.ClassList);
+    }
+
+    [Fact]
     public void Render_WhenTheToggleIsPressed_ThenTheRowOpensOnItsDatasamlingerGrouped()
     {
         var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
@@ -2839,6 +2867,7 @@ public class KildeSearchTest : BunitContext
             "munin-explorer-kilder-scroll",
             "munin-explorer-kilder__count",
             "munin-explorer-kilder__expand",
+            "munin-explorer-kilder__expand-icon",
             "munin-explorer-kilder__expand-toggle",
             "munin-explorer-kilder__name",
             "munin-explorer-results",            // shared
@@ -2892,6 +2921,27 @@ public class KildeSearchTest : BunitContext
             BlocksFor(".munin-explorer-filters__facets[hidden]")
                 .Any(d => d.Contains("display:block", StringComparison.Ordinal)),
             "No rule undoes [hidden] on the facets once the host has room for a sidebar.");
+    }
+
+    [Fact]
+    public void ExpandIcon_WhenASampleStandsInForStiler_ThenTheDeclarationItNeedsIsABox()
+    {
+        // Same shape as the fold's guard above. `.icon` gives the chevron a 24px box on a Stiler
+        // host, and it is that box the toggle's target size rests on; a sample has no `.icon`, so a
+        // stand-in declaring only a colour would draw a control the reader cannot hit.
+        var rules = HostClassNames.SampleDeclarationsFor("munin-explorer-kilder__expand-icon");
+
+        static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
+
+        var blocks = rules.Select(r => Squeezed(r.Declarations)).ToList();
+
+        Assert.True(
+            blocks.Any(d => d.Contains("height:24px", StringComparison.Ordinal)),
+            "No rule gives the chevron the 24px height Stiler's `.icon` gives it.");
+
+        Assert.True(
+            blocks.Any(d => d.Contains("width:24px", StringComparison.Ordinal)),
+            "No rule gives the chevron the 24px width Stiler's `.icon` gives it.");
     }
 
     // ---------------------------------------------------------------------------------
@@ -3080,7 +3130,7 @@ public class KildeSearchTest : BunitContext
         // in Furnished() has a different value so a swap cannot look like a match.
         Assert.Equal(
         [
-            "+",
+            "",                                  // the expand cell: a chevron, no text of its own
             NameCellText(cut),
             "Sentralt helseregister",
             "Aktiv",
