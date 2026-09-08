@@ -99,16 +99,42 @@ public sealed partial class KildeView : ComponentBase
     private IReadOnlyList<PropertyGroup> Groups =>
         Kilde is { } kilde
             ? CatalogueProperties.Groups(kilde.PropertyMetadata, kilde.AdditionalProperties, Reader,
-                                         DrawnInTheHeader)
+                                         DrawnElsewhere(kilde))
             : [];
 
-    /// <summary>Keys the header renders itself, so the metadata does not repeat them.</summary>
+    /// <summary>Keys whose value already appears elsewhere on the page, so the metadata does not repeat them.</summary>
     /// <remarks>
-    /// Both spellings, since a kilde curates one or the other. Not <c>BeskrivelseEngelsk</c>: the
-    /// ingress is the Norwegian one, so excluding it would delete a fact. (Fhi.Metadata-8yqoz)
+    /// Beskrivelse and Tittel always duplicate the ingress and the name heading, whichever spelling
+    /// curated them (Fhi.Metadata-8yqoz). FormaalFlerspraklig and hasLegalBasis are the catalogue's
+    /// EHDS/HealthDCAT-AP mirrors of Formål and Lovverk, dropped only when the plain field they
+    /// mirror also has a value — a source curating just the EHDS field still shows it (Fhi.Metadata-43jrq).
     /// </remarks>
-    private static readonly IReadOnlySet<string> DrawnInTheHeader =
-        new HashSet<string>(StringComparer.Ordinal) { "Beskrivelse", "BeskrivelseFlerspraklig" };
+    private static IReadOnlySet<string> DrawnElsewhere(KildeDetail kilde)
+    {
+        var keys = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "Beskrivelse", "BeskrivelseFlerspraklig",
+            "Tittel", "TittelFlerspraklig",
+        };
+
+        if (Filled(kilde, "Formaal") && Filled(kilde, "FormaalFlerspraklig"))
+        {
+            keys.Add("Formaal");
+        }
+
+        if (!string.IsNullOrWhiteSpace(kilde.LegalBasis) && Filled(kilde, "hasLegalBasis"))
+        {
+            keys.Add("hasLegalBasis");
+        }
+
+        return keys;
+    }
+
+    // AdditionalProperties is declared non-nullable but System.Text.Json writes an explicit JSON
+    // null straight over it (see Rows_WhenTheBagIsNull_ThenThereAreNoRowsRatherThanAThrow), so a
+    // host substituting its own client can still hand this a null dictionary.
+    private static bool Filled(KildeDetail kilde, string key) =>
+        kilde.AdditionalProperties?.TryGetValue(key, out var value) is true && !string.IsNullOrWhiteSpace(value);
 
     /// <summary>
     /// The facts every source has, which is why they are typed fields rather than curated properties.

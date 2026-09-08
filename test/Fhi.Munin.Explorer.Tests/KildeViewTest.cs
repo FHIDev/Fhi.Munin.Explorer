@@ -539,6 +539,39 @@ public class KildeViewTest : BunitContext
         Assert.Empty(cut.FindAll(".munin-explorer-group"));
     }
 
+    [Fact]
+    public void Metadata_WhenOnlyTheEhdsMirrorOfFormaalIsCurated_ThenItStillShowsRatherThanBeingDropped()
+    {
+        // The exclusion only fires when both Formaal and FormaalFlerspraklig are filled in. A
+        // source curating just the mirror must not lose its only Formål (Fhi.Metadata-43jrq).
+        var kilde = Kilde() with
+        {
+            PropertyMetadata = [Entry("FormaalFlerspraklig", 10, "EHDS / HealthDCAT-AP", "Formål (språkmerket)")],
+            AdditionalProperties = new Dictionary<string, string?> { ["FormaalFlerspraklig"] = "Kvalitetssikring." },
+        };
+
+        var cut = Render(kilde);
+
+        Assert.Contains("Formål", cut.FindAll(".munin-explorer-kilde__main dt").Select(e => e.TextContent));
+    }
+
+    [Fact]
+    public void Metadata_WhenOnlyHasLegalBasisIsCuratedAndLovverkIsBlank_ThenItStillShows()
+    {
+        // Symmetric guard for hasLegalBasis: excluded only when the sidebar's Lovverk fact would
+        // otherwise say the same thing, never when it is the only place the fact appears.
+        var kilde = Kilde() with
+        {
+            LegalBasis = null,
+            PropertyMetadata = [Entry("hasLegalBasis", 10, "EHDS / HealthDCAT-AP", "Rettslig grunnlag (språkmerket)")],
+            AdditionalProperties = new Dictionary<string, string?> { ["hasLegalBasis"] = "§ 9." },
+        };
+
+        var cut = Render(kilde);
+
+        Assert.Contains("Rettslig grunnlag", cut.FindAll(".munin-explorer-kilde__main dt").Select(e => e.TextContent));
+    }
+
     // ---------------------------------------------------------------------------------
     // The same metadata, out of a captured payload rather than a hand-written source.
     // ---------------------------------------------------------------------------------
@@ -553,15 +586,17 @@ public class KildeViewTest : BunitContext
         ?? throw new InvalidOperationException("kilde-barnediabetes.json no longer reads as a KildeDetail.");
 
     [Theory]
-    [InlineData("no", new[] { "Datainnsamling", "Beskrivelse", "Formål", "EHDS / HealthDCAT-AP",
+    [InlineData("no", new[] { "Datainnsamling", "Beskrivelse", "EHDS / HealthDCAT-AP",
                               "Kontakt", "Versjonering", "Helsedatatilgangsorgan (overstyring)" })]
-    [InlineData("en", new[] { "Data Collection", "Description", "Purpose", "EHDS / HealthDCAT-AP",
+    [InlineData("en", new[] { "Data Collection", "Description", "EHDS / HealthDCAT-AP",
                               "Contact", "Versioning", "Health Data Access Body (override)" })]
     public void Metadata_WhenARealSourceIsDrawn_ThenEveryGroupItFilledInIsThereInTheReadersLanguage(
         string language, string[] expected)
     {
         // Read as a list rather than searched for, so a group that stops being drawn is a failure
-        // and not merely unreported, and so the catalogue's own order is asserted with it.
+        // and not merely unreported, and so the catalogue's own order is asserted with it. Formål
+        // is gone rather than renamed: its only member, Formaal, duplicates FormaalFlerspraklig,
+        // which now carries the label alone from inside EHDS / HealthDCAT-AP (Fhi.Metadata-43jrq).
         var cut = Render(Barnediabetes(), language);
 
         Assert.Equal(expected, cut.FindAll(".munin-explorer-group").Select(e => e.TextContent));
@@ -606,8 +641,9 @@ public class KildeViewTest : BunitContext
         string language, string group)
     {
         // THE TRAP: Groups drops a group whose every key is unset, so an exclusion can take the
-        // group with it. Five of the six populated EHDS keys survive, so it must still draw rows.
-        // The sibling test pins all seven group names; this one catches a hollow heading.
+        // group with it. Three of the six populated EHDS keys survive — BeskrivelseFlerspraklig,
+        // TittelFlerspraklig and hasLegalBasis are now excluded too (Fhi.Metadata-43jrq) — so it
+        // must still draw rows. The sibling test pins the surviving group names.
         var kilde = Barnediabetes();
         var cut = Render(kilde, language);
 
@@ -623,7 +659,7 @@ public class KildeViewTest : BunitContext
 
         Assert.NotNull(rows);
         Assert.Equal("DL", rows!.TagName);
-        Assert.True(rows.QuerySelectorAll("dt").Length >= 4,
+        Assert.True(rows.QuerySelectorAll("dt").Length >= 2,
                     $"the EHDS group should keep its other fields, found {rows.QuerySelectorAll("dt").Length}");
 
         // And what it lost is the description, not something else.
@@ -718,17 +754,80 @@ public class KildeViewTest : BunitContext
     public void Metadata_WhenARealSourceStoresAValuePerLanguage_ThenTheReaderSeesWordsAndNotTheEnvelope(
         string language)
     {
-        // Three of this source's values are Flerspraklig siblings, and all three are stored under
-        // nb alone: an English host reading only the Norwegian sibling shows them, one reading only
-        // an en key that is not there shows blanks, and one reading neither shows the envelope.
+        // FormaalFlerspraklig is the only one of this source's three Flerspraklig siblings still
+        // drawn as its own row — Tittel and Beskrivelse now duplicate the header (Fhi.Metadata-43jrq).
+        // Its value is stored under nb alone, so an English host falls back to it rather than to
+        // blanks or to the raw envelope.
         var cut = Render(Barnediabetes(), language);
 
         var values = cut.FindAll(".munin-explorer-kilde__main dd").Select(e => e.TextContent).ToList();
 
         Assert.Contains(values, v => v.StartsWith("Barnediabetesregisterets formål er:", StringComparison.Ordinal));
-        Assert.Contains("Barnediabetes", values);
         Assert.All(values, v => Assert.DoesNotContain("\"nb\":", v, StringComparison.Ordinal));
         Assert.All(values, v => Assert.DoesNotContain("\"value\":", v, StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("no")]
+    [InlineData("en")]
+    public void Metadata_WhenARealSourceIsDrawn_ThenNoLabelCarriesTheCataloguesStorageQualifier(
+        string language)
+    {
+        // "språkmerket"/"flerspråklig" — and their English spellings — say how the catalogue stores
+        // a value, not something a reader needs (Fhi.Metadata-43jrq).
+        var cut = Render(Barnediabetes(), language);
+
+        foreach (var qualifier in new[] { "språkmerket", "flerspråklig", "language-tagged", "multilingual" })
+        {
+            Assert.DoesNotContain(qualifier, cut.Markup, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    [Theory]
+    [InlineData("no", "Formål")]
+    [InlineData("en", "Purpose")]
+    public void Metadata_WhenTheCatalogueDuplicatesFormaalIntoItsEhdsMirror_ThenTheReaderSeesOneHeading(
+        string language, string label)
+    {
+        // THE TRAP: the captured source curates Formaal and FormaalFlerspraklig with the same
+        // prose. Two rows under the same stripped label would be worse than the qualifier ever was.
+        var cut = Render(Barnediabetes(), language);
+
+        Assert.Single(cut.FindAll(".munin-explorer-kilde__main dt"), e => e.TextContent == label);
+    }
+
+    [Theory]
+    [InlineData("no", "Lovverk")]
+    [InlineData("en", "Legal basis")]
+    public void Metadata_WhenTheCatalogueDuplicatesTheLegalBasisIntoItsEhdsMirror_ThenOnlyTheSidebarShowsIt(
+        string language, string sidebarLabel)
+    {
+        // hasLegalBasis repeats the sidebar's Lovverk fact word for word in this fixture, so the
+        // group row is dropped rather than shown twice under two labels.
+        var kilde = Barnediabetes();
+        var cut = Render(kilde, language);
+
+        var labels = cut.FindAll(".munin-explorer-kilde__main dt").Select(e => e.TextContent);
+
+        Assert.DoesNotContain(labels, l => l.Contains("Rettslig grunnlag", StringComparison.Ordinal)
+                                         || l.Contains("Legal basis", StringComparison.Ordinal));
+
+        Assert.Equal(kilde.LegalBasis, Value(SourceInformation(cut), sidebarLabel));
+    }
+
+    [Theory]
+    [InlineData("no")]
+    [InlineData("en")]
+    public void Metadata_WhenTheCatalogueDuplicatesTheTitleIntoItsEhdsMirror_ThenOnlyTheNameHeadingShowsIt(
+        string language)
+    {
+        // TittelFlerspraklig repeats PreferredTerm, which is already the h2 above the metadata —
+        // drawing it again as a body value would be the name said twice on the same page.
+        var kilde = Barnediabetes();
+        var cut = Render(kilde, language);
+
+        Assert.DoesNotContain(kilde.PreferredTerm,
+            cut.FindAll(".munin-explorer-kilde__main dd").Select(e => e.TextContent));
     }
 
     // ---------------------------------------------------------------------------------
@@ -1440,16 +1539,16 @@ public class KildeViewTest : BunitContext
             [
                 new PropertyMetadataEntry
                 {
-                    Key = "TittelFlerspraklig",
+                    Key = "VersjonsnotaterFlerspraklig",
                     SortOrder = 540,
                     GroupTranslations = new Dictionary<string, string> { ["no"] = "EHDS / HealthDCAT-AP" },
-                    DisplayNameTranslations = new Dictionary<string, string> { ["no"] = "Tittel" },
+                    DisplayNameTranslations = new Dictionary<string, string> { ["no"] = "Versjonsnotater" },
                     Type = "MultilingualText",
                 },
             ],
             AdditionalProperties = new Dictionary<string, string?>
             {
-                ["TittelFlerspraklig"] = """{"nb":"Als registeret","en":"The ALS registry"}""",
+                ["VersjonsnotaterFlerspraklig"] = """{"nb":"Als registeret","en":"The ALS registry"}""",
             },
         };
 

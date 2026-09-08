@@ -171,6 +171,45 @@ public class CataloguePropertiesTest
         Assert.Equal(["Datainnsamling"], groups.Select(g => g.Name));
     }
 
+    [Theory]
+    [InlineData("Formål (språkmerket)", "no", "Formål")]
+    [InlineData("Purpose (language-tagged)", "en", "Purpose")]
+    [InlineData("Tittel (flerspråklig)", "no", "Tittel")]
+    [InlineData("Title (multilingual)", "en", "Title")]
+    public void Rows_WhenTheLabelCarriesTheCataloguesStorageQualifier_ThenTheReaderNeverSeesIt(
+        string curatedLabel, string reader, string expected)
+    {
+        // "språkmerket"/"flerspråklig" say how the catalogue STORES a value, not something a reader
+        // needs — stripped at render time in both curated languages (Fhi.Metadata-43jrq).
+        List<PropertyMetadataEntry> metadata =
+        [
+            new()
+            {
+                Key = "X",
+                SortOrder = 10,
+                GroupTranslations = new Dictionary<string, string> { ["no"] = "Gruppe" },
+                DisplayNameTranslations = new Dictionary<string, string> { [reader] = curatedLabel },
+            },
+        ];
+
+        Dictionary<string, string?> values = new() { ["X"] = "verdi" };
+
+        var row = Assert.Single(CatalogueProperties.Rows(metadata, values, reader));
+
+        Assert.Equal(expected, row.Label);
+    }
+
+    [Fact]
+    public void Groups_WhenTheGroupNameCarriesTheCataloguesStorageQualifier_ThenItIsStrippedToo()
+    {
+        List<PropertyMetadataEntry> metadata = [Entry("Opprettet", 20, "Merknad (flerspråklig)")];
+        Dictionary<string, string?> values = new() { ["Opprettet"] = "2023" };
+
+        var group = Assert.Single(CatalogueProperties.Groups(metadata, values, "no"));
+
+        Assert.Equal("Merknad", group.Name);
+    }
+
     [Fact]
     public void Rows_WhenTheBagIsNull_ThenThereAreNoRowsRatherThanAThrow()
     {
