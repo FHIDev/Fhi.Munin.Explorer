@@ -75,5 +75,14 @@ fi
 empty="$("$flatten" /dev/null)"
 check  "empty input has a stand-in"         "No changelog entry was assembled"   "$empty"
 
+# The feed reads these from line one, so a blank first line is a visible fault.
+first="$(printf '%s\n' "$out" | head -1)"
+if [ -n "$first" ]; then
+  printf '  ok    first line is not blank\n'
+else
+  printf '  FAIL  first line is blank — the feed shows an empty line before the first category\n'
+  fail=1
+fi
+
 [ "$fail" -eq 0 ] || { echo "flatten-release-notes: FAILED"; exit 1; }
 echo "flatten-release-notes: all checks passed"

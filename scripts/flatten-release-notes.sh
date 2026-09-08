@@ -35,7 +35,9 @@ awk '
     if (lead != "") print "  * " lead
     buf = ""
   }
-  /^### /  { flush(); cat = substr($0, 5); printf "\n%s\n", cat; next }
+  # Blank line BETWEEN categories, never before the first — the notes are read from their
+  # first line on the feed, and an empty one there reads as a formatting fault.
+  /^### /  { flush(); if (seen++) printf "\n"; printf "%s\n", substr($0, 5); next }
   # Both markers and any leading indent: assemble-changelog.ps1 validates with TrimStart(),
   # so `  * x` is as legal a bullet as `- x`, and reading it as a continuation would fold a
   # whole entry into the one above it.
