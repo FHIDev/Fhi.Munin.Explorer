@@ -539,6 +539,22 @@ public class KildeViewTest : BunitContext
         Assert.Empty(cut.FindAll(".munin-explorer-group"));
     }
 
+    [Fact]
+    public void Metadata_WhenOnlyTheEhdsMirrorOfFormaalIsCurated_ThenItStillShowsRatherThanBeingDropped()
+    {
+        // The exclusion only fires when both Formaal and FormaalFlerspraklig are filled in. A
+        // source curating just the mirror must not lose its only Formål (Fhi.Metadata-43jrq).
+        var kilde = Kilde() with
+        {
+            PropertyMetadata = [Entry("FormaalFlerspraklig", 10, "EHDS / HealthDCAT-AP", "Formål (språkmerket)")],
+            AdditionalProperties = new Dictionary<string, string?> { ["FormaalFlerspraklig"] = "Kvalitetssikring." },
+        };
+
+        var cut = Render(kilde);
+
+        Assert.Contains("Formål", cut.FindAll(".munin-explorer-kilde__main dt").Select(e => e.TextContent));
+    }
+
     // ---------------------------------------------------------------------------------
     // The same metadata, out of a captured payload rather than a hand-written source.
     // ---------------------------------------------------------------------------------
@@ -552,16 +568,32 @@ public class KildeViewTest : BunitContext
             TestData.Read("kilde-barnediabetes.json"), MuninExplorerClient.Json)
         ?? throw new InvalidOperationException("kilde-barnediabetes.json no longer reads as a KildeDetail.");
 
+    /// <summary>
+    /// The fixture where hasLegalBasis and TittelFlerspraklig genuinely diverge from Lovverk and
+    /// PreferredTerm — a translation the plain field lacks, not a repeat of it (Fhi.Metadata-43jrq).
+    /// </summary>
+    private static KildeDetail AlsRegisteret() =>
+        JsonSerializer.Deserialize<KildeDetail>(
+            TestData.Read("kilde.json"), MuninExplorerClient.Json)
+        ?? throw new InvalidOperationException("kilde.json no longer reads as a KildeDetail.");
+
+    /// <inheritdoc cref="AlsRegisteret"/>
+    private static KildeDetail KildeMedDelkilder() =>
+        JsonSerializer.Deserialize<KildeDetail>(
+            TestData.Read("kilde-med-delkilder.json"), MuninExplorerClient.Json)
+        ?? throw new InvalidOperationException("kilde-med-delkilder.json no longer reads as a KildeDetail.");
+
     [Theory]
-    [InlineData("no", new[] { "Datainnsamling", "Beskrivelse", "Formål", "EHDS / HealthDCAT-AP",
+    [InlineData("no", new[] { "Datainnsamling", "Beskrivelse", "EHDS / HealthDCAT-AP",
                               "Kontakt", "Versjonering", "Helsedatatilgangsorgan (overstyring)" })]
-    [InlineData("en", new[] { "Data Collection", "Description", "Purpose", "EHDS / HealthDCAT-AP",
+    [InlineData("en", new[] { "Data Collection", "Description", "EHDS / HealthDCAT-AP",
                               "Contact", "Versioning", "Health Data Access Body (override)" })]
     public void Metadata_WhenARealSourceIsDrawn_ThenEveryGroupItFilledInIsThereInTheReadersLanguage(
         string language, string[] expected)
     {
-        // Read as a list rather than searched for, so a group that stops being drawn is a failure
-        // and not merely unreported, and so the catalogue's own order is asserted with it.
+        // A list, not a search: a group that stops being drawn fails here rather than going
+        // unreported, and the catalogue's own order is asserted with it. Formål is absent because
+        // its only member duplicates FormaalFlerspraklig (Fhi.Metadata-43jrq).
         var cut = Render(Barnediabetes(), language);
 
         Assert.Equal(expected, cut.FindAll(".munin-explorer-group").Select(e => e.TextContent));
@@ -607,7 +639,7 @@ public class KildeViewTest : BunitContext
     {
         // THE TRAP: Groups drops a group whose every key is unset, so an exclusion can take the
         // group with it. Five of the six populated EHDS keys survive, so it must still draw rows.
-        // The sibling test pins all seven group names; this one catches a hollow heading.
+        // The sibling test pins the surviving group names; this one catches a hollow heading.
         var kilde = Barnediabetes();
         var cut = Render(kilde, language);
 
@@ -718,9 +750,9 @@ public class KildeViewTest : BunitContext
     public void Metadata_WhenARealSourceStoresAValuePerLanguage_ThenTheReaderSeesWordsAndNotTheEnvelope(
         string language)
     {
-        // Three of this source's values are Flerspraklig siblings, and all three are stored under
-        // nb alone: an English host reading only the Norwegian sibling shows them, one reading only
-        // an en key that is not there shows blanks, and one reading neither shows the envelope.
+        // Two of this source's Flerspraklig siblings are still drawn as their own row —
+        // BeskrivelseFlerspraklig is the one duplicating the header (Fhi.Metadata-8yqoz) — and
+        // both are stored under nb alone: an English host falls back to them rather than blanks.
         var cut = Render(Barnediabetes(), language);
 
         var values = cut.FindAll(".munin-explorer-kilde__main dd").Select(e => e.TextContent).ToList();
@@ -729,6 +761,90 @@ public class KildeViewTest : BunitContext
         Assert.Contains("Barnediabetes", values);
         Assert.All(values, v => Assert.DoesNotContain("\"nb\":", v, StringComparison.Ordinal));
         Assert.All(values, v => Assert.DoesNotContain("\"value\":", v, StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("no")]
+    [InlineData("en")]
+    public void Metadata_WhenARealSourceIsDrawn_ThenNoLabelCarriesTheCataloguesStorageQualifier(
+        string language)
+    {
+        // No qualifier may reach a label or heading (Fhi.Metadata-43jrq). Scoped to dt/heading text
+        // rather than the whole markup: a curated VALUE is free text that could legitimately say
+        // "multilingual", and matching it there would fail this for an unrelated reason.
+        var cut = Render(Barnediabetes(), language);
+
+        var labelsAndHeadings = cut.FindAll("dt").Select(e => e.TextContent)
+            .Concat(cut.FindAll(".munin-explorer-group").Select(e => e.TextContent));
+
+        foreach (var qualifier in new[] { "språkmerket", "flerspråklig", "language-tagged", "multilingual" })
+        {
+            Assert.DoesNotContain(labelsAndHeadings,
+                text => text.Contains(qualifier, StringComparison.OrdinalIgnoreCase));
+        }
+    }
+
+    [Theory]
+    [InlineData("no", "Formål")]
+    [InlineData("en", "Purpose")]
+    public void Metadata_WhenTheCatalogueDuplicatesFormaalIntoItsEhdsMirror_ThenTheReaderSeesOneHeading(
+        string language, string label)
+    {
+        // THE TRAP: the captured source curates Formaal and FormaalFlerspraklig with the same
+        // prose. Two rows under the same stripped label would be worse than the qualifier ever was.
+        var cut = Render(Barnediabetes(), language);
+
+        Assert.Single(cut.FindAll(".munin-explorer-kilde__main dt"), e => e.TextContent == label);
+    }
+
+    [Theory]
+    [InlineData("no", "Rettslig grunnlag")]
+    [InlineData("en", "Legal basis")]
+    public void Metadata_WhenHasLegalBasisRepeatsLovverkOnThisSource_ThenBothStillShow(
+        string language, string label)
+    {
+        // hasLegalBasis happens to repeat the sidebar's Lovverk fact word for word on this
+        // source. It is not dropped: the test below shows the two fields can genuinely differ,
+        // so a value-blind exclusion here would risk deleting real content (Fhi.Metadata-43jrq).
+        var cut = Render(Barnediabetes(), language);
+
+        Assert.Contains(label, cut.FindAll(".munin-explorer-kilde__main dt").Select(e => e.TextContent));
+    }
+
+    [Fact]
+    public void Metadata_WhenHasLegalBasisHoldsATranslationLovverkLacks_ThenTheTranslationIsNotLost()
+    {
+        // THE TRAP, proven the other way: kilde.json's hasLegalBasis is Lovverk plus an English
+        // translation appended after a semicolon. An exclusion keyed on "Lovverk is non-blank"
+        // would have deleted that translation from the page (Fhi.Metadata-43jrq).
+        var cut = Render(AlsRegisteret());
+
+        var values = cut.FindAll(".munin-explorer-kilde__main dd").Select(e => e.TextContent);
+
+        Assert.Contains(values, v => v.Contains("Submission of information", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Metadata_WhenTittelFlersprakligRepeatsPreferredTermOnThisSource_ThenBothStillShow()
+    {
+        // Same reasoning as hasLegalBasis above: kept rather than dropped, because the test below
+        // shows TittelFlerspraklig can hold a translation PreferredTerm never had.
+        var cut = Render(Barnediabetes());
+
+        Assert.Contains("Barnediabetes",
+            cut.FindAll(".munin-explorer-kilde__main dd").Select(e => e.TextContent));
+    }
+
+    [Fact]
+    public void Metadata_WhenTittelFlersprakligHoldsATranslationPreferredTermLacks_ThenTheTranslationIsNotLost()
+    {
+        // THE TRAP again: kilde-med-delkilder.json's TittelFlerspraklig carries an English title
+        // ("The Tromsø Study") that PreferredTerm ("The Tromsø study") never had.
+        var cut = Render(KildeMedDelkilder());
+
+        var values = cut.FindAll(".munin-explorer-kilde__main dd").Select(e => e.TextContent);
+
+        Assert.Contains(values, v => v.Contains("The Tromsø Study", StringComparison.Ordinal));
     }
 
     // ---------------------------------------------------------------------------------
@@ -1440,16 +1556,16 @@ public class KildeViewTest : BunitContext
             [
                 new PropertyMetadataEntry
                 {
-                    Key = "TittelFlerspraklig",
+                    Key = "VersjonsnotaterFlerspraklig",
                     SortOrder = 540,
                     GroupTranslations = new Dictionary<string, string> { ["no"] = "EHDS / HealthDCAT-AP" },
-                    DisplayNameTranslations = new Dictionary<string, string> { ["no"] = "Tittel" },
+                    DisplayNameTranslations = new Dictionary<string, string> { ["no"] = "Versjonsnotater" },
                     Type = "MultilingualText",
                 },
             ],
             AdditionalProperties = new Dictionary<string, string?>
             {
-                ["TittelFlerspraklig"] = """{"nb":"Als registeret","en":"The ALS registry"}""",
+                ["VersjonsnotaterFlerspraklig"] = """{"nb":"Als registeret","en":"The ALS registry"}""",
             },
         };
 
