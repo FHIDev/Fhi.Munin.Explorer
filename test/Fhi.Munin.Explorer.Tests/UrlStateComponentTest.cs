@@ -460,6 +460,101 @@ public class UrlStateComponentTest : BunitContext
         Assert.Equal("/kilder?search=als", Mirrored());
     }
 
+    /// <summary>The sort control the kilde list hangs above its table.</summary>
+    private static IElement Sort(IRenderedComponent<KildeExplorer> cut) =>
+        cut.Find("select[id^='munin-explorer-sort']");
+
+    [Theory]
+    [InlineData(KildeSortOrder.Name)]
+    [InlineData(KildeSortOrder.Variabler)]
+    [InlineData(KildeSortOrder.SourceUpdated)]
+    [InlineData(KildeSortOrder.Established)]
+    public void Kilder_WhenTheReaderSortsTheList_ThenTheOrderIsInTheUrlAndComesBackFromIt(KildeSortOrder order)
+    {
+        // The round trip, both halves in one test and per order: writing a token the component
+        // cannot read back is a link that silently opens on the wrong order, and the two halves are
+        // written in different files. So this presses the control, reads what reached replaceState,
+        // and mounts a second explorer on exactly that URL.
+        var id = Guid.NewGuid();
+
+        var chosen = RenderKilder(id, "http://localhost/kilder");
+
+        Sort(chosen).Change(order.ToString());
+
+        Assert.Equal($"/kilder?sort={order}", Mirrored());
+
+        // Mounted afresh on the URL the first one wrote, which is what a reload is. The client is
+        // registered already, so this goes through Render rather than through RenderKilder — bUnit
+        // seals its service collection the moment anything resolves from it.
+        Navigation.NavigateTo($"http://localhost{Mirrored()}");
+
+        Assert.Equal(order.ToString(), Selected(Render<KildeExplorer>()));
+    }
+
+    /// <summary>The order the control is showing, read off the option the markup marks.</summary>
+    private static string? Selected(IRenderedComponent<KildeExplorer> cut) =>
+        Sort(cut).QuerySelectorAll("option").Single(option => option.HasAttribute("selected")).GetAttribute("value");
+
+    [Fact]
+    public void Kilder_WhenTheListIsInTheOrderItArrivedIn_ThenNothingIsWrittenToTheUrl()
+    {
+        // The catalogue's own order is the one every link made before this control existed carries,
+        // so writing ?sort=Standard onto it would be this component changing links it did not make.
+        var id = Guid.NewGuid();
+
+        var cut = RenderKilder(id, "http://localhost/kilder");
+
+        Sort(cut).Change(KildeSortOrder.Name.ToString());
+        Sort(cut).Change(KildeSortOrder.Standard.ToString());
+
+        Assert.Equal("/kilder", Mirrored());
+    }
+
+    [Fact]
+    public void Kilder_WhenALinkCarriesBothAKildeAndAnOrder_ThenBothSurviveClosingTheKilde()
+    {
+        // The two keys are written by one method, and a component that rebuilt the query from the
+        // kilde alone would drop the order the moment the reader pressed Back — which reads as the
+        // list resetting itself for no reason.
+        var id = Guid.NewGuid();
+
+        var cut = RenderKilder(id, $"http://localhost/kilder?kilde={id}&sort=Variabler");
+
+        cut.FindAll("button").First(button => button.TextContent.Contains("Tilbake", StringComparison.Ordinal)).Click();
+
+        Assert.Equal("/kilder?sort=Variabler", Mirrored());
+    }
+
+    [Theory]
+    // Enum.TryParse alone accepts any number, so 999 would arrive as an order no arm covers.
+    [InlineData("999")]
+    [InlineData("Flest variabler")]
+    [InlineData("")]
+    public void Kilder_WhenALinkCarriesAnOrderNobodyDefined_ThenTheListOpensInTheOrderItArrivedIn(string token)
+    {
+        var id = Guid.NewGuid();
+
+        var cut = RenderKilder(id, $"http://localhost/kilder?sort={Uri.EscapeDataString(token)}");
+
+        Assert.Equal(KildeSortOrder.Standard.ToString(), Selected(cut));
+
+        // And the unreadable token is taken off the address bar rather than carried: it is one of
+        // ours, so leaving it would hand on a link that says the list is in an order it is not in.
+        Assert.Equal("/kilder", Mirrored());
+    }
+
+    [Fact]
+    public void Kilder_WhenALinkSpellsTheOrderInAnotherCase_ThenItIsStillRead()
+    {
+        // ExplorerUrlState parses its own enums case-insensitively, and a URL is typed by hand as
+        // often as it is copied.
+        var id = Guid.NewGuid();
+
+        var cut = RenderKilder(id, "http://localhost/kilder?SORT=variabler");
+
+        Assert.Equal(KildeSortOrder.Variabler.ToString(), Selected(cut));
+    }
+
     [Fact]
     public void Kilder_WhenNoVariableExplorerPathIsGiven_ThenNoHandoverIsOffered()
     {

@@ -4,9 +4,9 @@
    bar. (Fhi.Metadata-zrcf4, Fhi.Metadata-8uwtd)
 
    Deliberately far smaller than VariableExplorer, and that is Kelda's contract rather than a
-   shortcut: KildeSearch has no SearchChanged, no sort and no pager, so search and filters are
-   component state that goes away on refresh. The one thing worth putting in a URL is which kilde
-   is open.
+   shortcut: KildeSearch has no SearchChanged and no pager, so search, filters and column choices
+   are component state that goes away on refresh. What is worth putting in a URL is which kilde is
+   open and which order the list is in.
 
    ?search= is not read, for that same reason — a link carrying it would work exactly once and
    could not be shared onward. It is left in the address bar rather than erased, along with
@@ -16,6 +16,7 @@
    it must be mounted interactively. No class names and no markup of its own. *@
 
 <KildeSearch @bind-SelectedKildeId="_selectedKildeId"
+             @bind-Order="_order"
              ExploreVariablesRequested="@Handover"
              Language="@Language"
              ShowAccessAndPrices="@ShowAccessAndPrices" />

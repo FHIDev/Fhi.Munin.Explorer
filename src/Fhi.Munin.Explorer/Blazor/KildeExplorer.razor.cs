@@ -18,15 +18,17 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </para>
 /// <para>
 /// The kildeutforsker's half of what <see cref="VariableExplorer"/> does for the variable side, and
-/// much smaller because Kelda carries less: the open kilde is the only part of the view worth
-/// linking to, and there are no personal lists to put behind a second tab. A link opens that kilde;
+/// much smaller because Kelda carries less: the open kilde and the order the list is in are the
+/// parts of the view worth linking to, and there are no personal lists to put behind a second tab.
+/// A link opens that kilde;
 /// closing it puts the reader back on the path they arrived on, <c>PathBase</c> included, rather
 /// than on the site root.
 /// </para>
 /// <para>
-/// <b>It reads and writes <c>?kilde=</c> and nothing else.</b> A host's own parameters — and
-/// <c>?search=</c>, which Kelda cannot maintain and so must not adopt — are carried through
-/// untouched.
+/// <b>It reads and writes <c>?kilde=</c> and <c>?sort=</c>, and nothing else.</b> A host's own
+/// parameters — and <c>?search=</c>, which Kelda cannot maintain and so must not adopt — are
+/// carried through untouched. <c>?sort=</c> is omitted while the list is in the order the
+/// catalogue sent it, so a link made before this component could sort still opens the same page.
 /// </para>
 /// <para>
 /// <b>It must be mounted interactively</b> — <c>render-mode="Server"</c> in a legacy Blazor Server
@@ -42,6 +44,20 @@ public sealed partial class KildeExplorer : ComponentBase
 {
     /// <summary>The query key this component owns: the id of the kilde the reader has open.</summary>
     public const string QueryKey = "kilde";
+
+    /// <summary>The second key it owns: the order the kilde list is in.</summary>
+    /// <remarks>
+    /// <c>sort</c>, spelled and read exactly as <see cref="ExplorerUrlState"/> spells it, and
+    /// carrying a <see cref="KildeSortOrder"/> member's own name. The catalogue's own order is
+    /// never written, so a link made before this component could sort still means what it did.
+    /// <para>
+    /// It is a name a host may plausibly already mean something by, as <c>page</c> and
+    /// <c>search</c> are on the variable side. There is no declining it here — <c>?sort=</c> is
+    /// read and rewritten whatever else on the page means by it — so a host with a sort of its own
+    /// on this page mounts <see cref="KildeSearch"/> and owns the query string itself.
+    /// </para>
+    /// </remarks>
+    public const string OrderQueryKey = "sort";
 
     [Inject] private NavigationManager Navigation { get; set; } = default!;
 
@@ -89,6 +105,8 @@ public sealed partial class KildeExplorer : ComponentBase
 
     private Guid? _selectedKildeId;
 
+    private KildeSortOrder _order;
+
     private UrlMirror _mirror = default!;
 
     private EventCallback<IReadOnlyList<Guid>> Handover =>
@@ -100,7 +118,7 @@ public sealed partial class KildeExplorer : ComponentBase
     {
         InteractiveMount.Require(RendererInfo.IsInteractive, nameof(KildeExplorer));
 
-        _mirror = new UrlMirror(Navigation, JS, key => string.Equals(key, QueryKey, StringComparison.OrdinalIgnoreCase));
+        _mirror = new UrlMirror(Navigation, JS, Owns);
 
         // A kilde id in a URL is whatever a stranger typed. One that does not parse opens the list,
         // and one that parses but names nothing the API publishes opens a view that says so — the
@@ -109,12 +127,40 @@ public sealed partial class KildeExplorer : ComponentBase
         {
             _selectedKildeId = parsed;
         }
+
+        // Enum.TryParse alone is not enough, for ExplorerUrlState.Named's reason: it accepts any
+        // number, so ?sort=999 would succeed and hand the list an order no arm covers.
+        if (Enum.TryParse<KildeSortOrder>(_mirror.Value(OrderQueryKey), ignoreCase: true, out var order)
+            && Enum.IsDefined(order))
+        {
+            _order = order;
+        }
     }
 
-    protected override Task OnAfterRenderAsync(bool firstRender) =>
-        _mirror.MirrorAsync(_selectedKildeId is { } id
+    private static bool Owns(string key) =>
+        string.Equals(key, QueryKey, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(key, OrderQueryKey, StringComparison.OrdinalIgnoreCase);
+
+    protected override Task OnAfterRenderAsync(bool firstRender) => _mirror.MirrorAsync(Query()).AsTask();
+
+    /// <summary>The two keys this component owns, as a query string, omitting what is at its default.</summary>
+    /// <remarks>
+    /// The catalogue's own order writes nothing, so an untouched explorer leaves the address bar as
+    /// it found it — <see cref="ExplorerUrlState.ToQueryString"/>'s rule, for its reason: a link
+    /// carries what someone chose rather than a transcript of every setting.
+    /// </remarks>
+    private string Query()
+    {
+        var kilde = _selectedKildeId is { } id
             ? QueryKey + "=" + Uri.EscapeDataString(id.ToString())
-            : "").AsTask();
+            : "";
+
+        var order = _order == KildeSortOrder.Standard
+            ? ""
+            : OrderQueryKey + "=" + Uri.EscapeDataString(_order.ToString());
+
+        return kilde.Length == 0 ? order : order.Length == 0 ? kilde : kilde + "&" + order;
+    }
 
     /// <summary>Turn the chosen kilder into the query the variable explorer reads, and go there.</summary>
     /// <remarks>

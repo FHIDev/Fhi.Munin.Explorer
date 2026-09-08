@@ -462,17 +462,25 @@ internal sealed record Texts(
     // (count) — the variable section's one line. Assembled here rather than at the call site for the
     // reason KildeCount is: the singular is this language's business and not C#'s.
     Func<int, string> KildeVariableCount,
-    // (count) — the kilde list's own "{n} kilder", which is the whole of what it says about its
-    // result set: no row range, because the list is never paged, and no ordering, because it is
-    // never sorted. Assembled here rather than glued together at the call site for the reason
-    // ResultSummary is: the plural is this language's business and not C#'s.
-    Func<int, string> KildeCount,
+    // (count, order) — the kilde list's own "{n} kilder", with the order it is in when that is not
+    // the one it arrived in. No row range, because the list is never paged. The clause is part of
+    // the sentence rather than appended by the caller for ResultSummary's reason: where it sits is
+    // this language's grammar, and so is the plural.
+    Func<int, string?, string> KildeCount,
     // (count) — "3 kilder valgt", the selection bar's own line. Its own member rather than
-    // KildeCount reused, though both count kilder and both are Func<int, string>: that one says how
-    // many the search and the facets left, this one how many of those the reader ticked, and the
-    // two sit one above the other on screen. Swapped, each would read as a true sentence in the
-    // wrong place — the failure neither one's own test can see.
+    // KildeCount reused, though both count kilder: that one says how many the search and the facets
+    // left, this one how many of those the reader ticked, and the two sit one above the other on
+    // screen. Swapped, each would read as a true sentence in the wrong place — the failure neither
+    // one's own test can see.
     Func<int, string> SelectedKildeCount,
+    // The four orders the kilde list offers, worded so each says which way it runs: a bare
+    // "Opprettet" over a select names a column and not an order, and a reader cannot tell from it
+    // whether the oldest or the newest kilde is about to come first. The fifth, the order the
+    // catalogue sent, wears SortDefault — the same word the variable explorer's own default does.
+    string KildeOrderName,
+    string KildeOrderVariabler,
+    string KildeOrderSourceUpdated,
+    string KildeOrderEstablished,
     // (name) — the accessible name of one row's checkbox. Every checkbox in a table needs one of
     // its own: "Velg" repeated down a column tells a reader moving from control to control nothing
     // about which row they are standing in.
@@ -508,6 +516,25 @@ internal sealed record Texts(
         SortField.Datasamling => FieldDataCollection,
         SortField.Variabelgruppe => FieldVariableGroup,
         _ => throw new ArgumentOutOfRangeException(nameof(sort), sort, "No label for this sort field.")
+    };
+
+    /// <summary>
+    /// The label for one of the kilde list's orders, in the select and in the result sentence.
+    /// </summary>
+    /// <remarks>
+    /// An arm per member and a throw for anything else, for <see cref="FieldLabel"/>'s reason: an
+    /// order added to <see cref="KildeSortOrder"/> without a word here would be offered under
+    /// whichever label fell through to it, and the sentence under the control would then name an
+    /// order the rows are not in.
+    /// </remarks>
+    public string KildeOrderLabel(KildeSortOrder order) => order switch
+    {
+        KildeSortOrder.Standard => SortDefault,
+        KildeSortOrder.Name => KildeOrderName,
+        KildeSortOrder.Variabler => KildeOrderVariabler,
+        KildeSortOrder.SourceUpdated => KildeOrderSourceUpdated,
+        KildeSortOrder.Established => KildeOrderEstablished,
+        _ => throw new ArgumentOutOfRangeException(nameof(order), order, "No label for this kilde order.")
     };
 
     /// <summary>
@@ -945,8 +972,17 @@ internal sealed record Texts(
         KildeVariableCount: count => count == 1
             ? "1 publisert variabel i denne kilden."
             : $"{count} publiserte variabler i denne kilden.",
-        KildeCount: count => count == 1 ? "1 kilde" : $"{count} kilder",
+        KildeCount: (count, order) =>
+        {
+            var kilder = count == 1 ? "1 kilde" : $"{count} kilder";
+
+            return order is null ? kilder : $"{kilder}, sortert etter {order}";
+        },
         SelectedKildeCount: count => count == 1 ? "1 kilde valgt" : $"{count} kilder valgt",
+        KildeOrderName: "Navn A–Å",
+        KildeOrderVariabler: "Flest variabler",
+        KildeOrderSourceUpdated: "Sist endret (nyest først)",
+        KildeOrderEstablished: "Opprettet (nyest først)",
         SelectKilde: name => $"Velg {name}",
         NoKilderMatch: (search, filters) =>
         {
@@ -1254,8 +1290,17 @@ internal sealed record Texts(
         KildeVariableCount: count => count == 1
             ? "1 published variable in this source."
             : $"{count} published variables in this source.",
-        KildeCount: count => count == 1 ? "1 source" : $"{count} sources",
+        KildeCount: (count, order) =>
+        {
+            var sources = count == 1 ? "1 source" : $"{count} sources";
+
+            return order is null ? sources : $"{sources}, sorted by {order}";
+        },
         SelectedKildeCount: count => count == 1 ? "1 source selected" : $"{count} sources selected",
+        KildeOrderName: "Name A–Z",
+        KildeOrderVariabler: "Most variables",
+        KildeOrderSourceUpdated: "Last modified (newest first)",
+        KildeOrderEstablished: "Established (newest first)",
         SelectKilde: name => $"Select {name}",
         NoKilderMatch: (search, filters) =>
         {

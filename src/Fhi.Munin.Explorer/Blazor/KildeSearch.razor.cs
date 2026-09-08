@@ -24,13 +24,20 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </para>
 /// <para>
 /// What it deliberately does <em>not</em> have is the machinery the variable explorer needs, and
-/// that is a decision recorded under the Kelda epic rather than a gap. There is no paging and no
-/// sorting: <see cref="IMuninExplorerClient.GetKilderAsync"/> answers with the whole list in one
-/// array — 72 active kilder measured on 2026-08-25, against tens of thousands of variables — and
-/// the API returns it ordered by name. So the list is fetched <em>once</em>, on initialisation,
-/// with no search and no kildetype, and everything the reader does afterwards happens over the
-/// list already in hand. That is also why the facets are counted client-side and are not
-/// cross-filtered the way Runa's are — see <c>KildeSearch.Filters.cs</c>.
+/// that is a decision recorded under the Kelda epic rather than a gap. There is no paging:
+/// <see cref="IMuninExplorerClient.GetKilderAsync"/> answers with the whole list in one array — 72
+/// active kilder measured on 2026-08-25, against tens of thousands of variables — and the API
+/// returns it ordered by name. So the list is fetched <em>once</em>, on initialisation, with no
+/// search and no kildetype, and everything the reader does afterwards happens over the list
+/// already in hand. That is also why the facets are counted client-side and are not cross-filtered
+/// the way Runa's are — see <c>KildeSearch.Filters.cs</c>.
+/// </para>
+/// <para>
+/// Sorting is the same bargain and for the same reason. <see cref="Order"/> is applied here, over
+/// the rows the search and the facets left, and nothing about it is sent to the API: an unpaged
+/// endpoint has already handed over every row, so a <c>sort</c> parameter would be a contract with
+/// no caller. <see cref="KildeSortOrder"/> says what each order reads and where a kilde with no
+/// value to order by lands; <c>KildeSearch.Sorting.cs</c> is where it is done.
 /// </para>
 /// <para>
 /// Searching is therefore a filter over that list rather than a request: name, code and short
@@ -91,9 +98,9 @@ public sealed partial class KildeSearch : ComponentBase
     /// <remarks>
     /// Read once, on initialisation, exactly as <see cref="VariableSearch.Search"/> is. There is
     /// no <c>SearchChanged</c> beside it, and that is the Kelda parity decision rather than an
-    /// omission: search, filters and column choices are component state that goes away on refresh,
-    /// and the one thing worth putting in a host's URL is which kilde is open — which is what
-    /// <see cref="SelectedKildeIdChanged"/> is for.
+    /// omission: search, filters and column choices are component state that goes away on refresh.
+    /// What is worth putting in a host's URL is which kilde is open and which order the list is in
+    /// — <see cref="SelectedKildeIdChanged"/> and <see cref="OrderChanged"/>.
     /// </remarks>
     [Parameter] public string? Search { get; set; }
 
@@ -506,7 +513,7 @@ public sealed partial class KildeSearch : ComponentBase
     private string DetailBusy => _detailLoading ? "true" : "false";
 
     /// <summary>
-    /// The kilder the search and the facets leave, in the order the API sent them.
+    /// The kilder the search and the facets leave, in the order the reader asked for.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -527,9 +534,11 @@ public sealed partial class KildeSearch : ComponentBase
     /// kilder that answer both.
     /// </para>
     /// <para>
-    /// No re-ordering. The API returns the list ordered by name and Kelda offers no sort control,
-    /// so the sequence on screen is the sequence that arrived — which is what makes a row's
-    /// position stable while the reader types.
+    /// The order comes last, over whatever the two of them left, so sorting a narrowed list sorts
+    /// every row that survived rather than the first screenful of them — there is no pager here to
+    /// take a subset before it. Until the reader chooses otherwise that order is the one the API
+    /// sent, which is what the list has always shown; see <see cref="KildeSortOrder"/> for the
+    /// rest, including where a kilde with no value to order by goes.
     /// </para>
     /// </remarks>
     private IReadOnlyList<KildeSummary> Visible
@@ -538,9 +547,11 @@ public sealed partial class KildeSearch : ComponentBase
         {
             var searched = Searched(SearchText);
 
-            return _chosen.Values.All(values => values.Count == 0)
+            IReadOnlyList<KildeSummary> narrowed = _chosen.Values.All(values => values.Count == 0)
                 ? searched
                 : [.. searched.Where(MatchesFacets)];
+
+            return Sorted(narrowed, _order);
         }
     }
 
@@ -560,20 +571,28 @@ public sealed partial class KildeSearch : ComponentBase
         value is not null && value.Contains(term, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    /// One sentence describing the visible result — "72 kilder" — used both as the live
-    /// announcement and as the table's accessible name, so the two cannot drift apart.
+    /// One sentence describing the visible result — "72 kilder, sortert etter Flest variabler" —
+    /// used both as the live announcement and as the table's accessible name, so the two cannot
+    /// drift apart.
     /// </summary>
     /// <remarks>
-    /// It is a count and nothing else. The variable explorer's equivalent names the row range and
-    /// the ordering as well, because it has a pager and sortable headers; this list has neither, so
-    /// there is nothing further to say and a sentence claiming otherwise would be furniture.
+    /// A count and the ordering, and no row range: the variable explorer names one because it has a
+    /// pager, and this list is never paged. The ordering is here because the status line is polite
+    /// and atomic, so it is what tells a reader who cannot see the rows move that they moved at
+    /// all — a sort control whose effect is never announced is a control only some readers have.
+    /// <para>
+    /// The catalogue's own order is left unsaid rather than named, so the sentence a reader who has
+    /// touched nothing hears is the one this list has always shown. Choosing it again is still a
+    /// change to the sentence, so the return is announced as well as the departure.
+    /// </para>
     /// <para>
     /// It takes the list rather than reading <see cref="Visible"/> itself, so that the sentence and
     /// the rows underneath it are counted off one read of the filter — see the capture at the top
     /// of the markup's list branch.
     /// </para>
     /// </remarks>
-    private string Summary(IReadOnlyList<KildeSummary> visible) => T.KildeCount(visible.Count);
+    private string Summary(IReadOnlyList<KildeSummary> visible) =>
+        T.KildeCount(visible.Count, _order == KildeSortOrder.Standard ? null : T.KildeOrderLabel(_order));
 
     /// <summary>The search text as it is worth reporting back, which is nothing when it is blank.</summary>
     private string? SearchText => string.IsNullOrWhiteSpace(_search) ? null : _search.Trim();
@@ -609,6 +628,7 @@ public sealed partial class KildeSearch : ComponentBase
     {
         _search = Search;
         _selectedId = SelectedKildeId;
+        _order = Order;
 
         // Raised here rather than in LoadKildeAsync, which cannot start until the list has
         // answered. The drilldown is on screen from the first render, and ComponentBase draws it
