@@ -504,10 +504,9 @@ public class VariableExplorerTest : BunitContext
     [Fact]
     public void SignedOut_WhereTheTabWouldBe_ThenAReaderIsToldListsRequireSigningIn()
     {
-        // Fhi.Metadata-4ifsa: the feature was invisible to a reader who had never signed in — no
-        // tab, no sentence, nothing. This asserts the sentence, with IsAuthenticated passed false
-        // explicitly, not the always-true /MuninRuna stand-in that would pass regardless. `.caption`
-        // is shared with other captions on the page, so the message is matched by its own text.
+        // Fhi.Metadata-4ifsa. IsAuthenticated is passed false explicitly, not the always-true
+        // /MuninRuna stand-in that would pass regardless. `.caption` is shared with other
+        // captions on the page, so the message is matched by text rather than by class alone.
         var cut = RenderExplorer(new ExplorerClient(Variable("Alder ved diagnose", "V_BDR.ALDER")), signedIn: false);
 
         Assert.Contains(
