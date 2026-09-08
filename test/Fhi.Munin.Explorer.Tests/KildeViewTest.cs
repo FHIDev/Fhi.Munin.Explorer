@@ -771,13 +771,9 @@ public class KildeViewTest : BunitContext
     public void Metadata_WhenARealSourceIsDrawn_ThenNoLabelCarriesTheCataloguesStorageQualifier(
         string language)
     {
-        // "språkmerket"/"flerspråklig" — and their English spellings — say how the catalogue stores
-        // a value, not something a reader needs (Fhi.Metadata-43jrq).
-        //
-        // Restricted to labels and group headings rather than the whole markup: a curated VALUE is
-        // free text the catalogue does not control, and one that happened to say "multilingual"
-        // would fail this test for a reason that has nothing to do with the bug (Copilot review on
-        // #220).
+        // No qualifier may reach a label or heading (Fhi.Metadata-43jrq). Scoped to dt/heading text
+        // rather than the whole markup: a curated VALUE is free text that could legitimately say
+        // "multilingual", and matching it there would fail this for an unrelated reason.
         var cut = Render(Barnediabetes(), language);
 
         var labelsAndHeadings = cut.FindAll("dt").Select(e => e.TextContent)
