@@ -99,10 +99,11 @@ public sealed partial class KildeSearch
     private readonly record struct FacetLabel(string Text, string? Language);
 
     /// <summary>A facet as the panel draws it: a disclosure holding a heading and the choices under it.</summary>
-    /// <param name="OpenByDefault">
-    /// The first facet only. Every facet open is the length this fixes — databehandler alone runs to
-    /// 39 values — and every facet shut hides the affordance from a reader who has never used it.
-    /// </param>
+    /// <remarks>
+    /// <c>OpenByDefault</c> is the first facet only. Every facet open is the length this fixes —
+    /// databehandler alone runs to 39 values — and every facet shut hides the affordance from a
+    /// reader who has never used it.
+    /// </remarks>
     private sealed record Facet(
         string Key, string Heading, IReadOnlyList<FacetOption> Options, bool OpenByDefault = false);
 
