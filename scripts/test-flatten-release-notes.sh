@@ -37,6 +37,8 @@ cat > "$tmp" <<'EOF'
 
 - **A dash bullet with a bolded lead.** Detail that must not reach the flattened line.
 * **A star bullet with a bolded lead.** assemble-changelog.ps1 accepts these too.
+  - **An indented bullet.** assemble-changelog.ps1 TrimStart()s before matching, so this is
+    a legal entry and must not fold into the one above it.
 
 ### Changed
 
@@ -50,6 +52,7 @@ out="$("$flatten" "$tmp")"
 
 check  "dash bullet keeps its title"        "A dash bullet with a bolded lead"   "$out"
 check  "STAR bullet is not dropped"         "A star bullet with a bolded lead"   "$out"
+check  "INDENTED bullet is its own entry"   "  * An indented bullet"             "$out"
 check  "unbolded bullet falls back"         "A bullet with no bolded lead at all" "$out"
 check  "wrapped lead is joined"             "A lead wrapped across two source lines" "$out"
 check  "categories survive"                 "Added"                              "$out"
@@ -60,7 +63,7 @@ refute "mid-text emphasis is not lifted"    "  * emphasis in the middle"        
 
 # Every bullet in must produce exactly one line out. Catches silent drops generically,
 # not only the two markers this fixture happens to use.
-bullets_in="$(grep -cE '^[-*][ \t]' "$tmp")"
+bullets_in="$(grep -cE '^[[:space:]]*[-*][ \t]' "$tmp")"
 lines_out="$(printf '%s\n' "$out" | grep -c '^  \* ' || true)"
 if [ "$bullets_in" -eq "$lines_out" ]; then
   printf '  ok    every bullet produced a line (%s)\n' "$bullets_in"

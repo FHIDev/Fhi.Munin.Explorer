@@ -35,9 +35,18 @@ awk '
     if (lead != "") print "  * " lead
     buf = ""
   }
-  /^### /        { flush(); cat = substr($0, 5); printf "\n%s\n", cat; next }
-  /^[-*][ \t]/   { flush(); buf = substr($0, 3); next }   # assemble-changelog.ps1 accepts - and *
-  /^$/           { next }
+  /^### /  { flush(); cat = substr($0, 5); printf "\n%s\n", cat; next }
+  # Both markers and any leading indent: assemble-changelog.ps1 validates with TrimStart(),
+  # so `  * x` is as legal a bullet as `- x`, and reading it as a continuation would fold a
+  # whole entry into the one above it.
+  /^[[:space:]]*[-*][ \t]/ {
+    flush()
+    line = $0
+    sub(/^[[:space:]]*[-*][ \t]+/, "", line)
+    buf = line
+    next
+  }
+  /^$/     { next }
   {
     # Anything else is a continuation of the bullet being built: wrapped lines, indented or not.
     # Never dropped — a silently missing entry is the failure this script exists to avoid.
