@@ -636,7 +636,9 @@ internal sealed record Texts(
         ["base64binary"] = "9",
     };
 
-    /// <summary>Prose for a datatype code or legacy alias, falling back to the raw value.</summary>
+    /// <summary>Prose for a datatype code or legacy alias. Falls back to the canonical code,
+    /// which is the input itself when that was not an alias — never to the English word an alias
+    /// arrived as, since printing that is the defect the aliases exist to remove.</summary>
     public string DataTypeLabel(string value)
     {
         var code = DataTypeAliases.TryGetValue(value, out var canonical) ? canonical : value;
