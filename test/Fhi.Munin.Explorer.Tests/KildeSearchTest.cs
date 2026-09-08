@@ -748,9 +748,9 @@ public class KildeSearchTest : BunitContext
     [Fact]
     public void ExpandToggle_WhenARowCanOpen_ThenItDisclosesWithTheChevronRatherThanAGlyph()
     {
-        // The toggle wears hd-button-reset, so its own content is the whole of its size: a literal
-        // "+" measured 20 x 24, under the 24 x 24 WCAG 2.5.8 asks for. Stiler's `.icon` is a 24px
-        // box, and it is also what the variable table discloses with. (Fhi.Metadata-mpx2p)
+        // The toggle pads by only 4px/6px, so its content carries its size: a literal "+" measured
+        // 20 x 24, under the 24 x 24 WCAG 2.5.8 asks for. Stiler's `.icon` is a 24px box, and it is
+        // also what the variable table discloses with. (Fhi.Metadata-mpx2p)
         var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
         var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
 

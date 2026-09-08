@@ -376,13 +376,9 @@ export const assertions = [
     name: "the kilder table's expand control is big enough to hit",
     kind: 'pin',
     states: ['kilder-list'],
-    // A replay of Fhi.Metadata-mpx2p: 20 x 24, under WCAG 2.5.8's 24 x 24. Nothing else here
-    // measures a control against a minimum — the text invariant asks whether an element has a box
-    // at all, which a 20 x 24 button has.
-    //
-    // A pin rather than an invariant because the invariant it looks like — every control the reader
-    // operates is at least 24 x 24 — is one this page does not pass today: the selection column's
-    // checkbox is a native 13 x 13, which is Fhi.Metadata-ycv15 and a different fix.
+    // A pin, not an invariant: Fhi.Metadata-mpx2p measured 20 x 24 against WCAG 2.5.8's 24 x 24.
+    // The invariant it resembles — every control at least 24 x 24 — does not pass this page today,
+    // because the selection checkbox is a native 13 x 13 (Fhi.Metadata-ycv15, a different fix).
     body: () => {
       const toggles = [...document.querySelectorAll('.munin-explorer-kilder__expand-toggle')];
       if (toggles.length === 0) return 'no expand toggle on the page — nothing was measured';

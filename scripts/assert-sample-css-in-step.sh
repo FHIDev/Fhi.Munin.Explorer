@@ -213,15 +213,9 @@ perl -0ne '
 cut -f2- < "$RULES" > "$NAMED"
 grep $'^drawn\t' "$RULES" | cut -f2- > "$DRAWN"
 
-# The class token of every selector, cut out once so the two loops below can ask about a name
-# without spawning anything. They used to run a grep per name — around 370 of them, which is under
-# a second on a runner and 45 seconds on a Windows checkout, where a process spawn is the whole
-# cost and SampleCssGuardTest's two-minute budget is what runs out.
-#
-# `\.[A-Za-z0-9_-]+` takes the maximal run after a dot, so the lookup is exact where the greps were
-# anchored: `.munin-explorer-period__fill` yields that whole name and never answers for
-# `.munin-explorer-period`, because a rule for the part is not a rule for the whole. Each list is
-# wrapped in newlines so a `case` can match a whole entry rather than a prefix of one.
+# Every selector's class token, cut once: the loops below used to grep per name, ~370 spawns, under
+# a second on a runner and 45s on a Windows checkout, where SampleCssGuardTest's budget runs out.
+# The maximal run after a dot keeps it exact, so `__fill` never answers for its prefix.
 DRAWN_CLASSES=$'\n'"$(grep -oE '\.[A-Za-z0-9_-]+' "$DRAWN" | cut -c2- | sort -u)"$'\n'
 NAMED_CLASSES=$'\n'"$(grep -oE '\.[A-Za-z0-9_-]+' "$NAMED" | cut -c2- | sort -u)"$'\n'
 
