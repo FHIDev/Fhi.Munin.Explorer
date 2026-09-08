@@ -8,11 +8,13 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <c>bd worktree create</c> rewrites this file with an absolute path to the parent checkout. That
-/// is right in a repository that owns its bead store and wrong here, where the file is hand-written
-/// and deliberately points at a different repository — and the forge's commit-all then sweeps the
-/// rewrite into the branch. It has reached a pull request three times, because each repair
-/// restored the file and added nothing that would notice the next one (Fhi.Metadata-l9l2n.46).
+/// Something in the forge's branch flow replaces this file with an absolute path to the parent
+/// anvil, which is right in a repository that owns its bead store and wrong here, where the file is
+/// hand-written and deliberately points at a different repository. What does it is not established:
+/// <c>bd worktree create</c> is ruled out, having lost that behaviour upstream before either build
+/// in use. So this guard is deliberately aimed at the outcome rather than the cause — it has
+/// reached a pull request four times, and each repair restored the file and added nothing that
+/// would notice the next one (Fhi.Metadata-l9l2n.46).
 /// </para>
 /// <para>
 /// Neither failure it causes is loud. An absolute path aimed at an empty store makes <c>bd</c>
