@@ -35,13 +35,15 @@ awk '
     if (lead != "") print "  * " lead
     buf = ""
   }
-  /^### / { flush(); cat = substr($0, 5); printf "\n%s\n", cat; next }
-  /^- /   { flush(); buf = substr($0, 3); next }
-  /^[[:space:]]+[^[:space:]]/ {                 # wrapped continuation of the current bullet
-    if (buf != "") { line = $0; sub(/^[[:space:]]+/, "", line); buf = buf " " line }
-    next
+  /^### /        { flush(); cat = substr($0, 5); printf "\n%s\n", cat; next }
+  /^[-*][ \t]/   { flush(); buf = substr($0, 3); next }   # assemble-changelog.ps1 accepts - and *
+  /^$/           { next }
+  {
+    # Anything else is a continuation of the bullet being built: wrapped lines, indented or not.
+    # Never dropped — a silently missing entry is the failure this script exists to avoid.
+    line = $0
+    sub(/^[[:space:]]+/, "", line)
+    if (buf != "") { buf = buf " " line } else { print "  " line }
   }
-  /^$/    { next }
-  { flush() }
-  END     { flush() }
+  END            { flush() }
 ' "$IN"
