@@ -89,10 +89,9 @@ public sealed partial class KildeSearch
 
     /// <summary>Ascending by the name on screen, in the catalogue's own collation.</summary>
     /// <remarks>
-    /// <see cref="CatalogueProperties.CatalogueOrder"/> and never the thread's culture or the
-    /// reader's: it is <c>nb-NO</c>, pinned, so æ, ø and å sort at the end of the alphabet on every
-    /// host and for every reader. An unpinned collator is what put Aaa after Bbb in
-    /// <c>Fhi.Metadata-dpc6h</c>.
+    /// <see cref="CatalogueProperties.CatalogueOrder"/> — <c>nb-NO</c>, pinned — and never the
+    /// thread's culture or the reader's. So æ, ø, å and the digraph aa all sort at the end of the
+    /// alphabet everywhere, where in <c>Fhi.Metadata-dpc6h</c> that was the machine's choice.
     /// </remarks>
     private static IOrderedEnumerable<KildeSummary> ByName(IEnumerable<KildeSummary> kilder) =>
         kilder.OrderBy(DisplayName, CatalogueProperties.CatalogueOrder)

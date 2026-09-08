@@ -10,11 +10,11 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The first is the collation. <c>Fhi.Metadata-dpc6h</c> is a sort that ran under no pinned locale
-/// and put Aaa after Bbb; the failure here would be quieter still, because a Norwegian list sorted
-/// as English looks sorted — only æ, ø and å are in the wrong place, and only to a reader who
-/// knows where they belong. So the fixtures below carry all three and the assertion is on the
-/// whole sequence.
+/// The first is the collation. <c>Fhi.Metadata-dpc6h</c> is a sort that ran under no pinned locale,
+/// so its order was a property of the machine; the failure here would be quieter still, because a
+/// Norwegian list sorted as English looks sorted — only æ, ø, å and the digraph aa are in the wrong
+/// place, and only to a reader who knows where they belong. So the fixtures below carry all four
+/// and the assertion is on the whole sequence.
 /// </para>
 /// <para>
 /// The second is a missing value passing for a small one. A kilde with no established year and one
@@ -109,11 +109,11 @@ public class KildeSortingTest : BunitContext
     }
 
     [Fact]
-    public void Order_WhenSortedByName_ThenNorwegianCollationPutsTheLastThreeLettersLast()
+    public void Order_WhenSortedByName_ThenNorwegianCollationPutsAaAndTheLastThreeLettersLast()
     {
-        // The dpc6h regression, guarded on the letters that tell the two collations apart. Under an
-        // unpinned or English collation Ærlig, Østfold and Åpen sort as A, E and O — beside Als and
-        // before Reseptregisteret — and the list still looks alphabetical to anyone not checking.
+        // The dpc6h regression, on the four spellings that tell the two collations apart, and under
+        // an unpinned collator the sequence is whatever the machine is set to. Bbb before Aaa is
+        // deliberate: nb collates the digraph aa as å, so a name spelled Aa ends a Norwegian list.
         var cut = RenderWith(
             Kilde("Åpen kilde", "K_AAP"),
             Kilde("Bbb-registeret", "K_BBB"),
@@ -124,7 +124,7 @@ public class KildeSortingTest : BunitContext
         Choose(cut, KildeSortOrder.Name);
 
         Assert.Equal(
-            ["Aaa-registeret", "Bbb-registeret", "Ærlig register", "Østfold-registeret", "Åpen kilde"],
+            ["Bbb-registeret", "Ærlig register", "Østfold-registeret", "Aaa-registeret", "Åpen kilde"],
             RowNames(cut));
     }
 
