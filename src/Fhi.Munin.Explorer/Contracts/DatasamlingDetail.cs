@@ -78,8 +78,11 @@ public sealed record DatasamlingDetail
     /// <summary>Own value if set, otherwise inherited.</summary>
     [JsonPropertyName("effectiveGyldigTil")] public DateTimeOffset? EffectiveValidTo { get; init; }
 
-    /// <summary>Always the owning kilde's kildetype — there is no per-datasamling column.</summary>
-    [JsonPropertyName("effectiveKildetype")] public string EffectiveKildetype { get; init; } = "";
+    /// <summary>
+    /// Always the owning kilde's kildetype — there is no per-datasamling column. Null exactly when
+    /// that kilde has none.
+    /// </summary>
+    [JsonPropertyName("effectiveKildetype")] public string? EffectiveKildetype { get; init; }
 
     /// <summary>Visible published variables pinned into this datasamling.</summary>
     [JsonPropertyName("variableCount")] public int VariableCount { get; init; }

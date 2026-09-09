@@ -26,7 +26,8 @@ public sealed record VariableDetail
     [JsonPropertyName("kildeId")] public Guid KildeId { get; init; }
     [JsonPropertyName("kildeName")] public string KildeName { get; init; } = "";
     [JsonPropertyName("kildeKortNavn")] public string KildeShortName { get; init; } = "";
-    [JsonPropertyName("kildeType")] public string KildeType { get; init; } = "";
+    /// <summary>The owning kilde's kildetype; null when it has none — see <see cref="KildeSummary.Kildetype"/>.</summary>
+    [JsonPropertyName("kildeType")] public string? KildeType { get; init; }
 
     /// <summary>The datasamling shown as the variable's primary home; see <see cref="AllDatasamlinger"/> for the rest.</summary>
     [JsonPropertyName("datasamlingId")] public Guid? DatasamlingId { get; init; }

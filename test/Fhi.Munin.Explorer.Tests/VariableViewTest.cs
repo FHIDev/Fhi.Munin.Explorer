@@ -444,6 +444,21 @@ public class VariableViewTest : BunitContext
     }
 
     [Fact]
+    public void Aside_WhenTheOwningKildeHasNoKildetype_ThenTheRowSaysSoRatherThanDroppingOut()
+    {
+        // DetailBlocks.Facts drops a blank value entirely, so a reading site letting the API's null
+        // through raw loses the row rather than drawing an empty one — and no compiler says so,
+        // because the label helper has always taken a null. (Fhi.Metadata-l9l2n.61)
+        var facts = Render(Detail() with { KildeType = null })
+            .Find(".munin-explorer-whole__aside dl.munin-explorer-meta__grid");
+
+        Assert.Equal(
+            ["Kildenavn", "Kortnavn", "Type datakilde"],
+            facts.QuerySelectorAll("dt").Select(dt => dt.TextContent.Trim()));
+        Assert.Equal("Ikke oppgitt", facts.QuerySelectorAll("dd")[2].TextContent.Trim());
+    }
+
+    [Fact]
     public void Heading_WhenTheCatalogueLeftTheNameEmpty_ThenTheCodeStandsInAndIsNotDrawnTwice()
     {
         // The third view with the same shape and a third contract. The code caption below the

@@ -432,13 +432,18 @@ public class KildeViewTest : BunitContext
         Assert.Equal("pasientregister", cut.Find(".munin-explorer-kilde__kildetype").TextContent);
     }
 
-    [Fact]
-    public void Kildetype_WhenTheKildeHasNone_ThenNoEmptyBadgeIsDrawnButTheSidebarStillSaysSo()
+    // Null is what the API actually sends for a kilde with none (Fhi.Metadata-l9l2n.61); the empty
+    // string is what the contract used to coerce it to, and what a host substituting its own client
+    // can still produce.
+    [Theory]
+    [InlineData("")]
+    [InlineData(null)]
+    public void Kildetype_WhenTheKildeHasNone_ThenNoEmptyBadgeIsDrawnButTheSidebarStillSaysSo(string? kildetype)
     {
         // A badge is a shape as much as a word, so an empty one is a stray coloured box. The
         // sidebar is a record and answers the question either way — "Ikke oppgitt" is the answer
         // there, and a missing row would leave a reader wondering whether it was asked.
-        var cut = Render(Kilde() with { Kildetype = "" });
+        var cut = Render(Kilde() with { Kildetype = kildetype });
 
         Assert.Empty(cut.FindAll(".munin-explorer-kilde__kildetype"));
         Assert.Equal("Ikke oppgitt", Value(SourceInformation(cut), "Type datakilde"));

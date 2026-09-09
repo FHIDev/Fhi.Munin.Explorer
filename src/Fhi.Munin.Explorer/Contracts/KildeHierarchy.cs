@@ -63,11 +63,11 @@ public sealed record HierarchyDatasamling
     [JsonPropertyName("presentationOrder")] public int? PresentationOrder { get; init; }
 
     /// <summary>
-    /// Datakategori tokens for the datasamling, normally EHDS CURIEs such as
-    /// <c>ehds-cat:population-health-surveys</c>. A token authored with another prefix is passed
-    /// through unchanged, so match whole tokens rather than on the <c>ehds-cat:</c> prefix. Empty
-    /// means no category — it does not mean <c>ehds-cat:other</c>, which only an explicitly
-    /// authored value produces.
+    /// Datakategori tokens for the datasamling, passed through as the catalogue authored them:
+    /// EHDS CURIEs such as <c>ehds-cat:population-health-surveys</c> and bare codes such as
+    /// <c>RPDG</c> both occur, so match whole tokens rather than on any prefix. Empty means no
+    /// category — it does not mean <c>ehds-cat:other</c>, which only an explicitly authored value
+    /// produces.
     /// </summary>
     [JsonPropertyName("categories")] public IReadOnlyList<string> Categories { get; init; } = [];
 }
@@ -81,4 +81,7 @@ public sealed record HierarchyVariabelgruppe
 
     /// <summary>Nested groups — walk recursively.</summary>
     [JsonPropertyName("childVariabelgrupper")] public IReadOnlyList<HierarchyVariabelgruppe> ChildVariabelgrupper { get; init; } = [];
+
+    /// <summary>Curated display order; null when unordered.</summary>
+    [JsonPropertyName("presentationOrder")] public int? PresentationOrder { get; init; }
 }

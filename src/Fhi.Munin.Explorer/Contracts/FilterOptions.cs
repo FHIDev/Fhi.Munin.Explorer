@@ -82,7 +82,8 @@ public sealed record KildeFacet
     /// <summary>Abbreviation, e.g. <c>MFR</c>. Empty string — not null — when the kilde has none.</summary>
     [JsonPropertyName("kortNavn")] public string ShortName { get; init; } = "";
 
-    [JsonPropertyName("kildeType")] public string KildeType { get; init; } = "";
+    /// <summary>The kilde's kildetype; null when it has none — see <see cref="KildeSummary.Kildetype"/>.</summary>
+    [JsonPropertyName("kildeType")] public string? KildeType { get; init; }
     [JsonPropertyName("count")] public int Count { get; init; }
 }
 
@@ -189,10 +190,10 @@ public sealed record InstrumentFacet
 
 /// <summary>A datakategori facet.</summary>
 /// <remarks>
-/// The value is a token, normally an EHDS CURIE such as <c>ehds-cat:health-registries</c>, and
-/// carries no label — the same raw tokens <see cref="HierarchyDatasamling.Categories"/> holds, so
-/// a caller that renders both renders them the same way. Match whole tokens rather than on the
-/// <c>ehds-cat:</c> prefix; one authored with another prefix is passed through unchanged.
+/// The value is a token and carries no label — the same raw tokens
+/// <see cref="HierarchyDatasamling.Categories"/> holds, so a caller that renders both renders them
+/// the same way, and both an EHDS CURIE such as <c>ehds-cat:health-registries</c> and a bare code
+/// such as <c>RPDG</c> occur there. Match whole tokens rather than on any prefix.
 /// </remarks>
 public sealed record DataCategoryFacet
 {

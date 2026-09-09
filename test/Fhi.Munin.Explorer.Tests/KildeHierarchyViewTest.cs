@@ -1,6 +1,8 @@
+using System.Text.Json;
 using AngleSharp.Dom;
 using Bunit;
 using Fhi.Munin.Explorer.Blazor;
+using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -78,6 +80,95 @@ public sealed class KildeHierarchyViewTest : BunitContext
         };
         var nodes = KildeHierarchyNode.From(hierarchy);
         Assert.NotEqual(nodes[0].Children[0].Key, nodes[1].Children[0].Key);
+    }
+
+    [Fact]
+    public void From_WhenVariabelgrupperCarryCuratedOrder_ThenTheyFollowItAndTheUnorderedFallBackToName()
+    {
+        // The level Fhi.Metadata-l9l2n.61 fixed. The two above it honoured presentationOrder from
+        // the day the tree was drawn; a variabelgruppe was left in name order because the contract
+        // had nowhere to put the number, so this node built with a literal null instead.
+        var hierarchy = new KildeHierarchy
+        {
+            DirectDatasamlinger =
+            [new()
+            {
+                Id = Guid.NewGuid(),
+                Variabelgrupper =
+                [
+                    new() { Id = Guid.NewGuid(), Name = "ALCOHOL", PresentationOrder = 646 },
+                    new() { Id = Guid.NewGuid(), Name = "GENERAL INFORMATION", PresentationOrder = 537 },
+                    new()
+                    {
+                        Id = Guid.NewGuid(), Name = "BLOOD SAMPLES", PresentationOrder = 572,
+                        ChildVariabelgrupper =
+                        [
+                            new() { Id = Guid.NewGuid(), Name = "Serum", PresentationOrder = 647 },
+                            new() { Id = Guid.NewGuid(), Name = "Åpen" },
+                            new() { Id = Guid.NewGuid(), Name = "Plasma", PresentationOrder = 609 }
+                        ]
+                    }
+                ]
+            }]
+        };
+
+        var groups = KildeHierarchyNode.From(hierarchy)[0].Children;
+
+        Assert.Equal(["GENERAL INFORMATION", "BLOOD SAMPLES", "ALCOHOL"], groups.Select(n => n.Name));
+
+        // The fallback the delkilder and datasamlinger already had: unordered sorts after every
+        // ordered sibling rather than before it, and among themselves by the catalogue's collation.
+        Assert.Equal(["Plasma", "Serum", "Åpen"], groups[1].Children.Select(n => n.Name));
+    }
+
+    [Fact]
+    public void From_WhenADelkildesUnassignedGroupsCarryOrder_ThenTheyStaySortedBehindItsRealStructure()
+    {
+        // The other place reading a group's presentationOrder. Its number counts a sequence of its
+        // own — the capture's Tromsø4 numbers datasamlinger 1..2 and groups 537..1189 — so feeding
+        // it to the shared sort would let an orphan outrank a datasamling it cannot be compared to.
+        var hierarchy = new KildeHierarchy
+        {
+            Delkilder =
+            [new()
+            {
+                Id = Guid.NewGuid(), Name = "Parent",
+                Children = [new() { Id = Guid.NewGuid(), Name = "Child", PresentationOrder = 3 }],
+                Datasamlinger = [new() { Id = Guid.NewGuid(), Name = "Collection", PresentationOrder = 2 }],
+                UnassignedVariabelgrupper =
+                [
+                    new() { Id = Guid.NewGuid(), Name = "Åpen gruppe" },
+                    new() { Id = Guid.NewGuid(), Name = "Late orphan", PresentationOrder = 537 },
+                    new() { Id = Guid.NewGuid(), Name = "Early orphan", PresentationOrder = 1 }
+                ]
+            }]
+        };
+
+        Assert.Equal(
+            ["Collection", "Child", "Early orphan", "Late orphan", "Åpen gruppe"],
+            KildeHierarchyNode.From(hierarchy)[0].Children.Select(n => n.Name));
+    }
+
+    [Fact]
+    public void Render_WhenTheTreeIsTheCapturedPayload_ThenItsVariabelgrupperAreDrawnInTheCuratedOrder()
+    {
+        var hierarchy = JsonSerializer.Deserialize<KildeHierarchy>(
+                TestData.Read("hierarchy.json"), MuninExplorerClient.Json)
+            ?? throw new InvalidOperationException("hierarchy.json no longer reads as a KildeHierarchy.");
+
+        // The capture's own kilde id: the view treats an answer about another kilde as a failure.
+        var cut = Mount(
+            new Client { Fetch = (_, _) => Task.FromResult<KildeHierarchy?>(hierarchy) }, hierarchy.KildeId);
+
+        // Read off the capture rather than a fixture, because the claim is about the catalogue: the
+        // 32 groups under Tromsø4's first visit are a questionnaire's own sequence, and in name
+        // order the same list opens on ALCOHOL, BLOOD SAMPLES, COFFEE.
+        var firstVisit = cut.FindAll("details")
+            .Single(d => Name(d) == "Tromsø4 - The Fourth Tromsø Study - first visit");
+
+        Assert.Equal(
+            ["GENERAL INFORMATION", "PHYSICAL EXAMINATION", "BLOOD SAMPLES"],
+            firstVisit.QuerySelector("ul")!.Children.Take(3).Select(Name));
     }
 
     [Fact]
@@ -236,6 +327,10 @@ public sealed class KildeHierarchyViewTest : BunitContext
         Assert.Contains("Retained description", metadata.TextContent);
         Assert.Equal("Beskrivelser og gyldighetsperioder", AccessibleName.Of(metadata.QuerySelector("summary")!));
     }
+
+    /// <summary>A node's own name, without the variable count drawn beside it.</summary>
+    private static string Name(IElement node) =>
+        node.QuerySelector("summary > span, .munin-explorer-hierarchy__leaf > span")!.TextContent.Trim();
 
     private static KildeHierarchy Hierarchy(Guid id) => new()
     {

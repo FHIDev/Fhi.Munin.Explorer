@@ -81,7 +81,7 @@ public class MuninExplorerClientTest
     {
         var kilder = await WithResponse("kilder.json", out _).GetKilderAsync();
 
-        Assert.Equal(3, kilder.Count);
+        Assert.Equal(4, kilder.Count);
 
         var als = kilder[0];
         Assert.Equal("K_ALS", als.Code);
@@ -98,6 +98,10 @@ public class MuninExplorerClientTest
         // curated rather than modelled, so nothing about it is a compile error, and this capture is
         // what says the spelling the ordinal lookup uses is the API's own.
         Assert.Equal("2023", als.AdditionalProperties["Opprettet"]);
+
+        // The row the latest re-take added: a kilde with no kildetype at all, which the API sends
+        // as null and the contract used to make an empty string of. (Fhi.Metadata-l9l2n.61)
+        Assert.Null(kilder.Single(kilde => kilde.Code == "K_NKR-NAKKE").Kildetype);
     }
 
     [Fact]
@@ -108,9 +112,9 @@ public class MuninExplorerClientTest
         Assert.NotNull(kilde);
         Assert.Equal("K_ALS", kilde.Code);
 
-        // Not a contradiction of the test above, which reads a kilder.json re-taken for its
-        // Opprettet key: this capture and the four siblings still carrying K_ALS's old name are
-        // older, so the corpus is coherent per file rather than as one pass.
+        // Not a contradiction of the test above, whose kilder.json has been re-taken twice since —
+        // for its Opprettet key, then for K_NKR-NAKKE's null kildetype. This capture and the four
+        // siblings carrying K_ALS's old name are older: the corpus is coherent per file, not as one.
         Assert.Equal("Als registeret", kilde.PreferredTerm);
         Assert.Equal(230, kilde.TotalVariables);
         Assert.Equal(9, kilde.Datasamlinger.Count);
@@ -220,17 +224,37 @@ public class MuninExplorerClientTest
 
         Assert.NotNull(hierarchy);
         Assert.Equal("The Tromsø study", hierarchy.KildeName);
-        Assert.Equal(5752, hierarchy.TotalVariableCount);
+        Assert.Equal(2506, hierarchy.TotalVariableCount);
         Assert.Equal(5, hierarchy.Delkilder.Count);
         Assert.Equal(3, hierarchy.DirectDatasamlinger.Count);
 
         var tromso5 = hierarchy.Delkilder.First(d => d.Datasamlinger.Count == 4);
         Assert.Equal(1170, tromso5.VariableCount);
 
-        var firstVisit = tromso5.Datasamlinger[0];
-        Assert.Equal(["ehds-cat:population-health-surveys"], firstVisit.Categories);
-        Assert.NotEmpty(firstVisit.Variabelgrupper);
-        Assert.All(firstVisit.Variabelgrupper, g => Assert.NotEqual(Guid.Empty, g.Id));
+        // Named rather than indexed, here and below: this is a wholesale re-capture, so an ordinal
+        // would silently move onto a different datasamling the next time one is taken.
+        var firstVisit = tromso5.Datasamlinger
+            .Single(d => d.Name == "Tromsø5 - The Fifth Tromsø Study - first visit");
+
+        // A bare code, not the ehds-cat: CURIE the older captures hold: the datakategori vocabulary
+        // is passed through as the catalogue authored it, which is why nothing matches on a prefix.
+        Assert.Equal(["RPDG"], firstVisit.Categories);
+
+        // The sample-collection visit: the two ordinary visits carry no variabelgrupper in this
+        // capture, so asserting on them would measure the catalogue rather than the reader.
+        var samples = tromso5.Datasamlinger
+            .Single(d => d.Name == "Tromsø5 - The Fifth Tromsø study - forst visit ; sample collection")
+            .Variabelgrupper;
+        Assert.NotEmpty(samples);
+        Assert.All(samples, group => Assert.NotEqual(Guid.Empty, group.Id));
+
+        // The curated order the contract had nowhere to put until Fhi.Metadata-l9l2n.61 — unset on
+        // the parent group here and set on both of its children, so both halves of int? are read.
+        var provetyper = Assert.Single(samples);
+        Assert.Equal("Prøvetyper", provetyper.Name);
+        Assert.Null(provetyper.PresentationOrder);
+        Assert.Equal(["Plasma", "Serum"], provetyper.ChildVariabelgrupper.Select(group => group.Name));
+        Assert.Equal([609, 647], provetyper.ChildVariabelgrupper.Select(group => group.PresentationOrder));
     }
 
     [Fact]
