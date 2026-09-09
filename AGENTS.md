@@ -403,7 +403,7 @@ not proof the comparison ran** — a fork pull request gets no secret, the job s
 counts a skip as fine. That is the bound `check-hostile-host.sh` beside it has always had, and this
 guard inherits it rather than closing it; read the job, not the tick.
 
-The 175 divergences standing today are listed in `test/sample-css-known-divergences.txt`. **Nothing
+The 174 divergences standing today are listed in `test/sample-css-known-divergences.txt`. **Nothing
 writes that file.** A divergence not listed fails the build, and a listed line that no longer
 diverges also fails it with an instruction to delete the line, so the count can only go down.
 Adding a line is a hand edit that needs a reason; do not add one to get a branch green. What the

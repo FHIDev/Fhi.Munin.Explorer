@@ -46,13 +46,8 @@ const settleMs = Number(process.env.ACCESSIBILITY_SETTLE_MS ?? 4000);
 // min-content plus 48px of page air is 827, so 843 of viewport is the last width that fits and
 // everything under it needs the table's own scroll box.
 //
-// 320 IS NOT HERE, and it is the width WCAG 1.4.10 Reflow names, so its absence is the largest
-// hole in this list. The kildeutforsker overflows by 87px there in ModernHost - a 407px document,
-// fitting again from 414 - but that is the SAMPLE stand-in's own `min-width: 21rem` on the handover
-// button, a floor Stiler 0.1.42 has no rule for at all, so the figure does not carry across and no
-// pinned-Stiler measurement at 320 exists yet (Fhi.Metadata-l9l2n.65). Adding the width blind would
-// make this gate report on a page nobody has looked at; Fhi.Metadata-hxtir is where it gets measured
-// and added, after Fhi.Metadata-tx75j gives Stiler the rule.
+// 320 is missing, and it is the width WCAG 1.4.10 Reflow names. It is absent because nobody has
+// measured this page there against pinned Stiler yet; Fhi.Metadata-hxtir is where that happens.
 const widths = (process.env.GEOMETRY_WIDTHS ?? '1689,1440,1281,1280,1024,843')
   .split(',')
   .map(w => Number(w.trim()))

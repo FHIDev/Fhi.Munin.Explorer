@@ -59,7 +59,7 @@ behaviour found later by someone else.
 5. **A rule that declares *something* is not a rule that declares the right thing.** The check
    above stayed green while around forty divergences from `Fhi.Helsedata.Stiler` stood in the
    samples. `scripts/assert-sample-css-matches-stiler.sh` compares declarations — property and
-   value — against the published package `samples/HostileHost` pins, and the 175 standing today
+   value — against the published package `samples/HostileHost` pins, and the 174 standing today
    are listed in `test/sample-css-known-divergences.txt`. **Never add a line to that file to get a
    branch green**: a new divergence and a stale line both fail the build, so the count can only go
    down. Adding one is a hand edit that needs a reason in the PR.

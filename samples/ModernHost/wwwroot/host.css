@@ -304,10 +304,9 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    wide as the handover and gave the count a column it had no use for; what was actually wanted
    is one button that never moves and everything else flowing after it.
 
-   The floor has to yield, and `max-width: 100%` beside it cannot make it: CSS resolves max-width
-   before min-width, so `min(21rem, 100%)` is the floor, and the wrap plus a min-height standing in
-   for hd-button-square's fixed height stop a shrunk nowrap button spilling its label
-   (Fhi.Metadata-l9l2n.65). */
+   The floor is min() because CSS resolves max-width before min-width, so the `max-width: 100%`
+   beside it cannot bring a fixed floor down. Compound with hd-button-square, which is later here
+   and would otherwise win back its nowrap and its fixed height (Fhi.Metadata-l9l2n.65). */
 .munin-explorer-selection {
   display: flex;
   flex-wrap: wrap;
@@ -316,7 +315,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   margin-bottom: 16px;
 }
 
-.munin-explorer-selection__explore {
+.munin-explorer-selection__explore.hd-button-square {
   min-width: min(21rem, 100%);
   max-width: 100%;
   justify-content: center;
