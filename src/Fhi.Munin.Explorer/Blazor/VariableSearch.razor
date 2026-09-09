@@ -310,16 +310,18 @@ else
                        meant to reach it. Stiler's rule is `input.munin-explorer-filters__search`,
                        so the class has to sit on an <input>: the global `input[type=search]` list
                        is (0,1,1) and outranks a bare class. The label is real and hidden rather
-                       than an aria-label, and onchange rather than oninput, both on the same terms
-                       as Kelda's facet search. (Fhi.Metadata-l9l2n.67) *@
+                       than an aria-label, onchange rather than oninput, and @ref because a
+                       narrowing commit rewrites the list below under a reader who committed with
+                       Tab — all three as Kelda's facet search does them. (Fhi.Metadata-l9l2n.67) *@
                     @if (group.Searchable)
                     {
                         <label class="screenreader-only" for="@KildeSearchId">@T.FacetSearchLabel(group.Label)</label>
                         <input id="@KildeSearchId"
                                type="search"
                                class="munin-explorer-filters__search"
+                               @ref="_kildeSearchField"
                                value="@_kildeSearch"
-                               @onchange="e => SearchKilder(e.Value as string)"
+                               @onchange="e => SearchKilderAsync(e.Value as string)"
                                placeholder="@T.FacetSearchPlaceholder"
                                autocomplete="off"
                                maxlength="200" />

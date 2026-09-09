@@ -22,9 +22,10 @@ public partial class VariableSearch
     /// (Fhi.Metadata-uidue)
     /// </para>
     /// <para>
-    /// <c>Searchable</c> gives the facet a box that narrows its own values. Only the kilde facet
-    /// has one, and the search is the panel's alone — it never reaches the ticks, because a value
-    /// typed out of sight is still chosen and still narrowing the list.
+    /// <c>Searchable</c> gives the facet a box that narrows its own values. The search is the
+    /// panel's alone — it never reaches the ticks — so such a facet reports <c>ChosenCount</c> over
+    /// its whole list as well, or a chosen value typed out of sight would stop being counted while
+    /// it is still narrowing.
     /// </para>
     /// </remarks>
     private sealed record FacetGroup(
@@ -345,8 +346,20 @@ public partial class VariableSearch
         var values = grouped.Count == 1 ? grouped[0].Children : grouped;
 
         return new FacetGroup("kilde", T.FieldSource, OpenByDefault: true, values,
-                              EmptyText: empty, Searchable: true);
+                              EmptyText: empty, ChosenCount: ChosenKilder(facets, delkilderByKilde),
+                              Searchable: true);
     }
+
+    /// <summary>How many kilder and delkilder are ticked, whatever the facet's own search is showing.</summary>
+    /// <remarks>
+    /// Counted over the answer rather than over the values drawn, because a ticked kilde the search
+    /// has hidden is still narrowing the results and a summary that stopped saying so is the defect
+    /// <c>ChosenCount</c> exists for. (Fhi.Metadata-uidue)
+    /// </remarks>
+    private int ChosenKilder(FilterOptions facets, ILookup<Guid, DelkildeFacet> delkilderByKilde) =>
+        facets.Kilder.Sum(kilde =>
+            (_filter.KildeIds.Contains(kilde.Id) ? 1 : 0)
+            + delkilderByKilde[kilde.Id].Count(delkilde => _filter.DelkildeIds.Contains(delkilde.Id)));
 
     /// <summary>What the reader has typed into the kilde facet's own search box.</summary>
     private string _kildeSearch = string.Empty;
@@ -358,13 +371,45 @@ public partial class VariableSearch
     /// <summary>The kilde facet's search box, named by a label of its own.</summary>
     private string KildeSearchId => $"munin-explorer-facet-search-{_instance}";
 
+    /// <summary>The box itself, so focus can be put back on it before the values beside it are rewritten.</summary>
+    private ElementReference _kildeSearchField;
+
     /// <summary>Record what was typed into the kilde facet's search box.</summary>
     /// <remarks>
-    /// Deliberately nothing else — no request, and nothing touching <see cref="_filter"/>. The box
-    /// narrows what the panel draws; unticking a kilde the reader can no longer see would drop a
-    /// choice they never released.
+    /// Focus first and the state after, because <c>onchange</c> fires <em>because</em> focus has
+    /// left the box: a narrowing commit rewrites the list a reader who tabbed out is now standing
+    /// in. (Fhi.Metadata-6we8a) Nothing here touches <see cref="_filter"/> — unticking a kilde the
+    /// reader can no longer see would drop a choice they never released.
     /// </remarks>
-    private void SearchKilder(string? text) => _kildeSearch = text ?? string.Empty;
+    private async Task SearchKilderAsync(string? text)
+    {
+        if (RemovesDrawnKilder(text))
+        {
+            await _kildeSearchField.FocusAsync();
+        }
+
+        _kildeSearch = text ?? string.Empty;
+    }
+
+    /// <summary>Whether committing <paramref name="text"/> takes a kilde the panel is drawing off the screen.</summary>
+    /// <remarks>
+    /// The half of the rescue that says when there is anything to rescue focus from: a commit that
+    /// widens the facet, or that leaves every drawn kilde standing, removed nothing, and the reader
+    /// who blurred the box by clicking into something else is already there.
+    /// </remarks>
+    private bool RemovesDrawnKilder(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text) || _facets is not { } facets)
+        {
+            return false;
+        }
+
+        var term = text.Trim();
+        var delkilderByKilde = facets.Delkilder.ToLookup(delkilde => delkilde.KildeId);
+
+        return VisibleKilder(facets, delkilderByKilde)
+            .Any(kilde => !KildeMatches(kilde, delkilderByKilde[kilde.Id], term));
+    }
 
     /// <summary>The kilder the facet's own search leaves, each with its whole delkilde tree.</summary>
     /// <remarks>

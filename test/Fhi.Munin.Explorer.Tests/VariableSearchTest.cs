@@ -3200,6 +3200,10 @@ public class VariableSearchTest : BunitContext
     private static bool IsKildeHeading(string heading) =>
         heading == "Kilde" || heading.StartsWith("Kilde (", StringComparison.Ordinal);
 
+    /// <summary>What the kilde facet's own summary says, count and all.</summary>
+    private static string KildeHeading(IRenderedComponent<VariableSearch> cut) =>
+        KildeFacet(cut).FirstElementChild!.TextContent.Trim();
+
     /// <summary>The kildetype groups inside the kilde facet, in the order they are drawn.</summary>
     private static IReadOnlyList<AngleSharp.Dom.IElement> KildeTypeGroups(
         IRenderedComponent<VariableSearch> cut) =>
@@ -3466,6 +3470,49 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
+    public void Filter_WhenTheKildeSearchHidesAChosenKilde_ThenTheHeadingStillCountsIt()
+    {
+        // The summary is counted over the answer rather than over the values the box left, or the
+        // facet would say nothing while it is still narrowing — the defect ChosenCount exists for.
+        // (Fhi.Metadata-uidue)
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        Assert.Equal("Kilde (1)", KildeHeading(cut));
+
+        KildeSearchField(cut).Change("tromsø");
+
+        Assert.Equal("Kilde (1)", KildeHeading(cut));
+    }
+
+    [Fact]
+    public void Filter_WhenTheKildeSearchNarrowsTheFacet_ThenFocusIsPutBackOnTheBox()
+    {
+        // onchange fires because focus has left the box, so a reader who commits a narrowing term
+        // with Tab is standing on a summary or a checkbox this render removes, and focus falls to
+        // <body>. (Fhi.Metadata-6we8a)
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        KildeSearchField(cut).Change("tromsø");
+
+        JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus");
+    }
+
+    [Fact]
+    public void Filter_WhenTheKildeSearchRemovesNothing_ThenFocusIsLeftWhereTheReaderPutIt()
+    {
+        // The other half of the bargain: a commit that widens the facet, or that leaves every drawn
+        // kilde standing, took nothing away, and the reader who clicked into something else is
+        // already there.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        KildeSearchField(cut).Change("");
+
+        Assert.Empty(JSInterop.Invocations["Blazor._internal.domWrapper.focus"]);
+    }
+
+    [Fact]
     public void Filter_WhenTheKildeSearchNamesADelkilde_ThenItsKildeIsKept()
     {
         // Matched over the delkilder too, or a reader typing a name they can see in the tree in
@@ -3519,6 +3566,11 @@ public class VariableSearchTest : BunitContext
         ClickFacet(cut, "Utvid alle");
 
         Assert.Equal(Disclosures(cut).Count, OpenDisclosures(cut).Count);
+
+        // The kildetype groups too. Disclosures() counts direct children of the panel alone, so
+        // without this the press could leave every group folded and the suite would stay green.
+        Assert.NotEmpty(KildeTypeGroups(cut));
+        Assert.All(KildeTypeGroups(cut), group => Assert.True(group.HasAttribute("open")));
     }
 
     [Fact]
@@ -3532,6 +3584,11 @@ public class VariableSearchTest : BunitContext
         ClickFacet(cut, "Skjul alle");
 
         Assert.Empty(OpenDisclosures(cut));
+
+        // Skjul alle reaches the kildetype groups as well — the panel is unfolded to hundreds of
+        // rows without them, which is the state there has to be a way back from.
+        Assert.NotEmpty(KildeTypeGroups(cut));
+        Assert.All(KildeTypeGroups(cut), group => Assert.False(group.HasAttribute("open")));
     }
 
     [Fact]
