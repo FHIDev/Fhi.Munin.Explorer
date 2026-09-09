@@ -996,6 +996,36 @@ public class VariableListViewTest : BunitContext
         Assert.Equal("Als registeret", cell.GetAttribute("title"));
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void View_WhenTheKortnavnIsBlankRatherThanAbsent_ThenTheColumnFallsBackToTheKildeName(string kortnavn)
+    {
+        // Munin sends a kilde with no kortnavn as "" and never as null, so a `??` fallback kept the
+        // empty string and the column said "Ikke oppgitt" over a kilde name sitting on the same row.
+        var item = Item("Alder ved diagnose", "V_BDR.ALDER") with
+        {
+            KildeName = "Norsk register for gastrokirurgi",
+            KildeShortName = kortnavn
+        };
+
+        var cut = RenderView(new ListClient(item));
+
+        Assert.Equal("Norsk register for gastrokirurgi", CellText(cut, "source"));
+    }
+
+    [Fact]
+    public void View_WhenTheKortnavnIsBlankAndSoIsTheKildeName_ThenTheColumnStillSaysNotSpecified()
+    {
+        // The fallback must not turn an unknown kilde into a blank cell: with neither name there is
+        // nothing to fall back to, and "Ikke oppgitt" is still the right answer.
+        var item = Item("Alder ved diagnose", "V_BDR.ALDER") with { KildeName = null, KildeShortName = "" };
+
+        var cut = RenderView(new ListClient(item));
+
+        Assert.Equal("Ikke oppgitt", CellText(cut, "source"));
+    }
+
     [Fact]
     public async Task View_WhenThePageChanges_ThenEveryCellStillHoldsItsOwnValue()
     {

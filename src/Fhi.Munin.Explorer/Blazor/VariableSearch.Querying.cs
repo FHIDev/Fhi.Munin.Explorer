@@ -852,7 +852,9 @@ public partial class VariableSearch
         await NotifyPageChangedAsync();
     }
 
-    private static string? Trimmed(string? text) =>
+    /// <summary>Null for absent, empty or whitespace-only text, so <c>??</c> can fall back on it —
+    /// the Explorer API sends an omitted kilde kortnavn as <c>""</c> rather than as null.</summary>
+    internal static string? Trimmed(string? text) =>
         string.IsNullOrWhiteSpace(text) ? null : text.Trim();
 
     private static string? Period(VariableSummary v) => Period(v.DataFrom, v.DataTo);

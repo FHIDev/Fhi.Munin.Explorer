@@ -1655,6 +1655,49 @@ public class VariableSearchTest : BunitContext
                      cell.QuerySelector(".munin-explorer-dataitem-main__column__text")!.TextContent);
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Render_WhenTheKortnavnIsBlankRatherThanAbsent_ThenTheColumnFallsBackToTheFullName(string kortnavn)
+    {
+        // Munin sends a kilde with no kortnavn as "" and never as null, so the `??` above it kept
+        // the empty string and the column said "Ikke oppgitt" over a name held on the same row.
+        var cut = RenderWith(new FakeClient(OnePage(new VariableSummary
+        {
+            Id = Guid.NewGuid(),
+            Code = "V_X.1",
+            PreferredTerm = "Uten kortnavn",
+            KildeName = "Norsk register for gastrokirurgi",
+            KildeShortName = kortnavn,
+        })));
+
+        var cell = cut.Find(".munin-explorer-dataitem-main__source");
+
+        Assert.Equal("Norsk register for gastrokirurgi",
+                     cell.QuerySelector(".munin-explorer-dataitem-main__column__text")!.TextContent);
+        Assert.Equal("Norsk register for gastrokirurgi", cell.GetAttribute("title"));
+    }
+
+    [Fact]
+    public void Render_WhenTheKortnavnIsBlankAndSoIsTheKildeName_ThenTheColumnStillSaysNotSpecified()
+    {
+        // The fallback must not turn an unknown kilde into a blank cell: with neither name there is
+        // nothing to fall back to, and "Ikke oppgitt" is still the right answer.
+        var cut = RenderWith(new FakeClient(OnePage(new VariableSummary
+        {
+            Id = Guid.NewGuid(),
+            Code = "V_X.2",
+            PreferredTerm = "Uten kilde",
+            KildeName = "",
+            KildeShortName = "",
+        })));
+
+        var cell = cut.Find(".munin-explorer-dataitem-main__source");
+
+        Assert.Equal("Ikke oppgitt",
+                     cell.QuerySelector(".munin-explorer-dataitem-main__column__text")!.TextContent);
+    }
+
     [Fact]
     public void Render_WhenAValueIsMissing_ThenNotSpecifiedIsWrittenVisiblyForEveryone()
     {

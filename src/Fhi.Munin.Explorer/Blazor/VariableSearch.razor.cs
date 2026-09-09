@@ -1541,11 +1541,11 @@ public sealed partial class VariableSearch : ComponentBase
 
         // The short name, which is what Runa shows — "ALS" rather than "Als registeret" — with the
         // full name on hover, also as Runa does. A kilde name is long and repeats down every row of
-        // a single register's variables, so the short form is what makes the column readable. It
-        // falls back to the full name where a kilde has no short one.
+        // a single register's variables, so the short form is what makes the column readable. Trimmed
+        // rather than `??`, since the API sends a kilde with no kortnavn as an empty string.
         if (ColumnVisible(ResultColumn.Kilde))
         {
-            RowCell.Write(builder, 200, T.FieldSource, v.KildeShortName ?? v.KildeName, "source", T.NotSpecified, tooltip: v.KildeName);
+            RowCell.Write(builder, 200, T.FieldSource, Trimmed(v.KildeShortName) ?? v.KildeName, "source", T.NotSpecified, tooltip: v.KildeName);
         }
 
         if (ColumnVisible(ResultColumn.Datasamling))
