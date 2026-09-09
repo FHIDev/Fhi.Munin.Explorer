@@ -4062,7 +4062,10 @@ public class VariableSearchTest : BunitContext
         var cut = RenderWith(new FilteringClient(
             OnePage(Variable("1. Tale", "KODE")), facets, vocabulary: CategoryWords()));
 
-        var headings = cut.FindAll(".munin-explorer-filters summary").Select(s => s.TextContent).ToList();
+        // The facet summaries alone: a kildetype group inside the kilde facet is a disclosure of
+        // its own since Fhi.Metadata-l9l2n.67, and only a facet's summary wears the label span.
+        var headings = cut.FindAll(".munin-explorer-filters details > summary > .form-element__label")
+            .Select(label => label.TextContent).ToList();
 
         // Datakategori third: the two above it are in helsedata's own order and were not moved.
         Assert.Equal(2, headings.FindIndex(h => h.StartsWith("Datakategori", StringComparison.Ordinal)));
@@ -4102,9 +4105,12 @@ public class VariableSearchTest : BunitContext
             TotalCount = 42
         }));
 
-        // A heading names a level and does not filter, so it is text in the li rather than a label.
-        var unnamed = cut.FindAll(".munin-explorer-filters li")
-            .Single(li => li.ChildNodes[0].TextContent.Trim() == "Ikke oppgitt");
+        // A heading names a level and does not filter, so it is a summary rather than a label — the
+        // group is a disclosure over its kilder since Fhi.Metadata-l9l2n.67, and the name is the
+        // summary's own first node, ahead of the count span.
+        var unnamed = cut.FindAll(".munin-explorer-filters summary")
+            .Single(summary => summary.ChildNodes[0].TextContent.Trim() == "Ikke oppgitt")
+            .ParentElement!;
 
         Assert.Equal(["Dødsårsaksregisteret (30)"],
                      unnamed.QuerySelectorAll("ul > li > label").Select(label => label.TextContent));
