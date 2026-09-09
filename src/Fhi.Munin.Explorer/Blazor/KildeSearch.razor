@@ -341,6 +341,11 @@ else
         </div>
     }
 
+    @* Which filters are on, said over the results because the panel can be folded away or
+       scrolled past. Writes the same `_chosen` the checkboxes do, and nothing at all while nothing
+       is ticked. (Fhi.Metadata-ofoyw) *@
+    @ActiveFilters.For(this, T.ActiveFiltersTitle, ActiveFilterChips, T.ClearFilters, ClearFacetsAsync)
+
     @* One polite status line, holding one message at a time: loading, the count, or the empty
        state. aria-atomic makes a screen reader read the whole new sentence rather than only the
        words that changed — "12" on its own is not information.

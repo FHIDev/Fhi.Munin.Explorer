@@ -259,6 +259,19 @@ These are not style preferences — each one is a host that breaks otherwise.
     `gap`, so nothing trails the last button, and buttons that shrink and wrap their own labels
     rather than the row breaking apart at the next longer translation. Both sample stylesheets carry
     it, and it is in `Fhi.Helsedata.Stiler` from the release that follows PR 39046.
+    The row of active-filter chips over the results adds three, all shared with that panel:
+    `munin-explorer-filters__active` is the row, `munin-explorer-filters__chip` the capsule around
+    one ticked value and `munin-explorer-filters__chip-remove` the close control inside it. Handles,
+    all three, and the reason is the shape rather than the rules: the row is a heading, a run of
+    `<span>`s and a `<button>`, and the close control is a bare `<button>` whose accessible name is
+    written down — so a host that defines none of them gets the same words, the same controls and
+    the same order, in inline flow instead of a row of capsules. What the rules buy is the capsule
+    itself and a 24×24 box for the close control, which is a WCAG 2.5.5 target rather than a
+    decoration. The rules are `Fhi.Helsedata.Stiler` PR 39206's, which 0.1.42 — the version pinned
+    here — predates, so a host has them from whichever release takes it. The two other names in that
+    row are borrowed and need nothing new — the heading is `caption margin--none` and the clear-all
+    is `hd-button-square button-square--ghost`, Stiler's, worn in this component already by the
+    facet panel's fold toggle.
   - Names that carry meaning nothing else carries, so a host without Stiler's rules has to draw
     them itself: `munin-explorer-crumb` carries the link affordance for a trail step, which is a
     `<button>` — the kilde step of the panel's kilde trail, and every step of the hierarchy trail
@@ -408,6 +421,9 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-detail` | handle |
   | `munin-explorer-drilldown` | handle |
   | `munin-explorer-filters` | handle |
+  | `munin-explorer-filters__active` | handle |
+  | `munin-explorer-filters__chip` | handle |
+  | `munin-explorer-filters__chip-remove` | handle |
   | `munin-explorer-filters__count` | handle |
   | `munin-explorer-filters__facets` | handle |
   | `munin-explorer-filters__toggle` | handle |

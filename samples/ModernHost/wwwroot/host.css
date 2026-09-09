@@ -606,6 +606,75 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   margin-left: auto;
 }
 
+/* The row of active filters over the results: one capsule per ticked value, each with a close
+   control, and a Fjern alle filtre at the end of it. Three names of ours, whose Stiler rules are
+   PR 39206's — these are the stand-in for those, measured to the same boxes: the row 44px, a
+   capsule 34px, the close control 24x24.
+
+   A host that defines none of them still gets every word and every control, in inline flow rather
+   than in a row of capsules. What is lost is not information — the close control's name is written
+   down in the markup — it is the 24x24 target, which is WCAG 2.5.5 and is why the box is declared
+   here rather than left to the glyph's own size.
+
+   The two other elements in the row wear Stiler's own names, and both stand-ins are further up
+   this file: `caption margin--none` for the heading, and for the clear-all the ghost button rule
+   the facet panel's fold toggle also uses. Nothing below may reach them. */
+.munin-explorer-filters__active {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+/* The capsule. --grey20 for the fill and --grey60 for the border, which is the pair the panel's
+   guide lines already argue for: the row sits on the page ground --grey10, where --grey30 measures
+   1.16:1 and --grey40 1.82:1 against it, and a capsule whose edge cannot be seen is a capsule that
+   is not there. --grey60 gives 6.76:1. The text is --dark on --grey20, 13.47:1. */
+.munin-explorer-filters__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 4px 4px 4px 12px;
+  border: 1px solid var(--grey60);
+  border-radius: 17px;
+  background-color: var(--grey20);
+  color: var(--dark);
+  font: normal 1rem/150% var(--font);
+}
+
+/* The close control. Deliberately NOT hd-button-square, which is 2.75rem tall and would burst the
+   box above; the 24x24 here is the target size, so it is a box and not a glyph left to size
+   itself. --dark on the capsule's --grey20 is 13.47:1 at rest. */
+.munin-explorer-filters__chip-remove {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--dark);
+  font: normal 1.25rem/1 var(--font);
+  cursor: pointer;
+}
+
+/* :focus-visible shares the hover state rather than adding a ring of its own. helsedata's own
+   base rules erase outline and box-shadow from any focused button while the body is not marked
+   as tabbing — which it never is there — so a ring is the one thing that cannot carry focus on
+   the host this rule exists for. --white on --grey60 is 7.23:1, and the change itself, --grey60
+   against the capsule's --grey20, is 6.38:1. */
+.munin-explorer-filters__chip-remove:hover,
+.munin-explorer-filters__chip-remove:focus-visible {
+  background-color: var(--grey60);
+  color: #fff;
+}
+
 /* The dataperiode facet: a label and a native date input per end. No class name of our own —
    Stiler has no date-range widget, and inventing one here would render as a raw browser default
    on a Stiler-only host, which is the failure this package exists to avoid. The input is an
