@@ -1585,7 +1585,28 @@ public class KildeSearchTest : BunitContext
         var years = cut.FindAll(".munin-explorer-kilder tbody tr")
             .Select(row => row.QuerySelectorAll("td")[^1].TextContent.Trim());
 
-        Assert.Equal(["2023", "2006", "2020"], years);
+        Assert.Equal(["2023", "2006", "2020", "2012"], years);
+    }
+
+    [Fact]
+    public void Render_WhenTheCapturedPayloadHasAKildeWithNoKildetype_ThenItsCellReadsIkkeOppgitt()
+    {
+        // The rendering half of Fhi.Metadata-l9l2n.61: the contract stopped coercing the API's null
+        // to "", so what keeps this cell readable is Texts.KildeTypeLabel rather than the DTO. Read
+        // off the capture, because a hand-written null is one this component has never been sent.
+        var kilder = JsonSerializer.Deserialize<IReadOnlyList<KildeSummary>>(
+                TestData.Read("kilder.json"), MuninExplorerClient.Json)
+            ?? throw new InvalidOperationException("kilder.json no longer reads as a kilde list.");
+
+        var cut = RenderWith(new FakeClient([.. kilder]));
+        var column = Headers(cut).ToList().IndexOf("Kildetype");
+
+        string Kildetype(string code) => cut.FindAll(".munin-explorer-kilder tbody tr")
+            .Single(row => row.QuerySelector("th")!.TextContent.Contains(code, StringComparison.Ordinal))
+            .QuerySelectorAll("th, td")[column].TextContent.Trim();
+
+        Assert.Equal("Ikke oppgitt", Kildetype("K_NKR-NAKKE"));
+        Assert.Equal("Nasjonalt medisinsk kvalitetsregister", Kildetype("K_ALS"));
     }
 
     [Fact]
@@ -4348,14 +4369,14 @@ public class KildeSearchTest : BunitContext
         ToggleColumn(cut, "Sist endret");
 
         // Years, not formatted dates: the month's short form is the runtime's. The payload holds
-        // 20260423, 20260813 and 20230131. The whole cell is reported when it does not end in a
-        // year, so a fixture re-capture that drops the key fails as "expected 2026, got Ikke
-        // oppgitt" rather than as four characters of it.
+        // 20260423, 20260813, 20230131 and 20210627. The whole cell is reported when it does not
+        // end in a year, so a fixture re-capture that drops the key fails as "expected 2026, got
+        // Ikke oppgitt" rather than as four characters of it.
         var years = cut.FindAll(".munin-explorer-kilder tbody tr")
             .Select(row => row.QuerySelectorAll("td")[^1].TextContent.Trim())
             .Select(text => text.Length >= 4 && text[^4..].All(char.IsAsciiDigit) ? text[^4..] : text);
 
-        Assert.Equal(["2026", "2026", "2023"], years);
+        Assert.Equal(["2026", "2026", "2023", "2021"], years);
     }
 
     [Fact]

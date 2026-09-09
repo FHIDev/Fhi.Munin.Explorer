@@ -81,4 +81,7 @@ public sealed record HierarchyVariabelgruppe
 
     /// <summary>Nested groups — walk recursively.</summary>
     [JsonPropertyName("childVariabelgrupper")] public IReadOnlyList<HierarchyVariabelgruppe> ChildVariabelgrupper { get; init; } = [];
+
+    /// <summary>Curated display order; null when unordered.</summary>
+    [JsonPropertyName("presentationOrder")] public int? PresentationOrder { get; init; }
 }

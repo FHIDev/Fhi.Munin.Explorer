@@ -25,7 +25,12 @@ public sealed record KildeSummary
     /// kildetype does not break deserialisation. Spelled <c>kildetype</c> here and
     /// <c>kildeType</c> on the variable endpoints.
     /// </summary>
-    [JsonPropertyName("kildetype")] public string Kildetype { get; init; } = "";
+    /// <remarks>
+    /// Null when the kilde has no kildetype, which is a real state in the catalogue rather than a
+    /// missing value: a host rendering it needs a word of its own for it, as this package renders
+    /// "Ikke oppgitt". (<c>Fhi.Metadata-l9l2n.61</c>)
+    /// </remarks>
+    [JsonPropertyName("kildetype")] public string? Kildetype { get; init; }
 
     /// <summary>False for a kilde kept for historical reference but no longer collecting data.</summary>
     [JsonPropertyName("aktiv")] public bool IsActive { get; init; }

@@ -81,7 +81,7 @@ public class MuninExplorerClientTest
     {
         var kilder = await WithResponse("kilder.json", out _).GetKilderAsync();
 
-        Assert.Equal(3, kilder.Count);
+        Assert.Equal(4, kilder.Count);
 
         var als = kilder[0];
         Assert.Equal("K_ALS", als.Code);
@@ -98,6 +98,10 @@ public class MuninExplorerClientTest
         // curated rather than modelled, so nothing about it is a compile error, and this capture is
         // what says the spelling the ordinal lookup uses is the API's own.
         Assert.Equal("2023", als.AdditionalProperties["Opprettet"]);
+
+        // The row this capture was re-taken for: a kilde with no kildetype at all, which the API
+        // sends as null and the contract used to make an empty string of. (Fhi.Metadata-l9l2n.61)
+        Assert.Null(kilder.Single(kilde => kilde.Code == "K_NKR-NAKKE").Kildetype);
     }
 
     [Fact]
@@ -220,17 +224,24 @@ public class MuninExplorerClientTest
 
         Assert.NotNull(hierarchy);
         Assert.Equal("The Tromsø study", hierarchy.KildeName);
-        Assert.Equal(5752, hierarchy.TotalVariableCount);
+        Assert.Equal(2506, hierarchy.TotalVariableCount);
         Assert.Equal(5, hierarchy.Delkilder.Count);
         Assert.Equal(3, hierarchy.DirectDatasamlinger.Count);
 
         var tromso5 = hierarchy.Delkilder.First(d => d.Datasamlinger.Count == 4);
         Assert.Equal(1170, tromso5.VariableCount);
 
-        var firstVisit = tromso5.Datasamlinger[0];
-        Assert.Equal(["ehds-cat:population-health-surveys"], firstVisit.Categories);
-        Assert.NotEmpty(firstVisit.Variabelgrupper);
-        Assert.All(firstVisit.Variabelgrupper, g => Assert.NotEqual(Guid.Empty, g.Id));
+        Assert.Equal(["RPDG"], tromso5.Datasamlinger[0].Categories);
+
+        // The sample-collection visit rather than the first: the two ordinary visits carry no
+        // variabelgrupper in this capture, so asserting on them would measure the catalogue.
+        var samples = tromso5.Datasamlinger[2].Variabelgrupper;
+        Assert.All(samples, group => Assert.NotEqual(Guid.Empty, group.Id));
+
+        // The curated order the contract had nowhere to put until Fhi.Metadata-l9l2n.61 — unset on
+        // the parent group here and set on both of its children, so both halves of int? are read.
+        Assert.Null(Assert.Single(samples).PresentationOrder);
+        Assert.Equal([609, 647], samples[0].ChildVariabelgrupper.Select(group => group.PresentationOrder));
     }
 
     [Fact]

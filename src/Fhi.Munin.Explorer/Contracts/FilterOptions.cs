@@ -82,7 +82,8 @@ public sealed record KildeFacet
     /// <summary>Abbreviation, e.g. <c>MFR</c>. Empty string — not null — when the kilde has none.</summary>
     [JsonPropertyName("kortNavn")] public string ShortName { get; init; } = "";
 
-    [JsonPropertyName("kildeType")] public string KildeType { get; init; } = "";
+    /// <summary>The kilde's kildetype; null when it has none — see <see cref="KildeSummary.Kildetype"/>.</summary>
+    [JsonPropertyName("kildeType")] public string? KildeType { get; init; }
     [JsonPropertyName("count")] public int Count { get; init; }
 }
 

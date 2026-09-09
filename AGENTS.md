@@ -90,7 +90,8 @@ the reader is told "Kunne ikke laste kilder nå", which is at least true.
 The API side backs that up: every one of those is a primary key, a `NOT NULL` column or a
 `Count()` aggregate, so a null in one is a broken payload rather than a shape Munin can produce.
 The nullable columns it does have — `kortNavn`, `gyldigFra`, the timestamps
-(`Fhi.Metadata-se0by`) — are already annotated `?` here, and that is when to reach for **must be
+(`Fhi.Metadata-se0by`), `kildetype` and every `effectiveKildetype` projected from it
+(`Fhi.Metadata-l9l2n.61`) — are already annotated `?` here, and that is when to reach for **must be
 nullable**: because Munin's column is, not to make a value type tolerate a null.
 
 The strings are the ones worth machinery, because they are the only shape that fails *silently*.

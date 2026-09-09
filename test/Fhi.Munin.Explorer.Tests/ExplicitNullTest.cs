@@ -116,6 +116,19 @@ public class ExplicitNullTest
     }
 
     [Fact]
+    public void KildeList_WhenAHostReadsTheCaptureWithoutTheClientsOptions_ThenTheUnsetKildetypeIsNull()
+    {
+        // The reader the published contract is for: plain System.Text.Json, no NullAsEmptyStrings.
+        // A null over a string declared non-nullable lands silently and surfaces wherever the host
+        // first reads it, so the annotation is the only thing that warns anybody. (Fhi.Metadata-l9l2n.61)
+        var kilder = JsonSerializer.Deserialize<IReadOnlyList<KildeSummary>>(
+            TestData.Read("kilder.json"), new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+
+        Assert.Null(kilder.Single(kilde => kilde.Code == "K_NKR-NAKKE").Kildetype);
+        Assert.Equal("nasjonaltMedisinskKvalitetsregister", kilder.Single(kilde => kilde.Code == "K_ALS").Kildetype);
+    }
+
+    [Fact]
     public void Json_WhenAContractIsResolved_ThenTheConverterIsOnTheNonNullableStringsOnly()
     {
         // The wiring, once: the sweep above asks NullAsEmptyStrings.Covers directly, which would go

@@ -36,7 +36,7 @@
       "FormaalFlerspraklig": "[{\"value\":\"ALS-registeret har som formål å måle/sikre kvalitet og bidra til kvalitetsforbedring av helsetjenesten for pasienter med ALS eller andre motonevronsykdommer gjennom å registrere ressursbruk, hvilken behandling og utredning pasientene får. \",\"language\":\"nb\"}]",
       "TittelFlerspraklig": "{\"nb\":\"Norsk register for ALS og andre motonevronsykdommer (ALS-registeret)\"}",
       "BeskrivelseFlerspraklig": "{\"nb\":\"Norsk register for ALS og andre motonevronsykdommer (ALS-registeret) er Norges nasjonale medisinske kvalitetsregister for pasienter som diagnostiseres med ALS eller annen motonevronsykdom. \"}",
-      "healthCategory": "[\"ehds-cat:registries-quality-of-healthcare\"]"
+      "healthCategory": "[\"MRMR\"]"
     }
   },
   {
@@ -77,7 +77,7 @@
       "TittelFlerspraklig": "{\"nb\":\"Barnediabetes\"}",
       "BeskrivelseFlerspraklig": "{\"nb\":\"Barnediabetesregisteret (BDR) består av to deler. Den første delen registrerer alle barn og ungdom med nyoppdaget diabetes. Her registreres personalia, type diabetes, kliniske data og blodprøver.\\nDen andre delen registrerer kvaliteten på diabetesbehandlingen ved hjelp av internasjonalt definerte diabetes kvalitetsvariabler. Hver pasient undersøkes en gang i året (Årskontroll). Da registreres kliniske data, opplysninger fra spørreskjema, svar på urin og blodprøver.\\n\\nI diabetesomsorgen hos barn og ungdom har BDR et spesielt fokus på langtidsblodsukker, HbA1c. Målet er at flest mulig barn og ungdommer skal oppnå nasjonalt og internasjonalt behandlingsmål på HbA1c som til en hver tid er gjeldene. Denne grensen er satt for å redusere risikoen for å utvikle diabetes senskader.\\n\\nBDR har også fokus på registrering av insulinsjokk og diabetes ketoacidose (syreforgiftning). Målet er at så få pasienter som mulig får dette. I tillegg til dette registrerer vi hvilken grad pasientene blir screenet med øyeundersøkelse, urinundersøkelse, BT, kolesterolverdier og assosierte autoimmunesykdommer; hypothyreose, hyperthyreose og cøliaki. \\n\\nEt viktig verktøy for å fremme kvaliteten i diabetesbehandlingen hos barn og ungdom er å rapportere dataene tilbake til barneavdelingene, der kvalitetsarbeidet skjer. Avdelingene får rapporter både på egne data, og rapporter på egne data sammenlignet (benchmarket) med alle de andre barneavdelingene i Norge. \"}",
       "AnbefalteBruksomraader": "Forskning, Statistikk, Kvalitetsforbedring",
-      "healthCategory": "[\"ehds-cat:registries-quality-of-healthcare\"]"
+      "healthCategory": "[\"MRMR\"]"
     }
   },
   {
@@ -122,7 +122,48 @@
       "FormaalFlerspraklig": "[{\"value\":\"Registeret skal bidra til sikker og effektiv legemiddelbruk, ved at det fortløpende og systematisk registreres, behandles og analyseres bivirkningsmeldinger og fanges opp bivirkningsinformasjon fra legemiddelbruk så tidlig som mulig.\\n\\nOpplysninger som er registrert i registeret kan også tilgjengeliggjøres for styring, planlegging og kvalitetsforbedring av legemidler og legemiddelbruk og til forskning.\",\"language\":\"nb\"}]",
       "TittelFlerspraklig": "{\"nb\":\"Bivirkningsregisteret\",\"en\":\"The Norwegian Adverse Drug Reaction Registry\"}",
       "BeskrivelseFlerspraklig": "{\"nb\":\"Registeret skal bidra til sikker og effektiv legemiddelbruk, ved at det fortløpende og systematisk registreres, behandles og analyseres bivirkningsmeldinger og fanges opp bivirkningsinformasjon fra legemiddelbruk så tidlig som mulig.\\n\\nOpplysninger som er registrert i registeret kan også tilgjengeliggjøres for styring, planlegging og kvalitetsforbedring av legemidler og legemiddelbruk og til forskning.\",\"en\":\"The Norwegian Adverse Drug Reaction Registry, (NorADRR) shall contribute to safe and effective use of medicinal products, by continuously and systematically registering, processing, and analysing reports of suspected adverse drug reactions (ADRs) and capturing information about ADRs as early as possible.\"}",
-      "healthCategory": "[\"ehds-cat:health-registries\"]"
+      "healthCategory": "[\"PHDR\"]"
+    }
+  },
+  {
+    "id": "0a2d67de-3617-4ea5-b43a-c006a5d649a0",
+    "code": "K_NKR-NAKKE",
+    "navn": "Nasjonalt kvalitetsregister for ryggkirurgi (NKR), degenerativ nakke.",
+    "kortNavn": "NKR-Nakke",
+    "kildetype": null,
+    "aktiv": true,
+    "opprettet": "2026-09-08T11:10:54.767Z",
+    "sistOppdatert": "2026-09-08T11:11:17.929Z",
+    "dataansvarlig": "Administrerende direktør i UNN HF",
+    "databehandler": "Helse Nord IKT, SKDE, Norsk helsenett",
+    "gradAvPersonidentifikasjon": null,
+    "gyldigFra": "2012-06-27T00:00:00.000Z",
+    "gyldigTil": null,
+    "healthDcatScore": null,
+    "harVariabelbeskrivelse": false,
+    "datasamlingCount": 0,
+    "delkildeCount": 0,
+    "totalVariables": 0,
+    "additionalProperties": {
+      "Dekningsgrad": "0.84",
+      "Opprettet": "2012",
+      "SistOppdatert": "20210627",
+      "NavnEngelsk": "NorSpine",
+      "Formaal": "Nasjonalt kvalitetsregister for ryggkirurgi har som formål å samle data, som skal bidra til å sikre kvaliteten på rygg- og nakkekirurgi som utføres ved norske sykehus.",
+      "InklusjonsOgEksklusjonskriterier": "Målgruppen er alle pasienter som blir operert for degenerative tilstander i nakke ved offentlige og private sykehus i Norge.\n",
+      "Telefonnummer": "7.7669015E7",
+      "Epost": "ryggregisteret@unn.no",
+      "Hjemmeside": "www.ryggregisteret.no",
+      "accessRights": "eu-access:NON_PUBLIC",
+      "healthDataAccessBodyName": "Helsedataservice",
+      "healthDataAccessBodyPhone": "+47 21 07 70 00",
+      "healthDataAccessBodyEmail": "service@helsedata.no",
+      "healthDataAccessBodyHomepage": "https://www.fhi.no/om/organisasjon/helsedataservice/",
+      "applicableLegislation": "http://data.europa.eu/eli/reg/2025/327/oj;https://lovdata.no/eli/lov/2001-05-18-24;https://lovdata.no/eli/forskrift/2019-06-21-879",
+      "hasLegalBasis": "[{\"value\":\"Forskrift om medisinske kvalitetsregistre\",\"language\":\"nb\"}]",
+      "FormaalFlerspraklig": "[{\"value\":\"Nasjonalt kvalitetsregister for ryggkirurgi har som formål å samle data, som skal bidra til å sikre kvaliteten på rygg- og nakkekirurgi som utføres ved norske sykehus.\",\"language\":\"nb\"}]",
+      "TittelFlerspraklig": "{\"nb\":\"Nasjonalt kvalitetsregister for ryggkirurgi (NKR), degenerativ nakke.\",\"en\":\"NorSpine\"}",
+      "BeskrivelseFlerspraklig": "{\"nb\":\"Nasjonalt kvalitetsregister for ryggkirurgi har som mål å sikre kvaliteten på rygg- og nakkekirurgi som utføres ved norske sykehus. Det enkelte sykehus får oversikt over egne resultater, og nasjonale, sammenslåtte registerdata vil være referansen for sykehusene. \"}"
     }
   }
 ]
