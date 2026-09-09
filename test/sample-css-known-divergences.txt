@@ -50,6 +50,15 @@
 # grey20 where Stiler's own comment says not to. The base rule and the drilldown's grid-column were
 # in it too, until #204.
 #
+# IT IS 174 SINCE Fhi.Metadata-f6az7. Three went and two arrived, and the two are the first
+# entries here with an expiry condition written into them. The three that went - the choicepicker
+# selector, the trigger's icon rule and the dropdown - were missing-selector lines the column
+# picker's own rules made false, so the sample moved TOWARDS Stiler and the stale half of the guard
+# said so. The two that arrived are the opposite case and the reason the format needed a note at
+# all: they are not drift but a sample that is AHEAD of the pin, correct against Stiler 0.1.53 and
+# invented against the 0.1.42 both this fixture and helsedata.no restore. They delete themselves
+# the day the pin moves, and Fhi.Metadata-kpmt3 is what carries that.
+#
 # WHAT THIS LIST DOES NOT COVER, so a short list is never read as a close match: source order and
 # specificity are not compared, so two rules that both exist and both declare the same property can
 # still draw differently — Fhi.Metadata-cuo0e is that shape. Shorthands are compared as written and
@@ -98,6 +107,14 @@ invented-declaration||.munin-explorer-frequency thead th|border-bottom
 invented-declaration||.munin-explorer-frequency thead th|font-weight
 invented-declaration||.munin-explorer-frequency|margin
 invented-declaration||.munin-explorer-header__actions|justify-content
+# The two below EXPIRE when the pin moves. Both rules exist in Fhi.Helsedata.Stiler 0.1.53 - the
+# release carrying Fhi.Metadata-f6az7's Stiler half - and not in the pinned 0.1.42. Checked on
+# 2026-09-09: helsedata.no pins 0.1.42 too (Fhi.Helsedata.Optimizely.csproj:70, lifted from 0.1.37
+# in their PR 39170 the day before), so the pin is right and the sample is simply ahead of it. The
+# sample must carry them or the column picker draws its panel off the wrong ancestor and shows both
+# chevrons at once. Delete these two lines when HostileHost pins >= 0.1.53 (Fhi.Metadata-kpmt3).
+invented-declaration||.munin-explorer-header__actions .dropdown-choicepicker|text-align
+invented-declaration||.munin-explorer__dropdown|position
 invented-declaration||.munin-explorer-kilde__delkilde-description|font-size
 invented-declaration||.munin-explorer-meta__grid|gap
 invented-declaration||.munin-explorer-meta__tabs|gap
