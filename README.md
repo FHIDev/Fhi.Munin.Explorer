@@ -284,6 +284,16 @@ These are not style preferences — each one is a host that breaks otherwise.
     row are borrowed and need nothing new — the heading is `caption margin--none` and the clear-all
     is `hd-button-square button-square--ghost`, Stiler's, worn in this component already by the
     facet panel's fold toggle.
+    The kildeutforsker adds one more, `munin-explorer-results__toolbar` — the row the result count
+    shares with the Sorter control and the Kolonner picker, which took a row each before it. A
+    handle, and the plainest one here: undefined, the three go back to being three blocks in
+    ordinary flow, which is exactly what shipped before the name existed, so what a rule buys is
+    two rows of vertical space and nothing a reader could otherwise miss. Its rules are
+    `Fhi.Helsedata.Stiler` PR 39220's, merged after 0.1.42 was cut, so a host has them from the
+    release that follows the version pinned here. The name says `results` and the element sits
+    above `munin-explorer-results` rather than inside it, deliberately: the results container is
+    drawn only with rows on screen, and the count inside this row is the component's one polite
+    live region, which has to be in the DOM before its text arrives.
   - Names that carry meaning nothing else carries, so a host without Stiler's rules has to draw
     them itself: `munin-explorer-crumb` carries the link affordance for a trail step, which is a
     `<button>` — the kilde step of the panel's kilde trail, and every step of the hierarchy trail
@@ -501,6 +511,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-period__track` | meaning |
   | `munin-explorer-period__track--ongoing` | meaning |
   | `munin-explorer-results` | handle |
+  | `munin-explorer-results__toolbar` | handle |
   | `munin-explorer-retry` | meaning |
   | `munin-explorer-search__clear` | handle |
   | `munin-explorer-selection` | handle |

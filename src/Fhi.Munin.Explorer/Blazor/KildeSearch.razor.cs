@@ -88,7 +88,10 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <see cref="ExploreVariablesRequested"/> gets in front of them, and
 /// <c>munin-explorer-filters__toggle</c> and <c>munin-explorer-filters__facets</c> for the facet
 /// panel's disclosure, and <c>munin-explorer-filters__count</c> for the number beside a facet
-/// value — see <c>KildeSearch.Filters.cs</c> for what those three are for. A host that
+/// value — see <c>KildeSearch.Filters.cs</c> for what those three are for. Last is
+/// <c>munin-explorer-results__toolbar</c>, the row the result count shares with the order control
+/// and the column picker: a host that defines nothing for it gets the three back as three blocks
+/// in ordinary flow, which is what they were before the name existed. A host that
 /// styles none of them still gets a usable list, which is why the results are a
 /// <c>&lt;table&gt;</c> and the name is a <c>&lt;button&gt;</c>: an element degrades to its own
 /// browser default — aligned columns, a control that visibly is one — where a class name no
