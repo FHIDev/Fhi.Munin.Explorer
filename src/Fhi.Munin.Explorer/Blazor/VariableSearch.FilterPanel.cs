@@ -546,11 +546,12 @@ public partial class VariableSearch
     /// recursing until the stack runs out; that memory also keeps a duplicated id from being drawn
     /// twice.
     /// </para>
+    /// <para>
+    /// <c>under</c> takes values from another facet that belong beneath a node — the kilde tree's
+    /// datasamlinger, which carry their own key prefix and their own selection, and so cannot be
+    /// nodes here.
+    /// </para>
     /// </remarks>
-    /// <param name="under">
-    /// Values from another facet that belong beneath a node — the kilde tree's datasamlinger, which
-    /// carry their own key prefix and their own selection, and so cannot be nodes here.
-    /// </param>
     private static IReadOnlyList<FacetValue> Tree(
         IEnumerable<TreeNode> nodes,
         string keyPrefix,
