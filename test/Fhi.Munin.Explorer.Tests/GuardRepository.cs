@@ -54,11 +54,14 @@ internal sealed class GuardRepository : IDisposable
         }
     }
 
+    /// <summary>Git's own answer to a question about this repository, trimmed.</summary>
+    internal string Read(params string[] arguments) => Git(arguments).Trim();
+
     /// <summary>
     /// Git with an identity and no signing of its own, so the fixture neither depends on nor trips
     /// over whatever the machine running the tests has configured globally.
     /// </summary>
-    private void Git(params string[] arguments)
+    private string Git(params string[] arguments)
     {
         var start = new ProcessStartInfo("git")
         {
@@ -66,6 +69,10 @@ internal sealed class GuardRepository : IDisposable
             RedirectStandardOutput = true,
             RedirectStandardError = true,
         };
+
+        // An inherited GIT_DIR outranks WorkingDirectory, so without this the temp repository is
+        // not the repository these commands act on (Fhi.Metadata-fj5vv).
+        Guard.ClearInheritedGit(start);
 
         foreach (var setting in new[]
                  {
@@ -92,5 +99,7 @@ internal sealed class GuardRepository : IDisposable
         Assert.True(
             run.ExitCode == 0,
             $"git {string.Join(' ', arguments)} failed with {run.ExitCode}: {run.Output}");
+
+        return run.Output;
     }
 }
