@@ -46,12 +46,9 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// is wanted.
 /// </para>
 /// <para>
-/// Real checkboxes, as helsedata's own are. An earlier draft used <c>&lt;button aria-pressed&gt;</c>
-/// on the ground that a refused toggle — the picker will not hide the last visible column — would
-/// leave the browser showing a ticked box over a hidden one. That constraint was already answered
-/// in this repository: <c>SetUpdatesAttributeName("checked")</c> forces the attribute back onto the
-/// DOM when the render after a press equals the render before it, which is what the facet panel
-/// uses for a filter press it drops or rolls back (Fhi.Metadata-f6az7).
+/// Real checkboxes, as helsedata's own are. The refusal to hide the last visible column is what
+/// <c>SetUpdatesAttributeName("checked")</c> below answers, the same way the facet panel answers a
+/// filter press it rolls back; the history is on Fhi.Metadata-f6az7.
 /// </para>
 /// <para>
 /// One copy for both explorers: every paragraph above is a borrowed name or a fact about the
@@ -136,9 +133,9 @@ internal static class ColumnPicker
             builder.OpenElement(20, "li");
             builder.AddAttribute(21, "class", "dropdown-choicepicker__item");
 
-            // Stiler's own names, not ours: `_choicepicker.scss` overrides `word-break` on
-            // `form-control__label` INSIDE `dropdown-choicepicker__item`, which is a rule written
-            // for this item and nothing else.
+            // Stiler's own names: `_choicepicker.scss` overrides `word-break` on
+            // `form-control__label` INSIDE this item. Deliberately not `form-control__input`,
+            // which hides the input for a drawn replacement this pattern has none of.
             builder.OpenElement(22, "label");
             builder.AddAttribute(23, "class", "form-control");
 

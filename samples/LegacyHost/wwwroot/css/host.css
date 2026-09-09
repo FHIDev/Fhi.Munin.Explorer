@@ -2045,6 +2045,7 @@ table.munin-explorer-data-list tbody th {
 
 .munin-explorer-header__actions-button > .icon--right {
   margin-left: 8px;
+  margin-right: 0;
 }
 
 .munin-explorer-header__actions-button > .icon-layout::before {
@@ -2121,7 +2122,7 @@ table.munin-explorer-data-list tbody th {
 }
 
 .dropdown-choicepicker__item .form-control__label {
-  margin-left: 8px;
+  margin-left: 16px;
   align-self: center;
   word-break: normal;
 }

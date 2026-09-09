@@ -2914,8 +2914,8 @@ public class KildeSearchTest : BunitContext
 
     /// <summary>The toggle for one named column, refetched so it is never a stale node.</summary>
     /// <remarks>
-    /// A checkbox answers a change event and not a click, so a <c>Click()</c> here would leave the
-    /// picker untouched and every test using it green over a control that does nothing.
+    /// <c>Change</c> and not <c>Click</c>: bUnit raises MissingEventHandlerException for a click
+    /// on an element handling only <c>onchange</c>, and names the event it does handle.
     /// </remarks>
     private static void ToggleColumn(IRenderedComponent<KildeSearch> cut, string label)
     {

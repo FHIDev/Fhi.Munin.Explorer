@@ -696,8 +696,8 @@ public class VariableSearchTest : BunitContext
         ColumnToggles(cut).Single(b => ColumnName(b) == label);
 
     /// <remarks>
-    /// A checkbox answers a change event and not a click, so a <c>Click()</c> here would leave the
-    /// picker untouched and every test using it green over a control that does nothing.
+    /// <c>Change</c> and not <c>Click</c>: bUnit raises MissingEventHandlerException for a click
+    /// on an element handling only <c>onchange</c>, and names the event it does handle.
     /// </remarks>
     private static void ToggleColumn(IRenderedComponent<VariableSearch> cut, string label)
     {
@@ -812,10 +812,9 @@ public class VariableSearchTest : BunitContext
         var hint = last.GetAttribute("aria-describedby");
         Assert.Equal("Minst én kolonne må vises.", cut.Find($"#{hint}").TextContent);
 
-        // What this CANNOT see: the browser flips a checkbox itself before any handler runs, so
-        // the disagreement `SetUpdatesAttributeName("checked")` exists to prevent is invisible to a
-        // render-tree test - removing that call leaves this file green. Measured in Edge instead,
-        // and the numbers are on Fhi.Metadata-f6az7.
+        // A render tree never experiences the browser flipping the box before the handler runs, so
+        // deleting SetUpdatesAttributeName("checked") leaves this file green. Measured in a browser
+        // instead, on Fhi.Metadata-f6az7; the missing guard is Fhi.Metadata-1s7z1.
         last.Change(!Ticked(last));
 
         Assert.True(Ticked(ColumnToggle(cut, "Dataperiode")));
@@ -884,7 +883,7 @@ public class VariableSearchTest : BunitContext
         // The other direction of the same press, and the one the flag exists for: with historical
         // variables in the list the filter is drawing Status, so turning it off has to record that
         // the reader has chosen as well as hide it. Without the record the press is a visible
-        // no-op — aria-pressed goes to false over a column that is still on screen — and every
+        // no-op — the box unticks over a column that is still on screen — and every
         // later trip through the filter puts it back.
         var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
 
@@ -1190,8 +1189,8 @@ public class VariableSearchTest : BunitContext
     public void Render_Always_ThenThePickerBorrowsItsClassNamesAndInventsNone()
     {
         // The companion to the munin-explorer guard further down, which only inspects names in
-        // that prefix — the picker wears eight names outside it, and an invented ninth would slip
-        // past that test unnoticed. Every name here was read back off helsedata's compiled
+        // that prefix — the picker wears fourteen names outside it, and an invented fifteenth would
+        // slip past that test unnoticed. Every name here was read back off helsedata's compiled
         // stylesheets; one that is not renders as a raw browser default inside a styled page.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
@@ -1229,9 +1228,10 @@ public class VariableSearchTest : BunitContext
                                               //   saying why the last column will not turn off
         ], names);
 
-        // Real checkboxes rather than pressed buttons, one per optional column, each inside the
-        // label that names it — which is what makes the label a target as well as a name.
-        Assert.Equal(7, picker.QuerySelectorAll("label.form-control > input[type=checkbox]").Length);
+        // The nesting, not the count, which the list above already pins: every box sits inside the
+        // label that names it, which is what makes the whole line a target as well as a name.
+        Assert.Equal(picker.QuerySelectorAll(".dropdown-choicepicker__item").Length,
+                     picker.QuerySelectorAll("label.form-control > input[type=checkbox]").Length);
     }
 
     [Fact]
@@ -3076,8 +3076,8 @@ public class VariableSearchTest : BunitContext
     /// Press a control: a toolbar button is clicked, a facet value is ticked or unticked.
     /// </summary>
     /// <remarks>
-    /// A checkbox answers a change event and not a click, so a <c>Click()</c> here would leave the
-    /// filter untouched and every test using it green over a control that does nothing.
+    /// <c>Change</c> and not <c>Click</c>: bUnit raises MissingEventHandlerException for a click
+    /// on an element handling only <c>onchange</c>, and names the event it does handle.
     /// </remarks>
     private static void ClickFacet(IRenderedComponent<VariableSearch> cut, string label)
     {
