@@ -261,6 +261,13 @@ internal sealed record Texts(
     // of the card fields — deliberately the same word for the same thing in both places.
     string FiltersTitle,
     string ClearFilters,
+    // The row of chips over the results, one per ticked value. ClearFilters is reused rather than
+    // given a shorter twin: the chips and the panel's own button clear the same state, and two
+    // wordings for one press is the drift the kilde count's filter clause was fixed for.
+    // (value) — the remove control's whole accessible name, because "Fjern" repeated down a row
+    // tells a reader moving from control to control nothing about which filter they are standing on.
+    string ActiveFiltersTitle,
+    Func<string, string> RemoveFilter,
     // The panel's toolbar. Three presses that change how the tree is drawn and narrow nothing, so
     // none of them is named for a filter. (Fhi.Metadata-wcbxi)
     string ExpandAllFacets,
@@ -888,6 +895,8 @@ internal sealed record Texts(
         },
         FiltersTitle: "Filtre",
         ClearFilters: "Fjern alle filtre",
+        ActiveFiltersTitle: "Aktive filtre",
+        RemoveFilter: value => $"Fjern filteret {value}",
         ExpandAllFacets: "Utvid alle",
         CollapseAllFacets: "Skjul alle",
         LevelLines: "Nivålinjer",
@@ -1218,6 +1227,8 @@ internal sealed record Texts(
         },
         FiltersTitle: "Filters",
         ClearFilters: "Clear all filters",
+        ActiveFiltersTitle: "Active filters",
+        RemoveFilter: value => $"Remove the filter {value}",
         ExpandAllFacets: "Expand all",
         CollapseAllFacets: "Collapse all",
         LevelLines: "Level lines",

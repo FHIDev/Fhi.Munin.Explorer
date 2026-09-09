@@ -341,6 +341,25 @@ else
         </div>
     }
 
+    @* Which filters are on, said over the results rather than only inside the panel. With the
+       panel folded away on a narrow screen — or simply scrolled past — the count line's "avgrenset
+       av 2 filtre" was the only thing on screen saying the list had been narrowed at all, and it
+       names no value: a reader had to go down the facet column to find out what they had ticked.
+
+       One chip per ticked value with its own remove control, and the panel's own Fjern alle filtre
+       beside them. Both write the same `_chosen` the checkboxes write, so the row and the panel
+       cannot disagree about which filters the rows below came from — see KildeSearch.Filters.cs.
+
+       ActiveFilters draws it, and draws it for either panel for ColumnPicker's reason: three of
+       its names are ours and two are Stiler's, and a second copy is a second place for those to
+       drift. The variable explorer has not adopted it yet — its own selection is a VariableFilter
+       whose removals refetch, so what it owes is the projection into Chip and not the row. The row
+       renders nothing at all while nothing is ticked.
+
+       Below the panel and above the count line, so the order read out is which filters, then what
+       they left, then the rows. *@
+    @ActiveFilters.For(this, T.ActiveFiltersTitle, ActiveFilterChips, T.ClearFilters, ClearFacetsAsync)
+
     @* One polite status line, holding one message at a time: loading, the count, or the empty
        state. aria-atomic makes a screen reader read the whole new sentence rather than only the
        words that changed — "12" on its own is not information.

@@ -3114,6 +3114,262 @@ public class KildeSearchTest : BunitContext
     }
 
     // ---------------------------------------------------------------------------------
+    // The active-filter chips over the results.
+    // ---------------------------------------------------------------------------------
+
+    /// <summary>The visible text of every chip, without its close control's glyph.</summary>
+    /// <remarks>
+    /// The first child is the value: the capsule is a text node followed by the button, so reading
+    /// the whole element would append the × to every assertion in this section.
+    /// </remarks>
+    private static IReadOnlyList<string> Chips(IRenderedComponent<KildeSearch> cut) =>
+        [.. cut.FindAll(".munin-explorer-filters__chip").Select(chip => chip.FirstChild!.TextContent.Trim())];
+
+    /// <summary>Press the close control on the chip naming <paramref name="value"/>.</summary>
+    private static void RemoveChip(IRenderedComponent<KildeSearch> cut, string value) =>
+        cut.FindAll(".munin-explorer-filters__chip")
+            .First(chip => chip.FirstChild!.TextContent.Trim() == value)
+            .QuerySelector(".munin-explorer-filters__chip-remove")!
+            .Click();
+
+    /// <summary>Which of the panel's checkboxes are ticked, in the order the panel draws them.</summary>
+    private static IReadOnlyList<bool> Ticks(IRenderedComponent<KildeSearch> cut) =>
+    [
+        .. cut.FindAll(".munin-explorer-filters__facets li input[type=checkbox]")
+            .Select(box => box.HasAttribute("checked"))
+    ];
+
+    /// <summary>A catalogue whose kildetype and databehandler facets narrow it independently.</summary>
+    /// <remarks>
+    /// Two facets rather than two values in one, because ticking twice inside a facet widens the
+    /// list — OR within, AND across — and a fixture that could only do the first would never render
+    /// two chips over a list narrowed twice.
+    /// </remarks>
+    private static FakeClient TwoNarrowingFacets() => new(
+        Kilde("Als registeret", "K_ALS",
+            kildetype: "nasjonaltMedisinskKvalitetsregister", dataProcessor: "Folkehelseinstituttet"),
+        Kilde("Dødsårsaksregisteret", "K_DAR",
+            kildetype: "sentraltHelseregister", dataProcessor: "Folkehelseinstituttet"),
+        Kilde("Reseptregisteret", "K_NORPD",
+            kildetype: "sentraltHelseregister", dataProcessor: "Helsedirektoratet"),
+        Kilde("Den norske mor, far og barn-undersøkelsen", "K_MOBA",
+            kildetype: "biobank", dataProcessor: "Folkehelseinstituttet"));
+
+    [Fact]
+    public void ActiveFilters_WhenNothingIsTicked_ThenThereIsNoRowAtAll()
+    {
+        // A row reading "Aktive filtre" over no chips, beside a button that would clear nothing, is
+        // furniture that reads as a filter the reader cannot see — the same argument the hierarchy
+        // trail and the pager's dead buttons rest on.
+        var cut = RenderWith(TwoNarrowingFacets());
+
+        Assert.Empty(cut.FindAll(".munin-explorer-filters__active"));
+        Assert.Empty(cut.FindAll(".munin-explorer-filters__chip"));
+        Assert.DoesNotContain("Aktive filtre", cut.Markup);
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenTwoFacetsAreTicked_ThenEachIsAChipAndTheCountSaysBothNumbers()
+    {
+        // The whole reason this bead exists: with two facets ticked the list was a short catalogue
+        // and nothing on screen named what had been ticked. Asserted on the rendered markup rather
+        // than on the component's state, because state was never what the reader could not see.
+        var cut = RenderWith(TwoNarrowingFacets());
+
+        Tick(cut, "Kildetype", "Sentralt helseregister");
+        Tick(cut, "Databehandler", "Helsedirektoratet");
+
+        Assert.Equal(["Sentralt helseregister", "Helsedirektoratet"], Chips(cut));
+        Assert.Equal("1 kilde av 4, avgrenset av 2 filtre", ResultCount(cut));
+        Assert.Equal(["Reseptregisteret"], RowNames(cut));
+
+        // The heading and the clear-all beside them, both wearing names Stiler already defines.
+        var row = cut.Find(".munin-explorer-filters__active");
+
+        Assert.Equal("Aktive filtre", row.QuerySelector("p.caption.margin--none")!.TextContent.Trim());
+        Assert.Equal(
+            "Fjern alle filtre",
+            row.QuerySelector("button.hd-button-square.button-square--ghost")!.TextContent.Trim());
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenAChipIsDrawn_ThenItsCloseControlIsNamedAfterTheValueItRemoves()
+    {
+        // A row of controls all announcing "Fjern" is a row a screen reader cannot tell apart, and
+        // the × is not a name at all. AccessibleName refuses title and placeholder, so this cannot
+        // pass on an attribute that merely looks like one.
+        var cut = RenderWith(TwoNarrowingFacets());
+
+        Tick(cut, "Kildetype", "Sentralt helseregister");
+
+        Assert.Equal(
+            "Fjern filteret Sentralt helseregister",
+            AccessibleName.Of(cut.Find(".munin-explorer-filters__chip-remove")));
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenAChipIsRemoved_ThenItsOwnCheckboxUnticksAndOnlyThatValueIsWidened()
+    {
+        // THE TRAP. A chip that cleared its value down a path of its own would leave the panel's
+        // checkbox ticked over a list that had stopped obeying it, and neither control would say
+        // which one the rows came from. Both halves in one test, because either alone passes
+        // against exactly that: the checkbox is asserted unticked AND the rows are asserted to have
+        // widened by that value and by nothing else.
+        var cut = RenderWith(TwoNarrowingFacets());
+
+        Tick(cut, "Kildetype", "Sentralt helseregister");
+        Tick(cut, "Databehandler", "Helsedirektoratet");
+
+        Assert.Equal(["Reseptregisteret"], RowNames(cut));
+
+        RemoveChip(cut, "Helsedirektoratet");
+
+        Assert.Equal(["Sentralt helseregister"], Chips(cut));
+        Assert.Equal("2 kilder av 4, avgrenset av 1 filter", ResultCount(cut));
+        Assert.Equal(["Dødsårsaksregisteret", "Reseptregisteret"], RowNames(cut));
+
+        // The panel's own controls, read off the markup: exactly the one still-ticked value, and
+        // its count beside it because that is what the label draws.
+        Assert.Equal(
+            ["Sentralt helseregister (2)"],
+            cut.FindAll(".munin-explorer-filters__facets li")
+                .Where(li => li.QuerySelector("input[type=checkbox]")!.HasAttribute("checked"))
+                .Select(li => li.QuerySelector("label")!.TextContent.Trim()));
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenFjernAlleIsPressed_ThenNoChipRemainsNoBoxIsTickedAndTheListIsWhole()
+    {
+        // THE CLEAR-ALL TRAP, and all three halves in one test for the reason above: a clear-all
+        // that emptied the chips while leaving a checkbox ticked is worse than none, because the
+        // list then disagrees with every control on the page. Three values across two facets, so a
+        // press that cleared one facet, or one value, cannot pass for one that cleared the state.
+        var cut = RenderWith(TwoNarrowingFacets());
+
+        Tick(cut, "Kildetype", "Sentralt helseregister");
+        Tick(cut, "Kildetype", "Biobank");
+        Tick(cut, "Databehandler", "Helsedirektoratet");
+
+        Assert.Equal(3, Chips(cut).Count);
+
+        cut.Find(".munin-explorer-filters__active button.hd-button-square").Click();
+
+        Assert.Empty(cut.FindAll(".munin-explorer-filters__chip"));
+        Assert.Empty(cut.FindAll(".munin-explorer-filters__active"));
+        Assert.NotEmpty(Ticks(cut));
+        Assert.DoesNotContain(true, Ticks(cut));
+        Assert.Equal("4 kilder", ResultCount(cut));
+        Assert.Equal(4, RowNames(cut).Count);
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenAChipIsRemoved_ThenFocusGoesToTheFieldRatherThanTheDocument()
+    {
+        // The control takes itself off the page as it acts — and the last chip takes the whole row
+        // with it — so without this the reader's focus lands on <body> and their next Tab starts at
+        // the top of the host's page. The same rescue the clear control in the search field makes.
+        var cut = RenderWith(TwoNarrowingFacets());
+
+        Tick(cut, "Kildetype", "Sentralt helseregister");
+        RemoveChip(cut, "Sentralt helseregister");
+
+        JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus");
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenFjernAlleIsPressed_ThenFocusGoesToTheFieldRatherThanTheDocument()
+    {
+        var cut = RenderWith(TwoNarrowingFacets());
+
+        Tick(cut, "Kildetype", "Sentralt helseregister");
+        cut.Find(".munin-explorer-filters__active button.hd-button-square").Click();
+
+        JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus");
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenTheReaderReadsInEnglish_ThenTheRowIsInEnglishToo()
+    {
+        // The heading and the remove control's name are this package's own words, so both have a
+        // Norwegian arm that a copy-paste leaves in place. The value between them is the
+        // catalogue's and stays as the catalogue wrote it.
+        var cut = RenderWith(TwoNarrowingFacets(), b => b.Add(c => c.Language, "en"));
+
+        Tick(cut, "Data processor", "Helsedirektoratet");
+
+        var row = cut.Find(".munin-explorer-filters__active");
+
+        Assert.Equal("Active filters", row.QuerySelector("p.caption")!.TextContent.Trim());
+        Assert.Equal(
+            "Remove the filter Helsedirektoratet",
+            AccessibleName.Of(cut.Find(".munin-explorer-filters__chip-remove")));
+        Assert.Equal(
+            "Clear all filters",
+            row.QuerySelector("button.hd-button-square")!.TextContent.Trim());
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenAValueIsTheCataloguesOwnWords_ThenTheChipCarriesTheSameLangTheChoiceDoes()
+    {
+        // A Norwegian organisation's name inside an English page is read out with English phonetics
+        // otherwise, which is WCAG 3.1.2 — and the chip and the checkbox draw the same string, so
+        // marking one and not the other is the defect halfway done.
+        var cut = RenderWith(TwoNarrowingFacets(), b => b.Add(c => c.Language, "en"));
+
+        Tick(cut, "Data processor", "Helsedirektoratet");
+
+        Assert.Equal("no", cut.Find(".munin-explorer-filters__chip").GetAttribute("lang"));
+
+        // The value this package translates carries none, for the same reason the choice does not:
+        // a lang saying what the page already says is noise.
+        Tick(cut, "Source type", "Central health registry");
+
+        Assert.Null(
+            cut.FindAll(".munin-explorer-filters__chip")
+                .Single(chip => chip.FirstChild!.TextContent.Trim() == "Central health registry")
+                .GetAttribute("lang"));
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenAValueIsLongerThanTheFacetDraws_ThenTheChipIsCutAndCarriesTheWholeValue()
+    {
+        // The chip reads its words through the same Option the checkbox does, so the 200-character
+        // databehandler is cut to the same length and keeps the whole value in `title`. A chip that
+        // read the raw value instead would lay that sentence across the results.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", dataProcessor: LongDataProcessor),
+            Kilde("Dødsårsaksregisteret", "K_DAR", dataProcessor: "Folkehelseinstituttet")));
+
+        Tick(cut, "Databehandler", LongDataProcessor[..20]);
+
+        var chip = cut.Find(".munin-explorer-filters__chip");
+
+        Assert.EndsWith("…", chip.FirstChild!.TextContent.Trim(), StringComparison.Ordinal);
+        Assert.Equal(LongDataProcessor, chip.GetAttribute("title"));
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenTheReaderSignsIn_ThenNothingAboutTheRowCouldChange()
+    {
+        // This is not personal state, and the honest assertion is about the surface rather than
+        // about two renders: the kildeutforsker takes no identity parameter and injects no auth
+        // state, so there is nothing here that could tell a signed-in reader from a signed-out one.
+        // A member that named one would fail this before it could ever branch on it.
+        string[] identity = ["auth", "identity", "user", "principal", "signedin", "claims", "token"];
+
+        var members = typeof(KildeSearch)
+            .GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+            .Where(p => p.IsDefined(typeof(ParameterAttribute), inherit: false)
+                        || p.IsDefined(typeof(CascadingParameterAttribute), inherit: false)
+                        || p.IsDefined(typeof(InjectAttribute), inherit: false))
+            .Select(p => $"{p.PropertyType.Name} {p.Name}")
+            .Where(member => identity.Any(word => member.Contains(word, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+
+        Assert.Equal([], members);
+    }
+
+    // ---------------------------------------------------------------------------------
     // The search inside a facet.
     // ---------------------------------------------------------------------------------
 

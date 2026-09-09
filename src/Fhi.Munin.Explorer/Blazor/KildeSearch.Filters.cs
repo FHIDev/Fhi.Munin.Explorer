@@ -459,6 +459,83 @@ public sealed partial class KildeSearch
         }
     }
 
+    /// <summary>Untick one value from the chip row, through the state the checkbox writes.</summary>
+    /// <remarks>
+    /// <see cref="Choose"/> and nothing beside it, which is the whole point of the row: a chip that
+    /// cleared its value by any other path would leave the panel's checkbox ticked over a list that
+    /// had stopped obeying it, and neither control would say which one the rows came from.
+    /// </remarks>
+    private async Task RemoveFilterAsync(string key, string value)
+    {
+        await RescueFocusAsync();
+
+        Choose(key, value, false);
+    }
+
+    /// <summary>Untick every value in every facet, in one write of that same state.</summary>
+    /// <remarks>
+    /// One write rather than a walk over the chips: a clear-all that iterated what is on screen
+    /// would leave anything the row is not drawing ticked — and the list narrowed by a filter with
+    /// no control left anywhere on the page.
+    /// </remarks>
+    private async Task ClearFacetsAsync()
+    {
+        await RescueFocusAsync();
+
+        _chosen.Clear();
+    }
+
+    /// <summary>Hand focus to the search field before the pressed control leaves the page.</summary>
+    /// <remarks>
+    /// A chip and the clear-all both take themselves off the page as they act, and the last chip
+    /// takes the whole row with it, so without this focus lands on <c>&lt;body&gt;</c> and the
+    /// reader's next Tab starts at the top of the host's page. The field rather than a neighbouring
+    /// chip: it is the one control above the row that is there whether a filter is left or not, so
+    /// it is a place a keyboard reader learns once. (Fhi.Metadata-ag4n7)
+    /// </remarks>
+    private ValueTask RescueFocusAsync() => _searchField.FocusAsync();
+
+    /// <summary>The ticked values as the row over the results draws them, in the panel's own order.</summary>
+    /// <remarks>
+    /// A projection of <see cref="_chosen"/> and never a second collection beside it — see
+    /// <see cref="ActiveFilters"/> — so the chips cannot describe a selection the rows did not come
+    /// from. Facets in <see cref="Definitions"/>' order and values in the order their own facet
+    /// lists them, so a reader looking from the row to the panel finds them in the same sequence.
+    /// </remarks>
+    private IReadOnlyList<ActiveFilters.Chip> ActiveFilterChips
+    {
+        get
+        {
+            List<ActiveFilters.Chip> chips = [];
+
+            foreach (var definition in Definitions)
+            {
+                if (!_chosen.TryGetValue(definition.Key, out var values) || values.Count == 0)
+                {
+                    continue;
+                }
+
+                var key = definition.Key;
+
+                // Counted as nought because a chip draws no count. Option is reused all the same:
+                // it decides a value's words, its cut and its lang, and a second reading of those
+                // is a chip and a checkbox naming one value two ways.
+                chips.AddRange(values
+                    .Select(value => Option(definition, value, 0))
+                    .OrderBy(option => option.Label, CatalogueProperties.CatalogueOrder)
+                    .ThenBy(option => option.Value, StringComparer.Ordinal)
+                    .Select(option => new ActiveFilters.Chip(
+                        option.Text,
+                        T.RemoveFilter(option.Text),
+                        option.Title,
+                        option.Language,
+                        () => RemoveFilterAsync(key, option.Value))));
+            }
+
+            return chips;
+        }
+    }
+
     private void ToggleFilters() => _filtersOpen = !_filtersOpen;
 
     /// <summary>Whether <paramref name="facet"/> is long enough to be given a search box.</summary>

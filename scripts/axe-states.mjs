@@ -222,6 +222,11 @@ export const states = {
     if (await open() !== 2) {
       throw new Error('Narrowing the list folded a facet the reader had opened');
     }
+
+    // The chips the tick puts over the results, waited for rather than assumed: they are the newest
+    // markup this state reaches, and axe reports no violations in an element that never rendered.
+    await page.locator('.munin-explorer-filters__chip').first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
   },
 
   // The composed explorer on /utforsker, which is the only page in either sample that draws the
