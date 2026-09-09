@@ -315,11 +315,13 @@ These are not style preferences — each one is a host that breaks otherwise.
     row are borrowed and need nothing new — the heading is `caption margin--none` and the clear-all
     is `hd-button-square button-square--ghost`, Stiler's, worn in this component already by the
     facet panel's fold toggle.
-    The kildeutforsker adds one more, `munin-explorer-results__toolbar` — the row the result count
-    shares with the Sorter control and the Kolonner picker, which took a row each before it. A
-    handle, and the plainest one here: undefined, the three go back to being three blocks in
-    ordinary flow, which is exactly what shipped before the name existed, so what a rule buys is
-    two rows of vertical space and nothing a reader could otherwise miss. Its rules are
+    Both explorers add one more, `munin-explorer-results__toolbar` — the row the result count
+    shares with the controls that used to take a row each: the Sorter control and the Kolonner
+    picker in the kildeutforsker, and the Kolonner picker alone in the variabelutforsker, whose
+    ordering is on the column headings and whose Per side stays at the pager. A handle, and the
+    plainest one here: undefined, they go back to being blocks in ordinary flow, which is exactly
+    what shipped before the name existed, so what a rule buys is a row of vertical space and
+    nothing a reader could otherwise miss. Its rules are
     `Fhi.Helsedata.Stiler` PR 39220's, merged after 0.1.42 was cut, so a host has them from the
     release that follows the version pinned here. The name says `results` and the element sits
     above `munin-explorer-results` rather than inside it, deliberately: the results container is
