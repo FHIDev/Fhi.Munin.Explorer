@@ -1637,38 +1637,22 @@ public class VariableSearchTest : BunitContext
         Assert.Equal("Als registeret", cell.GetAttribute("title"));
     }
 
-    [Fact]
-    public void Render_WhenAKildeHasNoShortName_ThenTheColumnFallsBackToTheFullName()
-    {
-        // Not every kilde has a short name, and a blank cell would be worse than a long one.
-        var cut = RenderWith(new FakeClient(OnePage(new VariableSummary
-        {
-            Id = Guid.NewGuid(),
-            Code = "V_X.1",
-            PreferredTerm = "Uten kortnavn",
-            KildeName = "Et register uten kortnavn",
-        })));
-
-        var cell = cut.Find(".munin-explorer-dataitem-main__source");
-
-        Assert.Equal("Et register uten kortnavn",
-                     cell.QuerySelector(".munin-explorer-dataitem-main__column__text")!.TextContent);
-    }
-
     [Theory]
+    [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void Render_WhenTheKortnavnIsBlankRatherThanAbsent_ThenTheColumnFallsBackToTheFullName(string kortnavn)
+    public void Render_WhenAKildeHasNoShortName_ThenTheColumnFallsBackToTheFullName(string? shortName)
     {
-        // Munin sends a kilde with no kortnavn as "" and never as null, so the `??` above it kept
-        // the empty string and the column said "Ikke oppgitt" over a name held on the same row.
+        // Not every kilde has a short name, and a blank cell would be worse than a long one. The
+        // API sends an omitted kortnavn as "", which the `??` this replaced kept, so the column
+        // said "Ikke oppgitt" over a name held on the same row.
         var cut = RenderWith(new FakeClient(OnePage(new VariableSummary
         {
             Id = Guid.NewGuid(),
             Code = "V_X.1",
             PreferredTerm = "Uten kortnavn",
             KildeName = "Norsk register for gastrokirurgi",
-            KildeShortName = kortnavn,
+            KildeShortName = shortName,
         })));
 
         var cell = cut.Find(".munin-explorer-dataitem-main__source");
@@ -1678,17 +1662,20 @@ public class VariableSearchTest : BunitContext
         Assert.Equal("Norsk register for gastrokirurgi", cell.GetAttribute("title"));
     }
 
-    [Fact]
-    public void Render_WhenTheKortnavnIsBlankAndSoIsTheKildeName_ThenTheColumnStillSaysNotSpecified()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void Render_WhenTheShortNameIsBlankAndSoIsTheKildeName_ThenTheColumnStillSaysNotSpecified(string? kildeName)
     {
         // The fallback must not turn an unknown kilde into a blank cell: with neither name there is
-        // nothing to fall back to, and "Ikke oppgitt" is still the right answer.
+        // nothing to fall back to, and "Ikke oppgitt" is still the right answer. Both absences
+        // reach here, since the property is nullable and the API also sends "".
         var cut = RenderWith(new FakeClient(OnePage(new VariableSummary
         {
             Id = Guid.NewGuid(),
             Code = "V_X.2",
             PreferredTerm = "Uten kilde",
-            KildeName = "",
+            KildeName = kildeName,
             KildeShortName = "",
         })));
 

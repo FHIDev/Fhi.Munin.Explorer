@@ -279,6 +279,19 @@ public class VariableListFiltersTest : BunitContext
         Assert.Equal(["Kreftregisteret (1)"], Facets(cut.Filters));
     }
 
+    [Fact]
+    public void Kilder_WhenAnEntrysKildeNameIsBlank_ThenTheCheckboxIsLabelledWithTheShortName()
+    {
+        // The API sends an omitted name as "", which the `??` this replaced kept, leaving the count
+        // as the checkbox's whole accessible name.
+        var client = new ListClient(
+            Item(Kreftregisteret, 1) with { KildeName = "", KildeShortName = "KRG" });
+
+        var cut = RenderBoth(client);
+
+        Assert.Equal(["KRG (1)"], Facets(cut.Filters));
+    }
+
     // -----------------------------------------------------------------------
     // The narrowing.
 

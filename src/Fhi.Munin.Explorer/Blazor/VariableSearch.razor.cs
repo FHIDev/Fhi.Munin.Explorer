@@ -1545,7 +1545,7 @@ public sealed partial class VariableSearch : ComponentBase
         // rather than `??`, since the API sends a kilde with no kortnavn as an empty string.
         if (ColumnVisible(ResultColumn.Kilde))
         {
-            RowCell.Write(builder, 200, T.FieldSource, Trimmed(v.KildeShortName) ?? v.KildeName, "source", T.NotSpecified, tooltip: v.KildeName);
+            RowCell.Write(builder, 200, T.FieldSource, DisplayText.Trimmed(v.KildeShortName) ?? v.KildeName, "source", T.NotSpecified, tooltip: v.KildeName);
         }
 
         if (ColumnVisible(ResultColumn.Datasamling))

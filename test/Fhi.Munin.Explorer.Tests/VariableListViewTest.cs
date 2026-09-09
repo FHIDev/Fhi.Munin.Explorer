@@ -997,16 +997,17 @@ public class VariableListViewTest : BunitContext
     }
 
     [Theory]
+    [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void View_WhenTheKortnavnIsBlankRatherThanAbsent_ThenTheColumnFallsBackToTheKildeName(string kortnavn)
+    public void View_WhenAKildeHasNoShortName_ThenTheColumnFallsBackToTheKildeName(string? shortName)
     {
-        // Munin sends a kilde with no kortnavn as "" and never as null, so a `??` fallback kept the
-        // empty string and the column said "Ikke oppgitt" over a kilde name sitting on the same row.
+        // The API sends an omitted kortnavn as "", which the `??` this replaced kept, so the
+        // column said "Ikke oppgitt" over a kilde name sitting on the same row.
         var item = Item("Alder ved diagnose", "V_BDR.ALDER") with
         {
             KildeName = "Norsk register for gastrokirurgi",
-            KildeShortName = kortnavn
+            KildeShortName = shortName
         };
 
         var cut = RenderView(new ListClient(item));
@@ -1014,12 +1015,15 @@ public class VariableListViewTest : BunitContext
         Assert.Equal("Norsk register for gastrokirurgi", CellText(cut, "source"));
     }
 
-    [Fact]
-    public void View_WhenTheKortnavnIsBlankAndSoIsTheKildeName_ThenTheColumnStillSaysNotSpecified()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void View_WhenTheShortNameIsBlankAndSoIsTheKildeName_ThenTheColumnStillSaysNotSpecified(string? kildeName)
     {
         // The fallback must not turn an unknown kilde into a blank cell: with neither name there is
-        // nothing to fall back to, and "Ikke oppgitt" is still the right answer.
-        var item = Item("Alder ved diagnose", "V_BDR.ALDER") with { KildeName = null, KildeShortName = "" };
+        // nothing to fall back to, and "Ikke oppgitt" is still the right answer. Both absences
+        // reach here, since the property is nullable and the API also sends "".
+        var item = Item("Alder ved diagnose", "V_BDR.ALDER") with { KildeName = kildeName, KildeShortName = "" };
 
         var cut = RenderView(new ListClient(item));
 

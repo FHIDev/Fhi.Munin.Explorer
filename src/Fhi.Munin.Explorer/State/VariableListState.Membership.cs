@@ -1,3 +1,4 @@
+using Fhi.Munin.Explorer.Blazor;
 using Microsoft.Extensions.Logging;
 
 namespace Fhi.Munin.Explorer.State;
@@ -374,9 +375,13 @@ public sealed partial class VariableListState
                     continue;
                 }
 
+                // Trimmed rather than `??`, as the two Kilde columns are: a kilde whose long name
+                // the read model omits arrives as an empty string, which `??` keeps and the
+                // sidebar then draws as a checkbox whose whole accessible name is its count.
                 kilder[kildeId] = kilder.TryGetValue(kildeId, out var tally)
                     ? tally with { Count = tally.Count + 1 }
-                    : new KildeTally(item.KildeName ?? item.KildeShortName ?? "", 1);
+                    : new KildeTally(DisplayText.Trimmed(item.KildeName)
+                                     ?? DisplayText.Trimmed(item.KildeShortName) ?? "", 1);
             }
 
             if (result.Items.Count == 0 || found.Count >= result.TotalCount)
