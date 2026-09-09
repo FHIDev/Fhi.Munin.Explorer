@@ -758,7 +758,8 @@ public sealed partial class KildeSearch
     };
 
     /// <summary>
-    /// One facet's heading, at <see cref="FacetLevel"/>, saying how many of its values are ticked.
+    /// One facet's summary line: its heading, at <see cref="FacetLevel"/>, and how many of its
+    /// values are ticked.
     /// </summary>
     /// <remarks>
     /// <c>headline-xxs</c>, which is what <see cref="KildeView"/> gives a group of facts — so the
@@ -767,16 +768,34 @@ public sealed partial class KildeSearch
     /// <para>
     /// The count is in the <c>&lt;summary&gt;</c>, which is what a folded facet still draws: a facet
     /// narrowing the list from behind a closed disclosure would otherwise take the filter off screen
-    /// and leave its effect. Same form as the panel's own heading and the variable explorer's facets.
+    /// and leave its effect. Beside the heading and never inside it — a number inside a heading is
+    /// part of the heading, and this panel is navigated by heading. (Fhi.Metadata-l9l2n.53)
+    /// </para>
+    /// <para>
+    /// Markup rather than something a stylesheet draws, because «Kildetype 2 valgt» is what a
+    /// reader who cannot see the panel is told. The separating space is written out for the same
+    /// reason — it is the space in that sentence — and costs no layout, since whitespace between
+    /// flex items is not drawn.
     /// </para>
     /// </remarks>
-    private RenderFragment FacetHeading(Facet facet) => builder =>
+    private RenderFragment FacetSummary(Facet facet) => builder =>
     {
-        var chosen = ChosenIn(facet.Key);
-
         builder.OpenElement(0, $"h{FacetLevel}");
         builder.AddAttribute(1, "class", "headline headline-xxs margin--none");
-        builder.AddContent(2, chosen == 0 ? facet.Heading : $"{facet.Heading} ({chosen})");
+        builder.AddContent(2, facet.Heading);
+        builder.CloseElement();
+
+        var chosen = ChosenIn(facet.Key);
+
+        if (chosen == 0)
+        {
+            return;
+        }
+
+        builder.AddContent(3, " ");
+        builder.OpenElement(4, "span");
+        builder.AddAttribute(5, "class", "munin-explorer-filters__chosen");
+        builder.AddContent(6, T.FacetChosen(chosen));
         builder.CloseElement();
     };
 }

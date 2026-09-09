@@ -221,7 +221,12 @@ else
 
        The count does, `munin-explorer-filters__count` — a number that cannot be dimmed or aligned
        reads as more of the label's words. It goes inside the label, the separating space beside
-       the span: see KildeSearch.Filters.cs. (Fhi.Metadata-cgk85) *@
+       the span: see KildeSearch.Filters.cs. (Fhi.Metadata-cgk85)
+
+       A facet's own summary carries a second count, `munin-explorer-filters__chosen`, saying how
+       many of that facet's values are ticked. A different job from the one above, and a different
+       name for it: that one is a hit count beside a value and is pushed to the column edge, while
+       this one follows the heading it belongs to. (Fhi.Metadata-l9l2n.53) *@
     @if (Facets is { Count: > 0 } facets)
     {
         <div class="munin-explorer-filters">
@@ -252,8 +257,10 @@ else
                     <details @key="facet.Key" open="@facet.OpenByDefault">
                         @* <summary> is the disclosure control natively — focusable, Enter and Space
                            toggle it, its open attribute is the state, so there is no aria-expanded
-                           to drift. The heading stays one: a panel is navigated by heading. *@
-                        <summary>@FacetHeading(facet)</summary>
+                           to drift. The heading stays one: a panel is navigated by heading, so the
+                           ticked-value count beside it is a sibling rather than words inside it.
+                           See FacetSummary in KildeSearch.Filters.cs. *@
+                        <summary>@FacetSummary(facet)</summary>
 
                         @* A search over this facet's own values, for a facet long enough to need
                            one. The threshold and the reasoning are in KildeSearch.Filters.cs.

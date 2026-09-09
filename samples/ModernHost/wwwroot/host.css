@@ -606,6 +606,20 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   margin-left: auto;
 }
 
+/* How many of a facet's values are ticked, said in its own summary so a folded facet still says it.
+   The four declarations Stiler's `_filters.scss` carries and no others — this file is the stand-in
+   for that rule, not a second opinion about it. Cosmetic only: the words are in the markup, so the
+   summary is announced as "Kildetype 2 valgt" whether or not this rule exists.
+
+   NOT the count above, whose `margin-left: auto` pushes it to the column edge. On the summary line
+   that edge belongs to the disclosure marker, so the two want opposite things. (Fhi.Metadata-l9l2n.53) */
+.munin-explorer-filters__chosen {
+  flex: none;
+  color: var(--grey60);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
 /* The row of active filters over the results: one capsule per ticked value, each with a close
    control, and a Fjern alle filtre at the end of it. Three names of ours, whose Stiler rules are
    PR 39206's — these are the stand-in for those, measured to the same boxes: the row 44px, a
