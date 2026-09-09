@@ -4146,6 +4146,86 @@ public class VariableSearchTest : BunitContext
         Assert.Contains(nested, delkilde.QuerySelectorAll("li"));
     }
 
+    private static readonly Guid Tromso1 = new("dddddddd-0000-0000-0000-000000000001");
+    private static readonly Guid Tromso4Round = new("dddddddd-0000-0000-0000-000000000002");
+    private static readonly Guid Tromso4VisitRound = new("dddddddd-0000-0000-0000-000000000003");
+
+    /// <summary>The same facets, plus a datasamling at each of the three depths one can sit at.</summary>
+    private static FilterOptions FacetsWithDatasamlinger() => Facets() with
+    {
+        Datasamlinger =
+        [
+            new() { Id = Tromso1, Name = "Tromsø 1", KildeId = Tromso, Count = 5 },
+            new() { Id = Tromso4Round, Name = "Fjerde runde", KildeId = Tromso, DelkildeId = Tromso4, Count = 4 },
+            new()
+            {
+                Id = Tromso4VisitRound, Name = "Andre runde", KildeId = Tromso,
+                DelkildeId = Tromso4Visit, Count = 2
+            }
+        ]
+    };
+
+    [Fact]
+    public void Render_WhenAKildeHasDatasamlinger_ThenEachHangsUnderTheLevelThatOwnsIt()
+    {
+        // 41 of the 44 kilder have no delkilde at all, so a tree stopping at delkilde skips the
+        // only level most sources have. DatasamlingFacet names both parents, so no second request
+        // is needed to place one. (Fhi.Metadata-mgp03)
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithDatasamlinger()));
+
+        var kilde = Facet(cut, "Tromsøundersøkelsen").ParentElement!;
+        var delkilde = Facet(cut, "Tromsø 4").ParentElement!;
+        var nested = Facet(cut, "Første besøk").ParentElement!;
+
+        Assert.Contains(Facet(cut, "Tromsø 1").ParentElement!, kilde.QuerySelectorAll("li"));
+        Assert.Contains(Facet(cut, "Fjerde runde").ParentElement!, delkilde.QuerySelectorAll("li"));
+        Assert.Contains(Facet(cut, "Andre runde").ParentElement!, nested.QuerySelectorAll("li"));
+    }
+
+    [Fact]
+    public void Render_WhenADatasamlingsDelkildeIsNotInTheFacets_ThenItHangsUnderItsKilde()
+    {
+        // The facets are cross-filtered, so a parent with no matches of its own is genuinely absent
+        // from a payload its children are in. Dropping the child would be a filter the reader can
+        // neither see nor clear — the rule Tree already applies to an orphaned delkilde.
+        var facets = Facets() with
+        {
+            Delkilder = [],
+            Datasamlinger =
+            [
+                new() { Id = Tromso4Round, Name = "Fjerde runde", KildeId = Tromso, DelkildeId = Tromso4, Count = 4 }
+            ]
+        };
+
+        var cut = RenderWith(new FilteringClient(OnePage(), facets));
+
+        Assert.Contains(Facet(cut, "Fjerde runde").ParentElement!,
+                        Facet(cut, "Tromsøundersøkelsen").ParentElement!.QuerySelectorAll("li"));
+    }
+
+    [Fact]
+    public void Render_WhenTheApiSendsNoDatasamlingFacet_ThenTheKildeTreeStopsAtDelkilde()
+    {
+        // The facet defaults to the empty list, so an API predating it leaves the panel as it was.
+        // Facets() carries none, which is what makes every other test here that same evidence.
+        var cut = RenderWith(new FilteringClient(OnePage()));
+
+        Assert.Equal(2, Facet(cut, "Tromsøundersøkelsen").ParentElement!.QuerySelectorAll("li").Length);
+    }
+
+    [Fact]
+    public void Filter_WhenADatasamlingIsChosen_ThenBothEndpointsAreAskedWithIt()
+    {
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWithDatasamlinger());
+        var cut = RenderWith(client);
+
+        ClickFacet(cut, "Tromsø 1");
+
+        Assert.Equal([Tromso1], client.SearchFilter?.DatasamlingIds);
+        Assert.Equal(client.SearchFilter, client.FacetFilter);
+        Assert.True(FacetChosen(cut, "Tromsø 1"));
+    }
+
     [Fact]
     public void Filter_WhenAFacetValueIsChosen_ThenTheSearchIsFetchedWithIt()
     {
@@ -4948,8 +5028,9 @@ public class VariableSearchTest : BunitContext
     [Fact]
     public void Render_WhenADatasamlingIsChosen_ThenItsNameComesFromTheRowsItLeft()
     {
-        // Nothing in FilterOptions offers datasamlinger as a facet, so the rows are the only place
-        // the name can come from — and every row a datasamling filter leaves belongs to it.
+        // The rows as the second source, against facets that carry no datasamling level — an API
+        // predating it, or a value cross-filtered out. Every row a datasamling filter leaves
+        // belongs to it and names it.
         var row = Variable("1. Tale", "KODE") with { DatasamlingId = Inklusjon2, DatasamlingName = "Inklusjon" };
 
         var cut = RenderFiltered(new FilteringClient(OnePage(row)),
@@ -4995,6 +5076,21 @@ public class VariableSearchTest : BunitContext
         var crumb = Crumbs(cut).Single();
 
         Assert.Equal("Bakgrunn", crumb.TextContent);
+        Assert.Equal("no", CrumbLang(crumb));
+    }
+
+    [Fact]
+    public void Render_WhenADatasamlingIsChosen_ThenItsNameComesFromTheFacetsFirst()
+    {
+        // The facets carry the level now, so the step is named even where no row on screen belongs
+        // to it — the state a chosen value plus a search term reaches all the time.
+        var cut = RenderFiltered(
+            new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWithDatasamlinger()),
+            new VariableFilter { DatasamlingIds = [Tromso1] });
+
+        var crumb = Crumbs(cut).Single();
+
+        Assert.Equal("Tromsø 1", crumb.TextContent);
         Assert.Equal("no", CrumbLang(crumb));
     }
 

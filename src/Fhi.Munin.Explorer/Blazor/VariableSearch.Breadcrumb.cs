@@ -284,17 +284,17 @@ public partial class VariableSearch
         DisplayText.Trimmed(_facets?.Delkilder.FirstOrDefault(delkilde => delkilde.Id == id)?.Name);
 
     /// <summary>
-    /// A datasamling's name, or null when no row on screen carries it.
+    /// A datasamling's name, or null when neither the facets nor the rows carry it.
     /// </summary>
     /// <remarks>
-    /// The rows are the only source here, and the reverse of the delkilde's case: nothing in
-    /// <see cref="FilterOptions"/> offers datasamlinger as a facet — see the remarks on
-    /// <see cref="VariableFilter.DatasamlingIds"/> — while every row a datasamling filter leaves
-    /// belongs to it and says so. Which means the name is there whenever the filter matched
-    /// anything at all, and absent exactly when it matched nothing.
+    /// The facets first and the rows second, as the kilde's is. The rows are worth keeping as the
+    /// second source rather than dropping: every row a datasamling filter leaves belongs to it and
+    /// says so, and against an API predating <see cref="FilterOptions.Datasamlinger"/> they are
+    /// still the only source there is.
     /// </remarks>
     private string? DatasamlingName(Guid id) =>
-        RowName(row => row.DatasamlingId == id ? row.DatasamlingName : null);
+        DisplayText.Trimmed(_facets?.Datasamlinger.FirstOrDefault(datasamling => datasamling.Id == id)?.Name)
+        ?? RowName(row => row.DatasamlingId == id ? row.DatasamlingName : null);
 
     /// <summary>A variabelgruppe's name — the facets, then the rows, as the kilde's is.</summary>
     private string? VariabelgruppeName(Guid id) =>

@@ -24,6 +24,17 @@ public sealed record FilterOptions
     [JsonPropertyName("filtere")] public IReadOnlyList<FilterFacet> Filters { get; init; } = [];
 
     [JsonPropertyName("delkilder")] public IReadOnlyList<DelkildeFacet> Delkilder { get; init; } = [];
+
+    /// <summary>
+    /// Datasamlinger under the current selection — the level below delkilde, and the one most
+    /// kilder have instead of a delkilde rather than as well as one.
+    /// </summary>
+    /// <remarks>
+    /// Empty against an API that predates the facet, in which case the source hierarchy a caller
+    /// can offer stops at delkilde, as it did before.
+    /// </remarks>
+    [JsonPropertyName("datasamlinger")] public IReadOnlyList<DatasamlingFacet> Datasamlinger { get; init; } = [];
+
     [JsonPropertyName("datatyper")] public IReadOnlyList<DataTypeFacet> DataTypes { get; init; } = [];
 
     /// <summary>Most-used helsefaglige kodeverk (V-HK) under the current selection.</summary>
@@ -114,6 +125,22 @@ public sealed record DelkildeFacet
     [JsonPropertyName("id")] public Guid Id { get; init; }
     [JsonPropertyName("name")] public string Name { get; init; } = "";
     [JsonPropertyName("parentDelkildeId")] public Guid? ParentDelkildeId { get; init; }
+    [JsonPropertyName("kildeId")] public Guid KildeId { get; init; }
+    [JsonPropertyName("count")] public int Count { get; init; }
+}
+
+/// <summary>
+/// A datasamling facet. Carries both possible parents, so the caller can hang it under its
+/// delkilde where it has one and under its kilde where it has none, without a second request.
+/// </summary>
+public sealed record DatasamlingFacet
+{
+    [JsonPropertyName("id")] public Guid Id { get; init; }
+    [JsonPropertyName("name")] public string Name { get; init; } = "";
+
+    /// <summary>The delkilde it hangs under, or null when it hangs straight off its kilde.</summary>
+    [JsonPropertyName("delkildeId")] public Guid? DelkildeId { get; init; }
+
     [JsonPropertyName("kildeId")] public Guid KildeId { get; init; }
     [JsonPropertyName("count")] public int Count { get; init; }
 }
