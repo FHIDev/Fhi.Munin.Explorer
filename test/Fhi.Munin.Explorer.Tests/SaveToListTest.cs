@@ -191,6 +191,34 @@ public class SaveToListTest : BunitContext
     }
 
     [Fact]
+    public void Row_WhenNoRowHasBeenOpened_ThenSavingCostsOnePressRatherThanTwo()
+    {
+        // Saving is the common action and must not cost a disclosure press first. This one asserts
+        // the row is SHUT: every other test here merely happens not to expand, and a test that
+        // opened one would pass with the button moved into the drawer and the friction back.
+        var client = new ListClient(OnePage(
+            Variable("Alder ved diagnose", "V_BDR.ALDER"),
+            Variable("Skjemastatus", "V_BDR.FORMSTATUS")));
+
+        var cut = RenderSignedIn(client);
+
+        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
+        Assert.All(
+            cut.FindAll("button.munin-explorer-dataitem-main__name"),
+            toggle => Assert.Equal("false", toggle.GetAttribute("aria-expanded")));
+
+        SaveButton(cut).Click();
+
+        Assert.Equal(1, client.AddCalls);
+        Assert.Single(client.Stored);
+
+        // And the press saved rather than opening: a save button nested inside the disclosure —
+        // or sharing its handler — would put the reader in the drawer they were spared.
+        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
+        Assert.Equal("true", SaveButton(cut).GetAttribute("aria-pressed"));
+    }
+
+    [Fact]
     public void Row_WhenEveryRowOffersToSave_ThenEachButtonNamesItsOwnVariable()
     {
         // Two rows, because the weak version of this assertion — "the button has an accessible
