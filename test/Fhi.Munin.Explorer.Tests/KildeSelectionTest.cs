@@ -163,6 +163,30 @@ public class KildeSelectionTest : BunitContext
         Assert.NotNull(ExploreButton(cut));
     }
 
+    [Fact]
+    public void RowBox_WhenItIsPressed_ThenItTicksWithoutOpeningTheRowsDatasamlinger()
+    {
+        // The row itself opens the datasamlinger drawer (Fhi.Metadata-l9l2n.55), and one press on
+        // the box carries a click as well as a change - so without stopPropagation on it, ticking a
+        // row would expand it too.
+        var (cut, _) = RenderSelectable(new FakeClient(Kilde("Als registeret", "K_ALS")));
+
+        // Clicked, where KildeSearchTest.StopsTheClick reads the attribute and says why it must: the
+        // box has no click handler of its own, so nothing re-renders the row and disposes the
+        // handler bUnit would bubble to. The click reaching nobody is therefore the assertion.
+        Assert.Throws<MissingEventHandlerException>(() => RowBoxes(cut)[0].Click());
+
+        // And the mousedown under that click stops here too: the row records where a press went down
+        // and clears it on its own click, so a press the box let through would still be sitting there
+        // when the next row was clicked.
+        Assert.True(RowBoxes(cut)[0].HasAttribute("blazor:onmousedown:stoppropagation"));
+
+        RowBoxes(cut)[0].Change(true);
+
+        Assert.True(RowBoxes(cut)[0].HasAttribute("checked"));
+        Assert.Empty(cut.FindAll(".munin-explorer-kilder__expanded"));
+    }
+
     // ---------------------------------------------------------------------------------
     // What the handover button says, which has to be what it is about to do.
     // ---------------------------------------------------------------------------------
