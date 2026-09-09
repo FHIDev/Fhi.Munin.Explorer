@@ -265,6 +265,10 @@ internal static class Guard
 
     private static readonly Lazy<string?> Resolved = new(FindBash);
 
+    /// <summary>The git environment a worktree session exports, which no fixture may inherit.</summary>
+    internal static readonly string[] InheritedGit =
+        ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR"];
+
     /// <summary>
     /// A <c>bash</c> from PATH that can run a guard script, or null where PATH holds none — a
     /// Windows checkout without Git Bash, which is the only case the tests above skip for.
@@ -360,7 +364,26 @@ internal static class Guard
                                     + Path.PathSeparator
                                     + Environment.GetEnvironmentVariable("PATH");
 
+        ClearInheritedGit(start);
+
         return start;
+    }
+
+    /// <summary>
+    /// Takes <see cref="InheritedGit"/> off <paramref name="start"/>, so the child sees only the
+    /// repository it was pointed at.
+    /// </summary>
+    /// <remarks>
+    /// An inherited GIT_DIR outranks a working directory, so every fixture here judged and wrote to
+    /// the developer's own checkout when run from a worktree shell (Fhi.Metadata-fj5vv). Null rather
+    /// than an empty string: null drops the entry, while "" is a path git will try to use.
+    /// </remarks>
+    internal static void ClearInheritedGit(ProcessStartInfo start)
+    {
+        foreach (var name in InheritedGit)
+        {
+            start.Environment[name] = null;
+        }
     }
 
     /// <summary>
