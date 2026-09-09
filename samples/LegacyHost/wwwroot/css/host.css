@@ -304,8 +304,10 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    wide as the handover and gave the count a column it had no use for; what was actually wanted
    is one button that never moves and everything else flowing after it.
 
-   max-width so the floor cannot push the row wider than the page on a narrow screen, and
-   flex-wrap so it drops to the next line instead. */
+   The floor has to yield, and `max-width: 100%` beside it cannot make it: CSS resolves max-width
+   before min-width, so `min(21rem, 100%)` is the floor, and the wrap plus a min-height standing in
+   for hd-button-square's fixed height stop a shrunk nowrap button spilling its label
+   (Fhi.Metadata-l9l2n.65). */
 .munin-explorer-selection {
   display: flex;
   flex-wrap: wrap;
@@ -315,9 +317,12 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 }
 
 .munin-explorer-selection__explore {
-  min-width: 21rem;
+  min-width: min(21rem, 100%);
   max-width: 100%;
   justify-content: center;
+  white-space: normal;
+  height: auto;
+  min-height: 2.75rem;
 }
 
 /* components/buttons/_squarebutton.scss */

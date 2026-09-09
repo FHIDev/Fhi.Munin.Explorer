@@ -795,6 +795,41 @@ public class KildeSelectionTest : BunitContext
     }
 
     [Fact]
+    public void ExploreButton_WhenTheViewportIsNarrower_ThenItsWidthFloorYields()
+    {
+        // A bare `min-width: 21rem` is a floor that never yields, because CSS resolves max-width
+        // before min-width - so the `max-width: 100%` beside it cannot save the page, and the
+        // button ran 87px past a 320px viewport under WCAG 1.4.10 (Fhi.Metadata-l9l2n.65).
+        static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
+
+        var blocks = HostClassNames
+            .SampleDeclarationsFor("munin-explorer-selection__explore")
+            .Select(r => Squeezed(r.Declarations))
+            .ToList();
+
+        Assert.True(
+            blocks.Any(d => d.Contains("min-width:min(", StringComparison.Ordinal)),
+            "The handover button's width floor does not yield, so a 320px viewport scrolls sideways.");
+
+        // The floor yielding is only half of it: hd-button-square is nowrap at a fixed height, so a
+        // button that shrinks below its label spills the label out of its own box instead.
+        Assert.True(
+            blocks.Any(d => d.Contains("white-space:normal", StringComparison.Ordinal)),
+            "The handover's label cannot wrap, so it spills out of the button once the floor yields.");
+
+        // And the wrap needs somewhere to go: a second line inside hd-button-square's fixed 2.75rem
+        // spills downwards instead. `min-height` rather than nothing, or the button loses the 2.75rem
+        // its sibling reset keeps and sits 2px short of it in the same centred row.
+        Assert.True(
+            blocks.Any(d => d.Contains("height:auto", StringComparison.Ordinal)),
+            "The handover's height is fixed, so a wrapped label spills out of the button downwards.");
+
+        Assert.True(
+            blocks.Any(d => d.Contains("min-height:2.75rem", StringComparison.Ordinal)),
+            "The handover has no height floor, so it draws shorter than the reset button beside it.");
+    }
+
+    [Fact]
     public void Ribbon_WhenARowIsTicked_ThenNothingAheadOfTheCountHasMoved()
     {
         // The arrangement itself, which no stylesheet can rescue if the markup writes it wrong:

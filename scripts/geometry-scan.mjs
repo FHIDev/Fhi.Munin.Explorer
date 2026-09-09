@@ -45,6 +45,17 @@ const settleMs = Number(process.env.ACCESSIBILITY_SETTLE_MS ?? 4000);
 // 843 is the narrowest of the three and the only one below Stiler's grid: 779px of table
 // min-content plus 48px of page air is 827, so 843 of viewport is the last width that fits and
 // everything under it needs the table's own scroll box.
+//
+// 320 IS DELIBERATELY NOT HERE YET, and it is the width WCAG 1.4.10 Reflow names. Its absence is
+// why an 87px page overflow in the kildeutforsker survived the panel-round accessibility review:
+// the document is 407px wide there, in a band that runs from 320 up to about 407 and fits from 414,
+// so no width in this list has ever been inside it. Those figures are ModernHost's, taken with the
+// sample stand-in because no Stiler could be restored on the box that measured them; the cause is
+// one declaration, `.munin-explorer-selection__explore { min-width: 21rem }`, which the sample and
+// the pin agreed on to the value. That is also why the width is not added yet - this scan measures
+// the PINNED Stiler, so adding 320 before the fix is released and pinned would turn the layout gate
+// red on every pull request for a defect this repository cannot fix. Fhi.Metadata-hxtir adds it the
+// day the pin moves, and Fhi.Metadata-tx75j is the Stiler half it waits on.
 const widths = (process.env.GEOMETRY_WIDTHS ?? '1689,1440,1281,1280,1024,843')
   .split(',')
   .map(w => Number(w.trim()))

@@ -72,6 +72,18 @@
 # .munin-explorer rule, no drilldown grid-column). cuo0e is the reminder that a green line here is
 # not a promise: specificity is not compared, so its shape can recur without this list noticing.
 #
+# IT IS 178 SINCE Fhi.Metadata-l9l2n.65, and the four that arrived are the sample AHEAD of Stiler
+# rather than drift: `.munin-explorer-selection__explore`'s `min-width: 21rem` is a floor that does
+# not yield, and CSS resolves max-width before min-width, so the `max-width: 100%` written beside it
+# to stop exactly this never wins. Measured at a 320px viewport: 407px of document against 320px of
+# viewport, 87px of the page scrolling sideways, which is WCAG 1.4.10. The sample now says
+# `min(21rem, 100%)` with the wrap a shrinking button needs, and `height: auto` with
+# `min-height: 2.75rem` beside it so the wrap can grow the button without dropping it below the
+# 2.75rem `hd-button-square` gives every other button in the row. Stiler 0.1.42 still says the old
+# thing. These four delete themselves when the Stiler half lands and the pin moves;
+# Fhi.Metadata-tx75j is the Stiler bead and Fhi.Metadata-hxtir adds 320px to the layout gate's
+# widths once it is pinned.
+#
 # DO NOT FIX THESE IN ONE PULL REQUEST. Each one that is not inert changes how the samples draw and
 # needs measuring — see the bead. The guard is what stops the list growing; shrinking it is
 # separate work.
@@ -87,6 +99,7 @@ different-value||.munin-explorer-meta|padding
 different-value||.munin-explorer-pagination-content [aria-disabled=true]:hover|color
 different-value||.munin-explorer-pagination-content [aria-disabled=true]|color
 different-value||.munin-explorer-search__clear:focus-visible|box-shadow
+different-value||.munin-explorer-selection__explore|min-width
 invented-declaration|@media (min-width:1024px)|.munin-explorer > .munin-explorer-filters|padding-inline
 invented-declaration||.munin-explorer-data-list__header|border-bottom
 invented-declaration||.munin-explorer-data-list__item--expanded|background
@@ -128,6 +141,9 @@ invented-declaration||.munin-explorer-pagination-size select|border
 invented-declaration||.munin-explorer-pagination-size select|border-radius
 invented-declaration||.munin-explorer-pagination-size select|color
 invented-declaration||.munin-explorer-pagination-size select|padding
+invented-declaration||.munin-explorer-selection__explore|height
+invented-declaration||.munin-explorer-selection__explore|min-height
+invented-declaration||.munin-explorer-selection__explore|white-space
 missing-declaration|@media (max-width:1280px)|.munin-explorer-meta__grid|margin-bottom
 missing-declaration|@media (max-width:1280px)|.munin-explorer-meta__grid|width
 missing-declaration|@media (min-width:1024px)|.munin-explorer > .munin-explorer-filters|position
