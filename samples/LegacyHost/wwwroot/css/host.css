@@ -2019,6 +2019,8 @@ table.munin-explorer-data-list tbody th {
 
 .munin-explorer-header__actions .dropdown-choicepicker {
   text-align: left;
+  top: 36px;
+  width: 100%;
 }
 
 .munin-explorer-header__actions-button {
@@ -2029,14 +2031,14 @@ table.munin-explorer-data-list tbody th {
    to the nearest positioned ancestor, which has to be this element. (Fhi.Metadata-f6az7) */
 .munin-explorer__dropdown {
   position: relative;
+  z-index: 99;
 }
 
 /* No icon font here, as for the row chevron above, so the trigger's icons are characters too.
    Scoped to the trigger: an unscoped .icon-keyboard-arrow-down::before would also land on the
    row's expand icon and draw two arrows over each other. */
 .munin-explorer-header__actions-button > .icon {
-  display: inline-block;
-  width: 16px;
+  margin-right: 8px;
 }
 
 .munin-explorer-header__actions-button > .icon-layout {
