@@ -72,6 +72,16 @@
 # .munin-explorer rule, no drilldown grid-column). cuo0e is the reminder that a green line here is
 # not a promise: specificity is not compared, so its shape can recur without this list noticing.
 #
+# SILENCE HERE ABOUT A SELECTOR IS NOT AGREEMENT. A selector only the sample has is not compared
+# at all: invented-declaration is reported only under selectors Stiler ALSO has, and
+# missing-selector only for selectors Stiler has and the sample lacks, so a name Stiler has never
+# heard of produces no line whichever way the two differ. Read a gap here as "Stiler agrees" and a
+# rule the sample invented reads as one the pin shares — which is how a 320px overflow drawn by the
+# sample's own `min-width: 21rem` on `.munin-explorer-selection__explore` was written up as a
+# defect helsedata.no has (Fhi.Metadata-l9l2n.65). Establish that Stiler has the selector before
+# reading its values across; adding baseline lines for a sample-only selector fails as STALE, which
+# is the cheapest way to ask.
+#
 # DO NOT FIX THESE IN ONE PULL REQUEST. Each one that is not inert changes how the samples draw and
 # needs measuring — see the bead. The guard is what stops the list growing; shrinking it is
 # separate work.

@@ -45,6 +45,9 @@ const settleMs = Number(process.env.ACCESSIBILITY_SETTLE_MS ?? 4000);
 // 843 is the narrowest of the three and the only one below Stiler's grid: 779px of table
 // min-content plus 48px of page air is 827, so 843 of viewport is the last width that fits and
 // everything under it needs the table's own scroll box.
+//
+// 320 is missing, and it is the width WCAG 1.4.10 Reflow names. It is absent because nobody has
+// measured this page there against pinned Stiler yet; Fhi.Metadata-hxtir is where that happens.
 const widths = (process.env.GEOMETRY_WIDTHS ?? '1689,1440,1281,1280,1024,843')
   .split(',')
   .map(w => Number(w.trim()))
