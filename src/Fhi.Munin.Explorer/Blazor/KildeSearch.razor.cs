@@ -385,6 +385,12 @@ public sealed partial class KildeSearch : ComponentBase
     // Navn, Status and Opprettet.
     private int RowSpan => (Selectable ? 5 : 4) + OptionalColumns.Count(ColumnVisible);
 
+    // The second click of one double-click gesture is not a second request: it toggled the drawer
+    // straight back shut, so the row flashed and the reader landed where they started. Keyboard
+    // activation of a button reports no click count at all, so Enter and Space still toggle.
+    private Task ToggleDatasamlingerFromChevronAsync(KildeSummary kilde, MouseEventArgs released) =>
+        released.Detail > 1 ? Task.CompletedTask : ToggleDatasamlingerAsync(kilde);
+
     private async Task ToggleDatasamlingerAsync(KildeSummary kilde)
     {
         if (!_expanded.Add(kilde.Id))

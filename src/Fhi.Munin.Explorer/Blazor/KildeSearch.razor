@@ -652,7 +652,7 @@ else
                                             aria-expanded="@(IsExpanded(kilde.Id) ? "true" : "false")"
                                             aria-controls="@(IsExpanded(kilde.Id) ? PanelId(kilde.Id) : null)"
                                             aria-label="@ExpandLabel(kilde)"
-                                            @onclick="() => ToggleDatasamlingerAsync(kilde)"
+                                            @onclick="e => ToggleDatasamlingerFromChevronAsync(kilde, e)"
                                             @onclick:stopPropagation="true"
                                             @onmousedown:stopPropagation="true">
                                         @* Decorative: aria-expanded above already says which way it
