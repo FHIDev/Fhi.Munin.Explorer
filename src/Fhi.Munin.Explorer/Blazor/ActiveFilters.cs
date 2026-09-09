@@ -25,8 +25,8 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// two elements wear Stiler's own names rather than new ones — the heading is a
 /// <c>caption margin--none</c> paragraph, where <c>margin--none</c> is load-bearing because a bare
 /// <c>caption</c> paragraph carries block margins that break the row's alignment, and the clear-all
-/// is an <c>hd-button-square button-square--ghost</c>, which is what the panel's own Fjern alle
-/// filtre already is.
+/// is an <c>hd-button-square button-square--ghost</c> — Stiler's own name for a ghost button, the
+/// one the facet panel's fold toggle already wears, so the control is new and the name is not.
 /// </para>
 /// <para>
 /// The capsule is a <c>&lt;span&gt;</c> holding a <c>&lt;button&gt;</c>, not a button itself: one

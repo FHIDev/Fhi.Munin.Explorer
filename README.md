@@ -270,7 +270,8 @@ These are not style preferences — each one is a host that breaks otherwise.
     decoration. The rules are `Fhi.Helsedata.Stiler` PR 39206's, which 0.1.42 — the version pinned
     here — predates, so a host has them from whichever release takes it. The two other names in that
     row are borrowed and need nothing new — the heading is `caption margin--none` and the clear-all
-    is the `hd-button-square button-square--ghost` the panel's own Fjern alle filtre already wears.
+    is `hd-button-square button-square--ghost`, Stiler's, worn in this component already by the
+    facet panel's fold toggle.
   - Names that carry meaning nothing else carries, so a host without Stiler's rules has to draw
     them itself: `munin-explorer-crumb` carries the link affordance for a trail step, which is a
     `<button>` — the kilde step of the panel's kilde trail, and every step of the hierarchy trail

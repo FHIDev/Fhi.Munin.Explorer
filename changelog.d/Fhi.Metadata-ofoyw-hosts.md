@@ -10,5 +10,6 @@ category: Notes for hosts
   owes the capsule's edge 3:1 against whatever the page ground is. Both sample stylesheets show the
   shape. Nothing else in the row is new: the heading wears Stiler's `caption margin--none`, where
   `margin--none` is load-bearing because a bare `caption` paragraph's block margins break the row's
-  alignment, and the clear-all wears the `hd-button-square button-square--ghost` the filter panel's
-  own Fjern alle filtre already does. (Fhi.Metadata-ofoyw)
+  alignment, and the clear-all is new but wears no new name: `hd-button-square
+  button-square--ghost` is Stiler's, and the facet panel's own fold toggle already wears it.
+  (Fhi.Metadata-ofoyw)

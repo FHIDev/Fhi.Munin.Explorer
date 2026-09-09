@@ -3357,12 +3357,15 @@ public class KildeSearchTest : BunitContext
         // A member that named one would fail this before it could ever branch on it.
         string[] identity = ["auth", "identity", "user", "principal", "signedin", "claims", "token"];
 
+        // The type as well as the name, and its full name so a generic argument counts: identity
+        // arrives cascaded as Task<AuthenticationState> at least as often as it arrives under a
+        // name that says so, and a member called `State` says nothing on its own.
         var members = typeof(KildeSearch)
             .GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
             .Where(p => p.IsDefined(typeof(ParameterAttribute), inherit: false)
                         || p.IsDefined(typeof(CascadingParameterAttribute), inherit: false)
                         || p.IsDefined(typeof(InjectAttribute), inherit: false))
-            .Select(p => $"{p.PropertyType.Name} {p.Name}")
+            .Select(p => $"{p.PropertyType.FullName ?? p.PropertyType.Name} {p.Name}")
             .Where(member => identity.Any(word => member.Contains(word, StringComparison.OrdinalIgnoreCase)))
             .ToList();
 

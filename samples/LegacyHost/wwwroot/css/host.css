@@ -607,18 +607,18 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 }
 
 /* The row of active filters over the results: one capsule per ticked value, each with a close
-   control, and the panel's own Fjern alle filtre at the end of it. Three names of ours, whose
-   Stiler rules are PR 39206's — these are the stand-in for those, measured to the same boxes: the
-   row 44px, a capsule 34px, the close control 24x24.
+   control, and a Fjern alle filtre at the end of it. Three names of ours, whose Stiler rules are
+   PR 39206's — these are the stand-in for those, measured to the same boxes: the row 44px, a
+   capsule 34px, the close control 24x24.
 
    A host that defines none of them still gets every word and every control, in inline flow rather
    than in a row of capsules. What is lost is not information — the close control's name is written
    down in the markup — it is the 24x24 target, which is WCAG 2.5.5 and is why the box is declared
    here rather than left to the glyph's own size.
 
-   The two other elements in the row wear Stiler's own names and are dressed further up this file:
-   `caption margin--none` for the heading and `hd-button-square button-square--ghost` for the
-   clear-all. Nothing below may reach them. */
+   The two other elements in the row wear Stiler's own names, and both stand-ins are further up
+   this file: `caption margin--none` for the heading, and for the clear-all the ghost button rule
+   the facet panel's fold toggle also uses. Nothing below may reach them. */
 .munin-explorer-filters__active {
   display: flex;
   flex-wrap: wrap;
