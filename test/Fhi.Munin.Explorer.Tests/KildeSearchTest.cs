@@ -876,6 +876,121 @@ public class KildeSearchTest : BunitContext
         Assert.Equal(2, panel.QuerySelectorAll("table.munin-explorer-kilde__datasamlinger").Length);
     }
 
+    /// <summary>The result row for <paramref name="kilde"/>, which is a click target of its own.</summary>
+    /// <remarks>
+    /// Found on every call rather than held, for the reason <see cref="ExpandToggle"/> is: opening a
+    /// row re-renders the table, and an element found before that belongs to the markup as it was.
+    /// </remarks>
+    private static IElement Row(IRenderedComponent<KildeSearch> cut, string kilde) =>
+        cut.FindAll(".munin-explorer-kilder tbody tr")
+           .First(row => row.TextContent.Contains(kilde, StringComparison.Ordinal));
+
+    /// <summary>A cell of the row that holds no control, so the press lands on the row itself.</summary>
+    private static IElement RowBody(IRenderedComponent<KildeSearch> cut, string kilde) =>
+        Row(cut, kilde).QuerySelector("td:not(.munin-explorer-kilder__expand)")!;
+
+    /// <summary>Whether a press on <paramref name="control"/> stops there rather than reaching the row.</summary>
+    /// <remarks>
+    /// Read off the markup rather than proved by clicking, and that is the point. bUnit dispatches
+    /// a bubbling event to the handler ids it collected before the first handler ran and skips any
+    /// the re-render has since disposed - which is the row's, since each of these controls re-renders
+    /// it. A click here therefore cannot show the collision a browser would have, so the attribute
+    /// the browser acts on is asserted instead.
+    /// </remarks>
+    private static bool StopsTheClick(IElement control) =>
+        control.HasAttribute("blazor:onclick:stoppropagation");
+
+    [Fact]
+    public void Row_WhenTheRowItselfIsPressed_ThenItOpensTheDatasamlingerTheChevronOpens()
+    {
+        // The row lights up under the pointer, so it reads as a control - and until this it was one
+        // that did nothing when pressed, which is the defect the hover created. (Fhi.Metadata-l9l2n.55)
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        RowBody(cut, "Als registeret").Click();
+
+        Assert.Contains("Hoveddatasamling", cut.Find(".munin-explorer-kilder__expanded").TextContent);
+        Assert.Equal("true", ExpandToggle(cut, "Als registeret").GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void Row_WhenTheNameIsPressed_ThenTheKildeOpensAndNoDrawerIsLeftOpenBehindIt()
+    {
+        // The collision the row handler invites: the name button is inside the row, so a handler on
+        // the tr alone opens the kilde AND expands the row behind it. Asserted after Back, because
+        // the list is off screen while the kilde is open and a test looking there would pass anyway.
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        var name = Row(cut, "Als registeret").QuerySelector("button.munin-explorer-kilder__name")!;
+
+        Assert.True(StopsTheClick(name), "The name lets the click through to the row.");
+
+        name.Click();
+
+        Assert.NotEmpty(cut.FindAll(".munin-explorer-drilldown"));
+        Assert.Empty(cut.FindAll("table.munin-explorer-kilder"));
+
+        cut.Find(".munin-explorer-drilldown button").Click();
+
+        Assert.Empty(cut.FindAll(".munin-explorer-kilder__expanded"));
+        Assert.Equal("false", ExpandToggle(cut, "Als registeret").GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void ExpandToggle_WhenPressedOnce_ThenTheDrawerOpensRatherThanTogglingTwice()
+    {
+        // Without stopPropagation on the toggle the row behind it handles the same click, so one
+        // press opens and closes the drawer and the chevron reads as a control that does nothing.
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        Assert.True(
+            StopsTheClick(ExpandToggle(cut, "Als registeret")),
+            "The toggle lets the click through to the row, which would close what it just opened.");
+
+        ExpandToggle(cut, "Als registeret").Click();
+
+        Assert.Single(cut.FindAll(".munin-explorer-kilder__expanded"));
+        Assert.Equal("true", ExpandToggle(cut, "Als registeret").GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void Row_WhenTheKildeHasNoDatasamlinger_ThenPressingTheRowOpensNothing()
+    {
+        // The row opens nothing the toggle does not, and a kilde with nothing to open has no toggle:
+        // a panel with nothing in it is the same defect one row over.
+        var cut = RenderWith(new FakeClient(Kilde("Tomt register", "K_TOM", datasamlinger: 0)));
+
+        RowBody(cut, "Tomt register").Click();
+
+        Assert.Empty(cut.FindAll(".munin-explorer-kilder__expanded"));
+    }
+
+    [Fact]
+    public void Row_Always_ThenItIsNoTabStopOfItsOwnAndSwallowsNoMouseDown()
+    {
+        // WCAG 2.1.1: the row press is a pointer shortcut over two controls that are already in the
+        // tab order, so it adds no third stop and reaches no behaviour a keyboard cannot. It handles
+        // click alone - a mousedown handler here would make the row's codes unselectable.
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        var row = Row(cut, "Als registeret");
+
+        Assert.False(row.HasAttribute("tabindex"));
+        Assert.False(row.HasAttribute("role"));
+        Assert.Throws<MissingEventHandlerException>(() => row.KeyDown("Enter"));
+        Assert.Throws<MissingEventHandlerException>(() => row.MouseDown(new MouseEventArgs()));
+
+        var controls = row.QuerySelectorAll("a, button, input, select, textarea, [tabindex]");
+
+        Assert.Equal(2, controls.Length);
+        Assert.Contains("munin-explorer-kilder__expand-toggle", controls[0].ClassList);
+        Assert.Contains("munin-explorer-kilder__name", controls[1].ClassList);
+    }
+
     [Fact]
     public void Render_WhenADelkildeIsNested_ThenItsDatasamlingerAreDrawnToo()
     {

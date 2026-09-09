@@ -548,7 +548,10 @@ else
                            one of them holds the control the reader is standing on. Without a key the
                            renderer would patch that button into a different kilde's rather than moving
                            it. *@
-                        <tr @key="kilde.Id">
+                        @* The whole row opens the drawer, because the surface it lights up under the
+                           pointer made it look like a control before it was one. A pointer shortcut and
+                           nothing else: no tabindex, no role, no key handler. (Fhi.Metadata-l9l2n.55) *@
+                        <tr @key="kilde.Id" @onclick="() => ToggleDatasamlingerFromRowAsync(kilde)">
                             @* Only where there is something to open. Kelda draws no toggle on a
                                kilde with no datasamlinger, and a control that expands to nothing
                                is worse than no control. *@
@@ -558,12 +561,15 @@ else
                                     @* aria-controls only while the panel exists: an IDREF to an element
                                        that is not in the DOM is not a relationship, it is a dangling
                                        pointer that an a11y linter and a screen reader both follow. *@
+                                    @* stopPropagation, or the row behind toggles as well: one press would
+                                       open and close the drawer, and the control would read as dead. *@
                                     <button type="button"
                                             class="hd-button-reset munin-explorer-kilder__expand-toggle"
                                             aria-expanded="@(IsExpanded(kilde.Id) ? "true" : "false")"
                                             aria-controls="@(IsExpanded(kilde.Id) ? PanelId(kilde.Id) : null)"
                                             aria-label="@ExpandLabel(kilde)"
-                                            @onclick="() => ToggleDatasamlingerAsync(kilde)">
+                                            @onclick="() => ToggleDatasamlingerAsync(kilde)"
+                                            @onclick:stopPropagation="true">
                                         @* Decorative: aria-expanded above already says which way it
                                            points, and the button is named for the kilde it opens.
                                            Why a chevron rather than a "+" is on ExpandChevronClass. *@
@@ -577,10 +583,13 @@ else
                                    accessible name carries the kilde's, because "Velg" repeated down a
                                    column says nothing about which row. (Fhi.Metadata-5ghur) *@
                                 <td class="munin-explorer-kilder__select">
+                                    @* stopPropagation: one click carries both events, and a tick is not
+                                       a request to open the kilde's datasamlinger. *@
                                     <input type="checkbox"
                                            aria-label="@T.SelectKilde(RowName(kilde).Text)"
                                            checked="@IsTicked(kilde.Id)"
-                                           @onchange="e => Tick(kilde.Id, e.Value is true)" />
+                                           @onchange="e => Tick(kilde.Id, e.Value is true)"
+                                           @onclick:stopPropagation="true" />
                                 </td>
                             }
                             @* The name is a th, not a td: it is what the rest of the row is about, and
@@ -588,10 +597,13 @@ else
                                belongs to. The catalogue holds one name, in Norwegian, so it is marked
                                when the reader is not. *@
                             <th scope="row">
+                                @* stopPropagation: the name goes to the kilde and the row opens the
+                                   drawer, so a press on the name must not leave the row open behind it. *@
                                 <button class="munin-explorer-kilder__name"
                                         type="button"
                                         lang="@CatalogueProperties.Foreign(RowName(kilde).Norwegian, Reader)"
-                                        @onclick="() => SelectAsync(kilde)">@RowName(kilde).Text</button>
+                                        @onclick="() => SelectAsync(kilde)"
+                                        @onclick:stopPropagation="true">@RowName(kilde).Text</button>
 
                                 @* The code under the name, the way Kelda puts it there — it is how a reader
                                    who knows K_ALS finds the row whose name they do not know. Not drawn

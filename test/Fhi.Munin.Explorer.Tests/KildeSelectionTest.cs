@@ -163,6 +163,24 @@ public class KildeSelectionTest : BunitContext
         Assert.NotNull(ExploreButton(cut));
     }
 
+    [Fact]
+    public void RowBox_WhenItIsPressed_ThenItTicksWithoutOpeningTheRowsDatasamlinger()
+    {
+        // The row itself opens the datasamlinger drawer (Fhi.Metadata-l9l2n.55), and one press on
+        // the box carries a click as well as a change - so without stopPropagation on it, ticking a
+        // row would expand it too.
+        var (cut, _) = RenderSelectable(new FakeClient(Kilde("Als registeret", "K_ALS")));
+
+        // The click reaching nobody is the assertion: bUnit throws when no handler takes an event,
+        // and the box has none of its own, so this says the row behind it never saw the press.
+        Assert.Throws<MissingEventHandlerException>(() => RowBoxes(cut)[0].Click());
+
+        RowBoxes(cut)[0].Change(true);
+
+        Assert.True(RowBoxes(cut)[0].HasAttribute("checked"));
+        Assert.Empty(cut.FindAll(".munin-explorer-kilder__expanded"));
+    }
+
     // ---------------------------------------------------------------------------------
     // What the handover button says, which has to be what it is about to do.
     // ---------------------------------------------------------------------------------

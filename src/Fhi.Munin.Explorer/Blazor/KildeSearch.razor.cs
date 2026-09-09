@@ -395,6 +395,12 @@ public sealed partial class KildeSearch : ComponentBase
         await LoadDatasamlingerAsync(kilde.Id);
     }
 
+    // The row is a pointer shortcut onto the toggle in it, so it opens nothing the toggle does not:
+    // Kelda draws no toggle where there is nothing to open, and a row that expanded to an empty
+    // panel would be the control-that-does-nothing this came from. (Fhi.Metadata-l9l2n.55)
+    private Task ToggleDatasamlingerFromRowAsync(KildeSummary kilde) =>
+        kilde.DatasamlingCount > 0 ? ToggleDatasamlingerAsync(kilde) : Task.CompletedTask;
+
     private async Task LoadDatasamlingerAsync(Guid id)
     {
         var generation = _datasamlingerGeneration[id] =
