@@ -602,7 +602,7 @@ else
                         {
                             <th scope="col" class="munin-explorer-kilder__count">@T.HeadingDataCollections</th>
                         }
-                        @if (ColumnVisible(KildeColumn.Variabler))
+                        @if (ColumnVisible(KildeColumn.Variables))
                         {
                             <th scope="col" class="munin-explorer-kilder__count">@T.ColumnVariableCount</th>
                         }
@@ -737,7 +737,7 @@ else
                             {
                                 <td class="@CountClass(kilde.DatasamlingCount)">@kilde.DatasamlingCount</td>
                             }
-                            @if (ColumnVisible(KildeColumn.Variabler))
+                            @if (ColumnVisible(KildeColumn.Variables))
                             {
                                 <td class="@CountClass(kilde.TotalVariables)">@kilde.TotalVariables</td>
                             }
