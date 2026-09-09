@@ -625,6 +625,23 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   border-radius: 4px;
 }
 
+/* The box that narrows a long facet's own values, on the same terms and for the same reason: a
+   native text input, no class name of ours, so a Stiler-only host gets whatever it already draws
+   text fields as rather than nothing. Full width because the facet it sits in is a sidebar column
+   and a default-width box beside a wrapped 60-character label reads as belonging to something
+   else. box-sizing so that width and the padding beside it do not overflow the column. */
+.munin-explorer-filters input[type="text"] {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 4px 0 8px;
+  padding: 6px 8px;
+  font: inherit;
+  color: var(--dark);
+  border: 1px solid var(--grey30);
+  border-radius: 4px;
+}
+
 /* ---- not Stiler either: base element styling for the detail panel ----
 
    The same reason as the filter panel above. The panel a row opens is a <dl> of labels and values,

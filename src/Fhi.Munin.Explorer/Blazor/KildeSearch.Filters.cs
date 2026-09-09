@@ -43,6 +43,16 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// one organisation, which is a claim about the catalogue that belongs in the catalogue —
 /// <c>Fhi.Metadata-4kxfv</c>. Fix it there and this facet improves without being touched.
 /// </para>
+/// <para>
+/// A facet past <see cref="FacetSearchThreshold"/> values gets a search box of its own, which
+/// narrows the values it draws and nothing else: not the list, not the counts, not the other
+/// facets, and not <see cref="_chosen"/> — a value ticked and then typed out of sight is still
+/// ticked and still narrowing, which is what makes the box safe to use halfway through choosing.
+/// It is emphatically not the merge above by another route: typing <c>folke</c> brings the three
+/// spellings that contain those letters together on screen and leaves them three separate choices,
+/// while the fourth, spelled <c>FHI</c>, does not match at all — which is the catalogue's state
+/// shown rather than tidied.
+/// </para>
 /// </remarks>
 public sealed partial class KildeSearch
 {
@@ -57,6 +67,15 @@ public sealed partial class KildeSearch
     /// one the catalogue sent, whole.
     /// </remarks>
     private const int FacetLabelLimit = 60;
+
+    /// <summary>How many values a facet has to have before it is given a search box of its own.</summary>
+    /// <remarks>
+    /// Decided once and applied to every facet, never per facet: kildetype has five values and a
+    /// box over five visible choices costs more attention than it saves, while databehandler runs
+    /// to 39 and cannot be read without one. Ten clears the largest small facet and sits well under
+    /// the case that needs it, so a facet somebody adds two values to does not grow a box.
+    /// </remarks>
+    private const int FacetSearchThreshold = 10;
 
     /// <summary>The key of the additional property holding a kilde's EHDS categories.</summary>
     private const string CategoryKey = "healthCategory";
@@ -160,6 +179,25 @@ public sealed partial class KildeSearch
     /// </remarks>
     private readonly Dictionary<string, HashSet<string>> _chosen = new(StringComparer.Ordinal);
 
+    /// <summary>
+    /// What has been typed into each facet's own value search, exactly as the reader typed it.
+    /// </summary>
+    /// <remarks>
+    /// Separate from <see cref="_chosen"/> and never read by <see cref="MatchesFacets"/>: this
+    /// narrows what the panel draws, and a filter is what the panel already has checkboxes for.
+    /// Held raw so the field renders back what was typed; <see cref="FacetSearchTerm"/> is the one
+    /// place that decides a field of spaces is no search.
+    /// </remarks>
+    private readonly Dictionary<string, string> _facetSearch = new(StringComparer.Ordinal);
+
+    /// <summary>Each facet's search field, so focus can be put back on it before its values are rewritten.</summary>
+    /// <remarks>
+    /// Keyed like <see cref="_facetSearch"/> and written by <c>@ref</c> as the fields are drawn, so a
+    /// facet with no box has no entry, and one that lost its box keeps a stale reference nothing
+    /// reads: only that facet's own commit focuses it, and the field is still on screen then.
+    /// </remarks>
+    private readonly Dictionary<string, ElementReference> _facetSearchFields = new(StringComparer.Ordinal);
+
     /// <summary>Whether the panel is unfolded. See the markup for why the reader can still see it while this is false.</summary>
     private bool _filtersOpen;
 
@@ -170,6 +208,13 @@ public sealed partial class KildeSearch
     private string? _definitionsReader;
 
     private string FacetsId => $"munin-explorer-filters-{_instance}";
+
+    /// <summary>The id joining one facet's search field to its own label.</summary>
+    /// <remarks>
+    /// The facet key as well as the instance: two mounts on one page must not collide, and neither
+    /// must two facets inside one mount.
+    /// </remarks>
+    private string FacetSearchId(string key) => $"munin-explorer-facet-search-{_instance}-{key}";
 
     /// <summary>
     /// The panel heading's level: one below the component's own title, so the outline stays
@@ -415,6 +460,97 @@ public sealed partial class KildeSearch
     }
 
     private void ToggleFilters() => _filtersOpen = !_filtersOpen;
+
+    /// <summary>Whether <paramref name="facet"/> is long enough to be given a search box.</summary>
+    /// <remarks>
+    /// <see cref="Facet.Options"/> is counted over the whole list, so the answer does not change as
+    /// the reader ticks and the box cannot come and go under their hand.
+    /// </remarks>
+    private static bool IsSearchable(Facet facet) => facet.Options.Count > FacetSearchThreshold;
+
+    /// <summary>What is in one facet's search field, as the reader typed it.</summary>
+    private string FacetSearchValue(string key) =>
+        _facetSearch.TryGetValue(key, out var text) ? text : string.Empty;
+
+    /// <summary>The same, as it counts: null for a field that is empty or holds only spaces.</summary>
+    /// <remarks>
+    /// One definition of "there is a search here", for the reason <c>SearchText</c> is one over the
+    /// list: two places deciding separately whether a field of spaces counts is how they come to
+    /// disagree. <see cref="RemovesDrawnOptions"/> asks the same of a term not yet committed, so
+    /// the deciding is in <see cref="AsTerm"/> and neither caller owns it.
+    /// </remarks>
+    private string? FacetSearchTerm(string key) => AsTerm(FacetSearchValue(key));
+
+    /// <summary>What a field holds, as a search: null where it holds nothing that could narrow anything.</summary>
+    private static string? AsTerm(string? text) =>
+        string.IsNullOrWhiteSpace(text) ? null : text.Trim();
+
+    /// <summary>Record what was typed into one facet's search field.</summary>
+    /// <remarks>
+    /// Focus first and the state after, the order <see cref="ClearSearchAndRefocusAsync"/> follows,
+    /// and guarded as that one is: <c>onchange</c> fires <em>because</em> focus has left the box, so
+    /// a rescue is only ever right when the render behind it removes what the reader is now standing
+    /// on. Deliberately nothing else — no request, and no touching of <see cref="_chosen"/>:
+    /// unticking what the reader can no longer see would drop a filter they never released.
+    /// </remarks>
+    private async Task SearchFacetAsync(string key, string? text)
+    {
+        if (RemovesDrawnOptions(key, text) && _facetSearchFields.TryGetValue(key, out var field))
+        {
+            await field.FocusAsync();
+        }
+
+        _facetSearch[key] = text ?? string.Empty;
+    }
+
+    /// <summary>Whether committing <paramref name="text"/> takes an option the panel is drawing off the screen.</summary>
+    /// <remarks>
+    /// The half of <see cref="ClearSearchAndRefocusAsync"/>'s bargain that says when there is
+    /// something to rescue focus from. A commit that widens the facet, or that leaves every drawn
+    /// option standing, removed nothing — and the reader who blurred the box by clicking into
+    /// another one is already typing there. (Fhi.Metadata-6we8a)
+    /// </remarks>
+    private bool RemovesDrawnOptions(string key, string? text)
+    {
+        if (AsTerm(text) is not { } term ||
+            Definitions.FirstOrDefault(definition => definition.Key == key) is not { } definition)
+        {
+            return false;
+        }
+
+        return VisibleOptions(Build(definition)).Any(option => !Matches(option, term));
+    }
+
+    /// <summary>The options of <paramref name="facet"/> its own search leaves on screen.</summary>
+    /// <remarks>
+    /// Matched over the whole label rather than over the text on screen, which is cut at
+    /// <see cref="FacetLabelLimit"/>: the 200-character databehandler is findable by any word in
+    /// it, and the <c>title</c> is where the reader reads back the part that matched.
+    /// <para>
+    /// <see cref="StringComparison.OrdinalIgnoreCase"/>, the same comparison the component's own
+    /// search over the list uses — one rule for "does this text contain that text" in one
+    /// component. What it deliberately does not do is fold anything together: every spelling of
+    /// Folkehelseinstituttet that matches stays a choice of its own with a count of its own, because
+    /// merging them is a claim about the catalogue and belongs there (<c>Fhi.Metadata-4kxfv</c>).
+    /// </para>
+    /// </remarks>
+    private IReadOnlyList<FacetOption> VisibleOptions(Facet facet)
+    {
+        if (FacetSearchTerm(facet.Key) is not { } term)
+        {
+            return facet.Options;
+        }
+
+        return [.. facet.Options.Where(option => Matches(option, term))];
+    }
+
+    /// <summary>Whether one option answers <paramref name="term"/>.</summary>
+    /// <remarks>
+    /// One rule, because <see cref="RemovesDrawnOptions"/> asks it of a term the field has not committed yet
+    /// and two spellings of "matches" would disagree about whether focus has anywhere to go.
+    /// </remarks>
+    private static bool Matches(FacetOption option, string term) =>
+        option.Label.Contains(term, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>A kilde's kategori tokens, out of the JSON array the catalogue stores them in.</summary>
     /// <remarks>
