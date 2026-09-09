@@ -3377,6 +3377,17 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
+    public void Filter_WhenNothingIsPressed_ThenTheLevelLinesAreAlreadyOn()
+    {
+        // A reader who never finds the button still has to see the tree as a hierarchy, which is
+        // what Runa's own tree does — its toggle loads pressed too. (Fhi.Metadata-dfygj)
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        Assert.Equal("true", FilterPanel(cut).GetAttribute("data-level-lines"));
+        Assert.Equal("true", Facet(cut, "Nivålinjer").GetAttribute("aria-pressed"));
+    }
+
+    [Fact]
     public void Filter_WhenLevelLinesArePressed_ThenThePanelMarksThemAndTheHostIsTold()
     {
         // The package draws no lines and remembers no preference: it emits the marker a host styles
@@ -3385,12 +3396,7 @@ public class VariableSearchTest : BunitContext
         var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))),
                              b => b.Add(c => c.LevelLinesChanged, reported.Add));
 
-        Assert.Null(FilterPanel(cut).GetAttribute("data-level-lines"));
-
-        ClickFacet(cut, "Nivålinjer");
-
         Assert.Equal("true", FilterPanel(cut).GetAttribute("data-level-lines"));
-        Assert.Equal("true", Facet(cut, "Nivålinjer").GetAttribute("aria-pressed"));
 
         ClickFacet(cut, "Nivålinjer");
 
@@ -3399,7 +3405,12 @@ public class VariableSearchTest : BunitContext
         // announcing the lines as on after they went off.
         Assert.Null(FilterPanel(cut).GetAttribute("data-level-lines"));
         Assert.Equal("false", Facet(cut, "Nivålinjer").GetAttribute("aria-pressed"));
-        Assert.Equal([true, false], reported);
+
+        ClickFacet(cut, "Nivålinjer");
+
+        Assert.Equal("true", FilterPanel(cut).GetAttribute("data-level-lines"));
+        Assert.Equal("true", Facet(cut, "Nivålinjer").GetAttribute("aria-pressed"));
+        Assert.Equal([false, true], reported);
     }
 
     [Fact]
@@ -3412,6 +3423,18 @@ public class VariableSearchTest : BunitContext
 
         Assert.Equal("true", FilterPanel(cut).GetAttribute("data-level-lines"));
         Assert.Equal("true", Facet(cut, "Nivålinjer").GetAttribute("aria-pressed"));
+    }
+
+    [Fact]
+    public void Filter_WhenTheHostClearsLevelLines_ThenTheyStartOff()
+    {
+        // The half the flipped default made reachable only through the parameter: a host that
+        // stored the reader pressing the lines off has to be able to hand that back.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))),
+                             b => b.Add(c => c.LevelLines, false));
+
+        Assert.Null(FilterPanel(cut).GetAttribute("data-level-lines"));
+        Assert.Equal("false", Facet(cut, "Nivålinjer").GetAttribute("aria-pressed"));
     }
 
     [Fact]

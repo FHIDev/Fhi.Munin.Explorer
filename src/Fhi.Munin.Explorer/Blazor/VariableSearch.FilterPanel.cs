@@ -623,7 +623,11 @@ public partial class VariableSearch
         _foldGeneration++;
     }
 
-    /// <summary>Whether the tree draws a guide line per level. Seeded from the host's parameter.</summary>
+    /// <summary>Whether the tree draws a guide line per level.</summary>
+    /// <remarks>
+    /// No initialiser on purpose: <see cref="LevelLines"/> is copied in here before the first
+    /// render, so the parameter's default is the only place the resting state is written down.
+    /// </remarks>
     private bool _levelLines;
 
     /// <summary>

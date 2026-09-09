@@ -192,6 +192,18 @@ These are not style preferences — each one is a host that breaks otherwise.
   host with a dark theme has to clear 3:1 there too — neither sample defines one, so a host
   redefining the token for dark is deciding that outcome alone and unverified.
 
+  That debt is due on first paint now, not on a press. `LevelLines` defaults to **on** since
+  `Fhi.Metadata-dfygj`, matching Runa, whose own Nivålinjer loads pressed — a reader who never
+  finds the button has to see the tree as a hierarchy. Runa draws its rails at Tailwind
+  `border-gray-200`, `#e5e7eb`, which is **1.24:1** on its white ground; the samples deliberately
+  do not copy that, because it is the defect `Fhi.Metadata-wcbxi` was filed for. What the two do
+  agree on is the 1px width and the extent: the line runs a group's full height and ends at the
+  bottom of its last child rather than stopping short of it. The indent step differs — 20px per
+  level against Runa's 16px — and 20px is a number measured in the two sample stylesheets, whose
+  `.munin-explorer-filters ul` sets it, rather than one this package ships. What
+  `Fhi.Helsedata.Stiler` indents by on helsedata.no is unmeasured here, because nothing in this
+  repository reads Stiler.
+
   Every name in the `munin-explorer` prefix is ours. That is worth saying because it used not to
   be: under the old prefix six names were helsedata's — the container, the results column, the
   header with its `__actions` and `__actions-button`, and the dropdown — and the prefix itself was

@@ -232,9 +232,12 @@ and both invisible to everything else we run.
 **It scans states, not only pages.** A page in its default state is not the page a reader uses,
 and for a while the default state was the whole of this check: the level lines shipped at 1.16:1
 against WCAG 1.4.11's 3:1, invisible on a desktop, with this job green — because the lines only
-exist once `Nivålinjer` has been pressed and axe never saw them (`Fhi.Metadata-wcbxi`).
+existed once `Nivålinjer` had been pressed and axe never saw them (`Fhi.Metadata-wcbxi`).
 `scripts/axe-states.mjs` now drives the sample into named states before axe looks: the filter tree
 unfolded with the guide lines on, a variable row opened, and a kilde opened in the kildeutforsker.
+The lines are on at first render since `Fhi.Metadata-dfygj`, which is why that state now only
+unfolds and no longer presses the button — a press there would turn them off and hand this check
+back the blind spot it was written to close.
 The states it does **not** enter are listed above `TARGETS` in `check-accessibility.sh`, and that
 list is the honest bound on a green run — extend the two together, never one alone.
 
