@@ -2790,6 +2790,21 @@ table.munin-explorer-data-list tbody th {
   display: block;
   padding: 8px 4px 8px 20px;
 }
+.munin-explorer-hierarchy__icons {
+  align-items: center;
+  display: inline-flex;
+  gap: 2px;
+  margin-right: 6px;
+  vertical-align: -0.125em;
+}
+.munin-explorer-hierarchy__icon {
+  height: 0.875em;
+  width: 0.875em;
+}
+/* The grouping folder recedes behind the coloured category glyphs, as it does in Kelda. */
+.munin-explorer-hierarchy__icon[data-node-icon="kilde"] {
+  color: var(--grey60);
+}
 .munin-explorer-hierarchy__count {
   background: var(--grey20);
   border-radius: 4px;
