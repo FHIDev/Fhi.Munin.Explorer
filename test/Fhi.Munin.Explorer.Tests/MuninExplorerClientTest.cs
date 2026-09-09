@@ -47,29 +47,38 @@ public class MuninExplorerClientTest
     {
         var filters = await WithResponse("filters.json", out _).GetFiltersAsync();
 
-        Assert.Equal(3, filters.KildeTyper.Count);
+        Assert.Equal(4, filters.KildeTyper.Count);
         Assert.Equal("befolkningsbasertHelseundersokelse", filters.KildeTyper[0].Value);
-        Assert.Equal(41, filters.Kilder.Count);
-        Assert.Equal(20, filters.Instruments.Count);
-        Assert.Equal(3876, filters.KildeKodeverkCount);
-        Assert.Equal(18289, filters.TotalCount);
+        Assert.Equal(44, filters.Kilder.Count);
+        Assert.Equal(16, filters.Instruments.Count);
+        Assert.Equal(5022, filters.KildeKodeverkCount);
+        Assert.Equal(15020, filters.TotalCount);
 
         // Datatypes arrive labelled: Fhi.Metadata-xxi8k made the endpoint resolve the name in the
         // request's language, and this capture went unrefreshed until FixtureDriftTest noticed.
         Assert.Equal(["1", "10", "2", "3", "4", "6", "7"], filters.DataTypes.Select(d => d.Value));
         Assert.Equal("Fødselsnummer (11 siffer)", filters.DataTypes[1].DisplayName);
 
-        // Datakategorier are raw EHDS tokens, label and all, so a caller matches whole tokens
-        // rather than stripping the prefix off them.
-        Assert.Equal("ehds-cat:biobanks", filters.DataCategories[0].Value);
-        Assert.Equal(38, filters.DataCategories[1].Count);
+        // Datakategorier are raw tokens, label and all, so a caller matches whole tokens rather
+        // than stripping a prefix off them. This capture carries the bare-code form; the EHDS
+        // CURIE form occurs in the same facet and is documented on DataCategoryFacet.
+        Assert.Equal("EINS", filters.DataCategories[0].Value);
+        Assert.Equal(159, filters.DataCategories[1].Count);
 
         // A root-level variabelgruppe has no parent; the delkilde facet carries its kilde.
         Assert.Null(filters.Variabelgrupper[0].ParentId);
         Assert.NotEqual(Guid.Empty, filters.Delkilder[0].KildeId);
 
-        // Kodeverk without a resolved name is expected, not a parse failure.
-        Assert.Equal("3402", filters.AdministrativtKodeverk[0].Oid);
+        // Both parents of a datasamling, because most hang straight off their kilde and only nine
+        // of these 211 hang under a delkilde — which is why delkildeId is read as nullable.
+        Assert.Equal(211, filters.Datasamlinger.Count);
+        Assert.Equal("1 - Obligatoriske valg", filters.Datasamlinger[0].Name);
+        Assert.NotEqual(Guid.Empty, filters.Datasamlinger[0].KildeId);
+        Assert.Null(filters.Datasamlinger[0].DelkildeId);
+        Assert.Equal(9, filters.Datasamlinger.Count(d => d.DelkildeId is not null));
+
+        Assert.Equal("1101", filters.AdministrativtKodeverk[0].Oid);
+        Assert.Equal("Ja, nei", filters.AdministrativtKodeverk[0].Name);
 
         // Only the lower bound is known in the test environment.
         Assert.Equal(1868, filters.DateRange?.Min?.Year);

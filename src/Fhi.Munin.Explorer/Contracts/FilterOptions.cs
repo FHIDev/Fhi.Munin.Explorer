@@ -24,6 +24,14 @@ public sealed record FilterOptions
     [JsonPropertyName("filtere")] public IReadOnlyList<FilterFacet> Filters { get; init; } = [];
 
     [JsonPropertyName("delkilder")] public IReadOnlyList<DelkildeFacet> Delkilder { get; init; } = [];
+
+    /// <summary>Datasamling facet — the datasamlinger holding variables in the current selection.</summary>
+    /// <remarks>
+    /// Empty against an API that predates the facet, in which case there is nothing to offer and a
+    /// caller shows no datasamling filter.
+    /// </remarks>
+    [JsonPropertyName("datasamlinger")] public IReadOnlyList<DatasamlingFacet> Datasamlinger { get; init; } = [];
+
     [JsonPropertyName("datatyper")] public IReadOnlyList<DataTypeFacet> DataTypes { get; init; } = [];
 
     /// <summary>Most-used helsefaglige kodeverk (V-HK) under the current selection.</summary>
@@ -115,6 +123,27 @@ public sealed record DelkildeFacet
     [JsonPropertyName("name")] public string Name { get; init; } = "";
     [JsonPropertyName("parentDelkildeId")] public Guid? ParentDelkildeId { get; init; }
     [JsonPropertyName("kildeId")] public Guid KildeId { get; init; }
+    [JsonPropertyName("count")] public int Count { get; init; }
+}
+
+/// <summary>
+/// A datasamling facet. Carries both parents, like <see cref="DelkildeFacet"/>, so a caller can
+/// place it in the kilde tree without a second request.
+/// </summary>
+public sealed record DatasamlingFacet
+{
+    [JsonPropertyName("id")] public Guid Id { get; init; }
+    [JsonPropertyName("name")] public string Name { get; init; } = "";
+
+    /// <summary>The kilde the datasamling belongs to, directly or through <see cref="DelkildeId"/>.</summary>
+    [JsonPropertyName("kildeId")] public Guid KildeId { get; init; }
+
+    /// <summary>
+    /// The delkilde it hangs under, or null when it hangs off the kilde itself — which most do:
+    /// 9 of the 211 on runa carry one.
+    /// </summary>
+    [JsonPropertyName("delkildeId")] public Guid? DelkildeId { get; init; }
+
     [JsonPropertyName("count")] public int Count { get; init; }
 }
 
