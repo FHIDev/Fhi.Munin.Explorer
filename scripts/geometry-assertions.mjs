@@ -25,7 +25,7 @@
 //                       still the composition we ship, and because a pin fails with a much more
 //                       useful message than the invariant that would also have caught it.
 //
-// Five of the nine below are invariants. If that ratio ever inverts, this file has become a
+// Five of the ten below are invariants. If that ratio ever inverts, this file has become a
 // changelog.
 //
 // A pin may also declare `states: [...]` — the states from axe-states.mjs whose page can contain
@@ -391,6 +391,90 @@ export const assertions = [
         }
       }
       return null;
+    },
+  },
+  {
+    name: "the kilder table's counts are right-aligned in their column",
+    kind: 'pin',
+    states: ['kilder-list'],
+    // Nothing else in this repository can see this. The right alignment and the tabular figures
+    // come entirely from Stiler's `.munin-explorer-kilder .munin-explorer-kilder__count`: a unit
+    // test can only say the class is on the cell, and the sample stylesheets are a stand-in no
+    // host restores. A release that dropped that rule — or rescoped it under an ancestor it can
+    // never match, which is the munin-explorer-skiplink-pagination shape — would pass every other
+    // check in both repositories.
+    //
+    // THE TRAP: measure the TEXT, not the cell. A cell's border box is identical whichever way its
+    // contents are aligned, so an assertion written against the cell's own rect passes with the
+    // alignment fully gone. A Range over the cell's contents is the thing that moves.
+    //
+    // Two measurements, because agreement down a column can be vacuous. Measured with the rule
+    // taken away: Datasamlinger spreads 9px and Variabler 27px, while Delkilder still agrees
+    // exactly, because 0, 0, 0, 0 and 5 are all one digit wide. Flush against the cell's own
+    // content edge is what fails in that column, and it needs no second row to say so.
+    body: () => {
+      const tables = [...document.querySelectorAll('table.munin-explorer-kilder')];
+      if (tables.length === 0) return 'no kilder table on the page — nothing was measured';
+
+      // Subpixel, because a column that has lost its alignment is out by tens of pixels and never
+      // by one. The flush check is allowed the 1px the "stays inside the box" invariant allows,
+      // for the same rounding reason and on the same terms.
+      const spreadTolerance = 0.5;
+      const flushTolerance = 1;
+
+      const width = Math.round(window.innerWidth);
+      const columns = new Map();
+
+      for (const table of tables) {
+        for (const cell of table.querySelectorAll('tbody td.munin-explorer-kilder__count')) {
+          const column = heading(table, cell);
+          const figure = (cell.textContent ?? '').trim();
+
+          const range = document.createRange();
+          range.selectNodeContents(cell);
+          const text = range.getBoundingClientRect();
+          if (text.width === 0) {
+            return `at ${width}px the ${column} column's "${figure}" has no text box — ` +
+              'nothing was measured';
+          }
+
+          const style = getComputedStyle(cell);
+          const contentRight = cell.getBoundingClientRect().right -
+            parseFloat(style.borderRightWidth) - parseFloat(style.paddingRight);
+          if (text.right < contentRight - flushTolerance) {
+            return `at ${width}px the ${column} column's "${figure}" ends at ` +
+              `${text.right.toFixed(2)} with its cell's content edge at ` +
+              `${contentRight.toFixed(2)} — ${(contentRight - text.right).toFixed(2)}px of slack ` +
+              'on the right, so the figure is not aligned to it';
+          }
+
+          const key = `${tables.indexOf(table)}:${cell.cellIndex}`;
+          const edges = columns.get(key) ?? { column, measured: [] };
+          edges.measured.push({ figure, right: text.right });
+          columns.set(key, edges);
+        }
+      }
+
+      if (columns.size === 0) {
+        return 'the kilder table drew no count cells — nothing was measured';
+      }
+
+      for (const { column, measured } of columns.values()) {
+        const rights = measured.map(m => m.right);
+        const spread = Math.max(...rights) - Math.min(...rights);
+        if (spread <= spreadTolerance) continue;
+        return `at ${width}px the ${column} column's text right edges spread ` +
+          `${spread.toFixed(2)}px, over the ${spreadTolerance}px tolerance: ` +
+          measured.map(m => `"${m.figure}" at ${m.right.toFixed(2)}`).join(', ');
+      }
+      return null;
+
+      // The column's own heading, so a failure names Delkilder, Datasamlinger or Variabler rather
+      // than an index the reader has to count out along the row.
+      function heading(table, cell) {
+        const th = table.tHead?.rows[0]?.cells[cell.cellIndex];
+        return (th?.textContent ?? '').trim() || `column ${cell.cellIndex}`;
+      }
     },
   },
 ];

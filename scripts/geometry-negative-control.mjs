@@ -125,6 +125,45 @@ const cases = [
     }),
   },
   {
+    assertion: "the kilder table's counts are right-aligned in their column",
+    defect: 'the Stiler rule gone, so the figures fall back to the cell default',
+    path: '/kilder', state: 'kilder-list', width: 1440,
+    // Delkilder starts hidden, so the default table draws two of the three columns that carry the
+    // class. Turning it on is what puts all three under the unbroken measurement below, which is
+    // the only place any of them meets the real pinned Stiler.
+    setup: async page => {
+      const picker = page.locator('.munin-explorer-header details').first();
+      await picker.waitFor({ state: 'visible', timeout: 15_000 });
+      await picker.locator('summary').click();
+
+      // By text and not getByRole, for the reason axe-states.mjs gives on kilder-columns: the
+      // toggles carry a sample stylesheet's box glyph in ::before, which Playwright's own
+      // accessible-name computation folds in and the browser's leaves out.
+      const toggle = picker
+        .locator('.dropdown-choicepicker__item button', { hasText: 'Delkilder' })
+        .first();
+      await toggle.waitFor({ state: 'visible', timeout: 15_000 });
+      await toggle.click();
+
+      await page
+        .locator('.munin-explorer-kilder thead th', { hasText: 'Delkilder' })
+        .first()
+        .waitFor({ state: 'visible', timeout: 15_000 });
+    },
+    apply: css('.munin-explorer-kilder .munin-explorer-kilder__count ' +
+      '{ text-align: left !important; }'),
+  },
+  {
+    assertion: "the kilder table's counts are right-aligned in their column",
+    defect: 'the same rule gone at the narrowest width the scan drives',
+    path: '/kilder', state: 'kilder-list', width: 843,
+    // The wide case above cannot stand for this one: 843 is the only width in the scan below
+    // Stiler's grid, where the table sits in its own scroll box and every cell is measured in that
+    // box's scrollable coordinates rather than the page's.
+    apply: css('.munin-explorer-kilder .munin-explorer-kilder__count ' +
+      '{ text-align: left !important; }'),
+  },
+  {
     assertion: 'no page shell class inside a tab panel',
     defect: 'a nested view wearing the page shell class',
     path: '/', state: 'explorer-tabs', width: 1440,
