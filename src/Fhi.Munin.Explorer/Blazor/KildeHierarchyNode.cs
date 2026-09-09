@@ -12,10 +12,15 @@ internal sealed record KildeHierarchyNode(
     private static KildeHierarchyNode From(HierarchyDelkilde node, string parent)
     {
         var key = $"{parent}/delkilde/{node.Id}";
+        // A group's presentationOrder counts a different sequence than a datasamling's — Tromsø4
+        // numbers its datasamlinger 1..2 and its groups 537..1189 — so the unassigned ones are
+        // ordered among themselves, behind the structure they are an appendix to.
         return new(key, node.Name, node.VariableCount, node.PresentationOrder,
-            Ordered(node.Children.Select(d => From(d, key))
-                .Concat(node.Datasamlinger.Select(d => From(d, key)))
-                .Concat(node.UnassignedVariabelgrupper.Select(g => From(g, key)))));
+        [
+            .. Ordered(node.Children.Select(d => From(d, key))
+                .Concat(node.Datasamlinger.Select(d => From(d, key)))),
+            .. Ordered(node.UnassignedVariabelgrupper.Select(g => From(g, key)))
+        ]);
     }
 
     private static KildeHierarchyNode From(HierarchyDatasamling node, string parent)

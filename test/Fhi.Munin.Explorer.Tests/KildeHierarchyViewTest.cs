@@ -122,6 +122,34 @@ public sealed class KildeHierarchyViewTest : BunitContext
     }
 
     [Fact]
+    public void From_WhenADelkildesUnassignedGroupsCarryOrder_ThenTheyStaySortedBehindItsRealStructure()
+    {
+        // The other place reading a group's presentationOrder. Its number counts a sequence of its
+        // own — the capture's Tromsø4 numbers datasamlinger 1..2 and groups 537..1189 — so feeding
+        // it to the shared sort would let an orphan outrank a datasamling it cannot be compared to.
+        var hierarchy = new KildeHierarchy
+        {
+            Delkilder =
+            [new()
+            {
+                Id = Guid.NewGuid(), Name = "Parent",
+                Children = [new() { Id = Guid.NewGuid(), Name = "Child", PresentationOrder = 3 }],
+                Datasamlinger = [new() { Id = Guid.NewGuid(), Name = "Collection", PresentationOrder = 2 }],
+                UnassignedVariabelgrupper =
+                [
+                    new() { Id = Guid.NewGuid(), Name = "Åpen gruppe" },
+                    new() { Id = Guid.NewGuid(), Name = "Late orphan", PresentationOrder = 537 },
+                    new() { Id = Guid.NewGuid(), Name = "Early orphan", PresentationOrder = 1 }
+                ]
+            }]
+        };
+
+        Assert.Equal(
+            ["Collection", "Child", "Early orphan", "Late orphan", "Åpen gruppe"],
+            KildeHierarchyNode.From(hierarchy)[0].Children.Select(n => n.Name));
+    }
+
+    [Fact]
     public void Render_WhenTheTreeIsTheCapturedPayload_ThenItsVariabelgrupperAreDrawnInTheCuratedOrder()
     {
         var hierarchy = JsonSerializer.Deserialize<KildeHierarchy>(
