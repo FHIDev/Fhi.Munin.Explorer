@@ -204,7 +204,9 @@ else
        because a narrow screen needs the panel folded away while a wide one does not: `__toggle` is
        the button that unfolds it, hidden once there is room for a sidebar, and `__facets` is what
        it unfolds. Those two are new here, so a Stiler host needs rules for them as well — the
-       samples are the only stylesheet in this repository that has any.
+       samples are the only stylesheet in this repository that has any. `__toolbar` is a third,
+       and it is the variabelutforsker's own name rather than a new one: both panels want the same
+       row of fold controls, so they wear the same class and share its rule.
 
        The folding itself is the `hidden` attribute rather than a class, so the panel works on a host
        that styles none of this: `hidden` is the browser's own, the button toggles it, and a host
@@ -242,6 +244,37 @@ else
                     aria-controls="@FacetsId"
                     @onclick="ToggleFilters">@(_filtersOpen ? T.HideFilters : T.ShowFilters)</button>
 
+            @* Utvid alle and Skjul alle, the one thing a native disclosure cannot do for itself.
+               Nivålinjer is deliberately not here: these facets are not nested, so a level-lines
+               toggle would be a control with no effect.
+
+               A direct child of `munin-explorer-filters` and nothing else, because Stiler's rule
+               pinning this row to the top of the scrolling facet column is a direct-child chain —
+               one level deeper and it misses in silence, with a still frame that looks right. That
+               rule is also what paints the row, so the facets sliding under it are hidden rather
+               than showing through: no inline style and no wrapper here can be allowed to defeat
+               it. Drawn unconditionally rather than with the facets, since a wide screen shows the
+               panel while `_filtersOpen` is false. (Fhi.Metadata-l9l2n.60)
+
+               Not drawn at all under two facets: there is nothing to expand or collapse together,
+               the way the column picker is drawn only with rows on screen. *@
+            @if (facets.Count > 1)
+            {
+                <div class="munin-explorer-filters__toolbar">
+                    <button class="hd-button-square button-square--ghost"
+                            type="button"
+                            @onclick="() => FoldAll(true)">@T.ExpandAllFacets</button>
+                    <button class="hd-button-square button-square--ghost"
+                            type="button"
+                            @onclick="() => FoldAll(false)">@T.CollapseAllFacets</button>
+                </div>
+
+                @* A fold press rewrites every disclosure in the panel and is otherwise silent. A
+                   bare live region and deliberately not a second role="status": that role is the
+                   component reporting its own state, and the count over the table is that one. *@
+                <p class="screenreader-only" aria-live="polite" aria-atomic="true">@FoldAnnouncement</p>
+            }
+
             <div class="munin-explorer-filters__facets" id="@FacetsId" hidden="@(!_filtersOpen)">
                 @foreach (var facet in facets)
                 {
@@ -252,10 +285,10 @@ else
                     var options = searchable ? VisibleOptions(facet) : facet.Options;
 
                     @* A native <details> per facet, the shape the variable explorer's panel already
-                       uses under this same handle. Keyed because the fold is the element's own: a
-                       facet dropped from the middle would otherwise leave the one that slides up
-                       into its place wearing whatever the reader had done to the old one. *@
-                    <details @key="facet.Key" open="@facet.OpenByDefault">
+                       uses under this same handle. The facet half of the key is what stops a facet
+                       dropped from the middle handing its open state to the one that slides up into
+                       its place; the fold generation is the other half — see FacetKey. *@
+                    <details @key="FacetKey(facet)" open="@FacetOpen(facet)">
                         @* <summary> is the disclosure control natively — focusable, Enter and Space
                            toggle it, its open attribute is the state, so there is no aria-expanded
                            to drift. The heading stays one: a panel is navigated by heading, so the
@@ -298,12 +331,14 @@ else
                         }
 
                         @* Rendered whether or not the facet is open, and hidden by the disclosure
-                           itself rather than by us. `open` is the same on every render — the facets
-                           are counted over the unfiltered list — so Blazor writes it once and never
-                           again, and the fold is the reader's for as long as these elements live:
-                           narrowing cannot collapse what they opened, and each facet folds alone.
-                           They do not survive a drill-in, which removes the panel; the ticks and
-                           the search do, so the reader loses only the shape of the panel.
+                           itself rather than by us. `open` is the same on every render between fold
+                           presses — the facets are counted over the unfiltered list — so Blazor
+                           writes it once and never again, and the fold is the reader's for as long
+                           as these elements live: narrowing cannot collapse what they opened, and
+                           each facet folds alone. A press is the one thing that takes it back, by
+                           rebuilding them under a new key. They do not survive a drill-in either,
+                           which removes the panel; the ticks and the search do, so the reader loses
+                           only the shape of the panel.
 
                            `options` is what the facet's own search leaves. It must never reach the
                            ticks: a choice typed out of sight is still ticked and still narrowing
