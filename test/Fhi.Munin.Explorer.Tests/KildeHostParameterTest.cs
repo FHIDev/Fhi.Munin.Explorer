@@ -119,4 +119,27 @@ public class KildeHostParameterTest : BunitContext
         Assert.DoesNotContain(AccessCriteria, cut.Markup, StringComparison.Ordinal);
         Assert.DoesNotContain(Prices, cut.Markup, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void KildeSearch_WhenItsSurfaceIsRead_ThenNoParameterOrInjectionNamesAnIdentity()
+    {
+        // Nothing Kelda draws is personal state, and this is the surface that could make it so: a
+        // parameter or an injection naming a reader is how a page starts differing between one
+        // signed in and one signed out, before any code branches on it. (Fhi.Metadata-4ifsa)
+        string[] identity = ["auth", "identity", "user", "principal", "signedin", "claims", "token"];
+
+        // The type as well as the name, so a cascaded Task<AuthenticationState> counts too.
+        // ToString and not FullName: FullName stamps a PublicKeyToken onto every generic argument,
+        // which reads as an identity word on each EventCallback<T> here.
+        var members = typeof(KildeSearch)
+            .GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+            .Where(p => p.IsDefined(typeof(ParameterAttribute), inherit: false)
+                        || p.IsDefined(typeof(CascadingParameterAttribute), inherit: false)
+                        || p.IsDefined(typeof(InjectAttribute), inherit: false))
+            .Select(p => $"{p.PropertyType} {p.Name}")
+            .Where(member => identity.Any(word => member.Contains(word, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+
+        Assert.Equal([], members);
+    }
 }

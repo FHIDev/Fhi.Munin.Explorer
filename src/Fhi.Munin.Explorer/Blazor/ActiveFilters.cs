@@ -114,21 +114,24 @@ internal static class ActiveFilters
             // rests on the identity here: focus has left the row before the chip goes.
             builder.OpenElement(5, "span");
             builder.AddAttribute(6, "class", "munin-explorer-filters__chip");
-            // On the capsule, exactly as the panel puts it on the <label> around the same string:
-            // a Norwegian organisation's name inside an English page is read out with English
-            // phonetics otherwise, which is WCAG 3.1.2.
-            builder.AddAttribute(7, "lang", chip.Language);
-            builder.AddAttribute(8, "title", chip.Title);
-            builder.AddContent(9, chip.Text);
 
-            builder.OpenElement(10, "button");
-            builder.AddAttribute(11, "class", "munin-explorer-filters__chip-remove");
-            builder.AddAttribute(12, "type", "button");
+            // An element of its own around the value, so lang covers the catalogue's words and
+            // stops before the button, whose accessible name is this package's prose: on the
+            // capsule it inherits, and an English page then speaks that name in Norwegian.
+            builder.OpenElement(7, "span");
+            builder.AddAttribute(8, "lang", chip.Language);
+            builder.AddAttribute(9, "title", chip.Title);
+            builder.AddContent(10, chip.Text);
+            builder.CloseElement();
+
+            builder.OpenElement(11, "button");
+            builder.AddAttribute(12, "class", "munin-explorer-filters__chip-remove");
+            builder.AddAttribute(13, "type", "button");
             // The glyph is not a name, so the name is written down. It replaces the × rather than
             // adding to it. (Fhi.Metadata-ag4n7)
-            builder.AddAttribute(13, "aria-label", chip.RemoveLabel);
-            builder.AddAttribute(14, "onclick", EventCallback.Factory.Create(receiver, chip.Remove));
-            builder.AddContent(15, "×");
+            builder.AddAttribute(14, "aria-label", chip.RemoveLabel);
+            builder.AddAttribute(15, "onclick", EventCallback.Factory.Create(receiver, chip.Remove));
+            builder.AddContent(16, "×");
             builder.CloseElement();
 
             builder.CloseElement();
@@ -136,11 +139,11 @@ internal static class ActiveFilters
 
         // Last, after the chips, so removing one moves nothing the reader is aiming at — the rule
         // the selection bar follows for the same reason.
-        builder.OpenElement(16, "button");
-        builder.AddAttribute(17, "class", "hd-button-square button-square--ghost");
-        builder.AddAttribute(18, "type", "button");
-        builder.AddAttribute(19, "onclick", EventCallback.Factory.Create(receiver, clearAll));
-        builder.AddContent(20, clearAllLabel);
+        builder.OpenElement(17, "button");
+        builder.AddAttribute(18, "class", "hd-button-square button-square--ghost");
+        builder.AddAttribute(19, "type", "button");
+        builder.AddAttribute(20, "onclick", EventCallback.Factory.Create(receiver, clearAll));
+        builder.AddContent(21, clearAllLabel);
         builder.CloseElement();
 
         builder.CloseElement();

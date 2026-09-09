@@ -474,9 +474,9 @@ public sealed partial class KildeSearch
 
     /// <summary>Untick every value in every facet, in one write of that same state.</summary>
     /// <remarks>
-    /// One write rather than a walk over the chips: a clear-all that iterated what is on screen
-    /// would leave anything the row is not drawing ticked — and the list narrowed by a filter with
-    /// no control left anywhere on the page.
+    /// Not through <see cref="Choose"/> and still the whole of what it does: that method writes
+    /// <see cref="_chosen"/> and nothing beside it, so emptying it is that same write for every
+    /// value at once — where a walk over the chips would leave what the row is not drawing ticked.
     /// </remarks>
     private async Task ClearFacetsAsync()
     {
@@ -487,20 +487,17 @@ public sealed partial class KildeSearch
 
     /// <summary>Hand focus to the search field before the pressed control leaves the page.</summary>
     /// <remarks>
-    /// A chip and the clear-all both take themselves off the page as they act, and the last chip
-    /// takes the whole row with it, so without this focus lands on <c>&lt;body&gt;</c> and the
-    /// reader's next Tab starts at the top of the host's page. The field rather than a neighbouring
-    /// chip: it is the one control above the row that is there whether a filter is left or not, so
-    /// it is a place a keyboard reader learns once. (Fhi.Metadata-ag4n7)
+    /// The pressed control leaves as it acts and the last chip takes the row with it, so focus would
+    /// land on <c>&lt;body&gt;</c>. The field rather than a neighbouring chip: it is the one control
+    /// above the row that is there whether a filter is left or not. (Fhi.Metadata-ag4n7)
     /// </remarks>
     private ValueTask RescueFocusAsync() => _searchField.FocusAsync();
 
     /// <summary>The ticked values as the row over the results draws them, in the panel's own order.</summary>
     /// <remarks>
     /// A projection of <see cref="_chosen"/> and never a second collection beside it — see
-    /// <see cref="ActiveFilters"/> — so the chips cannot describe a selection the rows did not come
-    /// from. Facets in <see cref="Definitions"/>' order and values in the order their own facet
-    /// lists them, so a reader looking from the row to the panel finds them in the same sequence.
+    /// <see cref="ActiveFilters"/>. Facets in <see cref="Definitions"/>' order; values sorted on the
+    /// two keys the facet's own list is sorted on, so re-sorting the panel is visibly two edits.
     /// </remarks>
     private IReadOnlyList<ActiveFilters.Chip> ActiveFilterChips
     {

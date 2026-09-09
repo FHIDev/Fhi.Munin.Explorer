@@ -3119,8 +3119,8 @@ public class KildeSearchTest : BunitContext
 
     /// <summary>The visible text of every chip, without its close control's glyph.</summary>
     /// <remarks>
-    /// The first child is the value: the capsule is a text node followed by the button, so reading
-    /// the whole element would append the × to every assertion in this section.
+    /// The first child is the value's own element — the one carrying its lang — and the button
+    /// follows it, so reading the whole capsule would append the × to every assertion here.
     /// </remarks>
     private static IReadOnlyList<string> Chips(IRenderedComponent<KildeSearch> cut) =>
         [.. cut.FindAll(".munin-explorer-filters__chip").Select(chip => chip.FirstChild!.TextContent.Trim())];
@@ -3318,7 +3318,11 @@ public class KildeSearchTest : BunitContext
 
         Tick(cut, "Data processor", "Helsedirektoratet");
 
-        Assert.Equal("no", cut.Find(".munin-explorer-filters__chip").GetAttribute("lang"));
+        // On the value's own element and not on the capsule: the capsule holds the remove control
+        // too, whose accessible name is this package's English prose, and lang inherits.
+        Assert.Equal("no", cut.Find(".munin-explorer-filters__chip").FirstElementChild!.GetAttribute("lang"));
+        Assert.Null(cut.Find(".munin-explorer-filters__chip").GetAttribute("lang"));
+        Assert.Null(cut.Find(".munin-explorer-filters__chip-remove").GetAttribute("lang"));
 
         // The value this package translates carries none, for the same reason the choice does not:
         // a lang saying what the page already says is noise.
@@ -3327,7 +3331,59 @@ public class KildeSearchTest : BunitContext
         Assert.Null(
             cut.FindAll(".munin-explorer-filters__chip")
                 .Single(chip => chip.FirstChild!.TextContent.Trim() == "Central health registry")
+                .FirstElementChild!
                 .GetAttribute("lang"));
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenTheChipsWordsAreNotTheCataloguesValue_ThenPressingItStillClearsTheFilter()
+    {
+        // THE IDENTITY TRAP, and the one the databehandler chips cannot catch: Helsedirektoratet is
+        // its own catalogue value, so a chip removing by its displayed text works there and works
+        // nowhere else. Kildetype draws "Sentralt helseregister" for the value sentraltHelseregister
+        // — remove by the words and the press is silent: chip, tick and narrowing all stay.
+        var cut = RenderWith(TwoNarrowingFacets());
+
+        Tick(cut, "Kildetype", "Sentralt helseregister");
+
+        Assert.Equal(["Sentralt helseregister"], Chips(cut));
+        Assert.Equal(["Dødsårsaksregisteret", "Reseptregisteret"], RowNames(cut));
+
+        RemoveChip(cut, "Sentralt helseregister");
+
+        Assert.Empty(cut.FindAll(".munin-explorer-filters__chip"));
+        Assert.DoesNotContain(true, Ticks(cut));
+        Assert.Equal("4 kilder", ResultCount(cut));
+        Assert.Equal(4, RowNames(cut).Count);
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenATickedValueIsTypedOutOfSight_ThenItsChipIsTheControlThatIsLeft()
+    {
+        // A facet's own box narrows the values drawn and not the selection, so a value ticked and
+        // then typed away stays narrowing with its checkbox off the page. Its chip is then the only
+        // control on screen for it, which holds because the row projects _chosen rather than the
+        // facet's visible options — and would stop holding, silently, if that were ever routed.
+        var cut = RenderWith(CatalogueWithOneBigFacet());
+
+        Tick(cut, "Databehandler", "Kreftregisteret");
+
+        var narrowed = RowNames(cut);
+
+        Assert.Single(narrowed);
+
+        SearchFacet(cut, "Databehandler", "universitetet");
+
+        Assert.DoesNotContain("Kreftregisteret", ChoiceValues(Facet(cut, "Databehandler")));
+        Assert.Equal(["Kreftregisteret"], Chips(cut));
+
+        RemoveChip(cut, "Kreftregisteret");
+
+        // The list is whole again, and the box is untouched: the chip cleared the filter without
+        // reaching into what the reader had typed.
+        Assert.Empty(cut.FindAll(".munin-explorer-filters__chip"));
+        Assert.True(narrowed.Count < RowNames(cut).Count, "The chip left the list narrowed.");
+        Assert.Equal("universitetet", FacetSearch(cut, "Databehandler")!.GetAttribute("value"));
     }
 
     [Fact]
@@ -3345,31 +3401,14 @@ public class KildeSearchTest : BunitContext
         var chip = cut.Find(".munin-explorer-filters__chip");
 
         Assert.EndsWith("…", chip.FirstChild!.TextContent.Trim(), StringComparison.Ordinal);
-        Assert.Equal(LongDataProcessor, chip.GetAttribute("title"));
-    }
+        Assert.Equal(LongDataProcessor, chip.FirstElementChild!.GetAttribute("title"));
 
-    [Fact]
-    public void ActiveFilters_WhenTheReaderSignsIn_ThenNothingAboutTheRowCouldChange()
-    {
-        // This is not personal state, and the honest assertion is about the surface rather than
-        // about two renders: the kildeutforsker takes no identity parameter and injects no auth
-        // state, so there is nothing here that could tell a signed-in reader from a signed-out one.
-        // A member that named one would fail this before it could ever branch on it.
-        string[] identity = ["auth", "identity", "user", "principal", "signedin", "claims", "token"];
+        // And it removes by the value the catalogue sent, not by the cut words on screen: pressing
+        // a chip whose text is not its value has to clear the filter all the same.
+        RemoveChip(cut, chip.FirstChild!.TextContent.Trim());
 
-        // The type as well as the name, so a cascaded Task<AuthenticationState> counts too.
-        // ToString and not FullName: FullName stamps a PublicKeyToken onto every generic argument,
-        // which reads as an identity word on each EventCallback<T> here.
-        var members = typeof(KildeSearch)
-            .GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
-            .Where(p => p.IsDefined(typeof(ParameterAttribute), inherit: false)
-                        || p.IsDefined(typeof(CascadingParameterAttribute), inherit: false)
-                        || p.IsDefined(typeof(InjectAttribute), inherit: false))
-            .Select(p => $"{p.PropertyType} {p.Name}")
-            .Where(member => identity.Any(word => member.Contains(word, StringComparison.OrdinalIgnoreCase)))
-            .ToList();
-
-        Assert.Equal([], members);
+        Assert.Empty(cut.FindAll(".munin-explorer-filters__chip"));
+        Assert.Equal(["Als registeret", "Dødsårsaksregisteret"], RowNames(cut));
     }
 
     // ---------------------------------------------------------------------------------

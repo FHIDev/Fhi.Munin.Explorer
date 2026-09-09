@@ -2,10 +2,17 @@ using Fhi.Munin.Explorer.Contracts;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <remarks>
+/// <para>
 /// Lifted out of <see cref="VariableSearch"/> so a second explorer can share it. Kelda, the
 /// kildeutforsker, ships from this same package and needs these strings; while this was a private
 /// nested type it could not reach them, and the alternative was a second copy that would have
 /// drifted from this one the first time either was edited.
+/// </para>
+/// <para>
+/// Members are grouped by the surface they word rather than appended, so <c>No</c> and <c>En</c>
+/// pass every argument BY NAME: neighbours share a type, and a positional site one line out of
+/// step compiles and ships the wrong string under the right name.
+/// </para>
 /// </remarks>
 /// <summary>
 /// Self-contained translations. Deliberately not IStringLocalizer — see <see cref="VariableSearch.Language"/>.
@@ -261,11 +268,9 @@ internal sealed record Texts(
     // of the card fields — deliberately the same word for the same thing in both places.
     string FiltersTitle,
     string ClearFilters,
-    // The row of chips over the results, one per ticked value. ClearFilters is reused rather than
-    // given a shorter twin: the chips and the panel's own button clear the same state, and two
-    // wordings for one press is the drift the kilde count's filter clause was fixed for.
-    // (value) — the remove control's whole accessible name, because "Fjern" repeated down a row
-    // tells a reader moving from control to control nothing about which filter they are standing on.
+    // The row of chips over the results. ClearFilters is reused rather than given a shorter twin:
+    // both clear the same state, and two wordings for one press is drift. (value) is the remove
+    // control's whole name, because "Fjern" repeated down a row says nothing about which filter.
     string ActiveFiltersTitle,
     Func<string, string> RemoveFilter,
     // The panel's toolbar. Three presses that change how the tree is drawn and narrow nothing, so
