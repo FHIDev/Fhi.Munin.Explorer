@@ -805,10 +805,17 @@ public class KildeSearchTest : BunitContext
     private static KildeDatasamling Collection(string name) =>
         new() { Name = name, VariableCount = 12 };
 
-    private static IElement ExpandToggle(IRenderedComponent<KildeSearch> cut, string kilde) =>
+    /// <summary>The result row for <paramref name="kilde"/>, which is a click target of its own.</summary>
+    /// <remarks>
+    /// Found on every call rather than held, here and in everything layered on it: opening a row
+    /// re-renders the table, and an element found before that belongs to the markup as it was.
+    /// </remarks>
+    private static IElement Row(IRenderedComponent<KildeSearch> cut, string kilde) =>
         cut.FindAll(".munin-explorer-kilder tbody tr")
-           .First(row => row.TextContent.Contains(kilde, StringComparison.Ordinal))
-           .QuerySelector(".munin-explorer-kilder__expand-toggle")!;
+           .First(row => row.TextContent.Contains(kilde, StringComparison.Ordinal));
+
+    private static IElement ExpandToggle(IRenderedComponent<KildeSearch> cut, string kilde) =>
+        Row(cut, kilde).QuerySelector(".munin-explorer-kilder__expand-toggle")!;
 
     [Fact]
     public void Render_WhenAKildeHasNoDatasamlinger_ThenItHasNoExpandToggle()
@@ -876,18 +883,23 @@ public class KildeSearchTest : BunitContext
         Assert.Equal(2, panel.QuerySelectorAll("table.munin-explorer-kilde__datasamlinger").Length);
     }
 
-    /// <summary>The result row for <paramref name="kilde"/>, which is a click target of its own.</summary>
-    /// <remarks>
-    /// Found on every call rather than held, for the reason <see cref="ExpandToggle"/> is: opening a
-    /// row re-renders the table, and an element found before that belongs to the markup as it was.
-    /// </remarks>
-    private static IElement Row(IRenderedComponent<KildeSearch> cut, string kilde) =>
-        cut.FindAll(".munin-explorer-kilder tbody tr")
-           .First(row => row.TextContent.Contains(kilde, StringComparison.Ordinal));
-
     /// <summary>A cell of the row that holds no control, so the press lands on the row itself.</summary>
     private static IElement RowBody(IRenderedComponent<KildeSearch> cut, string kilde) =>
         Row(cut, kilde).QuerySelector("td:not(.munin-explorer-kilder__expand)")!;
+
+    /// <summary>
+    /// A pointer press on the row that travels <paramref name="travelled"/> CSS pixels before it is
+    /// released, which is what tells a press meant to open the drawer from a drag-selection.
+    /// </summary>
+    /// <remarks>
+    /// Both events go through <see cref="RowBody"/> rather than one held element: the mousedown
+    /// re-renders the table, and the element found before it belongs to the markup as it was.
+    /// </remarks>
+    private static void PressRow(IRenderedComponent<KildeSearch> cut, string kilde, double travelled = 0)
+    {
+        RowBody(cut, kilde).MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
+        RowBody(cut, kilde).Click(new MouseEventArgs { ClientX = 120 + travelled, ClientY = 240 });
+    }
 
     /// <summary>Whether a press on <paramref name="control"/> stops there rather than reaching the row.</summary>
     /// <remarks>
@@ -908,10 +920,44 @@ public class KildeSearchTest : BunitContext
         var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
         var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
 
-        RowBody(cut, "Als registeret").Click();
+        PressRow(cut, "Als registeret");
 
         Assert.Contains("Hoveddatasamling", cut.Find(".munin-explorer-kilder__expanded").TextContent);
         Assert.Equal("true", ExpandToggle(cut, "Als registeret").GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void Row_WhenThePointerDraggedAcrossItToSelectText_ThenTheDrawerStaysShut()
+    {
+        // The row is full of text worth copying - the code under the name is there so "a reader who
+        // knows K_ALS finds the row whose name they do not know". A drag that begins and ends inside
+        // the row still lands a click on the <tr>, so highlighting a code would open the drawer.
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        PressRow(cut, "Als registeret", travelled: 48);
+
+        Assert.Empty(cut.FindAll(".munin-explorer-kilder__expanded"));
+        Assert.Equal("false", ExpandToggle(cut, "Als registeret").GetAttribute("aria-expanded"));
+
+        // And the drag leaves nothing behind that would swallow the next ordinary press.
+        PressRow(cut, "Als registeret");
+
+        Assert.Single(cut.FindAll(".munin-explorer-kilder__expanded"));
+    }
+
+    [Fact]
+    public void Row_WhenTheHandWobblesWithinAFewPixels_ThenItIsStillAPressAndTheDrawerOpens()
+    {
+        // The other side of the drag guard: a pointer that moves a pixel or two between press and
+        // release is a click, not a selection, and a row that ignored it would be back to the
+        // control that does nothing when pressed. (Fhi.Metadata-l9l2n.55)
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        PressRow(cut, "Als registeret", travelled: 2);
+
+        Assert.Single(cut.FindAll(".munin-explorer-kilder__expanded"));
     }
 
     [Fact]
@@ -963,17 +1009,16 @@ public class KildeSearchTest : BunitContext
         // a panel with nothing in it is the same defect one row over.
         var cut = RenderWith(new FakeClient(Kilde("Tomt register", "K_TOM", datasamlinger: 0)));
 
-        RowBody(cut, "Tomt register").Click();
+        PressRow(cut, "Tomt register");
 
         Assert.Empty(cut.FindAll(".munin-explorer-kilder__expanded"));
     }
 
     [Fact]
-    public void Row_Always_ThenItIsNoTabStopOfItsOwnAndSwallowsNoMouseDown()
+    public void Row_Always_ThenItIsNoTabStopOfItsOwnAndPreventsNoDefault()
     {
         // WCAG 2.1.1: the row press is a pointer shortcut over two controls that are already in the
-        // tab order, so it adds no third stop and reaches no behaviour a keyboard cannot. It handles
-        // click alone - a mousedown handler here would make the row's codes unselectable.
+        // tab order, so it adds no third stop and reaches no behaviour a keyboard cannot.
         var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
         var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
 
@@ -982,7 +1027,11 @@ public class KildeSearchTest : BunitContext
         Assert.False(row.HasAttribute("tabindex"));
         Assert.False(row.HasAttribute("role"));
         Assert.Throws<MissingEventHandlerException>(() => row.KeyDown("Enter"));
-        Assert.Throws<MissingEventHandlerException>(() => row.MouseDown(new MouseEventArgs()));
+
+        // The mousedown only records where the press began. preventDefault on it is what would make
+        // the row's codes unselectable, and that is the whole reason the drag guard reads a
+        // coordinate rather than suppressing the selection outright.
+        Assert.False(row.HasAttribute("blazor:onmousedown:preventdefault"));
 
         var controls = row.QuerySelectorAll("a, button, input, select, textarea, [tabindex]");
 

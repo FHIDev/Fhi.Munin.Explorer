@@ -1,6 +1,7 @@
 using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.Logging;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.Logging;
 
 namespace Fhi.Munin.Explorer.Blazor;
@@ -289,6 +290,11 @@ public sealed partial class KildeSearch : ComponentBase
 
     private bool IsExpanded(Guid id) => _expanded.Contains(id);
 
+    // One predicate for the chevron and for the row press, so widening what counts as expandable
+    // cannot leave a chevron that opens beside a row that is dead, or the reverse. Kelda's own
+    // condition: canExpand = datasamlingCount > 0.
+    private static bool CanExpand(KildeSummary kilde) => kilde.DatasamlingCount > 0;
+
     // The panel names itself, because a table row carries no heading for its groups to hang under.
     private int ExpandedPanelLevel => Math.Clamp(TitleLevel + 1, 1, 6);
 
@@ -395,11 +401,38 @@ public sealed partial class KildeSearch : ComponentBase
         await LoadDatasamlingerAsync(kilde.Id);
     }
 
+    // CSS pixels the pointer may travel between press and release and still count as a press. Under
+    // a character's width, so selecting even one letter of a code reads as the drag it is; above a
+    // shaky hand, so an ordinary click still opens the drawer.
+    private const double RowPressSlack = 4;
+
+    // Where the press now in flight went down. A drag-select that begins and ends inside the row
+    // still lands a click on the <tr>, and window.getSelection() would need JS interop this package
+    // does not take, so the press is told from the drag by where it ends. (Fhi.Metadata-l9l2n.55)
+    private (double X, double Y)? _rowPressedAt;
+
+    // No preventDefault, so the row's text still selects — this only records where the pointer was.
+    private void RowPressed(MouseEventArgs pressed) => _rowPressedAt = (pressed.ClientX, pressed.ClientY);
+
     // The row is a pointer shortcut onto the toggle in it, so it opens nothing the toggle does not:
     // Kelda draws no toggle where there is nothing to open, and a row that expanded to an empty
     // panel would be the control-that-does-nothing this came from. (Fhi.Metadata-l9l2n.55)
-    private Task ToggleDatasamlingerFromRowAsync(KildeSummary kilde) =>
-        kilde.DatasamlingCount > 0 ? ToggleDatasamlingerAsync(kilde) : Task.CompletedTask;
+    private Task ToggleDatasamlingerFromRowAsync(KildeSummary kilde, MouseEventArgs released)
+    {
+        var pressedAt = _rowPressedAt;
+        _rowPressedAt = null;
+
+        return CanExpand(kilde) && !Dragged(pressedAt, released)
+            ? ToggleDatasamlingerAsync(kilde)
+            : Task.CompletedTask;
+    }
+
+    // Highlighting a code to copy it is not a request to open the drawer. A click with no mousedown
+    // behind it is no drag: nothing travelled across the row, so it opens as a bare press does.
+    private static bool Dragged((double X, double Y)? from, MouseEventArgs to) =>
+        from is { } start
+        && (Math.Abs(to.ClientX - start.X) > RowPressSlack
+            || Math.Abs(to.ClientY - start.Y) > RowPressSlack);
 
     private async Task LoadDatasamlingerAsync(Guid id)
     {

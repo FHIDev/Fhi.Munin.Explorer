@@ -548,15 +548,20 @@ else
                            one of them holds the control the reader is standing on. Without a key the
                            renderer would patch that button into a different kilde's rather than moving
                            it. *@
-                        @* The whole row opens the drawer, because the surface it lights up under the
-                           pointer made it look like a control before it was one. A pointer shortcut and
-                           nothing else: no tabindex, no role, no key handler. (Fhi.Metadata-l9l2n.55) *@
-                        <tr @key="kilde.Id" @onclick="() => ToggleDatasamlingerFromRowAsync(kilde)">
+                        @* The whole row is a pointer shortcut onto the chevron in it: no tabindex, no
+                           role, no key handler. On helsedata.no Stiler lights the row up under the
+                           pointer (Fhi.Metadata-caf5a), which read as a control before it was one. *@
+                        @* mousedown records where the press began and nothing else — a drag-select
+                           across the row's codes ends in a click on the <tr> too, and the drawer must
+                           not open behind a reader copying K_ALS. (Fhi.Metadata-l9l2n.55) *@
+                        <tr @key="kilde.Id"
+                            @onmousedown="RowPressed"
+                            @onclick="e => ToggleDatasamlingerFromRowAsync(kilde, e)">
                             @* Only where there is something to open. Kelda draws no toggle on a
                                kilde with no datasamlinger, and a control that expands to nothing
                                is worse than no control. *@
                             <td class="munin-explorer-kilder__expand">
-                                @if (kilde.DatasamlingCount > 0)
+                                @if (CanExpand(kilde))
                                 {
                                     @* aria-controls only while the panel exists: an IDREF to an element
                                        that is not in the DOM is not a relationship, it is a dangling

@@ -171,8 +171,9 @@ public class KildeSelectionTest : BunitContext
         // row would expand it too.
         var (cut, _) = RenderSelectable(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
-        // The click reaching nobody is the assertion: bUnit throws when no handler takes an event,
-        // and the box has none of its own, so this says the row behind it never saw the press.
+        // Clicked, where KildeSearchTest.StopsTheClick reads the attribute and says why it must: the
+        // box has no click handler of its own, so nothing re-renders the row and disposes the
+        // handler bUnit would bubble to. The click reaching nobody is therefore the assertion.
         Assert.Throws<MissingEventHandlerException>(() => RowBoxes(cut)[0].Click());
 
         RowBoxes(cut)[0].Change(true);
