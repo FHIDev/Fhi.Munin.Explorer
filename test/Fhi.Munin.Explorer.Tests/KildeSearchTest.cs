@@ -1060,6 +1060,22 @@ public class KildeSearchTest : BunitContext
     }
 
     [Fact]
+    public void Row_WhenAClickArrivesWithNoPressBehindIt_ThenItOpensAsABarePressDoes()
+    {
+        // How speech control and some assistive tooling activate an element: a synthetic click, with
+        // no mousedown before it and no coordinates to measure. Nothing travelled across the row, so
+        // it is a press - measuring it against a coordinate left by some other row is the
+        // control-that-does-nothing this bead exists to fix. (Fhi.Metadata-l9l2n.55)
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        RowBody(cut, "Als registeret").Click(new MouseEventArgs());
+
+        Assert.Single(cut.FindAll(".munin-explorer-kilder__expanded"));
+        Assert.Equal("true", ExpandToggle(cut, "Als registeret").GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
     public void Row_WhenTheNameIsPressed_ThenTheKildeOpensAndNoDrawerIsLeftOpenBehindIt()
     {
         // The collision the row handler invites: the name button is inside the row, so a handler on
