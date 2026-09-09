@@ -742,6 +742,29 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   border-radius: 4px;
 }
 
+/* The variabelutforsker's own version of that box, in the Kilde facet, and the one name in this
+   panel that IS ours: `munin-explorer-filters__search`. The selector leads with the element on
+   purpose and the rule is the stand-in for `Fhi.Helsedata.Stiler`'s, declaration for declaration —
+   there the global `input[type="search"]` list is (0,1,1) and would beat a bare class, so a rule
+   written `.munin-explorer-filters__search` would lose its font-size to it. (Fhi.Metadata-l9l2n.66)
+
+   The second rule takes off WebKit's own cancel glyph, which Stiler's does too, so the field does
+   not carry two clear affordances beside the panel's own way of emptying it. */
+input.munin-explorer-filters__search {
+  width: 100%;
+  height: 34px;
+  margin: 8px 0 4px;
+  padding: 0 10px;
+  font-size: 0.875rem;
+  border: 1px solid var(--grey30);
+  border-radius: 7px;
+}
+
+input.munin-explorer-filters__search::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  display: none;
+}
+
 /* ---- not Stiler either: base element styling for the detail panel ----
 
    The same reason as the filter panel above. The panel a row opens is a <dl> of labels and values,

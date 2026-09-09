@@ -436,7 +436,8 @@ internal sealed record Texts(
     // The box that narrows a long facet's own values, and the sentence for when it narrows them to
     // none. The label takes the facet's heading because several boxes can be on screen at once, and
     // controls all announcing "Søk i verdiene" are controls a screen reader cannot tell apart.
-    // Which facets get one is KildeSearch.Filters.cs's answer, not this record's.
+    // Which facets get one is each panel's own answer, not this record's — KildeSearch.Filters.cs
+    // for the kildeutforsker, and the kilde facet alone in VariableSearch.FilterPanel.cs.
     Func<string, string> FacetSearchLabel,
     string FacetSearchPlaceholder,
     string FacetSearchNoMatch,

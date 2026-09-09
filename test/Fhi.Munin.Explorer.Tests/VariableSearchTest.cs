@@ -3157,9 +3157,14 @@ public class VariableSearchTest : BunitContext
     /// Scoped to the panel rather than asserted over the whole markup: "Dataperiode" is also a
     /// results column, so a DoesNotContain over cut.Markup can never pass and would have to be
     /// weakened into meaninglessness to try.
+    /// <para>
+    /// Direct children only, for the reason <see cref="Disclosures"/> has: the kildetype groups
+    /// inside the kilde facet are disclosures too, and counting their summaries here would report
+    /// "Biobank 1" as a facet of the panel. (Fhi.Metadata-l9l2n.67)
+    /// </para>
     /// </remarks>
     private static IReadOnlyList<string> FacetHeadings(IRenderedComponent<VariableSearch> cut) =>
-        [.. cut.FindAll(".munin-explorer-filters summary").Select(s => s.TextContent)];
+        [.. cut.FindAll(".munin-explorer-filters > details > summary").Select(s => s.TextContent)];
 
     private static IReadOnlyList<AngleSharp.Dom.IElement> DateInputs(
         IRenderedComponent<VariableSearch> cut) =>
@@ -3182,6 +3187,31 @@ public class VariableSearchTest : BunitContext
     private static IReadOnlyList<AngleSharp.Dom.IElement> OpenDisclosures(
         IRenderedComponent<VariableSearch> cut) =>
         [.. cut.FindAll(".munin-explorer-filters > details[open]")];
+
+    /// <summary>The kilde facet's own disclosure — the one facet drawn open at first paint.</summary>
+    /// <remarks>
+    /// Matched on the summary rather than on position, because the panel's order is a decision of
+    /// its own and this helper must not quietly follow it somewhere else. <c>StartsWith</c> because
+    /// the heading gains a "(1)" as soon as something inside it is ticked.
+    /// </remarks>
+    private static AngleSharp.Dom.IElement KildeFacet(IRenderedComponent<VariableSearch> cut) =>
+        Disclosures(cut).Single(d => IsKildeHeading(d.FirstElementChild!.TextContent.Trim()));
+
+    private static bool IsKildeHeading(string heading) =>
+        heading == "Kilde" || heading.StartsWith("Kilde (", StringComparison.Ordinal);
+
+    /// <summary>What the kilde facet's own summary says, count and all.</summary>
+    private static string KildeHeading(IRenderedComponent<VariableSearch> cut) =>
+        KildeFacet(cut).FirstElementChild!.TextContent.Trim();
+
+    /// <summary>The kildetype groups inside the kilde facet, in the order they are drawn.</summary>
+    private static IReadOnlyList<AngleSharp.Dom.IElement> KildeTypeGroups(
+        IRenderedComponent<VariableSearch> cut) =>
+        [.. KildeFacet(cut).QuerySelectorAll("ul > li > details")];
+
+    /// <summary>The box that narrows the kilde facet's own values.</summary>
+    private static AngleSharp.Dom.IElement KildeSearchField(IRenderedComponent<VariableSearch> cut) =>
+        cut.Find(".munin-explorer-filters input.munin-explorer-filters__search");
 
     /// <summary>An answer with nothing in any facet, which is what a selection matching nothing gets.</summary>
     private static FilterOptions NothingLeft() => new() { TotalCount = 0 };
@@ -3327,10 +3357,208 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
+    public void Filter_AtFirstPaint_ThenExactlyOneFacetIsOpenAndItIsKilde()
+    {
+        // The COUNT, and not merely that Kilde is open: the panel used to open with every facet
+        // expanded, which is what pushed the results off the screen — and "all open" satisfies
+        // "Kilde is open" while being the whole defect. (Fhi.Metadata-l9l2n.67)
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        var open = OpenDisclosures(cut);
+
+        Assert.Single(open);
+        Assert.Equal("Kilde", open[0].FirstElementChild!.TextContent.Trim());
+
+        // The others are drawn, closed, rather than gone: a panel with one facet in it would also
+        // pass the assertion above.
+        Assert.True(Disclosures(cut).Count > 1, $"expected the other facets, got {Disclosures(cut).Count}");
+    }
+
+    [Fact]
+    public void Filter_AtFirstPaint_ThenTheKildeFacetIsOpenAndItsSearchFieldIsTheFirstThingInIt()
+    {
+        // THE TRAP: collapsing Kilde with the rest reads as tidier and removes precisely what was
+        // asked for. The search has to be reachable without a press, so nothing focusable may come
+        // between the facet's own summary and the box. (Fhi.Metadata-l9l2n.67)
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        var kilde = KildeFacet(cut);
+
+        Assert.True(kilde.HasAttribute("open"));
+
+        // The facet's own summary is the disclosure control rather than something inside it; every
+        // other summary here belongs to a kildetype group and is deliberately still counted.
+        var focusable = kilde
+            .QuerySelectorAll("summary, input, button, select, textarea, a[href]")
+            .Where(e => !(ReferenceEquals(e.ParentElement, kilde)
+                          && string.Equals(e.TagName, "SUMMARY", StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+
+        Assert.NotEmpty(focusable);
+        Assert.Equal("search", focusable[0].GetAttribute("type"));
+
+        // Spelled as Fhi.Metadata-l9l2n.66 settled it, and on an <input>: Stiler's rule leads with
+        // the element, so the name on anything else loses its font-size to the global search list.
+        Assert.Equal("munin-explorer-filters__search", focusable[0].ClassName);
+        Assert.Equal("INPUT", focusable[0].TagName.ToUpperInvariant());
+
+        // A real label rather than the placeholder beside it, which names nothing.
+        Assert.Equal("Søk i Kilde", AccessibleName.Of(focusable[0]));
+    }
+
+    [Fact]
+    public void Filter_AtFirstPaint_ThenTheKildetypeGroupsAreClosedDisclosuresRatherThanButtons()
+    {
+        // Built as <details>/<summary>, so the marker, the open state and the focus ring are the
+        // ones a host already draws for `.munin-explorer-filters summary`. A button with a chevron
+        // of its own looks identical in a mockup and costs a Stiler round. (Fhi.Metadata-l9l2n.67)
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        var groups = KildeTypeGroups(cut);
+
+        Assert.Equal(["Sentralt helseregister 1", "Biobank 1"],
+                     groups.Select(g => g.FirstElementChild!.TextContent.Trim()));
+
+        Assert.All(groups, g => Assert.False(g.HasAttribute("open")));
+        Assert.All(groups, g => Assert.Equal("SUMMARY", g.FirstElementChild!.TagName.ToUpperInvariant()));
+
+        // No class on the disclosure and no control inside the summary: either is the tell that a
+        // chevron was drawn by hand, which is what would need a name and a rule of its own.
+        Assert.All(groups, g => Assert.False(g.HasAttribute("class")));
+        Assert.Empty(KildeFacet(cut).QuerySelectorAll("summary button, summary [role='button']"));
+    }
+
+    [Fact]
+    public void Filter_AtFirstPaint_ThenAKildetypeGroupsCountWearsTheNameTheFacetSummariesAlreadyUse()
+    {
+        // The existing `munin-explorer-filters__chosen`, whose rule holds the tabular figures: two
+        // counts of different digit widths above one another otherwise shift as the facet is
+        // narrowed. A name of its own here would be the cross-repository split this bead avoids.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        var count = KildeTypeGroups(cut)[0].FirstElementChild!.QuerySelector("span")!;
+
+        Assert.Equal("munin-explorer-filters__chosen", count.ClassName);
+        Assert.Equal("1", count.TextContent);
+
+        // The space belongs to the summary rather than to the span, or the group would be
+        // announced as "Sentralt helseregister1".
+        Assert.Equal("Sentralt helseregister 1", KildeTypeGroups(cut)[0].FirstElementChild!.TextContent);
+    }
+
+    [Fact]
+    public void Filter_WhenTheKildeSearchIsUsed_ThenItNarrowsThePanelAndNeverTheFilter()
+    {
+        // A kilde ticked and then typed out of sight is still narrowing the list, so unticking it
+        // here would drop a choice the reader never released. (Fhi.Metadata-l9l2n.67)
+        VariableFilter? reported = null;
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))),
+                             b => b.Add(c => c.FilterChanged, f => reported = f));
+
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        KildeSearchField(cut).Change("tromsø");
+
+        Assert.DoesNotContain("Dødsårsaksregisteret", KildeFacet(cut).TextContent, StringComparison.Ordinal);
+        Assert.Contains("Tromsøundersøkelsen", KildeFacet(cut).TextContent, StringComparison.Ordinal);
+        Assert.Equal([Dodsarsak], reported!.KildeIds);
+
+        // And it comes back with its tick on when the box is emptied.
+        KildeSearchField(cut).Change("");
+
+        Assert.True(FacetChosen(cut, "Dødsårsaksregisteret"));
+    }
+
+    [Fact]
+    public void Filter_WhenTheKildeSearchHidesAChosenKilde_ThenTheHeadingStillCountsIt()
+    {
+        // The summary is counted over the answer rather than over the values the box left, or the
+        // facet would say nothing while it is still narrowing — the defect ChosenCount exists for.
+        // (Fhi.Metadata-uidue)
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        Assert.Equal("Kilde (1)", KildeHeading(cut));
+
+        KildeSearchField(cut).Change("tromsø");
+
+        Assert.Equal("Kilde (1)", KildeHeading(cut));
+    }
+
+    [Fact]
+    public void Filter_WhenTheKildeSearchNarrowsTheFacet_ThenFocusIsPutBackOnTheBox()
+    {
+        // onchange fires because focus has left the box, so a reader who commits a narrowing term
+        // with Tab is standing on a summary or a checkbox this render removes, and focus falls to
+        // <body>. (Fhi.Metadata-6we8a)
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        KildeSearchField(cut).Change("tromsø");
+
+        JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus");
+    }
+
+    [Fact]
+    public void Filter_WhenTheKildeSearchRemovesNothing_ThenFocusIsLeftWhereTheReaderPutIt()
+    {
+        // The other half of the bargain: a commit that widens the facet, or that leaves every drawn
+        // kilde standing, took nothing away, and the reader who clicked into something else is
+        // already there.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        KildeSearchField(cut).Change("");
+
+        Assert.Empty(JSInterop.Invocations["Blazor._internal.domWrapper.focus"]);
+    }
+
+    [Fact]
+    public void Filter_WhenTheKildeSearchNamesADelkilde_ThenItsKildeIsKept()
+    {
+        // Matched over the delkilder too, or a reader typing a name they can see in the tree in
+        // front of them would empty the facet.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        KildeSearchField(cut).Change("Første besøk");
+
+        Assert.Contains("Tromsøundersøkelsen", KildeFacet(cut).TextContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("Dødsårsaksregisteret", KildeFacet(cut).TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Filter_WhenTheKildeSearchMatchesNothing_ThenTheFacetAndItsBoxAreStillDrawn()
+    {
+        // A facet dropped as empty would take the box the term has to be widened in with it, which
+        // is a dead end reachable by typing.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        KildeSearchField(cut).Change("zzz");
+
+        Assert.Contains("Ingen verdier passer søket", KildeFacet(cut).TextContent, StringComparison.Ordinal);
+        Assert.Empty(KildeTypeGroups(cut));
+
+        // Find throws when the box has gone, which is the failure this test is about; the value is
+        // asserted so the term the reader has to widen is still in front of them.
+        Assert.Equal("zzz", KildeSearchField(cut).GetAttribute("value"));
+    }
+
+    [Fact]
+    public void Render_Always_ThenTheKildeSearchFieldsRuleLeadsWithTheElement()
+    {
+        // The stand-in has to be shaped like Stiler's, and this is the part of that shape a reader
+        // cannot see: their global `input[type=search]` list is (0,1,1), so a class-only rule loses
+        // its font-size to it and the field draws at 18px where 14px was measured. (Fhi.Metadata-l9l2n.66)
+        var rules = HostClassNames.SampleDeclarationsFor("munin-explorer-filters__search");
+
+        Assert.NotEmpty(rules);
+        Assert.All(rules, rule => Assert.StartsWith("input.", rule.Selector, StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Filter_WhenExpandAllIsPressed_ThenEveryFacetIsOpen()
     {
         // The one thing a native <details> cannot do for itself, and the reason the open attribute
-        // stopped being a constant. Only kildetype and kilde start open. (Fhi.Metadata-wcbxi)
+        // stopped being a constant. Only kilde starts open. (Fhi.Metadata-wcbxi)
         var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
 
         Assert.NotEqual(Disclosures(cut).Count, OpenDisclosures(cut).Count);
@@ -3338,6 +3566,11 @@ public class VariableSearchTest : BunitContext
         ClickFacet(cut, "Utvid alle");
 
         Assert.Equal(Disclosures(cut).Count, OpenDisclosures(cut).Count);
+
+        // The kildetype groups too. Disclosures() counts direct children of the panel alone, so
+        // without this the press could leave every group folded and the suite would stay green.
+        Assert.NotEmpty(KildeTypeGroups(cut));
+        Assert.All(KildeTypeGroups(cut), group => Assert.True(group.HasAttribute("open")));
     }
 
     [Fact]
@@ -3351,6 +3584,11 @@ public class VariableSearchTest : BunitContext
         ClickFacet(cut, "Skjul alle");
 
         Assert.Empty(OpenDisclosures(cut));
+
+        // Skjul alle reaches the kildetype groups as well — the panel is unfolded to hundreds of
+        // rows without them, which is the state there has to be a way back from.
+        Assert.NotEmpty(KildeTypeGroups(cut));
+        Assert.All(KildeTypeGroups(cut), group => Assert.False(group.HasAttribute("open")));
     }
 
     [Fact]
@@ -3881,7 +4119,10 @@ public class VariableSearchTest : BunitContext
         var cut = RenderWith(new FilteringClient(
             OnePage(Variable("1. Tale", "KODE")), facets, vocabulary: CategoryWords()));
 
-        var headings = cut.FindAll(".munin-explorer-filters summary").Select(s => s.TextContent).ToList();
+        // The facet summaries alone: a kildetype group inside the kilde facet is a disclosure of
+        // its own since Fhi.Metadata-l9l2n.67, and only a facet's summary wears the label span.
+        var headings = cut.FindAll(".munin-explorer-filters details > summary > .form-element__label")
+            .Select(label => label.TextContent).ToList();
 
         // Datakategori third: the two above it are in helsedata's own order and were not moved.
         Assert.Equal(2, headings.FindIndex(h => h.StartsWith("Datakategori", StringComparison.Ordinal)));
@@ -3921,9 +4162,12 @@ public class VariableSearchTest : BunitContext
             TotalCount = 42
         }));
 
-        // A heading names a level and does not filter, so it is text in the li rather than a label.
-        var unnamed = cut.FindAll(".munin-explorer-filters li")
-            .Single(li => li.ChildNodes[0].TextContent.Trim() == "Ikke oppgitt");
+        // A heading names a level and does not filter, so it is a summary rather than a label — the
+        // group is a disclosure over its kilder since Fhi.Metadata-l9l2n.67, and the name is the
+        // summary's own first node, ahead of the count span.
+        var unnamed = cut.FindAll(".munin-explorer-filters summary")
+            .Single(summary => summary.ChildNodes[0].TextContent.Trim() == "Ikke oppgitt")
+            .ParentElement!;
 
         Assert.Equal(["Dødsårsaksregisteret (30)"],
                      unnamed.QuerySelectorAll("ul > li > label").Select(label => label.TextContent));
