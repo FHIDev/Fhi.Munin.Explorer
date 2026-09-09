@@ -199,7 +199,10 @@ These are not style preferences — each one is a host that breaks otherwise.
   do not copy that, because it is the defect `Fhi.Metadata-wcbxi` was filed for. What the two do
   agree on is the 1px width and the extent: the line runs a group's full height and ends at the
   bottom of its last child rather than stopping short of it. The indent step differs — 20px per
-  level here against Runa's 16px — and that is the host stylesheet's number, not the package's.
+  level against Runa's 16px — and 20px is a number measured in the two sample stylesheets, whose
+  `.munin-explorer-filters ul` sets it, rather than one this package ships. What
+  `Fhi.Helsedata.Stiler` indents by on helsedata.no is unmeasured here, because nothing in this
+  repository reads Stiler.
 
   Every name in the `munin-explorer` prefix is ours. That is worth saying because it used not to
   be: under the old prefix six names were helsedata's — the container, the results column, the

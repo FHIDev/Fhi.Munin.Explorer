@@ -554,11 +554,12 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 .munin-explorer-filters li > label input[type="checkbox"] { margin-top: 4px; flex: none; }
 
-/* Nivålinjer: one guide line per level of the tree, drawn only while the reader has the toggle on.
-   The package emits `data-level-lines` on the panel instead of a class name of its own. Not because
-   a class would render badly — one on a <ul> that already exists renders as it does today — but
-   because a name is inventory the README, these two files and the name guard all have to carry, and
-   a state marker owes none of that. Nested lists only: the top level has nothing to sit under.
+/* Nivålinjer: one guide line per level of the tree, drawn from first paint — the toggle takes them
+   away rather than putting them there. The package emits `data-level-lines` on the panel instead of
+   a class name of its own. Not because a class would render badly — one on a <ul> that already
+   exists renders as it does today — but because a name is inventory the README, these two files and
+   the name guard all have to carry, and a state marker owes none of that. Nested lists only: the
+   top level has nothing to sit under.
 
    --grey60 rather than the --grey30 the other borders in this block use. A guide line is a
    non-text control under WCAG 1.4.11 and has to clear 3:1 against what is behind it, which here is

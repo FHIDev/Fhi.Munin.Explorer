@@ -623,12 +623,12 @@ public partial class VariableSearch
         _foldGeneration++;
     }
 
-    /// <summary>Whether the tree draws a guide line per level. Seeded from the host's parameter.</summary>
+    /// <summary>Whether the tree draws a guide line per level.</summary>
     /// <remarks>
-    /// Initialised to the parameter's own default so the two cannot disagree about the resting
-    /// state, which is on — Runa's tree draws its guides without being asked and so does this one.
+    /// No initialiser on purpose: <see cref="LevelLines"/> is copied in here before the first
+    /// render, so the parameter's default is the only place the resting state is written down.
     /// </remarks>
-    private bool _levelLines = true;
+    private bool _levelLines;
 
     /// <summary>
     /// The panel's marker for the level lines, or null — an omitted attribute — while they are off.
