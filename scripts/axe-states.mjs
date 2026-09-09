@@ -1,6 +1,8 @@
 // The page states the accessibility scan visits beyond a plain page load: a name, and a function
 // that drives a loaded page into it. Add one here and as a `path::state` target in
-// check-accessibility.sh. Why at all: AGENTS.md, "It scans states, not only pages".
+// check-accessibility.sh — or in check-hostile-host.sh, for a state that stages boxes rather than
+// an accessibility tree, since geometry-scan.mjs reads this same list. Why at all: AGENTS.md,
+// "It scans states, not only pages".
 //
 // Controls are found by the name a reader presses them under, from `Texts.cs` in Norwegian since
 // both samples mount with `Language="no"`. A control this file cannot find stops the scan as a
@@ -154,6 +156,39 @@ export const states = {
       .locator('.munin-explorer-kilder thead th', { hasText: 'Dataansvarlig' })
       .first()
       .waitFor({ state: 'visible', timeout: findTimeout });
+  },
+
+  // The kilder table with all three of its count columns drawn. Delkilder sits in the component's
+  // hidden set, so the list as it loads shows two of the three, and the geometry pin on Stiler's
+  // alignment rule would otherwise never measure that column at all (Fhi.Metadata-y7ilr).
+  'kilder-counts': async page => {
+    await rowsArePresent(page, 'button.munin-explorer-kilder__name');
+
+    const picker = page.locator('.munin-explorer-header details').first();
+    await picker.waitFor({ state: 'visible', timeout: findTimeout });
+    await picker.locator('summary').click();
+
+    // By text rather than press(), for the reason kilder-columns above gives: the toggles' ::before
+    // glyph is in Playwright's accessible name and not in the browser's.
+    const toggle = picker
+      .locator('.dropdown-choicepicker__item button', { hasText: 'Delkilder' })
+      .first();
+    await toggle.waitFor({ state: 'visible', timeout: findTimeout });
+    await toggle.click();
+
+    await page
+      .locator('.munin-explorer-kilder thead th', { hasText: 'Delkilder' })
+      .first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
+
+    // Folded again before anything is measured: this state is here for the table, and every
+    // geometry assertion would otherwise be measuring a dropdown hanging open over it.
+    if (await picker.evaluate(el => el.open)) {
+      await picker.locator('summary').click();
+    }
+    if (await picker.evaluate(el => el.open)) {
+      throw new Error('The column picker stayed open after its summary was pressed');
+    }
   },
 
   // The kildeutforsker's facet panel: a second facet opened from the keyboard, then a value ticked

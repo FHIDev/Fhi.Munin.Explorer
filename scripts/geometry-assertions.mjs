@@ -396,7 +396,10 @@ export const assertions = [
   {
     name: "the kilder table's counts are right-aligned in their column",
     kind: 'pin',
-    states: ['kilder-list'],
+    // Both kilder states, because the columns differ: `kilder-list` draws Datasamlinger and
+    // Variabler, and Delkilder — hidden by default — is only drawn in `kilder-counts`, which is a
+    // target of check-hostile-host.sh for that reason alone.
+    states: ['kilder-list', 'kilder-counts'],
     // Nothing else in this repository can see this. The right alignment and the tabular figures
     // come entirely from Stiler's `.munin-explorer-kilder .munin-explorer-kilder__count`: a unit
     // test can only say the class is on the cell, and the sample stylesheets are a stand-in no
@@ -408,10 +411,11 @@ export const assertions = [
     // contents are aligned, so an assertion written against the cell's own rect passes with the
     // alignment fully gone. A Range over the cell's contents is the thing that moves.
     //
-    // Two measurements, because agreement down a column can be vacuous. Measured with the rule
-    // taken away: Datasamlinger spreads 9px and Variabler 27px, while Delkilder still agrees
-    // exactly, because 0, 0, 0, 0 and 5 are all one digit wide. Flush against the cell's own
-    // content edge is what fails in that column, and it needs no second row to say so.
+    // Two measurements, because agreement down a column can be vacuous. With the rule taken away
+    // the figures fall to the cell's left edge, and the fixture's Datasamlinger (9, 6, 1, 0, 14)
+    // and Variabler (240, 630, 23, 0, 5752) then spread by the digits they differ in — while
+    // Delkilder (0, 0, 0, 0, 5) still agrees exactly. Flush against the cell's own content edge is
+    // what fails in that column, and it needs no second row to say so.
     body: () => {
       const tables = [...document.querySelectorAll('table.munin-explorer-kilder')];
       if (tables.length === 0) return 'no kilder table on the page — nothing was measured';
