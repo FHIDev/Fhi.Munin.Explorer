@@ -70,10 +70,6 @@ internal sealed class GuardRepository : IDisposable
             RedirectStandardError = true,
         };
 
-        // An inherited GIT_DIR outranks WorkingDirectory, so without this the temp repository is
-        // not the repository these commands act on (Fhi.Metadata-fj5vv).
-        Guard.ClearInheritedGit(start);
-
         foreach (var setting in new[]
                  {
                      "user.name=Guard Test",
