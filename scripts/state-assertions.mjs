@@ -19,8 +19,8 @@
 //     and deliberately left out: FetchRowsAsync renders once with the new filter before it asks, so
 //     the render after the rollback differs from the render before it and the DOM is corrected
 //     whether or not the call is there. An assertion on that path would hold either way, which is
-//     no assertion at all — and it is why the comment in VariableSearch.FilterPanel.cs naming both
-//     paths overstates the second;
+//     no assertion at all — and it is why the comment beside that call names only the path the
+//     call is load-bearing on;
 //   - whether the control LOOKS ticked. This reads `input.checked` and `aria-pressed`, which is
 //     what a screen reader is told; a stylesheet drawing a mark of its own over the top is the
 //     layout gate's business, not this one's.
@@ -274,26 +274,35 @@ export const assertions = [
         // every other facet's counts, and a value that drops out of the list takes its keyed <li>
         // and the DOM state being measured with it.
         await stub.hold(SEARCH, HOLD_MS);
-        await box.click();
 
-        // `aria-busy` on the panel is `_loading` itself — the very flag ApplyFilterAsync drops a
-        // press on — so waiting for it is waiting for the precondition rather than guessing at it
-        // with a sleep. Without it the second press is an ordinary toggle and this stages nothing.
-        await panel.and(page.locator('[aria-busy="true"]'))
-          .waitFor({ state: 'visible', timeout: findTimeout });
+        // Armed here and spent by the page, so a throw before the fetch takes it would leave it
+        // standing — and an unspent hold stops the NEXT run's pre-flight for a reason that belongs
+        // to this one. Dropping one the fetch has already taken is a no-op.
+        try {
+          await box.click();
 
-        await box.click();
+          // `aria-busy` on the panel is `_loading` itself — the very flag ApplyFilterAsync drops a
+          // press on — so waiting for it is waiting for the precondition rather than guessing at it
+          // with a sleep. Without it the second press is an ordinary toggle and this stages nothing.
+          await panel.and(page.locator('[aria-busy="true"]'))
+            .waitFor({ state: 'visible', timeout: findTimeout });
 
-        // And out the other side, which is the render after the held fetch lands. Measuring before
-        // it would read the DOM while the press's own render was still in flight — and that render
-        // is exactly what the working case writes and the broken one does not.
-        await panel.and(page.locator('[aria-busy="false"]'))
-          .waitFor({ state: 'visible', timeout: HOLD_MS + findTimeout });
+          await box.click();
 
-        // Read back rather than assumed spent. A hold nothing ever asked for would leave a press
-        // that was never dropped looking exactly like one that was, and every line below would hold.
-        if ((await stub.holding()).some(one => one.path === SEARCH)) {
-          throw new Error(`the press did not refetch ${SEARCH}, so nothing was dropped`);
+          // And out the other side, which is the render after the held fetch lands. Measuring
+          // before it would read the DOM while the press's own render was still in flight — and
+          // that render is exactly what the working case writes and the broken one does not.
+          await panel.and(page.locator('[aria-busy="false"]'))
+            .waitFor({ state: 'visible', timeout: HOLD_MS + findTimeout });
+
+          // Read back rather than assumed spent. A hold nothing ever asked for would leave a press
+          // that was never dropped looking exactly like one that was, and every line below would
+          // hold.
+          if ((await stub.holding()).some(one => one.path === SEARCH)) {
+            throw new Error(`the press did not refetch ${SEARCH}, so nothing was dropped`);
+          }
+        } finally {
+          await stub.release();
         }
 
         return { index };

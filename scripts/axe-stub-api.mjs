@@ -88,6 +88,7 @@ function pagedListVariables(body, query) {
 // route interception never sees it and cannot slow it down.
 //   POST /__stub/hold-next?path=/api/explorer/variables&ms=6000
 //   GET  /__stub/hold-next  ->  {"held":[{"path":...,"ms":...}]}
+//   DELETE /__stub/hold-next  ->  drops every unspent hold, for a staging that armed one and threw
 // Read back rather than assumed spent: a hold nothing ever asked for would leave a press that was
 // never in flight looking exactly like one that was.
 const held = [];
@@ -101,6 +102,10 @@ function control(url, request, response) {
       return;
     }
     held.push({ path, ms });
+  }
+
+  if (request.method === 'DELETE') {
+    held.length = 0;
   }
 
   response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ held }));

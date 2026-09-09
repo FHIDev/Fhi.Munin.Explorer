@@ -19,6 +19,8 @@
 // No widths: nothing here is about layout, so a second viewport would be a second copy of the same
 // answer at twice the wall clock.
 import { chromium } from 'playwright';
+import { states } from './axe-states.mjs';
+import { assertions } from './state-assertions.mjs';
 
 // PLAYWRIGHT_BROWSER_CHANNEL=msedge runs an installed browser instead of the bundled chromium, on
 // the same terms as the sibling scans: `playwright install chromium` cannot complete on Node 26,
@@ -27,8 +29,6 @@ const launchOptions = () => {
   const channel = process.env.PLAYWRIGHT_BROWSER_CHANNEL;
   return channel ? { channel } : {};
 };
-import { states } from './axe-states.mjs';
-import { assertions } from './state-assertions.mjs';
 
 const targets = process.argv.slice(2);
 const settleMs = Number(process.env.ACCESSIBILITY_SETTLE_MS ?? 4000);
@@ -55,6 +55,12 @@ const stub = {
     const response = await fetch(`${stubBase}/__stub/hold-next?${query}`, { method: 'POST' });
     if (!response.ok) {
       throw new Error(`the stub would not hold ${path}: ${response.status}`);
+    }
+  },
+  async release() {
+    const response = await fetch(`${stubBase}/__stub/hold-next`, { method: 'DELETE' });
+    if (!response.ok) {
+      throw new Error(`the stub would not drop what it is holding: ${response.status}`);
     }
   },
   async holding() {
