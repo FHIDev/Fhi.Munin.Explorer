@@ -752,6 +752,14 @@ else
                                                 <h3 class="headline headline-xxs margin--none munin-explorer-group">@T.GroupIdentification</h3>
 
                                                 <dl class="munin-explorer-meta__grid munin-explorer-meta__grid-1">
+                                                    @* Out of the hit list and in here: a code does
+                                                       not help a reader CHOOSE a variable, it is
+                                                       what they ask for once they have. *@
+                                                    <div>
+                                                        <dt class="headline headline-xxs margin--none">@T.FieldCode</dt>
+                                                        <dd>@DetailValue(detail.Code)</dd>
+                                                    </div>
+
                                                     <div>
                                                         <dt class="headline headline-xxs margin--none">@T.FieldDescription</dt>
                                                         <dd>@DetailValue(detail.Description)</dd>

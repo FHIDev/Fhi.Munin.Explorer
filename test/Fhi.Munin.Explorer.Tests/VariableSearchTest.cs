@@ -143,7 +143,7 @@ public class VariableSearchTest : BunitContext
 
         Assert.Equal(2, cut.FindAll("ul.munin-explorer-data-list > li").Count);
         Assert.Contains("1. Tale", cut.Markup);
-        Assert.Contains("V_ALS.F1.ALSFRSR1TALE", cut.Markup);
+        Assert.Contains("2. Spyttsekresjon", cut.Markup);
         Assert.Contains("2 variabler", cut.Markup);
     }
 
@@ -721,14 +721,16 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
-    public void Render_Always_ThenEveryColumnButStatusStartsOnScreen()
+    public void Render_Always_ThenEveryColumnButKodeAndStatusStartsOnScreen()
     {
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        // Status is the one exception, and it is the filter's doing rather than the picker's:
-        // with historical variables excluded every row would say "Active", and a column that says
-        // the same word on every row is furniture. See ShowStatusColumn.
-        Assert.Equal([true, true, true, true, true, false, true],
+        // Two exceptions, for two different reasons. Kode is off because a code does not help a
+        // reader choose a variable and is the widest column in the row — it is in the open panel
+        // and in the picker instead. Status is the filter's doing rather than the picker's: with
+        // historical variables excluded every row would say "Active", and a column that says the
+        // same word on every row is furniture. See ShowStatusColumn.
+        Assert.Equal([false, true, true, true, true, false, true],
                      ColumnToggles(cut).Select(Ticked));
     }
 
@@ -740,11 +742,36 @@ public class VariableSearchTest : BunitContext
         // every column after it in every row sits under the wrong name.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        ToggleColumn(cut, "Kode");
+        ToggleColumn(cut, "Kilde");
+
+        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__source"));
+        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main__source"));
+        Assert.False(Ticked(ColumnToggle(cut, "Kilde")));
+    }
+
+    [Fact]
+    public void Columns_WhenTheListIsFirstDrawn_ThenTheCodeIsNotAColumnButIsInTheOpenPanel()
+    {
+        // The three states the code has to be in, asserted together because the whole change is
+        // that they differ: gone from the hit list, still reachable, and still offered. A code
+        // identifies a variable rather than helping anyone choose one, and it is the widest of the
+        // eight columns, so the width goes to the name and the datasamling.
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "V_ALS.F1.TALE"))));
 
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__code"));
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main__code"));
         Assert.False(Ticked(ColumnToggle(cut, "Kode")));
+
+        // Offered, and it comes on when pressed — a picker entry that did nothing would be worse
+        // than not offering the column at all.
+        ToggleColumn(cut, "Kode");
+
+        Assert.NotNull(cut.Find(".munin-explorer-dataitem-header__code"));
+        Assert.Equal("V_ALS.F1.TALE", CellText(cut, "code"));
+
+        ToggleColumn(cut, "Kode");
+
+        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main__code"));
     }
 
     /// <summary>The text of one named column's cell in the first result row.</summary>
@@ -764,6 +791,9 @@ public class VariableSearchTest : BunitContext
             VariabelgruppeName = "Bakgrunn"
         })));
 
+        // Kode first, because it starts off: the sequence numbers have to hold for the cell that
+        // arrives late as much as for the ones that were there from the first render.
+        ToggleColumn(cut, "Kode");
         ToggleColumn(cut, "Datasamling");
         ToggleColumn(cut, "Datasamling");
 
@@ -794,8 +824,8 @@ public class VariableSearchTest : BunitContext
     {
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        // Status is already off, so five presses leave Dataperiode alone.
-        foreach (var column in new[] { "Kode", "Kilde", "Datasamling", "Variabelgruppe", "Datatype" })
+        // Kode and Status are already off, so four presses leave Dataperiode alone.
+        foreach (var column in new[] { "Kilde", "Datasamling", "Variabelgruppe", "Datatype" })
         {
             ToggleColumn(cut, column);
         }
@@ -826,7 +856,7 @@ public class VariableSearchTest : BunitContext
     {
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        foreach (var column in new[] { "Kode", "Kilde", "Datasamling", "Variabelgruppe", "Datatype" })
+        foreach (var column in new[] { "Kilde", "Datasamling", "Variabelgruppe", "Datatype" })
         {
             ToggleColumn(cut, column);
         }
@@ -844,8 +874,9 @@ public class VariableSearchTest : BunitContext
         //
         // The shell guard reads literals out of src/, finds only the
         // munin-explorer-dataitem-main__ stem, and drops it, correctly: a stem is not a name. And
-        // the Orphans call further down renders the DEFAULT column set, which leaves Status out
-        // until a reader turns it on. So the composed names went unchecked from both directions.
+        // the Orphans call further down renders the DEFAULT column set, which leaves Kode and
+        // Status out until a reader turns them on. So the composed names went unchecked from both
+        // directions.
         //
         // That was harmless while they were helsedata's names, listed in host-class-names.txt and
         // styled by their stylesheet. After the rename they are ours, the sample stylesheet is the
@@ -853,7 +884,7 @@ public class VariableSearchTest : BunitContext
         // twice. Rendering with every optional column on is what makes them exist to be checked.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        foreach (var column in new[] { "Status" })
+        foreach (var column in new[] { "Kode", "Status" })
         {
             ToggleColumn(cut, column);
         }
@@ -958,7 +989,8 @@ public class VariableSearchTest : BunitContext
 
         // One header row of column headers, and one data row per result.
         Assert.Equal("row", cut.Find(".munin-explorer-dataitem-header").GetAttribute("role"));
-        Assert.Equal(7, cut.FindAll("[role='columnheader']").Count);
+        // Navn plus the five optional columns that start on — Kode and Status start off.
+        Assert.Equal(6, cut.FindAll("[role='columnheader']").Count);
 
         var row = cut.Find("li.munin-explorer-data-list__item");
 
@@ -967,7 +999,7 @@ public class VariableSearchTest : BunitContext
         // The name is the row's header, the way Kelda's <th scope="row"> is.
         Assert.Equal("rowheader",
                      row.QuerySelector(".munin-explorer-dataitem-main__name")!.GetAttribute("role"));
-        Assert.Equal(6, row.QuerySelectorAll("[role='cell']").Length);
+        Assert.Equal(5, row.QuerySelectorAll("[role='cell']").Length);
 
         // The two wrappers between the row and its cells are layout only. They have to say so, or
         // they sit in the tree as anonymous groups between a row and the columns it owns.
@@ -1128,12 +1160,13 @@ public class VariableSearchTest : BunitContext
         // row unless historical variables are in the list — but a reader who has hidden the other
         // six has made it the last column, and a filter nobody associates with columns must not
         // then empty every row down to its name. Deleting this brings that state back, reachable in
-        // seven presses and explained by nothing on screen.
+        // six presses and explained by nothing on screen — Kode is already off, so the reader only
+        // has to clear the five that are on.
         var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
 
         ClickFacet(cut, "Vis historiske");
 
-        foreach (var column in new[] { "Kode", "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Dataperiode" })
+        foreach (var column in new[] { "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Dataperiode" })
         {
             ToggleColumn(cut, column);
         }
@@ -1157,7 +1190,7 @@ public class VariableSearchTest : BunitContext
 
         ClickFacet(cut, "Vis historiske");
 
-        foreach (var column in new[] { "Kode", "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Dataperiode" })
+        foreach (var column in new[] { "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Dataperiode" })
         {
             ToggleColumn(cut, column);
         }
@@ -1611,6 +1644,11 @@ public class VariableSearchTest : BunitContext
         // A table had column headers doing this job. A card has nothing, and "Inklusjon" on
         // its own does not say which field it is.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "V_ALS.F1.TALE"))));
+
+        // Kode is the column this rule is asserted on, and it starts off, so it is turned on here
+        // rather than the assertion being moved to a column that happens to be visible: the label
+        // has to travel with a cell the reader asked for as much as with one that was there.
+        ToggleColumn(cut, "Kode");
 
         var info = cut.Find(".munin-explorer-dataitem-main").TextContent;
 
@@ -7879,31 +7917,56 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
+    public void Detail_WhenARowIsOpened_ThenTheCodeIsThereWhateverThePickerSaysAboutTheColumn()
+    {
+        // Where the code went when it left the hit list, and the half of that move a picker test
+        // cannot see: the panel carries it unconditionally, because this is the moment a reader
+        // has found their variable and is asking for it by name. Turning the column on and off
+        // above the list must not reach in here — delete this and hiding the column could take
+        // the code off the screen entirely, which is the one outcome the move must not have.
+        var cut = RenderWith(TwoRows());
+
+        Toggles(cut)[0].Click();
+
+        Assert.Equal("Kode", Panel(cut).QuerySelector("dl dt")!.TextContent);
+        Assert.Equal("V_ALS.F1.1. Tale", Values(cut)[0].TextContent);
+
+        ToggleColumn(cut, "Kode");
+
+        Assert.Equal("V_ALS.F1.1. Tale", Values(cut)[0].TextContent);
+
+        ToggleColumn(cut, "Kode");
+
+        Assert.Equal("V_ALS.F1.1. Tale", Values(cut)[0].TextContent);
+    }
+
+    [Fact]
     public void Detail_WhenTheDetailArrives_ThenItSaysWhatTheVariableIsAndWhereItSits()
     {
-        // The five things the panel exists to show. The labels are the card's own words for the
+        // The six things the panel exists to show. The labels are the card's own words for the
         // same fields, so opening a row renames nothing that was already on screen.
         var cut = RenderWith(TwoRows());
 
         Toggles(cut)[0].Click();
 
-        Assert.Equal(["Beskrivelse", "Kildesti", "Variabelgruppe", "Dataperiode"],
+        Assert.Equal(["Kode", "Beskrivelse", "Kildesti", "Variabelgruppe", "Dataperiode"],
                      Panel(cut).QuerySelectorAll("dl dt").Select(t => t.TextContent));
 
         var values = Values(cut);
 
-        Assert.Equal("Angir pasientens grad av utfall på «1. Tale».", values[0].TextContent);
+        Assert.Equal("V_ALS.F1.1. Tale", values[0].TextContent);
+        Assert.Equal("Angir pasientens grad av utfall på «1. Tale».", values[1].TextContent);
         // The period reads as month and year now, and carries a bar beneath it. Runa's format.
-        Assert.Contains("2010", values[3].TextContent);
-        Assert.Contains("2025", values[3].TextContent);
-        Assert.NotNull(values[3].QuerySelector(".munin-explorer-period__fill"));
+        Assert.Contains("2010", values[4].TextContent);
+        Assert.Contains("2025", values[4].TextContent);
+        Assert.NotNull(values[4].QuerySelector(".munin-explorer-period__fill"));
 
         // Widest first, and the kilde's short name alongside its full one — the card has room for
         // neither the kildetype above it nor the abbreviation the register is known by.
         Assert.Equal(["Nasjonalt medisinsk kvalitetsregister", "Als registeret (ALS)", "Inklusjon"],
-                     values[1].QuerySelectorAll("ol > li").Select(l => l.TextContent));
+                     values[2].QuerySelectorAll("ol > li").Select(l => l.TextContent));
 
-        Assert.Equal(["Funksjonsscore"], values[2].QuerySelectorAll("li").Select(l => l.TextContent));
+        Assert.Equal(["Funksjonsscore"], values[3].QuerySelectorAll("li").Select(l => l.TextContent));
 
         // Kodeverk moved to the Data tab — Runa splits the panel into what the variable IS and
         // what its data holds, and the kodeverk is the latter. Which kind a link is says what
@@ -7935,15 +7998,16 @@ public class VariableSearchTest : BunitContext
         Toggles(cut)[0].Click();
 
         Assert.Equal(["Als registeret (ALS)", "Inklusjon"],
-                     Values(cut)[1].QuerySelectorAll("ol > li").Select(l => l.TextContent));
+                     Values(cut)[2].QuerySelectorAll("ol > li").Select(l => l.TextContent));
     }
 
     [Fact]
     public void Detail_WhenAValueIsMissing_ThenTheRowStillDrawsAndSaysSo()
     {
         // A variable with nothing but a name is a normal row in this catalogue, and a panel that
-        // renders nothing for it would look like a panel that failed to load.
-        var bare = new VariableDetail { Id = TaleId, Code = "K", PreferredTerm = "1. Tale" };
+        // renders nothing for it would look like a panel that failed to load. Nothing but a name
+        // means the code as well, now that the panel is where the code is shown.
+        var bare = new VariableDetail { Id = TaleId, PreferredTerm = "1. Tale" };
         var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale"))).Knows(bare));
 
         Toggles(cut)[0].Click();
@@ -8410,7 +8474,7 @@ public class VariableSearchTest : BunitContext
         Toggles(cut)[0].Click();
 
         Assert.Equal(["Funksjonsscore", "ALSFRS-R", "Pustefunksjon"],
-                     Values(cut)[2].QuerySelectorAll("li").Select(l => l.TextContent));
+                     Values(cut)[3].QuerySelectorAll("li").Select(l => l.TextContent));
     }
 
     [Fact]
@@ -8429,7 +8493,7 @@ public class VariableSearchTest : BunitContext
         Toggles(cut)[0].Click();
 
         Assert.Equal(["Funksjonsscore"],
-                     Values(cut)[2].QuerySelectorAll("li").Select(l => l.TextContent));
+                     Values(cut)[3].QuerySelectorAll("li").Select(l => l.TextContent));
     }
 
     [Fact]
@@ -8444,7 +8508,7 @@ public class VariableSearchTest : BunitContext
         Toggles(cut)[0].Click();
 
         Assert.Equal(["Nasjonalt medisinsk kvalitetsregister", "Als registeret", "Inklusjon"],
-                     Values(cut)[1].QuerySelectorAll("ol > li").Select(l => l.TextContent));
+                     Values(cut)[2].QuerySelectorAll("ol > li").Select(l => l.TextContent));
     }
 
     [Fact]
@@ -8459,7 +8523,7 @@ public class VariableSearchTest : BunitContext
         Toggles(cut)[0].Click();
 
         Assert.Equal(["Nasjonalt medisinsk kvalitetsregister", "Als registeret", "Inklusjon"],
-                     Values(cut)[1].QuerySelectorAll("ol > li").Select(l => l.TextContent));
+                     Values(cut)[2].QuerySelectorAll("ol > li").Select(l => l.TextContent));
     }
 
     [Fact]
@@ -8491,7 +8555,7 @@ public class VariableSearchTest : BunitContext
 
         Toggles(cut)[0].Click();
         // The description is not in the row any more — see the panel.
-        Assert.Equal("Hvordan er talen?", Values(cut)[0].TextContent);
+        Assert.Equal("Hvordan er talen?", Values(cut)[1].TextContent);
     }
 
     [Fact]
@@ -8556,10 +8620,10 @@ public class VariableSearchTest : BunitContext
 
         Toggles(cut)[0].Click();
 
-        Assert.Equal(["Description", "Source path", "Variable group", "Data period"],
+        Assert.Equal(["Code", "Description", "Source path", "Variable group", "Data period"],
                      Panel(cut).QuerySelectorAll("dl dt").Select(t => t.TextContent));
 
-        var trail = Values(cut)[1].QuerySelectorAll("ol > li");
+        var trail = Values(cut)[2].QuerySelectorAll("ol > li");
 
         Assert.Equal("National medical quality registry", trail[0].TextContent);
         Assert.False(trail[0].HasAttribute("lang"));

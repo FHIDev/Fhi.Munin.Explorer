@@ -1536,6 +1536,10 @@ public sealed partial class VariableSearch : ComponentBase
         // Each one is drawn only while its column is on screen. What decides that is the reader,
         // through the column picker above the list — see ColumnVisible — except for Status, which
         // follows the filter until they say otherwise.
+        //
+        // Kode is the other column that starts off, and unlike Status nothing puts it back on its
+        // own: it is the widest of the eight and buys the least, since a code identifies a variable
+        // rather than helping anyone pick one. The open panel carries it either way.
         if (ColumnVisible(ResultColumn.Code))
         {
             RowCell.Write(builder, 100, T.FieldCode, v.Code, "code", T.NotSpecified);
