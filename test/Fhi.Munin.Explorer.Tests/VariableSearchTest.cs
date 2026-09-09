@@ -680,16 +680,31 @@ public class VariableSearchTest : BunitContext
     // should be remembered is a decision of its own.
     // ---------------------------------------------------------------------------------
 
-    /// <summary>The picker's toggles, in the order it lists them.</summary>
+    /// <summary>The picker's checkboxes, in the order it lists them.</summary>
     private static IReadOnlyList<IElement> ColumnToggles(IRenderedComponent<VariableSearch> cut) =>
-        cut.FindAll(".dropdown-choicepicker__item button");
+        cut.FindAll(".dropdown-choicepicker__item input[type=checkbox]");
+
+    /// <summary>A checkbox's column, which is the label beside it rather than its own text.</summary>
+    private static string ColumnName(IElement toggle) =>
+        toggle.ParentElement!.QuerySelector(".form-control__label")!.TextContent.Trim();
+
+    /// <summary>Whether the column is on screen, as the rendered attribute has it.</summary>
+    private static bool Ticked(IElement toggle) => toggle.HasAttribute("checked");
 
     /// <summary>The toggle for one named column, refetched so it is never a stale node.</summary>
     private static IElement ColumnToggle(IRenderedComponent<VariableSearch> cut, string label) =>
-        ColumnToggles(cut).Single(b => b.TextContent.Trim() == label);
+        ColumnToggles(cut).Single(b => ColumnName(b) == label);
 
-    private static void HideColumn(IRenderedComponent<VariableSearch> cut, string label) =>
-        ColumnToggle(cut, label).Click();
+    /// <remarks>
+    /// <c>Change</c> and not <c>Click</c>: bUnit raises MissingEventHandlerException for a click
+    /// on an element handling only <c>onchange</c>, and names the event it does handle.
+    /// </remarks>
+    private static void ToggleColumn(IRenderedComponent<VariableSearch> cut, string label)
+    {
+        var box = ColumnToggle(cut, label);
+
+        box.Change(!Ticked(box));
+    }
 
     [Fact]
     public void Render_Always_ThenThePickerOffersRunasSevenColumnsAndNotTheName()
@@ -702,7 +717,7 @@ public class VariableSearchTest : BunitContext
 
         Assert.Equal(
             ["Kode", "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Status", "Dataperiode"],
-            ColumnToggles(cut).Select(b => b.TextContent.Trim()));
+            ColumnToggles(cut).Select(ColumnName));
     }
 
     [Fact]
@@ -713,8 +728,8 @@ public class VariableSearchTest : BunitContext
         // Status is the one exception, and it is the filter's doing rather than the picker's:
         // with historical variables excluded every row would say "Active", and a column that says
         // the same word on every row is furniture. See ShowStatusColumn.
-        Assert.Equal(["true", "true", "true", "true", "true", "false", "true"],
-                     ColumnToggles(cut).Select(b => b.GetAttribute("aria-pressed")));
+        Assert.Equal([true, true, true, true, true, false, true],
+                     ColumnToggles(cut).Select(Ticked));
     }
 
     [Fact]
@@ -725,11 +740,11 @@ public class VariableSearchTest : BunitContext
         // every column after it in every row sits under the wrong name.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        HideColumn(cut, "Kode");
+        ToggleColumn(cut, "Kode");
 
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__code"));
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main__code"));
-        Assert.Equal("false", ColumnToggle(cut, "Kode").GetAttribute("aria-pressed"));
+        Assert.False(Ticked(ColumnToggle(cut, "Kode")));
     }
 
     /// <summary>The text of one named column's cell in the first result row.</summary>
@@ -749,8 +764,8 @@ public class VariableSearchTest : BunitContext
             VariabelgruppeName = "Bakgrunn"
         })));
 
-        HideColumn(cut, "Datasamling");
-        ColumnToggle(cut, "Datasamling").Click();
+        ToggleColumn(cut, "Datasamling");
+        ToggleColumn(cut, "Datasamling");
 
         Assert.Equal("V_ALS.F1.TALE", CellText(cut, "code"));
         Assert.Equal("ALS", CellText(cut, "source"));
@@ -767,11 +782,11 @@ public class VariableSearchTest : BunitContext
     {
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        HideColumn(cut, "Datasamling");
-        ColumnToggle(cut, "Datasamling").Click();
+        ToggleColumn(cut, "Datasamling");
+        ToggleColumn(cut, "Datasamling");
 
         Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__dataCollection"));
-        Assert.Equal("true", ColumnToggle(cut, "Datasamling").GetAttribute("aria-pressed"));
+        Assert.True(Ticked(ColumnToggle(cut, "Datasamling")));
     }
 
     [Fact]
@@ -782,7 +797,7 @@ public class VariableSearchTest : BunitContext
         // Status is already off, so five presses leave Dataperiode alone.
         foreach (var column in new[] { "Kode", "Kilde", "Datasamling", "Variabelgruppe", "Datatype" })
         {
-            HideColumn(cut, column);
+            ToggleColumn(cut, column);
         }
 
         var last = ColumnToggle(cut, "Dataperiode");
@@ -797,9 +812,12 @@ public class VariableSearchTest : BunitContext
         var hint = last.GetAttribute("aria-describedby");
         Assert.Equal("Minst én kolonne må vises.", cut.Find($"#{hint}").TextContent);
 
-        last.Click();
+        // A render tree never experiences the browser flipping the box before the handler runs, so
+        // deleting SetUpdatesAttributeName("checked") leaves this file green. Measured in a browser
+        // instead, on Fhi.Metadata-f6az7; the missing guard is Fhi.Metadata-1s7z1.
+        last.Change(!Ticked(last));
 
-        Assert.Equal("true", ColumnToggle(cut, "Dataperiode").GetAttribute("aria-pressed"));
+        Assert.True(Ticked(ColumnToggle(cut, "Dataperiode")));
         Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__period"));
     }
 
@@ -810,7 +828,7 @@ public class VariableSearchTest : BunitContext
 
         foreach (var column in new[] { "Kode", "Kilde", "Datasamling", "Variabelgruppe", "Datatype" })
         {
-            HideColumn(cut, column);
+            ToggleColumn(cut, column);
         }
 
         Assert.NotNull(cut.Find("button.munin-explorer-dataitem-main__name"));
@@ -837,7 +855,7 @@ public class VariableSearchTest : BunitContext
 
         foreach (var column in new[] { "Status" })
         {
-            ColumnToggle(cut, column).Click();
+            ToggleColumn(cut, column);
         }
 
         Assert.Equal([], HostClassNames.Orphans(HostClassNames.Of(cut.FindAll("[class]"))));
@@ -853,7 +871,7 @@ public class VariableSearchTest : BunitContext
 
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main__status"));
 
-        ColumnToggle(cut, "Status").Click();
+        ToggleColumn(cut, "Status");
 
         Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__status"));
         Assert.NotNull(cut.Find(".munin-explorer-dataitem-header__status"));
@@ -865,7 +883,7 @@ public class VariableSearchTest : BunitContext
         // The other direction of the same press, and the one the flag exists for: with historical
         // variables in the list the filter is drawing Status, so turning it off has to record that
         // the reader has chosen as well as hide it. Without the record the press is a visible
-        // no-op — aria-pressed goes to false over a column that is still on screen — and every
+        // no-op — the box unticks over a column that is still on screen — and every
         // later trip through the filter puts it back.
         var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
 
@@ -873,18 +891,18 @@ public class VariableSearchTest : BunitContext
 
         Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__status"));
 
-        ColumnToggle(cut, "Status").Click();
+        ToggleColumn(cut, "Status");
 
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main__status"));
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__status"));
-        Assert.Equal("false", ColumnToggle(cut, "Status").GetAttribute("aria-pressed"));
+        Assert.False(Ticked(ColumnToggle(cut, "Status")));
 
         // And it stays off through the filter that used to own it: their choice wins from here.
         ClickFacet(cut, "Vis historiske");
         ClickFacet(cut, "Vis historiske");
 
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main__status"));
-        Assert.Equal("false", ColumnToggle(cut, "Status").GetAttribute("aria-pressed"));
+        Assert.False(Ticked(ColumnToggle(cut, "Status")));
     }
 
     [Fact]
@@ -893,7 +911,7 @@ public class VariableSearchTest : BunitContext
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
                              b => b.Add(c => c.Filter, new VariableFilter { IncludeHistorical = true }));
 
-        Assert.Equal("true", ColumnToggle(cut, "Status").GetAttribute("aria-pressed"));
+        Assert.True(Ticked(ColumnToggle(cut, "Status")));
         Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__status"));
     }
 
@@ -904,7 +922,7 @@ public class VariableSearchTest : BunitContext
         // put back the columns they had just cleared away, on the page where they cleared them.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        HideColumn(cut, "Kilde");
+        ToggleColumn(cut, "Kilde");
         cut.Find("form").Submit();
 
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main__source"));
@@ -1083,7 +1101,7 @@ public class VariableSearchTest : BunitContext
 
         var calls = client.Calls;
 
-        HideColumn(cut, "Kilde");
+        ToggleColumn(cut, "Kilde");
 
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__source"));
         Assert.Empty(cut.FindAll("[aria-sort]"));
@@ -1096,7 +1114,7 @@ public class VariableSearchTest : BunitContext
         Assert.Contains("sortert på Kilde, synkende", cut.Find("p[role='status']").TextContent);
 
         // And the way back is the control that took it away.
-        ColumnToggle(cut, "Kilde").Click();
+        ToggleColumn(cut, "Kilde");
 
         Assert.Equal("descending",
                      cut.Find(".munin-explorer-dataitem-header__source").GetAttribute("aria-sort"));
@@ -1117,7 +1135,7 @@ public class VariableSearchTest : BunitContext
 
         foreach (var column in new[] { "Kode", "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Dataperiode" })
         {
-            HideColumn(cut, column);
+            ToggleColumn(cut, column);
         }
 
         Assert.Equal("true", ColumnToggle(cut, "Status").GetAttribute("aria-disabled"));
@@ -1126,7 +1144,7 @@ public class VariableSearchTest : BunitContext
 
         Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__status"));
         Assert.NotNull(cut.Find(".munin-explorer-dataitem-header__status"));
-        Assert.Equal("true", ColumnToggle(cut, "Status").GetAttribute("aria-pressed"));
+        Assert.True(Ticked(ColumnToggle(cut, "Status")));
     }
 
     [Fact]
@@ -1141,11 +1159,11 @@ public class VariableSearchTest : BunitContext
 
         foreach (var column in new[] { "Kode", "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Dataperiode" })
         {
-            HideColumn(cut, column);
+            ToggleColumn(cut, column);
         }
 
         ClickFacet(cut, "Vis historiske");
-        ColumnToggle(cut, "Kode").Click();
+        ToggleColumn(cut, "Kode");
 
         Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__code"));
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main__status"));
@@ -1171,8 +1189,8 @@ public class VariableSearchTest : BunitContext
     public void Render_Always_ThenThePickerBorrowsItsClassNamesAndInventsNone()
     {
         // The companion to the munin-explorer guard further down, which only inspects names in
-        // that prefix — the picker wears eight names outside it, and an invented ninth would slip
-        // past that test unnoticed. Every name here was read back off helsedata's compiled
+        // that prefix — the picker wears fourteen names outside it, and an invented fifteenth would
+        // slip past that test unnoticed. Every name here was read back off helsedata's compiled
         // stylesheets; one that is not renders as a raw browser default inside a styled page.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
@@ -1196,16 +1214,24 @@ public class VariableSearchTest : BunitContext
             "dropdown-choicepicker",          // helsedata, variables.css — the open list
             "dropdown-choicepicker--right",
             "dropdown-choicepicker__item",
-            "hd-button-reset",                // Stiler, "a button that draws nothing"
+            "form-control",                   // Stiler, _formcontrol.scss — the row the checkbox
+                                              //   and its label share
+            "form-control__label",            // Stiler, and the choicepicker overrides its
+                                              //   word-break INSIDE dropdown-choicepicker__item
             "hd-button-square",               // Stiler, the square shape
+            "icon",                           // Stiler, the 1.5rem icon box
+            "icon--right",                    // Stiler, the chevron's margin on the other side
+            "icon-keyboard-arrow-down",       // helsedata's own trigger carries both, and Stiler
+            "icon-keyboard-arrow-up",         //   hides whichever contradicts the open state
+            "icon-layout",                    // helsedata, leading their own "Vis kolonner"
             "screenreader-only",              // Stiler, and load-bearing: it hides the sentence
                                               //   saying why the last column will not turn off
         ], names);
 
-        // The label is the button's own text, so it needs no name at all. An earlier draft wrapped
-        // it in a span wearing `form-control__label`, which nothing else here uses and which could
-        // not be found in Stiler's compiled stylesheet.
-        Assert.Empty(picker.QuerySelectorAll("button span"));
+        // The nesting, not the count, which the list above already pins: every box sits inside the
+        // label that names it, which is what makes the whole line a target as well as a name.
+        Assert.Equal(picker.QuerySelectorAll(".dropdown-choicepicker__item").Length,
+                     picker.QuerySelectorAll("label.form-control > input[type=checkbox]").Length);
     }
 
     [Fact]
@@ -1213,8 +1239,8 @@ public class VariableSearchTest : BunitContext
     {
         // Their names, read off the compiled variables.css and styles.css rather than guessed at,
         // and their nesting — dropdown-choicepicker is position:absolute and anchors to the
-        // wrapper, which is why the inline position:relative below is emitted rather than left to
-        // a stylesheet this package does not ship.
+        // wrapper, which Stiler now positions itself, so the RCL emits no inline style at all
+        // (Fhi.Metadata-f6az7).
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
         // Both their names, and the exact pair: `dropdown` is the width their actions row gives a
@@ -1224,7 +1250,7 @@ public class VariableSearchTest : BunitContext
         var dropdown = cut.Find(".munin-explorer-header__actions > details");
         Assert.Equal(["dropdown", "munin-explorer__dropdown"],
                      dropdown.ClassName!.Split(' ', StringSplitOptions.RemoveEmptyEntries));
-        Assert.Contains("relative", dropdown.GetAttribute("style")!);
+        Assert.False(dropdown.HasAttribute("style"));
 
         // A <details>, because their dropdown opens and closes from React state and this package
         // ships no script. Same reason the filter facets are disclosures.
@@ -3080,8 +3106,8 @@ public class VariableSearchTest : BunitContext
     /// Press a control: a toolbar button is clicked, a facet value is ticked or unticked.
     /// </summary>
     /// <remarks>
-    /// A checkbox answers a change event and not a click, so a <c>Click()</c> here would leave the
-    /// filter untouched and every test using it green over a control that does nothing.
+    /// <c>Change</c> and not <c>Click</c>: bUnit raises MissingEventHandlerException for a click
+    /// on an element handling only <c>onchange</c>, and names the event it does handle.
     /// </remarks>
     private static void ClickFacet(IRenderedComponent<VariableSearch> cut, string label)
     {

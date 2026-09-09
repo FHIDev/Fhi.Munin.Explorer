@@ -141,15 +141,15 @@ export const states = {
     await picker.waitFor({ state: 'visible', timeout: findTimeout });
     await picker.locator('summary').click();
 
-    // Not press(): these toggles carry the sample stylesheet's ☑/☐ in ::before, and Playwright's
-    // own accessible-name computation folds generated content in while ignoring the empty
-    // alternative text that keeps it out of the browser's. The browser announces "Dataansvarlig";
-    // getByRole(..., { exact: true }) looks for "☐ Dataansvarlig" and finds nothing.
+    // Found through the item rather than by role: the box carries no text of its own, its name
+    // coming from the sibling label span, and check() rather than click() so the state is what is
+    // asked for and not whatever a press toggles it to (Fhi.Metadata-f6az7).
     const toggle = picker
-      .locator('.dropdown-choicepicker__item button', { hasText: 'Dataansvarlig' })
+      .locator('.dropdown-choicepicker__item', { hasText: 'Dataansvarlig' })
+      .locator('input[type=checkbox]')
       .first();
     await toggle.waitFor({ state: 'visible', timeout: findTimeout });
-    await toggle.click();
+    await toggle.check();
 
     await page
       .locator('.munin-explorer-kilder thead th', { hasText: 'Dataansvarlig' })
@@ -167,13 +167,14 @@ export const states = {
     await picker.waitFor({ state: 'visible', timeout: findTimeout });
     await picker.locator('summary').click();
 
-    // By text rather than press(), for the reason kilder-columns above gives: the toggles' ::before
-    // glyph is in Playwright's accessible name and not in the browser's.
+    // Through the item and not by role, for the reason kilder-columns above gives: the box carries
+    // no text of its own, and check() asks for a state rather than flipping whatever is there.
     const toggle = picker
-      .locator('.dropdown-choicepicker__item button', { hasText: 'Delkilder' })
+      .locator('.dropdown-choicepicker__item', { hasText: 'Delkilder' })
+      .locator('input[type=checkbox]')
       .first();
     await toggle.waitFor({ state: 'visible', timeout: findTimeout });
-    await toggle.click();
+    await toggle.check();
 
     await page
       .locator('.munin-explorer-kilder thead th', { hasText: 'Delkilder' })
