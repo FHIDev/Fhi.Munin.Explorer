@@ -4006,8 +4006,14 @@ public class KildeSearchTest : BunitContext
         FacetSearch(cut, heading)!.Change(text);
 
     /// <summary>The one status line over the list, which is where the result count is written.</summary>
+    /// <remarks>
+    /// Anchored on the row rather than on the section, because the line stopped being a child of
+    /// the section when it moved into <c>munin-explorer-results__toolbar</c>. Anchored on
+    /// something, because a bare <c>p[role=status]</c> would also find the selection count and an
+    /// opened row's own. (Fhi.Metadata-tciss)
+    /// </remarks>
     private static string ResultCount(IRenderedComponent<KildeSearch> cut) =>
-        cut.Find("section.munin-explorer > p[role=status]").TextContent.Trim();
+        cut.Find(".munin-explorer-results__toolbar > p[role=status]").TextContent.Trim();
 
     /// <summary>A choice's value, with the count the label draws after it taken off.</summary>
     private static IReadOnlyList<string> ChoiceValues(IElement facet) =>
