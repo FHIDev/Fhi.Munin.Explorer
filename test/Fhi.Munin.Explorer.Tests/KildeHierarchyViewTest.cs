@@ -212,7 +212,10 @@ public sealed class KildeHierarchyViewTest : BunitContext
         cut.Render(p => p.Add(c => c.Language, "en"));
         Assert.Single(client.Calls);
         Assert.Contains("variables", cut.Find(".munin-explorer-hierarchy__count").TextContent);
-        Assert.Equal("no", cut.Find("summary > span").GetAttribute("lang"));
+        // The name span, not the decorative icon slot that now opens the summary in front of it.
+        Assert.Equal(
+            "no",
+            cut.Find("summary > span:not([aria-hidden]):not(.screenreader-only)").GetAttribute("lang"));
     }
 
     [Theory]
@@ -328,9 +331,109 @@ public sealed class KildeHierarchyViewTest : BunitContext
         Assert.Equal("Beskrivelser og gyldighetsperioder", AccessibleName.Of(metadata.QuerySelector("summary")!));
     }
 
-    /// <summary>A node's own name, without the variable count drawn beside it.</summary>
+    [Fact]
+    public void Render_WhenEveryNodeKindOccurs_ThenTheIconsFollowTheLevelTheRowCameFrom()
+    {
+        var id = Guid.NewGuid();
+        var cut = Mount(new Client { Fetch = (_, _) => Task.FromResult<KildeHierarchy?>(Hierarchy(id)) }, id);
+
+        Assert.Equal(["kilde"], Icons(Row(cut, "Parent")));
+        Assert.Equal(["kilde"], Icons(Row(cut, "Child")));
+
+        // Deduplicated, and in the legend's order rather than the order the catalogue authored.
+        Assert.Equal(["PHDR", "EINS"], Icons(Row(cut, "Collection")));
+
+        // A datasamling with no datakategori draws no glyph: absence is not the catch-all. A
+        // variabelgruppe has none of its own at any time, and nothing invents one.
+        Assert.Empty(Icons(Row(cut, "Direct")));
+        Assert.Empty(Icons(Row(cut, "Group")));
+        Assert.Empty(Icons(Row(cut, "Orphan")));
+    }
+
+    [Fact]
+    public void Render_WhenIconsAreDrawn_ThenTheyAreDecorativeAndNotKeyboardStops()
+    {
+        var id = Guid.NewGuid();
+        var cut = Mount(new Client { Fetch = (_, _) => Task.FromResult<KildeHierarchy?>(Hierarchy(id)) }, id);
+
+        Assert.NotEmpty(cut.FindAll("svg"));
+        Assert.All(cut.FindAll(".munin-explorer-hierarchy__icons"), slot =>
+            Assert.Equal("true", slot.GetAttribute("aria-hidden")));
+        Assert.All(cut.FindAll("svg"), icon =>
+        {
+            Assert.Equal("true", icon.GetAttribute("aria-hidden"));
+            Assert.Equal("false", icon.GetAttribute("focusable"));
+            Assert.False(icon.HasAttribute("tabindex"));
+
+            // Sized and coloured off the words around it, so a host with no rule for the class
+            // draws a glyph the size of one rather than an <svg>'s own 300x150 default.
+            Assert.Equal("1em", icon.GetAttribute("width"));
+            Assert.Equal("1em", icon.GetAttribute("height"));
+            Assert.Equal("currentColor", icon.GetAttribute("stroke"));
+        });
+
+        // A folder says only what the nesting already says, so it adds nothing to the row's name.
+        Assert.Equal("Parent 8 variabler", AccessibleName.Of(Row(cut, "Parent")));
+    }
+
+    [Fact]
+    public void Render_WhenADatasamlingCarriesCategories_ThenItsRowSaysThemInWordsExactlyOnce()
+    {
+        // The glyphs are aria-hidden, so without this the datakategori is information only a
+        // sighted reader gets - and axe cannot see the absence of something.
+        var id = Guid.NewGuid();
+        var cut = Mount(new Client { Fetch = (_, _) => Task.FromResult<KildeHierarchy?>(Hierarchy(id)) }, id);
+        var row = Row(cut, "Collection");
+
+        Assert.Equal(
+            ["Datakategori: Befolkningsbaserte helseregistre, Biobanker og prøvesamlinger."],
+            row.QuerySelectorAll(".screenreader-only")
+                .Select(span => span.TextContent.Trim())
+                .Where(text => text.StartsWith("Datakategori", StringComparison.Ordinal)));
+
+        Assert.Equal(
+            "Collection Datakategori: Befolkningsbaserte helseregistre, "
+            + "Biobanker og prøvesamlinger. 4 variabler",
+            AccessibleName.Of(row));
+    }
+
+    [Fact]
+    public void Render_WhenNodeIconsAreTurnedOff_ThenTheVariableCountsAreUntouched()
+    {
+        // Two separate offers: a reader who wants no glyphs still wants to know how much sits under
+        // a node, and a toggle that took the counts with it would be read as a bug in the tree.
+        var id = Guid.NewGuid();
+        Services.AddSingleton<IMuninExplorerClient>(
+            new Client { Fetch = (_, _) => Task.FromResult<KildeHierarchy?>(Hierarchy(id)) });
+        var cut = Render<KildeHierarchyView>(p => p
+            .Add(c => c.KildeId, id)
+            .Add(c => c.Language, "nb")
+            .Add(c => c.ShowNodeIcons, false));
+
+        Assert.Empty(cut.FindAll("svg, .munin-explorer-hierarchy__icons"));
+        Assert.DoesNotContain("Datakategori", cut.Markup);
+        Assert.Equal(7, cut.FindAll("li").Count);
+        Assert.Equal(
+            ["2 variabler", "4 variabler", "4 variabler", "8 variabler"],
+            cut.FindAll(".munin-explorer-hierarchy__count")
+                .Select(count => count.TextContent.Trim())
+                .OrderBy(text => text, StringComparer.Ordinal));
+    }
+
+    /// <summary>A node's own name, without the icons or the variable count drawn beside it.</summary>
     private static string Name(IElement node) =>
-        node.QuerySelector("summary > span, .munin-explorer-hierarchy__leaf > span")!.TextContent.Trim();
+        node.QuerySelector(
+            "summary > span:not([aria-hidden]):not(.screenreader-only), "
+            + ".munin-explorer-hierarchy__leaf > span:not([aria-hidden]):not(.screenreader-only)")!
+            .TextContent.Trim();
+
+    /// <summary>The summary or leaf one named node is drawn in.</summary>
+    private static IElement Row(IRenderedComponent<KildeHierarchyView> cut, string name) =>
+        cut.FindAll("summary, .munin-explorer-hierarchy__leaf").Single(row => Name(row) == name);
+
+    /// <summary>Which glyphs a row draws, in the order it draws them.</summary>
+    private static IEnumerable<string?> Icons(IElement row) =>
+        row.QuerySelectorAll("svg").Select(icon => icon.GetAttribute("data-node-icon"));
 
     private static KildeHierarchy Hierarchy(Guid id) => new()
     {
@@ -344,6 +447,9 @@ public sealed class KildeHierarchyViewTest : BunitContext
             Datasamlinger = [new()
             {
                 Id = Guid.NewGuid(), Name = "Collection", VariableCount = 4,
+                // Authored the three ways the catalogue really authors them: prefixed, as a retired
+                // slug, and again under a spelling already covered.
+                Categories = ["ehds-cat:PHDR", "biobanks", "PHDR"],
                 Variabelgrupper = [new()
                 {
                     Id = Guid.NewGuid(), Name = "Group", VariableCount = 4,

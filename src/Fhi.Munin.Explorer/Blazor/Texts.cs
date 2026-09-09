@@ -465,6 +465,11 @@ internal sealed record Texts(
     string HierarchyEmpty,
     string HierarchyRetry,
     string HierarchyMetadata,
+    // The node icons are decorative and aria-hidden, so a datasamling's datakategorier are said in
+    // words beside them or nowhere. Keyed by DataCategoryIcons.Order, and the retired slugs have no
+    // key of their own: they resolve onto a successor and are read out under its name.
+    Func<string, string> DataCategoryNamed,
+    IReadOnlyDictionary<string, string> DataCategoryNames,
     // The sections Kelda has over a kilde and Runa has not, measured on the same source in both on
     // 2026-08-20. They are markup Kelda hands to KildeView.Sections rather than markup inside that
     // component, so their words sit here beside the rest of Kelda's rather than in the shared core.
@@ -1042,6 +1047,28 @@ internal sealed record Texts(
         HierarchyEmpty: "Ingen delkilder, datasamlinger eller variabelgrupper er tilgjengelige.",
         HierarchyRetry: "Prøv å laste strukturen på nytt",
         HierarchyMetadata: "Beskrivelser og gyldighetsperioder",
+        DataCategoryNamed: names => $"Datakategori: {names}.",
+        DataCategoryNames: new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["PHDR"] = "Befolkningsbaserte helseregistre",
+            ["MRMR"] = "Medisinske registre og dødsårsaksregistre",
+            ["RMMD"] = "Legemiddel- og utstyrsregistre",
+            ["HPML"] = "Helsepersonell og autorisasjon",
+            ["RPDG"] = "Forskningskohorter og helseundersøkelser",
+            ["RQSH"] = "Forskningsstudier og kliniske utprøvinger",
+            ["NRPE"] = "Publisert forskningsdokumentasjon",
+            ["EHRS"] = "Pasientjournaler",
+            ["HRAD"] = "Administrative helsedata",
+            ["EHCT"] = "Helsetjenestebehov og -utgifter",
+            ["EINS"] = "Biobanker og prøvesamlinger",
+            ["HGPD"] = "Genetiske og genomiske data",
+            ["PGEH"] = "Omikkdata (proteom, metabolom m.m.)",
+            ["IDHP"] = "Smittsomme sykdommer og patogener",
+            ["DIOH"] = "Helsedeterminanter",
+            ["EMRD"] = "Data fra medisinsk utstyr",
+            ["WELA"] = "Data fra helseapper",
+            ["other"] = "Annet"
+        },
         HeadingVariables: "Variabler",
         HeadingAccessCriteria: "Kriterier for tilgang til data",
         HeadingPrices: "Priser",
@@ -1371,6 +1398,28 @@ internal sealed record Texts(
         HierarchyEmpty: "No sub-sources, data collections or variable groups are available.",
         HierarchyRetry: "Retry loading the structure",
         HierarchyMetadata: "Descriptions and validity periods",
+        DataCategoryNamed: names => $"Data category: {names}.",
+        DataCategoryNames: new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["PHDR"] = "Population health data registries",
+            ["MRMR"] = "Medical and mortality registries",
+            ["RMMD"] = "Registries of medicinal products and medical devices",
+            ["HPML"] = "Health professionals and licensing",
+            ["RPDG"] = "Research population data and cohorts",
+            ["RQSH"] = "Research studies and clinical trials",
+            ["NRPE"] = "Non-routine published evidence",
+            ["EHRS"] = "Electronic health records",
+            ["HRAD"] = "Healthcare-related administrative data",
+            ["EHCT"] = "Healthcare needs and expenditure",
+            ["EINS"] = "Health data from biobanks",
+            ["HGPD"] = "Human genetic and genomic data",
+            ["PGEH"] = "Proteomic and other omics data",
+            ["IDHP"] = "Infectious diseases and human pathogens",
+            ["DIOH"] = "Determinants impacting on health",
+            ["EMRD"] = "Electronic medical device data",
+            ["WELA"] = "Wellness application data",
+            ["other"] = "Other"
+        },
         HeadingVariables: "Variables",
         HeadingAccessCriteria: "Criteria for access to data",
         HeadingPrices: "Prices",

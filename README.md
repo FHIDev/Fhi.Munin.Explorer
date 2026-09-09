@@ -496,6 +496,8 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-hierarchy` | handle |
   | `munin-explorer-hierarchy__branch` | handle |
   | `munin-explorer-hierarchy__count` | handle |
+  | `munin-explorer-hierarchy__icon` | handle |
+  | `munin-explorer-hierarchy__icons` | handle |
   | `munin-explorer-hierarchy__leaf` | handle |
   | `munin-explorer-hierarchy__metadata` | handle |
   | `munin-explorer-hierarchy__nodes` | handle |
@@ -794,6 +796,18 @@ mounting `KildeView`. `KildeHierarchyView` can also be mounted with `KildeId` an
 The new hierarchy class names are listed above;
 their helsedata styling is tracked in `Fhi.Metadata-wihod` and is not supplied by this package.
 
+Each row carries a node icon in front of its name — a folder on a delkilde, one glyph per
+datakategori on a datasamling, and nothing on a variabelgruppe, which is the mapping Kelda's own
+tree draws, legacy category slugs and all. `ShowNodeIcons` turns them off on `KildeHierarchyView`
+and on `KildeView`; the variable counts are untouched either way, and the package remembers no
+choice of its own for the reason `LevelLines` does not. The glyphs are inline `<svg>` marked
+`aria-hidden`, so a datasamling's categories are said in words in a `screenreader-only` span
+instead of twice. Each one is `1em` in `currentColor` and wears
+`munin-explorer-hierarchy__icon` with a `data-node-icon` naming its datakategori — `PHDR`, `EINS`,
+`other` and the rest, plus `kilde` for the folder — which is the hook a stylesheet colours them
+through. Undefined, they draw at text size in the text colour, so what a host without the rules
+loses is the colour that tells two categories apart at a glance and not the categories themselves.
+
 Four things are worth knowing before mounting one.
 
 - **The render mode has to be interactive** — `render-mode="Server"`, never `ServerPrerendered`;
@@ -978,3 +992,54 @@ GitHub Issues here are open for external consumers to report problems.
 ## Licence
 
 MIT.
+
+### Third-party notices
+
+The node-icon geometry in `Blazor/DataCategoryIcons.cs` is copied from
+[lucide](https://lucide.dev), the icon set Kelda draws the same datakategorier with. Copied rather
+than depended on because this package ships no asset bundle and takes no front-end dependency.
+
+```
+ISC License
+
+Copyright (c) 2026 Lucide Icons and Contributors
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+```
+
+Two of the glyphs copied — `database` (PHDR) and `smartphone` (WELA) — are lucide icons derived
+from [Feather](https://feathericons.com), and carry its licence as well:
+
+```
+The MIT License (MIT)
+
+Copyright (c) 2013-present Cole Bemis
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
