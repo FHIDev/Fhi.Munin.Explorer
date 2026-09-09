@@ -440,6 +440,10 @@ internal sealed record Texts(
     Func<string, string> FacetSearchLabel,
     string FacetSearchPlaceholder,
     string FacetSearchNoMatch,
+    // What a facet says in its own summary about how many of its values are ticked. It is drawn
+    // only above zero, so no wording for none is needed — and none is wanted: "0 valgt" over a
+    // facet nobody has touched is a filter reported where there is no filter.
+    Func<int, string> FacetChosen,
     // The panel's own disclosure, which is one control saying two things: the panel is folded away
     // on a narrow screen and this is what unfolds it. Both wordings are needed because a button
     // still reading "Vis filtre" over an open panel tells the reader the opposite of what pressing
@@ -1022,6 +1026,7 @@ internal sealed record Texts(
         FacetSearchLabel: heading => $"Søk i {heading}",
         FacetSearchPlaceholder: "Søk i verdiene",
         FacetSearchNoMatch: "Ingen verdier passer søket",
+        FacetChosen: chosen => $"{chosen} valgt",
         ShowFilters: "Vis filtre",
         HideFilters: "Skjul filtre",
         HeadingDelkilderAndDataCollections: "Delkilder og datasamlinger",
@@ -1349,6 +1354,7 @@ internal sealed record Texts(
         FacetSearchLabel: heading => $"Search in {heading}",
         FacetSearchPlaceholder: "Search the values",
         FacetSearchNoMatch: "No values match the search",
+        FacetChosen: chosen => $"{chosen} selected",
         ShowFilters: "Show filters",
         HideFilters: "Hide filters",
         HeadingDelkilderAndDataCollections: "Sub-sources and data collections",

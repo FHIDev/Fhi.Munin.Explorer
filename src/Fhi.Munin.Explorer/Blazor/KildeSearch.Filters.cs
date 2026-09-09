@@ -742,9 +742,9 @@ public sealed partial class KildeSearch
     /// Built by hand for the reason the component's title is: Razor has no syntax for a computed
     /// element name, and the level follows the host's choice of <see cref="HeadingLevel"/>.
     /// <para>
-    /// The count is the variable explorer's own treatment of a collapsed facet, and it earns its
-    /// place here for the same reason: with the panel folded away on a narrow screen, the heading
-    /// is the only thing on screen that says the list is narrowed at all.
+    /// The number stays inside this heading, unlike a facet's: it counts every facet at once, so
+    /// there is no one summary line for it to sit beside, and with the panel folded away on a
+    /// narrow screen this heading is the only thing saying the list is narrowed. (Fhi.Metadata-l9l2n.53)
     /// </para>
     /// </remarks>
     private RenderFragment FiltersHeading => builder =>
@@ -758,25 +758,33 @@ public sealed partial class KildeSearch
     };
 
     /// <summary>
-    /// One facet's heading, at <see cref="FacetLevel"/>, saying how many of its values are ticked.
+    /// One facet's summary line: its heading, at <see cref="FacetLevel"/>, and how many of its
+    /// values are ticked.
     /// </summary>
     /// <remarks>
-    /// <c>headline-xxs</c>, which is what <see cref="KildeView"/> gives a group of facts — so the
-    /// panel's headings and the kilde's read as the same kind of thing rather than as two
-    /// vocabularies in one component.
-    /// <para>
-    /// The count is in the <c>&lt;summary&gt;</c>, which is what a folded facet still draws: a facet
-    /// narrowing the list from behind a closed disclosure would otherwise take the filter off screen
-    /// and leave its effect. Same form as the panel's own heading and the variable explorer's facets.
-    /// </para>
+    /// <c>headline-xxs</c> is what <see cref="KildeView"/> gives a group of facts, so both read as
+    /// one vocabulary. The count is in the summary, which a folded facet still draws, and beside
+    /// the heading rather than inside it: this panel is navigated by heading. (Fhi.Metadata-l9l2n.53)
     /// </remarks>
-    private RenderFragment FacetHeading(Facet facet) => builder =>
+    private RenderFragment FacetSummary(Facet facet) => builder =>
     {
-        var chosen = ChosenIn(facet.Key);
-
         builder.OpenElement(0, $"h{FacetLevel}");
         builder.AddAttribute(1, "class", "headline headline-xxs margin--none");
-        builder.AddContent(2, chosen == 0 ? facet.Heading : $"{facet.Heading} ({chosen})");
+        builder.AddContent(2, facet.Heading);
+        builder.CloseElement();
+
+        var chosen = ChosenIn(facet.Key);
+
+        if (chosen == 0)
+        {
+            return;
+        }
+
+        // The space in the sentence the summary is announced as; the row draws none between items.
+        builder.AddContent(3, " ");
+        builder.OpenElement(4, "span");
+        builder.AddAttribute(5, "class", "munin-explorer-filters__chosen");
+        builder.AddContent(6, T.FacetChosen(chosen));
         builder.CloseElement();
     };
 }

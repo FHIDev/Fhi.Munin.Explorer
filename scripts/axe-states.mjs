@@ -213,10 +213,10 @@ export const states = {
 
     // And then a re-render over the top of it, which is the claim the component rests on: `open` is
     // seeded once and never rewritten, so narrowing the list cannot collapse what the reader opened.
-    // The wait is on the heading gaining its count, because that text comes back over the circuit —
-    // the tick alone lands in the browser before Blazor has diffed anything.
+    // The wait is on the summary gaining its count, because that element comes back over the
+    // circuit — the tick alone lands in the browser before Blazor has diffed anything.
     await values.locator('input[type=checkbox]').first().check();
-    await folded.locator(':scope > summary h4', { hasText: '(1)' })
+    await folded.locator(':scope > summary .munin-explorer-filters__chosen')
       .waitFor({ state: 'visible', timeout: findTimeout });
 
     if (await open() !== 2) {

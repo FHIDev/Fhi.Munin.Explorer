@@ -511,6 +511,26 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .munin-explorer-filters summary .form-element__label { margin-top: 0; cursor: pointer; }
 .munin-explorer-filters summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
+/* Kelda's facet summary as one row: heading, ticked-value count, then the disclosure marker at the
+   trailing edge — without it the block-level <h4> takes the whole first line and pushes the other
+   two onto rows of their own. Stiler's is unscoped and shared with Runa's. (Fhi.Metadata-l9l2n.58) */
+.munin-explorer-filters__facets > details > summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+/* A flex box is not a list-item, so the browser stops drawing the marker; this is it, redrawn
+   where the row has room for it. The empty alt text is load-bearing — without it the glyph joins
+   the accessible name and the facet announces as "Kildetype 2 valgt ▸". (Fhi.Metadata-l9l2n.58) */
+.munin-explorer-filters__facets > details > summary::after {
+  content: counter(list-item, disclosure-closed) / "";
+  margin-left: auto;
+}
+.munin-explorer-filters__facets > details[open] > summary::after {
+  content: counter(list-item, disclosure-open) / "";
+}
+
 .munin-explorer-filters ul {
   margin: 8px 0 0;
   padding-left: 20px;
@@ -604,6 +624,16 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
      digits up and this gives them somewhere to line up: without it a count sits where its own text
      ended, measured here at 81 right edges over 107 values. (Fhi.Metadata-7bchj) */
   margin-left: auto;
+}
+
+/* An item on the summary row above, so it sits beside its heading rather than at the trailing edge
+   the count further up claims with `margin-left: auto` — that edge is the marker's here. Cosmetic
+   only: the words are markup, so it is announced as "Kildetype 2 valgt" either way. (Fhi.Metadata-l9l2n.53) */
+.munin-explorer-filters__chosen {
+  flex: none;
+  color: var(--grey60);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
 }
 
 /* The row of active filters over the results: one capsule per ticked value, each with a close

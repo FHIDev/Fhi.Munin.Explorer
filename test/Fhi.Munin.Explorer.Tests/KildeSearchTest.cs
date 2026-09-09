@@ -437,18 +437,24 @@ public class KildeSearchTest : BunitContext
     private static IReadOnlyList<string> FacetHeadings(IRenderedComponent<KildeSearch> cut) =>
         [.. Facets(cut).Select(FacetName)];
 
-    /// <summary>A facet's heading with the ticked-value count the summary carries stripped off.</summary>
+    /// <summary>A facet's heading, which is the whole of the <c>h4</c> in its summary.</summary>
     /// <remarks>
-    /// So a test can name a facet without naming how many of its values it has ticked so far — the
-    /// count is asserted where it is the subject, and is noise everywhere else.
+    /// Nothing is stripped off it. The ticked-value count is a sibling of the heading rather than
+    /// words inside it, so a test can name a facet without naming how many of its values it has
+    /// ticked so far. (Fhi.Metadata-l9l2n.53)
     /// </remarks>
-    private static string FacetName(IElement facet)
-    {
-        var heading = facet.QuerySelector("summary h4")!.TextContent.Trim();
-        var count = heading.LastIndexOf(" (", StringComparison.Ordinal);
+    private static string FacetName(IElement facet) =>
+        facet.QuerySelector("summary h4")!.TextContent.Trim();
 
-        return count < 0 ? heading : heading[..count];
-    }
+    /// <summary>What a facet's disclosure is announced as.</summary>
+    /// <remarks>
+    /// The subject of every assertion about the ticked-value count, because the count exists to be
+    /// in that sentence — a test asking only whether the span is in the DOM passes with the number
+    /// rendered somewhere no reader is told about. Through <see cref="AccessibleName"/> rather than
+    /// off the element's text, so the claim in that first line is resolved and not resembled.
+    /// </remarks>
+    private static string Summary(IRenderedComponent<KildeSearch> cut, string heading) =>
+        AccessibleName.Of(Facet(cut, heading).QuerySelector("summary")!);
 
     /// <summary>One facet's disclosure, found by the heading over it.</summary>
     /// <remarks>
@@ -491,6 +497,14 @@ public class KildeSearchTest : BunitContext
             .First(label => label.TextContent.Trim().StartsWith(choice, StringComparison.Ordinal))
             .QuerySelector("input")!
             .Change(true);
+
+    /// <summary>The same control, pressed the other way.</summary>
+    private static void Untick(IRenderedComponent<KildeSearch> cut, string heading, string choice) =>
+        Facet(cut, heading)
+            .QuerySelectorAll("li label")
+            .First(label => label.TextContent.Trim().StartsWith(choice, StringComparison.Ordinal))
+            .QuerySelector("input")!
+            .Change(false);
 
     /// <summary>Put the list in <paramref name="order"/> through the control the reader uses.</summary>
     private static void Choose(IRenderedComponent<KildeSearch> cut, KildeSortOrder order) =>
@@ -3373,24 +3387,119 @@ public class KildeSearchTest : BunitContext
     }
 
     [Fact]
-    public void Facets_WhenAFacetHasTickedValues_ThenItsHeadingSaysHowMany()
+    public void Facets_WhenAFacetHasTickedValues_ThenItsSummarySaysHowMany()
     {
         // The reason a folding panel is allowed to fold at all: a facet that is narrowing the list
         // from behind a closed disclosure has to say so, or the reader loses the filter and keeps
-        // its effect. The count goes in the <summary>, which is what a folded facet still draws —
-        // asserted here, because a count anywhere else is invisible the moment the facet folds.
+        // its effect. Asserted on the <summary>'s own text rather than on the span inside it,
+        // because that text is what the disclosure is announced as — a number rendered somewhere
+        // the accessible name does not reach is a number only a sighted reader has.
         var cut = RenderWith(new FakeClient(
             Kilde("Als registeret", "K_ALS", kildetype: "nasjonaltMedisinskKvalitetsregister"),
             Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister"),
             Kilde("Den norske mor, far og barn-undersøkelsen", "K_MOBA", kildetype: "biobank")));
 
-        Assert.Equal("Kildetype", Facet(cut, "Kildetype").QuerySelector("summary h4")!.TextContent.Trim());
+        Assert.Equal("Kildetype", Summary(cut, "Kildetype"));
 
         Tick(cut, "Kildetype", "Biobank");
         Tick(cut, "Kildetype", "Sentralt helseregister");
 
-        Assert.Equal("Kildetype (2)", Facet(cut, "Kildetype").QuerySelector("summary h4")!.TextContent.Trim());
+        Assert.Equal("Kildetype 2 valgt", Summary(cut, "Kildetype"));
         Assert.Equal(["Dødsårsaksregisteret", "Den norske mor, far og barn-undersøkelsen"], RowNames(cut));
+    }
+
+    [Fact]
+    public void Facets_WhenNothingIsTicked_ThenTheFacetSaysNothingAboutHowMany()
+    {
+        // "0 valgt" over a facet nobody has touched reports a filter where there is none, and it
+        // does it on every facet at once — four lines of noise in the column the panel is trying to
+        // keep short. So the element is absent rather than empty or zero.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", kildetype: "biobank"),
+            Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister")));
+
+        Assert.Empty(cut.FindAll(".munin-explorer-filters__chosen"));
+        Assert.DoesNotContain("valgt", Summary(cut, "Kildetype"), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Facets_WhenTheLastTickedValueIsCleared_ThenTheCountGoesAwayAgain()
+    {
+        // The other edge, and the one a count computed once at render time gets wrong: a facet the
+        // reader has emptied is a facet narrowing nothing, and a stale "1 valgt" on it is worse
+        // than no count at all — it names a filter the list is not obeying.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", kildetype: "biobank"),
+            Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister")));
+
+        Tick(cut, "Kildetype", "Biobank");
+
+        Assert.Equal("Kildetype 1 valgt", Summary(cut, "Kildetype"));
+
+        Untick(cut, "Kildetype", "Biobank");
+
+        Assert.Equal("Kildetype", Summary(cut, "Kildetype"));
+        Assert.Empty(cut.FindAll(".munin-explorer-filters__chosen"));
+    }
+
+    [Fact]
+    public void Facets_WhenACountIsDrawn_ThenItIsBesideTheHeadingRatherThanInsideIt()
+    {
+        // The shape the count has to keep. A number inside the <h4> becomes part of the heading
+        // text, and this panel is what a screen-reader user navigates by heading — "Kildetype 1"
+        // is a worse heading than "Kildetype", and it is not a better name for the disclosure
+        // either, because the whole summary is what names that. So: a sibling, inside the summary.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", kildetype: "biobank"),
+            Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister")));
+
+        Tick(cut, "Kildetype", "Biobank");
+
+        var summary = Facet(cut, "Kildetype").QuerySelector("summary")!;
+        var heading = summary.QuerySelector("h4")!;
+        var count = summary.QuerySelector(".munin-explorer-filters__chosen")!;
+
+        Assert.Equal("Kildetype", heading.TextContent.Trim());
+        Assert.Same(summary, count.ParentElement);
+        Assert.Empty(heading.QuerySelectorAll(".munin-explorer-filters__chosen"));
+
+        // Native disclosure semantics, unchanged by the count landing in the summary: `open` is the
+        // state and there is no second claim about it to drift out of step. (Fhi.Metadata-co3sf)
+        Assert.False(summary.HasAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void Facets_WhenOneFacetIsTicked_ThenAnotherFacetReportsNoneOfIt()
+    {
+        // Each summary counts its own facet. The panel already has a total over all four, in its
+        // own heading, and a per-facet count reading that total would say the same wrong number
+        // four times over.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", kildetype: "biobank", dataProcessor: "Folkehelseinstituttet"),
+            Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister",
+                  dataProcessor: "Kreftregisteret")));
+
+        Tick(cut, "Kildetype", "Biobank");
+
+        Assert.Equal("Kildetype 1 valgt", Summary(cut, "Kildetype"));
+        Assert.Equal("Databehandler", Summary(cut, "Databehandler"));
+    }
+
+    [Fact]
+    public void Facets_WhenTheHostAsksForEnglish_ThenTheCountIsWordedInEnglish()
+    {
+        // The words come from the text record like every other string here. A count assembled in
+        // markup would be Norwegian on an English host, and it would be the only thing on the page
+        // that was.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", kildetype: "biobank"),
+            Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister")));
+
+        Tick(cut, "Kildetype", "Biobank");
+
+        cut.Render(b => b.Add(c => c.Language, "en"));
+
+        Assert.Equal("Source type 1 selected", Summary(cut, "Source type"));
     }
 
     [Fact]
@@ -3441,9 +3550,7 @@ public class KildeSearchTest : BunitContext
         cut.Find(".munin-explorer-drilldown button").Click();
 
         Assert.Equal(["Als registeret"], RowNames(cut));
-        Assert.Equal(
-            "Databehandler (1)",
-            Facet(cut, "Databehandler").QuerySelector("summary h4")!.TextContent.Trim());
+        Assert.Equal("Databehandler 1 valgt", Summary(cut, "Databehandler"));
         Assert.Equal([true, false, false], Facets(cut).Select(f => f.HasAttribute("open")).ToArray());
     }
 
@@ -3978,9 +4085,7 @@ public class KildeSearchTest : BunitContext
 
         // ...and still the filter in force, heading count included.
         Assert.Equal(narrowed, RowNames(cut));
-        Assert.Equal(
-            "Databehandler (1)",
-            Facet(cut, "Databehandler").QuerySelector("summary h4")!.TextContent.Trim());
+        Assert.Equal("Databehandler 1 valgt", Summary(cut, "Databehandler"));
 
         // Cleared, the value comes back with its tick still on rather than as an empty box beside a
         // list that is somehow still narrowed.
@@ -4265,6 +4370,11 @@ public class KildeSearchTest : BunitContext
         // — coverage lost to a state nobody enters. (Fhi.Metadata-ag4n7)
         cut.Find(".searchbox__freetext").Change("als");
 
+        // And ticked for the same reason: the chips over the results and a facet's ticked-value
+        // count are drawn above zero only, so an untouched panel leaves four names out of the one
+        // list whose job is to notice a fifth. (Fhi.Metadata-l9l2n.53)
+        Tick(cut, "Kildetype", "Sentralt helseregister");
+
         var invented = HostClassNames.Of(cut.FindAll("[class]"))
             .Where(HostClassNames.IsOwnStructureName)
             .Distinct(StringComparer.Ordinal)
@@ -4275,6 +4385,11 @@ public class KildeSearchTest : BunitContext
             "munin-explorer",                    // shared with the variable explorer
             "munin-explorer-container",          // shared
             "munin-explorer-filters",            // shared
+            // The four below are drawn only above zero, which is why this render ticks a value.
+            "munin-explorer-filters__active",
+            "munin-explorer-filters__chip",
+            "munin-explorer-filters__chip-remove",
+            "munin-explorer-filters__chosen",
             "munin-explorer-filters__count",     // shared with the variable explorer's facets
             "munin-explorer-filters__facets",
             "munin-explorer-filters__toggle",
@@ -4311,6 +4426,44 @@ public class KildeSearchTest : BunitContext
         Tick(cut, "Kildetype", "Sentralt helseregister");
 
         Assert.Equal([], HostClassNames.Orphans(HostClassNames.Of(cut.FindAll("[class]"))));
+    }
+
+    [Fact]
+    public void Facets_WhenASampleStandsInForStiler_ThenTheSummaryIsLaidOutAsOneRow()
+    {
+        // Same half of the bug the fold's guard below answers, and the half this bead first shipped
+        // without: `__chosen` had four declarations that drew nothing while the summary still laid
+        // its <h4> out as a block. The PARTICULAR DECLARATION a host owes is the row — and the
+        // marker with it, since a row is not a list-item and gets none. (Fhi.Metadata-l9l2n.58)
+        var rules = HostClassNames.SampleDeclarationsFor("munin-explorer-filters__facets");
+
+        static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
+
+        var summary = rules
+            .Where(rule => rule.Selector.Contains("summary", StringComparison.Ordinal))
+            .Select(rule => (rule.Selector, Declarations: Squeezed(rule.Declarations)))
+            .ToList();
+
+        Assert.True(
+            summary.Any(rule => !rule.Selector.Contains("::", StringComparison.Ordinal)
+                                && rule.Declarations.Contains("display:flex", StringComparison.Ordinal)),
+            "No rule lays a facet's summary out as a row, so the heading keeps its block box and the "
+            + "ticked-value count beside it is drawn under it instead.");
+
+        Assert.True(
+            summary.Any(rule => rule.Selector.Contains("::after", StringComparison.Ordinal)
+                                && !rule.Selector.Contains("[open]", StringComparison.Ordinal)
+                                && rule.Declarations.Contains(
+                                    "counter(list-item,disclosure-closed)", StringComparison.Ordinal)),
+            "Nothing draws the disclosure marker back, and a summary laid out as a row is not a "
+            + "list-item, so the browser draws none: a folded facet shows nothing to press.");
+
+        // Both states, because one glyph for both is a marker that lies about half the time.
+        Assert.True(
+            summary.Any(rule => rule.Selector.Contains("[open]", StringComparison.Ordinal)
+                                && rule.Declarations.Contains(
+                                    "counter(list-item,disclosure-open)", StringComparison.Ordinal)),
+            "The marker does not turn when the facet opens, so an open facet still looks shut.");
     }
 
     [Fact]
