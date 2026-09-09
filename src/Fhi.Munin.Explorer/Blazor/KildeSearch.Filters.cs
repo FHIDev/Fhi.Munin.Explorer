@@ -742,9 +742,9 @@ public sealed partial class KildeSearch
     /// Built by hand for the reason the component's title is: Razor has no syntax for a computed
     /// element name, and the level follows the host's choice of <see cref="HeadingLevel"/>.
     /// <para>
-    /// The count is the variable explorer's own treatment of a collapsed facet, and it earns its
-    /// place here for the same reason: with the panel folded away on a narrow screen, the heading
-    /// is the only thing on screen that says the list is narrowed at all.
+    /// The number stays inside this heading, unlike a facet's: it counts every facet at once, so
+    /// there is no one summary line for it to sit beside, and with the panel folded away on a
+    /// narrow screen this heading is the only thing saying the list is narrowed. (Fhi.Metadata-l9l2n.53)
     /// </para>
     /// </remarks>
     private RenderFragment FiltersHeading => builder =>
@@ -762,21 +762,9 @@ public sealed partial class KildeSearch
     /// values are ticked.
     /// </summary>
     /// <remarks>
-    /// <c>headline-xxs</c>, which is what <see cref="KildeView"/> gives a group of facts — so the
-    /// panel's headings and the kilde's read as the same kind of thing rather than as two
-    /// vocabularies in one component.
-    /// <para>
-    /// The count is in the <c>&lt;summary&gt;</c>, which is what a folded facet still draws: a facet
-    /// narrowing the list from behind a closed disclosure would otherwise take the filter off screen
-    /// and leave its effect. Beside the heading and never inside it — a number inside a heading is
-    /// part of the heading, and this panel is navigated by heading. (Fhi.Metadata-l9l2n.53)
-    /// </para>
-    /// <para>
-    /// Markup rather than something a stylesheet draws, because «Kildetype 2 valgt» is what a
-    /// reader who cannot see the panel is told. The separating space is written out for the same
-    /// reason — it is the space in that sentence — and costs no layout, since whitespace between
-    /// flex items is not drawn.
-    /// </para>
+    /// <c>headline-xxs</c> is what <see cref="KildeView"/> gives a group of facts, so both read as
+    /// one vocabulary. The count is in the summary, which a folded facet still draws, and beside
+    /// the heading rather than inside it: this panel is navigated by heading. (Fhi.Metadata-l9l2n.53)
     /// </remarks>
     private RenderFragment FacetSummary(Facet facet) => builder =>
     {
@@ -792,6 +780,7 @@ public sealed partial class KildeSearch
             return;
         }
 
+        // The space in the sentence the summary is announced as; the row draws none between items.
         builder.AddContent(3, " ");
         builder.OpenElement(4, "span");
         builder.AddAttribute(5, "class", "munin-explorer-filters__chosen");

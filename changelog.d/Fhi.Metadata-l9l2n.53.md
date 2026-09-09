@@ -8,5 +8,7 @@ category: Changed
   announced as. It is drawn only while at least one of the facet's values is ticked: an untouched
   facet says nothing rather than "0 valgt", and clearing the last tick takes the count away again.
   English hosts get "2 selected". The heading is still a heading at the same level, and the
-  disclosure is still the native `open` state with no `aria-expanded` beside it.
-  (Fhi.Metadata-l9l2n.53)
+  disclosure is still the native `open` state with no `aria-expanded` beside it. The summary line
+  is laid out as a row to hold all three, which is also what takes the facet's disclosure marker
+  off the row of its own it had fallen to — that rule is the host's, and both sample stylesheets
+  now carry it. (Fhi.Metadata-l9l2n.53, Fhi.Metadata-l9l2n.58)

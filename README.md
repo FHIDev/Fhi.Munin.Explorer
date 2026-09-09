@@ -249,7 +249,13 @@ These are not style preferences — each one is a host that breaks otherwise.
     facet's values are ticked, sitting beside that facet's heading, where `margin-left: auto`
     belongs to the disclosure marker rather than to the number. A handle again — the words are
     markup, so a folded facet is announced as "Kildetype 2 valgt" with no stylesheet at all, and
-    what a rule buys is the dimming and the tabular figures.
+    what a rule buys is the dimming and the tabular figures. What a host owes the summary line
+    itself is a rule of a different kind, on no name of ours: the heading in there is a block box,
+    so without one laying the summary out as a row the count is drawn under the heading and the
+    disclosure marker under that. Both sample stylesheets carry it, and so does
+    `Fhi.Helsedata.Stiler`, where it is shared with the variabelutforsker's panel and redraws the
+    marker on the trailing edge — a summary laid out as a row is no longer a list-item, and the
+    browser stops drawing a marker for it.
     The saved-list view's `munin-explorer-dataitem-*__desiredData` pair is a handle on the same
     terms and worth one sentence, because the cell holds a control rather than a value: undefined,
     the annotation field is a browser-default text box, which is visible, operable and named, so

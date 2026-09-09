@@ -446,16 +446,15 @@ public class KildeSearchTest : BunitContext
     private static string FacetName(IElement facet) =>
         facet.QuerySelector("summary h4")!.TextContent.Trim();
 
-    /// <summary>What a facet's disclosure is announced as: the whole text of its <c>&lt;summary&gt;</c>.</summary>
+    /// <summary>What a facet's disclosure is announced as.</summary>
     /// <remarks>
     /// The subject of every assertion about the ticked-value count, because the count exists to be
     /// in that sentence — a test asking only whether the span is in the DOM passes with the number
-    /// rendered somewhere no reader is told about. Whitespace is squeezed so the assertions are
-    /// about the words rather than about how the render tree happened to break them up.
+    /// rendered somewhere no reader is told about. Through <see cref="AccessibleName"/> rather than
+    /// off the element's text, so the claim in that first line is resolved and not resembled.
     /// </remarks>
     private static string Summary(IRenderedComponent<KildeSearch> cut, string heading) =>
-        string.Join(" ", Facet(cut, heading).QuerySelector("summary")!.TextContent.Split(
-            (char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        AccessibleName.Of(Facet(cut, heading).QuerySelector("summary")!);
 
     /// <summary>One facet's disclosure, found by the heading over it.</summary>
     /// <remarks>
@@ -4321,6 +4320,11 @@ public class KildeSearchTest : BunitContext
         // — coverage lost to a state nobody enters. (Fhi.Metadata-ag4n7)
         cut.Find(".searchbox__freetext").Change("als");
 
+        // And ticked for the same reason: the chips over the results and a facet's ticked-value
+        // count are drawn above zero only, so an untouched panel leaves four names out of the one
+        // list whose job is to notice a fifth. (Fhi.Metadata-l9l2n.53)
+        Tick(cut, "Kildetype", "Sentralt helseregister");
+
         var invented = HostClassNames.Of(cut.FindAll("[class]"))
             .Where(HostClassNames.IsOwnStructureName)
             .Distinct(StringComparer.Ordinal)
@@ -4331,6 +4335,11 @@ public class KildeSearchTest : BunitContext
             "munin-explorer",                    // shared with the variable explorer
             "munin-explorer-container",          // shared
             "munin-explorer-filters",            // shared
+            // The four below are drawn only above zero, which is why this render ticks a value.
+            "munin-explorer-filters__active",
+            "munin-explorer-filters__chip",
+            "munin-explorer-filters__chip-remove",
+            "munin-explorer-filters__chosen",
             "munin-explorer-filters__count",     // shared with the variable explorer's facets
             "munin-explorer-filters__facets",
             "munin-explorer-filters__toggle",
@@ -4367,6 +4376,44 @@ public class KildeSearchTest : BunitContext
         Tick(cut, "Kildetype", "Sentralt helseregister");
 
         Assert.Equal([], HostClassNames.Orphans(HostClassNames.Of(cut.FindAll("[class]"))));
+    }
+
+    [Fact]
+    public void Facets_WhenASampleStandsInForStiler_ThenTheSummaryIsLaidOutAsOneRow()
+    {
+        // Same half of the bug the fold's guard below answers, and the half this bead first shipped
+        // without: `__chosen` had four declarations that drew nothing while the summary still laid
+        // its <h4> out as a block. The PARTICULAR DECLARATION a host owes is the row — and the
+        // marker with it, since a row is not a list-item and gets none. (Fhi.Metadata-l9l2n.58)
+        var rules = HostClassNames.SampleDeclarationsFor("munin-explorer-filters__facets");
+
+        static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
+
+        var summary = rules
+            .Where(rule => rule.Selector.Contains("summary", StringComparison.Ordinal))
+            .Select(rule => (rule.Selector, Declarations: Squeezed(rule.Declarations)))
+            .ToList();
+
+        Assert.True(
+            summary.Any(rule => !rule.Selector.Contains("::", StringComparison.Ordinal)
+                                && rule.Declarations.Contains("display:flex", StringComparison.Ordinal)),
+            "No rule lays a facet's summary out as a row, so the heading keeps its block box and the "
+            + "ticked-value count beside it is drawn under it instead.");
+
+        Assert.True(
+            summary.Any(rule => rule.Selector.Contains("::after", StringComparison.Ordinal)
+                                && !rule.Selector.Contains("[open]", StringComparison.Ordinal)
+                                && rule.Declarations.Contains(
+                                    "counter(list-item,disclosure-closed)", StringComparison.Ordinal)),
+            "Nothing draws the disclosure marker back, and a summary laid out as a row is not a "
+            + "list-item, so the browser draws none: a folded facet shows nothing to press.");
+
+        // Both states, because one glyph for both is a marker that lies about half the time.
+        Assert.True(
+            summary.Any(rule => rule.Selector.Contains("[open]", StringComparison.Ordinal)
+                                && rule.Declarations.Contains(
+                                    "counter(list-item,disclosure-open)", StringComparison.Ordinal)),
+            "The marker does not turn when the facet opens, so an open facet still looks shut.");
     }
 
     [Fact]

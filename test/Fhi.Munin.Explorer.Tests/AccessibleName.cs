@@ -109,7 +109,7 @@ internal static class AccessibleName
         // why this arm cannot rescue the field the guard above is aimed at.
         if (NamedByItsContent(element))
         {
-            return element.TextContent.Trim();
+            return Collapse(element.TextContent);
         }
 
         return "";
