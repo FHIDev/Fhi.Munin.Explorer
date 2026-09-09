@@ -1,6 +1,9 @@
+using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.Logging;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -12,6 +15,11 @@ namespace Fhi.Munin.Explorer.Blazor;
 public partial class VariableSearch : IDisposable
 {
     [Inject] private IServiceProvider ServiceProvider { get; set; } = null!;
+
+    private ILogger? _log;
+
+    /// <summary>The host's logger, or none — see <see cref="ExplorerLog"/>.</summary>
+    private ILogger? Log => _log ??= ExplorerLog.For<VariableSearch>(ServiceProvider);
 
     private VariableListState? _listState;
 
@@ -38,7 +46,7 @@ public partial class VariableSearch : IDisposable
     /// Re-draws the rows against the shared set. It reads no page and sends nothing — the holder
     /// has already applied the change, and a fetch here would put a request behind every save.
     /// </summary>
-    private void OnListStateChanged() => InvokeAsync(StateHasChanged);
+    private void OnListStateChanged(VariableListState.ListChange? change) => InvokeAsync(StateHasChanged);
 
     public void Dispose()
     {
@@ -64,8 +72,20 @@ public partial class VariableSearch : IDisposable
         {
             await ListState.EnsureActiveListAsync();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            // The 429 and the 401 the comment below describes are expected outcomes rather than
+            // faults, so they are the Warning half of the split — and this read runs on every
+            // parameter set, which would make an Error here the loudest line in the channel.
+            if (ex is MuninExplorerRateLimitedException or MuninExplorerUnauthorizedException)
+            {
+                Log?.LogWarning(ex, "the API refused the reader's list membership");
+            }
+            else
+            {
+                Log?.LogError(ex, "could not read the reader's list membership");
+            }
+
             // Caught, and nothing said. An exception out of a lifecycle method takes the circuit
             // down with it, which in helsedata's legacy Blazor Server host means the whole CMS page
             // — see the RaiseAsync remarks in VariableSearch.Querying.cs. The mount fires this

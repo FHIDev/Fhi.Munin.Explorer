@@ -1663,21 +1663,51 @@ public class VariableSearchTest : BunitContext
         Assert.Equal("Als registeret", cell.GetAttribute("title"));
     }
 
-    [Fact]
-    public void Render_WhenAKildeHasNoShortName_ThenTheColumnFallsBackToTheFullName()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Render_WhenAKildeHasNoShortName_ThenTheColumnFallsBackToTheFullName(string? shortName)
     {
-        // Not every kilde has a short name, and a blank cell would be worse than a long one.
+        // Not every kilde has a short name, and a blank cell would be worse than a long one. The
+        // API sends an omitted kortnavn as "", which the `??` this replaced kept, so the column
+        // said "Ikke oppgitt" over a name held on the same row.
         var cut = RenderWith(new FakeClient(OnePage(new VariableSummary
         {
             Id = Guid.NewGuid(),
             Code = "V_X.1",
             PreferredTerm = "Uten kortnavn",
-            KildeName = "Et register uten kortnavn",
+            KildeName = "Norsk register for gastrokirurgi",
+            KildeShortName = shortName,
         })));
 
         var cell = cut.Find(".munin-explorer-dataitem-main__source");
 
-        Assert.Equal("Et register uten kortnavn",
+        Assert.Equal("Norsk register for gastrokirurgi",
+                     cell.QuerySelector(".munin-explorer-dataitem-main__column__text")!.TextContent);
+        Assert.Equal("Norsk register for gastrokirurgi", cell.GetAttribute("title"));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void Render_WhenTheShortNameIsBlankAndSoIsTheKildeName_ThenTheColumnStillSaysNotSpecified(string? kildeName)
+    {
+        // The fallback must not turn an unknown kilde into a blank cell: with neither name there is
+        // nothing to fall back to, and "Ikke oppgitt" is still the right answer. Both absences
+        // reach here, since the property is nullable and the API also sends "".
+        var cut = RenderWith(new FakeClient(OnePage(new VariableSummary
+        {
+            Id = Guid.NewGuid(),
+            Code = "V_X.2",
+            PreferredTerm = "Uten kilde",
+            KildeName = kildeName,
+            KildeShortName = "",
+        })));
+
+        var cell = cut.Find(".munin-explorer-dataitem-main__source");
+
+        Assert.Equal("Ikke oppgitt",
                      cell.QuerySelector(".munin-explorer-dataitem-main__column__text")!.TextContent);
     }
 
@@ -3852,6 +3882,36 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
+    public void Render_WhenAKildeFacetHasNoKildetype_ThenTheHeadingOverItSaysSoRatherThanStandingBlank()
+    {
+        // The Datakilde group heads its kilder by kildetype, so a null is an unnamed line above a
+        // register the reader is meant to recognise — and it is the grouping key as well as the
+        // label, which is the shape that throws rather than renders badly. (Fhi.Metadata-l9l2n.61)
+        var cut = RenderWith(new FilteringClient(OnePage(), new FilterOptions
+        {
+            KildeTyper = [new() { Value = "biobank", DisplayName = "Biobank", Count = 12 }],
+            Kilder =
+            [
+                new() { Id = Tromso, Name = "Tromsøundersøkelsen", KildeType = "biobank", Count = 12 },
+                new() { Id = Dodsarsak, Name = "Dødsårsaksregisteret", KildeType = null, Count = 30 }
+            ],
+            TotalCount = 42
+        }));
+
+        // A heading names a level and does not filter, so it is text in the li rather than a label.
+        var unnamed = cut.FindAll(".munin-explorer-filters li")
+            .Single(li => li.ChildNodes[0].TextContent.Trim() == "Ikke oppgitt");
+
+        Assert.Equal(["Dødsårsaksregisteret (30)"],
+                     unnamed.QuerySelectorAll("ul > li > label").Select(label => label.TextContent));
+
+        // The missing kildetype costs the kilde its heading's name, not its place in the panel.
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        Assert.True(FacetChosen(cut, "Dødsårsaksregisteret"));
+    }
+
+    [Fact]
     public void Render_WhenTheApiNamesAKildetypeByItsEnumName_ThenTheButtonSaysItInProse()
     {
         // The facet's own displayName is the raw enum name. Munin's explorer carries the prose,
@@ -3865,11 +3925,236 @@ public class VariableSearchTest : BunitContext
     [Fact]
     public void Render_WhenADatatypeArrivesAsABareCode_ThenTheButtonSaysWhatTheCodeMeans()
     {
-        // The API returns "1" with no label at all, so a UI has to carry its own mapping or put a
-        // button reading "1" on the page.
+        // A facet carrying no label at all — what an API predating the names sends, and what this
+        // fixture holds — is the one case the button still resolves from the shipped table keyed
+        // by the code. A facet that does carry a name shows that name. (Fhi.Metadata-l9l2n.49)
         var cut = RenderWith(new FilteringClient(OnePage()));
 
         Assert.Equal("Streng (9)", Facet(cut, "Streng").TextContent);
+    }
+
+    [Theory]
+    [InlineData("1")]
+    [InlineData("String")]
+    public void Render_WhenTheApiNamesADatatypeInEnglish_ThenTheRowSaysItTheWayTheFacetDoes(
+        string stored)
+    {
+        // The bug: the filters endpoint answers a Norwegian call with displayName "String" for code
+        // "1", and the row rendered that beside a facet and a detail panel both reading "Streng".
+        // The stored legacy form is the case that proves it — a row already holding "1" read
+        // correctly on the panel before this and proved nothing. (Fhi.Metadata-l9l2n.49)
+        var facets = Facets() with
+        {
+            DataTypes = [new() { Value = "1", DisplayName = "String", Count = 9 }]
+        };
+        var row = Variable("1. Tale", "V_ALS.F1.ALSFRSR1TALE") with { DataType = stored };
+
+        var cut = RenderWith(new FilteringClient(OnePage(row), facets));
+
+        Assert.Equal("Streng", CellText(cut, "dataType"));
+        Assert.Equal("Streng (9)", Facet(cut, "Streng").TextContent);
+    }
+
+    [Fact]
+    public void Render_WhenADatatypeFacetIsNamedInALegacyForm_ThenTheButtonSaysTheReadersWord()
+    {
+        // The facet's own branch, asserted apart from the row: the API's word is what shows, and
+        // the shipped table is consulted for the one word that is not a name. (Fhi.Metadata-l9l2n.49)
+        var facets = Facets() with
+        {
+            DataTypes = [new() { Value = "1", DisplayName = "String", Count = 9 }]
+        };
+
+        var cut = RenderWith(new FilteringClient(OnePage(), facets));
+
+        Assert.Equal("Streng (9)", Facet(cut, "Streng").TextContent);
+    }
+
+    [Fact]
+    public void Render_WhenADatatypeFacetIsNamedSomethingTheShippedTableHasNeverHeardOf_ThenItSaysIt()
+    {
+        // The pass-through branch. A name the alias table does not know reaches the button
+        // unaltered, which is what keeps the API owning the vocabulary. (Fhi.Metadata-l9l2n.49)
+        var facets = Facets() with
+        {
+            DataTypes = [new() { Value = "11", DisplayName = "Kvasistreng", Count = 2 }]
+        };
+
+        var cut = RenderWith(new FilteringClient(OnePage(), facets));
+
+        Assert.Equal("Kvasistreng (2)", Facet(cut, "Kvasistreng").TextContent);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Render_WhenADatatypeFacetArrivesWithABlankName_ThenTheButtonIsNotBlank(string? name)
+    {
+        // The subtle branch. Normalisation returns a blank string as it found it, so the
+        // IsNullOrWhiteSpace guard is the only thing between a facet named "" and a button with an
+        // empty accessible name — unreadable to a screen reader and unclickable-looking to
+        // everyone else. Asserted twice: the word is there, and no facet is left labelled by its
+        // count alone. (Fhi.Metadata-l9l2n.49)
+        var facets = Facets() with
+        {
+            DataTypes = [new() { Value = "1", DisplayName = name, Count = 9 }]
+        };
+
+        var cut = RenderWith(new FilteringClient(OnePage(), facets));
+
+        Assert.Equal("Streng (9)", Facet(cut, "Streng").TextContent);
+        Assert.DoesNotContain(FacetControls(cut),
+                              c => c.TextContent.TrimStart().StartsWith('('));
+    }
+
+    [Theory]
+    [InlineData("1")]
+    [InlineData("String")]
+    [InlineData("tekst")]
+    public void Render_WhenTheApisNameForACodeIsNotTheShippedWord_ThenTheRowStillSaysWhatTheFacetDoes(
+        string stored)
+    {
+        // The row and the facet are the two API-driven surfaces, so they have to agree whatever the
+        // API calls a code. The name here is one the shipped table has never heard of on purpose:
+        // while the API's Norwegian for code 1 happens to be "Streng", a row that never reached the
+        // facets at all still landed on the right word through the shipped table, and the
+        // disagreement would only appear the day someone edited the name. The stored spelling has
+        // to be resolved to its code before the facets are searched. (Fhi.Metadata-l9l2n.49)
+        var facets = Facets() with
+        {
+            DataTypes = [new() { Value = "1", DisplayName = "Tekststreng", Count = 9 }]
+        };
+        var row = Variable("1. Tale", "V_ALS.F1.ALSFRSR1TALE") with { DataType = stored };
+
+        var cut = RenderWith(new FilteringClient(OnePage(row), facets));
+
+        Assert.Equal("Tekststreng", CellText(cut, "dataType"));
+        Assert.Equal("Tekststreng (9)", Facet(cut, "Tekststreng").TextContent);
+    }
+
+    [Theory]
+    [InlineData("1")]
+    [InlineData("String")]
+    [InlineData("tekst")]
+    public void Render_WhenADatatypeIsShownOnEverySurface_ThenAllThreeSayTheSameWord(string stored)
+    {
+        // The reported bug, asserted once across the three surfaces rather than three times inside
+        // one of them: the row resolves through the facets, the facet through its own displayName,
+        // and the panel through the stored code alone. The panel can only reach as far as the
+        // shipped table, so this is the invariant while the API's word for a code is that table's
+        // word; the test above is the one that holds when it stops being. (Fhi.Metadata-l9l2n.49)
+        var facets = Facets() with
+        {
+            DataTypes = [new() { Value = "1", DisplayName = "String", Count = 9 }]
+        };
+        var row = Variable("1. Tale", "V_ALS.F1.ALSFRSR1TALE") with { DataType = stored };
+
+        var cut = RenderWith(new FilteringClient(OnePage(row), facets));
+        var panel = Render<VariableView>(b => b.Add(c => c.Variable, WholeVariable(stored)));
+
+        var word = CellText(cut, "dataType");
+
+        Assert.Equal("Streng", word);
+        Assert.Equal($"{word} (9)", Facet(cut, word).TextContent);
+        Assert.Equal(word, PanelDataType(panel));
+    }
+
+    /// <summary>The same variable as a whole, which is what the detail view is handed.</summary>
+    private static VariableDetail WholeVariable(string dataType) => new()
+    {
+        Id = Guid.NewGuid(),
+        Code = "V_ALS.F1.ALSFRSR1TALE",
+        PreferredTerm = "1. Tale",
+        KildeName = "Als registeret",
+        DataType = dataType,
+    };
+
+    /// <summary>The word under the panel's Datatype heading, which is a sibling rather than a
+    /// child of it — the aside is a flat run of headings and paragraphs.</summary>
+    private static string PanelDataType(IRenderedComponent<VariableView> cut) =>
+        cut.FindAll(".munin-explorer-whole__aside .headline-s")
+           .Single(h => h.TextContent == "Datatype")
+           .NextElementSibling!.TextContent;
+
+    [Fact]
+    public void Render_WhenTheApiNamesADatatypeWeHaveNoAliasFor_ThenTheRowAndTheFacetShowIt()
+    {
+        // The API owns the vocabulary: a datatype added on its side reaches the row unaltered, and
+        // is not routed through a table shipped inside this package. The facet is asserted beside
+        // the row because it was the surface still keyed by the code, drawing "11" against the
+        // row's "Kvasistreng" until this. (Fhi.Metadata-l9l2n.49)
+        var facets = Facets() with
+        {
+            DataTypes = [new() { Value = "11", DisplayName = "Kvasistreng", Count = 2 }]
+        };
+        var row = Variable("1. Tale", "V_ALS.F1.ALSFRSR1TALE") with { DataType = "11" };
+
+        var cut = RenderWith(new FilteringClient(OnePage(row), facets));
+
+        Assert.Equal("Kvasistreng", CellText(cut, "dataType"));
+        Assert.Equal("Kvasistreng (2)", Facet(cut, "Kvasistreng").TextContent);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Render_WhenADatatypeFacetArrivesWithABlankName_ThenTheRowSaysWhatTheButtonSays(
+        string? name)
+    {
+        // The button's blank-name guard used to have no counterpart on the row, so the one facet
+        // this fixture models — an API predating displayName — put "Streng" on the button and "1"
+        // on every row beside it. Both fall back to the shipped table now. (Fhi.Metadata-l9l2n.49)
+        var facets = Facets() with
+        {
+            DataTypes = [new() { Value = "1", DisplayName = name, Count = 9 }]
+        };
+        var row = Variable("1. Tale", "V_ALS.F1.ALSFRSR1TALE") with { DataType = "1" };
+
+        var cut = RenderWith(new FilteringClient(OnePage(row), facets));
+
+        Assert.Equal("Streng", CellText(cut, "dataType"));
+        Assert.Equal("Streng (9)", Facet(cut, "Streng").TextContent);
+    }
+
+    [Theory]
+    [InlineData("String", "Streng")]
+    [InlineData("tekst", "Streng")]
+    [InlineData("2", "Heltall")]
+    [InlineData("11", "11")]
+    public void Render_WhenTheFacetsCannotBeFetched_ThenTheRowsStillNameTheirDatatype(
+        string stored, string expected)
+    {
+        // A first-load facets failure leaves _facets null while the rows render anyway, so this is
+        // the branch every other row assertion here skips by supplying a matching facet. Both
+        // halves are pinned: a legacy spelling resolves to its code's word, and a code the shipped
+        // table has never heard of survives as itself rather than becoming another code's word —
+        // which is what "tidying" the lookup key onto the fallback would do.
+        // (Fhi.Metadata-l9l2n.49)
+        var row = Variable("1. Tale", "V_ALS.F1.ALSFRSR1TALE") with { DataType = stored };
+        var client = new FilteringClient(OnePage(row)) { FailFacets = true };
+
+        var cut = RenderWith(client);
+
+        Assert.Equal(expected, CellText(cut, "dataType"));
+    }
+
+    [Fact]
+    public void Render_WhenNoFacetMatchesTheRowsDatatype_ThenTheRowFallsBackAsThePanelDoes()
+    {
+        // Facets that landed but name only the codes the current search matched. A row outside
+        // that set has no API name of its own, which is the panel's situation exactly, so it reads
+        // the panel's word rather than a bare number. (Fhi.Metadata-l9l2n.49)
+        var facets = Facets() with
+        {
+            DataTypes = [new() { Value = "1", DisplayName = "Streng", Count = 9 }]
+        };
+        var row = Variable("1. Tale", "V_ALS.F1.ALSFRSR1TALE") with { DataType = "2" };
+
+        var cut = RenderWith(new FilteringClient(OnePage(row), facets));
+
+        Assert.Equal("Heltall", CellText(cut, "dataType"));
     }
 
     [Fact]
@@ -7048,6 +7333,40 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
+    public void Detail_WhenTheChevronItselfIsClicked_ThenTheRowExpands()
+    {
+        // The reported bug: the chevron was a sibling span with no handler, so aiming at it hit
+        // nothing (Fhi.Metadata-zqe14). Clicking the row or the name would pass either way, so
+        // the click has to land on the icon itself to mean anything.
+        var cut = RenderWith(TwoRows());
+        var chevron = Toggles(cut)[0].QuerySelector(".munin-explorer-dataitem-main__expand-icon");
+
+        Assert.NotNull(chevron);
+        chevron!.Click();
+
+        // Re-fetched rather than a captured reference: the click re-renders the row.
+        Assert.Equal("true", Toggles(cut)[0].GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void Detail_WhenTheChevronMovesInsideTheButton_ThenThereIsExactlyOneControl()
+    {
+        // The trap: a click handler on the aria-hidden span would give assistive tech one control
+        // and a mouse two. The chevron has to be a child of the button, still aria-hidden, and the
+        // button keeps its own accessible state — never a second, competing control.
+        var cut = RenderWith(TwoRows());
+        var toggle = Toggles(cut)[0];
+        var chevron = toggle.QuerySelector(".munin-explorer-dataitem-main__expand-icon");
+
+        Assert.NotNull(chevron);
+        // A child of the button, not a sibling — the fix, restated as a structural assertion.
+        Assert.Same(toggle, chevron!.ParentElement);
+        Assert.Equal("true", chevron.GetAttribute("aria-hidden"));
+        Assert.Equal("false", toggle.GetAttribute("aria-expanded"));
+        Assert.Equal("1. Tale", toggle.TextContent);
+    }
+
+    [Fact]
     public void Detail_WhenTheDetailArrives_ThenItSaysWhatTheVariableIsAndWhereItSits()
     {
         // The five things the panel exists to show. The labels are the card's own words for the
@@ -7088,6 +7407,23 @@ public class VariableSearchTest : BunitContext
                      KodeverkLines(cut).Select(l => l.QuerySelector(".munin-explorer-kodeverk__name")!.TextContent));
         Assert.Equal(["Referanse: 2336", "Referanse: 2.16.578.1.12.4.1.1.7110"],
                      KodeverkLines(cut).Select(l => l.QuerySelector(".munin-explorer-kodeverk__reference")!.TextContent));
+    }
+
+    [Fact]
+    public void Detail_WhenTheOwningKildeHasNoKildetype_ThenTheTrailStartsAtTheKildeRatherThanAtANamelessStep()
+    {
+        // A trail is read as a path, so the level with nothing in it is left out rather than
+        // written "Ikke oppgitt" — the rule the empty string already had, asserted against the
+        // null the API actually sends now the contract stopped coercing it. (Fhi.Metadata-l9l2n.61)
+        var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale")))
+            .Knows(Detail(TaleId) with { KildeType = null })
+            .Knows(Kilde())
+            .Knows(Datasamling()));
+
+        Toggles(cut)[0].Click();
+
+        Assert.Equal(["Als registeret (ALS)", "Inklusjon"],
+                     Values(cut)[1].QuerySelectorAll("ol > li").Select(l => l.TextContent));
     }
 
     [Fact]
@@ -8551,6 +8887,9 @@ public class VariableSearchTest : BunitContext
                 "munin-explorer-kilde__description",
                 "munin-explorer-kilde__body",
                 "munin-explorer-kilde__main",
+                "munin-explorer-hierarchy",
+                "munin-explorer-retry",
+                "munin-explorer-hierarchy__metadata",
                 "munin-explorer-kilde__datasamlinger",
                 "munin-explorer-kilde__delkilder",
                 "munin-explorer-kilde__delkilde",

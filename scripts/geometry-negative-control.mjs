@@ -99,6 +99,16 @@ const cases = [
       'overflow: hidden; }'),
   },
   {
+    assertion: "the kilder table's expand control is big enough to hit",
+    defect: 'a toggle whose glyph is the whole of its size, as the literal "+" was',
+    path: '/kilder', state: 'kilder-list', width: 1440,
+    // Both halves, because either alone leaves the control over the minimum on one axis and the
+    // assertion is meant to fail on either.
+    apply: css('.munin-explorer-kilder__expand-icon { height: 8px !important; ' +
+      'width: 8px !important; }\n' +
+      '.munin-explorer-kilder__expand-toggle { padding: 0 !important; }'),
+  },
+  {
     assertion: 'the tablist clears the header',
     defect: 'the tablist back at document top, under the header',
     path: '/', state: 'explorer-tabs', width: 1440,
@@ -113,6 +123,25 @@ const cases = [
         if ((panel.textContent ?? '').trim().length === 0) panel.append('the other panel');
       }
     }),
+  },
+  {
+    assertion: "the kilder table's counts are right-aligned in their column",
+    defect: 'the Stiler rule gone, so the figures fall back to the cell default',
+    // kilder-counts rather than kilder-list, so the break is applied to all three columns that
+    // carry the class: Delkilder is hidden by default and that state is what draws it.
+    path: '/kilder', state: 'kilder-counts', width: 1440,
+    apply: css('.munin-explorer-kilder .munin-explorer-kilder__count ' +
+      '{ text-align: left !important; }'),
+  },
+  {
+    assertion: "the kilder table's counts are right-aligned in their column",
+    defect: 'the same rule gone at the narrowest width the scan drives',
+    path: '/kilder', state: 'kilder-list', width: 843,
+    // The wide case above cannot stand for this one: 843 is the only width in the scan below
+    // Stiler's grid, where the table sits in its own scroll box and every cell is measured in that
+    // box's scrollable coordinates rather than the page's.
+    apply: css('.munin-explorer-kilder .munin-explorer-kilder__count ' +
+      '{ text-align: left !important; }'),
   },
   {
     assertion: 'no page shell class inside a tab panel',

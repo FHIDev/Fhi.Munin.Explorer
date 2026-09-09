@@ -1,7 +1,10 @@
 using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.Display;
+using Fhi.Munin.Explorer.Logging;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Blazor;
@@ -28,6 +31,11 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     [Inject] private IServiceProvider ServiceProvider { get; set; } = null!;
     [Inject] private IMuninExplorerClient Client { get; set; } = null!;
     [Inject] private IJSRuntime Js { get; set; } = null!;
+
+    private ILogger? _log;
+
+    /// <summary>The host's logger, or none — see <see cref="ExplorerLog"/>.</summary>
+    private ILogger? Log => _log ??= ExplorerLog.For<VariableListView>(ServiceProvider);
 
     private VariableListState? _state;
     private VariableListState? State => _state ??= ServiceProvider.GetService<VariableListState>();
@@ -211,13 +219,6 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         _ => null
     };
 
-    /// <summary>
-    /// Page reads owed to notifications this component already knows about and does not need to
-    /// act on - a rename owes one, a create-and-switch owes two. Consumed by count, in the order
-    /// the notifications arrive, rather than a flag: two in a row must not be mistaken for one.
-    /// </summary>
-    private int _pendingPageReadSkips;
-
     /// <summary>Why a rename or a delete did not happen. The shape the save button uses.</summary>
     private enum ListActionFailure
     {
@@ -342,7 +343,10 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         // the per-cell field name the explorer's <div>s need and the flex column class a table
         // cell cannot wear.
         RowCell.Write(builder, 100, T.FieldCode, item.VariableCode, "code", T.NotSpecified, tableCell: true);
-        RowCell.Write(builder, 200, T.FieldSource, item.KildeShortName ?? item.KildeName, "source", T.NotSpecified, tooltip: item.KildeName, tableCell: true);
+        // Trimmed rather than `??`: a kortnavn the API leaves out arrives as null or as "", and
+        // `??` only catches the first — RowCell then draws the "" as "Ikke oppgitt" over a name
+        // it is holding.
+        RowCell.Write(builder, 200, T.FieldSource, DisplayText.Trimmed(item.KildeShortName) ?? item.KildeName, "source", T.NotSpecified, tooltip: item.KildeName, tableCell: true);
         RowCell.Write(builder, 300, T.FieldDataCollection, item.DatasamlingName, "dataCollection", T.NotSpecified, tableCell: true);
         RowCell.Write(builder, 400, T.FieldVariableGroup, item.VariabelgruppeName, "theme", T.NotSpecified, tableCell: true);
         RowCell.Write(builder, 500, T.FieldDataType, DataTypeName(item.DataType), "dataType", T.NotSpecified, tableCell: true);
@@ -481,8 +485,20 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             await State.EnsureActiveListAsync();
             await ShowActiveListAsync();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            // Split the way the comment above says it has to be: the burst this read is part of is
+            // what the limiter counts, and a 401 is the host's own token, so both are expected
+            // outcomes the reader is told about and neither is a fault to go and find.
+            if (ex is MuninExplorerRateLimitedException or MuninExplorerUnauthorizedException)
+            {
+                Log?.LogWarning(ex, "the API refused the reader's lists on mount");
+            }
+            else
+            {
+                Log?.LogError(ex, "could not read the reader's lists on mount");
+            }
+
             _page = null;
             _failed = true;
         }
@@ -499,9 +515,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// saved at some other time, under some other search.
     /// </para>
     /// <para>
-    /// Failure leaves the map empty, and an empty map renders the code. A list saying 2 where it
-    /// could say Heltall is worse than the explorer beside it, but it is still the reader's list;
-    /// losing the whole view over a label would not be.
+    /// Failure leaves the map empty, and an empty map falls back to the shipped table — the same
+    /// word the panel shows for a code no API named. A list read from a snapshot is worse than one
+    /// read from the API; losing the whole view over a label would be worse still.
     /// </para>
     /// </remarks>
     private async Task LoadDataTypeNamesAsync()
@@ -538,30 +554,38 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             _dataTypeNamesLanguage = Language;
             StateHasChanged();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Recorded as attempted for this language, so a failing endpoint is asked once rather
-            // than on every parameter change. The reader sees the codes until the language changes
-            // or the page is loaded again, which is the same fallback an empty map gives.
+            // Warning, not Error: the reader sees the raw codes rather than nothing. Recorded as
+            // attempted for this language, so a failing endpoint is asked once rather than on
+            // every parameter change.
+            Log?.LogWarning(ex, "could not load the datatype names for {Language}", Language);
+
             _dataTypeNames = new Dictionary<string, string>(StringComparer.Ordinal);
             _dataTypeNamesLanguage = Language;
         }
     }
 
-    /// <summary>The readable name for a datatype code, or the code when there is no name.</summary>
+    /// <summary>The readable name for a datatype code, from the names read on mount.</summary>
     /// <remarks>
-    /// The same shape as <c>VariableExplorer.DataTypeName</c>, and for the same reason: the codes are
-    /// editable master data on the API's side, so the names are read from it rather than written into
-    /// a table that ships to other people and goes stale where nobody is looking.
+    /// The same shape and the same fallback as <c>VariableSearch.DataTypeName</c> — AGENTS.md,
+    /// "The API names a datatype, not this package". The names can be absent here in a way they
+    /// are not there, since this view renders before them and drops them on a failed fetch, so
+    /// that fallback carries far more rows here than there. (Fhi.Metadata-l9l2n.49)
     /// </remarks>
     private string? DataTypeName(string? code)
     {
-        if (string.IsNullOrWhiteSpace(code) || _dataTypeNames is null)
+        if (string.IsNullOrWhiteSpace(code))
         {
             return code;
         }
 
-        return _dataTypeNames.TryGetValue(code, out var named) ? named : code;
+        var canonical = T.CanonicalDataTypeCode(code);
+        var named = _dataTypeNames is not null && _dataTypeNames.TryGetValue(canonical, out var name)
+            ? T.NormalizeDataTypeDisplayName(name)
+            : null;
+
+        return string.IsNullOrWhiteSpace(named) ? T.DataTypeLabel(canonical) : named;
     }
 
 
@@ -571,28 +595,33 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// variable would otherwise leave it on screen here — the very thing this subscription exists
     /// to prevent.
     /// </summary>
-    private void OnStateChanged() => InvokeAsync(async () =>
+    private void OnStateChanged(VariableListState.ListChange? change)
     {
-        // A narrowing shortens the list, so the page number has to go back to the start: a reader
-        // on page 4 of ten who ticks a kilde with two pages would otherwise be handed an empty
-        // page and no sign of why. Every other change leaves them where they were standing.
-        if (State is { KildeFilterVersion: var version } && version != _seenKildeFilter)
+        InvokeAsync(async () =>
         {
-            _seenKildeFilter = version;
-            _pageNumber = 1;
-        }
+            // A narrowing shortens the list, so the page number has to go back to the start: a
+            // reader on page 4 of ten who ticks a kilde with two pages would otherwise be handed
+            // an empty page and no sign of why. Every other change leaves them where they stood.
+            if (State is { KildeFilterVersion: var version } && version != _seenKildeFilter)
+            {
+                _seenKildeFilter = version;
+                _pageNumber = 1;
+            }
 
-        if (_pendingPageReadSkips > 0)
-        {
-            _pendingPageReadSkips--;
-        }
-        else
-        {
-            await LoadPageAsync();
-        }
+            if (ShouldReloadFor(change))
+            {
+                await LoadPageAsync();
+            }
 
-        StateHasChanged();
-    });
+            StateHasChanged();
+        });
+    }
+
+    /// <summary>Whether this notification could have changed the rows on screen, identified by the
+    /// list it names rather than counted — a count an unrelated notification could also spend
+    /// (Fhi.Metadata-wuxkn).</summary>
+    private bool ShouldReloadFor(VariableListState.ListChange? change) =>
+        change is not { } known || (known.AffectsRows && (known.ListId is null || known.ListId == _shownList));
 
     /// <summary>Reads the page currently being looked at. Signed out this calls nothing.</summary>
     private async Task LoadPageAsync()
@@ -635,10 +664,22 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             // list. The ticks live in the holder; the boxes are in the other grid column.
             read = await Client.GetMyListVariablesAsync(readList, readPage, PageSize, readKilder);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             // Said here rather than thrown on: an unhandled exception out of a lifecycle method
-            // takes the circuit down, which is a worse answer than a line of text.
+            // takes the circuit down, which is a worse answer than a line of text. A page turn is
+            // one of the calls the limiter counts, so the level splits the way every other does.
+            if (ex is MuninExplorerRateLimitedException or MuninExplorerUnauthorizedException)
+            {
+                Log?.LogWarning(
+                    ex, "the API refused page {Page} of list {ListId}", readPage, readList);
+            }
+            else
+            {
+                Log?.LogError(
+                    ex, "could not read page {Page} of list {ListId}", readPage, readList);
+            }
+
             failed = true;
         }
 
@@ -810,16 +851,40 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                     break;
             }
         }
-        catch (MuninExplorerRateLimitedException)
+        catch (MuninExplorerRateLimitedException ex)
         {
             // Typing down a list saves one row after another, which is exactly the rhythm the
             // per-address limiter counts — so a throttled annotation is ordinary rather than rare.
+            Log?.LogWarning(
+                ex,
+                "the rate limiter refused the annotation of variable {VariableId} in list {ListId}",
+                variableId,
+                list);
+
             failure = DesiredDataFailure.Throttled;
         }
-        catch (Exception)
+        catch (MuninExplorerUnauthorizedException ex)
+        {
+            // As above: the caller was declined, which is the host's token rather than a fault.
+            Log?.LogWarning(
+                ex,
+                "the API refused the annotation of variable {VariableId} in list {ListId} as unauthorised",
+                variableId,
+                list);
+
+            failure = DesiredDataFailure.Failed;
+        }
+        catch (Exception ex)
         {
             // Uncaught, this leaves the event handler and takes the circuit with it: a blank page
-            // and a reconnect banner in place of the note the reader was writing.
+            // and a reconnect banner in place of the note the reader was writing. The annotation
+            // itself is the reader's own text and stays out of the log.
+            Log?.LogError(
+                ex,
+                "could not write the annotation of variable {VariableId} in list {ListId}",
+                variableId,
+                list);
+
             failure = DesiredDataFailure.Failed;
         }
 
@@ -916,10 +981,19 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         {
             await State.SetActiveListAsync(id);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             // Same reason as the lifecycle read above: an uncaught throw out of an event handler
             // takes the circuit with it. LoadPageAsync below has its own catch and will say so.
+            if (ex is MuninExplorerRateLimitedException or MuninExplorerUnauthorizedException)
+            {
+                Log?.LogWarning(ex, "the API refused the switch to list {ListId}", id);
+            }
+            else
+            {
+                Log?.LogError(ex, "could not switch to list {ListId}", id);
+            }
+
             _failed = true;
 
             // And the rows go with it. _shownList has already moved, so rows left on screen from
@@ -958,36 +1032,43 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         VariableList? created;
 
-        // Two notifications below still name the outgoing list in _shownList - one raised
-        // inside State.CreateAsync, one at the end of SetActiveListAsync. See Fhi.Metadata-7x62u.
-        _pendingPageReadSkips = 2;
-
+        // The two notifications this raises - one from State.CreateAsync, one from the membership
+        // walk inside SetActiveListAsync - both name the new list, never _shownList, so
+        // ShouldReloadFor skips them on that identity and nothing here has to account for them.
         try
         {
             created = await State.CreateAsync(name);
         }
-        catch (MuninExplorerRateLimitedException)
+        catch (MuninExplorerRateLimitedException ex)
         {
             // Creating meets the same limiter the saves do, and "prøv igjen om litt" is advice
             // a throttled reader cannot use.
-            _pendingPageReadSkips = 0;
+            Log?.LogWarning(ex, "the rate limiter refused a list creation");
             _createFailure = ListActionFailure.Throttled;
             return;
         }
-        catch (Exception)
+        catch (MuninExplorerUnauthorizedException ex)
+        {
+            // The API's own answer to a host that says the reader is signed in, which is a token
+            // to go and fix rather than a fault here — the same reading the save button gives it.
+            // The reader is told what every other failure tells them, since there is no more.
+            Log?.LogWarning(ex, "the API refused a list creation as unauthorised");
+            _createFailure = ListActionFailure.Failed;
+            return;
+        }
+        catch (Exception ex)
         {
             // Uncaught, this leaves the event handler and takes the circuit with it: a blank
-            // page and a reconnect banner in place of the list the reader was building.
-            _pendingPageReadSkips = 0;
+            // page and a reconnect banner in place of the list the reader was building. The name
+            // the reader typed stays out of the log.
+            Log?.LogError(ex, "could not create a list");
             _createFailure = ListActionFailure.Failed;
             return;
         }
 
         if (created is null)
         {
-            // Signed out mid-call: State.CreateAsync raised no Changed for this generation, so
-            // no notification is coming to spend the allowance either.
-            _pendingPageReadSkips = 0;
+            // Signed out mid-call.
             return;
         }
 
@@ -998,27 +1079,34 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         {
             await State.SetActiveListAsync(created.Id);
         }
-        catch (MuninExplorerRateLimitedException)
+        catch (MuninExplorerRateLimitedException ex)
         {
             // The list was made and the switch met the limiter. Told apart from the ordinary
             // failure for the reason the create half above gives: the remedy is to wait.
-            _pendingPageReadSkips = 0;
+            Log?.LogWarning(
+                ex,
+                "the rate limiter refused the switch to the new list {ListId}",
+                created.Id);
             _createFailure = ListActionFailure.Throttled;
             return;
         }
-        catch (Exception)
+        catch (MuninExplorerUnauthorizedException ex)
         {
-            // Same reason as ChooseListAsync above. The list was created; it is the switch to
-            // it that did not happen, which is what ListLoadError says.
-            _pendingPageReadSkips = 0;
+            // Expected in the same way the creation's own 401 is, and told apart from a fault for
+            // the same reason. The list was made either way, so the reader sees ListLoadError.
+            Log?.LogWarning(
+                ex, "the API refused the switch to the new list {ListId} as unauthorised", created.Id);
             _failed = true;
             return;
         }
-
-        // Defensive against ReadMembershipAsync's own early return - a list gone right after
-        // being made answers with no Changed at all - which would otherwise leave an unspent
-        // skip to land on whatever notification comes next.
-        _pendingPageReadSkips = 0;
+        catch (Exception ex)
+        {
+            // Same reason as ChooseListAsync above. The list was created; it is the switch to
+            // it that did not happen, which is what ListLoadError says.
+            Log?.LogError(ex, "could not switch to the new list {ListId}", created.Id);
+            _failed = true;
+            return;
+        }
 
         _shownList = created.Id;
         _pageNumber = 1;
@@ -1039,8 +1127,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         ForgetFailures();
-        _pendingPageReadSkips = 1;
 
+        // Renaming never reads the page again: its own notification names _shownList but carries
+        // AffectsRows: false, so ShouldReloadFor skips it without anything armed here for it.
         try
         {
             if (await State.RenameAsync(_shownList.Value, name))
@@ -1052,23 +1141,31 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 _actionFailure = ListActionFailure.Failed;
             }
         }
-        catch (MuninExplorerRateLimitedException)
+        catch (MuninExplorerRateLimitedException ex)
         {
             // These writes go through the client every read on the page uses, and meet the same
             // per-address limiter, so a refusal here is ordinary rather than rare.
+            Log?.LogWarning(
+                ex, "the rate limiter refused the rename of list {ListId}", _shownList);
+
             _actionFailure = ListActionFailure.Throttled;
         }
-        catch (Exception)
+        catch (MuninExplorerUnauthorizedException ex)
         {
-            // An uncaught throw out of an event handler takes the whole circuit down, which is a
-            // far worse answer to a failed rename than a line of text.
+            // A write the API declined to accept the caller for, not a write that broke.
+            Log?.LogWarning(
+                ex, "the API refused the rename of list {ListId} as unauthorised", _shownList);
+
             _actionFailure = ListActionFailure.Failed;
         }
-        finally
+        catch (Exception ex)
         {
-            // A rename that never reached the holder raised nothing, so the allowance would
-            // otherwise sit here and be spent on somebody else's notification.
-            _pendingPageReadSkips = 0;
+            // An uncaught throw out of an event handler takes the whole circuit down, which is a
+            // far worse answer to a failed rename than a line of text. The name the reader typed
+            // stays out of the log.
+            Log?.LogError(ex, "could not rename list {ListId}", _shownList);
+
+            _actionFailure = ListActionFailure.Failed;
         }
     }
 
@@ -1096,14 +1193,27 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
             await State.EnsureActiveListAsync();
         }
-        catch (MuninExplorerRateLimitedException)
+        catch (MuninExplorerRateLimitedException ex)
         {
+            Log?.LogWarning(
+                ex, "the rate limiter refused the deletion of list {ListId}", _shownList);
+
             _actionFailure = ListActionFailure.Throttled;
         }
-        catch (Exception)
+        catch (MuninExplorerUnauthorizedException ex)
+        {
+            // As above: the caller was declined, which is the host's token rather than a fault.
+            Log?.LogWarning(
+                ex, "the API refused the deletion of list {ListId} as unauthorised", _shownList);
+
+            _actionFailure = ListActionFailure.Failed;
+        }
+        catch (Exception ex)
         {
             // Caught for the reason the rename above gives. The list may well be gone on the
             // server, so the view is repointed below whichever of the two calls threw.
+            Log?.LogError(ex, "could not delete list {ListId}", _shownList);
+
             _actionFailure = ListActionFailure.Failed;
         }
 
@@ -1134,16 +1244,39 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 _actionFailure = ListActionFailure.Failed;
             }
         }
-        catch (MuninExplorerRateLimitedException)
+        catch (MuninExplorerRateLimitedException ex)
         {
             // Removing is one of the writes the limiter counts, and "prøv igjen om litt" is
             // advice a throttled reader cannot use.
+            Log?.LogWarning(
+                ex,
+                "the rate limiter refused the removal of variable {VariableId} from list {ListId}",
+                variableId,
+                _shownList);
+
             _actionFailure = ListActionFailure.Throttled;
         }
-        catch (Exception)
+        catch (MuninExplorerUnauthorizedException ex)
+        {
+            // As above: the caller was declined, which is the host's token rather than a fault.
+            Log?.LogWarning(
+                ex,
+                "the API refused the removal of variable {VariableId} from list {ListId} as unauthorised",
+                variableId,
+                _shownList);
+
+            _actionFailure = ListActionFailure.Failed;
+        }
+        catch (Exception ex)
         {
             // Uncaught, this leaves the event handler and takes the circuit with it: a blank
             // page and a reconnect banner in place of the row the reader wanted gone.
+            Log?.LogError(
+                ex,
+                "could not remove variable {VariableId} from list {ListId}",
+                variableId,
+                _shownList);
+
             _actionFailure = ListActionFailure.Failed;
         }
     }
@@ -1195,17 +1328,38 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             var file = await Client.ExportListAsync(ids, format, _includeKodeverk);
             await BrowserDownload.OfferAsync(Js, file);
         }
-        catch (MuninExplorerRateLimitedException)
+        catch (MuninExplorerRateLimitedException ex)
         {
             // The export sits under the browse policy, not the write one the saves use, and the
             // id walk in front of it counts against that same bucket — keyed per user here, since
             // the view only renders signed in. The generic sentence names no cause; this one does.
+            Log?.LogWarning(
+                ex,
+                "the rate limiter refused the {Format} export of list {ListId}",
+                format,
+                _shownList);
+
             _downloadFailure = DownloadFailure.Throttled;
         }
-        catch (Exception)
+        catch (MuninExplorerUnauthorizedException ex)
+        {
+            // The id walk in front of the export reads my/lists, so a declined caller lands here
+            // rather than on a broken download.
+            Log?.LogWarning(
+                ex,
+                "the API refused the {Format} export of list {ListId} as unauthorised",
+                format,
+                _shownList);
+
+            _downloadFailure = DownloadFailure.Failed;
+        }
+        catch (Exception ex)
         {
             // Includes the browser refusing the blob — a Content-Security-Policy without blob:
             // would land here. Said out loud rather than left as a button that does nothing.
+            Log?.LogError(
+                ex, "could not export list {ListId} as {Format}", _shownList, format);
+
             _downloadFailure = DownloadFailure.Failed;
         }
         finally

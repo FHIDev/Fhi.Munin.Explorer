@@ -1,4 +1,5 @@
 using Fhi.Munin.Explorer.Contracts;
+using Microsoft.Extensions.Logging;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
@@ -56,7 +57,7 @@ public partial class VariableSearch
         if (IsSelected(v))
         {
             ClearSelection();
-            await RaiseAsync<Guid?>(SelectedVariableIdChanged, null);
+            await RaiseAsync<Guid?>(SelectedVariableIdChanged, null, Log);
 
             return;
         }
@@ -73,7 +74,7 @@ public partial class VariableSearch
         // _selectedId rather than v.Id: the fetch above yields, so another row may have been opened
         // while it ran, and what the host is told has to be what is open — the same rule
         // FilterChanged follows after a rollback.
-        await RaiseAsync(SelectedVariableIdChanged, _selectedId);
+        await RaiseAsync(SelectedVariableIdChanged, _selectedId, Log);
     }
 
     /// <summary>
@@ -134,8 +135,10 @@ public partial class VariableSearch
             _detail = detail;
             _detailError = detail is null ? T.DetailMissing : null;
         }
-        catch (MuninExplorerRateLimitedException)
+        catch (MuninExplorerRateLimitedException ex)
         {
+            Log?.LogWarning(ex, "the rate limiter refused variable {VariableId}", id);
+
             if (_detailGeneration == generation)
             {
                 // Opening one row after another is what meets the limiter, so this branch is on the
@@ -143,8 +146,10 @@ public partial class VariableSearch
                 _detailError = T.RateLimitError;
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Log?.LogError(ex, "could not load variable {VariableId}", id);
+
             if (_detailGeneration == generation)
             {
                 // Said in the panel, not in the component's alert region: the rows are unaffected.
@@ -343,8 +348,11 @@ public partial class VariableSearch
                 _sourceError = datasamling is null ? T.DatasamlingMissing : null;
             }
         }
-        catch (MuninExplorerRateLimitedException)
+        catch (MuninExplorerRateLimitedException ex)
         {
+            Log?.LogWarning(
+                ex, "the rate limiter refused {SourceKind} {SourceId}", kind, id);
+
             if (_sourceGeneration == generation)
             {
                 // One sentence for both kinds, unlike the branch below: which endpoint the limiter
@@ -352,8 +360,10 @@ public partial class VariableSearch
                 _sourceError = T.RateLimitError;
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Log?.LogError(ex, "could not load {SourceKind} {SourceId}", kind, id);
+
             if (_sourceGeneration == generation)
             {
                 // Said in the owner panel, not in the variable's above it and not in the
@@ -390,7 +400,7 @@ public partial class VariableSearch
         }
 
         ClearSelection();
-        await RaiseAsync<Guid?>(SelectedVariableIdChanged, null);
+        await RaiseAsync<Guid?>(SelectedVariableIdChanged, null, Log);
     }
 
     private bool IsOnScreen(Guid id) => _result?.Items.Any(v => v.Id == id) is true;

@@ -2,6 +2,7 @@ using System.Globalization;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
+using Microsoft.Extensions.Logging;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>The facet sidebar: what can be narrowed, and what narrowing it costs.</summary>
@@ -409,12 +410,22 @@ public partial class VariableSearch
 
     private FacetValue DataTypeValue(DataTypeFacet dataType) =>
         new($"datatype:{dataType.Value}",
-            // The API returns the code with no label at all, so the prose is the component's own.
-            T.DataTypeLabel(dataType.Value),
+            DataTypeFacetLabel(dataType),
             Counted(dataType.Count),
             _filter.DataTypes.Contains(dataType.Value),
             () => ToggleAsync(_filter.DataTypes, dataType.Value, values => _filter with { DataTypes = values }),
             []);
+
+    /// <summary>The word on a datatype facet button, on the same terms as the result rows.</summary>
+    /// <remarks>
+    /// AGENTS.md, "The API names a datatype, not this package". A facet carrying no name at all —
+    /// an API predating them — falls back to the shipped table keyed by the code, because a button
+    /// labelled with a blank string is an empty accessible name. (Fhi.Metadata-l9l2n.49)
+    /// </remarks>
+    private string DataTypeFacetLabel(DataTypeFacet dataType) =>
+        T.NormalizeDataTypeDisplayName(dataType.DisplayName) is { } named && !string.IsNullOrWhiteSpace(named)
+            ? named
+            : T.DataTypeLabel(dataType.Value);
 
     private FacetGroup HelsefagligKodeverkGroup(FilterOptions facets) =>
         new("helsefaglig-kodeverk",
@@ -637,7 +648,7 @@ public partial class VariableSearch
     {
         _levelLines = !_levelLines;
 
-        return RaiseAsync(LevelLinesChanged, _levelLines);
+        return RaiseAsync(LevelLinesChanged, _levelLines, Log);
     }
 
     /// <summary>A facet's own label, saying how many of its values are chosen.</summary>
@@ -829,7 +840,7 @@ public partial class VariableSearch
         }
 
         // _filter and not next: what the host is told is what is in force, rolled back or not.
-        await RaiseAsync(FilterChanged, _filter);
+        await RaiseAsync(FilterChanged, _filter, Log);
 
         // Narrowing renumbers the pages, so a host mirroring this into a URL has to drop the page
         // it was holding. Same rule as the filter: whatever is in force, rolled back or not.
@@ -887,12 +898,12 @@ public partial class VariableSearch
                 .GroupBy(entry => entry.Key, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Deliberately silent, and deliberately not surfaced beside the facet error. The panel
-            // is not broken without it: every choice still filters, and the reader sees the token
-            // rather than the word. A second failure message for a degraded label would be louder
-            // than what it reports.
+            // Warning, not Error: the panel is not broken without it — every choice still filters
+            // and the reader sees the token rather than the word. Deliberately silent on screen,
+            // so the log line is the only trace a degraded label leaves.
+            Log?.LogWarning(ex, "could not load the data-category vocabulary");
         }
     }
 
@@ -943,9 +954,9 @@ public partial class VariableSearch
         }
         catch (Exception)
         {
-            // Reported, not swallowed. Returning the empty answer would read as a panel with
-            // nothing to offer when it is a request that failed, and would cost the reader the
-            // retry — the one thing that can bring the controls back. (Fhi.Metadata-v2bgr)
+            // Reported, not swallowed — so nothing is logged here and the caller's catch is what
+            // records it. Returning the empty answer would read as a panel with nothing to offer
+            // when it is a request that failed. (Fhi.Metadata-v2bgr)
             _facetsRetained = false;
 
             throw;
@@ -990,8 +1001,10 @@ public partial class VariableSearch
             // block reports on, and a missing label must not read as a missing facet.
             await EnsureCategoryWordsAsync();
         }
-        catch (MuninExplorerRateLimitedException)
+        catch (MuninExplorerRateLimitedException ex)
         {
+            Log?.LogWarning(ex, "the rate limiter refused the facet counts");
+
             // This refresh goes out alongside every search, so a throttled reader meets this panel
             // and the result list in the same render. "The counts may be out of date" beside "you
             // have made too many requests" would have the two regions disagree about what happened,
@@ -1002,8 +1015,10 @@ public partial class VariableSearch
             // remedy, so a button saying otherwise would contradict the sentence it sits under.
             _retryFacetsEnabled = false;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Log?.LogError(ex, "could not load the facets");
+
             _facetError = T.FilterError;
             _retryFacetsShown = true;
             _retryFacetsEnabled = true;

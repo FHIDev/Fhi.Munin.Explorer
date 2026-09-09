@@ -13,13 +13,15 @@
    wears the `munin-explorer` prefix this package owns. Five of those are the explorer's existing
    ones, reused rather than reinvented: the root `munin-explorer`, the `munin-explorer-container`
    and `munin-explorer-results` the list sits in, `munin-explorer-filters` for the facet panel and
-   `munin-explorer-drilldown` for the view an opened kilde takes over. Seven are this view's own —
+   `munin-explorer-drilldown` for the view an opened kilde takes over. Others are this view's own —
    `munin-explorer-kilder` for the table, `munin-explorer-kilder__name` for the control that opens a
-   row, `munin-explorer-kilder__count` for the columns holding a number,
+   row, `munin-explorer-kilder__count` for the columns holding a number with
+   `munin-explorer-kilder__count--zero` on a cell whose count is nought,
    `munin-explorer-kilder__select` for the checkbox column in front of them,
    `munin-explorer-filters__toggle` and `munin-explorer-filters__facets` for the panel that folds
-   away on a narrow screen, and `munin-explorer-filters__count` for the number beside a facet
-   value.
+   away on a narrow screen, `munin-explorer-filters__count` for the number beside a facet value,
+   and `munin-explorer-results__toolbar` for the row the count shares with the order control and
+   the column picker.
 
    The result list is a <table>, unlike the variable explorer's, and that is the shape rule rather
    than an inconsistency. Runa's rows are helsedata's own `munin-explorer-data-list`, a <ul> with a
@@ -30,9 +32,11 @@
    degrades to its own browser default where an unknown class name degrades to nothing. The name
    is a <button> for the same reason.
 
-   No pager, no sortable headers and no URL state. All three are Kelda parity decisions recorded
-   under the epic, not omissions — the endpoint is not paged, the API returns the list ordered by
-   name, and the only shareable thing here is which kilde is open. See the component class.
+   No pager and no sortable headers, and no URL state written from here. The first two are Kelda
+   parity decisions recorded under the epic, not omissions — the endpoint is not paged, and the
+   order is chosen from one control above the table rather than from thirteen column headings.
+   The third is this component's contract: the order and the open kilde are what a host puts in
+   its URL, and KildeExplorer is the mount that does it. See the component class.
 
    Accessibility: helsedata.no is a public-sector site, so WCAG 2.1 AA is a legal requirement, and
    this is our markup on their page. Visible focus and contrast are the host stylesheet's to get
@@ -52,8 +56,11 @@
 {
     @* A kilde opens as its own view, not as a panel inside a row. Runa navigates to a page for
        this; this component has no router, so instead it takes over its own area and offers a way
-       back. The search text and the list are all still there on return because none of it was torn
-       down — the list was never refetched to begin with.
+       back. The search text, the ticked values and the list are all still there on return because
+       every one of them is held here rather than in the DOM — the list was never refetched to begin
+       with. The facet folds are the one exception, and deliberately: they belong to the <details>
+       elements this branch replaces, so the panel comes back seeded at its own defaults. See the
+       facets below.
 
        A region named after what it shows, so a screen reader moving by landmark hears which kilde
        it landed in. *@
@@ -68,10 +75,7 @@
                 type="button"
                 @onclick="CloseAsync">@T.BackToKilder</button>
 
-        @* Once the kilde has arrived, KildeView owns the heading — the same component the variable
-           explorer drills into, so the two cannot render one source two ways. Until then the view
-           keeps its own: the region points at that id, and a landmark whose label does not exist
-           yet is worse than a plain one. *@
+        @* Keep the landmark named while the shared detail heading is still loading. *@
         @if (_kilde is null)
         {
             @DrilldownHeading
@@ -84,9 +88,7 @@
 
         @if (_kilde is { } kilde)
         {
-            @* Kelda's sections go into KildeView through Sections, never as markup added to it: a
-               flag per section would make it the one place the two explorers leak into each other.
-               No DataCollectionsHeading — the heading follows the source (Fhi.Metadata-rhybi). *@
+            @* Only the additional sections belong to this explorer; KildeView owns the hierarchy. *@
             <KildeView Kilde="kilde"
                        Language="@Language"
                        HeadingLevel="@KildeLevel"
@@ -210,13 +212,22 @@ else
        this component makes — an element degrades to its own browser default, where a class name no
        stylesheet has heard of degrades to nothing.
 
+       One <details> per facet, the shape the variable explorer's panel already has under this same
+       handle: `.munin-explorer-filters details` and `summary` are dressed unscoped to either panel,
+       in both sample stylesheets and in Stiler 0.1.42, so no new class name is introduced here.
+
        Checkboxes, not the toggle buttons the variable explorer's facets use. Kelda's are checkboxes,
        and a bare <input type="checkbox"> inside its own <label> is an element pair every stylesheet
        already dresses, so neither the box nor the label carries a class.
 
        The count does, `munin-explorer-filters__count` — a number that cannot be dimmed or aligned
        reads as more of the label's words. It goes inside the label, the separating space beside
-       the span: see KildeSearch.Filters.cs. (Fhi.Metadata-cgk85) *@
+       the span: see KildeSearch.Filters.cs. (Fhi.Metadata-cgk85)
+
+       A facet's own summary carries a second count, `munin-explorer-filters__chosen`, saying how
+       many of that facet's values are ticked. A different job from the one above, and a different
+       name for it: that one is a hit count beside a value and is pushed to the column edge, while
+       this one follows the heading it belongs to. (Fhi.Metadata-l9l2n.53) *@
     @if (Facets is { Count: > 0 } facets)
     {
         <div class="munin-explorer-filters">
@@ -234,70 +245,208 @@ else
             <div class="munin-explorer-filters__facets" id="@FacetsId" hidden="@(!_filtersOpen)">
                 @foreach (var facet in facets)
                 {
-                    @* role="group" with the heading as its name, rather than a fieldset and a
-                       legend: the heading has to be a heading, because a reader moving by heading is
-                       how a facet panel is navigated, and a legend is not one. Keyed so a facet that
-                       is not drawn cannot hand its checkboxes to whichever facet takes its place. *@
-                    <div @key="facet.Key" role="group" aria-labelledby="@FacetHeadingId(facet.Key)">
-                        @FacetHeading(facet)
+                    @* IsSearchable over every option the facet has, never over what its own search leaves:
+                       the second reading takes the box away the moment it works. Nor is the ternary that
+                       twice: a facet fallen under the threshold holding a term would filter on with no box. *@
+                    var searchable = IsSearchable(facet);
+                    var options = searchable ? VisibleOptions(facet) : facet.Options;
 
-                        <ul>
-                            @foreach (var option in facet.Options)
-                            {
-                                @* The whole value in title, and only where the text on screen was
-                                   cut — one databehandler on the live catalogue is over 200
-                                   characters of free text, and a reader who wants to know which one
-                                   it is has nowhere else to read it. Keyed on the value: the options are built
-                                   off the unfiltered list so they never move, and the key is what
-                                   keeps that true if they ever do. *@
-                                <li @key="option.Value">
-                                    @* lang where the choice is drawn in the catalogue's own words
-                                       rather than in this package's — databehandler, which is free
-                                       text, and any token no vocabulary had a word for. It is the
-                                       same marking the table's cells carry for the same strings,
-                                       and it covers the title as well as the text. See
-                                       KildeSearch.Filters.cs for which labels are which. *@
-                                    <label title="@option.Title" lang="@option.Language">
-                                        <input type="checkbox"
-                                               checked="@IsChosen(facet.Key, option.Value)"
-                                               @onchange="e => Choose(facet.Key, option.Value, e.Value is true)" />
-                                        @option.Text@(" ")<span class="munin-explorer-filters__count">@option.CountText</span>
-                                    </label>
-                                </li>
-                            }
-                        </ul>
-                    </div>
+                    @* A native <details> per facet, the shape the variable explorer's panel already
+                       uses under this same handle. Keyed because the fold is the element's own: a
+                       facet dropped from the middle would otherwise leave the one that slides up
+                       into its place wearing whatever the reader had done to the old one. *@
+                    <details @key="facet.Key" open="@facet.OpenByDefault">
+                        @* <summary> is the disclosure control natively — focusable, Enter and Space
+                           toggle it, its open attribute is the state, so there is no aria-expanded
+                           to drift. The heading stays one: a panel is navigated by heading, so the
+                           ticked-value count beside it is a sibling rather than words inside it.
+                           See FacetSummary in KildeSearch.Filters.cs. *@
+                        <summary>@FacetSummary(facet)</summary>
+
+                        @* A search over this facet's own values, for a facet long enough to need
+                           one. The threshold and the reasoning are in KildeSearch.Filters.cs.
+
+                           No class name of its own, the same bargain the dataperiode facet's date
+                           fields make: a bare <input> is an element every stylesheet already draws,
+                           where a name Stiler has never heard of draws nothing at all.
+
+                           The label is real and hidden rather than an aria-label, and it names the
+                           facet, because several of these boxes can be on screen at once.
+
+                           onchange, never oninput — one round-trip per keystroke on helsedata's
+                           circuit whatever the handler does with it, and each one rewrites the
+                           field while more input is arriving. (Fhi.Metadata-l9l2n.26)
+
+                           No enterkeyhint, unlike the freetext box above: what earns that key there
+                           is a <form> whose preventDefault makes Enter search rather than reload the
+                           host's page, and this box has none to put it in.
+
+                           @ref because a narrowing commit rewrites the list beside it, under a
+                           reader who committed with Tab and is standing in it. Only a narrowing
+                           one: see SearchFacetAsync. *@
+                        @if (searchable)
+                        {
+                            <label class="screenreader-only" for="@FacetSearchId(facet.Key)">@T.FacetSearchLabel(facet.Heading)</label>
+                            <input id="@FacetSearchId(facet.Key)"
+                                   type="text"
+                                   @ref="_facetSearchFields[facet.Key]"
+                                   value="@FacetSearchValue(facet.Key)"
+                                   @onchange="e => SearchFacetAsync(facet.Key, e.Value as string)"
+                                   placeholder="@T.FacetSearchPlaceholder"
+                                   autocomplete="off"
+                                   maxlength="200" />
+                        }
+
+                        @* Rendered whether or not the facet is open, and hidden by the disclosure
+                           itself rather than by us. `open` is the same on every render — the facets
+                           are counted over the unfiltered list — so Blazor writes it once and never
+                           again, and the fold is the reader's for as long as these elements live:
+                           narrowing cannot collapse what they opened, and each facet folds alone.
+                           They do not survive a drill-in, which removes the panel; the ticks and
+                           the search do, so the reader loses only the shape of the panel.
+
+                           `options` is what the facet's own search leaves. It must never reach the
+                           ticks: a choice typed out of sight is still ticked and still narrowing
+                           the list, and clearing the box brings it back with its tick on. *@
+                        @* Said rather than left as an empty list: a facet that has drawn nothing
+                           reads as one whose values failed to load. `caption` is Stiler's muted
+                           secondary text, the class the list's own status line wears. *@
+                        @if (options.Count == 0)
+                        {
+                            <p class="caption">@T.FacetSearchNoMatch</p>
+                        }
+                        else
+                        {
+                            <ul>
+                                @foreach (var option in options)
+                                {
+                                    @* The whole value in title, and only where the text on screen was
+                                       cut — one databehandler on the live catalogue is over 200
+                                       characters of free text, and a reader who wants to know which one
+                                       it is has nowhere else to read it. Keyed on the value: the options are built
+                                       off the unfiltered list so they never move, and the key is what
+                                       keeps that true if they ever do. *@
+                                    <li @key="option.Value">
+                                        @* lang where the choice is drawn in the catalogue's own words
+                                           rather than in this package's — databehandler, which is free
+                                           text, and any token no vocabulary had a word for. It is the
+                                           same marking the table's cells carry for the same strings,
+                                           and it covers the title as well as the text. See
+                                           KildeSearch.Filters.cs for which labels are which. *@
+                                        <label title="@option.Title" lang="@option.Language">
+                                            <input type="checkbox"
+                                                   checked="@IsChosen(facet.Key, option.Value)"
+                                                   @onchange="e => Choose(facet.Key, option.Value, e.Value is true)" />
+                                            @option.Text@(" ")<span class="munin-explorer-filters__count">@option.CountText</span>
+                                        </label>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </details>
                 }
             </div>
         </div>
     }
 
-    @* One polite status line, holding one message at a time: loading, the count, or the empty
+    @* Which filters are on, said over the results because the panel can be folded away or
+       scrolled past. Writes the same `_chosen` the checkboxes do, and nothing at all while nothing
+       is ticked. (Fhi.Metadata-ofoyw) *@
+    @ActiveFilters.For(this, T.ActiveFiltersTitle, ActiveFilterChips, T.ClearFilters, ClearFacetsAsync)
+
+    @* The count, the order control and the column picker on one row, where they used to take a row
+       each. `munin-explorer-results__toolbar` is the row, spelled the way Stiler's rule spells it
+       (Fhi.Metadata-xpv2x) — a name the two halves have to agree on letter for letter.
+
+       The row is drawn unconditionally and the two controls inside it are not, which is the whole
+       of the decision. The count is this component's one polite live region, and a live region
+       inserted and filled in the same DOM update is announced unreliably — so the element has to
+       be in the DOM before its text arrives, and a row that came and went with the rows would take
+       the loading message and the empty state with it. The controls keep the guard of their own
+       they have always had. Nothing in the row repeats the sentence either: a visible count beside
+       a live region saying the same thing is two announcements rather than a row.
+
+       Outside `munin-explorer-results` despite the name, because that container is drawn only with
+       rows on screen and everything in it with it. The row is a sibling of the other blocks over
+       the table — the chips, the alert, the selection — and shares their edge.
+
+       One polite status line, holding one message at a time: loading, the count, or the empty
        state. aria-atomic makes a screen reader read the whole new sentence rather than only the
-       words that changed — "12" on its own is not information.
+       words that changed — "12" on its own is not information. It comes first in the row for the
+       reading order and for Stiler's rule, which gives the row's first child the slack: the count
+       holds the left edge while the two controls sit at the right.
 
        `caption` is Stiler's muted secondary-text style. It carries the empty state too: a
        full-page emptystate block would be out of proportion inside a component that is one section
        of somebody else's page, and repeating the sentence outside the live region would put it on
        screen twice. *@
-    <p class="caption" role="status" aria-live="polite" aria-atomic="true">
-        @if (_loading)
+    <div class="munin-explorer-results__toolbar">
+        <p class="caption" role="status" aria-live="polite" aria-atomic="true">
+            @if (_loading)
+            {
+                @T.KildeListLoading
+            }
+            else if (visible.Count > 0)
+            {
+                @summary
+            }
+            else if (_loaded && _error is null)
+            {
+                @* Two sentences rather than one: a catalogue with nothing in it and a search that
+                   matched nothing ask the reader to do different things. The second names the
+                   facets as well, because with a facet ticked the reader has narrowed the list
+                   twice and a sentence blaming only the search would send them to fix the wrong
+                   thing. *@
+                @(_kilder.Count == 0 ? T.NoKilder : T.NoKilderMatch(searchText, ChosenCount))
+            }
+        </p>
+
+        @if (visible.Count > 0)
         {
-            @T.KildeListLoading
+            @* The order the list is in. In the row with the column picker, and drawn on the same
+               condition: an order control over no rows orders nothing.
+
+               A <select> and not the proposal's chips: the mockup styles its own names from an
+               inline <style> block, so nothing in it carries across, and an element degrades to its
+               own browser default where a class no stylesheet has heard of degrades to nothing.
+
+               The select and the wrapper both go unclassed. The form-element family in
+               `test/host-class-names.txt` is __label, __sublabel, __caption and --error with
+               nothing for the control itself, which is why the pager's size control is bare too;
+               and the wrapper is what keeps the label over its own select as one item of the row
+               rather than two. The label wears Stiler's `form-element__label`, the same name the
+               search box above it does. *@
+            <div>
+                <label class="form-element__label" for="@SortSelectId">@T.SortBy</label>
+
+                @* `selected` on the option rather than `value` on the select, for the reason the
+                   size control gives: `value` is a DOM property the interactive renderer sets, so a
+                   statically rendered first paint would show the first order whatever the host
+                   asked for — and this one arrives from a link. *@
+                @* Keyed on the refusal count, the same reason the size control is: a browser moves
+                   a select's own selection before `onchange` runs, and a refused value that leaves
+                   the order where it was renders nothing to move it back. See _orderRefusals. *@
+                <select id="@SortSelectId" @key="_orderRefusals" @onchange="ChooseOrderAsync">
+                    @foreach (var offered in OfferedOrders)
+                    {
+                        <option value="@offered" selected="@(_order == offered)">@T.KildeOrderLabel(offered)</option>
+                    }
+                </select>
+            </div>
+
+            @* The column picker, at the end of the row above the table, which is where the variable
+               explorer puts its own and where helsedata's page puts theirs. Drawn only with rows on
+               screen, unlike that one: there the header also carries the ordering a reader pressed,
+               and here an empty list means the fetch failed or the search matched nothing, so the
+               control would be offering columns for a table that is not there.
+
+               Its own `munin-explorer-header` wrapper comes into the row with it, and Stiler's rule
+               for the row reaches through that wrapper to hold the open list at its own width — in
+               a row the actions box is content-wide, and the width the picker inherits otherwise
+               spills the column names out of the dark card. (Fhi.Metadata-xpv2x) *@
+            @ColumnPicker()
         }
-        else if (visible.Count > 0)
-        {
-            @summary
-        }
-        else if (_loaded && _error is null)
-        {
-            @* Two sentences rather than one: a catalogue with nothing in it and a search that
-               matched nothing ask the reader to do different things. The second names the facets
-               as well, because with a facet ticked the reader has narrowed the list twice and a
-               sentence blaming only the search would send them to fix the wrong thing. *@
-            @(_kilder.Count == 0 ? T.NoKilder : T.NoKilderMatch(searchText, ChosenCount))
-        }
-    </p>
+    </div>
 
     @* The failure is worth interrupting for, so it is an alert rather than a polite update. The
        container is always rendered, empty when there is nothing wrong: a role="alert" element that
@@ -342,16 +491,10 @@ else
     {
     <div class="munin-explorer-container">
     <div class="munin-explorer-results">
-        @* The column picker, above the table and inside the results column, which is where the
-           variable explorer puts its own and where helsedata's page puts theirs. Drawn only with
-           rows on screen, unlike that one: there the header also carries the ordering a reader
-           pressed, and here an empty list means the fetch failed or the search matched nothing, so
-           the control would be offering columns for a table that is not there. *@
-        @ColumnPicker()
-
-        @* Around the table alone: the column picker shares `munin-explorer-results` and would
-           scroll out of reach with it. tabindex is unconditional because detecting overflow needs
-           script; region and table share one name so neither is nameless. (Fhi.Metadata-b3brc) *@
+        @* Around the table alone and not on `munin-explorer-results`: the column picker shared that
+           column until the row above took it, and anything put there later would ride the same
+           scroll. tabindex is unconditional because detecting overflow needs script; region and
+           table share one name so neither is nameless. (Fhi.Metadata-b3brc) *@
         <div class="munin-explorer-kilder-scroll" role="region" tabindex="0" aria-label="@summary">
             @* aria-label rather than aria-labelledby: the name is the same sentence the status line
                above shows, and pointing at that element would make the table's name change under a
@@ -448,22 +591,40 @@ else
                            one of them holds the control the reader is standing on. Without a key the
                            renderer would patch that button into a different kilde's rather than moving
                            it. *@
-                        <tr @key="kilde.Id">
+                        @* The whole row is a pointer shortcut onto the chevron in it: no tabindex, no
+                           role, no key handler. On helsedata.no Stiler lights the row up under the
+                           pointer (Fhi.Metadata-caf5a), which read as a control before it was one. *@
+                        @* mousedown records where the press began and nothing else — a drag-select
+                           across the row's codes ends in a click on the <tr> too, and the drawer must
+                           not open behind a reader copying K_ALS. (Fhi.Metadata-l9l2n.55) *@
+                        <tr @key="kilde.Id"
+                            @onmousedown="e => RowPressed(kilde, e)"
+                            @onclick="e => ToggleDatasamlingerFromRowAsync(kilde, e)">
                             @* Only where there is something to open. Kelda draws no toggle on a
                                kilde with no datasamlinger, and a control that expands to nothing
                                is worse than no control. *@
                             <td class="munin-explorer-kilder__expand">
-                                @if (kilde.DatasamlingCount > 0)
+                                @if (CanExpand(kilde))
                                 {
                                     @* aria-controls only while the panel exists: an IDREF to an element
                                        that is not in the DOM is not a relationship, it is a dangling
                                        pointer that an a11y linter and a screen reader both follow. *@
+                                    @* stopPropagation on both, or the row behind toggles as well: one press
+                                       would open and close the drawer, and a mousedown the row's click never
+                                       clears would be measured against somebody else's press. *@
                                     <button type="button"
                                             class="hd-button-reset munin-explorer-kilder__expand-toggle"
                                             aria-expanded="@(IsExpanded(kilde.Id) ? "true" : "false")"
                                             aria-controls="@(IsExpanded(kilde.Id) ? PanelId(kilde.Id) : null)"
                                             aria-label="@ExpandLabel(kilde)"
-                                            @onclick="() => ToggleDatasamlingerAsync(kilde)">@(IsExpanded(kilde.Id) ? "−" : "+")</button>
+                                            @onclick="() => ToggleDatasamlingerAsync(kilde)"
+                                            @onclick:stopPropagation="true"
+                                            @onmousedown:stopPropagation="true">
+                                        @* Decorative: aria-expanded above already says which way it
+                                           points, and the button is named for the kilde it opens.
+                                           Why a chevron rather than a "+" is on ExpandChevronClass. *@
+                                        <span class="@ExpandChevronClass(kilde.Id)" aria-hidden="true"></span>
+                                    </button>
                                 }
                             </td>
                             @if (Selectable)
@@ -472,10 +633,15 @@ else
                                    accessible name carries the kilde's, because "Velg" repeated down a
                                    column says nothing about which row. (Fhi.Metadata-5ghur) *@
                                 <td class="munin-explorer-kilder__select">
+                                    @* stopPropagation on both: one click carries both events, and a tick is
+                                       not a request to open the kilde's datasamlinger — nor is the mousedown
+                                       under it a press the row should measure a later click against. *@
                                     <input type="checkbox"
                                            aria-label="@T.SelectKilde(RowName(kilde).Text)"
                                            checked="@IsTicked(kilde.Id)"
-                                           @onchange="e => Tick(kilde.Id, e.Value is true)" />
+                                           @onchange="e => Tick(kilde.Id, e.Value is true)"
+                                           @onclick:stopPropagation="true"
+                                           @onmousedown:stopPropagation="true" />
                                 </td>
                             }
                             @* The name is a th, not a td: it is what the rest of the row is about, and
@@ -483,10 +649,15 @@ else
                                belongs to. The catalogue holds one name, in Norwegian, so it is marked
                                when the reader is not. *@
                             <th scope="row">
+                                @* stopPropagation on both: the name goes to the kilde and the row opens the
+                                   drawer, so a press on the name must not leave the row open behind it — or
+                                   leave a coordinate on the row that the click here never clears. *@
                                 <button class="munin-explorer-kilder__name"
                                         type="button"
                                         lang="@CatalogueProperties.Foreign(RowName(kilde).Norwegian, Reader)"
-                                        @onclick="() => SelectAsync(kilde)">@RowName(kilde).Text</button>
+                                        @onclick="() => SelectAsync(kilde)"
+                                        @onclick:stopPropagation="true"
+                                        @onmousedown:stopPropagation="true">@RowName(kilde).Text</button>
 
                                 @* The code under the name, the way Kelda puts it there — it is how a reader
                                    who knows K_ALS finds the row whose name they do not know. Not drawn
@@ -520,17 +691,20 @@ else
                             {
                                 <td>@ValidityPeriod(kilde)</td>
                             }
+                            @* The count still reads "0" — CountClass only adds a modifier, so a reader
+                               can tell a register that holds nothing from one nobody filled in, which
+                               is what "Ikke oppgitt" says in the columns beside these. *@
                             @if (ColumnVisible(KildeColumn.Delkilder))
                             {
-                                <td class="munin-explorer-kilder__count">@kilde.DelkildeCount</td>
+                                <td class="@CountClass(kilde.DelkildeCount)">@kilde.DelkildeCount</td>
                             }
                             @if (ColumnVisible(KildeColumn.Datasamlinger))
                             {
-                                <td class="munin-explorer-kilder__count">@kilde.DatasamlingCount</td>
+                                <td class="@CountClass(kilde.DatasamlingCount)">@kilde.DatasamlingCount</td>
                             }
                             @if (ColumnVisible(KildeColumn.Variabler))
                             {
-                                <td class="munin-explorer-kilder__count">@kilde.TotalVariables</td>
+                                <td class="@CountClass(kilde.TotalVariables)">@kilde.TotalVariables</td>
                             }
                             @* No lang here, unlike the name above: the catalogue writes this field as
                                a four-digit year, which has no language to mark (WCAG 3.1.2), and where

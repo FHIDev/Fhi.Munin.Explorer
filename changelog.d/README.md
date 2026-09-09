@@ -16,14 +16,25 @@ Add `changelog.d/<slug>.md` on your branch:
 
 ```
 category: Added
-- `VariableExplorer` gained a `Language` parameter (`"no"` / `"en"`). Hosts that render the
-  component in English must set it; it defaults to `"no"`.
+- **`VariableExplorer` takes a `Language` parameter.** `"no"` or `"en"`, defaulting to `"no"`,
+  so a host rendering the component in English must set it.
 ```
 
 - **Line 1** is `category: <Category>`, one of `Added`, `Changed`, `Fixed`, `Security`,
   `Deprecated`, `Removed`, `Notes for hosts`.
 - **The rest** are markdown bullets, copied into the changelog verbatim. Write them as the
   released line, because that is exactly what they become.
+- **Open every bullet with a bolded sentence that stands on its own.** It is the entry's title
+  and it is published alone: `scripts/flatten-release-notes.sh` lifts it into the package's
+  release notes, and the Azure Artifacts feed this package publishes to renders those as plain
+  text rather than markdown.
+  A reader deciding whether a version affects them sees that sentence and nothing else, so
+  "**No new class name**" tells them nothing while "**The kilde table gains a column picker**"
+  does. Say what changed, not that something did. Put the detail in the sentences after it —
+  they still reach `CHANGELOG.md` and the GitHub release, which do render markdown.
+- **Name the break in the title when there is one.** `**BREAKING for hosts: KildeExplorer is
+  the whole kildeutforsker**` is what a host upgrading needs to see first. A break described
+  only in the detail is a break they find at run time.
 - **One category per file.** A change that both adds a parameter and needs a host note is two
   fragments — split them, they end up in different sections anyway.
 - **`<slug>`** is anything unique that hints at the change: the bead id (`Fhi.Metadata-abc12.md`)

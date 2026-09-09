@@ -57,6 +57,17 @@ public class VariableListViewTest : BunitContext
         /// <summary>Datatype names as the filters endpoint answers them, or none at all.</summary>
         public IReadOnlyList<DataTypeFacet> DataTypeFacets { get; init; } = [];
 
+        /// <summary>How the filters fetch fails, or null for one the API answers.</summary>
+        /// <remarks>The view keeps its rows and shows the stored values, so the failure is a
+        /// rendering path of its own rather than an absence of one.</remarks>
+        public Exception? FiltersThrow { get; init; }
+
+        /// <summary>Leave the filters fetch in flight, which is the state the rows first render
+        /// in: the names are not merely empty here, they are still null.</summary>
+        public bool FiltersHang { get; init; }
+
+        private readonly TaskCompletionSource<FilterOptions> _hangingFilters = new();
+
         public int FilterCalls { get; private set; }
 
         public string? LastFilterSearch { get; private set; }
@@ -190,7 +201,10 @@ public class VariableListViewTest : BunitContext
 
         private VariableList? _created;
 
-        public override Task<VariableList> CreateMyListAsync(string name, CancellationToken cancellationToken = default)
+        /// <summary>Run while the create is still in flight, so a test can raise another change.</summary>
+        public Func<Task>? DuringCreate { get; init; }
+
+        public override async Task<VariableList> CreateMyListAsync(string name, CancellationToken cancellationToken = default)
         {
             CreateCalls++;
 
@@ -204,8 +218,13 @@ public class VariableListViewTest : BunitContext
                 throw new InvalidOperationException("the API is gone");
             }
 
+            if (DuringCreate is not null)
+            {
+                await DuringCreate();
+            }
+
             _created = new VariableList { Id = Guid.NewGuid(), Name = name };
-            return Task.FromResult(_created);
+            return _created;
         }
 
         /// <summary>The list whose variables read is refused with the API's 429, or none.</summary>
@@ -378,6 +397,17 @@ public class VariableListViewTest : BunitContext
             FilterCalls++;
             LastFilterSearch = search;
             LastFilterFilter = filter;
+
+            if (FiltersThrow is not null)
+            {
+                throw FiltersThrow;
+            }
+
+            if (FiltersHang)
+            {
+                return _hangingFilters.Task;
+            }
+
             return Task.FromResult(new FilterOptions { DataTypes = DataTypeFacets });
         }
 
@@ -724,14 +754,131 @@ public class VariableListViewTest : BunitContext
         Assert.Null(client.LastFilterFilter);
     }
 
+    [Theory]
+    [InlineData("1")]
+    [InlineData("String")]
+    public void View_WhenTheApiNamesADatatypeInEnglish_ThenTheRowSaysItInNorwegian(string stored)
+    {
+        // The filters endpoint answers a Norwegian call with displayName "String" for code "1", so
+        // this row read "String" where the explorer's detail panel read "Streng" for the same
+        // variable. The stored legacy form is the case that proves the fix reached this path:
+        // a row holding "1" was already right on the panel and proved nothing.
+        // (Fhi.Metadata-l9l2n.49)
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER") with { DataType = stored })
+        {
+            DataTypeFacets = [new DataTypeFacet { Value = "1", DisplayName = "String" }]
+        };
+
+        var cut = RenderView(client);
+
+        Assert.Equal("Streng", CellText(cut, "dataType"));
+    }
+
     [Fact]
-    public void View_WhenTheApiHasNoNameForTheCode_ThenTheCodeIsShownRatherThanNothing()
+    public void View_WhenTheApiNamesADatatypeWeHaveNoAliasFor_ThenTheRowShowsWhatTheApiSent()
+    {
+        // The API owns the vocabulary: a datatype added on its side reaches the row unaltered
+        // rather than through a table shipped inside this package. (Fhi.Metadata-l9l2n.49)
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER") with { DataType = "11" })
+        {
+            DataTypeFacets = [new DataTypeFacet { Value = "11", DisplayName = "Kvasistreng" }]
+        };
+
+        var cut = RenderView(client);
+
+        Assert.Equal("Kvasistreng", CellText(cut, "dataType"));
+    }
+
+    [Theory]
+    [InlineData("1")]
+    [InlineData("String")]
+    [InlineData("tekst")]
+    public void View_WhenTheApisNameForACodeIsNotTheShippedWord_ThenTheRowStillSaysIt(string stored)
+    {
+        // The same gap as VariableSearch had, against _dataTypeNames rather than the facets: a
+        // stored spelling never matched a name keyed by the code, so the row fell through to the
+        // shipped table and only agreed with the API while the two words happened to be equal. The
+        // name here is one the shipped table has never heard of, so that coincidence cannot carry
+        // the assertion. (Fhi.Metadata-l9l2n.49)
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER") with { DataType = stored })
+        {
+            DataTypeFacets = [new DataTypeFacet { Value = "1", DisplayName = "Tekststreng" }]
+        };
+
+        var cut = RenderView(client);
+
+        Assert.Equal("Tekststreng", CellText(cut, "dataType"));
+    }
+
+    [Theory]
+    [InlineData("String", "Streng")]
+    [InlineData("tekst", "Streng")]
+    [InlineData("2", "Heltall")]
+    [InlineData("11", "11")]
+    public void View_WhenTheNamesHaveNotLandedYet_ThenTheRowsAreStillReadable(
+        string stored, string expected)
+    {
+        // The rows draw before the filters answer, so this is the one render where the names are
+        // null rather than empty — and it is the render the early return this method used to open
+        // with would take. Reinstating it would put "String" back on the row. The two codes are
+        // asserted beside the spellings because a code the shipped table knows reads as its word
+        // and one it does not may not be turned into anything else. (Fhi.Metadata-l9l2n.49)
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER") with { DataType = stored })
+        {
+            FiltersHang = true
+        };
+
+        var cut = RenderView(client);
+
+        Assert.Equal(expected, CellText(cut, "dataType"));
+    }
+
+    [Theory]
+    [InlineData("String", "Streng")]
+    [InlineData("tekst", "Streng")]
+    [InlineData("2", "Heltall")]
+    [InlineData("11", "11")]
+    public void View_WhenTheNamesNeverArrive_ThenALegacySpellingStillReadsAsAWordAndACodeSurvives(
+        string stored, string expected)
+    {
+        // This method used to return the stored value untouched the moment the names were missing,
+        // and dropping that early return is what lets a legacy spelling resolve here at all. The
+        // fallback is the shipped table, as it is on the search rows and the panel; a code that
+        // table has never heard of is still not turned into something else. (Fhi.Metadata-l9l2n.49)
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER") with { DataType = stored });
+
+        var cut = RenderView(client);
+
+        Assert.Equal(expected, CellText(cut, "dataType"));
+    }
+
+    [Theory]
+    [InlineData("String", "Streng")]
+    [InlineData("11", "11")]
+    public void View_WhenTheNamesCannotBeFetched_ThenTheRowsReadTheSameAsWithNoNamesAtAll(
+        string stored, string expected)
+    {
+        // The failed fetch is its own path — the names are replaced with an empty table so the
+        // endpoint is asked once — and it has to land on the same words as the fetch that simply
+        // returned nothing. (Fhi.Metadata-l9l2n.49)
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER") with { DataType = stored })
+        {
+            FiltersThrow = new HttpRequestException("the API is down")
+        };
+
+        var cut = RenderView(client);
+
+        Assert.Equal(expected, CellText(cut, "dataType"));
+    }
+
+    [Fact]
+    public void View_WhenTheApiHasNoNameForTheCode_ThenTheShippedWordIsShownRatherThanNothing()
     {
         var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
 
         var cut = RenderView(client);
 
-        Assert.Contains(">2<", cut.Markup);
+        Assert.Contains(">Heltall<", cut.Markup);
     }
 
     [Fact]
@@ -847,6 +994,40 @@ public class VariableListViewTest : BunitContext
         Assert.Null(cell.QuerySelector(".screenreader-only"));
         Assert.Equal("ALS", cell.QuerySelector(".munin-explorer-dataitem-main__column__text")!.TextContent);
         Assert.Equal("Als registeret", cell.GetAttribute("title"));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void View_WhenAKildeHasNoShortName_ThenTheColumnFallsBackToTheKildeName(string? shortName)
+    {
+        // The API sends an omitted kortnavn as "", which the `??` this replaced kept, so the
+        // column said "Ikke oppgitt" over a kilde name sitting on the same row.
+        var item = Item("Alder ved diagnose", "V_BDR.ALDER") with
+        {
+            KildeName = "Norsk register for gastrokirurgi",
+            KildeShortName = shortName
+        };
+
+        var cut = RenderView(new ListClient(item));
+
+        Assert.Equal("Norsk register for gastrokirurgi", CellText(cut, "source"));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void View_WhenTheShortNameIsBlankAndSoIsTheKildeName_ThenTheColumnStillSaysNotSpecified(string? kildeName)
+    {
+        // The fallback must not turn an unknown kilde into a blank cell: with neither name there is
+        // nothing to fall back to, and "Ikke oppgitt" is still the right answer. Both absences
+        // reach here, since the property is nullable and the API also sends "".
+        var item = Item("Alder ved diagnose", "V_BDR.ALDER") with { KildeName = kildeName, KildeShortName = "" };
+
+        var cut = RenderView(new ListClient(item));
+
+        Assert.Equal("Ikke oppgitt", CellText(cut, "source"));
     }
 
     [Fact]
@@ -1333,6 +1514,39 @@ public class VariableListViewTest : BunitContext
         // view's explicit page read - and ListId, the list being left, not at all.
         Assert.Equal(2, askedDuringCreate.Count);
         Assert.All(askedDuringCreate, id => Assert.NotEqual(ListId, id));
+    }
+
+    [Fact]
+    public async Task View_WhenASecondHolderRemovesWhileAListIsBeingCreated_ThenTheRowStillLeaves()
+    {
+        // Fhi.Metadata-wuxkn. A count of notifications cannot tell this removal, raised by a second
+        // holder of the same state, from one of the create's own two - so counting swallows it and
+        // the row would sit on screen until the create finishes. Identity is what tells them apart.
+        var item = Item("Alder ved diagnose", "V_BDR.ALDER");
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        VariableListState state = null!;
+
+        var client = new ListClient(item)
+        {
+            DuringCreate = async () =>
+            {
+                await state.RemoveVariablesAsync(ListId, [item.VariableId]);
+                await gate.Task;
+            }
+        };
+
+        var cut = RenderView(client);
+        state = Services.GetRequiredService<VariableListState>();
+
+        CreateField(cut).Change("Kreft og svulster");
+        await PressAsync(cut, "Opprett liste");
+
+        // The create is still stalled inside CreateMyListAsync at this point - the row leaving
+        // here, rather than only once the create finishes, is what a count cannot guarantee.
+        await cut.WaitForAssertionAsync(() => Assert.DoesNotContain("Alder ved diagnose", cut.Markup));
+
+        gate.SetResult();
+        await cut.WaitForAssertionAsync(() => Assert.Contains("Kreft og svulster", cut.Markup));
     }
 
     [Fact]

@@ -1,3 +1,6 @@
+using Fhi.Munin.Explorer.Display;
+using Microsoft.Extensions.Logging;
+
 namespace Fhi.Munin.Explorer.State;
 
 /// <summary>
@@ -128,6 +131,9 @@ public sealed partial class VariableListState
         }
         catch (Exception e) when (_activeListId is not null && e is not OperationCanceledException)
         {
+            _logger?.LogWarning(
+                e, "could not refresh the membership of list {ListId}", _activeListId);
+
             // The list is known, so the write can go out; only the membership read failed. Letting
             // that throw would cost the reader the save as well as the labels, and the limiter is
             // the likeliest reason it failed — the case where losing the press is least excusable,
@@ -177,7 +183,7 @@ public sealed partial class VariableListState
             return false;
         }
 
-        Changed?.Invoke();
+        RaiseChanged(listId, affectsRows: true);
         return _saved.Contains(variableId);
     }
 
@@ -369,9 +375,21 @@ public sealed partial class VariableListState
                     continue;
                 }
 
+                // Trimmed rather than `??`, as the two Kilde columns are: a name the read model
+                // leaves out arrives as null or as "", and `??` only catches the first. Empty
+                // when the entry carries neither; the panel is what names that one.
+                var kildeName = DisplayText.Trimmed(item.KildeName)
+                                ?? DisplayText.Trimmed(item.KildeShortName) ?? "";
+
+                // A later entry's name fills in for an earlier one that had neither, so one
+                // nameless entry cannot leave a kilde the list does name unnamed in the sidebar.
                 kilder[kildeId] = kilder.TryGetValue(kildeId, out var tally)
-                    ? tally with { Count = tally.Count + 1 }
-                    : new KildeTally(item.KildeName ?? item.KildeShortName ?? "", 1);
+                    ? tally with
+                    {
+                        Count = tally.Count + 1,
+                        Name = tally.Name.Length > 0 ? tally.Name : kildeName,
+                    }
+                    : new KildeTally(kildeName, 1);
             }
 
             if (result.Items.Count == 0 || found.Count >= result.TotalCount)
@@ -391,7 +409,7 @@ public sealed partial class VariableListState
         _kilder.AddRange(kilder.Select(k => new KildeInList(k.Key, k.Value.Name, k.Value.Count)));
 
         _membershipLoaded = true;
-        Changed?.Invoke();
+        RaiseChanged(listId, affectsRows: true);
     }
 
     /// <summary>One kilde's running total while the walk is under way.</summary>

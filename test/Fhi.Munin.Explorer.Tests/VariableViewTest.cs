@@ -444,6 +444,21 @@ public class VariableViewTest : BunitContext
     }
 
     [Fact]
+    public void Aside_WhenTheOwningKildeHasNoKildetype_ThenTheRowSaysSoRatherThanDroppingOut()
+    {
+        // DetailBlocks.Facts drops a blank value entirely, so a reading site letting the API's null
+        // through raw loses the row rather than drawing an empty one — and no compiler says so,
+        // because the label helper has always taken a null. (Fhi.Metadata-l9l2n.61)
+        var facts = Render(Detail() with { KildeType = null })
+            .Find(".munin-explorer-whole__aside dl.munin-explorer-meta__grid");
+
+        Assert.Equal(
+            ["Kildenavn", "Kortnavn", "Type datakilde"],
+            facts.QuerySelectorAll("dt").Select(dt => dt.TextContent.Trim()));
+        Assert.Equal("Ikke oppgitt", facts.QuerySelectorAll("dd")[2].TextContent.Trim());
+    }
+
+    [Fact]
     public void Heading_WhenTheCatalogueLeftTheNameEmpty_ThenTheCodeStandsInAndIsNotDrawnTwice()
     {
         // The third view with the same shape and a third contract. The code caption below the
@@ -462,5 +477,24 @@ public class VariableViewTest : BunitContext
         // be dropped wholesale and still pass.
         Assert.Null(Render(Detail() with { PreferredTerm = "" }, "en").Find("h2").GetAttribute("lang"));
         Assert.Equal("no", Render(Detail(), "en").Find("h2").GetAttribute("lang"));
+    }
+
+    [Theory]
+    [InlineData("2", "Heltall")]
+    [InlineData("Integer", "Heltall")]
+    [InlineData("string", "Streng")]
+    [InlineData("BOOLEAN", "Boolsk")]
+    public void DataType_OnANorwegianPage_NeverShowsTheApisEnglishName(string rawValue, string expected)
+    {
+        // The read model is not fully re-normalized, so a legacy raw value can
+        // still arrive alongside the canonical numeric codes. Either shape must resolve to
+        // Norwegian. (Fhi.Metadata-88fui)
+        var cut = Render(Detail() with { DataType = rawValue });
+
+        Assert.Contains(expected, cut.Markup, StringComparison.Ordinal);
+        foreach (var english in new[] { "String", "Integer", "Boolean", "Decimal", "Datetime" })
+        {
+            Assert.DoesNotContain(english, cut.Markup, StringComparison.OrdinalIgnoreCase);
+        }
     }
 }

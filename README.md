@@ -216,7 +216,9 @@ These are not style preferences — each one is a host that breaks otherwise.
     root as a grid at desktop width, `-filters`, `-detail`, `-drilldown`, `-kodeverk*` and
     `-codes*` for spacing, indentation and a rule between rows, the kilde, datasamling and variable
     views' name block, main column and sidebar as one page layout under three prefixes, the kilde
-    list as a table with its counts right-aligned — and `munin-explorer-group` is now the space
+    list as a table with its counts right-aligned, and a count of nought dimmed under
+    `munin-explorer-kilder__count--zero` so an empty register reads as empty rather than as a
+    measured value — and `munin-explorer-group` is now the space
     between one group and the next and nothing else. It used to draw Runa's 11px blue uppercase
     eyebrow over the `headline headline-xxs` the heading already wears, which is what drew a group
     heading smaller than the 16px values beneath it; the host's own heading style wins there now
@@ -242,6 +244,18 @@ These are not style preferences — each one is a host that breaks otherwise.
     number is drawn, not what the label contains, and Chrome computes the same `Aktiv (3)` under
     all three. What does drop it from the name is `display: none` or `visibility: hidden` on the
     count, so a host that hides it visually hides it from screen readers with it.
+    Kelda's facet summaries add `munin-explorer-filters__chosen`, and it is worth a sentence only
+    because it looks like the name above and wants the opposite rule: this is how many of one
+    facet's values are ticked, sitting beside that facet's heading, where `margin-left: auto`
+    belongs to the disclosure marker rather than to the number. A handle again — the words are
+    markup, so a folded facet is announced as "Kildetype 2 valgt" with no stylesheet at all, and
+    what a rule buys is the dimming and the tabular figures. What a host owes the summary line
+    itself is a rule of a different kind, on no name of ours: the heading in there is a block box,
+    so without one laying the summary out as a row the count is drawn under the heading and the
+    disclosure marker under that. Both sample stylesheets carry it, and so does
+    `Fhi.Helsedata.Stiler`, where it is shared with the variabelutforsker's panel and redraws the
+    marker on the trailing edge — a summary laid out as a row is no longer a list-item, and the
+    browser stops drawing a marker for it.
     The saved-list view's `munin-explorer-dataitem-*__desiredData` pair is a handle on the same
     terms and worth one sentence, because the cell holds a control rather than a value: undefined,
     the annotation field is a browser-default text box, which is visible, operable and named, so
@@ -257,6 +271,29 @@ These are not style preferences — each one is a host that breaks otherwise.
     `gap`, so nothing trails the last button, and buttons that shrink and wrap their own labels
     rather than the row breaking apart at the next longer translation. Both sample stylesheets carry
     it, and it is in `Fhi.Helsedata.Stiler` from the release that follows PR 39046.
+    The row of active-filter chips over the results adds three, all shared with that panel:
+    `munin-explorer-filters__active` is the row, `munin-explorer-filters__chip` the capsule around
+    one ticked value and `munin-explorer-filters__chip-remove` the close control inside it. Handles,
+    all three, and the reason is the shape rather than the rules: the row is a heading, a run of
+    `<span>`s and a `<button>`, and the close control is a bare `<button>` whose accessible name is
+    written down — so a host that defines none of them gets the same words, the same controls and
+    the same order, in inline flow instead of a row of capsules. What the rules buy is the capsule
+    itself and a 24×24 box for the close control, which is a WCAG 2.5.5 target rather than a
+    decoration. The rules are `Fhi.Helsedata.Stiler` PR 39206's, which 0.1.42 — the version pinned
+    here — predates, so a host has them from whichever release takes it. The two other names in that
+    row are borrowed and need nothing new — the heading is `caption margin--none` and the clear-all
+    is `hd-button-square button-square--ghost`, Stiler's, worn in this component already by the
+    facet panel's fold toggle.
+    The kildeutforsker adds one more, `munin-explorer-results__toolbar` — the row the result count
+    shares with the Sorter control and the Kolonner picker, which took a row each before it. A
+    handle, and the plainest one here: undefined, the three go back to being three blocks in
+    ordinary flow, which is exactly what shipped before the name existed, so what a rule buys is
+    two rows of vertical space and nothing a reader could otherwise miss. Its rules are
+    `Fhi.Helsedata.Stiler` PR 39220's, merged after 0.1.42 was cut, so a host has them from the
+    release that follows the version pinned here. The name says `results` and the element sits
+    above `munin-explorer-results` rather than inside it, deliberately: the results container is
+    drawn only with rows on screen, and the count inside this row is the component's one polite
+    live region, which has to be in the DOM before its text arrives.
   - Names that carry meaning nothing else carries, so a host without Stiler's rules has to draw
     them itself: `munin-explorer-crumb` carries the link affordance for a trail step, which is a
     `<button>` — the kilde step of the panel's kilde trail, and every step of the hierarchy trail
@@ -406,6 +443,10 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-detail` | handle |
   | `munin-explorer-drilldown` | handle |
   | `munin-explorer-filters` | handle |
+  | `munin-explorer-filters__active` | handle |
+  | `munin-explorer-filters__chip` | handle |
+  | `munin-explorer-filters__chip-remove` | handle |
+  | `munin-explorer-filters__chosen` | handle |
   | `munin-explorer-filters__count` | handle |
   | `munin-explorer-filters__facets` | handle |
   | `munin-explorer-filters__toggle` | handle |
@@ -418,6 +459,12 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-header__actions` | handle |
   | `munin-explorer-header__actions-button` | handle |
   | `munin-explorer-kilde` | handle |
+  | `munin-explorer-hierarchy` | handle |
+  | `munin-explorer-hierarchy__branch` | handle |
+  | `munin-explorer-hierarchy__count` | handle |
+  | `munin-explorer-hierarchy__leaf` | handle |
+  | `munin-explorer-hierarchy__metadata` | handle |
+  | `munin-explorer-hierarchy__nodes` | handle |
   | `munin-explorer-kilde__aside` | handle |
   | `munin-explorer-kilde__body` | handle |
   | `munin-explorer-kilde__datasamlinger` | handle |
@@ -433,7 +480,9 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-kilder` | handle |
   | `munin-explorer-kilder-scroll` | meaning |
   | `munin-explorer-kilder__count` | handle |
+  | `munin-explorer-kilder__count--zero` | handle |
   | `munin-explorer-kilder__expand` | handle |
+  | `munin-explorer-kilder__expand-icon` | handle |
   | `munin-explorer-kilder__expand-toggle` | handle |
   | `munin-explorer-kilder__expanded` | handle |
   | `munin-explorer-kilder__name` | handle |
@@ -462,6 +511,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-period__track` | meaning |
   | `munin-explorer-period__track--ongoing` | meaning |
   | `munin-explorer-results` | handle |
+  | `munin-explorer-results__toolbar` | handle |
   | `munin-explorer-retry` | meaning |
   | `munin-explorer-search__clear` | handle |
   | `munin-explorer-selection` | handle |
@@ -651,6 +701,28 @@ side. It answers a `DesiredDataResult` rather than a `bool`, and a refusal carri
 API named — so a caller can tell the reader what to shorten to, and this package never writes the
 number down to drift from. A 429 is still thrown, and so is any fault.
 
+`AddMuninExplorer` also calls `AddLogging`, and that is where the component's own diagnostics go.
+The browsing surfaces never let an exception out — an unhandled one inside a Blazor circuit takes
+the whole page down with it, which on helsedata's Optimizely host means the CMS page and not just
+this component — so a failed call becomes a sentence in the alert region and nothing more on
+screen. It used to become nothing at all anywhere else either, which made a fault on a host's own
+server diagnosable only by elimination. Every one of those places now writes the exception through
+`ILogger<T>` first, at `Error`, or at `Warning` where the outcome is an expected one such as a 429.
+Filter on `Fhi.Munin.Explorer.Blazor.*`, `Fhi.Munin.Explorer.Client.*` and
+`Fhi.Munin.Explorer.State.*`.
+
+Two things follow that are worth stating. `AddLogging` is idempotent and `TryAdd`-based inside, so
+a host that has already configured logging keeps every provider, filter and minimum level it set —
+this adds a default factory for the host that has none, and takes nothing from the host that has
+one. And the logger is resolved with `GetService` rather than injected, so a component mounted in a
+host that never called `AddMuninExplorer` still renders: it simply writes nothing. What comes back
+is wrapped, so a provider that throws — a file sink on a full disk, say — costs a log line rather
+than the page, since `Logger<T>` rethrows a provider's failure and the call sites are inside the
+catches that keep the circuit up. The message templates name no component, because the category
+already is the component's type; they carry ids, page numbers and the like, never a URL, a token, a
+response body or anything the reader typed — the user's access token reaches the wire through `BearerTokenHandler`'s
+`Authorization` header, which no exception message here repeats.
+
 ### What a host mounts
 
 `VariableExplorer` is the whole variabelutforsker: the search, the reader's own variable lists
@@ -673,9 +745,20 @@ shared URL that opened on the sender's Variabelliste would be an empty page for 
 <component type="typeof(KildeExplorer)" render-mode="Server" param-Language="@("no")" />
 ```
 
-The open kilde goes in the address bar and a link reopens it. It is much the smaller of the two,
-because Kelda carries less — no personal lists, no sort, no pager, so `?kilde=` is the whole of
-what it owns and the rest is component state that goes away on refresh.
+The open kilde and the order the list is in go in the address bar, and a link restores both. It is
+much the smaller of the two, because Kelda carries less — no personal lists and no pager, so
+`?kilde=` and `?sort=` are the whole of what it owns and the rest is component state that goes away
+on refresh. `?sort=` is omitted while the list is in the order the catalogue sent, so a link made
+before the list could be sorted still means what it did.
+
+An open kilde's collection section loads its hierarchy separately: delkilder, datasamlinger and
+variabelgrupper appear as nested lists with native disclosures, initially collapsed. Tab visits
+each summary; Enter or Space toggles it. Descriptions and validity periods remain in a separate
+disclosure below the hierarchy. `KildeView` owns this presentation, so it is the same when reached
+through either explorer or mounted directly. Register the client with `AddMuninExplorer` before
+mounting `KildeView`. `KildeHierarchyView` can also be mounted with `KildeId` and `Language`.
+The new hierarchy class names are listed above;
+their helsedata styling is tracked in `Fhi.Metadata-wihod` and is not supplied by this package.
 
 Four things are worth knowing before mounting one.
 
@@ -684,8 +767,8 @@ Four things are worth knowing before mounting one.
   otherwise, because the failure they replace is invisible: prerendered, the page renders and the
   URL simply never follows the view.
 - **Your own parameters are safe.** Each component reads and rewrites only the keys it owns —
-  `ExplorerUrlState.QueryKeys` for the variable explorer, `?kilde=` for the kildeutforsker — and
-  carries everything else through untouched. `DeclinedKeys` keeps one of ours as well, for a page
+  `ExplorerUrlState.QueryKeys` for the variable explorer, `?kilde=` and `?sort=` for the
+  kildeutforsker — and carries everything else through untouched. `DeclinedKeys` keeps one of ours as well, for a page
   that already means something else by `?page=`; a declined key is left where it is rather than
   overwritten.
 - **`KildeExplorer` needs `VariableExplorerPath`** to offer the handover to the variable

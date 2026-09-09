@@ -1,5 +1,7 @@
 using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.Display;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Logging;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>The panel that opens under a selected row: what the variable is, and what its data holds.</summary>
@@ -10,7 +12,7 @@ public partial class VariableSearch
     private bool IsSelected(VariableSummary v) => _selectedId == v.Id;
 
     /// <summary>The open panel's description, trimmed, or null while there is none to show.</summary>
-    private string? DetailDescription => Trimmed(_detail?.Description);
+    private string? DetailDescription => DisplayText.Trimmed(_detail?.Description);
 
     /// <summary>
     /// Whether the card draws the description the search listed it with.
@@ -111,7 +113,7 @@ public partial class VariableSearch
 
         if (!string.IsNullOrWhiteSpace(detail.KildeName))
         {
-            var shortName = Trimmed(detail.KildeShortName);
+            var shortName = DisplayText.Trimmed(detail.KildeShortName);
             var sameThingTwice = shortName is null
                 || string.Equals(shortName, detail.KildeName, StringComparison.OrdinalIgnoreCase);
 
@@ -342,8 +344,13 @@ public partial class VariableSearch
 
             _codes[key] = codes?.Codes ?? [];
         }
-        catch (MuninExplorerRateLimitedException)
+        catch (MuninExplorerRateLimitedException ex)
         {
+            Log?.LogWarning(
+                ex,
+                "the rate limiter refused the kodeverk codes of variable {VariableId}",
+                variableId);
+
             if (_codesGeneration == generation)
             {
                 // Expanding one kodeverk after another is exactly the rhythm that meets the
@@ -352,8 +359,11 @@ public partial class VariableSearch
                 _codesError[key] = T.RateLimitError;
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Log?.LogError(
+                ex, "could not load the kodeverk codes of variable {VariableId}", variableId);
+
             if (_codesGeneration == generation)
             {
                 _codesError[key] = T.CodesError;
@@ -506,7 +516,7 @@ public partial class VariableSearch
     /// </remarks>
     private static bool IsUnnamedKildekodeverk(KodeverkLink link) =>
         string.Equals(link.KodeverkType, "Kildekodeverk", StringComparison.OrdinalIgnoreCase)
-        && Trimmed(link.DisplayName) is null
+        && DisplayText.Trimmed(link.DisplayName) is null
         && link.HasCodeValues;
 
     /// <summary>What an unnamed link draws where a named one draws its name.</summary>
@@ -548,7 +558,7 @@ public partial class VariableSearch
 
             first = false;
 
-            builder.AddContent(seq + 1, Trimmed(code.Name) is { } name ? $"{code.Value} {name}" : code.Value);
+            builder.AddContent(seq + 1, DisplayText.Trimmed(code.Name) is { } name ? $"{code.Value} {name}" : code.Value);
 
             seq += 2;
         }
@@ -603,7 +613,7 @@ public partial class VariableSearch
                     _ => InlineCodesPreview(_codes[key])
                 });
             }
-            else if (Trimmed(link.DisplayName) is { } name)
+            else if (DisplayText.Trimmed(link.DisplayName) is { } name)
             {
                 // The catalogue's own name, so it stays Norwegian whatever the UI language is —
                 // the rule the kilde trail and the variable's own name already follow.
@@ -782,7 +792,7 @@ public partial class VariableSearch
             // The catalogue's own wording, Norwegian whatever the page is — the rule every other
             // value out of the catalogue follows here.
             builder.AddAttribute(seq + 4, "lang", "no");
-            builder.AddContent(seq + 5, Trimmed(code.Name) ?? T.NotSpecified);
+            builder.AddContent(seq + 5, DisplayText.Trimmed(code.Name) ?? T.NotSpecified);
             builder.CloseElement();
 
             builder.OpenElement(seq + 6, "td");

@@ -29,9 +29,10 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 #
 # DELIBERATELY NOT COVERED, so nobody reads a green run as more than it is:
 #   - the whole-variable drill-in and the owner panel inside a row, two more presses each;
-#   - the kildeutforsker's own facet panel, which sits behind its `Vis filtre` toggle;
-#   - the pager past page one, and anything reached by searching or by narrowing a facet;
+#   - the pager past page one, and anything reached by searching; the kildeutforsker's own list
+#     narrowed by a facet IS covered, in kilde-facets, and the variable explorer's is not;
 #   - error and empty states, which need the stub to answer differently than it does;
+#   - hierarchy branches beyond the two opened levels in kilde-hierarchy-expanded;
 #   - the English texts, and samples/LegacyHost, the same component in the other host;
 #   - the list tab's own create, rename and delete forms, and the annotation field in a row.
 # Each is another page load and settle, about ten seconds, and none carries the risk the
@@ -45,8 +46,12 @@ TARGETS=(
   "/::filters-level-lines"
   "/::variable-detail"
   "/kilder::kilde-drilldown"
+  "/kilder::kilde-hierarchy-collapsed"
+  "/kilder::kilde-hierarchy-expanded"
+  "/kilder::kilde-hierarchy-metadata"
   "/kilder::kilder-expanded"
   "/kilder::kilder-columns"
+  "/kilder::kilde-facets"
   "/utforsker::explorer-tabs"
   "/utforsker::explorer-list-tab"
 )
@@ -142,11 +147,19 @@ npm install --no-save --silent \
   exit 2
 }
 
-npx --yes playwright install chromium >/tmp/pw-install.log 2>&1 || {
-  echo "could not install chromium - TOOLING failure." >&2
-  tail -10 /tmp/pw-install.log >&2
-  exit 2
-}
+# Skipped when a channel is set: that browser is already installed, and on Node 26 this step
+# cannot succeed at all - the pinned fetcher calls fs.rmdir(recursive), removed in that version,
+# which leaves a half-written cache with a chrome.dll and no chrome.exe (Fhi.Metadata-wgwa0).
+if [ -z "${PLAYWRIGHT_BROWSER_CHANNEL:-}" ]; then
+  npx --yes playwright install chromium >/tmp/pw-install.log 2>&1 || {
+    echo "could not install chromium - TOOLING failure." >&2
+    echo "on Node 26 try PLAYWRIGHT_BROWSER_CHANNEL=msedge to use an installed browser." >&2
+    tail -10 /tmp/pw-install.log >&2
+    exit 2
+  }
+else
+  echo "==> BROWSER: ${PLAYWRIGHT_BROWSER_CHANNEL} (not the bundled chromium)"
+fi
 
 set +e
 node "$ROOT/scripts/axe-scan.mjs" $(for t in "${TARGETS[@]}"; do printf '%s ' "${BASE}${t}"; done)

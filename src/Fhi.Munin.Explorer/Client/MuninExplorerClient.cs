@@ -6,14 +6,22 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace Fhi.Munin.Explorer.Client;
 
 /// <summary>
 /// <see cref="IMuninExplorerClient"/> over the public Munin Explorer API.
 /// </summary>
-internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplorerClient
+internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninExplorerClient>? logger = null)
+    : IMuninExplorerClient
 {
+    // AddMuninExplorer's AddLogging is what makes this resolvable, not the default: ActivatorUtilities,
+    // which AddHttpClient builds a typed client with, throws rather than substituting one for a
+    // service it cannot satisfy. The default is for the tests, which new this up. Guarded: ExplorerLog.
+    private readonly ILogger? _logger = ExplorerLog.Guard(logger);
+
     // Shared by the client and any test host, so a serialisation difference cannot
     // quietly appear between them.
     internal static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
@@ -143,13 +151,19 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
         // A user with no lists is answered with an empty array rather than a 404, so the null arm
         // here is only ever the endpoint moving. It reads as "no lists" either way, which is the
         // same bargain GetKilderAsync makes.
-        await GetOrNullAsync<IReadOnlyList<VariableList>>(MyLists, cancellationToken) ?? [];
+        await GetOrNullAsync<IReadOnlyList<VariableList>>(
+            MyLists, cancellationToken, requiresAuthentication: true) ?? [];
 
     public async Task<VariableList> CreateMyListAsync(string name, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(name);
 
         using var response = await SendAsync(HttpMethod.Post, MyLists, new NameBody(name), cancellationToken);
+
+        if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+        {
+            throw new MuninExplorerUnauthorizedException();
+        }
 
         // 201 with the stored list as its body. A 400 — an empty name, or one over 200 characters —
         // is thrown by EnsureSuccessStatusCode, because a name the user typed and the API refused
@@ -191,7 +205,8 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
             url.Append("&kildeId=").Append(kildeId.ToString("D"));
         }
 
-        var result = await GetOrNullAsync<Page<VariableListItem>>(url.ToString(), cancellationToken);
+        var result = await GetOrNullAsync<Page<VariableListItem>>(
+            url.ToString(), cancellationToken, requiresAuthentication: true);
 
         return result is null ? null : WithDerivedTotalPages(result);
     }
@@ -261,8 +276,13 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
             return new DesiredDataResult(DesiredDataOutcome.Refused, refusal?.MaxLength, refusal?.Received);
         }
 
-        // A 401 lands here and lands loudly, the same as the writes above: an authenticated
-        // endpoint answering 401 is a host that never registered a token provider.
+        // Same as the writes above: this endpoint is authenticated, so a 401/403 is thrown as its
+        // own type rather than falling into the general failure below.
+        if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+        {
+            throw new MuninExplorerUnauthorizedException();
+        }
+
         response.EnsureSuccessStatusCode();
 
         return new DesiredDataResult(DesiredDataOutcome.Saved);
@@ -346,7 +366,7 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
     /// parser's own exceptions because not every reason is the parser's: a charset the runtime
     /// cannot resolve throws an invalid operation. Cancellation is the caller's and travels on.
     /// </remarks>
-    private static async Task<DesiredDataRefusal?> ReadRefusalAsync(
+    private async Task<DesiredDataRefusal?> ReadRefusalAsync(
         HttpResponseMessage response,
         CancellationToken cancellationToken)
     {
@@ -356,6 +376,11 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
         }
         catch (Exception cause) when (cause is not OperationCanceledException)
         {
+            // Warning: the refusal stands, and what is lost is the ceiling the caller would have
+            // named to the reader. The body is not logged — it is the API's, and reading it again
+            // here is the very thing that just failed.
+            _logger?.LogWarning(cause, "a refusal body could not be read");
+
             return null;
         }
     }
@@ -443,9 +468,13 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
             return false;
         }
 
-        // A 401 lands here, and lands loudly: these endpoints are authenticated, so calling them
-        // without a token provider registered is a host wiring mistake and not a user with nothing
-        // saved. Returning false would be indistinguishable from the latter.
+        // These endpoints are authenticated, so a 401/403 is thrown rather than read as false —
+        // returning false here would be indistinguishable from "a user with nothing saved".
+        if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+        {
+            throw new MuninExplorerUnauthorizedException();
+        }
+
         response.EnsureSuccessStatusCode();
 
         return true;
@@ -551,7 +580,8 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
     private async Task<T?> GetOrNullAsync<T>(
         string url,
         CancellationToken cancellationToken,
-        string? language = null)
+        string? language = null,
+        bool requiresAuthentication = false)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
 
@@ -575,6 +605,14 @@ internal sealed class MuninExplorerClient(HttpClient httpClient) : IMuninExplore
         if (response.StatusCode == HttpStatusCode.TooManyRequests)
         {
             throw new MuninExplorerRateLimitedException(RetryAfter(response));
+        }
+
+        // Only the my/lists reads pass true here: everything else on this method is public, so a
+        // 401/403 on those never reaches this branch and falls to EnsureSuccessStatusCode below,
+        // same as before.
+        if (requiresAuthentication && response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+        {
+            throw new MuninExplorerUnauthorizedException();
         }
 
         response.EnsureSuccessStatusCode();

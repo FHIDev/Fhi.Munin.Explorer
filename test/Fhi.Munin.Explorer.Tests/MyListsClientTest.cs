@@ -23,7 +23,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// helper here that builds an unauthenticated client, so a test added later cannot quietly skip it.
 /// </para>
 /// <para>
-/// <see cref="EveryCall_WhenNoHostRegistersAProvider_ThenTheApisRefusalIsThrownRatherThanReadAsNothing"/>
+/// <see cref="EveryCall_WhenNoHostRegistersAProvider_ThenTheApisRefusalIsThrownAsUnauthorized"/>
 /// is the other side of the same point: with the anonymous default in place these calls must fail
 /// loudly rather than answer "you have no lists".
 /// </para>
@@ -873,14 +873,16 @@ public class MyListsClientTest
         Assert.Equal(calls.Length, handler.Calls);
     }
 
-    [Fact]
-    public async Task EveryCall_WhenNoHostRegistersAProvider_ThenTheApisRefusalIsThrownRatherThanReadAsNothing()
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized)]
+    [InlineData(HttpStatusCode.Forbidden)]
+    public async Task EveryCall_WhenNoHostRegistersAProvider_ThenTheApisRefusalIsThrownAsUnauthorized(
+        HttpStatusCode status)
     {
-        // The other half. With the anonymous default in place — a host that never registered a
-        // provider, or registered one after AddMuninExplorer and lost to TryAdd — every one of
-        // these answers 401. That must arrive as a fault, because the alternative reads as "you
-        // have no saved lists" and sends the user looking for the lists they saved yesterday.
-        var handler = StubHttpHandler.Status(HttpStatusCode.Unauthorized);
+        // A host with no token provider answers every my/lists call with 401 or 403, which must
+        // throw rather than read as "no saved lists" — that reading would send the reader looking
+        // for lists they saved yesterday (Fhi.Metadata-h5o3o).
+        var handler = StubHttpHandler.Status(status);
         var client = Client(handler, token: null);
         var ids = new[] { Guid.NewGuid() };
 
@@ -900,7 +902,7 @@ public class MyListsClientTest
 
         foreach (var call in calls)
         {
-            await Assert.ThrowsAsync<HttpRequestException>(call);
+            await Assert.ThrowsAsync<MuninExplorerUnauthorizedException>(call);
         }
 
         Assert.Null(handler.LastAuthorization);

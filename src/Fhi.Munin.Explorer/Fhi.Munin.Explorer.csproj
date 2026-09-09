@@ -11,9 +11,14 @@
 
   <ItemGroup>
     <PackageReference Include="Markdig" Version="1.3.2" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.11" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.11" />
-    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.11" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.12" />
+    <!-- Abstractions is what the components consume; the implementation is AddLogging's own package
+         and AddMuninExplorer calls it. Not a widening: Microsoft.Extensions.Http above has depended
+         on Microsoft.Extensions.Logging at this same version since the first release. -->
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
   </ItemGroup>
 
   <ItemGroup>

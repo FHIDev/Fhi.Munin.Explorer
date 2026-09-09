@@ -1,5 +1,8 @@
 using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.Logging;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.Extensions.Logging;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -24,13 +27,20 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </para>
 /// <para>
 /// What it deliberately does <em>not</em> have is the machinery the variable explorer needs, and
-/// that is a decision recorded under the Kelda epic rather than a gap. There is no paging and no
-/// sorting: <see cref="IMuninExplorerClient.GetKilderAsync"/> answers with the whole list in one
-/// array — 72 active kilder measured on 2026-08-25, against tens of thousands of variables — and
-/// the API returns it ordered by name. So the list is fetched <em>once</em>, on initialisation,
-/// with no search and no kildetype, and everything the reader does afterwards happens over the
-/// list already in hand. That is also why the facets are counted client-side and are not
-/// cross-filtered the way Runa's are — see <c>KildeSearch.Filters.cs</c>.
+/// that is a decision recorded under the Kelda epic rather than a gap. There is no paging:
+/// <see cref="IMuninExplorerClient.GetKilderAsync"/> answers with the whole list in one array — 72
+/// active kilder measured on 2026-08-25, against tens of thousands of variables — and the API
+/// returns it ordered by name. So the list is fetched <em>once</em>, on initialisation, with no
+/// search and no kildetype, and everything the reader does afterwards happens over the list
+/// already in hand. That is also why the facets are counted client-side and are not cross-filtered
+/// the way Runa's are — see <c>KildeSearch.Filters.cs</c>.
+/// </para>
+/// <para>
+/// Sorting is the same bargain and for the same reason. <see cref="Order"/> is applied here, over
+/// the rows the search and the facets left, and nothing about it is sent to the API: an unpaged
+/// endpoint has already handed over every row, so a <c>sort</c> parameter would be a contract with
+/// no caller. <see cref="KildeSortOrder"/> says what each order reads and where a kilde with no
+/// value to order by lands; <c>KildeSearch.Sorting.cs</c> is where it is done.
 /// </para>
 /// <para>
 /// Searching is therefore a filter over that list rather than a request: name, code and short
@@ -68,15 +78,20 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// and <c>munin-explorer-drilldown</c> are the explorer's existing ones, reused rather than
 /// reinvented — two of which, <c>munin-explorer</c> and <c>munin-explorer-filters</c>, are handles
 /// nothing defines a rule for, in this package or in Stiler, so a host that wants the panel placed
-/// beside the results writes that rule itself. Seven are new and belong to this view:
+/// beside the results writes that rule itself. Others are new and belong to this view:
 /// <c>munin-explorer-kilder</c> for the result table,
 /// <c>munin-explorer-kilder__name</c> for the control that opens a kilde,
-/// <c>munin-explorer-kilder__count</c> for the two columns that hold a number,
+/// <c>munin-explorer-kilder__count</c> for the three columns that hold a number, joined by
+/// <c>munin-explorer-kilder__count--zero</c> on a cell whose count is nought — the digit is still
+/// drawn, so a host's rule for it dims rather than hides,
 /// <c>munin-explorer-kilder__select</c> for the checkbox column a host that wired
 /// <see cref="ExploreVariablesRequested"/> gets in front of them, and
 /// <c>munin-explorer-filters__toggle</c> and <c>munin-explorer-filters__facets</c> for the facet
 /// panel's disclosure, and <c>munin-explorer-filters__count</c> for the number beside a facet
-/// value — see <c>KildeSearch.Filters.cs</c> for what those three are for. A host that
+/// value — see <c>KildeSearch.Filters.cs</c> for what those three are for. Last is
+/// <c>munin-explorer-results__toolbar</c>, the row the result count shares with the order control
+/// and the column picker: a host that defines nothing for it gets the three back as three blocks
+/// in ordinary flow, which is what they were before the name existed. A host that
 /// styles none of them still gets a usable list, which is why the results are a
 /// <c>&lt;table&gt;</c> and the name is a <c>&lt;button&gt;</c>: an element degrades to its own
 /// browser default — aligned columns, a control that visibly is one — where a class name no
@@ -91,9 +106,9 @@ public sealed partial class KildeSearch : ComponentBase
     /// <remarks>
     /// Read once, on initialisation, exactly as <see cref="VariableSearch.Search"/> is. There is
     /// no <c>SearchChanged</c> beside it, and that is the Kelda parity decision rather than an
-    /// omission: search, filters and column choices are component state that goes away on refresh,
-    /// and the one thing worth putting in a host's URL is which kilde is open — which is what
-    /// <see cref="SelectedKildeIdChanged"/> is for.
+    /// omission: search, filters and column choices are component state that goes away on refresh.
+    /// What is worth putting in a host's URL is which kilde is open and which order the list is in
+    /// — <see cref="SelectedKildeIdChanged"/> and <see cref="OrderChanged"/>.
     /// </remarks>
     [Parameter] public string? Search { get; set; }
 
@@ -212,6 +227,13 @@ public sealed partial class KildeSearch : ComponentBase
 
     [Inject] private IMuninExplorerClient Client { get; set; } = null!;
 
+    [Inject] private IServiceProvider Services { get; set; } = null!;
+
+    private ILogger? _log;
+
+    /// <summary>The host's logger, or none — see <see cref="ExplorerLog"/>.</summary>
+    private ILogger? Log => _log ??= ExplorerLog.For<KildeSearch>(Services);
+
     // The whole list, fetched once. Never refetched: nothing the reader can do to this component
     // asks the API a different question, which is the point of an endpoint that is not paged.
     private IReadOnlyList<KildeSummary> _kilder = [];
@@ -271,6 +293,11 @@ public sealed partial class KildeSearch : ComponentBase
 
     private bool IsExpanded(Guid id) => _expanded.Contains(id);
 
+    // One predicate for the chevron and for the row press, so widening what counts as expandable
+    // cannot leave a chevron that opens beside a row that is dead, or the reverse. Kelda's own
+    // condition: canExpand = datasamlingCount > 0.
+    private static bool CanExpand(KildeSummary kilde) => kilde.DatasamlingCount > 0;
+
     // The panel names itself, because a table row carries no heading for its groups to hang under.
     private int ExpandedPanelLevel => Math.Clamp(TitleLevel + 1, 1, 6);
 
@@ -309,6 +336,13 @@ public sealed partial class KildeSearch : ComponentBase
         IsExpanded(kilde.Id)
             ? T.CollapseDatasamlinger(RowName(kilde).Text)
             : T.ExpandDatasamlinger(RowName(kilde).Text);
+
+    // Stiler's own chevron, and where the toggle's size comes from: the button pads by only 4px/6px,
+    // so its content carries the target size — `.icon` is a 1.5rem box, where the "+" this replaced
+    // was a 7px glyph and the control measured 20 x 24. (Fhi.Metadata-mpx2p)
+    private string ExpandChevronClass(Guid id) =>
+        "icon icon--nomargin munin-explorer-kilder__expand-icon "
+        + (IsExpanded(id) ? "icon-keyboard-arrow-down" : "icon-keyboard-arrow-right");
 
     private string PanelId(Guid id) => $"munin-explorer-datasamlinger-{_instance}-{id}";
 
@@ -370,6 +404,45 @@ public sealed partial class KildeSearch : ComponentBase
         await LoadDatasamlingerAsync(kilde.Id);
     }
 
+    // CSS pixels the pointer may travel between press and release and still count as a press. Under
+    // a character's width, so selecting even one letter of a code reads as the drag it is; above a
+    // shaky hand, so an ordinary click still opens the drawer.
+    private const double RowPressSlack = 4;
+
+    // Where the press now in flight went down, and on whose row. A drag that begins and ends inside
+    // the row lands a click on the <tr> too, and window.getSelection() would need JS interop this
+    // package does not take. Keyed by the kilde's own id, like every other per-row state here.
+    private (Guid Kilde, double X, double Y)? _rowPressedAt;
+
+    // No preventDefault, so the row's text still selects — this only records where the pointer was.
+    private void RowPressed(KildeSummary kilde, MouseEventArgs pressed) =>
+        _rowPressedAt = (kilde.Id, pressed.ClientX, pressed.ClientY);
+
+    // The row is a pointer shortcut onto the toggle in it, so it opens nothing the toggle does not:
+    // Kelda draws no toggle where there is nothing to open, and a row that expanded to an empty
+    // panel would be the control-that-does-nothing this came from. (Fhi.Metadata-l9l2n.55)
+    private Task ToggleDatasamlingerFromRowAsync(KildeSummary kilde, MouseEventArgs released)
+    {
+        var pressedAt = _rowPressedAt;
+        _rowPressedAt = null;
+
+        return CanExpand(kilde) && !Selecting(kilde, pressedAt, released)
+            ? ToggleDatasamlingerAsync(kilde)
+            : Task.CompletedTask;
+    }
+
+    // Highlighting a code to copy it is not a request to open the drawer, and distance alone misses
+    // the gestures that stand still: a double-click takes a word, a shift-click extends to it. A
+    // click this row recorded no press for is how assistive tooling presses, so it opens the drawer.
+    private static bool Selecting(
+        KildeSummary kilde, (Guid Kilde, double X, double Y)? from, MouseEventArgs released) =>
+        released.Detail > 1
+        || released.ShiftKey
+        || (from is { } start
+            && start.Kilde == kilde.Id
+            && (Math.Abs(released.ClientX - start.X) > RowPressSlack
+                || Math.Abs(released.ClientY - start.Y) > RowPressSlack));
+
     private async Task LoadDatasamlingerAsync(Guid id)
     {
         var generation = _datasamlingerGeneration[id] =
@@ -398,6 +471,18 @@ public sealed partial class KildeSearch : ComponentBase
         }
         catch (Exception ex)
         {
+            // The branch below folds the two failures because everything but the sentence is the
+            // same; the level is the one thing that is not. A 429 is the catalogue up and the
+            // reader asking too often, and reading that as Error is what wasted the incident.
+            if (ex is MuninExplorerRateLimitedException)
+            {
+                Log?.LogWarning(ex, "the rate limiter refused the datasamlinger of kilde {KildeId}", id);
+            }
+            else
+            {
+                Log?.LogError(ex, "could not load the datasamlinger of kilde {KildeId}", id);
+            }
+
             // One branch for both failures so the stale guard is written once: a fetch the reader
             // has already collapsed must not paint its answer, of either kind, into a row that is
             // now closed or holding a different kilde.
@@ -506,7 +591,7 @@ public sealed partial class KildeSearch : ComponentBase
     private string DetailBusy => _detailLoading ? "true" : "false";
 
     /// <summary>
-    /// The kilder the search and the facets leave, in the order the API sent them.
+    /// The kilder the search and the facets leave, in the order the reader asked for.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -527,9 +612,11 @@ public sealed partial class KildeSearch : ComponentBase
     /// kilder that answer both.
     /// </para>
     /// <para>
-    /// No re-ordering. The API returns the list ordered by name and Kelda offers no sort control,
-    /// so the sequence on screen is the sequence that arrived — which is what makes a row's
-    /// position stable while the reader types.
+    /// The order comes last, over whatever the two of them left, so sorting a narrowed list sorts
+    /// every row that survived rather than the first screenful of them — there is no pager here to
+    /// take a subset before it. Until the reader chooses otherwise that order is the one the API
+    /// sent, which is what the list has always shown; see <see cref="KildeSortOrder"/> for the
+    /// rest, including where a kilde with no value to order by goes.
     /// </para>
     /// </remarks>
     private IReadOnlyList<KildeSummary> Visible
@@ -538,9 +625,11 @@ public sealed partial class KildeSearch : ComponentBase
         {
             var searched = Searched(SearchText);
 
-            return _chosen.Values.All(values => values.Count == 0)
-                ? searched
-                : [.. searched.Where(MatchesFacets)];
+            return Sorted(
+                _chosen.Values.All(values => values.Count == 0)
+                    ? searched
+                    : [.. searched.Where(MatchesFacets)],
+                _order);
         }
     }
 
@@ -560,20 +649,39 @@ public sealed partial class KildeSearch : ComponentBase
         value is not null && value.Contains(term, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    /// One sentence describing the visible result — "72 kilder" — used both as the live
-    /// announcement and as the table's accessible name, so the two cannot drift apart.
+    /// One sentence describing the visible result — "56 kilder av 66, avgrenset av 2 filtre,
+    /// sortert etter Flest variabler" — used both as the live announcement and as the table's
+    /// accessible name, so the two cannot drift apart.
     /// </summary>
     /// <remarks>
-    /// It is a count and nothing else. The variable explorer's equivalent names the row range and
-    /// the ordering as well, because it has a pager and sortable headers; this list has neither, so
-    /// there is nothing further to say and a sentence claiming otherwise would be furniture.
+    /// A count against the catalogue it was narrowed out of, the ordering, and how many facet
+    /// values are ticked; no row range, because the variable explorer names one for its pager and
+    /// this list is never paged. The ordering is here because the status line is polite and atomic,
+    /// so it is what tells a reader who cannot see the rows move that they moved at all — a sort
+    /// control whose effect is never announced is a control only some readers have.
+    /// <para>
+    /// The denominator and the filter clause are absent rather than zeroed on an untouched list:
+    /// "66 kilder av 66, avgrenset av 0 filtre" is more words saying less than "66 kilder". Which
+    /// clauses appear is the text's own decision, so the two languages can disagree about it.
+    /// </para>
+    /// <para>
+    /// The catalogue's own order is left unsaid rather than named, so the sentence a reader who has
+    /// touched nothing hears is the one this list has always shown. Choosing it again is still a
+    /// change to the sentence, so the return is announced as well as the departure.
+    /// </para>
     /// <para>
     /// It takes the list rather than reading <see cref="Visible"/> itself, so that the sentence and
     /// the rows underneath it are counted off one read of the filter — see the capture at the top
-    /// of the markup's list branch.
+    /// of the markup's list branch. <see cref="ChosenCount"/> is the same number the empty state
+    /// reports, so a narrowed list and a list narrowed to nothing cannot name different filters.
     /// </para>
     /// </remarks>
-    private string Summary(IReadOnlyList<KildeSummary> visible) => T.KildeCount(visible.Count);
+    private string Summary(IReadOnlyList<KildeSummary> visible) =>
+        T.KildeCount(
+            visible.Count,
+            _kilder.Count,
+            ChosenCount,
+            _order == KildeSortOrder.Standard ? null : T.KildeOrderLabel(_order));
 
     /// <summary>The search text as it is worth reporting back, which is nothing when it is blank.</summary>
     private string? SearchText => string.IsNullOrWhiteSpace(_search) ? null : _search.Trim();
@@ -609,6 +717,7 @@ public sealed partial class KildeSearch : ComponentBase
     {
         _search = Search;
         _selectedId = SelectedKildeId;
+        _order = Order;
 
         // Raised here rather than in LoadKildeAsync, which cannot start until the list has
         // answered. The drilldown is on screen from the first render, and ComponentBase draws it
@@ -686,17 +795,21 @@ public sealed partial class KildeSearch : ComponentBase
         {
             _kilder = await Client.GetKilderAsync();
         }
-        catch (MuninExplorerRateLimitedException)
+        catch (MuninExplorerRateLimitedException ex)
         {
+            Log?.LogWarning(ex, "the rate limiter refused the kilde list");
+
             // Throttled, not down — and the difference is the whole point of saying so: the text
             // below invites the reader to try again, which is what the limiter is counting.
             _error = T.RateLimitError;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // What went wrong is the API's business and the host's logs'; what the reader needs is
-            // a sentence saying the list is not there and that trying again is worth doing. The
-            // list is left as it was, which on the first load is empty.
+            // The reader is told only that the list is not there and that trying again is worth
+            // doing, so the log line is the only place the cause survives. The list is left as it
+            // was, which on the first load is empty.
+            Log?.LogError(ex, "could not load the kilde list");
+
             _error = T.KildeListError;
         }
         finally
@@ -755,9 +868,11 @@ public sealed partial class KildeSearch : ComponentBase
                 .GroupBy(entry => entry.Key, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Left as it was, which on the first load is empty.
+            // Warning rather than Error: the facets fall back to the catalogue's own tokens, so
+            // what is lost is labels and not the list. Left as it was, empty on the first load.
+            Log?.LogWarning(ex, "could not load the kilde property vocabulary");
         }
     }
 
@@ -818,7 +933,7 @@ public sealed partial class KildeSearch : ComponentBase
         // Without this that frame says aria-busy "false" for a fetch that has not been issued.
         _detailLoading = true;
 
-        await RaiseAsync(SelectedKildeIdChanged, _selectedId);
+        await RaiseAsync(SelectedKildeIdChanged, _selectedId, Log);
 
         // _selectedId rather than the captured id — the rule ToggleDetailAsync follows for what the
         // host is told, here for what is fetched: the callback above yields with Back drawn and
@@ -843,7 +958,7 @@ public sealed partial class KildeSearch : ComponentBase
         _detailError = null;
         _detailLoading = false;
 
-        await RaiseAsync(SelectedKildeIdChanged, null);
+        await RaiseAsync(SelectedKildeIdChanged, null, Log);
     }
 
     private async Task LoadKildeAsync(Guid id)
@@ -872,6 +987,17 @@ public sealed partial class KildeSearch : ComponentBase
         }
         catch (Exception ex)
         {
+            // Split the way the sentence below is split, and for the same reason: throttled is not
+            // down, and only the log says so to anyone outside the browser.
+            if (ex is MuninExplorerRateLimitedException)
+            {
+                Log?.LogWarning(ex, "the rate limiter refused kilde {KildeId}", id);
+            }
+            else
+            {
+                Log?.LogError(ex, "could not load kilde {KildeId}", id);
+            }
+
             // One branch for both failures, so the stale-fetch guard is written once: a fetch the
             // reader has already moved on from must not paint its answer — of either kind — into the
             // panel now showing something else.
@@ -999,6 +1125,17 @@ public sealed partial class KildeSearch : ComponentBase
     /// <summary>A cell's value, with the package's own words for one the catalogue left empty.</summary>
     private string Value(string? value) => string.IsNullOrWhiteSpace(value) ? T.NotSpecified : value;
 
+    /// <summary>The classes for a cell holding a count, marked when the count is nought.</summary>
+    /// <remarks>
+    /// A modifier and not a replacement value: nought is a measurement here — a register with no
+    /// datasamlinger — and the reader has to be able to tell it from the "Ikke oppgitt" that means
+    /// nobody filled the field in, so the digit stays and only its weight changes.
+    /// </remarks>
+    private static string CountClass(int count) =>
+        count == 0
+            ? "munin-explorer-kilder__count munin-explorer-kilder__count--zero"
+            : "munin-explorer-kilder__count";
+
     /// <summary>The year the kilde was founded, as the import file states it.</summary>
     /// <remarks>
     /// Not <see cref="KildeSummary.Created"/>, which is when Munin's own row was written — Kelda
@@ -1019,9 +1156,10 @@ public sealed partial class KildeSearch : ComponentBase
     /// The reasoning is spelled out once, on <c>VariableSearch.RaiseAsync</c>: a handler that
     /// navigates throws <see cref="NavigationException"/> during static SSR and the framework needs
     /// it, while anything else escaping here would tear down the circuit for the whole CMS page
-    /// rather than for this component.
+    /// rather than for this component. The logger is a parameter rather than a read of <c>Log</c>,
+    /// so the helper stays <see langword="static"/> and free of component state.
     /// </remarks>
-    private static async Task RaiseAsync<TValue>(EventCallback<TValue> callback, TValue value)
+    private static async Task RaiseAsync<TValue>(EventCallback<TValue> callback, TValue value, ILogger? log)
     {
         if (!callback.HasDelegate)
         {
@@ -1036,10 +1174,11 @@ public sealed partial class KildeSearch : ComponentBase
         {
             throw;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Nothing is said to the reader: what broke is the host's own URL handling, which is
-            // the host's bug to find in the host's logs.
+            // Nothing is said to the reader: what broke is the host's own URL handling, so the log
+            // line is the whole of what this failure leaves behind.
+            log?.LogError(ex, "a host callback threw");
         }
     }
 }

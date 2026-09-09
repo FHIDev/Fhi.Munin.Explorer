@@ -163,6 +163,30 @@ public class KildeSelectionTest : BunitContext
         Assert.NotNull(ExploreButton(cut));
     }
 
+    [Fact]
+    public void RowBox_WhenItIsPressed_ThenItTicksWithoutOpeningTheRowsDatasamlinger()
+    {
+        // The row itself opens the datasamlinger drawer (Fhi.Metadata-l9l2n.55), and one press on
+        // the box carries a click as well as a change - so without stopPropagation on it, ticking a
+        // row would expand it too.
+        var (cut, _) = RenderSelectable(new FakeClient(Kilde("Als registeret", "K_ALS")));
+
+        // Clicked, where KildeSearchTest.StopsTheClick reads the attribute and says why it must: the
+        // box has no click handler of its own, so nothing re-renders the row and disposes the
+        // handler bUnit would bubble to. The click reaching nobody is therefore the assertion.
+        Assert.Throws<MissingEventHandlerException>(() => RowBoxes(cut)[0].Click());
+
+        // And the mousedown under that click stops here too: the row records where a press went down
+        // and clears it on its own click, so a press the box let through would still be sitting there
+        // when the next row was clicked.
+        Assert.True(RowBoxes(cut)[0].HasAttribute("blazor:onmousedown:stoppropagation"));
+
+        RowBoxes(cut)[0].Change(true);
+
+        Assert.True(RowBoxes(cut)[0].HasAttribute("checked"));
+        Assert.Empty(cut.FindAll(".munin-explorer-kilder__expanded"));
+    }
+
     // ---------------------------------------------------------------------------------
     // What the handover button says, which has to be what it is about to do.
     // ---------------------------------------------------------------------------------
@@ -475,8 +499,10 @@ public class KildeSelectionTest : BunitContext
 
         var (cut, handovers) = RenderSelectable(new FakeClient(als, kvalitet));
 
-        cut.FindAll(".munin-explorer-filters__facets [role=group]")
-           .Single(group => group.QuerySelector("h4")!.TextContent.Trim() == "Kildetype")
+        // The whole heading: the ticked-value count is a sibling of it inside the <summary> rather
+        // than words inside it, so the heading is the facet's name and nothing else.
+        cut.FindAll(".munin-explorer-filters__facets > details")
+           .Single(facet => facet.QuerySelector("summary h4")!.TextContent.Trim() == "Kildetype")
            .QuerySelectorAll("label")
            .First(label => label.TextContent.Trim().StartsWith("Sentralt helseregister", StringComparison.Ordinal))
            .QuerySelector("input")!
@@ -628,10 +654,12 @@ public class KildeSelectionTest : BunitContext
             "munin-explorer-kilder-scroll",
             "munin-explorer-kilder__count",
             "munin-explorer-kilder__expand",
+            "munin-explorer-kilder__expand-icon",
             "munin-explorer-kilder__expand-toggle",
             "munin-explorer-kilder__name",
             "munin-explorer-kilder__select",     // this bead's
             "munin-explorer-results",            // shared
+            "munin-explorer-results__toolbar",   // shared with the count above the table
             "munin-explorer-search__clear",      // shared
             "munin-explorer-selection",          // this bead's
             "munin-explorer-selection__explore", // this bead's

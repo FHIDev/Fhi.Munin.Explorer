@@ -1,6 +1,8 @@
 // The page states the accessibility scan visits beyond a plain page load: a name, and a function
 // that drives a loaded page into it. Add one here and as a `path::state` target in
-// check-accessibility.sh. Why at all: AGENTS.md, "It scans states, not only pages".
+// check-accessibility.sh — or in check-hostile-host.sh, for a state that stages boxes rather than
+// an accessibility tree, since geometry-scan.mjs reads this same list. Why at all: AGENTS.md,
+// "It scans states, not only pages".
 //
 // Controls are found by the name a reader presses them under, from `Texts.cs` in Norwegian since
 // both samples mount with `Language="no"`. A control this file cannot find stops the scan as a
@@ -8,6 +10,12 @@
 //
 // States wait for content, never merely for the page. The data comes from axe-stub-api.mjs, so
 // "no rows yet" means the component is broken rather than that a network call is slow.
+//
+// A state may also ASSERT, and the disclosure states here do: `kilde-hierarchy-*` and
+// `kilde-facets` check what the press did rather than only staging it, because a browser is the
+// only runner that has a native <details> toggle, the focus it leaves behind and a Blazor
+// re-render landing on top of it. Such a failure reports as a state error rather than as a failing
+// test, so the bUnit test that cannot stage the press names the state it defers to.
 
 /** Playwright's default action timeout is generous; a control that is not there is not coming. */
 const findTimeout = 15_000;
@@ -24,6 +32,45 @@ async function press(scope, name) {
 }
 
 export const states = {
+  'kilde-hierarchy-collapsed': async page => {
+    const name = page.getByRole('button', { name: 'The Tromsø study', exact: true });
+    await name.waitFor({ state: 'visible', timeout: findTimeout });
+    await name.click();
+    await page.locator('.munin-explorer-hierarchy > ul > li').first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
+    if (await page.locator('.munin-explorer-hierarchy details[open]').count()) {
+      throw new Error('Hierarchy branches must start collapsed');
+    }
+  },
+  'kilde-hierarchy-expanded': async page => {
+    await states['kilde-hierarchy-collapsed'](page);
+    const branch = page.locator('.munin-explorer-hierarchy > ul > li > details')
+      .filter({ has: page.locator('ul > li > details') }).first();
+    const summary = branch.locator(':scope > summary');
+    await summary.focus();
+    await page.keyboard.press('Enter');
+    await branch.locator(':scope > ul').waitFor({ state: 'visible', timeout: findTimeout });
+    await page.keyboard.press('Space');
+    await branch.locator(':scope > ul').waitFor({ state: 'hidden', timeout: findTimeout });
+    if (!await summary.evaluate(el => el === document.activeElement)) {
+      throw new Error('Collapsing a branch moved focus away from its summary');
+    }
+    await page.keyboard.press('Enter');
+    const child = branch.locator(':scope > ul > li > details').first();
+    await child.locator(':scope > summary').waitFor({ state: 'visible', timeout: findTimeout });
+    await child.locator(':scope > summary').focus();
+    await page.keyboard.press('Space');
+    await child.locator(':scope > ul > li').first().waitFor({ state: 'visible', timeout: findTimeout });
+    if (await page.locator('.munin-explorer-hierarchy > ul > li > details[open]').count() !== 1) {
+      throw new Error('Opening one branch changed a sibling disclosure');
+    }
+  },
+  'kilde-hierarchy-metadata': async page => {
+    await states['kilde-hierarchy-collapsed'](page);
+    const metadata = page.locator('.munin-explorer-hierarchy__metadata');
+    await metadata.locator(':scope > summary').click();
+    await metadata.locator('table').first().waitFor({ state: 'visible', timeout: findTimeout });
+  },
   // The two list pages as they load. They wait for a row rather than for the page, because the
   // data can fail to arrive and an empty list is a page axe reports no violations in — which is
   // how this gate read green against an unreachable API for as long as it has existed.
@@ -108,6 +155,112 @@ export const states = {
     await page
       .locator('.munin-explorer-kilder thead th', { hasText: 'Dataansvarlig' })
       .first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
+  },
+
+  // The kilder table with all three of its count columns drawn. Delkilder sits in the component's
+  // hidden set, so the list as it loads shows two of the three, and the geometry pin on Stiler's
+  // alignment rule would otherwise never measure that column at all (Fhi.Metadata-y7ilr).
+  'kilder-counts': async page => {
+    await rowsArePresent(page, 'button.munin-explorer-kilder__name');
+
+    const picker = page.locator('.munin-explorer-header details').first();
+    await picker.waitFor({ state: 'visible', timeout: findTimeout });
+    await picker.locator('summary').click();
+
+    // By text rather than press(), for the reason kilder-columns above gives: the toggles' ::before
+    // glyph is in Playwright's accessible name and not in the browser's.
+    const toggle = picker
+      .locator('.dropdown-choicepicker__item button', { hasText: 'Delkilder' })
+      .first();
+    await toggle.waitFor({ state: 'visible', timeout: findTimeout });
+    await toggle.click();
+
+    await page
+      .locator('.munin-explorer-kilder thead th', { hasText: 'Delkilder' })
+      .first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
+
+    // Folded again before anything is measured: this state is here for the table, and every
+    // geometry assertion would otherwise be measuring a dropdown hanging open over it.
+    if (await picker.evaluate(el => el.open)) {
+      await picker.locator('summary').click();
+    }
+    if (await picker.evaluate(el => el.open)) {
+      throw new Error('The column picker stayed open after its summary was pressed');
+    }
+  },
+
+  // The kildeutforsker's facet panel: a second facet opened from the keyboard, then a value ticked
+  // inside it. Nothing in the component mirrors the folds — `open` is seeded once and never
+  // rewritten — so this is the only place either half is exercised at all: bUnit re-serialises the
+  // markup from the render tree and never runs a browser's native <details> toggle, let alone a
+  // Blazor diff arriving over one (Fhi.Metadata-co3sf).
+  'kilde-facets': async page => {
+    await rowsArePresent(page, 'button.munin-explorer-kilder__name');
+
+    // Pressed only where it is on screen. Above the sample's 1024px sidebar breakpoint the toggle
+    // is display:none and the panel is unfolded already, and a click on it there would fold the
+    // very thing this state is here to scan.
+    const toggle = page.locator('.munin-explorer-filters__toggle');
+    if (await toggle.isVisible()) {
+      await toggle.click();
+    }
+
+    const facets = page.locator('.munin-explorer-filters__facets > details');
+    await facets.first().waitFor({ state: 'visible', timeout: findTimeout });
+
+    const open = () => page.locator('.munin-explorer-filters__facets > details[open]').count();
+    if (await open() !== 1) {
+      throw new Error('The facet panel must open exactly one facet and fold the rest');
+    }
+
+    // Held by position, never by `:not([open])`: a locator written on the fold re-resolves on every
+    // use, so the moment the press lands it names the NEXT folded facet and the wait below sits on
+    // a <ul> that is hidden by design.
+    const foldedIndex = await facets.evaluateAll(all => all.findIndex(facet => !facet.open));
+    if (foldedIndex < 0) {
+      throw new Error('The facet panel drew no folded facet to open');
+    }
+
+    const folded = facets.nth(foldedIndex);
+    const values = folded.locator(':scope > ul');
+
+    // Asserted BEFORE the press, and this is the half that matters: the values are rendered whether
+    // or not the facet is open, so a host stylesheet that beats the browser's own hiding leaves 39
+    // databehandlere on screen under a shut disclosure. That is how the first attempt at this panel
+    // shipped 3798px of folded facet to helsedata (Fhi.Metadata-co3sf).
+    if (await values.isVisible()) {
+      throw new Error('A folded facet is showing its values — the disclosure is hiding nothing');
+    }
+
+    const summary = folded.locator(':scope > summary');
+    await summary.focus();
+    await page.keyboard.press('Enter');
+    await values.waitFor({ state: 'visible', timeout: findTimeout });
+
+    if (!await summary.evaluate(el => el === document.activeElement)) {
+      throw new Error('Opening a facet moved focus away from its summary');
+    }
+    if (await open() !== 2) {
+      throw new Error('Opening a second facet folded the one already open');
+    }
+
+    // And then a re-render over the top of it, which is the claim the component rests on: `open` is
+    // seeded once and never rewritten, so narrowing the list cannot collapse what the reader opened.
+    // The wait is on the summary gaining its count, because that element comes back over the
+    // circuit — the tick alone lands in the browser before Blazor has diffed anything.
+    await values.locator('input[type=checkbox]').first().check();
+    await folded.locator(':scope > summary .munin-explorer-filters__chosen')
+      .waitFor({ state: 'visible', timeout: findTimeout });
+
+    if (await open() !== 2) {
+      throw new Error('Narrowing the list folded a facet the reader had opened');
+    }
+
+    // The chips the tick puts over the results, waited for rather than assumed: they are the newest
+    // markup this state reaches, and axe reports no violations in an element that never rendered.
+    await page.locator('.munin-explorer-filters__chip').first()
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
 

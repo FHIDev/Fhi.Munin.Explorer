@@ -135,6 +135,28 @@ internal static class CatalogueProperties
     internal static string? Foreign(bool norwegian, string reader) =>
         norwegian ? Foreign("no", reader) : null;
 
+    // How the catalogue marks "one value per language" vs. "a set of them" onto a display name, in
+    // both curated languages — a storage detail for the curator, not the reader (Fhi.Metadata-43jrq).
+    private static readonly string[] StorageQualifiers =
+    [
+        " (språkmerket)", " (language-tagged)",
+        " (flerspråklig)", " (multilingual)",
+    ];
+
+    /// <summary>A display name with the catalogue's own storage qualifier removed, if it had one.</summary>
+    internal static string WithoutStorageQualifier(string label)
+    {
+        foreach (var qualifier in StorageQualifiers)
+        {
+            if (label.EndsWith(qualifier, StringComparison.OrdinalIgnoreCase))
+            {
+                return label[..^qualifier.Length];
+            }
+        }
+
+        return label;
+    }
+
     /// <summary>
     /// The properties worth drawing, as label and value, in the catalogue's order.
     /// </summary>
@@ -169,8 +191,18 @@ internal static class CatalogueProperties
                 continue;
             }
 
-            var (label, labelLanguage) = Localised(entry.DisplayNameTranslations, reader);
+            var (rawLabel, labelLanguage) = Localised(entry.DisplayNameTranslations, reader);
 
+            if (string.IsNullOrWhiteSpace(rawLabel))
+            {
+                continue;
+            }
+
+            var label = WithoutStorageQualifier(rawLabel);
+
+            // A curated label that was ONLY the qualifier — "(språkmerket)" with nothing before
+            // it — strips to nothing rather than to prose, and an empty <dt> is worse than the
+            // qualifier it replaced.
             if (string.IsNullOrWhiteSpace(label))
             {
                 continue;
@@ -252,8 +284,17 @@ internal static class CatalogueProperties
                 continue;
             }
 
-            var (name, language) = Localised(entry.GroupTranslations, reader);
+            var (rawName, language) = Localised(entry.GroupTranslations, reader);
 
+            if (string.IsNullOrWhiteSpace(rawName))
+            {
+                continue;
+            }
+
+            var name = WithoutStorageQualifier(rawName);
+
+            // Same reasoning as the label above: a group named only the qualifier strips to an
+            // empty heading, which the "every key empty" rule below cannot catch on its own.
             if (string.IsNullOrWhiteSpace(name))
             {
                 continue;

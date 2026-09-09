@@ -2,10 +2,17 @@ using Fhi.Munin.Explorer.Contracts;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <remarks>
+/// <para>
 /// Lifted out of <see cref="VariableSearch"/> so a second explorer can share it. Kelda, the
 /// kildeutforsker, ships from this same package and needs these strings; while this was a private
 /// nested type it could not reach them, and the alternative was a second copy that would have
 /// drifted from this one the first time either was edited.
+/// </para>
+/// <para>
+/// Members are grouped by the surface they word rather than appended, so <c>No</c> and <c>En</c>
+/// pass every argument BY NAME: neighbours share a type, and a positional site one line out of
+/// step compiles and ships the wrong string under the right name.
+/// </para>
 /// </remarks>
 /// <summary>
 /// Self-contained translations. Deliberately not IStringLocalizer — see <see cref="VariableSearch.Language"/>.
@@ -175,6 +182,9 @@ internal sealed record Texts(
     string FirstListName,
     // Said in the row, beside the button that failed - the rest of the results are unaffected.
     string SaveError,
+    // Said in the row when the save answers 401/403 despite the host's own claim that the reader
+    // is signed in — a different sentence from SaveError, because retrying this one cannot work.
+    string SignInRequiredError,
     // The saved-list view: its heading, the picker, the create form, and what it says when
     // there is nothing to show yet.
     string MyListsHeading,
@@ -258,6 +268,11 @@ internal sealed record Texts(
     // of the card fields — deliberately the same word for the same thing in both places.
     string FiltersTitle,
     string ClearFilters,
+    // The row of chips over the results. ClearFilters is reused rather than given a shorter twin:
+    // both clear the same state, and two wordings for one press is drift. (value) is the remove
+    // control's whole name, because "Fjern" repeated down a row says nothing about which filter.
+    string ActiveFiltersTitle,
+    Func<string, string> RemoveFilter,
     // The panel's toolbar. Three presses that change how the tree is drawn and narrow nothing, so
     // none of them is named for a filter. (Fhi.Metadata-wcbxi)
     string ExpandAllFacets,
@@ -286,10 +301,9 @@ internal sealed record Texts(
     string FieldDelkilde,
     string HierarchyTrail,
     string ClearHierarchy,
-    // Prose for the two facets the API reports as raw tokens: kildetype as its enum name, and
-    // datatype as a bare code with no label at all. Both are Munin's own explorer wording, so
-    // the two UIs name the same value the same way. A token missing from either falls back to
-    // what the API sent rather than to nothing.
+    // Prose for tokens that are not names: kildetype as its enum name, and datatype for the panel,
+    // which holds the code alone, for a facet the API sent nameless, and for a legacy stored
+    // spelling echoed back as one. See AGENTS.md, "The API names a datatype, not this package".
     IReadOnlyDictionary<string, string> KildeTypeNames,
     IReadOnlyDictionary<string, string> DataTypeNames,
     string Ascending,
@@ -418,6 +432,18 @@ internal sealed record Texts(
     // already holds — the facet filters the very column that word names.
     string FacetDateFrom,
     string FacetDateTo,
+
+    // The box that narrows a long facet's own values, and the sentence for when it narrows them to
+    // none. The label takes the facet's heading because several boxes can be on screen at once, and
+    // controls all announcing "Søk i verdiene" are controls a screen reader cannot tell apart.
+    // Which facets get one is KildeSearch.Filters.cs's answer, not this record's.
+    Func<string, string> FacetSearchLabel,
+    string FacetSearchPlaceholder,
+    string FacetSearchNoMatch,
+    // What a facet says in its own summary about how many of its values are ticked. It is drawn
+    // only above zero, so no wording for none is needed — and none is wanted: "0 valgt" over a
+    // facet nobody has touched is a filter reported where there is no filter.
+    Func<int, string> FacetChosen,
     // The panel's own disclosure, which is one control saying two things: the panel is folded away
     // on a narrow screen and this is what unfolds it. Both wordings are needed because a button
     // still reading "Vis filtre" over an open panel tells the reader the opposite of what pressing
@@ -428,6 +454,12 @@ internal sealed record Texts(
     // so the word is about the source rather than about who renders it. See
     // KildeView.DefaultDataCollectionsHeading.
     string HeadingDelkilderAndDataCollections,
+    string HierarchyLoading,
+    string HierarchyLoaded,
+    string HierarchyError,
+    string HierarchyEmpty,
+    string HierarchyRetry,
+    string HierarchyMetadata,
     // The sections Kelda has over a kilde and Runa has not, measured on the same source in both on
     // 2026-08-20. They are markup Kelda hands to KildeView.Sections rather than markup inside that
     // component, so their words sit here beside the rest of Kelda's rather than in the shared core.
@@ -453,17 +485,26 @@ internal sealed record Texts(
     // (count) — the variable section's one line. Assembled here rather than at the call site for the
     // reason KildeCount is: the singular is this language's business and not C#'s.
     Func<int, string> KildeVariableCount,
-    // (count) — the kilde list's own "{n} kilder", which is the whole of what it says about its
-    // result set: no row range, because the list is never paged, and no ordering, because it is
-    // never sorted. Assembled here rather than glued together at the call site for the reason
-    // ResultSummary is: the plural is this language's business and not C#'s.
-    Func<int, string> KildeCount,
+    // (shown, total, filters, order) — the kilde list's own "56 kilder av 66, avgrenset av 2
+    // filtre, sortert etter Flest variabler", assembled here for ResultSummary's reason: where each
+    // clause sits is this language's grammar, and so is the plural. The filter clause borrows that
+    // sibling's words and its place in the sentence, so the same fact is not told two ways in two
+    // UIs. Still no row range, the list is never paged. Three ints: shown, total, ticked values.
+    Func<int, int, int, string?, string> KildeCount,
     // (count) — "3 kilder valgt", the selection bar's own line. Its own member rather than
-    // KildeCount reused, though both count kilder and both are Func<int, string>: that one says how
-    // many the search and the facets left, this one how many of those the reader ticked, and the
-    // two sit one above the other on screen. Swapped, each would read as a true sentence in the
-    // wrong place — the failure neither one's own test can see.
+    // KildeCount reused, though both count kilder: that one says how many the search and the facets
+    // left, this one how many of those the reader ticked, and the two sit one above the other on
+    // screen. Swapped, each would read as a true sentence in the wrong place — the failure neither
+    // one's own test can see.
     Func<int, string> SelectedKildeCount,
+    // Four labels here plus SortDefault for the catalogue's own order, which is the five members of
+    // KildeSortOrder: the default reuses that word rather than adding a fifth label, so it reads as
+    // the variable explorer's own default does. Each of the four says which way it runs, because a
+    // bare "Opprettet" over a select names a column and not an order.
+    string KildeOrderName,
+    string KildeOrderVariables,
+    string KildeOrderSourceUpdated,
+    string KildeOrderEstablished,
     // (name) — the accessible name of one row's checkbox. Every checkbox in a table needs one of
     // its own: "Velg" repeated down a column tells a reader moving from control to control nothing
     // about which row they are standing in.
@@ -473,7 +514,12 @@ internal sealed record Texts(
     // the reader to do different things. The facet count is in the sentence for the reason it is in
     // NoResults above — nothing matching *with two facets ticked* is a different thing to be told
     // than nothing matching at all, and the second reads as "this catalogue does not have it".
-    Func<string?, int, string> NoKilderMatch)
+    Func<string?, int, string> NoKilderMatch,
+
+    // Shown where the Variabelliste tab would otherwise sit, for a signed-out reader: helsedata's
+    // own header already has a working Log in, so this names what it unlocks rather than
+    // duplicating it. (Fhi.Metadata-4ifsa)
+    string SignInForVariableLists)
 {
     /// <summary>
     /// The label for a sort order. The three that name one field use the same words the result
@@ -494,6 +540,25 @@ internal sealed record Texts(
         SortField.Datasamling => FieldDataCollection,
         SortField.Variabelgruppe => FieldVariableGroup,
         _ => throw new ArgumentOutOfRangeException(nameof(sort), sort, "No label for this sort field.")
+    };
+
+    /// <summary>
+    /// The label for one of the kilde list's orders, in the select and in the result sentence.
+    /// </summary>
+    /// <remarks>
+    /// An arm per member and a throw for anything else, for <see cref="FieldLabel"/>'s reason: an
+    /// order added to <see cref="KildeSortOrder"/> without a word here would be offered under
+    /// whichever label fell through to it, and the sentence under the control would then name an
+    /// order the rows are not in.
+    /// </remarks>
+    public string KildeOrderLabel(KildeSortOrder order) => order switch
+    {
+        KildeSortOrder.Standard => SortDefault,
+        KildeSortOrder.Name => KildeOrderName,
+        KildeSortOrder.Variables => KildeOrderVariables,
+        KildeSortOrder.SourceUpdated => KildeOrderSourceUpdated,
+        KildeSortOrder.Established => KildeOrderEstablished,
+        _ => throw new ArgumentOutOfRangeException(nameof(order), order, "No label for this kilde order.")
     };
 
     /// <summary>
@@ -609,9 +674,52 @@ internal sealed record Texts(
     private static bool Is(string value, string token) =>
         string.Equals(value, token, StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>Prose for a datatype code, falling back to the code — same reasoning as above.</summary>
-    public string DataTypeLabel(string value) =>
-        DataTypeNames.TryGetValue(value, out var name) ? name : value;
+    /// <summary>The spellings a datatype was stored as before the codes, in either language, onto
+    /// the code each means — mirrors <c>DatatypeNormalizer.Aliases</c> in the API and
+    /// <c>DATATYPE_ALIAS_KEY</c> in Runa. They are stored values, never curated names.</summary>
+    private static readonly Dictionary<string, string> DataTypeAliases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["string"] = "1",
+        ["tekst"] = "1",
+        ["integer"] = "2",
+        ["int"] = "2",
+        ["decimal"] = "3",
+        ["boolean"] = "4",
+        ["time"] = "5",
+        ["date"] = "6",
+        ["datetime"] = "7",
+        ["uri"] = "8",
+        ["base64binary"] = "9",
+    };
+
+    /// <summary>The code a stored datatype value means, so a legacy spelling finds the facet the
+    /// API named. Anything that is not a known spelling is already a code, or is one this package
+    /// has never heard of, and is returned unchanged. (Fhi.Metadata-l9l2n.49)</summary>
+    public string CanonicalDataTypeCode(string value) =>
+        DataTypeAliases.TryGetValue(value, out var code) ? code : value;
+
+    /// <summary>Prose for a datatype the API has not named — the panel, which holds the stored
+    /// value alone, and a facet that arrived without one. Falls back to the canonical code, never
+    /// to the word an alias arrived as. (Fhi.Metadata-l9l2n.49)</summary>
+    public string DataTypeLabel(string value)
+    {
+        var code = CanonicalDataTypeCode(value);
+        return DataTypeNames.TryGetValue(code, out var name) ? name : code;
+    }
+
+    /// <summary>What a row or a facet shows for a datatype the API has named. Only a legacy stored
+    /// spelling is replaced — English or Norwegian, both being stored values rather than names —
+    /// by this table's word for the code it means, in the reader's own language.</summary>
+    /// <remarks>AGENTS.md, "The API names a datatype, not this package". (Fhi.Metadata-l9l2n.49)</remarks>
+    public string? NormalizeDataTypeDisplayName(string? apiName)
+    {
+        if (apiName is null || !DataTypeAliases.TryGetValue(apiName, out var code))
+        {
+            return apiName;
+        }
+
+        return DataTypeNames.TryGetValue(code, out var name) ? name : apiName;
+    }
 
     /// <summary>The word for a direction, as the status line and the active button say it.</summary>
     /// <remarks>
@@ -740,6 +848,7 @@ internal sealed record Texts(
         RemoveFromList: "Fjern fra liste",
         FirstListName: "Min variabelliste",
         SaveError: "Kunne ikke lagre nå. Prøv igjen om litt.",
+        SignInRequiredError: "Du er ikke logget inn. Logg inn for å lagre i listen.",
         MyListsHeading: "Mine variabellister",
         ChooseList: "Velg liste",
         NewListName: "Navn på ny liste",
@@ -795,6 +904,8 @@ internal sealed record Texts(
         },
         FiltersTitle: "Filtre",
         ClearFilters: "Fjern alle filtre",
+        ActiveFiltersTitle: "Aktive filtre",
+        RemoveFilter: value => $"Fjern filteret {value}",
         ExpandAllFacets: "Utvid alle",
         CollapseAllFacets: "Skjul alle",
         LevelLines: "Nivålinjer",
@@ -912,9 +1023,19 @@ internal sealed record Texts(
         FacetDateFrom: "Fra og med",
         FacetDateTo: "Til og med",
         FacetAccessLevel: "Tilgangsnivå",
+        FacetSearchLabel: heading => $"Søk i {heading}",
+        FacetSearchPlaceholder: "Søk i verdiene",
+        FacetSearchNoMatch: "Ingen verdier passer søket",
+        FacetChosen: chosen => $"{chosen} valgt",
         ShowFilters: "Vis filtre",
         HideFilters: "Skjul filtre",
         HeadingDelkilderAndDataCollections: "Delkilder og datasamlinger",
+        HierarchyLoaded: "Strukturen er lastet. Du kan nå utforske delkilder, datasamlinger og variabelgrupper.",
+        HierarchyLoading: "Laster delkilder, datasamlinger og variabelgrupper …",
+        HierarchyError: "Kunne ikke laste delkilder, datasamlinger og variabelgrupper nå.",
+        HierarchyEmpty: "Ingen delkilder, datasamlinger eller variabelgrupper er tilgjengelige.",
+        HierarchyRetry: "Prøv å laste strukturen på nytt",
+        HierarchyMetadata: "Beskrivelser og gyldighetsperioder",
         HeadingVariables: "Variabler",
         HeadingAccessCriteria: "Kriterier for tilgang til data",
         HeadingPrices: "Priser",
@@ -924,8 +1045,21 @@ internal sealed record Texts(
         KildeVariableCount: count => count == 1
             ? "1 publisert variabel i denne kilden."
             : $"{count} publiserte variabler i denne kilden.",
-        KildeCount: count => count == 1 ? "1 kilde" : $"{count} kilder",
+        KildeCount: (shown, total, filters, order) =>
+            (shown == 1 ? "1 kilde" : $"{shown} kilder")
+            + (shown == total ? "" : $" av {total}")
+            + (filters switch
+            {
+                0 => "",
+                1 => ", avgrenset av 1 filter",
+                _ => $", avgrenset av {filters} filtre"
+            })
+            + (order is null ? "" : $", sortert etter {order}"),
         SelectedKildeCount: count => count == 1 ? "1 kilde valgt" : $"{count} kilder valgt",
+        KildeOrderName: "Navn A–Å",
+        KildeOrderVariables: "Flest variabler",
+        KildeOrderSourceUpdated: "Sist endret (nyest først)",
+        KildeOrderEstablished: "Opprettet (nyest først)",
         SelectKilde: name => $"Velg {name}",
         NoKilderMatch: (search, filters) =>
         {
@@ -937,7 +1071,8 @@ internal sealed record Texts(
             var forSearch = $"Ingen kilder samsvarer med søket «{search}»";
 
             return filters == 0 ? $"{forSearch}." : $"{forSearch} og filtrene som er valgt.";
-        });
+        },
+        SignInForVariableLists: "Logg inn for å lage og bruke egne variabellister.");
 
     private static readonly Texts En = new(
         Title: "Variable explorer",
@@ -1046,6 +1181,7 @@ internal sealed record Texts(
         RemoveFromList: "Remove from list",
         FirstListName: "My variable list",
         SaveError: "Could not save just now. Try again shortly.",
+        SignInRequiredError: "You are not signed in. Sign in to save to the list.",
         MyListsHeading: "My variable lists",
         ChooseList: "Choose list",
         NewListName: "Name of new list",
@@ -1101,6 +1237,8 @@ internal sealed record Texts(
         },
         FiltersTitle: "Filters",
         ClearFilters: "Clear all filters",
+        ActiveFiltersTitle: "Active filters",
+        RemoveFilter: value => $"Remove the filter {value}",
         ExpandAllFacets: "Expand all",
         CollapseAllFacets: "Collapse all",
         LevelLines: "Level lines",
@@ -1213,9 +1351,19 @@ internal sealed record Texts(
         FacetDateFrom: "From",
         FacetDateTo: "To",
         FacetAccessLevel: "Access level",
+        FacetSearchLabel: heading => $"Search in {heading}",
+        FacetSearchPlaceholder: "Search the values",
+        FacetSearchNoMatch: "No values match the search",
+        FacetChosen: chosen => $"{chosen} selected",
         ShowFilters: "Show filters",
         HideFilters: "Hide filters",
         HeadingDelkilderAndDataCollections: "Sub-sources and data collections",
+        HierarchyLoaded: "The hierarchy has loaded. You can now explore sub-sources, data collections and variable groups.",
+        HierarchyLoading: "Loading sub-sources, data collections and variable groups …",
+        HierarchyError: "Could not load sub-sources, data collections and variable groups right now.",
+        HierarchyEmpty: "No sub-sources, data collections or variable groups are available.",
+        HierarchyRetry: "Retry loading the structure",
+        HierarchyMetadata: "Descriptions and validity periods",
         HeadingVariables: "Variables",
         HeadingAccessCriteria: "Criteria for access to data",
         HeadingPrices: "Prices",
@@ -1225,8 +1373,21 @@ internal sealed record Texts(
         KildeVariableCount: count => count == 1
             ? "1 published variable in this source."
             : $"{count} published variables in this source.",
-        KildeCount: count => count == 1 ? "1 source" : $"{count} sources",
+        KildeCount: (shown, total, filters, order) =>
+            (shown == 1 ? "1 source" : $"{shown} sources")
+            + (shown == total ? "" : $" of {total}")
+            + (filters switch
+            {
+                0 => "",
+                1 => ", narrowed by 1 filter",
+                _ => $", narrowed by {filters} filters"
+            })
+            + (order is null ? "" : $", sorted by {order}"),
         SelectedKildeCount: count => count == 1 ? "1 source selected" : $"{count} sources selected",
+        KildeOrderName: "Name A–Z",
+        KildeOrderVariables: "Most variables",
+        KildeOrderSourceUpdated: "Last modified (newest first)",
+        KildeOrderEstablished: "Established (newest first)",
         SelectKilde: name => $"Select {name}",
         NoKilderMatch: (search, filters) =>
         {
@@ -1238,7 +1399,8 @@ internal sealed record Texts(
             var forSearch = $"No sources match your search for “{search}”";
 
             return filters == 0 ? $"{forSearch}." : $"{forSearch} and the filters you have chosen.";
-        });
+        },
+        SignInForVariableLists: "Sign in to create and use your own variable lists.");
 
     /// <summary>The words for a reader, defaulting to Norwegian for anything that is not English.</summary>
     /// <remarks>

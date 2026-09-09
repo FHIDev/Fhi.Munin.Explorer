@@ -25,7 +25,8 @@ public sealed record KildeDetail
 
     [JsonPropertyName("kortNavn")] public string? ShortName { get; init; }
     [JsonPropertyName("beskrivelse")] public string? Description { get; init; }
-    [JsonPropertyName("kildetype")] public string Kildetype { get; init; } = "";
+    /// <summary>Null when the kilde has no kildetype — see <see cref="KildeSummary.Kildetype"/>.</summary>
+    [JsonPropertyName("kildetype")] public string? Kildetype { get; init; }
 
     /// <summary>The legal basis for collecting the data, as prose.</summary>
     [JsonPropertyName("lovverk")] public string? LegalBasis { get; init; }
@@ -128,9 +129,9 @@ public sealed record KildeDatasamling
 
     /// <summary>
     /// Always the owning kilde's kildetype — there is no per-datasamling column, so there is no
-    /// own value to compare against.
+    /// own value to compare against. Null exactly when that kilde has none.
     /// </summary>
-    [JsonPropertyName("effectiveKildetype")] public string EffectiveKildetype { get; init; } = "";
+    [JsonPropertyName("effectiveKildetype")] public string? EffectiveKildetype { get; init; }
 
     /// <summary>The datasamling's own curated metadata; see <see cref="KildeSummary.AdditionalProperties"/>.</summary>
     /// <remarks>
@@ -194,8 +195,11 @@ public sealed record KildeDelkilde
     /// <summary>Own value if set, otherwise inherited.</summary>
     [JsonPropertyName("effectiveGyldigTil")] public DateTimeOffset? EffectiveValidTo { get; init; }
 
-    /// <summary>Always the owning kilde's kildetype — there is no per-delkilde column.</summary>
-    [JsonPropertyName("effectiveKildetype")] public string EffectiveKildetype { get; init; } = "";
+    /// <summary>
+    /// Always the owning kilde's kildetype — there is no per-delkilde column. Null exactly when
+    /// that kilde has none.
+    /// </summary>
+    [JsonPropertyName("effectiveKildetype")] public string? EffectiveKildetype { get; init; }
 
     /// <summary>The delkilde's own curated metadata.</summary>
     /// <remarks>

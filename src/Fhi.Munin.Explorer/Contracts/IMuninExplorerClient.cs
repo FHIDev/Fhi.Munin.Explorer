@@ -31,6 +31,12 @@ namespace Fhi.Munin.Explorer.Contracts;
 /// They are not the only methods that can: <see cref="GetKodeverkCodesAsync"/> refuses a path
 /// segment it cannot carry the same way.
 /// </para>
+/// <para>
+/// Those same variable-list methods answer a 401/403 as
+/// <see cref="MuninExplorerUnauthorizedException"/> rather than the general failure, for a host
+/// that declares <c>IsAuthenticated</c> true while its token provider sends nothing the API
+/// accepts — the RCL cannot verify that claim, only the API's answer to it.
+/// </para>
 /// </remarks>
 public interface IMuninExplorerClient
 {

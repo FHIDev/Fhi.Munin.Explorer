@@ -511,6 +511,26 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .munin-explorer-filters summary .form-element__label { margin-top: 0; cursor: pointer; }
 .munin-explorer-filters summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
+/* Kelda's facet summary as one row: heading, ticked-value count, then the disclosure marker at the
+   trailing edge — without it the block-level <h4> takes the whole first line and pushes the other
+   two onto rows of their own. Stiler's is unscoped and shared with Runa's. (Fhi.Metadata-l9l2n.58) */
+.munin-explorer-filters__facets > details > summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+/* A flex box is not a list-item, so the browser stops drawing the marker; this is it, redrawn
+   where the row has room for it. The empty alt text is load-bearing — without it the glyph joins
+   the accessible name and the facet announces as "Kildetype 2 valgt ▸". (Fhi.Metadata-l9l2n.58) */
+.munin-explorer-filters__facets > details > summary::after {
+  content: counter(list-item, disclosure-closed) / "";
+  margin-left: auto;
+}
+.munin-explorer-filters__facets > details[open] > summary::after {
+  content: counter(list-item, disclosure-open) / "";
+}
+
 .munin-explorer-filters ul {
   margin: 8px 0 0;
   padding-left: 20px;
@@ -564,17 +584,22 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   color: var(--grey40);
 }
 
-/* Kelda's facet panel, which is the same handle holding a different shape: a heading per facet and
-   a checkbox per value, with no <details> anywhere. Its two names below are the package's own.
+/* Kelda's facet panel, which is the same handle holding nearly the same shape: a <details> per
+   facet, dressed by the disclosure rules above, with a checkbox per value instead of a nested tree.
+   Its two names below are the package's own.
 
    The folding is the browser's `hidden` attribute rather than a class, so a host that supplies none
    of these rules still gets a panel that opens and closes — what it does not get is the sidebar,
    and the media query further down is where a host that has room for one takes the folding away
    again. The toggle goes with it: a button reading "Vis filtre" over an unfoldable panel is a
-   control that does nothing. */
+   control that does nothing. A facet's own fold needs none of that: <details> hides its values
+   itself, and the browser does it whether or not any of these rules arrived. */
 
 .munin-explorer-filters__toggle { margin-bottom: 8px; }
 
+/* Kept because Stiler has it, and this file is the stand-in for Stiler. It matches nothing since
+   Kelda's facets became disclosures — the border and padding on `details` above space them now.
+   Removing it from Stiler first, then from here, is Fhi.Metadata-2er4n. */
 .munin-explorer-filters__facets > [role="group"] { margin-bottom: 16px; }
 
 /* The browser's `[hidden]` rule loses to any author rule of equal specificity, so this is what
@@ -601,6 +626,85 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   margin-left: auto;
 }
 
+/* An item on the summary row above, so it sits beside its heading rather than at the trailing edge
+   the count further up claims with `margin-left: auto` — that edge is the marker's here. Cosmetic
+   only: the words are markup, so it is announced as "Kildetype 2 valgt" either way. (Fhi.Metadata-l9l2n.53) */
+.munin-explorer-filters__chosen {
+  flex: none;
+  color: var(--grey60);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The row of active filters over the results: one capsule per ticked value, each with a close
+   control, and a Fjern alle filtre at the end of it. Three names of ours, whose Stiler rules are
+   PR 39206's — these are the stand-in for those, measured to the same boxes: the row 44px, a
+   capsule 34px, the close control 24x24.
+
+   A host that defines none of them still gets every word and every control, in inline flow rather
+   than in a row of capsules. What is lost is not information — the close control's name is written
+   down in the markup — it is the 24x24 target, which is WCAG 2.5.5 and is why the box is declared
+   here rather than left to the glyph's own size.
+
+   The two other elements in the row wear Stiler's own names, and both stand-ins are further up
+   this file: `caption margin--none` for the heading, and for the clear-all the ghost button rule
+   the facet panel's fold toggle also uses. Nothing below may reach them. */
+.munin-explorer-filters__active {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+/* The capsule. --grey20 for the fill and --grey60 for the border, which is the pair the panel's
+   guide lines already argue for: the row sits on the page ground --grey10, where --grey30 measures
+   1.16:1 and --grey40 1.82:1 against it, and a capsule whose edge cannot be seen is a capsule that
+   is not there. --grey60 gives 6.76:1. The text is --dark on --grey20, 13.47:1. */
+.munin-explorer-filters__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 4px 4px 4px 12px;
+  border: 1px solid var(--grey60);
+  border-radius: 17px;
+  background-color: var(--grey20);
+  color: var(--dark);
+  font: normal 1rem/150% var(--font);
+}
+
+/* The close control. Deliberately NOT hd-button-square, which is 2.75rem tall and would burst the
+   box above; the 24x24 here is the target size, so it is a box and not a glyph left to size
+   itself. --dark on the capsule's --grey20 is 13.47:1 at rest. */
+.munin-explorer-filters__chip-remove {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--dark);
+  font: normal 1.25rem/1 var(--font);
+  cursor: pointer;
+}
+
+/* :focus-visible shares the hover state rather than adding a ring of its own. helsedata's own
+   base rules erase outline and box-shadow from any focused button while the body is not marked
+   as tabbing — which it never is there — so a ring is the one thing that cannot carry focus on
+   the host this rule exists for. --white on --grey60 is 7.23:1, and the change itself, --grey60
+   against the capsule's --grey20, is 6.38:1. */
+.munin-explorer-filters__chip-remove:hover,
+.munin-explorer-filters__chip-remove:focus-visible {
+  background-color: var(--grey60);
+  color: #fff;
+}
+
 /* The dataperiode facet: a label and a native date input per end. No class name of our own —
    Stiler has no date-range widget, and inventing one here would render as a raw browser default
    on a Stiler-only host, which is the failure this package exists to avoid. The input is an
@@ -613,6 +717,23 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .munin-explorer-filters input[type="date"] {
   display: block;
   margin: 4px 0 12px;
+  padding: 6px 8px;
+  font: inherit;
+  color: var(--dark);
+  border: 1px solid var(--grey30);
+  border-radius: 4px;
+}
+
+/* The box that narrows a long facet's own values, on the same terms and for the same reason: a
+   native text input, no class name of ours, so a Stiler-only host gets whatever it already draws
+   text fields as rather than nothing. Full width because the facet it sits in is a sidebar column
+   and a default-width box beside a wrapped 60-character label reads as belonging to something
+   else. box-sizing so that width and the padding beside it do not overflow the column. */
+.munin-explorer-filters input[type="text"] {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 4px 0 8px;
   padding: 6px 8px;
   font: inherit;
   color: var(--dark);
@@ -1801,8 +1922,9 @@ table.munin-explorer-data-list tbody th {
    viewport and shrinking — measured at /MuninKelda (Fhi.Metadata-b3brc).
 
    Around the table alone. `.munin-explorer-results` looks like the natural place and is not: the
-   column picker is in that column too, and a reader who scrolled the table sideways would take
-   the control for choosing columns off the screen with it.
+   column picker shared that column until the row over the table took it, and a reader who scrolled
+   the table sideways took the control for choosing columns off the screen with it. Anything put
+   back in that column would ride the same scroll.
 
    `overflow-x: auto` makes overflow-y compute to auto as well. That is harmless here — the box
    grows to the table's height, so there is never anything to scroll vertically — but it is why
@@ -1828,6 +1950,23 @@ table.munin-explorer-data-list tbody th {
 .munin-explorer-kilder .munin-explorer-kilder__count {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+/* A count of nought, dimmed so an empty register recedes instead of reading as a measured finding
+   — Hjerte- og karregisteret holds 0 datasamlinger and 0 variabler, and a reader scanning for
+   kilder they can use should be able to skip it at a glance.
+
+   A colour and not `opacity`, `display: none` or a dash: the digit has to stay readable, because
+   nought is a measurement and the columns beside it say "Ikke oppgitt" for a field nobody filled
+   in — a reader who cannot tell those apart has lost the distinction the table is making. This is
+   the same --grey60 the facet counts use, and it measures 6.76:1 against the page ground these
+   rows sit on, so the recession is against the body text rather than against legibility.
+
+   Scoped under the table for the reason __count above is: the rule it has to beat is the shared
+   cell rule, which carries a class and an element. It follows __count on purpose: the two have the
+   same specificity, so source order is what would settle any property they both set. */
+.munin-explorer-kilder .munin-explorer-kilder__count--zero {
+  color: var(--grey60);
 }
 
 /* The checkbox column, in front of the eight. It is only ever rendered by a host that wired
@@ -1858,6 +1997,27 @@ table.munin-explorer-data-list tbody th {
   font-size: 1rem;
   line-height: 1;
   padding: 4px 6px;
+}
+
+/* A sample has no icon font, so this stands in for Stiler's `.icon` — the same character the
+   variable rows' chevron is drawn from. The 24px box is the load-bearing part: the toggle above
+   pads by 6px a side and 4px, so the glyph carries the target size. (Fhi.Metadata-mpx2p) */
+.munin-explorer-kilder__expand-icon {
+  color: var(--primary);
+  display: inline-block;
+  height: 24px;
+  transition: transform 120ms ease;
+  width: 24px;
+}
+
+.munin-explorer-kilder__expand-icon::before {
+  content: "\203A";           /* › */
+  font-size: 1.25rem;
+  line-height: 24px;
+}
+
+.icon-keyboard-arrow-down.munin-explorer-kilder__expand-icon {
+  transform: rotate(90deg);
 }
 
 /* Measured in the sample before this was written: on grey10 alone the panel was invisible against
@@ -2505,6 +2665,34 @@ table.munin-explorer-data-list tbody th {
 
 }
 
+/* The kildeutforsker's row over the table: the count, the order control and the column picker on
+   one line, where they used to take a line each. From Fhi.Helsedata.Stiler PR 39220, so the
+   release that follows 0.1.42 is the first that has it — a host on 0.1.42 or older gets the three
+   blocks back in ordinary block flow, which is what shipped before and loses no information.
+
+   Three rules and not one, and the two extra ones are load-bearing. The first child is the count,
+   and giving it the slack is what holds it at the left edge while the controls sit at the right.
+   `justify-content: flex-end` is for the wrapped case: without it the Kolonner button sits at the
+   left of its own line and its right-aligned menu starts off the screen. And putting the picker in
+   a row makes `munin-explorer-header__actions` content-wide, which shrinks the open list to the
+   trigger's width unless it is told to take its own — the column names then spill out of the dark
+   card they are drawn on. (Fhi.Metadata-tciss) */
+.munin-explorer-results__toolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: flex-end;
+}
+
+.munin-explorer-results__toolbar > :first-child {
+  flex-grow: 1;
+}
+
+.munin-explorer-results__toolbar .munin-explorer-header .dropdown-choicepicker {
+  width: max-content;
+}
+
 .munin-explorer-container {
   display: flex;
   flex-direction: row;
@@ -2545,3 +2733,48 @@ table.munin-explorer-data-list tbody th {
 
 }
 
+
+/* Provisional helsedata-based stand-in; published rules are tracked by Fhi.Metadata-wihod. */
+.munin-explorer-hierarchy {
+  color: var(--dark);
+  font-size: 0.875rem;
+  margin-bottom: 16px;
+  overflow-wrap: anywhere;
+}
+.munin-explorer-hierarchy__nodes {
+  list-style: none;
+  margin: 0;
+  padding-left: 20px;
+}
+.munin-explorer-hierarchy > .munin-explorer-hierarchy__nodes {
+  padding-left: 0;
+}
+.munin-explorer-hierarchy__branch {
+  margin: 4px 0;
+}
+.munin-explorer-hierarchy__branch > summary,
+.munin-explorer-hierarchy__metadata > summary {
+  cursor: pointer;
+  padding: 8px 4px;
+}
+.munin-explorer-hierarchy__branch > summary:focus-visible,
+.munin-explorer-hierarchy__metadata > summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.munin-explorer-hierarchy__leaf {
+  display: block;
+  padding: 8px 4px 8px 20px;
+}
+.munin-explorer-hierarchy__count {
+  background: var(--grey20);
+  border-radius: 4px;
+  color: var(--grey60);
+  font-variant-numeric: tabular-nums;
+  padding: 0 4px;
+  white-space: nowrap;
+}
+.munin-explorer-hierarchy__metadata {
+  border-top: 1px solid var(--grey30);
+  margin-bottom: 16px;
+}

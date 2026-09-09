@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text.Json;
 using AngleSharp.Dom;
 using Bunit;
@@ -420,8 +421,12 @@ public class KildeSearchTest : BunitContext
     private static IReadOnlyList<string> RowNames(IRenderedComponent<KildeSearch> cut) =>
         [.. cut.FindAll(".munin-explorer-kilder tbody th button").Select(b => b.TextContent.Trim())];
 
+    /// <summary>Every facet's disclosure, in the order the panel draws them.</summary>
+    private static IReadOnlyList<IElement> Facets(IRenderedComponent<KildeSearch> cut) =>
+        [.. cut.FindAll(".munin-explorer-filters__facets > details")];
+
     /// <summary>
-    /// The facet headings on screen, in the order the panel draws them.
+    /// The facet headings on screen, in the order the panel draws them, without their counts.
     /// </summary>
     /// <remarks>
     /// <c>h4</c> because the component's own title defaults to <c>h2</c>: the panel's heading is one
@@ -430,23 +435,49 @@ public class KildeSearchTest : BunitContext
     /// class would slip past a selector that asked for one.
     /// </remarks>
     private static IReadOnlyList<string> FacetHeadings(IRenderedComponent<KildeSearch> cut) =>
-        [.. cut.FindAll(".munin-explorer-filters__facets [role=group] h4").Select(h => h.TextContent.Trim())];
+        [.. Facets(cut).Select(FacetName)];
 
-    /// <summary>One facet's group, found by the heading over it.</summary>
+    /// <summary>A facet's heading, which is the whole of the <c>h4</c> in its summary.</summary>
+    /// <remarks>
+    /// Nothing is stripped off it. The ticked-value count is a sibling of the heading rather than
+    /// words inside it, so a test can name a facet without naming how many of its values it has
+    /// ticked so far. (Fhi.Metadata-l9l2n.53)
+    /// </remarks>
+    private static string FacetName(IElement facet) =>
+        facet.QuerySelector("summary h4")!.TextContent.Trim();
+
+    /// <summary>What a facet's disclosure is announced as.</summary>
+    /// <remarks>
+    /// The subject of every assertion about the ticked-value count, because the count exists to be
+    /// in that sentence — a test asking only whether the span is in the DOM passes with the number
+    /// rendered somewhere no reader is told about. Through <see cref="AccessibleName"/> rather than
+    /// off the element's text, so the claim in that first line is resolved and not resembled.
+    /// </remarks>
+    private static string Summary(IRenderedComponent<KildeSearch> cut, string heading) =>
+        AccessibleName.Of(Facet(cut, heading).QuerySelector("summary")!);
+
+    /// <summary>One facet's disclosure, found by the heading over it.</summary>
+    /// <remarks>
+    /// A lookup and nothing else: a folded facet renders every one of its values just as an open
+    /// one does, so a test can read what a facet offers without opening it first.
+    /// </remarks>
     private static IElement Facet(IRenderedComponent<KildeSearch> cut, string heading) =>
-        cut.FindAll(".munin-explorer-filters__facets [role=group]")
-           .Single(group => group.QuerySelector("h4")!.TextContent.Trim() == heading);
+        Facets(cut).Single(details => FacetName(details) == heading);
 
     /// <summary>The visible text of every choice in a facet, count and all.</summary>
+    /// <remarks>
+    /// <c>li label</c> rather than <c>label</c>: a facet past the search threshold opens with a
+    /// hidden label naming its own search box, which is not a choice and would read as one here.
+    /// </remarks>
     private static IReadOnlyList<string> Choices(IElement facet) =>
-        [.. facet.QuerySelectorAll("label").Select(label => label.TextContent.Trim())];
+        [.. facet.QuerySelectorAll("li label").Select(label => label.TextContent.Trim())];
 
     /// <summary>
     /// The <c>lang</c> on every choice in a facet, in the order they are drawn, with null for a
     /// choice carrying none.
     /// </summary>
     private static IReadOnlyList<string?> Languages(IElement facet) =>
-        [.. facet.QuerySelectorAll("label").Select(label => label.GetAttribute("lang"))];
+        [.. facet.QuerySelectorAll("li label").Select(label => label.GetAttribute("lang"))];
 
     /// <summary>
     /// Tick the choice whose visible text begins with <paramref name="choice"/>.
@@ -462,10 +493,22 @@ public class KildeSearchTest : BunitContext
     /// </remarks>
     private static void Tick(IRenderedComponent<KildeSearch> cut, string heading, string choice) =>
         Facet(cut, heading)
-            .QuerySelectorAll("label")
+            .QuerySelectorAll("li label")
             .First(label => label.TextContent.Trim().StartsWith(choice, StringComparison.Ordinal))
             .QuerySelector("input")!
             .Change(true);
+
+    /// <summary>The same control, pressed the other way.</summary>
+    private static void Untick(IRenderedComponent<KildeSearch> cut, string heading, string choice) =>
+        Facet(cut, heading)
+            .QuerySelectorAll("li label")
+            .First(label => label.TextContent.Trim().StartsWith(choice, StringComparison.Ordinal))
+            .QuerySelector("input")!
+            .Change(false);
+
+    /// <summary>Put the list in <paramref name="order"/> through the control the reader uses.</summary>
+    private static void Choose(IRenderedComponent<KildeSearch> cut, KildeSortOrder order) =>
+        cut.Find("select[id^='munin-explorer-sort']").Change(order.ToString());
 
     // ---------------------------------------------------------------------------------
     // The list.
@@ -497,17 +540,6 @@ public class KildeSearchTest : BunitContext
     }
 
     [Fact]
-    public void Render_WhenTheListIsOnScreen_ThenTheCountSaysHowManyKilderAreInIt()
-    {
-        var cut = RenderWith(new FakeClient(
-            Kilde("Als registeret", "K_ALS"),
-            Kilde("Dødsårsaksregisteret", "K_DAR"),
-            Kilde("Reseptregisteret", "K_NORPD")));
-
-        Assert.Contains("3 kilder", cut.Markup);
-    }
-
-    [Fact]
     public void Render_WhenOneKildeIsOnScreen_ThenTheCountIsNotWrittenInThePlural()
     {
         // "1 kilder" is the kind of thing that ships because the count was interpolated at the call
@@ -516,6 +548,121 @@ public class KildeSearchTest : BunitContext
 
         Assert.Contains("1 kilde", cut.Markup);
         Assert.DoesNotContain("1 kilder", cut.Markup);
+    }
+
+    [Fact]
+    public void Count_WhenNothingIsNarrowingTheList_ThenTheLineIsTheBareTotal()
+    {
+        // THE TRAP the denominator and the filter clause bring with them: added unconditionally
+        // they read as "3 kilder av 3 — 0 filtre aktive", which is more words saying less than
+        // "3 kilder". Only the narrowed state is ever checked by hand, so this side needs a test.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS"),
+            Kilde("Dødsårsaksregisteret", "K_DAR"),
+            Kilde("Reseptregisteret", "K_NORPD")));
+
+        Assert.Equal("3 kilder", ResultCount(cut));
+    }
+
+    [Fact]
+    public void Count_WhenFacetsNarrowTheList_ThenItNamesTheCatalogueAndHowManyFiltersAreActive()
+    {
+        // Without the denominator a narrowed list reads the same as a short catalogue, and until
+        // the chips land (Fhi.Metadata-ofoyw) this line is the only thing on the page saying
+        // filtering is happening at all.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS",
+                kildetype: "nasjonaltMedisinskKvalitetsregister", dataProcessor: "St. Olavs hospital HF"),
+            Kilde("Barnediabetes", "K_BDR",
+                kildetype: "nasjonaltMedisinskKvalitetsregister", dataProcessor: "Oslo universitetssykehus HF"),
+            Kilde("Dødsårsaksregisteret", "K_DAR",
+                kildetype: "sentraltHelseregister", dataProcessor: "St. Olavs hospital HF")));
+
+        Tick(cut, "Kildetype", "Nasjonalt medisinsk kvalitetsregister");
+
+        Assert.Equal("2 kilder av 3, avgrenset av 1 filter", ResultCount(cut));
+
+        Tick(cut, "Databehandler", "St. Olavs hospital HF");
+
+        Assert.Equal("1 kilde av 3, avgrenset av 2 filtre", ResultCount(cut));
+    }
+
+    [Fact]
+    public void Count_WhenEveryKildeCarriesTheTickedValue_ThenTheFilterClauseStandsWithoutADenominator()
+    {
+        // The two clauses are independent, and this is the state that says so: a facet value the
+        // whole catalogue carries leaves the list at its full length while a filter is on, so
+        // "3 kilder av 3" has to stay away without taking "avgrenset av 1 filter" with it.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS"),
+            Kilde("Dødsårsaksregisteret", "K_DAR"),
+            Kilde("Reseptregisteret", "K_NORPD")));
+
+        Tick(cut, "Databehandler", "Folkehelseinstituttet");
+
+        Assert.Equal("3 kilder, avgrenset av 1 filter", ResultCount(cut));
+    }
+
+    [Fact]
+    public void Count_WhenTheReaderFiltersAndSorts_ThenOneSentenceCarriesEveryClauseInOrder()
+    {
+        // Four optional pieces concatenated, and the sorting tests only ever read the ordering on an
+        // untouched list: this pins where the ordering sits in Norwegian once a filter is on, which
+        // is the clause order the sibling ResultSummary already uses.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS",
+                kildetype: "nasjonaltMedisinskKvalitetsregister", dataProcessor: "St. Olavs hospital HF"),
+            Kilde("Barnediabetes", "K_BDR",
+                kildetype: "nasjonaltMedisinskKvalitetsregister", dataProcessor: "Oslo universitetssykehus HF"),
+            Kilde("Dødsårsaksregisteret", "K_DAR",
+                kildetype: "sentraltHelseregister", dataProcessor: "St. Olavs hospital HF")));
+
+        Tick(cut, "Kildetype", "Nasjonalt medisinsk kvalitetsregister");
+        Choose(cut, KildeSortOrder.Variables);
+
+        Assert.Equal(
+            "2 kilder av 3, avgrenset av 1 filter, sortert etter Flest variabler", ResultCount(cut));
+    }
+
+    [Fact]
+    public void Count_WhenTheSearchNarrowsAndNoFacetIsTicked_ThenOnlyTheDenominatorAppears()
+    {
+        // The two clauses answer different questions: a reader who has typed and ticked nothing is
+        // owed the count against the catalogue and not an answer about filters they never set.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS"),
+            Kilde("Dødsårsaksregisteret", "K_DAR"),
+            Kilde("Reseptregisteret", "K_NORPD")));
+
+        cut.Find(".searchbox__freetext").Change("als");
+
+        Assert.Equal("1 kilde av 3", ResultCount(cut));
+    }
+
+    [Fact]
+    public void Count_WhenTheReaderReadsInEnglish_ThenEveryClauseAndItsPluralIsInEnglishToo()
+    {
+        // Assembled clause by clause, which is where a language that got the plural right can still
+        // ship "1 source av 2": the whole sentence is one language's business.
+        var cut = RenderWith(
+            new FakeClient(
+                Kilde("Als registeret", "K_ALS", kildetype: "nasjonaltMedisinskKvalitetsregister"),
+                Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister")),
+            b => b.Add(c => c.Language, "en"));
+
+        Assert.Equal("2 sources", ResultCount(cut));
+
+        Tick(cut, "Source type", "Central health registry");
+
+        Assert.Equal("1 source of 2, narrowed by 1 filter", ResultCount(cut));
+
+        // A second value ticked because the plural arm is the one a copy-paste from the nb record
+        // leaves in Norwegian, and the singular one above would never notice.
+        Tick(cut, "Data processor", "Folkehelseinstituttet");
+        Choose(cut, KildeSortOrder.Variables);
+
+        Assert.Equal(
+            "1 source of 2, narrowed by 2 filters, sorted by Most variables", ResultCount(cut));
     }
 
     [Fact]
@@ -605,8 +752,8 @@ public class KildeSearchTest : BunitContext
     public void Render_Always_ThenTheTableSitsInItsOwnScrollRegionAndTheColumnPickerDoesNot()
     {
         // The second assertion is the trap: `munin-explorer-results` is the obvious element to put
-        // `overflow-x` on and it is the wrong one, because the column picker is in that column and
-        // would scroll off screen with the table (Fhi.Metadata-b3brc).
+        // `overflow-x` on and it is the wrong one. The column picker shared that column until the
+        // row over the table took it, and scrolled off screen with the table (Fhi.Metadata-b3brc).
         var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
         var table = cut.Find(".munin-explorer-kilder");
@@ -645,6 +792,62 @@ public class KildeSearchTest : BunitContext
         var cut = RenderWith(new FakeClient());
 
         Assert.Empty(cut.FindAll(".munin-explorer-kilder-scroll"));
+    }
+
+    // ---------------------------------------------------------------------------------
+    // The row over the table.
+    // ---------------------------------------------------------------------------------
+
+    [Fact]
+    public void Toolbar_Always_ThenTheCountTheOrderControlAndThePickerShareOneRow()
+    {
+        // Three blocks taking a row each before this bead. Asserted as element order and not as
+        // layout, which is the host stylesheet's: what markup decides is which three children the
+        // row has and the order a keyboard meets them in. (Fhi.Metadata-tciss)
+        var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
+
+        var row = cut.Find(".munin-explorer-results__toolbar");
+
+        Assert.Collection(
+            row.Children,
+            count => Assert.Equal("status", count.GetAttribute("role")),
+            order => Assert.NotNull(order.QuerySelector("select")),
+            picker => Assert.Contains("munin-explorer-header", picker.ClassList));
+    }
+
+    [Fact]
+    public void ToolbarWithNoKilder_Always_ThenTheRowIsStillDrawnAndHoldsTheCountAlone()
+    {
+        // The row cannot come and go with the rows, and this is the reason the whole shape is what
+        // it is: the count inside it is this component's one polite live region, and a live region
+        // inserted and filled in the same update is announced unreliably — so a row drawn only with
+        // rows would take the loading message and the empty state with it. The two controls do go,
+        // which is why a picker over no table is not here. (Fhi.Metadata-tciss)
+        var cut = RenderWith(new FakeClient());
+
+        var row = cut.Find(".munin-explorer-results__toolbar");
+
+        Assert.Equal("status", row.Children.Single().GetAttribute("role"));
+        Assert.Empty(cut.FindAll(".munin-explorer-results__toolbar select"));
+        Assert.Empty(cut.FindAll(".munin-explorer-results__toolbar .munin-explorer-header"));
+    }
+
+    [Fact]
+    public void Toolbar_Always_ThenTheCountIsSaidOnceAndInThePoliteRegion()
+    {
+        // A visible count in the row beside a live region saying the same sentence is a double
+        // announcement rather than a solution. One element says it, it is the live region, and it
+        // is first in the row — which is also the child Stiler's rule gives the slack to, so the
+        // count is what holds the left edge. (Fhi.Metadata-tciss)
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS"),
+            Kilde("Barnediabetes", "K_BDR")));
+
+        var count = Assert.Single(cut.FindAll("p[role=status]"));
+
+        Assert.Equal("2 kilder", count.TextContent.Trim());
+        Assert.Equal("polite", count.GetAttribute("aria-live"));
+        Assert.Equal("true", count.GetAttribute("aria-atomic"));
     }
 
     // ---------------------------------------------------------------------------------
@@ -710,6 +913,61 @@ public class KildeSearchTest : BunitContext
         Assert.Equal("1951", cells[5]);
     }
 
+    [Fact]
+    public void Counts_WhenARowCountsNothing_ThenOnlyThatRowsCountCellsAreMarked()
+    {
+        // Rows and not the header, which wears __count too: PR #228 shipped sort tests that asserted
+        // the control and never the rows, and a query that does not say `tbody` passes on markup no
+        // reader is looking at. Three digit counts in one render, because the alignment this class
+        // carries is only visible down a column whose values are of different widths.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Hjerte- og karregisteret", "K_HKR", datasamlinger: 0, variables: 0),
+            Kilde("Als registeret", "K_ALS", datasamlinger: 23, variables: 23),
+            Kilde("Dødsårsaksregisteret", "K_DAR", datasamlinger: 2506, variables: 2506)));
+
+        var cells = cut.FindAll(".munin-explorer-kilder tbody td.munin-explorer-kilder__count");
+
+        // Two visible count columns over three rows. Asserted so that dropping the class from a
+        // cell fails here rather than quietly shrinking what the loop below looks at.
+        Assert.Equal(6, cells.Count);
+
+        foreach (var cell in cells)
+        {
+            Assert.Equal(
+                cell.TextContent.Trim() == "0",
+                cell.ClassList.Contains("munin-explorer-kilder__count--zero"));
+        }
+
+        // The nought is still a nought on screen. A dash or an empty cell would say "nobody filled
+        // this in", which is what "Ikke oppgitt" says in the columns beside these — and a register
+        // that holds no datasamlinger is a measurement, not a gap.
+        Assert.Equal(
+            ["0", "0", "23", "23", "2506", "2506"],
+            cells.Select(cell => cell.TextContent.Trim()).Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void ZeroCount_WhenAHostStylesIt_ThenTheDeclarationItNeedsRecessesRatherThanHides()
+    {
+        // Same shape as the checkbox column's guard in KildeSelectionTest: the general checks ask
+        // whether a name has a rule that declares SOMETHING, and `display: none` declares something.
+        // Hiding the digit takes away the one thing this marking exists to preserve — that a reader
+        // can tell nought from absent — and it takes it away from a screen reader as well.
+        var declarations = HostClassNames
+            .SampleDeclarationsFor("munin-explorer-kilder__count--zero")
+            .Select(rule => new string([.. rule.Declarations.Where(c => !char.IsWhiteSpace(c))]))
+            .ToList();
+
+        Assert.True(
+            declarations.Any(d => d.Contains("color:", StringComparison.Ordinal)),
+            "No rule recesses the nought, so a count of zero reads exactly like a measured one.");
+
+        Assert.DoesNotContain(
+            declarations,
+            d => d.Contains("display:none", StringComparison.Ordinal)
+                 || d.Contains("visibility:hidden", StringComparison.Ordinal));
+    }
+
     // A kilde with one datasamling of its own and one hanging off a delkilde, which is the shape
     // that tells a flattened panel from a grouped one.
     private static KildeDetail DetailWithCollections(KildeSummary summary) =>
@@ -725,10 +983,17 @@ public class KildeSearchTest : BunitContext
     private static KildeDatasamling Collection(string name) =>
         new() { Name = name, VariableCount = 12 };
 
-    private static IElement ExpandToggle(IRenderedComponent<KildeSearch> cut, string kilde) =>
+    /// <summary>The result row for <paramref name="kilde"/>, which is a click target of its own.</summary>
+    /// <remarks>
+    /// Found on every call rather than held, here and in everything layered on it: opening a row
+    /// re-renders the table, and an element found before that belongs to the markup as it was.
+    /// </remarks>
+    private static IElement Row(IRenderedComponent<KildeSearch> cut, string kilde) =>
         cut.FindAll(".munin-explorer-kilder tbody tr")
-           .First(row => row.TextContent.Contains(kilde, StringComparison.Ordinal))
-           .QuerySelector(".munin-explorer-kilder__expand-toggle")!;
+           .First(row => row.TextContent.Contains(kilde, StringComparison.Ordinal));
+
+    private static IElement ExpandToggle(IRenderedComponent<KildeSearch> cut, string kilde) =>
+        Row(cut, kilde).QuerySelector(".munin-explorer-kilder__expand-toggle")!;
 
     [Fact]
     public void Render_WhenAKildeHasNoDatasamlinger_ThenItHasNoExpandToggle()
@@ -743,6 +1008,34 @@ public class KildeSearchTest : BunitContext
 
         Assert.NotNull(rows[0].QuerySelector(".munin-explorer-kilder__expand-toggle"));
         Assert.Null(rows[1].QuerySelector(".munin-explorer-kilder__expand-toggle"));
+    }
+
+    [Fact]
+    public void ExpandToggle_WhenARowCanOpen_ThenItDisclosesWithTheChevronRatherThanAGlyph()
+    {
+        // The toggle pads by only 4px/6px, so its content carries its size: a literal "+" measured
+        // 20 x 24, under the 24 x 24 WCAG 2.5.8 asks for. Stiler's `.icon` is a 24px box, and it is
+        // also what the variable table discloses with. (Fhi.Metadata-mpx2p)
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        var toggle = ExpandToggle(cut, "Als registeret");
+        var chevron = toggle.QuerySelector("span.munin-explorer-kilder__expand-icon")!;
+
+        Assert.Equal("", toggle.TextContent.Trim());
+        Assert.Contains("icon", chevron.ClassList);
+        Assert.Contains("icon-keyboard-arrow-right", chevron.ClassList);
+
+        // Decorative: aria-expanded on the button already says which way it points, and the button
+        // is named by the kilde it opens.
+        Assert.Equal("true", chevron.GetAttribute("aria-hidden"));
+
+        toggle.Click();
+
+        Assert.Contains(
+            "icon-keyboard-arrow-down",
+            ExpandToggle(cut, "Als registeret")
+                .QuerySelector("span.munin-explorer-kilder__expand-icon")!.ClassList);
     }
 
     [Fact]
@@ -766,6 +1059,283 @@ public class KildeSearchTest : BunitContext
 
         Assert.Equal("Bølge 4", heading.TextContent);
         Assert.Equal(2, panel.QuerySelectorAll("table.munin-explorer-kilde__datasamlinger").Length);
+    }
+
+    /// <summary>A cell of the row that holds no control, so the press lands on the row itself.</summary>
+    private static IElement RowBody(IRenderedComponent<KildeSearch> cut, string kilde) =>
+        Row(cut, kilde).QuerySelector("td:not(.munin-explorer-kilder__expand)")!;
+
+    /// <summary>
+    /// A pointer press on the row that travels <paramref name="right"/> CSS pixels across and
+    /// <paramref name="down"/> down it before it is released, which is what tells a press meant to
+    /// open the drawer from a drag-selection. <paramref name="clicks"/> is the browser's click
+    /// count, so 2 is the second click of a double-click, and <paramref name="shift"/> is the
+    /// modifier held to extend a selection to where the pointer is.
+    /// </summary>
+    /// <remarks>
+    /// Both events go through <see cref="RowBody"/> rather than one held element: the mousedown
+    /// re-renders the table, and the element found before it belongs to the markup as it was.
+    /// </remarks>
+    private static void PressRow(
+        IRenderedComponent<KildeSearch> cut,
+        string kilde,
+        double right = 0,
+        double down = 0,
+        long clicks = 1,
+        bool shift = false)
+    {
+        RowBody(cut, kilde).MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
+        RowBody(cut, kilde).Click(new MouseEventArgs
+        {
+            ClientX = 120 + right,
+            ClientY = 240 + down,
+            Detail = clicks,
+            ShiftKey = shift,
+        });
+    }
+
+    /// <summary>Whether a press on <paramref name="control"/> stops there rather than reaching the row.</summary>
+    /// <remarks>
+    /// Read off the markup rather than proved by clicking, and that is the point. bUnit dispatches
+    /// a bubbling event to the handler ids it collected before the first handler ran and skips any
+    /// the re-render has since disposed - which is the row's, since each of these controls re-renders
+    /// it. A click here therefore cannot show the collision a browser would have, so the attribute
+    /// the browser acts on is asserted instead.
+    /// </remarks>
+    private static bool StopsTheClick(IElement control) =>
+        control.HasAttribute("blazor:onclick:stoppropagation");
+
+    /// <summary>
+    /// Whether a mousedown on <paramref name="control"/> stops there rather than reaching the row.
+    /// </summary>
+    /// <remarks>
+    /// Read off the markup for the same reason as <see cref="StopsTheClick"/>, and it has to hold
+    /// wherever that one does: the row records where a press went down and its own click is the only
+    /// thing that clears the record, so a press these controls let through is never cleared at all.
+    /// </remarks>
+    private static bool StopsThePress(IElement control) =>
+        control.HasAttribute("blazor:onmousedown:stoppropagation");
+
+    [Fact]
+    public void Row_WhenTheRowItselfIsPressed_ThenItOpensTheDatasamlingerTheChevronOpens()
+    {
+        // The row lights up under the pointer, so it reads as a control - and until this it was one
+        // that did nothing when pressed, which is the defect the hover created. (Fhi.Metadata-l9l2n.55)
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        PressRow(cut, "Als registeret");
+
+        Assert.Contains("Hoveddatasamling", cut.Find(".munin-explorer-kilder__expanded").TextContent);
+        Assert.Equal("true", ExpandToggle(cut, "Als registeret").GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void Row_WhenThePointerDraggedAcrossItToSelectText_ThenTheDrawerStaysShut()
+    {
+        // The row is full of text worth copying - the code under the name is there so "a reader who
+        // knows K_ALS finds the row whose name they do not know". A drag that begins and ends inside
+        // the row still lands a click on the <tr>, so highlighting a code would open the drawer.
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        PressRow(cut, "Als registeret", right: 48);
+
+        Assert.Empty(cut.FindAll(".munin-explorer-kilder__expanded"));
+        Assert.Equal("false", ExpandToggle(cut, "Als registeret").GetAttribute("aria-expanded"));
+
+        // And the drag leaves nothing behind that would swallow the next ordinary press.
+        PressRow(cut, "Als registeret");
+
+        Assert.Single(cut.FindAll(".munin-explorer-kilder__expanded"));
+    }
+
+    [Fact]
+    public void Row_WhenTheHandWobblesWithinAFewPixels_ThenItIsStillAPressAndTheDrawerOpens()
+    {
+        // The other side of the drag guard: a pointer that moves a pixel or two between press and
+        // release is a click, not a selection, and a row that ignored it would be back to the
+        // control that does nothing when pressed. (Fhi.Metadata-l9l2n.55)
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        PressRow(cut, "Als registeret", right: 2);
+
+        Assert.Single(cut.FindAll(".munin-explorer-kilder__expanded"));
+    }
+
+    [Theory]
+    [InlineData(4, 0, true)]
+    [InlineData(5, 0, false)]
+    [InlineData(0, 4, true)]
+    [InlineData(0, 5, false)]
+    public void Row_WhenThePointerTravels_ThenTheSlackIsADistanceInEitherDirection(
+        double right, double down, bool opens)
+    {
+        // Where the boundary the slack sets actually is, in a test rather than in the prose above the
+        // constant: 4px is still a press and 5px is a selection. Down as well as across, because the
+        // row is two lines tall wherever the code sits under the name and a reader dragging from
+        // "Als registeret" onto K_ALS moves almost entirely in Y. (Fhi.Metadata-l9l2n.55)
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        PressRow(cut, "Als registeret", right: right, down: down);
+
+        Assert.Equal(opens, cut.FindAll(".munin-explorer-kilder__expanded").Count == 1);
+    }
+
+    [Fact]
+    public void Row_WhenTheCodeIsDoubleClickedToSelectIt_ThenTheDrawerIsNotToggledBackShut()
+    {
+        // Double-click is how a reader takes a short token like K_ALS, and it travels no pixels at
+        // all: the second click passed a guard that only measures distance, so the drawer opened and
+        // shut under the selection and the row paid for a second detail fetch. (Fhi.Metadata-l9l2n.55)
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var client = new FakeClient(als).Describing(DetailWithCollections(als));
+        var cut = RenderWith(client);
+
+        PressRow(cut, "Als registeret");
+        PressRow(cut, "Als registeret", clicks: 2);
+
+        Assert.Single(cut.FindAll(".munin-explorer-kilder__expanded"));
+        Assert.Equal("true", ExpandToggle(cut, "Als registeret").GetAttribute("aria-expanded"));
+
+        // The rate limit the caching in ToggleDatasamlingerAsync exists to protect: the second click
+        // must not be a second GetKildeAsync either.
+        Assert.Equal(1, client.DetailCalls);
+    }
+
+    [Fact]
+    public void Row_WhenAClickExtendsASelectionWithShift_ThenTheDrawerStaysShut()
+    {
+        // The other gesture that stands still: shift-click extends the selection to the pointer, so
+        // it is two stationary clicks and neither has travelled anywhere. (Fhi.Metadata-l9l2n.55)
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        PressRow(cut, "Als registeret", shift: true);
+
+        Assert.Empty(cut.FindAll(".munin-explorer-kilder__expanded"));
+        Assert.Equal("false", ExpandToggle(cut, "Als registeret").GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void Row_WhenTheLastPressWasOnAnotherRow_ThenThisRowIsNotMeasuredAgainstIt()
+    {
+        // One coordinate for the whole tbody would read a click on this row against a press left on
+        // that one, and a row far enough down the table would silently do nothing - the control that
+        // does nothing when pressed, back again. Keyed like every other per-row state here.
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var dar = Kilde("Dødsårsaksregisteret", "K_DAR", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als, dar)
+            .Describing(DetailWithCollections(als))
+            .Describing(DetailWithCollections(dar)));
+
+        RowBody(cut, "Als registeret").MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
+        RowBody(cut, "Dødsårsaksregisteret").Click(new MouseEventArgs { ClientX = 600, ClientY = 900 });
+
+        Assert.Equal("true", ExpandToggle(cut, "Dødsårsaksregisteret").GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void Row_WhenAClickArrivesWithNoPressBehindIt_ThenItOpensAsABarePressDoes()
+    {
+        // How speech control and some assistive tooling activate an element: a synthetic click, with
+        // no mousedown before it and no coordinates to measure. Nothing travelled across the row, so
+        // it is a press - measuring it against a coordinate left by some other row is the
+        // control-that-does-nothing this bead exists to fix. (Fhi.Metadata-l9l2n.55)
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        RowBody(cut, "Als registeret").Click(new MouseEventArgs());
+
+        Assert.Single(cut.FindAll(".munin-explorer-kilder__expanded"));
+        Assert.Equal("true", ExpandToggle(cut, "Als registeret").GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void Row_WhenTheNameIsPressed_ThenTheKildeOpensAndNoDrawerIsLeftOpenBehindIt()
+    {
+        // The collision the row handler invites: the name button is inside the row, so a handler on
+        // the tr alone opens the kilde AND expands the row behind it. Asserted after Back, because
+        // the list is off screen while the kilde is open and a test looking there would pass anyway.
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        var name = Row(cut, "Als registeret").QuerySelector("button.munin-explorer-kilder__name")!;
+
+        Assert.True(StopsTheClick(name), "The name lets the click through to the row.");
+        Assert.True(StopsThePress(name), "The name leaves a press on the row that no click clears.");
+
+        name.Click();
+
+        Assert.NotEmpty(cut.FindAll(".munin-explorer-drilldown"));
+        Assert.Empty(cut.FindAll("table.munin-explorer-kilder"));
+
+        cut.Find(".munin-explorer-drilldown button").Click();
+
+        Assert.Empty(cut.FindAll(".munin-explorer-kilder__expanded"));
+        Assert.Equal("false", ExpandToggle(cut, "Als registeret").GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void ExpandToggle_WhenPressedOnce_ThenTheDrawerOpensRatherThanTogglingTwice()
+    {
+        // Without stopPropagation on the toggle the row behind it handles the same click, so one
+        // press opens and closes the drawer and the chevron reads as a control that does nothing.
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        Assert.True(
+            StopsTheClick(ExpandToggle(cut, "Als registeret")),
+            "The toggle lets the click through to the row, which would close what it just opened.");
+
+        Assert.True(
+            StopsThePress(ExpandToggle(cut, "Als registeret")),
+            "The toggle leaves a press on the row that no click of the row's clears.");
+
+        ExpandToggle(cut, "Als registeret").Click();
+
+        Assert.Single(cut.FindAll(".munin-explorer-kilder__expanded"));
+        Assert.Equal("true", ExpandToggle(cut, "Als registeret").GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void Row_WhenTheKildeHasNoDatasamlinger_ThenPressingTheRowOpensNothing()
+    {
+        // The row opens nothing the toggle does not, and a kilde with nothing to open has no toggle:
+        // a panel with nothing in it is the same defect one row over.
+        var cut = RenderWith(new FakeClient(Kilde("Tomt register", "K_TOM", datasamlinger: 0)));
+
+        PressRow(cut, "Tomt register");
+
+        Assert.Empty(cut.FindAll(".munin-explorer-kilder__expanded"));
+    }
+
+    [Fact]
+    public void Row_Always_ThenItIsNoTabStopOfItsOwnAndPreventsNoDefault()
+    {
+        // WCAG 2.1.1: the row press is a pointer shortcut over two controls that are already in the
+        // tab order, so it adds no third stop and reaches no behaviour a keyboard cannot.
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        var row = Row(cut, "Als registeret");
+
+        Assert.False(row.HasAttribute("tabindex"));
+        Assert.False(row.HasAttribute("role"));
+        Assert.Throws<MissingEventHandlerException>(() => row.KeyDown("Enter"));
+
+        // The mousedown only records where the press began. preventDefault on it is what would make
+        // the row's codes unselectable, and that is the whole reason the drag guard reads a
+        // coordinate rather than suppressing the selection outright.
+        Assert.False(row.HasAttribute("blazor:onmousedown:preventdefault"));
+
+        var controls = row.QuerySelectorAll("a, button, input, select, textarea, [tabindex]");
+
+        Assert.Equal(2, controls.Length);
+        Assert.Contains("munin-explorer-kilder__expand-toggle", controls[0].ClassList);
+        Assert.Contains("munin-explorer-kilder__name", controls[1].ClassList);
     }
 
     [Fact]
@@ -1085,7 +1655,57 @@ public class KildeSearchTest : BunitContext
         var years = cut.FindAll(".munin-explorer-kilder tbody tr")
             .Select(row => row.QuerySelectorAll("td")[^1].TextContent.Trim());
 
-        Assert.Equal(["2023", "2006", "2020"], years);
+        Assert.Equal(["2023", "2006", "2020", "2012"], years);
+    }
+
+    [Fact]
+    public void Render_WhenTheCapturedPayloadHasAKildeWithNoKildetype_ThenItsCellReadsIkkeOppgitt()
+    {
+        // The rendering half of Fhi.Metadata-l9l2n.61: the contract stopped coercing the API's null
+        // to "", so what keeps this cell readable is Texts.KildeTypeLabel rather than the DTO. Read
+        // off the capture, because a hand-written null is one this component has never been sent.
+        var kilder = JsonSerializer.Deserialize<IReadOnlyList<KildeSummary>>(
+                TestData.Read("kilder.json"), MuninExplorerClient.Json)
+            ?? throw new InvalidOperationException("kilder.json no longer reads as a kilde list.");
+
+        var cut = RenderWith(new FakeClient([.. kilder]));
+        var column = Headers(cut).ToList().IndexOf("Kildetype");
+
+        string Kildetype(string code) => cut.FindAll(".munin-explorer-kilder tbody tr")
+            .Single(row => row.QuerySelector("th")!.TextContent.Contains(code, StringComparison.Ordinal))
+            .QuerySelectorAll("th, td")[column].TextContent.Trim();
+
+        Assert.Equal("Ikke oppgitt", Kildetype("K_NKR-NAKKE"));
+        Assert.Equal("Nasjonalt medisinsk kvalitetsregister", Kildetype("K_ALS"));
+    }
+
+    [Fact]
+    public void Facets_WhenTheCapturedPayloadHasAKildeWithNoKildetype_ThenItIsInNoKildetypeChoiceAtAll()
+    {
+        // The half of Fhi.Metadata-l9l2n.61 the cell above cannot see: the null is a facet key and
+        // a sort key as well as a label, and the three wrong answers are an unnamed checkbox, an
+        // "Ikke oppgitt" choice nobody can filter on elsewhere, and a throw. It drops the kilde.
+        var kilder = JsonSerializer.Deserialize<IReadOnlyList<KildeSummary>>(
+                TestData.Read("kilder.json"), MuninExplorerClient.Json)
+            ?? throw new InvalidOperationException("kilder.json no longer reads as a kilde list.");
+
+        var cut = RenderWith(new FakeClient([.. kilder]));
+
+        Assert.Equal(
+            ["Nasjonalt medisinsk kvalitetsregister (2)", "Sentralt helseregister (1)"],
+            Choices(Facet(cut, "Kildetype")));
+
+        // Unticked it is one of the four rows, so the drop above is the facet's doing, not the list's.
+        Assert.Contains("Nasjonalt kvalitetsregister for ryggkirurgi (NKR), degenerativ nakke.", RowNames(cut));
+
+        // A kilde in no choice is one any choice filters out, not one that rides along in every result.
+        Tick(cut, "Kildetype", "Nasjonalt medisinsk kvalitetsregister");
+
+        Assert.Equal(
+        [
+            "Norsk register for ALS og andre motonevronsykdommer (ALS-registeret)",
+            "Barnediabetes"
+        ], RowNames(cut));
     }
 
     [Fact]
@@ -1984,14 +2604,14 @@ public class KildeSearchTest : BunitContext
         // So this fixture has one facet where every kilde carries the SAME value, which must still
         // be drawn with its one choice, and one where no kilde carries any, which must not be drawn
         // at all. Asserted on the headings and on the group count rather than on the markup as a
-        // string: an empty <div role="group"> with an empty heading in it is what a component that
-        // renders every facet unconditionally produces, and it contains no text to search for.
+        // string: an empty disclosure with an empty heading in it is what a component that renders
+        // every facet unconditionally produces, and it contains no text to search for.
         var cut = RenderWith(new FakeClient(
             Kilde("Als registeret", "K_ALS", accessRights: "eu-access:NON_PUBLIC"),
             Kilde("Dødsårsaksregisteret", "K_DAR", accessRights: "eu-access:NON_PUBLIC")));
 
         Assert.Equal(["Kildetype", "Tilgangsnivå", "Databehandler"], FacetHeadings(cut));
-        Assert.Equal(3, cut.FindAll(".munin-explorer-filters__facets [role=group]").Count);
+        Assert.Equal(3, Facets(cut).Count);
         Assert.DoesNotContain("Kategori", cut.Markup);
 
         // The other half, so "drop the empty one" cannot become "drop the one with a single value":
@@ -2157,7 +2777,7 @@ public class KildeSearchTest : BunitContext
         Assert.Equal(["Dødsårsaksregisteret"], RowNames(cut));
 
         Facet(cut, "Kildetype")
-            .QuerySelectorAll("label")
+            .QuerySelectorAll("li label")
             .First(label => label.TextContent.Trim().StartsWith("Sentralt", StringComparison.Ordinal))
             .QuerySelector("input")!
             .Change(false);
@@ -2755,20 +3375,1015 @@ public class KildeSearchTest : BunitContext
     }
 
     [Fact]
-    public void Facets_Always_ThenEachGroupIsNamedByItsOwnHeading()
+    public void Facets_Always_ThenEachFacetIsANativeDisclosureWithItsHeadingInTheSummary()
     {
-        // role="group" with no accessible name is a group of nothing in particular. The id is what
-        // ties the heading to it, and it carries this instance's discriminator so two explorers on
-        // one page cannot point at each other's headings.
+        // The header has to be a real control and not something that only looks like one, which is
+        // what Fhi.Metadata-zqe14 was filed for. <summary> is that control natively — focusable,
+        // toggled by Enter and Space — so there is no aria-expanded here to drift out of step with
+        // the open attribute beside it, and the heading stays a heading inside it because a reader
+        // moves through a filter panel by heading.
         var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
-        foreach (var group in cut.FindAll(".munin-explorer-filters__facets [role=group]"))
-        {
-            var heading = group.QuerySelector("h4")!;
+        Assert.NotEmpty(Facets(cut));
 
-            Assert.Equal(heading.Id, group.GetAttribute("aria-labelledby"));
-            Assert.False(string.IsNullOrWhiteSpace(heading.Id));
+        foreach (var facet in Facets(cut))
+        {
+            var summary = facet.QuerySelector("summary")!;
+
+            Assert.NotNull(summary.QuerySelector("h4"));
+            Assert.Null(summary.GetAttribute("aria-expanded"));
         }
+    }
+
+    [Fact]
+    public void Facets_Always_ThenTheFirstFacetIsOpenAndTheRestAreFolded()
+    {
+        // The default, stated: one facet open and the rest folded. All four open is the length this
+        // bead is about — databehandler alone runs to 39 values on the live catalogue, which makes
+        // the filter column longer than the list it filters — and all four folded would hide the
+        // filtering affordance altogether from a reader who has never seen this panel.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS",
+                  kildetype: "biobank", accessRights: "eu-access:NON_PUBLIC",
+                  dataProcessor: "Folkehelseinstituttet")));
+
+        Assert.Equal(["Kildetype", "Tilgangsnivå", "Databehandler"], FacetHeadings(cut));
+        Assert.Equal([true, false, false], Facets(cut).Select(f => f.HasAttribute("open")).ToArray());
+    }
+
+    [Fact]
+    public void Facets_WhenTheFirstDefinedFacetHasNoValues_ThenTheFirstFacetDrawnIsTheOpenOne()
+    {
+        // The flag is handed out after the empty facets are dropped, and that ordering is the whole
+        // of its correctness: index it over the definitions instead and a catalogue whose kilder
+        // carry no kildetype opens nothing at all, which is the state the panel must never be in.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS",
+                  kildetype: "", accessRights: "eu-access:NON_PUBLIC",
+                  dataProcessor: "Folkehelseinstituttet")));
+
+        Assert.Equal(["Tilgangsnivå", "Databehandler"], FacetHeadings(cut));
+        Assert.Equal([true, false], Facets(cut).Select(f => f.HasAttribute("open")).ToArray());
+    }
+
+    [Fact]
+    public void Facets_WhenAFacetIsFolded_ThenItsValuesAreRenderedForTheDisclosureToHide()
+    {
+        // Deliberately NOT rendered-only-while-open. <details> hides its own children, so the fold
+        // belongs to the browser: no mirrored open flag here to race the native toggle, and a press
+        // costs no round trip. The sibling panel in VariableSearch does the same on the same host.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS",
+                  kildetype: "biobank", dataProcessor: "Folkehelseinstituttet")));
+
+        var databehandler = Facet(cut, "Databehandler");
+
+        Assert.False(databehandler.HasAttribute("open"));
+        Assert.Equal(["Folkehelseinstituttet (1)"], Choices(databehandler));
+    }
+
+    [Fact]
+    public void Facets_WhenAFacetHasTickedValues_ThenItsSummarySaysHowMany()
+    {
+        // The reason a folding panel is allowed to fold at all: a facet that is narrowing the list
+        // from behind a closed disclosure has to say so, or the reader loses the filter and keeps
+        // its effect. Asserted on the <summary>'s own text rather than on the span inside it,
+        // because that text is what the disclosure is announced as — a number rendered somewhere
+        // the accessible name does not reach is a number only a sighted reader has.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", kildetype: "nasjonaltMedisinskKvalitetsregister"),
+            Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister"),
+            Kilde("Den norske mor, far og barn-undersøkelsen", "K_MOBA", kildetype: "biobank")));
+
+        Assert.Equal("Kildetype", Summary(cut, "Kildetype"));
+
+        Tick(cut, "Kildetype", "Biobank");
+        Tick(cut, "Kildetype", "Sentralt helseregister");
+
+        Assert.Equal("Kildetype 2 valgt", Summary(cut, "Kildetype"));
+        Assert.Equal(["Dødsårsaksregisteret", "Den norske mor, far og barn-undersøkelsen"], RowNames(cut));
+    }
+
+    [Fact]
+    public void Facets_WhenNothingIsTicked_ThenTheFacetSaysNothingAboutHowMany()
+    {
+        // "0 valgt" over a facet nobody has touched reports a filter where there is none, and it
+        // does it on every facet at once — four lines of noise in the column the panel is trying to
+        // keep short. So the element is absent rather than empty or zero.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", kildetype: "biobank"),
+            Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister")));
+
+        Assert.Empty(cut.FindAll(".munin-explorer-filters__chosen"));
+        Assert.DoesNotContain("valgt", Summary(cut, "Kildetype"), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Facets_WhenTheLastTickedValueIsCleared_ThenTheCountGoesAwayAgain()
+    {
+        // The other edge, and the one a count computed once at render time gets wrong: a facet the
+        // reader has emptied is a facet narrowing nothing, and a stale "1 valgt" on it is worse
+        // than no count at all — it names a filter the list is not obeying.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", kildetype: "biobank"),
+            Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister")));
+
+        Tick(cut, "Kildetype", "Biobank");
+
+        Assert.Equal("Kildetype 1 valgt", Summary(cut, "Kildetype"));
+
+        Untick(cut, "Kildetype", "Biobank");
+
+        Assert.Equal("Kildetype", Summary(cut, "Kildetype"));
+        Assert.Empty(cut.FindAll(".munin-explorer-filters__chosen"));
+    }
+
+    [Fact]
+    public void Facets_WhenACountIsDrawn_ThenItIsBesideTheHeadingRatherThanInsideIt()
+    {
+        // The shape the count has to keep. A number inside the <h4> becomes part of the heading
+        // text, and this panel is what a screen-reader user navigates by heading — "Kildetype 1"
+        // is a worse heading than "Kildetype", and it is not a better name for the disclosure
+        // either, because the whole summary is what names that. So: a sibling, inside the summary.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", kildetype: "biobank"),
+            Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister")));
+
+        Tick(cut, "Kildetype", "Biobank");
+
+        var summary = Facet(cut, "Kildetype").QuerySelector("summary")!;
+        var heading = summary.QuerySelector("h4")!;
+        var count = summary.QuerySelector(".munin-explorer-filters__chosen")!;
+
+        Assert.Equal("Kildetype", heading.TextContent.Trim());
+        Assert.Same(summary, count.ParentElement);
+        Assert.Empty(heading.QuerySelectorAll(".munin-explorer-filters__chosen"));
+
+        // Native disclosure semantics, unchanged by the count landing in the summary: `open` is the
+        // state and there is no second claim about it to drift out of step. (Fhi.Metadata-co3sf)
+        Assert.False(summary.HasAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void Facets_WhenOneFacetIsTicked_ThenAnotherFacetReportsNoneOfIt()
+    {
+        // Each summary counts its own facet. The panel already has a total over all four, in its
+        // own heading, and a per-facet count reading that total would say the same wrong number
+        // four times over.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", kildetype: "biobank", dataProcessor: "Folkehelseinstituttet"),
+            Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister",
+                  dataProcessor: "Kreftregisteret")));
+
+        Tick(cut, "Kildetype", "Biobank");
+
+        Assert.Equal("Kildetype 1 valgt", Summary(cut, "Kildetype"));
+        Assert.Equal("Databehandler", Summary(cut, "Databehandler"));
+    }
+
+    [Fact]
+    public void Facets_WhenTheHostAsksForEnglish_ThenTheCountIsWordedInEnglish()
+    {
+        // The words come from the text record like every other string here. A count assembled in
+        // markup would be Norwegian on an English host, and it would be the only thing on the page
+        // that was.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", kildetype: "biobank"),
+            Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister")));
+
+        Tick(cut, "Kildetype", "Biobank");
+
+        cut.Render(b => b.Add(c => c.Language, "en"));
+
+        Assert.Equal("Source type 1 selected", Summary(cut, "Source type"));
+    }
+
+    [Fact]
+    public void Facets_WhenAValueIsTicked_ThenNoFacetIsFoldedOrUnfoldedByIt()
+    {
+        // What this can see: a narrowing render writes `open` on the first facet and on no other,
+        // so an implementation that rewrote the attribute per render would have to keep agreeing
+        // with the seed. What it cannot: bUnit re-serialises from the render tree and never runs a
+        // native <details> toggle, so a facet the READER opened is unstageable here. The fold
+        // surviving the diff is pinned in a browser by kilde-facets in axe-states.mjs, which ticks
+        // a value inside one.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS",
+                  kildetype: "biobank", accessRights: "eu-access:NON_PUBLIC",
+                  dataProcessor: "Folkehelseinstituttet"),
+            Kilde("Dødsårsaksregisteret", "K_DAR",
+                  kildetype: "sentraltHelseregister", accessRights: "eu-access:PUBLIC",
+                  dataProcessor: "Helsedirektoratet")));
+
+        Tick(cut, "Databehandler", "Helsedirektoratet");
+
+        Assert.Equal(["Dødsårsaksregisteret"], RowNames(cut));
+        Assert.Equal([true, false, false], Facets(cut).Select(f => f.HasAttribute("open")).ToArray());
+    }
+
+    [Fact]
+    public void Facets_WhenAKildeIsOpenedAndClosed_ThenTheTicksSurviveAndTheFoldsAreSeededAgain()
+    {
+        // The one thing a drill-in does not carry back, pinned so it is a decision rather than a
+        // surprise: the fold is in the <details> elements that branch removes, while the ticks and
+        // the search are the component's own. The reader comes back to the panel's default shape
+        // with every filter still on — and still counted on the heading, which is what keeps a
+        // folded facet from hiding one.
+        var als = Kilde("Als registeret", "K_ALS",
+                        kildetype: "biobank", accessRights: "eu-access:NON_PUBLIC",
+                        dataProcessor: "Folkehelseinstituttet");
+        var client = new FakeClient(
+            als,
+            Kilde("Dødsårsaksregisteret", "K_DAR",
+                  kildetype: "sentraltHelseregister", accessRights: "eu-access:PUBLIC",
+                  dataProcessor: "Helsedirektoratet")).Publishing(als);
+
+        var cut = RenderWith(client);
+
+        Tick(cut, "Databehandler", "Folkehelseinstituttet");
+
+        cut.Find(".munin-explorer-kilder tbody th button").Click();
+        cut.Find(".munin-explorer-drilldown button").Click();
+
+        Assert.Equal(["Als registeret"], RowNames(cut));
+        Assert.Equal("Databehandler 1 valgt", Summary(cut, "Databehandler"));
+        Assert.Equal([true, false, false], Facets(cut).Select(f => f.HasAttribute("open")).ToArray());
+    }
+
+    // ---------------------------------------------------------------------------------
+    // The active-filter chips over the results.
+    // ---------------------------------------------------------------------------------
+
+    /// <summary>The visible text of every chip, without its close control's glyph.</summary>
+    /// <remarks>
+    /// The first child is the value's own element — the one carrying its lang — and the button
+    /// follows it, so reading the whole capsule would append the × to every assertion here.
+    /// </remarks>
+    private static IReadOnlyList<string> Chips(IRenderedComponent<KildeSearch> cut) =>
+        [.. cut.FindAll(".munin-explorer-filters__chip").Select(chip => chip.FirstChild!.TextContent.Trim())];
+
+    /// <summary>Press the close control on the chip naming <paramref name="value"/>.</summary>
+    private static void RemoveChip(IRenderedComponent<KildeSearch> cut, string value) =>
+        cut.FindAll(".munin-explorer-filters__chip")
+            .First(chip => chip.FirstChild!.TextContent.Trim() == value)
+            .QuerySelector(".munin-explorer-filters__chip-remove")!
+            .Click();
+
+    /// <summary>Which of the panel's checkboxes are ticked, in the order the panel draws them.</summary>
+    private static IReadOnlyList<bool> Ticks(IRenderedComponent<KildeSearch> cut) =>
+    [
+        .. cut.FindAll(".munin-explorer-filters__facets li input[type=checkbox]")
+            .Select(box => box.HasAttribute("checked"))
+    ];
+
+    /// <summary>A catalogue whose kildetype and databehandler facets narrow it independently.</summary>
+    /// <remarks>
+    /// Two facets rather than two values in one, because ticking twice inside a facet widens the
+    /// list — OR within, AND across — and a fixture that could only do the first would never render
+    /// two chips over a list narrowed twice.
+    /// </remarks>
+    private static FakeClient TwoNarrowingFacets() => new(
+        Kilde("Als registeret", "K_ALS",
+            kildetype: "nasjonaltMedisinskKvalitetsregister", dataProcessor: "Folkehelseinstituttet"),
+        Kilde("Dødsårsaksregisteret", "K_DAR",
+            kildetype: "sentraltHelseregister", dataProcessor: "Folkehelseinstituttet"),
+        Kilde("Reseptregisteret", "K_NORPD",
+            kildetype: "sentraltHelseregister", dataProcessor: "Helsedirektoratet"),
+        Kilde("Den norske mor, far og barn-undersøkelsen", "K_MOBA",
+            kildetype: "biobank", dataProcessor: "Folkehelseinstituttet"));
+
+    [Fact]
+    public void ActiveFilters_WhenNothingIsTicked_ThenThereIsNoRowAtAll()
+    {
+        // A row reading "Aktive filtre" over no chips, beside a button that would clear nothing, is
+        // furniture that reads as a filter the reader cannot see — the same argument the hierarchy
+        // trail and the pager's dead buttons rest on.
+        var cut = RenderWith(TwoNarrowingFacets());
+
+        Assert.Empty(cut.FindAll(".munin-explorer-filters__active"));
+        Assert.Empty(cut.FindAll(".munin-explorer-filters__chip"));
+        Assert.DoesNotContain("Aktive filtre", cut.Markup);
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenTwoFacetsAreTicked_ThenEachIsAChipAndTheCountSaysBothNumbers()
+    {
+        // The whole reason this bead exists: with two facets ticked the list was a short catalogue
+        // and nothing on screen named what had been ticked. Asserted on the rendered markup rather
+        // than on the component's state, because state was never what the reader could not see.
+        var cut = RenderWith(TwoNarrowingFacets());
+
+        Tick(cut, "Kildetype", "Sentralt helseregister");
+        Tick(cut, "Databehandler", "Helsedirektoratet");
+
+        Assert.Equal(["Sentralt helseregister", "Helsedirektoratet"], Chips(cut));
+        Assert.Equal("1 kilde av 4, avgrenset av 2 filtre", ResultCount(cut));
+        Assert.Equal(["Reseptregisteret"], RowNames(cut));
+
+        // The heading and the clear-all beside them, both wearing names Stiler already defines.
+        var row = cut.Find(".munin-explorer-filters__active");
+
+        Assert.Equal("Aktive filtre", row.QuerySelector("p.caption.margin--none")!.TextContent.Trim());
+        Assert.Equal(
+            "Fjern alle filtre",
+            row.QuerySelector("button.hd-button-square.button-square--ghost")!.TextContent.Trim());
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenAChipIsDrawn_ThenItsCloseControlIsNamedAfterTheValueItRemoves()
+    {
+        // A row of controls all announcing "Fjern" is a row a screen reader cannot tell apart, and
+        // the × is not a name at all. AccessibleName refuses title and placeholder, so this cannot
+        // pass on an attribute that merely looks like one.
+        var cut = RenderWith(TwoNarrowingFacets());
+
+        Tick(cut, "Kildetype", "Sentralt helseregister");
+
+        Assert.Equal(
+            "Fjern filteret Sentralt helseregister",
+            AccessibleName.Of(cut.Find(".munin-explorer-filters__chip-remove")));
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenAChipIsRemoved_ThenItsOwnCheckboxUnticksAndOnlyThatValueIsWidened()
+    {
+        // THE TRAP. A chip that cleared its value down a path of its own would leave the panel's
+        // checkbox ticked over a list that had stopped obeying it, and neither control would say
+        // which one the rows came from. Both halves in one test, because either alone passes
+        // against exactly that: the checkbox is asserted unticked AND the rows are asserted to have
+        // widened by that value and by nothing else.
+        var cut = RenderWith(TwoNarrowingFacets());
+
+        Tick(cut, "Kildetype", "Sentralt helseregister");
+        Tick(cut, "Databehandler", "Helsedirektoratet");
+
+        Assert.Equal(["Reseptregisteret"], RowNames(cut));
+
+        RemoveChip(cut, "Helsedirektoratet");
+
+        Assert.Equal(["Sentralt helseregister"], Chips(cut));
+        Assert.Equal("2 kilder av 4, avgrenset av 1 filter", ResultCount(cut));
+        Assert.Equal(["Dødsårsaksregisteret", "Reseptregisteret"], RowNames(cut));
+
+        // The panel's own controls, read off the markup: exactly the one still-ticked value, and
+        // its count beside it because that is what the label draws.
+        Assert.Equal(
+            ["Sentralt helseregister (2)"],
+            cut.FindAll(".munin-explorer-filters__facets li")
+                .Where(li => li.QuerySelector("input[type=checkbox]")!.HasAttribute("checked"))
+                .Select(li => li.QuerySelector("label")!.TextContent.Trim()));
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenFjernAlleIsPressed_ThenNoChipRemainsNoBoxIsTickedAndTheListIsWhole()
+    {
+        // THE CLEAR-ALL TRAP, and all three halves in one test for the reason above: a clear-all
+        // that emptied the chips while leaving a checkbox ticked is worse than none, because the
+        // list then disagrees with every control on the page. Three values across two facets, so a
+        // press that cleared one facet, or one value, cannot pass for one that cleared the state.
+        var cut = RenderWith(TwoNarrowingFacets());
+
+        Tick(cut, "Kildetype", "Sentralt helseregister");
+        Tick(cut, "Kildetype", "Biobank");
+        Tick(cut, "Databehandler", "Helsedirektoratet");
+
+        Assert.Equal(3, Chips(cut).Count);
+
+        cut.Find(".munin-explorer-filters__active button.hd-button-square").Click();
+
+        Assert.Empty(cut.FindAll(".munin-explorer-filters__chip"));
+        Assert.Empty(cut.FindAll(".munin-explorer-filters__active"));
+        Assert.NotEmpty(Ticks(cut));
+        Assert.DoesNotContain(true, Ticks(cut));
+        Assert.Equal("4 kilder", ResultCount(cut));
+        Assert.Equal(4, RowNames(cut).Count);
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenAChipIsRemoved_ThenFocusGoesToTheFieldRatherThanTheDocument()
+    {
+        // The control takes itself off the page as it acts — and the last chip takes the whole row
+        // with it — so without this the reader's focus lands on <body> and their next Tab starts at
+        // the top of the host's page. The same rescue the clear control in the search field makes.
+        var cut = RenderWith(TwoNarrowingFacets());
+
+        Tick(cut, "Kildetype", "Sentralt helseregister");
+        RemoveChip(cut, "Sentralt helseregister");
+
+        JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus");
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenFjernAlleIsPressed_ThenFocusGoesToTheFieldRatherThanTheDocument()
+    {
+        var cut = RenderWith(TwoNarrowingFacets());
+
+        Tick(cut, "Kildetype", "Sentralt helseregister");
+        cut.Find(".munin-explorer-filters__active button.hd-button-square").Click();
+
+        JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus");
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenTheReaderReadsInEnglish_ThenTheRowIsInEnglishToo()
+    {
+        // The heading and the remove control's name are this package's own words, so both have a
+        // Norwegian arm that a copy-paste leaves in place. The value between them is the
+        // catalogue's and stays as the catalogue wrote it.
+        var cut = RenderWith(TwoNarrowingFacets(), b => b.Add(c => c.Language, "en"));
+
+        Tick(cut, "Data processor", "Helsedirektoratet");
+
+        var row = cut.Find(".munin-explorer-filters__active");
+
+        Assert.Equal("Active filters", row.QuerySelector("p.caption")!.TextContent.Trim());
+        Assert.Equal(
+            "Remove the filter Helsedirektoratet",
+            AccessibleName.Of(cut.Find(".munin-explorer-filters__chip-remove")));
+        Assert.Equal(
+            "Clear all filters",
+            row.QuerySelector("button.hd-button-square")!.TextContent.Trim());
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenAValueIsTheCataloguesOwnWords_ThenTheChipCarriesTheSameLangTheChoiceDoes()
+    {
+        // A Norwegian organisation's name inside an English page is read out with English phonetics
+        // otherwise, which is WCAG 3.1.2 — and the chip and the checkbox draw the same string, so
+        // marking one and not the other is the defect halfway done.
+        var cut = RenderWith(TwoNarrowingFacets(), b => b.Add(c => c.Language, "en"));
+
+        Tick(cut, "Data processor", "Helsedirektoratet");
+
+        // On the value's own element and not on the capsule: the capsule holds the remove control
+        // too, whose accessible name is this package's English prose, and lang inherits.
+        Assert.Equal("no", cut.Find(".munin-explorer-filters__chip").FirstElementChild!.GetAttribute("lang"));
+        Assert.Null(cut.Find(".munin-explorer-filters__chip").GetAttribute("lang"));
+        Assert.Null(cut.Find(".munin-explorer-filters__chip-remove").GetAttribute("lang"));
+
+        // The value this package translates carries none, for the same reason the choice does not:
+        // a lang saying what the page already says is noise.
+        Tick(cut, "Source type", "Central health registry");
+
+        Assert.Null(
+            cut.FindAll(".munin-explorer-filters__chip")
+                .Single(chip => chip.FirstChild!.TextContent.Trim() == "Central health registry")
+                .FirstElementChild!
+                .GetAttribute("lang"));
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenTheChipsWordsAreNotTheCataloguesValue_ThenPressingItStillClearsTheFilter()
+    {
+        // THE IDENTITY TRAP, and the one the databehandler chips cannot catch: Helsedirektoratet is
+        // its own catalogue value, so a chip removing by its displayed text works there and works
+        // nowhere else. Kildetype draws "Sentralt helseregister" for the value sentraltHelseregister
+        // — remove by the words and the press is silent: chip, tick and narrowing all stay.
+        var cut = RenderWith(TwoNarrowingFacets());
+
+        Tick(cut, "Kildetype", "Sentralt helseregister");
+
+        Assert.Equal(["Sentralt helseregister"], Chips(cut));
+        Assert.Equal(["Dødsårsaksregisteret", "Reseptregisteret"], RowNames(cut));
+
+        RemoveChip(cut, "Sentralt helseregister");
+
+        Assert.Empty(cut.FindAll(".munin-explorer-filters__chip"));
+        Assert.DoesNotContain(true, Ticks(cut));
+        Assert.Equal("4 kilder", ResultCount(cut));
+        Assert.Equal(4, RowNames(cut).Count);
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenATickedValueIsTypedOutOfSight_ThenItsChipIsTheControlThatIsLeft()
+    {
+        // A facet's own box narrows the values drawn and not the selection, so a value ticked and
+        // then typed away stays narrowing with its checkbox off the page. Its chip is then the only
+        // control on screen for it, which holds because the row projects _chosen rather than the
+        // facet's visible options — and would stop holding, silently, if that were ever routed.
+        var cut = RenderWith(CatalogueWithOneBigFacet());
+
+        Tick(cut, "Databehandler", "Kreftregisteret");
+
+        var narrowed = RowNames(cut);
+
+        Assert.Single(narrowed);
+
+        SearchFacet(cut, "Databehandler", "universitetet");
+
+        Assert.DoesNotContain("Kreftregisteret", ChoiceValues(Facet(cut, "Databehandler")));
+        Assert.Equal(["Kreftregisteret"], Chips(cut));
+
+        RemoveChip(cut, "Kreftregisteret");
+
+        // The list is whole again, and the box is untouched: the chip cleared the filter without
+        // reaching into what the reader had typed.
+        Assert.Empty(cut.FindAll(".munin-explorer-filters__chip"));
+        Assert.True(narrowed.Count < RowNames(cut).Count, "The chip left the list narrowed.");
+        Assert.Equal("universitetet", FacetSearch(cut, "Databehandler")!.GetAttribute("value"));
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenAValueIsLongerThanTheFacetDraws_ThenTheChipIsCutAndCarriesTheWholeValue()
+    {
+        // The chip reads its words through the same Option the checkbox does, so the 200-character
+        // databehandler is cut to the same length and keeps the whole value in `title`. A chip that
+        // read the raw value instead would lay that sentence across the results.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", dataProcessor: LongDataProcessor),
+            Kilde("Dødsårsaksregisteret", "K_DAR", dataProcessor: "Folkehelseinstituttet")));
+
+        Tick(cut, "Databehandler", LongDataProcessor[..20]);
+
+        var chip = cut.Find(".munin-explorer-filters__chip");
+
+        Assert.EndsWith("…", chip.FirstChild!.TextContent.Trim(), StringComparison.Ordinal);
+        Assert.Equal(LongDataProcessor, chip.FirstElementChild!.GetAttribute("title"));
+
+        // And it removes by the value the catalogue sent, not by the cut words on screen: pressing
+        // a chip whose text is not its value has to clear the filter all the same.
+        RemoveChip(cut, chip.FirstChild!.TextContent.Trim());
+
+        Assert.Empty(cut.FindAll(".munin-explorer-filters__chip"));
+        Assert.Equal(["Als registeret", "Dødsårsaksregisteret"], RowNames(cut));
+    }
+
+    // ---------------------------------------------------------------------------------
+    // The search inside a facet.
+    // ---------------------------------------------------------------------------------
+
+    /// <summary>The threshold the panel applies, read off the component rather than repeated here.</summary>
+    /// <remarks>
+    /// Reflected rather than written down as a literal, so the number stays decided in exactly one
+    /// place: a test carrying its own copy keeps passing while the two disagree, which is the whole
+    /// failure "decide it once and apply it uniformly" exists to prevent.
+    /// </remarks>
+    private static int SearchThreshold =>
+        (int)typeof(KildeSearch)
+            .GetField("FacetSearchThreshold", BindingFlags.NonPublic | BindingFlags.Static)!
+            .GetRawConstantValue()!;
+
+    /// <summary>
+    /// The four spellings of one organisation the live catalogue really holds.
+    /// </summary>
+    /// <remarks>
+    /// Quoted from Kelda rather than constructed, because the trap this feature carries is exactly
+    /// them: a search box makes the duplicates easy to find and easy to mistake for four
+    /// organisations. Merging them is a claim about the catalogue — Fhi.Metadata-4kxfv.
+    /// </remarks>
+    private static readonly string[] FhiSpellings =
+    [
+        "FHI",
+        "Folkehelseinstituttet",
+        "Folkehelseinstituttet (FHI)",
+        "Nasjonalt Folkehelseinstitutt (FHI)"
+    ];
+
+    /// <summary>
+    /// A catalogue with a facet on each side of the threshold: five kildetyper, and twelve
+    /// databehandlere, four of them one organisation spelled four ways.
+    /// </summary>
+    /// <remarks>
+    /// Both sides in ONE panel, which is what a fixture built from databehandler alone cannot show:
+    /// that proves a box appears, never that it stays off the facet whose five values are all on
+    /// screen already. The kildetyper cycle, so the small facet stays at five values however many
+    /// kilder are added.
+    /// </remarks>
+    private static FakeClient CatalogueWithOneBigFacet(params string[] extraProcessors)
+    {
+        string[] kildetyper =
+        [
+            "sentraltHelseregister",
+            "nasjonaltMedisinskKvalitetsregister",
+            "biobank",
+            "annenDatakilde",
+            "forskningsprosjekt"
+        ];
+
+        string[] processors =
+        [
+            .. FhiSpellings,
+            "Direktoratet for e-helse",
+            "Helsedirektoratet",
+            "Kreftregisteret",
+            "Norsk helsenett SF",
+            "Oslo universitetssykehus HF",
+            "St. Olavs hospital HF",
+            "Universitetet i Bergen",
+            "Universitetet i Oslo",
+            .. extraProcessors
+        ];
+
+        return new FakeClient(
+        [
+            .. processors.Select((processor, index) =>
+                Kilde($"Kilde {index:00}", $"K_{index:00}",
+                      kildetype: kildetyper[index % kildetyper.Length],
+                      dataProcessor: processor))
+        ]);
+    }
+
+    /// <summary>A catalogue whose databehandler facet has exactly <paramref name="values"/> values.</summary>
+    private static FakeClient CatalogueWithProcessors(int values) =>
+        new FakeClient(
+        [
+            .. Enumerable.Range(0, values).Select(index =>
+                Kilde($"Kilde {index:00}", $"K_{index:00}", dataProcessor: $"Databehandler {index:00}"))
+        ]);
+
+    /// <summary>One facet's own search field, or null for a facet the panel gave none.</summary>
+    private static IElement? FacetSearch(IRenderedComponent<KildeSearch> cut, string heading) =>
+        Facet(cut, heading).QuerySelector("input[type=text]");
+
+    /// <summary>Type into one facet's search field and let the panel redraw.</summary>
+    /// <remarks>
+    /// <c>Change</c> rather than <c>Input</c>: the field binds on change for the reason every other
+    /// field in this component does — <c>oninput</c> is one round-trip per keystroke on helsedata's
+    /// Blazor Server circuit, whatever the handler does with it. Driving <c>oninput</c> here would
+    /// pass against a field bound to neither event.
+    /// </remarks>
+    private static void SearchFacet(IRenderedComponent<KildeSearch> cut, string heading, string text) =>
+        FacetSearch(cut, heading)!.Change(text);
+
+    /// <summary>The one status line over the list, which is where the result count is written.</summary>
+    /// <remarks>
+    /// Anchored on the row rather than on the section, because the line stopped being a child of
+    /// the section when it moved into <c>munin-explorer-results__toolbar</c>. Anchored on
+    /// something, because a bare <c>p[role=status]</c> would also find the selection count and an
+    /// opened row's own. (Fhi.Metadata-tciss)
+    /// </remarks>
+    private static string ResultCount(IRenderedComponent<KildeSearch> cut) =>
+        cut.Find(".munin-explorer-results__toolbar > p[role=status]").TextContent.Trim();
+
+    /// <summary>A choice's value, with the count the label draws after it taken off.</summary>
+    private static IReadOnlyList<string> ChoiceValues(IElement facet) =>
+    [
+        .. Choices(facet).Select(choice => choice[..choice.LastIndexOf(" (", StringComparison.Ordinal)])
+    ];
+
+    [Fact]
+    public void FacetSearch_WhenOneFacetIsPastTheThresholdAndAnotherIsNot_ThenOnlyTheLongOneGetsABox()
+    {
+        // THE TRAP the threshold exists for, and it needs both sides in one panel: a change measured
+        // only against databehandler proves a box appears, not that it stays off the facet whose
+        // five values are all on screen already. Kildetype is that facet, and Munin's own Kelda has
+        // no more values in it than this fixture does.
+        var cut = RenderWith(CatalogueWithOneBigFacet());
+
+        Assert.Equal(5, Choices(Facet(cut, "Kildetype")).Count);
+        Assert.Equal(12, Choices(Facet(cut, "Databehandler")).Count);
+
+        // Read against the threshold rather than against 5 and 12, so this test says which side of
+        // the decision each facet is on rather than restating the fixture.
+        Assert.True(5 <= SearchThreshold, "Kildetype has to be at or under the threshold to be the small side.");
+        Assert.True(12 > SearchThreshold, "Databehandler has to be past the threshold to be the long side.");
+
+        Assert.Null(FacetSearch(cut, "Kildetype"));
+        Assert.NotNull(FacetSearch(cut, "Databehandler"));
+    }
+
+    [Fact]
+    public void FacetSearch_WhenAFacetHasExactlyTheThresholdManyValues_ThenItStillGetsNoBox()
+    {
+        // The boundary, pinned: the rule is MORE than the threshold, so a facet sitting exactly on
+        // it is one of the small ones. "Roughly ten" is what the proposal said, and a number nobody
+        // wrote a test around is a number that drifts by one the next time somebody reads it.
+        var cut = RenderWith(CatalogueWithProcessors(SearchThreshold));
+
+        Assert.Equal(SearchThreshold, Choices(Facet(cut, "Databehandler")).Count);
+        Assert.Null(FacetSearch(cut, "Databehandler"));
+    }
+
+    [Fact]
+    public void FacetSearch_WhenAFacetHasOneValueMoreThanTheThreshold_ThenItGetsABox()
+    {
+        var cut = RenderWith(CatalogueWithProcessors(SearchThreshold + 1));
+
+        Assert.Equal(SearchThreshold + 1, Choices(Facet(cut, "Databehandler")).Count);
+        Assert.NotNull(FacetSearch(cut, "Databehandler"));
+    }
+
+    [Fact]
+    public void FacetSearch_WhenTheReaderTypes_ThenOnlyThatFacetsValuesNarrow()
+    {
+        // The whole promise of this control, stated as what it must NOT touch. A box wired to the
+        // list instead of to its own facet would look right on screen — the facet narrows either
+        // way — and would quietly be a second freetext search over the catalogue.
+        var client = CatalogueWithOneBigFacet();
+        var cut = RenderWith(client);
+
+        var rowsBefore = RowNames(cut);
+        var countBefore = ResultCount(cut);
+        var kildetypeBefore = Choices(Facet(cut, "Kildetype"));
+
+        SearchFacet(cut, "Databehandler", "folke");
+
+        // Its own values, narrowed. Three of the four FHI spellings, because the fourth is spelled
+        // "FHI" and does not contain the letters typed — which is the duplication this facet has,
+        // shown rather than tidied away.
+        Assert.Equal(
+            ["Folkehelseinstituttet", "Folkehelseinstituttet (FHI)", "Nasjonalt Folkehelseinstitutt (FHI)"],
+            ChoiceValues(Facet(cut, "Databehandler")));
+
+        // And nothing else: not the rows, not the sentence counting them, not the other facet, and
+        // not the API, which was asked for the list once at startup and must not be asked again.
+        Assert.Equal(rowsBefore, RowNames(cut));
+        Assert.Equal(countBefore, ResultCount(cut));
+        Assert.Equal(kildetypeBefore, Choices(Facet(cut, "Kildetype")));
+        Assert.Equal(1, client.Calls);
+    }
+
+    [Fact]
+    public void FacetSearch_WhenSeveralSpellingsOfOneOrganisationMatch_ThenEachStaysItsOwnChoice()
+    {
+        // THE TRAP the bead names. Databehandler holds four spellings of Folkehelseinstituttet, and
+        // a search box is exactly where somebody is tempted to tidy them into one choice. A reader
+        // ticking a merged choice would filter a set they never asked for, so the merge belongs in
+        // the catalogue (Fhi.Metadata-4kxfv) and until it happens four spellings are four values
+        // with four counts of one.
+        var cut = RenderWith(CatalogueWithOneBigFacet());
+
+        var choices = Choices(Facet(cut, "Databehandler"));
+
+        Assert.Equal(12, choices.Count);
+
+        foreach (var spelling in FhiSpellings)
+        {
+            Assert.Contains($"{spelling} (1)", choices);
+        }
+
+        SearchFacet(cut, "Databehandler", "folkehelseinstitut");
+
+        Assert.Equal(
+            ["Folkehelseinstituttet", "Folkehelseinstituttet (FHI)", "Nasjonalt Folkehelseinstitutt (FHI)"],
+            ChoiceValues(Facet(cut, "Databehandler")));
+
+        // Each of them still filters its own kilde and no other, which is the assertion that fails
+        // against a component that folded them together behind one box.
+        Tick(cut, "Databehandler", "Nasjonalt Folkehelseinstitutt (FHI)");
+
+        Assert.Single(RowNames(cut));
+    }
+
+    [Fact]
+    public void FacetSearch_WhenATickedValueIsTypedOutOfSight_ThenItStaysTickedAndStillNarrowsTheList()
+    {
+        // THE OBVIOUS BUG in this feature, and it is invisible on screen: unticking what the reader
+        // can no longer see leaves the panel looking right while the list silently widens back out.
+        // So this ticks first, types the value out of sight, and asserts on the list — the one place
+        // the tick can still be observed while its checkbox is gone.
+        var cut = RenderWith(CatalogueWithOneBigFacet());
+
+        Tick(cut, "Databehandler", "Kreftregisteret");
+
+        var narrowed = RowNames(cut);
+
+        Assert.Single(narrowed);
+
+        SearchFacet(cut, "Databehandler", "universitetet");
+
+        // Gone from the panel...
+        Assert.DoesNotContain("Kreftregisteret", ChoiceValues(Facet(cut, "Databehandler")));
+
+        // ...and still the filter in force, heading count included.
+        Assert.Equal(narrowed, RowNames(cut));
+        Assert.Equal("Databehandler 1 valgt", Summary(cut, "Databehandler"));
+
+        // Cleared, the value comes back with its tick still on rather than as an empty box beside a
+        // list that is somehow still narrowed.
+        SearchFacet(cut, "Databehandler", string.Empty);
+
+        var restored = Facet(cut, "Databehandler")
+            .QuerySelectorAll("li label")
+            .Single(label => label.TextContent.Trim().StartsWith("Kreftregisteret", StringComparison.Ordinal))
+            .QuerySelector("input")!;
+
+        Assert.True(restored.HasAttribute("checked"), "The ticked value came back unticked.");
+        Assert.Equal(narrowed, RowNames(cut));
+    }
+
+    [Fact]
+    public void FacetSearch_WhenTheSearchIsCleared_ThenEveryValueComesBack()
+    {
+        var cut = RenderWith(CatalogueWithOneBigFacet());
+
+        var all = Choices(Facet(cut, "Databehandler"));
+
+        SearchFacet(cut, "Databehandler", "folke");
+
+        Assert.NotEqual(all, Choices(Facet(cut, "Databehandler")));
+
+        SearchFacet(cut, "Databehandler", "   ");
+
+        // Whitespace is no search, the same rule the freetext box over the list follows — otherwise
+        // a stray space left in the field reads as "the catalogue has nothing called that".
+        Assert.Equal(all, Choices(Facet(cut, "Databehandler")));
+
+        SearchFacet(cut, "Databehandler", "folke");
+        SearchFacet(cut, "Databehandler", string.Empty);
+
+        Assert.Equal(all, Choices(Facet(cut, "Databehandler")));
+    }
+
+    [Fact]
+    public void FacetSearch_WhenTheSearchMatchesNoValue_ThenItSaysSoRatherThanDrawingAnEmptyList()
+    {
+        // An empty facet reads as one whose values failed to load. The sentence is the difference
+        // between "nothing is called that" and "something is broken".
+        var cut = RenderWith(CatalogueWithOneBigFacet());
+
+        SearchFacet(cut, "Databehandler", "kommunehelsetjenesten");
+
+        var facet = Facet(cut, "Databehandler");
+
+        Assert.Empty(Choices(facet));
+        Assert.Empty(facet.QuerySelectorAll("ul"));
+        Assert.Equal("Ingen verdier passer søket", facet.QuerySelector("p.caption")!.TextContent.Trim());
+
+        // The box the reader has to clear is still there, and still holds what they typed.
+        Assert.Equal("kommunehelsetjenesten", FacetSearch(cut, "Databehandler")!.GetAttribute("value"));
+    }
+
+    [Fact]
+    public void FacetSearch_WhenTheBoxHasNarrowedTheFacetToAFew_ThenTheBoxItselfDoesNotGoAway()
+    {
+        // Counted over the values the facet HAS, never over the ones its own search leaves: the
+        // second reading takes the control away the moment it works, under the hand using it. Ticking
+        // cannot shrink a facet past the threshold either, because the counts are over the whole
+        // list — both halves are asserted, because both read on screen as the box flickering.
+        var cut = RenderWith(CatalogueWithOneBigFacet());
+
+        SearchFacet(cut, "Databehandler", "universitetet i");
+
+        Assert.Equal(2, Choices(Facet(cut, "Databehandler")).Count);
+        Assert.NotNull(FacetSearch(cut, "Databehandler"));
+
+        Tick(cut, "Databehandler", "Universitetet i Bergen");
+
+        Assert.Single(RowNames(cut));
+        Assert.NotNull(FacetSearch(cut, "Databehandler"));
+    }
+
+    [Fact]
+    public void FacetSearch_WhenAValueIsLongerThanTheLabelLimit_ThenItIsFoundByWhatIsOffScreen()
+    {
+        // The label on screen is cut at 60 characters and the whole value is in the title, so a
+        // search over what is drawn would make the 200-character databehandler findable by its
+        // opening words and by nothing else. It matches the value, which is what the title shows.
+        var cut = RenderWith(CatalogueWithOneBigFacet(LongDataProcessor));
+
+        SearchFacet(cut, "Databehandler", "referansegruppen");
+
+        Assert.Single(Choices(Facet(cut, "Databehandler")));
+        Assert.Equal(
+            LongDataProcessor,
+            Facet(cut, "Databehandler").QuerySelector("li label")!.GetAttribute("title"));
+    }
+
+    [Fact]
+    public void FacetSearch_Always_ThenTheBoxIsNamedAfterTheFacetItSearches()
+    {
+        // Several of these can be on screen at once, so boxes all announcing "Søk i verdiene" are
+        // controls a screen reader cannot tell apart. The name is a real <label for> rather than the
+        // placeholder — AccessibleName refuses to count a placeholder, exactly because it is not one.
+        var cut = RenderWith(CatalogueWithOneBigFacet());
+
+        Assert.Equal("Søk i Databehandler", AccessibleName.Of(FacetSearch(cut, "Databehandler")!));
+    }
+
+    [Fact]
+    public void FacetSearch_WhenTwoFacetsBothHaveABox_ThenTypingInOneLeavesTheOtherAlone()
+    {
+        // One field per facet, not one for the panel. Two boxes sharing a state would narrow both
+        // facets from one keystroke, and the reader would watch a facet they never touched empty out.
+        var cut = RenderWith(CatalogueWithTwoBigFacets());
+
+        var kategoriBefore = ChoiceValues(Facet(cut, "Kategori"));
+
+        Assert.Equal(12, kategoriBefore.Count);
+        Assert.NotNull(FacetSearch(cut, "Kategori"));
+
+        SearchFacet(cut, "Databehandler", "universitetet");
+
+        Assert.Equal(2, Choices(Facet(cut, "Databehandler")).Count);
+        Assert.Equal(kategoriBefore, ChoiceValues(Facet(cut, "Kategori")));
+        Assert.True(
+            string.IsNullOrEmpty(FacetSearch(cut, "Kategori")!.GetAttribute("value")),
+            "Typing in one facet's box put text in another facet's box.");
+
+        // And the ids differ, which is what keeps two labels naming two fields rather than both
+        // naming the first.
+        Assert.NotEqual(
+            FacetSearch(cut, "Kategori")!.GetAttribute("id"),
+            FacetSearch(cut, "Databehandler")!.GetAttribute("id"));
+    }
+
+    [Fact]
+    public void FacetSearch_WhenTheReaderReadsInEnglish_ThenTheBoxIsInEnglishToo()
+    {
+        var cut = RenderWith(
+            CatalogueWithOneBigFacet(),
+            parameters => parameters.Add(component => component.Language, "en"));
+
+        SearchFacet(cut, "Data processor", "kommunehelsetjenesten");
+
+        Assert.Equal("Search in Data processor", AccessibleName.Of(FacetSearch(cut, "Data processor")!));
+        Assert.Equal(
+            "No values match the search",
+            Facet(cut, "Data processor").QuerySelector("p.caption")!.TextContent.Trim());
+    }
+
+    [Fact]
+    public void FacetSearch_WhenTheSearchIsCommitted_ThenFocusGoesToTheBoxRatherThanTheDocument()
+    {
+        // Committing with Tab has already put focus on the first checkbox by the time the panel
+        // redraws, and narrowing removes it — the whole <ul> when nothing matches. Same failure and
+        // the same answer as the freetext box's clear control. (Fhi.Metadata-ag4n7)
+        var cut = RenderWith(CatalogueWithOneBigFacet());
+
+        SearchFacet(cut, "Databehandler", "kommunehelsetjenesten");
+
+        JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus");
+    }
+
+    [Fact]
+    public void FacetSearch_WhenTheCommitWidensTheFacet_ThenFocusIsLeftWhereTheReaderPutIt()
+    {
+        // The other half of the guard, and the half onchange makes necessary: the event fires
+        // BECAUSE focus left the box, so a reader who emptied it and moved on must not be dragged
+        // back to a facet that only grew. Nothing was removed to rescue them from.
+        var cut = RenderWith(CatalogueWithOneBigFacet());
+
+        SearchFacet(cut, "Databehandler", "universitetet");
+
+        // The narrowing commit above is allowed its rescue, so the widening one is measured against
+        // what it left rather than against nothing.
+        var rescues = JSInterop.Invocations["Blazor._internal.domWrapper.focus"].Count;
+
+        SearchFacet(cut, "Databehandler", string.Empty);
+
+        Assert.Equal(12, Choices(Facet(cut, "Databehandler")).Count);
+        Assert.Equal(rescues, JSInterop.Invocations["Blazor._internal.domWrapper.focus"].Count);
+    }
+
+    [Fact]
+    public void FacetSearch_WhenTheCommitLeavesEveryDrawnValueStanding_ThenFocusIsLeftWhereTheReaderPutIt()
+    {
+        // A term every value contains redraws the same twelve checkboxes, so the one the reader
+        // tabbed onto is still under them. This is the case that yanks focus out of the NEXT
+        // facet's box when the reader clicks straight into it and starts typing.
+        var cut = RenderWith(CatalogueWithProcessors(12));
+
+        SearchFacet(cut, "Databehandler", "databehandler");
+
+        Assert.Equal(12, Choices(Facet(cut, "Databehandler")).Count);
+        Assert.Empty(JSInterop.Invocations["Blazor._internal.domWrapper.focus"]);
+    }
+
+    [Fact]
+    public void FacetSearch_Always_ThenTheBoxPromisesNoEnterKeyItCannotHonour()
+    {
+        // enterkeyhint="search" is the freetext box's, and it earns it by sitting in a <form> whose
+        // preventDefault makes Enter search instead of reloading the host's page. This box has no
+        // form, so the key would be labelled for something that does not happen.
+        var cut = RenderWith(CatalogueWithOneBigFacet());
+
+        var box = FacetSearch(cut, "Databehandler")!;
+
+        Assert.False(box.HasAttribute("enterkeyhint"));
+        Assert.Null(box.Closest("form"));
+    }
+
+    /// <summary>
+    /// A catalogue where two facets are past the threshold: twelve databehandlere and a kategori
+    /// per kilde.
+    /// </summary>
+    /// <remarks>
+    /// The kategori tokens are deliberately ones the catalogue's vocabulary does not list, so they
+    /// draw as themselves and a test can tell the two facets' values apart at a glance.
+    /// </remarks>
+    private static FakeClient CatalogueWithTwoBigFacets()
+    {
+        string[] processors =
+        [
+            .. FhiSpellings,
+            "Direktoratet for e-helse",
+            "Helsedirektoratet",
+            "Kreftregisteret",
+            "Norsk helsenett SF",
+            "Oslo universitetssykehus HF",
+            "St. Olavs hospital HF",
+            "Universitetet i Bergen",
+            "Universitetet i Oslo"
+        ];
+
+        return new FakeClient(
+        [
+            .. processors.Select((processor, index) =>
+                Kilde($"Kilde {index:00}", $"K_{index:00}",
+                      dataProcessor: processor,
+                      category: $"""["annet-vokabular:omrade-{index:00}"]"""))
+        ]);
     }
 
     // ---------------------------------------------------------------------------------
@@ -2817,6 +4432,11 @@ public class KildeSearchTest : BunitContext
         // — coverage lost to a state nobody enters. (Fhi.Metadata-ag4n7)
         cut.Find(".searchbox__freetext").Change("als");
 
+        // And ticked for the same reason: the chips over the results and a facet's ticked-value
+        // count are drawn above zero only, so an untouched panel leaves four names out of the one
+        // list whose job is to notice a fifth. (Fhi.Metadata-l9l2n.53)
+        Tick(cut, "Kildetype", "Sentralt helseregister");
+
         var invented = HostClassNames.Of(cut.FindAll("[class]"))
             .Where(HostClassNames.IsOwnStructureName)
             .Distinct(StringComparer.Ordinal)
@@ -2827,6 +4447,11 @@ public class KildeSearchTest : BunitContext
             "munin-explorer",                    // shared with the variable explorer
             "munin-explorer-container",          // shared
             "munin-explorer-filters",            // shared
+            // The four below are drawn only above zero, which is why this render ticks a value.
+            "munin-explorer-filters__active",
+            "munin-explorer-filters__chip",
+            "munin-explorer-filters__chip-remove",
+            "munin-explorer-filters__chosen",
             "munin-explorer-filters__count",     // shared with the variable explorer's facets
             "munin-explorer-filters__facets",
             "munin-explorer-filters__toggle",
@@ -2839,9 +4464,13 @@ public class KildeSearchTest : BunitContext
             "munin-explorer-kilder-scroll",
             "munin-explorer-kilder__count",
             "munin-explorer-kilder__expand",
+            "munin-explorer-kilder__expand-icon",
             "munin-explorer-kilder__expand-toggle",
             "munin-explorer-kilder__name",
             "munin-explorer-results",            // shared
+            // The row the count shares with the order control and the column picker. Drawn whether or
+            // not there are rows, unlike the two controls in it. (Fhi.Metadata-tciss)
+            "munin-explorer-results__toolbar",
             "munin-explorer-search__clear",      // shared
             "munin-explorer__dropdown",          // the picker, shared
         ], invented);
@@ -2862,6 +4491,44 @@ public class KildeSearchTest : BunitContext
         Tick(cut, "Kildetype", "Sentralt helseregister");
 
         Assert.Equal([], HostClassNames.Orphans(HostClassNames.Of(cut.FindAll("[class]"))));
+    }
+
+    [Fact]
+    public void Facets_WhenASampleStandsInForStiler_ThenTheSummaryIsLaidOutAsOneRow()
+    {
+        // Same half of the bug the fold's guard below answers, and the half this bead first shipped
+        // without: `__chosen` had four declarations that drew nothing while the summary still laid
+        // its <h4> out as a block. The PARTICULAR DECLARATION a host owes is the row — and the
+        // marker with it, since a row is not a list-item and gets none. (Fhi.Metadata-l9l2n.58)
+        var rules = HostClassNames.SampleDeclarationsFor("munin-explorer-filters__facets");
+
+        static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
+
+        var summary = rules
+            .Where(rule => rule.Selector.Contains("summary", StringComparison.Ordinal))
+            .Select(rule => (rule.Selector, Declarations: Squeezed(rule.Declarations)))
+            .ToList();
+
+        Assert.True(
+            summary.Any(rule => !rule.Selector.Contains("::", StringComparison.Ordinal)
+                                && rule.Declarations.Contains("display:flex", StringComparison.Ordinal)),
+            "No rule lays a facet's summary out as a row, so the heading keeps its block box and the "
+            + "ticked-value count beside it is drawn under it instead.");
+
+        Assert.True(
+            summary.Any(rule => rule.Selector.Contains("::after", StringComparison.Ordinal)
+                                && !rule.Selector.Contains("[open]", StringComparison.Ordinal)
+                                && rule.Declarations.Contains(
+                                    "counter(list-item,disclosure-closed)", StringComparison.Ordinal)),
+            "Nothing draws the disclosure marker back, and a summary laid out as a row is not a "
+            + "list-item, so the browser draws none: a folded facet shows nothing to press.");
+
+        // Both states, because one glyph for both is a marker that lies about half the time.
+        Assert.True(
+            summary.Any(rule => rule.Selector.Contains("[open]", StringComparison.Ordinal)
+                                && rule.Declarations.Contains(
+                                    "counter(list-item,disclosure-open)", StringComparison.Ordinal)),
+            "The marker does not turn when the facet opens, so an open facet still looks shut.");
     }
 
     [Fact]
@@ -2892,6 +4559,27 @@ public class KildeSearchTest : BunitContext
             BlocksFor(".munin-explorer-filters__facets[hidden]")
                 .Any(d => d.Contains("display:block", StringComparison.Ordinal)),
             "No rule undoes [hidden] on the facets once the host has room for a sidebar.");
+    }
+
+    [Fact]
+    public void ExpandIcon_WhenASampleStandsInForStiler_ThenTheDeclarationItNeedsIsABox()
+    {
+        // Same shape as the fold's guard above. `.icon` gives the chevron a 24px box on a Stiler
+        // host, and it is that box the toggle's target size rests on; a sample has no `.icon`, so a
+        // stand-in declaring only a colour would draw a control the reader cannot hit.
+        var rules = HostClassNames.SampleDeclarationsFor("munin-explorer-kilder__expand-icon");
+
+        static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
+
+        var blocks = rules.Select(r => Squeezed(r.Declarations)).ToList();
+
+        Assert.True(
+            blocks.Any(d => d.Contains("height:24px", StringComparison.Ordinal)),
+            "No rule gives the chevron the 24px height Stiler's `.icon` gives it.");
+
+        Assert.True(
+            blocks.Any(d => d.Contains("width:24px", StringComparison.Ordinal)),
+            "No rule gives the chevron the 24px width Stiler's `.icon` gives it.");
     }
 
     // ---------------------------------------------------------------------------------
@@ -3095,7 +4783,7 @@ public class KildeSearchTest : BunitContext
         // in Furnished() has a different value so a swap cannot look like a match.
         Assert.Equal(
         [
-            "+",
+            "",                                  // the expand cell: a chevron, no text of its own
             NameCellText(cut),
             "Sentralt helseregister",
             "Aktiv",
@@ -3241,14 +4929,14 @@ public class KildeSearchTest : BunitContext
         ToggleColumn(cut, "Sist endret");
 
         // Years, not formatted dates: the month's short form is the runtime's. The payload holds
-        // 20260423, 20260813 and 20230131. The whole cell is reported when it does not end in a
-        // year, so a fixture re-capture that drops the key fails as "expected 2026, got Ikke
-        // oppgitt" rather than as four characters of it.
+        // 20260423, 20260813, 20230131 and 20210627. The whole cell is reported when it does not
+        // end in a year, so a fixture re-capture that drops the key fails as "expected 2026, got
+        // Ikke oppgitt" rather than as four characters of it.
         var years = cut.FindAll(".munin-explorer-kilder tbody tr")
             .Select(row => row.QuerySelectorAll("td")[^1].TextContent.Trim())
             .Select(text => text.Length >= 4 && text[^4..].All(char.IsAsciiDigit) ? text[^4..] : text);
 
-        Assert.Equal(["2026", "2026", "2023"], years);
+        Assert.Equal(["2026", "2026", "2023", "2021"], years);
     }
 
     [Fact]

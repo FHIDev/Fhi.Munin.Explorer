@@ -262,4 +262,82 @@ public class LanguageTest : BunitContext
                 $"The rate-limit text in {language} names a number: \"{texts.RateLimitError}\".");
         }
     }
+
+    [Theory]
+    [InlineData("no", "String", "Streng")]
+    [InlineData("no", "tekst", "Streng")]
+    [InlineData("no", "BOOLEAN", "Boolsk")]
+    [InlineData("en", "String", "String")]
+    [InlineData("en", "tekst", "String")]
+    [InlineData("en", "BOOLEAN", "Boolean")]
+    public void Texts_WhenTheApiNamesADatatypeInALegacyForm_ThenEverySurfaceSaysTheSameWord(
+        string language, string apiName, string expected)
+    {
+        // The filters endpoint echoes back the word a variable predating the codes was stored as,
+        // so a Norwegian call is answered displayName "String" for code "1" and the rows drew an
+        // English word beside a panel and a facet drawing the Norwegian one. The two paths are
+        // asserted together because fixing one alone is how that shipped. (Fhi.Metadata-l9l2n.49)
+        var texts = Texts.For(language);
+
+        Assert.Equal(expected, texts.NormalizeDataTypeDisplayName(apiName));
+        Assert.Equal(expected, texts.DataTypeLabel(apiName));
+    }
+
+    [Theory]
+    [InlineData("no", "Date", "Dato")]
+    [InlineData("en", "Date", "Date")]
+    [InlineData("no", "Tekst", "Streng")]
+    public void Texts_WhenALegacySpellingArrivesInAnotherCasing_ThenItStillResolvesToOneWord(
+        string language, string apiName, string expected)
+    {
+        // The alias table is case-insensitive, which is deliberate — the stored spellings are not
+        // consistently cased — and is the reason a name that merely looks like a name can be
+        // rewritten. Pinned so that widening the table is a decision somebody makes on purpose
+        // rather than one that lands by accident. (Fhi.Metadata-l9l2n.49)
+        Assert.Equal(expected, Texts.For(language).NormalizeDataTypeDisplayName(apiName));
+    }
+
+    [Theory]
+    [InlineData("Kvasistreng")]
+    [InlineData("Fødselsnummer (11 siffer)")]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("11")]
+    [InlineData("1")]
+    public void Texts_WhenTheApiNamesADatatypeWeHaveNoAliasFor_ThenItIsShownExactlyAsItArrived(
+        string apiName)
+    {
+        // The decision this pins: the API owns the vocabulary, and the shipped table only supplies
+        // the word behind a legacy stored spelling. Routing every name through that table would fix
+        // the word above by freezing editable master data in a package other people ship, so a
+        // datatype added on the API's side has to reach the page unaltered. Without this, widening
+        // the alias table would silently start rewriting names nobody here chose.
+        Assert.Equal(apiName, Texts.For("no").NormalizeDataTypeDisplayName(apiName));
+        Assert.Equal(apiName, Texts.For("en").NormalizeDataTypeDisplayName(apiName));
+    }
+
+    [Fact]
+    public void Texts_WhenThereIsNoNameAtAll_ThenNothingIsInventedForIt()
+    {
+        // A nameless facet is what an API predating displayName sends. Null has to survive so the
+        // caller can see there was no name and fall back to its own word for the code.
+        Assert.Null(Texts.For("no").NormalizeDataTypeDisplayName(null));
+    }
+
+    [Theory]
+    [InlineData("String", "1")]
+    [InlineData("tekst", "1")]
+    [InlineData("BOOLEAN", "4")]
+    [InlineData("1", "1")]
+    [InlineData("11", "11")]
+    [InlineData("Kvasistreng", "Kvasistreng")]
+    public void Texts_WhenAStoredDatatypeIsCanonicalised_ThenALegacySpellingBecomesItsCode(
+        string stored, string expected)
+    {
+        // What makes a row holding "String" find the facet keyed "1". The two identity cases are
+        // the ones that matter as much: a code is already canonical, and a value this package has
+        // never heard of must not be turned into something else. (Fhi.Metadata-l9l2n.49)
+        Assert.Equal(expected, Texts.For("no").CanonicalDataTypeCode(stored));
+        Assert.Equal(expected, Texts.For("en").CanonicalDataTypeCode(stored));
+    }
 }

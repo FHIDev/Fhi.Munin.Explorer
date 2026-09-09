@@ -90,7 +90,8 @@ the reader is told "Kunne ikke laste kilder nå", which is at least true.
 The API side backs that up: every one of those is a primary key, a `NOT NULL` column or a
 `Count()` aggregate, so a null in one is a broken payload rather than a shape Munin can produce.
 The nullable columns it does have — `kortNavn`, `gyldigFra`, the timestamps
-(`Fhi.Metadata-se0by`) — are already annotated `?` here, and that is when to reach for **must be
+(`Fhi.Metadata-se0by`), `kildetype` and every `effectiveKildetype` projected from it
+(`Fhi.Metadata-l9l2n.61`) — are already annotated `?` here, and that is when to reach for **must be
 nullable**: because Munin's column is, not to make a value type tolerate a null.
 
 The strings are the ones worth machinery, because they are the only shape that fails *silently*.
@@ -100,6 +101,44 @@ circuit and the page this package is mounted in. Same likelihood as the others, 
 radius. `RespectNullableAnnotations` is the other answer .NET offers and was rejected: it makes a
 null string throw, which trades the dead page for the whole list disappearing over one blank name.
 (`Fhi.Metadata-o355u`)
+
+## The API names a datatype, not this package
+
+**The datatype vocabulary belongs to the API.** The codes are editable master data on Munin's
+side, so a table of names written here freezes a snapshot in one language and drifts the moment
+someone edits a definition, in a package other people ship and cannot patch. Every surface that
+shows a datatype word — the result rows in `VariableSearch` and `VariableListView`, the datatype
+facet in the filter panel — therefore renders the name the filters endpoint sent, and the shipped
+`Texts.DataTypeNames` table is asked for one thing only.
+
+That one thing is a **legacy stored spelling**. Variables predating the codes hold words rather
+than numbers — `"String"`, `"tekst"`, `"Integer"` — and the filters endpoint echoes such a word
+back as the facet's `displayName` whatever `Accept-Language` asked for, so code `1` arrives named
+"String" on a Norwegian call. `Texts.DataTypeAliases` maps those spellings, in either language, to
+their code; `Texts.CanonicalDataTypeCode` is how a stored value finds its facet, and
+`Texts.NormalizeDataTypeDisplayName` is how such a word becomes the shipped table's name for that
+code **in the reader's own language** — "Streng" under `no`, "String" under `en`. A name the alias
+table has never heard of reaches the page exactly as the API sent it.
+
+The rule that keeps the surfaces agreeing: **canonicalise a stored value before looking it up, and
+normalise every name after.** Skipping the first step is what made a row read "String" beside a
+facet reading "Streng"; skipping the second is what made the facet read a bare code. A datatype
+word rendered any other way is a bug.
+
+`Texts.DataTypeLabel` is the one exception, and it is **every** surface's fallback for a code no
+API name reached — `VariableView`'s panel, which holds the stored code alone; a facet from an API
+predating `displayName`; and either view's rows, whose names arrive from the filters endpoint and
+so are missing whenever that call hangs, fails, or answers without one. The fallback has to be the
+same on all of them: a row falling back to the bare code beside a facet falling back to the table
+put "1" and "Streng" on one screen for one datatype, which is the defect this whole section exists
+to prevent. Never fall back to the raw stored value — canonicalise first, so a legacy spelling and
+its code land on the same word.
+
+One surface still escapes the rule: `VariableSearch`'s expanded row panel draws `DataType` out of
+`AdditionalProperties` through `CatalogueProperties`, in the catalogue's own vocabulary, so a
+Norwegian reader can see "Heltall" in the row and "Datatype: Integer" in the panel below it.
+`VariableView` excludes the key for exactly this reason (`DrawnInTheSidebar`); the search panel does
+not, and closing that is its own bead. (`Fhi.Metadata-l9l2n.49`)
 
 ## Comments
 
@@ -235,6 +274,84 @@ The rule is here, once, rather than as a comment on every component. `SealedComp
 keeps it true: a component added unsealed is not a compile error and its audience is a host, after
 publication. If a future extension route is genuinely wanted, unseal that one type and say in its
 own remarks what it is for — an exception with a reason is fine, silence is what this replaced.
+
+## A swallowed exception is written down before it is swallowed
+
+**Every `catch (Exception)` in `src/` either logs the exception or lets it travel on.** Swallowing
+is right here and stays: an unhandled exception inside a Blazor circuit tears down the whole CMS
+page on helsedata's host, so the browsing surfaces catch everything and say one sentence in the
+alert region. What was wrong is that the exception then went nowhere. Thirty sites threw one away,
+two of them under a comment saying the detail belonged in the host's logs, while nothing in the
+package had ever written to a log (`Fhi.Metadata-l9l2n.47`).
+
+The shape, which is helsedata's own newer code and not an invention of ours:
+
+```csharp
+Log?.LogError(ex, "could not load kilde {KildeId}", id);
+```
+
+- **The exception is the first argument, never a template argument.** `LogError("… {ex}", ex)` is
+  the same line minus the stack, and their older sites do it that way — do not copy those.
+- **No component name in the template.** `Log` is `ILogger<KildeSearch>`, so the category already
+  is the type; every sink renders it, and `"KildeSearch: could not load …"` writes it twice.
+- **Named PascalCase placeholders, never interpolation.** No `LoggerMessage` source generator, no
+  `EventId`, no `BeginScope`: their solution has none of the three and this is not the place to
+  introduce one.
+- **`Error` for a failure, `Warning` for an outcome that is expected and handled** — a 429, a 401,
+  a vocabulary that only costs labels. The `MuninExplorerRateLimitedException` branch stays a
+  branch of its own: telling throttling apart from failure from outside is what ruled rate limiting
+  out of the incident above. A catch that folds the two for the sake of one shared sentence still
+  splits the level, the way `FetchRowsAsync` does — the guard reads the clause's type and refuses
+  anything but `Warning` on one of ours. `MuninExplorerUnauthorizedException` is the same rule and
+  is easier to miss, because it reaches every one of the my/lists paths and no other: a host can
+  declare `IsAuthenticated` true while its token provider sends nothing the API accepts, and
+  reading that as `Error` fills the channel with an outcome the reader was already told about.
+  Nine of those paths recorded it at `Error` while the save button beside them recorded it at
+  `Warning`, which is how easily a rule stated once drifts (`Fhi.Metadata-l9l2n.47`).
+- **A folded split is a test, because the guard cannot read one.** For a clause typed `Exception`
+  the guard accepts any level, so inverting the `if` or deleting it leaves the suite green while a
+  429 is reported as a fault. Each of the eight folded sites has a throttled test of its own in
+  `ExceptionLoggingTest`; a new one owes the same.
+- **Log where the failure is, not where the method is.** `KildeHierarchyView` cancels its own
+  calls on every new `KildeId`, and a superseded one arrives as a `TaskCanceledException` that
+  nothing failed: log inside the `IsCancellationRequested` guard rather than above it. A blanket
+  `OperationCanceledException` filter would be wrong — `HttpClient`'s own timeout is that type too,
+  and it is a fault.
+- **Nothing a log must not carry.** No request URI, no query string, no response body, no bearer
+  token, no text the reader typed — a kilde, variable or list id and a page number say which call
+  it was without any of that.
+
+`Log` is `ExplorerLog.For<T>(services)`, which is `GetService` and can answer null, because
+`[Inject]` on a non-nullable `ILogger<T>` **throws at render** in a host that registered no logging
+— turning a silent data error into a dead component, which is worse than the blindness this
+replaced. `AddMuninExplorer` calls `AddLogging` so the ordinary host has one; the nullable
+resolution is what covers the host that never called it. `services` is the `[Inject]
+IServiceProvider` three components already carried before any of this — every container
+self-registers it, so it is the one seam that costs a host nothing. Both halves are tested, and a
+change that only proves the first passes CI and breaks a hostile host.
+
+What comes back is **wrapped**, and that is the second half of the same argument. `Logger<T>.Log`
+does not swallow a provider's failure — it rethrows it as an `AggregateException` — and every call
+here is the first statement of a catch written so that nothing escapes and takes the circuit with
+it. A host on a full disk would otherwise lose the page, and skip the sentence on screen too.
+`ExplorerLog` is the one file in `src/` allowed to swallow: an exception thrown by logging has
+nowhere left to be written down, and the guard names that file and asserts it is the only one.
+
+It lives in `Logging/`, in `Fhi.Munin.Explorer.Logging`, and not at the root of `src/` and not
+under `Blazor/`. Three layers read it — the components, `MuninExplorerClient` and
+`VariableListState` — so putting it under any one of them would have a `Client/` file depending on
+the `Blazor` namespace, which is the inversion the folder split exists to prevent; and a root-level
+implementation type is an invitation to treat the root namespace as a place to put things. One
+folder, one namespace, as everywhere else here.
+
+The one call the logger is **passed** to rather than read off the component is `RaiseAsync`, which
+is static and takes it as an argument at fourteen sites in three files. Pass `Log`, never `_log` —
+the backing field is null until the property has resolved it once, and that once is the mount.
+`SwallowedExceptionGuardTest` reads the call sites for exactly this, because the helper's own catch
+satisfies every other check whatever its callers hand it.
+
+`SwallowedExceptionGuardTest` is what keeps this true, since the next site added is not a compile
+error and its cost only shows up on somebody else's server.
 
 ## Class names in markup
 

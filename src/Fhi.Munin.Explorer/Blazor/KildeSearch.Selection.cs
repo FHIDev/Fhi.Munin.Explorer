@@ -116,5 +116,5 @@ public sealed partial class KildeSearch
     /// it. The ticks are left alone: the host may not have navigated at all. (Fhi.Metadata-5ghur)
     /// </remarks>
     private Task ExploreVariablesAsync(IReadOnlyList<KildeSummary> visible) =>
-        RaiseAsync(ExploreVariablesRequested, Handover(visible));
+        RaiseAsync(ExploreVariablesRequested, Handover(visible), Log);
 }

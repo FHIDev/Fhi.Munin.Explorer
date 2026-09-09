@@ -116,6 +116,48 @@ public class ExplicitNullTest
     }
 
     [Fact]
+    public void KildeList_WhenAHostReadsTheCaptureWithoutTheClientsOptions_ThenTheUnsetKildetypeIsNull()
+    {
+        // The reader the published contract is for: plain System.Text.Json, no NullAsEmptyStrings.
+        // A null over a string declared non-nullable lands silently and surfaces wherever the host
+        // first reads it, so the annotation is the only thing that warns anybody. (Fhi.Metadata-l9l2n.61)
+        var kilder = JsonSerializer.Deserialize<IReadOnlyList<KildeSummary>>(
+            TestData.Read("kilder.json"), new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+
+        Assert.Null(kilder.Single(kilde => kilde.Code == "K_NKR-NAKKE").Kildetype);
+        Assert.Equal("nasjonaltMedisinskKvalitetsregister", kilder.Single(kilde => kilde.Code == "K_ALS").Kildetype);
+    }
+
+    [Fact]
+    public async Task GetKildeAsync_WhenTheKildeHasNoKildetype_ThenItAndEveryEffectiveTwinReadAsNull()
+    {
+        // The nested EffectiveKildetype on a datasamling and on a delkilde have no reader in this
+        // package — they are contract surface a host walks — so the wire shape is the only thing
+        // there is to pin, and it is what an initialiser of "" hid. (Fhi.Metadata-l9l2n.61)
+        var kilde = await WithJson("""
+            {"id":"0a2d67de-3617-4ea5-b43a-c006a5d649a0","navn":"NKR-Nakke","kildetype":null,
+             "datasamlinger":[{"id":"7e3b2f10-0000-4000-8000-000000000001","navn":"Inklusjon",
+                               "effectiveKildetype":null}],
+             "delkilder":[{"id":"7e3b2f10-0000-4000-8000-000000000002","navn":"Nakke",
+                           "effectiveKildetype":null}]}
+            """).GetKildeAsync(Guid.NewGuid());
+
+        Assert.NotNull(kilde);
+        Assert.Null(kilde.Kildetype);
+        Assert.Null(Assert.Single(kilde.Datasamlinger).EffectiveKildetype);
+        Assert.Null(Assert.Single(kilde.Delkilder).EffectiveKildetype);
+    }
+
+    [Fact]
+    public async Task GetVariableAsync_WhenTheOwningKildeHasNoKildetype_ThenTheDetailReadsItAsNull() =>
+        // The seventh. VariableSummary.KildeType was already string?; its detail twin was not, and
+        // a host reading one shape from the list and another from the detail is the drift this
+        // closed. (Fhi.Metadata-l9l2n.61)
+        Assert.Null((await WithJson("""
+            {"id":"8ec4c2c4-662d-47a5-a946-f1086a014070","navn":"1. Tale","kildeType":null}
+            """).GetVariableAsync(Guid.NewGuid()))?.KildeType);
+
+    [Fact]
     public void Json_WhenAContractIsResolved_ThenTheConverterIsOnTheNonNullableStringsOnly()
     {
         // The wiring, once: the sweep above asks NullAsEmptyStrings.Covers directly, which would go

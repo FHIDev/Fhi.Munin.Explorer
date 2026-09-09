@@ -82,7 +82,8 @@ public sealed record KildeFacet
     /// <summary>Abbreviation, e.g. <c>MFR</c>. Empty string — not null — when the kilde has none.</summary>
     [JsonPropertyName("kortNavn")] public string ShortName { get; init; } = "";
 
-    [JsonPropertyName("kildeType")] public string KildeType { get; init; } = "";
+    /// <summary>The kilde's kildetype; null when it has none — see <see cref="KildeSummary.Kildetype"/>.</summary>
+    [JsonPropertyName("kildeType")] public string? KildeType { get; init; }
     [JsonPropertyName("count")] public int Count { get; init; }
 }
 
@@ -134,11 +135,19 @@ public sealed record DataTypeFacet
     /// It does not: <c>Fhi.Metadata-xxi8k</c> made the endpoint resolve the name, in the request's
     /// language — send <c>Accept-Language</c> and the label follows it.
     /// <para>
-    /// A UI should still not build its own table. These names are editable master data, so a copy
-    /// freezes a snapshot in one language and drifts the moment someone edits a definition.
+    /// With one exception a caller has to handle. A variable predating the codes was stored as a
+    /// word — <c>"String"</c>, <c>"tekst"</c>, <c>"Integer"</c> — and the endpoint echoes that word
+    /// back here whatever the request asked for, so code <c>1</c> arrives named "String" on a
+    /// Norwegian call. A caller showing this word maps the legacy spellings itself and leaves every
+    /// other name alone; this package does it in <c>Texts</c>. (<c>Fhi.Metadata-l9l2n.49</c>)
     /// </para>
     /// <para>
-    /// Null against an API that predates the change, in which case a caller shows the raw code.
+    /// A UI should still not build its own table of names. These are editable master data, so a
+    /// copy freezes a snapshot in one language and drifts the moment someone edits a definition.
+    /// </para>
+    /// <para>
+    /// Null against an API that predates the change, in which case a caller falls back to its own
+    /// word for the code, or to the code itself.
     /// </para>
     /// </remarks>
     [JsonPropertyName("displayName")] public string? DisplayName { get; init; }
@@ -181,10 +190,10 @@ public sealed record InstrumentFacet
 
 /// <summary>A datakategori facet.</summary>
 /// <remarks>
-/// The value is a token, normally an EHDS CURIE such as <c>ehds-cat:health-registries</c>, and
-/// carries no label — the same raw tokens <see cref="HierarchyDatasamling.Categories"/> holds, so
-/// a caller that renders both renders them the same way. Match whole tokens rather than on the
-/// <c>ehds-cat:</c> prefix; one authored with another prefix is passed through unchanged.
+/// The value is a token and carries no label — the same raw tokens
+/// <see cref="HierarchyDatasamling.Categories"/> holds, so a caller that renders both renders them
+/// the same way, and both an EHDS CURIE such as <c>ehds-cat:health-registries</c> and a bare code
+/// such as <c>RPDG</c> occur there. Match whole tokens rather than on any prefix.
 /// </remarks>
 public sealed record DataCategoryFacet
 {

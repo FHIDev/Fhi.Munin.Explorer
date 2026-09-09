@@ -23,6 +23,11 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// Ships no CSS, like everything else in this package: it emits the host's class names so the
 /// surrounding site styles it.
 /// </para>
+/// <para>
+/// Register IMuninExplorerClient through AddMuninExplorer before mounting. The collection
+/// hierarchy is fetched separately and uses the same collapsed disclosures in every explorer.
+/// Descriptions and validity tables remain available in a separate metadata disclosure.
+/// </para>
 /// </remarks>
 public sealed partial class KildeView : ComponentBase
 {
@@ -51,9 +56,8 @@ public sealed partial class KildeView : ComponentBase
     /// </summary>
     /// <remarks>
     /// Kelda passes its variables, access criteria and prices here, and after them whatever its own
-    /// host hung on the explorer. Runa passes nothing at all. The datasamling hierarchy is in
-    /// neither: this view draws that itself, from the source it was given. Neither explorer is named
-    /// in this component.
+    /// host hung on the explorer. Runa passes nothing at all. The shared collection hierarchy
+    /// and its metadata disclosure always come before these sections.
     /// </remarks>
     [Parameter]
     public RenderFragment? Sections { get; set; }
@@ -95,20 +99,59 @@ public sealed partial class KildeView : ComponentBase
         : string.IsNullOrWhiteSpace(shortName) ? code
         : $"{code} ({shortName})";
 
-    /// <summary>The catalogue's metadata, grouped and ordered as the catalogue arranges it.</summary>
-    private IReadOnlyList<PropertyGroup> Groups =>
-        Kilde is { } kilde
-            ? CatalogueProperties.Groups(kilde.PropertyMetadata, kilde.AdditionalProperties, Reader,
-                                         DrawnInTheHeader)
-            : [];
+    private KildeDetail? _groupsKilde;
+    private string? _groupsReader;
+    private IReadOnlyList<PropertyGroup> _groups = [];
 
-    /// <summary>Keys the header renders itself, so the metadata does not repeat them.</summary>
+    /// <summary>The catalogue's metadata, grouped and ordered as the catalogue arranges it.</summary>
     /// <remarks>
-    /// Both spellings, since a kilde curates one or the other. Not <c>BeskrivelseEngelsk</c>: the
-    /// ingress is the Norwegian one, so excluding it would delete a fact. (Fhi.Metadata-8yqoz)
+    /// Cached against the (Kilde, Reader) pair rather than recomputed per access: the markup reads
+    /// this twice per render — the empty check, then the loop — and each call was rebuilding
+    /// DrawnElsewhere's set and re-walking every property (Fhi.Metadata-43jrq).
     /// </remarks>
-    private static readonly IReadOnlySet<string> DrawnInTheHeader =
-        new HashSet<string>(StringComparer.Ordinal) { "Beskrivelse", "BeskrivelseFlerspraklig" };
+    private IReadOnlyList<PropertyGroup> Groups
+    {
+        get
+        {
+            if (ReferenceEquals(_groupsKilde, Kilde) && _groupsReader == Reader)
+            {
+                return _groups;
+            }
+
+            _groupsKilde = Kilde;
+            _groupsReader = Reader;
+            _groups = Kilde is { } kilde
+                ? CatalogueProperties.Groups(kilde.PropertyMetadata, kilde.AdditionalProperties, Reader,
+                                             DrawnElsewhere(kilde))
+                : [];
+
+            return _groups;
+        }
+    }
+
+    /// <summary>Keys whose value already appears elsewhere on the page, so the metadata does not repeat them.</summary>
+    /// <remarks>
+    /// Beskrivelse always duplicates the ingress (Fhi.Metadata-8yqoz). Formaal is safely dropped
+    /// when FormaalFlerspraklig also holds a value; Tittel and hasLegalBasis are not, since their
+    /// EHDS mirrors can hold content PreferredTerm and Lovverk lack (Fhi.Metadata-43jrq).
+    /// </remarks>
+    private static IReadOnlySet<string> DrawnElsewhere(KildeDetail kilde)
+    {
+        var keys = new HashSet<string>(StringComparer.Ordinal) { "Beskrivelse", "BeskrivelseFlerspraklig" };
+
+        if (Filled(kilde, "Formaal") && Filled(kilde, "FormaalFlerspraklig"))
+        {
+            keys.Add("Formaal");
+        }
+
+        return keys;
+    }
+
+    // AdditionalProperties is declared non-nullable but System.Text.Json writes an explicit JSON
+    // null straight over it (see Rows_WhenTheBagIsNull_ThenThereAreNoRowsRatherThanAThrow), so a
+    // host substituting its own client can still hand this a null dictionary.
+    private static bool Filled(KildeDetail kilde, string key) =>
+        kilde.AdditionalProperties?.TryGetValue(key, out var value) is true && !string.IsNullOrWhiteSpace(value);
 
     /// <summary>
     /// The facts every source has, which is why they are typed fields rather than curated properties.
