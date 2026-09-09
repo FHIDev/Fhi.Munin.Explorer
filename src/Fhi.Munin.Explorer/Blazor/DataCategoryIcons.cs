@@ -5,7 +5,7 @@ internal sealed record IconShape(string Element, IReadOnlyList<KeyValuePair<stri
 
 /// <summary>
 /// One glyph. <paramref name="Key"/> is what a stylesheet selects on and what
-/// <see cref="Texts.DatakategoriNames"/> is keyed by.
+/// <see cref="Texts.DataCategoryNames"/> is keyed by.
 /// </summary>
 internal sealed record NodeIcon(string Key, IReadOnlyList<IconShape> Shapes);
 
@@ -13,7 +13,7 @@ internal sealed record NodeIcon(string Key, IReadOnlyList<IconShape> Shapes);
 /// Datakategori to glyph, mirroring Kelda's <c>datakategoriIcons.ts</c> so the two surfaces cannot
 /// disagree about what a category looks like or which order several of them come in.
 /// </summary>
-internal static class DatakategoriIcons
+internal static class DataCategoryIcons
 {
     /// <summary>The vocabulary's own catch-all, which an authored value produces and absence does not.</summary>
     internal const string Other = "other";
@@ -30,14 +30,14 @@ internal static class DatakategoriIcons
         "EHCT", "EINS", "HGPD", "PGEH", "IDHP", "DIOH", "EMRD", "WELA", Other
     ];
 
-    /// <summary>The keys the legend and <see cref="Texts.DatakategoriNames"/> cover, in render order.</summary>
+    /// <summary>The keys the legend and <see cref="Texts.DataCategoryNames"/> cover, in render order.</summary>
     internal static IReadOnlyList<string> Order => CanonicalOrder;
 
     private const string Prefix = "ehds-cat:";
 
-    // The six retired ehds-cat: slugs on their v7 successor, mirroring Munin's seed revision 0008
-    // verbatim. A read model built before that crosswalk ran still ships them, and without this a
-    // biobank would resolve to the catch-all and read as "Annet".
+    // Munin's seed revision 0008 crosswalk verbatim, its "other" onto itself included so the two
+    // lists diff clean. A read model built before that crosswalk ran still ships the retired
+    // slugs, and without this a biobank would resolve to the catch-all and read as "Annet".
     private static readonly (string Token, string Successor)[] LegacyAliases =
     [
         ("health-registries", "PHDR"),
@@ -45,7 +45,8 @@ internal static class DatakategoriIcons
         ("population-health-surveys", "RPDG"),
         ("biobanks", "EINS"),
         ("provesamling", "EINS"),
-        ("biodata", "HGPD")
+        ("biodata", "HGPD"),
+        (Other, Other)
     ];
 
     private static readonly Dictionary<string, string> ByToken = BuildTokens();

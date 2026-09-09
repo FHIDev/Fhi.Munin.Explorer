@@ -17,7 +17,7 @@ public sealed class NodeIconsTest
     [InlineData("  PHDR  ")]
     public void For_WhenACodeArrivesInAnyAuthoredForm_ThenItResolvesToTheSameGlyph(string token)
     {
-        Assert.Equal(["PHDR"], DatakategoriIcons.For([token]).Select(icon => icon.Key));
+        Assert.Equal(["PHDR"], DataCategoryIcons.For([token]).Select(icon => icon.Key));
     }
 
     [Theory]
@@ -29,10 +29,12 @@ public sealed class NodeIconsTest
     [InlineData("biobanks", "EINS")]
     [InlineData("provesamling", "EINS")]
     [InlineData("biodata", "HGPD")]
-    public void For_WhenARetiredSlugArrives_ThenItResolvesOntoItsSuccessor(string slug, string successor)
+    // The crosswalk's seventh row, which lands on itself: copied so the two tables diff clean.
+    [InlineData("other", "other")]
+    public void For_WhenACrosswalkSlugArrives_ThenItResolvesOntoItsSuccessor(string slug, string successor)
     {
-        Assert.Equal([successor], DatakategoriIcons.For([slug]).Select(icon => icon.Key));
-        Assert.Equal([successor], DatakategoriIcons.For([$"ehds-cat:{slug}"]).Select(icon => icon.Key));
+        Assert.Equal([successor], DataCategoryIcons.For([slug]).Select(icon => icon.Key));
+        Assert.Equal([successor], DataCategoryIcons.For([$"ehds-cat:{slug}"]).Select(icon => icon.Key));
     }
 
     [Fact]
@@ -42,7 +44,7 @@ public sealed class NodeIconsTest
         // same on every datasamling that carries it, and beside Kelda's own tree.
         IReadOnlyList<string> authored = ["WELA", "ehds-cat:PHDR", "biobanks", "phdr", "EINS"];
 
-        Assert.Equal(["PHDR", "EINS", "WELA"], DatakategoriIcons.For(authored).Select(icon => icon.Key));
+        Assert.Equal(["PHDR", "EINS", "WELA"], DataCategoryIcons.For(authored).Select(icon => icon.Key));
     }
 
     [Fact]
@@ -50,8 +52,8 @@ public sealed class NodeIconsTest
     {
         // A categorised datasamling must never read as an uncategorised one, so an unrecognised
         // token still draws a glyph.
-        Assert.Equal(["other"], DatakategoriIcons.For(["ehds-cat:teapot"]).Select(icon => icon.Key));
-        Assert.Equal(["PHDR", "other"], DatakategoriIcons.For(["teapot", "PHDR"]).Select(icon => icon.Key));
+        Assert.Equal(["other"], DataCategoryIcons.For(["ehds-cat:teapot"]).Select(icon => icon.Key));
+        Assert.Equal(["PHDR", "other"], DataCategoryIcons.For(["teapot", "PHDR"]).Select(icon => icon.Key));
     }
 
     [Fact]
@@ -59,9 +61,9 @@ public sealed class NodeIconsTest
     {
         // Absence is not "Annet". Only an authored value produces the catch-all — the rule the
         // hierarchy would otherwise break by drawing a tag on every uncategorised datasamling.
-        Assert.Empty(DatakategoriIcons.For(null));
-        Assert.Empty(DatakategoriIcons.For([]));
-        Assert.Empty(DatakategoriIcons.For(["", "   "]));
+        Assert.Empty(DataCategoryIcons.For(null));
+        Assert.Empty(DataCategoryIcons.For([]));
+        Assert.Empty(DataCategoryIcons.For(["", "   "]));
     }
 
     [Fact]
@@ -69,10 +71,10 @@ public sealed class NodeIconsTest
     {
         // Matching is on the whole token. Stripping the prefix would let any vocabulary's "other"
         // — or its "biodata" — claim an EHDS glyph.
-        Assert.Equal("other", DatakategoriIcons.Resolve("other"));
-        Assert.Null(DatakategoriIcons.Resolve("snomed:other"));
-        Assert.Null(DatakategoriIcons.Resolve("snomed:biodata"));
-        Assert.Null(DatakategoriIcons.Resolve(null));
+        Assert.Equal("other", DataCategoryIcons.Resolve("other"));
+        Assert.Null(DataCategoryIcons.Resolve("snomed:other"));
+        Assert.Null(DataCategoryIcons.Resolve("snomed:biodata"));
+        Assert.Null(DataCategoryIcons.Resolve(null));
     }
 
     [Fact]
@@ -80,9 +82,9 @@ public sealed class NodeIconsTest
     {
         // A folder is not a datakategori: no authored value may resolve to it, and it may not
         // appear in the legend order the categories are drawn in.
-        Assert.Null(DatakategoriIcons.Resolve(DatakategoriIcons.Grouping));
-        Assert.DoesNotContain(DatakategoriIcons.Grouping, DatakategoriIcons.Order);
-        Assert.NotEmpty(DatakategoriIcons.Folder.Shapes);
+        Assert.Null(DataCategoryIcons.Resolve(DataCategoryIcons.Grouping));
+        Assert.DoesNotContain(DataCategoryIcons.Grouping, DataCategoryIcons.Order);
+        Assert.NotEmpty(DataCategoryIcons.Folder.Shapes);
     }
 
     [Fact]
@@ -90,11 +92,11 @@ public sealed class NodeIconsTest
     {
         // A key with no glyph draws nothing and a key with no label is read out as its raw code,
         // and both are silent: the tree renders either way.
-        foreach (var key in DatakategoriIcons.Order)
+        foreach (var key in DataCategoryIcons.Order)
         {
-            Assert.NotEmpty(DatakategoriIcons.For([key]).Single().Shapes);
-            Assert.False(string.IsNullOrWhiteSpace(Texts.For("no").DatakategoriNames[key]));
-            Assert.False(string.IsNullOrWhiteSpace(Texts.For("en").DatakategoriNames[key]));
+            Assert.NotEmpty(DataCategoryIcons.For([key]).Single().Shapes);
+            Assert.False(string.IsNullOrWhiteSpace(Texts.For("no").DataCategoryNames[key]));
+            Assert.False(string.IsNullOrWhiteSpace(Texts.For("en").DataCategoryNames[key]));
         }
     }
 
@@ -102,7 +104,7 @@ public sealed class NodeIconsTest
     public void For_WhenTheNodeIsNotADatasamling_ThenOnlyTheGroupingLevelsCarryAGlyph()
     {
         Assert.Equal(
-            [DatakategoriIcons.Grouping],
+            [DataCategoryIcons.Grouping],
             NodeIcons.For(Node(KildeNodeKind.Delkilde, ["PHDR"])).Select(icon => icon.Key));
 
         // A variabelgruppe has no icon of its own, and nothing invents one for it.

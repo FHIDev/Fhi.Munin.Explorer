@@ -11,11 +11,11 @@ internal static class NodeIcons
     /// <summary>No glyphs at all — what a row draws when the host has turned the icons off.</summary>
     internal static IReadOnlyList<NodeIcon> None => [];
 
-    /// <summary>The glyphs one node shows, in <see cref="DatakategoriIcons.Order"/>.</summary>
+    /// <summary>The glyphs one node shows, in <see cref="DataCategoryIcons.Order"/>.</summary>
     internal static IReadOnlyList<NodeIcon> For(KildeHierarchyNode node) => node.Kind switch
     {
-        KildeNodeKind.Delkilde => [DatakategoriIcons.Folder],
-        KildeNodeKind.Datasamling => DatakategoriIcons.For(node.Categories),
+        KildeNodeKind.Delkilde => [DataCategoryIcons.Folder],
+        KildeNodeKind.Datasamling => DataCategoryIcons.For(node.Categories),
         _ => []
     };
 
@@ -82,8 +82,8 @@ internal static class NodeIcons
         }
 
         var named = icons.Select(icon =>
-            texts.DatakategoriNames.TryGetValue(icon.Key, out var name) ? name : icon.Key);
+            texts.DataCategoryNames.TryGetValue(icon.Key, out var name) ? name : icon.Key);
 
-        return texts.DatakategoriNamed(string.Join(", ", named));
+        return texts.DataCategoryNamed(string.Join(", ", named));
     }
 }

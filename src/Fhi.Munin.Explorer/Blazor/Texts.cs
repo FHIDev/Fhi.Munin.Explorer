@@ -462,10 +462,10 @@ internal sealed record Texts(
     string HierarchyRetry,
     string HierarchyMetadata,
     // The node icons are decorative and aria-hidden, so a datasamling's datakategorier are said in
-    // words beside them or nowhere. Keyed by DatakategoriIcons.Order, and the retired slugs have no
+    // words beside them or nowhere. Keyed by DataCategoryIcons.Order, and the retired slugs have no
     // key of their own: they resolve onto a successor and are read out under its name.
-    Func<string, string> DatakategoriNamed,
-    IReadOnlyDictionary<string, string> DatakategoriNames,
+    Func<string, string> DataCategoryNamed,
+    IReadOnlyDictionary<string, string> DataCategoryNames,
     // The sections Kelda has over a kilde and Runa has not, measured on the same source in both on
     // 2026-08-20. They are markup Kelda hands to KildeView.Sections rather than markup inside that
     // component, so their words sit here beside the rest of Kelda's rather than in the shared core.
@@ -1042,8 +1042,8 @@ internal sealed record Texts(
         HierarchyEmpty: "Ingen delkilder, datasamlinger eller variabelgrupper er tilgjengelige.",
         HierarchyRetry: "Prøv å laste strukturen på nytt",
         HierarchyMetadata: "Beskrivelser og gyldighetsperioder",
-        DatakategoriNamed: names => $"Datakategori: {names}.",
-        DatakategoriNames: new Dictionary<string, string>(StringComparer.Ordinal)
+        DataCategoryNamed: names => $"Datakategori: {names}.",
+        DataCategoryNames: new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["PHDR"] = "Befolkningsbaserte helseregistre",
             ["MRMR"] = "Medisinske registre og dødsårsaksregistre",
@@ -1392,8 +1392,8 @@ internal sealed record Texts(
         HierarchyEmpty: "No sub-sources, data collections or variable groups are available.",
         HierarchyRetry: "Retry loading the structure",
         HierarchyMetadata: "Descriptions and validity periods",
-        DatakategoriNamed: names => $"Data category: {names}.",
-        DatakategoriNames: new Dictionary<string, string>(StringComparer.Ordinal)
+        DataCategoryNamed: names => $"Data category: {names}.",
+        DataCategoryNames: new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["PHDR"] = "Population health data registries",
             ["MRMR"] = "Medical and mortality registries",

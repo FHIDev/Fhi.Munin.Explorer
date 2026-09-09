@@ -993,7 +993,7 @@ MIT.
 
 ### Third-party notices
 
-The node-icon geometry in `Blazor/DatakategoriIcons.cs` is copied from
+The node-icon geometry in `Blazor/DataCategoryIcons.cs` is copied from
 [lucide](https://lucide.dev), the icon set Kelda draws the same datakategorier with. Copied rather
 than depended on because this package ships no asset bundle and takes no front-end dependency.
 
