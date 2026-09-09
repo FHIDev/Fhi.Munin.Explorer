@@ -1078,6 +1078,82 @@ public class KildeSearchTest : BunitContext
         Assert.Equal(2, panel.QuerySelectorAll("table.munin-explorer-kilde__datasamlinger").Length);
     }
 
+    /// <summary>
+    /// A pointer press on the row's chevron. <paramref name="clicks"/> is the browser's click count,
+    /// so 2 is the second click of a double-click gesture and 0 is how a browser reports Enter or
+    /// Space on a button.
+    /// </summary>
+    /// <remarks>
+    /// The toggle is found on every call rather than held, for the reason <see cref="Row"/> gives:
+    /// each press re-renders the table.
+    /// </remarks>
+    private static void PressExpandToggle(
+        IRenderedComponent<KildeSearch> cut, string kilde, long clicks = 1) =>
+        ExpandToggle(cut, kilde).Click(new MouseEventArgs { Detail = clicks });
+
+    /// <summary>What the row's own chevron says about itself, which is the state a reader is told.</summary>
+    private static string? Discloses(IRenderedComponent<KildeSearch> cut, string kilde) =>
+        ExpandToggle(cut, kilde).GetAttribute("aria-expanded");
+
+    [Fact]
+    public void ExpandToggle_WhenItIsDoubleClicked_ThenTheDrawerIsLeftOpen()
+    {
+        // Fhi.Metadata-l9l2n.55 closed this trap on the row and on the name, which were what it made
+        // clickable; the chevron was already there and outside its scope, so a double-click here
+        // toggled twice and the row flashed back shut under the reader.
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var client = new FakeClient(als).Describing(DetailWithCollections(als));
+        var cut = RenderWith(client);
+
+        Assert.Equal("false", Discloses(cut, "Als registeret"));
+
+        PressExpandToggle(cut, "Als registeret");
+        PressExpandToggle(cut, "Als registeret", clicks: 2);
+
+        Assert.Equal("true", Discloses(cut, "Als registeret"));
+        Assert.Contains("Hoveddatasamling", cut.Find(".munin-explorer-kilder__expanded").TextContent);
+
+        // The rate limit ToggleDatasamlingerAsync caches against: the swallowed click is not a second
+        // GetKildeAsync either.
+        Assert.Equal(1, client.DetailCalls);
+    }
+
+    [Fact]
+    public void ExpandToggle_WhenItIsPressedTwiceAsSeparateGestures_ThenItStillTogglesBothWays()
+    {
+        // The guard is per gesture, not per control: two deliberate presses each arrive with a click
+        // count of one, and a reader who opens a drawer must still be able to shut it.
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        PressExpandToggle(cut, "Als registeret");
+
+        Assert.Equal("true", Discloses(cut, "Als registeret"));
+
+        PressExpandToggle(cut, "Als registeret");
+
+        Assert.Equal("false", Discloses(cut, "Als registeret"));
+        Assert.Empty(cut.FindAll(".munin-explorer-kilder__expanded"));
+    }
+
+    [Fact]
+    public void ExpandToggle_WhenItIsActivatedFromTheKeyboard_ThenEachActivationToggles()
+    {
+        // Enter and Space on a <button> arrive as a click with a count of zero, which is what keeps a
+        // guard on the second click of a pointer gesture from swallowing a second keypress. They are
+        // different gestures and repeated pressing is what the keyboard has instead of a drag.
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        PressExpandToggle(cut, "Als registeret", clicks: 0);
+
+        Assert.Equal("true", Discloses(cut, "Als registeret"));
+
+        PressExpandToggle(cut, "Als registeret", clicks: 0);
+
+        Assert.Equal("false", Discloses(cut, "Als registeret"));
+    }
+
     /// <summary>A cell of the row that holds no control, so the press lands on the row itself.</summary>
     private static IElement RowBody(IRenderedComponent<KildeSearch> cut, string kilde) =>
         Row(cut, kilde).QuerySelector("td:not(.munin-explorer-kilder__expand)")!;
