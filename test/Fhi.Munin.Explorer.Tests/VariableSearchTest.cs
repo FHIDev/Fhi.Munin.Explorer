@@ -4204,6 +4204,28 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
+    public void Render_WhenADatasamlingsDelkildeBelongsToAnotherKilde_ThenItHangsUnderItsOwnKilde()
+    {
+        // Testing the parent against every delkilde in the payload rather than against this kilde's
+        // would draw the datasamling under the other kilde and lose it from its own, which is a row
+        // the reader cannot reach from the kilde it belongs to. (Fhi.Metadata-mgp03)
+        var facets = Facets() with
+        {
+            Datasamlinger =
+            [
+                new() { Id = Tromso1, Name = "Tromsø 1", KildeId = Dodsarsak, DelkildeId = Tromso4, Count = 5 }
+            ]
+        };
+
+        var cut = RenderWith(new FilteringClient(OnePage(), facets));
+
+        Assert.Contains(Facet(cut, "Tromsø 1").ParentElement!,
+                        Facet(cut, "Dødsårsaksregisteret").ParentElement!.QuerySelectorAll("li"));
+        Assert.DoesNotContain(Facet(cut, "Tromsø 1").ParentElement!,
+                              Facet(cut, "Tromsø 4").ParentElement!.QuerySelectorAll("li"));
+    }
+
+    [Fact]
     public void Render_WhenTheApiSendsNoDatasamlingFacet_ThenTheKildeTreeStopsAtDelkilde()
     {
         // The facet defaults to the empty list, so an API predating it leaves the panel as it was.

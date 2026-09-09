@@ -349,10 +349,6 @@ public partial class VariableSearch
             KildeChildren(kilde.Id, levels));
 
     /// <summary>The two levels under a kilde, each hanging where its facet says it does.</summary>
-    /// <remarks>
-    /// A kilde's own datasamlinger come before its delkilder, which is the order
-    /// <c>KildeView</c> draws the same two levels in.
-    /// </remarks>
     private IReadOnlyList<FacetValue> KildeChildren(Guid kildeId, KildeLevelLookup levels) =>
     [
         .. DatasamlingValues(levels.Datasamlinger[kildeId]),
@@ -386,15 +382,17 @@ public partial class VariableSearch
     /// <summary>Both child levels of the kilde tree, in one pass over the facets.</summary>
     private static KildeLevelLookup KildeLevels(FilterOptions facets)
     {
-        var delkildeIds = facets.Delkilder.Select(delkilde => delkilde.Id).ToHashSet();
+        var delkildeOwner = facets.Delkilder.ToDictionary(delkilde => delkilde.Id, delkilde => delkilde.KildeId);
 
         // One lookup covers both parents, since a kilde id is never also a delkilde id. A delkilde
-        // the cross-filtered payload left out is an absent parent, so its datasamlinger fall back
-        // to the kilde rather than disappearing with it — the orphan rule Tree already applies.
+        // the payload left out — cross-filtered away, or belonging to another kilde — is an absent
+        // parent, so its datasamlinger fall back to the kilde rather than disappearing with it.
         return new KildeLevelLookup(
             facets.Delkilder.ToLookup(delkilde => delkilde.KildeId),
             facets.Datasamlinger.ToLookup(
-                datasamling => datasamling.DelkildeId is { } parent && delkildeIds.Contains(parent)
+                datasamling => datasamling.DelkildeId is { } parent
+                               && delkildeOwner.TryGetValue(parent, out var owner)
+                               && owner == datasamling.KildeId
                     ? parent
                     : datasamling.KildeId));
     }
