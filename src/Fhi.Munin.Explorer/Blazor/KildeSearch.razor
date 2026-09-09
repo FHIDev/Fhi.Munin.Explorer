@@ -273,8 +273,9 @@ else
                            is a <form> whose preventDefault makes Enter search rather than reload the
                            host's page, and this box has none to put it in.
 
-                           @ref because committing rewrites the list beside it, under a reader who
-                           committed with Tab and is standing in it — see SearchFacetAsync. *@
+                           @ref because a narrowing commit rewrites the list beside it, under a
+                           reader who committed with Tab and is standing in it. Only a narrowing
+                           one: see SearchFacetAsync. *@
                         @if (searchable)
                         {
                             <label class="screenreader-only" for="@FacetSearchId(facet.Key)">@T.FacetSearchLabel(facet.Heading)</label>

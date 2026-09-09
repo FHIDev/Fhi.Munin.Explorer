@@ -476,31 +476,49 @@ public sealed partial class KildeSearch
     /// <remarks>
     /// One definition of "there is a search here", for the reason <c>SearchText</c> is one over the
     /// list: two places deciding separately whether a field of spaces counts is how they come to
-    /// disagree.
+    /// disagree. <see cref="RemovesDrawnOptions"/> asks the same of a term not yet committed, so
+    /// the deciding is in <see cref="AsTerm"/> and neither caller owns it.
     /// </remarks>
-    private string? FacetSearchTerm(string key)
-    {
-        var text = FacetSearchValue(key);
+    private string? FacetSearchTerm(string key) => AsTerm(FacetSearchValue(key));
 
-        return string.IsNullOrWhiteSpace(text) ? null : text.Trim();
-    }
+    /// <summary>What a field holds, as a search: null where it holds nothing that could narrow anything.</summary>
+    private static string? AsTerm(string? text) =>
+        string.IsNullOrWhiteSpace(text) ? null : text.Trim();
 
     /// <summary>Record what was typed into one facet's search field.</summary>
     /// <remarks>
-    /// Focus first and the state after, the order <see cref="ClearSearchAndRefocusAsync"/> follows: a
-    /// reader who commits with Tab is standing on the first checkbox by the time this render rewrites
-    /// the list it is in, and an element focus is removed with hands it to <c>&lt;body&gt;</c>.
-    /// Deliberately nothing else — no request, and no touching of <see cref="_chosen"/>: unticking
-    /// what the reader can no longer see would drop a filter they never released.
+    /// Focus first and the state after, the order <see cref="ClearSearchAndRefocusAsync"/> follows,
+    /// and guarded as that one is: <c>onchange</c> fires <em>because</em> focus has left the box, so
+    /// a rescue is only ever right when the render behind it removes what the reader is now standing
+    /// on. Deliberately nothing else — no request, and no touching of <see cref="_chosen"/>:
+    /// unticking what the reader can no longer see would drop a filter they never released.
     /// </remarks>
     private async Task SearchFacetAsync(string key, string? text)
     {
-        if (_facetSearchFields.TryGetValue(key, out var field))
+        if (RemovesDrawnOptions(key, text) && _facetSearchFields.TryGetValue(key, out var field))
         {
             await field.FocusAsync();
         }
 
         _facetSearch[key] = text ?? string.Empty;
+    }
+
+    /// <summary>Whether committing <paramref name="text"/> takes an option the panel is drawing off the screen.</summary>
+    /// <remarks>
+    /// The half of <see cref="ClearSearchAndRefocusAsync"/>'s bargain that says when there is
+    /// something to rescue focus from. A commit that widens the facet, or that leaves every drawn
+    /// option standing, removed nothing — and the reader who blurred the box by clicking into
+    /// another one is already typing there. (Fhi.Metadata-6we8a)
+    /// </remarks>
+    private bool RemovesDrawnOptions(string key, string? text)
+    {
+        if (AsTerm(text) is not { } term ||
+            Definitions.FirstOrDefault(definition => definition.Key == key) is not { } definition)
+        {
+            return false;
+        }
+
+        return VisibleOptions(Build(definition)).Any(option => !Matches(option, term));
     }
 
     /// <summary>The options of <paramref name="facet"/> its own search leaves on screen.</summary>
@@ -523,8 +541,16 @@ public sealed partial class KildeSearch
             return facet.Options;
         }
 
-        return [.. facet.Options.Where(option => option.Label.Contains(term, StringComparison.OrdinalIgnoreCase))];
+        return [.. facet.Options.Where(option => Matches(option, term))];
     }
+
+    /// <summary>Whether one option answers <paramref name="term"/>.</summary>
+    /// <remarks>
+    /// One rule, because <see cref="RemovesDrawnOptions"/> asks it of a term the field has not committed yet
+    /// and two spellings of "matches" would disagree about whether focus has anywhere to go.
+    /// </remarks>
+    private static bool Matches(FacetOption option, string term) =>
+        option.Label.Contains(term, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>A kilde's kategori tokens, out of the JSON array the catalogue stores them in.</summary>
     /// <remarks>

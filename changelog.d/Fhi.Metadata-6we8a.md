@@ -13,4 +13,6 @@ category: Added
   that two strings name one organisation is a claim about the catalogue and not about the view.
   The box carries no class name of its own — it is a native text input inside the filter panel, on
   the same terms as the dataperiode facet's date fields, so there is nothing new for a host to
-  style beyond the form fields it already styles. (Fhi.Metadata-6we8a)
+  style beyond the form fields it already styles. Committing the search keeps the reader's place:
+  focus returns to the box only when the redraw takes away a value they could have been standing
+  on, so tabbing or clicking out of the box is never undone under them. (Fhi.Metadata-6we8a)

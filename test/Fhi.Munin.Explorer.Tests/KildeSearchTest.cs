@@ -3400,6 +3400,40 @@ public class KildeSearchTest : BunitContext
     }
 
     [Fact]
+    public void FacetSearch_WhenTheCommitWidensTheFacet_ThenFocusIsLeftWhereTheReaderPutIt()
+    {
+        // The other half of the guard, and the half onchange makes necessary: the event fires
+        // BECAUSE focus left the box, so a reader who emptied it and moved on must not be dragged
+        // back to a facet that only grew. Nothing was removed to rescue them from.
+        var cut = RenderWith(CatalogueWithOneBigFacet());
+
+        SearchFacet(cut, "Databehandler", "universitetet");
+
+        // The narrowing commit above is allowed its rescue, so the widening one is measured against
+        // what it left rather than against nothing.
+        var rescues = JSInterop.Invocations["Blazor._internal.domWrapper.focus"].Count;
+
+        SearchFacet(cut, "Databehandler", string.Empty);
+
+        Assert.Equal(12, Choices(Facet(cut, "Databehandler")).Count);
+        Assert.Equal(rescues, JSInterop.Invocations["Blazor._internal.domWrapper.focus"].Count);
+    }
+
+    [Fact]
+    public void FacetSearch_WhenTheCommitLeavesEveryDrawnValueStanding_ThenFocusIsLeftWhereTheReaderPutIt()
+    {
+        // A term every value contains redraws the same twelve checkboxes, so the one the reader
+        // tabbed onto is still under them. This is the case that yanks focus out of the NEXT
+        // facet's box when the reader clicks straight into it and starts typing.
+        var cut = RenderWith(CatalogueWithProcessors(12));
+
+        SearchFacet(cut, "Databehandler", "databehandler");
+
+        Assert.Equal(12, Choices(Facet(cut, "Databehandler")).Count);
+        Assert.Empty(JSInterop.Invocations["Blazor._internal.domWrapper.focus"]);
+    }
+
+    [Fact]
     public void FacetSearch_Always_ThenTheBoxPromisesNoEnterKeyItCannotHonour()
     {
         // enterkeyhint="search" is the freetext box's, and it earns it by sitting in a <form> whose
