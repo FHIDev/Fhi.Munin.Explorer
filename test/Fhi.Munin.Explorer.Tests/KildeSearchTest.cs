@@ -3386,6 +3386,33 @@ public class KildeSearchTest : BunitContext
             Facet(cut, "Data processor").QuerySelector("p.caption")!.TextContent.Trim());
     }
 
+    [Fact]
+    public void FacetSearch_WhenTheSearchIsCommitted_ThenFocusGoesToTheBoxRatherThanTheDocument()
+    {
+        // Committing with Tab has already put focus on the first checkbox by the time the panel
+        // redraws, and narrowing removes it — the whole <ul> when nothing matches. Same failure and
+        // the same answer as the freetext box's clear control. (Fhi.Metadata-ag4n7)
+        var cut = RenderWith(CatalogueWithOneBigFacet());
+
+        SearchFacet(cut, "Databehandler", "kommunehelsetjenesten");
+
+        JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus");
+    }
+
+    [Fact]
+    public void FacetSearch_Always_ThenTheBoxPromisesNoEnterKeyItCannotHonour()
+    {
+        // enterkeyhint="search" is the freetext box's, and it earns it by sitting in a <form> whose
+        // preventDefault makes Enter search instead of reloading the host's page. This box has no
+        // form, so the key would be labelled for something that does not happen.
+        var cut = RenderWith(CatalogueWithOneBigFacet());
+
+        var box = FacetSearch(cut, "Databehandler")!;
+
+        Assert.False(box.HasAttribute("enterkeyhint"));
+        Assert.Null(box.Closest("form"));
+    }
+
     /// <summary>
     /// A catalogue where two facets are past the threshold: twelve databehandlere and a kategori
     /// per kilde.

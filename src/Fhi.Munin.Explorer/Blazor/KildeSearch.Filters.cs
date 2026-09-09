@@ -190,6 +190,14 @@ public sealed partial class KildeSearch
     /// </remarks>
     private readonly Dictionary<string, string> _facetSearch = new(StringComparer.Ordinal);
 
+    /// <summary>Each facet's search field, so focus can be put back on it before its values are rewritten.</summary>
+    /// <remarks>
+    /// Keyed like <see cref="_facetSearch"/> and written by <c>@ref</c> as the fields are drawn, so a
+    /// facet with no box has no entry, and one that lost its box keeps a stale reference nothing
+    /// reads: only that facet's own commit focuses it, and the field is still on screen then.
+    /// </remarks>
+    private readonly Dictionary<string, ElementReference> _facetSearchFields = new(StringComparer.Ordinal);
+
     /// <summary>Whether the panel is unfolded. See the markup for why the reader can still see it while this is false.</summary>
     private bool _filtersOpen;
 
@@ -455,9 +463,8 @@ public sealed partial class KildeSearch
 
     /// <summary>Whether <paramref name="facet"/> is long enough to be given a search box.</summary>
     /// <remarks>
-    /// Asked of every option the facet has, never of the ones its own search leaves: the second
-    /// reading takes the box away the moment it works, under the hand that is using it. The counts
-    /// are over the whole list, so a facet does not shrink past the threshold as the reader ticks.
+    /// <see cref="Facet.Options"/> is counted over the whole list, so the answer does not change as
+    /// the reader ticks and the box cannot come and go under their hand.
     /// </remarks>
     private static bool IsSearchable(Facet facet) => facet.Options.Count > FacetSearchThreshold;
 
@@ -480,11 +487,21 @@ public sealed partial class KildeSearch
 
     /// <summary>Record what was typed into one facet's search field.</summary>
     /// <remarks>
-    /// Nothing else happens. No request, no reordering, and deliberately no touching of
-    /// <see cref="_chosen"/>: unticking what the reader can no longer see would drop a filter they
-    /// never released, and the list would widen while they were narrowing the panel.
+    /// Focus first and the state after, the order <see cref="ClearSearchAndRefocusAsync"/> follows: a
+    /// reader who commits with Tab is standing on the first checkbox by the time this render rewrites
+    /// the list it is in, and an element focus is removed with hands it to <c>&lt;body&gt;</c>.
+    /// Deliberately nothing else — no request, and no touching of <see cref="_chosen"/>: unticking
+    /// what the reader can no longer see would drop a filter they never released.
     /// </remarks>
-    private void SearchFacet(string key, string? text) => _facetSearch[key] = text ?? string.Empty;
+    private async Task SearchFacetAsync(string key, string? text)
+    {
+        if (_facetSearchFields.TryGetValue(key, out var field))
+        {
+            await field.FocusAsync();
+        }
+
+        _facetSearch[key] = text ?? string.Empty;
+    }
 
     /// <summary>The options of <paramref name="facet"/> its own search leaves on screen.</summary>
     /// <remarks>

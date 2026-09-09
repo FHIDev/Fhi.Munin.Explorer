@@ -239,6 +239,9 @@ else
             <div class="munin-explorer-filters__facets" id="@FacetsId" hidden="@(!_filtersOpen)">
                 @foreach (var facet in facets)
                 {
+                    @* IsSearchable over every option the facet has, never over what its own search leaves:
+                       the second reading takes the box away the moment it works. Nor is the ternary that
+                       twice: a facet fallen under the threshold holding a term would filter on with no box. *@
                     var searchable = IsSearchable(facet);
                     var options = searchable ? VisibleOptions(facet) : facet.Options;
 
@@ -264,15 +267,22 @@ else
 
                            onchange, never oninput — one round-trip per keystroke on helsedata's
                            circuit whatever the handler does with it, and each one rewrites the
-                           field while more input is arriving. (Fhi.Metadata-l9l2n.26) *@
+                           field while more input is arriving. (Fhi.Metadata-l9l2n.26)
+
+                           No enterkeyhint, unlike the freetext box above: what earns that key there
+                           is a <form> whose preventDefault makes Enter search rather than reload the
+                           host's page, and this box has none to put it in.
+
+                           @ref because committing rewrites the list beside it, under a reader who
+                           committed with Tab and is standing in it — see SearchFacetAsync. *@
                         @if (searchable)
                         {
                             <label class="screenreader-only" for="@FacetSearchId(facet.Key)">@T.FacetSearchLabel(facet.Heading)</label>
                             <input id="@FacetSearchId(facet.Key)"
                                    type="text"
-                                   enterkeyhint="search"
+                                   @ref="_facetSearchFields[facet.Key]"
                                    value="@FacetSearchValue(facet.Key)"
-                                   @onchange="e => SearchFacet(facet.Key, e.Value as string)"
+                                   @onchange="e => SearchFacetAsync(facet.Key, e.Value as string)"
                                    placeholder="@T.FacetSearchPlaceholder"
                                    autocomplete="off"
                                    maxlength="200" />
