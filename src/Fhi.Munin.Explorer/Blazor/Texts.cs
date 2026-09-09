@@ -469,10 +469,11 @@ internal sealed record Texts(
     // (count) — the variable section's one line. Assembled here rather than at the call site for the
     // reason KildeCount is: the singular is this language's business and not C#'s.
     Func<int, string> KildeVariableCount,
-    // (shown, total, filters, order) — the kilde list's own "56 kilder av 66, sortert etter Flest
-    // variabler — 2 filtre aktive", every clause assembled here for ResultSummary's reason: where
-    // each one sits is this language's grammar, and so is the plural. Still no row range, because
-    // the list is never paged. Three ints in a row — shown, then total, then ticked facet values.
+    // (shown, total, filters, order) — the kilde list's own "56 kilder av 66, avgrenset av 2
+    // filtre, sortert etter Flest variabler", assembled here for ResultSummary's reason: where each
+    // clause sits is this language's grammar, and so is the plural. The filter clause borrows that
+    // sibling's words and its place in the sentence, so the same fact is not told two ways in two
+    // UIs. Still no row range, the list is never paged. Three ints: shown, total, ticked values.
     Func<int, int, int, string?, string> KildeCount,
     // (count) — "3 kilder valgt", the selection bar's own line. Its own member rather than
     // KildeCount reused, though both count kilder: that one says how many the search and the facets
@@ -1028,13 +1029,13 @@ internal sealed record Texts(
         KildeCount: (shown, total, filters, order) =>
             (shown == 1 ? "1 kilde" : $"{shown} kilder")
             + (shown == total ? "" : $" av {total}")
-            + (order is null ? "" : $", sortert etter {order}")
             + (filters switch
             {
                 0 => "",
-                1 => " — 1 filter aktivt",
-                _ => $" — {filters} filtre aktive"
-            }),
+                1 => ", avgrenset av 1 filter",
+                _ => $", avgrenset av {filters} filtre"
+            })
+            + (order is null ? "" : $", sortert etter {order}"),
         SelectedKildeCount: count => count == 1 ? "1 kilde valgt" : $"{count} kilder valgt",
         KildeOrderName: "Navn A–Å",
         KildeOrderVariables: "Flest variabler",
@@ -1353,13 +1354,13 @@ internal sealed record Texts(
         KildeCount: (shown, total, filters, order) =>
             (shown == 1 ? "1 source" : $"{shown} sources")
             + (shown == total ? "" : $" of {total}")
-            + (order is null ? "" : $", sorted by {order}")
             + (filters switch
             {
                 0 => "",
-                1 => " — 1 filter active",
-                _ => $" — {filters} filters active"
-            }),
+                1 => ", narrowed by 1 filter",
+                _ => $", narrowed by {filters} filters"
+            })
+            + (order is null ? "" : $", sorted by {order}"),
         SelectedKildeCount: count => count == 1 ? "1 source selected" : $"{count} sources selected",
         KildeOrderName: "Name A–Z",
         KildeOrderVariables: "Most variables",

@@ -601,8 +601,8 @@ public sealed partial class KildeSearch : ComponentBase
         value is not null && value.Contains(term, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    /// One sentence describing the visible result — "56 kilder av 66, sortert etter Flest
-    /// variabler — 2 filtre aktive" — used both as the live announcement and as the table's
+    /// One sentence describing the visible result — "56 kilder av 66, avgrenset av 2 filtre,
+    /// sortert etter Flest variabler" — used both as the live announcement and as the table's
     /// accessible name, so the two cannot drift apart.
     /// </summary>
     /// <remarks>
@@ -613,7 +613,7 @@ public sealed partial class KildeSearch : ComponentBase
     /// control whose effect is never announced is a control only some readers have.
     /// <para>
     /// The denominator and the filter clause are absent rather than zeroed on an untouched list:
-    /// "66 kilder av 66 — 0 filtre aktive" is more words saying less than "66 kilder". Which
+    /// "66 kilder av 66, avgrenset av 0 filtre" is more words saying less than "66 kilder". Which
     /// clauses appear is the text's own decision, so the two languages can disagree about it.
     /// </para>
     /// <para>
