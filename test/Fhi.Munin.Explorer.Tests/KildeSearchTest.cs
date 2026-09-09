@@ -544,6 +544,76 @@ public class KildeSearchTest : BunitContext
     }
 
     [Fact]
+    public void Count_WhenNothingIsNarrowingTheList_ThenTheLineIsTheBareTotal()
+    {
+        // THE TRAP the denominator and the filter clause bring with them: added unconditionally
+        // they read as "3 kilder av 3 — 0 filtre aktive", which is more words saying less than
+        // "3 kilder". Only the narrowed state is ever checked by hand, so this side needs a test.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS"),
+            Kilde("Dødsårsaksregisteret", "K_DAR"),
+            Kilde("Reseptregisteret", "K_NORPD")));
+
+        Assert.Equal("3 kilder", ResultCount(cut));
+    }
+
+    [Fact]
+    public void Count_WhenFacetsNarrowTheList_ThenItNamesTheCatalogueAndHowManyFiltersAreActive()
+    {
+        // Without the denominator a narrowed list reads the same as a short catalogue, and until
+        // the chips land (Fhi.Metadata-ofoyw) this line is the only thing on the page saying
+        // filtering is happening at all.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS",
+                kildetype: "nasjonaltMedisinskKvalitetsregister", dataProcessor: "St. Olavs hospital HF"),
+            Kilde("Barnediabetes", "K_BDR",
+                kildetype: "nasjonaltMedisinskKvalitetsregister", dataProcessor: "Oslo universitetssykehus HF"),
+            Kilde("Dødsårsaksregisteret", "K_DAR",
+                kildetype: "sentraltHelseregister", dataProcessor: "St. Olavs hospital HF")));
+
+        Tick(cut, "Kildetype", "Nasjonalt medisinsk kvalitetsregister");
+
+        Assert.Equal("2 kilder av 3 — 1 filter aktivt", ResultCount(cut));
+
+        Tick(cut, "Databehandler", "St. Olavs hospital HF");
+
+        Assert.Equal("1 kilde av 3 — 2 filtre aktive", ResultCount(cut));
+    }
+
+    [Fact]
+    public void Count_WhenTheSearchNarrowsAndNoFacetIsTicked_ThenOnlyTheDenominatorAppears()
+    {
+        // The two clauses answer different questions: a reader who has typed and ticked nothing is
+        // owed the count against the catalogue and not an answer about filters they never set.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS"),
+            Kilde("Dødsårsaksregisteret", "K_DAR"),
+            Kilde("Reseptregisteret", "K_NORPD")));
+
+        cut.Find(".searchbox__freetext").Change("als");
+
+        Assert.Equal("1 kilde av 3", ResultCount(cut));
+    }
+
+    [Fact]
+    public void Count_WhenTheReaderReadsInEnglish_ThenBothNewClausesAreInEnglishToo()
+    {
+        // Assembled clause by clause, which is where a language that got the plural right can still
+        // ship "1 source av 2": the whole sentence is one language's business.
+        var cut = RenderWith(
+            new FakeClient(
+                Kilde("Als registeret", "K_ALS", kildetype: "nasjonaltMedisinskKvalitetsregister"),
+                Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister")),
+            b => b.Add(c => c.Language, "en"));
+
+        Assert.Equal("2 sources", ResultCount(cut));
+
+        Tick(cut, "Source type", "Central health registry");
+
+        Assert.Equal("1 source of 2 — 1 filter active", ResultCount(cut));
+    }
+
+    [Fact]
     public void Render_WhenAKildeHasNoName_ThenItsRowIsNamedByItsCodeAndItsSiblingsAreUntouched()
     {
         // Pinned the other way until now: Fhi.Metadata-o355u made an explicit null navn read as ""
