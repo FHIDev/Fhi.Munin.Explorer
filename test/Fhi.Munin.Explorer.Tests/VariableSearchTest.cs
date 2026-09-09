@@ -1637,21 +1637,51 @@ public class VariableSearchTest : BunitContext
         Assert.Equal("Als registeret", cell.GetAttribute("title"));
     }
 
-    [Fact]
-    public void Render_WhenAKildeHasNoShortName_ThenTheColumnFallsBackToTheFullName()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Render_WhenAKildeHasNoShortName_ThenTheColumnFallsBackToTheFullName(string? shortName)
     {
-        // Not every kilde has a short name, and a blank cell would be worse than a long one.
+        // Not every kilde has a short name, and a blank cell would be worse than a long one. The
+        // API sends an omitted kortnavn as "", which the `??` this replaced kept, so the column
+        // said "Ikke oppgitt" over a name held on the same row.
         var cut = RenderWith(new FakeClient(OnePage(new VariableSummary
         {
             Id = Guid.NewGuid(),
             Code = "V_X.1",
             PreferredTerm = "Uten kortnavn",
-            KildeName = "Et register uten kortnavn",
+            KildeName = "Norsk register for gastrokirurgi",
+            KildeShortName = shortName,
         })));
 
         var cell = cut.Find(".munin-explorer-dataitem-main__source");
 
-        Assert.Equal("Et register uten kortnavn",
+        Assert.Equal("Norsk register for gastrokirurgi",
+                     cell.QuerySelector(".munin-explorer-dataitem-main__column__text")!.TextContent);
+        Assert.Equal("Norsk register for gastrokirurgi", cell.GetAttribute("title"));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void Render_WhenTheShortNameIsBlankAndSoIsTheKildeName_ThenTheColumnStillSaysNotSpecified(string? kildeName)
+    {
+        // The fallback must not turn an unknown kilde into a blank cell: with neither name there is
+        // nothing to fall back to, and "Ikke oppgitt" is still the right answer. Both absences
+        // reach here, since the property is nullable and the API also sends "".
+        var cut = RenderWith(new FakeClient(OnePage(new VariableSummary
+        {
+            Id = Guid.NewGuid(),
+            Code = "V_X.2",
+            PreferredTerm = "Uten kilde",
+            KildeName = kildeName,
+            KildeShortName = "",
+        })));
+
+        var cell = cut.Find(".munin-explorer-dataitem-main__source");
+
+        Assert.Equal("Ikke oppgitt",
                      cell.QuerySelector(".munin-explorer-dataitem-main__column__text")!.TextContent);
     }
 

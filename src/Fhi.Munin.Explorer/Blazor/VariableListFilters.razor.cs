@@ -1,4 +1,5 @@
 using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.Display;
 using Fhi.Munin.Explorer.Logging;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
@@ -66,8 +67,20 @@ public sealed partial class VariableListFilters : ComponentBase, IDisposable
     /// The list's kilder, in the catalogue's own order rather than the reader's. These are
     /// Norwegian names whoever is reading, so æ, ø and å belong at the end of the alphabet.
     /// </summary>
+    /// <remarks>
+    /// Ordered by the label rather than by <see cref="KildeInList.Name"/>, which is empty for a
+    /// kilde the list names nowhere: that sorts before every letter, putting the one checkbox
+    /// whose text is this package's own at the top of the catalogue's alphabet.
+    /// </remarks>
     private IReadOnlyList<KildeInList> Kilder =>
-        [.. (State?.KilderInList ?? []).OrderBy(k => k.Name, CatalogueProperties.CatalogueOrder)];
+        [.. (State?.KilderInList ?? []).OrderBy(Label, CatalogueProperties.CatalogueOrder)];
+
+    /// <summary>
+    /// What the checkbox is called. <see cref="T"/>'s "Ikke oppgitt" where the list names the
+    /// kilde neither long nor short, as the two Kilde columns say it — the alternative is a
+    /// checkbox whose whole accessible name is its count.
+    /// </summary>
+    private string Label(KildeInList kilde) => DisplayText.Trimmed(kilde.Name) ?? T.NotSpecified;
 
     private IReadOnlyCollection<Guid> Chosen => State?.KildeFilter ?? [];
 
@@ -79,7 +92,11 @@ public sealed partial class VariableListFilters : ComponentBase, IDisposable
     /// <summary>"(3)" alone; the separating space is emitted beside it — see Kelda's own facets.</summary>
     private static string Count(int count) => $"({count})";
 
-    /// <summary><c>"no"</c> for a name the catalogue wrote — the same marking the table's cells carry.</summary>
+    /// <summary>
+    /// <c>"no"</c> for a name the catalogue wrote — the same marking the table's cells carry.
+    /// Passed the stored name and not the label, so the "Ikke oppgitt" standing in for a missing
+    /// one goes unmarked: that word is this package's, and in English it is not Norwegian at all.
+    /// </summary>
     private static string? CatalogueLang(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : "no";
 

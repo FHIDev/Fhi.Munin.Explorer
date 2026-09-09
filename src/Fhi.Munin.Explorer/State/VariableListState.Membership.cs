@@ -1,3 +1,4 @@
+using Fhi.Munin.Explorer.Display;
 using Microsoft.Extensions.Logging;
 
 namespace Fhi.Munin.Explorer.State;
@@ -374,9 +375,21 @@ public sealed partial class VariableListState
                     continue;
                 }
 
+                // Trimmed rather than `??`, as the two Kilde columns are: a name the read model
+                // leaves out arrives as null or as "", and `??` only catches the first. Empty
+                // when the entry carries neither; the panel is what names that one.
+                var kildeName = DisplayText.Trimmed(item.KildeName)
+                                ?? DisplayText.Trimmed(item.KildeShortName) ?? "";
+
+                // A later entry's name fills in for an earlier one that had neither, so one
+                // nameless entry cannot leave a kilde the list does name unnamed in the sidebar.
                 kilder[kildeId] = kilder.TryGetValue(kildeId, out var tally)
-                    ? tally with { Count = tally.Count + 1 }
-                    : new KildeTally(item.KildeName ?? item.KildeShortName ?? "", 1);
+                    ? tally with
+                    {
+                        Count = tally.Count + 1,
+                        Name = tally.Name.Length > 0 ? tally.Name : kildeName,
+                    }
+                    : new KildeTally(kildeName, 1);
             }
 
             if (result.Items.Count == 0 || found.Count >= result.TotalCount)

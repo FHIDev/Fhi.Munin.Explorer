@@ -4,7 +4,11 @@ namespace Fhi.Munin.Explorer.State;
 
 /// <summary>One kilde the active list holds variables from, and how many of them it holds.</summary>
 /// <param name="Id">The kilde, as the list's entries name it.</param>
-/// <param name="Name">Its name, or its short name when the read model carries no long one.</param>
+/// <param name="Name">
+/// Its name, or its short name when the read model carries no long one, or empty when the list
+/// names it neither way — a surface that shows this must say something in place of the empty one,
+/// as the filter panel says "Ikke oppgitt".
+/// </param>
 /// <param name="Count">
 /// How many of the list's variables belong to it — over the whole list, never over a page.
 /// </param>

@@ -996,6 +996,40 @@ public class VariableListViewTest : BunitContext
         Assert.Equal("Als registeret", cell.GetAttribute("title"));
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void View_WhenAKildeHasNoShortName_ThenTheColumnFallsBackToTheKildeName(string? shortName)
+    {
+        // The API sends an omitted kortnavn as "", which the `??` this replaced kept, so the
+        // column said "Ikke oppgitt" over a kilde name sitting on the same row.
+        var item = Item("Alder ved diagnose", "V_BDR.ALDER") with
+        {
+            KildeName = "Norsk register for gastrokirurgi",
+            KildeShortName = shortName
+        };
+
+        var cut = RenderView(new ListClient(item));
+
+        Assert.Equal("Norsk register for gastrokirurgi", CellText(cut, "source"));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void View_WhenTheShortNameIsBlankAndSoIsTheKildeName_ThenTheColumnStillSaysNotSpecified(string? kildeName)
+    {
+        // The fallback must not turn an unknown kilde into a blank cell: with neither name there is
+        // nothing to fall back to, and "Ikke oppgitt" is still the right answer. Both absences
+        // reach here, since the property is nullable and the API also sends "".
+        var item = Item("Alder ved diagnose", "V_BDR.ALDER") with { KildeName = kildeName, KildeShortName = "" };
+
+        var cut = RenderView(new ListClient(item));
+
+        Assert.Equal("Ikke oppgitt", CellText(cut, "source"));
+    }
+
     [Fact]
     public async Task View_WhenThePageChanges_ThenEveryCellStillHoldsItsOwnValue()
     {

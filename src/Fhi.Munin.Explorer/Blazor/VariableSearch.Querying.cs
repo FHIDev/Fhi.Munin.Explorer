@@ -1,4 +1,5 @@
 using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.Display;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
 namespace Fhi.Munin.Explorer.Blazor;
@@ -613,7 +614,7 @@ public partial class VariableSearch
                 pageSize: ClampedPageSize,
                 sort: _sort,
                 direction: _direction);
-            _executedSearch = Trimmed(search);
+            _executedSearch = DisplayText.Trimmed(search);
 
             // The page we are on is the page that arrived, not the page that was asked for. A
             // server that clamps page 12 to page 8 and says so has answered truthfully, and
@@ -851,9 +852,6 @@ public partial class VariableSearch
 
         await NotifyPageChangedAsync();
     }
-
-    private static string? Trimmed(string? text) =>
-        string.IsNullOrWhiteSpace(text) ? null : text.Trim();
 
     private static string? Period(VariableSummary v) => Period(v.DataFrom, v.DataTo);
 

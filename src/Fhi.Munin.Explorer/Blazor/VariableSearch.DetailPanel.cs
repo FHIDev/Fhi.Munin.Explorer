@@ -1,4 +1,5 @@
 using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.Display;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
 namespace Fhi.Munin.Explorer.Blazor;
@@ -11,7 +12,7 @@ public partial class VariableSearch
     private bool IsSelected(VariableSummary v) => _selectedId == v.Id;
 
     /// <summary>The open panel's description, trimmed, or null while there is none to show.</summary>
-    private string? DetailDescription => Trimmed(_detail?.Description);
+    private string? DetailDescription => DisplayText.Trimmed(_detail?.Description);
 
     /// <summary>
     /// Whether the card draws the description the search listed it with.
@@ -112,7 +113,7 @@ public partial class VariableSearch
 
         if (!string.IsNullOrWhiteSpace(detail.KildeName))
         {
-            var shortName = Trimmed(detail.KildeShortName);
+            var shortName = DisplayText.Trimmed(detail.KildeShortName);
             var sameThingTwice = shortName is null
                 || string.Equals(shortName, detail.KildeName, StringComparison.OrdinalIgnoreCase);
 
@@ -515,7 +516,7 @@ public partial class VariableSearch
     /// </remarks>
     private static bool IsUnnamedKildekodeverk(KodeverkLink link) =>
         string.Equals(link.KodeverkType, "Kildekodeverk", StringComparison.OrdinalIgnoreCase)
-        && Trimmed(link.DisplayName) is null
+        && DisplayText.Trimmed(link.DisplayName) is null
         && link.HasCodeValues;
 
     /// <summary>What an unnamed link draws where a named one draws its name.</summary>
@@ -557,7 +558,7 @@ public partial class VariableSearch
 
             first = false;
 
-            builder.AddContent(seq + 1, Trimmed(code.Name) is { } name ? $"{code.Value} {name}" : code.Value);
+            builder.AddContent(seq + 1, DisplayText.Trimmed(code.Name) is { } name ? $"{code.Value} {name}" : code.Value);
 
             seq += 2;
         }
@@ -612,7 +613,7 @@ public partial class VariableSearch
                     _ => InlineCodesPreview(_codes[key])
                 });
             }
-            else if (Trimmed(link.DisplayName) is { } name)
+            else if (DisplayText.Trimmed(link.DisplayName) is { } name)
             {
                 // The catalogue's own name, so it stays Norwegian whatever the UI language is —
                 // the rule the kilde trail and the variable's own name already follow.
@@ -791,7 +792,7 @@ public partial class VariableSearch
             // The catalogue's own wording, Norwegian whatever the page is — the rule every other
             // value out of the catalogue follows here.
             builder.AddAttribute(seq + 4, "lang", "no");
-            builder.AddContent(seq + 5, Trimmed(code.Name) ?? T.NotSpecified);
+            builder.AddContent(seq + 5, DisplayText.Trimmed(code.Name) ?? T.NotSpecified);
             builder.CloseElement();
 
             builder.OpenElement(seq + 6, "td");

@@ -1,4 +1,5 @@
 using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.Display;
 using Fhi.Munin.Explorer.Logging;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
@@ -342,7 +343,10 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         // the per-cell field name the explorer's <div>s need and the flex column class a table
         // cell cannot wear.
         RowCell.Write(builder, 100, T.FieldCode, item.VariableCode, "code", T.NotSpecified, tableCell: true);
-        RowCell.Write(builder, 200, T.FieldSource, item.KildeShortName ?? item.KildeName, "source", T.NotSpecified, tooltip: item.KildeName, tableCell: true);
+        // Trimmed rather than `??`: a kortnavn the API leaves out arrives as null or as "", and
+        // `??` only catches the first — RowCell then draws the "" as "Ikke oppgitt" over a name
+        // it is holding.
+        RowCell.Write(builder, 200, T.FieldSource, DisplayText.Trimmed(item.KildeShortName) ?? item.KildeName, "source", T.NotSpecified, tooltip: item.KildeName, tableCell: true);
         RowCell.Write(builder, 300, T.FieldDataCollection, item.DatasamlingName, "dataCollection", T.NotSpecified, tableCell: true);
         RowCell.Write(builder, 400, T.FieldVariableGroup, item.VariabelgruppeName, "theme", T.NotSpecified, tableCell: true);
         RowCell.Write(builder, 500, T.FieldDataType, DataTypeName(item.DataType), "dataType", T.NotSpecified, tableCell: true);

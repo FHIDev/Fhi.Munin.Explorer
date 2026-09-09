@@ -1,4 +1,5 @@
 using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.Display;
 using Microsoft.AspNetCore.Components;
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -268,7 +269,7 @@ public partial class VariableSearch
     /// the trail has a fallback label rather than assuming a name.
     /// </remarks>
     private string? KildeName(Guid id) =>
-        Trimmed(_facets?.Kilder.FirstOrDefault(kilde => kilde.Id == id)?.Name)
+        DisplayText.Trimmed(_facets?.Kilder.FirstOrDefault(kilde => kilde.Id == id)?.Name)
         ?? RowName(row => row.KildeId == id ? row.KildeName : null);
 
     /// <summary>
@@ -280,7 +281,7 @@ public partial class VariableSearch
     /// fall back to.
     /// </remarks>
     private string? DelkildeName(Guid id) =>
-        Trimmed(_facets?.Delkilder.FirstOrDefault(delkilde => delkilde.Id == id)?.Name);
+        DisplayText.Trimmed(_facets?.Delkilder.FirstOrDefault(delkilde => delkilde.Id == id)?.Name);
 
     /// <summary>
     /// A datasamling's name, or null when no row on screen carries it.
@@ -297,10 +298,10 @@ public partial class VariableSearch
 
     /// <summary>A variabelgruppe's name — the facets, then the rows, as the kilde's is.</summary>
     private string? VariabelgruppeName(Guid id) =>
-        Trimmed(_facets?.Variabelgrupper.FirstOrDefault(gruppe => gruppe.Id == id)?.Name)
+        DisplayText.Trimmed(_facets?.Variabelgrupper.FirstOrDefault(gruppe => gruppe.Id == id)?.Name)
         ?? RowName(row => row.VariabelgruppeId == id ? row.VariabelgruppeName : null);
 
     /// <summary>The first name the visible rows can supply for a value, or null if none can.</summary>
     private string? RowName(Func<VariableSummary, string?> name) =>
-        _result?.Items.Select(row => Trimmed(name(row))).FirstOrDefault(found => found is not null);
+        _result?.Items.Select(row => DisplayText.Trimmed(name(row))).FirstOrDefault(found => found is not null);
 }
