@@ -29,7 +29,7 @@ internal sealed record KildeHierarchyNode(
     {
         // One group can occur under several owners; browser disclosure state belongs to a position.
         var key = $"{parent}/variabelgruppe/{node.Id}";
-        return new(key, node.Name, node.VariableCount, null,
+        return new(key, node.Name, node.VariableCount, node.PresentationOrder,
             Ordered(node.ChildVariabelgrupper.Select(g => From(g, key))));
     }
 

@@ -28,7 +28,8 @@ public sealed record KildeSummary
     /// <remarks>
     /// Null when the kilde has no kildetype, which is a real state in the catalogue rather than a
     /// missing value: a host rendering it needs a word of its own for it, as this package renders
-    /// "Ikke oppgitt". (<c>Fhi.Metadata-l9l2n.61</c>)
+    /// its reader's — "Ikke oppgitt" under <c>no</c>, "Not specified" under <c>en</c>.
+    /// (<c>Fhi.Metadata-l9l2n.61</c>)
     /// </remarks>
     [JsonPropertyName("kildetype")] public string? Kildetype { get; init; }
 
@@ -76,9 +77,9 @@ public sealed record KildeSummary
     /// <summary>
     /// Curated free-form metadata — contact details, purpose, legal basis, HealthDCAT-AP fields
     /// and so on. Which keys appear varies per kilde and per environment, and every value is a
-    /// string even when it holds JSON (<c>healthCategory</c> arrives as
-    /// <c>["ehds-cat:registries-quality-of-healthcare"]</c> in a string). Labels for the keys come
-    /// from the detail endpoint's <see cref="KildeDetail.PropertyMetadata"/>.
+    /// string even when it holds JSON (<c>healthCategory</c> arrives as <c>["MRMR"]</c> in a
+    /// string — a datakategori token, see <see cref="HierarchyDatasamling.Categories"/>). Labels
+    /// for the keys come from the detail endpoint's <see cref="KildeDetail.PropertyMetadata"/>.
     /// </summary>
     /// <remarks>
     /// Non-nullable, and it is the deserialiser rather than the initialiser beside it that keeps

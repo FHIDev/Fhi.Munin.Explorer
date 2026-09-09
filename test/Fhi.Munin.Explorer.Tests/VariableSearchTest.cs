@@ -3826,6 +3826,36 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
+    public void Render_WhenAKildeFacetHasNoKildetype_ThenTheHeadingOverItSaysSoRatherThanStandingBlank()
+    {
+        // The Datakilde group heads its kilder by kildetype, so a null is an unnamed line above a
+        // register the reader is meant to recognise — and it is the grouping key as well as the
+        // label, which is the shape that throws rather than renders badly. (Fhi.Metadata-l9l2n.61)
+        var cut = RenderWith(new FilteringClient(OnePage(), new FilterOptions
+        {
+            KildeTyper = [new() { Value = "biobank", DisplayName = "Biobank", Count = 12 }],
+            Kilder =
+            [
+                new() { Id = Tromso, Name = "Tromsøundersøkelsen", KildeType = "biobank", Count = 12 },
+                new() { Id = Dodsarsak, Name = "Dødsårsaksregisteret", KildeType = null, Count = 30 }
+            ],
+            TotalCount = 42
+        }));
+
+        // A heading names a level and does not filter, so it is text in the li rather than a label.
+        var unnamed = cut.FindAll(".munin-explorer-filters li")
+            .Single(li => li.ChildNodes[0].TextContent.Trim() == "Ikke oppgitt");
+
+        Assert.Equal(["Dødsårsaksregisteret (30)"],
+                     unnamed.QuerySelectorAll("ul > li > label").Select(label => label.TextContent));
+
+        // The missing kildetype costs the kilde its heading's name, not its place in the panel.
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        Assert.True(FacetChosen(cut, "Dødsårsaksregisteret"));
+    }
+
+    [Fact]
     public void Render_WhenTheApiNamesAKildetypeByItsEnumName_ThenTheButtonSaysItInProse()
     {
         // The facet's own displayName is the raw enum name. Munin's explorer carries the prose,
@@ -7321,6 +7351,23 @@ public class VariableSearchTest : BunitContext
                      KodeverkLines(cut).Select(l => l.QuerySelector(".munin-explorer-kodeverk__name")!.TextContent));
         Assert.Equal(["Referanse: 2336", "Referanse: 2.16.578.1.12.4.1.1.7110"],
                      KodeverkLines(cut).Select(l => l.QuerySelector(".munin-explorer-kodeverk__reference")!.TextContent));
+    }
+
+    [Fact]
+    public void Detail_WhenTheOwningKildeHasNoKildetype_ThenTheTrailStartsAtTheKildeRatherThanAtANamelessStep()
+    {
+        // A trail is read as a path, so the level with nothing in it is left out rather than
+        // written "Ikke oppgitt" — the rule the empty string already had, asserted against the
+        // null the API actually sends now the contract stopped coercing it. (Fhi.Metadata-l9l2n.61)
+        var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale")))
+            .Knows(Detail(TaleId) with { KildeType = null })
+            .Knows(Kilde())
+            .Knows(Datasamling()));
+
+        Toggles(cut)[0].Click();
+
+        Assert.Equal(["Als registeret (ALS)", "Inklusjon"],
+                     Values(cut)[1].QuerySelectorAll("ol > li").Select(l => l.TextContent));
     }
 
     [Fact]

@@ -1610,6 +1610,35 @@ public class KildeSearchTest : BunitContext
     }
 
     [Fact]
+    public void Facets_WhenTheCapturedPayloadHasAKildeWithNoKildetype_ThenItIsInNoKildetypeChoiceAtAll()
+    {
+        // The half of Fhi.Metadata-l9l2n.61 the cell above cannot see: the null is a facet key and
+        // a sort key as well as a label, and the three wrong answers are an unnamed checkbox, an
+        // "Ikke oppgitt" choice nobody can filter on elsewhere, and a throw. It drops the kilde.
+        var kilder = JsonSerializer.Deserialize<IReadOnlyList<KildeSummary>>(
+                TestData.Read("kilder.json"), MuninExplorerClient.Json)
+            ?? throw new InvalidOperationException("kilder.json no longer reads as a kilde list.");
+
+        var cut = RenderWith(new FakeClient([.. kilder]));
+
+        Assert.Equal(
+            ["Nasjonalt medisinsk kvalitetsregister (2)", "Sentralt helseregister (1)"],
+            Choices(Facet(cut, "Kildetype")));
+
+        // Unticked it is one of the four rows, so the drop above is the facet's doing, not the list's.
+        Assert.Contains("Nasjonalt kvalitetsregister for ryggkirurgi (NKR), degenerativ nakke.", RowNames(cut));
+
+        // A kilde in no choice is one any choice filters out, not one that rides along in every result.
+        Tick(cut, "Kildetype", "Nasjonalt medisinsk kvalitetsregister");
+
+        Assert.Equal(
+        [
+            "Norsk register for ALS og andre motonevronsykdommer (ALS-registeret)",
+            "Barnediabetes"
+        ], RowNames(cut));
+    }
+
+    [Fact]
     public void Render_Always_ThenTheResultsAreATableAndTheNameIsAButton()
     {
         // The shape rule, pinned. Neither Stiler nor helsedata's own stylesheets have a kilde list

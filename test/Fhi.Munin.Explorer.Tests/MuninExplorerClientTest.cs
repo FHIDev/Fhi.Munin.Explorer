@@ -99,8 +99,8 @@ public class MuninExplorerClientTest
         // what says the spelling the ordinal lookup uses is the API's own.
         Assert.Equal("2023", als.AdditionalProperties["Opprettet"]);
 
-        // The row this capture was re-taken for: a kilde with no kildetype at all, which the API
-        // sends as null and the contract used to make an empty string of. (Fhi.Metadata-l9l2n.61)
+        // The row the latest re-take added: a kilde with no kildetype at all, which the API sends
+        // as null and the contract used to make an empty string of. (Fhi.Metadata-l9l2n.61)
         Assert.Null(kilder.Single(kilde => kilde.Code == "K_NKR-NAKKE").Kildetype);
     }
 
@@ -112,9 +112,9 @@ public class MuninExplorerClientTest
         Assert.NotNull(kilde);
         Assert.Equal("K_ALS", kilde.Code);
 
-        // Not a contradiction of the test above, which reads a kilder.json re-taken for its
-        // Opprettet key: this capture and the four siblings still carrying K_ALS's old name are
-        // older, so the corpus is coherent per file rather than as one pass.
+        // Not a contradiction of the test above, whose kilder.json has been re-taken twice since —
+        // for its Opprettet key, then for K_NKR-NAKKE's null kildetype. This capture and the four
+        // siblings carrying K_ALS's old name are older: the corpus is coherent per file, not as one.
         Assert.Equal("Als registeret", kilde.PreferredTerm);
         Assert.Equal(230, kilde.TotalVariables);
         Assert.Equal(9, kilde.Datasamlinger.Count);
@@ -231,17 +231,30 @@ public class MuninExplorerClientTest
         var tromso5 = hierarchy.Delkilder.First(d => d.Datasamlinger.Count == 4);
         Assert.Equal(1170, tromso5.VariableCount);
 
-        Assert.Equal(["RPDG"], tromso5.Datasamlinger[0].Categories);
+        // Named rather than indexed, here and below: this is a wholesale re-capture, so an ordinal
+        // would silently move onto a different datasamling the next time one is taken.
+        var firstVisit = tromso5.Datasamlinger
+            .Single(d => d.Name == "Tromsø5 - The Fifth Tromsø Study - first visit");
 
-        // The sample-collection visit rather than the first: the two ordinary visits carry no
-        // variabelgrupper in this capture, so asserting on them would measure the catalogue.
-        var samples = tromso5.Datasamlinger[2].Variabelgrupper;
+        // A bare code, not the ehds-cat: CURIE the older captures hold: the datakategori vocabulary
+        // is passed through as the catalogue authored it, which is why nothing matches on a prefix.
+        Assert.Equal(["RPDG"], firstVisit.Categories);
+
+        // The sample-collection visit: the two ordinary visits carry no variabelgrupper in this
+        // capture, so asserting on them would measure the catalogue rather than the reader.
+        var samples = tromso5.Datasamlinger
+            .Single(d => d.Name == "Tromsø5 - The Fifth Tromsø study - forst visit ; sample collection")
+            .Variabelgrupper;
+        Assert.NotEmpty(samples);
         Assert.All(samples, group => Assert.NotEqual(Guid.Empty, group.Id));
 
         // The curated order the contract had nowhere to put until Fhi.Metadata-l9l2n.61 — unset on
         // the parent group here and set on both of its children, so both halves of int? are read.
-        Assert.Null(Assert.Single(samples).PresentationOrder);
-        Assert.Equal([609, 647], samples[0].ChildVariabelgrupper.Select(group => group.PresentationOrder));
+        var provetyper = Assert.Single(samples);
+        Assert.Equal("Prøvetyper", provetyper.Name);
+        Assert.Null(provetyper.PresentationOrder);
+        Assert.Equal(["Plasma", "Serum"], provetyper.ChildVariabelgrupper.Select(group => group.Name));
+        Assert.Equal([609, 647], provetyper.ChildVariabelgrupper.Select(group => group.PresentationOrder));
     }
 
     [Fact]

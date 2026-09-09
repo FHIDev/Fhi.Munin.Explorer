@@ -320,6 +320,17 @@ public class DatasamlingViewTest : BunitContext
     }
 
     [Fact]
+    public void SourceInformation_WhenTheOwningKildeHasNoKildetype_ThenTheRowSaysSoRatherThanStandingBlank()
+    {
+        // effectiveKildetype is the owning kilde's, and the API sends null when it has none. The
+        // compiler could not flag this reading site, because the helper it goes through has always
+        // taken a null — a blank row is all the change would have shown. (Fhi.Metadata-l9l2n.61)
+        var cut = Render(Datasamling() with { EffectiveKildetype = null });
+
+        Assert.Equal("Ikke oppgitt", Value(SourceInformation(cut), "Type datakilde"));
+    }
+
+    [Fact]
     public void SourceInformation_WhenThePayloadCarriesNoTimestamp_ThenTheRowIsAbsentRatherThanYearOne()
     {
         // An absent sistOppdatert reads as null (Fhi.Metadata-se0by) and drew "1. januar 0001"
