@@ -43,12 +43,12 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// starts at the top of the host's page.
 /// </para>
 /// <para>
-/// Written for either explorer though only the kildeutforsker draws it today, the bargain
-/// <see cref="ColumnPicker"/> makes: the markup is a row of labels and two borrowed class names,
-/// and a second copy would be a second place for those to drift from Stiler. The two panels'
-/// selection state does not match and does not have to — Kelda holds a dictionary of ticked values
-/// and the variable explorer a <c>VariableFilter</c> whose removals refetch — because what differs
-/// is the projection into <see cref="Chip"/>, which each caller writes, and not the row.
+/// Drawn by both explorers, the bargain <see cref="ColumnPicker"/> makes: the markup is a row of
+/// labels and two borrowed class names, and a second copy would be a second place for those to
+/// drift from Stiler. The two panels' selection state does not match and does not have to — Kelda
+/// holds a dictionary of ticked values and the variable explorer a <c>VariableFilter</c> whose
+/// removals refetch — because what differs is the projection into <see cref="Chip"/>, which each
+/// caller writes, and not the row.
 /// </para>
 /// </remarks>
 internal static class ActiveFilters

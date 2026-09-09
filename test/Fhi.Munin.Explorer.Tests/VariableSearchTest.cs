@@ -1437,8 +1437,9 @@ public class VariableSearchTest : BunitContext
             // The number beside a facet value, in an element of its own so a host can dim it —
             // the same name the kilde explorer's facets wear. (Fhi.Metadata-cgk85)
             "munin-explorer-filters__count",
-            "munin-explorer-container",  // ours, Stiler components/munin-explorer/
-            "munin-explorer-results",    // ours, Stiler components/munin-explorer/
+            // The row the count shares with the column picker, above the results container and
+            // outside it — the name the kildeutforsker already emits. (Fhi.Metadata-l9l2n.68)
+            "munin-explorer-results__toolbar",
             // The column picker, all four theirs, all four read off the compiled variables.css
             // rather than guessed at. The one they do NOT include is `sortable-dropdown`, which
             // the bead pointed at: that is their mobile sort control, `display: none` above
@@ -1447,6 +1448,8 @@ public class VariableSearchTest : BunitContext
             "munin-explorer-header__actions",         // ours, Stiler components/munin-explorer/
             "munin-explorer__dropdown",               // ours, Stiler (the z-index)
             "munin-explorer-header__actions-button",  // ours, Stiler components/munin-explorer/
+            "munin-explorer-container",  // ours, Stiler components/munin-explorer/
+            "munin-explorer-results",    // ours, Stiler components/munin-explorer/
         ], invented);
         Assert.Equal("munin-explorer", cut.Find("section").ClassName);
 
@@ -4619,28 +4622,270 @@ public class VariableSearchTest : BunitContext
 
         ClickFacet(cut, "Dødsårsaksregisteret");
         ClickFacet(cut, "Streng");
-        Facet(cut, "Fjern alle filtre").Click();
+        ClearAll(cut).Click();
 
         Assert.True(client.SearchFilter?.IsEmpty);
     }
 
     [Fact]
-    public void Render_WhenThereIsNothingToClear_ThenTheClearButtonIsInertRatherThanAbsent()
+    public void Render_WhenThereIsNothingToClear_ThenThereIsNoClearControlAtAll()
     {
-        // Taking the control the reader just pressed out of the document drops focus to <body> —
-        // the same reason the pager's buttons carry aria-disabled instead of disabled.
+        // It stood at the foot of the panel and was made inert rather than removed, because taking
+        // the control the reader just pressed out of the document drops focus to <body>. It is in
+        // the chip row now, which is drawn only while something is chosen — so inert has become
+        // absent, and the focus it used to protect is handed to the search field ahead of the press
+        // instead. (Fhi.Metadata-l9l2n.68)
         var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
         var cut = RenderWith(client);
 
-        var clear = Facet(cut, "Fjern alle filtre");
-        Assert.Equal("true", clear.GetAttribute("aria-disabled"));
-        Assert.False(clear.HasAttribute("disabled"));
-
-        clear.Click();
-        Assert.Equal(1, client.SearchCalls); // inert: no request went out
+        Assert.Empty(cut.FindAll(".munin-explorer-filters__active"));
+        Assert.DoesNotContain("Fjern alle filtre", cut.Markup, StringComparison.Ordinal);
+        Assert.Equal(1, client.SearchCalls);
 
         ClickFacet(cut, "Dødsårsaksregisteret");
-        Assert.False(Facet(cut, "Fjern alle filtre").HasAttribute("aria-disabled"));
+
+        // And there it is, in the chip row and nowhere else on the page.
+        Assert.NotNull(ClearAll(cut).Closest(".munin-explorer-filters__active"));
+    }
+
+    // ---------------------------------------------------------------------------------
+    // The row of active-filter chips over the results, and the row the count shares with
+    // the column picker. (Fhi.Metadata-l9l2n.68)
+    // ---------------------------------------------------------------------------------
+
+    /// <summary>The visible text of every chip, without its close control's glyph.</summary>
+    /// <remarks>
+    /// The first child is the value's own element and the button follows it, so reading the whole
+    /// capsule would append the × to every assertion here.
+    /// </remarks>
+    private static IReadOnlyList<string> Chips(IRenderedComponent<VariableSearch> cut) =>
+        [.. cut.FindAll(".munin-explorer-filters__chip").Select(chip => chip.FirstChild!.TextContent.Trim())];
+
+    /// <summary>Press the close control on the chip naming <paramref name="value"/>.</summary>
+    private static void RemoveChip(IRenderedComponent<VariableSearch> cut, string value) =>
+        cut.FindAll(".munin-explorer-filters__chip")
+            .First(chip => chip.FirstChild!.TextContent.Trim() == value)
+            .QuerySelector(".munin-explorer-filters__chip-remove")!
+            .Click();
+
+    /// <summary>The one control on the page that offers to clear every filter.</summary>
+    /// <remarks>
+    /// <c>Single</c> is the assertion, not a convenience: the panel's own clear-all was moved into
+    /// the chip row rather than copied, and a second one would give the page two controls over one
+    /// selection. Every test below that clears goes through here.
+    /// </remarks>
+    private static IElement ClearAll(IRenderedComponent<VariableSearch> cut) =>
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "Fjern alle filtre");
+
+    /// <summary>Facets covering every kind the panel draws, so chips can be counted against them.</summary>
+    /// <remarks>
+    /// Datatype, instrument and the two kodeverk are here because the kildeutforsker has none of
+    /// them: a chip builder written as a switch over the facets that explorer knows passes a test
+    /// shaped like its panel and fails this one.
+    /// </remarks>
+    private static FilterOptions EveryFacet() => Facets() with
+    {
+        DataCategories = TwoCategories,
+        HelsefagligKodeverk = [new() { ShortName = "ICD-10", FullName = "Klassifikasjon av sykdommer", Count = 5 }],
+        AdministrativtKodeverk = [new() { Oid = "3402", Name = "Kommunenummer", Count = 4 }],
+        Instruments = [new() { Id = Rand36, Code = "RAND-36", Name = "RAND-36 spørreskjema", Count = 6 }]
+    };
+
+    private static readonly Guid Rand36 = new("dddddddd-0000-0000-0000-000000000001");
+
+    /// <summary>One value in every facet the panel offers, in the order the panel draws them.</summary>
+    private static readonly string[] OneValuePerFacet =
+    [
+        "Sentralt helseregister",                 // kildetype
+        "Dødsårsaksregisteret",                   // kilde
+        "Tromsø 4",                               // delkilde, nested under its own kilde
+        "ehds-cat:population-health-surveys",     // datakategori
+        "Bakgrunn",                               // variabelgruppe
+        "Streng",                                 // datatype
+        "ICD-10",                                 // helsefaglig kodeverk
+        "Kommunenummer",                          // administrativt kodeverk
+        "RAND-36 spørreskjema",                   // instrument
+        "Har kildekodeverk"                       // the catch-all
+    ];
+
+    [Fact]
+    public void ActiveFilters_WhenEveryFacetHasAValueChosen_ThenEveryOneOfThemIsAChip()
+    {
+        // THE TEST THAT CATCHES THE WRONG SHAPE. A row covering four facets out of ten reads as
+        // covering all ten, which is worse than no row at all — so the count is asserted against
+        // the filter's own count of active values rather than against a list written out here.
+        // Datatype and instrument are facets the kildeutforsker does not have, so a builder copied
+        // from it by naming facets rather than by walking them fails on exactly those two.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), EveryFacet());
+        var cut = RenderWith(client);
+
+        foreach (var value in OneValuePerFacet)
+        {
+            ClickFacet(cut, value);
+        }
+
+        Assert.Equal(OneValuePerFacet.Length, client.SearchFilter!.ActiveCount);
+        Assert.Equal(OneValuePerFacet.Length, Chips(cut).Count);
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenTheChosenValueIsFromTheCatchAll_ThenItsChipNamesTheFacetAndTheOthersDoNot()
+    {
+        // "Har kildekodeverk" over the results says nothing about being a filter; every other
+        // facet's values are their own word. Decided 2026-09-09: the facet name, a colon, the
+        // value. Both languages live in Texts, so neither is written into the markup.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE")), EveryFacet()));
+
+        ClickFacet(cut, "Streng");
+        ClickFacet(cut, "Har kildekodeverk");
+
+        Assert.Equal(["Streng", "Andre filtre: Har kildekodeverk"], Chips(cut));
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenADateBoundIsSet_ThenItIsAChipNamingWhichEndItIs()
+    {
+        // The dataperiode holds no facet values at all — it is two date fields — so a row built by
+        // walking the drawn values alone would leave a date filter uncounted and unremovable from
+        // here. A bare date does not say which end it is, hence the field's own name in front of
+        // it. The day itself is written in the reader's culture, so only the year is asserted.
+        var cut = RenderWith(new FilteringClient(
+            OnePage(Variable("1. Tale", "KODE")),
+            FacetsWith(range: new DateInterval
+            {
+                Min = new DateTimeOffset(2000, 1, 1, 0, 0, 0, TimeSpan.Zero),
+                Max = new DateTimeOffset(2030, 1, 1, 0, 0, 0, TimeSpan.Zero)
+            })));
+
+        DateInputs(cut)[0].Change("2020-01-01");
+
+        var chip = Assert.Single(Chips(cut));
+
+        Assert.StartsWith("Fra og med: ", chip, StringComparison.Ordinal);
+        Assert.Contains("2020", chip, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenAChipIsDrawn_ThenItsCloseControlIsNamedAfterTheValueItRemoves()
+    {
+        // A row of controls all announcing "Fjern" is a row a screen reader cannot tell apart, and
+        // the × is not a name at all. AccessibleName refuses title and placeholder, so this cannot
+        // pass on an attribute that merely looks like one.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        Assert.Equal(
+            "Fjern filteret Dødsårsaksregisteret",
+            AccessibleName.Of(cut.Find(".munin-explorer-filters__chip-remove")));
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenAChipIsRemoved_ThenItsOwnCheckboxUnticksAndTheRequestWidensByThatValueAlone()
+    {
+        // THE TRAP. A chip that cleared its value down a path of its own would leave the panel's
+        // checkbox ticked over a list that had stopped obeying it, and neither control would say
+        // which one the rows came from. Both halves in one test, because either alone passes
+        // against exactly that.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), EveryFacet());
+        var cut = RenderWith(client);
+
+        ClickFacet(cut, "Dødsårsaksregisteret");
+        ClickFacet(cut, "Streng");
+
+        RemoveChip(cut, "Streng");
+
+        Assert.Equal(["Dødsårsaksregisteret"], Chips(cut));
+        Assert.False(FacetChosen(cut, "Streng"));
+        Assert.True(FacetChosen(cut, "Dødsårsaksregisteret"));
+        Assert.Empty(client.SearchFilter!.DataTypes);
+        Assert.Single(client.SearchFilter!.KildeIds);
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenClearAllIsPressed_ThenPanelChipsAndRowsAgreeThatNothingIsInForce()
+    {
+        // Three surfaces describing one selection, so the test asserts all three rather than the
+        // one it was written from: the checkboxes, the chip row, and what the rows were fetched
+        // with. Any of them left behind is a page saying two different things about its own list.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), EveryFacet());
+        var cut = RenderWith(client);
+
+        ClickFacet(cut, "Dødsårsaksregisteret");
+        ClickFacet(cut, "Streng");
+        ClickFacet(cut, "Har kildekodeverk");
+
+        ClearAll(cut).Click();
+
+        Assert.Empty(Chips(cut));
+        Assert.Empty(cut.FindAll(".munin-explorer-filters__active"));
+        Assert.False(FacetChosen(cut, "Dødsårsaksregisteret"));
+        Assert.False(FacetChosen(cut, "Streng"));
+        Assert.False(FacetChosen(cut, "Har kildekodeverk"));
+        Assert.True(client.SearchFilter!.IsEmpty);
+    }
+
+    [Fact]
+    public void ResultsToolbar_WhenTheCountSharesTheRow_ThenItIsStillTheOnePoliteRegionAndItStillNamesTheSort()
+    {
+        // THE TRAP THIS MOVE COULD HAVE SPRUNG: carry the count into the new row without its
+        // aria-live and screen-reader users stop being told the result count changed when a facet
+        // is ticked, with nothing visibly wrong. Exactly one region, because a visible count beside
+        // a region repeating the same sentence is announced twice.
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        var count = cut.Find(".munin-explorer-results__toolbar > p[role='status']");
+
+        Assert.Single(cut.FindAll("[role='status']"));
+        Assert.Equal("polite", count.GetAttribute("aria-live"));
+        Assert.Equal("true", count.GetAttribute("aria-atomic"));
+        Assert.Contains("1 variabel funnet", count.TextContent);
+        Assert.Contains("sortert på Standard, stigende", count.TextContent);
+    }
+
+    [Fact]
+    public void ResultsToolbar_WhenItIsDrawn_ThenItHoldsTheCountAndKolonnerAndNothingElse()
+    {
+        // Two controls, not four. A Sorter dropdown would be a second ordering control drifting out
+        // of step with the column headings that already carry aria-sort, and Per side belongs at
+        // the pager, where a reader is standing when they find out twenty was not enough.
+        var cut = RenderWith(new PagedClient(312));
+
+        var row = cut.Find(".munin-explorer-results__toolbar");
+
+        Assert.Empty(row.QuerySelectorAll("select"));
+        Assert.Equal(["Kolonner"], row.QuerySelectorAll("summary").Select(s => s.TextContent.Trim()));
+        Assert.NotNull(cut.Find(".munin-explorer-pagination-size select"));
+        Assert.Empty(row.QuerySelectorAll(".munin-explorer-pagination-size"));
+    }
+
+    [Fact]
+    public void ResultsToolbar_WhenTheMockupOmitsSomethingLiveHas_ThenItIsStillDrawn()
+    {
+        // The mockup draws no header row, no numbered pager and no skip link. None of the three is
+        // a proposal to remove them — it simply does not draw them — and an implementer following
+        // it closely takes all three out without noticing. Asserted here in one place so the
+        // omissions are read as one decision rather than three coincidences.
+        var cut = RenderWith(new PagedClient(312));
+
+        Assert.NotNull(cut.Find("a.munin-explorer-skiplink-pagination"));
+        Assert.Equal(["Navn ↑", "Kilde", "Datasamling", "Variabelgruppe"],
+                     SortButtons(cut).Select(b => b.TextContent));
+        Assert.NotEmpty(cut.FindAll(".munin-explorer-pagination-pages button"));
+    }
+
+    [Fact]
+    public void ResultsToolbar_WhenAColumnHeadingIsPressed_ThenItStillSortsAndStillMarksTheActiveColumn()
+    {
+        // The ordering stayed where it was, which is the reason the row holds no Sorter control.
+        var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        ClickSort(cut, "Kilde");
+
+        Assert.Equal(SortField.Kilde, client.LastSort);
+        Assert.Equal("Kilde ↑", SortButtons(cut)[1].TextContent);
+        Assert.Contains("sortert på Kilde, stigende", StatusLine(cut));
     }
 
     [Fact]
@@ -8370,12 +8615,17 @@ public class VariableSearchTest : BunitContext
                                             // which reuses it rather than minting a second name
                                             // for the same affordance
             "munin-explorer-breadcrumb__clear",      // ours — the × that empties the hierarchy
-            "munin-explorer-container",  // ours, Stiler components/munin-explorer/
-            "munin-explorer-results",    // ours, Stiler components/munin-explorer/
+            // The row the count shares with the column picker, above the results container and
+            // outside it — the name the kildeutforsker already emits. No chip names here: this
+            // client answers with no facets at all, so the panel has no value to draw a chip for.
+            // (Fhi.Metadata-l9l2n.68)
+            "munin-explorer-results__toolbar",
             "munin-explorer-header",     // ours now; their own variable page hangs the
             "munin-explorer-header__actions",        // column picker in, and the ghost button
             "munin-explorer__dropdown",              // that opens it. All four came from variables.css.
             "munin-explorer-header__actions-button",
+            "munin-explorer-container",  // ours, Stiler components/munin-explorer/
+            "munin-explorer-results",    // ours, Stiler components/munin-explorer/
             "munin-explorer-detail",     // ours, a handle
             "munin-explorer-group",      // ours — helsedata's panel is flat, so it has no
                                             // group heading to borrow a name from

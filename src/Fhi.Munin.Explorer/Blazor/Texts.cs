@@ -273,6 +273,10 @@ internal sealed record Texts(
     // control's whole name, because "Fjern" repeated down a row says nothing about which filter.
     string ActiveFiltersTitle,
     Func<string, string> RemoveFilter,
+    // A chip whose value says nothing on its own names its facet first: the catch-all's yes/no
+    // questions, and the dataperiode's two ends. Chips from the other facets are the value alone,
+    // which is the word the panel's own checkbox carries. (Fhi.Metadata-l9l2n.68)
+    Func<string, string, string> FilterInFacet,
     // The panel's toolbar. Three presses that change how the tree is drawn and narrow nothing, so
     // none of them is named for a filter. (Fhi.Metadata-wcbxi)
     string ExpandAllFacets,
@@ -907,6 +911,7 @@ internal sealed record Texts(
         ClearFilters: "Fjern alle filtre",
         ActiveFiltersTitle: "Aktive filtre",
         RemoveFilter: value => $"Fjern filteret {value}",
+        FilterInFacet: (facet, value) => $"{facet}: {value}",
         ExpandAllFacets: "Utvid alle",
         CollapseAllFacets: "Skjul alle",
         LevelLines: "Nivålinjer",
@@ -1240,6 +1245,7 @@ internal sealed record Texts(
         ClearFilters: "Clear all filters",
         ActiveFiltersTitle: "Active filters",
         RemoveFilter: value => $"Remove the filter {value}",
+        FilterInFacet: (facet, value) => $"{facet}: {value}",
         ExpandAllFacets: "Expand all",
         CollapseAllFacets: "Collapse all",
         LevelLines: "Level lines",
