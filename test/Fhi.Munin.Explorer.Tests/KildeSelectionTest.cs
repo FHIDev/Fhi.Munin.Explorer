@@ -799,7 +799,8 @@ public class KildeSelectionTest : BunitContext
     {
         // A bare `min-width: 21rem` is a floor that never yields, because CSS resolves max-width
         // before min-width - so the `max-width: 100%` beside it cannot save the page, and the
-        // button ran 87px past a 320px viewport under WCAG 1.4.10 (Fhi.Metadata-l9l2n.65).
+        // button ran 87px past a 320px viewport in THIS stylesheet, under WCAG 1.4.10. Stiler has no
+        // rule for the name at all, so the floor and the overflow are the sample's (Fhi.Metadata-l9l2n.65).
         static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
 
         var blocks = HostClassNames

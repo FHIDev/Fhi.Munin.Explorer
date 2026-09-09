@@ -72,17 +72,20 @@
 # .munin-explorer rule, no drilldown grid-column). cuo0e is the reminder that a green line here is
 # not a promise: specificity is not compared, so its shape can recur without this list noticing.
 #
-# IT IS 178 SINCE Fhi.Metadata-l9l2n.65, and the four that arrived are the sample AHEAD of Stiler
-# rather than drift: `.munin-explorer-selection__explore`'s `min-width: 21rem` is a floor that does
-# not yield, and CSS resolves max-width before min-width, so the `max-width: 100%` written beside it
-# to stop exactly this never wins. Measured at a 320px viewport: 407px of document against 320px of
-# viewport, 87px of the page scrolling sideways, which is WCAG 1.4.10. The sample now says
-# `min(21rem, 100%)` with the wrap a shrinking button needs, and `height: auto` with
-# `min-height: 2.75rem` beside it so the wrap can grow the button without dropping it below the
-# 2.75rem `hd-button-square` gives every other button in the row. Stiler 0.1.42 still says the old
-# thing. These four delete themselves when the Stiler half lands and the pin moves;
-# Fhi.Metadata-tx75j is the Stiler bead and Fhi.Metadata-hxtir adds 320px to the layout gate's
-# widths once it is pinned.
+# IT IS STILL 174 AFTER Fhi.Metadata-l9l2n.65, which added four lines for
+# `.munin-explorer-selection__explore` and had to take them out again: the guard called every one
+# of them stale, because none of them ever described a divergence. Stiler 0.1.42 has no rule for
+# that selector, or for `.munin-explorer-selection` beside it, in any context at all.
+#
+# SILENCE HERE ABOUT A SELECTOR IS NOT AGREEMENT, and this is the whole lesson of that branch. A
+# selector only the sample has is not compared: invented-declaration is reported only under
+# selectors Stiler ALSO has, and missing-selector only for selectors Stiler has and the sample
+# lacks, so a name Stiler has never heard of produces no line whichever way it differs. Read a gap
+# here as "Stiler agrees" and you get what l9l2n.65 got - the sample's own invented
+# `min-width: 21rem` read as a value the pin shared, and the 407px document it draws at a 320px
+# viewport read as a defect helsedata.no has. The overflow is real and it is the SAMPLE's; the
+# handover button on a Stiler host inherits `hd-button-square` and nothing else. Fhi.Metadata-tx75j
+# is the Stiler bead, and it ADDS a rule rather than correcting one.
 #
 # DO NOT FIX THESE IN ONE PULL REQUEST. Each one that is not inert changes how the samples draw and
 # needs measuring — see the bead. The guard is what stops the list growing; shrinking it is
@@ -99,7 +102,6 @@ different-value||.munin-explorer-meta|padding
 different-value||.munin-explorer-pagination-content [aria-disabled=true]:hover|color
 different-value||.munin-explorer-pagination-content [aria-disabled=true]|color
 different-value||.munin-explorer-search__clear:focus-visible|box-shadow
-different-value||.munin-explorer-selection__explore|min-width
 invented-declaration|@media (min-width:1024px)|.munin-explorer > .munin-explorer-filters|padding-inline
 invented-declaration||.munin-explorer-data-list__header|border-bottom
 invented-declaration||.munin-explorer-data-list__item--expanded|background
@@ -141,9 +143,6 @@ invented-declaration||.munin-explorer-pagination-size select|border
 invented-declaration||.munin-explorer-pagination-size select|border-radius
 invented-declaration||.munin-explorer-pagination-size select|color
 invented-declaration||.munin-explorer-pagination-size select|padding
-invented-declaration||.munin-explorer-selection__explore|height
-invented-declaration||.munin-explorer-selection__explore|min-height
-invented-declaration||.munin-explorer-selection__explore|white-space
 missing-declaration|@media (max-width:1280px)|.munin-explorer-meta__grid|margin-bottom
 missing-declaration|@media (max-width:1280px)|.munin-explorer-meta__grid|width
 missing-declaration|@media (min-width:1024px)|.munin-explorer > .munin-explorer-filters|position

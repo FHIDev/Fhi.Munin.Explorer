@@ -46,16 +46,13 @@ const settleMs = Number(process.env.ACCESSIBILITY_SETTLE_MS ?? 4000);
 // min-content plus 48px of page air is 827, so 843 of viewport is the last width that fits and
 // everything under it needs the table's own scroll box.
 //
-// 320 IS DELIBERATELY NOT HERE YET, and it is the width WCAG 1.4.10 Reflow names. Its absence is
-// why an 87px page overflow in the kildeutforsker survived the panel-round accessibility review:
-// the document is 407px wide there, in a band that runs from 320 up to about 407 and fits from 414,
-// so no width in this list has ever been inside it. Those figures are ModernHost's, taken with the
-// sample stand-in because no Stiler could be restored on the box that measured them; the cause is
-// one declaration, `.munin-explorer-selection__explore { min-width: 21rem }`, which the sample and
-// the pin agreed on to the value. That is also why the width is not added yet - this scan measures
-// the PINNED Stiler, so adding 320 before the fix is released and pinned would turn the layout gate
-// red on every pull request for a defect this repository cannot fix. Fhi.Metadata-hxtir adds it the
-// day the pin moves, and Fhi.Metadata-tx75j is the Stiler half it waits on.
+// 320 IS NOT HERE, and it is the width WCAG 1.4.10 Reflow names, so its absence is the largest
+// hole in this list. The kildeutforsker overflows by 87px there in ModernHost - a 407px document,
+// fitting again from 414 - but that is the SAMPLE stand-in's own `min-width: 21rem` on the handover
+// button, a floor Stiler 0.1.42 has no rule for at all, so the figure does not carry across and no
+// pinned-Stiler measurement at 320 exists yet (Fhi.Metadata-l9l2n.65). Adding the width blind would
+// make this gate report on a page nobody has looked at; Fhi.Metadata-hxtir is where it gets measured
+// and added, after Fhi.Metadata-tx75j gives Stiler the rule.
 const widths = (process.env.GEOMETRY_WIDTHS ?? '1689,1440,1281,1280,1024,843')
   .split(',')
   .map(w => Number(w.trim()))
