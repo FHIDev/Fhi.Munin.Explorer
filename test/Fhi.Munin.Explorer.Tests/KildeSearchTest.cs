@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text.Json;
 using AngleSharp.Dom;
 using Bunit;
@@ -458,15 +459,19 @@ public class KildeSearchTest : BunitContext
         Facets(cut).Single(details => FacetName(details) == heading);
 
     /// <summary>The visible text of every choice in a facet, count and all.</summary>
+    /// <remarks>
+    /// <c>li label</c> rather than <c>label</c>: a facet past the search threshold opens with a
+    /// hidden label naming its own search box, which is not a choice and would read as one here.
+    /// </remarks>
     private static IReadOnlyList<string> Choices(IElement facet) =>
-        [.. facet.QuerySelectorAll("label").Select(label => label.TextContent.Trim())];
+        [.. facet.QuerySelectorAll("li label").Select(label => label.TextContent.Trim())];
 
     /// <summary>
     /// The <c>lang</c> on every choice in a facet, in the order they are drawn, with null for a
     /// choice carrying none.
     /// </summary>
     private static IReadOnlyList<string?> Languages(IElement facet) =>
-        [.. facet.QuerySelectorAll("label").Select(label => label.GetAttribute("lang"))];
+        [.. facet.QuerySelectorAll("li label").Select(label => label.GetAttribute("lang"))];
 
     /// <summary>
     /// Tick the choice whose visible text begins with <paramref name="choice"/>.
@@ -482,7 +487,7 @@ public class KildeSearchTest : BunitContext
     /// </remarks>
     private static void Tick(IRenderedComponent<KildeSearch> cut, string heading, string choice) =>
         Facet(cut, heading)
-            .QuerySelectorAll("label")
+            .QuerySelectorAll("li label")
             .First(label => label.TextContent.Trim().StartsWith(choice, StringComparison.Ordinal))
             .QuerySelector("input")!
             .Change(true);
@@ -2260,7 +2265,7 @@ public class KildeSearchTest : BunitContext
         Assert.Equal(["Dødsårsaksregisteret"], RowNames(cut));
 
         Facet(cut, "Kildetype")
-            .QuerySelectorAll("label")
+            .QuerySelectorAll("li label")
             .First(label => label.TextContent.Trim().StartsWith("Sentralt", StringComparison.Ordinal))
             .QuerySelector("input")!
             .Change(false);
@@ -2998,6 +3003,419 @@ public class KildeSearchTest : BunitContext
             "Databehandler (1)",
             Facet(cut, "Databehandler").QuerySelector("summary h4")!.TextContent.Trim());
         Assert.Equal([true, false, false], Facets(cut).Select(f => f.HasAttribute("open")).ToArray());
+    }
+
+    // ---------------------------------------------------------------------------------
+    // The search inside a facet.
+    // ---------------------------------------------------------------------------------
+
+    /// <summary>The threshold the panel applies, read off the component rather than repeated here.</summary>
+    /// <remarks>
+    /// Reflected rather than written down as a literal, so the number stays decided in exactly one
+    /// place: a test carrying its own copy keeps passing while the two disagree, which is the whole
+    /// failure "decide it once and apply it uniformly" exists to prevent.
+    /// </remarks>
+    private static int SearchThreshold =>
+        (int)typeof(KildeSearch)
+            .GetField("FacetSearchThreshold", BindingFlags.NonPublic | BindingFlags.Static)!
+            .GetRawConstantValue()!;
+
+    /// <summary>
+    /// The four spellings of one organisation the live catalogue really holds.
+    /// </summary>
+    /// <remarks>
+    /// Quoted from Kelda rather than constructed, because the trap this feature carries is exactly
+    /// them: a search box makes the duplicates easy to find and easy to mistake for four
+    /// organisations. Merging them is a claim about the catalogue — Fhi.Metadata-4kxfv.
+    /// </remarks>
+    private static readonly string[] FhiSpellings =
+    [
+        "FHI",
+        "Folkehelseinstituttet",
+        "Folkehelseinstituttet (FHI)",
+        "Nasjonalt Folkehelseinstitutt (FHI)"
+    ];
+
+    /// <summary>
+    /// A catalogue with a facet on each side of the threshold: five kildetyper, and twelve
+    /// databehandlere, four of them one organisation spelled four ways.
+    /// </summary>
+    /// <remarks>
+    /// Both sides in ONE panel, which is what a fixture built from databehandler alone cannot show:
+    /// that proves a box appears, never that it stays off the facet whose five values are all on
+    /// screen already. The kildetyper cycle, so the small facet stays at five values however many
+    /// kilder are added.
+    /// </remarks>
+    private static FakeClient CatalogueWithOneBigFacet(params string[] extraProcessors)
+    {
+        string[] kildetyper =
+        [
+            "sentraltHelseregister",
+            "nasjonaltMedisinskKvalitetsregister",
+            "biobank",
+            "annenDatakilde",
+            "forskningsprosjekt"
+        ];
+
+        string[] processors =
+        [
+            .. FhiSpellings,
+            "Direktoratet for e-helse",
+            "Helsedirektoratet",
+            "Kreftregisteret",
+            "Norsk helsenett SF",
+            "Oslo universitetssykehus HF",
+            "St. Olavs hospital HF",
+            "Universitetet i Bergen",
+            "Universitetet i Oslo",
+            .. extraProcessors
+        ];
+
+        return new FakeClient(
+        [
+            .. processors.Select((processor, index) =>
+                Kilde($"Kilde {index:00}", $"K_{index:00}",
+                      kildetype: kildetyper[index % kildetyper.Length],
+                      dataProcessor: processor))
+        ]);
+    }
+
+    /// <summary>A catalogue whose databehandler facet has exactly <paramref name="values"/> values.</summary>
+    private static FakeClient CatalogueWithProcessors(int values) =>
+        new FakeClient(
+        [
+            .. Enumerable.Range(0, values).Select(index =>
+                Kilde($"Kilde {index:00}", $"K_{index:00}", dataProcessor: $"Databehandler {index:00}"))
+        ]);
+
+    /// <summary>One facet's own search field, or null for a facet the panel gave none.</summary>
+    private static IElement? FacetSearch(IRenderedComponent<KildeSearch> cut, string heading) =>
+        Facet(cut, heading).QuerySelector("input[type=text]");
+
+    /// <summary>Type into one facet's search field and let the panel redraw.</summary>
+    /// <remarks>
+    /// <c>Change</c> rather than <c>Input</c>: the field binds on change for the reason every other
+    /// field in this component does — <c>oninput</c> is one round-trip per keystroke on helsedata's
+    /// Blazor Server circuit, whatever the handler does with it. Driving <c>oninput</c> here would
+    /// pass against a field bound to neither event.
+    /// </remarks>
+    private static void SearchFacet(IRenderedComponent<KildeSearch> cut, string heading, string text) =>
+        FacetSearch(cut, heading)!.Change(text);
+
+    /// <summary>The one status line over the list, which is where the result count is written.</summary>
+    private static string ResultCount(IRenderedComponent<KildeSearch> cut) =>
+        cut.Find("section.munin-explorer > p[role=status]").TextContent.Trim();
+
+    /// <summary>A choice's value, with the count the label draws after it taken off.</summary>
+    private static IReadOnlyList<string> ChoiceValues(IElement facet) =>
+    [
+        .. Choices(facet).Select(choice => choice[..choice.LastIndexOf(" (", StringComparison.Ordinal)])
+    ];
+
+    [Fact]
+    public void FacetSearch_WhenOneFacetIsPastTheThresholdAndAnotherIsNot_ThenOnlyTheLongOneGetsABox()
+    {
+        // THE TRAP the threshold exists for, and it needs both sides in one panel: a change measured
+        // only against databehandler proves a box appears, not that it stays off the facet whose
+        // five values are all on screen already. Kildetype is that facet, and Munin's own Kelda has
+        // no more values in it than this fixture does.
+        var cut = RenderWith(CatalogueWithOneBigFacet());
+
+        Assert.Equal(5, Choices(Facet(cut, "Kildetype")).Count);
+        Assert.Equal(12, Choices(Facet(cut, "Databehandler")).Count);
+
+        // Read against the threshold rather than against 5 and 12, so this test says which side of
+        // the decision each facet is on rather than restating the fixture.
+        Assert.True(5 <= SearchThreshold, "Kildetype has to be at or under the threshold to be the small side.");
+        Assert.True(12 > SearchThreshold, "Databehandler has to be past the threshold to be the long side.");
+
+        Assert.Null(FacetSearch(cut, "Kildetype"));
+        Assert.NotNull(FacetSearch(cut, "Databehandler"));
+    }
+
+    [Fact]
+    public void FacetSearch_WhenAFacetHasExactlyTheThresholdManyValues_ThenItStillGetsNoBox()
+    {
+        // The boundary, pinned: the rule is MORE than the threshold, so a facet sitting exactly on
+        // it is one of the small ones. "Roughly ten" is what the proposal said, and a number nobody
+        // wrote a test around is a number that drifts by one the next time somebody reads it.
+        var cut = RenderWith(CatalogueWithProcessors(SearchThreshold));
+
+        Assert.Equal(SearchThreshold, Choices(Facet(cut, "Databehandler")).Count);
+        Assert.Null(FacetSearch(cut, "Databehandler"));
+    }
+
+    [Fact]
+    public void FacetSearch_WhenAFacetHasOneValueMoreThanTheThreshold_ThenItGetsABox()
+    {
+        var cut = RenderWith(CatalogueWithProcessors(SearchThreshold + 1));
+
+        Assert.Equal(SearchThreshold + 1, Choices(Facet(cut, "Databehandler")).Count);
+        Assert.NotNull(FacetSearch(cut, "Databehandler"));
+    }
+
+    [Fact]
+    public void FacetSearch_WhenTheReaderTypes_ThenOnlyThatFacetsValuesNarrow()
+    {
+        // The whole promise of this control, stated as what it must NOT touch. A box wired to the
+        // list instead of to its own facet would look right on screen — the facet narrows either
+        // way — and would quietly be a second freetext search over the catalogue.
+        var client = CatalogueWithOneBigFacet();
+        var cut = RenderWith(client);
+
+        var rowsBefore = RowNames(cut);
+        var countBefore = ResultCount(cut);
+        var kildetypeBefore = Choices(Facet(cut, "Kildetype"));
+
+        SearchFacet(cut, "Databehandler", "folke");
+
+        // Its own values, narrowed. Three of the four FHI spellings, because the fourth is spelled
+        // "FHI" and does not contain the letters typed — which is the duplication this facet has,
+        // shown rather than tidied away.
+        Assert.Equal(
+            ["Folkehelseinstituttet", "Folkehelseinstituttet (FHI)", "Nasjonalt Folkehelseinstitutt (FHI)"],
+            ChoiceValues(Facet(cut, "Databehandler")));
+
+        // And nothing else: not the rows, not the sentence counting them, not the other facet, and
+        // not the API, which was asked for the list once at startup and must not be asked again.
+        Assert.Equal(rowsBefore, RowNames(cut));
+        Assert.Equal(countBefore, ResultCount(cut));
+        Assert.Equal(kildetypeBefore, Choices(Facet(cut, "Kildetype")));
+        Assert.Equal(1, client.Calls);
+    }
+
+    [Fact]
+    public void FacetSearch_WhenSeveralSpellingsOfOneOrganisationMatch_ThenEachStaysItsOwnChoice()
+    {
+        // THE TRAP the bead names. Databehandler holds four spellings of Folkehelseinstituttet, and
+        // a search box is exactly where somebody is tempted to tidy them into one choice. A reader
+        // ticking a merged choice would filter a set they never asked for, so the merge belongs in
+        // the catalogue (Fhi.Metadata-4kxfv) and until it happens four spellings are four values
+        // with four counts of one.
+        var cut = RenderWith(CatalogueWithOneBigFacet());
+
+        var choices = Choices(Facet(cut, "Databehandler"));
+
+        Assert.Equal(12, choices.Count);
+
+        foreach (var spelling in FhiSpellings)
+        {
+            Assert.Contains($"{spelling} (1)", choices);
+        }
+
+        SearchFacet(cut, "Databehandler", "folkehelseinstitut");
+
+        Assert.Equal(
+            ["Folkehelseinstituttet", "Folkehelseinstituttet (FHI)", "Nasjonalt Folkehelseinstitutt (FHI)"],
+            ChoiceValues(Facet(cut, "Databehandler")));
+
+        // Each of them still filters its own kilde and no other, which is the assertion that fails
+        // against a component that folded them together behind one box.
+        Tick(cut, "Databehandler", "Nasjonalt Folkehelseinstitutt (FHI)");
+
+        Assert.Single(RowNames(cut));
+    }
+
+    [Fact]
+    public void FacetSearch_WhenATickedValueIsTypedOutOfSight_ThenItStaysTickedAndStillNarrowsTheList()
+    {
+        // THE OBVIOUS BUG in this feature, and it is invisible on screen: unticking what the reader
+        // can no longer see leaves the panel looking right while the list silently widens back out.
+        // So this ticks first, types the value out of sight, and asserts on the list — the one place
+        // the tick can still be observed while its checkbox is gone.
+        var cut = RenderWith(CatalogueWithOneBigFacet());
+
+        Tick(cut, "Databehandler", "Kreftregisteret");
+
+        var narrowed = RowNames(cut);
+
+        Assert.Single(narrowed);
+
+        SearchFacet(cut, "Databehandler", "universitetet");
+
+        // Gone from the panel...
+        Assert.DoesNotContain("Kreftregisteret", ChoiceValues(Facet(cut, "Databehandler")));
+
+        // ...and still the filter in force, heading count included.
+        Assert.Equal(narrowed, RowNames(cut));
+        Assert.Equal(
+            "Databehandler (1)",
+            Facet(cut, "Databehandler").QuerySelector("summary h4")!.TextContent.Trim());
+
+        // Cleared, the value comes back with its tick still on rather than as an empty box beside a
+        // list that is somehow still narrowed.
+        SearchFacet(cut, "Databehandler", string.Empty);
+
+        var restored = Facet(cut, "Databehandler")
+            .QuerySelectorAll("li label")
+            .Single(label => label.TextContent.Trim().StartsWith("Kreftregisteret", StringComparison.Ordinal))
+            .QuerySelector("input")!;
+
+        Assert.True(restored.HasAttribute("checked"), "The ticked value came back unticked.");
+        Assert.Equal(narrowed, RowNames(cut));
+    }
+
+    [Fact]
+    public void FacetSearch_WhenTheSearchIsCleared_ThenEveryValueComesBack()
+    {
+        var cut = RenderWith(CatalogueWithOneBigFacet());
+
+        var all = Choices(Facet(cut, "Databehandler"));
+
+        SearchFacet(cut, "Databehandler", "folke");
+
+        Assert.NotEqual(all, Choices(Facet(cut, "Databehandler")));
+
+        SearchFacet(cut, "Databehandler", "   ");
+
+        // Whitespace is no search, the same rule the freetext box over the list follows — otherwise
+        // a stray space left in the field reads as "the catalogue has nothing called that".
+        Assert.Equal(all, Choices(Facet(cut, "Databehandler")));
+
+        SearchFacet(cut, "Databehandler", "folke");
+        SearchFacet(cut, "Databehandler", string.Empty);
+
+        Assert.Equal(all, Choices(Facet(cut, "Databehandler")));
+    }
+
+    [Fact]
+    public void FacetSearch_WhenTheSearchMatchesNoValue_ThenItSaysSoRatherThanDrawingAnEmptyList()
+    {
+        // An empty facet reads as one whose values failed to load. The sentence is the difference
+        // between "nothing is called that" and "something is broken".
+        var cut = RenderWith(CatalogueWithOneBigFacet());
+
+        SearchFacet(cut, "Databehandler", "kommunehelsetjenesten");
+
+        var facet = Facet(cut, "Databehandler");
+
+        Assert.Empty(Choices(facet));
+        Assert.Empty(facet.QuerySelectorAll("ul"));
+        Assert.Equal("Ingen verdier passer søket", facet.QuerySelector("p.caption")!.TextContent.Trim());
+
+        // The box the reader has to clear is still there, and still holds what they typed.
+        Assert.Equal("kommunehelsetjenesten", FacetSearch(cut, "Databehandler")!.GetAttribute("value"));
+    }
+
+    [Fact]
+    public void FacetSearch_WhenTheBoxHasNarrowedTheFacetToAFew_ThenTheBoxItselfDoesNotGoAway()
+    {
+        // Counted over the values the facet HAS, never over the ones its own search leaves: the
+        // second reading takes the control away the moment it works, under the hand using it. Ticking
+        // cannot shrink a facet past the threshold either, because the counts are over the whole
+        // list — both halves are asserted, because both read on screen as the box flickering.
+        var cut = RenderWith(CatalogueWithOneBigFacet());
+
+        SearchFacet(cut, "Databehandler", "universitetet i");
+
+        Assert.Equal(2, Choices(Facet(cut, "Databehandler")).Count);
+        Assert.NotNull(FacetSearch(cut, "Databehandler"));
+
+        Tick(cut, "Databehandler", "Universitetet i Bergen");
+
+        Assert.Single(RowNames(cut));
+        Assert.NotNull(FacetSearch(cut, "Databehandler"));
+    }
+
+    [Fact]
+    public void FacetSearch_WhenAValueIsLongerThanTheLabelLimit_ThenItIsFoundByWhatIsOffScreen()
+    {
+        // The label on screen is cut at 60 characters and the whole value is in the title, so a
+        // search over what is drawn would make the 200-character databehandler findable by its
+        // opening words and by nothing else. It matches the value, which is what the title shows.
+        var cut = RenderWith(CatalogueWithOneBigFacet(LongDataProcessor));
+
+        SearchFacet(cut, "Databehandler", "referansegruppen");
+
+        Assert.Single(Choices(Facet(cut, "Databehandler")));
+        Assert.Equal(
+            LongDataProcessor,
+            Facet(cut, "Databehandler").QuerySelector("li label")!.GetAttribute("title"));
+    }
+
+    [Fact]
+    public void FacetSearch_Always_ThenTheBoxIsNamedAfterTheFacetItSearches()
+    {
+        // Several of these can be on screen at once, so boxes all announcing "Søk i verdiene" are
+        // controls a screen reader cannot tell apart. The name is a real <label for> rather than the
+        // placeholder — AccessibleName refuses to count a placeholder, exactly because it is not one.
+        var cut = RenderWith(CatalogueWithOneBigFacet());
+
+        Assert.Equal("Søk i Databehandler", AccessibleName.Of(FacetSearch(cut, "Databehandler")!));
+    }
+
+    [Fact]
+    public void FacetSearch_WhenTwoFacetsBothHaveABox_ThenTypingInOneLeavesTheOtherAlone()
+    {
+        // One field per facet, not one for the panel. Two boxes sharing a state would narrow both
+        // facets from one keystroke, and the reader would watch a facet they never touched empty out.
+        var cut = RenderWith(CatalogueWithTwoBigFacets());
+
+        var kategoriBefore = ChoiceValues(Facet(cut, "Kategori"));
+
+        Assert.Equal(12, kategoriBefore.Count);
+        Assert.NotNull(FacetSearch(cut, "Kategori"));
+
+        SearchFacet(cut, "Databehandler", "universitetet");
+
+        Assert.Equal(2, Choices(Facet(cut, "Databehandler")).Count);
+        Assert.Equal(kategoriBefore, ChoiceValues(Facet(cut, "Kategori")));
+        Assert.True(
+            string.IsNullOrEmpty(FacetSearch(cut, "Kategori")!.GetAttribute("value")),
+            "Typing in one facet's box put text in another facet's box.");
+
+        // And the ids differ, which is what keeps two labels naming two fields rather than both
+        // naming the first.
+        Assert.NotEqual(
+            FacetSearch(cut, "Kategori")!.GetAttribute("id"),
+            FacetSearch(cut, "Databehandler")!.GetAttribute("id"));
+    }
+
+    [Fact]
+    public void FacetSearch_WhenTheReaderReadsInEnglish_ThenTheBoxIsInEnglishToo()
+    {
+        var cut = RenderWith(
+            CatalogueWithOneBigFacet(),
+            parameters => parameters.Add(component => component.Language, "en"));
+
+        SearchFacet(cut, "Data processor", "kommunehelsetjenesten");
+
+        Assert.Equal("Search in Data processor", AccessibleName.Of(FacetSearch(cut, "Data processor")!));
+        Assert.Equal(
+            "No values match the search",
+            Facet(cut, "Data processor").QuerySelector("p.caption")!.TextContent.Trim());
+    }
+
+    /// <summary>
+    /// A catalogue where two facets are past the threshold: twelve databehandlere and a kategori
+    /// per kilde.
+    /// </summary>
+    /// <remarks>
+    /// The kategori tokens are deliberately ones the catalogue's vocabulary does not list, so they
+    /// draw as themselves and a test can tell the two facets' values apart at a glance.
+    /// </remarks>
+    private static FakeClient CatalogueWithTwoBigFacets()
+    {
+        string[] processors =
+        [
+            .. FhiSpellings,
+            "Direktoratet for e-helse",
+            "Helsedirektoratet",
+            "Kreftregisteret",
+            "Norsk helsenett SF",
+            "Oslo universitetssykehus HF",
+            "St. Olavs hospital HF",
+            "Universitetet i Bergen",
+            "Universitetet i Oslo"
+        ];
+
+        return new FakeClient(
+        [
+            .. processors.Select((processor, index) =>
+                Kilde($"Kilde {index:00}", $"K_{index:00}",
+                      dataProcessor: processor,
+                      category: $"""["annet-vokabular:omrade-{index:00}"]"""))
+        ]);
     }
 
     // ---------------------------------------------------------------------------------

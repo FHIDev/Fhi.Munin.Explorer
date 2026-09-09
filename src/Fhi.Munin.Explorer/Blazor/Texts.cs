@@ -420,6 +420,14 @@ internal sealed record Texts(
     // already holds — the facet filters the very column that word names.
     string FacetDateFrom,
     string FacetDateTo,
+
+    // The box that narrows a long facet's own values, and the sentence for when it narrows them to
+    // none. The label takes the facet's heading because several boxes can be on screen at once, and
+    // controls all announcing "Søk i verdiene" are controls a screen reader cannot tell apart.
+    // Which facets get one is KildeSearch.Filters.cs's answer, not this record's.
+    Func<string, string> FacetSearchLabel,
+    string FacetSearchPlaceholder,
+    string FacetSearchNoMatch,
     // The panel's own disclosure, which is one control saying two things: the panel is folded away
     // on a narrow screen and this is what unfolds it. Both wordings are needed because a button
     // still reading "Vis filtre" over an open panel tells the reader the opposite of what pressing
@@ -995,6 +1003,9 @@ internal sealed record Texts(
         FacetDataCategory: "Datakategori (EHDS)",
         FacetDateFrom: "Fra og med",
         FacetDateTo: "Til og med",
+        FacetSearchLabel: heading => $"Søk i {heading}",
+        FacetSearchPlaceholder: "Søk i verdiene",
+        FacetSearchNoMatch: "Ingen verdier passer søket",
         FacetAccessLevel: "Tilgangsnivå",
         ShowFilters: "Vis filtre",
         HideFilters: "Skjul filtre",
@@ -1309,6 +1320,9 @@ internal sealed record Texts(
         FacetDataCategory: "Data category (EHDS)",
         FacetDateFrom: "From",
         FacetDateTo: "To",
+        FacetSearchLabel: heading => $"Search in {heading}",
+        FacetSearchPlaceholder: "Search the values",
+        FacetSearchNoMatch: "No values match the search",
         FacetAccessLevel: "Access level",
         ShowFilters: "Show filters",
         HideFilters: "Hide filters",

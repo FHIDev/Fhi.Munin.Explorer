@@ -239,6 +239,9 @@ else
             <div class="munin-explorer-filters__facets" id="@FacetsId" hidden="@(!_filtersOpen)">
                 @foreach (var facet in facets)
                 {
+                    var searchable = IsSearchable(facet);
+                    var options = searchable ? VisibleOptions(facet) : facet.Options;
+
                     @* A native <details> per facet, the shape the variable explorer's panel already
                        uses under this same handle. Keyed because the fold is the element's own: a
                        facet dropped from the middle would otherwise leave the one that slides up
@@ -249,38 +252,78 @@ else
                            to drift. The heading stays one: a panel is navigated by heading. *@
                         <summary>@FacetHeading(facet)</summary>
 
+                        @* A search over this facet's own values, for a facet long enough to need
+                           one. The threshold and the reasoning are in KildeSearch.Filters.cs.
+
+                           No class name of its own, the same bargain the dataperiode facet's date
+                           fields make: a bare <input> is an element every stylesheet already draws,
+                           where a name Stiler has never heard of draws nothing at all.
+
+                           The label is real and hidden rather than an aria-label, and it names the
+                           facet, because several of these boxes can be on screen at once.
+
+                           onchange, never oninput — one round-trip per keystroke on helsedata's
+                           circuit whatever the handler does with it, and each one rewrites the
+                           field while more input is arriving. (Fhi.Metadata-l9l2n.26) *@
+                        @if (searchable)
+                        {
+                            <label class="screenreader-only" for="@FacetSearchId(facet.Key)">@T.FacetSearchLabel(facet.Heading)</label>
+                            <input id="@FacetSearchId(facet.Key)"
+                                   type="text"
+                                   enterkeyhint="search"
+                                   value="@FacetSearchValue(facet.Key)"
+                                   @onchange="e => SearchFacet(facet.Key, e.Value as string)"
+                                   placeholder="@T.FacetSearchPlaceholder"
+                                   autocomplete="off"
+                                   maxlength="200" />
+                        }
+
                         @* Rendered whether or not the facet is open, and hidden by the disclosure
                            itself rather than by us. `open` is the same on every render — the facets
                            are counted over the unfiltered list — so Blazor writes it once and never
                            again, and the fold is the reader's for as long as these elements live:
                            narrowing cannot collapse what they opened, and each facet folds alone.
                            They do not survive a drill-in, which removes the panel; the ticks and
-                           the search do, so the reader loses only the shape of the panel. *@
-                        <ul>
-                            @foreach (var option in facet.Options)
-                            {
-                                @* The whole value in title, and only where the text on screen was
-                                   cut — one databehandler on the live catalogue is over 200
-                                   characters of free text, and a reader who wants to know which one
-                                   it is has nowhere else to read it. Keyed on the value: the options are built
-                                   off the unfiltered list so they never move, and the key is what
-                                   keeps that true if they ever do. *@
-                                <li @key="option.Value">
-                                    @* lang where the choice is drawn in the catalogue's own words
-                                       rather than in this package's — databehandler, which is free
-                                       text, and any token no vocabulary had a word for. It is the
-                                       same marking the table's cells carry for the same strings,
-                                       and it covers the title as well as the text. See
-                                       KildeSearch.Filters.cs for which labels are which. *@
-                                    <label title="@option.Title" lang="@option.Language">
-                                        <input type="checkbox"
-                                               checked="@IsChosen(facet.Key, option.Value)"
-                                               @onchange="e => Choose(facet.Key, option.Value, e.Value is true)" />
-                                        @option.Text@(" ")<span class="munin-explorer-filters__count">@option.CountText</span>
-                                    </label>
-                                </li>
-                            }
-                        </ul>
+                           the search do, so the reader loses only the shape of the panel.
+
+                           `options` is what the facet's own search leaves. It must never reach the
+                           ticks: a choice typed out of sight is still ticked and still narrowing
+                           the list, and clearing the box brings it back with its tick on. *@
+                        @* Said rather than left as an empty list: a facet that has drawn nothing
+                           reads as one whose values failed to load. `caption` is Stiler's muted
+                           secondary text, the class the list's own status line wears. *@
+                        @if (options.Count == 0)
+                        {
+                            <p class="caption">@T.FacetSearchNoMatch</p>
+                        }
+                        else
+                        {
+                            <ul>
+                                @foreach (var option in options)
+                                {
+                                    @* The whole value in title, and only where the text on screen was
+                                       cut — one databehandler on the live catalogue is over 200
+                                       characters of free text, and a reader who wants to know which one
+                                       it is has nowhere else to read it. Keyed on the value: the options are built
+                                       off the unfiltered list so they never move, and the key is what
+                                       keeps that true if they ever do. *@
+                                    <li @key="option.Value">
+                                        @* lang where the choice is drawn in the catalogue's own words
+                                           rather than in this package's — databehandler, which is free
+                                           text, and any token no vocabulary had a word for. It is the
+                                           same marking the table's cells carry for the same strings,
+                                           and it covers the title as well as the text. See
+                                           KildeSearch.Filters.cs for which labels are which. *@
+                                        <label title="@option.Title" lang="@option.Language">
+                                            <input type="checkbox"
+                                                   checked="@IsChosen(facet.Key, option.Value)"
+                                                   @onchange="e => Choose(facet.Key, option.Value, e.Value is true)" />
+                                            @option.Text@(" ")<span class="munin-explorer-filters__count">@option.CountText</span>
+                                        </label>
+                                    </li>
+                                }
+                            </ul>
+                        }
                     </details>
                 }
             </div>
