@@ -78,12 +78,15 @@ export const states = {
   // The filter tree with every facet unfolded and the guide lines drawn. This is the state the
   // 1.16:1 level lines shipped in (Fhi.Metadata-wcbxi): unfolding first matters because axe skips
   // what a closed <details> hides, so the lines have to be on screen to be judged at all.
+  //
+  // Nivålinjer is deliberately NOT pressed. The lines are on at first render since
+  // Fhi.Metadata-dfygj, so a press here would take them off and this state would scan the one
+  // thing it exists to look at with the lines gone — green for the reason it was green before.
   'filters-level-lines': async page => {
     const panel = page.locator('.munin-explorer-filters');
     await panel.waitFor({ state: 'visible', timeout: findTimeout });
 
     await press(panel, 'Utvid alle');
-    await press(panel, 'Nivålinjer');
 
     await page
       .locator('.munin-explorer-filters[data-level-lines="true"] ul ul')

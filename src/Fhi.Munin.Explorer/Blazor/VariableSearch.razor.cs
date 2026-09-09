@@ -430,7 +430,8 @@ public sealed partial class VariableSearch : ComponentBase
 
     /// <summary>
     /// Whether the filter panel asks for guide lines down the levels of the facet tree. Two-way,
-    /// off by default. <b>The package draws no lines.</b> It puts
+    /// <b>on by default</b>, which is what the <c>Nivålinjer</c> button turns off.
+    /// <b>The package draws no lines.</b> It puts
     /// <c>data-level-lines="true"</c> on the panel and the host's stylesheet draws them, so a host
     /// with no rule for that attribute sees nothing change when this is on.
     /// </summary>
@@ -452,11 +453,11 @@ public sealed partial class VariableSearch : ComponentBase
     /// about a reader is the host's own policy to set. Like every other parameter here it is read
     /// once at mount and owned by the component afterwards, so a host that wants it remembered
     /// stores what this raises and supplies it at the next mount; a later change to the parameter on
-    /// a mounted component does nothing. A host that stores nothing gets the lines off on every
-    /// visit, which is the state the panel has had until now.
+    /// a mounted component does nothing. A host that stores nothing gets the lines on at every
+    /// visit, so a reader who never finds the button still sees the tree as a hierarchy.
     /// </para>
     /// </remarks>
-    [Parameter] public bool LevelLines { get; set; }
+    [Parameter] public bool LevelLines { get; set; } = true;
 
     /// <inheritdoc cref="LevelLines"/>
     [Parameter] public EventCallback<bool> LevelLinesChanged { get; set; }
