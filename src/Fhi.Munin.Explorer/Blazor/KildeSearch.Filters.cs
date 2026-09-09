@@ -1,7 +1,6 @@
 using System.Text.Json;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
-using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -492,23 +491,9 @@ public sealed partial class KildeSearch
     /// takes the whole row with it, so without this focus lands on <c>&lt;body&gt;</c> and the
     /// reader's next Tab starts at the top of the host's page. The field rather than a neighbouring
     /// chip: it is the one control above the row that is there whether a filter is left or not, so
-    /// it is a place a keyboard reader learns once. Interop that fails is swallowed rather than
-    /// left to unwind, because both callers write their state after awaiting this: focus is the
-    /// courtesy and the removal is the press, and a press that removes nothing is the worse
-    /// failure. (Fhi.Metadata-ag4n7)
+    /// it is a place a keyboard reader learns once. (Fhi.Metadata-ag4n7)
     /// </remarks>
-    private async Task RescueFocusAsync()
-    {
-        try
-        {
-            await _searchField.FocusAsync();
-        }
-        catch (Exception e) when (e is JSException or JSDisconnectedException or InvalidOperationException)
-        {
-            // Degrade to a focus-less removal. InvalidOperationException is here for the reference
-            // that was never configured — a render where the field is not on the page.
-        }
-    }
+    private ValueTask RescueFocusAsync() => _searchField.FocusAsync();
 
     /// <summary>The ticked values as the row over the results draws them, in the panel's own order.</summary>
     /// <remarks>
