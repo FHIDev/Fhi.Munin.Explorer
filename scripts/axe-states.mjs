@@ -168,13 +168,14 @@ export const states = {
     await picker.waitFor({ state: 'visible', timeout: findTimeout });
     await picker.locator('summary').click();
 
-    // By text rather than press(), for the reason kilder-columns above gives: the toggles' ::before
-    // glyph is in Playwright's accessible name and not in the browser's.
+    // Through the item and not by role, for the reason kilder-columns above gives: the box carries
+    // no text of its own, and check() asks for a state rather than flipping whatever is there.
     const toggle = picker
-      .locator('.dropdown-choicepicker__item button', { hasText: 'Delkilder' })
+      .locator('.dropdown-choicepicker__item', { hasText: 'Delkilder' })
+      .locator('input[type=checkbox]')
       .first();
     await toggle.waitFor({ state: 'visible', timeout: findTimeout });
-    await toggle.click();
+    await toggle.check();
 
     await page
       .locator('.munin-explorer-kilder thead th', { hasText: 'Delkilder' })
