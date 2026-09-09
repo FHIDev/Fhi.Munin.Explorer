@@ -1,4 +1,5 @@
 using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.Display;
 using Microsoft.AspNetCore.Components;
 namespace Fhi.Munin.Explorer.Blazor;
 

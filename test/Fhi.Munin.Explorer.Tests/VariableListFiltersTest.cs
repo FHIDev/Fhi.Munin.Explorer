@@ -24,9 +24,13 @@ public class VariableListFiltersTest : BunitContext
     private static readonly Guid Reseptregisteret = new("aaaaaaaa-0000-0000-0000-000000000002");
     private static readonly Guid Årsaksregisteret = new("aaaaaaaa-0000-0000-0000-000000000003");
 
+    /// <summary>Named to sort before "Ikke oppgitt", which is what the ordering test needs.</summary>
+    private static readonly Guid Dødsårsaksregisteret = new("aaaaaaaa-0000-0000-0000-000000000004");
+
     private static string NameOf(Guid kildeId) =>
         kildeId == Kreftregisteret ? "Kreftregisteret"
         : kildeId == Reseptregisteret ? "Reseptregisteret"
+        : kildeId == Dødsårsaksregisteret ? "Dødsårsaksregisteret"
         : "Årsaksregisteret";
 
     private static VariableListItem Item(Guid kildeId, int n) => new()
@@ -290,6 +294,75 @@ public class VariableListFiltersTest : BunitContext
         var cut = RenderBoth(client);
 
         Assert.Equal(["KRG (1)"], Facets(cut.Filters));
+    }
+
+    [Fact]
+    public void Kilder_WhenAnEntryHasNeitherKildeName_ThenTheCheckboxSaysNotSpecified()
+    {
+        // The arm the `?? ""` still lands on. Left as the empty string it is, the label is "(1)"
+        // and the count is the checkbox's whole accessible name — what the two Kilde columns
+        // already say "Ikke oppgitt" to avoid.
+        var client = new ListClient(
+            Item(Kreftregisteret, 1) with { KildeName = "", KildeShortName = "" });
+
+        var cut = RenderBoth(client);
+
+        Assert.Equal(["Ikke oppgitt (1)"], Facets(cut.Filters));
+    }
+
+    [Fact]
+    public void Kilder_WhenNeitherKildeNameIsGivenAndTheReaderIsEnglish_ThenTheCheckboxSaysNotSpecified()
+    {
+        var client = new ListClient(
+            Item(Kreftregisteret, 1) with { KildeName = null, KildeShortName = null });
+
+        var cut = RenderBoth(client, language: "en");
+
+        Assert.Equal(["Not specified (1)"], Facets(cut.Filters));
+    }
+
+    [Fact]
+    public void Kilder_WhenNeitherKildeNameIsGiven_ThenTheLabelIsNotMarkedAsNorwegian()
+    {
+        // "Ikke oppgitt" is this package's own word, not the catalogue's, and in English it is not
+        // Norwegian at all — so the lang the catalogue's names carry does not belong on it.
+        var client = new ListClient(
+            Item(Kreftregisteret, 1) with { KildeName = "", KildeShortName = "" });
+
+        var cut = RenderBoth(client);
+
+        Assert.Null(cut.Filters.Find(".munin-explorer-filters label").GetAttribute("lang"));
+    }
+
+    [Fact]
+    public void Kilder_WhenTheFirstEntryOfAKildeHasNeitherNameAndALaterOneDoes_ThenTheLaterNameIsUsed()
+    {
+        // The tally is written once per kilde and counted into thereafter, so a nameless first
+        // entry would otherwise leave a kilde the list does name reading "Ikke oppgitt".
+        var client = new ListClient(
+            Item(Kreftregisteret, 1) with { KildeName = "", KildeShortName = "" },
+            Item(Kreftregisteret, 2));
+
+        var cut = RenderBoth(client);
+
+        Assert.Equal(["Kreftregisteret (2)"], Facets(cut.Filters));
+    }
+
+    [Fact]
+    public void Kilder_WhenOneHasNoNameAtAll_ThenItIsOrderedByWhatTheCheckboxSaysAndNotByTheEmptyName()
+    {
+        // An empty name sorts before every letter, which would put the one checkbox whose text is
+        // this package's rather than the catalogue's at the top of the catalogue's alphabet.
+        var client = new ListClient(
+            Item(Kreftregisteret, 1) with { KildeName = "", KildeShortName = "" },
+            Item(Dødsårsaksregisteret, 1),
+            Item(Årsaksregisteret, 1));
+
+        var cut = RenderBoth(client);
+
+        Assert.Equal(
+            ["Dødsårsaksregisteret (1)", "Ikke oppgitt (1)", "Årsaksregisteret (1)"],
+            Facets(cut.Filters));
     }
 
     // -----------------------------------------------------------------------

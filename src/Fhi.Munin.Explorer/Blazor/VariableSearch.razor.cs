@@ -1,4 +1,5 @@
 using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.Display;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.Web;
@@ -1542,7 +1543,7 @@ public sealed partial class VariableSearch : ComponentBase
         // The short name, which is what Runa shows — "ALS" rather than "Als registeret" — with the
         // full name on hover, also as Runa does. A kilde name is long and repeats down every row of
         // a single register's variables, so the short form is what makes the column readable. Trimmed
-        // rather than `??`, since the API sends a kilde with no kortnavn as an empty string.
+        // rather than `??`: an omitted kortnavn is null or "", and `??` only catches the first.
         if (ColumnVisible(ResultColumn.Kilde))
         {
             RowCell.Write(builder, 200, T.FieldSource, DisplayText.Trimmed(v.KildeShortName) ?? v.KildeName, "source", T.NotSpecified, tooltip: v.KildeName);
