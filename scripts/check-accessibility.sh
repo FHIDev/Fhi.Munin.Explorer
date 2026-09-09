@@ -147,11 +147,19 @@ npm install --no-save --silent \
   exit 2
 }
 
-npx --yes playwright install chromium >/tmp/pw-install.log 2>&1 || {
-  echo "could not install chromium - TOOLING failure." >&2
-  tail -10 /tmp/pw-install.log >&2
-  exit 2
-}
+# Skipped when a channel is set: that browser is already installed, and on Node 26 this step
+# cannot succeed at all - the pinned fetcher calls fs.rmdir(recursive), removed in that version,
+# which leaves a half-written cache with a chrome.dll and no chrome.exe (Fhi.Metadata-wgwa0).
+if [ -z "${PLAYWRIGHT_BROWSER_CHANNEL:-}" ]; then
+  npx --yes playwright install chromium >/tmp/pw-install.log 2>&1 || {
+    echo "could not install chromium - TOOLING failure." >&2
+    echo "on Node 26 try PLAYWRIGHT_BROWSER_CHANNEL=msedge to use an installed browser." >&2
+    tail -10 /tmp/pw-install.log >&2
+    exit 2
+  }
+else
+  echo "==> BROWSER: ${PLAYWRIGHT_BROWSER_CHANNEL} (not the bundled chromium)"
+fi
 
 set +e
 node "$ROOT/scripts/axe-scan.mjs" $(for t in "${TARGETS[@]}"; do printf '%s ' "${BASE}${t}"; done)
