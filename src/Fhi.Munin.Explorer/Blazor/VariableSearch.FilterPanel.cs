@@ -296,10 +296,10 @@ public partial class VariableSearch
     /// <remarks>
     /// The whole tree is built from the facet payload alone — <see cref="DelkildeFacet"/> carries
     /// both its parent delkilde and its kilde precisely so this needs no second request. The level
-    /// below it, datasamling, is not in that payload at all and is therefore not drawn; reaching it
-    /// would mean a hierarchy request per kilde whose counts are the kilde's own totals rather than
-    /// counts cross-filtered against the current selection, which would put two kinds of number in
-    /// one tree. <see cref="VariableFilter.DatasamlingIds"/> still filters when a host sets it.
+    /// below it, datasamling, is not drawn: it was absent from the payload until
+    /// <see cref="FilterOptions.Datasamlinger"/>, and drawing it now is unclaimed work rather than a
+    /// decision against it (Fhi.Metadata-adog5). <see cref="VariableFilter.DatasamlingIds"/> still
+    /// filters when a host sets it.
     /// </remarks>
     private FacetGroup KildeGroup(FilterOptions facets)
     {
