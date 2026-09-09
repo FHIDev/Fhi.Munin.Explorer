@@ -268,6 +268,19 @@ These are not style preferences — each one is a host that breaks otherwise.
     `Fhi.Helsedata.Stiler`, where it is shared with the variabelutforsker's panel and redraws the
     marker on the trailing edge — a summary laid out as a row is no longer a list-item, and the
     browser stops drawing a marker for it.
+    The variabelutforsker's Kilde facet adds `munin-explorer-filters__search`, the box that narrows
+    that facet's own values. A handle: undefined, it is a browser-default search field, which is
+    visible, operable and named by a `<label>` of its own, so what a rule buys is the box — full
+    width in a sidebar column, 34px tall, and the panel's own type size rather than the page's.
+    Two things about it are not free. The name has to sit on an `<input>`, because Stiler's rule is
+    written `input.munin-explorer-filters__search`: their global `input[type="search"]` list is
+    (0,1,1) and a bare class is (0,1,0), so a class on any other element loses the font-size to it
+    and the field draws at 18px instead of 14px. And the rule reached `Fhi.Helsedata.Stiler`'s
+    `main` after 0.1.42 was cut, so the floor is the first release that follows it — a host on
+    0.1.42 or older is in the undressed case above rather than a broken one. The kildetype groups inside that
+    same facet add no name at all: they are `<details>`/`<summary>` like the facets around them, so
+    the marker, the open state and the focus ring come from rules a host already has, and their
+    counts wear `munin-explorer-filters__chosen` from the row above.
     The saved-list view's `munin-explorer-dataitem-*__desiredData` pair is a handle on the same
     terms and worth one sentence, because the cell holds a control rather than a value: undefined,
     the annotation field is a browser-default text box, which is visible, operable and named, so
@@ -467,6 +480,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-filters__chosen` | handle |
   | `munin-explorer-filters__count` | handle |
   | `munin-explorer-filters__facets` | handle |
+  | `munin-explorer-filters__search` | handle |
   | `munin-explorer-filters__toggle` | handle |
   | `munin-explorer-filters__toolbar` | handle |
   | `munin-explorer-frequency` | handle |

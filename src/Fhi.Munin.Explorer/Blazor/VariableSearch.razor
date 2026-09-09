@@ -240,6 +240,9 @@ else
          state lives in the browser, so filtering does not collapse what the reader opened: the
          `open` attribute below moves only when Utvid alle or Skjul alle is pressed, and an
          unchanged value is never patched. (Fhi.Metadata-wcbxi)
+         Exactly one of them is open at first paint, and it is Kilde, whose search field is what a
+         reader is meant to land on; the kildetype groups inside it are the same shape one level
+         down, closed, so the facet opens on three rows rather than on 46. (Fhi.Metadata-l9l2n.67)
        * A bare `<ul>` for the values, nested for the hierarchy. Indentation is what shows a delkilde
          sitting under its kilde, and a list is an element every base stylesheet already styles —
          unlike `variabelutforsker-tree`, which would be exactly the invented name that renders as a
@@ -302,6 +305,25 @@ else
                    — cannot hand its open state to whichever facet takes its place. *@
                 <details @key="FacetKey(group)" open="@FacetOpen(group)">
                     <summary><span class="form-element__label">@GroupLabel(group)</span></summary>
+                    @* The box that narrows the kilde facet's own values, and the first focusable
+                       thing under the summary — a reader landing on the one facet that opens is
+                       meant to reach it. Stiler's rule is `input.munin-explorer-filters__search`,
+                       so the class has to sit on an <input>: the global `input[type=search]` list
+                       is (0,1,1) and outranks a bare class. The label is real and hidden rather
+                       than an aria-label, and onchange rather than oninput, both on the same terms
+                       as Kelda's facet search. (Fhi.Metadata-l9l2n.67) *@
+                    @if (group.Searchable)
+                    {
+                        <label class="screenreader-only" for="@KildeSearchId">@T.FacetSearchLabel(group.Label)</label>
+                        <input id="@KildeSearchId"
+                               type="search"
+                               class="munin-explorer-filters__search"
+                               value="@_kildeSearch"
+                               @onchange="e => SearchKilder(e.Value as string)"
+                               placeholder="@T.FacetSearchPlaceholder"
+                               autocomplete="off"
+                               maxlength="200" />
+                    }
                     @* A facet's own control first, where it has one: the dataperiode holds no
                        values and would otherwise draw the empty-state sentence. (Fhi.Metadata-uidue) *@
                     @if (group.Body is { } body)
