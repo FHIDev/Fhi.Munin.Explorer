@@ -82,8 +82,31 @@ function pagedListVariables(body, query) {
   });
 }
 
-const server = createServer((request, response) => {
-  const url = new URL(request.url, 'http://localhost');
+// A fetch held open for a while, one request per hold asked for and none unless asked. It is how
+// scripts/state-scan.mjs stages a press the component DROPS - `if (_loading) return` - which no
+// browser can stage on its own: the request is the HOST's, made over the circuit, so Playwright's
+// route interception never sees it and cannot slow it down.
+//   POST /__stub/hold-next?path=/api/explorer/variables&ms=6000
+//   GET  /__stub/hold-next  ->  {"held":[{"path":...,"ms":...}]}
+// Read back rather than assumed spent: a hold nothing ever asked for would leave a press that was
+// never in flight looking exactly like one that was.
+const held = [];
+
+function control(url, request, response) {
+  if (request.method === 'POST') {
+    const path = url.searchParams.get('path');
+    const ms = Number(url.searchParams.get('ms'));
+    if (path === null || !path.startsWith('/') || !Number.isInteger(ms) || ms <= 0) {
+      response.writeHead(400, { 'content-type': 'application/json' }).end('{"error":"path,ms"}');
+      return;
+    }
+    held.push({ path, ms });
+  }
+
+  response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ held }));
+}
+
+function serve(url, request, response) {
   const path = url.pathname;
   const route = routes.find(([pattern]) => pattern.test(path));
 
@@ -99,6 +122,25 @@ const server = createServer((request, response) => {
     : bodies.get(route[0]);
 
   response.writeHead(200, { 'content-type': 'application/json' }).end(body);
+}
+
+const server = createServer((request, response) => {
+  const url = new URL(request.url, 'http://localhost');
+
+  if (url.pathname === '/__stub/hold-next') {
+    control(url, request, response);
+    return;
+  }
+
+  const holding = held.findIndex(one => one.path === url.pathname);
+  if (holding < 0) {
+    serve(url, request, response);
+    return;
+  }
+
+  const [{ ms }] = held.splice(holding, 1);
+  console.error(`stub: holding ${request.method} ${url.pathname} for ${ms}ms, as asked`);
+  setTimeout(() => serve(url, request, response), ms);
 });
 
 server.listen(port, '127.0.0.1', () => console.log(`stub: serving the Testdata fixtures on ${port}`));

@@ -389,6 +389,43 @@ jobs:
         # never a surprise that only CI knows how to reproduce.
         run: ./scripts/check-accessibility.sh
 
+  # Whether the DOM and the component still agree after a press the component REFUSED. Its own job
+  # rather than a step in the accessibility one above: axe judges the accessibility tree and this
+  # judges a control's own state, and a scan that stops because a press could not be staged should
+  # not take a WCAG result with it. Removing SetUpdatesAttributeName("checked") from the facet panel
+  # left 1477 unit tests green, because bUnit renders a render tree and the browser's own flip of a
+  # checkbox never happens in one. (Fhi.Metadata-1s7z1)
+  component-state:
+    name: state after a refused press
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      # Playwright brings its own browser; without a cache that is a download per run.
+      - name: Cache the driver's browser
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('scripts/check-component-state.sh') }}
+          restore-keys: playwright-${{ runner.os }}-
+
+      - name: Drive a refused press in a browser
+        # The same script developers can run locally before pushing, so a red check here is
+        # never a surprise that only CI knows how to reproduce.
+        run: ./scripts/check-component-state.sh
+
   # The same component inside helsedata's REAL stylesheet, with their header positioned over the
   # top of document flow, measured with getBoundingClientRect. The accessibility job above scans
   # ModernHost, whose stylesheet is a hand-written stand-in; on 2026-09-03 four layout defects
@@ -572,7 +609,7 @@ jobs:
     # decoration, so it had to become required, and the layout measurement beside it was in the
     # same position and green on main throughout. A run without the feed secret SKIPS the job, and
     # the loop below counts a skip as fine, so fork pull requests are unaffected.
-    needs: [build, changelog, changelog-assembly, sample-css, host-notes, class-names, fragment-host-notes, portability-guard, consumer, accessibility, hostile-layout]
+    needs: [build, changelog, changelog-assembly, sample-css, host-notes, class-names, fragment-host-notes, portability-guard, consumer, accessibility, component-state, hostile-layout]
     # It exists to report failed and skipped jobs, so it must not be skipped by one.
     if: always()
     runs-on: ubuntu-latest
@@ -615,6 +652,7 @@ jobs:
           portability guard armed|${{ needs['portability-guard'].result }}
           a host needs no glue|${{ needs.consumer.result }}
           accessibility|${{ needs.accessibility.result }}
+          state after a refused press|${{ needs['component-state'].result }}
           layout and stylesheet fidelity in helsedata's Stiler|${{ needs['hostile-layout'].result }}
           EOF
 
