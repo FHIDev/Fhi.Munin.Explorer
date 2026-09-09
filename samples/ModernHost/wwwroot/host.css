@@ -1922,8 +1922,9 @@ table.munin-explorer-data-list tbody th {
    viewport and shrinking — measured at /MuninKelda (Fhi.Metadata-b3brc).
 
    Around the table alone. `.munin-explorer-results` looks like the natural place and is not: the
-   column picker is in that column too, and a reader who scrolled the table sideways would take
-   the control for choosing columns off the screen with it.
+   column picker shared that column until the row over the table took it, and a reader who scrolled
+   the table sideways took the control for choosing columns off the screen with it. Anything put
+   back in that column would ride the same scroll.
 
    `overflow-x: auto` makes overflow-y compute to auto as well. That is harmless here — the box
    grows to the table's height, so there is never anything to scroll vertically — but it is why
@@ -2606,6 +2607,34 @@ table.munin-explorer-data-list tbody th {
     width: 100%;
   }
 
+}
+
+/* The kildeutforsker's row over the table: the count, the order control and the column picker on
+   one line, where they used to take a line each. From Fhi.Helsedata.Stiler PR 39220, so the
+   release that follows 0.1.42 is the first that has it — a host on 0.1.42 or older gets the three
+   blocks back in ordinary block flow, which is what shipped before and loses no information.
+
+   Three rules and not one, and the two extra ones are load-bearing. The first child is the count,
+   and giving it the slack is what holds it at the left edge while the controls sit at the right.
+   `justify-content: flex-end` is for the wrapped case: without it the Kolonner button sits at the
+   left of its own line and its right-aligned menu starts off the screen. And putting the picker in
+   a row makes `munin-explorer-header__actions` content-wide, which shrinks the open list to the
+   trigger's width unless it is told to take its own — the column names then spill out of the dark
+   card they are drawn on. (Fhi.Metadata-tciss) */
+.munin-explorer-results__toolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: flex-end;
+}
+
+.munin-explorer-results__toolbar > :first-child {
+  flex-grow: 1;
+}
+
+.munin-explorer-results__toolbar .munin-explorer-header .dropdown-choicepicker {
+  width: max-content;
 }
 
 .munin-explorer-container {

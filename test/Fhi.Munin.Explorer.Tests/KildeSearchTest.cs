@@ -752,8 +752,8 @@ public class KildeSearchTest : BunitContext
     public void Render_Always_ThenTheTableSitsInItsOwnScrollRegionAndTheColumnPickerDoesNot()
     {
         // The second assertion is the trap: `munin-explorer-results` is the obvious element to put
-        // `overflow-x` on and it is the wrong one, because the column picker is in that column and
-        // would scroll off screen with the table (Fhi.Metadata-b3brc).
+        // `overflow-x` on and it is the wrong one. The column picker shared that column until the
+        // row over the table took it, and scrolled off screen with the table (Fhi.Metadata-b3brc).
         var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
         var table = cut.Find(".munin-explorer-kilder");
@@ -792,6 +792,62 @@ public class KildeSearchTest : BunitContext
         var cut = RenderWith(new FakeClient());
 
         Assert.Empty(cut.FindAll(".munin-explorer-kilder-scroll"));
+    }
+
+    // ---------------------------------------------------------------------------------
+    // The row over the table.
+    // ---------------------------------------------------------------------------------
+
+    [Fact]
+    public void Toolbar_Always_ThenTheCountTheOrderControlAndThePickerShareOneRow()
+    {
+        // Three blocks taking a row each before this bead. Asserted as element order and not as
+        // layout, which is the host stylesheet's: what markup decides is which three children the
+        // row has and the order a keyboard meets them in. (Fhi.Metadata-tciss)
+        var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
+
+        var row = cut.Find(".munin-explorer-results__toolbar");
+
+        Assert.Collection(
+            row.Children,
+            count => Assert.Equal("status", count.GetAttribute("role")),
+            order => Assert.NotNull(order.QuerySelector("select")),
+            picker => Assert.Contains("munin-explorer-header", picker.ClassList));
+    }
+
+    [Fact]
+    public void ToolbarWithNoKilder_Always_ThenTheRowIsStillDrawnAndHoldsTheCountAlone()
+    {
+        // The row cannot come and go with the rows, and this is the reason the whole shape is what
+        // it is: the count inside it is this component's one polite live region, and a live region
+        // inserted and filled in the same update is announced unreliably — so a row drawn only with
+        // rows would take the loading message and the empty state with it. The two controls do go,
+        // which is why a picker over no table is not here. (Fhi.Metadata-tciss)
+        var cut = RenderWith(new FakeClient());
+
+        var row = cut.Find(".munin-explorer-results__toolbar");
+
+        Assert.Equal("status", row.Children.Single().GetAttribute("role"));
+        Assert.Empty(cut.FindAll(".munin-explorer-results__toolbar select"));
+        Assert.Empty(cut.FindAll(".munin-explorer-results__toolbar .munin-explorer-header"));
+    }
+
+    [Fact]
+    public void Toolbar_Always_ThenTheCountIsSaidOnceAndInThePoliteRegion()
+    {
+        // A visible count in the row beside a live region saying the same sentence is a double
+        // announcement rather than a solution. One element says it, it is the live region, and it
+        // is first in the row — which is also the child Stiler's rule gives the slack to, so the
+        // count is what holds the left edge. (Fhi.Metadata-tciss)
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS"),
+            Kilde("Barnediabetes", "K_BDR")));
+
+        var count = Assert.Single(cut.FindAll("p[role=status]"));
+
+        Assert.Equal("2 kilder", count.TextContent.Trim());
+        Assert.Equal("polite", count.GetAttribute("aria-live"));
+        Assert.Equal("true", count.GetAttribute("aria-atomic"));
     }
 
     // ---------------------------------------------------------------------------------
@@ -4406,6 +4462,9 @@ public class KildeSearchTest : BunitContext
             "munin-explorer-kilder__expand-toggle",
             "munin-explorer-kilder__name",
             "munin-explorer-results",            // shared
+            // The row the count shares with the order control and the column picker. Drawn whether or
+            // not there are rows, unlike the two controls in it. (Fhi.Metadata-tciss)
+            "munin-explorer-results__toolbar",
             "munin-explorer-search__clear",      // shared
             "munin-explorer__dropdown",          // the picker, shared
         ], invented);

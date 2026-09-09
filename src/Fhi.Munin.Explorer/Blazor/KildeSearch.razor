@@ -19,8 +19,9 @@
    `munin-explorer-kilder__count--zero` on a cell whose count is nought,
    `munin-explorer-kilder__select` for the checkbox column in front of them,
    `munin-explorer-filters__toggle` and `munin-explorer-filters__facets` for the panel that folds
-   away on a narrow screen, and `munin-explorer-filters__count` for the number beside a facet
-   value.
+   away on a narrow screen, `munin-explorer-filters__count` for the number beside a facet value,
+   and `munin-explorer-results__toolbar` for the row the count shares with the order control and
+   the column picker.
 
    The result list is a <table>, unlike the variable explorer's, and that is the shape rule rather
    than an inconsistency. Runa's rows are helsedata's own `munin-explorer-data-list`, a <ul> with a
@@ -353,32 +354,99 @@ else
        is ticked. (Fhi.Metadata-ofoyw) *@
     @ActiveFilters.For(this, T.ActiveFiltersTitle, ActiveFilterChips, T.ClearFilters, ClearFacetsAsync)
 
-    @* One polite status line, holding one message at a time: loading, the count, or the empty
+    @* The count, the order control and the column picker on one row, where they used to take a row
+       each. `munin-explorer-results__toolbar` is the row, spelled the way Stiler's rule spells it
+       (Fhi.Metadata-xpv2x) — a name the two halves have to agree on letter for letter.
+
+       The row is drawn unconditionally and the two controls inside it are not, which is the whole
+       of the decision. The count is this component's one polite live region, and a live region
+       inserted and filled in the same DOM update is announced unreliably — so the element has to
+       be in the DOM before its text arrives, and a row that came and went with the rows would take
+       the loading message and the empty state with it. The controls keep the guard of their own
+       they have always had. Nothing in the row repeats the sentence either: a visible count beside
+       a live region saying the same thing is two announcements rather than a row.
+
+       Outside `munin-explorer-results` despite the name, because that container is drawn only with
+       rows on screen and everything in it with it. The row is a sibling of the other blocks over
+       the table — the chips, the alert, the selection — and shares their edge.
+
+       One polite status line, holding one message at a time: loading, the count, or the empty
        state. aria-atomic makes a screen reader read the whole new sentence rather than only the
-       words that changed — "12" on its own is not information.
+       words that changed — "12" on its own is not information. It comes first in the row for the
+       reading order and for Stiler's rule, which gives the row's first child the slack: the count
+       holds the left edge while the two controls sit at the right.
 
        `caption` is Stiler's muted secondary-text style. It carries the empty state too: a
        full-page emptystate block would be out of proportion inside a component that is one section
        of somebody else's page, and repeating the sentence outside the live region would put it on
        screen twice. *@
-    <p class="caption" role="status" aria-live="polite" aria-atomic="true">
-        @if (_loading)
+    <div class="munin-explorer-results__toolbar">
+        <p class="caption" role="status" aria-live="polite" aria-atomic="true">
+            @if (_loading)
+            {
+                @T.KildeListLoading
+            }
+            else if (visible.Count > 0)
+            {
+                @summary
+            }
+            else if (_loaded && _error is null)
+            {
+                @* Two sentences rather than one: a catalogue with nothing in it and a search that
+                   matched nothing ask the reader to do different things. The second names the
+                   facets as well, because with a facet ticked the reader has narrowed the list
+                   twice and a sentence blaming only the search would send them to fix the wrong
+                   thing. *@
+                @(_kilder.Count == 0 ? T.NoKilder : T.NoKilderMatch(searchText, ChosenCount))
+            }
+        </p>
+
+        @if (visible.Count > 0)
         {
-            @T.KildeListLoading
+            @* The order the list is in. In the row with the column picker, and drawn on the same
+               condition: an order control over no rows orders nothing.
+
+               A <select> and not the proposal's chips: the mockup styles its own names from an
+               inline <style> block, so nothing in it carries across, and an element degrades to its
+               own browser default where a class no stylesheet has heard of degrades to nothing.
+
+               The select and the wrapper both go unclassed. The form-element family in
+               `test/host-class-names.txt` is __label, __sublabel, __caption and --error with
+               nothing for the control itself, which is why the pager's size control is bare too;
+               and the wrapper is what keeps the label over its own select as one item of the row
+               rather than two. The label wears Stiler's `form-element__label`, the same name the
+               search box above it does. *@
+            <div>
+                <label class="form-element__label" for="@SortSelectId">@T.SortBy</label>
+
+                @* `selected` on the option rather than `value` on the select, for the reason the
+                   size control gives: `value` is a DOM property the interactive renderer sets, so a
+                   statically rendered first paint would show the first order whatever the host
+                   asked for — and this one arrives from a link. *@
+                @* Keyed on the refusal count, the same reason the size control is: a browser moves
+                   a select's own selection before `onchange` runs, and a refused value that leaves
+                   the order where it was renders nothing to move it back. See _orderRefusals. *@
+                <select id="@SortSelectId" @key="_orderRefusals" @onchange="ChooseOrderAsync">
+                    @foreach (var offered in OfferedOrders)
+                    {
+                        <option value="@offered" selected="@(_order == offered)">@T.KildeOrderLabel(offered)</option>
+                    }
+                </select>
+            </div>
+
+            @* The column picker, at the end of the row above the table, which is where the variable
+               explorer puts its own and where helsedata's page puts theirs. Drawn only with rows on
+               screen, unlike that one: there the header also carries the ordering a reader pressed,
+               and here an empty list means the fetch failed or the search matched nothing, so the
+               control would be offering columns for a table that is not there.
+
+               Its own `munin-explorer-header` wrapper comes into the row with it, and Stiler's rule
+               for the row reaches through that wrapper to hold the open list at its own width — in
+               a row the actions box is content-wide, and the width the picker inherits otherwise
+               spills the column names out of the dark card. (Fhi.Metadata-xpv2x) *@
+            @ColumnPicker()
         }
-        else if (visible.Count > 0)
-        {
-            @summary
-        }
-        else if (_loaded && _error is null)
-        {
-            @* Two sentences rather than one: a catalogue with nothing in it and a search that
-               matched nothing ask the reader to do different things. The second names the facets
-               as well, because with a facet ticked the reader has narrowed the list twice and a
-               sentence blaming only the search would send them to fix the wrong thing. *@
-            @(_kilder.Count == 0 ? T.NoKilder : T.NoKilderMatch(searchText, ChosenCount))
-        }
-    </p>
+    </div>
 
     @* The failure is worth interrupting for, so it is an alert rather than a polite update. The
        container is always rendered, empty when there is nothing wrong: a role="alert" element that
@@ -423,47 +491,10 @@ else
     {
     <div class="munin-explorer-container">
     <div class="munin-explorer-results">
-        @* The order the list is in. Above the table with the column picker, and drawn on the same
-           condition: an order control over no rows orders nothing.
-
-           A <select> and not the proposal's chips: the mockup styles its own names from an inline
-           <style> block, so nothing in it carries across, and an element degrades to its own
-           browser default where a class no stylesheet has heard of degrades to nothing.
-
-           The select and the wrapper both go unclassed. The form-element family in
-           `test/host-class-names.txt` is __label, __sublabel, __caption and --error with nothing
-           for the control itself, which is why the pager's size control is bare too; and
-           `munin-explorer-results` is a column flex box that would stretch a classless child to
-           the width of the table. The label wears Stiler's `form-element__label`, the same name
-           the search box above it does. *@
-        <div>
-            <label class="form-element__label" for="@SortSelectId">@T.SortBy</label>
-
-            @* `selected` on the option rather than `value` on the select, for the reason the size
-               control gives: `value` is a DOM property the interactive renderer sets, so a
-               statically rendered first paint would show the first order whatever the host asked
-               for — and this one arrives from a link. *@
-            @* Keyed on the refusal count, the same reason the size control is: a browser moves a
-               select's own selection before `onchange` runs, and a refused value that leaves the
-               order where it was renders nothing to move it back. See _orderRefusals. *@
-            <select id="@SortSelectId" @key="_orderRefusals" @onchange="ChooseOrderAsync">
-                @foreach (var offered in OfferedOrders)
-                {
-                    <option value="@offered" selected="@(_order == offered)">@T.KildeOrderLabel(offered)</option>
-                }
-            </select>
-        </div>
-
-        @* The column picker, above the table and inside the results column, which is where the
-           variable explorer puts its own and where helsedata's page puts theirs. Drawn only with
-           rows on screen, unlike that one: there the header also carries the ordering a reader
-           pressed, and here an empty list means the fetch failed or the search matched nothing, so
-           the control would be offering columns for a table that is not there. *@
-        @ColumnPicker()
-
-        @* Around the table alone: the column picker shares `munin-explorer-results` and would
-           scroll out of reach with it. tabindex is unconditional because detecting overflow needs
-           script; region and table share one name so neither is nameless. (Fhi.Metadata-b3brc) *@
+        @* Around the table alone and not on `munin-explorer-results`: the column picker shared that
+           column until the row above took it, and anything put there later would ride the same
+           scroll. tabindex is unconditional because detecting overflow needs script; region and
+           table share one name so neither is nameless. (Fhi.Metadata-b3brc) *@
         <div class="munin-explorer-kilder-scroll" role="region" tabindex="0" aria-label="@summary">
             @* aria-label rather than aria-labelledby: the name is the same sentence the status line
                above shows, and pointing at that element would make the table's name change under a

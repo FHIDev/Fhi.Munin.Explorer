@@ -659,6 +659,7 @@ public class KildeSelectionTest : BunitContext
             "munin-explorer-kilder__name",
             "munin-explorer-kilder__select",     // this bead's
             "munin-explorer-results",            // shared
+            "munin-explorer-results__toolbar",   // shared with the count above the table
             "munin-explorer-search__clear",      // shared
             "munin-explorer-selection",          // this bead's
             "munin-explorer-selection__explore", // this bead's
