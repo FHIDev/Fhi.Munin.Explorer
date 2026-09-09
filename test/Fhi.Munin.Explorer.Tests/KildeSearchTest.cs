@@ -888,17 +888,32 @@ public class KildeSearchTest : BunitContext
         Row(cut, kilde).QuerySelector("td:not(.munin-explorer-kilder__expand)")!;
 
     /// <summary>
-    /// A pointer press on the row that travels <paramref name="travelled"/> CSS pixels before it is
-    /// released, which is what tells a press meant to open the drawer from a drag-selection.
+    /// A pointer press on the row that travels <paramref name="right"/> CSS pixels across and
+    /// <paramref name="down"/> down it before it is released, which is what tells a press meant to
+    /// open the drawer from a drag-selection. <paramref name="clicks"/> is the browser's click
+    /// count, so 2 is the second click of a double-click, and <paramref name="shift"/> is the
+    /// modifier held to extend a selection to where the pointer is.
     /// </summary>
     /// <remarks>
     /// Both events go through <see cref="RowBody"/> rather than one held element: the mousedown
     /// re-renders the table, and the element found before it belongs to the markup as it was.
     /// </remarks>
-    private static void PressRow(IRenderedComponent<KildeSearch> cut, string kilde, double travelled = 0)
+    private static void PressRow(
+        IRenderedComponent<KildeSearch> cut,
+        string kilde,
+        double right = 0,
+        double down = 0,
+        long clicks = 1,
+        bool shift = false)
     {
         RowBody(cut, kilde).MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
-        RowBody(cut, kilde).Click(new MouseEventArgs { ClientX = 120 + travelled, ClientY = 240 });
+        RowBody(cut, kilde).Click(new MouseEventArgs
+        {
+            ClientX = 120 + right,
+            ClientY = 240 + down,
+            Detail = clicks,
+            ShiftKey = shift,
+        });
     }
 
     /// <summary>Whether a press on <paramref name="control"/> stops there rather than reaching the row.</summary>
@@ -911,6 +926,17 @@ public class KildeSearchTest : BunitContext
     /// </remarks>
     private static bool StopsTheClick(IElement control) =>
         control.HasAttribute("blazor:onclick:stoppropagation");
+
+    /// <summary>
+    /// Whether a mousedown on <paramref name="control"/> stops there rather than reaching the row.
+    /// </summary>
+    /// <remarks>
+    /// Read off the markup for the same reason as <see cref="StopsTheClick"/>, and it has to hold
+    /// wherever that one does: the row records where a press went down and its own click is the only
+    /// thing that clears the record, so a press these controls let through is never cleared at all.
+    /// </remarks>
+    private static bool StopsThePress(IElement control) =>
+        control.HasAttribute("blazor:onmousedown:stoppropagation");
 
     [Fact]
     public void Row_WhenTheRowItselfIsPressed_ThenItOpensTheDatasamlingerTheChevronOpens()
@@ -935,7 +961,7 @@ public class KildeSearchTest : BunitContext
         var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
         var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
 
-        PressRow(cut, "Als registeret", travelled: 48);
+        PressRow(cut, "Als registeret", right: 48);
 
         Assert.Empty(cut.FindAll(".munin-explorer-kilder__expanded"));
         Assert.Equal("false", ExpandToggle(cut, "Als registeret").GetAttribute("aria-expanded"));
@@ -955,9 +981,82 @@ public class KildeSearchTest : BunitContext
         var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
         var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
 
-        PressRow(cut, "Als registeret", travelled: 2);
+        PressRow(cut, "Als registeret", right: 2);
 
         Assert.Single(cut.FindAll(".munin-explorer-kilder__expanded"));
+    }
+
+    [Theory]
+    [InlineData(4, 0, true)]
+    [InlineData(5, 0, false)]
+    [InlineData(0, 4, true)]
+    [InlineData(0, 5, false)]
+    public void Row_WhenThePointerTravels_ThenTheSlackIsADistanceInEitherDirection(
+        double right, double down, bool opens)
+    {
+        // Where the boundary the slack sets actually is, in a test rather than in the prose above the
+        // constant: 4px is still a press and 5px is a selection. Down as well as across, because the
+        // row is two lines tall wherever the code sits under the name and a reader dragging from
+        // "Als registeret" onto K_ALS moves almost entirely in Y. (Fhi.Metadata-l9l2n.55)
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        PressRow(cut, "Als registeret", right: right, down: down);
+
+        Assert.Equal(opens, cut.FindAll(".munin-explorer-kilder__expanded").Count == 1);
+    }
+
+    [Fact]
+    public void Row_WhenTheCodeIsDoubleClickedToSelectIt_ThenTheDrawerIsNotToggledBackShut()
+    {
+        // Double-click is how a reader takes a short token like K_ALS, and it travels no pixels at
+        // all: the second click passed a guard that only measures distance, so the drawer opened and
+        // shut under the selection and the row paid for a second detail fetch. (Fhi.Metadata-l9l2n.55)
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var client = new FakeClient(als).Describing(DetailWithCollections(als));
+        var cut = RenderWith(client);
+
+        PressRow(cut, "Als registeret");
+        PressRow(cut, "Als registeret", clicks: 2);
+
+        Assert.Single(cut.FindAll(".munin-explorer-kilder__expanded"));
+        Assert.Equal("true", ExpandToggle(cut, "Als registeret").GetAttribute("aria-expanded"));
+
+        // The rate limit the caching in ToggleDatasamlingerAsync exists to protect: the second click
+        // must not be a second GetKildeAsync either.
+        Assert.Equal(1, client.DetailCalls);
+    }
+
+    [Fact]
+    public void Row_WhenAClickExtendsASelectionWithShift_ThenTheDrawerStaysShut()
+    {
+        // The other gesture that stands still: shift-click extends the selection to the pointer, so
+        // it is two stationary clicks and neither has travelled anywhere. (Fhi.Metadata-l9l2n.55)
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        PressRow(cut, "Als registeret", shift: true);
+
+        Assert.Empty(cut.FindAll(".munin-explorer-kilder__expanded"));
+        Assert.Equal("false", ExpandToggle(cut, "Als registeret").GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void Row_WhenTheLastPressWasOnAnotherRow_ThenThisRowIsNotMeasuredAgainstIt()
+    {
+        // One coordinate for the whole tbody would read a click on this row against a press left on
+        // that one, and a row far enough down the table would silently do nothing - the control that
+        // does nothing when pressed, back again. Keyed like every other per-row state here.
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var dar = Kilde("Dødsårsaksregisteret", "K_DAR", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als, dar)
+            .Describing(DetailWithCollections(als))
+            .Describing(DetailWithCollections(dar)));
+
+        RowBody(cut, "Als registeret").MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
+        RowBody(cut, "Dødsårsaksregisteret").Click(new MouseEventArgs { ClientX = 600, ClientY = 900 });
+
+        Assert.Equal("true", ExpandToggle(cut, "Dødsårsaksregisteret").GetAttribute("aria-expanded"));
     }
 
     [Fact]
@@ -972,6 +1071,7 @@ public class KildeSearchTest : BunitContext
         var name = Row(cut, "Als registeret").QuerySelector("button.munin-explorer-kilder__name")!;
 
         Assert.True(StopsTheClick(name), "The name lets the click through to the row.");
+        Assert.True(StopsThePress(name), "The name leaves a press on the row that no click clears.");
 
         name.Click();
 
@@ -995,6 +1095,10 @@ public class KildeSearchTest : BunitContext
         Assert.True(
             StopsTheClick(ExpandToggle(cut, "Als registeret")),
             "The toggle lets the click through to the row, which would close what it just opened.");
+
+        Assert.True(
+            StopsThePress(ExpandToggle(cut, "Als registeret")),
+            "The toggle leaves a press on the row that no click of the row's clears.");
 
         ExpandToggle(cut, "Als registeret").Click();
 

@@ -406,13 +406,14 @@ public sealed partial class KildeSearch : ComponentBase
     // shaky hand, so an ordinary click still opens the drawer.
     private const double RowPressSlack = 4;
 
-    // Where the press now in flight went down. A drag-select that begins and ends inside the row
-    // still lands a click on the <tr>, and window.getSelection() would need JS interop this package
-    // does not take, so the press is told from the drag by where it ends. (Fhi.Metadata-l9l2n.55)
-    private (double X, double Y)? _rowPressedAt;
+    // Where the press now in flight went down, and on whose row. A drag that begins and ends inside
+    // the row lands a click on the <tr> too, and window.getSelection() would need JS interop this
+    // package does not take. Keyed by the kilde's own id, like every other per-row state here.
+    private (Guid Kilde, double X, double Y)? _rowPressedAt;
 
     // No preventDefault, so the row's text still selects — this only records where the pointer was.
-    private void RowPressed(MouseEventArgs pressed) => _rowPressedAt = (pressed.ClientX, pressed.ClientY);
+    private void RowPressed(KildeSummary kilde, MouseEventArgs pressed) =>
+        _rowPressedAt = (kilde.Id, pressed.ClientX, pressed.ClientY);
 
     // The row is a pointer shortcut onto the toggle in it, so it opens nothing the toggle does not:
     // Kelda draws no toggle where there is nothing to open, and a row that expanded to an empty
@@ -422,17 +423,22 @@ public sealed partial class KildeSearch : ComponentBase
         var pressedAt = _rowPressedAt;
         _rowPressedAt = null;
 
-        return CanExpand(kilde) && !Dragged(pressedAt, released)
+        return CanExpand(kilde) && !Selecting(kilde, pressedAt, released)
             ? ToggleDatasamlingerAsync(kilde)
             : Task.CompletedTask;
     }
 
-    // Highlighting a code to copy it is not a request to open the drawer. A click with no mousedown
-    // behind it is no drag: nothing travelled across the row, so it opens as a bare press does.
-    private static bool Dragged((double X, double Y)? from, MouseEventArgs to) =>
-        from is { } start
-        && (Math.Abs(to.ClientX - start.X) > RowPressSlack
-            || Math.Abs(to.ClientY - start.Y) > RowPressSlack);
+    // Highlighting a code to copy it is not a request to open the drawer, and distance alone misses
+    // the gestures that stand still: a double-click takes a word, a shift-click extends to it. A
+    // click this row recorded no press for is how assistive tooling presses, so it opens the drawer.
+    private static bool Selecting(
+        KildeSummary kilde, (Guid Kilde, double X, double Y)? from, MouseEventArgs released) =>
+        released.Detail > 1
+        || released.ShiftKey
+        || (from is { } start
+            && start.Kilde == kilde.Id
+            && (Math.Abs(released.ClientX - start.X) > RowPressSlack
+                || Math.Abs(released.ClientY - start.Y) > RowPressSlack));
 
     private async Task LoadDatasamlingerAsync(Guid id)
     {

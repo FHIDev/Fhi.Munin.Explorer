@@ -176,6 +176,11 @@ public class KildeSelectionTest : BunitContext
         // handler bUnit would bubble to. The click reaching nobody is therefore the assertion.
         Assert.Throws<MissingEventHandlerException>(() => RowBoxes(cut)[0].Click());
 
+        // And the mousedown under that click stops here too: the row records where a press went down
+        // and clears it on its own click, so a press the box let through would still be sitting there
+        // when the next row was clicked.
+        Assert.True(RowBoxes(cut)[0].HasAttribute("blazor:onmousedown:stoppropagation"));
+
         RowBoxes(cut)[0].Change(true);
 
         Assert.True(RowBoxes(cut)[0].HasAttribute("checked"));
