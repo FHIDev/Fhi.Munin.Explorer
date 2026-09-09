@@ -191,11 +191,12 @@ export const states = {
     }
   },
 
-  // The kildeutforsker's facet panel: a second facet opened from the keyboard, then a value ticked
-  // inside it. Nothing in the component mirrors the folds — `open` is seeded once and never
-  // rewritten — so this is the only place either half is exercised at all: bUnit re-serialises the
-  // markup from the render tree and never runs a browser's native <details> toggle, let alone a
-  // Blazor diff arriving over one (Fhi.Metadata-co3sf).
+  // The kildeutforsker's facet panel: a second facet opened from the keyboard, a value ticked
+  // inside it, and then the Utvid alle / Skjul alle pair over the top. Nothing in the component
+  // mirrors the folds — `open` is written once per fold press and left alone between them — so this
+  // is the only place any of it is exercised at all: bUnit re-serialises the markup from the render
+  // tree and never runs a browser's native <details> toggle, let alone a Blazor diff arriving over
+  // one (Fhi.Metadata-co3sf, Fhi.Metadata-l9l2n.60).
   'kilde-facets': async page => {
     await rowsArePresent(page, 'button.munin-explorer-kilder__name');
 
@@ -247,7 +248,8 @@ export const states = {
     }
 
     // And then a re-render over the top of it, which is the claim the component rests on: `open` is
-    // seeded once and never rewritten, so narrowing the list cannot collapse what the reader opened.
+    // written by a fold press and by nothing else, so narrowing the list cannot collapse what the
+    // reader opened.
     // The wait is on the summary gaining its count, because that element comes back over the
     // circuit — the tick alone lands in the browser before Blazor has diffed anything.
     await values.locator('input[type=checkbox]').first().check();
@@ -262,6 +264,54 @@ export const states = {
     // markup this state reaches, and axe reports no violations in an element that never rendered.
     await page.locator('.munin-explorer-filters__chip').first()
       .waitFor({ state: 'visible', timeout: findTimeout });
+
+    // Utvid alle, and the trap it must not cost. A press rebuilds every disclosure under a new key
+    // so the new `open` lands; every render after it has to leave them alone again. The facet
+    // folded below is folded by the READER, in the browser, which is the half no test in this
+    // repository can stage — bUnit's DOM cannot disagree with the render tree, and this defect is
+    // that disagreement. (Fhi.Metadata-l9l2n.60)
+    const total = await facets.count();
+    const foldRow = page.locator('.munin-explorer-filters > .munin-explorer-filters__toolbar > button');
+
+    // The pair through the direct-child chain Stiler's pinning rule uses, so a row emitted one
+    // level deeper — which is how that rule fails, in silence — is a red run rather than a
+    // screenshot nobody takes.
+    if (await foldRow.count() !== 2) {
+      throw new Error('The facet panel drew no Utvid alle / Skjul alle pair as a child of the panel');
+    }
+
+    const openCountIs = expected => page.waitForFunction(
+      n => document.querySelectorAll('.munin-explorer-filters__facets > details[open]').length === n,
+      expected,
+      { timeout: findTimeout });
+
+    await foldRow.first().click();
+    await openCountIs(total);
+
+    // Folded from the keyboard, and on the facet the panel opens by default: what the assertions
+    // below turn on is the DOM disagreeing with the last `open` this component rendered.
+    const first = facets.first();
+    await first.locator(':scope > summary').focus();
+    await page.keyboard.press('Enter');
+    await openCountIs(total - 1);
+
+    // The narrowing render, twice — the tick taken off and put back on, so the state axe finally
+    // scans still has the chips in it.
+    const chosen = folded.locator(':scope > summary .munin-explorer-filters__chosen');
+
+    await values.locator('input[type=checkbox]').first().uncheck();
+    await chosen.waitFor({ state: 'detached', timeout: findTimeout });
+
+    if (await first.evaluate(el => el.open)) {
+      throw new Error('Narrowing re-opened a facet the reader folded after Utvid alle');
+    }
+
+    await values.locator('input[type=checkbox]').first().check();
+    await chosen.waitFor({ state: 'visible', timeout: findTimeout });
+
+    if (await first.evaluate(el => el.open) || await open() !== total - 1) {
+      throw new Error('Narrowing undid the fold the reader left after Utvid alle');
+    }
   },
 
   // The composed explorer on /utforsker, which is the only page in either sample that draws the

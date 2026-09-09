@@ -283,6 +283,12 @@ These are not style preferences — each one is a host that breaks otherwise.
     `gap`, so nothing trails the last button, and buttons that shrink and wrap their own labels
     rather than the row breaking apart at the next longer translation. Both sample stylesheets carry
     it, and it is in `Fhi.Helsedata.Stiler` from the release that follows PR 39046.
+    Kelda's panel wears the same name for the same row, minus Nivålinjer — its facets are not
+    nested, so a level-lines toggle would draw nothing — and there the rule does one thing more: it
+    pins the row to the top of the facet column, which scrolls at sidebar widths, so a control that
+    is wanted after several facets are open does not scroll away with them. That half of the rule
+    selects the row as a direct child of `munin-explorer-filters`, which is where both panels emit
+    it, and a host that defines nothing loses the pinning rather than the buttons.
     The row of active-filter chips over the results adds three, all shared with that panel:
     `munin-explorer-filters__active` is the row, `munin-explorer-filters__chip` the capsule around
     one ticked value and `munin-explorer-filters__chip-remove` the close control inside it. Handles,

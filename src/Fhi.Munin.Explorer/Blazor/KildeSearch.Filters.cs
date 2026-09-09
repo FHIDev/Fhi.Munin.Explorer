@@ -120,8 +120,8 @@ public sealed partial class KildeSearch
     /// <summary>A facet as the panel draws it: a disclosure holding a heading and the choices under it.</summary>
     /// <remarks>
     /// <c>OpenByDefault</c> is the first facet only, and it is the same on every render, so it
-    /// seeds the disclosure and the fold is the reader's from there — until a drill-in removes the
-    /// panel and it is seeded again. Every facet open is the length this fixes — databehandler
+    /// seeds the disclosure and the fold is the reader's from there — until a fold press or a
+    /// drill-in rebuilds the elements. Every facet open is the length this fixes — databehandler
     /// alone runs to 39 values — and every facet shut hides the affordance from a reader new to it.
     /// </remarks>
     private sealed record Facet(
@@ -534,6 +534,52 @@ public sealed partial class KildeSearch
     }
 
     private void ToggleFilters() => _filtersOpen = !_filtersOpen;
+
+    /// <summary>Which way the last Utvid alle / Skjul alle press left every facet, if any.</summary>
+    private bool? _foldAll;
+
+    /// <summary>Bumped per press, and part of every disclosure's key, so the press rebuilds them.</summary>
+    /// <remarks>
+    /// A <c>&lt;details&gt;</c> holds its own open state in the DOM, so a facet the reader folded by
+    /// hand no longer matches the <c>open</c> last rendered — and an unchanged value is never
+    /// patched, which is exactly the press that has to land. A new key rebuilds instead of diffing.
+    /// The same field on <see cref="VariableSearch"/> says why no test can stage that divergence.
+    /// </remarks>
+    private int _foldGeneration;
+
+    /// <summary>A disclosure's key: its facet, and the fold press it was last rebuilt for.</summary>
+    /// <remarks>
+    /// The generation is unchanged between presses, so ticking a value still leaves open whatever
+    /// the reader opened — and folded whatever they folded after Utvid alle.
+    /// </remarks>
+    private string FacetKey(Facet facet) => $"{facet.Key}#{_foldGeneration}";
+
+    /// <summary>Whether a facet is drawn open: the last fold press, or the facet's own default.</summary>
+    private bool FacetOpen(Facet facet) => _foldAll ?? facet.OpenByDefault;
+
+    /// <summary>What the last fold press did, for the panel's live region.</summary>
+    /// <remarks>
+    /// Empty until a press, or the region would speak on every mount. A second identical press is
+    /// silent, which is the region working rather than failing: it already said that.
+    /// </remarks>
+    private string FoldAnnouncement => _foldAll switch
+    {
+        true => T.FacetsExpanded,
+        false => T.FacetsCollapsed,
+        _ => string.Empty
+    };
+
+    /// <summary>Open every facet at once, or fold every facet at once.</summary>
+    /// <remarks>
+    /// The rebuild costs each facet's search field whatever is typed into it but not yet committed —
+    /// the boxes commit on change, so a half-typed term lives only in the DOM. Committed terms are
+    /// this component's own and survive.
+    /// </remarks>
+    private void FoldAll(bool open)
+    {
+        _foldAll = open;
+        _foldGeneration++;
+    }
 
     /// <summary>Whether <paramref name="facet"/> is long enough to be given a search box.</summary>
     /// <remarks>

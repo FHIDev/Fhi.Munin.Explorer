@@ -646,6 +646,7 @@ public class KildeSelectionTest : BunitContext
             "munin-explorer-filters__count",     // shared with the variable explorer's facets
             "munin-explorer-filters__facets",
             "munin-explorer-filters__toggle",
+            "munin-explorer-filters__toolbar", // the fold row, the variable explorer's name
             // The column picker, shared with the variable explorer down to the markup (ColumnPicker).
             "munin-explorer-header",
             "munin-explorer-header__actions",
