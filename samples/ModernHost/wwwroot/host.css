@@ -1988,8 +1988,8 @@ table.munin-explorer-data-list tbody th {
 
    Our names now — they were helsedata's `variable-explorer-header*` until the rename — and their
    arrangement throughout: a ghost button above the results, and the choices drawn as a card that
-   hangs off it. Their React sets `position: relative` inline on the wrapper and the component
-   emits the same inline style, so what is left for a host is the dress. The open list is
+   hangs off it. Their React sets `position: relative` inline on the wrapper; Stiler puts it on
+   the element itself, so a host without Stiler supplies it below (Fhi.Metadata-f6az7). The open list is
    `dropdown-choicepicker`, which is Stiler's own name and stays that way.
 
    The component builds it from <details> and <summary> because it ships no script. That is the
@@ -2010,8 +2010,64 @@ table.munin-explorer-data-list tbody th {
   justify-content: flex-end;
 }
 
+/* And the trigger inside it, for a host that gives the dropdown the full row as Stiler does. Text
+   alignment and not flex or an auto margin: an inline-level box resolves an auto margin to zero,
+   and `display: flex` on a <details> stops it hiding its own closed content. The list resets it. */
+.munin-explorer-header__actions .munin-explorer__dropdown {
+  text-align: right;
+}
+
+.munin-explorer-header__actions .dropdown-choicepicker {
+  text-align: left;
+}
+
 .munin-explorer-header__actions-button {
   border: none;
+}
+
+/* What the component stopped emitting inline: the open list is absolutely positioned and anchors
+   to the nearest positioned ancestor, which has to be this element. (Fhi.Metadata-f6az7) */
+.munin-explorer__dropdown {
+  position: relative;
+}
+
+/* No icon font here, as for the row chevron above, so the trigger's icons are characters too.
+   Scoped to the trigger: an unscoped .icon-keyboard-arrow-down::before would also land on the
+   row's expand icon and draw two arrows over each other. */
+.munin-explorer-header__actions-button > .icon {
+  display: inline-block;
+  width: 16px;
+}
+
+.munin-explorer-header__actions-button > .icon-layout {
+  margin-right: 8px;
+}
+
+.munin-explorer-header__actions-button > .icon--right {
+  margin-left: 8px;
+}
+
+.munin-explorer-header__actions-button > .icon-layout::before {
+  content: "\229E";           /* ⊞ */
+}
+
+.munin-explorer-header__actions-button > .icon-keyboard-arrow-down::before {
+  content: "\25BE";           /* ▾ */
+}
+
+.munin-explorer-header__actions-button > .icon-keyboard-arrow-up::before {
+  content: "\25B4";           /* ▴ */
+}
+
+/* Both chevrons are drawn and one is hidden, because the component ships no script and cannot
+   swap a class — the open state is the <details>'s own and only a selector can read it. */
+.munin-explorer__dropdown > summary > .icon-keyboard-arrow-up,
+.munin-explorer__dropdown[open] > summary > .icon-keyboard-arrow-down {
+  display: none;
+}
+
+.munin-explorer__dropdown[open] > summary > .icon-keyboard-arrow-up {
+  display: inline-block;
 }
 
 .munin-explorer__dropdown > summary {
@@ -2052,32 +2108,29 @@ table.munin-explorer-data-list tbody th {
 .dropdown-choicepicker__item:last-of-type { padding-bottom: 16px; }
 .dropdown-choicepicker__item:hover { background-color: #32378d; }
 
-/* A chosen column is a pressed button, the same two states the facet values use. The mark is
-   drawn in the ::before so the label text stays put whichever state it is in — a tick that
-   appeared and disappeared would shift every line beside it. */
-.dropdown-choicepicker__item .hd-button-reset {
+/* A chosen column is a ticked checkbox, as helsedata's own is — the ::before glyph that used to
+   draw the mark for `aria-pressed` went with the buttons, and the browser draws the box now.
+   (Fhi.Metadata-f6az7) */
+.dropdown-choicepicker__item .form-control {
   display: inline-flex;
   align-items: center;
+  width: 100%;
   padding: 8px 0;
   color: inherit;
+  cursor: pointer;
 }
 
-/* The empty alternative text after the slash is what keeps the glyph out of the accessible name.
-   Chromium folds generated content into it, so the toggle announced as "☑ Kildetype" and said
-   twice what aria-pressed already says once. Found driving the axe state (Fhi.Metadata-ay3zz). */
-.dropdown-choicepicker__item .hd-button-reset::before {
-  content: "\2610" / "";
-  margin-right: 8px;
-}
-
-.dropdown-choicepicker__item .hd-button-reset[aria-pressed="true"]::before {
-  content: "\2611" / "";
+.dropdown-choicepicker__item .form-control__label {
+  margin-left: 8px;
+  align-self: center;
+  word-break: normal;
 }
 
 /* The last column left. Inert rather than disabled, so it can still be reached and still says
    why it will not move — the sentence is in the DOM, aria-describedby points at it, and this is
    what says the same thing to everyone else. */
-.dropdown-choicepicker__item .hd-button-reset[aria-disabled="true"] {
+.dropdown-choicepicker__item input[aria-disabled="true"],
+.dropdown-choicepicker__item input[aria-disabled="true"] + .form-control__label {
   cursor: default;
   opacity: 0.6;
 }

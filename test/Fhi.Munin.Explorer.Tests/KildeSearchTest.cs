@@ -2901,13 +2901,28 @@ public class KildeSearchTest : BunitContext
     // not persisted and not in the host's URL, which is what Kelda does. (Fhi.Metadata-ay3zz)
     // ---------------------------------------------------------------------------------
 
-    /// <summary>The picker's toggles, in the order it lists them.</summary>
+    /// <summary>The picker's checkboxes, in the order it lists them.</summary>
     private static IReadOnlyList<IElement> ColumnToggles(IRenderedComponent<KildeSearch> cut) =>
-        cut.FindAll(".dropdown-choicepicker__item button");
+        cut.FindAll(".dropdown-choicepicker__item input[type=checkbox]");
+
+    /// <summary>A checkbox's column, which is the label beside it rather than its own text.</summary>
+    private static string ColumnName(IElement toggle) =>
+        toggle.ParentElement!.QuerySelector(".form-control__label")!.TextContent.Trim();
+
+    /// <summary>Whether the column is on screen, as the rendered attribute has it.</summary>
+    private static bool Ticked(IElement toggle) => toggle.HasAttribute("checked");
 
     /// <summary>The toggle for one named column, refetched so it is never a stale node.</summary>
-    private static void ToggleColumn(IRenderedComponent<KildeSearch> cut, string label) =>
-        ColumnToggles(cut).Single(b => b.TextContent.Trim() == label).Click();
+    /// <remarks>
+    /// A checkbox answers a change event and not a click, so a <c>Click()</c> here would leave the
+    /// picker untouched and every test using it green over a control that does nothing.
+    /// </remarks>
+    private static void ToggleColumn(IRenderedComponent<KildeSearch> cut, string label)
+    {
+        var box = ColumnToggles(cut).Single(b => ColumnName(b) == label);
+
+        box.Change(!Ticked(box));
+    }
 
     private static IReadOnlyList<string> Headers(IRenderedComponent<KildeSearch> cut) =>
         [.. cut.FindAll(".munin-explorer-kilder thead th").Select(th => th.TextContent.Trim())];
@@ -2982,13 +2997,13 @@ public class KildeSearchTest : BunitContext
             "Gyldighet",
             "Importert",
             "Sist endret",
-        ], ColumnToggles(cut).Select(b => b.TextContent.Trim()));
+        ], ColumnToggles(cut).Select(ColumnName));
 
-        // aria-pressed is the whole truth about a toggle button, so the defaults have to be
-        // readable off it rather than only off the table.
+        // The rendered `checked` attribute is the whole truth about a checkbox, so the defaults
+        // have to be readable off it rather than only off the table.
         Assert.Equal(
-            ["true", "true", "true", "false", "false", "false", "false", "false", "false", "false"],
-            ColumnToggles(cut).Select(b => b.GetAttribute("aria-pressed")));
+            [true, true, true, false, false, false, false, false, false, false],
+            ColumnToggles(cut).Select(Ticked));
     }
 
     [Theory]
@@ -3049,8 +3064,8 @@ public class KildeSearchTest : BunitContext
         var cut = RenderWith(new FakeClient(Furnished()));
 
         foreach (var label in ColumnToggles(cut)
-                     .Where(b => b.GetAttribute("aria-pressed") == "false")
-                     .Select(b => b.TextContent.Trim())
+                     .Where(b => !Ticked(b))
+                     .Select(ColumnName)
                      .ToList())
         {
             ToggleColumn(cut, label);
@@ -3261,8 +3276,8 @@ public class KildeSearchTest : BunitContext
 
         // Only the ones that are on, since a press on a hidden column turns it back on.
         foreach (var label in ColumnToggles(cut)
-                     .Where(b => b.GetAttribute("aria-pressed") == "true")
-                     .Select(b => b.TextContent.Trim())
+                     .Where(Ticked)
+                     .Select(ColumnName)
                      .ToList())
         {
             ToggleColumn(cut, label);
@@ -3270,7 +3285,7 @@ public class KildeSearchTest : BunitContext
 
         Assert.Equal(["Vis datasamlinger", "Navn", "Status", "Opprettet"], Headers(cut));
         Assert.Equal(Headers(cut).Count, FirstRowCells(cut).Count);
-        Assert.All(ColumnToggles(cut), b => Assert.Equal("false", b.GetAttribute("aria-pressed")));
+        Assert.All(ColumnToggles(cut), b => Assert.False(Ticked(b)));
     }
 
     [Fact]

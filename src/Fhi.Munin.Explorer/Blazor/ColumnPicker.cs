@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Components;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
-/// The column picker both explorers hang above their results: a disclosure holding one toggle per
+/// The column picker both explorers hang above their results: a disclosure holding one checkbox per
 /// optional column.
 /// </summary>
 /// <remarks>
@@ -11,7 +11,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// variable page hangs this above the results in <c>munin-explorer-header__actions</c> and draws
 /// the open list as <c>ul.dropdown-choicepicker</c> with one <c>li.dropdown-choicepicker__item</c>
 /// per choice — the list is <c>position: absolute</c> under a trigger whose container is relative,
-/// which is what the inline style below supplies, exactly as their own React does inline.
+/// which Stiler now supplies on <c>.munin-explorer__dropdown</c> itself (Fhi.Metadata-f6az7).
 /// </para>
 /// <para>
 /// It is deliberately NOT <c>sortable-dropdown</c>, which the bead behind the first of these
@@ -46,11 +46,12 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// is wanted.
 /// </para>
 /// <para>
-/// Toggle buttons rather than checkboxes, which is what the facet values already are. Their own
-/// items are a visually-hidden <c>checkbox__input</c> with a label drawing the box, and that
-/// pattern needs the DOM's checked state and the component's to agree — a refusal to hide the last
-/// column would leave the browser showing a box the component believes is still ticked. A button
-/// carries no state of its own, so <c>aria-pressed</c> is the whole truth.
+/// Real checkboxes, as helsedata's own are. An earlier draft used <c>&lt;button aria-pressed&gt;</c>
+/// on the ground that a refused toggle — the picker will not hide the last visible column — would
+/// leave the browser showing a ticked box over a hidden one. That constraint was already answered
+/// in this repository: <c>SetUpdatesAttributeName("checked")</c> forces the attribute back onto the
+/// DOM when the render after a press equals the render before it, which is what the facet panel
+/// uses for a filter press it drops or rolls back (Fhi.Metadata-f6az7).
 /// </para>
 /// <para>
 /// One copy for both explorers: every paragraph above is a borrowed name or a fact about the
@@ -74,7 +75,7 @@ internal static class ColumnPicker
     /// guarantee: what redraws is <c>ComponentBase</c> handling the event.</param>
     /// <param name="buttonLabel">The trigger's word — "Kolonner".</param>
     /// <param name="choices">The columns, in the order the picker lists them.</param>
-    /// <param name="hint">Why the last column refuses, and the id a locked button points at.
+    /// <param name="hint">Why the last column refuses, and the id a locked checkbox points at.
     /// Absent when no column can lock.</param>
     /// <remarks>
     /// One parameter and not two, so an id without a sentence — an <c>aria-describedby</c> pointing
@@ -95,52 +96,74 @@ internal static class ColumnPicker
 
         builder.OpenElement(4, "details");
         // Two of their names rather than one: `dropdown` is the width rule their own actions row
-        // applies to the trigger, `munin-explorer__dropdown` the z-index under the open list.
-        // Both are in the host contract — see the remarks above.
+        // applies to the trigger, `munin-explorer__dropdown` the z-index under the open list and,
+        // since Fhi.Metadata-f6az7, the `position: relative` this element used to carry inline.
         builder.AddAttribute(5, "class", "dropdown munin-explorer__dropdown");
-        // Their own inline style, not a stylesheet: the list below is absolutely positioned and
-        // anchors to the nearest positioned ancestor, and helsedata's React sets exactly this on
-        // the same element. Without it an open list would hang off whatever happens to be
-        // positioned further up the host's page.
-        builder.AddAttribute(6, "style", "position:relative");
 
         // Dressed as their ghost square button, which is what their own trigger is. A <summary>
         // is display: list-item, so a host has to take the disclosure marker off it — two rules,
         // both in the host notes, and both sample hosts carry them.
-        builder.OpenElement(7, "summary");
-        builder.AddAttribute(8, "class",
+        builder.OpenElement(6, "summary");
+        builder.AddAttribute(7, "class",
             "hd-button-square button-square--ghost munin-explorer-header__actions-button");
-        builder.AddContent(9, buttonLabel);
+
+        builder.OpenElement(8, "span");
+        builder.AddAttribute(9, "class", "icon icon-layout");
+        builder.AddAttribute(10, "aria-hidden", "true");
         builder.CloseElement();
 
-        builder.OpenElement(10, "ul");
-        builder.AddAttribute(11, "class", "dropdown-choicepicker dropdown-choicepicker--right");
+        builder.AddContent(11, buttonLabel);
+
+        // Both chevrons are drawn and Stiler hides the one contradicting the open state: nothing
+        // here can swap a class, the package shipping no script, and the state is the element's.
+        builder.OpenElement(12, "span");
+        builder.AddAttribute(13, "class", "icon icon--right icon-keyboard-arrow-down");
+        builder.AddAttribute(14, "aria-hidden", "true");
+        builder.CloseElement();
+
+        builder.OpenElement(15, "span");
+        builder.AddAttribute(16, "class", "icon icon--right icon-keyboard-arrow-up");
+        builder.AddAttribute(17, "aria-hidden", "true");
+        builder.CloseElement();
+
+        builder.CloseElement();
+
+        builder.OpenElement(18, "ul");
+        builder.AddAttribute(19, "class", "dropdown-choicepicker dropdown-choicepicker--right");
 
         foreach (var choice in choices)
         {
-            builder.OpenElement(12, "li");
-            builder.AddAttribute(13, "class", "dropdown-choicepicker__item");
+            builder.OpenElement(20, "li");
+            builder.AddAttribute(21, "class", "dropdown-choicepicker__item");
 
-            builder.OpenElement(14, "button");
-            builder.AddAttribute(15, "class", "hd-button-reset");
-            builder.AddAttribute(16, "type", "button");
-            builder.AddAttribute(17, "aria-pressed", choice.Visible ? "true" : "false");
+            // Stiler's own names, not ours: `_choicepicker.scss` overrides `word-break` on
+            // `form-control__label` INSIDE `dropdown-choicepicker__item`, which is a rule written
+            // for this item and nothing else.
+            builder.OpenElement(22, "label");
+            builder.AddAttribute(23, "class", "form-control");
+
+            builder.OpenElement(24, "input");
+            builder.AddAttribute(25, "type", "checkbox");
+            builder.AddAttribute(26, "checked", choice.Visible);
             // Inert rather than disabled, the same treatment the pager's buttons and Fjern alle
             // filtre get: `disabled` takes the control out of the tab order, so the one column a
-            // reader might want to ask about would be the one they could not reach. The caller's
-            // own toggle is what makes the refusal true.
-            builder.AddAttribute(18, "aria-disabled", choice.Locked ? "true" : null);
-            builder.AddAttribute(19, "aria-describedby", choice.Locked ? hint?.Id : null);
-            builder.AddAttribute(20, "onclick", EventCallback.Factory.Create(receiver, choice.Toggle));
+            // reader might want to ask about would be the one they could not reach.
+            builder.AddAttribute(27, "aria-disabled", choice.Locked ? "true" : null);
+            builder.AddAttribute(28, "aria-describedby", choice.Locked ? hint?.Id : null);
+            // The event's own value is ignored: the toggle flips what the caller holds, which is
+            // the one state a press and the render after it are certain to agree about.
+            builder.AddAttribute(29, "onchange",
+                EventCallback.Factory.Create<ChangeEventArgs>(receiver, _ => choice.Toggle()));
+            // What makes the refusal honest: without it the browser's own tick survives a press the
+            // caller declined, because the renders either side are equal and an equal render writes
+            // nothing back to the DOM.
+            builder.SetUpdatesAttributeName("checked");
+            builder.CloseElement();
 
-            // The label as the button's own text, with no element and so no class name around it.
-            // An earlier draft wrapped it in a span wearing `form-control__label`, which is a name
-            // nothing else in this component uses and which could not be read back off Stiler's
-            // compiled stylesheet — the one thing AGENTS.md says must never be guessed at, because
-            // a name Stiler has never heard of renders as a raw browser default. The wrapper bought
-            // nothing either: the item is a flex row and the button an inline-flex box, so a bare
-            // text node is centred by the rules already on them.
-            builder.AddContent(21, choice.Label);
+            builder.OpenElement(30, "span");
+            builder.AddAttribute(31, "class", "form-control__label");
+            builder.AddContent(32, choice.Label);
+            builder.CloseElement();
 
             builder.CloseElement();
             builder.CloseElement();
@@ -148,15 +171,15 @@ internal static class ColumnPicker
 
         builder.CloseElement();
 
-        // Why the last one refuses, said once rather than on every button. In the DOM whenever a
+        // Why the last one refuses, said once rather than on every checkbox. In the DOM whenever a
         // column CAN lock, so the reference never dangles: one appearing with the attribute that
         // names it would arrive in the same update, which is where a reader loses it.
         if (hint is { } sentence)
         {
-            builder.OpenElement(22, "p");
-            builder.AddAttribute(23, "class", "screenreader-only");
-            builder.AddAttribute(24, "id", sentence.Id);
-            builder.AddContent(25, sentence.Text);
+            builder.OpenElement(33, "p");
+            builder.AddAttribute(34, "class", "screenreader-only");
+            builder.AddAttribute(35, "id", sentence.Id);
+            builder.AddContent(36, sentence.Text);
             builder.CloseElement();
         }
 
