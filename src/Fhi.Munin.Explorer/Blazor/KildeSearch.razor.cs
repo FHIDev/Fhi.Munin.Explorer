@@ -601,15 +601,21 @@ public sealed partial class KildeSearch : ComponentBase
         value is not null && value.Contains(term, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    /// One sentence describing the visible result — "72 kilder, sortert etter Flest variabler" —
-    /// used both as the live announcement and as the table's accessible name, so the two cannot
-    /// drift apart.
+    /// One sentence describing the visible result — "56 kilder av 66, avgrenset av 2 filtre,
+    /// sortert etter Flest variabler" — used both as the live announcement and as the table's
+    /// accessible name, so the two cannot drift apart.
     /// </summary>
     /// <remarks>
-    /// A count and the ordering, and no row range: the variable explorer names one because it has a
-    /// pager, and this list is never paged. The ordering is here because the status line is polite
-    /// and atomic, so it is what tells a reader who cannot see the rows move that they moved at
-    /// all — a sort control whose effect is never announced is a control only some readers have.
+    /// A count against the catalogue it was narrowed out of, the ordering, and how many facet
+    /// values are ticked; no row range, because the variable explorer names one for its pager and
+    /// this list is never paged. The ordering is here because the status line is polite and atomic,
+    /// so it is what tells a reader who cannot see the rows move that they moved at all — a sort
+    /// control whose effect is never announced is a control only some readers have.
+    /// <para>
+    /// The denominator and the filter clause are absent rather than zeroed on an untouched list:
+    /// "66 kilder av 66, avgrenset av 0 filtre" is more words saying less than "66 kilder". Which
+    /// clauses appear is the text's own decision, so the two languages can disagree about it.
+    /// </para>
     /// <para>
     /// The catalogue's own order is left unsaid rather than named, so the sentence a reader who has
     /// touched nothing hears is the one this list has always shown. Choosing it again is still a
@@ -618,11 +624,16 @@ public sealed partial class KildeSearch : ComponentBase
     /// <para>
     /// It takes the list rather than reading <see cref="Visible"/> itself, so that the sentence and
     /// the rows underneath it are counted off one read of the filter — see the capture at the top
-    /// of the markup's list branch.
+    /// of the markup's list branch. <see cref="ChosenCount"/> is the same number the empty state
+    /// reports, so a narrowed list and a list narrowed to nothing cannot name different filters.
     /// </para>
     /// </remarks>
     private string Summary(IReadOnlyList<KildeSummary> visible) =>
-        T.KildeCount(visible.Count, _order == KildeSortOrder.Standard ? null : T.KildeOrderLabel(_order));
+        T.KildeCount(
+            visible.Count,
+            _kilder.Count,
+            ChosenCount,
+            _order == KildeSortOrder.Standard ? null : T.KildeOrderLabel(_order));
 
     /// <summary>The search text as it is worth reporting back, which is nothing when it is blank.</summary>
     private string? SearchText => string.IsNullOrWhiteSpace(_search) ? null : _search.Trim();

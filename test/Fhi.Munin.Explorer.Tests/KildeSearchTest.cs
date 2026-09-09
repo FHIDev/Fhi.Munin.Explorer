@@ -492,6 +492,10 @@ public class KildeSearchTest : BunitContext
             .QuerySelector("input")!
             .Change(true);
 
+    /// <summary>Put the list in <paramref name="order"/> through the control the reader uses.</summary>
+    private static void Choose(IRenderedComponent<KildeSearch> cut, KildeSortOrder order) =>
+        cut.Find("select[id^='munin-explorer-sort']").Change(order.ToString());
+
     // ---------------------------------------------------------------------------------
     // The list.
     // ---------------------------------------------------------------------------------
@@ -522,17 +526,6 @@ public class KildeSearchTest : BunitContext
     }
 
     [Fact]
-    public void Render_WhenTheListIsOnScreen_ThenTheCountSaysHowManyKilderAreInIt()
-    {
-        var cut = RenderWith(new FakeClient(
-            Kilde("Als registeret", "K_ALS"),
-            Kilde("Dødsårsaksregisteret", "K_DAR"),
-            Kilde("Reseptregisteret", "K_NORPD")));
-
-        Assert.Contains("3 kilder", cut.Markup);
-    }
-
-    [Fact]
     public void Render_WhenOneKildeIsOnScreen_ThenTheCountIsNotWrittenInThePlural()
     {
         // "1 kilder" is the kind of thing that ships because the count was interpolated at the call
@@ -541,6 +534,121 @@ public class KildeSearchTest : BunitContext
 
         Assert.Contains("1 kilde", cut.Markup);
         Assert.DoesNotContain("1 kilder", cut.Markup);
+    }
+
+    [Fact]
+    public void Count_WhenNothingIsNarrowingTheList_ThenTheLineIsTheBareTotal()
+    {
+        // THE TRAP the denominator and the filter clause bring with them: added unconditionally
+        // they read as "3 kilder av 3 — 0 filtre aktive", which is more words saying less than
+        // "3 kilder". Only the narrowed state is ever checked by hand, so this side needs a test.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS"),
+            Kilde("Dødsårsaksregisteret", "K_DAR"),
+            Kilde("Reseptregisteret", "K_NORPD")));
+
+        Assert.Equal("3 kilder", ResultCount(cut));
+    }
+
+    [Fact]
+    public void Count_WhenFacetsNarrowTheList_ThenItNamesTheCatalogueAndHowManyFiltersAreActive()
+    {
+        // Without the denominator a narrowed list reads the same as a short catalogue, and until
+        // the chips land (Fhi.Metadata-ofoyw) this line is the only thing on the page saying
+        // filtering is happening at all.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS",
+                kildetype: "nasjonaltMedisinskKvalitetsregister", dataProcessor: "St. Olavs hospital HF"),
+            Kilde("Barnediabetes", "K_BDR",
+                kildetype: "nasjonaltMedisinskKvalitetsregister", dataProcessor: "Oslo universitetssykehus HF"),
+            Kilde("Dødsårsaksregisteret", "K_DAR",
+                kildetype: "sentraltHelseregister", dataProcessor: "St. Olavs hospital HF")));
+
+        Tick(cut, "Kildetype", "Nasjonalt medisinsk kvalitetsregister");
+
+        Assert.Equal("2 kilder av 3, avgrenset av 1 filter", ResultCount(cut));
+
+        Tick(cut, "Databehandler", "St. Olavs hospital HF");
+
+        Assert.Equal("1 kilde av 3, avgrenset av 2 filtre", ResultCount(cut));
+    }
+
+    [Fact]
+    public void Count_WhenEveryKildeCarriesTheTickedValue_ThenTheFilterClauseStandsWithoutADenominator()
+    {
+        // The two clauses are independent, and this is the state that says so: a facet value the
+        // whole catalogue carries leaves the list at its full length while a filter is on, so
+        // "3 kilder av 3" has to stay away without taking "avgrenset av 1 filter" with it.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS"),
+            Kilde("Dødsårsaksregisteret", "K_DAR"),
+            Kilde("Reseptregisteret", "K_NORPD")));
+
+        Tick(cut, "Databehandler", "Folkehelseinstituttet");
+
+        Assert.Equal("3 kilder, avgrenset av 1 filter", ResultCount(cut));
+    }
+
+    [Fact]
+    public void Count_WhenTheReaderFiltersAndSorts_ThenOneSentenceCarriesEveryClauseInOrder()
+    {
+        // Four optional pieces concatenated, and the sorting tests only ever read the ordering on an
+        // untouched list: this pins where the ordering sits in Norwegian once a filter is on, which
+        // is the clause order the sibling ResultSummary already uses.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS",
+                kildetype: "nasjonaltMedisinskKvalitetsregister", dataProcessor: "St. Olavs hospital HF"),
+            Kilde("Barnediabetes", "K_BDR",
+                kildetype: "nasjonaltMedisinskKvalitetsregister", dataProcessor: "Oslo universitetssykehus HF"),
+            Kilde("Dødsårsaksregisteret", "K_DAR",
+                kildetype: "sentraltHelseregister", dataProcessor: "St. Olavs hospital HF")));
+
+        Tick(cut, "Kildetype", "Nasjonalt medisinsk kvalitetsregister");
+        Choose(cut, KildeSortOrder.Variables);
+
+        Assert.Equal(
+            "2 kilder av 3, avgrenset av 1 filter, sortert etter Flest variabler", ResultCount(cut));
+    }
+
+    [Fact]
+    public void Count_WhenTheSearchNarrowsAndNoFacetIsTicked_ThenOnlyTheDenominatorAppears()
+    {
+        // The two clauses answer different questions: a reader who has typed and ticked nothing is
+        // owed the count against the catalogue and not an answer about filters they never set.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS"),
+            Kilde("Dødsårsaksregisteret", "K_DAR"),
+            Kilde("Reseptregisteret", "K_NORPD")));
+
+        cut.Find(".searchbox__freetext").Change("als");
+
+        Assert.Equal("1 kilde av 3", ResultCount(cut));
+    }
+
+    [Fact]
+    public void Count_WhenTheReaderReadsInEnglish_ThenEveryClauseAndItsPluralIsInEnglishToo()
+    {
+        // Assembled clause by clause, which is where a language that got the plural right can still
+        // ship "1 source av 2": the whole sentence is one language's business.
+        var cut = RenderWith(
+            new FakeClient(
+                Kilde("Als registeret", "K_ALS", kildetype: "nasjonaltMedisinskKvalitetsregister"),
+                Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister")),
+            b => b.Add(c => c.Language, "en"));
+
+        Assert.Equal("2 sources", ResultCount(cut));
+
+        Tick(cut, "Source type", "Central health registry");
+
+        Assert.Equal("1 source of 2, narrowed by 1 filter", ResultCount(cut));
+
+        // A second value ticked because the plural arm is the one a copy-paste from the nb record
+        // leaves in Norwegian, and the singular one above would never notice.
+        Tick(cut, "Data processor", "Folkehelseinstituttet");
+        Choose(cut, KildeSortOrder.Variables);
+
+        Assert.Equal(
+            "1 source of 2, narrowed by 2 filters, sorted by Most variables", ResultCount(cut));
     }
 
     [Fact]
