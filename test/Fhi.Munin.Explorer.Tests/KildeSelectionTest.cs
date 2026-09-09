@@ -838,10 +838,20 @@ public class KildeSelectionTest : BunitContext
             "Nothing lets the handover's label wrap, so it spills out of the button once the floor "
             + "yields.");
 
+        // Per comma-separated part, because specificity is: a list is a set of independent
+        // selectors, so `.something, .munin-explorer-selection__explore` carries two dots and still
+        // matches this button at one class - the tie with hd-button-square that source order loses.
+        static bool Outranks(string selector) => selector
+            .Split(',')
+            .Where(part => part.Contains("munin-explorer-selection__explore", StringComparison.Ordinal))
+            .All(part => part.Count(c => c == '.') > 1);
+
+        var wrapping = protection.FirstOrDefault(rule => Outranks(rule.Selector));
+
         Assert.True(
-            protection.Any(rule => rule.Selector.Count(c => c == '.') > 1),
-            $"`{protection[0].Selector}` is a bare class, so hd-button-square wins its nowrap and "
-            + "its fixed height back and the wrap above is dead text.");
+            wrapping.Selector is not null,
+            $"`{protection[0].Selector}` matches the handover at one class, so hd-button-square ties "
+            + "it and wins on source order: the wrap and the auto height above are dead text.");
 
         // The wrap needs somewhere to go, and a floor rather than nothing: `height: auto` alone
         // draws the button shorter than the reset button beside it in the same centred row.
