@@ -7519,6 +7519,74 @@ public class VariableSearchTest : BunitContext
         Assert.Single(client.RequestsFor("3402"));
     }
 
+    /// <summary>
+    /// A pointer press on a kodeverk line's "Vis koder" control. <paramref name="clicks"/> is the
+    /// browser's click count, so 2 is the second click of a double-click gesture and 0 is how a
+    /// browser reports Enter or Space on a button.
+    /// </summary>
+    /// <remarks>The control is found on every call rather than held: each press re-renders the line.</remarks>
+    private static void PressCodeToggle(
+        IRenderedComponent<VariableSearch> cut, int control = 0, long clicks = 1) =>
+        CodeToggles(cut)[control].Click(new MouseEventArgs { Detail = clicks });
+
+    [Fact]
+    public void CodeToggle_WhenItIsDoubleClicked_ThenTheCodeTableIsLeftOpen()
+    {
+        // The last of the three same-page disclosures to get this guard: unlike the chevron and the
+        // row name, this callback took no MouseEventArgs at all, so nothing could tell one gesture's
+        // second click from a deliberate second press.
+        var client = KodeverkRows();
+        var cut = OpenData(client);
+
+        Assert.Equal("false", CodeToggles(cut)[0].GetAttribute("aria-expanded"));
+
+        PressCodeToggle(cut);
+        PressCodeToggle(cut, clicks: 2);
+
+        Assert.Equal("true", CodeToggles(cut)[0].GetAttribute("aria-expanded"));
+        Assert.Equal("Skjul koder", CodeToggles(cut)[0].TextContent);
+        Assert.NotNull(Panel(cut).QuerySelector(".munin-explorer-codes table"));
+
+        // The swallowed click is not a second GetKodeverkCodesAsync either — the guard sits in
+        // front of the toggle rather than inside it, so the second click reaches no fetch at all.
+        Assert.Single(client.RequestsFor("2337"));
+    }
+
+    [Fact]
+    public void CodeToggle_WhenItIsPressedTwiceAsSeparateGestures_ThenItStillTogglesBothWays()
+    {
+        // The guard is per gesture, not per control: two deliberate presses each arrive with a click
+        // count of one, and a reader who opened a code table must still be able to shut it.
+        var cut = OpenData(KodeverkRows());
+
+        PressCodeToggle(cut);
+
+        Assert.Equal("true", CodeToggles(cut)[0].GetAttribute("aria-expanded"));
+
+        PressCodeToggle(cut);
+
+        Assert.Equal("false", CodeToggles(cut)[0].GetAttribute("aria-expanded"));
+        Assert.Empty(Panel(cut).QuerySelectorAll(".munin-explorer-codes"));
+    }
+
+    [Fact]
+    public void CodeToggle_WhenItIsActivatedFromTheKeyboard_ThenEachActivationToggles()
+    {
+        // Enter and Space on a <button> arrive as a click with a count of zero, which is what keeps a
+        // guard on the second click of a pointer gesture from swallowing a second keypress. Verified
+        // rather than assumed, because a guard that caught this would make the table unclosable.
+        var cut = OpenData(KodeverkRows());
+
+        PressCodeToggle(cut, clicks: 0);
+
+        Assert.Equal("true", CodeToggles(cut)[0].GetAttribute("aria-expanded"));
+
+        PressCodeToggle(cut, clicks: 0);
+
+        Assert.Equal("false", CodeToggles(cut)[0].GetAttribute("aria-expanded"));
+        Assert.Empty(Panel(cut).QuerySelectorAll(".munin-explorer-codes"));
+    }
+
     [Fact]
     public void Codes_WhenAListIsOpen_ThenEveryClassNameIsOneSomeStylesheetActuallyDefines()
     {
