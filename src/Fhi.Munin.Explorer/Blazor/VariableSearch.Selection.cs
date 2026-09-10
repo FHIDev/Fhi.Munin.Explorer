@@ -23,6 +23,12 @@ public partial class VariableSearch
 
     private string WholeVariableHeadingId => $"munin-variable-heading-{_instance}";
 
+    // The way in and the way out are one handler, and the browser keeps it alive after the view
+    // swaps, so a gesture RowPress calls a selection undoes its own first click either way round.
+    // (Fhi.Metadata-j1j3i)
+    private Task ToggleWholeVariableFromControlAsync(MouseEventArgs released) =>
+        RowPress.WasSelectionStandingStill(released) ? Task.CompletedTask : ToggleWholeVariableAsync();
+
     /// <summary>Open the whole variable, or close it and put the reader back in the list.</summary>
     /// <remarks>
     /// Nothing is fetched: the panel already holds the detail this view draws, because opening the
@@ -256,6 +262,10 @@ public partial class VariableSearch
         _sourceGeneration++;
         _sourceLoading = false;
     }
+
+    // Both ways in ask it: the "Vis datakilde" pair and the trail's kilde step. (Fhi.Metadata-j1j3i)
+    private Task ToggleSourceFromControlAsync(SourceKind kind, MouseEventArgs released) =>
+        RowPress.WasSelectionStandingStill(released) ? Task.CompletedTask : ToggleSourceAsync(kind);
 
     /// <summary>
     /// Open the kilde or the datasamling the variable belongs to, or close the one already open.

@@ -8235,19 +8235,20 @@ public class VariableSearchTest : BunitContext
     /// <summary>
     /// A pointer press on a kodeverk line's "Vis koder" control. <paramref name="clicks"/> is the
     /// browser's click count, so 2 is the second click of a double-click gesture and 0 is how a
-    /// browser reports Enter or Space on a button.
+    /// browser reports Enter or Space on a button, and <paramref name="shift"/> is the modifier held
+    /// to extend a selection to where the pointer is.
     /// </summary>
     /// <remarks>The control is found on every call rather than held: each press re-renders the line.</remarks>
     private static void PressCodeToggle(
-        IRenderedComponent<VariableSearch> cut, int control = 0, long clicks = 1) =>
-        CodeToggles(cut)[control].Click(new MouseEventArgs { Detail = clicks });
+        IRenderedComponent<VariableSearch> cut, int control = 0, long clicks = 1, bool shift = false) =>
+        CodeToggles(cut)[control].Click(new MouseEventArgs { Detail = clicks, ShiftKey = shift });
 
     [Fact]
     public void CodeToggle_WhenItIsDoubleClicked_ThenTheCodeTableIsLeftOpen()
     {
-        // The same guard and predicate as the chevron's and the row name's, on the same
-        // parameterless lambda both of those were: this one came last by scope, not by shape. This
-        // panel's source and version disclosures are still without it (Fhi.Metadata-j1j3i).
+        // The same double-click clause as the chevron's and the row name's, on the same
+        // parameterless lambda both of those were. The rest of this panel caught up under
+        // Fhi.Metadata-j1j3i; four disclosures outside it have not (Fhi.Metadata-zel47).
         var client = KodeverkRows();
         var cut = OpenData(client);
 
@@ -8264,6 +8265,21 @@ public class VariableSearchTest : BunitContext
         // an unswallowed second click costs no request either — see the collapse-and-reopen test
         // above. The stalled-fetch test below is the one that shows the click reached no toggle.
         Assert.Single(client.RequestsFor("2337"));
+    }
+
+    [Fact]
+    public void CodeToggle_WhenAClickExtendsASelectionWithShift_ThenNoCodeTableIsOpened()
+    {
+        // A kodeverk line is codes and names, so it is read across rather than pressed once, and
+        // the other gesture that stands still has to be refused here as well.
+        var client = KodeverkRows();
+        var cut = OpenData(client);
+
+        PressCodeToggle(cut, shift: true);
+
+        Assert.Equal("false", CodeToggles(cut)[0].GetAttribute("aria-expanded"));
+        Assert.Null(Panel(cut).QuerySelector(".munin-explorer-codes table"));
+        Assert.Empty(client.RequestsFor("2337"));
     }
 
     [Fact]
@@ -10432,7 +10448,12 @@ public class VariableSearchTest : BunitContext
         VariableCount = 99
     };
 
-    /// <summary>Leaves the kilde view and returns to the list.</summary>
+    /// <summary>Leaves whichever drill-in is on screen and returns to the list.</summary>
+    /// <remarks>
+    /// The kilde and the whole variable render the same region class and each opens with its own
+    /// way out first, so this presses "Tilbake til variabler" in both — two different handlers, one
+    /// affordance, which is what the pair is meant to look like to a reader.
+    /// </remarks>
     private static void Back(IRenderedComponent<VariableSearch> cut) =>
         cut.Find(".munin-explorer-drilldown button").Click();
 
@@ -10665,6 +10686,218 @@ public class VariableSearchTest : BunitContext
 
         // Closing asks the API for nothing: it is the panel that is being dropped, not the answer.
         Assert.Equal(1, client.KildeCalls);
+    }
+
+    /// <summary>
+    /// A pointer press on a control that opens an owner. <paramref name="clicks"/> is the browser's
+    /// click count, so 2 is the second click of a double-click gesture and 0 is how a browser
+    /// reports Enter or Space on a button, and <paramref name="shift"/> is the modifier held to
+    /// extend a selection to where the pointer is.
+    /// </summary>
+    /// <remarks>
+    /// One press per call, rather than the pair "Vis koder" is sent: opening an owner replaces the
+    /// list with the owner's view, so the control the gesture began on is gone from this renderer
+    /// while the browser still has it and still lands the second click there.
+    /// </remarks>
+    private static void PressOwnerControl(
+        AngleSharp.Dom.IElement control, long clicks = 1, bool shift = false) =>
+        control.Click(new MouseEventArgs { Detail = clicks, ShiftKey = shift });
+
+    /// <summary>The kilde step of the open panel's trail, which opens the same view the buttons do.</summary>
+    private static AngleSharp.Dom.IElement PanelCrumb(IRenderedComponent<VariableSearch> cut) =>
+        Panel(cut).QuerySelector(".munin-explorer-crumb")!;
+
+    [Fact]
+    public void SourceToggle_WhenTheSecondClickOfADoubleClickReachesIt_ThenNoOwnerIsOpened()
+    {
+        // The guard the chevron, the row name and "Vis koder" carry, on a disclosure that was still
+        // built from a parameterless lambda: unguarded, the second click of a double-click reached
+        // ToggleSourceAsync and shut the owner the first click had just opened. (Fhi.Metadata-j1j3i)
+        var client = TwoRows();
+        var cut = RenderWith(client);
+
+        Toggles(cut)[0].Click();
+        PressOwnerControl(SourceToggles(cut)[0], clicks: 2);
+
+        Assert.Empty(cut.FindAll(".munin-explorer-drilldown"));
+        Assert.Equal("false", SourceToggles(cut)[0].GetAttribute("aria-expanded"));
+        Assert.Equal(0, client.KildeCalls);
+    }
+
+    [Fact]
+    public void SourceToggle_WhenAClickExtendsASelectionWithShift_ThenNoOwnerIsOpened()
+    {
+        // RowPress's other standing gesture, which a control that stops the click can tell as
+        // plainly as the row can: a reader extending a selection across the panel's text must not
+        // have the list swapped out from under the words they are taking. (Fhi.Metadata-j1j3i)
+        var client = TwoRows();
+        var cut = RenderWith(client);
+
+        Toggles(cut)[0].Click();
+        PressOwnerControl(SourceToggles(cut)[0], shift: true);
+
+        Assert.Empty(cut.FindAll(".munin-explorer-drilldown"));
+        Assert.Equal("false", SourceToggles(cut)[0].GetAttribute("aria-expanded"));
+        Assert.Equal(0, client.KildeCalls);
+    }
+
+    [Fact]
+    public void SourceToggle_WhenEachPressIsItsOwnGesture_ThenTheOwnerOpensEveryTime()
+    {
+        // The guard is per gesture, not per control: a reader leaves the view by its own way back,
+        // so the next press of this button is a fresh gesture and has to open the kilde again. The
+        // second one reports no click count at all, which is how a browser sends Enter and Space.
+        var client = TwoRows();
+        var cut = RenderWith(client);
+
+        Toggles(cut)[0].Click();
+        PressOwnerControl(SourceToggles(cut)[0]);
+
+        Assert.Single(cut.FindAll(".munin-explorer-drilldown"));
+
+        Back(cut);
+        PressOwnerControl(SourceToggles(cut)[0], clicks: 0);
+
+        Assert.Single(cut.FindAll(".munin-explorer-drilldown"));
+        Assert.Equal(2, client.KildeCalls);
+    }
+
+    [Fact]
+    public void Crumb_WhenTheSecondClickOfADoubleClickReachesIt_ThenTheKildeIsNotOpened()
+    {
+        // The trail's kilde step is the same control as "Vis datakilde" and shared its defect: a
+        // reader double-clicking the kilde's name saw its view open and shut again.
+        var client = TwoRows();
+        var cut = RenderWith(client);
+
+        Toggles(cut)[0].Click();
+        PressOwnerControl(PanelCrumb(cut), clicks: 2);
+
+        Assert.Empty(cut.FindAll(".munin-explorer-drilldown"));
+        Assert.Equal(0, client.KildeCalls);
+    }
+
+    [Fact]
+    public void Crumb_WhenAClickExtendsASelectionWithShift_ThenTheKildeIsNotOpened()
+    {
+        // The step is the kilde's own name, which is the panel's most copyable text: a selection
+        // extended across it used to land on the view instead.
+        var client = TwoRows();
+        var cut = RenderWith(client);
+
+        Toggles(cut)[0].Click();
+        PressOwnerControl(PanelCrumb(cut), shift: true);
+
+        Assert.Empty(cut.FindAll(".munin-explorer-drilldown"));
+        Assert.Equal(0, client.KildeCalls);
+    }
+
+    [Fact]
+    public void Crumb_WhenEachPressIsItsOwnGesture_ThenTheKildeOpensEveryTime()
+    {
+        // Both counts a real activation arrives with: one for an ordinary click, none for Enter or
+        // Space on the button. A guard that swallowed either would leave the step inert.
+        var client = TwoRows();
+        var cut = RenderWith(client);
+
+        Toggles(cut)[0].Click();
+        PressOwnerControl(PanelCrumb(cut));
+
+        Assert.Single(cut.FindAll(".munin-explorer-drilldown"));
+
+        Back(cut);
+        PressOwnerControl(PanelCrumb(cut), clicks: 0);
+
+        Assert.Single(cut.FindAll(".munin-explorer-drilldown"));
+        Assert.Equal(2, client.KildeCalls);
+    }
+
+    /// <summary>The panel's "Vis hele variabelen" button.</summary>
+    /// <remarks>
+    /// Found by its words rather than by index: it is drawn after the owner toggles in the same
+    /// block, so a rename fails this helper rather than quietly moving the press onto one of them.
+    /// </remarks>
+    private static AngleSharp.Dom.IElement WholeVariableToggle(IRenderedComponent<VariableSearch> cut) =>
+        cut.FindAll(".munin-explorer-detail > button")
+           .Single(b => b.TextContent.Contains("hele variabelen", StringComparison.Ordinal));
+
+    [Fact]
+    public void WholeVariable_WhenTheButtonIsDrawn_ThenItPromisesNoDisclosureInPlace()
+    {
+        // The view replaces the list, so there is nothing on the same screen to expand: an
+        // aria-expanded that can never turn true and an aria-controls naming an element that is
+        // only in the document once this button is not. The trail's kilde step carries neither.
+        var cut = RenderWith(TwoRows());
+
+        Toggles(cut)[0].Click();
+
+        Assert.False(WholeVariableToggle(cut).HasAttribute("aria-expanded"));
+        Assert.False(WholeVariableToggle(cut).HasAttribute("aria-controls"));
+    }
+
+    [Fact]
+    public void WholeVariable_WhenTheSecondClickOfADoubleClickReachesIt_ThenTheViewIsNotOpened()
+    {
+        // The third button in the block the two owner toggles are in, over a toggle of the same
+        // shape: unguarded, the second click reached ToggleWholeVariableAsync and shut the view
+        // the first click had just opened. (Fhi.Metadata-j1j3i)
+        var cut = RenderWith(TwoRows());
+
+        Toggles(cut)[0].Click();
+        PressOwnerControl(WholeVariableToggle(cut), clicks: 2);
+
+        Assert.Empty(cut.FindAll(".munin-explorer-drilldown"));
+    }
+
+    [Fact]
+    public void WholeVariable_WhenAClickExtendsASelectionWithShift_ThenTheViewIsNotOpened()
+    {
+        // The same standing gesture the owner toggles beside it refuse, on the button that swaps
+        // the furthest: it replaces the list with a view of its own. (Fhi.Metadata-j1j3i)
+        var cut = RenderWith(TwoRows());
+
+        Toggles(cut)[0].Click();
+        PressOwnerControl(WholeVariableToggle(cut), shift: true);
+
+        Assert.Empty(cut.FindAll(".munin-explorer-drilldown"));
+    }
+
+    [Fact]
+    public void WholeVariable_WhenEachPressIsItsOwnGesture_ThenTheViewOpensEveryTime()
+    {
+        // Both counts a real activation arrives with: one for an ordinary click, none for Enter or
+        // Space on the button. Nothing is fetched either time, so the view opening is the whole
+        // observation there is to make.
+        var cut = RenderWith(TwoRows());
+
+        Toggles(cut)[0].Click();
+        PressOwnerControl(WholeVariableToggle(cut));
+
+        Assert.Single(cut.FindAll(".munin-explorer-drilldown"));
+
+        Back(cut);
+        PressOwnerControl(WholeVariableToggle(cut), clicks: 0);
+
+        Assert.Single(cut.FindAll(".munin-explorer-drilldown"));
+    }
+
+    [Fact]
+    public void WholeVariableBack_WhenTheSecondClickOfADoubleClickReachesIt_ThenTheViewIsNotClosed()
+    {
+        // The way out is the same handler as the way in, so it carried the same defect the other
+        // way round: a double-click on "Tilbake til variabler" left the reader back inside the view
+        // they were leaving. (Fhi.Metadata-j1j3i)
+        var cut = RenderWith(TwoRows());
+
+        Toggles(cut)[0].Click();
+        PressOwnerControl(WholeVariableToggle(cut));
+
+        // Only the gesture's second click is dispatched, over a view that is still open: in a
+        // browser the first has closed it and taken this button with it, a state no renderer here
+        // can be put in. What is left to assert is that a count above one is refused.
+        PressOwnerControl(cut.Find(".munin-explorer-drilldown button"), clicks: 2);
+
+        Assert.Single(cut.FindAll(".munin-explorer-drilldown"));
     }
 
     /// <summary>

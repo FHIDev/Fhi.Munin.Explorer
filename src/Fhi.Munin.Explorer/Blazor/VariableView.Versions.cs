@@ -1,5 +1,6 @@
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -71,6 +72,11 @@ public sealed partial class VariableView
             ? (T.VersionUnnamed, false)
             : (version.PreferredTerm, true);
 
+    // A version row is a disclosure like the result row's, but this component keeps no press of its
+    // own, so the drag half of RowPress's question cannot be asked here. (Fhi.Metadata-j1j3i)
+    private Task ToggleVersionFromControlAsync(Guid versionId, MouseEventArgs released) =>
+        RowPress.WasSelectionStandingStill(released) ? Task.CompletedTask : ToggleVersionAsync(versionId);
+
     private Task ToggleVersionAsync(Guid versionId)
     {
         if (!_openVersions.Remove(versionId))
@@ -107,7 +113,8 @@ public sealed partial class VariableView
             builder.AddAttribute(seq + 4, "aria-expanded", open ? "true" : "false");
             builder.AddAttribute(seq + 5, "aria-controls", panelId);
             builder.AddAttribute(seq + 6, "onclick",
-                EventCallback.Factory.Create(this, () => ToggleVersionAsync(version.VersionId)));
+                EventCallback.Factory.Create<MouseEventArgs>(
+                    this, e => ToggleVersionFromControlAsync(version.VersionId, e)));
 
             // Marked Norwegian only when the text IS the catalogue's — see VersionName.
             var (name, nameIsNorwegian) = VersionName(version);

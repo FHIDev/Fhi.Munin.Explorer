@@ -215,12 +215,7 @@ public partial class VariableSearch
             {
                 // Runa makes this step a link to its own kilde route. We have no routes — the host
                 // owns the URL — so the same affordance is the control that discloses the kilde
-                // below instead. Clicking the kilde gets you the kilde either way.
-                //
-                // It is the same control as the "Vis datakilde" button further down, deliberately:
-                // two ways to the same panel, one of them on the thing itself, which is where a
-                // reader looks first. aria-expanded and aria-controls say so, so a screen reader is
-                // not told about two unrelated buttons that happen to do the same thing.
+                // below instead, deliberately the same control as "Vis datakilde" further down.
                 builder.OpenElement(5, "button");
                 builder.AddAttribute(6, "class", "hd-button-reset munin-explorer-crumb");
                 builder.AddAttribute(7, "type", "button");
@@ -229,7 +224,8 @@ public partial class VariableSearch
                 // the kilde's own view. aria-controls would also dangle — the element it named
                 // does not exist while this button is the thing on screen.
                 builder.AddAttribute(10, "onclick",
-                    EventCallback.Factory.Create(this, () => ToggleSourceAsync(SourceKind.Kilde)));
+                    EventCallback.Factory.Create<MouseEventArgs>(
+                        this, e => ToggleSourceFromControlAsync(SourceKind.Kilde, e)));
                 builder.AddContent(11, crumb.Text);
                 builder.CloseElement();
             }
@@ -280,9 +276,9 @@ public partial class VariableSearch
         public static KodeverkKey Of(KodeverkLink link) => new(link.KodeverkType, link.KodeverkReference);
     }
 
-    // Guarded on the same predicate, and for the reason ToggleDetailFromRowHeadingAsync is.
+    // The gestures RowPress calls a selection, less the drag it takes a press to tell.
     private Task ToggleCodesFromControlAsync(KodeverkLink link, MouseEventArgs released) =>
-        released.Detail > 1 ? Task.CompletedTask : ToggleCodesAsync(link);
+        RowPress.WasSelectionStandingStill(released) ? Task.CompletedTask : ToggleCodesAsync(link);
 
     /// <summary>Open this link's code list, or close the one already open.</summary>
     /// <remarks>

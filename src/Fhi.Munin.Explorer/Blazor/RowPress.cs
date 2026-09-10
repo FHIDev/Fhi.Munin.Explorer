@@ -72,5 +72,18 @@ internal sealed class RowPress
     /// </para>
     /// </remarks>
     internal bool WasSelection(Guid row, MouseEventArgs clicked) =>
-        clicked.Detail > 0 && (_dragged == row || clicked.Detail > 1 || clicked.ShiftKey);
+        clicked.Detail > 0 && (_dragged == row || WasSelectionStandingStill(clicked));
+
+    /// <summary>
+    /// Whether <paramref name="clicked"/> was one of the two selection gestures that stand still,
+    /// which is as much of <see cref="WasSelection"/> as a control keeping no press can ask.
+    /// </summary>
+    /// <remarks>
+    /// For the disclosures inside a panel: they stop the click, so no release of theirs is ever
+    /// measured, but a double-click takes a word and a shift-click extends the selection to it
+    /// without the pointer travelling, so neither of those needs a press to be told. Read from here
+    /// rather than written out at each of them, which is what keeping the three together is for.
+    /// </remarks>
+    internal static bool WasSelectionStandingStill(MouseEventArgs clicked) =>
+        clicked.Detail > 0 && (clicked.Detail > 1 || clicked.ShiftKey);
 }
