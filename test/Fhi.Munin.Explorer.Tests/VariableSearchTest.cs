@@ -6360,82 +6360,6 @@ public class VariableSearchTest : BunitContext
     private static AngleSharp.Dom.IElement Panel(IRenderedComponent<VariableSearch> cut) =>
         cut.Find(".munin-explorer-detail");
 
-    /// <summary>
-    /// A pointer press on the row's name, which is the disclosure. <paramref name="clicks"/> is the
-    /// browser's click count, so 2 is the second click of a double-click gesture and 0 is how a
-    /// browser reports Enter or Space on a button.
-    /// </summary>
-    /// <remarks>The toggle is found on every call rather than held: each press re-renders the row.</remarks>
-    private static void PressRowHeading(
-        IRenderedComponent<VariableSearch> cut, int row = 0, long clicks = 1) =>
-        Toggles(cut)[row].Click(new MouseEventArgs { Detail = clicks });
-
-    /// <summary>
-    /// What the row's own name button says about itself, which is the state a reader is told.
-    /// </summary>
-    /// <remarks>
-    /// Asked of that button and never of the page, because the Kolonner menu carries an
-    /// aria-expanded of its own — a page-wide count reads the same either way and proves nothing.
-    /// </remarks>
-    private static string? Discloses(IRenderedComponent<VariableSearch> cut, int row = 0) =>
-        Toggles(cut)[row].GetAttribute("aria-expanded");
-
-    [Fact]
-    public void RowHeading_WhenItIsDoubleClicked_ThenThePanelIsLeftOpen()
-    {
-        // Fhi.Metadata-l9l2n.72 closed this on the kildeutforsker's chevron and deliberately left
-        // this one alone: the two share no handler, and this callback took no MouseEventArgs at all.
-        var client = TwoRows();
-        var cut = RenderWith(client);
-
-        Assert.Equal("false", Discloses(cut));
-        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
-
-        PressRowHeading(cut);
-        PressRowHeading(cut, clicks: 2);
-
-        Assert.Equal("true", Discloses(cut));
-        Assert.NotNull(Panel(cut));
-
-        // The swallowed click is not a second GetVariableAsync either.
-        Assert.Equal(1, client.DetailCalls);
-    }
-
-    [Fact]
-    public void RowHeading_WhenItIsPressedTwiceAsSeparateGestures_ThenItStillTogglesBothWays()
-    {
-        // The guard is per gesture, not per control: two deliberate presses each arrive with a click
-        // count of one, and a reader who opens a panel must still be able to shut it.
-        var cut = RenderWith(TwoRows());
-
-        PressRowHeading(cut);
-
-        Assert.Equal("true", Discloses(cut));
-
-        PressRowHeading(cut);
-
-        Assert.Equal("false", Discloses(cut));
-        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
-    }
-
-    [Fact]
-    public void RowHeading_WhenItIsActivatedFromTheKeyboard_ThenEachActivationToggles()
-    {
-        // Enter and Space on a <button> arrive as a click with a count of zero, which is what keeps a
-        // guard on the second click of a pointer gesture from swallowing a second keypress. Verified
-        // rather than assumed, because a guard that caught this would make the panel unclosable.
-        var cut = RenderWith(TwoRows());
-
-        PressRowHeading(cut, clicks: 0);
-
-        Assert.Equal("true", Discloses(cut));
-
-        PressRowHeading(cut, clicks: 0);
-
-        Assert.Equal("false", Discloses(cut));
-        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
-    }
-
     /// <summary>The panel's values, in the order the definition list draws them.</summary>
     // ---------------------------------------------------------------------------------
     // The panel's tabs. Runa splits an open row into what the variable IS and what its
@@ -8120,6 +8044,88 @@ public class VariableSearchTest : BunitContext
         Assert.Equal("false", Toggles(cut)[0].GetAttribute("aria-expanded"));
         Assert.Equal("true", Toggles(cut)[1].GetAttribute("aria-expanded"));
         Assert.Contains("2. Spyttsekresjon", Panel(cut).TextContent);
+    }
+
+    /// <summary>
+    /// A pointer press on the row's name, which is the disclosure. <paramref name="clicks"/> is the
+    /// browser's click count, so 2 is the second click of a double-click gesture and 0 is how a
+    /// browser reports Enter or Space on a button.
+    /// </summary>
+    /// <remarks>The toggle is found on every call rather than held: each press re-renders the row.</remarks>
+    private static void PressRowHeading(
+        IRenderedComponent<VariableSearch> cut, int row = 0, long clicks = 1) =>
+        Toggles(cut)[row].Click(new MouseEventArgs { Detail = clicks });
+
+    /// <summary>
+    /// What the row's own name button says about itself, which is the state a reader is told.
+    /// </summary>
+    /// <remarks>
+    /// Asked of that button and never of the page, because an open panel adds disclosures of its
+    /// own — "Vis datakilde", "Vis datasamling", "Vis koder" — so a page-wide aria-expanded query
+    /// stops being about the row the moment the panel it is checking for opens.
+    /// </remarks>
+    private static string? Discloses(IRenderedComponent<VariableSearch> cut, int row = 0) =>
+        Toggles(cut)[row].GetAttribute("aria-expanded");
+
+    [Fact]
+    public void RowHeading_WhenItIsDoubleClicked_ThenThePanelIsLeftOpen()
+    {
+        // Fhi.Metadata-l9l2n.72 closed this on the kildeutforsker's chevron and deliberately left
+        // this one alone: the two share no handler, and this callback took no MouseEventArgs at all.
+        var client = TwoRows();
+        var reported = new List<Guid?>();
+        var cut = RenderWith(client, b => b.Add(c => c.SelectedVariableIdChanged, id => reported.Add(id)));
+
+        Assert.Equal("false", Discloses(cut));
+        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
+
+        PressRowHeading(cut);
+        PressRowHeading(cut, clicks: 2);
+
+        Assert.Equal("true", Discloses(cut));
+        Assert.Single(cut.FindAll(".munin-explorer-detail"));
+
+        // The swallowed click is not a second GetVariableAsync either.
+        Assert.Equal(1, client.DetailCalls);
+
+        // Nor a second SelectedVariableIdChanged: the host wrote the id into its URL, and the
+        // "selection cleared" the old second toggle raised would have taken the reader off it.
+        Assert.Equal([TaleId], reported);
+    }
+
+    [Fact]
+    public void RowHeading_WhenItIsPressedTwiceAsSeparateGestures_ThenItStillTogglesBothWays()
+    {
+        // The guard is per gesture, not per control: two deliberate presses each arrive with a click
+        // count of one, and a reader who opens a panel must still be able to shut it.
+        var cut = RenderWith(TwoRows());
+
+        PressRowHeading(cut);
+
+        Assert.Equal("true", Discloses(cut));
+
+        PressRowHeading(cut);
+
+        Assert.Equal("false", Discloses(cut));
+        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
+    }
+
+    [Fact]
+    public void RowHeading_WhenItIsActivatedFromTheKeyboard_ThenEachActivationToggles()
+    {
+        // Enter and Space on a <button> arrive as a click with a count of zero, which is what keeps a
+        // guard on the second click of a pointer gesture from swallowing a second keypress. Verified
+        // rather than assumed, because a guard that caught this would make the panel unclosable.
+        var cut = RenderWith(TwoRows());
+
+        PressRowHeading(cut, clicks: 0);
+
+        Assert.Equal("true", Discloses(cut));
+
+        PressRowHeading(cut, clicks: 0);
+
+        Assert.Equal("false", Discloses(cut));
+        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
     }
 
     [Fact]
