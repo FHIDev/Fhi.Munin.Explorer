@@ -6400,6 +6400,34 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
+    public void ActiveFilters_WhenNothingOnScreenKnowsAValuesName_ThenItStillHasAChipOfItsOwn()
+    {
+        // The state above, from the removal side. The trail's × used to be the only control over a
+        // hierarchy value the cross-filtered facets do not name, so without a chip of its own the
+        // change that took the × away would leave "Fjern alle filtre". (Fhi.Metadata-oj286)
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderFiltered(client, new VariableFilter
+        {
+            DatasamlingIds = [Inklusjon2],
+            DataTypes = ["1"]
+        });
+
+        // The level's own word, exactly as the trail's step reads it — the chip names what it takes
+        // off, and a guid would name nothing.
+        Assert.Equal(["Streng", "Datasamling"], Chips(cut));
+        Assert.Equal("Fjern filteret Datasamling",
+                     AccessibleName.Of(cut.FindAll(".munin-explorer-filters__chip")[1]
+                                          .QuerySelector(".munin-explorer-filters__chip-remove")!));
+
+        RemoveChip(cut, "Datasamling");
+
+        // Only that one value: the datatype the reader also chose is what "Fjern alle filtre"
+        // would have taken with it.
+        Assert.Empty(client.SearchFilter!.DatasamlingIds);
+        Assert.Equal(["1"], client.SearchFilter!.DataTypes);
+    }
+
+    [Fact]
     public void Breadcrumb_WhenAStepIsPressed_ThenEveryLevelUnderItIsCleared()
     {
         // The acceptance criterion: a step removes what is below it and keeps itself.
@@ -6484,24 +6512,27 @@ public class VariableSearchTest : BunitContext
     {
         // Fhi.Metadata-l9l2n.82's AC2, asserted from here as well because this bead is the one that
         // could have broken it: dropping the hierarchy values from the chip row was the other way
-        // to stop the trail and the chips reading as duplicates, and it would have made the four
-        // hierarchy levels an exception to a rule that had just been written down.
+        // to stop the trail and the chips reading as duplicates.
         var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWithDatasamlinger());
-        var filter = new VariableFilter
+
+        // Two datasamlinger, one the facets name and one they do not, because the second is the
+        // value that had no chip at all while the trail's × was the control for it.
+        var cut = RenderFiltered(client, new VariableFilter
         {
             KildeIds = [Tromso],
             DelkildeIds = [Tromso4],
+            DatasamlingIds = [Tromso4Round, Inklusjon2],
             VariabelgruppeIds = [Bakgrunn],
             DataTypes = ["1"]
-        };
+        });
 
-        var cut = RenderFiltered(client, filter);
-
-        var values = filter.KildeIds.Count + filter.DelkildeIds.Count
-                     + filter.DatasamlingIds.Count + filter.VariabelgruppeIds.Count
-                     + filter.DataTypes.Count;
-
-        Assert.Equal(values, cut.FindAll(".munin-explorer-filters__chip").Count);
+        // Spelled out rather than summed back off the filter this renders from, which would assert
+        // only that the chips are built from the filter and not that every chosen value reaches
+        // the row.
+        Assert.Equal(
+            ["Tromsøundersøkelsen", "Tromsø 4", "Fjerde runde", "Bakgrunn", "Streng", "Datasamling"],
+            Chips(cut));
+        Assert.Equal(6, cut.FindAll(".munin-explorer-filters__chip").Count);
     }
 
     [Fact]
@@ -10086,6 +10117,12 @@ public class VariableSearchTest : BunitContext
             // The toolbar row: a container of its own, because in inline flow the last button's
             // trailing margin counted against the line and the row broke apart under a scrollbar.
             "munin-explorer-filters__toolbar",
+            // The chip row. This client answers the facet endpoint with nothing in it, so the
+            // chosen kilde is named by no facet — and it still gets a chip, because the trail no
+            // longer removes anything and every chosen value needs one. (Fhi.Metadata-oj286)
+            "munin-explorer-filters__active",
+            "munin-explorer-filters__chip",
+            "munin-explorer-filters__chip-remove",
             "munin-explorer-breadcrumb", // ours — the trail over the results, which Stiler has
                                             // no breadcrumb rule of any kind to borrow
             "munin-explorer-crumb",      // ours — one step of a trail, and the same name in
@@ -10095,9 +10132,7 @@ public class VariableSearchTest : BunitContext
                                             // which reuses it rather than minting a second name
                                             // for the same affordance
             // The row the count shares with the column picker, above the results container and
-            // outside it — the name the kildeutforsker already emits. No chip names here: this
-            // client answers with no facets at all, so the panel has no value to draw a chip for.
-            // (Fhi.Metadata-l9l2n.68)
+            // outside it — the name the kildeutforsker already emits. (Fhi.Metadata-l9l2n.68)
             "munin-explorer-results__toolbar",
             "munin-explorer-header",     // ours now; their own variable page hangs the
             "munin-explorer-header__actions",        // column picker in, and the ghost button

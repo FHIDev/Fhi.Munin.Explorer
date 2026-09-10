@@ -1158,12 +1158,15 @@ public partial class VariableSearch
     /// A projection of the facets and never a second collection beside them — see
     /// <see cref="ActiveFilters"/>. Every facet is walked rather than a known few named, so one
     /// added later draws chips unasked: a row covering some filters reads as covering all of them.
+    /// The hierarchy is swept a second time afterwards, because the facets alone cannot promise the
+    /// row is exhaustive — see <see cref="UnfacetedHierarchyChips"/>.
     /// </remarks>
     private IReadOnlyList<ActiveFilters.Chip> ActiveFilterChips
     {
         get
         {
             List<ActiveFilters.Chip> chips = [];
+            HashSet<string> removable = [];
 
             foreach (var group in FacetGroups)
             {
@@ -1178,12 +1181,71 @@ public partial class VariableSearch
 
                     var text = group.NameInChips ? T.FilterInFacet(group.Label, value.Label) : value.Label;
 
+                    removable.Add(value.Key);
                     chips.Add(new ActiveFilters.Chip(
                         text, T.RemoveFilter(text), null, null, () => RemoveFilterAsync(toggle)));
                 }
             }
 
+            chips.AddRange(UnfacetedHierarchyChips(removable));
+
             return chips;
+        }
+    }
+
+    /// <summary>
+    /// A chip for every chosen kilde, delkilde, datasamling or variabelgruppe that the facets did
+    /// not draw one for.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The facets are cross-filtered, so a value the reader chose can be absent from the payload
+    /// describing what that selection leaves — the same gap <see cref="KildeName"/> has a fallback
+    /// label for — and before the first answer, or after one that failed, there is no payload at
+    /// all while a host may have mounted with <see cref="Filter"/> already set. Such a value
+    /// narrows the results and had no chip, so with the trail's own × gone the only control left
+    /// was "Fjern alle filtre", which drops the datatype and the dates with it. (Fhi.Metadata-oj286)
+    /// </para>
+    /// <para>
+    /// Keyed off what the walk above actually drew rather than off the payload a second time, so
+    /// the two can never disagree about which values already have a control: <c>removable</c> holds
+    /// the <see cref="FacetValue.Key"/> of every chip, and these keys are the same
+    /// <c>facet:id</c> the facet builds.
+    /// </para>
+    /// </remarks>
+    private IReadOnlyList<ActiveFilters.Chip> UnfacetedHierarchyChips(IReadOnlySet<string> removable)
+    {
+        List<ActiveFilters.Chip> chips = [];
+
+        Add("kilde", () => _filter.KildeIds, KildeName, T.FieldSource,
+            ids => _filter with { KildeIds = ids });
+        Add("delkilde", () => _filter.DelkildeIds, DelkildeName, T.FieldDelkilde,
+            ids => _filter with { DelkildeIds = ids });
+        Add("datasamling", () => _filter.DatasamlingIds, DatasamlingName, T.FieldDataCollection,
+            ids => _filter with { DatasamlingIds = ids });
+        Add("variabelgruppe", () => _filter.VariabelgruppeIds, VariabelgruppeName, T.FieldVariableGroup,
+            ids => _filter with { VariabelgruppeIds = ids });
+
+        return chips;
+
+        void Add(
+            string facet,
+            Func<IReadOnlyList<Guid>> chosen,
+            Func<Guid, string?> name,
+            string fallback,
+            Func<IReadOnlyList<Guid>, VariableFilter> apply)
+        {
+            foreach (var id in chosen().Where(id => !removable.Contains($"{facet}:{id}")))
+            {
+                // The level's own word where nothing on screen knows the value, exactly as the
+                // trail's step does it. Never the id: a guid is not a name, and the chip still has
+                // to say which filter it takes off.
+                var text = name(id) ?? fallback;
+
+                chips.Add(new ActiveFilters.Chip(
+                    text, T.RemoveFilter(text), null, null,
+                    () => RemoveFilterAsync(() => ToggleAsync(chosen(), id, apply))));
+            }
         }
     }
 

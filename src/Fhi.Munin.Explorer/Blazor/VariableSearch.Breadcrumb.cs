@@ -105,11 +105,18 @@ public partial class VariableSearch
     /// <remarks>
     /// <para>
     /// Navigation and nothing else. It removes no filter — the chip row over it is the only place
-    /// a single value is taken off, and every hierarchy value has a chip there — so the trail's
-    /// own × is gone: two controls a screen reader announced one after the other as "Fjern
-    /// filteret Vestland 2022" and "Fjern hierarkifilteret" were two ways to undo one tick, which
-    /// is what read as the selection being drawn twice. What is left is the thing chips cannot do,
-    /// clearing every level under a step in one press. (Fhi.Metadata-oj286)
+    /// a single value is taken off — so the trail's own × is gone: two controls a screen reader
+    /// announced one after the other as "Fjern filteret Vestland 2022" and "Fjern
+    /// hierarkifilteret" were two ways to undo one tick, which is what read as the selection being
+    /// drawn twice. What is left is the thing chips cannot do, clearing every level under a step
+    /// in one press. (Fhi.Metadata-oj286)
+    /// </para>
+    /// <para>
+    /// That rests on the chip row covering every step drawn here, which the facets alone cannot
+    /// promise: they are cross-filtered and can arrive without a value the reader chose — the gap
+    /// <see cref="KildeName"/> has a fallback label for — and a step whose value had no chip would
+    /// have no removal at all short of "Fjern alle filtre". <see cref="UnfacetedHierarchyChips"/>
+    /// is what closes that, and it is what this paragraph depends on rather than the payload.
     /// </para>
     /// <para>
     /// A named <c>role="navigation"</c> rather than a bare <c>&lt;nav&gt;</c>, the pager's
