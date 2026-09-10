@@ -80,9 +80,7 @@ public class ShapeDriftTest
         // contract declares an empty list where the payload has nothing. That is the case the
         // comparison must let through, or the job cries drift over a deployment merely behind.
         var live = Load("filters.json");
-        Assert.True(
-            live.AsObject().Remove("datakategorier"),
-            "filters.json no longer carries datakategorier, so this case breaks nothing.");
+        RemoveOrFail(live.AsObject(), "filters.json", "datakategorier");
 
         Assert.Empty(DriftIn<FilterOptions>(live));
     }
@@ -133,9 +131,7 @@ public class ShapeDriftTest
     public void Between_WhenTheApiStopsSendingAnOptionalField_ThenNothingDrifts()
     {
         var live = Load("kilder.json");
-        Assert.True(
-            live[0]!.AsObject().Remove("kortNavn"),
-            "kilder.json[0] no longer carries kortNavn, so this case breaks nothing.");
+        RemoveOrFail(live[0]!.AsObject(), "kilder.json", "kortNavn");
 
         // The counterpart to the test above, and the reason it is worth stating twice: whether a
         // withdrawn field is drift depends on whether the contract had anywhere to put "absent".
@@ -146,9 +142,7 @@ public class ShapeDriftTest
     public void Between_WhenTheApiStopsSendingACollectionAltogether_ThenNothingDrifts()
     {
         var live = Load("kilde-med-delkilder.json");
-        Assert.True(
-            live.AsObject().Remove("delkilder"),
-            "kilde-med-delkilder.json no longer carries delkilder, so this case breaks nothing.");
+        RemoveOrFail(live.AsObject(), "kilde-med-delkilder.json", "delkilder");
 
         // What the rule above costs, written down rather than left to be found out. An empty list
         // is how this contract says "none", so a collection withdrawn wholesale reads exactly like
@@ -272,6 +266,15 @@ public class ShapeDriftTest
     private static JsonNode Load(string fixture) =>
         JsonNode.Parse(TestData.Read(fixture))
         ?? throw new InvalidOperationException($"Test data '{fixture}' is not JSON.");
+
+    /// <summary>
+    /// Takes a field away and fails if it was not there to take, so a let-through case cannot go
+    /// on passing once a re-capture has quietly made its removal a no-op.
+    /// </summary>
+    private static void RemoveOrFail(JsonObject holder, string fixture, string field) =>
+        Assert.True(
+            holder.Remove(field),
+            $"{fixture} no longer carries {field}, so this case breaks nothing.");
 
     /// <summary>
     /// Runs a payload through the same two steps the nightly job does — deserialise with the
