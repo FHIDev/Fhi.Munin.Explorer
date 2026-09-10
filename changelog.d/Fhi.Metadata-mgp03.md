@@ -1,7 +1,7 @@
 category: Added
 
 - **The Kilde facet in the variabelutforsker reaches datasamlinger.** The source tree stopped at
-  delkilde, which is the level 41 of the catalogue's 44 kilder do not have: 203 datasamlinger hang
+  delkilde, which is the level that 41 of the catalogue's 44 kilder do not have: 203 datasamlinger hang
   straight off a kilde and none of them could be picked. `FilterOptions` now carries a
   `datasamlinger` facet, and each value hangs under its delkilde where it has one and under its
   kilde where it has none, at any depth. In The Tromsø study that is Tromsø1, Tromsø2 and Tromsø3
