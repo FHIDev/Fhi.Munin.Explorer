@@ -4222,8 +4222,9 @@ public class VariableSearchTest : BunitContext
     [Fact]
     public void Render_WhenTheApiNamesAKildetypeByItsEnumName_ThenTheButtonSaysItInProse()
     {
-        // The facet's own displayName is the raw enum name. Munin's explorer carries the prose,
-        // and this carries the same words so the two UIs name one value the same way.
+        // The enum name here is what displayName used to be; the API resolves it to prose now.
+        // Either way the label is looked up by value, so this pins that the component's own
+        // words win over whatever the API sent. (Fhi.Metadata-iv9xp)
         var cut = RenderWith(new FilteringClient(OnePage()));
 
         Assert.NotNull(Facet(cut, "Sentralt helseregister"));

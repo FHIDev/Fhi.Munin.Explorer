@@ -358,8 +358,6 @@ public partial class VariableSearch
 
     private FacetValue KildeTypeValue(KildetypeFacet type) =>
         new($"kildetype:{type.Value}",
-            // The facet's own displayName is the raw enum name (SentraltHelseregister), so the
-            // prose comes from the component's own translations and falls back to what the API said.
             T.KildeTypeLabel(type.Value, type.DisplayName),
             Counted(type.Count),
             string.Equals(_filter.KildeType, type.Value, StringComparison.OrdinalIgnoreCase),
@@ -383,6 +381,8 @@ public partial class VariableSearch
         var kilder = VisibleKilder(facets, delkilderByKilde);
 
         // The order the kildetype facet is in, so the headings here and the facet above agree.
+        // The API sorts that facet by the resolved displayName, so the order is the answering
+        // language's rather than the enum's — following it is what keeps the two in step.
         var kildeTypeOrder = facets.KildeTyper
             .Select((type, index) => (type.Value, Index: index))
             .ToDictionary(entry => entry.Value, entry => entry.Index, StringComparer.OrdinalIgnoreCase);

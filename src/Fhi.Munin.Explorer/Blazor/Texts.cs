@@ -621,8 +621,8 @@ internal sealed record Texts(
     /// <remarks>
     /// A fallback rather than a throw, unlike <see cref="FieldLabel"/>: the tokens are Munin's
     /// kildetype enum and a new member appearing there is a catalogue change, not a bug in this
-    /// component. "SentraltHelseregister" on a button is poor prose but it is the truth, where
-    /// dropping the value would take a filter off the screen that the API is still counting.
+    /// component. The fallback is the API's own resolved label, in whichever language it answered,
+    /// where dropping the value would take a filter off the screen that the API is still counting.
     /// </remarks>
     public string KildeTypeLabel(string? value, string? fallback)
     {
