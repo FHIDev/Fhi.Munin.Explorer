@@ -502,8 +502,8 @@ else
     @if (Selectable && (visible.Count > 0 || TickedCount > 0))
     {
         @* Handover, then reset, then count: everything that comes and goes is to the right of
-           everything that does not, so ticking a row moves nothing the reader is aiming at. The
-           handover sizes to its own label; Stiler weighed a floor and declined it. (Fhi.Metadata-kvgu7) *@
+           everything that does not, so the reset arrives without displacing the handover. The
+           handover resizes across its labels; Stiler declined a floor. (Fhi.Metadata-kvgu7) *@
         <div class="munin-explorer-selection">
             <button class="hd-button-square button-square--primary"
                     type="button"

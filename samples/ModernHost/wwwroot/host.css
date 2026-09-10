@@ -290,28 +290,29 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 /* ---- the selection ribbon ----
 
-   Handover, then reset, then count — the order the markup writes them in, and the order is what
-   keeps the row still. Everything that comes and goes sits to the right of everything that does
-   not, so ticking a row never moves a control the reader is aiming at.
+   Handover, then reset, then count — the order the markup writes them in. Everything that comes
+   and goes sits to the right of everything that does not, so ticking a row adds the reset without
+   pushing the handover off the left edge. The handover itself resizes across its three labels:
+   Stiler weighed a width floor and declined it, so nothing holds it still (Fhi.Metadata-kvgu7).
 
    Not a grid with equal columns, which is what this was before. Equal widths made the reset as
    wide as the handover and gave the count a column it had no use for; what was actually wanted
-   is one button that never moves and everything else flowing after it.
-
-   The handover button has no name of its own any more, and this block used to hold one. It wore
-   `munin-explorer-selection__explore` and this file gave that name a `min-width` floor, so the
-   button held still across its three labels. Fhi.Helsedata.Stiler measured the same floor and
-   declined it — the widest label is English's, and a floor holding it leaves around 104px dead in
-   the common Norwegian state — so nothing anywhere styled the name and the package stopped
-   emitting it (Fhi.Metadata-kvgu7). The button is `hd-button-square button-square--primary` and
-   nothing else now: it sizes to its own label, and the reset and the count slide when it changes.
-   That is what a host on Stiler draws, which is what this stand-in is for. */
+   is one button holding the left edge and everything else flowing after it. */
 .munin-explorer-selection {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 16px;
   margin-bottom: 16px;
+}
+
+/* hd-button-square is nowrap at a fixed height, so the handover's longest label spills out of its
+   own box and scrolls the page sideways at 320px (WCAG 1.4.10, Fhi.Metadata-l9l2n.65). Three
+   classes, so it outranks the bare one below whatever the source order. */
+.munin-explorer .munin-explorer-selection .hd-button-square {
+  white-space: normal;
+  height: auto;
+  min-height: 2.75rem;
 }
 
 /* components/buttons/_squarebutton.scss */

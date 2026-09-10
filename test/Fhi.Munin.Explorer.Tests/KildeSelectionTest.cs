@@ -646,8 +646,8 @@ public class KildeSelectionTest : BunitContext
     public void Render_WhenTheColumnIsOnScreen_ThenItAddsExactlyTwoInventedNames()
     {
         // An exact list, like the one next door, and this is the difference between them: with the
-        // handover wired the component writes one further name of its own. A second one appearing
-        // here is news that has to be answered in both sample stylesheets before it ships.
+        // handover wired the component writes two further names of its own, the ones marked below.
+        // A third appearing here is news that has to be answered in both sample stylesheets first.
         var (cut, _) = RenderSelectable(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
         // Searched as well as ticked: the clear control is drawn only when there is something to
@@ -809,32 +809,79 @@ public class KildeSelectionTest : BunitContext
     }
 
     [Fact]
-    public void Ribbon_WhenARowIsTicked_ThenNothingAheadOfTheCountHasMoved()
+    public void ExploreButton_WhenTheViewportIsNarrow_ThenItsLabelWrapsInsideTheButton()
+    {
+        // hd-button-square is nowrap at a fixed height, so a label wider than the row spills out of
+        // its own box and scrolls the page sideways - WCAG 1.4.10 at 320px (Fhi.Metadata-l9l2n.65).
+        // Measured on ModernHost: undrawn, the handover is 306px in a 226px row (Fhi.Metadata-kvgu7).
+        static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
+
+        var rules = HostClassNames
+            .SampleDeclarationsFor("munin-explorer-selection")
+            .Select(rule => (rule.Selector, Block: Squeezed(rule.Declarations)))
+            .Where(rule => rule.Selector.Contains("hd-button-square", StringComparison.Ordinal))
+            .ToList();
+
+        var protection = rules
+            .Where(rule => rule.Block.Contains("white-space:normal", StringComparison.Ordinal)
+                        && rule.Block.Contains("height:auto", StringComparison.Ordinal))
+            .ToList();
+
+        Assert.True(
+            protection.Count > 0,
+            "Nothing lets the handover's label wrap, so it spills out of the button at 320px.");
+
+        // Per comma-separated part, because specificity is: a list is a set of independent
+        // selectors, so one part carrying two classes does not lift another carrying one. A part
+        // matching this button at a single class ties hd-button-square and loses on source order.
+        static bool Outranks(string selector) => selector
+            .Split(',')
+            .Where(part => part.Contains("hd-button-square", StringComparison.Ordinal))
+            .All(part => part.Count(c => c == '.') > 1);
+
+        Assert.True(
+            protection.Any(rule => Outranks(rule.Selector)),
+            $"`{protection[0].Selector}` matches the handover at one class, so hd-button-square ties "
+            + "it and wins on source order: the wrap and the auto height above are dead text.");
+
+        // The wrap needs somewhere to go, and a floor rather than nothing: `height: auto` alone
+        // draws the button shorter than the reset button beside it in the same centred row.
+        Assert.True(
+            protection.Any(rule => rule.Block.Contains("min-height:2.75rem", StringComparison.Ordinal)),
+            "The handover has no height floor, so it draws shorter than the reset button beside it.");
+    }
+
+    [Fact]
+    public void Ribbon_WhenARowIsTicked_ThenTheResetArrivesAfterTheHandoverRatherThanBeforeIt()
     {
         // The arrangement itself, which no stylesheet can rescue if the markup writes it wrong:
         // handover, then reset, then count. Everything that comes and goes has to sit to the RIGHT
-        // of everything that does not, or ticking a row moves a control the reader is aiming at.
+        // of everything that does not, or ticking a row displaces the handover entirely. Its width
+        // is a separate question and no longer held - see the wrap guard above (Fhi.Metadata-kvgu7).
         var (cut, _) = RenderSelectable(new FakeClient(
             Kilde("Als registeret", "K_ALS"),
             Kilde("Dødsårsaksregisteret", "K_DAR")));
 
+        // Identified by what the reader sees on it, not by a class: `button-square--primary` is
+        // Stiler's, shared with every other primary square button, and would go on passing if the
+        // handover were replaced by a different one. The label is this button's own.
         static IReadOnlyList<string> Parts(IRenderedComponent<KildeSearch> c) =>
-            [.. c.Find(".munin-explorer-selection").Children.Select(e => e.LocalName + ":" + e.ClassName)];
+            [.. c.Find(".munin-explorer-selection").Children
+                 .Select(e => e.LocalName + ":" + e.TextContent.Trim())];
 
         // Nothing ticked: the handover, and the count sitting empty so its live region is already
         // in the DOM when it has something to announce.
         Assert.Equal(2, Parts(cut).Count);
-        Assert.StartsWith("button:", Parts(cut)[0]);
-        Assert.Contains("button-square--primary", Parts(cut)[0]);
+        Assert.Equal("button:Utforsk alle variabler", Parts(cut)[0]);
         Assert.StartsWith("p:", Parts(cut)[^1]);
 
         TickRow(cut, "Als registeret");
 
         // Ticked: the reset appears BETWEEN them rather than before the handover, so the handover
-        // has not moved and the count has only slid right.
+        // still leads and the count has only slid right.
         Assert.Equal(3, Parts(cut).Count);
-        Assert.Contains("button-square--primary", Parts(cut)[0]);
-        Assert.Contains("button-square--secondary", Parts(cut)[1]);
+        Assert.Equal("button:Utforsk variabler for utvalget", Parts(cut)[0]);
+        Assert.Equal("button:Nullstill utvalg", Parts(cut)[1]);
         Assert.StartsWith("p:", Parts(cut)[2]);
         Assert.Equal("1 kilde valgt", SelectionLine(cut));
     }

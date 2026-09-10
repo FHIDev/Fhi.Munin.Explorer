@@ -9,6 +9,16 @@ category: Notes for hosts
   than overlooked. The button itself is unchanged; `hd-button-square button-square--primary` is
   what always drew it. (Fhi.Metadata-kvgu7)
 
+- **The floor went, but the handover still has to be allowed to wrap.** `hd-button-square` is
+  `white-space: nowrap` at a fixed `2.75rem`, so the widest label is one unbreakable line: measured
+  on the sample host at a 320px viewport it draws 306px wide in a 226px row and scrolls the page
+  sideways, which is WCAG 1.4.10 Reflow. Give the ribbon's button `white-space: normal`,
+  `height: auto` and a `min-height: 2.75rem` floor, on a selector that outranks the bare
+  `hd-button-square` — both sample stylesheets scope it
+  `.munin-explorer .munin-explorer-selection .hd-button-square`, three classes, so source order
+  cannot take it back. This is not new work: the same three declarations sat on the removed name
+  and only the `min-width` beside them was unwanted. (Fhi.Metadata-kvgu7)
+
 - **`munin-explorer-selection`, the ribbon around it, stays and still needs `display: flex`.** A
   host that draws nothing for it gets the handover, the reset and the count stacked. Stiler has the
   rule on `main` and it is **not** in 0.1.42, the version helsedata.no pins today, so a host on that

@@ -77,6 +77,19 @@ export const states = {
   'variables-list': page => rowsArePresent(page, 'button.munin-explorer-dataitem-main__name'),
   'kilder-list': page => rowsArePresent(page, 'button.munin-explorer-kilder__name'),
 
+  // The selection ribbon at its widest, which kilder-list above never reaches: ticking a row swaps
+  // the handover's label for a longer one and puts the reset beside it. Measured at 320px, because
+  // a handover that cannot wrap overflows there while the untouched page fits (Fhi.Metadata-kvgu7).
+  'kilder-ticked': async page => {
+    await rowsArePresent(page, 'button.munin-explorer-kilder__name');
+    const tick = page.locator('.munin-explorer-kilder tbody input[type=checkbox]').first();
+    await tick.waitFor({ state: 'visible', timeout: findTimeout });
+    await tick.check();
+    await page
+      .locator('.munin-explorer-selection button.button-square--secondary')
+      .waitFor({ state: 'visible', timeout: findTimeout });
+  },
+
   // The filter tree unfolded, with the guide lines drawn (Fhi.Metadata-wcbxi): axe skips what a
   // closed <details> hides. Nivålinjer is deliberately NOT pressed — the lines are on at first
   // render since Fhi.Metadata-dfygj, so pressing it would scan this state with them gone.
