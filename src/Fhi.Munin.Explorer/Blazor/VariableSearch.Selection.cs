@@ -1,4 +1,5 @@
 using Fhi.Munin.Explorer.Contracts;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.Logging;
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -33,6 +34,12 @@ public partial class VariableSearch
 
         return Task.CompletedTask;
     }
+
+    // The second click of one double-click gesture is not a second request: it toggled the panel
+    // straight back shut, so the row flashed and the reader landed where they started. Keyboard
+    // activation of a button reports no click count at all, so Enter and Space still toggle.
+    private Task ToggleDetailFromRowHeadingAsync(VariableSummary v, MouseEventArgs released) =>
+        released.Detail > 1 ? Task.CompletedTask : ToggleDetailAsync(v);
 
     /// <summary>
     /// Open this row's detail panel, or close it when it is the one already open.

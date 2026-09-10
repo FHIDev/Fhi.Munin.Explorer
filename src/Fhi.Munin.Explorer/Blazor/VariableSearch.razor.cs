@@ -1026,7 +1026,8 @@ public sealed partial class VariableSearch : ComponentBase
 
         // Never disabled, including while its own fetch runs: pressing it again is how the panel
         // is closed, and disabling the element that has focus drops focus to <body>.
-        builder.AddAttribute(10, "onclick", EventCallback.Factory.Create(this, () => ToggleDetailAsync(v)));
+        builder.AddAttribute(10, "onclick",
+            EventCallback.Factory.Create<MouseEventArgs>(this, e => ToggleDetailFromRowHeadingAsync(v, e)));
 
         // The chevron lives INSIDE the button, not beside it (Fhi.Metadata-zqe14): the button
         // already carries the accessible name and aria-expanded, so a sibling span looked like the
