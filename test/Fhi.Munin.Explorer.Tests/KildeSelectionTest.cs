@@ -814,6 +814,13 @@ public class KildeSelectionTest : BunitContext
         // hd-button-square is nowrap at a fixed height, so a label wider than the row spills out of
         // its own box and scrolls the page sideways - WCAG 1.4.10 at 320px (Fhi.Metadata-l9l2n.65).
         // Measured on ModernHost: undrawn, the handover is 306px in a 226px row (Fhi.Metadata-kvgu7).
+        //
+        // GREEN HERE IS ABOUT THE STAND-IN AND NOTHING ELSE. Both halves below read the sample
+        // stylesheet, which nothing on helsedata.no loads, and the Outranks half reasons about a
+        // cascade - hd-button-square later in the same file - that exists only in that copy; on
+        // helsedata the competing rule arrives from Stiler's bundle in another source order. The
+        // shipped host is covered by Fhi.Metadata-s4es0 and by nothing in this repository. What
+        // carries the claim here is the 320px kilder-ticked run in check-accessibility.sh.
         static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
 
         var rules = HostClassNames
@@ -839,8 +846,10 @@ public class KildeSelectionTest : BunitContext
             .Where(part => part.Contains("hd-button-square", StringComparison.Ordinal))
             .All(part => part.Count(c => c == '.') > 1);
 
+        var wrapping = protection.FirstOrDefault(rule => Outranks(rule.Selector));
+
         Assert.True(
-            protection.Any(rule => Outranks(rule.Selector)),
+            wrapping.Selector is not null,
             $"`{protection[0].Selector}` matches the handover at one class, so hd-button-square ties "
             + "it and wins on source order: the wrap and the auto height above are dead text.");
 
@@ -849,6 +858,21 @@ public class KildeSelectionTest : BunitContext
         Assert.True(
             protection.Any(rule => rule.Block.Contains("min-height:2.75rem", StringComparison.Ordinal)),
             "The handover has no height floor, so it draws shorter than the reset button beside it.");
+
+        // The markup half, which the stylesheet cannot state and the rest of this file no longer
+        // asserts anywhere: the rule above keys on three DOM facts, and swapping the handover to
+        // another Stiler button class leaves every assertion above green while it stops matching.
+        var (cut, _) = RenderSelectable(new FakeClient(Kilde("Als registeret", "K_ALS")));
+        var handover = cut.Find(".munin-explorer .munin-explorer-selection").Children[0];
+
+        Assert.Equal("BUTTON", handover.TagName);
+        Assert.Contains("hd-button-square", handover.ClassList);
+
+        // And the selector as written rather than a paraphrase of it, so a change to either side
+        // has to be a change to both.
+        Assert.Contains(
+            handover.TextContent.Trim(),
+            cut.FindAll(wrapping.Selector!).Select(e => e.TextContent.Trim()));
     }
 
     [Fact]

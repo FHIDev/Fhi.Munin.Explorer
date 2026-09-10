@@ -276,9 +276,11 @@ and both invisible to everything else we run.
 **And `check-accessibility.sh` measures one width axe never looks at.** WCAG 1.4.10 Reflow is
 stated at 320px, and nothing in this repository measured any page there: `scripts/geometry-scan.mjs`
 drives six widths and the narrowest is 843. The script now ends by measuring ModernHost's `/kilder`
-at 320 in the `kilder-list` state, which is the rendered form of a gap unit tests could only pin as
-text — the explore button's width floor overflowed the page by 87px before `Fhi.Metadata-l9l2n.65`,
-and `KildeSelectionTest` can say the declaration is there and not that the page fits.
+at 320 in two states — `kilder-list`, and `kilder-ticked`, which ticks a row so the selection ribbon
+carries its longest label with the reset beside it. That is the rendered form of a gap unit tests
+could only pin as text — the explore button's width floor overflowed the page by 87px before
+`Fhi.Metadata-l9l2n.65`, and `KildeSelectionTest` can say the declaration is there and not that the
+page fits.
 
 It runs three of the ten assertions, by name through `GEOMETRY_ASSERTIONS`: `no horizontal
 overflow`, `hidden means hidden`, and `text a reader is meant to see has a box to see it in`. The
@@ -286,8 +288,8 @@ other seven were **measured there and then excluded**, which is a different clai
 written for HostileHost" and the only one the numbers support:
 
 - `the tablist clears the header`, `exactly one tab panel has content` and `no page shell class
-  inside a tab panel` are scoped to the two `explorer-*` states, so on `kilder-list` they print
-  `n/a` and measure nothing.
+  inside a tab panel` are scoped to the two `explorer-*` states, so on either `kilder` state they
+  print `n/a` and measure nothing.
 - `nothing the reader can press is under the host header` reports `no .main-header on the page —
   the host chrome did not render`. ModernHost draws none; that finding is about the fixture.
 - `the component stays inside the box the host gave it` fails at 320 on a real defect the fix for
@@ -297,7 +299,7 @@ written for HostileHost" and the only one the numbers support:
   rule going missing, which the sample stylesheet can only stand in for. `check-hostile-host.sh`
   measures them against the real one at six widths.
 
-Read the run for exactly what it is: three assertions, one page, one state, against the sample
+Read the run for exactly what it is: three assertions, one page, two states, against the sample
 stylesheet. The pinned-Stiler pages are still unmeasured at 320. `Fhi.Metadata-hfzsu` — 82px of
 helsedata's own site chrome overflowing there on every page of theirs — is fixed on Stiler's main
 and closed, so what adding 320 to `GEOMETRY_WIDTHS` now waits on is that fix being released and

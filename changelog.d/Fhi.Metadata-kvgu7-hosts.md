@@ -16,8 +16,13 @@ category: Notes for hosts
   `height: auto` and a `min-height: 2.75rem` floor, on a selector that outranks the bare
   `hd-button-square` — both sample stylesheets scope it
   `.munin-explorer .munin-explorer-selection .hd-button-square`, three classes, so source order
-  cannot take it back. This is not new work: the same three declarations sat on the removed name
-  and only the `min-width` beside them was unwanted. (Fhi.Metadata-kvgu7)
+  cannot take it back. Those three are the whole of what a host needs. The removed rule carried
+  six, and the other three are gone deliberately: `min-width: min(21rem, 100%)` is the floor Stiler
+  declined; `justify-content: center` is already declared by Stiler's own `.hd-button-square`, so
+  repeating it drew nothing; and `max-width: 100%` was there to cap that floor, and with no floor
+  left the ribbon's flex row is what keeps the button inside the line — the 320px measurement above
+  is with the three and without it. `Fhi.Metadata-s4es0` asks `Fhi.Helsedata.Stiler` for the same
+  three, and until that ships a host with no rule of its own overflows. (Fhi.Metadata-kvgu7)
 
 - **`munin-explorer-selection`, the ribbon around it, stays and still needs `display: flex`.** A
   host that draws nothing for it gets the handover, the reset and the count stacked. Stiler has the

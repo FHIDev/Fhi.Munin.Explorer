@@ -131,7 +131,8 @@ body {
 /* ======================================================================
    Stiler stand-in — everything from here down to the first "not Stiler"
    divider is one of Fhi.Helsedata.Stiler's own components, and Stiler's
-   job in the real host. Past that divider comes the rest of what a host
+   job in the real host, save for the one rule marked NOT STILER in place
+   at the selection ribbon. Past that divider comes the rest of what a host
    owes the component: the result vocabulary, which is ours and which
    Stiler carries under components/munin-explorer/ — it was read
    back off helsedata's `variables.css` while the component still wore
@@ -306,9 +307,19 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   margin-bottom: 16px;
 }
 
-/* hd-button-square is nowrap at a fixed height, so the handover's longest label spills out of its
+/* NOT STILER — invented here, and the only rule in this region that is. An exception marked in
+   place rather than a new region: the stand-in resumes at hd-button-square immediately below.
+
+   hd-button-square is nowrap at a fixed height, so the handover's longest label spills out of its
    own box and scrolls the page sideways at 320px (WCAG 1.4.10, Fhi.Metadata-l9l2n.65). Three
-   classes, so it outranks the bare one below whatever the source order. */
+   classes, so it outranks the bare one below whatever the source order.
+
+   Stiler PR 39205 declined a width floor for this button and shipped nothing for the wrap, so
+   `Fhi.Metadata-s4es0` is the bead that has to carry the real rule and helsedata.no keeps the
+   overflow until it does. Nothing here can tell you that: a selector only the samples have is
+   outside what assert-sample-css-matches-stiler.sh compares, so its silence about this rule is
+   not agreement — test/sample-css-known-divergences.txt says so under its own heading, naming
+   this button's old floor as the last time a sample-only rule was read as Stiler parity. */
 .munin-explorer .munin-explorer-selection .hd-button-square {
   white-space: normal;
   height: auto;
