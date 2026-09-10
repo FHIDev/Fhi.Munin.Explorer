@@ -358,7 +358,7 @@ public partial class VariableSearch
 
     private FacetValue KildeTypeValue(KildetypeFacet type) =>
         new($"kildetype:{type.Value}",
-            T.KildeTypeLabel(type.Value, type.DisplayName),
+            T.KildeTypeNameFromApi(type.Value, type.DisplayName),
             Counted(type.Count),
             string.Equals(_filter.KildeType, type.Value, StringComparison.OrdinalIgnoreCase),
             () => SetKildeTypeAsync(type.Value),
@@ -391,7 +391,7 @@ public partial class VariableSearch
             .GroupBy(KildeTypeKey, StringComparer.OrdinalIgnoreCase)
             .OrderBy(group => kildeTypeOrder.TryGetValue(group.Key, out var index) ? index : int.MaxValue)
             .ThenBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
-            .Select(group => KildeTypeHeading(group, delkilderByKilde))
+            .Select(group => KildeTypeHeading(facets, group, delkilderByKilde))
             .ToList();
 
         // A search that matches nothing has to leave the facet standing, or it would take the box
@@ -510,10 +510,11 @@ public partial class VariableSearch
     /// variable count the values under it carry. (Fhi.Metadata-l9l2n.67)
     /// </remarks>
     private FacetValue KildeTypeHeading(
+        FilterOptions facets,
         IGrouping<string, KildeFacet> kilder,
         ILookup<Guid, DelkildeFacet> delkilderByKilde) =>
         new($"kildetype-group:{kilder.Key}",
-            T.KildeTypeLabel(kilder.Key, kilder.Key),
+            KildeTypeNameFromApi(facets, kilder.Key),
             kilder.Count(),
             Selected: false,
             Toggle: null,
