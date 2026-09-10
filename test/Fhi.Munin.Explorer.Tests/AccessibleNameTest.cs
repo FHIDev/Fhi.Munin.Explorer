@@ -135,10 +135,18 @@ public class AccessibleNameTest
     public void Of_WhenAFieldsetHasNoLegend_ThenItAnnouncesAsUnnamed()
     {
         // The failure direction that matters: a group with nothing naming it must not come back
-        // with the words of whatever happens to be inside it.
+        // with the words of whatever happens to be inside it, or of a label pointing at it — HTML
+        // forbids `for` from naming a fieldset, and no browser announces that pairing.
         var element = Parse("<fieldset><button type=\"button\">Utvid alle</button></fieldset>", "fieldset");
 
         Assert.Equal("", AccessibleName.Of(element));
+
+        var pointedAt = Parse(
+            "<div><label for=\"filters\">Filtre</label>"
+            + "<fieldset id=\"filters\"><button type=\"button\">Utvid alle</button></fieldset></div>",
+            "fieldset");
+
+        Assert.Equal("", AccessibleName.Of(pointedAt));
     }
 
     [Fact]

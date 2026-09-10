@@ -70,18 +70,15 @@ internal static class AccessibleName
             return ariaLabel.Trim();
         }
 
-        // A fieldset is named by its first <legend> CHILD — the filter panel's shape. A nested
-        // fieldset's legend names that one, so a descendant search would give the outer panel its
-        // inner group's words.
+        // A fieldset is named by its first <legend> CHILD — the filter panel's shape. A descendant
+        // search would hand the outer panel its nested group's words. No legend ends it here: `for`
+        // may not point at a fieldset, so no arm below is one a browser would honour.
         if (element.TagName.Equals("FIELDSET", StringComparison.OrdinalIgnoreCase))
         {
             var legend = element.Children.FirstOrDefault(child =>
                 child.TagName.Equals("LEGEND", StringComparison.OrdinalIgnoreCase));
 
-            if (legend is not null)
-            {
-                return Collapse(legend.TextContent);
-            }
+            return legend is not null ? Collapse(legend.TextContent) : "";
         }
 
         var id = element.GetAttribute("id");
