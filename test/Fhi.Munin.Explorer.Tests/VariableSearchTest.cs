@@ -5326,6 +5326,32 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
+    public void Filter_WhenValuesAreChosen_ThenTheLegendNamesThePanelAndLeavesTheNumberToTheOtherTwo()
+    {
+        // The legend counted the filters a third time, after the count line and the chips, and was
+        // the only one of the three that said how many without saying which. Removing it from the
+        // VISIBLE text is the ask; removing the group's accessible name would not be.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE")), EveryFacet()));
+
+        ClickFacet(cut, "Dødsårsaksregisteret");
+        ClickFacet(cut, "Streng");
+        ClickFacet(cut, "ICD-10");
+
+        var panel = cut.Find("fieldset.munin-explorer-filters");
+
+        // Resolved as a screen reader would, rather than read off the markup: a legend that stopped
+        // naming its fieldset would leave the panel announcing as an unnamed group and still pass a
+        // string assertion on the element's own text.
+        Assert.Equal("Filtre", AccessibleName.Of(panel));
+        Assert.Equal("Filtre", panel.QuerySelector("legend")!.TextContent.Trim());
+
+        // The two places the number does live, asserted here because this is the change that made
+        // them the only ones. Their own tests cover what each says; these say they still say it.
+        Assert.Contains("avgrenset av 3 filtre", cut.Find("p[role='status']").TextContent);
+        Assert.Equal(["Dødsårsaksregisteret", "Streng", "ICD-10"], Chips(cut));
+    }
+
+    [Fact]
     public void Filter_WhenNothingMatches_ThenTheEmptyStateNamesTheFiltersRatherThanBlamingTheCatalogue()
     {
         var client = new FilteringClient(OnePage());

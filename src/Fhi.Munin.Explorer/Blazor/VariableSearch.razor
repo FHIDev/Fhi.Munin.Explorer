@@ -272,7 +272,10 @@ else
            information. (Fhi.Metadata-wcbxi) *@
         <fieldset class="form-fieldset munin-explorer-filters" aria-busy="@Busy"
                   data-level-lines="@LevelLinesMarker">
-            <legend class="form-element__label">@FiltersLegend</legend>
+            @* No count in the legend. The count line over the results and the chip row beside it
+               both say the number already, and this said it without saying which of them.
+               (Fhi.Metadata-l9l2n.83) *@
+            <legend class="form-element__label">@T.FiltersTitle</legend>
 
             @* The toolbar. Utvid alle and Skjul alle do the one thing a native disclosure cannot do
                for itself; Nivålinjer is a toggle and says so with aria-pressed. None of the three

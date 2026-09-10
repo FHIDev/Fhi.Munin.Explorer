@@ -3383,11 +3383,11 @@ public class KildeSearchTest : BunitContext
     }
 
     [Fact]
-    public void Facets_WhenValuesAreTicked_ThenTheHeadingSaysHowMany()
+    public void Facets_WhenValuesAreTicked_ThenTheHeadingStillNamesThePanelAndCountsNothing()
     {
-        // With the panel folded on a phone, the heading is the only thing on screen saying the list
-        // is narrowed at all — the same reason the variable explorer's collapsed facets carry their
-        // count.
+        // It used to read "Filtre (2)", on the reading that the folded panel left it alone in
+        // saying the list was narrowed. It never was: the chip row and the count line are both
+        // outside the fold, so the number here was a third statement of it. (Fhi.Metadata-l9l2n.83)
         var cut = RenderWith(new FakeClient(
             Kilde("Als registeret", "K_ALS", kildetype: "nasjonaltMedisinskKvalitetsregister"),
             Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister")));
@@ -3397,7 +3397,17 @@ public class KildeSearchTest : BunitContext
         Tick(cut, "Kildetype", "Sentralt helseregister");
         Tick(cut, "Databehandler", "Folkehelseinstituttet");
 
-        Assert.Equal("Filtre (2)", cut.Find(".munin-explorer-filters h3").TextContent.Trim());
+        Assert.Equal("Filtre", cut.Find(".munin-explorer-filters h3").TextContent.Trim());
+
+        // The two that do say it, with the panel still folded — which is the state the count in the
+        // heading was kept for.
+        Assert.True(cut.Find(".munin-explorer-filters__facets").HasAttribute("hidden"));
+        Assert.Equal(["Sentralt helseregister", "Folkehelseinstituttet"], Chips(cut));
+        Assert.Contains("avgrenset av 2 filtre", ResultCount(cut));
+
+        // And the control over them announces the fold and not the filters, as it always has — this
+        // heading is what had to move for the two panels to say the same thing.
+        Assert.Equal("Vis filtre", AccessibleName.Of(cut.Find(".munin-explorer-filters__toggle")));
     }
 
     [Fact]
