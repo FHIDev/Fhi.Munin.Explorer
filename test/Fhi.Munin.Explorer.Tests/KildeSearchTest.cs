@@ -4150,6 +4150,80 @@ public class KildeSearchTest : BunitContext
                 .Select(li => li.QuerySelector("label")!.TextContent.Trim()));
     }
 
+    /// <summary>A catalogue with something to tick in every one of the four facets.</summary>
+    /// <remarks>
+    /// <see cref="TwoNarrowingFacets"/> fills two of them, which is all that row needed. Counting
+    /// chips against ticks needs all four: a projection that walked some of the definitions would
+    /// agree with the panel on the two it walked. (Fhi.Metadata-l9l2n.82)
+    /// </remarks>
+    private static FakeClient EveryFacet() => new(
+        Kilde("Als registeret", "K_ALS",
+            kildetype: "biobank", category: """["ehds-cat:biobanks"]""",
+            accessRights: "eu-access:NON_PUBLIC", dataProcessor: "Folkehelseinstituttet"),
+        Kilde("Dødsårsaksregisteret", "K_DAR",
+            kildetype: "sentraltHelseregister", category: """["ehds-cat:health-registries"]""",
+            accessRights: "eu-access:PUBLIC", dataProcessor: "Helsedirektoratet"));
+
+    /// <summary>How many values are ticked across the whole panel — what the row has to draw.</summary>
+    private static int TickedValues(IRenderedComponent<KildeSearch> cut) => Ticks(cut).Count(ticked => ticked);
+
+    [Fact]
+    public void ActiveFilters_WhenEachValueIsTickedInTurn_ThenTheChipCountEqualsTheTickedValueCount()
+    {
+        // THE MEASUREMENT, and asserted after every single press rather than once at the end: a row
+        // that is right about three values and wrong about the fourth is right at the end of the
+        // loop and wrong the moment the reader gets there. Against the panel's own ticks rather
+        // than against a list written out here, because "the chips and the checkboxes agree" is the
+        // claim — a count repeated in the test would pass while both were wrong together.
+        // (Fhi.Metadata-l9l2n.82)
+        var cut = RenderWith(EveryFacet());
+
+        foreach (var (heading, choice) in new[]
+        {
+            ("Kildetype", "Biobank"),
+            ("Kategori", "Biobanker"),
+            ("Tilgangsnivå", "Ikke-offentlig"),
+            ("Databehandler", "Folkehelseinstituttet")
+        })
+        {
+            Tick(cut, heading, choice);
+
+            Assert.Equal(TickedValues(cut), Chips(cut).Count);
+            Assert.Single(cut.FindAll(".munin-explorer-filters__active"));
+        }
+
+        Assert.Equal(4, Chips(cut).Count);
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenTheChipsAreClearedOneByOne_ThenEachPressTakesExactlyOneValue()
+    {
+        // The other direction, on the same terms: a press that cleared its facet rather than its
+        // value, or that left the checkbox ticked, keeps the two counts equal for a moment and
+        // parts them at the next press. Four values across four facets, so a press that cleared a
+        // whole facet could not pass for one that cleared a value. (Fhi.Metadata-l9l2n.82)
+        var cut = RenderWith(EveryFacet());
+
+        Tick(cut, "Kildetype", "Biobank");
+        Tick(cut, "Kategori", "Biobanker");
+        Tick(cut, "Tilgangsnivå", "Ikke-offentlig");
+        Tick(cut, "Databehandler", "Folkehelseinstituttet");
+
+        foreach (var value in new[] { "Biobanker", "Biobank", "Ikke-offentlig", "Folkehelseinstituttet" })
+        {
+            var before = Chips(cut).Count;
+
+            RemoveChip(cut, value);
+
+            Assert.Equal(before - 1, Chips(cut).Count);
+            Assert.Equal(TickedValues(cut), Chips(cut).Count);
+            Assert.DoesNotContain(value, Chips(cut));
+        }
+
+        Assert.Empty(cut.FindAll(".munin-explorer-filters__active"));
+        Assert.Equal(0, TickedValues(cut));
+    }
+
     [Fact]
     public void ActiveFilters_WhenFjernAlleIsPressed_ThenNoChipRemainsNoBoxIsTickedAndTheListIsWhole()
     {

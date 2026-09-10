@@ -46,9 +46,12 @@ public partial class VariableSearch
         /// <summary>What is chosen in this facet: the summary's count, and the row of chips.</summary>
         /// <remarks>
         /// One projection for both, so the number on a folded facet and the chips over the results
-        /// can never describe two different selections. (Fhi.Metadata-l9l2n.68)
+        /// can never describe two different selections. (Fhi.Metadata-l9l2n.68) Distinct on the
+        /// key, so one chosen value is one entry however many places name it — a facet payload
+        /// listing an id twice would otherwise be one press, two chips. (Fhi.Metadata-l9l2n.82)
         /// </remarks>
-        public IReadOnlyList<FacetValue> ChosenValues => Chosen ?? [.. Selected(Values)];
+        public IReadOnlyList<FacetValue> ChosenValues =>
+            [.. (Chosen ?? [.. Selected(Values)]).DistinctBy(value => value.Key)];
 
         /// <summary>How many values in this facet are selected, counting nested ones.</summary>
         public int SelectedCount => ChosenValues.Count;
@@ -730,9 +733,20 @@ public partial class VariableSearch
         var byParent = all.Where(node => node.ParentId is not null).ToLookup(node => node.ParentId!.Value);
         HashSet<Guid> placed = [];
 
-        var rooted = all.Where(node => node.ParentId is not { } parent || !known.Contains(parent));
+        List<FacetValue> roots = [];
 
-        List<FacetValue> roots = [.. rooted.Select(Build)];
+        // A foreach over a set the body mutates, for the reason the second pass below is one: an id
+        // the payload lists twice — once under a parent in the list, once as an orphan — is placed
+        // by the recursion and must not be built as a root as well. (Fhi.Metadata-l9l2n.82)
+        foreach (var node in all)
+        {
+            var rooted = node.ParentId is not { } parent || !known.Contains(parent);
+
+            if (rooted && !placed.Contains(node.Id))
+            {
+                roots.Add(Build(node));
+            }
+        }
 
         // Whatever the first pass could not reach: every member of a cycle has its parent present,
         // so none of them is a root, and dropping them would take a filter off the panel with no

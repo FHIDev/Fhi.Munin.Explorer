@@ -5089,6 +5089,127 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
+    public void ActiveFilters_WhenEachValueIsTickedInTurn_ThenTheChipCountEqualsTheActiveValueCount()
+    {
+        // THE MEASUREMENT, asserted after every single press rather than once at the end: a row
+        // that is right about ten values and wrong about one of them is right at the end of the
+        // loop above and wrong the moment the reader gets there. The filter's own ActiveCount is
+        // the number of values summed over every facet type, so this compares the row against what
+        // the request carries and not against a list written out here. (Fhi.Metadata-l9l2n.82)
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), EveryFacet());
+        var cut = RenderWith(client);
+
+        var chosen = 0;
+
+        foreach (var value in OneValuePerFacet)
+        {
+            ClickFacet(cut, value);
+            chosen++;
+
+            Assert.Equal(chosen, client.SearchFilter!.ActiveCount);
+            Assert.Equal(chosen, Chips(cut).Count);
+            Assert.Single(cut.FindAll(".munin-explorer-filters__active"));
+        }
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenTheFacetIsOneTheKildeutforskerDoesNotHave_ThenTheChipCountIsStillExact()
+    {
+        // THE CHECK Fhi.Metadata-l9l2n.68 OWED. Datatype and instrument exist in this panel and in
+        // no other, so a row built by naming the facets the kildeutforsker has — rather than by
+        // walking this panel's own — draws nothing here while passing every test shaped like that
+        // one. Neither label sits inside a collapsed kildetype group, which is what stopped the
+        // check being written the first time. (Fhi.Metadata-l9l2n.82)
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), EveryFacet());
+        var cut = RenderWith(client);
+
+        ClickFacet(cut, "Streng");
+
+        Assert.Equal(1, client.SearchFilter!.ActiveCount);
+        Assert.Equal(["Streng"], Chips(cut));
+
+        ClickFacet(cut, "RAND-36 spørreskjema");
+
+        Assert.Equal(2, client.SearchFilter!.ActiveCount);
+        Assert.Equal(["Streng", "RAND-36 spørreskjema"], Chips(cut));
+
+        // And the way back: clearing the instrument leaves the datatype and nothing else.
+        RemoveChip(cut, "RAND-36 spørreskjema");
+
+        Assert.Equal(1, client.SearchFilter!.ActiveCount);
+        Assert.Equal(["Streng"], Chips(cut));
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenTheFacetPayloadListsOneIdTwice_ThenItIsOneChoiceAndOneChip()
+    {
+        // THE DEFECT THIS BEAD IS ABOUT. A variabelgruppe listed both under a parent that is in the
+        // payload and as an orphan was built twice — once by the recursion, once as a root, because
+        // only the second pass consulted what the walk had already placed. One press then ticked
+        // both drawn copies, the facet counted two and the row drew two chips for one value:
+        // exactly "one tick, two chips" over a filter carrying one. (Fhi.Metadata-l9l2n.82)
+        var client = new FilteringClient(
+            OnePage(Variable("1. Tale", "KODE")),
+            Facets() with
+            {
+                Variabelgrupper =
+                [
+                    new() { Id = Bakgrunn, Name = "Bakgrunn", Count = 7 },
+                    new() { Id = Levekaar, Name = "Levekår", ParentId = Bakgrunn, Count = 4 },
+                    new() { Id = Levekaar, Name = "Levekår", ParentId = NotInThePayload, Count = 4 }
+                ]
+            });
+
+        var cut = RenderWith(client);
+
+        // The panel first, because a row that agreed with a panel drawing the value twice would be
+        // wrong in the same way and this test would pass on it.
+        Assert.Single(Named(cut, "Levekår"));
+
+        ClickFacet(cut, "Levekår");
+
+        Assert.Equal(1, client.SearchFilter!.ActiveCount);
+        Assert.Equal(["Levekår"], Chips(cut));
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenOneChipIsCleared_ThenOnlyThatValueGoesAndTheCountFollows()
+    {
+        // Panel, chips and request in one assertion apiece, because each alone passes against a
+        // clear that half-lands: a chip removed from a row that has stopped projecting the filter,
+        // a checkbox left ticked over a request that widened, or a request that widened by more
+        // than the one value. (Fhi.Metadata-l9l2n.82)
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), EveryFacet());
+        var cut = RenderWith(client);
+
+        ClickFacet(cut, "Streng");
+        ClickFacet(cut, "Dødsårsaksregisteret");
+        ClickFacet(cut, "ICD-10");
+
+        Assert.Equal(3, Chips(cut).Count);
+
+        RemoveChip(cut, "Dødsårsaksregisteret");
+
+        Assert.Equal(2, client.SearchFilter!.ActiveCount);
+        Assert.Equal(["Streng", "ICD-10"], Chips(cut));
+        Assert.False(FacetChosen(cut, "Dødsårsaksregisteret"));
+        Assert.True(FacetChosen(cut, "Streng"));
+        Assert.True(FacetChosen(cut, "ICD-10"));
+    }
+
+    /// <summary>Every control in the panel <paramref name="label"/> names, rather than the one of them.</summary>
+    /// <remarks>
+    /// <see cref="Facet"/> asks for exactly one and throws on two, which is the right shape almost
+    /// everywhere and the wrong one where how many there are is the question. (Fhi.Metadata-l9l2n.82)
+    /// </remarks>
+    private static IReadOnlyList<AngleSharp.Dom.IElement> Named(
+        IRenderedComponent<VariableSearch> cut, string label) =>
+        [.. FacetControls(cut).Where(control => control.TextContent.StartsWith(label, StringComparison.Ordinal))];
+
+    /// <summary>A parent id no facet payload in this test carries, so the node naming it is an orphan.</summary>
+    private static readonly Guid NotInThePayload = new("eeeeeeee-0000-0000-0000-000000000001");
+
+    [Fact]
     public void ActiveFilters_WhenTheChosenValueIsFromTheCatchAll_ThenItsChipNamesTheFacetAndTheOthersDoNot()
     {
         // "Har kildekodeverk" over the results says nothing about being a filter; every other
