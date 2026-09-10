@@ -413,17 +413,32 @@ public partial class VariableSearch
     /// <remarks>
     /// Read off the answer rather than off the values drawn, because a ticked kilde the search has
     /// hidden is still narrowing the results — and would otherwise lose its place in the summary's
-    /// count and its chip over the results at once. (Fhi.Metadata-uidue)
+    /// count and its chip over the results at once. (Fhi.Metadata-uidue) Reading the payload rather
+    /// than the drawn tree, it collapses repeats itself, on the tree's rule — or a chip and its own
+    /// checkbox could keep copies naming one delkilde two ways. (Fhi.Metadata-l9l2n.82)
     /// </remarks>
     private IReadOnlyList<FacetValue> ChosenKilder(
         FilterOptions facets, ILookup<Guid, DelkildeFacet> delkilderByKilde) =>
     [
-        .. facets.Kilder.Where(kilde => _filter.KildeIds.Contains(kilde.Id)).Select(kilde => KildeValue(kilde)),
-        .. facets.Kilder
-            .SelectMany(kilde => delkilderByKilde[kilde.Id])
+        .. ListedKilder(facets)
+            .Where(kilde => _filter.KildeIds.Contains(kilde.Id))
+            .Select(kilde => KildeValue(kilde)),
+        .. ListedKilder(facets)
+            .SelectMany(kilde => OnePerId(delkilderByKilde[kilde.Id],
+                                          delkilde => delkilde.Id,
+                                          delkilde => delkilde.ParentDelkildeId))
             .Where(delkilde => _filter.DelkildeIds.Contains(delkilde.Id))
             .Select(DelkildeValue)
     ];
+
+    /// <summary>The payload's kilder, an id it names more than once standing for one kilde.</summary>
+    /// <remarks>
+    /// Every reading of <see cref="FilterOptions.Kilder"/> that becomes markup goes through here:
+    /// two entries with one id are two <c>&lt;li&gt;</c> siblings under the one key, and the
+    /// renderer throws on the next diff rather than drawing it wrongly. (Fhi.Metadata-l9l2n.82)
+    /// </remarks>
+    private static IReadOnlyList<KildeFacet> ListedKilder(FilterOptions facets) =>
+        [.. facets.Kilder.DistinctBy(kilde => kilde.Id)];
 
     /// <summary>What the reader has typed into the kilde facet's own search box.</summary>
     private string _kildeSearch = string.Empty;
@@ -486,10 +501,10 @@ public partial class VariableSearch
     {
         if (KildeSearchTerm is not { } term)
         {
-            return facets.Kilder;
+            return ListedKilder(facets);
         }
 
-        return [.. facets.Kilder.Where(kilde => KildeMatches(kilde, delkilderByKilde[kilde.Id], term))];
+        return [.. ListedKilder(facets).Where(kilde => KildeMatches(kilde, delkilderByKilde[kilde.Id], term))];
     }
 
     private bool KildeMatches(KildeFacet kilde, IEnumerable<DelkildeFacet> delkilder, string term) =>
@@ -708,8 +723,11 @@ public partial class VariableSearch
     /// pass a cycle and everything hanging off it vanishes from the panel silently, which is the
     /// same failure the orphan rule above exists to prevent, arriving by the other door. The walk
     /// remembers what it has already placed, so entering a cycle stops at the repeat rather than
-    /// recursing until the stack runs out; that memory also keeps a duplicated id from being drawn
-    /// twice.
+    /// recursing until the stack runs out.
+    /// </para>
+    /// <para>
+    /// An id the payload names more than once is <see cref="OnePerId">collapsed to one node</see>
+    /// before any of that, so where the value sits is the payload's meaning rather than its order.
     /// </para>
     /// </remarks>
     private static IReadOnlyList<FacetValue> Tree(
@@ -719,7 +737,7 @@ public partial class VariableSearch
         Func<Guid, Func<Task>> toggle,
         Func<int, int?> count)
     {
-        var all = nodes.ToList();
+        var all = OnePerId(nodes, node => node.Id, node => node.ParentId);
 
         if (all.Count == 0)
         {
@@ -727,39 +745,42 @@ public partial class VariableSearch
         }
 
         var known = all.Select(node => node.Id).ToHashSet();
+
         var byParent = all.Where(node => node.ParentId is not null).ToLookup(node => node.ParentId!.Value);
         HashSet<Guid> placed = [];
 
-        var rooted = all.Where(node => node.ParentId is not { } parent || !known.Contains(parent));
+        List<FacetValue> roots = [];
 
-        List<FacetValue> roots = [.. rooted.Select(Build)];
-
-        // Whatever the first pass could not reach: every member of a cycle has its parent present,
-        // so none of them is a root, and dropping them would take a filter off the panel with no
-        // error anywhere. Each one that is still unplaced becomes a root of its own, which places
-        // the rest of its cycle underneath it.
-        //
-        // A foreach rather than AddRange over a query, because the test is against a set the body
-        // mutates: for two nodes naming each other, building the first places the second, and the
-        // second must not then be built as a root as well. Written as a query that would hold only
-        // while nothing materialised it between the filter and the projection — and drawing one
-        // node twice means two <li> siblings with the same key, which the renderer throws on.
-        foreach (var node in all)
-        {
-            if (!placed.Contains(node.Id))
-            {
-                roots.Add(Build(node));
-            }
-        }
+        // Real roots first, then whatever they could not reach: every member of a cycle has its
+        // parent present, so none of them is a root, and dropping them would take a filter off the
+        // panel with no error anywhere.
+        AddRoots(node => !Parented(node));
+        AddRoots(_ => true);
 
         return roots;
+
+        bool Parented(TreeNode node) => node.ParentId is { } parent && known.Contains(parent);
+
+        void AddRoots(Func<TreeNode, bool> isRoot)
+        {
+            // A foreach rather than a query, because `placed` is a set the body mutates: building a
+            // node places its whole subtree, so a cycle's other member is already drawn by the time
+            // the second pass reaches it and must not be built as a root of its own as well.
+            foreach (var node in all)
+            {
+                if (isRoot(node) && !placed.Contains(node.Id))
+                {
+                    roots.Add(Build(node));
+                }
+            }
+        }
 
         FacetValue Build(TreeNode node)
         {
             placed.Add(node.Id);
 
-            // Same shape as the second pass above, and for the same reason: each child is tested
-            // against a set the recursion mutates, so building one sibling can place the next.
+            // Same shape as AddRoots above, and for the same reason: each child is tested against a
+            // set the recursion mutates, so building one sibling can place the next.
             List<FacetValue> children = [];
 
             foreach (var child in byParent[node.Id])
@@ -772,6 +793,22 @@ public partial class VariableSearch
 
             return new FacetValue($"{keyPrefix}{node.Id}", node.Label, count(node.Count), selected(node.Id), toggle(node.Id), children);
         }
+    }
+
+    /// <summary>One entry per id, the copy hanging off a parent that is present winning.</summary>
+    /// <remarks>
+    /// Naming an id twice drew it twice, so one press ticked both and the row over the results
+    /// carried two chips for one filter. Two entries with one id can differ in parent and in name
+    /// alike, so keeping the first listed would nest, and label, by payload order. (Fhi.Metadata-l9l2n.82)
+    /// </remarks>
+    private static IReadOnlyList<T> OnePerId<T>(IEnumerable<T> entries, Func<T, Guid> id, Func<T, Guid?> parentId)
+    {
+        var listed = entries.ToList();
+        var known = listed.Select(id).ToHashSet();
+
+        return [.. listed.GroupBy(id).Select(copies => copies.FirstOrDefault(Parented) ?? copies.First())];
+
+        bool Parented(T entry) => parentId(entry) is { } parent && known.Contains(parent);
     }
 
     /// <summary>Which way the last Utvid alle / Skjul alle press left every disclosure, if any.</summary>

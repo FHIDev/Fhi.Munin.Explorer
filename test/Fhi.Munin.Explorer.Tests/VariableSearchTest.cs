@@ -5089,6 +5089,254 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
+    public void ActiveFilters_WhenEachValueIsTickedInTurn_ThenTheChipCountEqualsTheActiveValueCount()
+    {
+        // Asserted after every single press rather than once at the end: a row that is right about
+        // ten values and wrong about one is right at the end of the loop above. Against the
+        // filter's own ActiveCount, not a number written out here. (Fhi.Metadata-l9l2n.82)
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), EveryFacet());
+        var cut = RenderWith(client);
+
+        var chosen = 0;
+
+        foreach (var value in OneValuePerFacet)
+        {
+            ClickFacet(cut, value);
+            chosen++;
+
+            Assert.Equal(chosen, client.SearchFilter!.ActiveCount);
+            Assert.Equal(chosen, Chips(cut).Count);
+            Assert.Single(cut.FindAll(".munin-explorer-filters__active"));
+        }
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenTheFacetIsOneTheKildeutforskerDoesNotHave_ThenTheChipCountIsStillExact()
+    {
+        // Datatype and instrument exist in this panel and in no other, so a row built by naming the
+        // facets the kildeutforsker has — rather than by walking this panel's own — draws nothing
+        // here while passing every test shaped like that one. (Fhi.Metadata-l9l2n.82)
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), EveryFacet());
+        var cut = RenderWith(client);
+
+        ClickFacet(cut, "Streng");
+
+        Assert.Equal(1, client.SearchFilter!.ActiveCount);
+        Assert.Equal(["Streng"], Chips(cut));
+
+        ClickFacet(cut, "RAND-36 spørreskjema");
+
+        Assert.Equal(2, client.SearchFilter!.ActiveCount);
+        Assert.Equal(["Streng", "RAND-36 spørreskjema"], Chips(cut));
+
+        // And the way back: clearing the instrument leaves the datatype and nothing else.
+        RemoveChip(cut, "RAND-36 spørreskjema");
+
+        Assert.Equal(1, client.SearchFilter!.ActiveCount);
+        Assert.Equal(["Streng"], Chips(cut));
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenTheFacetPayloadListsOneIdTwice_ThenItIsOneChoiceAndOneChip()
+    {
+        // A value listed both under a parent that is in the payload and as an orphan was built
+        // twice, so one press ticked both drawn copies. Every facet drawn as a tree passes through
+        // the same builder, delkilder included. (Fhi.Metadata-l9l2n.82)
+        var client = new FilteringClient(
+            OnePage(Variable("1. Tale", "KODE")),
+            Facets() with
+            {
+                Variabelgrupper =
+                [
+                    new() { Id = Bakgrunn, Name = "Bakgrunn", Count = 7 },
+                    new() { Id = Levekaar, Name = "Levekår", ParentId = Bakgrunn, Count = 4 },
+                    new() { Id = Levekaar, Name = "Levekår", ParentId = NotInThePayload, Count = 4 }
+                ]
+            });
+
+        var cut = RenderWith(client);
+
+        // The panel first, because a row that agreed with a panel drawing the value twice would be
+        // wrong in the same way and this test would pass on it.
+        Assert.Single(Named(cut, "Levekår"));
+
+        ClickFacet(cut, "Levekår");
+
+        Assert.Equal(1, client.SearchFilter!.ActiveCount);
+        Assert.Equal(["Levekår"], Chips(cut));
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenTheKildeFacetListsOneDelkildeTwice_ThenItIsOneChoiceAndOneChip()
+    {
+        // The kilde facet is the one that supplies its own Chosen list, read off the payload rather
+        // than off the tree the panel drew, so the builder's de-duplication never reaches it and
+        // the chips can carry a repeat the checkboxes do not. (Fhi.Metadata-l9l2n.82)
+        var client = new FilteringClient(
+            OnePage(Variable("1. Tale", "KODE")),
+            Facets() with
+            {
+                Delkilder =
+                [
+                    new() { Id = Tromso4, Name = "Tromsø 4", KildeId = Tromso, Count = 8 },
+                    new()
+                    {
+                        Id = Tromso4Visit, Name = "Første besøk", KildeId = Tromso,
+                        ParentDelkildeId = Tromso4, Count = 3
+                    },
+                    new()
+                    {
+                        Id = Tromso4Visit, Name = "Første besøk", KildeId = Tromso,
+                        ParentDelkildeId = NotInThePayload, Count = 3
+                    }
+                ]
+            });
+
+        var cut = RenderWith(client);
+
+        Assert.Single(Named(cut, "Første besøk"));
+
+        ClickFacet(cut, "Første besøk");
+
+        Assert.Equal(1, client.SearchFilter!.ActiveCount);
+        Assert.Equal(["Første besøk"], Chips(cut));
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenTheKildeFacetListsOneKildeTwice_ThenItIsOneBoxOneChoiceAndOneChip()
+    {
+        // A kilde is drawn by neither the tree builder nor off a list of ticks, so a repeat reached
+        // the markup as two <li> siblings under the one key — which the renderer throws on at the
+        // first diff after a press rather than drawing wrongly. (Fhi.Metadata-l9l2n.82)
+        var client = new FilteringClient(
+            OnePage(Variable("1. Tale", "KODE")),
+            Facets() with
+            {
+                Kilder =
+                [
+                    new() { Id = Dodsarsak, Name = "Dødsårsaksregisteret", KildeType = "sentraltHelseregister", Count = 30 },
+                    new() { Id = Tromso, Name = "Tromsøundersøkelsen", KildeType = "biobank", Count = 12 },
+                    new() { Id = Tromso, Name = "Tromsøundersøkelsen", KildeType = "biobank", Count = 12 }
+                ]
+            });
+
+        var cut = RenderWith(client);
+
+        Assert.Single(Named(cut, "Tromsøundersøkelsen"));
+
+        ClickFacet(cut, "Tromsøundersøkelsen");
+
+        Assert.Equal(1, client.SearchFilter!.ActiveCount);
+        Assert.Equal(["Tromsøundersøkelsen"], Chips(cut));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ActiveFilters_WhenTheTwoCopiesOfADelkildeAreNamedApart_ThenTheChipReadsAsItsCheckboxDoes(
+        bool orphanFirst)
+    {
+        // Two entries with one id are two payload rows and their names can differ, so a chip row
+        // keeping whichever was listed first labels one filter two ways — while the tree beside it
+        // keeps the parented copy. Both sides collapse on the one rule. (Fhi.Metadata-l9l2n.82)
+        DelkildeFacet parent = new() { Id = Tromso4, Name = "Tromsø 4", KildeId = Tromso, Count = 8 };
+
+        DelkildeFacet parented = new()
+        {
+            Id = Tromso4Visit,
+            Name = "Første besøk",
+            KildeId = Tromso,
+            ParentDelkildeId = Tromso4,
+            Count = 3
+        };
+
+        DelkildeFacet orphan = new()
+        {
+            Id = Tromso4Visit,
+            Name = "Løsrevet besøk",
+            KildeId = Tromso,
+            ParentDelkildeId = NotInThePayload,
+            Count = 3
+        };
+
+        var client = new FilteringClient(
+            OnePage(Variable("1. Tale", "KODE")),
+            Facets() with { Delkilder = orphanFirst ? [orphan, parent, parented] : [parent, parented, orphan] });
+
+        var cut = RenderWith(client);
+
+        Assert.Single(Named(cut, "Første besøk"));
+        Assert.Empty(Named(cut, "Løsrevet besøk"));
+
+        ClickFacet(cut, "Første besøk");
+
+        Assert.Equal(1, client.SearchFilter!.ActiveCount);
+        Assert.Equal(["Første besøk"], Chips(cut));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Render_WhenTheFacetPayloadListsOneIdTwice_ThenTheCopyUnderItsParentIsTheOneKept(bool orphanFirst)
+    {
+        // Where the value is drawn has to be the payload's meaning rather than its order: an orphan
+        // copy listed ahead of the parent is built as a root, the parented copy is then swallowed,
+        // and the value leaves its group with nothing drawn twice. (Fhi.Metadata-l9l2n.82)
+        VariabelgruppeFacet group = new() { Id = Bakgrunn, Name = "Bakgrunn", Count = 7 };
+        VariabelgruppeFacet parented = new() { Id = Levekaar, Name = "Levekår", ParentId = Bakgrunn, Count = 4 };
+        VariabelgruppeFacet orphan = new() { Id = Levekaar, Name = "Levekår", ParentId = NotInThePayload, Count = 4 };
+
+        var client = new FilteringClient(
+            OnePage(Variable("1. Tale", "KODE")),
+            Facets() with
+            {
+                Variabelgrupper = orphanFirst ? [orphan, group, parented] : [group, parented, orphan]
+            });
+
+        var cut = RenderWith(client);
+
+        var drawn = Assert.Single(Named(cut, "Levekår"));
+
+        Assert.Contains(drawn.ParentElement!, Facet(cut, "Bakgrunn").ParentElement!.QuerySelectorAll("li"));
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenOneChipIsCleared_ThenOnlyThatValueGoesAndTheCountFollows()
+    {
+        // Panel, chips and request in one assertion apiece, because each alone passes against a
+        // clear that half-lands: a chip removed from a row no longer projecting the filter, or a
+        // request that widened by more than the one value. (Fhi.Metadata-l9l2n.82)
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), EveryFacet());
+        var cut = RenderWith(client);
+
+        ClickFacet(cut, "Streng");
+        ClickFacet(cut, "Dødsårsaksregisteret");
+        ClickFacet(cut, "ICD-10");
+
+        Assert.Equal(3, Chips(cut).Count);
+
+        RemoveChip(cut, "Dødsårsaksregisteret");
+
+        Assert.Equal(2, client.SearchFilter!.ActiveCount);
+        Assert.Equal(["Streng", "ICD-10"], Chips(cut));
+        Assert.False(FacetChosen(cut, "Dødsårsaksregisteret"));
+        Assert.True(FacetChosen(cut, "Streng"));
+        Assert.True(FacetChosen(cut, "ICD-10"));
+    }
+
+    /// <summary>Every control in the panel <paramref name="label"/> names, rather than the one of them.</summary>
+    /// <remarks>
+    /// <see cref="Facet"/> asks for exactly one and throws on two, which is the right shape almost
+    /// everywhere and the wrong one where how many there are is the question. (Fhi.Metadata-l9l2n.82)
+    /// </remarks>
+    private static IReadOnlyList<AngleSharp.Dom.IElement> Named(
+        IRenderedComponent<VariableSearch> cut, string label) =>
+        [.. FacetControls(cut).Where(control => control.TextContent.StartsWith(label, StringComparison.Ordinal))];
+
+    /// <summary>A parent id no facet payload in this file carries, so the node naming it is an orphan.</summary>
+    private static readonly Guid NotInThePayload = new("ffffffff-0000-0000-0000-000000000001");
+
+    [Fact]
     public void ActiveFilters_WhenTheChosenValueIsFromTheCatchAll_ThenItsChipNamesTheFacetAndTheOthersDoNot()
     {
         // "Har kildekodeverk" over the results says nothing about being a filter; every other
