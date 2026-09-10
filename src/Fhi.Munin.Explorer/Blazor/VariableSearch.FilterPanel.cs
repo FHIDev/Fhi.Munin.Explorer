@@ -413,27 +413,32 @@ public partial class VariableSearch
     /// <remarks>
     /// Read off the answer rather than off the values drawn, because a ticked kilde the search has
     /// hidden is still narrowing the results — and would otherwise lose its place in the summary's
-    /// count and its chip over the results at once. (Fhi.Metadata-uidue)
-    /// <para>
-    /// This is the one facet reading its ticks off the payload rather than off the tree the panel
-    /// drew, so <see cref="Tree"/> collapsing a repeated id never reaches it: without the
-    /// de-duplication here a payload naming one delkilde twice is one press, two chips.
-    /// (Fhi.Metadata-l9l2n.82)
-    /// </para>
+    /// count and its chip over the results at once. (Fhi.Metadata-uidue) Reading the payload rather
+    /// than the drawn tree, it collapses repeats itself, on the tree's rule — or a chip and its own
+    /// checkbox could keep copies naming one delkilde two ways. (Fhi.Metadata-l9l2n.82)
     /// </remarks>
     private IReadOnlyList<FacetValue> ChosenKilder(
         FilterOptions facets, ILookup<Guid, DelkildeFacet> delkilderByKilde) =>
     [
-        .. facets.Kilder
+        .. ListedKilder(facets)
             .Where(kilde => _filter.KildeIds.Contains(kilde.Id))
-            .DistinctBy(kilde => kilde.Id)
             .Select(kilde => KildeValue(kilde)),
-        .. facets.Kilder
-            .SelectMany(kilde => delkilderByKilde[kilde.Id])
+        .. ListedKilder(facets)
+            .SelectMany(kilde => OnePerId(delkilderByKilde[kilde.Id],
+                                          delkilde => delkilde.Id,
+                                          delkilde => delkilde.ParentDelkildeId))
             .Where(delkilde => _filter.DelkildeIds.Contains(delkilde.Id))
-            .DistinctBy(delkilde => delkilde.Id)
             .Select(DelkildeValue)
     ];
+
+    /// <summary>The payload's kilder, an id it names more than once standing for one kilde.</summary>
+    /// <remarks>
+    /// Every reading of <see cref="FilterOptions.Kilder"/> that becomes markup goes through here:
+    /// two entries with one id are two <c>&lt;li&gt;</c> siblings under the one key, and the
+    /// renderer throws on the next diff rather than drawing it wrongly. (Fhi.Metadata-l9l2n.82)
+    /// </remarks>
+    private static IReadOnlyList<KildeFacet> ListedKilder(FilterOptions facets) =>
+        [.. facets.Kilder.DistinctBy(kilde => kilde.Id)];
 
     /// <summary>What the reader has typed into the kilde facet's own search box.</summary>
     private string _kildeSearch = string.Empty;
@@ -496,10 +501,10 @@ public partial class VariableSearch
     {
         if (KildeSearchTerm is not { } term)
         {
-            return facets.Kilder;
+            return ListedKilder(facets);
         }
 
-        return [.. facets.Kilder.Where(kilde => KildeMatches(kilde, delkilderByKilde[kilde.Id], term))];
+        return [.. ListedKilder(facets).Where(kilde => KildeMatches(kilde, delkilderByKilde[kilde.Id], term))];
     }
 
     private bool KildeMatches(KildeFacet kilde, IEnumerable<DelkildeFacet> delkilder, string term) =>
@@ -721,9 +726,8 @@ public partial class VariableSearch
     /// recursing until the stack runs out.
     /// </para>
     /// <para>
-    /// An id the payload names more than once is collapsed to one node before any of that, and the
-    /// copy hanging off a parent that is present is the one kept, so where the value sits is the
-    /// payload's meaning rather than its order. (Fhi.Metadata-l9l2n.82)
+    /// An id the payload names more than once is <see cref="OnePerId">collapsed to one node</see>
+    /// before any of that, so where the value sits is the payload's meaning rather than its order.
     /// </para>
     /// </remarks>
     private static IReadOnlyList<FacetValue> Tree(
@@ -733,22 +737,14 @@ public partial class VariableSearch
         Func<Guid, Func<Task>> toggle,
         Func<int, int?> count)
     {
-        var listed = nodes.ToList();
+        var all = OnePerId(nodes, node => node.Id, node => node.ParentId);
 
-        if (listed.Count == 0)
+        if (all.Count == 0)
         {
             return [];
         }
 
-        var known = listed.Select(node => node.Id).ToHashSet();
-
-        // One node per id, the copy under a parent that is present winning: naming an id twice drew
-        // it twice, so one press ticked both and the row over the results carried two chips for one
-        // filter, and picking by payload order would nest or not nest by it. (Fhi.Metadata-l9l2n.82)
-        var all = listed
-            .GroupBy(node => node.Id)
-            .Select(copies => copies.FirstOrDefault(Parented) ?? copies.First())
-            .ToList();
+        var known = all.Select(node => node.Id).ToHashSet();
 
         var byParent = all.Where(node => node.ParentId is not null).ToLookup(node => node.ParentId!.Value);
         HashSet<Guid> placed = [];
@@ -797,6 +793,22 @@ public partial class VariableSearch
 
             return new FacetValue($"{keyPrefix}{node.Id}", node.Label, count(node.Count), selected(node.Id), toggle(node.Id), children);
         }
+    }
+
+    /// <summary>One entry per id, the copy hanging off a parent that is present winning.</summary>
+    /// <remarks>
+    /// Naming an id twice drew it twice, so one press ticked both and the row over the results
+    /// carried two chips for one filter. Two entries with one id can differ in parent and in name
+    /// alike, so keeping the first listed would nest, and label, by payload order. (Fhi.Metadata-l9l2n.82)
+    /// </remarks>
+    private static IReadOnlyList<T> OnePerId<T>(IEnumerable<T> entries, Func<T, Guid> id, Func<T, Guid?> parentId)
+    {
+        var listed = entries.ToList();
+        var known = listed.Select(id).ToHashSet();
+
+        return [.. listed.GroupBy(id).Select(copies => copies.FirstOrDefault(Parented) ?? copies.First())];
+
+        bool Parented(T entry) => parentId(entry) is { } parent && known.Contains(parent);
     }
 
     /// <summary>Which way the last Utvid alle / Skjul alle press left every disclosure, if any.</summary>

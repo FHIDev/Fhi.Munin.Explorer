@@ -5202,6 +5202,78 @@ public class VariableSearchTest : BunitContext
         Assert.Equal(["Første besøk"], Chips(cut));
     }
 
+    [Fact]
+    public void ActiveFilters_WhenTheKildeFacetListsOneKildeTwice_ThenItIsOneBoxOneChoiceAndOneChip()
+    {
+        // A kilde is drawn by neither the tree builder nor off a list of ticks, so a repeat reached
+        // the markup as two <li> siblings under the one key — which the renderer throws on at the
+        // first diff after a press rather than drawing wrongly. (Fhi.Metadata-l9l2n.82)
+        var client = new FilteringClient(
+            OnePage(Variable("1. Tale", "KODE")),
+            Facets() with
+            {
+                Kilder =
+                [
+                    new() { Id = Dodsarsak, Name = "Dødsårsaksregisteret", KildeType = "sentraltHelseregister", Count = 30 },
+                    new() { Id = Tromso, Name = "Tromsøundersøkelsen", KildeType = "biobank", Count = 12 },
+                    new() { Id = Tromso, Name = "Tromsøundersøkelsen", KildeType = "biobank", Count = 12 }
+                ]
+            });
+
+        var cut = RenderWith(client);
+
+        Assert.Single(Named(cut, "Tromsøundersøkelsen"));
+
+        ClickFacet(cut, "Tromsøundersøkelsen");
+
+        Assert.Equal(1, client.SearchFilter!.ActiveCount);
+        Assert.Equal(["Tromsøundersøkelsen"], Chips(cut));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ActiveFilters_WhenTheTwoCopiesOfADelkildeAreNamedApart_ThenTheChipReadsAsItsCheckboxDoes(
+        bool orphanFirst)
+    {
+        // Two entries with one id are two payload rows and their names can differ, so a chip row
+        // keeping whichever was listed first labels one filter two ways — while the tree beside it
+        // keeps the parented copy. Both sides collapse on the one rule. (Fhi.Metadata-l9l2n.82)
+        DelkildeFacet parent = new() { Id = Tromso4, Name = "Tromsø 4", KildeId = Tromso, Count = 8 };
+
+        DelkildeFacet parented = new()
+        {
+            Id = Tromso4Visit,
+            Name = "Første besøk",
+            KildeId = Tromso,
+            ParentDelkildeId = Tromso4,
+            Count = 3
+        };
+
+        DelkildeFacet orphan = new()
+        {
+            Id = Tromso4Visit,
+            Name = "Løsrevet besøk",
+            KildeId = Tromso,
+            ParentDelkildeId = NotInThePayload,
+            Count = 3
+        };
+
+        var client = new FilteringClient(
+            OnePage(Variable("1. Tale", "KODE")),
+            Facets() with { Delkilder = orphanFirst ? [orphan, parent, parented] : [parent, parented, orphan] });
+
+        var cut = RenderWith(client);
+
+        Assert.Single(Named(cut, "Første besøk"));
+        Assert.Empty(Named(cut, "Løsrevet besøk"));
+
+        ClickFacet(cut, "Første besøk");
+
+        Assert.Equal(1, client.SearchFilter!.ActiveCount);
+        Assert.Equal(["Første besøk"], Chips(cut));
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
