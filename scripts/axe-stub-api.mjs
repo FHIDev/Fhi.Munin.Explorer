@@ -7,6 +7,10 @@
 // The fixtures are reused rather than copied: one set for a human to re-capture when a drift
 // report asks for it, instead of a second set here that nothing would ever look at again.
 //
+// They are not one snapshot: filters.json reports 31791 variables where variables.json holds
+// 18289, and its facet counts are that catalogue's. Nothing here reads a count back out, and
+// re-capturing the corpus together is its own job.
+//
 // Usage:  node scripts/axe-stub-api.mjs <port>
 import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';

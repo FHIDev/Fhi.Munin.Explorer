@@ -47,35 +47,46 @@ public class MuninExplorerClientTest
     {
         var filters = await WithResponse("filters.json", out _).GetFiltersAsync();
 
-        // The kildetype displayName here is the raw enum name, which the endpoint no longer sends
-        // (Fhi.Metadata-iv9xp): this capture predates the datasamling facet too and is re-taken
-        // whole under Fhi.Metadata-c7bb6, not patched a value at a time.
-        Assert.Equal(3, filters.KildeTyper.Count);
-        Assert.Equal("befolkningsbasertHelseundersokelse", filters.KildeTyper[0].Value);
-        Assert.Equal(41, filters.Kilder.Count);
-        Assert.Equal(20, filters.Instruments.Count);
-        Assert.Equal(3876, filters.KildeKodeverkCount);
-        Assert.Equal(18289, filters.TotalCount);
+        // The kildetype displayName is resolved prose following Accept-Language rather than the
+        // raw enum name, which is what the endpoint has sent since Munin's label change and what
+        // the re-capture picked up alongside the datasamling facet. (Fhi.Metadata-iv9xp)
+        Assert.Equal(4, filters.KildeTyper.Count);
+        Assert.Equal("annenDatakilde", filters.KildeTyper[0].Value);
+        Assert.Equal("Annen datakilde", filters.KildeTyper[0].DisplayName);
+        Assert.Equal(61, filters.Kilder.Count);
+        Assert.Equal(16, filters.Instruments.Count);
+        Assert.Equal(11020, filters.KildeKodeverkCount);
+        Assert.Equal(31791, filters.TotalCount);
+
+        // The facet this capture was re-taken for. Both parents are exercised: most datasamlinger
+        // hang straight off their kilde, and the few under a delkilde are what the panel needs to
+        // draw a level deeper. (Fhi.Metadata-c7bb6)
+        Assert.Equal(293, filters.Datasamlinger.Count);
+        Assert.Equal(279, filters.Datasamlinger.Count(d => d.DelkildeId is null));
+        Assert.All(filters.Datasamlinger, d => Assert.NotEqual(Guid.Empty, d.KildeId));
 
         // Datatypes arrive labelled: Fhi.Metadata-xxi8k made the endpoint resolve the name in the
         // request's language, and this capture went unrefreshed until FixtureDriftTest noticed.
         Assert.Equal(["1", "10", "2", "3", "4", "6", "7"], filters.DataTypes.Select(d => d.Value));
         Assert.Equal("Fødselsnummer (11 siffer)", filters.DataTypes[1].DisplayName);
 
-        // Datakategorier are raw EHDS tokens, label and all, so a caller matches whole tokens
-        // rather than stripping the prefix off them.
-        Assert.Equal("ehds-cat:biobanks", filters.DataCategories[0].Value);
-        Assert.Equal(38, filters.DataCategories[1].Count);
+        // Datakategorier are raw tokens, label and all, and the vocabulary mixes short codes with
+        // prefixed EHDS ones — so a caller matches whole tokens rather than stripping a prefix.
+        Assert.Equal("EINS", filters.DataCategories[0].Value);
+        Assert.Contains("ehds-cat:other", filters.DataCategories.Select(c => c.Value));
 
-        // A root-level variabelgruppe has no parent; the delkilde facet carries its kilde.
-        Assert.Null(filters.Variabelgrupper[0].ParentId);
+        // The delkilde facet carries its kilde. Variabelgrupper is the API's curated shortlist,
+        // empty with nothing chosen — FilterPanel's remarks say why that is a message rather than
+        // an omission, and its wire names are pinned below against a fixed payload.
+        Assert.Empty(filters.Variabelgrupper);
         Assert.NotEqual(Guid.Empty, filters.Delkilder[0].KildeId);
 
-        // Kodeverk without a resolved name is expected, not a parse failure.
-        Assert.Equal("3402", filters.AdministrativtKodeverk[0].Oid);
+        // Every kodeverk row in this capture has a resolved name. The null that an unreachable
+        // fhi.kodeverk sends instead is pinned below, for the same reason.
+        Assert.Equal("3101", filters.AdministrativtKodeverk[0].Oid);
 
         // Only the lower bound is known in the test environment.
-        Assert.Equal(1868, filters.DateRange?.Min?.Year);
+        Assert.Equal(1951, filters.DateRange?.Min?.Year);
         Assert.Null(filters.DateRange?.Max);
     }
 
@@ -790,15 +801,14 @@ public class MuninExplorerClientTest
                      handler.LastUri?.AbsolutePath);
     }
 
-    // ------------------------------------------------- explicit nulls where a collection is due
+    // ------------------------------------------------- wire names the capture cannot pin
 
     [Fact]
     public async Task GetFiltersAsync_WhenTheAnswerCarriesDatasamlinger_ThenEveryWireNameIsRead()
     {
-        // filters.json predates the facet and is re-taken whole under Fhi.Metadata-c7bb6, not
-        // patched a value at a time, so the wire contract is pinned here instead. Every UI test
-        // builds DatasamlingFacet in C#, which would pass just as happily against a wrong wire
-        // name or a missed parent. (Fhi.Metadata-mgp03)
+        // filters.json carries the facet since Fhi.Metadata-c7bb6, but its values move with the
+        // catalogue, so the wire names are pinned here against fixed ones. Every UI test builds
+        // DatasamlingFacet in C# and would pass against a wrong name or a missed parent.
         var filters = await WithJson("""
             {
               "datasamlinger": [
@@ -832,6 +842,68 @@ public class MuninExplorerClientTest
         // The parent that decides which level the panel draws it under.
         Assert.Equal(new Guid("6f1d4a5c-0000-4000-8000-000000000011"), filters.Datasamlinger[1].DelkildeId);
     }
+
+    [Fact]
+    public async Task GetFiltersAsync_WhenTheAnswerCarriesVariabelgrupper_ThenEveryWireNameIsRead()
+    {
+        // The shortlist is empty with nothing chosen, so filters.json holds no row and no other
+        // payload here carries the facet at all. Nothing would notice a renamed parentId, and the
+        // group tree would rebuild flat once a datakilde is chosen and a shortlist arrives.
+        var filters = await WithJson("""
+            {
+              "variabelgrupper": [
+                {
+                  "id": "6f1d4a5c-0000-4000-8000-000000000201",
+                  "name": "Bakgrunn",
+                  "parentId": null,
+                  "count": 12
+                },
+                {
+                  "id": "6f1d4a5c-0000-4000-8000-000000000202",
+                  "name": "Utdanning",
+                  "parentId": "6f1d4a5c-0000-4000-8000-000000000201",
+                  "count": 3
+                }
+              ]
+            }
+            """).GetFiltersAsync();
+
+        Assert.Equal(2, filters.Variabelgrupper.Count);
+
+        var root = filters.Variabelgrupper[0];
+        Assert.Equal(new Guid("6f1d4a5c-0000-4000-8000-000000000201"), root.Id);
+        Assert.Equal("Bakgrunn", root.Name);
+        Assert.Null(root.ParentId);
+        Assert.Equal(12, root.Count);
+
+        // The parent the caller rebuilds the group tree from.
+        Assert.Equal(root.Id, filters.Variabelgrupper[1].ParentId);
+    }
+
+    [Fact]
+    public async Task GetFiltersAsync_WhenAKodeverkNameIsUnresolved_ThenTheRowIsReadWithANullName()
+    {
+        // navn is nullable because fhi.kodeverk can be unreachable, and no row in filters.json is
+        // nameless since the re-capture, so only this says the null parses. The facet panel's OID
+        // fallback for one is covered beside its sibling facets in VariableSearchTest.
+        var filters = await WithJson("""
+            {
+              "administrativtKodeverk": [
+                { "oid": "8485", "navn": null, "count": 2 },
+                { "oid": "3101", "navn": "Kjønn", "count": 7 }
+              ]
+            }
+            """).GetFiltersAsync();
+
+        var unresolved = filters.AdministrativtKodeverk[0];
+        Assert.Equal("8485", unresolved.Oid);
+        Assert.Null(unresolved.Name);
+        Assert.Equal(2, unresolved.Count);
+
+        Assert.Equal("Kjønn", filters.AdministrativtKodeverk[1].Name);
+    }
+
+    // ------------------------------------------------- explicit nulls where a collection is due
 
     [Fact]
     public async Task GetVariableAsync_WhenACollectionArrivesAsAnExplicitNull_ThenItIsReadAsEmpty()

@@ -1,399 +1,2599 @@
 {
   "kildeTyper": [
     {
+      "value": "annenDatakilde",
+      "displayName": "Annen datakilde",
+      "count": 10
+    },
+    {
       "value": "befolkningsbasertHelseundersokelse",
-      "displayName": "BefolkningsbasertHelseundersokelse",
-      "count": 6219
+      "displayName": "Befolkningsbasert helseundersøkelse",
+      "count": 13012
     },
     {
       "value": "nasjonaltMedisinskKvalitetsregister",
-      "displayName": "NasjonaltMedisinskKvalitetsregister",
-      "count": 9977
+      "displayName": "Nasjonalt medisinsk kvalitetsregister",
+      "count": 17099
     },
     {
       "value": "sentraltHelseregister",
-      "displayName": "SentraltHelseregister",
-      "count": 2093
+      "displayName": "Sentralt helseregister",
+      "count": 1670
     }
   ],
   "kilder": [
     {
-      "id": "8ec4c2c4-662d-47a5-a946-f1086a014070",
-      "name": "Als registeret",
-      "kortNavn": "ALS",
-      "kildeType": "nasjonaltMedisinskKvalitetsregister",
-      "count": 230
+      "id": "8747d571-c0ee-45a2-a5a1-1a3e95c1c3d4",
+      "name": "Abortregisteret",
+      "kortNavn": "ABR",
+      "kildeType": "sentraltHelseregister",
+      "count": 80
     },
     {
-      "id": "cfcb064c-0c9b-4d07-8e5b-53107318cfd4",
+      "id": "f7e53f99-a6e4-438e-bb8b-d0b20e0bb53f",
+      "name": "ALS Registeret",
+      "kortNavn": "ALS",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 245
+    },
+    {
+      "id": "6d412432-9589-476a-b7c1-ce595e844e3a",
       "name": "Barnediabetes",
       "kortNavn": "BDR",
       "kildeType": "nasjonaltMedisinskKvalitetsregister",
-      "count": 630
+      "count": 440
     },
     {
-      "id": "7a0616eb-c742-4b28-af18-726a20f88251",
+      "id": "a887eb3b-f59a-4a89-b912-a43ad8e96163",
       "name": "Bivirkningsregisteret",
       "kortNavn": "BIV",
       "kildeType": "sentraltHelseregister",
       "count": 23
     },
     {
-      "id": "6ec05131-6762-430f-9c25-04dece37d47a",
+      "id": "63e62209-e132-48a7-9678-f34b0d61afd2",
       "name": "Data fra SSB",
-      "kortNavn": "",
-      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "kortNavn": "SSB",
+      "kildeType": "annenDatakilde",
       "count": 10
     },
     {
-      "id": "4e4def45-e4d0-4118-a582-b18cbbec21fe",
+      "id": "c21f84fc-e4bf-449d-aa2c-8fda88708a9b",
       "name": "Dødsårsaksregisteret",
       "kortNavn": "DÅR",
       "kildeType": "sentraltHelseregister",
       "count": 61
     },
     {
-      "id": "b39f0875-8ee1-4614-8064-b353a81aefa4",
+      "id": "8f56af50-0e11-456b-b365-b5edf18a7c1d",
       "name": "Forsvarets helseregister",
       "kortNavn": "FHR",
       "kildeType": "sentraltHelseregister",
       "count": 8
     },
     {
-      "id": "08a14564-49f5-4a33-b400-a0ef00bfdd97",
+      "id": "9aa0ee60-5eb1-4639-a33d-63f4dcc4fcd1",
       "name": "Fylkeshelseundersøkelsene (FHUS)",
       "kortNavn": "FHUS",
       "kildeType": "befolkningsbasertHelseundersokelse",
-      "count": 467
+      "count": 284
     },
     {
-      "id": "8125e63f-53d8-405d-b209-834b967ecffb",
+      "id": "86bd0b8a-6030-4452-be08-5796609fdbc9",
       "name": "Gastronet",
       "kortNavn": "GASTRO",
       "kildeType": "nasjonaltMedisinskKvalitetsregister",
       "count": 276
     },
     {
-      "id": "ed05563c-23a7-4e63-9c0f-0f3b2f565132",
-      "name": "Helsearkivregisteret",
-      "kortNavn": "NHA",
+      "id": "70e2d67b-5f09-4496-9b80-aad3626b533b",
+      "name": "Hjerte- og karregisteret",
+      "kortNavn": "HKR",
       "kildeType": "sentraltHelseregister",
-      "count": 15
+      "count": 46
     },
     {
-      "id": "ed2a44f3-b750-498e-8932-b47d6d248938",
+      "id": "1de9357a-f00e-424d-aaf0-46bee77a21f7",
       "name": "Hjertestansregisteret",
       "kortNavn": "HJST",
       "kildeType": "nasjonaltMedisinskKvalitetsregister",
       "count": 327
     },
     {
-      "id": "82504f25-a028-4df3-8680-464d70f71b39",
+      "id": "751ef3bd-4121-478e-8e30-be918f59477e",
       "name": "Hjertesviktregisteret",
       "kortNavn": "NHSR",
       "kildeType": "nasjonaltMedisinskKvalitetsregister",
       "count": 307
     },
     {
-      "id": "87d54d19-7020-4414-9f4b-b5da5227e7f6",
+      "id": "e67d581d-718e-45ba-9789-fa7c3d02fd19",
       "name": "Hodepineregisteret",
       "kortNavn": "HDPINE",
       "kildeType": "nasjonaltMedisinskKvalitetsregister",
-      "count": 25
+      "count": 205
     },
     {
-      "id": "de56776a-25f2-491f-87eb-0d1a190c0296",
+      "id": "dd0f2c07-8747-4ab8-a5e9-54f71be9ea8b",
       "name": "Hørselsregisteret for Barn",
       "kortNavn": "HFB",
       "kildeType": "nasjonaltMedisinskKvalitetsregister",
-      "count": 445
+      "count": 454
     },
     {
-      "id": "0a08583f-ba86-4916-a1ba-b615b2e7a577",
+      "id": "50052767-fcf0-4d87-9e74-62d61634ebdb",
+      "name": "Kommunalt pasient- og brukeregister",
+      "kortNavn": "KPR",
+      "kildeType": "sentraltHelseregister",
+      "count": 8
+    },
+    {
+      "id": "d82285e3-f456-4f71-81c7-da3cb4961da9",
       "name": "Kreftregisteret",
       "kortNavn": "KREG",
       "kildeType": "sentraltHelseregister",
-      "count": 433
+      "count": 431
     },
     {
-      "id": "f338f6f6-5e13-4122-8e44-8ad9317157d1",
+      "id": "0e9b8460-0f14-4be0-b677-dd3b7ad2bfa6",
       "name": "Legemiddelregisteret",
       "kortNavn": "LMR",
       "kildeType": "sentraltHelseregister",
       "count": 110
     },
     {
-      "id": "a48acbbb-6f30-4f48-9952-74e2347bfc60",
+      "id": "4b4a0745-035d-4c4f-a4b9-0fd71cbeeb02",
       "name": "Medisinsk Fødselsregister",
       "kortNavn": "MFR",
       "kildeType": "sentraltHelseregister",
       "count": 346
     },
     {
-      "id": "5e84fc6d-2a8e-450b-b4b5-402d535a271a",
+      "id": "793d1806-dab2-44ce-9710-f76f14dd7f59",
       "name": "Meldingssystem for smittsomme sykdommer",
       "kortNavn": "MSIS",
       "kildeType": "sentraltHelseregister",
-      "count": 239
+      "count": 241
     },
     {
-      "id": "058b9c4b-ed33-4cc7-a73f-b5f651c12705",
+      "id": "4b883f17-5cee-4c86-a879-688a07a50ec4",
       "name": "Nasjonalt Barnehofteregister",
       "kortNavn": "BARNEHOFTE",
       "kildeType": "nasjonaltMedisinskKvalitetsregister",
       "count": 509
     },
     {
-      "id": "f05dc56c-ce5a-48dd-a0b1-ad726d967912",
+      "id": "628cf233-cc22-4311-87ea-110278e3bc8a",
       "name": "Nasjonalt hoftebruddregister",
       "kortNavn": "HOFTEBRUDD",
       "kildeType": "nasjonaltMedisinskKvalitetsregister",
       "count": 185
     },
     {
-      "id": "fd84b3b9-9e7e-4832-a8f9-48449fad53d7",
+      "id": "93060d20-26e0-4997-a505-5ab512291c48",
       "name": "Nasjonalt Korsbåndregister",
       "kortNavn": "NKLR",
       "kildeType": "nasjonaltMedisinskKvalitetsregister",
-      "count": 380
+      "count": 378
     },
     {
-      "id": "9fc1f5ba-fae6-4ab4-b3dd-cdf310c77cb2",
+      "id": "01bb0258-4fc3-4ebe-bd6f-6b4fe77a9175",
+      "name": "Nasjonalt kvalitetsregister for Alderspsykiatri (KVALAP)",
+      "kortNavn": "KVALAP",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 280
+    },
+    {
+      "id": "0b5dff2f-db80-4bc1-8c51-f376c6d4cb05",
       "name": "Nasjonalt kvalitetsregister for ryggkirurgi (NKR), degenerativ nakke.",
       "kortNavn": "NKR-NAKKE",
       "kildeType": "nasjonaltMedisinskKvalitetsregister",
-      "count": 370
+      "count": 326
     },
     {
-      "id": "f455e142-c389-4a69-b50b-dba63ded65be",
+      "id": "cea45317-e41f-49ee-8cde-0d8322844d69",
       "name": "Nasjonalt kvalitetsregister for ryggkirurgi (NKR), degenerativ rygg.",
       "kortNavn": "NKR-RYGG",
       "kildeType": "nasjonaltMedisinskKvalitetsregister",
-      "count": 383
+      "count": 367
     },
     {
-      "id": "4f951222-3c07-4a8b-aefd-a74aee9e2938",
+      "id": "341a466e-4a85-4efc-9178-f6975cfdc20a",
+      "name": "Nasjonalt kvalitetsregister for smertebehandling",
+      "kortNavn": "SMERTEREG",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 425
+    },
+    {
+      "id": "fdb28bbc-057b-49f2-90f8-7da58978068a",
+      "name": "Nasjonalt register for ablasjonsbehandling og elektrofysiologi i Norge (AblaNor)",
+      "kortNavn": "ABLANOR",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 193
+    },
+    {
+      "id": "bcac95d2-458f-4fe3-a8e5-250e754bcb22",
       "name": "Nasjonalt register for langtids mekanisk ventilasjon",
       "kortNavn": "LTMV",
       "kildeType": "nasjonaltMedisinskKvalitetsregister",
       "count": 135
     },
     {
-      "id": "441c4d5b-54ed-48fe-a442-fb093457a7e9",
+      "id": "f98ea56d-c361-4668-92f4-4719f2c51525",
+      "name": "Nasjonalt register for leddproteser",
+      "kortNavn": "NRL",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 1400
+    },
+    {
+      "id": "fc099d07-372e-44db-8a01-70da1eca15af",
       "name": "Nasjonalt traumeregister",
       "kortNavn": "NTR",
       "kildeType": "nasjonaltMedisinskKvalitetsregister",
       "count": 412
     },
     {
-      "id": "32b98c45-8c66-4bc2-853b-89797e3c1eea",
-      "name": "NorArtritt",
-      "kortNavn": "NORARTRITT",
+      "id": "01cb3a00-417f-4874-a2f8-61991768e390",
+      "name": "NorPain (Nasjonalt smerteklinikkregister)",
+      "kortNavn": "NORPAIN",
       "kildeType": "nasjonaltMedisinskKvalitetsregister",
-      "count": 831
+      "count": 259
     },
     {
-      "id": "0a38818b-75cd-46b5-8612-7497779d2b7c",
-      "name": "NorHiv",
-      "kortNavn": "NORHIV",
+      "id": "758d19da-1f03-433d-8d29-7028d7c2dfbb",
+      "name": "Norsk diabetesregister for voksne",
+      "kortNavn": "NDV",
       "kildeType": "nasjonaltMedisinskKvalitetsregister",
-      "count": 163
+      "count": 190
     },
     {
-      "id": "74405154-9014-43f7-998f-47b1f3319195",
-      "name": "Norkog",
-      "kortNavn": "NKG",
+      "id": "0853eba6-c7cb-4b78-a8db-ccd98eaa675a",
+      "name": "Norsk ECT register",
+      "kortNavn": "ECT",
       "kildeType": "nasjonaltMedisinskKvalitetsregister",
-      "count": 505
+      "count": 213
     },
     {
-      "id": "6c4702b5-cf2c-4b45-ae29-ab092b654e34",
+      "id": "19751155-aa28-4c90-b60f-ec1bfc993666",
       "name": "Norsk gynekologisk endoskopiregister",
       "kortNavn": "NGER",
       "kildeType": "nasjonaltMedisinskKvalitetsregister",
       "count": 314
     },
     {
-      "id": "2357daa1-df49-40b1-93c4-f84e8303ef01",
+      "id": "ebf5b741-09da-4075-807d-e34e7520d83d",
       "name": "Norsk hjerneslagregister",
       "kortNavn": "NHR",
       "kildeType": "nasjonaltMedisinskKvalitetsregister",
       "count": 402
     },
     {
-      "id": "2404b2bd-2e3d-498c-81ba-898a962278cd",
+      "id": "7ff47601-4eba-4669-b65e-af8180317fba",
       "name": "Norsk hjerteinfarktregister",
       "kortNavn": "NHIR",
       "kildeType": "nasjonaltMedisinskKvalitetsregister",
       "count": 136
     },
     {
-      "id": "cb22661e-6e3b-4865-904d-f4b5a562c34d",
+      "id": "84760152-df65-4aca-92cf-d76093f288bf",
+      "name": "Norsk hjertekirurgiregister",
+      "kortNavn": "HJK",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 55
+    },
+    {
+      "id": "f8d507ae-ef6c-4c44-8ce5-e33c90c61142",
+      "name": "Norsk intensiv- og pandemiregister (NIPaR)",
+      "kortNavn": "PANDEMI",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 1419
+    },
+    {
+      "id": "c60ee059-c5fc-4d35-a2f0-9c506fbbd3d3",
       "name": "Norsk Intensivregister (NIR)",
       "kortNavn": "NIR",
       "kildeType": "nasjonaltMedisinskKvalitetsregister",
-      "count": 500
+      "count": 292
     },
     {
-      "id": "711695b0-30be-4892-9627-2ecedcefe9fe",
+      "id": "31a434ff-c7fa-42f0-b149-9a4aa5564065",
+      "name": "Norsk karkirurgisk register (NORKAR)",
+      "kortNavn": "NORKAR",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 475
+    },
+    {
+      "id": "e636e98f-9948-45ea-a06b-c52f0ba04f13",
       "name": "Norsk kvalitets- og oppfølgingsregister for cerebral parese (NorCP)",
       "kortNavn": "NORCP",
       "kildeType": "nasjonaltMedisinskKvalitetsregister",
       "count": 580
     },
     {
-      "id": "6267350b-8380-413e-afcd-8ebeb7c17968",
+      "id": "ed052089-4148-48cd-9987-a1803dfa5c2b",
+      "name": "Norsk kvalitetsregister for artrittsykdommer",
+      "kortNavn": "NORARTRITT",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 831
+    },
+    {
+      "id": "c845d7b2-5fb6-41ea-9f17-b125ee65bf55",
+      "name": "Norsk kvalitetsregister for hiv (NORHIV)",
+      "kortNavn": "NORHIV",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 327
+    },
+    {
+      "id": "7c467147-de07-4c14-91ed-f86b9240f452",
+      "name": "Norsk kvalitetsregister for leppe-kjeve-ganespalte",
+      "kortNavn": "LKG",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 351
+    },
+    {
+      "id": "102deb83-8e74-4ef4-bb1b-4c72efa25647",
       "name": "Norsk kvinnelig inkontinensregister",
       "kortNavn": "NKIR",
       "kildeType": "nasjonaltMedisinskKvalitetsregister",
       "count": 151
     },
     {
-      "id": "9c3c12fe-b8c5-49b2-8da7-fe255de33968",
+      "id": "3c834f36-d7fb-4dc5-9e96-c9ae25c87944",
       "name": "Norsk MS-register og biobank",
       "kortNavn": "MS",
       "kildeType": "nasjonaltMedisinskKvalitetsregister",
-      "count": 288
+      "count": 287
     },
     {
-      "id": "0a22ea5f-6f25-4be7-a70d-3796a4361c4b",
+      "id": "607bca83-104b-4f11-9b97-3683a41de75c",
       "name": "Norsk Nakke- og Ryggregister",
       "kortNavn": "NNRR",
       "kildeType": "nasjonaltMedisinskKvalitetsregister",
       "count": 486
     },
     {
-      "id": "55783408-b698-49c9-bdb3-a70287af1f3c",
+      "id": "da5ec215-0470-4d6d-810f-33716d42435c",
       "name": "Norsk nyfødtmedisinsk kvalitetsregister",
       "kortNavn": "NNK",
-      "kildeType": "sentraltHelseregister",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
       "count": 546
     },
     {
-      "id": "e9065d6a-477d-44a3-8f9f-b06b6f75267d",
+      "id": "2e819570-0c64-4c58-babd-8e418558ec9a",
+      "name": "Norsk Parkinsonregister og biobank",
+      "kortNavn": "PARKINSON",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 555
+    },
+    {
+      "id": "e6b863c9-8269-4e10-a80b-a818d0251082",
       "name": "Norsk pasientregister",
       "kortNavn": "NPR",
       "kildeType": "sentraltHelseregister",
-      "count": 232
+      "count": 205
     },
     {
-      "id": "0fb5c548-df2c-4380-9fff-264183bfcb20",
-      "name": "NORSPIS",
-      "kortNavn": "NORSPIS",
+      "id": "6cbfe49c-cc10-4afe-abe2-cdc6ab3d1a72",
+      "name": "Norsk Porfyriregister",
+      "kortNavn": "PORFYRI",
       "kildeType": "nasjonaltMedisinskKvalitetsregister",
-      "count": 440
+      "count": 77
     },
     {
-      "id": "eca59fb8-1964-4d14-b7f9-218931476759",
-      "name": "Parkinsonregisteret",
-      "kortNavn": "PARKINSON",
+      "id": "df1d9068-daf9-4897-9827-69dc85123385",
+      "name": "Norsk register for Analinkontinens (NRA)",
+      "kortNavn": "NRA",
       "kildeType": "nasjonaltMedisinskKvalitetsregister",
-      "count": 557
+      "count": 278
     },
     {
-      "id": "7ea0a63e-076a-423e-98bf-c81013dae009",
-      "name": "Register over svangerskapsavbrudd (Abortregisteret)",
-      "kortNavn": "ABR",
+      "id": "cbc299e9-3820-4ef3-8049-58839d7d725c",
+      "name": "Norsk register for gastrokirurgi",
+      "kortNavn": "NORGAST",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 68
+    },
+    {
+      "id": "f20fbd43-9dce-4540-86c9-1d50612eb241",
+      "name": "Norsk register for invasiv kardiologi (NORIC)",
+      "kortNavn": "NORIC",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 251
+    },
+    {
+      "id": "67e5cbed-1304-4b76-8049-4fe72013ec00",
+      "name": "Norsk register for personer som utredes for kognitive symptomer i spesialisthelsetjenesten (NorKog)",
+      "kortNavn": "NKG",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 505
+    },
+    {
+      "id": "228275bd-75fc-4e57-94a3-02831deea00f",
+      "name": "Norsk ryggmargsskaderegister (NorSCIR)",
+      "kortNavn": "SCIR",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 512
+    },
+    {
+      "id": "5c66033c-151a-4373-843c-0b3e34131d13",
+      "name": "Norsk tonsilleregister",
+      "kortNavn": "TONSILLE",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 148
+    },
+    {
+      "id": "cd1e21f9-8940-40d9-8f57-932ca15c6082",
+      "name": "Norsk vaskulittregister & biobank (NorVas)",
+      "kortNavn": "NORVAS",
+      "kildeType": "nasjonaltMedisinskKvalitetsregister",
+      "count": 527
+    },
+    {
+      "id": "64976651-aaf5-47f8-9fcd-f76648be18a7",
+      "name": "Reseptregisteret",
+      "kortNavn": "NorPD",
       "kildeType": "sentraltHelseregister",
-      "count": 80
+      "count": 55
     },
     {
-      "id": "e358db40-0efa-47bb-893a-40ee00ccde12",
-      "name": "The Tromsø study",
-      "kortNavn": "",
-      "kildeType": "befolkningsbasertHelseundersokelse",
-      "count": 5752
-    }
-  ],
-  "variabelgrupper": [
+      "id": "f8a20e5d-f459-45b7-b20a-304ae9e991f2",
+      "name": "Sysvak",
+      "kortNavn": "SYSVAK",
+      "kildeType": "sentraltHelseregister",
+      "count": 56
+    },
     {
-      "id": "b5896234-3042-4ee5-8300-2cb5fcbcceaf",
-      "name": "Anamnese",
-      "parentId": null,
-      "count": 19
+      "id": "b37d66c3-d2a4-4e58-b13e-12f96d38e9f3",
+      "name": "Tromsøundersøkelsen",
+      "kortNavn": "TR",
+      "kildeType": "befolkningsbasertHelseundersokelse",
+      "count": 12728
     }
   ],
+  "variabelgrupper": [],
   "filtere": [],
   "delkilder": [
     {
-      "id": "38f8f0f2-9b12-48e3-b24b-eeaa3a84a5a7",
-      "name": "Tromsø4 - The Fourth Tromsø Study",
+      "id": "f6edd81c-0567-49f8-bc15-494f68ac3852",
+      "name": "Aortaklaffprosedyrer (TAVI og BAV)",
       "parentDelkildeId": null,
-      "kildeId": "e358db40-0efa-47bb-893a-40ee00ccde12",
-      "count": 210
+      "kildeId": "f20fbd43-9dce-4540-86c9-1d50612eb241",
+      "count": 89
     },
     {
-      "id": "4f6d7094-8976-42e8-b2da-841394a88771",
-      "name": "Tromsø5 - The Fifth Tromsø Study",
+      "id": "0c0b5b3a-16db-4fd8-bd6e-166e4eb0f1f1",
+      "name": "Invasive koronare prosedyrer (Angio og PCI)",
       "parentDelkildeId": null,
-      "kildeId": "e358db40-0efa-47bb-893a-40ee00ccde12",
-      "count": 1170
+      "kildeId": "f20fbd43-9dce-4540-86c9-1d50612eb241",
+      "count": 155
     },
     {
-      "id": "276ad1bd-71e9-40ee-b000-11909f3a4896",
-      "name": "Tromsø6 - The Sixth Tromsø Study",
+      "id": "53d58540-a5d0-4806-9635-096b9b2fc70d",
+      "name": "Tromsø4 - Den fjerde Tromsøundersøkelsen",
       "parentDelkildeId": null,
-      "kildeId": "e358db40-0efa-47bb-893a-40ee00ccde12",
-      "count": 1043
+      "kildeId": "b37d66c3-d2a4-4e58-b13e-12f96d38e9f3",
+      "count": 800
     },
     {
-      "id": "4bbdf1a9-5285-4c9d-913c-9e6ead7a30c2",
-      "name": "Tromsø7 - The Seventh Tromsø Study",
+      "id": "5d918571-ae1a-41bf-ac56-56c65e6c7b04",
+      "name": "Tromsø5 - Den femte Tromsøundersøkelsen",
       "parentDelkildeId": null,
-      "kildeId": "e358db40-0efa-47bb-893a-40ee00ccde12",
-      "count": 3087
+      "kildeId": "b37d66c3-d2a4-4e58-b13e-12f96d38e9f3",
+      "count": 1066
     },
     {
-      "id": "0e438c45-c0b1-4df7-babc-d60d50ae818c",
+      "id": "db784dca-0f4a-4fc5-81bf-d1c0a57b3c1f",
+      "name": "Tromsø6 - Den sjette Tromsøundersøkelsen",
+      "parentDelkildeId": null,
+      "kildeId": "b37d66c3-d2a4-4e58-b13e-12f96d38e9f3",
+      "count": 2659
+    },
+    {
+      "id": "de056903-7b6d-401f-9aa0-e245fd7f0235",
+      "name": "Tromsø7 - Den sjuende Tromsøundersøkelsen",
+      "parentDelkildeId": null,
+      "kildeId": "b37d66c3-d2a4-4e58-b13e-12f96d38e9f3",
+      "count": 7667
+    },
+    {
+      "id": "5f5e440a-29c3-4126-beb9-320f9a390651",
       "name": "Vestland 2022",
       "parentDelkildeId": null,
-      "kildeId": "08a14564-49f5-4a33-b400-a0ef00bfdd97",
-      "count": 282
+      "kildeId": "9aa0ee60-5eb1-4639-a33d-63f4dcc4fcd1",
+      "count": 284
+    }
+  ],
+  "datasamlinger": [
+    {
+      "id": "ff68dc76-150e-442c-bdc3-3fe44d1ae23d",
+      "name": "1 - Obligatoriske valg",
+      "kildeId": "793d1806-dab2-44ce-9710-f76f14dd7f59",
+      "delkildeId": null,
+      "count": 1
+    },
+    {
+      "id": "b802a277-a0a5-4a58-964a-f31fb7c5ee96",
+      "name": "2 - Generell informasjon",
+      "kildeId": "793d1806-dab2-44ce-9710-f76f14dd7f59",
+      "delkildeId": null,
+      "count": 80
+    },
+    {
+      "id": "29c9fb93-4252-464d-9e1b-93a8f7b8f861",
+      "name": "3 - Diagnosespesifikk informasjon",
+      "kildeId": "793d1806-dab2-44ce-9710-f76f14dd7f59",
+      "delkildeId": null,
+      "count": 160
+    },
+    {
+      "id": "15e3f245-bddd-4e0c-a8eb-7eacbc1ca287",
+      "name": "A: Første besøk",
+      "kildeId": "751ef3bd-4121-478e-8e30-be918f59477e",
+      "delkildeId": null,
+      "count": 137
+    },
+    {
+      "id": "902a673a-5c1f-4f22-a4ae-b748732a3102",
+      "name": "Abortregisteret Utlevering",
+      "kildeId": "8747d571-c0ee-45a2-a5a1-1a3e95c1c3d4",
+      "delkildeId": null,
+      "count": 80
+    },
+    {
+      "id": "562ad6ea-6040-4556-be30-33a88da67c56",
+      "name": "Activities and Participation - Performance",
+      "kildeId": "228275bd-75fc-4e57-94a3-02831deea00f",
+      "delkildeId": null,
+      "count": 33
+    },
+    {
+      "id": "c9e728c1-352c-46fa-823d-c4fa711f10c6",
+      "name": "Activities and Participation - Satisfaction",
+      "kildeId": "228275bd-75fc-4e57-94a3-02831deea00f",
+      "delkildeId": null,
+      "count": 34
+    },
+    {
+      "id": "320647ff-600a-4dd1-94a0-f329efd7ec83",
+      "name": "Administrativt",
+      "kildeId": "3c834f36-d7fb-4dc5-9e96-c9ae25c87944",
+      "delkildeId": null,
+      "count": 6
+    },
+    {
+      "id": "c405cd5b-aa0a-4c7c-a698-aa69dc081e21",
+      "name": "Aktivitetsdata - Behandlingsenhet",
+      "kildeId": "e6b863c9-8269-4e10-a80b-a818d0251082",
+      "delkildeId": null,
+      "count": 12
+    },
+    {
+      "id": "6afbab9c-cb98-47dd-9f7e-ce5f88d71302",
+      "name": "Aktivitetsdata - Henvisning og henvisningsperiode",
+      "kildeId": "e6b863c9-8269-4e10-a80b-a818d0251082",
+      "delkildeId": null,
+      "count": 24
+    },
+    {
+      "id": "04d70276-43a5-4195-9d00-bfda830ec569",
+      "name": "Aktivitetsdata - Medisinske data",
+      "kildeId": "e6b863c9-8269-4e10-a80b-a818d0251082",
+      "delkildeId": null,
+      "count": 23
+    },
+    {
+      "id": "7660a95f-5901-4127-a1c3-02cfc09d0cb5",
+      "name": "Aktivitetsdata - Pasientens kontakt med helsetjenesten",
+      "kildeId": "e6b863c9-8269-4e10-a80b-a818d0251082",
+      "delkildeId": null,
+      "count": 33
+    },
+    {
+      "id": "64eec8e2-6887-4036-b835-e3befa93e661",
+      "name": "Albue PROM skjema",
+      "kildeId": "f98ea56d-c361-4668-92f4-4719f2c51525",
+      "delkildeId": null,
+      "count": 63
+    },
+    {
+      "id": "75b48c28-7f28-4f2d-b284-46037bf46bc1",
+      "name": "Alle variabler",
+      "kildeId": "758d19da-1f03-433d-8d29-7028d7c2dfbb",
+      "delkildeId": null,
+      "count": 190
+    },
+    {
+      "id": "04248094-d7c5-4c4d-b238-dbd98af6fecc",
+      "name": "Alle variabler",
+      "kildeId": "8f56af50-0e11-456b-b365-b5edf18a7c1d",
+      "delkildeId": null,
+      "count": 8
+    },
+    {
+      "id": "3aa8e551-dc00-48a3-a548-e7cffe6201ad",
+      "name": "Alle variabler",
+      "kildeId": "f8a20e5d-f459-45b7-b20a-304ae9e991f2",
+      "delkildeId": null,
+      "count": 17
+    },
+    {
+      "id": "a39cea01-925f-4f6c-b978-f53a7323fde7",
+      "name": "Alle variabler",
+      "kildeId": "da5ec215-0470-4d6d-810f-33716d42435c",
+      "delkildeId": null,
+      "count": 546
+    },
+    {
+      "id": "02bf1d41-41c9-4774-aad7-3659c01c6ff1",
+      "name": "Ankel PROM skjema",
+      "kildeId": "f98ea56d-c361-4668-92f4-4719f2c51525",
+      "delkildeId": null,
+      "count": 65
+    },
+    {
+      "id": "921330e3-3174-49a1-8671-3fb55c2a7725",
+      "name": "Antiretroviral terapi",
+      "kildeId": "c845d7b2-5fb6-41ea-9f17-b125ee65bf55",
+      "delkildeId": null,
+      "count": 31
+    },
+    {
+      "id": "f6f7bcfd-9aba-4db8-91c5-7c389f7b059f",
+      "name": "Arbeidsmarked",
+      "kildeId": "63e62209-e132-48a7-9678-f34b0d61afd2",
+      "delkildeId": null,
+      "count": 3
+    },
+    {
+      "id": "2ebfa0a0-2410-4457-888a-81cd8a593501",
+      "name": "Årskontroll",
+      "kildeId": "6d412432-9589-476a-b7c1-ce595e844e3a",
+      "delkildeId": null,
+      "count": 220
+    },
+    {
+      "id": "78a8c9ea-b5f1-4517-bb63-7601de25826c",
+      "name": "Assistert befruktning utlevering",
+      "kildeId": "4b4a0745-035d-4c4f-a4b9-0fd71cbeeb02",
+      "delkildeId": null,
+      "count": 91
+    },
+    {
+      "id": "f03b8f4c-ccfb-4682-a080-be48abf9051e",
+      "name": "Attakk",
+      "kildeId": "3c834f36-d7fb-4dc5-9e96-c9ae25c87944",
+      "delkildeId": null,
+      "count": 18
+    },
+    {
+      "id": "16cbe98e-217c-451f-a9a3-413203098075",
+      "name": "Automatisk eProm etter tre måneder",
+      "kildeId": "f7e53f99-a6e4-438e-bb8b-d0b20e0bb53f",
+      "delkildeId": null,
+      "count": 19
+    },
+    {
+      "id": "5fc92ea6-7493-4526-840f-35172ff8ad39",
+      "name": "Avslutt",
+      "kildeId": "bcac95d2-458f-4fe3-a8e5-250e754bcb22",
+      "delkildeId": null,
+      "count": 13
+    },
+    {
+      "id": "58024d81-9f4f-4e6d-9ff1-8487766cd58b",
+      "name": "B: Siste justeringsbesøk",
+      "kildeId": "751ef3bd-4121-478e-8e30-be918f59477e",
+      "delkildeId": null,
+      "count": 71
+    },
+    {
+      "id": "df2761fb-2801-4f71-8996-62ec12e6d079",
+      "name": "Bakgrunnsinformasjon",
+      "kildeId": "7c467147-de07-4c14-91ed-f86b9240f452",
+      "delkildeId": null,
+      "count": 46
+    },
+    {
+      "id": "a56f135f-681a-4e20-bd7f-fe19d859e8df",
+      "name": "Bakgrunnskjema",
+      "kildeId": "2e819570-0c64-4c58-babd-8e418558ec9a",
+      "delkildeId": null,
+      "count": 135
+    },
+    {
+      "id": "43ac8912-20d8-41ca-b813-d4a198354f8e",
+      "name": "Bakgrunnsvariabler",
+      "kildeId": "3c834f36-d7fb-4dc5-9e96-c9ae25c87944",
+      "delkildeId": null,
+      "count": 18
+    },
+    {
+      "id": "8660955d-5f9c-4894-a794-9186f3e8547a",
+      "name": "Barnehofte PROMS",
+      "kildeId": "4b883f17-5cee-4c86-a879-688a07a50ec4",
+      "delkildeId": null,
+      "count": 58
+    },
+    {
+      "id": "a8a7d196-5fdb-462d-a3ae-fc506fc9f457",
+      "name": "Barnehofte:",
+      "kildeId": "4b883f17-5cee-4c86-a879-688a07a50ec4",
+      "delkildeId": null,
+      "count": 194
+    },
+    {
+      "id": "ad3639e1-eea9-4c50-9ee0-0623fcfef534",
+      "name": "Basisskjema",
+      "kildeId": "fdb28bbc-057b-49f2-90f8-7da58978068a",
+      "delkildeId": null,
+      "count": 35
+    },
+    {
+      "id": "30ebda24-7226-49b6-af7c-9d62fc108e88",
+      "name": "Befolkning",
+      "kildeId": "63e62209-e132-48a7-9678-f34b0d61afd2",
+      "delkildeId": null,
+      "count": 3
+    },
+    {
+      "id": "38f34d67-4221-4816-b32e-c154d1a5b698",
+      "name": "Behandlerskjema",
+      "kildeId": "607bca83-104b-4f11-9b97-3683a41de75c",
+      "delkildeId": null,
+      "count": 126
+    },
+    {
+      "id": "81df4a14-f4be-44bc-9861-20ba2cad4c54",
+      "name": "Behandling",
+      "kildeId": "3c834f36-d7fb-4dc5-9e96-c9ae25c87944",
+      "delkildeId": null,
+      "count": 21
+    },
+    {
+      "id": "a17db863-3604-45d6-a0cb-2f65e0f74fc1",
+      "name": "Behandlingsskjema",
+      "kildeId": "1de9357a-f00e-424d-aaf0-46bee77a21f7",
+      "delkildeId": null,
+      "count": 69
+    },
+    {
+      "id": "da6a0f95-8d8d-4665-8d34-b4fa4821b210",
+      "name": "Beredskap",
+      "kildeId": "c60ee059-c5fc-4d35-a2f0-9c506fbbd3d3",
+      "delkildeId": null,
+      "count": 63
+    },
+    {
+      "id": "2a643458-c719-465f-8af5-3872c7624a2e",
+      "name": "Billeddiagnostikkskjema",
+      "kildeId": "ed052089-4148-48cd-9987-a1803dfa5c2b",
+      "delkildeId": null,
+      "count": 28
+    },
+    {
+      "id": "a52cb9e6-a8d3-4ae2-ae2e-a82e585c712b",
+      "name": "Biobankskjema",
+      "kildeId": "67e5cbed-1304-4b76-8049-4fe72013ec00",
+      "delkildeId": null,
+      "count": 49
+    },
+    {
+      "id": "1d772605-56da-4ea2-8461-94dbd467546d",
+      "name": "Bivirkning",
+      "kildeId": "3c834f36-d7fb-4dc5-9e96-c9ae25c87944",
+      "delkildeId": null,
+      "count": 14
+    },
+    {
+      "id": "f2313813-8903-4e09-839b-05ada7a6b2c4",
+      "name": "Bivirkningskjema",
+      "kildeId": "ed052089-4148-48cd-9987-a1803dfa5c2b",
+      "delkildeId": null,
+      "count": 34
+    },
+    {
+      "id": "a7b088a2-afca-48ec-b099-44fe4b7cf335",
+      "name": "BivirkningSkjema",
+      "kildeId": "cd1e21f9-8940-40d9-8f57-932ca15c6082",
+      "delkildeId": null,
+      "count": 17
+    },
+    {
+      "id": "f6e59857-2097-47b1-b601-4f4ef473d4ff",
+      "name": "Blodprøver",
+      "kildeId": "c845d7b2-5fb6-41ea-9f17-b125ee65bf55",
+      "delkildeId": null,
+      "count": 38
+    },
+    {
+      "id": "fe287f7a-62a3-48dd-8cfb-8e1507e3e7b9",
+      "name": "BlodprøvesvarSkjema",
+      "kildeId": "cd1e21f9-8940-40d9-8f57-932ca15c6082",
+      "delkildeId": null,
+      "count": 15
+    },
+    {
+      "id": "805826e8-8f64-4973-aedb-b3f140187a0f",
+      "name": "Bowel function",
+      "kildeId": "228275bd-75fc-4e57-94a3-02831deea00f",
+      "delkildeId": null,
+      "count": 95
+    },
+    {
+      "id": "5b923386-c4b6-4301-835d-3cd8008a50da",
+      "name": "BvasSkjema",
+      "kildeId": "cd1e21f9-8940-40d9-8f57-932ca15c6082",
+      "delkildeId": null,
+      "count": 63
+    },
+    {
+      "id": "7f24f5c8-8809-479e-9eba-c8f0981afcd6",
+      "name": "C: Oppfølgingsbesøket",
+      "kildeId": "751ef3bd-4121-478e-8e30-be918f59477e",
+      "delkildeId": null,
+      "count": 101
+    },
+    {
+      "id": "2b9c0761-0327-4791-aecf-3836a6f1f9c4",
+      "name": "Control form",
+      "kildeId": "228275bd-75fc-4e57-94a3-02831deea00f",
+      "delkildeId": null,
+      "count": 78
+    },
+    {
+      "id": "e8d53eee-7330-4d75-841d-8887a1e8c9db",
+      "name": "DÅR Analyse",
+      "kildeId": "c21f84fc-e4bf-449d-aa2c-8fda88708a9b",
+      "delkildeId": null,
+      "count": 61
+    },
+    {
+      "id": "3814be7e-ae0d-40a4-b6b6-35921f848915",
+      "name": "Datautlevering",
+      "kildeId": "a887eb3b-f59a-4a89-b912-a43ad8e96163",
+      "delkildeId": null,
+      "count": 23
+    },
+    {
+      "id": "4f113a3f-4fc9-46c3-a85b-00c8d393cfb3",
+      "name": "Demografiske data",
+      "kildeId": "df1d9068-daf9-4897-9827-69dc85123385",
+      "delkildeId": null,
+      "count": 17
+    },
+    {
+      "id": "9f6e18fb-7914-496e-9320-31b9c13fc694",
+      "name": "DiagnoseSkjema",
+      "kildeId": "cd1e21f9-8940-40d9-8f57-932ca15c6082",
+      "delkildeId": null,
+      "count": 5
+    },
+    {
+      "id": "03b7b59d-5c66-4c9f-8e1b-82c7d208a8f8",
+      "name": "Diagnoseskjema",
+      "kildeId": "ed052089-4148-48cd-9987-a1803dfa5c2b",
+      "delkildeId": null,
+      "count": 21
+    },
+    {
+      "id": "56041461-c7e5-4247-9d51-a2b91ff16422",
+      "name": "EDSS",
+      "kildeId": "3c834f36-d7fb-4dc5-9e96-c9ae25c87944",
+      "delkildeId": null,
+      "count": 19
+    },
+    {
+      "id": "f56ef643-0a27-42b6-9062-f971d71e1174",
+      "name": "Egenrapport",
+      "kildeId": "2e819570-0c64-4c58-babd-8e418558ec9a",
+      "delkildeId": null,
+      "count": 214
+    },
+    {
+      "id": "6fc4705a-f44e-4136-aa38-baaf1a81cb6d",
+      "name": "EQ-5D-5L",
+      "kildeId": "228275bd-75fc-4e57-94a3-02831deea00f",
+      "delkildeId": null,
+      "count": 35
+    },
+    {
+      "id": "55e10f08-3682-4b2b-b0de-eb1bea79580c",
+      "name": "ERCP legeskjema",
+      "kildeId": "86bd0b8a-6030-4452-be08-5796609fdbc9",
+      "delkildeId": null,
+      "count": 150
+    },
+    {
+      "id": "96856054-0a8c-4a28-9a0f-e665ecd7d7e6",
+      "name": "Ett år",
+      "kildeId": "f8d507ae-ef6c-4c44-8ce5-e33c90c61142",
+      "delkildeId": null,
+      "count": 249
+    },
+    {
+      "id": "074553f7-98a8-41c0-882d-90cdf52f7e4d",
+      "name": "Ett år (intensiv)",
+      "kildeId": "f8d507ae-ef6c-4c44-8ce5-e33c90c61142",
+      "delkildeId": null,
+      "count": 206
+    },
+    {
+      "id": "53025cd3-ec73-4152-9c8f-a16cf3ec09aa",
+      "name": "Evaluering av smerteteam (Eval)",
+      "kildeId": "341a466e-4a85-4efc-9178-f6975cfdc20a",
+      "delkildeId": null,
+      "count": 15
+    },
+    {
+      "id": "3791e23c-b13c-4bcd-ac8d-47a6fc06dc84",
+      "name": "FamilieAnamnese",
+      "kildeId": "6d412432-9589-476a-b7c1-ce595e844e3a",
+      "delkildeId": null,
+      "count": 29
+    },
+    {
+      "id": "fbd31722-f1c8-4821-a2bf-617723b6330e",
+      "name": "Forløpstype",
+      "kildeId": "df1d9068-daf9-4897-9827-69dc85123385",
+      "delkildeId": null,
+      "count": 2
+    },
+    {
+      "id": "11748da6-44b7-4853-b265-0ba9ca94341a",
+      "name": "Førstegangsregistrering",
+      "kildeId": "dd0f2c07-8747-4ab8-a5e9-54f71be9ea8b",
+      "delkildeId": null,
+      "count": 106
+    },
+    {
+      "id": "243a3722-a40e-46f5-95c4-293a19f78ad0",
+      "name": "Førstegangsregistrering",
+      "kildeId": "6d412432-9589-476a-b7c1-ce595e844e3a",
+      "delkildeId": null,
+      "count": 141
+    },
+    {
+      "id": "72279936-e2dd-443a-acc1-4be54260ca2c",
+      "name": "Førstegangsregistrering",
+      "kildeId": "e67d581d-718e-45ba-9789-fa7c3d02fd19",
+      "delkildeId": null,
+      "count": 97
+    },
+    {
+      "id": "3fe0ab5f-b246-47dc-aaa9-724c7ff752d0",
+      "name": "GKV spørreskjema somatikk, voksne, døgn",
+      "kildeId": "fdb28bbc-057b-49f2-90f8-7da58978068a",
+      "delkildeId": null,
+      "count": 1
+    },
+    {
+      "id": "83f4d610-21b6-4e5a-8e87-7c50bd061d8a",
+      "name": "Grunnoppfølging",
+      "kildeId": "3c834f36-d7fb-4dc5-9e96-c9ae25c87944",
+      "delkildeId": null,
+      "count": 21
+    },
+    {
+      "id": "5842cd1f-99ab-4749-9691-444550d49e44",
+      "name": "HADS - Pasientrapporteringsskjema ",
+      "kildeId": "341a466e-4a85-4efc-9178-f6975cfdc20a",
+      "delkildeId": null,
+      "count": 19
+    },
+    {
+      "id": "545bb139-324b-4e5d-8d2d-a913c36d47b5",
+      "name": "Helse- og omsorgstjenester",
+      "kildeId": "50052767-fcf0-4d87-9e74-62d61634ebdb",
+      "delkildeId": null,
+      "count": 8
+    },
+    {
+      "id": "dd195887-bb40-4c26-b20d-66bf19a38e92",
+      "name": "Hendelse",
+      "kildeId": "fdb28bbc-057b-49f2-90f8-7da58978068a",
+      "delkildeId": null,
+      "count": 10
+    },
+    {
+      "id": "8a49f392-746f-46ea-ae6c-446aef6eb0a4",
+      "name": "Henvisningsskjema",
+      "kildeId": "01cb3a00-417f-4874-a2f8-61991768e390",
+      "delkildeId": null,
+      "count": 12
+    },
+    {
+      "id": "54ddc783-7c66-4cfd-970e-63d4539643ef",
+      "name": "Historisk dose",
+      "kildeId": "ed052089-4148-48cd-9987-a1803dfa5c2b",
+      "delkildeId": null,
+      "count": 20
+    },
+    {
+      "id": "924c1369-b37f-471e-b813-e7e8db2d2668",
+      "name": "Hofte PROM skjema",
+      "kildeId": "f98ea56d-c361-4668-92f4-4719f2c51525",
+      "delkildeId": null,
+      "count": 144
+    },
+    {
+      "id": "0287a07e-6644-40df-90fc-1b333a2a544e",
+      "name": "Hoftebrudd",
+      "kildeId": "628cf233-cc22-4311-87ea-110278e3bc8a",
+      "delkildeId": null,
+      "count": 87
+    },
+    {
+      "id": "669b995a-d7e4-4c9f-8860-9376a5e39d7e",
+      "name": "Hoftebrudd PROMS 12 eller 36 Månader",
+      "kildeId": "628cf233-cc22-4311-87ea-110278e3bc8a",
+      "delkildeId": null,
+      "count": 28
+    },
+    {
+      "id": "f9ccb085-4f2d-4ea0-977b-e35f973ea650",
+      "name": "Hoftebrudd PROMS 4 Månader",
+      "kildeId": "628cf233-cc22-4311-87ea-110278e3bc8a",
+      "delkildeId": null,
+      "count": 34
+    },
+    {
+      "id": "6dc896ac-af65-4549-afa0-0de8ee55b8a2",
+      "name": "Hovedskjema",
+      "kildeId": "31a434ff-c7fa-42f0-b149-9a4aa5564065",
+      "delkildeId": null,
+      "count": 296
+    },
+    {
+      "id": "0d0c166d-a2e4-411f-b2ed-f88e0c87649f",
+      "name": "Hovedskjema",
+      "kildeId": "f20fbd43-9dce-4540-86c9-1d50612eb241",
+      "delkildeId": "0c0b5b3a-16db-4fd8-bd6e-166e4eb0f1f1",
+      "count": 120
+    },
+    {
+      "id": "673e8f94-2971-4a77-9c63-8ca89797bfab",
+      "name": "Hovedskjema (TAVI)",
+      "kildeId": "f20fbd43-9dce-4540-86c9-1d50612eb241",
+      "delkildeId": "f6edd81c-0567-49f8-bc15-494f68ac3852",
+      "count": 72
+    },
+    {
+      "id": "72a615d1-ec1e-471a-ab39-f6ec7c7eb353",
+      "name": "Hovedskjema for KorsbandRegisteret",
+      "kildeId": "93060d20-26e0-4997-a505-5ab512291c48",
+      "delkildeId": null,
+      "count": 204
+    },
+    {
+      "id": "1c74c397-9b4b-4863-b02b-703088579302",
+      "name": "Hovedskjema for Norsk hjerneslagregister",
+      "kildeId": "ebf5b741-09da-4075-807d-e34e7520d83d",
+      "delkildeId": null,
+      "count": 188
+    },
+    {
+      "id": "891d27fe-8923-472d-a8a0-64e5fc1f4ec6",
+      "name": "Hysteroskopi",
+      "kildeId": "19751155-aa28-4c90-b60f-ec1bfc993666",
+      "delkildeId": null,
+      "count": 37
+    },
+    {
+      "id": "fc98c62a-c495-49e1-9818-c1f0d36fe697",
+      "name": "Influensaregistrering",
+      "kildeId": "c60ee059-c5fc-4d35-a2f0-9c506fbbd3d3",
+      "delkildeId": null,
+      "count": 67
+    },
+    {
+      "id": "7eb7e38a-2063-4283-b32a-fed46960a895",
+      "name": "Infusjonslogg",
+      "kildeId": "ed052089-4148-48cd-9987-a1803dfa5c2b",
+      "delkildeId": null,
+      "count": 20
+    },
+    {
+      "id": "34aad950-8ec3-417f-8cef-df53ca4b464c",
+      "name": "Inhospital hjertestans",
+      "kildeId": "1de9357a-f00e-424d-aaf0-46bee77a21f7",
+      "delkildeId": null,
+      "count": 54
+    },
+    {
+      "id": "54545ba9-a440-443d-847e-e01261ff1b95",
+      "name": "Injeksjonskjema",
+      "kildeId": "ed052089-4148-48cd-9987-a1803dfa5c2b",
+      "delkildeId": null,
+      "count": 103
+    },
+    {
+      "id": "29fa6593-010c-4492-af9f-5221b4ba7402",
+      "name": "Inklusjon",
+      "kildeId": "3c834f36-d7fb-4dc5-9e96-c9ae25c87944",
+      "delkildeId": null,
+      "count": 46
+    },
+    {
+      "id": "36da9c5f-9e8d-4b28-b4f4-64dbd4e47bdd",
+      "name": "Inklusjon",
+      "kildeId": "f7e53f99-a6e4-438e-bb8b-d0b20e0bb53f",
+      "delkildeId": null,
+      "count": 104
+    },
+    {
+      "id": "93fce4e4-5cbf-44a2-a2cf-15b78683006c",
+      "name": "Inklusjonskjema",
+      "kildeId": "ed052089-4148-48cd-9987-a1803dfa5c2b",
+      "delkildeId": null,
+      "count": 308
+    },
+    {
+      "id": "3fec789d-9152-414e-b26c-3e2faccde3a9",
+      "name": "Inklusjonskjema",
+      "kildeId": "c845d7b2-5fb6-41ea-9f17-b125ee65bf55",
+      "delkildeId": null,
+      "count": 83
+    },
+    {
+      "id": "af421413-e41b-4e0d-a5b4-94f88b94a030",
+      "name": "Inklusjonskjema",
+      "kildeId": "cd1e21f9-8940-40d9-8f57-932ca15c6082",
+      "delkildeId": null,
+      "count": 44
+    },
+    {
+      "id": "9a10b622-875a-4adb-a754-b76559a8040d",
+      "name": "Innsatsstyrt finansiering",
+      "kildeId": "e6b863c9-8269-4e10-a80b-a818d0251082",
+      "delkildeId": null,
+      "count": 12
+    },
+    {
+      "id": "41c9d057-91f7-4293-a358-580b1befb630",
+      "name": "Inntekt og forbruk",
+      "kildeId": "63e62209-e132-48a7-9678-f34b0d61afd2",
+      "delkildeId": null,
+      "count": 6
+    },
+    {
+      "id": "9326c92a-f9f5-4f81-82a4-b06b9fcc6c84",
+      "name": "Intensivopphold",
+      "kildeId": "c60ee059-c5fc-4d35-a2f0-9c506fbbd3d3",
+      "delkildeId": null,
+      "count": 164
+    },
+    {
+      "id": "1903f2ef-ae16-4d3c-a377-3bc8044e788f",
+      "name": "JCV",
+      "kildeId": "3c834f36-d7fb-4dc5-9e96-c9ae25c87944",
+      "delkildeId": null,
+      "count": 11
+    },
+    {
+      "id": "9b1680e0-820b-4902-a1e4-3ae2fc3bc244",
+      "name": "Kartlegging av russituasjon",
+      "kildeId": "e6b863c9-8269-4e10-a80b-a818d0251082",
+      "delkildeId": null,
+      "count": 28
+    },
+    {
+      "id": "54063151-4c48-44e1-a747-35aa2c246ccc",
+      "name": "KerrsKriterierSkjema",
+      "kildeId": "cd1e21f9-8940-40d9-8f57-932ca15c6082",
+      "delkildeId": null,
+      "count": 8
+    },
+    {
+      "id": "c03e99ab-d0ae-47de-9710-39d7263e3151",
+      "name": "Klassifikasjonskriterierskjema",
+      "kildeId": "cd1e21f9-8940-40d9-8f57-932ca15c6082",
+      "delkildeId": null,
+      "count": 86
+    },
+    {
+      "id": "c509487c-9093-4fdd-9282-b229ea4f7f43",
+      "name": "Kne PROM skjema",
+      "kildeId": "f98ea56d-c361-4668-92f4-4719f2c51525",
+      "delkildeId": null,
+      "count": 148
+    },
+    {
+      "id": "c3746b9c-3cb1-4ae5-8a66-ad3e0f672010",
+      "name": "Koloskopiskjema",
+      "kildeId": "86bd0b8a-6030-4452-be08-5796609fdbc9",
+      "delkildeId": null,
+      "count": 80
+    },
+    {
+      "id": "72bad5d4-8532-4c20-af9b-7d957e6c9e76",
+      "name": "Komorbid tilstand skjema",
+      "kildeId": "ed052089-4148-48cd-9987-a1803dfa5c2b",
+      "delkildeId": null,
+      "count": 27
+    },
+    {
+      "id": "654def7c-764a-42be-ad16-a9d2978900d9",
+      "name": "Komorbiditet",
+      "kildeId": "7c467147-de07-4c14-91ed-f86b9240f452",
+      "delkildeId": null,
+      "count": 56
+    },
+    {
+      "id": "8054149f-9b3c-4408-b7c5-3d9d4e205972",
+      "name": "KomorbidTilstandSkjema",
+      "kildeId": "cd1e21f9-8940-40d9-8f57-932ca15c6082",
+      "delkildeId": null,
+      "count": 9
+    },
+    {
+      "id": "084ebb57-fc6f-41c4-8755-50fd23b6c083",
+      "name": "KomplikasjonBehandling",
+      "kildeId": "f7e53f99-a6e4-438e-bb8b-d0b20e0bb53f",
+      "delkildeId": null,
+      "count": 25
+    },
+    {
+      "id": "47b896c7-aead-4f91-bae3-52dfbd5b6ad7",
+      "name": "Komponent",
+      "kildeId": "628cf233-cc22-4311-87ea-110278e3bc8a",
+      "delkildeId": null,
+      "count": 8
+    },
+    {
+      "id": "22855696-90c0-43e4-9196-a4b20ae33b51",
+      "name": "Konsultasjon ",
+      "kildeId": "01cb3a00-417f-4874-a2f8-61991768e390",
+      "delkildeId": null,
+      "count": 77
+    },
+    {
+      "id": "129578f8-9bcc-4bae-a552-659f5ae96f3f",
+      "name": "Konsultasjonskjema",
+      "kildeId": "2e819570-0c64-4c58-babd-8e418558ec9a",
+      "delkildeId": null,
+      "count": 133
+    },
+    {
+      "id": "601def5a-6cb0-4d5c-b88b-dd519f493129",
+      "name": "Kontroll annet sykehus",
+      "kildeId": "31a434ff-c7fa-42f0-b149-9a4aa5564065",
+      "delkildeId": null,
+      "count": 89
+    },
+    {
+      "id": "0809bdbd-439d-46e5-9c2a-41d74fe80fc7",
+      "name": "Kontrollskjema",
+      "kildeId": "c845d7b2-5fb6-41ea-9f17-b125ee65bf55",
+      "delkildeId": null,
+      "count": 83
+    },
+    {
+      "id": "037a6b31-f4ae-4a95-a39c-715cbcd49676",
+      "name": "Kontrollskjema",
+      "kildeId": "31a434ff-c7fa-42f0-b149-9a4aa5564065",
+      "delkildeId": null,
+      "count": 92
+    },
+    {
+      "id": "0357e525-5863-4e2d-809d-bcf354954ae5",
+      "name": "Kontrollskjema",
+      "kildeId": "67e5cbed-1304-4b76-8049-4fe72013ec00",
+      "delkildeId": null,
+      "count": 191
+    },
+    {
+      "id": "020ce776-4cc2-4b12-885e-ad25b729024f",
+      "name": "Krefttilfeller - diagnostikk og primærbehandling",
+      "kildeId": "d82285e3-f456-4f71-81c7-da3cb4961da9",
+      "delkildeId": null,
+      "count": 51
+    },
+    {
+      "id": "dd1247a0-2c58-4a68-bb2e-3beb1269e5de",
+      "name": "Krefttilfeller - tilleggsinformasjon",
+      "kildeId": "d82285e3-f456-4f71-81c7-da3cb4961da9",
+      "delkildeId": null,
+      "count": 37
+    },
+    {
+      "id": "c37c75f2-9727-4e88-b16b-b9165fedb2f2",
+      "name": "Kvalitetsregister for hjerne- og ryggmargssvulster",
+      "kildeId": "d82285e3-f456-4f71-81c7-da3cb4961da9",
+      "delkildeId": null,
+      "count": 13
+    },
+    {
+      "id": "eb9150b5-3c58-4bab-8491-085aeba92915",
+      "name": "Kvalitetsregister for pankreaskreft",
+      "kildeId": "d82285e3-f456-4f71-81c7-da3cb4961da9",
+      "delkildeId": null,
+      "count": 23
+    },
+    {
+      "id": "c197a32d-e496-4754-b7a1-441e5394b44d",
+      "name": "Kvalitetsregister for sarkom",
+      "kildeId": "d82285e3-f456-4f71-81c7-da3cb4961da9",
+      "delkildeId": null,
+      "count": 31
+    },
+    {
+      "id": "635bd795-de02-416d-9bae-2ebf710890e0",
+      "name": "Laparoskopi",
+      "kildeId": "19751155-aa28-4c90-b60f-ec1bfc993666",
+      "delkildeId": null,
+      "count": 51
+    },
+    {
+      "id": "095f8933-af91-4d50-9c21-262752365874",
+      "name": "Legekontrollskjema - PCT",
+      "kildeId": "6cbfe49c-cc10-4afe-abe2-cdc6ab3d1a72",
+      "delkildeId": null,
+      "count": 77
+    },
+    {
+      "id": "fbf68bf4-2cce-41f0-bebb-861a92f06bc0",
+      "name": "Legemiddelutlevering apotek",
+      "kildeId": "0e9b8460-0f14-4be0-b677-dd3b7ad2bfa6",
+      "delkildeId": null,
+      "count": 102
+    },
+    {
+      "id": "ff985b74-ea48-4176-a651-911261f4d0ae",
+      "name": "Livskvalitetsskjema",
+      "kildeId": "fdb28bbc-057b-49f2-90f8-7da58978068a",
+      "delkildeId": null,
+      "count": 3
+    },
+    {
+      "id": "bc5f3ac2-1e0c-468f-8763-7b249793cae0",
+      "name": "Lower urinary tract function",
+      "kildeId": "228275bd-75fc-4e57-94a3-02831deea00f",
+      "delkildeId": null,
+      "count": 103
+    },
+    {
+      "id": "e445b254-dda6-4f53-ad81-45b235d019af",
+      "name": "MedisineringHistoriskDoseSkjema",
+      "kildeId": "cd1e21f9-8940-40d9-8f57-932ca15c6082",
+      "delkildeId": null,
+      "count": 7
+    },
+    {
+      "id": "5462db27-4921-4574-8ebd-4cf13c208068",
+      "name": "MedisineringInfusjonsLoggSkjema",
+      "kildeId": "cd1e21f9-8940-40d9-8f57-932ca15c6082",
+      "delkildeId": null,
+      "count": 7
+    },
+    {
+      "id": "9961b246-af54-4395-b12d-7c7fbb158da0",
+      "name": "Medisineringskjema",
+      "kildeId": "ed052089-4148-48cd-9987-a1803dfa5c2b",
+      "delkildeId": null,
+      "count": 34
+    },
+    {
+      "id": "434e4130-be3d-4772-827e-f9db1ea7e9e2",
+      "name": "MedisineringSkjema",
+      "kildeId": "cd1e21f9-8940-40d9-8f57-932ca15c6082",
+      "delkildeId": null,
+      "count": 13
+    },
+    {
+      "id": "4af81936-b6ac-40fb-ae3e-ad1e56b5d303",
+      "name": "Medisinsk fødselsregister utlevering",
+      "kildeId": "4b4a0745-035d-4c4f-a4b9-0fd71cbeeb02",
+      "delkildeId": null,
+      "count": 256
+    },
+    {
+      "id": "f1cb9169-d77b-492b-bed2-3a0bc3c363e3",
+      "name": "MR",
+      "kildeId": "3c834f36-d7fb-4dc5-9e96-c9ae25c87944",
+      "delkildeId": null,
+      "count": 21
+    },
+    {
+      "id": "74cf9bae-cdb5-4f86-ba37-fa1701bd537b",
+      "name": "MSFC",
+      "kildeId": "3c834f36-d7fb-4dc5-9e96-c9ae25c87944",
+      "delkildeId": null,
+      "count": 18
+    },
+    {
+      "id": "1139df63-f7f0-4521-a421-c82f98aa7889",
+      "name": "Msis29Rand12",
+      "kildeId": "3c834f36-d7fb-4dc5-9e96-c9ae25c87944",
+      "delkildeId": null,
+      "count": 48
+    },
+    {
+      "id": "eb61b379-65c0-486a-9e31-9bf7681000ed",
+      "name": "NAB",
+      "kildeId": "3c834f36-d7fb-4dc5-9e96-c9ae25c87944",
+      "delkildeId": null,
+      "count": 10
+    },
+    {
+      "id": "fc2e87ea-aa66-40b7-ac48-0971e3b10671",
+      "name": "Nakke 12 mnd postoperativt pasientskjema",
+      "kildeId": "0b5dff2f-db80-4bc1-8c51-f376c6d4cb05",
+      "delkildeId": null,
+      "count": 49
+    },
+    {
+      "id": "1115fc2b-a6b2-4dd2-8c6f-f998c718c239",
+      "name": "Nakke 3 mnd postoperativt pasientskjema",
+      "kildeId": "0b5dff2f-db80-4bc1-8c51-f376c6d4cb05",
+      "delkildeId": null,
+      "count": 49
+    },
+    {
+      "id": "4be8dbea-7fa8-42a9-9f5f-e1b798f0bcdf",
+      "name": "Nakke Perioperativt legeskjema",
+      "kildeId": "0b5dff2f-db80-4bc1-8c51-f376c6d4cb05",
+      "delkildeId": null,
+      "count": 151
+    },
+    {
+      "id": "5dcab98e-5f83-4b44-b96a-aa939f63224b",
+      "name": "Nakke Personopplysninger",
+      "kildeId": "0b5dff2f-db80-4bc1-8c51-f376c6d4cb05",
+      "delkildeId": null,
+      "count": 19
+    },
+    {
+      "id": "ece103eb-303c-4da6-9f8f-014492b4f88f",
+      "name": "Nakke Preoperativt pasientskjema",
+      "kildeId": "0b5dff2f-db80-4bc1-8c51-f376c6d4cb05",
+      "delkildeId": null,
+      "count": 58
+    },
+    {
+      "id": "d0a58b23-b350-4766-8160-ac489cf2defe",
+      "name": "Nasjonal utdanningsdatabase",
+      "kildeId": "63e62209-e132-48a7-9678-f34b0d61afd2",
+      "delkildeId": null,
+      "count": 4
+    },
+    {
+      "id": "839ab671-fe23-4b44-a071-96f5c9ee3687",
+      "name": "Nasjonalt kvalitetsregister for barnekreft",
+      "kildeId": "d82285e3-f456-4f71-81c7-da3cb4961da9",
+      "delkildeId": null,
+      "count": 25
+    },
+    {
+      "id": "4e5cd0a7-d05e-4c5f-bcf0-db7d31f5d03f",
+      "name": "Nasjonalt kvalitetsregister for brystkreft",
+      "kildeId": "d82285e3-f456-4f71-81c7-da3cb4961da9",
+      "delkildeId": null,
+      "count": 101
+    },
+    {
+      "id": "f42c0af7-ba05-4f2b-a71c-e19080622453",
+      "name": "Nasjonalt kvalitetsregister for gynekologisk kreft - eggstokk",
+      "kildeId": "d82285e3-f456-4f71-81c7-da3cb4961da9",
+      "delkildeId": null,
+      "count": 55
+    },
+    {
+      "id": "4d3cfbf7-1510-4a1d-8e3f-304d968fc02e",
+      "name": "Nasjonalt kvalitetsregister for gynekologisk kreft - livmorhals",
+      "kildeId": "d82285e3-f456-4f71-81c7-da3cb4961da9",
+      "delkildeId": null,
+      "count": 41
+    },
+    {
+      "id": "4324ba53-da4c-4837-a588-96cd6a310b9f",
+      "name": "Nasjonalt kvalitetsregister for lungekreft",
+      "kildeId": "d82285e3-f456-4f71-81c7-da3cb4961da9",
+      "delkildeId": null,
+      "count": 43
+    },
+    {
+      "id": "e4ca1fbc-4efe-4ae2-94fe-3122884a6bad",
+      "name": "Nasjonalt kvalitetsregister for lymfoide maligniteter",
+      "kildeId": "d82285e3-f456-4f71-81c7-da3cb4961da9",
+      "delkildeId": null,
+      "count": 36
+    },
+    {
+      "id": "8de9f514-f47c-4708-9187-05356c676701",
+      "name": "Nasjonalt kvalitetsregister for melanom",
+      "kildeId": "d82285e3-f456-4f71-81c7-da3cb4961da9",
+      "delkildeId": null,
+      "count": 24
+    },
+    {
+      "id": "fdfded92-dbc9-48b8-b11c-acd1473bb709",
+      "name": "Nasjonalt kvalitetsregister for prostatakreft",
+      "kildeId": "d82285e3-f456-4f71-81c7-da3cb4961da9",
+      "delkildeId": null,
+      "count": 43
+    },
+    {
+      "id": "6027bd38-3044-47d7-8ec0-f3f192100f87",
+      "name": "Nasjonalt kvalitetsregister for tykk- og endetarmskreft",
+      "kildeId": "d82285e3-f456-4f71-81c7-da3cb4961da9",
+      "delkildeId": null,
+      "count": 41
+    },
+    {
+      "id": "db5302e4-9ac5-4a20-b4f1-fc8e1d86a511",
+      "name": "NKIR-pasientskjema 3 år etter operasjon",
+      "kildeId": "102deb83-8e74-4ef4-bb1b-4c72efa25647",
+      "delkildeId": null,
+      "count": 32
+    },
+    {
+      "id": "2dee79e2-3e61-4a1e-a4a0-ff689e29d996",
+      "name": "NKIR-pasientskjema 6-12 måneder etter operasjon",
+      "kildeId": "102deb83-8e74-4ef4-bb1b-4c72efa25647",
+      "delkildeId": null,
+      "count": 32
+    },
+    {
+      "id": "3bc24ce4-b0ad-496f-a800-2908a60578bf",
+      "name": "NKIR-pasientskjema før operasjon",
+      "kildeId": "102deb83-8e74-4ef4-bb1b-4c72efa25647",
+      "delkildeId": null,
+      "count": 34
+    },
+    {
+      "id": "e69cb820-8567-4a39-b451-67fd8d869e57",
+      "name": "NorCP kirurgi",
+      "kildeId": "e636e98f-9948-45ea-a06b-c52f0ba04f13",
+      "delkildeId": null,
+      "count": 80
+    },
+    {
+      "id": "362747de-d3b5-4a95-bb0d-7b30196285e3",
+      "name": "NorCP kognisjon (Cpcog)",
+      "kildeId": "e636e98f-9948-45ea-a06b-c52f0ba04f13",
+      "delkildeId": null,
+      "count": 22
+    },
+    {
+      "id": "7ba0fe4a-afe2-4766-8439-a267e025cab0",
+      "name": "NorCP kommunikasjon",
+      "kildeId": "e636e98f-9948-45ea-a06b-c52f0ba04f13",
+      "delkildeId": null,
+      "count": 34
+    },
+    {
+      "id": "2108ee81-1a16-45aa-9605-fd88731790ed",
+      "name": "NorCP medisinsk",
+      "kildeId": "e636e98f-9948-45ea-a06b-c52f0ba04f13",
+      "delkildeId": null,
+      "count": 150
+    },
+    {
+      "id": "f7489201-6628-460a-b89d-4cd96961dbfd",
+      "name": "NorCP motorikk ergo",
+      "kildeId": "e636e98f-9948-45ea-a06b-c52f0ba04f13",
+      "delkildeId": null,
+      "count": 164
+    },
+    {
+      "id": "3e0b402b-debe-41ea-8cfd-261440c53bde",
+      "name": "NorCP motorikk fysio",
+      "kildeId": "e636e98f-9948-45ea-a06b-c52f0ba04f13",
+      "delkildeId": null,
+      "count": 190
+    },
+    {
+      "id": "a570c47f-0fab-4bce-968c-f6c7032c82ec",
+      "name": "NorCP røntgen",
+      "kildeId": "e636e98f-9948-45ea-a06b-c52f0ba04f13",
+      "delkildeId": null,
+      "count": 30
+    },
+    {
+      "id": "a0517767-f019-4a03-8a21-6b1c9b1dc013",
+      "name": "NPRDataskjema",
+      "kildeId": "2e819570-0c64-4c58-babd-8e418558ec9a",
+      "delkildeId": null,
+      "count": 76
+    },
+    {
+      "id": "d0823300-8f89-436b-90dd-7ebabfa722d9",
+      "name": "Objektive målinger 6-12 måneder etter operasjon",
+      "kildeId": "102deb83-8e74-4ef4-bb1b-4c72efa25647",
+      "delkildeId": null,
+      "count": 11
+    },
+    {
+      "id": "c9c68642-323c-4c59-ab5b-ab1267accd20",
+      "name": "Objektive målinger før operasjon",
+      "kildeId": "102deb83-8e74-4ef4-bb1b-4c72efa25647",
+      "delkildeId": null,
+      "count": 13
+    },
+    {
+      "id": "72026750-25b1-4cc9-bcf2-e74a8b066d4c",
+      "name": "Om innrapporteringen",
+      "kildeId": "e6b863c9-8269-4e10-a80b-a818d0251082",
+      "delkildeId": null,
+      "count": 1
+    },
+    {
+      "id": "8ada2118-dc57-483f-a4fc-9d8a6d26ae1a",
+      "name": "Operasjon",
+      "kildeId": "19751155-aa28-4c90-b60f-ec1bfc993666",
+      "delkildeId": null,
+      "count": 43
+    },
+    {
+      "id": "28cf318e-47af-4489-a3a5-61bfce6b3240",
+      "name": "Operasjon og komplikasjoner",
+      "kildeId": "102deb83-8e74-4ef4-bb1b-4c72efa25647",
+      "delkildeId": null,
+      "count": 39
+    },
+    {
+      "id": "268b66e0-db82-42ab-8a98-e8fa357b3d6c",
+      "name": "Operasjonsskjema for Albue",
+      "kildeId": "f98ea56d-c361-4668-92f4-4719f2c51525",
+      "delkildeId": null,
+      "count": 143
+    },
+    {
+      "id": "df73f57c-7913-4ec4-9e1a-cbfbe8bb07b0",
+      "name": "Operasjonsskjema for Ankel",
+      "kildeId": "f98ea56d-c361-4668-92f4-4719f2c51525",
+      "delkildeId": null,
+      "count": 134
+    },
+    {
+      "id": "1f133a6e-9034-47ab-890f-9d23c20b35d6",
+      "name": "Operasjonsskjema for Hofte",
+      "kildeId": "f98ea56d-c361-4668-92f4-4719f2c51525",
+      "delkildeId": null,
+      "count": 155
+    },
+    {
+      "id": "d2e83d96-119c-4cf7-9513-06911dd70fec",
+      "name": "Operasjonsskjema for Kne",
+      "kildeId": "f98ea56d-c361-4668-92f4-4719f2c51525",
+      "delkildeId": null,
+      "count": 193
+    },
+    {
+      "id": "7eaba506-e83b-447d-bb7c-df08dfbfeb91",
+      "name": "Operasjonsskjema for Skulder",
+      "kildeId": "f98ea56d-c361-4668-92f4-4719f2c51525",
+      "delkildeId": null,
+      "count": 145
+    },
+    {
+      "id": "4469e1ee-6fa0-4d36-83c6-8f3aac4da133",
+      "name": "Oppfølging",
+      "kildeId": "19751155-aa28-4c90-b60f-ec1bfc993666",
+      "delkildeId": null,
+      "count": 27
+    },
+    {
+      "id": "814ba8a2-1c0d-448d-a6af-f9651c988b68",
+      "name": "Oppfølging ett år etter avsluttet smerteklinikken (proms)",
+      "kildeId": "01cb3a00-417f-4874-a2f8-61991768e390",
+      "delkildeId": null,
+      "count": 61
+    },
+    {
+      "id": "cf80405d-496e-48db-ba8d-7c4b491b1c8e",
+      "name": "Oppfølging etter 1 år",
+      "kildeId": "fdb28bbc-057b-49f2-90f8-7da58978068a",
+      "delkildeId": null,
+      "count": 18
+    },
+    {
+      "id": "8cc9c996-6a68-4e52-a8ed-4cd5bf4cf7d6",
+      "name": "Oppfølging etter 5 år",
+      "kildeId": "fdb28bbc-057b-49f2-90f8-7da58978068a",
+      "delkildeId": null,
+      "count": 20
+    },
+    {
+      "id": "00a4f10c-174a-4310-a818-8b179f892555",
+      "name": "Oppfølging etter behandling",
+      "kildeId": "fdb28bbc-057b-49f2-90f8-7da58978068a",
+      "delkildeId": null,
+      "count": 13
+    },
+    {
+      "id": "44612cf0-8b91-45b8-b8b4-5cfb49cc7dea",
+      "name": "OppfølgingSkjema",
+      "kildeId": "cd1e21f9-8940-40d9-8f57-932ca15c6082",
+      "delkildeId": null,
+      "count": 8
+    },
+    {
+      "id": "2d82c9be-5ddd-471e-8d08-9cff33cd7b6a",
+      "name": "Oppfølgingskjema",
+      "kildeId": "ed052089-4148-48cd-9987-a1803dfa5c2b",
+      "delkildeId": null,
+      "count": 245
+    },
+    {
+      "id": "e441cf5f-fa2c-43da-afea-2576aa28c379",
+      "name": "Oppfølgingskonsultasjon",
+      "kildeId": "f7e53f99-a6e4-438e-bb8b-d0b20e0bb53f",
+      "delkildeId": null,
+      "count": 100
+    },
+    {
+      "id": "193e5349-ff2a-4e8f-837b-f178e7c7c864",
+      "name": "Oppfølgingsmodul for bruk av opioider (Opioid)",
+      "kildeId": "341a466e-4a85-4efc-9178-f6975cfdc20a",
+      "delkildeId": null,
+      "count": 43
+    },
+    {
+      "id": "f7388ce8-d975-4544-b8bc-bac055a2825f",
+      "name": "Oppfølgingsskjema",
+      "kildeId": "dd0f2c07-8747-4ab8-a5e9-54f71be9ea8b",
+      "delkildeId": null,
+      "count": 137
+    },
+    {
+      "id": "e41c4b74-43dc-41b2-808d-4fdc1ab56cdb",
+      "name": "Oppfølgingsskjema for Norsk hjerneslagregister",
+      "kildeId": "ebf5b741-09da-4075-807d-e34e7520d83d",
+      "delkildeId": null,
+      "count": 118
+    },
+    {
+      "id": "f6cea8a7-4079-4127-98eb-fbd14524cb81",
+      "name": "Oppfølgingsskjema ved mulig proteseinfeksjon",
+      "kildeId": "f98ea56d-c361-4668-92f4-4719f2c51525",
+      "delkildeId": null,
+      "count": 49
+    },
+    {
+      "id": "50fad455-d2dd-4673-bdb9-7965fa113b19",
+      "name": "Pandemiskjema",
+      "kildeId": "f8d507ae-ef6c-4c44-8ce5-e33c90c61142",
+      "delkildeId": null,
+      "count": 102
+    },
+    {
+      "id": "1ea5c249-e3d4-42d0-8e2e-4d092f9ef696",
+      "name": "Pasient",
+      "kildeId": "19751155-aa28-4c90-b60f-ec1bfc993666",
+      "delkildeId": null,
+      "count": 24
+    },
+    {
+      "id": "8655c679-3da5-41f2-a6b8-9e52bc002254",
+      "name": "Pasient",
+      "kildeId": "e6b863c9-8269-4e10-a80b-a818d0251082",
+      "delkildeId": null,
+      "count": 12
+    },
+    {
+      "id": "69732cea-8eee-41cf-afe4-077776f94b95",
+      "name": "Pasientforløp",
+      "kildeId": "7ff47601-4eba-4669-b65e-af8180317fba",
+      "delkildeId": null,
+      "count": 136
+    },
+    {
+      "id": "a520965c-1df0-4c44-bbd4-7e152e2df9fc",
+      "name": "Pasientopplysninger",
+      "kildeId": "f20fbd43-9dce-4540-86c9-1d50612eb241",
+      "delkildeId": null,
+      "count": 7
+    },
+    {
+      "id": "e531809f-4002-481c-9ea3-53bc69e61d23",
+      "name": "Pasientregistreringsskjema (Pasreg)",
+      "kildeId": "341a466e-4a85-4efc-9178-f6975cfdc20a",
+      "delkildeId": null,
+      "count": 9
+    },
+    {
+      "id": "5bbbc634-c3cb-49b5-b277-11a7d0172ea0",
+      "name": "Pasientserie",
+      "kildeId": "0853eba6-c7cb-4b78-a8db-ccd98eaa675a",
+      "delkildeId": null,
+      "count": 150
+    },
+    {
+      "id": "0a5f303e-7440-48e5-8588-1b2c89a60be5",
+      "name": "Pasientserie etter 6 måneder",
+      "kildeId": "0853eba6-c7cb-4b78-a8db-ccd98eaa675a",
+      "delkildeId": null,
+      "count": 64
+    },
+    {
+      "id": "c2e89232-919b-4ec5-9349-44d490d3b639",
+      "name": "Pasientskjema",
+      "kildeId": "dd0f2c07-8747-4ab8-a5e9-54f71be9ea8b",
+      "delkildeId": null,
+      "count": 141
+    },
+    {
+      "id": "e42e2228-7b13-4d84-9020-ea1d78da2b37",
+      "name": "Pasientskjema 12 måneder etter behandling",
+      "kildeId": "607bca83-104b-4f11-9b97-3683a41de75c",
+      "delkildeId": null,
+      "count": 82
+    },
+    {
+      "id": "753ad29f-72ab-466d-8b72-f3366eacaa1f",
+      "name": "Pasientskjema 30 dager postoperativt",
+      "kildeId": "5c66033c-151a-4373-843c-0b3e34131d13",
+      "delkildeId": null,
+      "count": 44
+    },
+    {
+      "id": "7263d42a-0cfd-40df-a626-e135077d39c2",
+      "name": "Pasientskjema 6 måneder etter behandling",
+      "kildeId": "607bca83-104b-4f11-9b97-3683a41de75c",
+      "delkildeId": null,
+      "count": 82
+    },
+    {
+      "id": "da7f051e-08d1-44f2-9380-2382bacbed30",
+      "name": "Pasientskjema 6 måneder postoperativt",
+      "kildeId": "5c66033c-151a-4373-843c-0b3e34131d13",
+      "delkildeId": null,
+      "count": 32
+    },
+    {
+      "id": "9f3aeeb1-dcfe-46d6-a6d7-78344598f000",
+      "name": "Pasientskjema dag 1 etter koloskopi",
+      "kildeId": "86bd0b8a-6030-4452-be08-5796609fdbc9",
+      "delkildeId": null,
+      "count": 23
+    },
+    {
+      "id": "c049e5b8-0e74-42cc-a3e6-90b4beb127fe",
+      "name": "Pasientskjema dag 30 etter koloskopi",
+      "kildeId": "86bd0b8a-6030-4452-be08-5796609fdbc9",
+      "delkildeId": null,
+      "count": 26
+    },
+    {
+      "id": "bd01f7c9-4694-4fe5-adc9-c69998cfaea8",
+      "name": "Pasientskjema før behandling",
+      "kildeId": "607bca83-104b-4f11-9b97-3683a41de75c",
+      "delkildeId": null,
+      "count": 199
+    },
+    {
+      "id": "2b6dacd7-ab68-412d-abd4-a4cf42e98a23",
+      "name": "Pasientsvar",
+      "kildeId": "67e5cbed-1304-4b76-8049-4fe72013ec00",
+      "delkildeId": null,
+      "count": 38
+    },
+    {
+      "id": "44a4bb50-70e0-41c9-8233-aec79d405212",
+      "name": "Pasientsvar",
+      "kildeId": "e67d581d-718e-45ba-9789-fa7c3d02fd19",
+      "delkildeId": null,
+      "count": 87
+    },
+    {
+      "id": "10f55b4e-a7eb-46b3-85e6-ff00524bc127",
+      "name": "Pasientsvar 6 måneder",
+      "kildeId": "fc099d07-372e-44db-8a01-70da1eca15af",
+      "delkildeId": null,
+      "count": 46
+    },
+    {
+      "id": "d6cbd91d-461a-4485-8a52-d0d6c7da4403",
+      "name": "Pasientsvar barn",
+      "kildeId": "6d412432-9589-476a-b7c1-ce595e844e3a",
+      "delkildeId": null,
+      "count": 27
+    },
+    {
+      "id": "3bfea39c-b010-41cd-aa56-60dd117721ed",
+      "name": "Pasientsvar foresatte",
+      "kildeId": "6d412432-9589-476a-b7c1-ce595e844e3a",
+      "delkildeId": null,
+      "count": 27
+    },
+    {
+      "id": "3a861140-3dcb-4ce9-ae3a-725c19fcb7e1",
+      "name": "Pasientsvar PREM",
+      "kildeId": "01bb0258-4fc3-4ebe-bd6f-6b4fe77a9175",
+      "delkildeId": null,
+      "count": 37
+    },
+    {
+      "id": "62345481-0df6-4878-a8dc-9db30ea4ba10",
+      "name": "Peroperativ mikrobe resistens skjema",
+      "kildeId": "f98ea56d-c361-4668-92f4-4719f2c51525",
+      "delkildeId": null,
+      "count": 32
+    },
+    {
+      "id": "ac33cca6-2e87-463b-84cf-5f4127445df1",
+      "name": "Peroperativt skjema",
+      "kildeId": "5c66033c-151a-4373-843c-0b3e34131d13",
+      "delkildeId": null,
+      "count": 74
+    },
+    {
+      "id": "505dc35f-477a-4da9-a641-0ec5badfc463",
+      "name": "Personopplysninger",
+      "kildeId": "cbc299e9-3820-4ef3-8049-58839d7d725c",
+      "delkildeId": null,
+      "count": 3
+    },
+    {
+      "id": "6d379b19-c86c-4c46-93d8-eca7f6b7e986",
+      "name": "Personopplysninger",
+      "kildeId": "fdb28bbc-057b-49f2-90f8-7da58978068a",
+      "delkildeId": null,
+      "count": 4
+    },
+    {
+      "id": "9629ae4f-c00a-4f56-8e25-79f33f6df359",
+      "name": "Personopplysninger (PO)",
+      "kildeId": "341a466e-4a85-4efc-9178-f6975cfdc20a",
+      "delkildeId": null,
+      "count": 18
+    },
+    {
+      "id": "df90bd86-1c64-416b-92dc-e85cb7aafe86",
+      "name": "Personskade- og ulykkesdata ",
+      "kildeId": "e6b863c9-8269-4e10-a80b-a818d0251082",
+      "delkildeId": null,
+      "count": 11
+    },
+    {
+      "id": "d5454750-4ff6-434f-992d-9838ca7b9356",
+      "name": "Plastikkirurgi - Operasjon",
+      "kildeId": "7c467147-de07-4c14-91ed-f86b9240f452",
+      "delkildeId": null,
+      "count": 103
+    },
+    {
+      "id": "04eb1c70-eb68-4b75-877f-ea894bfa4bbc",
+      "name": "Plastikkirurgi - Oppfølging",
+      "kildeId": "7c467147-de07-4c14-91ed-f86b9240f452",
+      "delkildeId": null,
+      "count": 61
+    },
+    {
+      "id": "5eee6e0c-770e-411e-b831-31898841fe5d",
+      "name": "Prehospital hjertestans",
+      "kildeId": "1de9357a-f00e-424d-aaf0-46bee77a21f7",
+      "delkildeId": null,
+      "count": 150
+    },
+    {
+      "id": "a941805d-df26-44c4-a4cb-13fe4f9eed9f",
+      "name": "Preoperativ behandlerskjema",
+      "kildeId": "df1d9068-daf9-4897-9827-69dc85123385",
+      "delkildeId": null,
+      "count": 65
+    },
+    {
+      "id": "26c2a607-7c96-4db5-abbf-38f1924967f7",
+      "name": "Preoperativ mikrobe resistens skjema",
+      "kildeId": "f98ea56d-c361-4668-92f4-4719f2c51525",
+      "delkildeId": null,
+      "count": 32
+    },
+    {
+      "id": "9ffe8ec7-30e4-4650-84bd-33bb16806643",
+      "name": "Preoperativ pasientskjema (PROM)",
+      "kildeId": "df1d9068-daf9-4897-9827-69dc85123385",
+      "delkildeId": null,
+      "count": 63
+    },
+    {
+      "id": "f587cfad-1e04-4563-bc1e-b2f55db396ed",
+      "name": "Preoperativ PROM",
+      "kildeId": "f98ea56d-c361-4668-92f4-4719f2c51525",
+      "delkildeId": null,
+      "count": 31
+    },
+    {
+      "id": "de8a9328-8ce2-4dea-a5cb-000a232c891f",
+      "name": "PROM",
+      "kildeId": "84760152-df65-4aca-92cf-d76093f288bf",
+      "delkildeId": null,
+      "count": 55
+    },
+    {
+      "id": "e6521d8e-5762-4add-8fdf-61ca4362cd3f",
+      "name": "Prom - oppfølgingsskjema",
+      "kildeId": "93060d20-26e0-4997-a505-5ab512291c48",
+      "delkildeId": null,
+      "count": 87
+    },
+    {
+      "id": "f89065b8-701f-4fd5-a12f-da3724260a3b",
+      "name": "Prom - skjema",
+      "kildeId": "93060d20-26e0-4997-a505-5ab512291c48",
+      "delkildeId": null,
+      "count": 89
+    },
+    {
+      "id": "cb6c6905-aad9-456c-9fb0-360c4f9065fa",
+      "name": "PROM 1 og 5 år etter behandling",
+      "kildeId": "df1d9068-daf9-4897-9827-69dc85123385",
+      "delkildeId": null,
+      "count": 49
+    },
+    {
+      "id": "858d606b-b301-4b79-bb67-f1a1a2d39829",
+      "name": "PROMS",
+      "kildeId": "1de9357a-f00e-424d-aaf0-46bee77a21f7",
+      "delkildeId": null,
+      "count": 57
+    },
+    {
+      "id": "35c500b4-e1db-404a-97c6-0cbaa493813e",
+      "name": "Prosedyre",
+      "kildeId": "fdb28bbc-057b-49f2-90f8-7da58978068a",
+      "delkildeId": null,
+      "count": 89
+    },
+    {
+      "id": "1eeadef7-d3ae-4cf0-85fe-9da7ed2bbd6c",
+      "name": "RAND36 1 år postop. pasientskjema",
+      "kildeId": "19751155-aa28-4c90-b60f-ec1bfc993666",
+      "delkildeId": null,
+      "count": 39
+    },
+    {
+      "id": "ac42a912-f203-47ce-a97c-9f3cb20ebf79",
+      "name": "RAND36 3 år postop. pasientskjema",
+      "kildeId": "19751155-aa28-4c90-b60f-ec1bfc993666",
+      "delkildeId": null,
+      "count": 39
+    },
+    {
+      "id": "7436b3e0-b578-401c-8a20-a279a7a8d93f",
+      "name": "RAND36 preop. pasientskjema",
+      "kildeId": "19751155-aa28-4c90-b60f-ec1bfc993666",
+      "delkildeId": null,
+      "count": 39
+    },
+    {
+      "id": "4f5a3da3-afbf-4dff-9e90-56d7c437e058",
+      "name": "Registration of quality of life",
+      "kildeId": "228275bd-75fc-4e57-94a3-02831deea00f",
+      "delkildeId": null,
+      "count": 33
+    },
+    {
+      "id": "1fe5aaa9-af74-4ffd-81ee-09259011cea5",
+      "name": "Registrering/Indeksopphold",
+      "kildeId": "cbc299e9-3820-4ef3-8049-58839d7d725c",
+      "delkildeId": null,
+      "count": 47
+    },
+    {
+      "id": "fa897850-3e58-4384-838a-81d741508be2",
+      "name": "Reinnleggelse/oppfølging",
+      "kildeId": "cbc299e9-3820-4ef3-8049-58839d7d725c",
+      "delkildeId": null,
+      "count": 18
+    },
+    {
+      "id": "9e366356-56f3-48fc-941a-99851a2400f7",
+      "name": "Rekvirentopplysninger",
+      "kildeId": "0e9b8460-0f14-4be0-b677-dd3b7ad2bfa6",
+      "delkildeId": null,
+      "count": 13
+    },
+    {
+      "id": "6d31b8c7-ba8c-4bba-a0fe-5c4cc8ff302f",
+      "name": "ReseptregisteretUtlevering",
+      "kildeId": "64976651-aaf5-47f8-9fcd-f76648be18a7",
+      "delkildeId": null,
+      "count": 55
+    },
+    {
+      "id": "bf3a057e-7a4f-4c86-a56c-025c7008232f",
+      "name": "Rygg 12 mnd postoperativt pasientskjema",
+      "kildeId": "cea45317-e41f-49ee-8cde-0d8322844d69",
+      "delkildeId": null,
+      "count": 48
+    },
+    {
+      "id": "8725bd0f-c767-4c21-9c30-8189faa14c79",
+      "name": "Rygg 3 mnd postoperativt pasientskjema",
+      "kildeId": "cea45317-e41f-49ee-8cde-0d8322844d69",
+      "delkildeId": null,
+      "count": 48
+    },
+    {
+      "id": "dd674568-c6df-4341-bdf5-90e14fb36b90",
+      "name": "Rygg Perioperativt legeskjema",
+      "kildeId": "cea45317-e41f-49ee-8cde-0d8322844d69",
+      "delkildeId": null,
+      "count": 179
+    },
+    {
+      "id": "eb47d118-6b84-4c5e-8946-29dbe6d66508",
+      "name": "Rygg Personopplysninger",
+      "kildeId": "cea45317-e41f-49ee-8cde-0d8322844d69",
+      "delkildeId": null,
+      "count": 21
+    },
+    {
+      "id": "2d6d356e-0e34-484f-b1a5-4b93a3a86966",
+      "name": "Rygg Preoperativt pasientskjema",
+      "kildeId": "cea45317-e41f-49ee-8cde-0d8322844d69",
+      "delkildeId": null,
+      "count": 71
+    },
+    {
+      "id": "32a0ac7e-1beb-41c1-907c-96c94d0e5802",
+      "name": "S vitamin D",
+      "kildeId": "3c834f36-d7fb-4dc5-9e96-c9ae25c87944",
+      "delkildeId": null,
+      "count": 8
+    },
+    {
+      "id": "6cac7347-105c-434d-9065-36632311970c",
+      "name": "Samtykkeskjema",
+      "kildeId": "c845d7b2-5fb6-41ea-9f17-b125ee65bf55",
+      "delkildeId": null,
+      "count": 25
+    },
+    {
+      "id": "fbeee027-bcdf-4daf-ae92-3fc16a494c51",
+      "name": "Samtykkeskjema",
+      "kildeId": "e67d581d-718e-45ba-9789-fa7c3d02fd19",
+      "delkildeId": null,
+      "count": 4
+    },
+    {
+      "id": "4d700443-2468-4ce0-bf39-7f57bcf9314c",
+      "name": "SDMT",
+      "kildeId": "3c834f36-d7fb-4dc5-9e96-c9ae25c87944",
+      "delkildeId": null,
+      "count": 9
+    },
+    {
+      "id": "cdf04b30-4cba-4a43-bf0e-aaa07de5f735",
+      "name": "Seks måneder",
+      "kildeId": "f8d507ae-ef6c-4c44-8ce5-e33c90c61142",
+      "delkildeId": null,
+      "count": 213
+    },
+    {
+      "id": "bfd72c24-de95-4efd-bfc7-b3e8c9f85837",
+      "name": "Seks måneder (intensiv)",
+      "kildeId": "f8d507ae-ef6c-4c44-8ce5-e33c90c61142",
+      "delkildeId": null,
+      "count": 167
+    },
+    {
+      "id": "04fe0bb2-7a04-47fd-916e-021ce01f2df2",
+      "name": "SelvrapportertAlvorligInfeksjonSkjema",
+      "kildeId": "cd1e21f9-8940-40d9-8f57-932ca15c6082",
+      "delkildeId": null,
+      "count": 10
+    },
+    {
+      "id": "379226d1-a9ab-41d8-af2b-7a181e9a8e1d",
+      "name": "Sfinkterplastikk perioperativ legeskjema ",
+      "kildeId": "df1d9068-daf9-4897-9827-69dc85123385",
+      "delkildeId": null,
+      "count": 20
+    },
+    {
+      "id": "9f2255c2-12e0-4500-b83b-76ec5840f81c",
+      "name": "Skadegraderingskjema",
+      "kildeId": "fc099d07-372e-44db-8a01-70da1eca15af",
+      "delkildeId": null,
+      "count": 52
+    },
+    {
+      "id": "80405266-4467-4c0d-a8a4-e9b76b6f5958",
+      "name": "Skulder PROM skjema",
+      "kildeId": "f98ea56d-c361-4668-92f4-4719f2c51525",
+      "delkildeId": null,
+      "count": 79
+    },
+    {
+      "id": "e1c7465d-f849-4956-911f-a00bf1d7c812",
+      "name": "Sluttskjema Behandler (B 2.2)",
+      "kildeId": "341a466e-4a85-4efc-9178-f6975cfdc20a",
+      "delkildeId": null,
+      "count": 162
+    },
+    {
+      "id": "24370132-9468-4cea-8a45-d4d50cce777c",
+      "name": "Smerteregistreringsskjema ved første tilsyn (B 1.2)",
+      "kildeId": "341a466e-4a85-4efc-9178-f6975cfdc20a",
+      "delkildeId": null,
+      "count": 8
+    },
+    {
+      "id": "e26ff7b1-ea72-4399-99a9-318e68ed449f",
+      "name": "Smerteregistreringsskjema ved siste tilsyn (B 2.1)",
+      "kildeId": "341a466e-4a85-4efc-9178-f6975cfdc20a",
+      "delkildeId": null,
+      "count": 8
+    },
+    {
+      "id": "ba5d267d-d677-4a19-afc2-c5bcc1adc490",
+      "name": "SNM perioperativ legeskjema",
+      "kildeId": "df1d9068-daf9-4897-9827-69dc85123385",
+      "delkildeId": null,
+      "count": 62
+    },
+    {
+      "id": "704025dc-b4b4-4d3b-a900-c347f431ae0e",
+      "name": "Somatiske sykehusopphold",
+      "kildeId": "70e2d67b-5f09-4496-9b80-aad3626b533b",
+      "delkildeId": null,
+      "count": 46
+    },
+    {
+      "id": "41dab636-c03f-4b46-a364-5d38779cd889",
+      "name": "Spaltemorfologi",
+      "kildeId": "7c467147-de07-4c14-91ed-f86b9240f452",
+      "delkildeId": null,
+      "count": 43
+    },
+    {
+      "id": "f9ece99d-d2d1-4cdf-90ab-1a9a63636cfe",
+      "name": "Spinal Cord Injury Core Data Set",
+      "kildeId": "228275bd-75fc-4e57-94a3-02831deea00f",
+      "delkildeId": null,
+      "count": 108
+    },
+    {
+      "id": "35920408-34ad-46eb-8638-af8df682acf0",
+      "name": "Spørreskjema 1",
+      "kildeId": "9aa0ee60-5eb1-4639-a33d-63f4dcc4fcd1",
+      "delkildeId": "5f5e440a-29c3-4126-beb9-320f9a390651",
+      "count": 284
+    },
+    {
+      "id": "64320ed8-aa1d-4d78-a44b-cfe91c3f6e58",
+      "name": "Spørreskjema 30 dager før konsultasjon (Proms)",
+      "kildeId": "01cb3a00-417f-4874-a2f8-61991768e390",
+      "delkildeId": null,
+      "count": 112
+    },
+    {
+      "id": "45c82adc-ce11-4d75-aaff-c347778da823",
+      "name": "Spørreskjema PLHIV",
+      "kildeId": "c845d7b2-5fb6-41ea-9f17-b125ee65bf55",
+      "delkildeId": null,
+      "count": 44
+    },
+    {
+      "id": "9b304e5d-362d-4dae-b88e-5c31dd943485",
+      "name": "Startskjema",
+      "kildeId": "f20fbd43-9dce-4540-86c9-1d50612eb241",
+      "delkildeId": "0c0b5b3a-16db-4fd8-bd6e-166e4eb0f1f1",
+      "count": 25
+    },
+    {
+      "id": "cb1b6727-b931-4142-a979-a881efdabc64",
+      "name": "Startskjema Behandler (B 1.1)",
+      "kildeId": "341a466e-4a85-4efc-9178-f6975cfdc20a",
+      "delkildeId": null,
+      "count": 132
+    },
+    {
+      "id": "7d39a092-d4db-4427-8fc1-0a72a18813e8",
+      "name": "Startskjema Operasjon",
+      "kildeId": "7c467147-de07-4c14-91ed-f86b9240f452",
+      "delkildeId": null,
+      "count": 47
+    },
+    {
+      "id": "0f61bd5e-3538-4a70-bb49-7e8ea8cb3c2a",
+      "name": "Status om din alvorlige hodepine",
+      "kildeId": "e67d581d-718e-45ba-9789-fa7c3d02fd19",
+      "delkildeId": null,
+      "count": 20
+    },
+    {
+      "id": "3c04f8c7-7c13-40db-b675-096b5a9b6971",
+      "name": "Svar fra pasienten",
+      "kildeId": "cd1e21f9-8940-40d9-8f57-932ca15c6082",
+      "delkildeId": null,
+      "count": 158
+    },
+    {
+      "id": "3e7a23c2-b65c-48c2-bdc7-277a884e34aa",
+      "name": "SysvakUtlevering",
+      "kildeId": "f8a20e5d-f459-45b7-b20a-304ae9e991f2",
+      "delkildeId": null,
+      "count": 56
+    },
+    {
+      "id": "16c6b3af-4dbd-4c54-9497-80a5d9a51da1",
+      "name": "Tilbakeføringskjema",
+      "kildeId": "fc099d07-372e-44db-8a01-70da1eca15af",
+      "delkildeId": null,
+      "count": 82
+    },
+    {
+      "id": "17fa33bd-2d60-432c-a7d7-0d44a4b29d36",
+      "name": "Tilbakeføringsskjema",
+      "kildeId": "dd0f2c07-8747-4ab8-a5e9-54f71be9ea8b",
+      "delkildeId": null,
+      "count": 73
+    },
+    {
+      "id": "ca76a720-07cf-4e86-a378-9d2f0a9d86e2",
+      "name": "Tilleggsopplysninger (TO)",
+      "kildeId": "341a466e-4a85-4efc-9178-f6975cfdc20a",
+      "delkildeId": null,
+      "count": 11
+    },
+    {
+      "id": "3c63ed10-e1b9-4529-bf2f-225275b3509d",
+      "name": "To år",
+      "kildeId": "f8d507ae-ef6c-4c44-8ce5-e33c90c61142",
+      "delkildeId": null,
+      "count": 249
+    },
+    {
+      "id": "19074fb6-9387-4fab-b720-a5278fc73eda",
+      "name": "Traumeskjema",
+      "kildeId": "fc099d07-372e-44db-8a01-70da1eca15af",
+      "delkildeId": null,
+      "count": 235
+    },
+    {
+      "id": "9299fd61-eb60-4ae3-85fe-e1408ade627a",
+      "name": "Tre måneder",
+      "kildeId": "f8d507ae-ef6c-4c44-8ce5-e33c90c61142",
+      "delkildeId": null,
+      "count": 184
+    },
+    {
+      "id": "53840b69-29f7-40d2-a4cb-e3fc1434fd55",
+      "name": "Trombektomiskjema for Norsk hjerneslagregister",
+      "kildeId": "ebf5b741-09da-4075-807d-e34e7520d83d",
+      "delkildeId": null,
+      "count": 97
+    },
+    {
+      "id": "3ca79c7e-f475-47cf-bae2-46b2de9865dc",
+      "name": "Tromsø1 - Den første Tromsøundersøkelsen",
+      "kildeId": "b37d66c3-d2a4-4e58-b13e-12f96d38e9f3",
+      "delkildeId": null,
+      "count": 72
+    },
+    {
+      "id": "515fa447-b65d-49eb-afcf-d17701d0902e",
+      "name": "Tromsø2 - Den andre Tromsøundersøkelsen",
+      "kildeId": "b37d66c3-d2a4-4e58-b13e-12f96d38e9f3",
+      "delkildeId": null,
+      "count": 171
+    },
+    {
+      "id": "85fdc669-0511-4c3f-8acc-0f7fbf7f43fc",
+      "name": "Tromsø3 - Den tredje Tromsøundersøkelsen",
+      "kildeId": "b37d66c3-d2a4-4e58-b13e-12f96d38e9f3",
+      "delkildeId": null,
+      "count": 293
+    },
+    {
+      "id": "08010ed0-ec9a-47be-87d9-a53f09847fa2",
+      "name": "Tromsø4 - Den fjerde Tromsøundersøkelsen - andre besøk",
+      "kildeId": "b37d66c3-d2a4-4e58-b13e-12f96d38e9f3",
+      "delkildeId": "53d58540-a5d0-4806-9635-096b9b2fc70d",
+      "count": 230
+    },
+    {
+      "id": "f2c193fe-ccd9-43c8-8de7-4f00960431f2",
+      "name": "Tromsø4 - Den fjerde Tromsøundersøkelsen - føste besøk",
+      "kildeId": "b37d66c3-d2a4-4e58-b13e-12f96d38e9f3",
+      "delkildeId": "53d58540-a5d0-4806-9635-096b9b2fc70d",
+      "count": 570
+    },
+    {
+      "id": "be0c142f-6fbc-4ef2-b95f-d662ee33e1a7",
+      "name": "Tromsø5 - Den femte Tromsøundersøkelsen - andre besøk",
+      "kildeId": "b37d66c3-d2a4-4e58-b13e-12f96d38e9f3",
+      "delkildeId": "5d918571-ae1a-41bf-ac56-56c65e6c7b04",
+      "count": 442
+    },
+    {
+      "id": "5c5e4aa3-aa3c-47ba-a1b7-55398d8ea7e1",
+      "name": "Tromsø5 - Den femte Tromsøundersøkelsen - første besøk",
+      "kildeId": "b37d66c3-d2a4-4e58-b13e-12f96d38e9f3",
+      "delkildeId": "5d918571-ae1a-41bf-ac56-56c65e6c7b04",
+      "count": 624
+    },
+    {
+      "id": "c0ab0929-0cb2-4191-901e-bbc824b2c0de",
+      "name": "Tromsø6 - Den sjette Tromsøundersøkelsen - andre besøk",
+      "kildeId": "b37d66c3-d2a4-4e58-b13e-12f96d38e9f3",
+      "delkildeId": "db784dca-0f4a-4fc5-81bf-d1c0a57b3c1f",
+      "count": 1593
+    },
+    {
+      "id": "6acd1e12-1c1e-4342-9f90-7682aedbf585",
+      "name": "Tromsø6 - Den sjette Tromsøundersøkelsen første besøk",
+      "kildeId": "b37d66c3-d2a4-4e58-b13e-12f96d38e9f3",
+      "delkildeId": "db784dca-0f4a-4fc5-81bf-d1c0a57b3c1f",
+      "count": 1066
+    },
+    {
+      "id": "3b9a812b-c54c-4547-9c2c-af7eeee4b1da",
+      "name": "Tromsø7 - Den sjuende Tromsøundersøkelsen - andre besøk",
+      "kildeId": "b37d66c3-d2a4-4e58-b13e-12f96d38e9f3",
+      "delkildeId": "de056903-7b6d-401f-9aa0-e245fd7f0235",
+      "count": 3599
+    },
+    {
+      "id": "4a6971d4-1c59-4693-a150-5cfde7a3fba4",
+      "name": "Tromsø7 - Den sjuende Tromsøundersøkelsen - første besøk",
+      "kildeId": "b37d66c3-d2a4-4e58-b13e-12f96d38e9f3",
+      "delkildeId": "de056903-7b6d-401f-9aa0-e245fd7f0235",
+      "count": 4068
+    },
+    {
+      "id": "6cb74476-3ac1-421e-b3b4-6422072f08ca",
+      "name": "TSS-2 4 uker postop. pasientskjema",
+      "kildeId": "19751155-aa28-4c90-b60f-ec1bfc993666",
+      "delkildeId": null,
+      "count": 15
+    },
+    {
+      "id": "f48f4ea0-a000-4f66-b71b-865083812b5f",
+      "name": "Tvang i psykisk helsevern ",
+      "kildeId": "e6b863c9-8269-4e10-a80b-a818d0251082",
+      "delkildeId": null,
+      "count": 11
+    },
+    {
+      "id": "519aa8a6-1952-4504-b82c-96dff939b016",
+      "name": "Utredningskjema",
+      "kildeId": "67e5cbed-1304-4b76-8049-4fe72013ec00",
+      "delkildeId": null,
+      "count": 230
+    },
+    {
+      "id": "07f35cda-4bf5-41b3-8cb3-b74c9bd8469b",
+      "name": "Utredningskjema",
+      "kildeId": "01bb0258-4fc3-4ebe-bd6f-6b4fe77a9175",
+      "delkildeId": null,
+      "count": 244
+    },
+    {
+      "id": "50f9f6fb-b712-42de-83fe-f92d7d611a95",
+      "name": "Utreise",
+      "kildeId": "628cf233-cc22-4311-87ea-110278e3bc8a",
+      "delkildeId": null,
+      "count": 32
+    },
+    {
+      "id": "2e7971cb-b728-479f-aab0-6f6a7b8eaa9f",
+      "name": "Utskrivelsesskjema",
+      "kildeId": "f20fbd43-9dce-4540-86c9-1d50612eb241",
+      "delkildeId": "0c0b5b3a-16db-4fd8-bd6e-166e4eb0f1f1",
+      "count": 10
+    },
+    {
+      "id": "c50db470-e053-45d2-b094-dec71b8bda45",
+      "name": "Utskrivelsesskjema (TAVI)",
+      "kildeId": "f20fbd43-9dce-4540-86c9-1d50612eb241",
+      "delkildeId": "f6edd81c-0567-49f8-bc15-494f68ac3852",
+      "count": 17
+    },
+    {
+      "id": "a0503b7c-61c8-467d-967a-6c22d1655f8e",
+      "name": "UtskrivningSkjema",
+      "kildeId": "f8d507ae-ef6c-4c44-8ce5-e33c90c61142",
+      "delkildeId": null,
+      "count": 56
+    },
+    {
+      "id": "8cbed043-ad3d-469e-8463-05c73b282fee",
+      "name": "Vaksiner",
+      "kildeId": "c845d7b2-5fb6-41ea-9f17-b125ee65bf55",
+      "delkildeId": null,
+      "count": 29
+    },
+    {
+      "id": "01bf43c6-40f7-42b3-af67-a452ce0ea4e6",
+      "name": "VaskulittIntervensjonSkjema",
+      "kildeId": "cd1e21f9-8940-40d9-8f57-932ca15c6082",
+      "delkildeId": null,
+      "count": 24
+    },
+    {
+      "id": "0432df53-7d9c-40d2-a51b-3ea39bcf1a05",
+      "name": "VdiSkjema",
+      "kildeId": "cd1e21f9-8940-40d9-8f57-932ca15c6082",
+      "delkildeId": null,
+      "count": 68
+    },
+    {
+      "id": "24373682-8661-4832-914a-b5a1627c0b21",
+      "name": "Venteliste og pasientrettigheter",
+      "kildeId": "e6b863c9-8269-4e10-a80b-a818d0251082",
+      "delkildeId": null,
+      "count": 38
+    },
+    {
+      "id": "d1b66da9-d164-4af0-8f86-41f570413ce9",
+      "name": "Ventilatorregistrering år 0",
+      "kildeId": "bcac95d2-458f-4fe3-a8e5-250e754bcb22",
+      "delkildeId": null,
+      "count": 66
+    },
+    {
+      "id": "1442c3fa-ac96-45bd-ab4c-628a848255f3",
+      "name": "Ventilatorregistrering oppfølging ",
+      "kildeId": "bcac95d2-458f-4fe3-a8e5-250e754bcb22",
+      "delkildeId": null,
+      "count": 56
+    },
+    {
+      "id": "853b4da0-6a8e-41c0-bfd8-baf096eeaa86",
+      "name": "Vital status",
+      "kildeId": "3c834f36-d7fb-4dc5-9e96-c9ae25c87944",
+      "delkildeId": null,
+      "count": 14
+    },
+    {
+      "id": "02d5290a-df03-48f7-88e0-0f367a6c1f91",
+      "name": "Voksen hofter",
+      "kildeId": "4b883f17-5cee-4c86-a879-688a07a50ec4",
+      "delkildeId": null,
+      "count": 214
+    },
+    {
+      "id": "dedb6894-254f-40a8-9f05-1474b4a6db0b",
+      "name": "Voksenhofte PROMS",
+      "kildeId": "4b883f17-5cee-4c86-a879-688a07a50ec4",
+      "delkildeId": null,
+      "count": 46
     }
   ],
   "datatyper": [
     {
       "value": "1",
       "displayName": "String",
-      "count": 3897
+      "count": 5094
     },
     {
       "value": "10",
       "displayName": "Fødselsnummer (11 siffer)",
-      "count": 10
+      "count": 12
     },
     {
       "value": "2",
       "displayName": "Integer",
-      "count": 9145
+      "count": 17212
     },
     {
       "value": "3",
       "displayName": "Decimal",
-      "count": 2065
+      "count": 4404
     },
     {
       "value": "4",
       "displayName": "Boolean",
-      "count": 2164
+      "count": 3591
     },
     {
       "value": "6",
       "displayName": "Date",
-      "count": 266
+      "count": 377
     },
     {
       "value": "7",
       "displayName": "Datetime",
-      "count": 681
+      "count": 1101
     }
   ],
   "helsefagligKodeverk": [
-    {
-      "kortNavn": "PHBU",
-      "fulltNavn": "Multiaksial klassifikasjon i psykisk helsevern for barn og unge",
-      "count": 6
-    },
     {
       "kortNavn": "ICD-10",
       "fulltNavn": "Den internasjonale statistiske klassifikasjonen av sykdommer og beslektede helseproblemer. Versjon 10",
@@ -403,232 +2603,133 @@
       "kortNavn": "NCMP-NCSP-NCRP",
       "fulltNavn": "Norsk klinisk prosedyrekodeverk",
       "count": 3
-    },
-    {
-      "kortNavn": "ATC",
-      "fulltNavn": "Anatomisk Terapeutisk Kjemisk legemiddelregister",
-      "count": 1
     }
   ],
   "administrativtKodeverk": [
     {
-      "oid": "3402",
-      "navn": "Kommunenummer",
-      "count": 12
-    },
-    {
-      "oid": "1101",
-      "navn": "Ja, nei",
-      "count": 8
-    },
-    {
-      "oid": "1103",
-      "navn": "Ja, nei, ukjent",
-      "count": 7
-    },
-    {
       "oid": "3101",
       "navn": "Kjønn",
-      "count": 7
+      "count": 1
     },
     {
-      "oid": "8404",
-      "navn": "Tjenester og vesen",
-      "count": 4
+      "oid": "3402",
+      "navn": "Kommunenummer",
+      "count": 1
     },
     {
-      "oid": "8406",
-      "navn": "Omsorgsnivå",
-      "count": 3
-    },
-    {
-      "oid": "8451",
-      "navn": "Fagområde",
-      "count": 3
-    },
-    {
-      "oid": "8408",
-      "navn": "Sted",
-      "count": 2
-    },
-    {
-      "oid": "8444",
-      "navn": "Rett til helsehjelp",
-      "count": 2
-    },
-    {
-      "oid": "8445",
-      "navn": "Ventetid sluttkode",
-      "count": 2
-    },
-    {
-      "oid": "7424",
-      "navn": "Preparattype legemiddel",
-      "count": 2
-    },
-    {
-      "oid": "7426",
-      "navn": "Helsepersonellregisterets (HPR) klassifikasjon av spesialiteter",
-      "count": 2
+      "oid": "3403",
+      "navn": "Bydelsnummer",
+      "count": 1
     },
     {
       "oid": "3404",
       "navn": "Fylker i Norge",
-      "count": 2
-    },
-    {
-      "oid": "8426",
-      "navn": "Debitor",
-      "count": 2
-    },
-    {
-      "oid": "8485",
-      "navn": null,
-      "count": 2
-    },
-    {
-      "oid": "8486",
-      "navn": null,
-      "count": 2
-    },
-    {
-      "oid": "9060",
-      "navn": "Kategori helsepersonell",
-      "count": 2
-    },
-    {
-      "oid": "9064",
-      "navn": "Status for innhenting av pasientens samtykke",
       "count": 1
     },
     {
-      "oid": "8601",
-      "navn": "Kontaktårsak ved personskade",
+      "oid": "9032",
+      "navn": "Type personidentifikasjon",
       "count": 1
     },
     {
-      "oid": "8602",
-      "navn": "Aktivitet ved skadetidspunkt",
+      "oid": "9082",
+      "navn": "Dager i uken",
       "count": 1
     }
   ],
   "instrumenter": [
     {
-      "id": "8eca678a-6e06-4268-a7d7-97a14c9ad0fe",
+      "id": "2c792908-3f89-4e4c-9931-83093779fb92",
+      "code": "EQ-5D-5L",
+      "navn": "EQ-5D-5L",
+      "count": 209
+    },
+    {
+      "id": "b7575317-f65d-4ecb-80be-5508464a2dbe",
       "code": "RAND-36",
       "navn": "RAND 36-spørsmål om helse",
-      "count": 153
+      "count": 117
     },
     {
-      "id": "65bc8d83-3e52-46e8-8c9d-ab32409dc2fc",
-      "code": "I_NORSPIS.SCL90R",
-      "navn": "Symptom Checklist 90 Revised (SCL-90-R)",
-      "count": 90
-    },
-    {
-      "id": "91c59558-1597-4c72-ad4b-1b52310b3213",
-      "code": "I_NORSPIS.SDQP",
-      "navn": "Strengths and Difficulties Questionnaire (SDQ) (P4-17)",
-      "count": 36
-    },
-    {
-      "id": "e3297da8-890d-4686-a6ca-3645e33a8af9",
-      "code": "EQ-5D-5L",
-      "navn": "EQ-5D 5 svaralternativer",
-      "count": 36
-    },
-    {
-      "id": "b164a21c-ae4e-4dbc-a1eb-94a0f13dc480",
-      "code": "I_NORSPIS.EDEQ60",
-      "navn": "Eating Disorder Examination Questionnaire (EDE-Q) 6.0",
-      "count": 35
-    },
-    {
-      "id": "d5e31a2e-8d4e-47e0-94de-a2f10d4d96ee",
-      "code": "I_NORSPIS.SDQ",
-      "navn": "Strengths and Difficulties Questionnaire (SDQ) (S11-17)",
-      "count": 34
-    },
-    {
-      "id": "41d42d1c-f857-4db6-a5df-e50d561c22b8",
+      "id": "be533544-88fa-4299-9b94-d31f02068d86",
       "code": "I_NKR-NAKKE.NDI",
       "navn": "Neck Disability Index (NDI)",
       "count": 33
     },
     {
-      "id": "2694f60a-45d1-4992-8a67-de58a792e065",
-      "code": "I_NORSPIS.KIDSCREEN27",
-      "navn": "KIDSCREEN-27",
-      "count": 28
+      "id": "af95c5a2-8c92-45f2-88f1-2415ca4f43de",
+      "code": "I_NRA.ICIQ-UI",
+      "navn": "ICIQ-Urinary Icontinence-Short Form (ICIQ-UI-SF)",
+      "count": 26
     },
     {
-      "id": "0d43a12e-745c-4680-819a-2740d95c1a90",
-      "code": "I_NKR-NAKKE.EUROQOL_(EQ-5D-5L)",
-      "navn": "EuroQol (EQ-5D-5L)",
-      "count": 21
-    },
-    {
-      "id": "69d177fe-ba2a-45cc-aba2-635342975447",
+      "id": "bb19e5c2-96ce-4a49-a3ed-f8844b11aaa2",
       "code": "I_NKR-NAKKE.EMS",
       "navn": "Europeisk myelopatiskår (EMS)",
       "count": 18
     },
     {
-      "id": "ce69085e-8f60-477f-8009-086d5bc5cd91",
-      "code": "I_NORSPIS.HONOSCA",
-      "navn": "Health of the Nation Outcome Scales for Children and Adolescents (HoNOSCA)",
+      "id": "39919864-370e-4b3a-b257-2d1338051772",
+      "code": "I_NRA.ST.MARKS/WEXNER",
+      "navn": "St.Marks/Wexner Incontinence Score",
       "count": 16
     },
     {
-      "id": "2f66492e-b669-4cc4-aeb5-3fe44ea02156",
-      "code": "I_NORSPIS.CIA30",
-      "navn": "Clinical Impairment Assessment Questionnaire (CIA) 3.0",
-      "count": 16
-    },
-    {
-      "id": "c57bfeca-8a19-40bb-968c-5ab0774acc12",
+      "id": "37c417e5-dffa-4a37-af28-66b0029c61b5",
       "code": "I_NGER.I_NGER_TSS",
       "navn": "TSS-2 4 uker etter opr.",
       "count": 15
     },
     {
-      "id": "987f4b18-5956-4bf5-9c36-c012f599d19e",
-      "code": "I_NORSPIS.HONOS",
-      "navn": "Health of the Nation Outcome Scales (HoNOS)",
-      "count": 14
-    },
-    {
-      "id": "1f004138-ab22-462f-8e60-909887a9c662",
-      "code": "I_NORSPIS.PASERF",
-      "navn": "Pasienterfaringer i spesialisthelsetjenesten",
-      "count": 10
-    },
-    {
-      "id": "da4e276a-61d1-49c6-b114-4f1b245de8b3",
+      "id": "4a8e80f1-bcfd-4940-91a6-b88241f823c8",
       "code": "I_LTMV.PROM_5",
       "navn": "PROM_5_Symptomer",
       "count": 6
     },
     {
-      "id": "f304a408-7cb5-4f53-b48e-183bd7d6b157",
-      "code": "I_MFR.SRS-22",
-      "navn": "Skoliosespørsmål",
-      "count": 4
+      "id": "53e3f9ee-005a-4a41-ae46-29fcc53b7c74",
+      "code": "I_NRA.NKPK",
+      "navn": "Norsk klinisk prosedyrekodeverk",
+      "count": 5
     },
     {
-      "id": "593f47d9-e219-43d0-bfde-0321bfb5de48",
+      "id": "559f550b-8a4b-434d-85b8-5ead343c4131",
       "code": "I_NKR-NAKKE.NCSP",
       "navn": "Norsk klinisk prosedyrekodeverk",
       "count": 4
     },
     {
-      "id": "984896d0-7a15-4c9b-b3c4-c3a3adfe187b",
-      "code": "I_MFR.EQ5D-5L",
-      "navn": "EuroQol (EQ-5D-5L)",
+      "id": "0d4bdd3a-4050-419b-9b3e-fbdb011f3f91",
+      "code": "I_NRA.ICIQ-B",
+      "navn": "ICIQ-Bowel",
       "count": 4
     },
     {
-      "id": "f0075591-935b-49a1-9c8d-38316ea13d56",
+      "id": "a13aa999-5e6a-49a3-ba8c-b9bbfca63909",
+      "code": "I_NRA.PGIC",
+      "navn": "Patient's Global Impression of Change (PGIC)",
+      "count": 2
+    },
+    {
+      "id": "a5bce170-06bb-44f6-969d-d5a9a1aec846",
+      "code": "I_NRA.WEXNER",
+      "navn": "Wexner score",
+      "count": 2
+    },
+    {
+      "id": "af01a575-a8ae-42cc-b71d-88ae43b1810b",
+      "code": "I_NRA.ST.MARKS",
+      "navn": "St.Marks inkontinens score",
+      "count": 2
+    },
+    {
+      "id": "84d7a085-359b-41a3-8571-b4036cacc3e6",
+      "code": "EQ-5D-3L",
+      "navn": "EQ-5D-3L",
+      "count": 1
+    },
+    {
+      "id": "9ebf68c8-15c7-4556-b57f-34539c1cc202",
       "code": "I_LTMV.ESS",
       "navn": "ESS",
       "count": 1
@@ -636,30 +2737,34 @@
   ],
   "datakategorier": [
     {
-      "value": "ehds-cat:biobanks",
-      "count": 2
+      "value": "EINS",
+      "count": 1
     },
     {
-      "value": "ehds-cat:health-registries",
-      "count": 38
+      "value": "HGPD",
+      "count": 5
     },
     {
-      "value": "ehds-cat:population-health-surveys",
-      "count": 13
+      "value": "MRMR",
+      "count": 236
     },
     {
-      "value": "ehds-cat:provesamling",
+      "value": "PHDR",
+      "count": 41
+    },
+    {
+      "value": "RPDG",
+      "count": 12
+    },
+    {
+      "value": "ehds-cat:other",
       "count": 4
-    },
-    {
-      "value": "ehds-cat:registries-quality-of-healthcare",
-      "count": 159
     }
   ],
-  "kildeKodeverkCount": 3876,
+  "kildeKodeverkCount": 11020,
   "dateRange": {
-    "min": "1868-05-08T00:00:00.000Z",
+    "min": "1951-01-01T00:00:00.000Z",
     "max": null
   },
-  "totalCount": 18289
+  "totalCount": 31791
 }

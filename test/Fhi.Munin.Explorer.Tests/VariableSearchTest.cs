@@ -12013,4 +12013,20 @@ public class VariableSearchTest : BunitContext
         Assert.Contains(names, n => n.Contains("DAR", StringComparison.Ordinal));
         Assert.Contains(names, n => n.Contains("Ikke oppgitt", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void Facet_WhenAnAdministrativtKodeverkHasNoName_ThenItsCheckboxIsNamedWithItsOid()
+    {
+        // The OID rather than the "Ikke oppgitt" its siblings above fall back to, because it is the
+        // value the filter sends and it tells two unresolved kodeverk apart. No row in filters.json
+        // is nameless any more, so nothing else reaches this branch. (Fhi.Metadata-c7bb6)
+        var facets = Facets() with
+        {
+            AdministrativtKodeverk = [new() { Oid = "8485", Name = null, Count = 2 }]
+        };
+
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE")), facets));
+
+        Assert.Equal("8485 (2)", AccessibleName.Of(FacetBox(cut, "8485")));
+    }
 }
