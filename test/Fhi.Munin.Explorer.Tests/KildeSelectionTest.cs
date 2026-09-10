@@ -176,10 +176,10 @@ public class KildeSelectionTest : BunitContext
         // handler bUnit would bubble to. The click reaching nobody is therefore the assertion.
         Assert.Throws<MissingEventHandlerException>(() => RowBoxes(cut)[0].Click());
 
-        // And the mousedown under that click stops here too: the row records where a press went down
-        // and clears it on its own click, so a press the box let through would still be sitting there
-        // when the next row was clicked.
-        Assert.True(RowBoxes(cut)[0].HasAttribute("blazor:onmousedown:stoppropagation"));
+        // The mousedown does NOT stop here, and must not: the row measures a click against the press
+        // it saw go down, so a drag begun on the box and released on the row has to reach it as the
+        // selection it is. The click is what a tick must not carry up. (Fhi.Metadata-l9l2n.81)
+        Assert.False(RowBoxes(cut)[0].HasAttribute("blazor:onmousedown:stoppropagation"));
 
         RowBoxes(cut)[0].Change(true);
 

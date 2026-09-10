@@ -3,6 +3,7 @@ using Bunit;
 using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Tests;
@@ -159,6 +160,11 @@ public class SaveToListTest : BunitContext
         return Render<VariableSearch>(p => p.Add(c => c.IsAuthenticated, signedIn));
     }
 
+    /// <summary>The row's column strip, which is the element a press on the row lands in.</summary>
+    /// <remarks>Found on every call rather than held: a press re-renders the row.</remarks>
+    private static IElement RowStrip(IRenderedComponent<VariableSearch> cut) =>
+        cut.FindAll("ul.munin-explorer-data-list .munin-explorer-dataitem-main")[0];
+
     private static IElement SaveButton(IRenderedComponent<VariableSearch> cut) =>
         cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]")[0];
 
@@ -238,11 +244,12 @@ public class SaveToListTest : BunitContext
             SaveButton(cut).HasAttribute("blazor:onclick:stoppropagation"),
             "Lagre lets the click through to the row, which would open the panel behind the save.");
 
-        // The row measures a later click against the last press it saw, and its own click is the
-        // only thing that clears one — so a mousedown Lagre let through would never be cleared.
-        Assert.True(
+        // The mousedown is the other way round: the row measures a click against the press it saw
+        // go down, and a drag begun on Lagre lands its click on the row — so the press has to reach
+        // the row or that selection would open the panel. (Fhi.Metadata-l9l2n.81)
+        Assert.False(
             SaveButton(cut).HasAttribute("blazor:onmousedown:stoppropagation"),
-            "Lagre leaves a press on the row that no click of the row's clears.");
+            "A press on Lagre never reaches the row, so a drag off it opens the panel.");
 
         SaveButton(cut).Click();
 
@@ -252,6 +259,27 @@ public class SaveToListTest : BunitContext
 
         // That row's OWN disclosure, not a page-wide query: an open panel carries disclosures of
         // its own, so a count of them says nothing about the row this press landed in.
+        Assert.Equal(
+            "false",
+            cut.FindAll("button.munin-explorer-dataitem-main__name")[0].GetAttribute("aria-expanded"));
+        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
+    }
+
+    [Fact]
+    public void SaveButton_WhenADragBeginsOnItAndEndsOnTheRow_ThenNothingIsSavedAndThePanelStaysShut()
+    {
+        // "Lagre i liste" is words a reader can drag across as well as press, and a gesture that
+        // begins here and ends on the row lands its click on the row. The row can only tell it from
+        // a press because the mousedown under it reaches the row. (Fhi.Metadata-l9l2n.81)
+        var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER")));
+
+        var cut = RenderSignedIn(client);
+
+        SaveButton(cut).MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
+        RowStrip(cut).MouseUp(new MouseEventArgs { ClientX = 400, ClientY = 240 });
+        RowStrip(cut).Click(new MouseEventArgs { ClientX = 400, ClientY = 240, Detail = 1 });
+
+        Assert.Equal(0, client.AddCalls);
         Assert.Equal(
             "false",
             cut.FindAll("button.munin-explorer-dataitem-main__name")[0].GetAttribute("aria-expanded"));

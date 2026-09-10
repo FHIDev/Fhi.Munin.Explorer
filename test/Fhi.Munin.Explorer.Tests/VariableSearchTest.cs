@@ -8183,8 +8183,10 @@ public class VariableSearchTest : BunitContext
     /// to extend a selection to where the pointer is.
     /// </summary>
     /// <remarks>
-    /// Both events go through <see cref="RowBody"/> rather than one held element: the mousedown
-    /// re-renders the row, and the element found before it belongs to the markup as it was.
+    /// All three events go through <see cref="RowBody"/> rather than one held element: the mousedown
+    /// re-renders the row, and the element found before it belongs to the markup as it was. The
+    /// mouseup is dispatched because a browser dispatches one — it is where the row settles what the
+    /// gesture was, and a test that skipped it would prove a gesture no pointer makes.
     /// </remarks>
     private static void PressRow(
         IRenderedComponent<VariableSearch> cut,
@@ -8195,6 +8197,13 @@ public class VariableSearchTest : BunitContext
         bool shift = false)
     {
         RowBody(cut, row).MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
+        RowBody(cut, row).MouseUp(new MouseEventArgs
+        {
+            ClientX = 120 + right,
+            ClientY = 240 + down,
+            Detail = clicks,
+            ShiftKey = shift,
+        });
         RowBody(cut, row).Click(new MouseEventArgs
         {
             ClientX = 120 + right,
@@ -8215,14 +8224,14 @@ public class VariableSearchTest : BunitContext
     private static bool StopsTheClick(IElement control) =>
         control.HasAttribute("blazor:onclick:stoppropagation");
 
-    /// <summary>Whether a mousedown on <paramref name="control"/> stops there rather than reaching the row.</summary>
+    /// <summary>Whether a mousedown on <paramref name="control"/> reaches the row around it.</summary>
     /// <remarks>
-    /// Read off the markup for the same reason as <see cref="StopsTheClick"/>, and it has to hold
-    /// wherever that one does: the row records where a press went down and its own click is the only
-    /// thing that clears the record, so a press these controls let through is never cleared at all.
+    /// The opposite of <see cref="StopsTheClick"/> and deliberately so: the row measures a click
+    /// against the press it saw go down, and the browser lands the click of a drag begun on one of
+    /// these controls on the row. A press stopped here would arrive there as no press at all.
     /// </remarks>
-    private static bool StopsThePress(IElement control) =>
-        control.HasAttribute("blazor:onmousedown:stoppropagation");
+    private static bool LetsThePressThrough(IElement control) =>
+        !control.HasAttribute("blazor:onmousedown:stoppropagation");
 
     [Fact]
     public void Row_WhenTheRowItselfIsPressed_ThenItOpensThePanelTheNameOpens()
@@ -8268,6 +8277,23 @@ public class VariableSearchTest : BunitContext
 
         // And the drag leaves nothing behind that would swallow the next ordinary press.
         PressRow(cut);
+
+        Assert.Equal("true", Discloses(cut));
+    }
+
+    [Fact]
+    public void Row_WhenADragIsFollowedByAClickWithNoPressBehindIt_ThenThatClickOpensThePanel()
+    {
+        // What "leaves nothing behind" has to mean: the drag's own click spends the verdict. A click
+        // with no mousedown of its own — how assistive tooling activates a row — would otherwise be
+        // measured against a gesture that ended long before it. (Fhi.Metadata-l9l2n.81)
+        var cut = RenderWith(TwoRows());
+
+        PressRow(cut, right: 48);
+
+        Assert.Equal("false", Discloses(cut));
+
+        RowBody(cut).Click(new MouseEventArgs());
 
         Assert.Equal("true", Discloses(cut));
     }
@@ -8347,7 +8373,8 @@ public class VariableSearchTest : BunitContext
         var cut = RenderWith(TwoRows());
 
         RowBody(cut).MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
-        RowBody(cut, 1).Click(new MouseEventArgs { ClientX = 600, ClientY = 900 });
+        RowBody(cut, 1).MouseUp(new MouseEventArgs { ClientX = 600, ClientY = 900 });
+        RowBody(cut, 1).Click(new MouseEventArgs { ClientX = 600, ClientY = 900, Detail = 1 });
 
         Assert.Equal("true", Discloses(cut, 1));
     }
@@ -8361,6 +8388,91 @@ public class VariableSearchTest : BunitContext
         var cut = RenderWith(TwoRows());
 
         RowBody(cut).Click(new MouseEventArgs());
+
+        Assert.Equal("true", Discloses(cut));
+    }
+
+    [Fact]
+    public void Row_WhenAPressOnItIsReleasedOffTheList_ThenALaterBareClickStillOpensIt()
+    {
+        // A press is only ever measured against the click of its own gesture. This one has no click
+        // at all — the pointer left the list before it came up — and the record it leaves behind
+        // must not be read against the tooling click above, which carries no coordinates. (l9l2n.81)
+        var cut = RenderWith(TwoRows());
+
+        RowBody(cut).MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
+
+        RowBody(cut).Click(new MouseEventArgs());
+
+        Assert.Equal("true", Discloses(cut));
+        Assert.Single(cut.FindAll(".munin-explorer-detail"));
+    }
+
+    [Fact]
+    public void Row_WhenItIsRightClicked_ThenItOpensNothingAndSwallowsNoLaterClick()
+    {
+        // The likeliest gesture on a row full of copyable text, and the browser sends no click after
+        // it. Two things have to hold: the context menu does not open the panel, and the press it
+        // did leave is not what the next click is measured against.
+        var cut = RenderWith(TwoRows());
+
+        RowBody(cut).MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240, Button = 2 });
+        RowBody(cut).MouseUp(new MouseEventArgs { ClientX = 120, ClientY = 240, Button = 2 });
+
+        Assert.Equal("false", Discloses(cut));
+
+        RowBody(cut).Click(new MouseEventArgs());
+
+        Assert.Equal("true", Discloses(cut));
+    }
+
+    [Fact]
+    public void Row_WhenTheDragBeganOnTheNameAndEndedOnTheRow_ThenThePanelStaysShut()
+    {
+        // The variable's name is the likeliest text in the row to want copied, and a drag from it
+        // across the Kode cell lands its click on the row rather than on the name. The row only
+        // knows it was a drag because the press on the name reached it. (Fhi.Metadata-l9l2n.81)
+        var cut = RenderWith(TwoRows());
+
+        Toggles(cut)[0].MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
+        RowBody(cut).MouseUp(new MouseEventArgs { ClientX = 400, ClientY = 240 });
+        RowBody(cut).Click(new MouseEventArgs { ClientX = 400, ClientY = 240, Detail = 1 });
+
+        Assert.Equal("false", Discloses(cut));
+        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
+    }
+
+    [Fact]
+    public void Row_WhenADragEndsWithNoClickAndAFreshPressFollows_ThenTheStaleVerdictIsNotReused()
+    {
+        // The other end of the same rule: a release settles what its own gesture was, and a click
+        // that never arrives — the row went out from under it while a search landed — must not leave
+        // that answer standing for the gesture after it. (Fhi.Metadata-l9l2n.81)
+        var cut = RenderWith(TwoRows());
+
+        RowBody(cut).MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
+        RowBody(cut).MouseUp(new MouseEventArgs { ClientX = 168, ClientY = 240 });
+
+        RowBody(cut).MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
+        RowBody(cut).Click(new MouseEventArgs());
+
+        Assert.Equal("true", Discloses(cut));
+    }
+
+    [Fact]
+    public void Row_WhenTheGestureBeganOutsideTheList_ThenTheRowIsNotMeasuredAgainstIt()
+    {
+        // A selection begun in the filter panel and released in a row: the row saw no press, so there
+        // is nothing to measure and it opens. In a browser that gesture's click is dispatched above
+        // the row and never arrives, which is why this is the tooling click's path and not a guard.
+        var cut = RenderWith(TwoRows());
+
+        // A gesture of the row's own, run to the end first: a press is spent by its release, so the
+        // one below is measured against nothing rather than against where that one went down.
+        PressRow(cut, right: 48);
+
+        RowBody(cut).MouseUp(new MouseEventArgs { ClientX = 600, ClientY = 900 });
+        RowBody(cut).Click(new MouseEventArgs { ClientX = 600, ClientY = 900, Detail = 1 });
 
         Assert.Equal("true", Discloses(cut));
     }
@@ -8404,8 +8516,8 @@ public class VariableSearchTest : BunitContext
             "The name lets the click through to the row, which would close what it just opened.");
 
         Assert.True(
-            StopsThePress(Toggles(cut)[0]),
-            "The name leaves a press on the row that no click of the row's clears.");
+            LetsThePressThrough(Toggles(cut)[0]),
+            "A press on the name never reaches the row, so a drag off it opens the panel.");
 
         PressRowHeading(cut);
 
