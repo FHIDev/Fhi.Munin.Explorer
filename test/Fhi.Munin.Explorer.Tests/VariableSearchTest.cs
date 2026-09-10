@@ -3208,6 +3208,31 @@ public class VariableSearchTest : BunitContext
         }
     ];
 
+    /// <summary>The same vocabulary with no English curation, and one option whose label is blank.</summary>
+    /// <remarks>
+    /// The two halves of the marking, which the fixture above cannot show: it curates both
+    /// languages for its one option, so an English reader is served English and a Norwegian one
+    /// Norwegian, and neither is ever marked.
+    /// <para>
+    /// The second option's label is present and blank rather than absent, which is the only shape
+    /// where the two halves differ: an option with no <c>label</c> key at all is reported in the
+    /// reader's own language, so a <c>lang</c> taken off it is null however the label was arrived
+    /// at. A blank one falls to Norwegian the way a curated Norwegian label does, and it is a bare
+    /// CURIE that reaches the screen.
+    /// </para>
+    /// </remarks>
+    private static IReadOnlyList<PropertyMetadataEntry> CategoryWordsWithoutEnglish() =>
+    [
+        new()
+        {
+            Key = "healthCategory",
+            OptionsJson = """
+                [{"value":"ehds-cat:population-health-surveys","label":"Befolkningsundersøkelser"},
+                 {"value":"ehds-cat:biobanks","label":""}]
+                """
+        }
+    ];
+
     private static FilterOptions FacetsWith(
         IReadOnlyList<DataCategoryFacet>? categories = null, DateInterval? range = null) =>
         Facets() with { DataCategories = categories ?? [], DateRange = range };
@@ -5411,19 +5436,116 @@ public class VariableSearchTest : BunitContext
         ClickFacet(cut, "ICD-10");
         ClickFacet(cut, "String");
 
-        // The catalogue's own words, whether they read as a name or as one of its abbreviations:
-        // DÅR and HKR are Norwegian short forms rather than international tokens.
+        // The catalogue's own name for the kilde, which is the whole point of the marking.
         Assert.Equal("no", ChipLang(cut, "Tromsøundersøkelsen"));
-        Assert.Equal("no", ChipLang(cut, "ICD-10"));
 
         // The datatype is resolved into the reader's own language, so marking it Norwegian would
         // be the same defect the other way round — an English word in a Norwegian voice.
         Assert.Null(ChipLang(cut, "String"));
 
+        // A V-HK short name is the catalogue's key rather than its prose, and the set holds
+        // ICD-10 and NCMP-NCSP-NCRP beside DÅR — nothing here can say which a given key is.
+        Assert.Null(ChipLang(cut, "ICD-10"));
+
         // And the datakategori token, which is a CURIE belonging to no language at all.
         ClickFacet(cut, "ehds-cat:population-health-surveys");
 
         Assert.Null(ChipLang(cut, "ehds-cat:population-health-surveys"));
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenAChipNamesAValueDrawnThroughTheHierarchyTree_ThenItIsMarkedToo()
+    {
+        // Every level below the kilde reaches the row through TreeNode.Language and the Node helper
+        // rather than through KildeValue. Marking the kilde alone leaves most of the hierarchy
+        // unmarked, which is this defect for all but one facet.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), EveryFacet());
+        var cut = RenderWith(client, b => b.Add(c => c.Language, "en"));
+
+        foreach (var value in new[]
+                 {
+                     "Tromsø 4", "Første besøk", "Tromsø 1", "Fjerde runde", "Bakgrunn",
+                     "Kommunenummer", "RAND-36 spørreskjema"
+                 })
+        {
+            ClickFacet(cut, value);
+
+            Assert.Equal("no", ChipLang(cut, value));
+        }
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenTheCatalogueNamedNothingAndOnlyACodeIsLeft_ThenTheChipIsNotMarkedNorwegian()
+    {
+        // The half of CatalogueName the named values never reach. An OID is a number and a code is
+        // an identifier; a lang="no" over either hands a screen reader something to pronounce as
+        // Norwegian that is not Norwegian at all — lang applied backwards (WCAG 3.1.2).
+        var facets = EveryFacet() with
+        {
+            AdministrativtKodeverk = [new() { Oid = "3402", Name = null, Count = 4 }],
+            Instruments = [new() { Id = Rand36, Code = "RAND-36", Name = "", Count = 6 }]
+        };
+
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE")), facets),
+                             b => b.Add(c => c.Language, "en"));
+
+        ClickFacet(cut, "3402");
+        ClickFacet(cut, "RAND-36");
+
+        Assert.Null(ChipLang(cut, "3402"));
+        Assert.Null(ChipLang(cut, "RAND-36"));
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenTheVocabularyCuratedNoEnglishForACategory_ThenItsChipIsMarkedNorwegian()
+    {
+        // The one path by which a datakategori chip is ever marked: an option the catalogue wrote
+        // in Norwegian and nobody translated. Options reports the language it fell back to, and
+        // the panel marks that rather than the reader's.
+        var cut = RenderWith(
+            new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(TwoCategories),
+                                vocabulary: CategoryWordsWithoutEnglish()),
+            b => b.Add(c => c.Language, "en"));
+
+        ClickFacet(cut, "Befolkningsundersøkelser");
+
+        Assert.Equal("no", ChipLang(cut, "Befolkningsundersøkelser"));
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenTheVocabularyListsACategoryWithNoLabelAtAll_ThenItsChipIsNotMarked()
+    {
+        // The other half. Options hands the code back as the label of an option whose own label is
+        // blank, and still reports the Norwegian it fell back to — so a marking read off that
+        // language alone calls a bare CURIE Norwegian, which is what Curated exists to stop.
+        var cut = RenderWith(
+            new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(TwoCategories),
+                                vocabulary: CategoryWordsWithoutEnglish()),
+            b => b.Add(c => c.Language, "en"));
+
+        ClickFacet(cut, "ehds-cat:biobanks");
+
+        Assert.Null(ChipLang(cut, "ehds-cat:biobanks"));
+    }
+
+    [Fact]
+    public void Render_WhenAFacetValueIsTheCataloguesOwnWords_ThenItsCheckboxIsMarkedLikeItsChip()
+    {
+        // One kilde named two ways on one page otherwise: Norwegian in the chip over the results
+        // and unmarked in the panel the chip was ticked from. The kildeutforsker's own facet
+        // labels carry the marking, and both explorers ship from this package.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), EveryFacet());
+        var cut = RenderWith(client, b => b.Add(c => c.Language, "en"));
+
+        Assert.Equal("no", Facet(cut, "Tromsøundersøkelsen").GetAttribute("lang"));
+        Assert.Equal("no", Facet(cut, "Tromsø 4").GetAttribute("lang"));
+        Assert.Null(Facet(cut, "String").GetAttribute("lang"));
+        Assert.Null(Facet(cut, "ICD-10").GetAttribute("lang"));
+
+        ClickFacet(cut, "Tromsøundersøkelsen");
+
+        Assert.Equal(ChipLang(cut, "Tromsøundersøkelsen"),
+                     Facet(cut, "Tromsøundersøkelsen").GetAttribute("lang"));
     }
 
     [Fact]

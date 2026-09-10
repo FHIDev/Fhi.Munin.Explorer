@@ -383,30 +383,25 @@ public sealed partial class KildeSearch
     /// unmarked rather than called Norwegian, because a CURIE is prose in no language. An option
     /// the vocabulary lists but has curated no label for counts as not listed here, for the same
     /// reason: what ends up on screen is the token either way, and only the marking would differ.
-    /// That comparison ignores case because the lookup it is checking the result of does —
-    /// <see cref="CatalogueProperties.Word"/> matches ordinal-insensitively, and for a label-less
-    /// option it hands back the vocabulary's spelling of the code. An ordinal check here would read
-    /// the two spellings as a curated word and mark a bare CURIE <c>lang="no"</c>.
+    /// Which of the two it was comes from <see cref="CatalogueProperties.Option"/>, off the option
+    /// itself, rather than from comparing the label back against the value — that comparison had to
+    /// ignore case, because a label-less option hands back the vocabulary's spelling of the code and
+    /// an ordinal check would read the two spellings as a curated word and mark a bare CURIE
+    /// <c>lang="no"</c>.
     /// </para>
     /// <para>
-    /// The match is on the whole value — <see cref="CatalogueProperties.Word"/> — and not on the
+    /// The match is on the whole value — <see cref="CatalogueProperties.Option"/> — and not on the
     /// part after the last colon, which is the second half of what the copied table got wrong:
     /// prefix-blind, <c>annet-vokabular:biobanks</c> read as "Biobanker" in the facet while the
     /// detail panel showed it raw. Two prefixes over one bare token are two values in the
     /// catalogue, and the facet counts and filters them as two either way.
     /// </para>
     /// </remarks>
-    private FacetLabel Vocabulary(string key, string value)
-    {
-        if (_vocabulary.TryGetValue(key, out var entry)
-            && CatalogueProperties.Word(entry, value, Reader) is { } word
-            && !string.Equals(word.Label, value, StringComparison.OrdinalIgnoreCase))
-        {
-            return new FacetLabel(word.Label, word.Language);
-        }
-
-        return new FacetLabel(value, null);
-    }
+    private FacetLabel Vocabulary(string key, string value) =>
+        _vocabulary.TryGetValue(key, out var entry)
+        && CatalogueProperties.Option(entry, value, Reader) is { Curated: true } word
+            ? new FacetLabel(word.Label, word.Language)
+            : new FacetLabel(value, null);
 
     /// <summary>Whether <paramref name="kilde"/> survives every facet the reader has chosen in.</summary>
     /// <remarks>

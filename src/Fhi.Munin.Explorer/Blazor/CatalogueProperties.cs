@@ -572,7 +572,22 @@ internal static class CatalogueProperties
     /// a vocabulary entry the value is not in.
     /// </para>
     /// </remarks>
-    internal static (string Label, string Language)? Word(PropertyMetadataEntry entry, string raw, string reader)
+    internal static (string Label, string Language)? Word(PropertyMetadataEntry entry, string raw, string reader) =>
+        Option(entry, raw, reader) is { } option ? (option.Label, option.Language) : null;
+
+    /// <summary>
+    /// The same lookup, saying as well whether the vocabulary curated that label or handed the code
+    /// back for want of one.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Word"/> answers what to show, which is the code itself for an option carrying no
+    /// label — the right answer for text and the wrong one for a <c>lang</c>, since marking a bare
+    /// CURIE Norwegian is the defect the remarks above describe. <c>Curated</c> is decided here,
+    /// off the option the label came from, so a caller needing the distinction does not re-derive
+    /// it by comparing the label back against the code it was asked about.
+    /// </remarks>
+    internal static (string Label, string Language, bool Curated)? Option(
+        PropertyMetadataEntry entry, string raw, string reader)
     {
         if (string.IsNullOrWhiteSpace(entry.OptionsJson))
         {
@@ -583,7 +598,7 @@ internal static class CatalogueProperties
         {
             if (string.Equals(option.Value, raw, StringComparison.OrdinalIgnoreCase))
             {
-                return (option.Label, option.Language);
+                return (option.Label, option.Language, option.Curated);
             }
         }
 
@@ -596,8 +611,13 @@ internal static class CatalogueProperties
     /// <remarks>
     /// Malformed JSON yields nothing rather than throwing. This is curated data arriving over the
     /// wire, and one bad definition should cost that one field its label, not take the page down.
+    /// <para>
+    /// <c>Curated</c> is false for an option the vocabulary lists with no label in any language: the
+    /// label handed back is then the option's own code, which reads the same as a curated one and is
+    /// not text in any language. <see cref="Option"/> says why the two have to be told apart.
+    /// </para>
     /// </remarks>
-    internal static IReadOnlyList<(string Value, string Label, string Language)> Options(
+    internal static IReadOnlyList<(string Value, string Label, string Language, bool Curated)> Options(
         string optionsJson,
         string reader)
     {
@@ -610,7 +630,7 @@ internal static class CatalogueProperties
                 return [];
             }
 
-            var options = new List<(string, string, string)>();
+            var options = new List<(string, string, string, bool)>();
 
             foreach (var element in document.RootElement.EnumerateArray())
             {
@@ -641,7 +661,9 @@ internal static class CatalogueProperties
                     language = "no";
                 }
 
-                options.Add((code, string.IsNullOrWhiteSpace(label) ? code : label, language));
+                var curated = !string.IsNullOrWhiteSpace(label);
+
+                options.Add((code, curated ? label! : code, language, curated));
             }
 
             return options;
