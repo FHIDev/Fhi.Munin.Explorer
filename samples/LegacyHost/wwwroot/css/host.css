@@ -1507,19 +1507,6 @@ table.munin-explorer-data-list tbody th {
   cursor: default;
 }
 
-/* The × that empties the hierarchy and leaves every other filter alone. Muted until hovered: it
-   is the trail's escape hatch, not the thing the trail is for. */
-.munin-explorer-breadcrumb__clear {
-  color: var(--grey60);
-  font-size: 1.25rem;
-  line-height: 1;
-  padding: 0 4px;
-}
-
-.munin-explorer-breadcrumb__clear:hover {
-  color: var(--dark);
-}
-
 /* helsedata's panel grid is `1fr 1fr` above 1280px and one column below. The sample carries a
    stand-in so the fields sit in lanes here too — stacked, they read as a long column of labels
    and the group headings stop meaning anything. */

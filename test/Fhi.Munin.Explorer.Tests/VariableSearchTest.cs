@@ -6452,41 +6452,83 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
-    public void Breadcrumb_WhenTheClearIsPressed_ThenTheWholeHierarchyGoesAndNothingElseDoes()
+    public void Render_WhenADelkildeIsTicked_ThenExactlyOneControlOffersToRemoveIt()
     {
-        // The other half of the acceptance criterion, and the difference between this and
-        // "Fjern alle filtre": the reader who narrowed deep into one kilde keeps the datatype,
-        // the kodeverk and the dates they also chose.
+        // The defect this trail was reshaped for: the chip and the crumb drew the same delkilde in
+        // two adjacent rows, each with an × of its own, so one ticked value had two ways to be
+        // undone. The chip is the one that removes, and it is the only one — deleting nothing but
+        // the trail's own × is what settles it. (Fhi.Metadata-oj286)
         var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderFiltered(client, new VariableFilter
+        {
+            KildeIds = [Tromso],
+            DelkildeIds = [Tromso4]
+        });
+
+        var removes = cut.FindAll("button")
+            .Where(b => AccessibleName.Of(b).StartsWith("Fjern filteret Tromsø 4", StringComparison.Ordinal))
+            .ToList();
+
+        Assert.Single(removes);
+        Assert.Equal("munin-explorer-filters__chip-remove", removes[0].ClassName);
+
+        // And nothing inside the trail removes anything at all — not this value, not the hierarchy
+        // wholesale. A crumb narrows; that is a different action from the chip beside it rather
+        // than a second copy of it.
+        Assert.All(cut.Find(".munin-explorer-breadcrumb").QuerySelectorAll("button"),
+                   b => Assert.DoesNotContain("Fjern", AccessibleName.Of(b), StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Render_WhenTheHierarchyIsChosen_ThenThereIsStillOneChipPerChosenValueAcrossEveryFacet()
+    {
+        // Fhi.Metadata-l9l2n.82's AC2, asserted from here as well because this bead is the one that
+        // could have broken it: dropping the hierarchy values from the chip row was the other way
+        // to stop the trail and the chips reading as duplicates, and it would have made the four
+        // hierarchy levels an exception to a rule that had just been written down.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWithDatasamlinger());
+        var filter = new VariableFilter
+        {
+            KildeIds = [Tromso],
+            DelkildeIds = [Tromso4],
+            VariabelgruppeIds = [Bakgrunn],
+            DataTypes = ["1"]
+        };
+
+        var cut = RenderFiltered(client, filter);
+
+        var values = filter.KildeIds.Count + filter.DelkildeIds.Count
+                     + filter.DatasamlingIds.Count + filter.VariabelgruppeIds.Count
+                     + filter.DataTypes.Count;
+
+        Assert.Equal(values, cut.FindAll(".munin-explorer-filters__chip").Count);
+    }
+
+    [Fact]
+    public void Breadcrumb_WhenAStepIsPressed_ThenTheChipsForTheClearedLevelsGoWithThem()
+    {
+        // The trail and the chip row read one filter, so a press that clears the levels below a
+        // step has to take their chips with it in the same render — otherwise the row over the
+        // results would offer to remove a value the trail says is no longer chosen.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWithDatasamlinger());
         var cut = RenderFiltered(client, new VariableFilter
         {
             KildeIds = [Tromso],
             DelkildeIds = [Tromso4],
             VariabelgruppeIds = [Bakgrunn],
-            DataTypes = ["1"],
-            KildeType = "biobank"
+            DataTypes = ["1"]
         });
 
-        cut.Find(".munin-explorer-breadcrumb__clear").Click();
+        Crumb(cut, "Tromsøundersøkelsen").Click();
 
-        Assert.Empty(client.SearchFilter!.KildeIds);
-        Assert.Empty(client.SearchFilter!.DelkildeIds);
-        Assert.Empty(client.SearchFilter!.VariabelgruppeIds);
-        Assert.Equal(["1"], client.SearchFilter?.DataTypes);
-        // Kildetype is a facet of its own rather than a step on the way to a kilde, so it is not
-        // part of what the trail owns and does not go with it.
-        Assert.Equal("biobank", client.SearchFilter?.KildeType);
-    }
+        Assert.Equal(["Tromsøundersøkelsen"], Crumbs(cut).Select(b => b.TextContent));
 
-    [Fact]
-    public void Breadcrumb_WhenTheClearIsPressed_ThenTheTrailItselfIsGone()
-    {
-        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
-        var cut = RenderFiltered(client, new VariableFilter { KildeIds = [Tromso] });
+        var chips = cut.FindAll(".munin-explorer-filters__chip").Select(c => c.TextContent).ToList();
 
-        cut.Find(".munin-explorer-breadcrumb__clear").Click();
-
-        Assert.Empty(cut.FindAll(".munin-explorer-breadcrumb"));
+        Assert.DoesNotContain(chips, c => c.StartsWith("Tromsø 4", StringComparison.Ordinal));
+        Assert.DoesNotContain(chips, c => c.StartsWith("Bakgrunn", StringComparison.Ordinal));
+        // The kilde it narrowed to keeps its chip, and so does the datatype the trail does not own.
+        Assert.Equal(2, chips.Count);
     }
 
     [Fact]
@@ -6521,7 +6563,7 @@ public class VariableSearchTest : BunitContext
         // What pressing it does, which the name on its own does not say — and starting with the
         // visible text, so speech input can still reach it (WCAG 2.5.3). The step you are already
         // on has none, because pressing it does nothing.
-        Assert.Equal("Tromsøundersøkelsen – fjern nivåene under", steps[0].GetAttribute("aria-label"));
+        Assert.Equal("Tromsøundersøkelsen – avgrens til dette nivået", steps[0].GetAttribute("aria-label"));
         Assert.False(steps[1].HasAttribute("aria-label"));
     }
 
@@ -6542,19 +6584,19 @@ public class VariableSearchTest : BunitContext
         Assert.All(trail.QuerySelectorAll("ol, li, span"), e => Assert.False(e.HasAttribute("class")));
         Assert.All(Crumbs(cut), b => Assert.Equal("hd-button-reset munin-explorer-crumb", b.ClassName));
 
-        // The list carries the name rather than a <nav> landmark: two explorers on one page would
-        // otherwise put two identically named navs in the landmark list with nothing to tell them
-        // apart, which the search form avoids by naming itself after its own instance's title.
-        Assert.Equal("Valgt hierarki", trail.QuerySelector("ol")!.GetAttribute("aria-label"));
+        // A named role="navigation" on the region rather than a bare <nav>, exactly as the pager
+        // does it: the landmark is worth having and it must not sit anonymously among the host
+        // page's own. The name is there and not on the <ol>, which would otherwise be announced
+        // with the same words one breath later.
+        Assert.Equal("navigation", trail.GetAttribute("role"));
+        Assert.Equal("Valgt hierarki", AccessibleName.Of(trail));
+        Assert.False(trail.QuerySelector("ol")!.HasAttribute("aria-label"));
         Assert.Empty(cut.FindAll("nav"));
 
-        // The × is decoration, so the control that empties the hierarchy says what it does in its
-        // accessible name instead — and it sits outside the list, so "list, 1 item" is not counting
-        // the button that empties it.
-        var clear = cut.Find(".munin-explorer-breadcrumb__clear");
-
-        Assert.Equal("Fjern hierarkifilteret", clear.GetAttribute("aria-label"));
-        Assert.Null(clear.Closest("ol"));
+        // Every button in the trail is a step. The × that used to empty the hierarchy is gone with
+        // its name: the chip row is the only place a filter is removed. (Fhi.Metadata-oj286)
+        Assert.All(trail.QuerySelectorAll("button"),
+                   b => Assert.Equal("hd-button-reset munin-explorer-crumb", b.ClassName));
     }
 
     [Fact]
@@ -6577,7 +6619,7 @@ public class VariableSearchTest : BunitContext
         // button carries the aria-label below — English prose, which a Norwegian voice would
         // mangle, and which is exactly the mistake the period column's remarks name.
         Assert.Equal("no", CrumbLang(steps[0]));
-        Assert.Equal("Tromsøundersøkelsen – remove the levels below", steps[0].GetAttribute("aria-label"));
+        Assert.Equal("Tromsøundersøkelsen – narrow to this level", steps[0].GetAttribute("aria-label"));
 
         // The unknown datasamling falls back to the level's own word, which is ours and therefore
         // English here — and carries no lang for exactly that reason.
@@ -6585,9 +6627,7 @@ public class VariableSearchTest : BunitContext
         Assert.Null(CrumbLang(steps[1]));
 
         Assert.Equal("Selected hierarchy",
-                     cut.Find(".munin-explorer-breadcrumb ol").GetAttribute("aria-label"));
-        Assert.Equal("Clear the hierarchy filter",
-                     cut.Find(".munin-explorer-breadcrumb__clear").GetAttribute("aria-label"));
+                     AccessibleName.Of(cut.Find(".munin-explorer-breadcrumb")));
     }
 
     [Fact]
@@ -10054,7 +10094,6 @@ public class VariableSearchTest : BunitContext
                                             // the kilde, and each step of the hierarchy trail,
                                             // which reuses it rather than minting a second name
                                             // for the same affordance
-            "munin-explorer-breadcrumb__clear",      // ours — the × that empties the hierarchy
             // The row the count shares with the column picker, above the results container and
             // outside it — the name the kildeutforsker already emits. No chip names here: this
             // client answers with no facets at all, so the panel has no value to draw a chip for.

@@ -4106,6 +4106,31 @@ public class KildeSearchTest : BunitContext
     }
 
     [Fact]
+    public void ActiveFilters_WhenFacetsAreTicked_ThenTheKildeutforskerDrawsNoHierarchyTrail()
+    {
+        // Kelda has no trail, and the fix that took the × off the variabelutforsker's must not
+        // have grown it one: the chip row is shared markup, the trail is not, so the only thing
+        // that could reach here is a chip row that stopped being the whole of what this panel says
+        // is active. (Fhi.Metadata-oj286)
+        var cut = RenderWith(TwoNarrowingFacets());
+
+        Tick(cut, "Kildetype", "Sentralt helseregister");
+        Tick(cut, "Databehandler", "Helsedirektoratet");
+
+        Assert.Empty(cut.FindAll(".munin-explorer-breadcrumb"));
+        Assert.Empty(cut.FindAll(".munin-explorer-crumb"));
+        Assert.DoesNotContain(cut.FindAll("[role=navigation]"),
+                              region => AccessibleName.Of(region) == "Valgt hierarki");
+
+        // And every removal on screen is a chip's own, one per ticked value.
+        Assert.Equal(
+            ["Fjern filteret Sentralt helseregister", "Fjern filteret Helsedirektoratet"],
+            cut.FindAll("button")
+               .Select(AccessibleName.Of)
+               .Where(name => name.StartsWith("Fjern filteret", StringComparison.Ordinal)));
+    }
+
+    [Fact]
     public void ActiveFilters_WhenAChipIsDrawn_ThenItsCloseControlIsNamedAfterTheValueItRemoves()
     {
         // A row of controls all announcing "Fjern" is a row a screen reader cannot tell apart, and
