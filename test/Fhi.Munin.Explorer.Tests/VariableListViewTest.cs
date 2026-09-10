@@ -751,14 +751,14 @@ public class VariableListViewTest : BunitContext
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
 
         PressDisclosure(cut, DeleteToggle);
-        PressDisclosure(cut, DeleteToggle);
 
-        Assert.Equal("false", Disclosed(cut, DeleteToggle));
+        Assert.Equal("true", Disclosed(cut, DeleteToggle));
 
         PressDisclosure(cut, DeleteToggle);
         PressDisclosure(cut, DeleteToggle, clicks: 2);
 
-        Assert.Equal("true", Disclosed(cut, DeleteToggle));
+        Assert.Equal("false", Disclosed(cut, DeleteToggle));
+        Assert.DoesNotContain("Ja, slett listen", cut.Markup);
     }
 
     [Fact]
