@@ -3139,12 +3139,20 @@ public class VariableSearchTest : BunitContext
     /// today, and <c>Single</c> is what says so if one ever starts to.
     /// </summary>
     /// <remarks>
-    /// Trimmed, because <em>visible</em> text is the promise and source indentation is not part of
-    /// it: a control whose label sits on its own line in the .razor — the switch does — would
-    /// otherwise be found or not found according to how the markup happens to be laid out.
+    /// Still <c>StartsWith</c> on the raw text: ignoring leading whitespace would widen every
+    /// lookup here to suit one control, and the strictness is what makes <c>Single</c> worth
+    /// having. Nivålinjer, whose label is on its own line, has <see cref="LevelLinesSwitch"/>.
     /// </remarks>
     private static AngleSharp.Dom.IElement Facet(IRenderedComponent<VariableSearch> cut, string label) =>
-        FacetControls(cut).Single(b => b.TextContent.TrimStart().StartsWith(label, StringComparison.Ordinal));
+        FacetControls(cut).Single(b => b.TextContent.StartsWith(label, StringComparison.Ordinal));
+
+    /// <summary>The toolbar's Nivålinjer switch, found by the role rather than by its label.</summary>
+    /// <remarks>
+    /// The panel's one <c>role="switch"</c>, so the role identifies it exactly — and unlike a label
+    /// match it cannot be broken by rewrapping the markup around it.
+    /// </remarks>
+    private static IElement LevelLinesSwitch(IRenderedComponent<VariableSearch> cut) =>
+        cut.Find(".munin-explorer-filters__toolbar [role=switch]");
 
     /// <summary>The checkbox a facet value is chosen with.</summary>
     private static IElement FacetBox(IRenderedComponent<VariableSearch> cut, string label) =>
@@ -3751,7 +3759,7 @@ public class VariableSearchTest : BunitContext
         // (Fhi.Metadata-l9l2n.87)
         var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        var switchControl = cut.Find(".munin-explorer-filters__toolbar [role=switch]");
+        var switchControl = LevelLinesSwitch(cut);
 
         Assert.Equal("BUTTON", switchControl.TagName);
         Assert.Equal("button", switchControl.GetAttribute("type"));
@@ -3776,7 +3784,7 @@ public class VariableSearchTest : BunitContext
         var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
 
         Assert.Equal("true", FilterPanel(cut).GetAttribute("data-level-lines"));
-        Assert.Equal("true", Facet(cut, "Nivålinjer").GetAttribute("aria-checked"));
+        Assert.Equal("true", LevelLinesSwitch(cut).GetAttribute("aria-checked"));
     }
 
     [Fact]
@@ -3790,18 +3798,18 @@ public class VariableSearchTest : BunitContext
 
         Assert.Equal("true", FilterPanel(cut).GetAttribute("data-level-lines"));
 
-        ClickFacet(cut, "Nivålinjer");
+        LevelLinesSwitch(cut).Click();
 
         // Off is the absence of the attribute rather than "false", so a host styles one selector.
         // aria-checked is the opposite and is always spelled out: a stuck "true" would go on
         // announcing the lines as on after they went off.
         Assert.Null(FilterPanel(cut).GetAttribute("data-level-lines"));
-        Assert.Equal("false", Facet(cut, "Nivålinjer").GetAttribute("aria-checked"));
+        Assert.Equal("false", LevelLinesSwitch(cut).GetAttribute("aria-checked"));
 
-        ClickFacet(cut, "Nivålinjer");
+        LevelLinesSwitch(cut).Click();
 
         Assert.Equal("true", FilterPanel(cut).GetAttribute("data-level-lines"));
-        Assert.Equal("true", Facet(cut, "Nivålinjer").GetAttribute("aria-checked"));
+        Assert.Equal("true", LevelLinesSwitch(cut).GetAttribute("aria-checked"));
         Assert.Equal([false, true], reported);
     }
 
@@ -3814,7 +3822,7 @@ public class VariableSearchTest : BunitContext
                              b => b.Add(c => c.LevelLines, true));
 
         Assert.Equal("true", FilterPanel(cut).GetAttribute("data-level-lines"));
-        Assert.Equal("true", Facet(cut, "Nivålinjer").GetAttribute("aria-checked"));
+        Assert.Equal("true", LevelLinesSwitch(cut).GetAttribute("aria-checked"));
     }
 
     [Fact]
@@ -3826,7 +3834,7 @@ public class VariableSearchTest : BunitContext
                              b => b.Add(c => c.LevelLines, false));
 
         Assert.Null(FilterPanel(cut).GetAttribute("data-level-lines"));
-        Assert.Equal("false", Facet(cut, "Nivålinjer").GetAttribute("aria-checked"));
+        Assert.Equal("false", LevelLinesSwitch(cut).GetAttribute("aria-checked"));
     }
 
     [Fact]

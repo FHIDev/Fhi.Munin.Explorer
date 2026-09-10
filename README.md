@@ -293,9 +293,15 @@ These are not style preferences — each one is a host that breaks otherwise.
     expanded panel leaves once it grows a scrollbar, the row needed 369.05px and Nivålinjer dropped
     onto a row by itself. A host that defines nothing for the name gets the three buttons back in
     inline flow, which is a row until a label grows; what the rule buys is `display: flex` with a
-    `gap`, so nothing trails the last button, and buttons that shrink and wrap their own labels
-    rather than the row breaking apart at the next longer translation. Both sample stylesheets carry
-    it, and it is in `Fhi.Helsedata.Stiler` from the release that follows PR 39046.
+    `gap`, so nothing trails the last button, and — for the two fold buttons, which is all its
+    `min-width: 0` half selects — labels that shrink and wrap rather than the row breaking apart at
+    the next longer translation. Nivålinjer is deliberately outside that half (below), so it is the
+    row's one member at its own natural width, and the 16px the container won back is spent on it
+    and then some: the switch adds a 30px track and an 8px gap to the label it already had. What
+    keeps the row whole is that no other member is fixed — the two that can shrink absorb it. That
+    is reasoning rather than measurement, and the measurement is worth doing: at 369px the row was
+    already 0.05px over before any of this. Both sample stylesheets carry it, and it is in
+    `Fhi.Helsedata.Stiler` from the release that follows PR 39046.
     Kelda's panel wears the same name for the same row, minus Nivålinjer — its facets are not
     nested, so a level-lines toggle would draw nothing — and there the rule does one thing more: it
     pins the row to the top of the facet column, which scrolls at sidebar widths, so a control that
@@ -309,10 +315,14 @@ These are not style preferences — each one is a host that breaks otherwise.
     its own. That is measured rather than feared — 4.72×304.34px with the house classes against
     114.98×32 without — but **it was not measured here**: the numbers are the Stiler half's
     (`Fhi.Metadata-l9l2n.86`), taken by injecting this markup into Runa's toolbar against Stiler
-    source. Nothing in this repository can reproduce them, because `samples/HostileHost` restores a
-    published Stiler and .86 shipped its SCSS without a version bump, so the hostile-host rig has no
-    switch rules at all until the release that follows PR 39257. A host writing its own toolbar rule
-    owes the switch the same exemption.
+    source. This repository *can* reproduce them, and the way to is
+    `STILER_FROM_SOURCE=1 ./scripts/check-hostile-host.sh`, which swaps the pinned package for a
+    Stiler checkout beside this one and so measures Stiler `main`, where the switch rules already
+    live. Under the pinned package that same gate measures a browser-default `<button>` instead,
+    because `samples/HostileHost` restores a published Stiler and .86 shipped its SCSS without a
+    version bump, so the rig has no switch rules until the release that follows PR 39257 — which is
+    `Fhi.Metadata-aonvl`, and until it lands the from-source run is the only one that measures
+    the control that ships. A host writing its own toolbar rule owes the switch the same exemption.
     The row of active-filter chips over the results adds three, all shared with that panel:
     `munin-explorer-filters__active` is the row, `munin-explorer-filters__chip` the capsule around
     one ticked value and `munin-explorer-filters__chip-remove` the close control inside it. Handles,
@@ -380,14 +390,18 @@ These are not style preferences — each one is a host that breaks otherwise.
     The square-button pair it wore before drew that for free, which is exactly why it is tempting
     and exactly why helsedata's own pager does not use it. Next in this list
     is `munin-explorer-retry`, on the two retry buttons in the alert region: it draws their inert
-    state, and it is the one name here that **no Stiler version carries yet, 0.1.14 included** —
-    tracked as `Fhi.Metadata-x6vqc`. The buttons are never `disabled`, because that would drop the
-    focus of the reader who just pressed one to `<body>`, so `aria-disabled` is what says the offer
-    is spent; the alert region deliberately carries no class, so neither the pager's nor the filter
-    panel's `[aria-disabled]` rule reaches in, and without one of its own a button that does nothing
-    looks exactly like one that works. That is a WCAG 2.1 AA problem rather than a cosmetic one, and
-    it is the `skiplink-pagination` shape: both sample stylesheets have the rule, so the guard is
-    green while the host the prefix exists for gets nothing.
+    state, and it is the one name here that **no Stiler version carries and no Stiler branch has a
+    rule for** — not 0.1.14, not `main`, tracked as `Fhi.Metadata-x6vqc`. That is a sharper claim
+    than *unpublished*, and worth keeping distinct from it: the switch's two names below are also
+    carried by no released Stiler, but their rules are written and sit on `main` awaiting a version
+    (`Fhi.Metadata-aonvl`), where retry's have still to be written at all. The buttons are never
+    `disabled`, because that would drop the focus of the reader who just pressed one to `<body>`,
+    so `aria-disabled` is what says the offer is spent; the alert region deliberately carries no
+    class, so neither the pager's nor the filter panel's `[aria-disabled]` rule reaches in, and
+    without one of its own a button that does nothing looks exactly like one that works. That is a
+    WCAG 2.1 AA problem rather than a cosmetic one, and it is the `skiplink-pagination` shape: both
+    sample stylesheets have the rule, so the guard is green while the host the prefix exists for
+    gets nothing.
     The filter panel's `Nivålinjer` switch closes the list with two, `munin-explorer-switch__track`
     and `munin-explorer-switch__thumb`, and they are here rather than among the handles for the reason
     the period bar's are: both spans are empty, so an undrawn one is nothing at all and the on/off
@@ -397,6 +411,12 @@ These are not style preferences — each one is a host that breaks otherwise.
     `<button>` with its label in it. What the rules draw is the 30×18 track and the 12×12 thumb
     that travels 12px across it, and they hang on `aria-checked` rather than on a modifier class,
     so the drawn state and the announced state cannot come apart.
+    **A host pinning a published Stiler must draw all three itself for now.** The rules are written
+    and merged on Stiler `main` (PR 39257), but no released version carries them, so 0.1.14 gives
+    you nothing here — that release is `Fhi.Metadata-aonvl`, and until it lands what a pinned host
+    renders is a bare `<button>` whose appearance never changes with the state. Operable and
+    correctly announced, since `aria-checked` carries the state, but with no visible on/off mark:
+    a sighted reader loses what a screen reader user still hears.
 
   Ids are a separate family, each suffixed with a per-instance discriminator so two mounts on one
   page cannot collide: `munin-explorer-title-*`, `-search-*`, `-heading-*`, `-toggle-*`,

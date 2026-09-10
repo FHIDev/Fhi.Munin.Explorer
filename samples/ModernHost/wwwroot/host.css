@@ -507,17 +507,9 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   overflow-wrap: anywhere;
 }
 
-/* Nivålinjer, the one switch in the component. It wears its own name and NOTHING else — no
-   `hd-button-square`, no `button-square--*` — because the rule directly above reaches every square
-   button in this row and squeezes the control to one character wide, underlined, every letter on a
-   line of its own. Both states measured on the Stiler side of this pair (Fhi.Metadata-l9l2n.86),
-   not here. (Fhi.Metadata-l9l2n.87)
-
-   The drawn state hangs on `aria-checked` and never on a modifier class, so the thing a screen
-   reader announces and the thing a sighted reader sees cannot come apart.
-
-   The press area is the whole control, label included, and not the 30x18 track inside it — 32px
-   tall clears the 24x24 WCAG 2.5.8 asks of a target. */
+/* Nivålinjer, the one switch, wearing its own name and NOTHING else: the rule above selects
+   hd-button-square, and beside it the toolbar squeezes this to one character wide. State hangs
+   on aria-checked, not a modifier class, so drawn and announced agree. (Fhi.Metadata-l9l2n.87) */
 .munin-explorer-switch {
   display: inline-flex;
   align-items: center;
@@ -532,22 +524,28 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   cursor: pointer;
 }
 
-/* Focus is drawn by the surface rather than by a ring, and that is measured rather than chosen:
-   Stiler's `base/_global.scss` carries `body:not(.is-tabbing) button:focus { box-shadow: none
-   !important }`, and helsedata's page classes are never `is-tabbing`, so a ring here would be
-   overruled. Hover takes the same surface — one state, one look. */
-.munin-explorer-switch:hover,
-.munin-explorer-switch:focus-visible {
+/* The label is text, so 4.5:1 under 1.4.3 rather than 3:1 — --grey60 off reads 6.76:1 on the page
+   ground and 6.38:1 on the hover surface, --dark on reads 14.28:1 and 13.47:1. Before the focus
+   rule below on purpose: same specificity, so source order is what lets focus win. */
+.munin-explorer-switch[aria-checked="true"] {
+  color: var(--dark);
+}
+
+.munin-explorer-switch:hover {
   background-color: var(--grey20);
 }
 
-/* The track, and OFF IS THE STATE THAT NEARLY FAILED. Its --grey20 fill is the same colour as the
-   wrapper's own hover surface, where it measures 1.00:1 and simply is not there — so the carrying
-   signal off is the --grey60 BORDER, at 6.76:1 on --grey10 and 6.38:1 on the hover surface, and
-   the fill is a second signal rather than the one WCAG 1.4.11 is satisfied by. On, --grey60 fills
-   the track at the same two ratios. Never --primary: this is the pair Stiler draws
-   (Fhi.Metadata-l9l2n.86), and a sample painting a different control is the
-   `.munin-explorer-frequency__track` failure again. */
+/* Focus is a filled surface, not a ring and not the hover one: helsedata zero outline AND
+   box-shadow !important on every focused button (Fhi.Metadata-l9l2n.57), and --grey20 alone is a
+   1.06:1 change — no indicator. --grey60 is 6.76:1, #fff on it 7.23:1. (Fhi.Metadata-2eme9) */
+.munin-explorer-switch:focus-visible {
+  background-color: var(--grey60);
+  color: #fff;
+}
+
+/* The track. OFF IS THE STATE THAT NEARLY FAILED: its --grey20 fill is the hover surface's own
+   colour, 1.00:1 on it, so the --grey60 BORDER is what carries 1.4.11 — 6.76:1 and 6.38:1. Never
+   --primary; another control here is the frequency__track failure again. (Fhi.Metadata-l9l2n.86) */
 .munin-explorer-switch__track {
   position: relative;
   flex: none;
@@ -562,8 +560,8 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   background-color: var(--grey60);
 }
 
-/* The thumb, 12x12 travelling 12px — inset 2px from the track's border box, so 3px from its outer
-   edge. It inverts with the track, at 6.38:1 and 7.23:1, but the carrying signal is POSITION: left
+/* The thumb, 12x12 travelling 12px — inset 2px from the track's border box, 3px from its outer
+   edge. It inverts with the track at 6.38:1 and 7.23:1, but the carrying signal is POSITION: left
    is off and right is on with every colour removed. */
 .munin-explorer-switch__thumb {
   position: absolute;
@@ -580,10 +578,16 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   background-color: #fff;
 }
 
-/* The label is text, so 4.5:1 under 1.4.3 rather than 3:1 — --grey60 off reads 6.76:1 on the page
-   ground and 6.38:1 on the hover surface, --dark on reads 14.28:1 and 13.47:1. */
-.munin-explorer-switch[aria-checked="true"] {
-  color: var(--dark);
+/* Both parts go white on the focus surface, at 7.23:1: --grey60 on --grey60 is the control
+   vanishing under the reader who just tabbed to it. Position still says on from off, so neither
+   state depends on these. After the aria-checked rules on purpose — equal specificity. */
+.munin-explorer-switch:focus-visible .munin-explorer-switch__track {
+  border-color: #fff;
+  background-color: var(--grey60);
+}
+
+.munin-explorer-switch:focus-visible .munin-explorer-switch__thumb {
+  background-color: #fff;
 }
 
 .munin-explorer-filters details {

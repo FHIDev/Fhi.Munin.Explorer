@@ -970,6 +970,11 @@ public partial class VariableSearch
     /// does today — but because a name is inventory: the README contract, the sample stylesheets and
     /// <c>assert-sample-css-in-step.sh</c> all have to carry it. A state marker owes nothing.
     /// (Fhi.Metadata-wcbxi)
+    /// <para>
+    /// This draws the lines; it says nothing about the control. What a screen reader hears is the
+    /// switch's own <c>aria-checked</c>, always spelled out where this is omitted when off — two
+    /// carriers for two audiences, one <c>_levelLines</c> behind both. (Fhi.Metadata-l9l2n.87)
+    /// </para>
     /// </remarks>
     private string? LevelLinesMarker => _levelLines ? "true" : null;
 

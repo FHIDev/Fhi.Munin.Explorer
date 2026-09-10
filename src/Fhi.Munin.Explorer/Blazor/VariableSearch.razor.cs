@@ -429,7 +429,7 @@ public sealed partial class VariableSearch : ComponentBase
 
     /// <summary>
     /// Whether the filter panel asks for guide lines down the levels of the facet tree. Two-way,
-    /// <b>on by default</b>, which is what the <c>Nivålinjer</c> button turns off.
+    /// <b>on by default</b>, which is what the <c>Nivålinjer</c> switch turns off.
     /// <b>The package draws no lines.</b> It puts
     /// <c>data-level-lines="true"</c> on the panel and the host's stylesheet draws them, so a host
     /// with no rule for that attribute sees nothing change when this is on.
@@ -442,8 +442,9 @@ public sealed partial class VariableSearch : ComponentBase
     /// <para>
     /// A way of drawing the panel rather than a filter, so it is deliberately not part of the
     /// shareable state: a link carries what the reader is looking at, not how they like to look at
-    /// it. The <c>Nivålinjer</c> button in the panel is what the reader presses, and pressing it
-    /// raises <see cref="LevelLinesChanged"/>.
+    /// it. The <c>Nivålinjer</c> switch in the panel is what the reader presses — a native
+    /// <c>&lt;button&gt;</c> carrying <c>role="switch"</c> and <c>aria-checked</c>, so it announces
+    /// as on and off — and pressing it raises <see cref="LevelLinesChanged"/>.
     /// </para>
     /// <para>
     /// The package does not remember the choice, by decision rather than by omission. Reaching
@@ -453,7 +454,7 @@ public sealed partial class VariableSearch : ComponentBase
     /// once at mount and owned by the component afterwards, so a host that wants it remembered
     /// stores what this raises and supplies it at the next mount; a later change to the parameter on
     /// a mounted component does nothing. A host that stores nothing gets the lines on at every
-    /// visit, so a reader who never finds the button still sees the tree as a hierarchy.
+    /// visit, so a reader who never finds the switch still sees the tree as a hierarchy.
     /// </para>
     /// </remarks>
     [Parameter] public bool LevelLines { get; set; } = true;
