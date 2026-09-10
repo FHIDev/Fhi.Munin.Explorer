@@ -3,6 +3,7 @@ using Fhi.Munin.Explorer.Display;
 using Fhi.Munin.Explorer.Logging;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
@@ -384,6 +385,24 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// </remarks>
     private string ListOption(VariableList list) =>
         $"{list.Name} ({T.ListVariableCount(list.VariableCount)})";
+
+    // The gestures RowPress calls a selection, less the drag it takes a press to tell. All three
+    // controls ask it: a double-click used to shut the form its own first click opened, and on the
+    // delete control to re-arm the confirmation it had just cancelled. (Fhi.Metadata-zel47)
+    private static void Toggle(MouseEventArgs released, ref bool open)
+    {
+        if (!RowPress.WasSelectionStandingStill(released))
+        {
+            open = !open;
+        }
+    }
+
+    private void ToggleCreatingFromControl(MouseEventArgs released) => Toggle(released, ref _creating);
+
+    private void ToggleRenamingFromControl(MouseEventArgs released) => Toggle(released, ref _renaming);
+
+    private void ToggleConfirmingDeleteFromControl(MouseEventArgs released) =>
+        Toggle(released, ref _confirmingDelete);
 
     /// <summary>Written the way <see cref="AriaDisabled"/> is, so the two toggles read alike.</summary>
     private static string Expanded(bool open) => open ? "true" : "false";

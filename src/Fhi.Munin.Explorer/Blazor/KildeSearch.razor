@@ -242,7 +242,7 @@ else
                     type="button"
                     aria-expanded="@(_filtersOpen ? "true" : "false")"
                     aria-controls="@FacetsId"
-                    @onclick="ToggleFilters">@(_filtersOpen ? T.HideFilters : T.ShowFilters)</button>
+                    @onclick="ToggleFiltersFromControl">@(_filtersOpen ? T.HideFilters : T.ShowFilters)</button>
 
             @* Utvid alle and Skjul alle, the one thing a native disclosure cannot do for itself.
                Nivålinjer is deliberately not here: these facets are not nested, so a level-lines

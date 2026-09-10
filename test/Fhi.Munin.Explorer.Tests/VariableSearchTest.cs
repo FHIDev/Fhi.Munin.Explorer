@@ -8504,7 +8504,7 @@ public class VariableSearchTest : BunitContext
     {
         // The same double-click clause as the chevron's and the row name's, on the same
         // parameterless lambda both of those were. The rest of this panel caught up under
-        // Fhi.Metadata-j1j3i; four disclosures outside it have not (Fhi.Metadata-zel47).
+        // Fhi.Metadata-j1j3i, and the four disclosures outside it under Fhi.Metadata-zel47.
         var client = KodeverkRows();
         var cut = OpenData(client);
 

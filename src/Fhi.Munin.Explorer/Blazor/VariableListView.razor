@@ -55,7 +55,7 @@
                     type="button"
                     id="@CreateToggleId"
                     aria-expanded="@Expanded(_creating)"
-                    @onclick="() => _creating = !_creating">@T.AddNewList</button>
+                    @onclick="ToggleCreatingFromControl">@T.AddNewList</button>
 
             @* Both act on the list on screen, so neither is drawn when there is none. *@
             @if (_shownList is not null)
@@ -64,7 +64,7 @@
                         type="button"
                         id="@RenameToggleId"
                         aria-expanded="@Expanded(_renaming)"
-                        @onclick="() => _renaming = !_renaming">@T.RenameList</button>
+                        @onclick="ToggleRenamingFromControl">@T.RenameList</button>
 
                 @* Two steps because the API offers no undo, and in the page rather than a JS
                    confirm a host's CSP may suppress. One control, so neither step removes the
@@ -73,7 +73,7 @@
                         type="button"
                         id="@DeleteButtonId"
                         aria-expanded="@Expanded(_confirmingDelete)"
-                        @onclick="() => _confirmingDelete = !_confirmingDelete">
+                        @onclick="ToggleConfirmingDeleteFromControl">
                     @(_confirmingDelete ? T.ConfirmDeleteNo : T.DeleteList)
                 </button>
 
