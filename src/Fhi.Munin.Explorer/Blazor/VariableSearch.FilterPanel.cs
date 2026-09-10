@@ -18,8 +18,18 @@ public partial class VariableSearch
     /// <para>
     /// <c>Body</c> is a facet whose control is not a list of values — the dataperiode's date fields,
     /// which hold no <see cref="FacetValue"/> and so survive neither other shape. Such a facet has
-    /// to report <c>ChosenCount</c> itself, or it would say nothing in the summary while narrowing.
+    /// to report <c>Chosen</c> itself, or it would say nothing in the summary while narrowing.
     /// (Fhi.Metadata-uidue)
+    /// </para>
+    /// <para>
+    /// <c>Searchable</c> gives the facet a box that narrows its own values. The search is the
+    /// panel's alone — it never reaches the ticks — so such a facet reports <c>Chosen</c> over its
+    /// whole list as well, or a chosen value typed out of sight would stop being counted while it
+    /// is still narrowing.
+    /// </para>
+    /// <para>
+    /// <c>NameInChips</c> is for a facet whose values do not say what they are away from their own
+    /// heading — the catch-all's yes/no questions. A chip from one reads "Andre filtre: X".
     /// </para>
     /// </remarks>
     private sealed record FacetGroup(
@@ -29,13 +39,36 @@ public partial class VariableSearch
         IReadOnlyList<FacetValue> Values,
         string? EmptyText = null,
         RenderFragment? Body = null,
-        int? ChosenCount = null)
+        IReadOnlyList<FacetValue>? Chosen = null,
+        bool Searchable = false,
+        bool NameInChips = false)
     {
-        /// <summary>How many values in this facet are selected, counting nested ones.</summary>
-        public int SelectedCount => ChosenCount ?? Selected(Values);
+        /// <summary>What is chosen in this facet: the summary's count, and the row of chips.</summary>
+        /// <remarks>
+        /// One projection for both, so the number on a folded facet and the chips over the results
+        /// can never describe two different selections. (Fhi.Metadata-l9l2n.68)
+        /// </remarks>
+        public IReadOnlyList<FacetValue> ChosenValues => Chosen ?? [.. Selected(Values)];
 
-        private static int Selected(IReadOnlyList<FacetValue> values) =>
-            values.Sum(value => (value.Selected ? 1 : 0) + Selected(value.Children));
+        /// <summary>How many values in this facet are selected, counting nested ones.</summary>
+        public int SelectedCount => ChosenValues.Count;
+
+        /// <summary>Every selected value in the tree, parents before the values under them.</summary>
+        private static IEnumerable<FacetValue> Selected(IReadOnlyList<FacetValue> values)
+        {
+            foreach (var value in values)
+            {
+                if (value.Selected)
+                {
+                    yield return value;
+                }
+
+                foreach (var nested in Selected(value.Children))
+                {
+                    yield return nested;
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -46,6 +79,11 @@ public partial class VariableSearch
     /// show. <c>Toggle</c> is what ticking it does, or null for a value that is not selectable —
     /// the kildetype headings the kilder are grouped under are labels rather than filters, because
     /// kildetype has a facet of its own.
+    /// <para>
+    /// <c>Collapsible</c> makes such a heading a disclosure of its own, so the reader lands on the
+    /// three kildetype rows rather than on every kilde under them. Its <c>Count</c> is then how
+    /// many kilder the group holds rather than how many variables a value would leave.
+    /// </para>
     /// </remarks>
     private sealed record FacetValue(
         string Key,
@@ -53,7 +91,8 @@ public partial class VariableSearch
         int? Count,
         bool Selected,
         Func<Task>? Toggle,
-        IReadOnlyList<FacetValue> Children);
+        IReadOnlyList<FacetValue> Children,
+        bool Collapsible = false);
 
     /// <summary>A node on the way to becoming a <see cref="FacetValue"/> tree.</summary>
     /// <remarks>
@@ -168,21 +207,54 @@ public partial class VariableSearch
         // One per bound the reader has set, so a folded dataperiode says it is narrowing the way
         // every other facet does. Without it the summary reads plain "Dataperiode" over an active
         // date filter — the facet holds no values to count.
-        var chosen = (_filter.DataFrom is null ? 0 : 1) + (_filter.DataTo is null ? 0 : 1);
+        var chosen = ChosenDates();
         var range = facets.DateRange;
         var reported = range is { } r && (r.Min is not null || r.Max is not null);
 
         // Drawn when the API reports a range, and drawn regardless whenever the reader has a date
         // set. A date filter matching nothing is exactly when the API stops reporting a range, so
         // dropping the facet then takes away the only control that can undo it. (Fhi.Metadata-yxhv1)
-        if (!reported && chosen == 0)
+        if (!reported && chosen.Count == 0)
         {
             return null;
         }
 
         return new FacetGroup("dataperiode", T.FieldDataPeriod, OpenByDefault: false, [],
-                              Body: DateFields(range ?? new DateInterval()), ChosenCount: chosen);
+                              Body: DateFields(range ?? new DateInterval()), Chosen: chosen);
     }
+
+    /// <summary>The bounds the reader has set, one value apiece.</summary>
+    /// <remarks>
+    /// Each names its own field rather than standing as a bare date: the two ends are drawn as one
+    /// facet, so "01.01.2020" alone does not say which of them it is.
+    /// </remarks>
+    private IReadOnlyList<FacetValue> ChosenDates()
+    {
+        List<FacetValue> chosen = [];
+
+        if (_filter.DataFrom is { } from)
+        {
+            chosen.Add(DateValue("date-from", T.FacetDateFrom, from,
+                                 () => ApplyFilterAsync(_filter with { DataFrom = null })));
+        }
+
+        if (_filter.DataTo is { } to)
+        {
+            chosen.Add(DateValue("date-to", T.FacetDateTo, to,
+                                 () => ApplyFilterAsync(_filter with { DataTo = null })));
+        }
+
+        return chosen;
+    }
+
+    /// <summary>One bound, written the way the reader's own language writes a day.</summary>
+    private FacetValue DateValue(string key, string field, DateOnly date, Func<Task> clear) =>
+        new(key,
+            T.FilterInFacet(field, date.ToString("d", CatalogueProperties.Culture(Language))),
+            null,
+            Selected: true,
+            clear,
+            []);
 
     /// <summary>The from and to fields, each bounded by the range and by the other.</summary>
     /// <remarks>
@@ -277,8 +349,12 @@ public partial class VariableSearch
             : null;
 
     /// <summary>The kildetype facet — one value each, and only one of them can be chosen.</summary>
+    /// <remarks>
+    /// Closed at first paint like every facet but kilde: a panel that opens with everything
+    /// expanded is what pushed the results off the screen. (Fhi.Metadata-l9l2n.67)
+    /// </remarks>
     private FacetGroup KildeTypeGroup(FilterOptions facets) =>
-        new("kildetype", T.FacetKildeType, OpenByDefault: true, [.. facets.KildeTyper.Select(KildeTypeValue)]);
+        new("kildetype", T.FacetKildeType, OpenByDefault: false, [.. facets.KildeTyper.Select(KildeTypeValue)]);
 
     private FacetValue KildeTypeValue(KildetypeFacet type) =>
         new($"kildetype:{type.Value}",
@@ -303,57 +379,183 @@ public partial class VariableSearch
     private FacetGroup KildeGroup(FilterOptions facets)
     {
         var levels = KildeLevels(facets);
+        var kilder = VisibleKilder(facets, levels);
 
         // The order the kildetype facet is in, so the headings here and the facet above agree.
         var kildeTypeOrder = facets.KildeTyper
             .Select((type, index) => (type.Value, Index: index))
             .ToDictionary(entry => entry.Value, entry => entry.Index, StringComparer.OrdinalIgnoreCase);
 
-        var grouped = facets.Kilder
+        var grouped = kilder
             .GroupBy(KildeTypeKey, StringComparer.OrdinalIgnoreCase)
             .OrderBy(group => kildeTypeOrder.TryGetValue(group.Key, out var index) ? index : int.MaxValue)
             .ThenBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
             .Select(group => KildeTypeHeading(group, levels))
             .ToList();
 
+        // A search that matches nothing has to leave the facet standing, or it would take the box
+        // the reader must widen the term in away with it. Only while there is a term: the facet
+        // still drops out when the API itself returned no kilder. (Fhi.Metadata-l9l2n.67)
+        var empty = KildeSearchTerm is null ? null : T.FacetSearchNoMatch;
+
         // With one kildetype in the list its heading says nothing the facet above does not — and it
         // is exactly one whenever a kildetype has been chosen, which is when the panel is most
         // crowded. So the kilder are lifted out of it.
-        if (grouped.Count == 1)
+        var values = grouped.Count == 1 ? grouped[0].Children : grouped;
+
+        return new FacetGroup("kilde", T.FieldSource, OpenByDefault: true, values,
+                              EmptyText: empty, Chosen: ChosenKilder(facets, levels),
+                              Searchable: true);
+    }
+
+    /// <summary>Which of the three source levels are ticked, whatever the facet's own search is showing.</summary>
+    /// <remarks>
+    /// Read off the answer rather than off the values drawn, because a ticked kilde the search has
+    /// hidden is still narrowing the results — and would otherwise lose its place in the summary's
+    /// count and its chip over the results at once. (Fhi.Metadata-uidue)
+    /// </remarks>
+    private IReadOnlyList<FacetValue> ChosenKilder(FilterOptions facets, KildeLevelLookup levels) =>
+    [
+        .. facets.Kilder.Where(kilde => _filter.KildeIds.Contains(kilde.Id)).Select(kilde => KildeValue(kilde)),
+        .. facets.Kilder
+            .SelectMany(kilde => levels.Delkilder[kilde.Id])
+            .Where(delkilde => _filter.DelkildeIds.Contains(delkilde.Id))
+            .Select(DelkildeValue),
+        .. facets.Datasamlinger
+            .Where(datasamling => _filter.DatasamlingIds.Contains(datasamling.Id))
+            .Select(DatasamlingValue)
+    ];
+
+    /// <summary>What the reader has typed into the kilde facet's own search box.</summary>
+    private string _kildeSearch = string.Empty;
+
+    /// <summary>The same, as it counts: null for a box holding nothing that could narrow anything.</summary>
+    private string? KildeSearchTerm =>
+        string.IsNullOrWhiteSpace(_kildeSearch) ? null : _kildeSearch.Trim();
+
+    /// <summary>The kilde facet's search box, named by a label of its own.</summary>
+    private string KildeSearchId => $"munin-explorer-facet-search-{_instance}";
+
+    /// <summary>The box itself, so focus can be put back on it before the values beside it are rewritten.</summary>
+    private ElementReference _kildeSearchField;
+
+    /// <summary>Record what was typed into the kilde facet's search box.</summary>
+    /// <remarks>
+    /// Focus first and the state after, because <c>onchange</c> fires <em>because</em> focus has
+    /// left the box: a narrowing commit rewrites the list a reader who tabbed out is now standing
+    /// in. (Fhi.Metadata-6we8a) Nothing here touches <see cref="_filter"/> — unticking a kilde the
+    /// reader can no longer see would drop a choice they never released.
+    /// </remarks>
+    private async Task SearchKilderAsync(string? text)
+    {
+        if (RemovesDrawnKilder(text))
         {
-            return new FacetGroup("kilde", T.FieldSource, OpenByDefault: true, grouped[0].Children);
+            await _kildeSearchField.FocusAsync();
         }
 
-        return new FacetGroup("kilde", T.FieldSource, OpenByDefault: true, grouped);
+        _kildeSearch = text ?? string.Empty;
     }
+
+    /// <summary>Whether committing <paramref name="text"/> takes a kilde the panel is drawing off the screen.</summary>
+    /// <remarks>
+    /// The half of the rescue that says when there is anything to rescue focus from: a commit that
+    /// widens the facet, or that leaves every drawn kilde standing, removed nothing, and the reader
+    /// who blurred the box by clicking into something else is already there.
+    /// </remarks>
+    private bool RemovesDrawnKilder(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text) || _facets is not { } facets)
+        {
+            return false;
+        }
+
+        var term = text.Trim();
+        var levels = KildeLevels(facets);
+
+        return VisibleKilder(facets, levels).Any(kilde => !KildeMatches(kilde, levels, term));
+    }
+
+    /// <summary>The kilder the facet's own search leaves, each with its whole tree under it.</summary>
+    /// <remarks>
+    /// The name of anything below a kilde counts as the kilde's own, or a reader typing a name they
+    /// can see in the tree would empty the facet. <see cref="StringComparison.OrdinalIgnoreCase"/>,
+    /// the comparison the kildeutforsker's facet search uses, so "does this text contain that text"
+    /// means one thing.
+    /// </remarks>
+    private IReadOnlyList<KildeFacet> VisibleKilder(FilterOptions facets, KildeLevelLookup levels)
+    {
+        if (KildeSearchTerm is not { } term)
+        {
+            return facets.Kilder;
+        }
+
+        return [.. facets.Kilder.Where(kilde => KildeMatches(kilde, levels, term))];
+    }
+
+    /// <summary>Whether a kilde, or anything drawn under it, holds <paramref name="term"/>.</summary>
+    /// <remarks>
+    /// A datasamling is reached under its delkilde as well as straight off the kilde, since
+    /// <see cref="KildeLevels"/> keys it by whichever parent it hangs from.
+    /// </remarks>
+    private bool KildeMatches(KildeFacet kilde, KildeLevelLookup levels, string term) =>
+        LabelMatches(T.Named(kilde.Name, kilde.ShortName).Text, term)
+        || levels.Datasamlinger[kilde.Id].Any(datasamling => DatasamlingMatches(datasamling, term))
+        || levels.Delkilder[kilde.Id].Any(
+               delkilde => LabelMatches(DelkildeLabel(delkilde), term)
+                           || levels.Datasamlinger[delkilde.Id].Any(
+                                  datasamling => DatasamlingMatches(datasamling, term)));
+
+    private bool DatasamlingMatches(DatasamlingFacet datasamling, string term) =>
+        LabelMatches(DatasamlingLabel(datasamling), term);
+
+    private static bool LabelMatches(string label, string term) =>
+        label.Contains(term, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>A kilde's kildetype, or the empty string when it has none — never null, so it can be a key.</summary>
     private static string KildeTypeKey(KildeFacet kilde) =>
         string.IsNullOrWhiteSpace(kilde.KildeType) ? "" : kilde.KildeType;
 
     /// <summary>A kildetype heading: a label rather than a filter, because kildetype has its own facet.</summary>
+    /// <remarks>
+    /// A disclosure of its own, so the panel opens on three group rows rather than on 46 kilder.
+    /// Its count is how many kilder the group holds — what the row is hiding — rather than the
+    /// variable count the values under it carry. (Fhi.Metadata-l9l2n.67)
+    /// </remarks>
     private FacetValue KildeTypeHeading(IGrouping<string, KildeFacet> kilder, KildeLevelLookup levels) =>
         new($"kildetype-group:{kilder.Key}",
             T.KildeTypeLabel(kilder.Key, kilder.Key),
-            Count: null,
+            kilder.Count(),
             Selected: false,
             Toggle: null,
-            [.. kilder.Select(kilde => KildeValue(kilde, levels))]);
+            [.. kilder.Select(kilde => KildeValue(kilde, levels))],
+            Collapsible: true);
 
     private FacetValue KildeValue(KildeFacet kilde, KildeLevelLookup levels) =>
+        KildeValue(kilde) with
+        {
+            Count = Counted(kilde.Count),
+            Children = KildeChildren(kilde.Id, levels)
+        };
+
+    /// <summary>A kilde on its own: its words and its toggle, with neither a count nor its tree.</summary>
+    /// <remarks>
+    /// The one reading of both, so a chip and the checkbox it stands for can never name one kilde
+    /// two ways. The count is the drawn value's alone — a chip carries none.
+    /// </remarks>
+    private FacetValue KildeValue(KildeFacet kilde) =>
         new($"kilde:{kilde.Id}",
             T.Named(kilde.Name, kilde.ShortName).Text,
-            Counted(kilde.Count),
+            null,
             _filter.KildeIds.Contains(kilde.Id),
             () => ToggleAsync(_filter.KildeIds, kilde.Id, ids => _filter with { KildeIds = ids }),
-            KildeChildren(kilde.Id, levels));
+            []);
 
     /// <summary>The two levels under a kilde, each hanging where its facet says it does.</summary>
     private IReadOnlyList<FacetValue> KildeChildren(Guid kildeId, KildeLevelLookup levels) =>
     [
         .. DatasamlingValues(levels.Datasamlinger[kildeId]),
         .. Tree(levels.Delkilder[kildeId]
-                    .Select(d => new TreeNode(d.Id, d.ParentDelkildeId, T.Named(d.Name, null).Text, d.Count)),
+                    .Select(d => new TreeNode(d.Id, d.ParentDelkildeId, DelkildeLabel(d), d.Count)),
                 "delkilde:",
                 IsDelkildeChosen,
                 ToggleDelkilde,
@@ -361,18 +563,35 @@ public partial class VariableSearch
                 delkildeId => DatasamlingValues(levels.Datasamlinger[delkildeId]))
     ];
 
+    /// <summary>A delkilde on its own, on the same terms — the tree below builds it from the same parts.</summary>
+    private FacetValue DelkildeValue(DelkildeFacet delkilde) =>
+        new($"delkilde:{delkilde.Id}",
+            DelkildeLabel(delkilde),
+            null,
+            IsDelkildeChosen(delkilde.Id),
+            ToggleDelkilde(delkilde.Id),
+            []);
+
+    private string DelkildeLabel(DelkildeFacet delkilde) => T.Named(delkilde.Name, null).Text;
+
     /// <summary>Datasamlinger as leaves: nothing in the catalogue hangs below one.</summary>
     private IReadOnlyList<FacetValue> DatasamlingValues(IEnumerable<DatasamlingFacet> datasamlinger) =>
     [
         .. datasamlinger.Select(datasamling =>
-            new FacetValue($"datasamling:{datasamling.Id}",
-                           T.Named(datasamling.Name, null).Text,
-                           Counted(datasamling.Count),
-                           _filter.DatasamlingIds.Contains(datasamling.Id),
-                           () => ToggleAsync(_filter.DatasamlingIds, datasamling.Id,
-                                             ids => _filter with { DatasamlingIds = ids }),
-                           []))
+            DatasamlingValue(datasamling) with { Count = Counted(datasamling.Count) })
     ];
+
+    /// <summary>A datasamling on its own — the same split the kilde and delkilde above are drawn through.</summary>
+    private FacetValue DatasamlingValue(DatasamlingFacet datasamling) =>
+        new($"datasamling:{datasamling.Id}",
+            DatasamlingLabel(datasamling),
+            null,
+            _filter.DatasamlingIds.Contains(datasamling.Id),
+            () => ToggleAsync(_filter.DatasamlingIds, datasamling.Id,
+                              ids => _filter with { DatasamlingIds = ids }),
+            []);
+
+    private string DatasamlingLabel(DatasamlingFacet datasamling) => T.Named(datasamling.Name, null).Text;
 
     /// <summary>The delkilder and datasamlinger of the kilde facet, keyed by what each hangs under.</summary>
     private sealed record KildeLevelLookup(
@@ -510,6 +729,10 @@ public partial class VariableSearch
             []);
 
     /// <summary>The two filters that are a yes/no rather than a choice of values.</summary>
+    /// <remarks>
+    /// <c>NameInChips</c>, because "Har kildekodeverk" over the results without the facet in front
+    /// of it reads as a property of the rows rather than as a filter on them. (Fhi.Metadata-l9l2n.68)
+    /// </remarks>
     private FacetGroup OtherGroup(FilterOptions facets) =>
         new("other",
             T.FacetOther,
@@ -522,7 +745,8 @@ public partial class VariableSearch
                 // change is the total, which the status line already states.
                 new FacetValue("include-historical", T.IncludeHistorical, null,
                                _filter.IncludeHistorical, ToggleHistoricalAsync, [])
-            ]);
+            ],
+            NameInChips: true);
 
     /// <summary>
     /// Turn a flat list of parented nodes into the tree the panel draws.
@@ -644,6 +868,14 @@ public partial class VariableSearch
     /// <summary>Whether a facet is drawn open: the last fold press, or the facet's own default.</summary>
     private bool FacetOpen(FacetGroup group) => _foldAll ?? group.OpenByDefault;
 
+    /// <summary>Whether a kildetype group inside the kilde facet is drawn open.</summary>
+    /// <remarks>
+    /// Closed until a fold press says otherwise, which is what leaves the reader on the group rows.
+    /// No generation of its own: a press rebuilds the facet above under a new key, and a keyed
+    /// rebuild takes the whole subtree with it.
+    /// </remarks>
+    private bool GroupOpen => _foldAll ?? false;
+
     /// <summary>What the last fold press did, for the panel's live region.</summary>
     /// <remarks>
     /// Empty until a press, or the region would speak on every mount. A second identical press is
@@ -668,7 +900,11 @@ public partial class VariableSearch
         _foldGeneration++;
     }
 
-    /// <summary>Whether the tree draws a guide line per level. Seeded from the host's parameter.</summary>
+    /// <summary>Whether the tree draws a guide line per level.</summary>
+    /// <remarks>
+    /// No initialiser on purpose: <see cref="LevelLines"/> is copied in here before the first
+    /// render, so the parameter's default is the only place the resting state is written down.
+    /// </remarks>
     private bool _levelLines;
 
     /// <summary>
@@ -719,6 +955,14 @@ public partial class VariableSearch
         {
             builder.OpenElement(1, "li");
             builder.SetKey(value.Key);
+
+            if (value.Collapsible)
+            {
+                CollapsibleGroup(builder, value);
+                builder.CloseElement();
+
+                continue;
+            }
 
             // Held in a local so the null check below is one the compiler can carry into the branch.
             var toggle = value.Toggle;
@@ -773,6 +1017,41 @@ public partial class VariableSearch
         builder.CloseElement();
     };
 
+    /// <summary>One kildetype group inside the kilde facet, as a disclosure over its kilder.</summary>
+    /// <remarks>
+    /// A <c>&lt;details&gt;</c> and not a button with a chevron of its own: the marker, the open
+    /// state and the focus ring are then the ones a host already draws for
+    /// <c>.munin-explorer-filters summary</c>, so a group costs no class name and no new rule.
+    /// <para>
+    /// The count wears <c>munin-explorer-filters__chosen</c>, the name the kildeutforsker's facet
+    /// summaries already carry, whose rule holds the tabular figures that stop a column of counts
+    /// shivering as the facet is narrowed. (Fhi.Metadata-l9l2n.67)
+    /// </para>
+    /// </remarks>
+    private void CollapsibleGroup(RenderTreeBuilder builder, FacetValue value)
+    {
+        builder.OpenElement(14, "details");
+        builder.AddAttribute(15, "open", GroupOpen);
+        builder.OpenElement(16, "summary");
+        builder.AddContent(17, value.Label);
+
+        // The space is a text node of the summary rather than the span's first character, for the
+        // reason the value counts further up are: a name is computed per element, so a space inside
+        // the span is trimmed off and the group announces as "Biobank12".
+        if (value.Count is { } members)
+        {
+            builder.AddContent(18, " ");
+            builder.OpenElement(19, "span");
+            builder.AddAttribute(20, "class", "munin-explorer-filters__chosen");
+            builder.AddContent(21, members.ToString(CultureInfo.CurrentCulture));
+            builder.CloseElement();
+        }
+
+        builder.CloseElement();
+        builder.AddContent(22, FacetList(value.Children));
+        builder.CloseElement();
+    }
+
     /// <summary>Add or remove one value from a facet, and fetch what that leaves.</summary>
     /// <remarks>
     /// The type parameter is <c>TItem</c> and not <c>T</c>, which is the component's own
@@ -820,15 +1099,65 @@ public partial class VariableSearch
     private Task ToggleHistoricalAsync() =>
         ApplyFilterAsync(_filter with { IncludeHistorical = !_filter.IncludeHistorical });
 
+    /// <summary>The chosen values as the row over the results draws them, in the panel's own order.</summary>
+    /// <remarks>
+    /// A projection of the facets and never a second collection beside them — see
+    /// <see cref="ActiveFilters"/>. Every facet is walked rather than a known few named, so one
+    /// added later draws chips unasked: a row covering some filters reads as covering all of them.
+    /// </remarks>
+    private IReadOnlyList<ActiveFilters.Chip> ActiveFilterChips
+    {
+        get
+        {
+            List<ActiveFilters.Chip> chips = [];
+
+            foreach (var group in FacetGroups)
+            {
+                foreach (var value in group.ChosenValues)
+                {
+                    // A value nothing can untick has no removal to offer: the kildetype headings
+                    // inside the kilde facet are labels rather than filters.
+                    if (value.Toggle is not { } toggle)
+                    {
+                        continue;
+                    }
+
+                    var text = group.NameInChips ? T.FilterInFacet(group.Label, value.Label) : value.Label;
+
+                    chips.Add(new ActiveFilters.Chip(
+                        text, T.RemoveFilter(text), null, null, () => RemoveFilterAsync(toggle)));
+                }
+            }
+
+            return chips;
+        }
+    }
+
+    /// <summary>Untick one value from the chip row, through the state its own checkbox writes.</summary>
+    /// <remarks>
+    /// Focus first: the pressed control leaves as it acts, and the last chip takes the whole row
+    /// with it, so focus would otherwise fall to <c>&lt;body&gt;</c>. The search field is the one
+    /// control above the row that is there whether a filter is left or not. (Fhi.Metadata-ag4n7)
+    /// </remarks>
+    private async Task RemoveFilterAsync(Func<Task> toggle)
+    {
+        await _searchField.FocusAsync();
+
+        await toggle();
+    }
+
     /// <summary>Drop every filter and fetch the whole search again.</summary>
     /// <remarks>
-    /// Always on screen, and inert rather than absent when there is nothing to clear — the same
-    /// treatment the pager's buttons get, and for the same reason: taking the control the reader
-    /// just pressed out of the document drops focus to <c>&lt;body&gt;</c>. Pressing it with no
-    /// filters set asks for the filter already in force, which <see cref="ApplyFilterAsync"/>
-    /// returns from without a request.
+    /// The one control that offers this, and it stands in the chip row rather than at the foot of
+    /// the panel — so it is gone the moment it lands, and focus moves ahead of it for the reason
+    /// <see cref="RemoveFilterAsync"/> gives. (Fhi.Metadata-l9l2n.68)
     /// </remarks>
-    private Task ClearFiltersAsync() => ApplyFilterAsync(VariableFilter.None);
+    private async Task ClearFiltersAsync()
+    {
+        await _searchField.FocusAsync();
+
+        await ApplyFilterAsync(VariableFilter.None);
+    }
 
     /// <summary>
     /// Apply <paramref name="next"/>: fetch what it leaves, and refresh the counts beside it.
@@ -847,8 +1176,9 @@ public partial class VariableSearch
             return;
         }
 
-        // Also what makes the clear button inert when there is nothing to clear. VariableFilter
-        // compares by what it narrows, not by the identity of its lists — see the note on it.
+        // A press that asks for the filter already in force costs no request — clearing an empty
+        // selection, say. VariableFilter compares by what it narrows, not by the identity of its
+        // lists; see the note on it.
         if (next == _filter)
         {
             return;

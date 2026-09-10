@@ -19,7 +19,7 @@ public sealed partial class KildeSearch
     {
         Kildetype,
         Datasamlinger,
-        Variabler,
+        Variables,
         Delkilder,
         DataController,
         DataProcessor,
@@ -40,7 +40,7 @@ public sealed partial class KildeSearch
     /// The columns that start turned off, which is Kelda's own default set.
     /// </summary>
     /// <remarks>
-    /// Kildetype, Datasamlinger and Variabler are on; the other seven are off. Held as what is
+    /// Kildetype, Datasamlinger and Variables are on; the other seven are off. Held as what is
     /// hidden rather than as what is shown, so the table's default view is the one this component
     /// already shipped and a column added to the enum appears rather than disappears.
     /// <para>
@@ -88,7 +88,7 @@ public sealed partial class KildeSearch
     {
         KildeColumn.Kildetype => T.ColumnKildetype,
         KildeColumn.Datasamlinger => T.HeadingDataCollections,
-        KildeColumn.Variabler => T.ColumnVariableCount,
+        KildeColumn.Variables => T.ColumnVariableCount,
         KildeColumn.Delkilder => T.ColumnDelkildeCount,
         KildeColumn.DataController => T.FieldDataController,
         KildeColumn.DataProcessor => T.FieldDataProcessor,

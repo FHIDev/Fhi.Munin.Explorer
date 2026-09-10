@@ -64,7 +64,7 @@
                 }
 
                 @DetailBlocks.Heading(BlockLevel, DataCollectionsHeading ?? DefaultDataCollectionsHeading, "headline headline-s")
-                <KildeHierarchyView KildeId="@kilde.Id" Language="@Language" />
+                <KildeHierarchyView KildeId="@kilde.Id" Language="@Language" ShowNodeIcons="@ShowNodeIcons" />
                 @if (DataCollections.Count > 0 || Delkilder.Count > 0)
                 {
                     <details class="munin-explorer-hierarchy__metadata" @key="kilde.Id">

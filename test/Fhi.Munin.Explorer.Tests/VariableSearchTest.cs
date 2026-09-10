@@ -143,7 +143,7 @@ public class VariableSearchTest : BunitContext
 
         Assert.Equal(2, cut.FindAll("ul.munin-explorer-data-list > li").Count);
         Assert.Contains("1. Tale", cut.Markup);
-        Assert.Contains("V_ALS.F1.ALSFRSR1TALE", cut.Markup);
+        Assert.Contains("2. Spyttsekresjon", cut.Markup);
         Assert.Contains("2 variabler", cut.Markup);
     }
 
@@ -680,16 +680,31 @@ public class VariableSearchTest : BunitContext
     // should be remembered is a decision of its own.
     // ---------------------------------------------------------------------------------
 
-    /// <summary>The picker's toggles, in the order it lists them.</summary>
+    /// <summary>The picker's checkboxes, in the order it lists them.</summary>
     private static IReadOnlyList<IElement> ColumnToggles(IRenderedComponent<VariableSearch> cut) =>
-        cut.FindAll(".dropdown-choicepicker__item button");
+        cut.FindAll(".dropdown-choicepicker__item input[type=checkbox]");
+
+    /// <summary>A checkbox's column, which is the label beside it rather than its own text.</summary>
+    private static string ColumnName(IElement toggle) =>
+        toggle.ParentElement!.QuerySelector(".form-control__label")!.TextContent.Trim();
+
+    /// <summary>Whether the column is on screen, as the rendered attribute has it.</summary>
+    private static bool Ticked(IElement toggle) => toggle.HasAttribute("checked");
 
     /// <summary>The toggle for one named column, refetched so it is never a stale node.</summary>
     private static IElement ColumnToggle(IRenderedComponent<VariableSearch> cut, string label) =>
-        ColumnToggles(cut).Single(b => b.TextContent.Trim() == label);
+        ColumnToggles(cut).Single(b => ColumnName(b) == label);
 
-    private static void HideColumn(IRenderedComponent<VariableSearch> cut, string label) =>
-        ColumnToggle(cut, label).Click();
+    /// <remarks>
+    /// <c>Change</c> and not <c>Click</c>: bUnit raises MissingEventHandlerException for a click
+    /// on an element handling only <c>onchange</c>, and names the event it does handle.
+    /// </remarks>
+    private static void ToggleColumn(IRenderedComponent<VariableSearch> cut, string label)
+    {
+        var box = ColumnToggle(cut, label);
+
+        box.Change(!Ticked(box));
+    }
 
     [Fact]
     public void Render_Always_ThenThePickerOffersRunasSevenColumnsAndNotTheName()
@@ -702,19 +717,21 @@ public class VariableSearchTest : BunitContext
 
         Assert.Equal(
             ["Kode", "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Status", "Dataperiode"],
-            ColumnToggles(cut).Select(b => b.TextContent.Trim()));
+            ColumnToggles(cut).Select(ColumnName));
     }
 
     [Fact]
-    public void Render_Always_ThenEveryColumnButStatusStartsOnScreen()
+    public void Render_Always_ThenEveryColumnButKodeAndStatusStartsOnScreen()
     {
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        // Status is the one exception, and it is the filter's doing rather than the picker's:
-        // with historical variables excluded every row would say "Active", and a column that says
-        // the same word on every row is furniture. See ShowStatusColumn.
-        Assert.Equal(["true", "true", "true", "true", "true", "false", "true"],
-                     ColumnToggles(cut).Select(b => b.GetAttribute("aria-pressed")));
+        // Two exceptions, for two different reasons. Kode is off because a code does not help a
+        // reader choose a variable and is the widest column in the row — it is in the open panel
+        // and in the picker instead. Status is the filter's doing rather than the picker's: with
+        // historical variables excluded every row would say "Active", and a column that says the
+        // same word on every row is furniture. See ShowStatusColumn.
+        Assert.Equal([false, true, true, true, true, false, true],
+                     ColumnToggles(cut).Select(Ticked));
     }
 
     [Fact]
@@ -725,11 +742,36 @@ public class VariableSearchTest : BunitContext
         // every column after it in every row sits under the wrong name.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        HideColumn(cut, "Kode");
+        ToggleColumn(cut, "Kilde");
+
+        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__source"));
+        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main__source"));
+        Assert.False(Ticked(ColumnToggle(cut, "Kilde")));
+    }
+
+    [Fact]
+    public void Columns_WhenTheListIsFirstDrawn_ThenTheCodeIsNotAColumnButIsInTheOpenPanel()
+    {
+        // The three states the code has to be in, asserted together because the whole change is
+        // that they differ: gone from the hit list, still reachable, and still offered. A code
+        // identifies a variable rather than helping anyone choose one, and it is the widest of the
+        // eight columns, so the width goes to the name and the datasamling.
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "V_ALS.F1.TALE"))));
 
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__code"));
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main__code"));
-        Assert.Equal("false", ColumnToggle(cut, "Kode").GetAttribute("aria-pressed"));
+        Assert.False(Ticked(ColumnToggle(cut, "Kode")));
+
+        // Offered, and it comes on when pressed — a picker entry that did nothing would be worse
+        // than not offering the column at all.
+        ToggleColumn(cut, "Kode");
+
+        Assert.NotNull(cut.Find(".munin-explorer-dataitem-header__code"));
+        Assert.Equal("V_ALS.F1.TALE", CellText(cut, "code"));
+
+        ToggleColumn(cut, "Kode");
+
+        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main__code"));
     }
 
     /// <summary>The text of one named column's cell in the first result row.</summary>
@@ -749,8 +791,11 @@ public class VariableSearchTest : BunitContext
             VariabelgruppeName = "Bakgrunn"
         })));
 
-        HideColumn(cut, "Datasamling");
-        ColumnToggle(cut, "Datasamling").Click();
+        // Kode first, because it starts off: the sequence numbers have to hold for the cell that
+        // arrives late as much as for the ones that were there from the first render.
+        ToggleColumn(cut, "Kode");
+        ToggleColumn(cut, "Datasamling");
+        ToggleColumn(cut, "Datasamling");
 
         Assert.Equal("V_ALS.F1.TALE", CellText(cut, "code"));
         Assert.Equal("ALS", CellText(cut, "source"));
@@ -767,11 +812,11 @@ public class VariableSearchTest : BunitContext
     {
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        HideColumn(cut, "Datasamling");
-        ColumnToggle(cut, "Datasamling").Click();
+        ToggleColumn(cut, "Datasamling");
+        ToggleColumn(cut, "Datasamling");
 
         Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__dataCollection"));
-        Assert.Equal("true", ColumnToggle(cut, "Datasamling").GetAttribute("aria-pressed"));
+        Assert.True(Ticked(ColumnToggle(cut, "Datasamling")));
     }
 
     [Fact]
@@ -779,10 +824,10 @@ public class VariableSearchTest : BunitContext
     {
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        // Status is already off, so five presses leave Dataperiode alone.
-        foreach (var column in new[] { "Kode", "Kilde", "Datasamling", "Variabelgruppe", "Datatype" })
+        // Kode and Status are already off, so four presses leave Dataperiode alone.
+        foreach (var column in new[] { "Kilde", "Datasamling", "Variabelgruppe", "Datatype" })
         {
-            HideColumn(cut, column);
+            ToggleColumn(cut, column);
         }
 
         var last = ColumnToggle(cut, "Dataperiode");
@@ -797,9 +842,12 @@ public class VariableSearchTest : BunitContext
         var hint = last.GetAttribute("aria-describedby");
         Assert.Equal("Minst én kolonne må vises.", cut.Find($"#{hint}").TextContent);
 
-        last.Click();
+        // A render tree never experiences the browser flipping the box before the handler runs, so
+        // deleting SetUpdatesAttributeName("checked") leaves this file green. Measured in a browser
+        // instead, on Fhi.Metadata-f6az7; the missing guard is Fhi.Metadata-1s7z1.
+        last.Change(!Ticked(last));
 
-        Assert.Equal("true", ColumnToggle(cut, "Dataperiode").GetAttribute("aria-pressed"));
+        Assert.True(Ticked(ColumnToggle(cut, "Dataperiode")));
         Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__period"));
     }
 
@@ -808,9 +856,9 @@ public class VariableSearchTest : BunitContext
     {
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        foreach (var column in new[] { "Kode", "Kilde", "Datasamling", "Variabelgruppe", "Datatype" })
+        foreach (var column in new[] { "Kilde", "Datasamling", "Variabelgruppe", "Datatype" })
         {
-            HideColumn(cut, column);
+            ToggleColumn(cut, column);
         }
 
         Assert.NotNull(cut.Find("button.munin-explorer-dataitem-main__name"));
@@ -826,8 +874,9 @@ public class VariableSearchTest : BunitContext
         //
         // The shell guard reads literals out of src/, finds only the
         // munin-explorer-dataitem-main__ stem, and drops it, correctly: a stem is not a name. And
-        // the Orphans call further down renders the DEFAULT column set, which leaves Status out
-        // until a reader turns it on. So the composed names went unchecked from both directions.
+        // the Orphans call further down renders the DEFAULT column set, which leaves Kode and
+        // Status out until a reader turns them on. So the composed names went unchecked from both
+        // directions.
         //
         // That was harmless while they were helsedata's names, listed in host-class-names.txt and
         // styled by their stylesheet. After the rename they are ours, the sample stylesheet is the
@@ -835,9 +884,9 @@ public class VariableSearchTest : BunitContext
         // twice. Rendering with every optional column on is what makes them exist to be checked.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        foreach (var column in new[] { "Status" })
+        foreach (var column in new[] { "Kode", "Status" })
         {
-            ColumnToggle(cut, column).Click();
+            ToggleColumn(cut, column);
         }
 
         Assert.Equal([], HostClassNames.Orphans(HostClassNames.Of(cut.FindAll("[class]"))));
@@ -853,7 +902,7 @@ public class VariableSearchTest : BunitContext
 
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main__status"));
 
-        ColumnToggle(cut, "Status").Click();
+        ToggleColumn(cut, "Status");
 
         Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__status"));
         Assert.NotNull(cut.Find(".munin-explorer-dataitem-header__status"));
@@ -865,7 +914,7 @@ public class VariableSearchTest : BunitContext
         // The other direction of the same press, and the one the flag exists for: with historical
         // variables in the list the filter is drawing Status, so turning it off has to record that
         // the reader has chosen as well as hide it. Without the record the press is a visible
-        // no-op — aria-pressed goes to false over a column that is still on screen — and every
+        // no-op — the box unticks over a column that is still on screen — and every
         // later trip through the filter puts it back.
         var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
 
@@ -873,18 +922,18 @@ public class VariableSearchTest : BunitContext
 
         Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__status"));
 
-        ColumnToggle(cut, "Status").Click();
+        ToggleColumn(cut, "Status");
 
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main__status"));
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__status"));
-        Assert.Equal("false", ColumnToggle(cut, "Status").GetAttribute("aria-pressed"));
+        Assert.False(Ticked(ColumnToggle(cut, "Status")));
 
         // And it stays off through the filter that used to own it: their choice wins from here.
         ClickFacet(cut, "Vis historiske");
         ClickFacet(cut, "Vis historiske");
 
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main__status"));
-        Assert.Equal("false", ColumnToggle(cut, "Status").GetAttribute("aria-pressed"));
+        Assert.False(Ticked(ColumnToggle(cut, "Status")));
     }
 
     [Fact]
@@ -893,7 +942,7 @@ public class VariableSearchTest : BunitContext
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))),
                              b => b.Add(c => c.Filter, new VariableFilter { IncludeHistorical = true }));
 
-        Assert.Equal("true", ColumnToggle(cut, "Status").GetAttribute("aria-pressed"));
+        Assert.True(Ticked(ColumnToggle(cut, "Status")));
         Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__status"));
     }
 
@@ -904,7 +953,7 @@ public class VariableSearchTest : BunitContext
         // put back the columns they had just cleared away, on the page where they cleared them.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        HideColumn(cut, "Kilde");
+        ToggleColumn(cut, "Kilde");
         cut.Find("form").Submit();
 
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main__source"));
@@ -940,7 +989,8 @@ public class VariableSearchTest : BunitContext
 
         // One header row of column headers, and one data row per result.
         Assert.Equal("row", cut.Find(".munin-explorer-dataitem-header").GetAttribute("role"));
-        Assert.Equal(7, cut.FindAll("[role='columnheader']").Count);
+        // Navn plus the five optional columns that start on — Kode and Status start off.
+        Assert.Equal(6, cut.FindAll("[role='columnheader']").Count);
 
         var row = cut.Find("li.munin-explorer-data-list__item");
 
@@ -949,7 +999,7 @@ public class VariableSearchTest : BunitContext
         // The name is the row's header, the way Kelda's <th scope="row"> is.
         Assert.Equal("rowheader",
                      row.QuerySelector(".munin-explorer-dataitem-main__name")!.GetAttribute("role"));
-        Assert.Equal(6, row.QuerySelectorAll("[role='cell']").Length);
+        Assert.Equal(5, row.QuerySelectorAll("[role='cell']").Length);
 
         // The two wrappers between the row and its cells are layout only. They have to say so, or
         // they sit in the tree as anonymous groups between a row and the columns it owns.
@@ -1083,7 +1133,7 @@ public class VariableSearchTest : BunitContext
 
         var calls = client.Calls;
 
-        HideColumn(cut, "Kilde");
+        ToggleColumn(cut, "Kilde");
 
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__source"));
         Assert.Empty(cut.FindAll("[aria-sort]"));
@@ -1096,7 +1146,7 @@ public class VariableSearchTest : BunitContext
         Assert.Contains("sortert på Kilde, synkende", cut.Find("p[role='status']").TextContent);
 
         // And the way back is the control that took it away.
-        ColumnToggle(cut, "Kilde").Click();
+        ToggleColumn(cut, "Kilde");
 
         Assert.Equal("descending",
                      cut.Find(".munin-explorer-dataitem-header__source").GetAttribute("aria-sort"));
@@ -1110,14 +1160,15 @@ public class VariableSearchTest : BunitContext
         // row unless historical variables are in the list — but a reader who has hidden the other
         // six has made it the last column, and a filter nobody associates with columns must not
         // then empty every row down to its name. Deleting this brings that state back, reachable in
-        // seven presses and explained by nothing on screen.
+        // six presses and explained by nothing on screen — Kode is already off, so the reader only
+        // has to clear the five that are on.
         var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
 
         ClickFacet(cut, "Vis historiske");
 
-        foreach (var column in new[] { "Kode", "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Dataperiode" })
+        foreach (var column in new[] { "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Dataperiode" })
         {
-            HideColumn(cut, column);
+            ToggleColumn(cut, column);
         }
 
         Assert.Equal("true", ColumnToggle(cut, "Status").GetAttribute("aria-disabled"));
@@ -1126,7 +1177,7 @@ public class VariableSearchTest : BunitContext
 
         Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__status"));
         Assert.NotNull(cut.Find(".munin-explorer-dataitem-header__status"));
-        Assert.Equal("true", ColumnToggle(cut, "Status").GetAttribute("aria-pressed"));
+        Assert.True(Ticked(ColumnToggle(cut, "Status")));
     }
 
     [Fact]
@@ -1139,13 +1190,13 @@ public class VariableSearchTest : BunitContext
 
         ClickFacet(cut, "Vis historiske");
 
-        foreach (var column in new[] { "Kode", "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Dataperiode" })
+        foreach (var column in new[] { "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Dataperiode" })
         {
-            HideColumn(cut, column);
+            ToggleColumn(cut, column);
         }
 
         ClickFacet(cut, "Vis historiske");
-        ColumnToggle(cut, "Kode").Click();
+        ToggleColumn(cut, "Kode");
 
         Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__code"));
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main__status"));
@@ -1171,8 +1222,8 @@ public class VariableSearchTest : BunitContext
     public void Render_Always_ThenThePickerBorrowsItsClassNamesAndInventsNone()
     {
         // The companion to the munin-explorer guard further down, which only inspects names in
-        // that prefix — the picker wears eight names outside it, and an invented ninth would slip
-        // past that test unnoticed. Every name here was read back off helsedata's compiled
+        // that prefix — the picker wears fourteen names outside it, and an invented fifteenth would
+        // slip past that test unnoticed. Every name here was read back off helsedata's compiled
         // stylesheets; one that is not renders as a raw browser default inside a styled page.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
@@ -1196,16 +1247,24 @@ public class VariableSearchTest : BunitContext
             "dropdown-choicepicker",          // helsedata, variables.css — the open list
             "dropdown-choicepicker--right",
             "dropdown-choicepicker__item",
-            "hd-button-reset",                // Stiler, "a button that draws nothing"
+            "form-control",                   // Stiler, _formcontrol.scss — the row the checkbox
+                                              //   and its label share
+            "form-control__label",            // Stiler, and the choicepicker overrides its
+                                              //   word-break INSIDE dropdown-choicepicker__item
             "hd-button-square",               // Stiler, the square shape
+            "icon",                           // Stiler, the 1.5rem icon box
+            "icon--right",                    // Stiler, the chevron's margin on the other side
+            "icon-keyboard-arrow-down",       // helsedata's own trigger carries both, and Stiler
+            "icon-keyboard-arrow-up",         //   hides whichever contradicts the open state
+            "icon-layout",                    // helsedata, leading their own "Vis kolonner"
             "screenreader-only",              // Stiler, and load-bearing: it hides the sentence
                                               //   saying why the last column will not turn off
         ], names);
 
-        // The label is the button's own text, so it needs no name at all. An earlier draft wrapped
-        // it in a span wearing `form-control__label`, which nothing else here uses and which could
-        // not be found in Stiler's compiled stylesheet.
-        Assert.Empty(picker.QuerySelectorAll("button span"));
+        // The nesting, not the count, which the list above already pins: every box sits inside the
+        // label that names it, which is what makes the whole line a target as well as a name.
+        Assert.Equal(picker.QuerySelectorAll(".dropdown-choicepicker__item").Length,
+                     picker.QuerySelectorAll("label.form-control > input[type=checkbox]").Length);
     }
 
     [Fact]
@@ -1213,8 +1272,8 @@ public class VariableSearchTest : BunitContext
     {
         // Their names, read off the compiled variables.css and styles.css rather than guessed at,
         // and their nesting — dropdown-choicepicker is position:absolute and anchors to the
-        // wrapper, which is why the inline position:relative below is emitted rather than left to
-        // a stylesheet this package does not ship.
+        // wrapper, which Stiler now positions itself, so the RCL emits no inline style at all
+        // (Fhi.Metadata-f6az7).
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
         // Both their names, and the exact pair: `dropdown` is the width their actions row gives a
@@ -1224,7 +1283,7 @@ public class VariableSearchTest : BunitContext
         var dropdown = cut.Find(".munin-explorer-header__actions > details");
         Assert.Equal(["dropdown", "munin-explorer__dropdown"],
                      dropdown.ClassName!.Split(' ', StringSplitOptions.RemoveEmptyEntries));
-        Assert.Contains("relative", dropdown.GetAttribute("style")!);
+        Assert.False(dropdown.HasAttribute("style"));
 
         // A <details>, because their dropdown opens and closes from React state and this package
         // ships no script. Same reason the filter facets are disclosures.
@@ -1411,8 +1470,9 @@ public class VariableSearchTest : BunitContext
             // The number beside a facet value, in an element of its own so a host can dim it —
             // the same name the kilde explorer's facets wear. (Fhi.Metadata-cgk85)
             "munin-explorer-filters__count",
-            "munin-explorer-container",  // ours, Stiler components/munin-explorer/
-            "munin-explorer-results",    // ours, Stiler components/munin-explorer/
+            // The row the count shares with the column picker, above the results container and
+            // outside it — the name the kildeutforsker already emits. (Fhi.Metadata-l9l2n.68)
+            "munin-explorer-results__toolbar",
             // The column picker, all four theirs, all four read off the compiled variables.css
             // rather than guessed at. The one they do NOT include is `sortable-dropdown`, which
             // the bead pointed at: that is their mobile sort control, `display: none` above
@@ -1421,6 +1481,8 @@ public class VariableSearchTest : BunitContext
             "munin-explorer-header__actions",         // ours, Stiler components/munin-explorer/
             "munin-explorer__dropdown",               // ours, Stiler (the z-index)
             "munin-explorer-header__actions-button",  // ours, Stiler components/munin-explorer/
+            "munin-explorer-container",  // ours, Stiler components/munin-explorer/
+            "munin-explorer-results",    // ours, Stiler components/munin-explorer/
         ], invented);
         Assert.Equal("munin-explorer", cut.Find("section").ClassName);
 
@@ -1582,6 +1644,11 @@ public class VariableSearchTest : BunitContext
         // A table had column headers doing this job. A card has nothing, and "Inklusjon" on
         // its own does not say which field it is.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "V_ALS.F1.TALE"))));
+
+        // Kode is the column this rule is asserted on, and it starts off, so it is turned on here
+        // rather than the assertion being moved to a column that happens to be visible: the label
+        // has to travel with a cell the reader asked for as much as with one that was there.
+        ToggleColumn(cut, "Kode");
 
         var info = cut.Find(".munin-explorer-dataitem-main").TextContent;
 
@@ -3080,8 +3147,8 @@ public class VariableSearchTest : BunitContext
     /// Press a control: a toolbar button is clicked, a facet value is ticked or unticked.
     /// </summary>
     /// <remarks>
-    /// A checkbox answers a change event and not a click, so a <c>Click()</c> here would leave the
-    /// filter untouched and every test using it green over a control that does nothing.
+    /// <c>Change</c> and not <c>Click</c>: bUnit raises MissingEventHandlerException for a click
+    /// on an element handling only <c>onchange</c>, and names the event it does handle.
     /// </remarks>
     private static void ClickFacet(IRenderedComponent<VariableSearch> cut, string label)
     {
@@ -3131,9 +3198,14 @@ public class VariableSearchTest : BunitContext
     /// Scoped to the panel rather than asserted over the whole markup: "Dataperiode" is also a
     /// results column, so a DoesNotContain over cut.Markup can never pass and would have to be
     /// weakened into meaninglessness to try.
+    /// <para>
+    /// Direct children only, for the reason <see cref="Disclosures"/> has: the kildetype groups
+    /// inside the kilde facet are disclosures too, and counting their summaries here would report
+    /// "Biobank 1" as a facet of the panel. (Fhi.Metadata-l9l2n.67)
+    /// </para>
     /// </remarks>
     private static IReadOnlyList<string> FacetHeadings(IRenderedComponent<VariableSearch> cut) =>
-        [.. cut.FindAll(".munin-explorer-filters summary").Select(s => s.TextContent)];
+        [.. cut.FindAll(".munin-explorer-filters > details > summary").Select(s => s.TextContent)];
 
     private static IReadOnlyList<AngleSharp.Dom.IElement> DateInputs(
         IRenderedComponent<VariableSearch> cut) =>
@@ -3156,6 +3228,31 @@ public class VariableSearchTest : BunitContext
     private static IReadOnlyList<AngleSharp.Dom.IElement> OpenDisclosures(
         IRenderedComponent<VariableSearch> cut) =>
         [.. cut.FindAll(".munin-explorer-filters > details[open]")];
+
+    /// <summary>The kilde facet's own disclosure — the one facet drawn open at first paint.</summary>
+    /// <remarks>
+    /// Matched on the summary rather than on position, because the panel's order is a decision of
+    /// its own and this helper must not quietly follow it somewhere else. <c>StartsWith</c> because
+    /// the heading gains a "(1)" as soon as something inside it is ticked.
+    /// </remarks>
+    private static AngleSharp.Dom.IElement KildeFacet(IRenderedComponent<VariableSearch> cut) =>
+        Disclosures(cut).Single(d => IsKildeHeading(d.FirstElementChild!.TextContent.Trim()));
+
+    private static bool IsKildeHeading(string heading) =>
+        heading == "Kilde" || heading.StartsWith("Kilde (", StringComparison.Ordinal);
+
+    /// <summary>What the kilde facet's own summary says, count and all.</summary>
+    private static string KildeHeading(IRenderedComponent<VariableSearch> cut) =>
+        KildeFacet(cut).FirstElementChild!.TextContent.Trim();
+
+    /// <summary>The kildetype groups inside the kilde facet, in the order they are drawn.</summary>
+    private static IReadOnlyList<AngleSharp.Dom.IElement> KildeTypeGroups(
+        IRenderedComponent<VariableSearch> cut) =>
+        [.. KildeFacet(cut).QuerySelectorAll("ul > li > details")];
+
+    /// <summary>The box that narrows the kilde facet's own values.</summary>
+    private static AngleSharp.Dom.IElement KildeSearchField(IRenderedComponent<VariableSearch> cut) =>
+        cut.Find(".munin-explorer-filters input.munin-explorer-filters__search");
 
     /// <summary>An answer with nothing in any facet, which is what a selection matching nothing gets.</summary>
     private static FilterOptions NothingLeft() => new() { TotalCount = 0 };
@@ -3301,10 +3398,237 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
+    public void Filter_AtFirstPaint_ThenExactlyOneFacetIsOpenAndItIsKilde()
+    {
+        // The COUNT, and not merely that Kilde is open: the panel used to open with every facet
+        // expanded, which is what pushed the results off the screen — and "all open" satisfies
+        // "Kilde is open" while being the whole defect. (Fhi.Metadata-l9l2n.67)
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        var open = OpenDisclosures(cut);
+
+        Assert.Single(open);
+        Assert.Equal("Kilde", open[0].FirstElementChild!.TextContent.Trim());
+
+        // The others are drawn, closed, rather than gone: a panel with one facet in it would also
+        // pass the assertion above.
+        Assert.True(Disclosures(cut).Count > 1, $"expected the other facets, got {Disclosures(cut).Count}");
+    }
+
+    [Fact]
+    public void Filter_AtFirstPaint_ThenTheKildeFacetIsOpenAndItsSearchFieldIsTheFirstThingInIt()
+    {
+        // THE TRAP: collapsing Kilde with the rest reads as tidier and removes precisely what was
+        // asked for. The search has to be reachable without a press, so nothing focusable may come
+        // between the facet's own summary and the box. (Fhi.Metadata-l9l2n.67)
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        var kilde = KildeFacet(cut);
+
+        Assert.True(kilde.HasAttribute("open"));
+
+        // The facet's own summary is the disclosure control rather than something inside it; every
+        // other summary here belongs to a kildetype group and is deliberately still counted.
+        var focusable = kilde
+            .QuerySelectorAll("summary, input, button, select, textarea, a[href]")
+            .Where(e => !(ReferenceEquals(e.ParentElement, kilde)
+                          && string.Equals(e.TagName, "SUMMARY", StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+
+        Assert.NotEmpty(focusable);
+        Assert.Equal("search", focusable[0].GetAttribute("type"));
+
+        // Spelled as Fhi.Metadata-l9l2n.66 settled it, and on an <input>: Stiler's rule leads with
+        // the element, so the name on anything else loses its font-size to the global search list.
+        Assert.Equal("munin-explorer-filters__search", focusable[0].ClassName);
+        Assert.Equal("INPUT", focusable[0].TagName.ToUpperInvariant());
+
+        // A real label rather than the placeholder beside it, which names nothing.
+        Assert.Equal("Søk i Kilde", AccessibleName.Of(focusable[0]));
+    }
+
+    [Fact]
+    public void Filter_AtFirstPaint_ThenTheKildetypeGroupsAreClosedDisclosuresRatherThanButtons()
+    {
+        // Built as <details>/<summary>, so the marker, the open state and the focus ring are the
+        // ones a host already draws for `.munin-explorer-filters summary`. A button with a chevron
+        // of its own looks identical in a mockup and costs a Stiler round. (Fhi.Metadata-l9l2n.67)
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        var groups = KildeTypeGroups(cut);
+
+        Assert.Equal(["Sentralt helseregister 1", "Biobank 1"],
+                     groups.Select(g => g.FirstElementChild!.TextContent.Trim()));
+
+        Assert.All(groups, g => Assert.False(g.HasAttribute("open")));
+        Assert.All(groups, g => Assert.Equal("SUMMARY", g.FirstElementChild!.TagName.ToUpperInvariant()));
+
+        // No class on the disclosure and no control inside the summary: either is the tell that a
+        // chevron was drawn by hand, which is what would need a name and a rule of its own.
+        Assert.All(groups, g => Assert.False(g.HasAttribute("class")));
+        Assert.Empty(KildeFacet(cut).QuerySelectorAll("summary button, summary [role='button']"));
+    }
+
+    [Fact]
+    public void Filter_AtFirstPaint_ThenAKildetypeGroupsCountWearsTheNameTheFacetSummariesAlreadyUse()
+    {
+        // The existing `munin-explorer-filters__chosen`, whose rule holds the tabular figures: two
+        // counts of different digit widths above one another otherwise shift as the facet is
+        // narrowed. A name of its own here would be the cross-repository split this bead avoids.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        var count = KildeTypeGroups(cut)[0].FirstElementChild!.QuerySelector("span")!;
+
+        Assert.Equal("munin-explorer-filters__chosen", count.ClassName);
+        Assert.Equal("1", count.TextContent);
+
+        // The space belongs to the summary rather than to the span, or the group would be
+        // announced as "Sentralt helseregister1".
+        Assert.Equal("Sentralt helseregister 1", KildeTypeGroups(cut)[0].FirstElementChild!.TextContent);
+    }
+
+    [Fact]
+    public void Filter_WhenTheKildeSearchIsUsed_ThenItNarrowsThePanelAndNeverTheFilter()
+    {
+        // A kilde ticked and then typed out of sight is still narrowing the list, so unticking it
+        // here would drop a choice the reader never released. (Fhi.Metadata-l9l2n.67)
+        VariableFilter? reported = null;
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))),
+                             b => b.Add(c => c.FilterChanged, f => reported = f));
+
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        KildeSearchField(cut).Change("tromsø");
+
+        Assert.DoesNotContain("Dødsårsaksregisteret", KildeFacet(cut).TextContent, StringComparison.Ordinal);
+        Assert.Contains("Tromsøundersøkelsen", KildeFacet(cut).TextContent, StringComparison.Ordinal);
+        Assert.Equal([Dodsarsak], reported!.KildeIds);
+
+        // And it comes back with its tick on when the box is emptied.
+        KildeSearchField(cut).Change("");
+
+        Assert.True(FacetChosen(cut, "Dødsårsaksregisteret"));
+    }
+
+    [Fact]
+    public void Filter_WhenTheKildeSearchHidesAChosenKilde_ThenTheHeadingStillCountsIt()
+    {
+        // The summary is counted over the answer rather than over the values the box left, or the
+        // facet would say nothing while it is still narrowing — the defect ChosenCount exists for.
+        // (Fhi.Metadata-uidue)
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        Assert.Equal("Kilde (1)", KildeHeading(cut));
+
+        KildeSearchField(cut).Change("tromsø");
+
+        Assert.Equal("Kilde (1)", KildeHeading(cut));
+    }
+
+    [Fact]
+    public void Filter_WhenTheKildeSearchNarrowsTheFacet_ThenFocusIsPutBackOnTheBox()
+    {
+        // onchange fires because focus has left the box, so a reader who commits a narrowing term
+        // with Tab is standing on a summary or a checkbox this render removes, and focus falls to
+        // <body>. (Fhi.Metadata-6we8a)
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        KildeSearchField(cut).Change("tromsø");
+
+        JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus");
+    }
+
+    [Fact]
+    public void Filter_WhenTheKildeSearchRemovesNothing_ThenFocusIsLeftWhereTheReaderPutIt()
+    {
+        // The other half of the bargain: a commit that widens the facet, or that leaves every drawn
+        // kilde standing, took nothing away, and the reader who clicked into something else is
+        // already there.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        KildeSearchField(cut).Change("");
+
+        Assert.Empty(JSInterop.Invocations["Blazor._internal.domWrapper.focus"]);
+    }
+
+    [Fact]
+    public void Filter_WhenTheKildeSearchNamesADelkilde_ThenItsKildeIsKept()
+    {
+        // Matched over the delkilder too, or a reader typing a name they can see in the tree in
+        // front of them would empty the facet.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        KildeSearchField(cut).Change("Første besøk");
+
+        Assert.Contains("Tromsøundersøkelsen", KildeFacet(cut).TextContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("Dødsårsaksregisteret", KildeFacet(cut).TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Filter_WhenTheKildeSearchNamesADatasamling_ThenItsKildeIsKept()
+    {
+        // Same rule one level down, and it is the level most kilder actually have: a term matched
+        // over the delkilder alone would empty the facet on a name the reader can see.
+        // (Fhi.Metadata-mgp03)
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE")),
+                                                 FacetsWithDatasamlinger()));
+
+        KildeSearchField(cut).Change("Andre runde");
+
+        Assert.Contains("Tromsøundersøkelsen", KildeFacet(cut).TextContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("Dødsårsaksregisteret", KildeFacet(cut).TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Filter_WhenTheKildeSearchHidesAChosenDatasamling_ThenItKeepsItsChip()
+    {
+        // The datasamling level went in after the chip row, so it is the one level whose selection
+        // could have been left out of what the facet reports as chosen. (Fhi.Metadata-mgp03)
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE")),
+                                                 FacetsWithDatasamlinger()));
+
+        ClickFacet(cut, "Tromsø 1");
+        KildeSearchField(cut).Change("Dødsårsak");
+
+        Assert.Equal(["Tromsø 1"], Chips(cut));
+    }
+
+    [Fact]
+    public void Filter_WhenTheKildeSearchMatchesNothing_ThenTheFacetAndItsBoxAreStillDrawn()
+    {
+        // A facet dropped as empty would take the box the term has to be widened in with it, which
+        // is a dead end reachable by typing.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        KildeSearchField(cut).Change("zzz");
+
+        Assert.Contains("Ingen verdier passer søket", KildeFacet(cut).TextContent, StringComparison.Ordinal);
+        Assert.Empty(KildeTypeGroups(cut));
+
+        // Find throws when the box has gone, which is the failure this test is about; the value is
+        // asserted so the term the reader has to widen is still in front of them.
+        Assert.Equal("zzz", KildeSearchField(cut).GetAttribute("value"));
+    }
+
+    [Fact]
+    public void Render_Always_ThenTheKildeSearchFieldsRuleLeadsWithTheElement()
+    {
+        // The stand-in has to be shaped like Stiler's, and this is the part of that shape a reader
+        // cannot see: their global `input[type=search]` list is (0,1,1), so a class-only rule loses
+        // its font-size to it and the field draws at 18px where 14px was measured. (Fhi.Metadata-l9l2n.66)
+        var rules = HostClassNames.SampleDeclarationsFor("munin-explorer-filters__search");
+
+        Assert.NotEmpty(rules);
+        Assert.All(rules, rule => Assert.StartsWith("input.", rule.Selector, StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Filter_WhenExpandAllIsPressed_ThenEveryFacetIsOpen()
     {
         // The one thing a native <details> cannot do for itself, and the reason the open attribute
-        // stopped being a constant. Only kildetype and kilde start open. (Fhi.Metadata-wcbxi)
+        // stopped being a constant. Only kilde starts open. (Fhi.Metadata-wcbxi)
         var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
 
         Assert.NotEqual(Disclosures(cut).Count, OpenDisclosures(cut).Count);
@@ -3312,6 +3636,11 @@ public class VariableSearchTest : BunitContext
         ClickFacet(cut, "Utvid alle");
 
         Assert.Equal(Disclosures(cut).Count, OpenDisclosures(cut).Count);
+
+        // The kildetype groups too. Disclosures() counts direct children of the panel alone, so
+        // without this the press could leave every group folded and the suite would stay green.
+        Assert.NotEmpty(KildeTypeGroups(cut));
+        Assert.All(KildeTypeGroups(cut), group => Assert.True(group.HasAttribute("open")));
     }
 
     [Fact]
@@ -3325,6 +3654,11 @@ public class VariableSearchTest : BunitContext
         ClickFacet(cut, "Skjul alle");
 
         Assert.Empty(OpenDisclosures(cut));
+
+        // Skjul alle reaches the kildetype groups as well — the panel is unfolded to hundreds of
+        // rows without them, which is the state there has to be a way back from.
+        Assert.NotEmpty(KildeTypeGroups(cut));
+        Assert.All(KildeTypeGroups(cut), group => Assert.False(group.HasAttribute("open")));
     }
 
     [Fact]
@@ -3377,6 +3711,17 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
+    public void Filter_WhenNothingIsPressed_ThenTheLevelLinesAreAlreadyOn()
+    {
+        // A reader who never finds the button still has to see the tree as a hierarchy, which is
+        // what Runa's own tree does — its toggle loads pressed too. (Fhi.Metadata-dfygj)
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        Assert.Equal("true", FilterPanel(cut).GetAttribute("data-level-lines"));
+        Assert.Equal("true", Facet(cut, "Nivålinjer").GetAttribute("aria-pressed"));
+    }
+
+    [Fact]
     public void Filter_WhenLevelLinesArePressed_ThenThePanelMarksThemAndTheHostIsTold()
     {
         // The package draws no lines and remembers no preference: it emits the marker a host styles
@@ -3385,12 +3730,7 @@ public class VariableSearchTest : BunitContext
         var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))),
                              b => b.Add(c => c.LevelLinesChanged, reported.Add));
 
-        Assert.Null(FilterPanel(cut).GetAttribute("data-level-lines"));
-
-        ClickFacet(cut, "Nivålinjer");
-
         Assert.Equal("true", FilterPanel(cut).GetAttribute("data-level-lines"));
-        Assert.Equal("true", Facet(cut, "Nivålinjer").GetAttribute("aria-pressed"));
 
         ClickFacet(cut, "Nivålinjer");
 
@@ -3399,7 +3739,12 @@ public class VariableSearchTest : BunitContext
         // announcing the lines as on after they went off.
         Assert.Null(FilterPanel(cut).GetAttribute("data-level-lines"));
         Assert.Equal("false", Facet(cut, "Nivålinjer").GetAttribute("aria-pressed"));
-        Assert.Equal([true, false], reported);
+
+        ClickFacet(cut, "Nivålinjer");
+
+        Assert.Equal("true", FilterPanel(cut).GetAttribute("data-level-lines"));
+        Assert.Equal("true", Facet(cut, "Nivålinjer").GetAttribute("aria-pressed"));
+        Assert.Equal([false, true], reported);
     }
 
     [Fact]
@@ -3412,6 +3757,18 @@ public class VariableSearchTest : BunitContext
 
         Assert.Equal("true", FilterPanel(cut).GetAttribute("data-level-lines"));
         Assert.Equal("true", Facet(cut, "Nivålinjer").GetAttribute("aria-pressed"));
+    }
+
+    [Fact]
+    public void Filter_WhenTheHostClearsLevelLines_ThenTheyStartOff()
+    {
+        // The half the flipped default made reachable only through the parameter: a host that
+        // stored the reader pressing the lines off has to be able to hand that back.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))),
+                             b => b.Add(c => c.LevelLines, false));
+
+        Assert.Null(FilterPanel(cut).GetAttribute("data-level-lines"));
+        Assert.Equal("false", Facet(cut, "Nivålinjer").GetAttribute("aria-pressed"));
     }
 
     [Fact]
@@ -3832,7 +4189,10 @@ public class VariableSearchTest : BunitContext
         var cut = RenderWith(new FilteringClient(
             OnePage(Variable("1. Tale", "KODE")), facets, vocabulary: CategoryWords()));
 
-        var headings = cut.FindAll(".munin-explorer-filters summary").Select(s => s.TextContent).ToList();
+        // The facet summaries alone: a kildetype group inside the kilde facet is a disclosure of
+        // its own since Fhi.Metadata-l9l2n.67, and only a facet's summary wears the label span.
+        var headings = cut.FindAll(".munin-explorer-filters details > summary > .form-element__label")
+            .Select(label => label.TextContent).ToList();
 
         // Datakategori third: the two above it are in helsedata's own order and were not moved.
         Assert.Equal(2, headings.FindIndex(h => h.StartsWith("Datakategori", StringComparison.Ordinal)));
@@ -3872,9 +4232,12 @@ public class VariableSearchTest : BunitContext
             TotalCount = 42
         }));
 
-        // A heading names a level and does not filter, so it is text in the li rather than a label.
-        var unnamed = cut.FindAll(".munin-explorer-filters li")
-            .Single(li => li.ChildNodes[0].TextContent.Trim() == "Ikke oppgitt");
+        // A heading names a level and does not filter, so it is a summary rather than a label — the
+        // group is a disclosure over its kilder since Fhi.Metadata-l9l2n.67, and the name is the
+        // summary's own first node, ahead of the count span.
+        var unnamed = cut.FindAll(".munin-explorer-filters summary")
+            .Single(summary => summary.ChildNodes[0].TextContent.Trim() == "Ikke oppgitt")
+            .ParentElement!;
 
         Assert.Equal(["Dødsårsaksregisteret (30)"],
                      unnamed.QuerySelectorAll("ul > li > label").Select(label => label.TextContent));
@@ -4428,28 +4791,272 @@ public class VariableSearchTest : BunitContext
 
         ClickFacet(cut, "Dødsårsaksregisteret");
         ClickFacet(cut, "Streng");
-        Facet(cut, "Fjern alle filtre").Click();
+        ClearAll(cut).Click();
 
         Assert.True(client.SearchFilter?.IsEmpty);
     }
 
     [Fact]
-    public void Render_WhenThereIsNothingToClear_ThenTheClearButtonIsInertRatherThanAbsent()
+    public void Render_WhenThereIsNothingToClear_ThenThereIsNoClearControlAtAll()
     {
-        // Taking the control the reader just pressed out of the document drops focus to <body> —
-        // the same reason the pager's buttons carry aria-disabled instead of disabled.
+        // It stood at the foot of the panel and was made inert rather than removed, because taking
+        // the control the reader just pressed out of the document drops focus to <body>. It is in
+        // the chip row now, which is drawn only while something is chosen — so inert has become
+        // absent, and the focus it used to protect is handed to the search field ahead of the press
+        // instead. (Fhi.Metadata-l9l2n.68)
         var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
         var cut = RenderWith(client);
 
-        var clear = Facet(cut, "Fjern alle filtre");
-        Assert.Equal("true", clear.GetAttribute("aria-disabled"));
-        Assert.False(clear.HasAttribute("disabled"));
-
-        clear.Click();
-        Assert.Equal(1, client.SearchCalls); // inert: no request went out
+        Assert.Empty(cut.FindAll(".munin-explorer-filters__active"));
+        Assert.DoesNotContain("Fjern alle filtre", cut.Markup, StringComparison.Ordinal);
+        Assert.Equal(1, client.SearchCalls);
 
         ClickFacet(cut, "Dødsårsaksregisteret");
-        Assert.False(Facet(cut, "Fjern alle filtre").HasAttribute("aria-disabled"));
+
+        // And there it is, in the chip row and nowhere else on the page.
+        Assert.NotNull(ClearAll(cut).Closest(".munin-explorer-filters__active"));
+    }
+
+    // ---------------------------------------------------------------------------------
+    // The row of active-filter chips over the results, and the row the count shares with
+    // the column picker. (Fhi.Metadata-l9l2n.68)
+    // ---------------------------------------------------------------------------------
+
+    /// <summary>The visible text of every chip, without its close control's glyph.</summary>
+    /// <remarks>
+    /// The first child is the value's own element and the button follows it, so reading the whole
+    /// capsule would append the × to every assertion here.
+    /// </remarks>
+    private static IReadOnlyList<string> Chips(IRenderedComponent<VariableSearch> cut) =>
+        [.. cut.FindAll(".munin-explorer-filters__chip").Select(chip => chip.FirstChild!.TextContent.Trim())];
+
+    /// <summary>Press the close control on the chip naming <paramref name="value"/>.</summary>
+    private static void RemoveChip(IRenderedComponent<VariableSearch> cut, string value) =>
+        cut.FindAll(".munin-explorer-filters__chip")
+            .First(chip => chip.FirstChild!.TextContent.Trim() == value)
+            .QuerySelector(".munin-explorer-filters__chip-remove")!
+            .Click();
+
+    /// <summary>The one control on the page that offers to clear every filter.</summary>
+    /// <remarks>
+    /// <c>Single</c> is the assertion, not a convenience: the panel's own clear-all was moved into
+    /// the chip row rather than copied, and a second one would give the page two controls over one
+    /// selection. Every test below that clears goes through here.
+    /// </remarks>
+    private static IElement ClearAll(IRenderedComponent<VariableSearch> cut) =>
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "Fjern alle filtre");
+
+    /// <summary>Facets covering every kind the panel draws, so chips can be counted against them.</summary>
+    /// <remarks>
+    /// Datatype, instrument and the two kodeverk are here because the kildeutforsker has none of
+    /// them: a chip builder written as a switch over the facets that explorer knows passes a test
+    /// shaped like its panel and fails this one.
+    /// </remarks>
+    private static FilterOptions EveryFacet() => FacetsWithDatasamlinger() with
+    {
+        DataCategories = TwoCategories,
+        HelsefagligKodeverk = [new() { ShortName = "ICD-10", FullName = "Klassifikasjon av sykdommer", Count = 5 }],
+        AdministrativtKodeverk = [new() { Oid = "3402", Name = "Kommunenummer", Count = 4 }],
+        Instruments = [new() { Id = Rand36, Code = "RAND-36", Name = "RAND-36 spørreskjema", Count = 6 }]
+    };
+
+    private static readonly Guid Rand36 = new("dddddddd-0000-0000-0000-000000000001");
+
+    /// <summary>One value in every facet the panel offers, in the order the panel draws them.</summary>
+    private static readonly string[] OneValuePerFacet =
+    [
+        "Sentralt helseregister",                 // kildetype
+        "Dødsårsaksregisteret",                   // kilde
+        "Tromsø 4",                               // delkilde, nested under its own kilde
+        "Tromsø 1",                               // datasamling, hanging straight off its kilde
+        "Fjerde runde",                           // datasamling, hanging under a delkilde
+        "ehds-cat:population-health-surveys",     // datakategori
+        "Bakgrunn",                               // variabelgruppe
+        "Streng",                                 // datatype
+        "ICD-10",                                 // helsefaglig kodeverk
+        "Kommunenummer",                          // administrativt kodeverk
+        "RAND-36 spørreskjema",                   // instrument
+        "Har kildekodeverk"                       // the catch-all
+    ];
+
+    [Fact]
+    public void ActiveFilters_WhenEveryFacetHasAValueChosen_ThenEveryOneOfThemIsAChip()
+    {
+        // THE TEST THAT CATCHES THE WRONG SHAPE. A row covering four facets out of ten reads as
+        // covering all ten, which is worse than no row at all — so the count is asserted against
+        // the filter's own count of active values rather than against a list written out here.
+        // Datatype and instrument are facets the kildeutforsker does not have, so a builder copied
+        // from it by naming facets rather than by walking them fails on exactly those two.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), EveryFacet());
+        var cut = RenderWith(client);
+
+        foreach (var value in OneValuePerFacet)
+        {
+            ClickFacet(cut, value);
+        }
+
+        Assert.Equal(OneValuePerFacet.Length, client.SearchFilter!.ActiveCount);
+        Assert.Equal(OneValuePerFacet.Length, Chips(cut).Count);
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenTheChosenValueIsFromTheCatchAll_ThenItsChipNamesTheFacetAndTheOthersDoNot()
+    {
+        // "Har kildekodeverk" over the results says nothing about being a filter; every other
+        // facet's values are their own word. Decided 2026-09-09: the facet name, a colon, the
+        // value. Both languages live in Texts, so neither is written into the markup.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE")), EveryFacet()));
+
+        ClickFacet(cut, "Streng");
+        ClickFacet(cut, "Har kildekodeverk");
+
+        Assert.Equal(["Streng", "Andre filtre: Har kildekodeverk"], Chips(cut));
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenADateBoundIsSet_ThenItIsAChipNamingWhichEndItIs()
+    {
+        // The dataperiode holds no facet values at all — it is two date fields — so a row built by
+        // walking the drawn values alone would leave a date filter uncounted and unremovable from
+        // here. A bare date does not say which end it is, hence the field's own name in front of
+        // it. The day itself is written in the reader's culture, so only the year is asserted.
+        var cut = RenderWith(new FilteringClient(
+            OnePage(Variable("1. Tale", "KODE")),
+            FacetsWith(range: new DateInterval
+            {
+                Min = new DateTimeOffset(2000, 1, 1, 0, 0, 0, TimeSpan.Zero),
+                Max = new DateTimeOffset(2030, 1, 1, 0, 0, 0, TimeSpan.Zero)
+            })));
+
+        DateInputs(cut)[0].Change("2020-01-01");
+
+        var chip = Assert.Single(Chips(cut));
+
+        Assert.StartsWith("Fra og med: ", chip, StringComparison.Ordinal);
+        Assert.Contains("2020", chip, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenAChipIsDrawn_ThenItsCloseControlIsNamedAfterTheValueItRemoves()
+    {
+        // A row of controls all announcing "Fjern" is a row a screen reader cannot tell apart, and
+        // the × is not a name at all. AccessibleName refuses title and placeholder, so this cannot
+        // pass on an attribute that merely looks like one.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        Assert.Equal(
+            "Fjern filteret Dødsårsaksregisteret",
+            AccessibleName.Of(cut.Find(".munin-explorer-filters__chip-remove")));
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenAChipIsRemoved_ThenItsOwnCheckboxUnticksAndTheRequestWidensByThatValueAlone()
+    {
+        // THE TRAP. A chip that cleared its value down a path of its own would leave the panel's
+        // checkbox ticked over a list that had stopped obeying it, and neither control would say
+        // which one the rows came from. Both halves in one test, because either alone passes
+        // against exactly that.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), EveryFacet());
+        var cut = RenderWith(client);
+
+        ClickFacet(cut, "Dødsårsaksregisteret");
+        ClickFacet(cut, "Streng");
+
+        RemoveChip(cut, "Streng");
+
+        Assert.Equal(["Dødsårsaksregisteret"], Chips(cut));
+        Assert.False(FacetChosen(cut, "Streng"));
+        Assert.True(FacetChosen(cut, "Dødsårsaksregisteret"));
+        Assert.Empty(client.SearchFilter!.DataTypes);
+        Assert.Single(client.SearchFilter!.KildeIds);
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenClearAllIsPressed_ThenPanelChipsAndRowsAgreeThatNothingIsInForce()
+    {
+        // Three surfaces describing one selection, so the test asserts all three rather than the
+        // one it was written from: the checkboxes, the chip row, and what the rows were fetched
+        // with. Any of them left behind is a page saying two different things about its own list.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), EveryFacet());
+        var cut = RenderWith(client);
+
+        ClickFacet(cut, "Dødsårsaksregisteret");
+        ClickFacet(cut, "Streng");
+        ClickFacet(cut, "Har kildekodeverk");
+
+        ClearAll(cut).Click();
+
+        Assert.Empty(Chips(cut));
+        Assert.Empty(cut.FindAll(".munin-explorer-filters__active"));
+        Assert.False(FacetChosen(cut, "Dødsårsaksregisteret"));
+        Assert.False(FacetChosen(cut, "Streng"));
+        Assert.False(FacetChosen(cut, "Har kildekodeverk"));
+        Assert.True(client.SearchFilter!.IsEmpty);
+    }
+
+    [Fact]
+    public void ResultsToolbar_WhenTheCountSharesTheRow_ThenItIsStillTheOnePoliteRegionAndItStillNamesTheSort()
+    {
+        // THE TRAP THIS MOVE COULD HAVE SPRUNG: carry the count into the new row without its
+        // aria-live and screen-reader users stop being told the result count changed when a facet
+        // is ticked, with nothing visibly wrong. Exactly one region, because a visible count beside
+        // a region repeating the same sentence is announced twice.
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        var count = cut.Find(".munin-explorer-results__toolbar > p[role='status']");
+
+        Assert.Single(cut.FindAll("[role='status']"));
+        Assert.Equal("polite", count.GetAttribute("aria-live"));
+        Assert.Equal("true", count.GetAttribute("aria-atomic"));
+        Assert.Contains("1 variabel funnet", count.TextContent);
+        Assert.Contains("sortert på Standard, stigende", count.TextContent);
+    }
+
+    [Fact]
+    public void ResultsToolbar_WhenItIsDrawn_ThenItHoldsTheCountAndKolonnerAndNothingElse()
+    {
+        // Two controls, not four. A Sorter dropdown would be a second ordering control drifting out
+        // of step with the column headings that already carry aria-sort, and Per side belongs at
+        // the pager, where a reader is standing when they find out twenty was not enough.
+        var cut = RenderWith(new PagedClient(312));
+
+        var row = cut.Find(".munin-explorer-results__toolbar");
+
+        Assert.Empty(row.QuerySelectorAll("select"));
+        Assert.Equal(["Kolonner"], row.QuerySelectorAll("summary").Select(s => s.TextContent.Trim()));
+        Assert.NotNull(cut.Find(".munin-explorer-pagination-size select"));
+        Assert.Empty(row.QuerySelectorAll(".munin-explorer-pagination-size"));
+    }
+
+    [Fact]
+    public void ResultsToolbar_WhenTheMockupOmitsSomethingLiveHas_ThenItIsStillDrawn()
+    {
+        // The mockup draws no header row, no numbered pager and no skip link. None of the three is
+        // a proposal to remove them — it simply does not draw them — and an implementer following
+        // it closely takes all three out without noticing. Asserted here in one place so the
+        // omissions are read as one decision rather than three coincidences.
+        var cut = RenderWith(new PagedClient(312));
+
+        Assert.NotNull(cut.Find("a.munin-explorer-skiplink-pagination"));
+        Assert.Equal(["Navn ↑", "Kilde", "Datasamling", "Variabelgruppe"],
+                     SortButtons(cut).Select(b => b.TextContent));
+        Assert.NotEmpty(cut.FindAll(".munin-explorer-pagination-pages button"));
+    }
+
+    [Fact]
+    public void ResultsToolbar_WhenAColumnHeadingIsPressed_ThenItStillSortsAndStillMarksTheActiveColumn()
+    {
+        // The ordering stayed where it was, which is the reason the row holds no Sorter control.
+        var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        ClickSort(cut, "Kilde");
+
+        Assert.Equal(SortField.Kilde, client.LastSort);
+        Assert.Equal("Kilde ↑", SortButtons(cut)[1].TextContent);
+        Assert.Contains("sortert på Kilde, stigende", StatusLine(cut));
     }
 
     [Fact]
@@ -7459,31 +8066,56 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
+    public void Detail_WhenARowIsOpened_ThenTheCodeIsThereWhateverThePickerSaysAboutTheColumn()
+    {
+        // Where the code went when it left the hit list, and the half of that move a picker test
+        // cannot see: the panel carries it unconditionally, because this is the moment a reader
+        // has found their variable and is asking for it by name. Turning the column on and off
+        // above the list must not reach in here — delete this and hiding the column could take
+        // the code off the screen entirely, which is the one outcome the move must not have.
+        var cut = RenderWith(TwoRows());
+
+        Toggles(cut)[0].Click();
+
+        Assert.Equal("Kode", Panel(cut).QuerySelector("dl dt")!.TextContent);
+        Assert.Equal("V_ALS.F1.1. Tale", Values(cut)[0].TextContent);
+
+        ToggleColumn(cut, "Kode");
+
+        Assert.Equal("V_ALS.F1.1. Tale", Values(cut)[0].TextContent);
+
+        ToggleColumn(cut, "Kode");
+
+        Assert.Equal("V_ALS.F1.1. Tale", Values(cut)[0].TextContent);
+    }
+
+    [Fact]
     public void Detail_WhenTheDetailArrives_ThenItSaysWhatTheVariableIsAndWhereItSits()
     {
-        // The five things the panel exists to show. The labels are the card's own words for the
+        // The six things the panel exists to show. The labels are the card's own words for the
         // same fields, so opening a row renames nothing that was already on screen.
         var cut = RenderWith(TwoRows());
 
         Toggles(cut)[0].Click();
 
-        Assert.Equal(["Beskrivelse", "Kildesti", "Variabelgruppe", "Dataperiode"],
+        Assert.Equal(["Kode", "Beskrivelse", "Kildesti", "Variabelgruppe", "Dataperiode"],
                      Panel(cut).QuerySelectorAll("dl dt").Select(t => t.TextContent));
 
         var values = Values(cut);
 
-        Assert.Equal("Angir pasientens grad av utfall på «1. Tale».", values[0].TextContent);
+        Assert.Equal("V_ALS.F1.1. Tale", values[0].TextContent);
+        Assert.Equal("Angir pasientens grad av utfall på «1. Tale».", values[1].TextContent);
         // The period reads as month and year now, and carries a bar beneath it. Runa's format.
-        Assert.Contains("2010", values[3].TextContent);
-        Assert.Contains("2025", values[3].TextContent);
-        Assert.NotNull(values[3].QuerySelector(".munin-explorer-period__fill"));
+        Assert.Contains("2010", values[4].TextContent);
+        Assert.Contains("2025", values[4].TextContent);
+        Assert.NotNull(values[4].QuerySelector(".munin-explorer-period__fill"));
 
         // Widest first, and the kilde's short name alongside its full one — the card has room for
         // neither the kildetype above it nor the abbreviation the register is known by.
         Assert.Equal(["Nasjonalt medisinsk kvalitetsregister", "Als registeret (ALS)", "Inklusjon"],
-                     values[1].QuerySelectorAll("ol > li").Select(l => l.TextContent));
+                     values[2].QuerySelectorAll("ol > li").Select(l => l.TextContent));
 
-        Assert.Equal(["Funksjonsscore"], values[2].QuerySelectorAll("li").Select(l => l.TextContent));
+        Assert.Equal(["Funksjonsscore"], values[3].QuerySelectorAll("li").Select(l => l.TextContent));
 
         // Kodeverk moved to the Data tab — Runa splits the panel into what the variable IS and
         // what its data holds, and the kodeverk is the latter. Which kind a link is says what
@@ -7515,15 +8147,16 @@ public class VariableSearchTest : BunitContext
         Toggles(cut)[0].Click();
 
         Assert.Equal(["Als registeret (ALS)", "Inklusjon"],
-                     Values(cut)[1].QuerySelectorAll("ol > li").Select(l => l.TextContent));
+                     Values(cut)[2].QuerySelectorAll("ol > li").Select(l => l.TextContent));
     }
 
     [Fact]
     public void Detail_WhenAValueIsMissing_ThenTheRowStillDrawsAndSaysSo()
     {
         // A variable with nothing but a name is a normal row in this catalogue, and a panel that
-        // renders nothing for it would look like a panel that failed to load.
-        var bare = new VariableDetail { Id = TaleId, Code = "K", PreferredTerm = "1. Tale" };
+        // renders nothing for it would look like a panel that failed to load. Nothing but a name
+        // means the code as well, now that the panel is where the code is shown.
+        var bare = new VariableDetail { Id = TaleId, PreferredTerm = "1. Tale" };
         var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale"))).Knows(bare));
 
         Toggles(cut)[0].Click();
@@ -7990,7 +8623,7 @@ public class VariableSearchTest : BunitContext
         Toggles(cut)[0].Click();
 
         Assert.Equal(["Funksjonsscore", "ALSFRS-R", "Pustefunksjon"],
-                     Values(cut)[2].QuerySelectorAll("li").Select(l => l.TextContent));
+                     Values(cut)[3].QuerySelectorAll("li").Select(l => l.TextContent));
     }
 
     [Fact]
@@ -8009,7 +8642,7 @@ public class VariableSearchTest : BunitContext
         Toggles(cut)[0].Click();
 
         Assert.Equal(["Funksjonsscore"],
-                     Values(cut)[2].QuerySelectorAll("li").Select(l => l.TextContent));
+                     Values(cut)[3].QuerySelectorAll("li").Select(l => l.TextContent));
     }
 
     [Fact]
@@ -8024,7 +8657,7 @@ public class VariableSearchTest : BunitContext
         Toggles(cut)[0].Click();
 
         Assert.Equal(["Nasjonalt medisinsk kvalitetsregister", "Als registeret", "Inklusjon"],
-                     Values(cut)[1].QuerySelectorAll("ol > li").Select(l => l.TextContent));
+                     Values(cut)[2].QuerySelectorAll("ol > li").Select(l => l.TextContent));
     }
 
     [Fact]
@@ -8039,7 +8672,7 @@ public class VariableSearchTest : BunitContext
         Toggles(cut)[0].Click();
 
         Assert.Equal(["Nasjonalt medisinsk kvalitetsregister", "Als registeret", "Inklusjon"],
-                     Values(cut)[1].QuerySelectorAll("ol > li").Select(l => l.TextContent));
+                     Values(cut)[2].QuerySelectorAll("ol > li").Select(l => l.TextContent));
     }
 
     [Fact]
@@ -8071,7 +8704,7 @@ public class VariableSearchTest : BunitContext
 
         Toggles(cut)[0].Click();
         // The description is not in the row any more — see the panel.
-        Assert.Equal("Hvordan er talen?", Values(cut)[0].TextContent);
+        Assert.Equal("Hvordan er talen?", Values(cut)[1].TextContent);
     }
 
     [Fact]
@@ -8136,10 +8769,10 @@ public class VariableSearchTest : BunitContext
 
         Toggles(cut)[0].Click();
 
-        Assert.Equal(["Description", "Source path", "Variable group", "Data period"],
+        Assert.Equal(["Code", "Description", "Source path", "Variable group", "Data period"],
                      Panel(cut).QuerySelectorAll("dl dt").Select(t => t.TextContent));
 
-        var trail = Values(cut)[1].QuerySelectorAll("ol > li");
+        var trail = Values(cut)[2].QuerySelectorAll("ol > li");
 
         Assert.Equal("National medical quality registry", trail[0].TextContent);
         Assert.False(trail[0].HasAttribute("lang"));
@@ -8195,12 +8828,17 @@ public class VariableSearchTest : BunitContext
                                             // which reuses it rather than minting a second name
                                             // for the same affordance
             "munin-explorer-breadcrumb__clear",      // ours — the × that empties the hierarchy
-            "munin-explorer-container",  // ours, Stiler components/munin-explorer/
-            "munin-explorer-results",    // ours, Stiler components/munin-explorer/
+            // The row the count shares with the column picker, above the results container and
+            // outside it — the name the kildeutforsker already emits. No chip names here: this
+            // client answers with no facets at all, so the panel has no value to draw a chip for.
+            // (Fhi.Metadata-l9l2n.68)
+            "munin-explorer-results__toolbar",
             "munin-explorer-header",     // ours now; their own variable page hangs the
             "munin-explorer-header__actions",        // column picker in, and the ghost button
             "munin-explorer__dropdown",              // that opens it. All four came from variables.css.
             "munin-explorer-header__actions-button",
+            "munin-explorer-container",  // ours, Stiler components/munin-explorer/
+            "munin-explorer-results",    // ours, Stiler components/munin-explorer/
             "munin-explorer-detail",     // ours, a handle
             "munin-explorer-group",      // ours — helsedata's panel is flat, so it has no
                                             // group heading to borrow a name from

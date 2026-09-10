@@ -459,6 +459,16 @@ public class VariableViewTest : BunitContext
     }
 
     [Fact]
+    public void Heading_WhenTheVariableHasAName_ThenTheCodeIsStillUnderIt()
+    {
+        // The code came out of the variabelutforsker's hit list (Fhi.Metadata-l9l2n.69) and it must
+        // not follow it out of here. This page and the saved list are what an applicant attaches to
+        // an application, and the code is the thing they are asking for by; a reader who can see
+        // the variable and not its identifier has the wrong half.
+        Assert.Equal("ALSFRSR1Tale", Render(Detail()).Find("p.munin-explorer-whole__code").TextContent.Trim());
+    }
+
+    [Fact]
     public void Heading_WhenTheCatalogueLeftTheNameEmpty_ThenTheCodeStandsInAndIsNotDrawnTwice()
     {
         // The third view with the same shape and a third contract. The code caption below the

@@ -240,6 +240,9 @@ else
          state lives in the browser, so filtering does not collapse what the reader opened: the
          `open` attribute below moves only when Utvid alle or Skjul alle is pressed, and an
          unchanged value is never patched. (Fhi.Metadata-wcbxi)
+         Exactly one of them is open at first paint, and it is Kilde, whose search field is what a
+         reader is meant to land on; the kildetype groups inside it are the same shape one level
+         down, closed, so the facet opens on three rows rather than on 46. (Fhi.Metadata-l9l2n.67)
        * A bare `<ul>` for the values, nested for the hierarchy. Indentation is what shows a delkilde
          sitting under its kilde, and a list is an element every base stylesheet already styles —
          unlike `variabelutforsker-tree`, which would be exactly the invented name that renders as a
@@ -302,6 +305,27 @@ else
                    — cannot hand its open state to whichever facet takes its place. *@
                 <details @key="FacetKey(group)" open="@FacetOpen(group)">
                     <summary><span class="form-element__label">@GroupLabel(group)</span></summary>
+                    @* The box that narrows the kilde facet's own values, and the first focusable
+                       thing under the summary — a reader landing on the one facet that opens is
+                       meant to reach it. Stiler's rule is `input.munin-explorer-filters__search`,
+                       so the class has to sit on an <input>: the global `input[type=search]` list
+                       is (0,1,1) and outranks a bare class. The label is real and hidden rather
+                       than an aria-label, onchange rather than oninput, and @ref because a
+                       narrowing commit rewrites the list below under a reader who committed with
+                       Tab — all three as Kelda's facet search does them. (Fhi.Metadata-l9l2n.67) *@
+                    @if (group.Searchable)
+                    {
+                        <label class="screenreader-only" for="@KildeSearchId">@T.FacetSearchLabel(group.Label)</label>
+                        <input id="@KildeSearchId"
+                               type="search"
+                               class="munin-explorer-filters__search"
+                               @ref="_kildeSearchField"
+                               value="@_kildeSearch"
+                               @onchange="e => SearchKilderAsync(e.Value as string)"
+                               placeholder="@T.FacetSearchPlaceholder"
+                               autocomplete="off"
+                               maxlength="200" />
+                    }
                     @* A facet's own control first, where it has one: the dataperiode holds no
                        values and would otherwise draw the empty-state sentence. (Fhi.Metadata-uidue) *@
                     @if (group.Body is { } body)
@@ -318,15 +342,18 @@ else
                     }
                 </details>
             }
-
-            @* Never taken off the page, only made inert — the same treatment the pager's buttons
-               get, and for the same reason: clearing the filters from a button that then disappears
-               drops focus to <body>. aria-disabled says so; ClearFiltersAsync is what makes it true. *@
-            <button class="hd-button-square button-square--ghost margin-right margin-bottom"
-                    type="button"
-                    aria-disabled="@AriaDisabled(!_filter.IsEmpty)"
-                    @onclick="ClearFiltersAsync">@T.ClearFilters</button>
         </fieldset>
+    }
+
+    @* Which filters are on, said over the results because the panel can be folded away, scrolled
+       past or simply long. Every chip writes the same `_filter` its own checkbox does, and the
+       clear-all is the panel's own, moved here rather than copied — two controls offering to clear
+       one selection is what an added row would have made. Nothing at all while nothing is chosen.
+       (Fhi.Metadata-l9l2n.68) *@
+    @* Hidden on the list tab with the facets it names, the same as the trail below. *@
+    @if (_resultsTab != ExplorerTab.VariableList)
+    {
+        @ActiveFilters.For(this, T.ActiveFiltersTitle, ActiveFilterChips, T.ClearFilters, ClearFiltersAsync)
     }
 
     @* The hierarchy trail, above the results and below the filters — which is where Runa puts it,
@@ -343,39 +370,6 @@ else
     {
         @Breadcrumb(crumbs)
     }
-
-    @* The ordering used to live in a "Sorter etter" fieldset here. It moved into the column
-       header, which is where helsedata and Runa both put it, and where a reader looks for it:
-       the header cell is the button, and it carries the aria-sort. Keeping both would offer the
-       same choice twice. *@
-
-    @* One polite status line, holding one message at a time: loading, the result summary,
-       or "no matches". aria-atomic makes a screen reader read the whole new sentence rather
-       than only the words that changed — "12" on its own is not information.
-
-       Loading is announced too. That is one extra utterance per search, which is the price
-       of telling a screen-reader user that pressing Søk did something at all when the API
-       is slow; the region is shared rather than stacked so the messages replace each other
-       instead of piling up.
-
-       `caption` is Stiler's muted secondary-text style. It also carries the empty state: a
-       full-page emptystate block would be out of proportion inside a component that is one
-       section of somebody else's page, and duplicating the sentence outside the live region
-       would put it on screen twice. *@
-    <p class="caption" role="status" aria-live="polite" aria-atomic="true">
-        @if (_loading)
-        {
-            @T.Loading
-        }
-        else if (_result is { Items.Count: > 0 })
-        {
-            @Summary
-        }
-        else if (_result is not null)
-        {
-            @T.NoResults(_executedSearch, _filter.ActiveCount, !_filter.IncludeHistorical)
-        }
-    </p>
 
     @* The failure is worth interrupting for, so it is an alert rather than a polite update.
        The container is always rendered, empty when there is nothing wrong: a role="alert"
@@ -402,9 +396,9 @@ else
 
            It outlives the message it answers by exactly one fetch: a successful retry clears the
            sentence, and a button leaving with it would drop the focus of the reader who just
-           pressed it to <body> — the pager's rule, and Fjern alle filtre's. The next fetch someone
-           else starts takes it away whether it answers or is refused for asking too often, so a
-           dead offer is not read out again with every later failure in this aria-atomic region.
+           pressed it to <body> — the pager's rule. The next fetch someone else starts takes it away
+           whether it answers or is refused for asking too often, so a dead offer is not read out
+           again with every later failure in this aria-atomic region.
 
            munin-explorer-retry is what draws the inert state. The region carries no class, so
            neither the pager's nor the filter panel's [aria-disabled] rule reaches in here, and
@@ -497,22 +491,65 @@ else
     @if (!ShowTabs || _resultsTab == ExplorerTab.Search)
     {
 
+    @* The count and the Kolonner picker on one row, where they used to take a row each.
+       `munin-explorer-results__toolbar` is the row, spelled the way Stiler's rule spells it — a
+       name the two halves have to agree on letter for letter. (Fhi.Metadata-l9l2n.68)
+
+       Two controls and not four. The ordering is on the column headings below, which carry the
+       aria-sort a second control would have to keep in step with; and Per side stays at the pager,
+       where a reader is standing when they find out twenty was not enough.
+
+       The row is drawn on exactly the condition the results container is, which no search, filter,
+       sort or page turn changes — so the count inside it, this component's one polite live region,
+       is in the DOM before its text arrives. A region inserted and filled in the same DOM update is
+       announced unreliably. Nothing else in the row says the count: a visible number beside a
+       region reading the same sentence is two announcements rather than a row.
+
+       Above `munin-explorer-results` rather than inside it, which is where the kildeutforsker emits
+       the same name and what Stiler's rule for the picker inside it is written against.
+
+       One message at a time: loading, the summary, or "no matches". Loading is announced too, which
+       is the price of telling a screen-reader user that pressing Søk did anything at all when the
+       API is slow. aria-atomic makes the whole new sentence read rather than only the words that
+       changed — "12" on its own is not information.
+
+       `caption` is Stiler's muted secondary-text style. It carries the empty state as well: a
+       full-page emptystate block would be out of proportion inside a component that is one section
+       of somebody else's page, and repeating the sentence outside the live region would put it on
+       screen twice. *@
+    <div class="munin-explorer-results__toolbar">
+        <p class="caption" role="status" aria-live="polite" aria-atomic="true">
+            @if (_loading)
+            {
+                @T.Loading
+            }
+            else if (_result is { Items.Count: > 0 })
+            {
+                @Summary
+            }
+            else if (_result is not null)
+            {
+                @T.NoResults(_executedSearch, _filter.ActiveCount, !_filter.IncludeHistorical)
+            }
+        </p>
+
+        @* The column picker, at the end of the row — which is where helsedata's own variable page
+           puts theirs, in what they call `variable-explorer-header__actions`. Not inside
+           `munin-explorer-data-list__header`, where the bead expected it: that row is the columns
+           themselves, and it is the one element the picker must be able to empty without emptying
+           itself. Not `sortable-dropdown` either, though the bead named it — see the remarks on
+           ColumnPicker: that is their mobile sort control and it is `display: none` above 1280px.
+
+           Rendered whether or not anything was found: a control that leaves the document when a
+           search comes back empty takes the reader's place in it with it. *@
+        @ColumnPicker()
+    </div>
+
     @* The container and its header render whether or not anything was found. The ordering lives
        in that header, and hiding it when a search comes back empty would take the button the reader
        just pressed out of the document — the same reason the Søk button is never disabled. *@
     <div class="munin-explorer-container">
     <div class="munin-explorer-results">
-    @* The column picker, above the list and inside the results column — which is where
-       helsedata's own variable page puts it, in what they call `variable-explorer-header__actions`. Not inside
-       `munin-explorer-data-list__header` where the bead expected it: that row is the columns themselves,
-       and it is the one element the picker must be able to empty without emptying itself. Not
-       `sortable-dropdown` either, though the bead named it — see the remarks on ColumnPicker: that
-       is their mobile sort control and it is `display: none` above 1280px.
-
-       Rendered whether or not anything was found, for the reason the header is: a control that
-       leaves the document when a search comes back empty takes the reader's place in it with it. *@
-    @ColumnPicker()
-
     @if (_result is { Items.Count: > 0 } && ShowPager)
     {
         @* Without this a keyboard user reaches Neste by tabbing past every card on the page —
@@ -715,6 +752,14 @@ else
                                                 <h3 class="headline headline-xxs margin--none munin-explorer-group">@T.GroupIdentification</h3>
 
                                                 <dl class="munin-explorer-meta__grid munin-explorer-meta__grid-1">
+                                                    @* Out of the hit list and in here: a code does
+                                                       not help a reader CHOOSE a variable, it is
+                                                       what they ask for once they have. *@
+                                                    <div>
+                                                        <dt class="headline headline-xxs margin--none">@T.FieldCode</dt>
+                                                        <dd>@DetailValue(detail.Code)</dd>
+                                                    </div>
+
                                                     <div>
                                                         <dt class="headline headline-xxs margin--none">@T.FieldDescription</dt>
                                                         <dd>@DetailValue(detail.Description)</dd>

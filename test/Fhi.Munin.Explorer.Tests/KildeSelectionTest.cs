@@ -646,6 +646,7 @@ public class KildeSelectionTest : BunitContext
             "munin-explorer-filters__count",     // shared with the variable explorer's facets
             "munin-explorer-filters__facets",
             "munin-explorer-filters__toggle",
+            "munin-explorer-filters__toolbar", // the fold row, the variable explorer's name
             // The column picker, shared with the variable explorer down to the markup (ColumnPicker).
             "munin-explorer-header",
             "munin-explorer-header__actions",
@@ -791,6 +792,76 @@ public class KildeSelectionTest : BunitContext
         Assert.True(
             BlocksFor("munin-explorer-selection").Any(d => d.Contains("display:flex", StringComparison.Ordinal)),
             "The ribbon is not a row, so its three parts stack.");
+    }
+
+    [Fact]
+    public void ExploreButton_WhenTheViewportIsNarrower_ThenItsWidthFloorYields()
+    {
+        // CSS resolves max-width before min-width, so the `max-width: 100%` beside the floor cannot
+        // bring a fixed one down - the floor itself has to be container-relative, or a narrow
+        // viewport scrolls sideways under WCAG 1.4.10 (Fhi.Metadata-l9l2n.65).
+        static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
+
+        var rules = HostClassNames
+            .SampleDeclarationsFor("munin-explorer-selection__explore")
+            .Select(rule => (rule.Selector, Block: Squeezed(rule.Declarations)))
+            .ToList();
+
+        var floor = rules
+            .SelectMany(rule => rule.Block.Split(';'))
+            .FirstOrDefault(d => d.StartsWith("min-width:", StringComparison.Ordinal));
+
+        Assert.False(
+            floor is null,
+            "Nothing holds the handover button's width, so the ribbon moves on every tick.");
+
+        // The operand, not just the function: `min(21rem, 24rem)` is a min() that still computes to
+        // a 336px floor in a narrower row, and would pass a test that asked only for `min(`.
+        var operands = System.Text.RegularExpressions.Regex.Match(floor!, @"^min-width:min\((.+)\)$");
+
+        Assert.True(
+            operands.Success
+            && operands.Groups[1].Value.Split(',').Any(operand => operand.Trim() == "100%"),
+            $"The handover button's floor is `{floor}`, which no narrow viewport can bring down, "
+            + "so the page scrolls sideways instead of the button shrinking.");
+
+        // Yielding is half of it: hd-button-square is nowrap at a fixed height, so a button that
+        // shrinks below its label spills the label out of its own box instead. And these have to
+        // outrank it - it ties on specificity with a bare class and is later in the file.
+        var protection = rules
+            .Where(rule => rule.Block.Contains("white-space:normal", StringComparison.Ordinal)
+                        && rule.Block.Contains("height:auto", StringComparison.Ordinal))
+            .ToList();
+
+        Assert.True(
+            protection.Count > 0,
+            "Nothing lets the handover's label wrap, so it spills out of the button once the floor "
+            + "yields.");
+
+        // Per comma-separated part, because specificity is: a list is a set of independent
+        // selectors, so `.something, .munin-explorer-selection__explore` carries two dots and still
+        // matches this button at one class - the tie with hd-button-square that source order loses.
+        static bool Outranks(string selector) => selector
+            .Split(',')
+            .Where(part => part.Contains("munin-explorer-selection__explore", StringComparison.Ordinal))
+            .All(part => part.Count(c => c == '.') > 1);
+
+        var wrapping = protection.FirstOrDefault(rule => Outranks(rule.Selector));
+
+        Assert.True(
+            wrapping.Selector is not null,
+            $"`{protection[0].Selector}` matches the handover at one class, so hd-button-square ties "
+            + "it and wins on source order: the wrap and the auto height above are dead text.");
+
+        // The wrap needs somewhere to go, and a floor rather than nothing: `height: auto` alone
+        // draws the button shorter than the reset button beside it in the same centred row.
+        Assert.True(
+            protection.Any(rule => rule.Block.Contains("min-height:2.75rem", StringComparison.Ordinal)),
+            "The handover has no height floor, so it draws shorter than the reset button beside it.");
+
+        // The trade this makes, accepted rather than overlooked: in the band where the button is
+        // narrower than its longest label but wider than its shortest, ticking a row wraps it to a
+        // second line and moves the rows beneath. A label outside its own box is worse.
     }
 
     [Fact]

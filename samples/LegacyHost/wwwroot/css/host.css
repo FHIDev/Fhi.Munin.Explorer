@@ -304,8 +304,9 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    wide as the handover and gave the count a column it had no use for; what was actually wanted
    is one button that never moves and everything else flowing after it.
 
-   max-width so the floor cannot push the row wider than the page on a narrow screen, and
-   flex-wrap so it drops to the next line instead. */
+   The floor is min() because CSS resolves max-width before min-width, so the `max-width: 100%`
+   beside it cannot bring a fixed floor down. Compound with hd-button-square, which is later here
+   and would otherwise win back its nowrap and its fixed height (Fhi.Metadata-l9l2n.65). */
 .munin-explorer-selection {
   display: flex;
   flex-wrap: wrap;
@@ -314,10 +315,13 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   margin-bottom: 16px;
 }
 
-.munin-explorer-selection__explore {
-  min-width: 21rem;
+.munin-explorer-selection__explore.hd-button-square {
+  min-width: min(21rem, 100%);
   max-width: 100%;
   justify-content: center;
+  white-space: normal;
+  height: auto;
+  min-height: 2.75rem;
 }
 
 /* components/buttons/_squarebutton.scss */
@@ -554,11 +558,12 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 .munin-explorer-filters li > label input[type="checkbox"] { margin-top: 4px; flex: none; }
 
-/* Nivålinjer: one guide line per level of the tree, drawn only while the reader has the toggle on.
-   The package emits `data-level-lines` on the panel instead of a class name of its own. Not because
-   a class would render badly — one on a <ul> that already exists renders as it does today — but
-   because a name is inventory the README, these two files and the name guard all have to carry, and
-   a state marker owes none of that. Nested lists only: the top level has nothing to sit under.
+/* Nivålinjer: one guide line per level of the tree, drawn from first paint — the toggle takes them
+   away rather than putting them there. The package emits `data-level-lines` on the panel instead of
+   a class name of its own. Not because a class would render badly — one on a <ul> that already
+   exists renders as it does today — but because a name is inventory the README, these two files and
+   the name guard all have to carry, and a state marker owes none of that. Nested lists only: the
+   top level has nothing to sit under.
 
    --grey60 rather than the --grey30 the other borders in this block use. A guide line is a
    non-text control under WCAG 1.4.11 and has to clear 3:1 against what is behind it, which here is
@@ -739,6 +744,29 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   color: var(--dark);
   border: 1px solid var(--grey30);
   border-radius: 4px;
+}
+
+/* The variabelutforsker's own version of that box, in the Kilde facet, and the one name in this
+   panel that IS ours: `munin-explorer-filters__search`. The selector leads with the element on
+   purpose and the rule is the stand-in for `Fhi.Helsedata.Stiler`'s, declaration for declaration —
+   there the global `input[type="search"]` list is (0,1,1) and would beat a bare class, so a rule
+   written `.munin-explorer-filters__search` would lose its font-size to it. (Fhi.Metadata-l9l2n.66)
+
+   The second rule takes off WebKit's own cancel glyph, which Stiler's does too, so the field does
+   not carry two clear affordances beside the panel's own way of emptying it. */
+input.munin-explorer-filters__search {
+  width: 100%;
+  height: 34px;
+  margin: 8px 0 4px;
+  padding: 0 10px;
+  font-size: 0.875rem;
+  border: 1px solid var(--grey30);
+  border-radius: 7px;
+}
+
+input.munin-explorer-filters__search::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  display: none;
 }
 
 /* ---- not Stiler either: base element styling for the detail panel ----
@@ -2148,8 +2176,8 @@ table.munin-explorer-data-list tbody th {
 
    Our names now — they were helsedata's `variable-explorer-header*` until the rename — and their
    arrangement throughout: a ghost button above the results, and the choices drawn as a card that
-   hangs off it. Their React sets `position: relative` inline on the wrapper and the component
-   emits the same inline style, so what is left for a host is the dress. The open list is
+   hangs off it. Their React sets `position: relative` inline on the wrapper; Stiler puts it on
+   the element itself, so a host without Stiler supplies it below (Fhi.Metadata-f6az7). The open list is
    `dropdown-choicepicker`, which is Stiler's own name and stays that way.
 
    The component builds it from <details> and <summary> because it ships no script. That is the
@@ -2170,8 +2198,67 @@ table.munin-explorer-data-list tbody th {
   justify-content: flex-end;
 }
 
+/* And the trigger inside it, for a host that gives the dropdown the full row as Stiler does. Text
+   alignment and not flex or an auto margin: an inline-level box resolves an auto margin to zero,
+   and `display: flex` on a <details> stops it hiding its own closed content. The list resets it. */
+.munin-explorer-header__actions .munin-explorer__dropdown {
+  text-align: right;
+}
+
+.munin-explorer-header__actions .dropdown-choicepicker {
+  text-align: left;
+  top: 36px;
+  width: 100%;
+}
+
 .munin-explorer-header__actions-button {
   border: none;
+}
+
+/* What the component stopped emitting inline: the open list is absolutely positioned and anchors
+   to the nearest positioned ancestor, which has to be this element. (Fhi.Metadata-f6az7) */
+.munin-explorer__dropdown {
+  position: relative;
+  z-index: 99;
+}
+
+/* No icon font here, as for the row chevron above, so the trigger's icons are characters too.
+   Scoped to the trigger: an unscoped .icon-keyboard-arrow-down::before would also land on the
+   row's expand icon and draw two arrows over each other. */
+.munin-explorer-header__actions-button > .icon {
+  margin-right: 8px;
+}
+
+.munin-explorer-header__actions-button > .icon-layout {
+  margin-right: 8px;
+}
+
+.munin-explorer-header__actions-button > .icon--right {
+  margin-left: 8px;
+  margin-right: 0;
+}
+
+.munin-explorer-header__actions-button > .icon-layout::before {
+  content: "\229E";           /* ⊞ */
+}
+
+.munin-explorer-header__actions-button > .icon-keyboard-arrow-down::before {
+  content: "\25BE";           /* ▾ */
+}
+
+.munin-explorer-header__actions-button > .icon-keyboard-arrow-up::before {
+  content: "\25B4";           /* ▴ */
+}
+
+/* Both chevrons are drawn and one is hidden, because the component ships no script and cannot
+   swap a class — the open state is the <details>'s own and only a selector can read it. */
+.munin-explorer__dropdown > summary > .icon-keyboard-arrow-up,
+.munin-explorer__dropdown[open] > summary > .icon-keyboard-arrow-down {
+  display: none;
+}
+
+.munin-explorer__dropdown[open] > summary > .icon-keyboard-arrow-up {
+  display: inline-block;
 }
 
 .munin-explorer__dropdown > summary {
@@ -2212,32 +2299,29 @@ table.munin-explorer-data-list tbody th {
 .dropdown-choicepicker__item:last-of-type { padding-bottom: 16px; }
 .dropdown-choicepicker__item:hover { background-color: #32378d; }
 
-/* A chosen column is a pressed button, the same two states the facet values use. The mark is
-   drawn in the ::before so the label text stays put whichever state it is in — a tick that
-   appeared and disappeared would shift every line beside it. */
-.dropdown-choicepicker__item .hd-button-reset {
+/* A chosen column is a ticked checkbox, as helsedata's own is — the ::before glyph that used to
+   draw the mark for `aria-pressed` went with the buttons, and the browser draws the box now.
+   (Fhi.Metadata-f6az7) */
+.dropdown-choicepicker__item .form-control {
   display: inline-flex;
   align-items: center;
+  width: 100%;
   padding: 8px 0;
   color: inherit;
+  cursor: pointer;
 }
 
-/* The empty alternative text after the slash is what keeps the glyph out of the accessible name.
-   Chromium folds generated content into it, so the toggle announced as "☑ Kildetype" and said
-   twice what aria-pressed already says once. Found driving the axe state (Fhi.Metadata-ay3zz). */
-.dropdown-choicepicker__item .hd-button-reset::before {
-  content: "\2610" / "";
-  margin-right: 8px;
-}
-
-.dropdown-choicepicker__item .hd-button-reset[aria-pressed="true"]::before {
-  content: "\2611" / "";
+.dropdown-choicepicker__item .form-control__label {
+  margin-left: 16px;
+  align-self: center;
+  word-break: normal;
 }
 
 /* The last column left. Inert rather than disabled, so it can still be reached and still says
    why it will not move — the sentence is in the DOM, aria-describedby points at it, and this is
    what says the same thing to everyone else. */
-.dropdown-choicepicker__item .hd-button-reset[aria-disabled="true"] {
+.dropdown-choicepicker__item input[aria-disabled="true"],
+.dropdown-choicepicker__item input[aria-disabled="true"] + .form-control__label {
   cursor: default;
   opacity: 0.6;
 }
@@ -2709,6 +2793,23 @@ table.munin-explorer-data-list tbody th {
 .munin-explorer-hierarchy__leaf {
   display: block;
   padding: 8px 4px 8px 20px;
+}
+.munin-explorer-hierarchy__icons {
+  align-items: center;
+  display: inline-flex;
+  gap: 2px;
+  margin-right: 6px;
+  vertical-align: -0.125em;
+}
+.munin-explorer-hierarchy__icon {
+  height: 0.875em;
+  width: 0.875em;
+}
+/* The grouping folder recedes behind the coloured category glyphs, as it does in Kelda. --grey60
+   rather than the --dark the clear button's glyph takes: this one is aria-hidden decoration beside
+   a name that already says what the row is, so 1.4.11 has nothing to measure. It reaches 7.23:1. */
+.munin-explorer-hierarchy__icon[data-node-icon="kilde"] {
+  color: var(--grey60);
 }
 .munin-explorer-hierarchy__count {
   background: var(--grey20);

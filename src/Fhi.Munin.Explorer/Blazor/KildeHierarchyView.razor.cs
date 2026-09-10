@@ -27,6 +27,27 @@ public sealed partial class KildeHierarchyView : ComponentBase, IDisposable
     /// <inheritdoc cref="VariableSearch.Language"/>
     [Parameter] public string? Language { get; set; }
 
+    /// <summary>
+    /// Whether the tree draws a node icon in front of each name — a folder on a delkilde and one
+    /// glyph per datakategori on a datasamling. On by default; a variabelgruppe has no icon either
+    /// way. <b>The variable counts are not affected</b>: turning this off removes the glyphs and
+    /// the words that stand in for them, and nothing else.
+    /// </summary>
+    /// <remarks>
+    /// The package draws the shapes but decides nothing about their size or colour. Each glyph is
+    /// an inline <c>&lt;svg&gt;</c> at <c>1em</c> in <c>currentColor</c>, wearing
+    /// <c>munin-explorer-hierarchy__icon</c> and a <c>data-node-icon</c> naming its datakategori,
+    /// so a host stylesheet is what makes a category recognisable at a glance rather than only
+    /// distinguishable by shape.
+    /// <para>
+    /// A way of drawing the tree rather than something the reader is looking at, so like
+    /// <see cref="VariableSearch.LevelLines"/> it is read once at mount and the package remembers
+    /// no choice of its own: reaching <c>localStorage</c> from a circuit is a JS interop call this
+    /// package never makes, and what is remembered about a reader is the host's policy to set.
+    /// </para>
+    /// </remarks>
+    [Parameter] public bool ShowNodeIcons { get; set; } = true;
+
     private Texts T => Texts.For(Language);
     private Guid? _requestedId;
     private CancellationTokenSource? _request;
@@ -150,20 +171,37 @@ public sealed partial class KildeHierarchyView : ComponentBase, IDisposable
 
     private RenderFragment Label(KildeHierarchyNode node) => builder =>
     {
+        // NodeIcons.Write opens this fragment with sequence numbers of its own, so everything below
+        // starts past them: the renderer diffs a fragment against one increasing sequence.
+        var icons = ShowNodeIcons ? NodeIcons.For(node) : NodeIcons.None;
+        NodeIcons.Write(builder, icons);
+
         var named = T.Named(node.Name, null);
-        builder.OpenElement(0, "span");
-        builder.AddAttribute(1, "lang", CatalogueProperties.Foreign(named.Norwegian, ReaderLanguage.Of(Language)));
-        builder.AddContent(2, named.Text);
+        builder.OpenElement(20, "span");
+        builder.AddAttribute(21, "lang", CatalogueProperties.Foreign(named.Norwegian, ReaderLanguage.Of(Language)));
+        builder.AddContent(22, named.Text);
         builder.CloseElement();
+
+        // The glyphs are aria-hidden, so these words are the only place the tree says which
+        // datakategori a datasamling carries. After the name rather than before it: a row is found
+        // by its name, and a category read first delays the word the reader is listening for.
+        if (NodeIcons.SpokenCategories(node.Kind, icons, T) is { } categories)
+        {
+            builder.OpenElement(23, "span");
+            builder.AddAttribute(24, "class", "screenreader-only");
+            builder.AddContent(25, $" {categories}");
+            builder.CloseElement();
+        }
+
         if (node.Count > 0)
         {
-            builder.AddContent(3, " ");
-            builder.OpenElement(4, "span");
-            builder.AddAttribute(5, "class", "munin-explorer-hierarchy__count");
-            builder.AddContent(6, node.Count);
-            builder.OpenElement(7, "span");
-            builder.AddAttribute(8, "class", "screenreader-only");
-            builder.AddContent(9, $" {T.VariableCountSuffix}");
+            builder.AddContent(26, " ");
+            builder.OpenElement(27, "span");
+            builder.AddAttribute(28, "class", "munin-explorer-hierarchy__count");
+            builder.AddContent(29, node.Count);
+            builder.OpenElement(30, "span");
+            builder.AddAttribute(31, "class", "screenreader-only");
+            builder.AddContent(32, $" {T.VariableCountSuffix}");
             builder.CloseElement();
             builder.CloseElement();
         }

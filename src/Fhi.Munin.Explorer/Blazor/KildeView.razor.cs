@@ -196,6 +196,17 @@ public sealed partial class KildeView : ComponentBase
     public string? DataCollectionsHeading { get; set; }
 
     /// <summary>
+    /// Whether the delkilde and datasamling tree draws its node icons — see
+    /// <see cref="KildeHierarchyView.ShowNodeIcons"/>, which this is passed straight to.
+    /// </summary>
+    /// <remarks>
+    /// Neither explorer offers it further up, so a host that wants the icons off mounts this view,
+    /// or <see cref="KildeHierarchyView"/>, itself.
+    /// </remarks>
+    [Parameter]
+    public bool ShowNodeIcons { get; set; } = true;
+
+    /// <summary>
     /// The section's own word for itself, which the source decides rather than the explorer: it
     /// draws the delkilder now, so the wording for a flat table promised none of them
     /// (Fhi.Metadata-wtz80).

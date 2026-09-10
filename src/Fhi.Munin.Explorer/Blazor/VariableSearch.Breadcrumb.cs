@@ -245,7 +245,7 @@ public partial class VariableSearch
 
     /// <summary>Drop the whole hierarchy selection, and nothing else.</summary>
     /// <remarks>
-    /// The four levels only. "Fjern alle filtre" in the panel is the control that clears
+    /// The four levels only. "Fjern alle filtre" in the chip row is the control that clears
     /// everything; this one is for the reader who has narrowed deep into one kilde and wants the
     /// datatype, the kodeverk and the date range they also chose to survive it.
     /// </remarks>

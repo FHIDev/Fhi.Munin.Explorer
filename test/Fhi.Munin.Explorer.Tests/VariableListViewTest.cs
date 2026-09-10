@@ -977,6 +977,19 @@ public class VariableListViewTest : BunitContext
            .TextContent;
 
     [Fact]
+    public void View_WhenTheTableIsDrawn_ThenTheCodeIsAColumnOfItsOwnWithNoPickerToHideIt()
+    {
+        // The code came out of the variabelutforsker's hit list (Fhi.Metadata-l9l2n.69) and stayed
+        // here. A saved list is an attachment to an application, and the code is what the applicant
+        // is asking for — this table has no column picker at all, so there is nowhere for the code
+        // to be turned off and it must never be removed on the argument that it is optional above.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        Assert.Equal("Kode", cut.Find("thead th.munin-explorer-dataitem-header__code").TextContent.Trim());
+        Assert.Equal("V_BDR.ALDER", CellText(cut, "code"));
+    }
+
+    [Fact]
     public void View_WhenACellIsDrawn_ThenItIsTheCellTheResultListDraws()
     {
         // Both surfaces draw these columns, and now from one helper. Written out twice they looked

@@ -464,6 +464,23 @@ public class KildeSearchTest : BunitContext
     private static IElement Facet(IRenderedComponent<KildeSearch> cut, string heading) =>
         Facets(cut).Single(details => FacetName(details) == heading);
 
+    /// <summary>The fold row's two buttons, Utvid alle first.</summary>
+    /// <remarks>
+    /// Selected through the direct-child chain the Stiler rule uses, so a row moved one level
+    /// deeper — which is how the pinning fails, in silence — takes every assertion below with it.
+    /// </remarks>
+    private static IReadOnlyList<IElement> FoldButtons(IRenderedComponent<KildeSearch> cut) =>
+        [.. cut.FindAll(".munin-explorer-filters > .munin-explorer-filters__toolbar > button")];
+
+    /// <summary>Press Utvid alle, or Skjul alle.</summary>
+    /// <remarks>
+    /// By position rather than by the words on it, because the panel is bilingual. Found again on
+    /// every call rather than held: a press re-renders, and an element found before that belongs to
+    /// the markup as it was.
+    /// </remarks>
+    private static void FoldAll(IRenderedComponent<KildeSearch> cut, bool expand) =>
+        FoldButtons(cut)[expand ? 0 : 1].Click();
+
     /// <summary>The visible text of every choice in a facet, count and all.</summary>
     /// <remarks>
     /// <c>li label</c> rather than <c>label</c>: a facet past the search threshold opens with a
@@ -1059,6 +1076,82 @@ public class KildeSearchTest : BunitContext
 
         Assert.Equal("Bølge 4", heading.TextContent);
         Assert.Equal(2, panel.QuerySelectorAll("table.munin-explorer-kilde__datasamlinger").Length);
+    }
+
+    /// <summary>
+    /// A pointer press on the row's chevron. <paramref name="clicks"/> is the browser's click count,
+    /// so 2 is the second click of a double-click gesture and 0 is how a browser reports Enter or
+    /// Space on a button.
+    /// </summary>
+    /// <remarks>
+    /// The toggle is found on every call rather than held, for the reason <see cref="Row"/> gives:
+    /// each press re-renders the table.
+    /// </remarks>
+    private static void PressExpandToggle(
+        IRenderedComponent<KildeSearch> cut, string kilde, long clicks = 1) =>
+        ExpandToggle(cut, kilde).Click(new MouseEventArgs { Detail = clicks });
+
+    /// <summary>What the row's own chevron says about itself, which is the state a reader is told.</summary>
+    private static string? Discloses(IRenderedComponent<KildeSearch> cut, string kilde) =>
+        ExpandToggle(cut, kilde).GetAttribute("aria-expanded");
+
+    [Fact]
+    public void ExpandToggle_WhenItIsDoubleClicked_ThenTheDrawerIsLeftOpen()
+    {
+        // Fhi.Metadata-l9l2n.55 closed this trap on the row and on the name, which were what it made
+        // clickable; the chevron was already there and outside its scope, so a double-click here
+        // toggled twice and the row flashed back shut under the reader.
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var client = new FakeClient(als).Describing(DetailWithCollections(als));
+        var cut = RenderWith(client);
+
+        Assert.Equal("false", Discloses(cut, "Als registeret"));
+
+        PressExpandToggle(cut, "Als registeret");
+        PressExpandToggle(cut, "Als registeret", clicks: 2);
+
+        Assert.Equal("true", Discloses(cut, "Als registeret"));
+        Assert.Contains("Hoveddatasamling", cut.Find(".munin-explorer-kilder__expanded").TextContent);
+
+        // The rate limit ToggleDatasamlingerAsync caches against: the swallowed click is not a second
+        // GetKildeAsync either.
+        Assert.Equal(1, client.DetailCalls);
+    }
+
+    [Fact]
+    public void ExpandToggle_WhenItIsPressedTwiceAsSeparateGestures_ThenItStillTogglesBothWays()
+    {
+        // The guard is per gesture, not per control: two deliberate presses each arrive with a click
+        // count of one, and a reader who opens a drawer must still be able to shut it.
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        PressExpandToggle(cut, "Als registeret");
+
+        Assert.Equal("true", Discloses(cut, "Als registeret"));
+
+        PressExpandToggle(cut, "Als registeret");
+
+        Assert.Equal("false", Discloses(cut, "Als registeret"));
+        Assert.Empty(cut.FindAll(".munin-explorer-kilder__expanded"));
+    }
+
+    [Fact]
+    public void ExpandToggle_WhenItIsActivatedFromTheKeyboard_ThenEachActivationToggles()
+    {
+        // Enter and Space on a <button> arrive as a click with a count of zero, which is what keeps a
+        // guard on the second click of a pointer gesture from swallowing a second keypress. They are
+        // different gestures and repeated pressing is what the keyboard has instead of a drag.
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        PressExpandToggle(cut, "Als registeret", clicks: 0);
+
+        Assert.Equal("true", Discloses(cut, "Als registeret"));
+
+        PressExpandToggle(cut, "Als registeret", clicks: 0);
+
+        Assert.Equal("false", Discloses(cut, "Als registeret"));
     }
 
     /// <summary>A cell of the row that holds no control, so the press lands on the row itself.</summary>
@@ -3610,6 +3703,166 @@ public class KildeSearchTest : BunitContext
         Assert.Equal([true, false, false], Facets(cut).Select(f => f.HasAttribute("open")).ToArray());
     }
 
+    [Fact]
+    public void FoldAll_WhenUtvidAlleIsPressed_ThenEveryFacetIsOpenAndSkjulAlleFoldsThemAgain()
+    {
+        // Thirteen facets on the live catalogue and one open by default: opening or folding them
+        // one at a time is what the pair takes away, and the variabelutforsker's readers have had
+        // it all along. (Fhi.Metadata-l9l2n.60)
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS",
+                  kildetype: "biobank", accessRights: "eu-access:NON_PUBLIC",
+                  dataProcessor: "Folkehelseinstituttet")));
+
+        Assert.Equal([true, false, false], Facets(cut).Select(f => f.HasAttribute("open")).ToArray());
+
+        FoldAll(cut, expand: true);
+
+        Assert.Equal([true, true, true], Facets(cut).Select(f => f.HasAttribute("open")).ToArray());
+
+        FoldAll(cut, expand: false);
+
+        Assert.Equal([false, false, false], Facets(cut).Select(f => f.HasAttribute("open")).ToArray());
+    }
+
+    [Fact]
+    public void FoldAll_WhenAValueIsTickedAfterAPress_ThenThePanelKeepsTheShapeThePressLeft()
+    {
+        // The state trap. The fold was the element's own precisely so that narrowing could not
+        // collapse what a reader had opened, and a press must not buy itself that cost back: the
+        // press writes `open` once, through a new key, and every render after it leaves the
+        // attribute alone.
+        //
+        // What this can see is the half the render tree holds — Skjul alle folds the facet that is
+        // open by default, and a tick does not seed it open again, which is the regression an
+        // implementation writing `open` per render would show. What it cannot is the reader's own
+        // half: bUnit re-serialises from the render tree and never runs a native <details> toggle,
+        // so a facet the READER collapsed after Utvid alle is unstageable here — the same limit
+        // Facets_WhenAValueIsTicked_ThenNoFacetIsFoldedOrUnfoldedByIt records, and the same reason
+        // the sibling panel's fold generation says no test covers it.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS",
+                  kildetype: "biobank", accessRights: "eu-access:NON_PUBLIC",
+                  dataProcessor: "Folkehelseinstituttet"),
+            Kilde("Dødsårsaksregisteret", "K_DAR",
+                  kildetype: "sentraltHelseregister", accessRights: "eu-access:PUBLIC",
+                  dataProcessor: "Helsedirektoratet")));
+
+        FoldAll(cut, expand: false);
+
+        Tick(cut, "Databehandler", "Helsedirektoratet");
+
+        Assert.Equal(["Dødsårsaksregisteret"], RowNames(cut));
+        Assert.Equal([false, false, false], Facets(cut).Select(f => f.HasAttribute("open")).ToArray());
+
+        FoldAll(cut, expand: true);
+
+        Untick(cut, "Databehandler", "Helsedirektoratet");
+
+        Assert.Equal([true, true, true], Facets(cut).Select(f => f.HasAttribute("open")).ToArray());
+    }
+
+    [Fact]
+    public void FoldAll_WhenAPressIsMade_ThenThePanelSaysWhatItDid()
+    {
+        // A press rewrites every disclosure in the panel and is otherwise silent, which is nothing
+        // at all to a reader who cannot see the column. Empty until a press, or the region would
+        // speak on every mount.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS",
+                  kildetype: "biobank", accessRights: "eu-access:NON_PUBLIC",
+                  dataProcessor: "Folkehelseinstituttet")));
+
+        var region = cut.Find(".munin-explorer-filters > p[aria-live]");
+
+        Assert.Equal("polite", region.GetAttribute("aria-live"));
+        Assert.Contains("screenreader-only", region.ClassList);
+        Assert.Equal("", region.TextContent.Trim());
+
+        FoldAll(cut, expand: true);
+
+        Assert.Equal(
+            "Alle filtre er utvidet.",
+            cut.Find(".munin-explorer-filters > p[aria-live]").TextContent.Trim());
+
+        FoldAll(cut, expand: false);
+
+        Assert.Equal(
+            "Alle filtre er skjult.",
+            cut.Find(".munin-explorer-filters > p[aria-live]").TextContent.Trim());
+    }
+
+    [Fact]
+    public void FoldAll_WhenThePanelHasOneFacet_ThenThereIsNoPairToPress()
+    {
+        // A control that would fold the one facet it could reach, offered twice. The same bargain
+        // the column picker makes by being drawn only with rows on screen: nothing to act on, no
+        // control — and two tab stops that lead nowhere are worse than none.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", kildetype: "biobank", dataProcessor: null)));
+
+        Assert.Equal(["Kildetype"], FacetHeadings(cut));
+        Assert.Empty(cut.FindAll(".munin-explorer-filters__toolbar"));
+        Assert.Empty(cut.FindAll(".munin-explorer-filters > p[aria-live]"));
+    }
+
+    [Fact]
+    public void FoldAll_Always_ThenTheRowIsADirectChildOfThePanelAboveTheFacets()
+    {
+        // Stiler pins this row to the top of the scrolling facet column through a direct-child
+        // chain, and paints it so the facets pass behind rather than through it. A wrapper around
+        // the row, or the row moved inside `__facets`, misses that rule with no error and a still
+        // frame that looks right — so the nesting is asserted rather than eyeballed, and so is the
+        // absence of an inline style that would paint over it. (Fhi.Metadata-l9l2n.64)
+        //
+        // Above the facets is the keyboard's half of the same placement: two more tab stops, and
+        // they come before the values they act on.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS",
+                  kildetype: "biobank", accessRights: "eu-access:NON_PUBLIC",
+                  dataProcessor: "Folkehelseinstituttet")));
+
+        var row = Assert.Single(cut.FindAll(".munin-explorer-filters > .munin-explorer-filters__toolbar"));
+
+        Assert.False(row.HasAttribute("style"));
+
+        var children = cut.Find(".munin-explorer-filters").Children.ToArray();
+        var rowIndex = Array.FindIndex(children, e => e.ClassList.Contains("munin-explorer-filters__toolbar"));
+        var facetsIndex = Array.FindIndex(children, e => e.ClassList.Contains("munin-explorer-filters__facets"));
+
+        Assert.True(rowIndex < facetsIndex, "The fold row is drawn after the facets it acts on.");
+
+        // Ordinary buttons: two tab stops in source order, nothing reordering them and nothing
+        // holding focus. `type=button` because the panel sits below a <form> on this page.
+        Assert.Equal(["Utvid alle", "Skjul alle"], FoldButtons(cut).Select(b => b.TextContent.Trim()).ToArray());
+        Assert.All(FoldButtons(cut), button =>
+        {
+            Assert.Equal("button", button.GetAttribute("type"));
+            Assert.False(button.HasAttribute("tabindex"));
+        });
+    }
+
+    [Fact]
+    public void FoldAll_WhenTheFacetsAreFolded_ThenOpenIsStillTheOnlyStateOnThem()
+    {
+        // Fhi.Metadata-co3sf's own criterion, and the pair must not cost it: <summary> is the
+        // disclosure control natively, so an aria-expanded beside it is a second state to drift out
+        // of step with the first. The buttons carry none either — they control nothing that is
+        // shown or hidden in place of themselves.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS",
+                  kildetype: "biobank", accessRights: "eu-access:NON_PUBLIC",
+                  dataProcessor: "Folkehelseinstituttet")));
+
+        FoldAll(cut, expand: true);
+
+        Assert.All(
+            cut.FindAll(".munin-explorer-filters__facets > details > summary"),
+            summary => Assert.False(summary.HasAttribute("aria-expanded")));
+
+        Assert.All(FoldButtons(cut), button => Assert.False(button.HasAttribute("aria-expanded")));
+    }
+
     // ---------------------------------------------------------------------------------
     // The active-filter chips over the results.
     // ---------------------------------------------------------------------------------
@@ -4455,6 +4708,8 @@ public class KildeSearchTest : BunitContext
             "munin-explorer-filters__count",     // shared with the variable explorer's facets
             "munin-explorer-filters__facets",
             "munin-explorer-filters__toggle",
+            // The row holding Utvid alle and Skjul alle, the variable explorer's name and its rule.
+            "munin-explorer-filters__toolbar",
             // The column picker, shared with the variable explorer down to the markup (ColumnPicker).
             "munin-explorer-header",
             "munin-explorer-header__actions",
@@ -4589,13 +4844,28 @@ public class KildeSearchTest : BunitContext
     // not persisted and not in the host's URL, which is what Kelda does. (Fhi.Metadata-ay3zz)
     // ---------------------------------------------------------------------------------
 
-    /// <summary>The picker's toggles, in the order it lists them.</summary>
+    /// <summary>The picker's checkboxes, in the order it lists them.</summary>
     private static IReadOnlyList<IElement> ColumnToggles(IRenderedComponent<KildeSearch> cut) =>
-        cut.FindAll(".dropdown-choicepicker__item button");
+        cut.FindAll(".dropdown-choicepicker__item input[type=checkbox]");
+
+    /// <summary>A checkbox's column, which is the label beside it rather than its own text.</summary>
+    private static string ColumnName(IElement toggle) =>
+        toggle.ParentElement!.QuerySelector(".form-control__label")!.TextContent.Trim();
+
+    /// <summary>Whether the column is on screen, as the rendered attribute has it.</summary>
+    private static bool Ticked(IElement toggle) => toggle.HasAttribute("checked");
 
     /// <summary>The toggle for one named column, refetched so it is never a stale node.</summary>
-    private static void ToggleColumn(IRenderedComponent<KildeSearch> cut, string label) =>
-        ColumnToggles(cut).Single(b => b.TextContent.Trim() == label).Click();
+    /// <remarks>
+    /// <c>Change</c> and not <c>Click</c>: bUnit raises MissingEventHandlerException for a click
+    /// on an element handling only <c>onchange</c>, and names the event it does handle.
+    /// </remarks>
+    private static void ToggleColumn(IRenderedComponent<KildeSearch> cut, string label)
+    {
+        var box = ColumnToggles(cut).Single(b => ColumnName(b) == label);
+
+        box.Change(!Ticked(box));
+    }
 
     private static IReadOnlyList<string> Headers(IRenderedComponent<KildeSearch> cut) =>
         [.. cut.FindAll(".munin-explorer-kilder thead th").Select(th => th.TextContent.Trim())];
@@ -4670,13 +4940,13 @@ public class KildeSearchTest : BunitContext
             "Gyldighet",
             "Importert",
             "Sist endret",
-        ], ColumnToggles(cut).Select(b => b.TextContent.Trim()));
+        ], ColumnToggles(cut).Select(ColumnName));
 
-        // aria-pressed is the whole truth about a toggle button, so the defaults have to be
-        // readable off it rather than only off the table.
+        // The rendered `checked` attribute is the whole truth about a checkbox, so the defaults
+        // have to be readable off it rather than only off the table.
         Assert.Equal(
-            ["true", "true", "true", "false", "false", "false", "false", "false", "false", "false"],
-            ColumnToggles(cut).Select(b => b.GetAttribute("aria-pressed")));
+            [true, true, true, false, false, false, false, false, false, false],
+            ColumnToggles(cut).Select(Ticked));
     }
 
     [Theory]
@@ -4737,8 +5007,8 @@ public class KildeSearchTest : BunitContext
         var cut = RenderWith(new FakeClient(Furnished()));
 
         foreach (var label in ColumnToggles(cut)
-                     .Where(b => b.GetAttribute("aria-pressed") == "false")
-                     .Select(b => b.TextContent.Trim())
+                     .Where(b => !Ticked(b))
+                     .Select(ColumnName)
                      .ToList())
         {
             ToggleColumn(cut, label);
@@ -4949,8 +5219,8 @@ public class KildeSearchTest : BunitContext
 
         // Only the ones that are on, since a press on a hidden column turns it back on.
         foreach (var label in ColumnToggles(cut)
-                     .Where(b => b.GetAttribute("aria-pressed") == "true")
-                     .Select(b => b.TextContent.Trim())
+                     .Where(Ticked)
+                     .Select(ColumnName)
                      .ToList())
         {
             ToggleColumn(cut, label);
@@ -4958,7 +5228,7 @@ public class KildeSearchTest : BunitContext
 
         Assert.Equal(["Vis datasamlinger", "Navn", "Status", "Opprettet"], Headers(cut));
         Assert.Equal(Headers(cut).Count, FirstRowCells(cut).Count);
-        Assert.All(ColumnToggles(cut), b => Assert.Equal("false", b.GetAttribute("aria-pressed")));
+        Assert.All(ColumnToggles(cut), b => Assert.False(Ticked(b)));
     }
 
     [Fact]

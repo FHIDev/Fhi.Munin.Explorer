@@ -192,6 +192,18 @@ These are not style preferences — each one is a host that breaks otherwise.
   host with a dark theme has to clear 3:1 there too — neither sample defines one, so a host
   redefining the token for dark is deciding that outcome alone and unverified.
 
+  That debt is due on first paint now, not on a press. `LevelLines` defaults to **on** since
+  `Fhi.Metadata-dfygj`, matching Runa, whose own Nivålinjer loads pressed — a reader who never
+  finds the button has to see the tree as a hierarchy. Runa draws its rails at Tailwind
+  `border-gray-200`, `#e5e7eb`, which is **1.24:1** on its white ground; the samples deliberately
+  do not copy that, because it is the defect `Fhi.Metadata-wcbxi` was filed for. What the two do
+  agree on is the 1px width and the extent: the line runs a group's full height and ends at the
+  bottom of its last child rather than stopping short of it. The indent step differs — 20px per
+  level against Runa's 16px — and 20px is a number measured in the two sample stylesheets, whose
+  `.munin-explorer-filters ul` sets it, rather than one this package ships. What
+  `Fhi.Helsedata.Stiler` indents by on helsedata.no is unmeasured here, because nothing in this
+  repository reads Stiler.
+
   Every name in the `munin-explorer` prefix is ours. That is worth saying because it used not to
   be: under the old prefix six names were helsedata's — the container, the results column, the
   header with its `__actions` and `__actions-button`, and the dropdown — and the prefix itself was
@@ -256,6 +268,19 @@ These are not style preferences — each one is a host that breaks otherwise.
     `Fhi.Helsedata.Stiler`, where it is shared with the variabelutforsker's panel and redraws the
     marker on the trailing edge — a summary laid out as a row is no longer a list-item, and the
     browser stops drawing a marker for it.
+    The variabelutforsker's Kilde facet adds `munin-explorer-filters__search`, the box that narrows
+    that facet's own values. A handle: undefined, it is a browser-default search field, which is
+    visible, operable and named by a `<label>` of its own, so what a rule buys is the box — full
+    width in a sidebar column, 34px tall, and the panel's own type size rather than the page's.
+    Two things about it are not free. The name has to sit on an `<input>`, because Stiler's rule is
+    written `input.munin-explorer-filters__search`: their global `input[type="search"]` list is
+    (0,1,1) and a bare class is (0,1,0), so a class on any other element loses the font-size to it
+    and the field draws at 18px instead of 14px. And the rule reached `Fhi.Helsedata.Stiler`'s
+    `main` after 0.1.42 was cut, so the floor is the first release that follows it — a host on
+    0.1.42 or older is in the undressed case above rather than a broken one. The kildetype groups inside that
+    same facet add no name at all: they are `<details>`/`<summary>` like the facets around them, so
+    the marker, the open state and the focus ring come from rules a host already has, and their
+    counts wear `munin-explorer-filters__chosen` from the row above.
     The saved-list view's `munin-explorer-dataitem-*__desiredData` pair is a handle on the same
     terms and worth one sentence, because the cell holds a control rather than a value: undefined,
     the annotation field is a browser-default text box, which is visible, operable and named, so
@@ -271,6 +296,12 @@ These are not style preferences — each one is a host that breaks otherwise.
     `gap`, so nothing trails the last button, and buttons that shrink and wrap their own labels
     rather than the row breaking apart at the next longer translation. Both sample stylesheets carry
     it, and it is in `Fhi.Helsedata.Stiler` from the release that follows PR 39046.
+    Kelda's panel wears the same name for the same row, minus Nivålinjer — its facets are not
+    nested, so a level-lines toggle would draw nothing — and there the rule does one thing more: it
+    pins the row to the top of the facet column, which scrolls at sidebar widths, so a control that
+    is wanted after several facets are open does not scroll away with them. That half of the rule
+    selects the row as a direct child of `munin-explorer-filters`, which is where both panels emit
+    it, and a host that defines nothing loses the pinning rather than the buttons.
     The row of active-filter chips over the results adds three, all shared with that panel:
     `munin-explorer-filters__active` is the row, `munin-explorer-filters__chip` the capsule around
     one ticked value and `munin-explorer-filters__chip-remove` the close control inside it. Handles,
@@ -284,11 +315,13 @@ These are not style preferences — each one is a host that breaks otherwise.
     row are borrowed and need nothing new — the heading is `caption margin--none` and the clear-all
     is `hd-button-square button-square--ghost`, Stiler's, worn in this component already by the
     facet panel's fold toggle.
-    The kildeutforsker adds one more, `munin-explorer-results__toolbar` — the row the result count
-    shares with the Sorter control and the Kolonner picker, which took a row each before it. A
-    handle, and the plainest one here: undefined, the three go back to being three blocks in
-    ordinary flow, which is exactly what shipped before the name existed, so what a rule buys is
-    two rows of vertical space and nothing a reader could otherwise miss. Its rules are
+    Both explorers add one more, `munin-explorer-results__toolbar` — the row the result count
+    shares with the controls that used to take a row each: the Sorter control and the Kolonner
+    picker in the kildeutforsker, and the Kolonner picker alone in the variabelutforsker, whose
+    ordering is on the column headings and whose Per side stays at the pager. A handle, and the
+    plainest one here: undefined, they go back to being blocks in ordinary flow, which is exactly
+    what shipped before the name existed, so what a rule buys is a row of vertical space and
+    nothing a reader could otherwise miss. Its rules are
     `Fhi.Helsedata.Stiler` PR 39220's, merged after 0.1.42 was cut, so a host has them from the
     release that follows the version pinned here. The name says `results` and the element sits
     above `munin-explorer-results` rather than inside it, deliberately: the results container is
@@ -449,6 +482,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-filters__chosen` | handle |
   | `munin-explorer-filters__count` | handle |
   | `munin-explorer-filters__facets` | handle |
+  | `munin-explorer-filters__search` | handle |
   | `munin-explorer-filters__toggle` | handle |
   | `munin-explorer-filters__toolbar` | handle |
   | `munin-explorer-frequency` | handle |
@@ -462,6 +496,8 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-hierarchy` | handle |
   | `munin-explorer-hierarchy__branch` | handle |
   | `munin-explorer-hierarchy__count` | handle |
+  | `munin-explorer-hierarchy__icon` | handle |
+  | `munin-explorer-hierarchy__icons` | handle |
   | `munin-explorer-hierarchy__leaf` | handle |
   | `munin-explorer-hierarchy__metadata` | handle |
   | `munin-explorer-hierarchy__nodes` | handle |
@@ -760,6 +796,18 @@ mounting `KildeView`. `KildeHierarchyView` can also be mounted with `KildeId` an
 The new hierarchy class names are listed above;
 their helsedata styling is tracked in `Fhi.Metadata-wihod` and is not supplied by this package.
 
+Each row carries a node icon in front of its name — a folder on a delkilde, one glyph per
+datakategori on a datasamling, and nothing on a variabelgruppe, which is the mapping Kelda's own
+tree draws, legacy category slugs and all. `ShowNodeIcons` turns them off on `KildeHierarchyView`
+and on `KildeView`; the variable counts are untouched either way, and the package remembers no
+choice of its own for the reason `LevelLines` does not. The glyphs are inline `<svg>` marked
+`aria-hidden`, so a datasamling's categories are said in words in a `screenreader-only` span
+instead of twice. Each one is `1em` in `currentColor` and wears
+`munin-explorer-hierarchy__icon` with a `data-node-icon` naming its datakategori — `PHDR`, `EINS`,
+`other` and the rest, plus `kilde` for the folder — which is the hook a stylesheet colours them
+through. Undefined, they draw at text size in the text colour, so what a host without the rules
+loses is the colour that tells two categories apart at a glance and not the categories themselves.
+
 Four things are worth knowing before mounting one.
 
 - **The render mode has to be interactive** — `render-mode="Server"`, never `ServerPrerendered`;
@@ -944,3 +992,54 @@ GitHub Issues here are open for external consumers to report problems.
 ## Licence
 
 MIT.
+
+### Third-party notices
+
+The node-icon geometry in `Blazor/DataCategoryIcons.cs` is copied from
+[lucide](https://lucide.dev), the icon set Kelda draws the same datakategorier with. Copied rather
+than depended on because this package ships no asset bundle and takes no front-end dependency.
+
+```
+ISC License
+
+Copyright (c) 2026 Lucide Icons and Contributors
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+```
+
+Two of the glyphs copied — `database` (PHDR) and `smartphone` (WELA) — are lucide icons derived
+from [Feather](https://feathericons.com), and carry its licence as well:
+
+```
+The MIT License (MIT)
+
+Copyright (c) 2013-present Cole Bemis
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```

@@ -1,6 +1,8 @@
 // The page states the accessibility scan visits beyond a plain page load: a name, and a function
 // that drives a loaded page into it. Add one here and as a `path::state` target in
-// check-accessibility.sh. Why at all: AGENTS.md, "It scans states, not only pages".
+// check-accessibility.sh — or in check-hostile-host.sh, for a state that stages boxes rather than
+// an accessibility tree, since geometry-scan.mjs reads this same list. Why at all: AGENTS.md,
+// "It scans states, not only pages".
 //
 // Controls are found by the name a reader presses them under, from `Texts.cs` in Norwegian since
 // both samples mount with `Language="no"`. A control this file cannot find stops the scan as a
@@ -75,15 +77,14 @@ export const states = {
   'variables-list': page => rowsArePresent(page, 'button.munin-explorer-dataitem-main__name'),
   'kilder-list': page => rowsArePresent(page, 'button.munin-explorer-kilder__name'),
 
-  // The filter tree with every facet unfolded and the guide lines drawn. This is the state the
-  // 1.16:1 level lines shipped in (Fhi.Metadata-wcbxi): unfolding first matters because axe skips
-  // what a closed <details> hides, so the lines have to be on screen to be judged at all.
+  // The filter tree unfolded, with the guide lines drawn (Fhi.Metadata-wcbxi): axe skips what a
+  // closed <details> hides. Nivålinjer is deliberately NOT pressed — the lines are on at first
+  // render since Fhi.Metadata-dfygj, so pressing it would scan this state with them gone.
   'filters-level-lines': async page => {
     const panel = page.locator('.munin-explorer-filters');
     await panel.waitFor({ state: 'visible', timeout: findTimeout });
 
     await press(panel, 'Utvid alle');
-    await press(panel, 'Nivålinjer');
 
     await page
       .locator('.munin-explorer-filters[data-level-lines="true"] ul ul')
@@ -140,15 +141,15 @@ export const states = {
     await picker.waitFor({ state: 'visible', timeout: findTimeout });
     await picker.locator('summary').click();
 
-    // Not press(): these toggles carry the sample stylesheet's ☑/☐ in ::before, and Playwright's
-    // own accessible-name computation folds generated content in while ignoring the empty
-    // alternative text that keeps it out of the browser's. The browser announces "Dataansvarlig";
-    // getByRole(..., { exact: true }) looks for "☐ Dataansvarlig" and finds nothing.
+    // Found through the item rather than by role: the box carries no text of its own, its name
+    // coming from the sibling label span, and check() rather than click() so the state is what is
+    // asked for and not whatever a press toggles it to (Fhi.Metadata-f6az7).
     const toggle = picker
-      .locator('.dropdown-choicepicker__item button', { hasText: 'Dataansvarlig' })
+      .locator('.dropdown-choicepicker__item', { hasText: 'Dataansvarlig' })
+      .locator('input[type=checkbox]')
       .first();
     await toggle.waitFor({ state: 'visible', timeout: findTimeout });
-    await toggle.click();
+    await toggle.check();
 
     await page
       .locator('.munin-explorer-kilder thead th', { hasText: 'Dataansvarlig' })
@@ -156,11 +157,46 @@ export const states = {
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
 
-  // The kildeutforsker's facet panel: a second facet opened from the keyboard, then a value ticked
-  // inside it. Nothing in the component mirrors the folds — `open` is seeded once and never
-  // rewritten — so this is the only place either half is exercised at all: bUnit re-serialises the
-  // markup from the render tree and never runs a browser's native <details> toggle, let alone a
-  // Blazor diff arriving over one (Fhi.Metadata-co3sf).
+  // The kilder table with all three of its count columns drawn. Delkilder sits in the component's
+  // hidden set, so the list as it loads shows two of the three, and the geometry pin on Stiler's
+  // alignment rule would otherwise never measure that column at all (Fhi.Metadata-y7ilr).
+  'kilder-counts': async page => {
+    await rowsArePresent(page, 'button.munin-explorer-kilder__name');
+
+    const picker = page.locator('.munin-explorer-header details').first();
+    await picker.waitFor({ state: 'visible', timeout: findTimeout });
+    await picker.locator('summary').click();
+
+    // Through the item and not by role, for the reason kilder-columns above gives: the box carries
+    // no text of its own, and check() asks for a state rather than flipping whatever is there.
+    const toggle = picker
+      .locator('.dropdown-choicepicker__item', { hasText: 'Delkilder' })
+      .locator('input[type=checkbox]')
+      .first();
+    await toggle.waitFor({ state: 'visible', timeout: findTimeout });
+    await toggle.check();
+
+    await page
+      .locator('.munin-explorer-kilder thead th', { hasText: 'Delkilder' })
+      .first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
+
+    // Folded again before anything is measured: this state is here for the table, and every
+    // geometry assertion would otherwise be measuring a dropdown hanging open over it.
+    if (await picker.evaluate(el => el.open)) {
+      await picker.locator('summary').click();
+    }
+    if (await picker.evaluate(el => el.open)) {
+      throw new Error('The column picker stayed open after its summary was pressed');
+    }
+  },
+
+  // The kildeutforsker's facet panel: a second facet opened from the keyboard, a value ticked
+  // inside it, and then the Utvid alle / Skjul alle pair over the top. Nothing in the component
+  // mirrors the folds — `open` is written once per fold press and left alone between them — so this
+  // is the only place any of it is exercised at all: bUnit re-serialises the markup from the render
+  // tree and never runs a browser's native <details> toggle, let alone a Blazor diff arriving over
+  // one (Fhi.Metadata-co3sf, Fhi.Metadata-l9l2n.60).
   'kilde-facets': async page => {
     await rowsArePresent(page, 'button.munin-explorer-kilder__name');
 
@@ -212,7 +248,8 @@ export const states = {
     }
 
     // And then a re-render over the top of it, which is the claim the component rests on: `open` is
-    // seeded once and never rewritten, so narrowing the list cannot collapse what the reader opened.
+    // written by a fold press and by nothing else, so narrowing the list cannot collapse what the
+    // reader opened.
     // The wait is on the summary gaining its count, because that element comes back over the
     // circuit — the tick alone lands in the browser before Blazor has diffed anything.
     await values.locator('input[type=checkbox]').first().check();
@@ -227,6 +264,54 @@ export const states = {
     // markup this state reaches, and axe reports no violations in an element that never rendered.
     await page.locator('.munin-explorer-filters__chip').first()
       .waitFor({ state: 'visible', timeout: findTimeout });
+
+    // Utvid alle, and the trap it must not cost. A press rebuilds every disclosure under a new key
+    // so the new `open` lands; every render after it has to leave them alone again. The facet
+    // folded below is folded by the READER, in the browser, which is the half no test in this
+    // repository can stage — bUnit's DOM cannot disagree with the render tree, and this defect is
+    // that disagreement. (Fhi.Metadata-l9l2n.60)
+    const total = await facets.count();
+    const foldRow = page.locator('.munin-explorer-filters > .munin-explorer-filters__toolbar > button');
+
+    // The pair through the direct-child chain Stiler's pinning rule uses, so a row emitted one
+    // level deeper — which is how that rule fails, in silence — is a red run rather than a
+    // screenshot nobody takes.
+    if (await foldRow.count() !== 2) {
+      throw new Error('The facet panel drew no Utvid alle / Skjul alle pair as a child of the panel');
+    }
+
+    const openCountIs = expected => page.waitForFunction(
+      n => document.querySelectorAll('.munin-explorer-filters__facets > details[open]').length === n,
+      expected,
+      { timeout: findTimeout });
+
+    await foldRow.first().click();
+    await openCountIs(total);
+
+    // Folded from the keyboard, and on the facet the panel opens by default: what the assertions
+    // below turn on is the DOM disagreeing with the last `open` this component rendered.
+    const first = facets.first();
+    await first.locator(':scope > summary').focus();
+    await page.keyboard.press('Enter');
+    await openCountIs(total - 1);
+
+    // The narrowing render, twice — the tick taken off and put back on, so the state axe finally
+    // scans still has the chips in it.
+    const chosen = folded.locator(':scope > summary .munin-explorer-filters__chosen');
+
+    await values.locator('input[type=checkbox]').first().uncheck();
+    await chosen.waitFor({ state: 'detached', timeout: findTimeout });
+
+    if (await first.evaluate(el => el.open)) {
+      throw new Error('Narrowing re-opened a facet the reader folded after Utvid alle');
+    }
+
+    await values.locator('input[type=checkbox]').first().check();
+    await chosen.waitFor({ state: 'visible', timeout: findTimeout });
+
+    if (await first.evaluate(el => el.open) || await open() !== total - 1) {
+      throw new Error('Narrowing undid the fold the reader left after Utvid alle');
+    }
   },
 
   // The composed explorer on /utforsker, which is the only page in either sample that draws the

@@ -273,6 +273,10 @@ internal sealed record Texts(
     // control's whole name, because "Fjern" repeated down a row says nothing about which filter.
     string ActiveFiltersTitle,
     Func<string, string> RemoveFilter,
+    // A chip whose value says nothing on its own names its facet first: the catch-all's yes/no
+    // questions, and the dataperiode's two ends. Chips from the other facets are the value alone,
+    // which is the word the panel's own checkbox carries. (Fhi.Metadata-l9l2n.68)
+    Func<string, string, string> FilterInFacet,
     // The panel's toolbar. Three presses that change how the tree is drawn and narrow nothing, so
     // none of them is named for a filter. (Fhi.Metadata-wcbxi)
     string ExpandAllFacets,
@@ -436,7 +440,8 @@ internal sealed record Texts(
     // The box that narrows a long facet's own values, and the sentence for when it narrows them to
     // none. The label takes the facet's heading because several boxes can be on screen at once, and
     // controls all announcing "Søk i verdiene" are controls a screen reader cannot tell apart.
-    // Which facets get one is KildeSearch.Filters.cs's answer, not this record's.
+    // Which facets get one is each panel's own answer, not this record's — KildeSearch.Filters.cs
+    // for the kildeutforsker, and the kilde facet alone in VariableSearch.FilterPanel.cs.
     Func<string, string> FacetSearchLabel,
     string FacetSearchPlaceholder,
     string FacetSearchNoMatch,
@@ -460,6 +465,11 @@ internal sealed record Texts(
     string HierarchyEmpty,
     string HierarchyRetry,
     string HierarchyMetadata,
+    // The node icons are decorative and aria-hidden, so a datasamling's datakategorier are said in
+    // words beside them or nowhere. Keyed by DataCategoryIcons.Order, and the retired slugs have no
+    // key of their own: they resolve onto a successor and are read out under its name.
+    Func<string, string> DataCategoryNamed,
+    IReadOnlyDictionary<string, string> DataCategoryNames,
     // The sections Kelda has over a kilde and Runa has not, measured on the same source in both on
     // 2026-08-20. They are markup Kelda hands to KildeView.Sections rather than markup inside that
     // component, so their words sit here beside the rest of Kelda's rather than in the shared core.
@@ -906,6 +916,7 @@ internal sealed record Texts(
         ClearFilters: "Fjern alle filtre",
         ActiveFiltersTitle: "Aktive filtre",
         RemoveFilter: value => $"Fjern filteret {value}",
+        FilterInFacet: (facet, value) => $"{facet}: {value}",
         ExpandAllFacets: "Utvid alle",
         CollapseAllFacets: "Skjul alle",
         LevelLines: "Nivålinjer",
@@ -1036,6 +1047,28 @@ internal sealed record Texts(
         HierarchyEmpty: "Ingen delkilder, datasamlinger eller variabelgrupper er tilgjengelige.",
         HierarchyRetry: "Prøv å laste strukturen på nytt",
         HierarchyMetadata: "Beskrivelser og gyldighetsperioder",
+        DataCategoryNamed: names => $"Datakategori: {names}.",
+        DataCategoryNames: new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["PHDR"] = "Befolkningsbaserte helseregistre",
+            ["MRMR"] = "Medisinske registre og dødsårsaksregistre",
+            ["RMMD"] = "Legemiddel- og utstyrsregistre",
+            ["HPML"] = "Helsepersonell og autorisasjon",
+            ["RPDG"] = "Forskningskohorter og helseundersøkelser",
+            ["RQSH"] = "Forskningsstudier og kliniske utprøvinger",
+            ["NRPE"] = "Publisert forskningsdokumentasjon",
+            ["EHRS"] = "Pasientjournaler",
+            ["HRAD"] = "Administrative helsedata",
+            ["EHCT"] = "Helsetjenestebehov og -utgifter",
+            ["EINS"] = "Biobanker og prøvesamlinger",
+            ["HGPD"] = "Genetiske og genomiske data",
+            ["PGEH"] = "Omikkdata (proteom, metabolom m.m.)",
+            ["IDHP"] = "Smittsomme sykdommer og patogener",
+            ["DIOH"] = "Helsedeterminanter",
+            ["EMRD"] = "Data fra medisinsk utstyr",
+            ["WELA"] = "Data fra helseapper",
+            ["other"] = "Annet"
+        },
         HeadingVariables: "Variabler",
         HeadingAccessCriteria: "Kriterier for tilgang til data",
         HeadingPrices: "Priser",
@@ -1239,6 +1272,7 @@ internal sealed record Texts(
         ClearFilters: "Clear all filters",
         ActiveFiltersTitle: "Active filters",
         RemoveFilter: value => $"Remove the filter {value}",
+        FilterInFacet: (facet, value) => $"{facet}: {value}",
         ExpandAllFacets: "Expand all",
         CollapseAllFacets: "Collapse all",
         LevelLines: "Level lines",
@@ -1364,6 +1398,28 @@ internal sealed record Texts(
         HierarchyEmpty: "No sub-sources, data collections or variable groups are available.",
         HierarchyRetry: "Retry loading the structure",
         HierarchyMetadata: "Descriptions and validity periods",
+        DataCategoryNamed: names => $"Data category: {names}.",
+        DataCategoryNames: new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["PHDR"] = "Population health data registries",
+            ["MRMR"] = "Medical and mortality registries",
+            ["RMMD"] = "Registries of medicinal products and medical devices",
+            ["HPML"] = "Health professionals and licensing",
+            ["RPDG"] = "Research population data and cohorts",
+            ["RQSH"] = "Research studies and clinical trials",
+            ["NRPE"] = "Non-routine published evidence",
+            ["EHRS"] = "Electronic health records",
+            ["HRAD"] = "Healthcare-related administrative data",
+            ["EHCT"] = "Healthcare needs and expenditure",
+            ["EINS"] = "Health data from biobanks",
+            ["HGPD"] = "Human genetic and genomic data",
+            ["PGEH"] = "Proteomic and other omics data",
+            ["IDHP"] = "Infectious diseases and human pathogens",
+            ["DIOH"] = "Determinants impacting on health",
+            ["EMRD"] = "Electronic medical device data",
+            ["WELA"] = "Wellness application data",
+            ["other"] = "Other"
+        },
         HeadingVariables: "Variables",
         HeadingAccessCriteria: "Criteria for access to data",
         HeadingPrices: "Prices",

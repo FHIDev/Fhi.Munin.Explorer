@@ -39,16 +39,21 @@ public partial class VariableSearch
     private static readonly ResultColumn[] OptionalColumns = Enum.GetValues<ResultColumn>();
 
     /// <summary>
-    /// The columns the reader has turned off.
+    /// The columns the reader has turned off, seeded with the one that starts off.
     /// </summary>
     /// <remarks>
+    /// Kode is in here from the start, the one entry the reader has not chosen: a code does not
+    /// help anybody CHOOSE a variable, and it is the widest column in the row, so the hit list
+    /// spends that width on the name and the datasamling. It is in the open panel regardless.
+    /// <para>
     /// Not persisted and not in the host's URL, which is what Runa does today: the choice lasts as
     /// long as the page does and comes back complete on a refresh. Whether it should be remembered
     /// is a decision of its own — it needs somewhere to live, and this component deliberately owns
     /// no storage and no URL. Nothing here makes that harder: one field and one method is what a
     /// host-facing parameter would hook into.
+    /// </para>
     /// </remarks>
-    private readonly HashSet<ResultColumn> _hiddenColumns = [];
+    private readonly HashSet<ResultColumn> _hiddenColumns = [ResultColumn.Code];
 
     /// <summary>Whether the reader has made a choice about the Status column themselves.</summary>
     /// <remarks>

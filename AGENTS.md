@@ -232,9 +232,12 @@ and both invisible to everything else we run.
 **It scans states, not only pages.** A page in its default state is not the page a reader uses,
 and for a while the default state was the whole of this check: the level lines shipped at 1.16:1
 against WCAG 1.4.11's 3:1, invisible on a desktop, with this job green — because the lines only
-exist once `Nivålinjer` has been pressed and axe never saw them (`Fhi.Metadata-wcbxi`).
+existed once `Nivålinjer` had been pressed and axe never saw them (`Fhi.Metadata-wcbxi`).
 `scripts/axe-states.mjs` now drives the sample into named states before axe looks: the filter tree
 unfolded with the guide lines on, a variable row opened, and a kilde opened in the kildeutforsker.
+The lines are on at first render since `Fhi.Metadata-dfygj`, which is why that state now only
+unfolds and no longer presses the button — a press there would turn them off and hand this check
+back the blind spot it was written to close.
 The states it does **not** enter are listed above `TARGETS` in `check-accessibility.sh`, and that
 list is the honest bound on a green run — extend the two together, never one alone.
 
@@ -400,7 +403,7 @@ not proof the comparison ran** — a fork pull request gets no secret, the job s
 counts a skip as fine. That is the bound `check-hostile-host.sh` beside it has always had, and this
 guard inherits it rather than closing it; read the job, not the tick.
 
-The 175 divergences standing today are listed in `test/sample-css-known-divergences.txt`. **Nothing
+The 174 divergences standing today are listed in `test/sample-css-known-divergences.txt`. **Nothing
 writes that file.** A divergence not listed fails the build, and a listed line that no longer
 diverges also fails it with an instruction to delete the line, so the count can only go down.
 Adding a line is a hand edit that needs a reason; do not add one to get a branch green. What the

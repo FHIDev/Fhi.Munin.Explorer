@@ -125,6 +125,25 @@ const cases = [
     }),
   },
   {
+    assertion: "the kilder table's counts are right-aligned in their column",
+    defect: 'the Stiler rule gone, so the figures fall back to the cell default',
+    // kilder-counts rather than kilder-list, so the break is applied to all three columns that
+    // carry the class: Delkilder is hidden by default and that state is what draws it.
+    path: '/kilder', state: 'kilder-counts', width: 1440,
+    apply: css('.munin-explorer-kilder .munin-explorer-kilder__count ' +
+      '{ text-align: left !important; }'),
+  },
+  {
+    assertion: "the kilder table's counts are right-aligned in their column",
+    defect: 'the same rule gone at the narrowest width the scan drives',
+    path: '/kilder', state: 'kilder-list', width: 843,
+    // The wide case above cannot stand for this one: 843 is the only width in the scan below
+    // Stiler's grid, where the table sits in its own scroll box and every cell is measured in that
+    // box's scrollable coordinates rather than the page's.
+    apply: css('.munin-explorer-kilder .munin-explorer-kilder__count ' +
+      '{ text-align: left !important; }'),
+  },
+  {
     assertion: 'no page shell class inside a tab panel',
     defect: 'a nested view wearing the page shell class',
     path: '/', state: 'explorer-tabs', width: 1440,
