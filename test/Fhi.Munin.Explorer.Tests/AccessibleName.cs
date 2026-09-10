@@ -78,7 +78,10 @@ internal static class AccessibleName
             var legend = element.Children.FirstOrDefault(child =>
                 child.TagName.Equals("LEGEND", StringComparison.OrdinalIgnoreCase));
 
-            return legend is null ? "" : Collapse(legend.TextContent);
+            if (legend is not null)
+            {
+                return Collapse(legend.TextContent);
+            }
         }
 
         var id = element.GetAttribute("id");
