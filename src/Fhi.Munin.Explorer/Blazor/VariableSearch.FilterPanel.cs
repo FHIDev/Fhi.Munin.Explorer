@@ -365,20 +365,20 @@ public partial class VariableSearch
             []);
 
     /// <summary>
-    /// The kilde facet: kilder grouped under their kildetype, each with its own delkilde tree.
+    /// The kilde facet: kilder grouped under their kildetype, each with its own delkilde and
+    /// datasamling tree.
     /// </summary>
     /// <remarks>
-    /// The whole tree is built from the facet payload alone — <see cref="DelkildeFacet"/> carries
-    /// both its parent delkilde and its kilde precisely so this needs no second request. The level
-    /// below it, datasamling, is not in that payload at all and is therefore not drawn; reaching it
-    /// would mean a hierarchy request per kilde whose counts are the kilde's own totals rather than
-    /// counts cross-filtered against the current selection, which would put two kinds of number in
-    /// one tree. <see cref="VariableFilter.DatasamlingIds"/> still filters when a host sets it.
+    /// The whole tree is built from the facet payload alone — <see cref="DelkildeFacet"/> and
+    /// <see cref="DatasamlingFacet"/> each carry the parents they hang under precisely so this
+    /// needs no second request. The counts are the facet payload's own, which the API cross-filters
+    /// like every other facet it answers — unlike the hierarchy endpoint's kilde totals, which is
+    /// why the level is drawn from facets at all.
     /// </remarks>
     private FacetGroup KildeGroup(FilterOptions facets)
     {
-        var delkilderByKilde = facets.Delkilder.ToLookup(delkilde => delkilde.KildeId);
-        var kilder = VisibleKilder(facets, delkilderByKilde);
+        var levels = KildeLevels(facets);
+        var kilder = VisibleKilder(facets, levels);
 
         // The order the kildetype facet is in, so the headings here and the facet above agree.
         // That order is the API's own, and against runa on 2026-09-10 it followed the resolved
@@ -391,7 +391,7 @@ public partial class VariableSearch
             .GroupBy(KildeTypeKey, StringComparer.OrdinalIgnoreCase)
             .OrderBy(group => kildeTypeOrder.TryGetValue(group.Key, out var index) ? index : int.MaxValue)
             .ThenBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
-            .Select(group => KildeTypeHeading(facets, group, delkilderByKilde))
+            .Select(group => KildeTypeHeading(facets, group, levels))
             .ToList();
 
         // A search that matches nothing has to leave the facet standing, or it would take the box
@@ -405,11 +405,11 @@ public partial class VariableSearch
         var values = grouped.Count == 1 ? grouped[0].Children : grouped;
 
         return new FacetGroup("kilde", T.FieldSource, OpenByDefault: true, values,
-                              EmptyText: empty, Chosen: ChosenKilder(facets, delkilderByKilde),
+                              EmptyText: empty, Chosen: ChosenKilder(facets, levels),
                               Searchable: true);
     }
 
-    /// <summary>Which kilder and delkilder are ticked, whatever the facet's own search is showing.</summary>
+    /// <summary>Which of the three source levels are ticked, whatever the facet's own search is showing.</summary>
     /// <remarks>
     /// Read off the answer rather than off the values drawn, because a ticked kilde the search has
     /// hidden is still narrowing the results — and would otherwise lose its place in the summary's
@@ -417,18 +417,20 @@ public partial class VariableSearch
     /// than the drawn tree, it collapses repeats itself, on the tree's rule — or a chip and its own
     /// checkbox could keep copies naming one delkilde two ways. (Fhi.Metadata-l9l2n.82)
     /// </remarks>
-    private IReadOnlyList<FacetValue> ChosenKilder(
-        FilterOptions facets, ILookup<Guid, DelkildeFacet> delkilderByKilde) =>
+    private IReadOnlyList<FacetValue> ChosenKilder(FilterOptions facets, KildeLevelLookup levels) =>
     [
         .. ListedKilder(facets)
             .Where(kilde => _filter.KildeIds.Contains(kilde.Id))
             .Select(kilde => KildeValue(kilde)),
         .. ListedKilder(facets)
-            .SelectMany(kilde => OnePerId(delkilderByKilde[kilde.Id],
+            .SelectMany(kilde => OnePerId(levels.Delkilder[kilde.Id],
                                           delkilde => delkilde.Id,
                                           delkilde => delkilde.ParentDelkildeId))
             .Where(delkilde => _filter.DelkildeIds.Contains(delkilde.Id))
-            .Select(DelkildeValue)
+            .Select(DelkildeValue),
+        .. facets.Datasamlinger
+            .Where(datasamling => _filter.DatasamlingIds.Contains(datasamling.Id))
+            .Select(DatasamlingValue)
     ];
 
     /// <summary>The payload's kilder, an id it names more than once standing for one kilde.</summary>
@@ -484,32 +486,41 @@ public partial class VariableSearch
         }
 
         var term = text.Trim();
-        var delkilderByKilde = facets.Delkilder.ToLookup(delkilde => delkilde.KildeId);
+        var levels = KildeLevels(facets);
 
-        return VisibleKilder(facets, delkilderByKilde)
-            .Any(kilde => !KildeMatches(kilde, delkilderByKilde[kilde.Id], term));
+        return VisibleKilder(facets, levels).Any(kilde => !KildeMatches(kilde, levels, term));
     }
 
-    /// <summary>The kilder the facet's own search leaves, each with its whole delkilde tree.</summary>
+    /// <summary>The kilder the facet's own search leaves, each with its whole tree under it.</summary>
     /// <remarks>
-    /// A delkilde's name counts as its kilde's, or a reader typing a name they can see in the tree
-    /// would empty the facet. <see cref="StringComparison.OrdinalIgnoreCase"/>, the comparison the
-    /// kildeutforsker's facet search uses, so "does this text contain that text" means one thing.
+    /// The name of anything below a kilde counts as the kilde's own, or a reader typing a name they
+    /// can see in the tree would empty the facet. <see cref="StringComparison.OrdinalIgnoreCase"/>,
+    /// the comparison the kildeutforsker's facet search uses, so "does this text contain that text"
+    /// means one thing.
     /// </remarks>
-    private IReadOnlyList<KildeFacet> VisibleKilder(
-        FilterOptions facets, ILookup<Guid, DelkildeFacet> delkilderByKilde)
+    private IReadOnlyList<KildeFacet> VisibleKilder(FilterOptions facets, KildeLevelLookup levels)
     {
         if (KildeSearchTerm is not { } term)
         {
             return ListedKilder(facets);
         }
 
-        return [.. ListedKilder(facets).Where(kilde => KildeMatches(kilde, delkilderByKilde[kilde.Id], term))];
+        return [.. ListedKilder(facets).Where(kilde => KildeMatches(kilde, levels, term))];
     }
 
-    private bool KildeMatches(KildeFacet kilde, IEnumerable<DelkildeFacet> delkilder, string term) =>
+    /// <summary>Whether a kilde, or anything drawn under it, holds <paramref name="term"/>.</summary>
+    /// <remarks>
+    /// A datasamling is reached under its delkilde as well as straight off the kilde, since
+    /// <see cref="KildeLevels"/> puts it in whichever of the two lookups its parent says.
+    /// </remarks>
+    private bool KildeMatches(KildeFacet kilde, KildeLevelLookup levels, string term) =>
         LabelMatches(T.Named(kilde.Name, kilde.ShortName).Text, term)
-        || delkilder.Any(delkilde => LabelMatches(T.Named(delkilde.Name, null).Text, term));
+        || levels.DatasamlingerByKilde[kilde.Id].Any(
+               datasamling => LabelMatches(DatasamlingLabel(datasamling), term))
+        || levels.Delkilder[kilde.Id].Any(
+               delkilde => LabelMatches(DelkildeLabel(delkilde), term)
+                           || levels.DatasamlingerByDelkilde[delkilde.Id].Any(
+                                  datasamling => LabelMatches(DatasamlingLabel(datasamling), term)));
 
     private static bool LabelMatches(string label, string term) =>
         label.Contains(term, StringComparison.OrdinalIgnoreCase);
@@ -527,20 +538,20 @@ public partial class VariableSearch
     private FacetValue KildeTypeHeading(
         FilterOptions facets,
         IGrouping<string, KildeFacet> kilder,
-        ILookup<Guid, DelkildeFacet> delkilderByKilde) =>
+        KildeLevelLookup levels) =>
         new($"kildetype-group:{kilder.Key}",
             KildeTypeNameFromApi(facets, kilder.Key),
             kilder.Count(),
             Selected: false,
             Toggle: null,
-            [.. kilder.Select(kilde => KildeValue(kilde, delkilderByKilde))],
+            [.. kilder.Select(kilde => KildeValue(kilde, levels))],
             Collapsible: true);
 
-    private FacetValue KildeValue(KildeFacet kilde, ILookup<Guid, DelkildeFacet> delkilderByKilde) =>
+    private FacetValue KildeValue(KildeFacet kilde, KildeLevelLookup levels) =>
         KildeValue(kilde) with
         {
             Count = Counted(kilde.Count),
-            Children = DelkildeChildren(kilde.Id, delkilderByKilde)
+            Children = KildeChildren(kilde.Id, levels)
         };
 
     /// <summary>A kilde on its own: its words and its toggle, with neither a count nor its tree.</summary>
@@ -556,6 +567,20 @@ public partial class VariableSearch
             () => ToggleAsync(_filter.KildeIds, kilde.Id, ids => _filter with { KildeIds = ids }),
             []);
 
+    /// <summary>The two levels under a kilde, each hanging where its facet says it does.</summary>
+    private IReadOnlyList<FacetValue> KildeChildren(Guid kildeId, KildeLevelLookup levels) =>
+    [
+        .. DatasamlingValues(levels.DatasamlingerByKilde[kildeId]),
+        .. Tree(levels.Delkilder[kildeId]
+                    .Select(delkilde => new TreeNode(
+                        delkilde.Id, delkilde.ParentDelkildeId, DelkildeLabel(delkilde), delkilde.Count)),
+                "delkilde:",
+                IsDelkildeChosen,
+                ToggleDelkilde,
+                Counted,
+                delkildeId => DatasamlingValues(levels.DatasamlingerByDelkilde[delkildeId]))
+    ];
+
     /// <summary>A delkilde on its own, on the same terms — the tree below builds it from the same parts.</summary>
     private FacetValue DelkildeValue(DelkildeFacet delkilde) =>
         new($"delkilde:{delkilde.Id}",
@@ -567,12 +592,64 @@ public partial class VariableSearch
 
     private string DelkildeLabel(DelkildeFacet delkilde) => T.Named(delkilde.Name, null).Text;
 
-    private IReadOnlyList<FacetValue> DelkildeChildren(Guid kildeId, ILookup<Guid, DelkildeFacet> delkilderByKilde) =>
-        Tree(delkilderByKilde[kildeId]
-                 .Select(d => new TreeNode(d.Id, d.ParentDelkildeId, DelkildeLabel(d), d.Count)),
-             "delkilde:",
-             IsDelkildeChosen,
-             ToggleDelkilde, Counted);
+    /// <summary>Datasamlinger as leaves: nothing in the catalogue hangs below one.</summary>
+    private IReadOnlyList<FacetValue> DatasamlingValues(IEnumerable<DatasamlingFacet> datasamlinger) =>
+    [
+        .. datasamlinger.Select(datasamling =>
+            DatasamlingValue(datasamling) with { Count = Counted(datasamling.Count) })
+    ];
+
+    /// <summary>A datasamling on its own — the same split the kilde and delkilde above are drawn through.</summary>
+    private FacetValue DatasamlingValue(DatasamlingFacet datasamling) =>
+        new($"datasamling:{datasamling.Id}",
+            DatasamlingLabel(datasamling),
+            null,
+            _filter.DatasamlingIds.Contains(datasamling.Id),
+            () => ToggleAsync(_filter.DatasamlingIds, datasamling.Id,
+                              ids => _filter with { DatasamlingIds = ids }),
+            []);
+
+    private string DatasamlingLabel(DatasamlingFacet datasamling) => T.Named(datasamling.Name, null).Text;
+
+    /// <summary>The delkilder and datasamlinger of the kilde facet, keyed by what each hangs under.</summary>
+    /// <remarks>
+    /// Datasamlinger are split across two lookups rather than keyed into one by whichever parent
+    /// they hang from: the two id spaces are independent Guids off the wire, and one lookup would
+    /// read a kilde id that happened to equal a delkilde id as the other level's key and misfile
+    /// the row with no error anywhere.
+    /// </remarks>
+    private sealed record KildeLevelLookup(
+        ILookup<Guid, DelkildeFacet> Delkilder,
+        ILookup<Guid, DatasamlingFacet> DatasamlingerByKilde,
+        ILookup<Guid, DatasamlingFacet> DatasamlingerByDelkilde);
+
+    /// <summary>Both child levels of the kilde tree, in one pass over the facets.</summary>
+    private static KildeLevelLookup KildeLevels(FilterOptions facets)
+    {
+        // GroupBy rather than ToDictionary: a payload repeating a delkilde id is malformed, but it
+        // throws here on the render path and inside the kilde search box's onchange, either of
+        // which tears the circuit down over what would otherwise be one oddly drawn row.
+        var delkildeOwner = facets.Delkilder
+            .GroupBy(delkilde => delkilde.Id)
+            .ToDictionary(group => group.Key, group => group.First().KildeId);
+
+        // A delkilde the payload left out — cross-filtered away, or belonging to another kilde — is
+        // an absent parent, so its datasamlinger fall back to the kilde rather than disappearing
+        // with it.
+        bool HangsUnderItsDelkilde(DatasamlingFacet datasamling) =>
+            datasamling.DelkildeId is { } parent
+            && delkildeOwner.TryGetValue(parent, out var owner)
+            && owner == datasamling.KildeId;
+
+        return new KildeLevelLookup(
+            facets.Delkilder.ToLookup(delkilde => delkilde.KildeId),
+            facets.Datasamlinger
+                .Where(datasamling => !HangsUnderItsDelkilde(datasamling))
+                .ToLookup(datasamling => datasamling.KildeId),
+            facets.Datasamlinger
+                .Where(HangsUnderItsDelkilde)
+                .ToLookup(datasamling => datasamling.DelkildeId!.Value));
+    }
 
     private bool IsDelkildeChosen(Guid id) => _filter.DelkildeIds.Contains(id);
 
@@ -729,13 +806,19 @@ public partial class VariableSearch
     /// An id the payload names more than once is <see cref="OnePerId">collapsed to one node</see>
     /// before any of that, so where the value sits is the payload's meaning rather than its order.
     /// </para>
+    /// <para>
+    /// <c>under</c> takes values from another facet that belong beneath a node — the kilde tree's
+    /// datasamlinger, which carry their own key prefix and their own selection, and so cannot be
+    /// nodes here.
+    /// </para>
     /// </remarks>
     private static IReadOnlyList<FacetValue> Tree(
         IEnumerable<TreeNode> nodes,
         string keyPrefix,
         Func<Guid, bool> selected,
         Func<Guid, Func<Task>> toggle,
-        Func<int, int?> count)
+        Func<int, int?> count,
+        Func<Guid, IReadOnlyList<FacetValue>>? under = null)
     {
         var all = OnePerId(nodes, node => node.Id, node => node.ParentId);
 
@@ -781,7 +864,7 @@ public partial class VariableSearch
 
             // Same shape as AddRoots above, and for the same reason: each child is tested against a
             // set the recursion mutates, so building one sibling can place the next.
-            List<FacetValue> children = [];
+            List<FacetValue> children = under is null ? [] : [.. under(node.Id)];
 
             foreach (var child in byParent[node.Id])
             {

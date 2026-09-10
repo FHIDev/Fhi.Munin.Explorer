@@ -47,15 +47,12 @@ public sealed record VariableFilter
     public IReadOnlyList<Guid> DelkildeIds { get; init; } = [];
 
     /// <summary>
-    /// Datasamlinger to restrict to.
+    /// Datasamlinger to restrict to. Empty means every datasamling.
     /// </summary>
     /// <remarks>
-    /// Carried because the API filters on it, and honoured whenever it is set — but nothing in
-    /// <see cref="FilterOptions"/> offers datasamlinger as a facet, so a UI built from the facets
-    /// alone has no counted values to draw and no way for a reader to pick one. Reaching the
-    /// datasamling level needs <see cref="IMuninExplorerClient.GetKildeHierarchyAsync"/>, one call
-    /// per kilde, whose node counts are the kilde's own totals and not counts cross-filtered
-    /// against the current selection.
+    /// <see cref="FilterOptions.Datasamlinger"/> is the counted list to offer, and it is empty
+    /// against an API that predates that facet — against one of those a host has to know the ids
+    /// it wants, because nothing names them.
     /// </remarks>
     public IReadOnlyList<Guid> DatasamlingIds { get; init; } = [];
 
@@ -87,9 +84,9 @@ public sealed record VariableFilter
     /// is unaffected — <see cref="ToQuery"/> spells it <c>datakategorier</c>, which is what the API
     /// binds.
     /// <para>
-    /// Honoured like every other facet, and like <see cref="DatasamlingIds"/> it has no entry in
-    /// <see cref="FilterOptions"/> — the tokens live on the datasamling nodes of a kilde hierarchy,
-    /// so there are no cross-filtered counts to render beside them.
+    /// Honoured like every other facet, and counted by <see cref="FilterOptions.DataCategories"/> —
+    /// which, like <see cref="FilterOptions.Datasamlinger"/>, is empty against an API that predates
+    /// it, leaving a caller with the filter but no values to offer.
     /// </para>
     /// </remarks>
     public IReadOnlyList<string> Categories { get; init; } = [];

@@ -793,6 +793,47 @@ public class MuninExplorerClientTest
     // ------------------------------------------------- explicit nulls where a collection is due
 
     [Fact]
+    public async Task GetFiltersAsync_WhenTheAnswerCarriesDatasamlinger_ThenEveryWireNameIsRead()
+    {
+        // filters.json predates the facet and is re-taken whole under Fhi.Metadata-c7bb6, not
+        // patched a value at a time, so the wire contract is pinned here instead. Every UI test
+        // builds DatasamlingFacet in C#, which would pass just as happily against a wrong wire
+        // name or a missed parent. (Fhi.Metadata-mgp03)
+        var filters = await WithJson("""
+            {
+              "datasamlinger": [
+                {
+                  "id": "6f1d4a5c-0000-4000-8000-000000000101",
+                  "name": "Tromsø 1",
+                  "delkildeId": null,
+                  "kildeId": "6f1d4a5c-0000-4000-8000-000000000001",
+                  "count": 5
+                },
+                {
+                  "id": "6f1d4a5c-0000-4000-8000-000000000102",
+                  "name": "Fjerde runde",
+                  "delkildeId": "6f1d4a5c-0000-4000-8000-000000000011",
+                  "kildeId": "6f1d4a5c-0000-4000-8000-000000000001",
+                  "count": 4
+                }
+              ]
+            }
+            """).GetFiltersAsync();
+
+        Assert.Equal(2, filters.Datasamlinger.Count);
+
+        var straightOffItsKilde = filters.Datasamlinger[0];
+        Assert.Equal(new Guid("6f1d4a5c-0000-4000-8000-000000000101"), straightOffItsKilde.Id);
+        Assert.Equal("Tromsø 1", straightOffItsKilde.Name);
+        Assert.Null(straightOffItsKilde.DelkildeId);
+        Assert.Equal(new Guid("6f1d4a5c-0000-4000-8000-000000000001"), straightOffItsKilde.KildeId);
+        Assert.Equal(5, straightOffItsKilde.Count);
+
+        // The parent that decides which level the panel draws it under.
+        Assert.Equal(new Guid("6f1d4a5c-0000-4000-8000-000000000011"), filters.Datasamlinger[1].DelkildeId);
+    }
+
+    [Fact]
     public async Task GetVariableAsync_WhenACollectionArrivesAsAnExplicitNull_ThenItIsReadAsEmpty()
     {
         // The failure this closes: every collection on every contract is declared non-nullable
