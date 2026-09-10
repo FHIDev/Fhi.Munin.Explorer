@@ -4387,6 +4387,64 @@ public class VariableSearchTest : BunitContext
                      Values(cut)[2].QuerySelectorAll("ol > li").Select(l => l.TextContent));
     }
 
+    [Fact]
+    public void Render_WhenTheApiEchoesTheEnumNameAsItsDisplayName_ThenBothSitesReadTheShippedTable()
+    {
+        // An API predating Fhi.Metadata-0mjhi answers displayName with the value again, bar its
+        // casing. That is not a word anyone chose, so it is the one displayName the shipped table
+        // is allowed to beat — and dropping the case-insensitive test here goes unnoticed without it.
+        var cut = RenderWith(new FilteringClient(OnePage(), RewordedKildetyper("SentraltHelseregister")));
+
+        var heading = KildeTypeGroups(cut)
+            .Single(g => g.TextContent.Contains("Dødsårsaksregisteret", StringComparison.Ordinal))
+            .FirstElementChild!.ChildNodes[0].TextContent.Trim();
+
+        Assert.Equal("Sentralt helseregister (30)", Facet(cut, "Sentralt helseregister").TextContent);
+        Assert.Equal("Sentralt helseregister", heading);
+        Assert.DoesNotContain("SentraltHelseregister", FilterPanel(cut).TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Render_WhenAKildeCarriesNoKildetypeAtAll_ThenItsHeadingSaysSoRatherThanShowingAnEmptyWord()
+    {
+        // The one case that is NOT the token: there is no token. The heading groups those kilder
+        // under the empty key, and "Ikke oppgitt" is the whole of what can honestly be said over
+        // them — which is what Texts.KildeTypeNameFromApi's remarks carve out. (Fhi.Metadata-3n6e1)
+        var cut = RenderWith(new FilteringClient(OnePage(), new FilterOptions
+        {
+            KildeTyper = [new() { Value = "biobank", DisplayName = "Biobank", Count = 12 }],
+            Kilder =
+            [
+                new() { Id = Dodsarsak, Name = "Dødsårsaksregisteret", Count = 4 },
+                new() { Id = Tromso, Name = "Tromsøundersøkelsen", KildeType = "biobank", Count = 12 }
+            ],
+            TotalCount = 16
+        }));
+
+        var heading = KildeTypeGroups(cut)
+            .Single(g => g.TextContent.Contains("Dødsårsaksregisteret", StringComparison.Ordinal))
+            .FirstElementChild!.ChildNodes[0].TextContent.Trim();
+
+        Assert.Equal("Ikke oppgitt", heading);
+    }
+
+    [Fact]
+    public void Detail_WhenNoFacetsAreLoadedAndTheTableKnowsTheKildetype_ThenTheTrailSaysTheTablesWord()
+    {
+        // The ordinary shape for every detail-only host: the filters call has not answered, so the
+        // helper's facet lookup is a null read and the shipped table is the whole answer. A trail
+        // step downgraded to the raw token or to "Ikke oppgitt" here is silent. (Fhi.Metadata-3n6e1)
+        var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale")))
+            .Knows(Detail(TaleId) with { KildeType = "sentraltHelseregister" })
+            .Knows(Kilde())
+            .Knows(Datasamling()));
+
+        Toggles(cut)[0].Click();
+
+        Assert.Equal(["Sentralt helseregister", "Als registeret (ALS)", "Inklusjon"],
+                     Values(cut)[2].QuerySelectorAll("ol > li").Select(l => l.TextContent));
+    }
+
     [Theory]
     [InlineData("no", "nb", "Sentralt helseregister, som master data sier det")]
     [InlineData("en", "en", "Central health registry, as the master data has it")]

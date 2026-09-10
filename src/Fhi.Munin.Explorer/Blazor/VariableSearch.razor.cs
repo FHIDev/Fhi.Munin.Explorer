@@ -1446,17 +1446,18 @@ public sealed partial class VariableSearch : ComponentBase
     }
 
     /// <summary>
-    /// <see cref="Texts.KildeTypeName"/> for a site holding a token and no facet — the kilde
-    /// facet's group headings, and the open row's kilde trail.
+    /// <see cref="Texts.KildeTypeNameFromApi"/> for a site holding a token and no facet of its
+    /// own — the kilde facet's group headings, and the open row's kilde trail.
     /// </summary>
     /// <remarks>
     /// One reading for all of them, because falling back apart is what drew prose on the facet
-    /// button and the bare token on the heading directly beneath it. (Fhi.Metadata-3n6e1)
+    /// button and the bare token on the heading directly beneath it. The payload is a parameter
+    /// rather than the field, so a heading resolves out of the very object its button did.
     /// </remarks>
-    private string KildeTypeName(string? value) =>
-        T.KildeTypeName(
+    private string KildeTypeNameFromApi(FilterOptions? facets, string? value) =>
+        T.KildeTypeNameFromApi(
             value,
-            _facets?.KildeTyper
+            facets?.KildeTyper
                 .FirstOrDefault(type => string.Equals(type.Value, value, StringComparison.OrdinalIgnoreCase))
                 ?.DisplayName);
 

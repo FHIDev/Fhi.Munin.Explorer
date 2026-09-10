@@ -109,7 +109,7 @@ public partial class VariableSearch
             // The one step that is a vocabulary rather than a name out of the catalogue, so it
             // follows Language either way — the API resolves it against Accept-Language, and the
             // shipped table behind that is the reader's language too. Hence not marked Norwegian.
-            crumbs.Add(new Crumb(KildeTypeName(detail.KildeType), Norwegian: false));
+            crumbs.Add(new Crumb(KildeTypeNameFromApi(_facets, detail.KildeType), Norwegian: false));
         }
 
         if (!string.IsNullOrWhiteSpace(detail.KildeName))

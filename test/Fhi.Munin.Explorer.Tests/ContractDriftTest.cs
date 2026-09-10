@@ -68,12 +68,17 @@ public class ContractDriftTest
 
         Assert.NotEmpty(norwegian.KildeTyper);
 
+        // Named here rather than guarded for inside the loop: a value offered in one language and
+        // not the other is drift of its own, and this says which value while a null two lines below
+        // would only say that one of them went missing.
+        Assert.Equal(
+            norwegian.KildeTyper.Select(type => type.Value).OrderBy(value => value, StringComparer.Ordinal),
+            english.KildeTyper.Select(type => type.Value).OrderBy(value => value, StringComparer.Ordinal));
+
         foreach (var type in norwegian.KildeTyper)
         {
-            var abroad = english.KildeTyper.SingleOrDefault(
+            var abroad = english.KildeTyper.Single(
                 other => string.Equals(other.Value, type.Value, StringComparison.Ordinal));
-
-            Assert.True(abroad is not null, $"'{type.Value}' is offered under nb and not under en.");
 
             Assert.False(
                 string.Equals(type.DisplayName, type.Value, StringComparison.OrdinalIgnoreCase)
