@@ -507,6 +507,89 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   overflow-wrap: anywhere;
 }
 
+/* Nivålinjer, the one switch, wearing its own name and NOTHING else: the rule above selects
+   hd-button-square, and beside it the toolbar squeezes this to one character wide. State hangs
+   on aria-checked, not a modifier class, so drawn and announced agree. (Fhi.Metadata-l9l2n.87) */
+.munin-explorer-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 2rem;
+  padding: 0 0.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: none;
+  color: var(--grey60);
+  font: normal 500 1rem/1 var(--font);
+  cursor: pointer;
+}
+
+/* The label is text, so 4.5:1 under 1.4.3 rather than 3:1 — --grey60 off reads 6.76:1 on the page
+   ground and 6.38:1 on the hover surface, --dark on reads 14.28:1 and 13.47:1. Before the focus
+   rule below on purpose: same specificity, so source order is what lets focus win. */
+.munin-explorer-switch[aria-checked="true"] {
+  color: var(--dark);
+}
+
+.munin-explorer-switch:hover {
+  background-color: var(--grey20);
+}
+
+/* Focus is a filled surface, not a ring and not the hover one: helsedata zero outline AND
+   box-shadow !important on every focused button (Fhi.Metadata-l9l2n.57), and --grey20 alone is a
+   1.06:1 change — no indicator. --grey60 is 6.76:1, #fff on it 7.23:1. (Fhi.Metadata-2eme9) */
+.munin-explorer-switch:focus-visible {
+  background-color: var(--grey60);
+  color: #fff;
+}
+
+/* The track. OFF IS THE STATE THAT NEARLY FAILED: its --grey20 fill is the hover surface's own
+   colour, 1.00:1 on it, so the --grey60 BORDER is what carries 1.4.11 — 6.76:1 and 6.38:1. Never
+   --primary; another control here is the frequency__track failure again. (Fhi.Metadata-l9l2n.86) */
+.munin-explorer-switch__track {
+  position: relative;
+  flex: none;
+  width: 30px;
+  height: 18px;
+  border: 1px solid var(--grey60);
+  border-radius: 9px;
+  background-color: var(--grey20);
+}
+
+.munin-explorer-switch[aria-checked="true"] .munin-explorer-switch__track {
+  background-color: var(--grey60);
+}
+
+/* The thumb, 12x12 travelling 12px — inset 2px from the track's border box, 3px from its outer
+   edge. It inverts with the track at 6.38:1 and 7.23:1, but the carrying signal is POSITION: left
+   is off and right is on with every colour removed. */
+.munin-explorer-switch__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: var(--grey60);
+}
+
+.munin-explorer-switch[aria-checked="true"] .munin-explorer-switch__thumb {
+  left: 14px;
+  background-color: #fff;
+}
+
+/* Both parts go white on the focus surface, at 7.23:1: --grey60 on --grey60 is the control
+   vanishing under the reader who just tabbed to it. Position still says on from off, so neither
+   state depends on these. After the aria-checked rules on purpose — equal specificity. */
+.munin-explorer-switch:focus-visible .munin-explorer-switch__track {
+  border-color: #fff;
+  background-color: var(--grey60);
+}
+
+.munin-explorer-switch:focus-visible .munin-explorer-switch__thumb {
+  background-color: #fff;
+}
+
 .munin-explorer-filters details {
   border-bottom: 1px solid var(--grey30);
   padding: 8px 0;

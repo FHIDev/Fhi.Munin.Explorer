@@ -970,13 +970,13 @@ public partial class VariableSearch
     /// does today — but because a name is inventory: the README contract, the sample stylesheets and
     /// <c>assert-sample-css-in-step.sh</c> all have to carry it. A state marker owes nothing.
     /// (Fhi.Metadata-wcbxi)
+    /// <para>
+    /// This draws the lines; it says nothing about the control. What a screen reader hears is the
+    /// switch's own <c>aria-checked</c>, always spelled out where this is omitted when off — two
+    /// carriers for two audiences, one <c>_levelLines</c> behind both. (Fhi.Metadata-l9l2n.87)
+    /// </para>
     /// </remarks>
     private string? LevelLinesMarker => _levelLines ? "true" : null;
-
-    /// <summary>The level-lines button's classes — filled when on, a ghost when off.</summary>
-    /// <remarks>No margin utilities: the toolbar container spaces all three with <c>gap</c>.</remarks>
-    private string LevelLinesClass =>
-        $"hd-button-square {(_levelLines ? "button-square--secondary" : "button-square--ghost")}";
 
     /// <summary>Turn the level lines on or off, and tell the host, so it can remember them.</summary>
     private Task ToggleLevelLinesAsync()
