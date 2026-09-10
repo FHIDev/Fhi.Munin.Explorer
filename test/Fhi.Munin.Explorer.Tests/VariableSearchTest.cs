@@ -4222,9 +4222,12 @@ public class VariableSearchTest : BunitContext
     [Fact]
     public void Render_WhenAKildetypeArrivesWithAnUnresolvedDisplayName_ThenTheButtonSaysItInProse()
     {
-        // The fixture keeps the unresolved name on purpose. The API resolves displayName now, so a
-        // fixture carrying the resolved prose would read the same whether the lookup by value
-        // worked or the fallback simply echoed it. (Fhi.Metadata-iv9xp)
+        // The fixture keeps the unresolved name on purpose: resolved prose there would read the
+        // same whether the lookup by value worked or the fallback simply echoed it. Asserted
+        // rather than assumed, so refreshing Facets() goes red instead of vacuous. (Fhi.Metadata-iv9xp)
+        Assert.Equal("SentraltHelseregister",
+                     Facets().KildeTyper.Single(type => type.Value == "sentraltHelseregister").DisplayName);
+
         var cut = RenderWith(new FilteringClient(OnePage()));
 
         Assert.NotNull(Facet(cut, "Sentralt helseregister"));
@@ -4234,9 +4237,9 @@ public class VariableSearchTest : BunitContext
     [Fact]
     public void Render_WhenAKildetypeIsOutsideTheShippedTable_ThenTheFacetTakesTheApisWordsAndTheHeadingTheToken()
     {
-        // The fallback is reachable — a member Munin adds to the enum is a catalogue change — and
-        // the two sites fall back to different things, since the grouping never reads KildeTyper.
-        // Two kildetyper, or the one group is lifted out of its heading. (Fhi.Metadata-1b0ag)
+        // A member Munin adds to the enum reaches the fallback, and the two sites fall back to
+        // different things because the grouping never reads KildeTyper. Pinned as it stands, not
+        // endorsed: Fhi.Metadata-1b0ag flips this assertion. Two kildetyper, or the group lifts out.
         var cut = RenderWith(new FilteringClient(OnePage(), new FilterOptions
         {
             KildeTyper =
@@ -4253,8 +4256,13 @@ public class VariableSearchTest : BunitContext
         }));
 
         Assert.Equal("Ny kildetype (4)", Facet(cut, "Ny kildetype").TextContent);
-        Assert.Equal("nyKildetype",
-                     KildeTypeGroups(cut)[0].FirstElementChild!.ChildNodes[0].TextContent.Trim());
+
+        // Picked by the kilde inside it rather than by position: the headings follow the order
+        // KildeTyper arrived in, and this test is about their words rather than that order.
+        var group = KildeTypeGroups(cut)
+            .Single(g => g.TextContent.Contains("Dødsårsaksregisteret", StringComparison.Ordinal));
+
+        Assert.Equal("nyKildetype", group.FirstElementChild!.ChildNodes[0].TextContent.Trim());
     }
 
     [Fact]

@@ -11,5 +11,5 @@ category: Changed
   one such host. The words it puts on a kildetype are still its own, looked up by `Value` — those
   did not change — but it draws the kildetype facet, and the kilde headings grouped under it, in
   the order the API sent. Under `nb` that is the order it always was; an English mount now sorts
-  them by English prose, so `Central health registry` heads a list that `Other data source` used
-  to. (Fhi.Metadata-iv9xp)
+  them by English prose, so which kildetype heads the list depends on the English words rather
+  than on the enum. (Fhi.Metadata-iv9xp)
