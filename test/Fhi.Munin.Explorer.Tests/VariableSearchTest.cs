@@ -5143,11 +5143,12 @@ public class VariableSearchTest : BunitContext
     [Fact]
     public void ActiveFilters_WhenTheFacetPayloadListsOneIdTwice_ThenItIsOneChoiceAndOneChip()
     {
-        // THE DEFECT THIS BEAD IS ABOUT. A variabelgruppe listed both under a parent that is in the
-        // payload and as an orphan was built twice — once by the recursion, once as a root, because
-        // only the second pass consulted what the walk had already placed. One press then ticked
-        // both drawn copies, the facet counted two and the row drew two chips for one value:
-        // exactly "one tick, two chips" over a filter carrying one. (Fhi.Metadata-l9l2n.82)
+        // THE DEFECT THIS BEAD IS ABOUT. A value listed both under a parent that is in the payload
+        // and as an orphan was built twice — once by the recursion, once as a root, because the
+        // root pass did not consult what the walk had already placed. One press ticked both drawn
+        // copies, the facet counted two and the row drew two chips for one value. Delkilder run
+        // through the same builder, which is where the reported "Vestland 2022" sits — a delkilde
+        // of FHUS on runa, and no facet of the kildeutforsker's. (Fhi.Metadata-l9l2n.82)
         var client = new FilteringClient(
             OnePage(Variable("1. Tale", "KODE")),
             Facets() with

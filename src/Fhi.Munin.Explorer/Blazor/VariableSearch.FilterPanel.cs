@@ -46,12 +46,9 @@ public partial class VariableSearch
         /// <summary>What is chosen in this facet: the summary's count, and the row of chips.</summary>
         /// <remarks>
         /// One projection for both, so the number on a folded facet and the chips over the results
-        /// can never describe two different selections. (Fhi.Metadata-l9l2n.68) Distinct on the
-        /// key, so one chosen value is one entry however many places name it — a facet payload
-        /// listing an id twice would otherwise be one press, two chips. (Fhi.Metadata-l9l2n.82)
+        /// can never describe two different selections. (Fhi.Metadata-l9l2n.68)
         /// </remarks>
-        public IReadOnlyList<FacetValue> ChosenValues =>
-            [.. (Chosen ?? [.. Selected(Values)]).DistinctBy(value => value.Key)];
+        public IReadOnlyList<FacetValue> ChosenValues => Chosen ?? [.. Selected(Values)];
 
         /// <summary>How many values in this facet are selected, counting nested ones.</summary>
         public int SelectedCount => ChosenValues.Count;
@@ -735,45 +732,34 @@ public partial class VariableSearch
 
         List<FacetValue> roots = [];
 
-        // A foreach over a set the body mutates, for the reason the second pass below is one: an id
-        // the payload lists twice — once under a parent in the list, once as an orphan — is placed
-        // by the recursion and must not be built as a root as well. (Fhi.Metadata-l9l2n.82)
-        foreach (var node in all)
-        {
-            var rooted = node.ParentId is not { } parent || !known.Contains(parent);
-
-            if (rooted && !placed.Contains(node.Id))
-            {
-                roots.Add(Build(node));
-            }
-        }
-
-        // Whatever the first pass could not reach: every member of a cycle has its parent present,
-        // so none of them is a root, and dropping them would take a filter off the panel with no
-        // error anywhere. Each one that is still unplaced becomes a root of its own, which places
-        // the rest of its cycle underneath it.
-        //
-        // A foreach rather than AddRange over a query, because the test is against a set the body
-        // mutates: for two nodes naming each other, building the first places the second, and the
-        // second must not then be built as a root as well. Written as a query that would hold only
-        // while nothing materialised it between the filter and the projection — and drawing one
-        // node twice means two <li> siblings with the same key, which the renderer throws on.
-        foreach (var node in all)
-        {
-            if (!placed.Contains(node.Id))
-            {
-                roots.Add(Build(node));
-            }
-        }
+        // Real roots first, then whatever they could not reach: every member of a cycle has its
+        // parent present, so none of them is a root, and dropping them would take a filter off the
+        // panel with no error anywhere. (Fhi.Metadata-l9l2n.82)
+        AddRoots(node => node.ParentId is not { } parent || !known.Contains(parent));
+        AddRoots(_ => true);
 
         return roots;
+
+        void AddRoots(Func<TreeNode, bool> isRoot)
+        {
+            // A foreach rather than a query, because `placed` is a set the body mutates: building a
+            // node places everything under it, and an id placed twice — a payload naming it twice,
+            // or a cycle's other member — is two <li> siblings with one key the renderer throws on.
+            foreach (var node in all)
+            {
+                if (isRoot(node) && !placed.Contains(node.Id))
+                {
+                    roots.Add(Build(node));
+                }
+            }
+        }
 
         FacetValue Build(TreeNode node)
         {
             placed.Add(node.Id);
 
-            // Same shape as the second pass above, and for the same reason: each child is tested
-            // against a set the recursion mutates, so building one sibling can place the next.
+            // Same shape as AddRoots above, and for the same reason: each child is tested against a
+            // set the recursion mutates, so building one sibling can place the next.
             List<FacetValue> children = [];
 
             foreach (var child in byParent[node.Id])
