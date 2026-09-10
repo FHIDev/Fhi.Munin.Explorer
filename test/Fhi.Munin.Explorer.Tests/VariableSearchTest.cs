@@ -8460,6 +8460,393 @@ public class VariableSearchTest : BunitContext
         Assert.Empty(cut.FindAll(".munin-explorer-detail"));
     }
 
+    /// <summary>The row's column strip, which is the element a press on the row lands in.</summary>
+    /// <remarks>
+    /// Found on every call rather than held, here and in everything layered on it: a press
+    /// re-renders the row, and an element found before that belongs to the markup as it was.
+    /// </remarks>
+    private static IElement RowStrip(IRenderedComponent<VariableSearch> cut, int row = 0) =>
+        cut.FindAll("ul.munin-explorer-data-list .munin-explorer-dataitem-main")[row];
+
+    /// <summary>A cell of the row that holds no control, so the press lands on the row itself.</summary>
+    private static IElement RowBody(IRenderedComponent<VariableSearch> cut, int row = 0) =>
+        RowStrip(cut, row).QuerySelector(".munin-explorer-dataitem-main__column")!;
+
+    /// <summary>
+    /// A pointer press on the row that travels <paramref name="right"/> CSS pixels across and
+    /// <paramref name="down"/> down it before it is released, which is what tells a press meant to
+    /// open the panel from a drag-selection. <paramref name="clicks"/> is the browser's click count,
+    /// so 2 is the second click of a double-click, and <paramref name="shift"/> is the modifier held
+    /// to extend a selection to where the pointer is.
+    /// </summary>
+    /// <remarks>
+    /// All three events go through <see cref="RowBody"/> rather than one held element: the mousedown
+    /// re-renders the row, and the element found before it belongs to the markup as it was. The
+    /// mouseup is dispatched because a browser dispatches one — it is where the row settles what the
+    /// gesture was, and a test that skipped it would prove a gesture no pointer makes.
+    /// </remarks>
+    private static void PressRow(
+        IRenderedComponent<VariableSearch> cut,
+        int row = 0,
+        double right = 0,
+        double down = 0,
+        long clicks = 1,
+        bool shift = false)
+    {
+        RowBody(cut, row).MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
+        RowBody(cut, row).MouseUp(new MouseEventArgs
+        {
+            ClientX = 120 + right,
+            ClientY = 240 + down,
+            Detail = clicks,
+            ShiftKey = shift,
+        });
+        RowBody(cut, row).Click(new MouseEventArgs
+        {
+            ClientX = 120 + right,
+            ClientY = 240 + down,
+            Detail = clicks,
+            ShiftKey = shift,
+        });
+    }
+
+    /// <summary>Whether a press on <paramref name="control"/> stops there rather than reaching the row.</summary>
+    /// <remarks>
+    /// Read off the markup rather than proved by clicking, and that is the point. bUnit dispatches a
+    /// bubbling event to the handler ids it collected before the first handler ran and skips any the
+    /// re-render has since disposed — which is the row's, since each of these controls re-renders it.
+    /// A click here therefore cannot show the collision a browser would have, so the attribute the
+    /// browser acts on is asserted instead.
+    /// </remarks>
+    private static bool StopsTheClick(IElement control) =>
+        control.HasAttribute("blazor:onclick:stoppropagation");
+
+    /// <summary>Whether a mousedown on <paramref name="control"/> reaches the row around it.</summary>
+    /// <remarks>
+    /// The opposite of <see cref="StopsTheClick"/> and deliberately so: the row measures a click
+    /// against the press it saw go down, and the browser lands the click of a drag begun on one of
+    /// these controls on the row. A press stopped here would arrive there as no press at all.
+    /// </remarks>
+    private static bool LetsThePressThrough(IElement control) =>
+        !control.HasAttribute("blazor:onmousedown:stoppropagation");
+
+    [Fact]
+    public void Row_WhenTheRowItselfIsPressed_ThenItOpensThePanelTheNameOpens()
+    {
+        // Stiler computes cursor: pointer on the column strip and nothing was listening, so the row
+        // said it was a control and was not — the defect Fhi.Metadata-zqe14 was filed for one control
+        // over, and the complaint that produced Fhi.Metadata-l9l2n.55 for Kelda.
+        var cut = RenderWith(TwoRows());
+
+        PressRow(cut);
+
+        Assert.Equal("true", Discloses(cut));
+        Assert.Single(cut.FindAll(".munin-explorer-detail"));
+        Assert.Contains("1. Tale", Panel(cut).TextContent);
+    }
+
+    [Fact]
+    public void Row_WhenItIsPressedTwiceAsSeparateGestures_ThenItClosesAgain()
+    {
+        // The row reaches the name button's toggle and nothing of its own, so what aria-expanded
+        // promises holds from the row too: the press that opened the panel closes it.
+        var cut = RenderWith(TwoRows());
+
+        PressRow(cut);
+        PressRow(cut);
+
+        Assert.Equal("false", Discloses(cut));
+        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
+    }
+
+    [Fact]
+    public void Row_WhenThePointerDraggedAcrossItToSelectText_ThenThePanelStaysShut()
+    {
+        // The row is full of text worth copying — a reader takes a variable code out of it. A drag
+        // that begins and ends inside the row lands a click on the strip too, so highlighting a code
+        // would open the panel underneath the selection being made.
+        var cut = RenderWith(TwoRows());
+
+        PressRow(cut, right: 48);
+
+        Assert.Equal("false", Discloses(cut));
+        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
+
+        // And the drag leaves nothing behind that would swallow the next ordinary press.
+        PressRow(cut);
+
+        Assert.Equal("true", Discloses(cut));
+    }
+
+    [Fact]
+    public void Row_WhenADragIsFollowedByAClickWithNoPressBehindIt_ThenThatClickOpensThePanel()
+    {
+        // What "leaves nothing behind" has to mean. A click with no mousedown of its own — how
+        // assistive tooling activates a row — reports no click count, and RowPress measures no
+        // verdict against one, whether or not anything spent it. (Fhi.Metadata-l9l2n.81)
+        var cut = RenderWith(TwoRows());
+
+        PressRow(cut, right: 48);
+
+        Assert.Equal("false", Discloses(cut));
+
+        RowBody(cut).Click(new MouseEventArgs());
+
+        Assert.Equal("true", Discloses(cut));
+    }
+
+    [Fact]
+    public void Row_WhenTheHandWobblesWithinAFewPixels_ThenItIsStillAPressAndThePanelOpens()
+    {
+        // The other side of the drag guard: a pointer that moves a pixel or two between press and
+        // release is a click, not a selection, and a row that ignored it would be back to the control
+        // that does nothing when pressed.
+        var cut = RenderWith(TwoRows());
+
+        PressRow(cut, right: 2, down: 1);
+
+        Assert.Equal("true", Discloses(cut));
+    }
+
+    [Theory]
+    [InlineData(4, 0, true)]
+    [InlineData(5, 0, false)]
+    [InlineData(0, 4, true)]
+    [InlineData(0, 5, false)]
+    public void Row_WhenThePointerTravels_ThenTheSlackIsADistanceInEitherDirection(
+        double right, double down, bool opens)
+    {
+        // Where the boundary the slack sets actually is, in a test rather than in the prose above the
+        // constant: 4px is still a press and 5px is a selection. Down as well as across, because a
+        // reader dragging from the name onto the code beside it moves in Y as much as in X.
+        var cut = RenderWith(TwoRows());
+
+        PressRow(cut, right: right, down: down);
+
+        Assert.Equal(opens ? "true" : "false", Discloses(cut));
+    }
+
+    [Fact]
+    public void Row_WhenItIsDoubleClicked_ThenThePanelIsNotToggledTwice()
+    {
+        // Fhi.Metadata-kbwo3's defect one element out: double-click is how a reader takes a short
+        // token, and it travels no pixels at all, so a guard that only measures distance would let
+        // the second click shut the panel again and buy a second detail fetch with it.
+        var client = TwoRows();
+        var reported = new List<Guid?>();
+        var cut = RenderWith(client, b => b.Add(c => c.SelectedVariableIdChanged, id => reported.Add(id)));
+
+        PressRow(cut);
+        PressRow(cut, clicks: 2);
+
+        Assert.Equal("true", Discloses(cut));
+        Assert.Single(cut.FindAll(".munin-explorer-detail"));
+        Assert.Equal(1, client.DetailCalls);
+
+        // Nor a second SelectedVariableIdChanged: the host writes the id into its URL, and a
+        // "selection cleared" from the swallowed click would take the reader off it.
+        Assert.Equal([TaleId], reported);
+    }
+
+    [Fact]
+    public void Row_WhenAClickExtendsASelectionWithShift_ThenThePanelStaysShut()
+    {
+        // The other gesture that stands still: shift-click extends the selection to the pointer, so
+        // it is two stationary clicks and neither has travelled anywhere.
+        var cut = RenderWith(TwoRows());
+
+        PressRow(cut, shift: true);
+
+        Assert.Equal("false", Discloses(cut));
+        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
+    }
+
+    [Fact]
+    public void Row_WhenTheLastPressWasOnAnotherRow_ThenThisRowIsNotMeasuredAgainstIt()
+    {
+        // One coordinate for the whole list would read a click on this row against a press left on
+        // that one, and a row far enough down the page would silently do nothing — the control that
+        // does nothing when pressed, back again. Keyed like every other per-row state here.
+        var cut = RenderWith(TwoRows());
+
+        RowBody(cut).MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
+        RowBody(cut, 1).MouseUp(new MouseEventArgs { ClientX = 600, ClientY = 900 });
+        RowBody(cut, 1).Click(new MouseEventArgs { ClientX = 600, ClientY = 900, Detail = 1 });
+
+        Assert.Equal("true", Discloses(cut, 1));
+    }
+
+    [Fact]
+    public void Row_WhenAClickArrivesWithNoPressBehindIt_ThenItOpensAsABarePressDoes()
+    {
+        // How speech control and some assistive tooling activate an element: a synthetic click, with
+        // no mousedown before it and no coordinates to measure. Nothing travelled across the row, so
+        // it is a press — refusing it would be the control-that-does-nothing this bead exists to fix.
+        var cut = RenderWith(TwoRows());
+
+        RowBody(cut).Click(new MouseEventArgs());
+
+        Assert.Equal("true", Discloses(cut));
+    }
+
+    [Fact]
+    public void Row_WhenAPressOnItIsReleasedOffTheList_ThenALaterBareClickStillOpensIt()
+    {
+        // A press is only ever measured against the click of its own gesture. This one has no
+        // click at all — the pointer left the list before it came up — and what it leaves behind
+        // must not be read against the tooling click below. (Fhi.Metadata-l9l2n.81)
+        var cut = RenderWith(TwoRows());
+
+        RowBody(cut).MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
+
+        RowBody(cut).Click(new MouseEventArgs());
+
+        Assert.Equal("true", Discloses(cut));
+        Assert.Single(cut.FindAll(".munin-explorer-detail"));
+    }
+
+    [Fact]
+    public void Row_WhenItIsRightClicked_ThenItOpensNothingAndSwallowsNoLaterClick()
+    {
+        // The likeliest gesture on a row full of copyable text, and the browser sends no click after
+        // it. Two things have to hold: the context menu does not open the panel, and the press it
+        // did leave is not what the next click is measured against.
+        var cut = RenderWith(TwoRows());
+
+        RowBody(cut).MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240, Button = 2 });
+        RowBody(cut).MouseUp(new MouseEventArgs { ClientX = 120, ClientY = 240, Button = 2 });
+
+        Assert.Equal("false", Discloses(cut));
+
+        RowBody(cut).Click(new MouseEventArgs());
+
+        Assert.Equal("true", Discloses(cut));
+    }
+
+    [Fact]
+    public void Row_WhenTheDragBeganOnTheNameAndEndedOnTheRow_ThenThePanelStaysShut()
+    {
+        // The variable's name is the likeliest text in the row to want copied, and a drag from it
+        // across the Kode cell lands its click on the row rather than on the name. The row only
+        // knows it was a drag because the press on the name reached it. (Fhi.Metadata-l9l2n.81)
+        var cut = RenderWith(TwoRows());
+
+        Toggles(cut)[0].MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
+        RowBody(cut).MouseUp(new MouseEventArgs { ClientX = 400, ClientY = 240 });
+        RowBody(cut).Click(new MouseEventArgs { ClientX = 400, ClientY = 240, Detail = 1 });
+
+        Assert.Equal("false", Discloses(cut));
+        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
+    }
+
+    [Fact]
+    public void RowHeading_WhenADragBeginsAndEndsOnTheName_ThenThePanelStaysShutAndTheNextClickOpens()
+    {
+        // The gesture the strip's mouseup sees and its click never does: both ends are inside the
+        // name button, so the click stops there. The name reads the same verdict the row would, and
+        // no click of the row's is left to spend it. (Fhi.Metadata-l9l2n.81)
+        var client = TwoRows();
+        var cut = RenderWith(client);
+
+        Toggles(cut)[0].MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
+        Toggles(cut)[0].MouseUp(new MouseEventArgs { ClientX = 200, ClientY = 240 });
+        Toggles(cut)[0].Click(new MouseEventArgs { ClientX = 200, ClientY = 240, Detail = 1 });
+
+        // Copying the term is not a request to read the variable, and the panel would have opened
+        // underneath the words the reader had just highlighted.
+        Assert.Equal("false", Discloses(cut));
+        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
+        Assert.Equal(0, client.DetailCalls);
+
+        // And the verdict that gesture left is not what the tooling click after it is answered by.
+        RowBody(cut).Click(new MouseEventArgs());
+
+        Assert.Equal("true", Discloses(cut));
+    }
+
+    [Fact]
+    public void Row_WhenADragEndsWithNoClickAndAFreshPressFollows_ThenTheStaleVerdictIsNotReused()
+    {
+        // The other end of the same rule: a drag whose click never arrived — the row went out from
+        // under it while a search landed — leaves its answer standing, and the press after it is
+        // still in flight. Neither is what a click with no gesture behind it is measured by.
+        var cut = RenderWith(TwoRows());
+
+        RowBody(cut).MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
+        RowBody(cut).MouseUp(new MouseEventArgs { ClientX = 168, ClientY = 240 });
+
+        RowBody(cut).MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
+        RowBody(cut).Click(new MouseEventArgs());
+
+        Assert.Equal("true", Discloses(cut));
+    }
+
+    [Fact]
+    public void Row_WhenTheGestureBeganOutsideTheList_ThenTheRowIsNotMeasuredAgainstIt()
+    {
+        // A selection begun in the filter panel and released in a row: the row saw no press, so there
+        // is nothing to measure and it opens. In a browser that gesture's click is dispatched above
+        // the row and never arrives, which is why this is the tooling click's path and not a guard.
+        var cut = RenderWith(TwoRows());
+
+        // A gesture of the row's own, run to the end first: a press is spent by its release, so the
+        // one below is measured against nothing rather than against where that one went down.
+        PressRow(cut, right: 48);
+
+        RowBody(cut).MouseUp(new MouseEventArgs { ClientX = 600, ClientY = 900 });
+        RowBody(cut).Click(new MouseEventArgs { ClientX = 600, ClientY = 900, Detail = 1 });
+
+        Assert.Equal("true", Discloses(cut));
+    }
+
+    [Fact]
+    public void Row_Always_ThenItIsNoTabStopOfItsOwnAndPreventsNoDefault()
+    {
+        // WCAG 2.1.1: the row press is a pointer shortcut over controls that are already in the tab
+        // order — the name disclosure, and Lagre i liste where the reader is signed in — so it adds
+        // no third stop and reaches no behaviour a keyboard cannot.
+        var cut = RenderWith(TwoRows());
+
+        var row = RowStrip(cut);
+
+        Assert.False(row.HasAttribute("tabindex"));
+        Assert.Equal("none", row.GetAttribute("role"));
+        Assert.Throws<MissingEventHandlerException>(() => row.KeyDown("Enter"));
+
+        // The mousedown only records where the press began. preventDefault on it is what would make
+        // the row's text unselectable, and that is the whole reason the drag guard reads a coordinate
+        // rather than suppressing the selection outright.
+        Assert.False(row.HasAttribute("blazor:onmousedown:preventdefault"));
+
+        // Everything focusable in the row is a control that was focusable before it — the name
+        // disclosure, and the save button where the reader is signed in — and never the strip.
+        Assert.All(
+            row.QuerySelectorAll("a, button, input, select, textarea, [tabindex]"),
+            control => Assert.Equal("BUTTON", control.TagName));
+    }
+
+    [Fact]
+    public void RowHeading_WhenPressedOnce_ThenThePanelOpensRatherThanTogglingTwice()
+    {
+        // The collision the row handler invites: the name button is inside the strip, so a bare
+        // handler there handles the same click and one press opens the panel and closes it again —
+        // the disclosure reading as a control that does nothing, which is where this came in.
+        var cut = RenderWith(TwoRows());
+
+        Assert.True(
+            StopsTheClick(Toggles(cut)[0]),
+            "The name lets the click through to the row, which would close what it just opened.");
+
+        Assert.True(
+            LetsThePressThrough(Toggles(cut)[0]),
+            "A press on the name never reaches the row, so a drag off it opens the panel.");
+
+        PressRowHeading(cut);
+
+        Assert.Equal("true", Discloses(cut));
+        Assert.Single(cut.FindAll(".munin-explorer-detail"));
+    }
+
     [Fact]
     public void Detail_WhenTheFetchFails_ThenThePanelSaysSoAndTheRowsStay()
     {

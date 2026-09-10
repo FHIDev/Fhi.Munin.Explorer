@@ -35,11 +35,41 @@ public partial class VariableSearch
         return Task.CompletedTask;
     }
 
-    // The second click of one double-click gesture is not a second request: it toggled the panel
-    // straight back shut, so the row flashed and the reader landed where they started. Keyboard
-    // activation of a button reports no click count at all, so Enter and Space still toggle.
+    // The same question the row asks, because the name is the row's most copyable text and a drag
+    // that begins and ends inside this button lands its click here: a reader taking the term must
+    // not open the panel over the selection they just made. RowPress says which gestures those are.
     private Task ToggleDetailFromRowHeadingAsync(VariableSummary v, MouseEventArgs released) =>
-        released.Detail > 1 ? Task.CompletedTask : ToggleDetailAsync(v);
+        _rowPress.WasSelection(v.Id, released) ? Task.CompletedTask : ToggleDetailAsync(v);
+
+    // One gesture at a time, because a pointer has one: the row it went down on is part of what
+    // RowPress records. Kelda keeps its own, over the same rule.
+    private readonly RowPress _rowPress = new();
+
+    // No preventDefault, so the row's text still selects — this only records where the pointer was.
+    private void RowPressed(VariableSummary v, MouseEventArgs pressed) =>
+        _rowPress.Pressed(v.Id, pressed);
+
+    // On the row rather than on the controls inside it: a press that goes down on the variable's
+    // name and travels across the row is a selection, and the release is where that can be told.
+    private void RowReleased(VariableSummary v, MouseEventArgs released) =>
+        _rowPress.Released(v.Id, released);
+
+    /// <summary>Open or close this row's panel from a press anywhere on the row's column strip.</summary>
+    /// <remarks>
+    /// <para>
+    /// The row is a pointer shortcut onto the name button in it, and nothing more: unlike Kelda's,
+    /// Runa's name has no second destination to be freed up for, so it stays the disclosure that
+    /// carries <c>aria-expanded</c> and the panel's own <c>aria-labelledby</c>. The row adds no tab
+    /// stop, because everything it reaches is on that button already (WCAG 2.1.1).
+    /// </para>
+    /// <para>
+    /// Highlighting a code to copy it is not a request to open the panel. Which gestures those are
+    /// is <see cref="RowPress"/>'s to say, and the name button in the row asks it the same way, so
+    /// the rule is one sentence in one place rather than a clause per handler.
+    /// </para>
+    /// </remarks>
+    private Task ToggleDetailFromRowAsync(VariableSummary v, MouseEventArgs released) =>
+        _rowPress.WasSelection(v.Id, released) ? Task.CompletedTask : ToggleDetailAsync(v);
 
     /// <summary>
     /// Open this row's detail panel, or close it when it is the one already open.

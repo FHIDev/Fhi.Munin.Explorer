@@ -1012,6 +1012,9 @@ public class KildeSearchTest : BunitContext
     private static IElement ExpandToggle(IRenderedComponent<KildeSearch> cut, string kilde) =>
         Row(cut, kilde).QuerySelector(".munin-explorer-kilder__expand-toggle")!;
 
+    private static IElement RowNameButton(IRenderedComponent<KildeSearch> cut, string kilde) =>
+        Row(cut, kilde).QuerySelector("button.munin-explorer-kilder__name")!;
+
     [Fact]
     public void Render_WhenAKildeHasNoDatasamlinger_ThenItHasNoExpandToggle()
     {
@@ -1166,8 +1169,10 @@ public class KildeSearchTest : BunitContext
     /// modifier held to extend a selection to where the pointer is.
     /// </summary>
     /// <remarks>
-    /// Both events go through <see cref="RowBody"/> rather than one held element: the mousedown
-    /// re-renders the table, and the element found before it belongs to the markup as it was.
+    /// All three events go through <see cref="RowBody"/> rather than one held element: the mousedown
+    /// re-renders the table, and the element found before it belongs to the markup as it was. The
+    /// mouseup is dispatched because a browser dispatches one - it is where the row settles what the
+    /// gesture was, and a test that skipped it would prove a gesture no pointer makes.
     /// </remarks>
     private static void PressRow(
         IRenderedComponent<KildeSearch> cut,
@@ -1178,6 +1183,13 @@ public class KildeSearchTest : BunitContext
         bool shift = false)
     {
         RowBody(cut, kilde).MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
+        RowBody(cut, kilde).MouseUp(new MouseEventArgs
+        {
+            ClientX = 120 + right,
+            ClientY = 240 + down,
+            Detail = clicks,
+            ShiftKey = shift,
+        });
         RowBody(cut, kilde).Click(new MouseEventArgs
         {
             ClientX = 120 + right,
@@ -1198,16 +1210,14 @@ public class KildeSearchTest : BunitContext
     private static bool StopsTheClick(IElement control) =>
         control.HasAttribute("blazor:onclick:stoppropagation");
 
-    /// <summary>
-    /// Whether a mousedown on <paramref name="control"/> stops there rather than reaching the row.
-    /// </summary>
+    /// <summary>Whether a mousedown on <paramref name="control"/> reaches the row around it.</summary>
     /// <remarks>
-    /// Read off the markup for the same reason as <see cref="StopsTheClick"/>, and it has to hold
-    /// wherever that one does: the row records where a press went down and its own click is the only
-    /// thing that clears the record, so a press these controls let through is never cleared at all.
+    /// The opposite of <see cref="StopsTheClick"/> and deliberately so: the row measures a click
+    /// against the press it saw go down, and the browser lands the click of a drag begun on one of
+    /// these controls on the row. A press stopped here would arrive there as no press at all.
     /// </remarks>
-    private static bool StopsThePress(IElement control) =>
-        control.HasAttribute("blazor:onmousedown:stoppropagation");
+    private static bool LetsThePressThrough(IElement control) =>
+        !control.HasAttribute("blazor:onmousedown:stoppropagation");
 
     [Fact]
     public void Row_WhenTheRowItselfIsPressed_ThenItOpensTheDatasamlingerTheChevronOpens()
@@ -1239,6 +1249,24 @@ public class KildeSearchTest : BunitContext
 
         // And the drag leaves nothing behind that would swallow the next ordinary press.
         PressRow(cut, "Als registeret");
+
+        Assert.Single(cut.FindAll(".munin-explorer-kilder__expanded"));
+    }
+
+    [Fact]
+    public void Row_WhenADragIsFollowedByAClickWithNoPressBehindIt_ThenThatClickOpensTheDrawer()
+    {
+        // What "leaves nothing behind" has to mean. A click with no mousedown of its own - how
+        // assistive tooling activates a row - reports no click count, and RowPress measures no
+        // verdict against one, whether or not anything spent it. (Fhi.Metadata-l9l2n.81)
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        PressRow(cut, "Als registeret", right: 48);
+
+        Assert.Empty(cut.FindAll(".munin-explorer-kilder__expanded"));
+
+        RowBody(cut, "Als registeret").Click(new MouseEventArgs());
 
         Assert.Single(cut.FindAll(".munin-explorer-kilder__expanded"));
     }
@@ -1325,7 +1353,9 @@ public class KildeSearchTest : BunitContext
             .Describing(DetailWithCollections(dar)));
 
         RowBody(cut, "Als registeret").MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
-        RowBody(cut, "Dødsårsaksregisteret").Click(new MouseEventArgs { ClientX = 600, ClientY = 900 });
+        RowBody(cut, "Dødsårsaksregisteret").MouseUp(new MouseEventArgs { ClientX = 600, ClientY = 900 });
+        RowBody(cut, "Dødsårsaksregisteret")
+            .Click(new MouseEventArgs { ClientX = 600, ClientY = 900, Detail = 1 });
 
         Assert.Equal("true", ExpandToggle(cut, "Dødsårsaksregisteret").GetAttribute("aria-expanded"));
     }
@@ -1347,6 +1377,127 @@ public class KildeSearchTest : BunitContext
     }
 
     [Fact]
+    public void Row_WhenAPressOnItIsReleasedOffTheTable_ThenALaterBareClickStillOpensIt()
+    {
+        // A press is only ever measured against the click of its own gesture. This one has no
+        // click at all - the pointer left the table before it came up - and what it leaves behind
+        // must not be read against the tooling click below. (Fhi.Metadata-l9l2n.81)
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        RowBody(cut, "Als registeret").MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
+
+        RowBody(cut, "Als registeret").Click(new MouseEventArgs());
+
+        Assert.Single(cut.FindAll(".munin-explorer-kilder__expanded"));
+    }
+
+    [Fact]
+    public void Row_WhenItIsRightClicked_ThenItOpensNothingAndSwallowsNoLaterClick()
+    {
+        // The likeliest gesture on a row full of copyable codes, and the browser sends no click after
+        // it. Two things have to hold: the context menu does not open the drawer, and the press it
+        // did leave is not what the next click is measured against. (Fhi.Metadata-l9l2n.81)
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        RowBody(cut, "Als registeret")
+            .MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240, Button = 2 });
+        RowBody(cut, "Als registeret")
+            .MouseUp(new MouseEventArgs { ClientX = 120, ClientY = 240, Button = 2 });
+
+        Assert.Empty(cut.FindAll(".munin-explorer-kilder__expanded"));
+
+        RowBody(cut, "Als registeret").Click(new MouseEventArgs());
+
+        Assert.Single(cut.FindAll(".munin-explorer-kilder__expanded"));
+    }
+
+    [Fact]
+    public void Row_WhenTheDragBeganOnTheNameAndEndedOnTheRow_ThenTheDrawerStaysShut()
+    {
+        // The kilde's name is the likeliest text in the row to want copied, and a drag from it across
+        // the codes lands its click on the <tr> rather than on the name. The row only knows it was a
+        // drag because the press on the name reached it. (Fhi.Metadata-l9l2n.81)
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        Row(cut, "Als registeret").QuerySelector("button.munin-explorer-kilder__name")!
+            .MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
+        RowBody(cut, "Als registeret").MouseUp(new MouseEventArgs { ClientX = 400, ClientY = 240 });
+        RowBody(cut, "Als registeret")
+            .Click(new MouseEventArgs { ClientX = 400, ClientY = 240, Detail = 1 });
+
+        Assert.Empty(cut.FindAll(".munin-explorer-kilder__expanded"));
+        Assert.NotEmpty(cut.FindAll("table.munin-explorer-kilder"));
+    }
+
+    [Fact]
+    public void RowName_WhenADragBeginsAndEndsOnIt_ThenTheKildeIsNotOpenedAndTheRowStillPresses()
+    {
+        // The gesture the row's mouseup sees and its click never does: both ends are inside the
+        // name button, so the click stops there. The name reads the same verdict the row would -
+        // it takes the reader off the list, and copying K_ALS's name is not a request to leave it.
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        RowNameButton(cut, "Als registeret").MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
+        RowNameButton(cut, "Als registeret").MouseUp(new MouseEventArgs { ClientX = 200, ClientY = 240 });
+        RowNameButton(cut, "Als registeret")
+            .Click(new MouseEventArgs { ClientX = 200, ClientY = 240, Detail = 1 });
+
+        Assert.NotEmpty(cut.FindAll("table.munin-explorer-kilder"));
+        Assert.Empty(cut.FindAll(".munin-explorer-kilder__expanded"));
+
+        // And the verdict that gesture left is not what the tooling click after it is answered by.
+        RowBody(cut, "Als registeret").Click(new MouseEventArgs());
+
+        Assert.Single(cut.FindAll(".munin-explorer-kilder__expanded"));
+    }
+
+    [Fact]
+    public void ExpandToggle_WhenADragBeginsAndEndsOnIt_ThenTheDrawerStaysShutAndTheNextClickOpens()
+    {
+        // The chevron is the row's own action under a pointer, so it answers the row's rule: a
+        // gesture confined to it lands its click there, where it stops, and no click of the row's
+        // is left to read what the release found. (Fhi.Metadata-l9l2n.81)
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        ExpandToggle(cut, "Als registeret").MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
+        ExpandToggle(cut, "Als registeret").MouseUp(new MouseEventArgs { ClientX = 200, ClientY = 240 });
+        ExpandToggle(cut, "Als registeret")
+            .Click(new MouseEventArgs { ClientX = 200, ClientY = 240, Detail = 1 });
+
+        Assert.Empty(cut.FindAll(".munin-explorer-kilder__expanded"));
+        Assert.Equal("false", ExpandToggle(cut, "Als registeret").GetAttribute("aria-expanded"));
+
+        RowBody(cut, "Als registeret").Click(new MouseEventArgs());
+
+        Assert.Single(cut.FindAll(".munin-explorer-kilder__expanded"));
+    }
+
+    [Fact]
+    public void Row_WhenTheGestureBeganOutsideTheTable_ThenTheRowIsNotMeasuredAgainstIt()
+    {
+        // A selection begun in the search field and released in a row: the row saw no press, so there
+        // is nothing to measure and it opens. In a browser that gesture's click is dispatched above
+        // the row and never arrives, which is why this is the tooling click's path and not a guard.
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2);
+        var cut = RenderWith(new FakeClient(als).Describing(DetailWithCollections(als)));
+
+        // A gesture of the row's own, run to the end first: a press is spent by its release, so the
+        // one below is measured against nothing rather than against where that one went down.
+        PressRow(cut, "Als registeret", right: 48);
+
+        RowBody(cut, "Als registeret").MouseUp(new MouseEventArgs { ClientX = 600, ClientY = 900 });
+        RowBody(cut, "Als registeret")
+            .Click(new MouseEventArgs { ClientX = 600, ClientY = 900, Detail = 1 });
+
+        Assert.Single(cut.FindAll(".munin-explorer-kilder__expanded"));
+    }
+
+    [Fact]
     public void Row_WhenTheNameIsPressed_ThenTheKildeOpensAndNoDrawerIsLeftOpenBehindIt()
     {
         // The collision the row handler invites: the name button is inside the row, so a handler on
@@ -1358,7 +1509,9 @@ public class KildeSearchTest : BunitContext
         var name = Row(cut, "Als registeret").QuerySelector("button.munin-explorer-kilder__name")!;
 
         Assert.True(StopsTheClick(name), "The name lets the click through to the row.");
-        Assert.True(StopsThePress(name), "The name leaves a press on the row that no click clears.");
+        Assert.True(
+            LetsThePressThrough(name),
+            "A press on the name never reaches the row, so a drag off it opens the drawer.");
 
         name.Click();
 
@@ -1384,8 +1537,8 @@ public class KildeSearchTest : BunitContext
             "The toggle lets the click through to the row, which would close what it just opened.");
 
         Assert.True(
-            StopsThePress(ExpandToggle(cut, "Als registeret")),
-            "The toggle leaves a press on the row that no click of the row's clears.");
+            LetsThePressThrough(ExpandToggle(cut, "Als registeret")),
+            "A press on the toggle never reaches the row, so a drag off it opens the drawer.");
 
         ExpandToggle(cut, "Als registeret").Click();
 
