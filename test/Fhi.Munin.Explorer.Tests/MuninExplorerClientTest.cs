@@ -47,6 +47,9 @@ public class MuninExplorerClientTest
     {
         var filters = await WithResponse("filters.json", out _).GetFiltersAsync();
 
+        // The kildetype displayName here is the raw enum name, which the endpoint no longer sends
+        // (Fhi.Metadata-iv9xp): this capture predates the datasamling facet too and is re-taken
+        // whole under Fhi.Metadata-c7bb6, not patched a value at a time.
         Assert.Equal(3, filters.KildeTyper.Count);
         Assert.Equal("befolkningsbasertHelseundersokelse", filters.KildeTyper[0].Value);
         Assert.Equal(41, filters.Kilder.Count);

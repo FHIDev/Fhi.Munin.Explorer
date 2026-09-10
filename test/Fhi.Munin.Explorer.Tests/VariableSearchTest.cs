@@ -4220,14 +4220,49 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
-    public void Render_WhenTheApiNamesAKildetypeByItsEnumName_ThenTheButtonSaysItInProse()
+    public void Render_WhenAKildetypeArrivesWithAnUnresolvedDisplayName_ThenTheButtonSaysItInProse()
     {
-        // The facet's own displayName is the raw enum name. Munin's explorer carries the prose,
-        // and this carries the same words so the two UIs name one value the same way.
+        // The fixture keeps the unresolved name on purpose: resolved prose there would read the
+        // same whether the lookup by value worked or the fallback simply echoed it. Asserted
+        // rather than assumed, so refreshing Facets() goes red instead of vacuous. (Fhi.Metadata-iv9xp)
+        Assert.Equal("SentraltHelseregister",
+                     Facets().KildeTyper.Single(type => type.Value == "sentraltHelseregister").DisplayName);
+
         var cut = RenderWith(new FilteringClient(OnePage()));
 
         Assert.NotNull(Facet(cut, "Sentralt helseregister"));
         Assert.DoesNotContain("SentraltHelseregister", cut.Find(".munin-explorer-filters").TextContent);
+    }
+
+    [Fact]
+    public void Render_WhenAKildetypeIsOutsideTheShippedTable_ThenTheFacetTakesTheApisWordsAndTheHeadingTheToken()
+    {
+        // A member Munin adds to the enum reaches the fallback, and the two sites fall back to
+        // different things because the grouping never reads KildeTyper. Pinned as it stands, not
+        // endorsed: Fhi.Metadata-1b0ag flips this assertion. Two kildetyper, or the group lifts out.
+        var cut = RenderWith(new FilteringClient(OnePage(), new FilterOptions
+        {
+            KildeTyper =
+            [
+                new() { Value = "nyKildetype", DisplayName = "Ny kildetype", Count = 4 },
+                new() { Value = "biobank", DisplayName = "Biobank", Count = 12 }
+            ],
+            Kilder =
+            [
+                new() { Id = Dodsarsak, Name = "Dødsårsaksregisteret", KildeType = "nyKildetype", Count = 4 },
+                new() { Id = Tromso, Name = "Tromsøundersøkelsen", KildeType = "biobank", Count = 12 }
+            ],
+            TotalCount = 16
+        }));
+
+        Assert.Equal("Ny kildetype (4)", Facet(cut, "Ny kildetype").TextContent);
+
+        // Picked by the kilde inside it rather than by position: the headings follow the order
+        // KildeTyper arrived in, and this test is about their words rather than that order.
+        var group = KildeTypeGroups(cut)
+            .Single(g => g.TextContent.Contains("Dødsårsaksregisteret", StringComparison.Ordinal));
+
+        Assert.Equal("nyKildetype", group.FirstElementChild!.ChildNodes[0].TextContent.Trim());
     }
 
     [Fact]
