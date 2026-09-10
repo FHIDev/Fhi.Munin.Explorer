@@ -6131,8 +6131,16 @@ public class VariableSearchTest : BunitContext
         Assert.All(panel.QuerySelectorAll("li > label"), l => Assert.False(l.HasAttribute("class")));
         Assert.All(panel.QuerySelectorAll("li > label > input"), i => Assert.False(i.HasAttribute("class")));
 
-        // The toolbar is still buttons, and still Stiler's own square one.
-        Assert.All(panel.QuerySelectorAll("button"), b => Assert.Contains("hd-button-square", b.ClassName!));
+        // The toolbar is still buttons, and still Stiler's own square one — except Nivålinjer, which
+        // wears munin-explorer-switch ALONE: the toolbar's rule selects hd-button-square, and beside
+        // it the switch collapsed to one character wide on the rig. (Fhi.Metadata-l9l2n.87)
+        var buttons = panel.QuerySelectorAll("button");
+        Assert.All(
+            buttons.Where(b => b.GetAttribute("role") != "switch"),
+            b => Assert.Contains("hd-button-square", b.ClassName!));
+        Assert.Equal(
+            "munin-explorer-switch",
+            Assert.Single(buttons, b => b.GetAttribute("role") == "switch").ClassName);
     }
 
     [Fact]
