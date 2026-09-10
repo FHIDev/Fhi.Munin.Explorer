@@ -131,7 +131,7 @@ public class ShapeDriftTest
     public void Between_WhenTheApiStopsSendingAnOptionalField_ThenNothingDrifts()
     {
         var live = Load("kilder.json");
-        RemoveOrFail(live[0]!.AsObject(), "kilder.json", "kortNavn");
+        RemoveOrFail(live[0]!.AsObject(), "kilder.json[0]", "kortNavn");
 
         // The counterpart to the test above, and the reason it is worth stating twice: whether a
         // withdrawn field is drift depends on whether the contract had anywhere to put "absent".
@@ -271,10 +271,10 @@ public class ShapeDriftTest
     /// Takes a field away and fails if it was not there to take, so a let-through case cannot go
     /// on passing once a re-capture has quietly made its removal a no-op.
     /// </summary>
-    private static void RemoveOrFail(JsonObject holder, string fixture, string field) =>
+    private static void RemoveOrFail(JsonObject holder, string source, string field) =>
         Assert.True(
             holder.Remove(field),
-            $"{fixture} no longer carries {field}, so this case breaks nothing.");
+            $"{source} no longer carries {field}, so this case breaks nothing.");
 
     /// <summary>
     /// Runs a payload through the same two steps the nightly job does — deserialise with the
