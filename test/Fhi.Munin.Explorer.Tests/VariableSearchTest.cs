@@ -4341,6 +4341,52 @@ public class VariableSearchTest : BunitContext
         Assert.Equal("Sentralt helseregister", heading);
     }
 
+    [Fact]
+    public void Render_WhenNothingHasAWordForAKildetype_ThenTheFacetAndItsHeadingBothSayTheToken()
+    {
+        // A kildetype Munin adds before either the master data or the shipped table names it. The
+        // token is poor prose and it is still what the reader is filtering by, so both sites say it
+        // rather than either falling back to "Ikke oppgitt". (Fhi.Metadata-3n6e1)
+        var cut = RenderWith(new FilteringClient(OnePage(), new FilterOptions
+        {
+            KildeTyper =
+            [
+                new() { Value = "nyKildetype", Count = 4 },
+                new() { Value = "biobank", DisplayName = "Biobank", Count = 12 }
+            ],
+            Kilder =
+            [
+                new() { Id = Dodsarsak, Name = "Dødsårsaksregisteret", KildeType = "nyKildetype", Count = 4 },
+                new() { Id = Tromso, Name = "Tromsøundersøkelsen", KildeType = "biobank", Count = 12 }
+            ],
+            TotalCount = 16
+        }));
+
+        var heading = KildeTypeGroups(cut)
+            .Single(g => g.TextContent.Contains("Dødsårsaksregisteret", StringComparison.Ordinal))
+            .FirstElementChild!.ChildNodes[0].TextContent.Trim();
+
+        Assert.Equal("nyKildetype (4)", Facet(cut, "nyKildetype").TextContent);
+        Assert.Equal("nyKildetype", heading);
+    }
+
+    [Fact]
+    public void Detail_WhenNoFacetNamesTheKildetype_ThenTheTrailKeepsTheTokenRatherThanEmptyingTheStep()
+    {
+        // The trail reads the facets the panel beside it was built from, so a filters call that
+        // answered nothing must not cost the step its word: the token is what the variable has, and
+        // a trail step reading "Ikke oppgitt" is the level the trail leaves out. (Fhi.Metadata-3n6e1)
+        var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale")))
+            .Knows(Detail(TaleId) with { KildeType = "nyKildetype" })
+            .Knows(Kilde())
+            .Knows(Datasamling()));
+
+        Toggles(cut)[0].Click();
+
+        Assert.Equal(["nyKildetype", "Als registeret (ALS)", "Inklusjon"],
+                     Values(cut)[2].QuerySelectorAll("ol > li").Select(l => l.TextContent));
+    }
+
     [Theory]
     [InlineData("no", "nb", "Sentralt helseregister, som master data sier det")]
     [InlineData("en", "en", "Central health registry, as the master data has it")]

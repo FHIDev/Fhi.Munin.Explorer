@@ -149,16 +149,21 @@ apiName)` is the one place the preference is written down, and every kildetype w
 and the open row's kilde trail through `VariableSearch.KildeTypeName(value)`, which finds the facet
 by value. The table answers two payloads and no others: an API that predates the resolved label and
 echoes the enum name — `SentraltHelseregister`, the value again bar its casing — and one that sends
-no `displayName` at all. Checked against runa on 2026-09-10 — `api/explorer/kilder/egenskaper`,
-whose `Kildetype` `optionsJson` is the seed itself — the two agree word for word on all eight
-values in both languages, so the switch changed no visible text; what it bought is an edit to the
-master data reaching the page, and the first kildetype Munin adds reading the same on the facet
-button and the heading beneath it (`Fhi.Metadata-1b0ag`).
+no `displayName` at all. Under the table is the token itself rather than "Ikke oppgitt", so a
+kildetype nothing has a word for reads as its own name on the facet, the heading and the trail
+alike — the three cannot fall back apart, which is the defect the bead was opened for. Checked
+against runa on 2026-09-10 — `api/explorer/kilder/egenskaper`, whose `Kildetype` `optionsJson` is
+the seed itself — the two agree word for word on all eight values in both languages, so the switch
+changed no visible text; what it bought is an edit to the master data reaching the page, and the
+first kildetype Munin adds reading the same on the facet button and the heading beneath it
+(`Fhi.Metadata-1b0ag`).
 
 The components a host mounts on their own — `KildeView`, `VariableView`, `DatasamlingView` — and
 the kildeutforsker's own facets are outside this: none of them fetches the filters endpoint, so
 `Texts.KildeTypeLabel` by value is all they have. Handing them a vocabulary is a public API change
-and its own bead.
+— a parameter each host must fill, or a filters call a mounting host did not ask to pay for — so it
+is filed as `Fhi.Metadata-vcxoc` rather than left as a sentence here, and it waits on whatever
+`Fhi.Metadata-6qy6l` settles for datatyper.
 
 ## Comments
 

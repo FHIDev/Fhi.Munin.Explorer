@@ -638,13 +638,16 @@ internal sealed record Texts(
     /// <remarks>
     /// The vocabulary is editable master data on Munin's side and the label follows
     /// <c>Accept-Language</c>, so the API's word wins; an API predating that echoes the enum name —
-    /// the value again, bar its casing — and only that reaches the shipped table. (Fhi.Metadata-3n6e1)
+    /// the value again, bar its casing — and only that reaches the shipped table. Under the table
+    /// is the token itself, never <see cref="NotSpecified"/>: a kildetype nobody has a word for
+    /// yet is still a step in a trail and still a heading over some kilder, and its own name says
+    /// more there than "not specified" does. (Fhi.Metadata-3n6e1)
     /// </remarks>
     public string KildeTypeName(string? value, string? apiName) =>
         !string.IsNullOrWhiteSpace(apiName)
         && !string.Equals(apiName, value, StringComparison.OrdinalIgnoreCase)
             ? apiName
-            : KildeTypeLabel(value, apiName);
+            : KildeTypeLabel(value, string.IsNullOrWhiteSpace(apiName) ? value : apiName);
 
     /// <summary>
     /// Prose for an identification-level token, falling back to what the API called it.

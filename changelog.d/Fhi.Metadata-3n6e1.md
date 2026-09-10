@@ -8,4 +8,6 @@ category: Changed
 - **The kilde facet's kildetype headings say what the facet button above them says.** A kildetype
   Munin adds that this package has no word for used to read as prose on the button and as its bare
   token — `nyKildetype` — on the heading directly beneath it, in the same panel. Both now take the
-  API's word, as does the kilde trail in an opened result row. (Fhi.Metadata-3n6e1)
+  API's word, as does the kilde trail in an opened result row. Where neither the API nor the table
+  has a word, all three now say the token itself rather than one of them saying "Ikke oppgitt".
+  (Fhi.Metadata-3n6e1)
