@@ -273,6 +273,38 @@ the difference between a suite and a changelog with an exit code. It found two f
 its first run (`Fhi.Metadata-l9l2n.41`, `Fhi.Metadata-l9l2n.42`), both in Stiler rather than here,
 and both invisible to everything else we run.
 
+**And `check-accessibility.sh` measures one width axe never looks at.** WCAG 1.4.10 Reflow is
+stated at 320px, and nothing in this repository measured any page there: `scripts/geometry-scan.mjs`
+drives six widths and the narrowest is 843. The script now ends by measuring ModernHost's `/kilder`
+at 320 in the `kilder-list` state, which is the rendered form of a gap unit tests could only pin as
+text — the explore button's width floor overflowed the page by 87px before `Fhi.Metadata-l9l2n.65`,
+and `KildeSelectionTest` can say the declaration is there and not that the page fits.
+
+It runs three of the ten assertions, by name through `GEOMETRY_ASSERTIONS`: `no horizontal
+overflow`, `hidden means hidden`, and `text a reader is meant to see has a box to see it in`. The
+other seven were **measured there and then excluded**, which is a different claim from "they are
+written for HostileHost" and the only one the numbers support:
+
+- `the tablist clears the header`, `exactly one tab panel has content` and `no page shell class
+  inside a tab panel` are scoped to the two `explorer-*` states, so on `kilder-list` they print
+  `n/a` and measure nothing.
+- `nothing the reader can press is under the host header` reports `no .main-header on the page —
+  the host chrome did not render`. ModernHost draws none; that finding is about the fixture.
+- `the component stays inside the box the host gave it` fails at 320 on a real defect the fix for
+  which is not in this repository: the column picker's open list is 304px wide against a 226px
+  mount and hangs off the left edge of the viewport, `Fhi.Metadata-abmom`.
+- the two `kilder` pins hold at 320, and are left out because what they exist to catch is a Stiler
+  rule going missing, which the sample stylesheet can only stand in for. `check-hostile-host.sh`
+  measures them against the real one at six widths.
+
+Read the run for exactly what it is: three assertions, one page, one state, against the sample
+stylesheet. The pinned-Stiler pages are still unmeasured at 320. `Fhi.Metadata-hfzsu` — 82px of
+helsedata's own site chrome overflowing there on every page of theirs — is fixed on Stiler's main
+and closed, so what adding 320 to `GEOMETRY_WIDTHS` now waits on is that fix being released and
+`samples/HostileHost` moving off its `0.1.42` pin, which is `Fhi.Metadata-kpmt3`. Until then a gate
+that included those pages would be red on every pull request for a defect this repository cannot
+fix, and a gate nobody can get green is one somebody deletes.
+
 **It scans states, not only pages.** A page in its default state is not the page a reader uses,
 and for a while the default state was the whole of this check: the level lines shipped at 1.16:1
 against WCAG 1.4.11's 3:1, invisible on a desktop, with this job green — because the lines only

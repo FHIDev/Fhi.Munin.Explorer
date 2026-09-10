@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
-# Runs axe against the ModernHost sample and fails on any violation. A green run means no
+# Runs axe against the ModernHost sample and fails on any violation, then measures one page at
+# 320px - the width WCAG 1.4.10 Reflow names, which no other gate here visits. A green run means no
 # DETECTED regression and nothing more; what this gate is blind to is in AGENTS.md under
 # "Accessibility is a requirement, not a preference". Read it before quoting a pass.
 #
@@ -42,9 +43,13 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 #
 # /utforsker is the only page in either sample that mounts the composed VariableExplorer, so it is
 # the only place the page-level tablist and the reader's list panel are scanned at all.
+#
+# One of them is visited twice: REFLOW_TARGET is scanned by axe with the rest, and measured again
+# at 320px at the end of this script. Named once, so a rename in axe-states.mjs lands in one place.
+REFLOW_TARGET="/kilder::kilder-list"
 TARGETS=(
   "/::variables-list"
-  "/kilder::kilder-list"
+  "$REFLOW_TARGET"
   "/::filters-level-lines"
   "/::variable-detail"
   "/kilder::kilde-drilldown"
@@ -174,27 +179,68 @@ if [ "$scan_status" -eq 2 ]; then
   exit 2
 fi
 
-violations=0
-[ "$scan_status" -ne 0 ] && violations=1
+# WCAG 1.4.10 Reflow is stated at 320px and nothing here measured any page there: geometry-scan.mjs
+# drives six widths and the narrowest is 843. One page, the kildeutforsker, in a state that waits
+# for a row, so an empty page fails as TOOLING rather than fitting 320 with nothing in it.
+#
+# Three of the ten assertions. Four of the seven left out were measured here first; the other
+# three are scoped to the explorer-* states and cannot be measured on this one. Which and why:
+# AGENTS.md, "And check-accessibility.sh measures one width axe never looks at".
+echo
+echo "==> measuring the reflow width WCAG 1.4.10 names"
+set +e
+GEOMETRY_WIDTHS=320 \
+GEOMETRY_ASSERTIONS='no horizontal overflow,hidden means hidden,text a reader is meant to see has a box to see it in' \
+  node "$ROOT/scripts/geometry-scan.mjs" "${BASE}${REFLOW_TARGET}"
+reflow_status=$?
+set -e
+
+# Anything non-zero is a finding, except the one code that means the step never ran.
+findings=0
+[ "$scan_status" -ne 0 ] && findings=1
+if [ "$reflow_status" -ne 0 ] && [ "$reflow_status" -ne 2 ]; then
+  findings=1
+fi
 
 echo
-if [ "$violations" -ne 0 ]; then
+if [ "$findings" -ne 0 ]; then
   cat >&2 <<'EOF'
-Accessibility violations found. See the axe output above; each entry names the rule,
-the element and a link to the fix.
+Accessibility violations found. See the output above; an axe entry names the rule, the
+element and a link to the fix, and a geometry failure names what was measured against what
+was expected.
+
+A failure at 320px is WCAG 1.4.10 Reflow: the page scrolls sideways at the width the
+success criterion names, and no reader on a phone can get to what is off the edge.
 
 Before you reach for a suppression: this gate is deliberately narrow, so a violation it
 DID catch is very unlikely to be a false positive.
 EOF
+fi
+
+# 2 from the geometry step is the scanner saying it could not run. Said after the guidance above
+# rather than in place of it, because axe has already decided by this point and exiting 2 over a
+# violation it found would report a page defect as a broken toolchain.
+if [ "$reflow_status" -eq 2 ]; then
+  echo "the 320px measurement could not run - TOOLING failure, so nothing was measured there." >&2
+
+  if [ "$findings" -eq 0 ]; then
+    exit 2
+  fi
+fi
+
+if [ "$findings" -ne 0 ]; then
   exit 1
 fi
 
 cat <<'EOF'
-No violations detected.
+No violations detected, and the kildeutforsker fits 320px.
 
 Read that literally. This gate sees the sample stylesheet, not the one the component
 ships into, and automated checking cannot see missing structure at all. A green run is
 evidence of no detected regression, and nothing more.
+
+The 320px measurement is narrower still: three of the ten assertions, on one page, in
+one state. Every other width and every other assertion belongs to check-hostile-host.sh.
 
 Why, at length: AGENTS.md, "Accessibility is a requirement, not a preference".
 EOF
