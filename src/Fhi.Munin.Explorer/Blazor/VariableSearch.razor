@@ -901,10 +901,12 @@ else
                                        and going to the whole variable is the wider one, so it reads
                                        last. It also keeps the owner buttons where they have always
                                        been, which the tests that count them rely on. *@
+                                    @* No aria-expanded and no aria-controls, the reason the trail's
+                                       kilde step carries none: nothing is disclosed in place, and
+                                       the id would name a view that is only there once this button
+                                       is not. *@
                                     <button class="hd-button-square button-square--ghost margin-right margin-bottom"
                                             type="button"
-                                            aria-expanded="false"
-                                            aria-controls="@WholeVariableId"
                                             @onclick="ToggleWholeVariableFromControlAsync">@T.ShowWholeVariable</button>
 
                                     @* The owner's own record, drawn inside the variable's panel.

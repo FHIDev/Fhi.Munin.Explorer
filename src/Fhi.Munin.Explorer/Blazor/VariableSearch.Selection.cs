@@ -23,11 +23,11 @@ public partial class VariableSearch
 
     private string WholeVariableHeadingId => $"munin-variable-heading-{_instance}";
 
-    // Guarded on the second click of a double-click — the clause RowPress calls out. The way in
-    // and the way out are one handler, and the browser keeps it alive after the view swaps, so a
-    // second click undoes the first either way round. (Fhi.Metadata-j1j3i)
+    // The way in and the way out are one handler, and the browser keeps it alive after the view
+    // swaps, so a gesture RowPress calls a selection undoes its own first click either way round.
+    // (Fhi.Metadata-j1j3i)
     private Task ToggleWholeVariableFromControlAsync(MouseEventArgs released) =>
-        released.Detail > 1 ? Task.CompletedTask : ToggleWholeVariableAsync();
+        RowPress.WasSelectionStandingStill(released) ? Task.CompletedTask : ToggleWholeVariableAsync();
 
     /// <summary>Open the whole variable, or close it and put the reader back in the list.</summary>
     /// <remarks>
@@ -263,11 +263,9 @@ public partial class VariableSearch
         _sourceLoading = false;
     }
 
-    // Guarded on the second click of a double-click — the clause RowPress calls out, and the only
-    // one of its three tellable here, since this control keeps no press of its own. Both ways in
-    // ask it: the "Vis datakilde" pair and the trail's kilde step. (Fhi.Metadata-j1j3i)
+    // Both ways in ask it: the "Vis datakilde" pair and the trail's kilde step. (Fhi.Metadata-j1j3i)
     private Task ToggleSourceFromControlAsync(SourceKind kind, MouseEventArgs released) =>
-        released.Detail > 1 ? Task.CompletedTask : ToggleSourceAsync(kind);
+        RowPress.WasSelectionStandingStill(released) ? Task.CompletedTask : ToggleSourceAsync(kind);
 
     /// <summary>
     /// Open the kilde or the datasamling the variable belongs to, or close the one already open.

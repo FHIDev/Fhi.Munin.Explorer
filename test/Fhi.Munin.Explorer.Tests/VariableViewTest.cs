@@ -324,12 +324,14 @@ public class VariableViewTest : BunitContext
     /// <summary>
     /// A pointer press on the first version's disclosure. <paramref name="clicks"/> is the browser's
     /// click count, so 2 is the second click of a double-click gesture and 0 is how a browser
-    /// reports Enter or Space on a button.
+    /// reports Enter or Space on a button, and <paramref name="shift"/> is the modifier held to
+    /// extend a selection to where the pointer is.
     /// </summary>
     /// <remarks>The row is found on every call rather than held: each press re-renders it.</remarks>
-    private static void PressVersion(IRenderedComponent<VariableView> cut, long clicks = 1) =>
+    private static void PressVersion(
+        IRenderedComponent<VariableView> cut, long clicks = 1, bool shift = false) =>
         cut.FindAll(".munin-explorer-versions > li > button")[0]
-           .Click(new MouseEventArgs { Detail = clicks });
+           .Click(new MouseEventArgs { Detail = clicks, ShiftKey = shift });
 
     /// <summary>Whether the first version's own panel is showing.</summary>
     private static bool VersionOpen(IRenderedComponent<VariableView> cut) =>
@@ -341,9 +343,9 @@ public class VariableViewTest : BunitContext
     [Fact]
     public void Versions_WhenARowIsDoubleClicked_ThenItIsLeftOpen()
     {
-        // The double-click clause of the guard the result row carries — all of it that applies,
-        // since this component keeps no press to read RowPress's drag and shift ones against. The
-        // second click reached ToggleVersionAsync and shut the version. (Fhi.Metadata-j1j3i)
+        // The standing half of the guard the result row carries — all of it that applies, since
+        // this component keeps no press to read RowPress's drag clause against. The second click
+        // reached ToggleVersionAsync and shut the version. (Fhi.Metadata-j1j3i)
         var cut = Render(OneVersion());
 
         PressVersion(cut);
@@ -351,6 +353,20 @@ public class VariableViewTest : BunitContext
 
         Assert.True(VersionOpen(cut));
         Assert.Equal("true",
+                     cut.FindAll(".munin-explorer-versions__toggle")[0].GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void Versions_WhenARowIsShiftClicked_ThenItIsLeftShut()
+    {
+        // The other gesture that stands still. A version row is dates and a term — text a reader
+        // extends a selection across — and the click that ends one lands here.
+        var cut = Render(OneVersion());
+
+        PressVersion(cut, shift: true);
+
+        Assert.False(VersionOpen(cut));
+        Assert.Equal("false",
                      cut.FindAll(".munin-explorer-versions__toggle")[0].GetAttribute("aria-expanded"));
     }
 

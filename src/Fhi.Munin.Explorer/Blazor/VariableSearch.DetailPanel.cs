@@ -276,10 +276,9 @@ public partial class VariableSearch
         public static KodeverkKey Of(KodeverkLink link) => new(link.KodeverkType, link.KodeverkReference);
     }
 
-    // Guarded on the second click of a double-click — the clause RowPress calls out, and the only
-    // one of its three tellable here, since this control keeps no press of its own.
+    // The gestures RowPress calls a selection, less the drag it takes a press to tell.
     private Task ToggleCodesFromControlAsync(KodeverkLink link, MouseEventArgs released) =>
-        released.Detail > 1 ? Task.CompletedTask : ToggleCodesAsync(link);
+        RowPress.WasSelectionStandingStill(released) ? Task.CompletedTask : ToggleCodesAsync(link);
 
     /// <summary>Open this link's code list, or close the one already open.</summary>
     /// <remarks>

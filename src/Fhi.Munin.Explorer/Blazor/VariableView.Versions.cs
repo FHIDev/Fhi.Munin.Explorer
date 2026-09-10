@@ -72,11 +72,10 @@ public sealed partial class VariableView
             ? (T.VersionUnnamed, false)
             : (version.PreferredTerm, true);
 
-    // Guarded on the second click of a double-click — the clause RowPress calls out. A version row
-    // is a disclosure like the result row's, but this component keeps no press to tell RowPress's
-    // drag and shift-click clauses from an ordinary click. (Fhi.Metadata-j1j3i)
+    // A version row is a disclosure like the result row's, but this component keeps no press of its
+    // own, so the drag half of RowPress's question cannot be asked here. (Fhi.Metadata-j1j3i)
     private Task ToggleVersionFromControlAsync(Guid versionId, MouseEventArgs released) =>
-        released.Detail > 1 ? Task.CompletedTask : ToggleVersionAsync(versionId);
+        RowPress.WasSelectionStandingStill(released) ? Task.CompletedTask : ToggleVersionAsync(versionId);
 
     private Task ToggleVersionAsync(Guid versionId)
     {
