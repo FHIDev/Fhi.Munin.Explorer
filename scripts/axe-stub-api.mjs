@@ -82,8 +82,51 @@ function pagedListVariables(body, query) {
   });
 }
 
-const server = createServer((request, response) => {
-  const url = new URL(request.url, 'http://localhost');
+// A fetch held open for a while, one request per hold asked for and none unless asked. It is how
+// scripts/state-scan.mjs stages a press the component DROPS - `if (_loading) return` - which no
+// browser can stage on its own: the request is the HOST's, made over the circuit, so Playwright's
+// route interception never sees it and cannot slow it down.
+//   POST /__stub/hold-next?path=/api/explorer/variables&ms=6000
+//   GET  /__stub/hold-next  ->  {"held":[{"path":...,"ms":...}],"holding":[...]}
+//   DELETE /__stub/hold-next  ->  drops every unspent hold AND answers every one already spending
+// Read back rather than assumed spent: a hold nothing ever asked for would leave a press that was
+// never in flight looking exactly like one that was. `held` stays unspent-only for that reason;
+// one already in flight has left it, and is in `inFlight` until its timer fires or DELETE takes it.
+const held = [];
+const inFlight = new Set();
+
+// A staging that armed a 6000ms hold, triggered it and threw would otherwise leave its client
+// waiting out the remainder with nothing able to recall it, and the timer alive across teardown.
+function answerNow(one) {
+  clearTimeout(one.timer);
+  inFlight.delete(one);
+  one.spend();
+}
+
+function control(url, request, response) {
+  if (request.method === 'POST') {
+    const path = url.searchParams.get('path');
+    const ms = Number(url.searchParams.get('ms'));
+    if (path === null || !path.startsWith('/') || !Number.isInteger(ms) || ms <= 0) {
+      response.writeHead(400, { 'content-type': 'application/json' }).end('{"error":"path,ms"}');
+      return;
+    }
+    held.push({ path, ms });
+  }
+
+  if (request.method === 'DELETE') {
+    held.length = 0;
+    for (const one of [...inFlight]) {
+      answerNow(one);
+    }
+  }
+
+  const holding = [...inFlight].map(({ path, ms }) => ({ path, ms }));
+  response.writeHead(200, { 'content-type': 'application/json' })
+    .end(JSON.stringify({ held, holding }));
+}
+
+function serve(url, request, response) {
   const path = url.pathname;
   const route = routes.find(([pattern]) => pattern.test(path));
 
@@ -99,6 +142,30 @@ const server = createServer((request, response) => {
     : bodies.get(route[0]);
 
   response.writeHead(200, { 'content-type': 'application/json' }).end(body);
+}
+
+const server = createServer((request, response) => {
+  const url = new URL(request.url, 'http://localhost');
+
+  if (url.pathname === '/__stub/hold-next') {
+    control(url, request, response);
+    return;
+  }
+
+  const holding = held.findIndex(one => one.path === url.pathname);
+  if (holding < 0) {
+    serve(url, request, response);
+    return;
+  }
+
+  const [{ path, ms }] = held.splice(holding, 1);
+  console.error(`stub: holding ${request.method} ${url.pathname} for ${ms}ms, as asked`);
+  const one = { path, ms, spend: () => serve(url, request, response) };
+  inFlight.add(one);
+  // unref'd, so a hold still counting down cannot hold this process open past its teardown. The
+  // listening server is what keeps it alive meanwhile, and DELETE is what answers the client.
+  one.timer = setTimeout(() => answerNow(one), ms);
+  one.timer.unref();
 });
 
 server.listen(port, '127.0.0.1', () => console.log(`stub: serving the Testdata fixtures on ${port}`));

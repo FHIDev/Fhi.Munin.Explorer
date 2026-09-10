@@ -221,6 +221,18 @@ that bead had merged (`Fhi.Metadata-e97p0`).
 - Test helpers and fixtures are English too, same as production code.
 - Comments explain *why a test exists* — what breaks if it is deleted — not what the code does.
 
+**bUnit cannot see the browser's own state, and one line of the component depends on it.** A
+browser flips a checkbox itself, before any handler runs, and a Blazor render that equals the render
+before it writes nothing back to the DOM — so a press the component refuses leaves a visibly ticked
+box over a filter that is off, or a column that is still drawn. The one line that unsticks it is
+`builder.SetUpdatesAttributeName("checked")`, and deleting it from the column picker or the facet
+panel left the whole suite green either way: bUnit renders a render tree, where the flip never
+happened, so there is nothing to disagree with. `scripts/check-component-state.sh` is the one thing
+here that drives a real browser and asserts state rather than boxes or the accessibility
+tree; `scripts/state-assertions.mjs` says which presses it stages and, at length, which it does not
+(`Fhi.Metadata-1s7z1`). A refusal test in `test/` is worth writing anyway — it pins the component's
+own rule — but it is not evidence about the DOM, and it should not be written as though it were.
+
 ## Accessibility is a requirement, not a preference
 
 This package ships into helsedata.no, a public-sector site. **WCAG 2.1 AA applies by law** —
