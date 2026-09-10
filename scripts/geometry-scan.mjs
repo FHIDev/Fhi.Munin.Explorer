@@ -9,7 +9,8 @@
 // A target is a URL, or `URL::state` to drive the loaded page into a named state from
 // axe-states.mjs first. A width is only interesting because layout changes with it: Stiler's
 // `.munin-explorer` grid switches on at 1024px, so a page that fits at 1689 can overflow at 1024.
-import { chromium } from 'playwright';
+import { states } from './axe-states.mjs';
+import { assertions, selectors } from './geometry-assertions.mjs';
 
 // PLAYWRIGHT_BROWSER_CHANNEL=msedge runs an installed browser instead of the bundled chromium.
 // Opt-in and unset in CI: a channel renders a different engine build, so a geometry number from
@@ -20,8 +21,6 @@ const launchOptions = () => {
   const channel = process.env.PLAYWRIGHT_BROWSER_CHANNEL;
   return channel ? { channel } : {};
 };
-import { states } from './axe-states.mjs';
-import { assertions, selectors } from './geometry-assertions.mjs';
 
 const targets = process.argv.slice(2);
 const settleMs = Number(process.env.ACCESSIBILITY_SETTLE_MS ?? 4000);
@@ -46,9 +45,11 @@ const settleMs = Number(process.env.ACCESSIBILITY_SETTLE_MS ?? 4000);
 // min-content plus 48px of page air is 827, so 843 of viewport is the last width that fits and
 // everything under it needs the table's own scroll box.
 //
-// 320 is the width WCAG 1.4.10 Reflow names, and it IS measured - by check-accessibility.sh, one
-// document width on ModernHost's /kilder. It is not in this default because that would measure the
-// pinned-Stiler pages too, and those overflow at 320 for a reason only Fhi.Metadata-hfzsu can fix.
+// 320 is the width WCAG 1.4.10 Reflow names, and it IS measured - by check-accessibility.sh, three
+// assertions on ModernHost's /kilder. Not in this default because that would measure the
+// pinned-Stiler pages too, and the pin is 0.1.42, which still has the 82px header overflow: the fix
+// is on Stiler's main (Fhi.Metadata-hfzsu, closed 2026-09-09) and arrives here when it is released
+// and the pin moves (Fhi.Metadata-kpmt3).
 const widths = (process.env.GEOMETRY_WIDTHS ?? '1689,1440,1281,1280,1024,843')
   .split(',')
   .map(w => Number(w.trim()))
@@ -60,13 +61,16 @@ if (targets.length === 0 || widths.length === 0) {
   process.exit(2);
 }
 
-// GEOMETRY_ASSERTIONS names the subset to run, comma-separated, and has one caller:
-// check-accessibility.sh measures ModernHost, which draws no host chrome, so the header invariant
-// there would report the fixture rather than the page. Unset runs all of them.
-const chosen = (process.env.GEOMETRY_ASSERTIONS ?? '')
+// GEOMETRY_ASSERTIONS names the subset to run, comma-separated; unset runs all of them. Its one
+// caller is check-accessibility.sh, whose 320px run names the three that hold on a host with no
+// chrome and no Stiler - which three, and why the other seven are left out, is written there.
+//
+// De-duplicated, because `applicable` is a filter over `assertions` and cannot repeat: a name given
+// twice would otherwise print a count and a list that contradict each other.
+const chosen = [...new Set((process.env.GEOMETRY_ASSERTIONS ?? '')
   .split(',')
   .map(name => name.trim())
-  .filter(name => name.length > 0);
+  .filter(name => name.length > 0))];
 
 // A name that matches nothing would run an empty suite and report success, which is the false
 // green this file exists to end.
@@ -114,6 +118,23 @@ for (const { name, states: appliesTo } of assertions) {
     process.exit(2);
   }
 }
+
+// A subset can measure nothing the other way too: every chosen assertion scoped to a state none of
+// these targets is in goes n/a, failures stays 0, and the run reports success having looked at
+// nothing. Decidable here, since scoping is a question about the plan rather than about the page.
+const measurable = applicable.some(({ states: appliesTo }) =>
+  appliesTo === undefined || plan.some(({ state }) => appliesTo.includes(state)));
+
+if (!measurable) {
+  console.error('no assertion asked for applies to any of these targets - TOOLING failure.');
+  console.error(`asked for: ${chosen.length === 0 ? 'the whole suite' : chosen.join('; ')}`);
+  console.error(`targets: ${plan.map(({ label }) => label).join('; ')}`);
+  process.exit(2);
+}
+
+// Imported here rather than at the top, so every check above answers on a machine that has no
+// playwright installed - which is where the tests that hold them to it run.
+const { chromium } = await import('playwright');
 
 let browser;
 try {
