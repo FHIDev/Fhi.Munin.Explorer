@@ -1026,7 +1026,8 @@ public sealed partial class VariableSearch : ComponentBase
 
         // Never disabled, including while its own fetch runs: pressing it again is how the panel
         // is closed, and disabling the element that has focus drops focus to <body>.
-        builder.AddAttribute(10, "onclick", EventCallback.Factory.Create(this, () => ToggleDetailAsync(v)));
+        builder.AddAttribute(10, "onclick",
+            EventCallback.Factory.Create<MouseEventArgs>(this, e => ToggleDetailFromRowHeadingAsync(v, e)));
 
         // The chevron lives INSIDE the button, not beside it (Fhi.Metadata-zqe14): the button
         // already carries the accessible name and aria-expanded, so a sibling span looked like the
@@ -1443,6 +1444,22 @@ public sealed partial class VariableSearch : ComponentBase
             ? name
             : T.DataTypeLabel(canonical);
     }
+
+    /// <summary>
+    /// <see cref="Texts.KildeTypeNameFromApi"/> for a site holding a token and no facet of its
+    /// own — the kilde facet's group headings, and the open row's kilde trail.
+    /// </summary>
+    /// <remarks>
+    /// One reading for all of them, because falling back apart is what drew prose on the facet
+    /// button and the bare token on the heading directly beneath it. The payload is a parameter
+    /// rather than the field, so a heading resolves out of the very object its button did.
+    /// </remarks>
+    private string KildeTypeNameFromApi(FilterOptions? facets, string? value) =>
+        T.KildeTypeNameFromApi(
+            value,
+            facets?.KildeTyper
+                .FirstOrDefault(type => string.Equals(type.Value, value, StringComparison.OrdinalIgnoreCase))
+                ?.DisplayName);
 
     /// <summary>
     /// The heading of the drill-in view while it is still empty, named after which of the two the

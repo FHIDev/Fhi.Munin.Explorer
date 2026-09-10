@@ -48,8 +48,11 @@ contract. Both directions are reported, because the two failures are different a
 The second is only reported when the round trip wrote something there. Null, an empty array and an
 empty object are the three ways a contract says *nothing here*, and where it said that there is
 nothing to tell apart — an omitted field and a field sent as null, or as `[]`, produce exactly the
-same DTO. `filters.json` is the standing example: captured before the datatype facet gained
-`displayName`, it carries none, and that is not drift.
+same DTO. The standing examples are `ShapeDriftTest`'s two let-through cases, both broken by hand
+rather than found in a capture: `datakategorier` taken off `filters.json`, where the contract's list
+defaults to `[]`, and a kilde's optional `kortNavn` withdrawn, where the property is left null.
+Neither is drift. They are made in the test on purpose — this paragraph used to point at an absence
+in the capture itself, and a re-capture put the field back without a word.
 
 That costs one thing, and it is worth knowing rather than discovering: a collection the API stops
 sending altogether reads exactly like one it sends empty, so a withdrawn `delkilder` would pass.

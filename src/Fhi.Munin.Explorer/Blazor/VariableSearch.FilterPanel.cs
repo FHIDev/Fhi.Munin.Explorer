@@ -358,9 +358,7 @@ public partial class VariableSearch
 
     private FacetValue KildeTypeValue(KildetypeFacet type) =>
         new($"kildetype:{type.Value}",
-            // The facet's own displayName is the raw enum name (SentraltHelseregister), so the
-            // prose comes from the component's own translations and falls back to what the API said.
-            T.KildeTypeLabel(type.Value, type.DisplayName),
+            T.KildeTypeNameFromApi(type.Value, type.DisplayName),
             Counted(type.Count),
             string.Equals(_filter.KildeType, type.Value, StringComparison.OrdinalIgnoreCase),
             () => SetKildeTypeAsync(type.Value),
@@ -382,6 +380,8 @@ public partial class VariableSearch
         var kilder = VisibleKilder(facets, levels);
 
         // The order the kildetype facet is in, so the headings here and the facet above agree.
+        // That order is the API's own, and against runa on 2026-09-10 it followed the resolved
+        // displayName — so it is the answering language's, not the enum's. (Fhi.Metadata-iv9xp)
         var kildeTypeOrder = facets.KildeTyper
             .Select((type, index) => (type.Value, Index: index))
             .ToDictionary(entry => entry.Value, entry => entry.Index, StringComparer.OrdinalIgnoreCase);
@@ -390,7 +390,7 @@ public partial class VariableSearch
             .GroupBy(KildeTypeKey, StringComparer.OrdinalIgnoreCase)
             .OrderBy(group => kildeTypeOrder.TryGetValue(group.Key, out var index) ? index : int.MaxValue)
             .ThenBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
-            .Select(group => KildeTypeHeading(group, levels))
+            .Select(group => KildeTypeHeading(facets, group, levels))
             .ToList();
 
         // A search that matches nothing has to leave the facet standing, or it would take the box
@@ -521,9 +521,12 @@ public partial class VariableSearch
     /// Its count is how many kilder the group holds — what the row is hiding — rather than the
     /// variable count the values under it carry. (Fhi.Metadata-l9l2n.67)
     /// </remarks>
-    private FacetValue KildeTypeHeading(IGrouping<string, KildeFacet> kilder, KildeLevelLookup levels) =>
+    private FacetValue KildeTypeHeading(
+        FilterOptions facets,
+        IGrouping<string, KildeFacet> kilder,
+        KildeLevelLookup levels) =>
         new($"kildetype-group:{kilder.Key}",
-            T.KildeTypeLabel(kilder.Key, kilder.Key),
+            KildeTypeNameFromApi(facets, kilder.Key),
             kilder.Count(),
             Selected: false,
             Toggle: null,
@@ -983,9 +986,9 @@ public partial class VariableSearch
                 builder.AddAttribute(7, "onchange",
                                      EventCallback.Factory.Create<ChangeEventArgs>(this, _ => toggle()));
 
-                // What a plain onchange does not do and this panel needs: a press it refuses —
-                // dropped mid-fetch, rolled back when one fails — leaves the browser's own tick on
-                // over a filter that is off, and only a forced update of `checked` unsticks it.
+                // What a plain onchange does not do and this panel needs: a press that ApplyFilterAsync
+                // drops mid-fetch writes no state, so the renders either side are equal and
+                // the browser's own tick stays on over a filter that is off until `checked` is forced.
                 builder.SetUpdatesAttributeName("checked");
 
                 builder.CloseElement();

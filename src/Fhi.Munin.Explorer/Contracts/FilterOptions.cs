@@ -76,9 +76,20 @@ public sealed record KildetypeFacet
     [JsonPropertyName("value")] public string Value { get; init; } = "";
 
     /// <summary>
-    /// Label for the value. Currently the raw enum name (<c>SentraltHelseregister</c>), not a
-    /// human-friendly Norwegian phrase — a UI that wants prose supplies its own.
+    /// Label for the value, resolved by the API and in the request's language.
     /// </summary>
+    /// <remarks>
+    /// This used to be the raw enum name — <c>SentraltHelseregister</c> — so a UI wanting prose had
+    /// to supply its own. It no longer does: the endpoint resolves the label and follows
+    /// <c>Accept-Language</c>, so <c>sentraltHelseregister</c> arrives as
+    /// <c>Sentralt helseregister</c> under <c>nb</c> and <c>Central health registry</c> under
+    /// <c>en</c>. (<c>Fhi.Metadata-iv9xp</c>)
+    /// <para>
+    /// Key off <see cref="Value"/> and never off this text. The list is also ordered by the resolved
+    /// label rather than by the value, so the facet arrives in a different order in each language —
+    /// a caller mirroring the API's order elsewhere on the page inherits that.
+    /// </para>
+    /// </remarks>
     [JsonPropertyName("displayName")] public string DisplayName { get; init; } = "";
 
     [JsonPropertyName("count")] public int Count { get; init; }

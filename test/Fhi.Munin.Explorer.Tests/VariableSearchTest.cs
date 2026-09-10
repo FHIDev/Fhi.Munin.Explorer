@@ -4249,14 +4249,336 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
-    public void Render_WhenTheApiNamesAKildetypeByItsEnumName_ThenTheButtonSaysItInProse()
+    public void Render_WhenAKildetypeArrivesWithAnUnresolvedDisplayName_ThenTheButtonSaysItInProse()
     {
-        // The facet's own displayName is the raw enum name. Munin's explorer carries the prose,
-        // and this carries the same words so the two UIs name one value the same way.
+        // The fixture keeps the unresolved name on purpose: resolved prose there would read the
+        // same whether the lookup by value worked or the fallback simply echoed it. Asserted
+        // rather than assumed, so refreshing Facets() goes red instead of vacuous. (Fhi.Metadata-iv9xp)
+        Assert.Equal("SentraltHelseregister",
+                     Facets().KildeTyper.Single(type => type.Value == "sentraltHelseregister").DisplayName);
+
         var cut = RenderWith(new FilteringClient(OnePage()));
 
         Assert.NotNull(Facet(cut, "Sentralt helseregister"));
         Assert.DoesNotContain("SentraltHelseregister", cut.Find(".munin-explorer-filters").TextContent);
+    }
+
+    [Fact]
+    public void Render_WhenAKildetypeIsOutsideTheShippedTable_ThenTheFacetAndTheHeadingUnderItBothSayTheApisWords()
+    {
+        // A member Munin adds to the enum reaches no table here, and the heading used to fall back
+        // to the raw token while the facet a line above it read the API's prose — "Ny kildetype"
+        // over "nyKildetype", in one panel. (Fhi.Metadata-1b0ag)
+        var cut = RenderWith(new FilteringClient(OnePage(), new FilterOptions
+        {
+            KildeTyper =
+            [
+                new() { Value = "nyKildetype", DisplayName = "Ny kildetype", Count = 4 },
+                new() { Value = "biobank", DisplayName = "Biobank", Count = 12 }
+            ],
+            Kilder =
+            [
+                new() { Id = Dodsarsak, Name = "Dødsårsaksregisteret", KildeType = "nyKildetype", Count = 4 },
+                new() { Id = Tromso, Name = "Tromsøundersøkelsen", KildeType = "biobank", Count = 12 }
+            ],
+            TotalCount = 16
+        }));
+
+        Assert.Equal("Ny kildetype (4)", Facet(cut, "Ny kildetype").TextContent);
+
+        // Picked by the kilde inside it rather than by position: the headings follow the order
+        // KildeTyper arrived in, and this test is about their words rather than that order.
+        var group = KildeTypeGroups(cut)
+            .Single(g => g.TextContent.Contains("Dødsårsaksregisteret", StringComparison.Ordinal));
+
+        Assert.Equal("Ny kildetype", group.FirstElementChild!.ChildNodes[0].TextContent.Trim());
+        Assert.DoesNotContain("nyKildetype", FilterPanel(cut).TextContent, StringComparison.Ordinal);
+    }
+
+    /// <summary>Facets whose kildetype words are the API's rather than the shipped table's.</summary>
+    /// <remarks>
+    /// <c>sentraltHelseregister</c> is in <c>Texts.KildeTypeNames</c>, which is the point: a value
+    /// the table also knows is the one case where reading the table looks right and is stale.
+    /// </remarks>
+    private static FilterOptions RewordedKildetyper(string reworded) => new()
+    {
+        KildeTyper =
+        [
+            new() { Value = "sentraltHelseregister", DisplayName = reworded, Count = 30 },
+            new() { Value = "biobank", DisplayName = "Biobank", Count = 12 }
+        ],
+        Kilder =
+        [
+            new() { Id = Dodsarsak, Name = "Dødsårsaksregisteret", KildeType = "sentraltHelseregister", Count = 30 },
+            new() { Id = Tromso, Name = "Tromsøundersøkelsen", KildeType = "biobank", Count = 12 }
+        ],
+        TotalCount = 42
+    };
+
+    [Fact]
+    public void Render_WhenTheApiHasRewordedAKildetype_ThenTheFacetAndTheHeadingUnderItBothFollowIt()
+    {
+        // The kildetype vocabulary is editable master data on Munin's side, so an edit there has to
+        // reach the page — and has to reach both sites, or one panel names one kildetype two ways.
+        // (Fhi.Metadata-3n6e1)
+        var cut = RenderWith(new FilteringClient(OnePage(), RewordedKildetyper("Sentralt helseregister (nytt)")));
+
+        var heading = KildeTypeGroups(cut)
+            .Single(g => g.TextContent.Contains("Dødsårsaksregisteret", StringComparison.Ordinal))
+            .FirstElementChild!.ChildNodes[0].TextContent.Trim();
+
+        Assert.Equal("Sentralt helseregister (nytt) (30)", Facet(cut, "Sentralt helseregister (nytt)").TextContent);
+        Assert.Equal("Sentralt helseregister (nytt)", heading);
+
+        // The table's own word for that value, which is what a table-first read of either site
+        // would have drawn — so the assertions above cannot pass on the stale word by accident.
+        Assert.DoesNotContain("Sentralt helseregister (30)", FilterPanel(cut).TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Detail_WhenTheApiHasRewordedAKildetype_ThenTheOpenRowsTrailSaysItTheWayTheFacetDoes()
+    {
+        // The two consumers of one vocabulary: the facet button in the panel and the kilde trail in
+        // the row opened beside it. They read the same payload, so they cannot be allowed to fall
+        // back to different things. (Fhi.Metadata-3n6e1)
+        var reworded = "Sentralt helseregister (nytt)";
+        var id = Guid.NewGuid();
+        var client = new FacetedDetailClient(OnePage(Row(id, "1. Tale")), RewordedKildetyper(reworded))
+            .Knows(Detail(id) with { KildeType = "sentraltHelseregister" });
+
+        var cut = RenderWith(client);
+
+        Toggles(cut)[0].Click();
+
+        Assert.Equal(reworded, Panel(cut).QuerySelector("ol > li")!.TextContent.Trim());
+        Assert.Equal($"{reworded} (30)", Facet(cut, reworded).TextContent);
+    }
+
+    [Fact]
+    public void Render_WhenAKildetypeArrivesWithNoDisplayNameAtAll_ThenBothSitesFallBackToTheShippedTable()
+    {
+        // An API predating displayName sends nothing at all, which is the shape the test above
+        // does not cover — that one is the enum name echoed back. Both reach the shipped table, in
+        // the reader's own language, which is why deleting it is a different bead. (Fhi.Metadata-3n6e1)
+        var cut = RenderWith(new FilteringClient(OnePage(), RewordedKildetyper("")));
+
+        var heading = KildeTypeGroups(cut)
+            .Single(g => g.TextContent.Contains("Dødsårsaksregisteret", StringComparison.Ordinal))
+            .FirstElementChild!.ChildNodes[0].TextContent.Trim();
+
+        Assert.Equal("Sentralt helseregister (30)", Facet(cut, "Sentralt helseregister").TextContent);
+        Assert.Equal("Sentralt helseregister", heading);
+    }
+
+    [Fact]
+    public void Render_WhenNothingHasAWordForAKildetype_ThenTheFacetAndItsHeadingBothSayTheToken()
+    {
+        // A kildetype Munin adds before either the master data or the shipped table names it. The
+        // token is poor prose and it is still what the reader is filtering by, so both sites say it
+        // rather than either falling back to "Ikke oppgitt". (Fhi.Metadata-3n6e1)
+        var cut = RenderWith(new FilteringClient(OnePage(), new FilterOptions
+        {
+            KildeTyper =
+            [
+                new() { Value = "nyKildetype", Count = 4 },
+                new() { Value = "biobank", DisplayName = "Biobank", Count = 12 }
+            ],
+            Kilder =
+            [
+                new() { Id = Dodsarsak, Name = "Dødsårsaksregisteret", KildeType = "nyKildetype", Count = 4 },
+                new() { Id = Tromso, Name = "Tromsøundersøkelsen", KildeType = "biobank", Count = 12 }
+            ],
+            TotalCount = 16
+        }));
+
+        var heading = KildeTypeGroups(cut)
+            .Single(g => g.TextContent.Contains("Dødsårsaksregisteret", StringComparison.Ordinal))
+            .FirstElementChild!.ChildNodes[0].TextContent.Trim();
+
+        Assert.Equal("nyKildetype (4)", Facet(cut, "nyKildetype").TextContent);
+        Assert.Equal("nyKildetype", heading);
+    }
+
+    [Fact]
+    public void Detail_WhenNoFacetNamesTheKildetype_ThenTheTrailKeepsTheTokenRatherThanEmptyingTheStep()
+    {
+        // The trail reads the facets the panel beside it was built from, so a filters call that
+        // answered nothing must not cost the step its word: the token is what the variable has, and
+        // a trail step reading "Ikke oppgitt" is the level the trail leaves out. (Fhi.Metadata-3n6e1)
+        var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale")))
+            .Knows(Detail(TaleId) with { KildeType = "nyKildetype" })
+            .Knows(Kilde())
+            .Knows(Datasamling()));
+
+        Toggles(cut)[0].Click();
+
+        Assert.Equal(["nyKildetype", "Als registeret (ALS)", "Inklusjon"],
+                     Values(cut)[2].QuerySelectorAll("ol > li").Select(l => l.TextContent));
+    }
+
+    [Fact]
+    public void Render_WhenTheApiEchoesTheEnumNameAsItsDisplayName_ThenBothSitesReadTheShippedTable()
+    {
+        // An API predating Fhi.Metadata-0mjhi answers displayName with the value again, bar its
+        // casing. That is not a word anyone chose, so it is the one displayName the shipped table
+        // is allowed to beat — and dropping the case-insensitive test here goes unnoticed without it.
+        var cut = RenderWith(new FilteringClient(OnePage(), RewordedKildetyper("SentraltHelseregister")));
+
+        var heading = KildeTypeGroups(cut)
+            .Single(g => g.TextContent.Contains("Dødsårsaksregisteret", StringComparison.Ordinal))
+            .FirstElementChild!.ChildNodes[0].TextContent.Trim();
+
+        Assert.Equal("Sentralt helseregister (30)", Facet(cut, "Sentralt helseregister").TextContent);
+        Assert.Equal("Sentralt helseregister", heading);
+        Assert.DoesNotContain("SentraltHelseregister", FilterPanel(cut).TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Render_WhenAKildeCarriesNoKildetypeAtAll_ThenItsHeadingSaysSoRatherThanShowingAnEmptyWord()
+    {
+        // The one case that is NOT the token: there is no token. The heading groups those kilder
+        // under the empty key, and "Ikke oppgitt" is the whole of what can honestly be said over
+        // them — which is what Texts.KildeTypeNameFromApi's remarks carve out. (Fhi.Metadata-3n6e1)
+        var cut = RenderWith(new FilteringClient(OnePage(), new FilterOptions
+        {
+            KildeTyper = [new() { Value = "biobank", DisplayName = "Biobank", Count = 12 }],
+            Kilder =
+            [
+                new() { Id = Dodsarsak, Name = "Dødsårsaksregisteret", Count = 4 },
+                new() { Id = Tromso, Name = "Tromsøundersøkelsen", KildeType = "biobank", Count = 12 }
+            ],
+            TotalCount = 16
+        }));
+
+        var heading = KildeTypeGroups(cut)
+            .Single(g => g.TextContent.Contains("Dødsårsaksregisteret", StringComparison.Ordinal))
+            .FirstElementChild!.ChildNodes[0].TextContent.Trim();
+
+        Assert.Equal("Ikke oppgitt", heading);
+    }
+
+    [Fact]
+    public void Detail_WhenTheFiltersCallAnsweredNothingAndTheTableKnowsTheKildetype_ThenTheTrailSaysTheTablesWord()
+    {
+        // A filters call that answered an empty payload: the facet list is there and holds no
+        // kildetype, so the lookup misses and the shipped table is the whole answer. A trail step
+        // downgraded to the raw token or to "Ikke oppgitt" here is silent. (Fhi.Metadata-3n6e1)
+        var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale")))
+            .Knows(Detail(TaleId) with { KildeType = "sentraltHelseregister" })
+            .Knows(Kilde())
+            .Knows(Datasamling()));
+
+        Toggles(cut)[0].Click();
+
+        Assert.Equal(["Sentralt helseregister", "Als registeret (ALS)", "Inklusjon"],
+                     Values(cut)[2].QuerySelectorAll("ol > li").Select(l => l.TextContent));
+    }
+
+    [Fact]
+    public void Detail_WhenTheFiltersCallFailedAndTheTableKnowsTheKildetype_ThenTheTrailSaysTheTablesWord()
+    {
+        // The one shape where the helper's null read is load-bearing: the filters call failed, so
+        // no payload was ever stored and the trail resolves against a null. The panel beside it is
+        // showing its own error, which leaves this step the only word there is. (Fhi.Metadata-3n6e1)
+        var client = new DetailClient(OnePage(Row(TaleId, "1. Tale"))) { FailFilters = true };
+
+        var cut = RenderWith(client
+            .Knows(Detail(TaleId) with { KildeType = "sentraltHelseregister" })
+            .Knows(Kilde())
+            .Knows(Datasamling()));
+
+        Toggles(cut)[0].Click();
+
+        Assert.Equal(["Sentralt helseregister", "Als registeret (ALS)", "Inklusjon"],
+                     Values(cut)[2].QuerySelectorAll("ol > li").Select(l => l.TextContent));
+    }
+
+    [Theory]
+    [InlineData("no", "nb", "Sentralt helseregister, som master data sier det")]
+    [InlineData("en", "en", "Central health registry, as the master data has it")]
+    public void Render_WhenTheApiAnswersInTheRequestLanguage_ThenTheFacetSaysWhatItAnswered(
+        string language, string asked, string expected)
+    {
+        // THE TRAP: a language-sensitive value read out of a hardcoded table renders and loses the
+        // request language with it. Neither word below is in Texts.KildeTypeNames in either
+        // language, so a table-first read goes red instead of reading plausibly, and the two arms
+        // differ — which is the part that says the label moved with the call. (Fhi.Metadata-3n6e1)
+        var client = new LanguageFacetClient(OnePage());
+
+        var cut = RenderWith(client, b => b.Add(c => c.Language, language));
+
+        Assert.Equal(asked, client.FacetLanguage);
+        Assert.Equal($"{expected} (30)", Facet(cut, expected).TextContent);
+    }
+
+    /// <summary>Answers the kildetype facet the way the API does: resolved, in the language asked for.</summary>
+    /// <remarks>
+    /// Checked against runa on 2026-09-10, <c>sentraltHelseregister</c> comes back as "Sentralt
+    /// helseregister" under <c>nb</c> and "Central health registry" under <c>en</c>. The clause on
+    /// the end of each is the test's own, so no shipped table can produce either word.
+    /// </remarks>
+    private sealed class LanguageFacetClient(Page<VariableSummary> answer) : EmptyMuninExplorerClient
+    {
+        public string? FacetLanguage { get; private set; }
+
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
+            SortField sort = SortField.Default,
+            SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(answer);
+
+        public override Task<FilterOptions> GetFiltersAsync(
+            string? search = null, VariableFilter? filter = null, string? language = null,
+            CancellationToken cancellationToken = default)
+        {
+            FacetLanguage = language;
+
+            var resolved = language == ReaderLanguage.English
+                ? "Central health registry, as the master data has it"
+                : "Sentralt helseregister, som master data sier det";
+
+            return Task.FromResult(new FilterOptions
+            {
+                KildeTyper = [new() { Value = "sentraltHelseregister", DisplayName = resolved, Count = 30 }],
+                TotalCount = 30
+            });
+        }
+    }
+
+    /// <summary>Answers the search, the detail endpoint and the facets — the three the trail needs.</summary>
+    /// <remarks>
+    /// <c>DetailClient</c> answers no facets, which is exactly what the trail used not to need. Its
+    /// own fake rather than a facet-carrying <c>DetailClient</c>, so the tests built on that one
+    /// keep asserting against the panel the shipped table alone draws.
+    /// </remarks>
+    private sealed class FacetedDetailClient(Page<VariableSummary> answer, FilterOptions facets)
+        : EmptyMuninExplorerClient
+    {
+        private readonly Dictionary<Guid, VariableDetail> _details = [];
+
+        public FacetedDetailClient Knows(VariableDetail detail)
+        {
+            _details[detail.Id] = detail;
+
+            return this;
+        }
+
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
+            SortField sort = SortField.Default,
+            SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(answer);
+
+        public override Task<FilterOptions> GetFiltersAsync(
+            string? search = null, VariableFilter? filter = null, string? language = null,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(facets);
+
+        public override Task<VariableDetail?> GetVariableAsync(
+            Guid id, bool includeHistorical = false, CancellationToken cancellationToken = default) =>
+            Task.FromResult<VariableDetail?>(_details.GetValueOrDefault(id));
     }
 
     [Fact]
@@ -6235,6 +6557,9 @@ public class VariableSearchTest : BunitContext
         /// <summary>Never answer a detail fetch from the next one on.</summary>
         public bool StallDetail { get; set; }
 
+        /// <summary>Fail every filters call, so the panel never stores a payload to read from.</summary>
+        public bool FailFilters { get; set; }
+
         public DetailClient Knows(VariableDetail detail)
         {
             _details[detail.Id] = detail;
@@ -6285,6 +6610,13 @@ public class VariableSearchTest : BunitContext
                 ? Task.FromResult(next)
                 : throw new HttpRequestException("nede");
         }
+
+        public override Task<FilterOptions> GetFiltersAsync(
+            string? search = null, VariableFilter? filter = null, string? language = null,
+            CancellationToken cancellationToken = default) =>
+            FailFilters
+                ? throw new HttpRequestException("nede")
+                : base.GetFiltersAsync(search, filter, language, cancellationToken);
 
         /// <summary>Refuse every detail fetch from the next one on with the API's 429.</summary>
         /// <remarks>
@@ -8193,6 +8525,88 @@ public class VariableSearchTest : BunitContext
         Assert.Equal("false", Toggles(cut)[0].GetAttribute("aria-expanded"));
         Assert.Equal("true", Toggles(cut)[1].GetAttribute("aria-expanded"));
         Assert.Contains("2. Spyttsekresjon", Panel(cut).TextContent);
+    }
+
+    /// <summary>
+    /// A pointer press on the row's name, which is the disclosure. <paramref name="clicks"/> is the
+    /// browser's click count, so 2 is the second click of a double-click gesture and 0 is how a
+    /// browser reports Enter or Space on a button.
+    /// </summary>
+    /// <remarks>The toggle is found on every call rather than held: each press re-renders the row.</remarks>
+    private static void PressRowHeading(
+        IRenderedComponent<VariableSearch> cut, int row = 0, long clicks = 1) =>
+        Toggles(cut)[row].Click(new MouseEventArgs { Detail = clicks });
+
+    /// <summary>
+    /// What the row's own name button says about itself, which is the state a reader is told.
+    /// </summary>
+    /// <remarks>
+    /// Asked of that button and never of the page, because an open panel adds disclosures of its
+    /// own — "Vis datakilde", "Vis datasamling", "Vis koder" — so a page-wide aria-expanded query
+    /// stops being about the row the moment the panel it is checking for opens.
+    /// </remarks>
+    private static string? Discloses(IRenderedComponent<VariableSearch> cut, int row = 0) =>
+        Toggles(cut)[row].GetAttribute("aria-expanded");
+
+    [Fact]
+    public void RowHeading_WhenItIsDoubleClicked_ThenThePanelIsLeftOpen()
+    {
+        // Fhi.Metadata-l9l2n.72 closed this on the kildeutforsker's chevron and deliberately left
+        // this one alone: the two share no handler, and this callback took no MouseEventArgs at all.
+        var client = TwoRows();
+        var reported = new List<Guid?>();
+        var cut = RenderWith(client, b => b.Add(c => c.SelectedVariableIdChanged, id => reported.Add(id)));
+
+        Assert.Equal("false", Discloses(cut));
+        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
+
+        PressRowHeading(cut);
+        PressRowHeading(cut, clicks: 2);
+
+        Assert.Equal("true", Discloses(cut));
+        Assert.Single(cut.FindAll(".munin-explorer-detail"));
+
+        // The swallowed click is not a second GetVariableAsync either.
+        Assert.Equal(1, client.DetailCalls);
+
+        // Nor a second SelectedVariableIdChanged: the host wrote the id into its URL, and the
+        // "selection cleared" the old second toggle raised would have taken the reader off it.
+        Assert.Equal([TaleId], reported);
+    }
+
+    [Fact]
+    public void RowHeading_WhenItIsPressedTwiceAsSeparateGestures_ThenItStillTogglesBothWays()
+    {
+        // The guard is per gesture, not per control: two deliberate presses each arrive with a click
+        // count of one, and a reader who opens a panel must still be able to shut it.
+        var cut = RenderWith(TwoRows());
+
+        PressRowHeading(cut);
+
+        Assert.Equal("true", Discloses(cut));
+
+        PressRowHeading(cut);
+
+        Assert.Equal("false", Discloses(cut));
+        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
+    }
+
+    [Fact]
+    public void RowHeading_WhenItIsActivatedFromTheKeyboard_ThenEachActivationToggles()
+    {
+        // Enter and Space on a <button> arrive as a click with a count of zero, which is what keeps a
+        // guard on the second click of a pointer gesture from swallowing a second keypress. Verified
+        // rather than assumed, because a guard that caught this would make the panel unclosable.
+        var cut = RenderWith(TwoRows());
+
+        PressRowHeading(cut, clicks: 0);
+
+        Assert.Equal("true", Discloses(cut));
+
+        PressRowHeading(cut, clicks: 0);
+
+        Assert.Equal("false", Discloses(cut));
+        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
     }
 
     [Fact]

@@ -616,13 +616,15 @@ internal sealed record Texts(
         : (NotSpecified, false);
 
     /// <summary>
-    /// Prose for a kildetype token, falling back to what the API called it.
+    /// Prose for a kildetype token out of the table shipped in this package, falling back to what
+    /// the API called it. <see cref="KildeTypeNameFromApi"/> is the reading that prefers the API.
     /// </summary>
     /// <remarks>
-    /// A fallback rather than a throw, unlike <see cref="FieldLabel"/>: the tokens are Munin's
-    /// kildetype enum and a new member appearing there is a catalogue change, not a bug in this
-    /// component. "SentraltHelseregister" on a button is poor prose but it is the truth, where
-    /// dropping the value would take a filter off the screen that the API is still counting.
+    /// A fallback rather than a throw, unlike <see cref="FieldLabel"/>: a new member of Munin's
+    /// kildetype enum is a catalogue change, not a bug here. The fallback is the caller's own — the
+    /// facet's resolved label, and the bare token wherever the token is all the payload carries —
+    /// and either beats dropping a filter the API is still counting. A blank fallback for a token
+    /// the table does not know is <see cref="NotSpecified"/>. (Fhi.Metadata-iv9xp)
     /// </remarks>
     public string KildeTypeLabel(string? value, string? fallback)
     {
@@ -633,6 +635,31 @@ internal sealed record Texts(
 
         return string.IsNullOrWhiteSpace(fallback) ? NotSpecified : fallback;
     }
+
+    /// <summary>
+    /// What a facet or a heading shows for a kildetype the API has named, preferring the API's own
+    /// word — unlike <see cref="KildeTypeLabel"/>, which prefers the table shipped in this package.
+    /// </summary>
+    /// <remarks>
+    /// The vocabulary is editable master data on Munin's side and the label follows
+    /// <c>Accept-Language</c>, so the API's word wins; an API predating that echoes the enum name —
+    /// the value again, bar its casing — and only that reaches the shipped table. Under the table a
+    /// kildetype that has a token keeps it rather than reading <see cref="NotSpecified"/>: one
+    /// nobody has a word for yet is still a step in a trail and still a heading over some kilder,
+    /// and its own name says more there than "not specified" does. A kilde carrying no kildetype at
+    /// all has no token to keep, and that case — only that one — is <see cref="NotSpecified"/>.
+    /// (Fhi.Metadata-3n6e1)
+    /// </remarks>
+    /// <param name="value">The kildetype token, or null or blank where a kilde carries none.</param>
+    /// <param name="apiName">
+    /// The facet's <c>displayName</c>: null or blank from an API predating resolved labels, and
+    /// equal to <paramref name="value"/> bar its casing from one that echoes the enum name.
+    /// </param>
+    public string KildeTypeNameFromApi(string? value, string? apiName) =>
+        !string.IsNullOrWhiteSpace(apiName)
+        && !string.Equals(apiName, value, StringComparison.OrdinalIgnoreCase)
+            ? apiName
+            : KildeTypeLabel(value, string.IsNullOrWhiteSpace(apiName) ? value : apiName);
 
     /// <summary>
     /// Prose for an identification-level token, falling back to what the API called it.
