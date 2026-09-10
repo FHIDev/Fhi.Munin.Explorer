@@ -8245,9 +8245,9 @@ public class VariableSearchTest : BunitContext
     [Fact]
     public void CodeToggle_WhenItIsDoubleClicked_ThenTheCodeTableIsLeftOpen()
     {
-        // The same guard and predicate as the chevron's and the row name's, on the same
-        // parameterless lambda both of those were: this one came last by scope, not by shape. The
-        // panel's source and version disclosures caught up under Fhi.Metadata-j1j3i.
+        // The same double-click clause as the chevron's and the row name's, on the same
+        // parameterless lambda both of those were. The rest of this panel caught up under
+        // Fhi.Metadata-j1j3i; four disclosures outside it have not (Fhi.Metadata-zel47).
         var client = KodeverkRows();
         var cut = OpenData(client);
 
@@ -10755,6 +10755,66 @@ public class VariableSearchTest : BunitContext
 
         Assert.Single(cut.FindAll(".munin-explorer-drilldown"));
         Assert.Equal(2, client.KildeCalls);
+    }
+
+    /// <summary>The panel's "Vis hele variabelen" button.</summary>
+    /// <remarks>
+    /// Found by its words rather than by index: it is drawn after the owner toggles in the same
+    /// block, so a rename fails this helper rather than quietly moving the press onto one of them.
+    /// </remarks>
+    private static AngleSharp.Dom.IElement WholeVariableToggle(IRenderedComponent<VariableSearch> cut) =>
+        cut.FindAll(".munin-explorer-detail > button")
+           .Single(b => b.TextContent.Contains("hele variabelen", StringComparison.Ordinal));
+
+    [Fact]
+    public void WholeVariable_WhenTheSecondClickOfADoubleClickReachesIt_ThenTheViewIsNotOpened()
+    {
+        // The third button in the block the two owner toggles are in, over a toggle of the same
+        // shape: unguarded, the second click reached ToggleWholeVariableAsync and shut the view
+        // the first click had just opened. (Fhi.Metadata-j1j3i)
+        var cut = RenderWith(TwoRows());
+
+        Toggles(cut)[0].Click();
+        PressOwnerControl(WholeVariableToggle(cut), clicks: 2);
+
+        Assert.Empty(cut.FindAll(".munin-explorer-drilldown"));
+    }
+
+    [Fact]
+    public void WholeVariable_WhenEachPressIsItsOwnGesture_ThenTheViewOpensEveryTime()
+    {
+        // Both counts a real activation arrives with: one for an ordinary click, none for Enter or
+        // Space on the button. Nothing is fetched either time, so the view opening is the whole
+        // observation there is to make.
+        var cut = RenderWith(TwoRows());
+
+        Toggles(cut)[0].Click();
+        PressOwnerControl(WholeVariableToggle(cut));
+
+        Assert.Single(cut.FindAll(".munin-explorer-drilldown"));
+
+        Back(cut);
+        PressOwnerControl(WholeVariableToggle(cut), clicks: 0);
+
+        Assert.Single(cut.FindAll(".munin-explorer-drilldown"));
+    }
+
+    [Fact]
+    public void WholeVariableBack_WhenTheSecondClickOfADoubleClickReachesIt_ThenTheViewIsNotReopened()
+    {
+        // The way out is the same handler as the way in, so it carried the same defect the other
+        // way round: a double-click on "Tilbake til variabler" left the reader back inside the view
+        // they were leaving. (Fhi.Metadata-j1j3i)
+        var cut = RenderWith(TwoRows());
+
+        Toggles(cut)[0].Click();
+        PressOwnerControl(WholeVariableToggle(cut));
+
+        // The first click of that gesture has already closed the view and taken this button with
+        // it, so what is asserted is the stateless half: a count above one is refused.
+        PressOwnerControl(cut.Find(".munin-explorer-drilldown button"), clicks: 2);
+
+        Assert.Single(cut.FindAll(".munin-explorer-drilldown"));
     }
 
     /// <summary>

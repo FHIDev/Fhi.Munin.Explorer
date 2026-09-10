@@ -23,6 +23,12 @@ public partial class VariableSearch
 
     private string WholeVariableHeadingId => $"munin-variable-heading-{_instance}";
 
+    // Guarded on the second click of a double-click — the clause RowPress calls out. The way in
+    // and the way out are one handler, and the browser keeps it alive after the view swaps, so a
+    // second click undoes the first either way round. (Fhi.Metadata-j1j3i)
+    private Task ToggleWholeVariableFromControlAsync(MouseEventArgs released) =>
+        released.Detail > 1 ? Task.CompletedTask : ToggleWholeVariableAsync();
+
     /// <summary>Open the whole variable, or close it and put the reader back in the list.</summary>
     /// <remarks>
     /// Nothing is fetched: the panel already holds the detail this view draws, because opening the
@@ -257,9 +263,9 @@ public partial class VariableSearch
         _sourceLoading = false;
     }
 
-    // Guarded on the same predicate, and for the reason ToggleDetailFromRowHeadingAsync is. Both
-    // ways in ask it here — the "Vis datakilde" pair and the trail's kilde step — since either
-    // closes the view it just opened on a second click. (Fhi.Metadata-j1j3i)
+    // Guarded on the second click of a double-click — the clause RowPress calls out, and the only
+    // one of its three tellable here, since this control keeps no press of its own. Both ways in
+    // ask it: the "Vis datakilde" pair and the trail's kilde step. (Fhi.Metadata-j1j3i)
     private Task ToggleSourceFromControlAsync(SourceKind kind, MouseEventArgs released) =>
         released.Detail > 1 ? Task.CompletedTask : ToggleSourceAsync(kind);
 

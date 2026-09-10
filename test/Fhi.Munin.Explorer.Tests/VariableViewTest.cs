@@ -341,9 +341,9 @@ public class VariableViewTest : BunitContext
     [Fact]
     public void Versions_WhenARowIsDoubleClicked_ThenItIsLeftOpen()
     {
-        // The same guard and predicate the result row's own disclosure carries, on a row that was
-        // still built from a parameterless lambda: the second click reached ToggleVersionAsync and
-        // shut the version the first had just opened. (Fhi.Metadata-j1j3i)
+        // The double-click clause of the guard the result row carries — all of it that applies,
+        // since this component keeps no press to read RowPress's drag and shift ones against. The
+        // second click reached ToggleVersionAsync and shut the version. (Fhi.Metadata-j1j3i)
         var cut = Render(OneVersion());
 
         PressVersion(cut);

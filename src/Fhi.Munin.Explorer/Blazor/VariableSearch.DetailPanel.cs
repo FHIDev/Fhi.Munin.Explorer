@@ -215,12 +215,7 @@ public partial class VariableSearch
             {
                 // Runa makes this step a link to its own kilde route. We have no routes — the host
                 // owns the URL — so the same affordance is the control that discloses the kilde
-                // below instead. Clicking the kilde gets you the kilde either way.
-                //
-                // It is the same control as the "Vis datakilde" button further down, deliberately:
-                // two ways to the same panel, one of them on the thing itself, which is where a
-                // reader looks first. aria-expanded and aria-controls say so, so a screen reader is
-                // not told about two unrelated buttons that happen to do the same thing.
+                // below instead, deliberately the same control as "Vis datakilde" further down.
                 builder.OpenElement(5, "button");
                 builder.AddAttribute(6, "class", "hd-button-reset munin-explorer-crumb");
                 builder.AddAttribute(7, "type", "button");
@@ -281,7 +276,8 @@ public partial class VariableSearch
         public static KodeverkKey Of(KodeverkLink link) => new(link.KodeverkType, link.KodeverkReference);
     }
 
-    // Guarded on the same predicate, and for the reason ToggleDetailFromRowHeadingAsync is.
+    // Guarded on the second click of a double-click — the clause RowPress calls out, and the only
+    // one of its three tellable here, since this control keeps no press of its own.
     private Task ToggleCodesFromControlAsync(KodeverkLink link, MouseEventArgs released) =>
         released.Detail > 1 ? Task.CompletedTask : ToggleCodesAsync(link);
 
