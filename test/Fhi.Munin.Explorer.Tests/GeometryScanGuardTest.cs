@@ -47,19 +47,23 @@ public class GeometryScanGuardTest
     [Fact]
     public void TheCaller_WhenItNamesAssertions_ThenEachOneAppliesToTheStateItMeasures()
     {
-        // The second false green, in the one place it can actually happen: the reflow run drives a
-        // single target, so a chosen assertion scoped elsewhere is an assertion that never runs.
-        var state = ReflowState;
+        // The second false green: an assertion scoped away from a state is an assertion that never
+        // runs there. Asked of every target, because a run that measures in one state and prints
+        // n/a in the other still exits 0 having measured nothing in the state somebody added.
+        Assert.NotEmpty(ReflowTargets);
 
-        foreach (var name in Chosen)
+        foreach (var (path, state) in ReflowTargets)
         {
-            var scopes = Assertions[name];
+            foreach (var name in Chosen)
+            {
+                var scopes = Assertions[name];
 
-            Assert.True(
-                scopes is null || scopes.Contains(state),
-                $"check-accessibility.sh measures {ReflowTarget} at 320px and asks for '{name}', "
-                + $"which is only measured in {string.Join(", ", scopes ?? [])}. It would print "
-                + "n/a there and measure nothing.");
+                Assert.True(
+                    scopes is null || scopes.Contains(state),
+                    $"check-accessibility.sh measures {path}::{state} at 320px and asks for "
+                    + $"'{name}', which is only measured in {string.Join(", ", scopes ?? [])}. It "
+                    + "would print n/a there and measure nothing.");
+            }
         }
     }
 
@@ -150,18 +154,16 @@ public class GeometryScanGuardTest
     /// <summary>The names <c>check-accessibility.sh</c> passes to the 320px run.</summary>
     private static IReadOnlyList<string> Chosen => Caller.Value.Names;
 
-    /// <summary>The <c>path::state</c> that run measures.</summary>
-    private static string ReflowTarget => $"{Caller.Value.Path}::{Caller.Value.State}";
-
-    /// <summary>The state that run drives the page into, which every scoping question is about.</summary>
-    private static string ReflowState => Caller.Value.State;
+    /// <summary>Every <c>path::state</c> that run measures, in the order the script declares them.</summary>
+    private static IReadOnlyList<(string Path, string State)> ReflowTargets => Caller.Value.Targets;
 
     private static readonly Lazy<IReadOnlyDictionary<string, IReadOnlyList<string>?>> KnownAssertions =
         new(ReadAssertions);
 
     private static readonly Lazy<IReadOnlyList<string>> KnownStates = new(ReadStates);
 
-    private static readonly Lazy<(IReadOnlyList<string> Names, string Path, string State)> Caller = new(ReadCaller);
+    private static readonly Lazy<(IReadOnlyList<string> Names, IReadOnlyList<(string Path, string State)> Targets)>
+        Caller = new(ReadCaller);
 
     /// <summary>
     /// The assertion names and their <c>states:</c> scoping, read out of the source rather than
@@ -212,35 +214,43 @@ public class GeometryScanGuardTest
     /// What the 320px run in <c>check-accessibility.sh</c> asks for, read off the script. The
     /// <c>::</c> is part of the pattern rather than something split off after: a target without one
     /// leaves no state, and every scoping check below would then pass having compared nothing.
+    ///
+    /// Every <c>REFLOW*_TARGET</c> the script declares, not the first: the run grew a second one
+    /// under <c>Fhi.Metadata-kvgu7</c> and a pattern pinned to <c>REFLOW_TARGET</c> alone left it
+    /// outside every check here, which is the false green this class exists for.
     /// </summary>
-    private static (IReadOnlyList<string> Names, string Path, string State) ReadCaller()
+    private static (IReadOnlyList<string> Names, IReadOnlyList<(string Path, string State)> Targets) ReadCaller()
     {
         var source = File.ReadAllText(Repo.In("scripts", "check-accessibility.sh"));
         var assertions = Regex.Match(source, @"GEOMETRY_ASSERTIONS='(?<names>[^']*)'");
-        var target = Regex.Match(
+        var targets = Regex.Matches(
             source,
-            @"^REFLOW_TARGET=""(?<path>[^"":]*)::(?<state>[^""]+)""",
+            @"^REFLOW[A-Z_]*_TARGET=""(?<path>[^"":]*)::(?<state>[^""]+)""",
             RegexOptions.Multiline);
 
         Assert.True(
-            assertions.Success && target.Success,
+            assertions.Success && targets.Count > 0,
             "check-accessibility.sh no longer has a GEOMETRY_ASSERTIONS='...' run driving a "
             + "REFLOW_TARGET=\"path::state\", so these checks are reading a script that has moved "
             + "on. A REFLOW_TARGET naming no state would measure the page as it first paints.");
 
-        var state = target.Groups["state"].Value;
+        var found = targets
+            .Select(match => (Path: match.Groups["path"].Value, State: match.Groups["state"].Value))
+            .ToList();
 
-        Assert.True(
-            KnownStates.Value.Contains(state),
-            $"check-accessibility.sh measures the state '{state}', which axe-states.mjs does not "
-            + $"define. It defines:{Environment.NewLine}  "
-            + string.Join(Environment.NewLine + "  ", KnownStates.Value));
+        foreach (var (_, state) in found)
+        {
+            Assert.True(
+                KnownStates.Value.Contains(state),
+                $"check-accessibility.sh measures the state '{state}', which axe-states.mjs does "
+                + $"not define. It defines:{Environment.NewLine}  "
+                + string.Join(Environment.NewLine + "  ", KnownStates.Value));
+        }
 
         return (
             assertions.Groups["names"].Value
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
-            target.Groups["path"].Value,
-            state);
+            found);
     }
 }
 

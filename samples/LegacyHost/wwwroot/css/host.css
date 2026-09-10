@@ -131,7 +131,8 @@ body {
 /* ======================================================================
    Stiler stand-in — everything from here down to the first "not Stiler"
    divider is one of Fhi.Helsedata.Stiler's own components, and Stiler's
-   job in the real host. Past that divider comes the rest of what a host
+   job in the real host, save for the one rule marked NOT STILER in place
+   at the selection ribbon. Past that divider comes the rest of what a host
    owes the component: the result vocabulary, which is ours and which
    Stiler carries under components/munin-explorer/ — it was read
    back off helsedata's `variables.css` while the component still wore
@@ -290,23 +291,14 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 /* ---- the selection ribbon ----
 
-   Handover, then reset, then count — the order the markup writes them in, and the order is what
-   keeps the row still. Everything that comes and goes sits to the right of everything that does
-   not, so ticking a row never moves a control the reader is aiming at.
-
-   The min-width is the load-bearing declaration and the only one a host cannot infer. The
-   handover's label is one of three, they are different lengths, and the widest is English's
-   "Explore variables for this selection" — so without a floor the button resizes on the first
-   tick and drags the reset and the count with it. 21rem clears that label at the sample's own
-   font size; a host on Stiler's Graphik should measure its own rather than copy the number.
+   Handover, then reset, then count — the order the markup writes them in. Everything that comes
+   and goes sits to the right of everything that does not, so ticking a row adds the reset without
+   pushing the handover off the left edge. The handover itself resizes across its three labels:
+   Stiler weighed a width floor and declined it, so nothing holds it still (Fhi.Metadata-kvgu7).
 
    Not a grid with equal columns, which is what this was before. Equal widths made the reset as
    wide as the handover and gave the count a column it had no use for; what was actually wanted
-   is one button that never moves and everything else flowing after it.
-
-   The floor is min() because CSS resolves max-width before min-width, so the `max-width: 100%`
-   beside it cannot bring a fixed floor down. Compound with hd-button-square, which is later here
-   and would otherwise win back its nowrap and its fixed height (Fhi.Metadata-l9l2n.65). */
+   is one button holding the left edge and everything else flowing after it. */
 .munin-explorer-selection {
   display: flex;
   flex-wrap: wrap;
@@ -315,10 +307,20 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   margin-bottom: 16px;
 }
 
-.munin-explorer-selection__explore.hd-button-square {
-  min-width: min(21rem, 100%);
-  max-width: 100%;
-  justify-content: center;
+/* NOT STILER — invented here, and the only rule in this region that is. An exception marked in
+   place rather than a new region: the stand-in resumes at hd-button-square immediately below.
+
+   hd-button-square is nowrap at a fixed height, so the handover's longest label spills out of its
+   own box and scrolls the page sideways at 320px (WCAG 1.4.10, Fhi.Metadata-l9l2n.65). Three
+   classes, so it outranks the bare one below whatever the source order.
+
+   Stiler PR 39205 declined a width floor for this button and shipped nothing for the wrap, so
+   `Fhi.Metadata-s4es0` is the bead that has to carry the real rule and helsedata.no keeps the
+   overflow until it does. Nothing here can tell you that: a selector only the samples have is
+   outside what assert-sample-css-matches-stiler.sh compares, so its silence about this rule is
+   not agreement — test/sample-css-known-divergences.txt says so under its own heading, naming
+   this button's old floor as the last time a sample-only rule was read as Stiler parity. */
+.munin-explorer .munin-explorer-selection .hd-button-square {
   white-space: normal;
   height: auto;
   min-height: 2.75rem;

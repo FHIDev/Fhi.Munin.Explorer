@@ -47,6 +47,11 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # One of them is visited twice: REFLOW_TARGET is scanned by axe with the rest, and measured again
 # at 320px at the end of this script. Named once, so a rename in axe-states.mjs lands in one place.
 REFLOW_TARGET="/kilder::kilder-list"
+
+# Measured at 320px but NOT scanned by axe: the ribbon's widest state is a geometry question, and
+# the boxes are what a nowrap handover breaks. Its own variable so the run below reads as two
+# states of one page rather than a list. (Fhi.Metadata-kvgu7)
+REFLOW_TICKED_TARGET="/kilder::kilder-ticked"
 TARGETS=(
   "/::variables-list"
   "$REFLOW_TARGET"
@@ -180,8 +185,10 @@ if [ "$scan_status" -eq 2 ]; then
 fi
 
 # WCAG 1.4.10 Reflow is stated at 320px and nothing here measured any page there: geometry-scan.mjs
-# drives six widths and the narrowest is 843. One page, the kildeutforsker, in a state that waits
-# for a row, so an empty page fails as TOOLING rather than fitting 320 with nothing in it.
+# drives six widths and the narrowest is 843. One page, the kildeutforsker, in two states, both
+# waiting for a row so an empty page fails as TOOLING rather than fitting 320 with nothing in it.
+# The second state ticks one: the ribbon is widest there, and the untouched page fits 320 whether
+# or not the handover can wrap.
 #
 # Three of the ten assertions. Four of the seven left out were measured here first; the other
 # three are scoped to the explorer-* states and cannot be measured on this one. Which and why:
@@ -191,7 +198,7 @@ echo "==> measuring the reflow width WCAG 1.4.10 names"
 set +e
 GEOMETRY_WIDTHS=320 \
 GEOMETRY_ASSERTIONS='no horizontal overflow,hidden means hidden,text a reader is meant to see has a box to see it in' \
-  node "$ROOT/scripts/geometry-scan.mjs" "${BASE}${REFLOW_TARGET}"
+  node "$ROOT/scripts/geometry-scan.mjs" "${BASE}${REFLOW_TARGET}" "${BASE}${REFLOW_TICKED_TARGET}"
 reflow_status=$?
 set -e
 
@@ -240,7 +247,7 @@ ships into, and automated checking cannot see missing structure at all. A green 
 evidence of no detected regression, and nothing more.
 
 The 320px measurement is narrower still: three of the ten assertions, on one page, in
-one state. Every other width and every other assertion belongs to check-hostile-host.sh.
+two states. Every other width and every other assertion belongs to check-hostile-host.sh.
 
 Why, at length: AGENTS.md, "Accessibility is a requirement, not a preference".
 EOF

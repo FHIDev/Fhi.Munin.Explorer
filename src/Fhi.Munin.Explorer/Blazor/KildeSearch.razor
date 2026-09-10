@@ -502,10 +502,10 @@ else
     @if (Selectable && (visible.Count > 0 || TickedCount > 0))
     {
         @* Handover, then reset, then count: everything that comes and goes is to the right of
-           everything that does not, so ticking a row moves nothing the reader is aiming at. The
-           handover's width is held by a host rule, since its label is one of three. (Fhi.Metadata-5ghur) *@
+           everything that does not, so the reset arrives without displacing the handover. The
+           handover resizes across its labels; Stiler declined a floor. (Fhi.Metadata-kvgu7) *@
         <div class="munin-explorer-selection">
-            <button class="hd-button-square button-square--primary munin-explorer-selection__explore"
+            <button class="hd-button-square button-square--primary"
                     type="button"
                     @onclick="() => ExploreVariablesAsync(visible)">@ExploreLabel</button>
 
