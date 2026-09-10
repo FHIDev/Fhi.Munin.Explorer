@@ -13,18 +13,63 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </remarks>
 internal static class LiveCatalogue
 {
-    /// <summary>The kilde with the most delkilder, whose payload exercises the nested half of the contract.</summary>
-    /// <remarks>Most kilder have none, so the first in the list would leave that half unchecked on almost every run.</remarks>
-    public static async Task<Guid> MostNestedKildeIdAsync(LiveApiConnection api)
+    /// <summary>The kilde carrying the most delkilder, whose detail payload exercises the nested half.</summary>
+    /// <remarks>
+    /// Filtered rather than only sorted, so a catalogue with none anywhere fails saying so instead
+    /// of handing back a kilde without any. Measured 2026-09-10: four of the 98 report one.
+    /// </remarks>
+    public static async Task<Guid> KildeWithDelkilderIdAsync(LiveApiConnection api)
     {
         var kilder = await api.Client.GetKilderAsync();
 
         Assert.NotEmpty(kilder);
 
-        return kilder.OrderByDescending(kilde => kilde.DelkildeCount)
-                     .ThenByDescending(kilde => kilde.DatasamlingCount)
-                     .First()
-                     .Id;
+        var kilde = kilder.Where(candidate => candidate.DelkildeCount > 0)
+                          .OrderByDescending(candidate => candidate.DelkildeCount)
+                          .ThenByDescending(candidate => candidate.DatasamlingCount)
+                          .FirstOrDefault();
+
+        Assert.True(
+            kilde is not null,
+            $"None of the {kilder.Count} kilder reports a delkilde, so no KildeDetail payload here has " +
+            "the nested half this asks about. Either the catalogue changed shape or delkildeCount " +
+            "stopped being set.");
+
+        return kilde!.Id;
+    }
+
+    /// <summary>The first datasamling reachable from a kilde's hierarchy, richest kilde first.</summary>
+    /// <remarks>
+    /// A count is not a tree: measured 2026-09-10, three of the 63 kilder reporting datasamlingCount
+    /// above zero serve a hierarchy with none in it, so this fetches until one really carries some.
+    /// </remarks>
+    public static async Task<Guid> AnyDatasamlingIdAsync(LiveApiConnection api)
+    {
+        var kilder = await api.Client.GetKilderAsync();
+
+        Assert.NotEmpty(kilder);
+
+        var candidates = kilder.Where(candidate => candidate.DatasamlingCount > 0)
+                               .OrderByDescending(candidate => candidate.DatasamlingCount)
+                               .ToList();
+
+        foreach (var candidate in candidates)
+        {
+            var hierarchy = await api.Client.GetKildeHierarchyAsync(candidate.Id);
+            var datasamlingId = hierarchy is null ? Guid.Empty : DatasamlingIds(hierarchy).FirstOrDefault();
+
+            if (datasamlingId != Guid.Empty)
+            {
+                return datasamlingId;
+            }
+        }
+
+        Assert.Fail(
+            $"None of the {candidates.Count} kilder reporting a datasamling has one anywhere in its " +
+            $"hierarchy, out of {kilder.Count} in the catalogue, so there is nothing to open. Either the " +
+            "catalogue changed shape or the hierarchy endpoint stopped returning children.");
+
+        return default;
     }
 
     public static async Task<Guid> AnyVariableIdAsync(LiveApiConnection api)
@@ -66,7 +111,7 @@ internal static class LiveCatalogue
     }
 
     /// <summary>Every datasamling in the tree, direct ones first, then down through the delkilder.</summary>
-    public static IEnumerable<Guid> DatasamlingIds(KildeHierarchy hierarchy) =>
+    private static IEnumerable<Guid> DatasamlingIds(KildeHierarchy hierarchy) =>
         hierarchy.DirectDatasamlinger.Select(datasamling => datasamling.Id)
             .Concat(hierarchy.Delkilder.SelectMany(DatasamlingIds));
 

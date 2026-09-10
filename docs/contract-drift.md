@@ -32,8 +32,10 @@ one of ours, so there is nothing here to trigger on.
 One representative response from every endpoint the component calls, fetched through the real
 `IMuninExplorerClient` — the URLs and the query strings are part of what can drift, so a test that
 spelled them out itself would keep passing after the client stopped working. Ids come from the API
-too: the kilde with the most delkilder, a variable from the first page of a search. A hard-coded
-id is a kilde somebody can unpublish.
+too: a kilde with delkilder, a datasamling found by walking hierarchies until one really carries
+some, a variable from the first page of a search. A hard-coded id is a kilde somebody can
+unpublish, and a count is not a tree — some kilder report `datasamlingCount` above zero and serve
+a hierarchy with none in it.
 
 Each response is round-tripped — deserialised into the DTO, serialised straight back — and the two
 documents are compared by shape rather than by value. Values are today's data; keys are the

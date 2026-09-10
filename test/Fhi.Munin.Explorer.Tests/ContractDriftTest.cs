@@ -142,10 +142,10 @@ public class ContractDriftTest
     {
         using var api = LiveApiConnection.Open();
 
-        // The kilde with the most delkilder, because the nested half of KildeDetail only exists in
-        // the payload of a kilde that has some — and most do not. Picking the first kilde in the
-        // list would leave that half unchecked on almost every run.
-        var id = await LiveCatalogue.MostNestedKildeIdAsync(api);
+        // A kilde with delkilder, because the nested half of KildeDetail only exists in the payload
+        // of a kilde that has some — and almost none do. Picking the first kilde in the list would
+        // leave that half unchecked on almost every run.
+        var id = await LiveCatalogue.KildeWithDelkilderIdAsync(api);
 
         var kilde = await api.RoundTripAsync(client => client.GetKildeAsync(id));
 
@@ -157,7 +157,7 @@ public class ContractDriftTest
     {
         using var api = LiveApiConnection.Open();
 
-        var id = await LiveCatalogue.MostNestedKildeIdAsync(api);
+        var id = await LiveCatalogue.KildeWithDelkilderIdAsync(api);
 
         var hierarchy = await api.RoundTripAsync(client => client.GetKildeHierarchyAsync(id));
 
@@ -169,17 +169,7 @@ public class ContractDriftTest
     {
         using var api = LiveApiConnection.Open();
 
-        var kildeId = await LiveCatalogue.MostNestedKildeIdAsync(api);
-        var hierarchy = await api.Client.GetKildeHierarchyAsync(kildeId);
-
-        Assert.NotNull(hierarchy);
-
-        var datasamlingId = LiveCatalogue.DatasamlingIds(hierarchy).FirstOrDefault();
-
-        Assert.True(
-            datasamlingId != Guid.Empty,
-            $"Kilde {kildeId} has no datasamling anywhere in its tree, so there is nothing to open. " +
-            "Either the catalogue changed shape or the hierarchy endpoint stopped returning children.");
+        var datasamlingId = await LiveCatalogue.AnyDatasamlingIdAsync(api);
 
         var datasamling = await api.RoundTripAsync(client => client.GetDatasamlingAsync(datasamlingId));
 
