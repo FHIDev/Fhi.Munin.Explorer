@@ -261,6 +261,18 @@ the difference between a suite and a changelog with an exit code. It found two f
 its first run (`Fhi.Metadata-l9l2n.41`, `Fhi.Metadata-l9l2n.42`), both in Stiler rather than here,
 and both invisible to everything else we run.
 
+**And it measures one width axe never looks at.** WCAG 1.4.10 Reflow is stated at 320px, and
+nothing in this repository measured any page there: `scripts/geometry-scan.mjs` drives six widths
+and the narrowest is 843. `check-accessibility.sh` now ends by measuring one document width on
+ModernHost's `/kilder` at 320 and failing on horizontal overflow, which is the rendered form of a
+gap unit tests could only pin as text — the explore button's width floor overflowed the page by
+87px before `Fhi.Metadata-l9l2n.65`, and `KildeSelectionTest` can say the declaration is there and
+not that the page fits. Read it for exactly what it is: one assertion, one page, one state, against
+the sample stylesheet. The pinned-Stiler pages are still unmeasured at 320, and adding the width to
+`GEOMETRY_WIDTHS` waits on `Fhi.Metadata-hfzsu` — 82px of helsedata's own site chrome overflows
+there on every page of theirs, so a gate that included it would be red on every pull request for a
+defect this repository cannot fix, and a gate nobody can get green is one somebody deletes.
+
 **It scans states, not only pages.** A page in its default state is not the page a reader uses,
 and for a while the default state was the whole of this check: the level lines shipped at 1.16:1
 against WCAG 1.4.11's 3:1, invisible on a desktop, with this job green — because the lines only

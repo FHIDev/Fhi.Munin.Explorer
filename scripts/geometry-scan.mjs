@@ -46,8 +46,9 @@ const settleMs = Number(process.env.ACCESSIBILITY_SETTLE_MS ?? 4000);
 // min-content plus 48px of page air is 827, so 843 of viewport is the last width that fits and
 // everything under it needs the table's own scroll box.
 //
-// 320 is missing, and it is the width WCAG 1.4.10 Reflow names. It is absent because nobody has
-// measured this page there against pinned Stiler yet; Fhi.Metadata-hxtir is where that happens.
+// 320 is the width WCAG 1.4.10 Reflow names, and it IS measured - by check-accessibility.sh, one
+// document width on ModernHost's /kilder. It is not in this default because that would measure the
+// pinned-Stiler pages too, and those overflow at 320 for a reason only Fhi.Metadata-hfzsu can fix.
 const widths = (process.env.GEOMETRY_WIDTHS ?? '1689,1440,1281,1280,1024,843')
   .split(',')
   .map(w => Number(w.trim()))
@@ -57,6 +58,33 @@ if (targets.length === 0 || widths.length === 0) {
   console.error('usage: node geometry-scan.mjs <url|url::state> [...]');
   console.error(`known states: ${Object.keys(states).join(', ')}`);
   process.exit(2);
+}
+
+// GEOMETRY_ASSERTIONS names the subset to run, comma-separated, and has one caller:
+// check-accessibility.sh measures ModernHost, which draws no host chrome, so the header invariant
+// there would report the fixture rather than the page. Unset runs all of them.
+const chosen = (process.env.GEOMETRY_ASSERTIONS ?? '')
+  .split(',')
+  .map(name => name.trim())
+  .filter(name => name.length > 0);
+
+// A name that matches nothing would run an empty suite and report success, which is the false
+// green this file exists to end.
+for (const name of chosen) {
+  if (assertions.some(assertion => assertion.name === name)) continue;
+  console.error(`unknown assertion "${name}" - TOOLING failure.`);
+  console.error(`known assertions: ${assertions.map(assertion => assertion.name).join('; ')}`);
+  process.exit(2);
+}
+
+const applicable = chosen.length === 0
+  ? assertions
+  : assertions.filter(assertion => chosen.includes(assertion.name));
+
+// Said out loud, because a subset run is not the suite and a reader of the output has no other way
+// to tell the two apart.
+if (chosen.length > 0) {
+  console.log(`==> ASSERTIONS: ${applicable.length} of ${assertions.length}: ${chosen.join('; ')}`);
 }
 
 // Parsed before a browser starts, so a typo in a state name is a message rather than a run that
@@ -139,7 +167,7 @@ try {
         await page.waitForTimeout(250);
       }
 
-      for (const { name, kind, states: appliesTo, body } of assertions) {
+      for (const { name, kind, states: appliesTo, body } of applicable) {
         // Printed, never skipped silently. A pin whose defect cannot occur here is not a pass,
         // and a run that reported it as one would be the thing this suite exists to prevent.
         if (appliesTo !== undefined && !appliesTo.includes(state)) {
@@ -192,10 +220,14 @@ try {
 
 console.log('');
 const notRun = inapplicable === 0 ? '' : `, and ${inapplicable} did not apply`;
+const subset = chosen.length === 0
+  ? ''
+  : ` Only ${applicable.length} of ${assertions.length} assertions were asked for, so this says` +
+    ' nothing about the rest.';
 if (failures > 0) {
-  console.log(`${failures} geometry assertion(s) failed${notRun}.`);
+  console.log(`${failures} geometry assertion(s) failed${notRun}.${subset}`);
 } else {
-  console.log(`every geometry assertion that applies held${notRun}.`);
+  console.log(`every geometry assertion that applies held${notRun}.${subset}`);
 }
 
 process.exit(failures > 0 ? 1 : 0);

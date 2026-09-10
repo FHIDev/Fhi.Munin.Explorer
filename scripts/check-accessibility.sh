@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
-# Runs axe against the ModernHost sample and fails on any violation. A green run means no
+# Runs axe against the ModernHost sample and fails on any violation, then measures one page at
+# 320px - the width WCAG 1.4.10 Reflow names, which no other gate here visits. A green run means no
 # DETECTED regression and nothing more; what this gate is blind to is in AGENTS.md under
 # "Accessibility is a requirement, not a preference". Read it before quoting a pass.
 #
@@ -172,14 +173,36 @@ if [ "$scan_status" -eq 2 ]; then
   exit 2
 fi
 
+# WCAG 1.4.10 Reflow is stated at 320px and nothing here measured any page there: geometry-scan.mjs
+# drives six widths and the narrowest is 843. One document width on the kildeutforsker, in a state
+# that waits for a row, so an empty page fails as TOOLING rather than fitting 320 with nothing in it.
+#
+# One named assertion rather than the suite: the rest are written for HostileHost, where a
+# `.main-header` sits over the content, and this host draws no chrome for them to measure. The
+# pinned-Stiler half of this width waits on Fhi.Metadata-hfzsu (Fhi.Metadata-hxtir).
+echo
+echo "==> measuring the reflow width WCAG 1.4.10 names"
+set +e
+GEOMETRY_WIDTHS=320 GEOMETRY_ASSERTIONS='no horizontal overflow' \
+  node "$ROOT/scripts/geometry-scan.mjs" "${BASE}/kilder::kilder-list"
+reflow_status=$?
+set -e
+
+[ "$reflow_status" -eq 2 ] && exit 2
+
 violations=0
 [ "$scan_status" -ne 0 ] && violations=1
+[ "$reflow_status" -ne 0 ] && violations=1
 
 echo
 if [ "$violations" -ne 0 ]; then
   cat >&2 <<'EOF'
-Accessibility violations found. See the axe output above; each entry names the rule,
-the element and a link to the fix.
+Accessibility violations found. See the output above; an axe entry names the rule, the
+element and a link to the fix, and a geometry failure names what was measured against what
+was expected.
+
+A failure at 320px is WCAG 1.4.10 Reflow: the page scrolls sideways at the width the
+success criterion names, and no reader on a phone can get to what is off the edge.
 
 Before you reach for a suppression: this gate is deliberately narrow, so a violation it
 DID catch is very unlikely to be a false positive.
@@ -188,11 +211,14 @@ EOF
 fi
 
 cat <<'EOF'
-No violations detected.
+No violations detected, and the kildeutforsker fits 320px.
 
 Read that literally. This gate sees the sample stylesheet, not the one the component
 ships into, and automated checking cannot see missing structure at all. A green run is
 evidence of no detected regression, and nothing more.
+
+The 320px measurement is narrower still: one document width, on one page, in one state.
+Every other width and every other assertion belongs to check-hostile-host.sh.
 
 Why, at length: AGENTS.md, "Accessibility is a requirement, not a preference".
 EOF
