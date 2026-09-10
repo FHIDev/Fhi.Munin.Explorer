@@ -278,8 +278,8 @@ else
             <legend class="form-element__label">@T.FiltersTitle</legend>
 
             @* The toolbar. Utvid alle and Skjul alle do the one thing a native disclosure cannot do
-               for itself; Nivålinjer is a toggle and says so with aria-pressed. None of the three
-               narrows anything, which is why none is a checkbox — the facet values are. *@
+               for itself; Nivålinjer is a switch and says so with role and aria-checked. None of the
+               three narrows anything, which is why none is a checkbox — the facet values are. *@
             @* Own container: in inline flow the last button's trailing margin was the whole overflow,
                and `gap` leaves nothing trailing. The buttons shrink and wrap their own labels rather
                than the row breaking, so it survives a wider label. (Fhi.Metadata-l9l2n.37) *@
@@ -290,10 +290,14 @@ else
                 <button class="hd-button-square button-square--ghost"
                         type="button"
                         @onclick="() => FoldAll(false)">@T.CollapseAllFacets</button>
-                <button class="@LevelLinesClass"
+                @* aria-checked and no modifier class beside it: two sources for one state is how a
+                   control ends up drawn on and announced off. The name stands alone — with
+                   hd-button-square beside it the toolbar's own rule collapses it. (Fhi.Metadata-l9l2n.87) *@
+                <button class="munin-explorer-switch"
                         type="button"
-                        aria-pressed="@(_levelLines ? "true" : "false")"
-                        @onclick="ToggleLevelLinesAsync">@T.LevelLines</button>
+                        role="switch"
+                        aria-checked="@(_levelLines ? "true" : "false")"
+                        @onclick="ToggleLevelLinesAsync"><span class="munin-explorer-switch__track" aria-hidden="true"><span class="munin-explorer-switch__thumb"></span></span>@T.LevelLines</button>
             </div>
 
             @* A fold press rewrites every disclosure in the panel and is otherwise silent — the same

@@ -302,6 +302,12 @@ These are not style preferences — each one is a host that breaks otherwise.
     is wanted after several facets are open does not scroll away with them. That half of the rule
     selects the row as a direct child of `munin-explorer-filters`, which is where both panels emit
     it, and a host that defines nothing loses the pinning rather than the buttons.
+    One thing about that rule is now load-bearing elsewhere: it selects `hd-button-square`, and
+    `Nivålinjer` deliberately no longer wears it. The switch carries `munin-explorer-switch` and
+    nothing else, because with the house classes beside it the toolbar's `min-width: 0` and
+    `overflow-wrap: anywhere` measured the control at 4.72×304.34px on the hostile-host rig — one
+    character wide, every letter on a line of its own, where 114.98×32 was wanted. A host writing
+    its own toolbar rule owes the switch the same exemption.
     The row of active-filter chips over the results adds three, all shared with that panel:
     `munin-explorer-filters__active` is the row, `munin-explorer-filters__chip` the capsule around
     one ticked value and `munin-explorer-filters__chip-remove` the close control inside it. Handles,
@@ -367,7 +373,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     else is dressing them. Undrawn, the run is a line of bare digits with no sign that the one you
     are on is the one you are on — the rule that marks `.current` is the only thing that says so.
     The square-button pair it wore before drew that for free, which is exactly why it is tempting
-    and exactly why helsedata's own pager does not use it. Last in this list
+    and exactly why helsedata's own pager does not use it. Next in this list
     is `munin-explorer-retry`, on the two retry buttons in the alert region: it draws their inert
     state, and it is the one name here that **no Stiler version carries yet, 0.1.14 included** —
     tracked as `Fhi.Metadata-x6vqc`. The buttons are never `disabled`, because that would drop the
@@ -377,6 +383,15 @@ These are not style preferences — each one is a host that breaks otherwise.
     looks exactly like one that works. That is a WCAG 2.1 AA problem rather than a cosmetic one, and
     it is the `skiplink-pagination` shape: both sample stylesheets have the rule, so the guard is
     green while the host the prefix exists for gets nothing.
+    The filter panel's `Nivålinjer` switch closes the list with two, `munin-explorer-switch__track`
+    and `munin-explorer-switch__thumb`, and they are here rather than among the handles for the reason
+    the period bar's are: both spans are empty, so an undrawn one is nothing at all and the on/off
+    state a sighted reader can see goes with it. The state itself is not lost — the control is a
+    `role="switch"` carrying `aria-checked`, so a screen reader announces it either way — and the
+    wrapper `munin-explorer-switch` is a handle, because undrawn it is still a browser-default
+    `<button>` with its label in it. What the rules draw is the 30×18 track and the 12×12 thumb
+    that travels 12px across it, and they hang on `aria-checked` rather than on a modifier class,
+    so the drawn state and the announced state cannot come apart.
 
   Ids are a separate family, each suffixed with a per-instance discriminator so two mounts on one
   page cannot collide: `munin-explorer-title-*`, `-search-*`, `-heading-*`, `-toggle-*`,
@@ -554,6 +569,9 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-skiplink-pagination` | handle |
   | `munin-explorer-source` | id |
   | `munin-explorer-statistics` | handle |
+  | `munin-explorer-switch` | handle |
+  | `munin-explorer-switch__thumb` | meaning |
+  | `munin-explorer-switch__track` | meaning |
   | `munin-explorer-version` | attribute |
   | `munin-explorer-versions` | handle |
   | `munin-explorer-versions__badge` | handle |

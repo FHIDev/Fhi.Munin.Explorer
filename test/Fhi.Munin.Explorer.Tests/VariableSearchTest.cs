@@ -1467,6 +1467,12 @@ public class VariableSearchTest : BunitContext
             // The toolbar row: a container of its own, because in inline flow the last button's
             // trailing margin counted against the line and the row broke apart under a scrollbar.
             "munin-explorer-filters__toolbar",
+            // Nivålinjer, the one switch in the component. It wears this name ALONE — the toolbar
+            // rule above selects hd-button-square, and the house classes beside this one squeezed
+            // the control to 4.72px wide on the rig. (Fhi.Metadata-l9l2n.87)
+            "munin-explorer-switch",
+            "munin-explorer-switch__track",
+            "munin-explorer-switch__thumb",
             // The number beside a facet value, in an element of its own so a host can dim it —
             // the same name the kilde explorer's facets wear. (Fhi.Metadata-cgk85)
             "munin-explorer-filters__count",
@@ -3728,6 +3734,36 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
+    public void Filter_Always_ThenNivalinjerIsANativeSwitchWearingItsOwnNameAlone()
+    {
+        // Three things at once, because all three are the contract Stiler's _switch.scss was
+        // written against and any one of them broken draws or announces the wrong thing.
+        //
+        // A native <button>, so Tab reaches it and Space activates it without a key handler of
+        // ours. Its own name and nothing else: `hd-button-square` beside it drops the control into
+        // the toolbar's `min-width: 0` rule, which measured it 4.72px wide on the rig. And the track
+        // and thumb aria-hidden, or the accessible name becomes the switch plus two empty spans.
+        // (Fhi.Metadata-l9l2n.87)
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        var switchControl = cut.Find(".munin-explorer-filters__toolbar [role=switch]");
+
+        Assert.Equal("BUTTON", switchControl.TagName);
+        Assert.Equal("button", switchControl.GetAttribute("type"));
+        Assert.Equal("munin-explorer-switch", switchControl.ClassName);
+        Assert.Equal("Nivålinjer", AccessibleName.Of(switchControl));
+
+        var track = switchControl.QuerySelector(".munin-explorer-switch__track")!;
+
+        Assert.Equal("true", track.GetAttribute("aria-hidden"));
+        Assert.NotNull(track.QuerySelector(".munin-explorer-switch__thumb"));
+
+        // aria-pressed and aria-checked on one element announce as two different states of the
+        // same control, and the Stiler rules key on the second.
+        Assert.False(switchControl.HasAttribute("aria-pressed"));
+    }
+
+    [Fact]
     public void Filter_WhenNothingIsPressed_ThenTheLevelLinesAreAlreadyOn()
     {
         // A reader who never finds the button still has to see the tree as a hierarchy, which is
@@ -3735,7 +3771,7 @@ public class VariableSearchTest : BunitContext
         var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
 
         Assert.Equal("true", FilterPanel(cut).GetAttribute("data-level-lines"));
-        Assert.Equal("true", Facet(cut, "Nivålinjer").GetAttribute("aria-pressed"));
+        Assert.Equal("true", Facet(cut, "Nivålinjer").GetAttribute("aria-checked"));
     }
 
     [Fact]
@@ -3752,15 +3788,15 @@ public class VariableSearchTest : BunitContext
         ClickFacet(cut, "Nivålinjer");
 
         // Off is the absence of the attribute rather than "false", so a host styles one selector.
-        // aria-pressed is the opposite and is always spelled out: a stuck "true" would go on
+        // aria-checked is the opposite and is always spelled out: a stuck "true" would go on
         // announcing the lines as on after they went off.
         Assert.Null(FilterPanel(cut).GetAttribute("data-level-lines"));
-        Assert.Equal("false", Facet(cut, "Nivålinjer").GetAttribute("aria-pressed"));
+        Assert.Equal("false", Facet(cut, "Nivålinjer").GetAttribute("aria-checked"));
 
         ClickFacet(cut, "Nivålinjer");
 
         Assert.Equal("true", FilterPanel(cut).GetAttribute("data-level-lines"));
-        Assert.Equal("true", Facet(cut, "Nivålinjer").GetAttribute("aria-pressed"));
+        Assert.Equal("true", Facet(cut, "Nivålinjer").GetAttribute("aria-checked"));
         Assert.Equal([false, true], reported);
     }
 
@@ -3773,7 +3809,7 @@ public class VariableSearchTest : BunitContext
                              b => b.Add(c => c.LevelLines, true));
 
         Assert.Equal("true", FilterPanel(cut).GetAttribute("data-level-lines"));
-        Assert.Equal("true", Facet(cut, "Nivålinjer").GetAttribute("aria-pressed"));
+        Assert.Equal("true", Facet(cut, "Nivålinjer").GetAttribute("aria-checked"));
     }
 
     [Fact]
@@ -3785,7 +3821,7 @@ public class VariableSearchTest : BunitContext
                              b => b.Add(c => c.LevelLines, false));
 
         Assert.Null(FilterPanel(cut).GetAttribute("data-level-lines"));
-        Assert.Equal("false", Facet(cut, "Nivålinjer").GetAttribute("aria-pressed"));
+        Assert.Equal("false", Facet(cut, "Nivålinjer").GetAttribute("aria-checked"));
     }
 
     [Fact]
@@ -10216,6 +10252,12 @@ public class VariableSearchTest : BunitContext
             // The toolbar row: a container of its own, because in inline flow the last button's
             // trailing margin counted against the line and the row broke apart under a scrollbar.
             "munin-explorer-filters__toolbar",
+            // Nivålinjer, the one switch in the component. It wears this name ALONE — the toolbar
+            // rule above selects hd-button-square, and the house classes beside this one squeezed
+            // the control to 4.72px wide on the rig. (Fhi.Metadata-l9l2n.87)
+            "munin-explorer-switch",
+            "munin-explorer-switch__track",
+            "munin-explorer-switch__thumb",
             // The chip row. This client answers the facet endpoint with nothing in it, so the
             // chosen kilde is named by no facet — and it still gets a chip, because the trail no
             // longer removes anything and every chosen value needs one. (Fhi.Metadata-oj286)
