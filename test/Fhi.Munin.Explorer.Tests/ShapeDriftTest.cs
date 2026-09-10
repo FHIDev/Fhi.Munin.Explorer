@@ -76,11 +76,9 @@ public class ShapeDriftTest
     [Fact]
     public void Between_WhenTheApiHasNotCaughtUpWithTheContract_ThenNothingDrifts()
     {
-        // An API older than the code reading it: this capture's datatype facets carry no
-        // displayName, and here the datakategori facet is taken away as well, so the contract
-        // declares two things the payload does not — one null, one empty list. That is the case the
-        // comparison must let through, because both are how a contract says "nothing here" and
-        // reporting them would make the job cry drift over a deployment that is merely behind.
+        // An API older than the code reading it: the datakategori facet is taken away, so the
+        // contract declares an empty list where the payload has nothing. That is the case the
+        // comparison must let through, or the job cries drift over a deployment merely behind.
         var live = Load("filters.json");
         live.AsObject().Remove("datakategorier");
 
