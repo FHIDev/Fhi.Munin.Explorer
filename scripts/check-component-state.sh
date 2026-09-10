@@ -60,22 +60,28 @@ cleanup() {
   done
   # `dotnet run` is a launcher: killing it leaves the app it started holding the port, and the next
   # run then refuses to start against an orphan it cannot see. Both forms, because neither is enough
-  # on its own - Git Bash's pkill does not match Windows process command lines. Scoped to the URL
-  # rather than to the project name, unlike check-hostile-host.sh: ModernHost is the everyday
-  # development host, so a bare `taskkill //IM` would take down a second worktree's run as well.
+  # on its own - Git Bash's pkill does not match Windows process command lines. Only when this run
+  # started a host: the patterns match a command line rather than anything of ours, and ModernHost
+  # on this port is as likely to be somebody's development session as our orphan.
+  [ -n "$host_pid" ] || return 0
   pkill -f "ModernHost.*${PORT}" 2>/dev/null || true
   if command -v powershell >/dev/null 2>&1; then
+    # `-ne $PID` excludes the powershell running this: its own command line carries the literal
+    # pattern text, which the wildcard matches, and a self-kill ends the pipeline before the
+    # orphan this exists to clear is necessarily reached.
     powershell -NoProfile -Command "Get-CimInstance Win32_Process |
-      Where-Object { \$_.CommandLine -like '*ModernHost*:${PORT}*' } |
+      Where-Object { \$_.ProcessId -ne \$PID -and \$_.CommandLine -like '*ModernHost*:${PORT}*' } |
       ForEach-Object { Stop-Process -Id \$_.ProcessId -Force }" >/dev/null 2>&1 || true
   fi
 }
-trap cleanup EXIT
 
 # Anything already answering on these ports is driven in place of what this run starts — an orphan
 # from a previous run is the usual case, and a green run that belongs to someone else's page is the
 # result. Worse here than in the sibling scans: this one ARMS a failure at the stub, so a stub that
 # is not ours would be handed one and never spend it.
+#
+# Before the trap is armed, so the one exit path that has established the process is somebody
+# else's does not then kill it - and kill it silently, having just asked them to stop it themselves.
 for occupied in "$BASE/" "${STUB_BASE}/api/explorer/kilder"; do
   if curl -fsS -o /dev/null --max-time 2 "$occupied" 2>/dev/null; then
     echo "something is already listening on ${occupied} - TOOLING failure." >&2
@@ -83,6 +89,8 @@ for occupied in "$BASE/" "${STUB_BASE}/api/explorer/kilder"; do
     exit 2
   fi
 done
+
+trap cleanup EXIT
 
 echo "==> starting the stub API on ${STUB_BASE}"
 node "$ROOT/scripts/axe-stub-api.mjs" "$STUB_PORT" >/tmp/state-stub.log 2>&1 &

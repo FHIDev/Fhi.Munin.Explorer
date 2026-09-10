@@ -413,7 +413,8 @@ jobs:
           key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
           restore-keys: nuget-${{ runner.os }}-
 
-      # Playwright brings its own browser; without a cache that is a download per run.
+      # The script runs `playwright install chromium` itself, as check-accessibility.sh does, since
+      # this job sets no PLAYWRIGHT_BROWSER_CHANNEL. A cache miss is a download, not a red run.
       - name: Cache the driver's browser
         uses: actions/cache@v6
         with:
