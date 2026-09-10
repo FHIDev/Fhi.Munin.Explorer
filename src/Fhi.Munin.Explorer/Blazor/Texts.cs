@@ -619,10 +619,10 @@ internal sealed record Texts(
     /// Prose for a kildetype token, falling back to what the API called it.
     /// </summary>
     /// <remarks>
-    /// A fallback rather than a throw, unlike <see cref="FieldLabel"/>: the tokens are Munin's
-    /// kildetype enum and a new member appearing there is a catalogue change, not a bug in this
-    /// component. The fallback is the API's own resolved label, in whichever language it answered,
-    /// where dropping the value would take a filter off the screen that the API is still counting.
+    /// A fallback rather than a throw, unlike <see cref="FieldLabel"/>: a new member of Munin's
+    /// kildetype enum is a catalogue change, not a bug here. The fallback is the caller's own — the
+    /// facet's resolved label, and the bare token wherever the token is all the payload carries —
+    /// and either beats dropping a filter the API is still counting. (Fhi.Metadata-iv9xp)
     /// </remarks>
     public string KildeTypeLabel(string? value, string? fallback)
     {

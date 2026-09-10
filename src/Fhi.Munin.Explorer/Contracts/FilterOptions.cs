@@ -68,9 +68,9 @@ public sealed record KildetypeFacet
     /// Label for the value, resolved by the API and in the request's language.
     /// </summary>
     /// <remarks>
-    /// This used to be the raw enum name — <c>SentraltHelseregister</c> — and the comment here used
-    /// to say a UI wanting prose had to supply its own. It does not: the endpoint resolves the label
-    /// and follows <c>Accept-Language</c>, so <c>sentraltHelseregister</c> arrives as
+    /// This used to be the raw enum name — <c>SentraltHelseregister</c> — so a UI wanting prose had
+    /// to supply its own. It no longer does: the endpoint resolves the label and follows
+    /// <c>Accept-Language</c>, so <c>sentraltHelseregister</c> arrives as
     /// <c>Sentralt helseregister</c> under <c>nb</c> and <c>Central health registry</c> under
     /// <c>en</c>. (<c>Fhi.Metadata-iv9xp</c>)
     /// <para>

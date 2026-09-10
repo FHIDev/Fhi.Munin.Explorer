@@ -381,8 +381,8 @@ public partial class VariableSearch
         var kilder = VisibleKilder(facets, delkilderByKilde);
 
         // The order the kildetype facet is in, so the headings here and the facet above agree.
-        // The API sorts that facet by the resolved displayName, so the order is the answering
-        // language's rather than the enum's — following it is what keeps the two in step.
+        // That order is the API's own, and against runa on 2026-09-10 it followed the resolved
+        // displayName — so it is the answering language's, not the enum's. (Fhi.Metadata-iv9xp)
         var kildeTypeOrder = facets.KildeTyper
             .Select((type, index) => (type.Value, Index: index))
             .ToDictionary(entry => entry.Value, entry => entry.Index, StringComparer.OrdinalIgnoreCase);

@@ -7,6 +7,9 @@ category: Changed
   a host that was reading it. Key off `Value`, which is unchanged and language-independent, wherever
   identity matters — `DisplayName` now differs between languages. And the facet list is ordered by
   that resolved label rather than by the value, so `kildeTyper` arrives in a different order in each
-  language; a host mirroring the API's order elsewhere on the page inherits that. Nothing this
-  package renders changed: `VariableSearch` looks its kildetype prose up by `Value` and only falls
-  back to `DisplayName`. (Fhi.Metadata-iv9xp)
+  language; a host mirroring the API's order elsewhere on the page inherits that. This package is
+  one such host. The words it puts on a kildetype are still its own, looked up by `Value` — those
+  did not change — but it draws the kildetype facet, and the kilde headings grouped under it, in
+  the order the API sent. Under `nb` that is the order it always was; an English mount now sorts
+  them by English prose, so `Central health registry` heads a list that `Other data source` used
+  to. (Fhi.Metadata-iv9xp)

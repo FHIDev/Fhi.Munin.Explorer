@@ -4220,15 +4220,41 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
-    public void Render_WhenTheApiNamesAKildetypeByItsEnumName_ThenTheButtonSaysItInProse()
+    public void Render_WhenAKildetypeArrivesWithAnUnresolvedDisplayName_ThenTheButtonSaysItInProse()
     {
-        // The enum name here is what displayName used to be; the API resolves it to prose now.
-        // Either way the label is looked up by value, so this pins that the component's own
-        // words win over whatever the API sent. (Fhi.Metadata-iv9xp)
+        // The fixture keeps the unresolved name on purpose. The API resolves displayName now, so a
+        // fixture carrying the resolved prose would read the same whether the lookup by value
+        // worked or the fallback simply echoed it. (Fhi.Metadata-iv9xp)
         var cut = RenderWith(new FilteringClient(OnePage()));
 
         Assert.NotNull(Facet(cut, "Sentralt helseregister"));
         Assert.DoesNotContain("SentraltHelseregister", cut.Find(".munin-explorer-filters").TextContent);
+    }
+
+    [Fact]
+    public void Render_WhenAKildetypeIsOutsideTheShippedTable_ThenTheFacetTakesTheApisWordsAndTheHeadingTheToken()
+    {
+        // The fallback is reachable — a member Munin adds to the enum is a catalogue change — and
+        // the two sites fall back to different things, since the grouping never reads KildeTyper.
+        // Two kildetyper, or the one group is lifted out of its heading. (Fhi.Metadata-1b0ag)
+        var cut = RenderWith(new FilteringClient(OnePage(), new FilterOptions
+        {
+            KildeTyper =
+            [
+                new() { Value = "nyKildetype", DisplayName = "Ny kildetype", Count = 4 },
+                new() { Value = "biobank", DisplayName = "Biobank", Count = 12 }
+            ],
+            Kilder =
+            [
+                new() { Id = Dodsarsak, Name = "Dødsårsaksregisteret", KildeType = "nyKildetype", Count = 4 },
+                new() { Id = Tromso, Name = "Tromsøundersøkelsen", KildeType = "biobank", Count = 12 }
+            ],
+            TotalCount = 16
+        }));
+
+        Assert.Equal("Ny kildetype (4)", Facet(cut, "Ny kildetype").TextContent);
+        Assert.Equal("nyKildetype",
+                     KildeTypeGroups(cut)[0].FirstElementChild!.ChildNodes[0].TextContent.Trim());
     }
 
     [Fact]
