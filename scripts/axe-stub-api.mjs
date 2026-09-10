@@ -60,6 +60,10 @@ bodies.set(listRoute, JSON.stringify([
     datasamlingCount: countCollections(study), delkildeCount: study.delkilder.length },
 ]));
 
+// filters.json is a newer snapshot than the captures beside it: its kilde facet and totalCount
+// describe a catalogue these other routes no longer serve. Left that way on purpose — nothing
+// here reads a facet id back out, and re-taking the corpus as one snapshot is its own job.
+
 // The one route whose fixture cannot be served verbatim. my-list-variables.json is a real capture:
 // 247 entries reported, two of them kept. Served as-is for every page, it says "page 1 of 3" every
 // time, and VariableListState walks every page of the active list — so the walk never advances and

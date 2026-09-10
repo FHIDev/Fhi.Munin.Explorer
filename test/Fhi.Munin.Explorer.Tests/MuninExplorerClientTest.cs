@@ -76,12 +76,13 @@ public class MuninExplorerClientTest
         Assert.Contains("ehds-cat:other", filters.DataCategories.Select(c => c.Value));
 
         // The delkilde facet carries its kilde. Variabelgrupper is the API's curated shortlist,
-        // which is empty with nothing chosen — see VariableSearch.FilterPanel's remarks on why the
-        // facet answers that with a message rather than an omission.
+        // empty with nothing chosen — FilterPanel's remarks say why that is a message rather than
+        // an omission, and its wire names are pinned below against a fixed payload.
         Assert.Empty(filters.Variabelgrupper);
         Assert.NotEqual(Guid.Empty, filters.Delkilder[0].KildeId);
 
-        // Kodeverk without a resolved name is expected, not a parse failure.
+        // Every kodeverk row in this capture has a resolved name. The null that an unreachable
+        // fhi.kodeverk sends instead is pinned below, for the same reason.
         Assert.Equal("3101", filters.AdministrativtKodeverk[0].Oid);
 
         // Only the lower bound is known in the test environment.
@@ -800,7 +801,7 @@ public class MuninExplorerClientTest
                      handler.LastUri?.AbsolutePath);
     }
 
-    // ------------------------------------------------- explicit nulls where a collection is due
+    // ------------------------------------------------- wire names the capture cannot pin
 
     [Fact]
     public async Task GetFiltersAsync_WhenTheAnswerCarriesDatasamlinger_ThenEveryWireNameIsRead()
@@ -841,6 +842,68 @@ public class MuninExplorerClientTest
         // The parent that decides which level the panel draws it under.
         Assert.Equal(new Guid("6f1d4a5c-0000-4000-8000-000000000011"), filters.Datasamlinger[1].DelkildeId);
     }
+
+    [Fact]
+    public async Task GetFiltersAsync_WhenTheAnswerCarriesVariabelgrupper_ThenEveryWireNameIsRead()
+    {
+        // The shortlist is empty with nothing chosen, so filters.json holds no row and no other
+        // payload here carries the facet at all. Nothing would notice a renamed parentId, and the
+        // group tree would rebuild flat once a datakilde is chosen and a shortlist arrives.
+        var filters = await WithJson("""
+            {
+              "variabelgrupper": [
+                {
+                  "id": "6f1d4a5c-0000-4000-8000-000000000201",
+                  "name": "Bakgrunn",
+                  "parentId": null,
+                  "count": 12
+                },
+                {
+                  "id": "6f1d4a5c-0000-4000-8000-000000000202",
+                  "name": "Utdanning",
+                  "parentId": "6f1d4a5c-0000-4000-8000-000000000201",
+                  "count": 3
+                }
+              ]
+            }
+            """).GetFiltersAsync();
+
+        Assert.Equal(2, filters.Variabelgrupper.Count);
+
+        var root = filters.Variabelgrupper[0];
+        Assert.Equal(new Guid("6f1d4a5c-0000-4000-8000-000000000201"), root.Id);
+        Assert.Equal("Bakgrunn", root.Name);
+        Assert.Null(root.ParentId);
+        Assert.Equal(12, root.Count);
+
+        // The parent the caller rebuilds the group tree from.
+        Assert.Equal(root.Id, filters.Variabelgrupper[1].ParentId);
+    }
+
+    [Fact]
+    public async Task GetFiltersAsync_WhenAKodeverkNameIsUnresolved_ThenTheRowIsReadWithANullName()
+    {
+        // Navn is nullable because fhi.kodeverk can be unreachable, and every row in filters.json
+        // has a resolved name since the re-capture. VariableSearchTest covers the rendering of a
+        // nameless kodeverk, but builds the facet in C#, so only this says the null parses.
+        var filters = await WithJson("""
+            {
+              "administrativtKodeverk": [
+                { "oid": "8485", "navn": null, "count": 2 },
+                { "oid": "3101", "navn": "Kjønn", "count": 7 }
+              ]
+            }
+            """).GetFiltersAsync();
+
+        var unresolved = filters.AdministrativtKodeverk[0];
+        Assert.Equal("8485", unresolved.Oid);
+        Assert.Null(unresolved.Name);
+        Assert.Equal(2, unresolved.Count);
+
+        Assert.Equal("Kjønn", filters.AdministrativtKodeverk[1].Name);
+    }
+
+    // ------------------------------------------------- explicit nulls where a collection is due
 
     [Fact]
     public async Task GetVariableAsync_WhenACollectionArrivesAsAnExplicitNull_ThenItIsReadAsEmpty()
