@@ -66,11 +66,12 @@ internal static class LiveCatalogue
         // Id last for a total order: two kilder tie on the count above it today, and which of them
         // the two drift suites compare a fixture against should be decided here rather than by the
         // order the API happened to list them in.
-        var candidates = kilder.Where(candidate => candidate.DatasamlingCount > 0)
+        var qualifying = kilder.Where(candidate => candidate.DatasamlingCount > 0)
                                .OrderByDescending(candidate => candidate.DatasamlingCount)
                                .ThenByDescending(candidate => candidate.Id)
-                               .Take(CandidateLimit)
                                .ToList();
+
+        var candidates = qualifying.Take(CandidateLimit).ToList();
 
         var unanswered = 0;
 
@@ -95,10 +96,15 @@ internal static class LiveCatalogue
             }
         }
 
+        // The bound is named because it is a cause of its own: read as "25 of 98" the message sends
+        // whoever picks the nightly issue up looking for a catalogue change, with no sign that the
+        // qualifying kilder past the twenty-fifth went untried.
         Assert.Fail(
             $"None of the {candidates.Count} kilder tried — those reporting the most datasamlinger, of " +
-            $"the {kilder.Count} in the catalogue — has one anywhere in its hierarchy, and {unanswered} " +
-            "of them served no hierarchy at all, so there is nothing to open. Either the catalogue " +
+            $"the {qualifying.Count} reporting any, of the {kilder.Count} in the catalogue, and " +
+            $"{nameof(CandidateLimit)} stops the walk at {CandidateLimit} — has one anywhere in its " +
+            $"hierarchy, and {unanswered} of them served no hierarchy at all, so there is nothing to " +
+            $"open. Either {nameof(CandidateLimit)} is now too small to reach one, the catalogue " +
             "changed shape, the hierarchy endpoint stopped returning children, or it stopped answering.");
 
         return default;
