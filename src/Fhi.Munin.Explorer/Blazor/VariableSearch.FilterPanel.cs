@@ -1097,11 +1097,12 @@ public partial class VariableSearch
     /// label — see KildeSearch.Filters.cs. Keyed because counts reorder the values between
     /// renders, and an unkeyed patch would move the box under the reader's finger. (Fhi.Metadata-j0a2h)
     /// <para>
-    /// <c>lang</c> goes on the element holding the words and never on the <c>&lt;li&gt;</c>, which
-    /// also holds the values nested under this one: <c>lang</c> inherits, so a kilde's Norwegian
-    /// would reach a child whose own <see cref="FacetValue.Language"/> is null and meant it. The
-    /// kildeutforsker's panel marks its labels the same way, and a name marked in its chip but not
-    /// on the checkbox that chip stands for would name one kilde two ways on one page.
+    /// <c>lang</c> goes on the <c>&lt;label&gt;</c>, which already holds the words, and never on
+    /// the <c>&lt;li&gt;</c>, which also holds the values nested under this one: <c>lang</c>
+    /// inherits, so a kilde's Norwegian would reach a child whose own
+    /// <see cref="FacetValue.Language"/> is null and meant it. The kildeutforsker's panel marks
+    /// its labels the same way, and a name marked in its chip but not on the checkbox that chip
+    /// stands for would name one kilde two ways on one page.
     /// </para>
     /// </remarks>
     private RenderFragment FacetList(IReadOnlyList<FacetValue> values) => builder =>
@@ -1126,22 +1127,22 @@ public partial class VariableSearch
 
             if (toggle is null)
             {
-                builder.OpenElement(23, "span");
-                builder.AddAttribute(24, "lang", value.Language);
+                // Bare text, so unmarked: no value reaches here with a language of its own, and an
+                // element to hang one on would be new structure in the panel — a munin-explorer
+                // name and a Stiler rule for it — bought for a marking nothing asks for yet.
                 builder.AddContent(2, value.Label);
-                builder.CloseElement();
             }
             else
             {
                 builder.OpenElement(3, "label");
-                builder.AddAttribute(25, "lang", value.Language);
-                builder.OpenElement(4, "input");
-                builder.AddAttribute(5, "type", "checkbox");
-                builder.AddAttribute(6, "checked", value.Selected);
+                builder.AddAttribute(4, "lang", value.Language);
+                builder.OpenElement(5, "input");
+                builder.AddAttribute(6, "type", "checkbox");
+                builder.AddAttribute(7, "checked", value.Selected);
 
                 // The event's own value is ignored: the toggle flips what the filter holds, which
                 // is the one state a press and the render after it are certain to agree about.
-                builder.AddAttribute(7, "onchange",
+                builder.AddAttribute(8, "onchange",
                                      EventCallback.Factory.Create<ChangeEventArgs>(this, _ => toggle()));
 
                 // What a plain onchange does not do and this panel needs: a press that ApplyFilterAsync
@@ -1150,17 +1151,17 @@ public partial class VariableSearch
                 builder.SetUpdatesAttributeName("checked");
 
                 builder.CloseElement();
-                builder.AddContent(8, value.Label);
+                builder.AddContent(9, value.Label);
 
                 // The space is a text node of the label, not the span's first character: a name is
                 // computed per element, so a space inside the span is trimmed off and the name
                 // announces as "Dødsårsaksregisteret(30)".
                 if (value.Count is { } count)
                 {
-                    builder.AddContent(9, " ");
-                    builder.OpenElement(10, "span");
-                    builder.AddAttribute(11, "class", "munin-explorer-filters__count");
-                    builder.AddContent(12, $"({count})");
+                    builder.AddContent(10, " ");
+                    builder.OpenElement(11, "span");
+                    builder.AddAttribute(12, "class", "munin-explorer-filters__count");
+                    builder.AddContent(13, $"({count})");
                     builder.CloseElement();
                 }
 
@@ -1169,7 +1170,7 @@ public partial class VariableSearch
 
             if (value.Children.Count > 0)
             {
-                builder.AddContent(13, FacetList(value.Children));
+                builder.AddContent(14, FacetList(value.Children));
             }
 
             builder.CloseElement();
@@ -1188,29 +1189,34 @@ public partial class VariableSearch
     /// summaries already carry, whose rule holds the tabular figures that stop a column of counts
     /// shivering as the facet is narrowed. (Fhi.Metadata-l9l2n.67)
     /// </para>
+    /// <para>
+    /// No <c>lang</c>: the one value drawn here is <see cref="KildeTypeHeading"/>, whose words are
+    /// the reader's own for the reason <see cref="KildeTypeValue"/> gives. The <c>&lt;summary&gt;</c>
+    /// holds the count as well, so a marking put on it would reach that too — this package's own
+    /// figure inside a foreign scope, which is the same defect one level down.
+    /// </para>
     /// </remarks>
     private void CollapsibleGroup(RenderTreeBuilder builder, FacetValue value)
     {
-        builder.OpenElement(14, "details");
-        builder.AddAttribute(15, "open", GroupOpen);
-        builder.OpenElement(16, "summary");
-        builder.AddAttribute(26, "lang", value.Language);
-        builder.AddContent(17, value.Label);
+        builder.OpenElement(15, "details");
+        builder.AddAttribute(16, "open", GroupOpen);
+        builder.OpenElement(17, "summary");
+        builder.AddContent(18, value.Label);
 
         // The space is a text node of the summary rather than the span's first character, for the
         // reason the value counts further up are: a name is computed per element, so a space inside
         // the span is trimmed off and the group announces as "Biobank12".
         if (value.Count is { } members)
         {
-            builder.AddContent(18, " ");
-            builder.OpenElement(19, "span");
-            builder.AddAttribute(20, "class", "munin-explorer-filters__chosen");
-            builder.AddContent(21, members.ToString(CultureInfo.CurrentCulture));
+            builder.AddContent(19, " ");
+            builder.OpenElement(20, "span");
+            builder.AddAttribute(21, "class", "munin-explorer-filters__chosen");
+            builder.AddContent(22, members.ToString(CultureInfo.CurrentCulture));
             builder.CloseElement();
         }
 
         builder.CloseElement();
-        builder.AddContent(22, FacetList(value.Children));
+        builder.AddContent(23, FacetList(value.Children));
         builder.CloseElement();
     }
 

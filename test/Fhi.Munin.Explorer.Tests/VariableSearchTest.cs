@@ -3233,6 +3233,25 @@ public class VariableSearchTest : BunitContext
         }
     ];
 
+    /// <summary>A vocabulary curating a label spelled exactly like the code it belongs to.</summary>
+    /// <remarks>
+    /// The one shape where "did the vocabulary curate a label?" and "is the label unlike the
+    /// value?" answer differently, and so the whole behavioural difference between
+    /// <see cref="CatalogueProperties.Option"/> and the comparison that used to stand in for it.
+    /// A code a vocabulary curates its own spelling of is a code that reads as a word — a CURIE
+    /// never does — and what reaches the screen is the catalogue's Norwegian either way.
+    /// </remarks>
+    private static IReadOnlyList<PropertyMetadataEntry> CategoryWordSpelledLikeItsCode() =>
+    [
+        new()
+        {
+            Key = "healthCategory",
+            OptionsJson = """
+                [{"value":"Prøvesamling","label":"Prøvesamling"}]
+                """
+        }
+    ];
+
     private static FilterOptions FacetsWith(
         IReadOnlyList<DataCategoryFacet>? categories = null, DateInterval? range = null) =>
         Facets() with { DataCategories = categories ?? [], DateRange = range };
@@ -5526,6 +5545,27 @@ public class VariableSearchTest : BunitContext
         ClickFacet(cut, "ehds-cat:biobanks");
 
         Assert.Null(ChipLang(cut, "ehds-cat:biobanks"));
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenTheCuratedLabelIsSpelledLikeItsCode_ThenItIsMarkedNorwegianAllTheSame()
+    {
+        // The only case where Curated and the label-vs-value comparison it replaced disagree, and
+        // the comparison had it backwards: a vocabulary that curates "Prøvesamling" as the label of
+        // the code "Prøvesamling" has said those words are the catalogue's Norwegian, and the
+        // comparison read them back as a bare token and left an English reader to hear them in
+        // English phonetics (WCAG 3.1.2). Pinned in both places the panel says it.
+        var cut = RenderWith(
+            new FilteringClient(OnePage(Variable("1. Tale", "KODE")),
+                                FacetsWith([new() { Value = "Prøvesamling", Count = 4 }]),
+                                vocabulary: CategoryWordSpelledLikeItsCode()),
+            b => b.Add(c => c.Language, "en"));
+
+        Assert.Equal("no", Facet(cut, "Prøvesamling").GetAttribute("lang"));
+
+        ClickFacet(cut, "Prøvesamling");
+
+        Assert.Equal("no", ChipLang(cut, "Prøvesamling"));
     }
 
     [Fact]

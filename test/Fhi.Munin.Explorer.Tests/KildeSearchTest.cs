@@ -3323,6 +3323,26 @@ public class KildeSearchTest : BunitContext
     }
 
     [Fact]
+    public void Facets_WhenTheCuratedLabelIsSpelledLikeItsCode_ThenItIsMarkedAsTheWordItIs()
+    {
+        // The mirror of the case above, and the one shape where "did the vocabulary curate a
+        // label?" and "is the label unlike the value?" disagree. The comparison answered this one
+        // wrongly: a vocabulary curating "Prøvesamling" as the label of the code "Prøvesamling"
+        // has said those words are its own Norwegian, and leaving them unmarked hands an English
+        // reader Norwegian in English phonetics — WCAG 3.1.2, the failure the marking exists for.
+        // Which of the two it was now comes off the option itself, and this is the difference.
+        var cut = RenderWith(
+            new FakeClient(Kilde("Als registeret", "K_ALS", category: """["Prøvesamling"]"""))
+                .Serving(Vocabulary("healthCategory", ("Prøvesamling", "Prøvesamling", null))),
+            b => b.Add(c => c.Language, "en"));
+
+        var kategori = Facet(cut, "Category");
+
+        Assert.Equal(["Prøvesamling (1)"], Choices(kategori));
+        Assert.Equal(["no"], Languages(kategori));
+    }
+
+    [Fact]
     public void Facets_WhenTheVocabularyCannotBeFetched_ThenTheChoicesKeepTheirTokensAndTheListIsUnharmed()
     {
         // Two calls that fail apart. The vocabulary only decides whether two facets read as words
