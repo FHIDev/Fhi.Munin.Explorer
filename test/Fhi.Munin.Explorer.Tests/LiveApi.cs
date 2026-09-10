@@ -252,17 +252,19 @@ internal sealed class LiveApiConnection : IDisposable
         return response.Body;
     }
 
-    private async Task<(T Value, RecordedResponse Response)> SendAsync<T>(Func<IMuninExplorerClient, Task<T>> call)
+    /// <summary>Makes one call for its value alone — finding something to ask about, usually.</summary>
+    /// <remarks>
+    /// Neither recorded nor compared, but translated the same way: <see cref="LiveCatalogue"/> makes
+    /// tens of these per run discovering ids, and an outage in one of them without the marker
+    /// <c>scripts/drift-failure-kind.sh</c> reads is filed as drift (Fhi.Metadata-ghxh4).
+    /// </remarks>
+    public async Task<T> FetchAsync<T>(Func<IMuninExplorerClient, Task<T>> call)
     {
         ArgumentNullException.ThrowIfNull(call);
 
-        log.Clear();
-
-        T value;
-
         try
         {
-            value = await call(Client);
+            return await call(Client);
         }
         catch (Exception cause) when (cause is HttpRequestException or TaskCanceledException)
         {
@@ -271,6 +273,15 @@ internal sealed class LiveApiConnection : IDisposable
             // its issue from it (Fhi.Metadata-ghxh4).
             throw new XunitException(Unreachable(cause), cause);
         }
+    }
+
+    private async Task<(T Value, RecordedResponse Response)> SendAsync<T>(Func<IMuninExplorerClient, Task<T>> call)
+    {
+        ArgumentNullException.ThrowIfNull(call);
+
+        log.Clear();
+
+        var value = await FetchAsync(call);
 
         if (log.Responses.Count != 1)
         {

@@ -60,7 +60,8 @@ public class FixtureDriftTest
         var body = await api.BodyOfAsync(client => client.GetKildeAsync(id));
 
         // One fetch, three captures: all three are KildeDetail payloads, and a kilde with delkilder
-        // is the one live response that carries every key the other two could be stale about.
+        // and datasamlinger both — which is what the helper prefers — is the one live response that
+        // carries every key the other two could be stale about.
         foreach (var fixture in Fixture.KildeDetails)
         {
             AssertFresh(fixture, body);

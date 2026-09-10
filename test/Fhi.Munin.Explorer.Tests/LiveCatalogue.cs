@@ -13,20 +13,34 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </remarks>
 internal static class LiveCatalogue
 {
-    /// <summary>The kilde carrying the most delkilder, whose detail payload exercises the nested half.</summary>
+    /// <summary>How many kilder a discovery walk will fetch a hierarchy for before giving up.</summary>
     /// <remarks>
-    /// Filtered rather than only sorted, so a catalogue with none anywhere fails saying so instead
-    /// of handing back a kilde without any. Measured 2026-09-10: four of the 98 report one.
+    /// Bounded like <see cref="AnyKodeverkLinkAsync"/>'s page, so the worst case is a number written
+    /// down here rather than however large the catalogue has grown — 64 kilder qualified on
+    /// 2026-09-10, and on the failure path every one of them costs a live round trip.
+    /// </remarks>
+    private const int CandidateLimit = 25;
+
+    /// <summary>A kilde carrying delkilder, preferring one that carries datasamlinger as well.</summary>
+    /// <remarks>
+    /// Both halves are nested, and delkilder alone do not reach the datasamling one: of the four
+    /// kilder in 98 reporting a delkilde on 2026-09-10, one reports no datasamling at all and ties
+    /// the richest on delkildeCount, so a sort led by that count can land on it.
     /// </remarks>
     public static async Task<Guid> KildeWithDelkilderIdAsync(LiveApiConnection api)
     {
-        var kilder = await api.Client.GetKilderAsync();
+        var kilder = await api.FetchAsync(client => client.GetKilderAsync());
 
         Assert.NotEmpty(kilder);
 
+        // Filtered rather than only sorted, so a catalogue with no delkilder anywhere fails saying
+        // so instead of handing back a kilde without any. Id last for a total order: without it the
+        // pick among equals is whatever order the API happened to list them in.
         var kilde = kilder.Where(candidate => candidate.DelkildeCount > 0)
-                          .OrderByDescending(candidate => candidate.DelkildeCount)
+                          .OrderByDescending(candidate => candidate.DatasamlingCount > 0)
+                          .ThenByDescending(candidate => candidate.DelkildeCount)
                           .ThenByDescending(candidate => candidate.DatasamlingCount)
+                          .ThenByDescending(candidate => candidate.Id)
                           .FirstOrDefault();
 
         Assert.True(
@@ -40,23 +54,40 @@ internal static class LiveCatalogue
 
     /// <summary>The first datasamling reachable from a kilde's hierarchy, richest kilde first.</summary>
     /// <remarks>
-    /// A count is not a tree: measured 2026-09-10, three of the 63 kilder reporting datasamlingCount
+    /// A count is not a tree: measured 2026-09-10, three of the 64 kilder reporting datasamlingCount
     /// above zero serve a hierarchy with none in it, so this fetches until one really carries some.
     /// </remarks>
     public static async Task<Guid> AnyDatasamlingIdAsync(LiveApiConnection api)
     {
-        var kilder = await api.Client.GetKilderAsync();
+        var kilder = await api.FetchAsync(client => client.GetKilderAsync());
 
         Assert.NotEmpty(kilder);
 
+        // Id last for a total order: two kilder tie on the count above it today, and which of them
+        // the two drift suites compare a fixture against should be decided here rather than by the
+        // order the API happened to list them in.
         var candidates = kilder.Where(candidate => candidate.DatasamlingCount > 0)
                                .OrderByDescending(candidate => candidate.DatasamlingCount)
+                               .ThenByDescending(candidate => candidate.Id)
+                               .Take(CandidateLimit)
                                .ToList();
+
+        var unanswered = 0;
 
         foreach (var candidate in candidates)
         {
-            var hierarchy = await api.Client.GetKildeHierarchyAsync(candidate.Id);
-            var datasamlingId = hierarchy is null ? Guid.Empty : DatasamlingIds(hierarchy).FirstOrDefault();
+            var hierarchy = await api.FetchAsync(client => client.GetKildeHierarchyAsync(candidate.Id));
+
+            // Counted rather than skipped silently, so the failure below cannot claim hierarchies
+            // were searched when none was served.
+            if (hierarchy is null)
+            {
+                unanswered++;
+
+                continue;
+            }
+
+            var datasamlingId = DatasamlingIds(hierarchy).FirstOrDefault();
 
             if (datasamlingId != Guid.Empty)
             {
@@ -65,16 +96,17 @@ internal static class LiveCatalogue
         }
 
         Assert.Fail(
-            $"None of the {candidates.Count} kilder reporting a datasamling has one anywhere in its " +
-            $"hierarchy, out of {kilder.Count} in the catalogue, so there is nothing to open. Either the " +
-            "catalogue changed shape or the hierarchy endpoint stopped returning children.");
+            $"None of the {candidates.Count} kilder tried — those reporting the most datasamlinger, of " +
+            $"the {kilder.Count} in the catalogue — has one anywhere in its hierarchy, and {unanswered} " +
+            "of them served no hierarchy at all, so there is nothing to open. Either the catalogue " +
+            "changed shape, the hierarchy endpoint stopped returning children, or it stopped answering.");
 
         return default;
     }
 
     public static async Task<Guid> AnyVariableIdAsync(LiveApiConnection api)
     {
-        var page = await api.Client.SearchVariablesAsync(null, pageSize: 1);
+        var page = await api.FetchAsync(client => client.SearchVariablesAsync(null, pageSize: 1));
 
         Assert.NotEmpty(page.Items);
 
@@ -88,13 +120,13 @@ internal static class LiveCatalogue
     /// </remarks>
     public static async Task<(Guid VariableId, KodeverkLink Link)> AnyKodeverkLinkAsync(LiveApiConnection api)
     {
-        var page = await api.Client.SearchVariablesAsync(null, pageSize: 25);
+        var page = await api.FetchAsync(client => client.SearchVariablesAsync(null, pageSize: 25));
 
         Assert.NotEmpty(page.Items);
 
         foreach (var summary in page.Items)
         {
-            var variable = await api.Client.GetVariableAsync(summary.Id);
+            var variable = await api.FetchAsync(client => client.GetVariableAsync(summary.Id));
             var link = variable?.KodeverkLinks.FirstOrDefault(candidate => candidate.HasCodeValues);
 
             if (link is not null)

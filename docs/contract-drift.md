@@ -32,10 +32,18 @@ one of ours, so there is nothing here to trigger on.
 One representative response from every endpoint the component calls, fetched through the real
 `IMuninExplorerClient` — the URLs and the query strings are part of what can drift, so a test that
 spelled them out itself would keep passing after the client stopped working. Ids come from the API
-too: a kilde with delkilder, a datasamling found by walking hierarchies until one really carries
-some, a variable from the first page of a search. A hard-coded id is a kilde somebody can
-unpublish, and a count is not a tree — some kilder report `datasamlingCount` above zero and serve
-a hierarchy with none in it.
+too: a kilde with delkilder — one that has datasamlinger too where the catalogue offers one, since
+both halves of `KildeDetail` are nested — a datasamling found by walking hierarchies until one
+really carries some, a variable from the first page of a search. A hard-coded id is a kilde
+somebody can unpublish, and a count is not a tree: some kilder report `datasamlingCount` above zero
+and serve a hierarchy with none in it. The walk is bounded like the variable page beside it, so the
+worst case is a number in `LiveCatalogue` rather than however large the catalogue has grown, and
+its fetches go through the connection's own translation — an outage part-way through discovery
+must read as unreachable rather than as drift.
+
+Those selections branch, and none of the branches runs outside the nightly. `LiveCatalogueTest`
+drives every one of them against a stub on each commit, the way `ShapeDriftTest` does for the
+comparison itself.
 
 Each response is round-tripped — deserialised into the DTO, serialised straight back — and the two
 documents are compared by shape rather than by value. Values are today's data; keys are the
