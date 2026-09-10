@@ -8,10 +8,11 @@ rules:
       source: copilot:PR#23
       added: "2026-08-18"
       paths:
-        - '**/*.cs'
-        - '**/*.css'
-        - '**/*.md'
-        - '**/*.razor'
+        - changelog.d/**/*.md
+        - samples/**/*.css
+        - src/**/*.cs
+        - src/**/*.razor
+        - test/**/*.cs
     - id: no-mixed-language-record-field-names
       category: style
       pattern: >-
@@ -21,10 +22,11 @@ rules:
       source: copilot:PR#23
       added: "2026-08-18"
       paths:
-        - '**/*.cs'
-        - '**/*.css'
-        - '**/*.md'
-        - '**/*.razor'
+        - changelog.d/**/*.md
+        - samples/**/*.css
+        - src/**/*.cs
+        - src/**/*.razor
+        - test/**/*.cs
     - id: tcs-run-continuations-async
       category: concurrency
       pattern: >-
@@ -49,3 +51,43 @@ rules:
         - '**/*.json'
         - '**/*.md'
         - '**/*.razor'
+    - id: css-comment-cites-wrong-value
+      category: style
+      pattern: >-
+        A comment in a stylesheet (or beside markup) that quotes a concrete numeric value — padding, margin, width, height — as the reason a nearby rule exists
+      check: >-
+        Read the adjacent rule and confirm every number the comment cites matches what the rule actually declares; if the quoted value is wrong or is not the property the sizing depends on, restate the comment around the load-bearing declaration (e.g. the 24px icon box) or drop the number rather than leave a false dependency in the file
+      source: copilot:PR#225
+      added: "2026-09-09"
+      paths:
+        - samples/**/*.css
+    - id: comment-three-line-ceiling
+      category: style
+      pattern: >-
+        A diff adds or expands a comment block — in C#, Razor, or a shell script under scripts/ — that runs beyond three lines, or narrates what the code does, or records incident/PR history inline.
+      check: >-
+        Verify every added comment is at most three lines and states only the invariant or the why. Incidental detail, worked examples, and incident history belong in the bead, the PR description, or AGENTS.md — not in a file people reopen on every visit. The sole exception is public XML doc comments on the package's API, whose reader has only the package.
+      source: copilot:PR#225
+      added: "2026-09-09"
+      paths:
+        - scripts/**/*.sh
+    - id: css-box-claim-must-match-applied-rules
+      category: ui
+      pattern: >-
+        A comment, PR description, or review note explains an element's computed box (padding, width, height — typically a WCAG target-size or layout fix) by asserting what a borrowed utility class does, e.g. that `hd-button-reset` strips padding so the glyph is the whole control.
+      check: >-
+        Before accepting the explanation, read every rule that actually applies to the element in cascade order, including the component's own `munin-explorer*` rule, and confirm the stated cause is the one that wins. A later component rule can reinstate what a utility reset removed (`.munin-explorer-kilder__expand-toggle` sets `padding: 4px 6px`), so the real defect may be that glyph plus padding still measures under the minimum. Reject a plausible-sounding cause that the stylesheets contradict, and require the prose to name the measured cause instead.
+      source: copilot:PR#225
+      added: "2026-09-09"
+      paths:
+        - src/**/*.cs
+    - id: target-size-from-measured-box-not-reset-class
+      category: ui
+      pattern: >-
+        A test, comment, or review claim reasons about an interactive element's rendered box size (e.g. the WCAG 2.1 AA 24x24 minimum target size) by inferring it from the CSS classes on the element — typically a reset class such as `hd-button-reset` — rather than from a measured box.
+      check: >-
+        Verify the size claim against what is actually measured (check-hostile-host.sh / a rendered box), not against class names. A reset class does not mean the element has no box: component rules on the same element still add padding, borders and line-height, and conversely padding may still not be enough when the glyph or label inside is narrower than the minimum. State which dimension actually falls short and what supplies the remaining width/height.
+      source: copilot:PR#225
+      added: "2026-09-09"
+      paths:
+        - test/**/*.cs
