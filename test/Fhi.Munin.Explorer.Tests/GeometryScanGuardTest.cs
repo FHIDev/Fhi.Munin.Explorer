@@ -151,14 +151,17 @@ public class GeometryScanGuardTest
     private static IReadOnlyList<string> Chosen => Caller.Value.Names;
 
     /// <summary>The <c>path::state</c> that run measures.</summary>
-    private static string ReflowTarget => Caller.Value.Target;
+    private static string ReflowTarget => $"{Caller.Value.Path}::{Caller.Value.State}";
 
-    private static string ReflowState => ReflowTarget[(ReflowTarget.IndexOf("::", StringComparison.Ordinal) + 2)..];
+    /// <summary>The state that run drives the page into, which every scoping question is about.</summary>
+    private static string ReflowState => Caller.Value.State;
 
     private static readonly Lazy<IReadOnlyDictionary<string, IReadOnlyList<string>?>> KnownAssertions =
         new(ReadAssertions);
 
-    private static readonly Lazy<(IReadOnlyList<string> Names, string Target)> Caller = new(ReadCaller);
+    private static readonly Lazy<IReadOnlyList<string>> KnownStates = new(ReadStates);
+
+    private static readonly Lazy<(IReadOnlyList<string> Names, string Path, string State)> Caller = new(ReadCaller);
 
     /// <summary>
     /// The assertion names and their <c>states:</c> scoping, read out of the source rather than
@@ -191,22 +194,53 @@ public class GeometryScanGuardTest
         return found;
     }
 
-    /// <summary>What the 320px run in <c>check-accessibility.sh</c> asks for, read off the script.</summary>
-    private static (IReadOnlyList<string> Names, string Target) ReadCaller()
+    /// <summary>Every state <c>axe-states.mjs</c> defines, which is what a target may name.</summary>
+    private static IReadOnlyList<string> ReadStates()
+    {
+        var source = File.ReadAllText(Repo.In("scripts", "axe-states.mjs"));
+        var body = source[source.IndexOf("export const states = {", StringComparison.Ordinal)..];
+        var found = Regex.Matches(body, @"^  '(?<state>[^']+)':", RegexOptions.Multiline)
+            .Select(match => match.Groups["state"].Value)
+            .ToList();
+
+        Assert.NotEmpty(found);
+
+        return found;
+    }
+
+    /// <summary>
+    /// What the 320px run in <c>check-accessibility.sh</c> asks for, read off the script. The
+    /// <c>::</c> is part of the pattern rather than something split off after: a target without one
+    /// leaves no state, and every scoping check below would then pass having compared nothing.
+    /// </summary>
+    private static (IReadOnlyList<string> Names, string Path, string State) ReadCaller()
     {
         var source = File.ReadAllText(Repo.In("scripts", "check-accessibility.sh"));
         var assertions = Regex.Match(source, @"GEOMETRY_ASSERTIONS='(?<names>[^']*)'");
-        var target = Regex.Match(source, @"^REFLOW_TARGET=""(?<target>[^""]*)""", RegexOptions.Multiline);
+        var target = Regex.Match(
+            source,
+            @"^REFLOW_TARGET=""(?<path>[^"":]*)::(?<state>[^""]+)""",
+            RegexOptions.Multiline);
 
         Assert.True(
             assertions.Success && target.Success,
             "check-accessibility.sh no longer has a GEOMETRY_ASSERTIONS='...' run driving a "
-            + "REFLOW_TARGET=\"...\", so these checks are reading a script that has moved on.");
+            + "REFLOW_TARGET=\"path::state\", so these checks are reading a script that has moved "
+            + "on. A REFLOW_TARGET naming no state would measure the page as it first paints.");
+
+        var state = target.Groups["state"].Value;
+
+        Assert.True(
+            KnownStates.Value.Contains(state),
+            $"check-accessibility.sh measures the state '{state}', which axe-states.mjs does not "
+            + $"define. It defines:{Environment.NewLine}  "
+            + string.Join(Environment.NewLine + "  ", KnownStates.Value));
 
         return (
             assertions.Groups["names"].Value
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
-            target.Groups["target"].Value);
+            target.Groups["path"].Value,
+            state);
     }
 }
 

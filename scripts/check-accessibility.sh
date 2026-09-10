@@ -181,9 +181,9 @@ fi
 # drives six widths and the narrowest is 843. One page, the kildeutforsker, in a state that waits
 # for a row, so an empty page fails as TOOLING rather than fitting 320 with nothing in it.
 #
-# Three of the ten assertions, and the seven left out were each measured here before they were
-# left out rather than assumed unrunnable. Which seven and why: AGENTS.md, "And
-# check-accessibility.sh measures one width axe never looks at".
+# Three of the ten assertions. Four of the seven left out were measured here first; the other
+# three are scoped to the explorer-* states and cannot be measured on this one. Which and why:
+# AGENTS.md, "And check-accessibility.sh measures one width axe never looks at".
 echo
 echo "==> measuring the reflow width WCAG 1.4.10 names"
 set +e

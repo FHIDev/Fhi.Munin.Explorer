@@ -134,7 +134,14 @@ if (!measurable) {
 
 // Imported here rather than at the top, so every check above answers on a machine that has no
 // playwright installed - which is where the tests that hold them to it run.
-const { chromium } = await import('playwright');
+let chromium;
+try {
+  ({ chromium } = await import('playwright'));
+} catch (err) {
+  console.error('could not import playwright - this is a TOOLING failure, not a finding.');
+  console.error(String(err?.message ?? err));
+  process.exit(2);
+}
 
 let browser;
 try {
