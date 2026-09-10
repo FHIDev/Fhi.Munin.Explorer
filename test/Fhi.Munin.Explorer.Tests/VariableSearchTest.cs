@@ -7558,7 +7558,7 @@ public class VariableSearchTest : BunitContext
     {
         // What tells a guard in front of the toggle from one inside it, which counting requests
         // cannot: a fetch already in flight is de-duplicated either way. Only a second click that
-        // never reached ToggleCodesAsync leaves the list open on its "Henter koder \u2026" line.
+        // never reached ToggleCodesAsync leaves the list open on its "Henter koder …" line.
         var client = KodeverkRows();
         var cut = OpenData(client);
 
