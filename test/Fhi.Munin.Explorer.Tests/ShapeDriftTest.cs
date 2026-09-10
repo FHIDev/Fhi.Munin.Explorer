@@ -76,13 +76,11 @@ public class ShapeDriftTest
     [Fact]
     public void Between_WhenTheApiHasNotCaughtUpWithTheContract_ThenNothingDrifts()
     {
-        // An API older than the code reading it: this capture's datatype facets carry no
-        // displayName, and here the datakategori facet is taken away as well, so the contract
-        // declares two things the payload does not — one null, one empty list. That is the case the
-        // comparison must let through, because both are how a contract says "nothing here" and
-        // reporting them would make the job cry drift over a deployment that is merely behind.
+        // An API older than the code reading it: the datakategori facet is taken away, so the
+        // contract declares an empty list where the payload has nothing. That is the case the
+        // comparison must let through, or the job cries drift over a deployment merely behind.
         var live = Load("filters.json");
-        live.AsObject().Remove("datakategorier");
+        RemoveOrFail(live.AsObject(), "filters.json", "datakategorier");
 
         Assert.Empty(DriftIn<FilterOptions>(live));
     }
@@ -133,7 +131,7 @@ public class ShapeDriftTest
     public void Between_WhenTheApiStopsSendingAnOptionalField_ThenNothingDrifts()
     {
         var live = Load("kilder.json");
-        live[0]!.AsObject().Remove("kortNavn");
+        RemoveOrFail(live[0]!.AsObject(), "kilder.json[0]", "kortNavn");
 
         // The counterpart to the test above, and the reason it is worth stating twice: whether a
         // withdrawn field is drift depends on whether the contract had anywhere to put "absent".
@@ -144,7 +142,7 @@ public class ShapeDriftTest
     public void Between_WhenTheApiStopsSendingACollectionAltogether_ThenNothingDrifts()
     {
         var live = Load("kilde-med-delkilder.json");
-        live.AsObject().Remove("delkilder");
+        RemoveOrFail(live.AsObject(), "kilde-med-delkilder.json", "delkilder");
 
         // What the rule above costs, written down rather than left to be found out. An empty list
         // is how this contract says "none", so a collection withdrawn wholesale reads exactly like
@@ -268,6 +266,15 @@ public class ShapeDriftTest
     private static JsonNode Load(string fixture) =>
         JsonNode.Parse(TestData.Read(fixture))
         ?? throw new InvalidOperationException($"Test data '{fixture}' is not JSON.");
+
+    /// <summary>
+    /// Takes a field away and fails if it was not there to take, so a let-through case cannot go
+    /// on passing once a re-capture has quietly made its removal a no-op.
+    /// </summary>
+    private static void RemoveOrFail(JsonObject holder, string source, string field) =>
+        Assert.True(
+            holder.Remove(field),
+            $"{source} no longer carries {field}, so this case breaks nothing.");
 
     /// <summary>
     /// Runs a payload through the same two steps the nightly job does — deserialise with the
