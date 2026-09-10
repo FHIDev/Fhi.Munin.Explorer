@@ -56,11 +56,12 @@ public class FixtureDriftTest
     {
         using var api = LiveApiConnection.Open();
 
-        var id = await LiveCatalogue.MostNestedKildeIdAsync(api);
+        var id = await LiveCatalogue.KildeWithDelkilderIdAsync(api);
         var body = await api.BodyOfAsync(client => client.GetKildeAsync(id));
 
-        // One fetch, three captures: all three are KildeDetail payloads, and the most nested kilde
-        // is the one live response that carries every key the other two could be stale about.
+        // One fetch, three captures: all three are KildeDetail payloads, and a kilde with delkilder
+        // and datasamlinger both — which is what the helper prefers — is the one live response that
+        // carries every key the other two could be stale about.
         foreach (var fixture in Fixture.KildeDetails)
         {
             AssertFresh(fixture, body);
@@ -72,7 +73,7 @@ public class FixtureDriftTest
     {
         using var api = LiveApiConnection.Open();
 
-        var id = await LiveCatalogue.MostNestedKildeIdAsync(api);
+        var id = await LiveCatalogue.KildeWithDelkilderIdAsync(api);
 
         AssertFresh(Fixture.Hierarchy, await api.BodyOfAsync(client => client.GetKildeHierarchyAsync(id)));
     }
@@ -82,16 +83,7 @@ public class FixtureDriftTest
     {
         using var api = LiveApiConnection.Open();
 
-        var kildeId = await LiveCatalogue.MostNestedKildeIdAsync(api);
-        var hierarchy = await api.Client.GetKildeHierarchyAsync(kildeId);
-
-        Assert.NotNull(hierarchy);
-
-        var datasamlingId = LiveCatalogue.DatasamlingIds(hierarchy).FirstOrDefault();
-
-        Assert.True(
-            datasamlingId != Guid.Empty,
-            $"Kilde {kildeId} has no datasamling anywhere in its tree, so there is nothing to compare against.");
+        var datasamlingId = await LiveCatalogue.AnyDatasamlingIdAsync(api);
 
         AssertFresh(Fixture.Datasamling, await api.BodyOfAsync(client => client.GetDatasamlingAsync(datasamlingId)));
     }
