@@ -79,10 +79,10 @@ internal sealed class RowPress
     /// which is as much of <see cref="WasSelection"/> as a control keeping no press can ask.
     /// </summary>
     /// <remarks>
-    /// For a control that stops the click and keeps no press of its own, so no release of theirs is
-    /// ever measured: a double-click takes a word and a shift-click extends the selection to it
-    /// without the pointer travelling, so neither of those needs a press to be told. Read from here
-    /// rather than written out at each of them, which is what keeping the three together is for.
+    /// For a control keeping no press of its own, so no release of its own is ever measured: a
+    /// double-click takes a word and a shift-click extends the selection to it without the pointer
+    /// travelling, so neither of those needs a press to be told. Read from here rather than
+    /// written out at each of them, which is what keeping the three together is for.
     /// </remarks>
     internal static bool WasSelectionStandingStill(MouseEventArgs clicked) =>
         clicked.Detail > 0 && (clicked.Detail > 1 || clicked.ShiftKey);

@@ -1,5 +1,5 @@
 category: Fixed
-- **Double-clicking or shift-clicking "Vis filtre", "Lag ny liste", "Gi listen nytt navn" or
+- **Double-clicking or shift-clicking "Vis filtre", "Legg til ny liste", "Gi nytt navn" or
   "Slett listen" leaves each where the first click left it** - the kildeutforsker's filter panel
   and the saved-list view's three controls took no click count at all, so the second click of a
   double-click folded the panel, or shut the form, the first click had just opened. On the delete
@@ -7,5 +7,7 @@ category: Fixed
   second click re-armed the delete the reader had just called off. A shift-click extending a
   selection across the words beside them did the same. Both gestures are now refused the way the
   rows and the variable panel's disclosures already refused them; deliberate repeated pressing
-  still toggles both ways, and Enter or Space on any of the four is unaffected.
+  still toggles both ways, and Enter or Space on any of the four is unaffected. These were the
+  last four, and a guard now sweeps every disclosure the package draws rather than the ones
+  someone thought to look at, so a new one cannot arrive without the rule.
   (Fhi.Metadata-zel47)
