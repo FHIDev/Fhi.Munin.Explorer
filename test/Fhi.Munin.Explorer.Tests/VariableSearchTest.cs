@@ -3582,6 +3582,23 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
+    public void Filter_WhenOnlyADatasamlingMatches_ThenTheBoxSurvivesTheKilderItRemoves()
+    {
+        // RemovesDrawnKilder runs KildeMatches a second time, over the kilder already drawn, to
+        // decide whether the box the term was typed into is about to lose rows out from under it.
+        // A term matching nothing but a datasamling is the case that reaches the level's arm in
+        // that caller rather than in VisibleKilder. (Fhi.Metadata-mgp03)
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE")),
+                                                 FacetsWithDatasamlinger()));
+
+        KildeSearchField(cut).Change("Andre runde");
+
+        // Find throws when the box has gone, which is the failure this test is about.
+        Assert.Equal("Andre runde", KildeSearchField(cut).GetAttribute("value"));
+        Assert.DoesNotContain("Dødsårsaksregisteret", KildeFacet(cut).TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Filter_WhenTheKildeSearchHidesAChosenDatasamling_ThenItKeepsItsChip()
     {
         // The datasamling level went in after the chip row, so it is the one level whose selection
@@ -4908,6 +4925,52 @@ public class VariableSearchTest : BunitContext
                         Facet(cut, "Dødsårsaksregisteret").ParentElement!.QuerySelectorAll("li"));
         Assert.DoesNotContain(Facet(cut, "Tromsø 1").ParentElement!,
                               Facet(cut, "Tromsø 4").ParentElement!.QuerySelectorAll("li"));
+    }
+
+    [Fact]
+    public void Render_WhenTheFacetsRepeatADelkildeId_ThenItsDatasamlingerAreStillDrawn()
+    {
+        // A repeated id is a malformed payload, but KildeLevels runs on the render path and inside
+        // the kilde box's onchange, so throwing there tears the circuit down over what should be at
+        // worst one oddly drawn row. (Fhi.Metadata-mgp03)
+        var facets = Facets() with
+        {
+            Delkilder =
+            [
+                new() { Id = Tromso4, Name = "Tromsø 4", KildeId = Tromso, Count = 8 },
+                new() { Id = Tromso4, Name = "Tromsø 4 igjen", KildeId = Tromso, Count = 8 }
+            ],
+            Datasamlinger =
+            [
+                new() { Id = Tromso4Round, Name = "Fjerde runde", KildeId = Tromso, DelkildeId = Tromso4, Count = 4 }
+            ]
+        };
+
+        var cut = RenderWith(new FilteringClient(OnePage(), facets));
+
+        Assert.Contains(Facet(cut, "Fjerde runde").ParentElement!,
+                        Facet(cut, "Tromsøundersøkelsen").ParentElement!.QuerySelectorAll("li"));
+    }
+
+    [Fact]
+    public void Render_WhenAKildeIdEqualsADelkildeId_ThenNeitherLevelTakesTheOthersDatasamlinger()
+    {
+        // The two id spaces are independent Guids off the wire. Keyed into one lookup, a collision
+        // draws a kilde's own datasamling under the delkilde as well, which is the same row twice
+        // and a count the reader cannot account for. (Fhi.Metadata-mgp03)
+        var facets = Facets() with
+        {
+            Delkilder = [new() { Id = Tromso, Name = "Navnebror", KildeId = Tromso, Count = 8 }],
+            Datasamlinger =
+            [
+                new() { Id = Tromso1, Name = "Tromsø 1", KildeId = Tromso, Count = 5 }
+            ]
+        };
+
+        var cut = RenderWith(new FilteringClient(OnePage(), facets));
+
+        Assert.DoesNotContain(Facet(cut, "Tromsø 1").ParentElement!,
+                              Facet(cut, "Navnebror").ParentElement!.QuerySelectorAll("li"));
     }
 
     [Fact]

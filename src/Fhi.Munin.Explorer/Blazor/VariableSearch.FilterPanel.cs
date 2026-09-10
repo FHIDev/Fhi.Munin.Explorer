@@ -371,8 +371,9 @@ public partial class VariableSearch
     /// <remarks>
     /// The whole tree is built from the facet payload alone — <see cref="DelkildeFacet"/> and
     /// <see cref="DatasamlingFacet"/> each carry the parents they hang under precisely so this
-    /// needs no second request, and every count in it is cross-filtered like every other count in
-    /// the panel.
+    /// needs no second request. The counts are the facet payload's own, which the API cross-filters
+    /// like every other facet it answers — unlike the hierarchy endpoint's kilde totals, which is
+    /// why the level is drawn from facets at all.
     /// </remarks>
     private FacetGroup KildeGroup(FilterOptions facets)
     {
@@ -495,18 +496,16 @@ public partial class VariableSearch
     /// <summary>Whether a kilde, or anything drawn under it, holds <paramref name="term"/>.</summary>
     /// <remarks>
     /// A datasamling is reached under its delkilde as well as straight off the kilde, since
-    /// <see cref="KildeLevels"/> keys it by whichever parent it hangs from.
+    /// <see cref="KildeLevels"/> puts it in whichever of the two lookups its parent says.
     /// </remarks>
     private bool KildeMatches(KildeFacet kilde, KildeLevelLookup levels, string term) =>
         LabelMatches(T.Named(kilde.Name, kilde.ShortName).Text, term)
-        || levels.Datasamlinger[kilde.Id].Any(datasamling => DatasamlingMatches(datasamling, term))
+        || levels.DatasamlingerByKilde[kilde.Id].Any(
+               datasamling => LabelMatches(DatasamlingLabel(datasamling), term))
         || levels.Delkilder[kilde.Id].Any(
                delkilde => LabelMatches(DelkildeLabel(delkilde), term)
-                           || levels.Datasamlinger[delkilde.Id].Any(
-                                  datasamling => DatasamlingMatches(datasamling, term)));
-
-    private bool DatasamlingMatches(DatasamlingFacet datasamling, string term) =>
-        LabelMatches(DatasamlingLabel(datasamling), term);
+                           || levels.DatasamlingerByDelkilde[delkilde.Id].Any(
+                                  datasamling => LabelMatches(DatasamlingLabel(datasamling), term)));
 
     private static bool LabelMatches(string label, string term) =>
         label.Contains(term, StringComparison.OrdinalIgnoreCase);
@@ -556,14 +555,15 @@ public partial class VariableSearch
     /// <summary>The two levels under a kilde, each hanging where its facet says it does.</summary>
     private IReadOnlyList<FacetValue> KildeChildren(Guid kildeId, KildeLevelLookup levels) =>
     [
-        .. DatasamlingValues(levels.Datasamlinger[kildeId]),
+        .. DatasamlingValues(levels.DatasamlingerByKilde[kildeId]),
         .. Tree(levels.Delkilder[kildeId]
-                    .Select(d => new TreeNode(d.Id, d.ParentDelkildeId, DelkildeLabel(d), d.Count)),
+                    .Select(delkilde => new TreeNode(
+                        delkilde.Id, delkilde.ParentDelkildeId, DelkildeLabel(delkilde), delkilde.Count)),
                 "delkilde:",
                 IsDelkildeChosen,
                 ToggleDelkilde,
                 Counted,
-                delkildeId => DatasamlingValues(levels.Datasamlinger[delkildeId]))
+                delkildeId => DatasamlingValues(levels.DatasamlingerByDelkilde[delkildeId]))
     ];
 
     /// <summary>A delkilde on its own, on the same terms — the tree below builds it from the same parts.</summary>
@@ -597,26 +597,43 @@ public partial class VariableSearch
     private string DatasamlingLabel(DatasamlingFacet datasamling) => T.Named(datasamling.Name, null).Text;
 
     /// <summary>The delkilder and datasamlinger of the kilde facet, keyed by what each hangs under.</summary>
+    /// <remarks>
+    /// Datasamlinger are split across two lookups rather than keyed into one by whichever parent
+    /// they hang from: the two id spaces are independent Guids off the wire, and one lookup would
+    /// read a kilde id that happened to equal a delkilde id as the other level's key and misfile
+    /// the row with no error anywhere.
+    /// </remarks>
     private sealed record KildeLevelLookup(
         ILookup<Guid, DelkildeFacet> Delkilder,
-        ILookup<Guid, DatasamlingFacet> Datasamlinger);
+        ILookup<Guid, DatasamlingFacet> DatasamlingerByKilde,
+        ILookup<Guid, DatasamlingFacet> DatasamlingerByDelkilde);
 
     /// <summary>Both child levels of the kilde tree, in one pass over the facets.</summary>
     private static KildeLevelLookup KildeLevels(FilterOptions facets)
     {
-        var delkildeOwner = facets.Delkilder.ToDictionary(delkilde => delkilde.Id, delkilde => delkilde.KildeId);
+        // GroupBy rather than ToDictionary: a payload repeating a delkilde id is malformed, but it
+        // throws here on the render path and inside the kilde search box's onchange, either of
+        // which tears the circuit down over what would otherwise be one oddly drawn row.
+        var delkildeOwner = facets.Delkilder
+            .GroupBy(delkilde => delkilde.Id)
+            .ToDictionary(group => group.Key, group => group.First().KildeId);
 
-        // One lookup covers both parents, since a kilde id is never also a delkilde id. A delkilde
-        // the payload left out — cross-filtered away, or belonging to another kilde — is an absent
-        // parent, so its datasamlinger fall back to the kilde rather than disappearing with it.
+        // A delkilde the payload left out — cross-filtered away, or belonging to another kilde — is
+        // an absent parent, so its datasamlinger fall back to the kilde rather than disappearing
+        // with it.
+        bool HangsUnderItsDelkilde(DatasamlingFacet datasamling) =>
+            datasamling.DelkildeId is { } parent
+            && delkildeOwner.TryGetValue(parent, out var owner)
+            && owner == datasamling.KildeId;
+
         return new KildeLevelLookup(
             facets.Delkilder.ToLookup(delkilde => delkilde.KildeId),
-            facets.Datasamlinger.ToLookup(
-                datasamling => datasamling.DelkildeId is { } parent
-                               && delkildeOwner.TryGetValue(parent, out var owner)
-                               && owner == datasamling.KildeId
-                    ? parent
-                    : datasamling.KildeId));
+            facets.Datasamlinger
+                .Where(datasamling => !HangsUnderItsDelkilde(datasamling))
+                .ToLookup(datasamling => datasamling.KildeId),
+            facets.Datasamlinger
+                .Where(HangsUnderItsDelkilde)
+                .ToLookup(datasamling => datasamling.DelkildeId!.Value));
     }
 
     private bool IsDelkildeChosen(Guid id) => _filter.DelkildeIds.Contains(id);
@@ -798,7 +815,19 @@ public partial class VariableSearch
 
         var rooted = all.Where(node => node.ParentId is not { } parent || !known.Contains(parent));
 
-        List<FacetValue> roots = [.. rooted.Select(Build)];
+        // The same guard the second pass and Build use, and for the same reason: two roots sharing
+        // an id would each be built, and drawing one node twice means two <li> siblings with the
+        // same key, which the renderer throws on. Under the kilde tree it also draws that node's
+        // `under` values a second time. (Fhi.Metadata-mgp03)
+        List<FacetValue> roots = [];
+
+        foreach (var node in rooted)
+        {
+            if (!placed.Contains(node.Id))
+            {
+                roots.Add(Build(node));
+            }
+        }
 
         // Whatever the first pass could not reach: every member of a cycle has its parent present,
         // so none of them is a root, and dropping them would take a filter off the panel with no
