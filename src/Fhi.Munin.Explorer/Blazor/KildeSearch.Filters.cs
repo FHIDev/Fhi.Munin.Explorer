@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -528,7 +529,16 @@ public sealed partial class KildeSearch
         }
     }
 
-    private void ToggleFilters() => _filtersOpen = !_filtersOpen;
+    // The standing half of the question this component's own chevron asks, and all of it that
+    // applies: the panel keeps no press, so RowPress's drag clause cannot be read here.
+    // (Fhi.Metadata-zel47)
+    private void ToggleFiltersFromControl(MouseEventArgs released)
+    {
+        if (!RowPress.WasSelectionStandingStill(released))
+        {
+            _filtersOpen = !_filtersOpen;
+        }
+    }
 
     /// <summary>Which way the last Utvid alle / Skjul alle press left every facet, if any.</summary>
     private bool? _foldAll;

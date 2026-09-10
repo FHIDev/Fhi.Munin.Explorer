@@ -3555,6 +3555,92 @@ public class KildeSearchTest : BunitContext
         Assert.False(cut.Find(".munin-explorer-filters__facets").HasAttribute("hidden"));
     }
 
+    /// <summary>
+    /// A pointer press on the control that folds the facet panel. <paramref name="clicks"/> is the
+    /// browser's click count, so 2 is the second click of a double-click gesture and 0 is how a
+    /// browser reports Enter or Space on a button, and <paramref name="shift"/> is the modifier held
+    /// to extend a selection to where the pointer is.
+    /// </summary>
+    /// <remarks>The toggle is found on every call rather than held: each press re-renders it.</remarks>
+    private static void PressFiltersToggle(
+        IRenderedComponent<KildeSearch> cut, long clicks = 1, bool shift = false) =>
+        cut.Find(".munin-explorer-filters__toggle")
+           .Click(new MouseEventArgs { Detail = clicks, ShiftKey = shift });
+
+    /// <summary>What the fold control says about itself, which is the state a reader is told.</summary>
+    private static string? FiltersDisclosed(IRenderedComponent<KildeSearch> cut) =>
+        cut.Find(".munin-explorer-filters__toggle").GetAttribute("aria-expanded");
+
+    /// <summary>Whether the facets are folded away, which is what the attribute above says.</summary>
+    private static bool FacetsFolded(IRenderedComponent<KildeSearch> cut) =>
+        cut.Find(".munin-explorer-filters__facets").HasAttribute("hidden");
+
+    [Fact]
+    public void FiltersToggle_WhenItIsDoubleClicked_ThenThePanelIsLeftOpen()
+    {
+        // This component guarded its rows under Fhi.Metadata-l9l2n.72 and left its own filter panel
+        // on a parameterless handler, so the second click of a double-click reached ToggleFilters
+        // and folded the panel the first click had just unfolded. (Fhi.Metadata-zel47)
+        var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
+
+        Assert.Equal("false", FiltersDisclosed(cut));
+
+        PressFiltersToggle(cut);
+        PressFiltersToggle(cut, clicks: 2);
+
+        Assert.Equal("true", FiltersDisclosed(cut));
+        Assert.False(FacetsFolded(cut));
+        Assert.Equal("Skjul filtre", cut.Find(".munin-explorer-filters__toggle").TextContent.Trim());
+    }
+
+    [Fact]
+    public void FiltersToggle_WhenItIsShiftClicked_ThenThePanelIsLeftFolded()
+    {
+        // The other gesture that stands still: the heading above this button and its own words are
+        // text a reader extends a selection across, and the click that ends one lands here.
+        var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
+
+        PressFiltersToggle(cut, shift: true);
+
+        Assert.Equal("false", FiltersDisclosed(cut));
+        Assert.True(FacetsFolded(cut));
+    }
+
+    [Fact]
+    public void FiltersToggle_WhenItIsPressedTwiceAsSeparateGestures_ThenItStillTogglesBothWays()
+    {
+        // The guard is per gesture, not per control: two deliberate presses each arrive with a click
+        // count of one, and a reader who unfolded the panel must still be able to fold it away.
+        var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
+
+        PressFiltersToggle(cut);
+
+        Assert.Equal("true", FiltersDisclosed(cut));
+        Assert.False(FacetsFolded(cut));
+
+        PressFiltersToggle(cut);
+
+        Assert.Equal("false", FiltersDisclosed(cut));
+        Assert.True(FacetsFolded(cut));
+    }
+
+    [Fact]
+    public void FiltersToggle_WhenItIsActivatedFromTheKeyboard_ThenEachActivationToggles()
+    {
+        // Enter and Space on a <button> arrive as a click with a count of zero, which is what keeps a
+        // guard on the second click of a pointer gesture from swallowing a second keypress. Verified
+        // rather than assumed, because a guard that caught this would make the panel unfoldable.
+        var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
+
+        PressFiltersToggle(cut, clicks: 0);
+
+        Assert.Equal("true", FiltersDisclosed(cut));
+
+        PressFiltersToggle(cut, clicks: 0);
+
+        Assert.Equal("false", FiltersDisclosed(cut));
+    }
+
     [Fact]
     public void Facets_WhenValuesAreTicked_ThenTheHeadingStillNamesThePanelAndCountsNothing()
     {

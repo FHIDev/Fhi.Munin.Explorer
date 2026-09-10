@@ -2,6 +2,7 @@ using Bunit;
 using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Tests;
@@ -576,6 +577,235 @@ public class VariableListViewTest : BunitContext
         {
             toggle.Click();
         }
+    }
+
+    /// <summary>
+    /// A pointer press on one of the three disclosures above the list, named by the stem of the id
+    /// its control carries. <paramref name="clicks"/> is the browser's click count, so 2 is the
+    /// second click of a double-click gesture and 0 is how a browser reports Enter or Space on a
+    /// button, and <paramref name="shift"/> is the modifier held to extend a selection.
+    /// </summary>
+    /// <remarks>The control is found on every call rather than held: each press re-renders the row.</remarks>
+    private static void PressDisclosure(
+        IRenderedComponent<VariableListView> cut, string stem, long clicks = 1, bool shift = false) =>
+        cut.Find($"button[id^='{stem}']")
+           .Click(new MouseEventArgs { Detail = clicks, ShiftKey = shift });
+
+    /// <summary>What one of those three says about itself, which is the state a reader is told.</summary>
+    private static string? Disclosed(IRenderedComponent<VariableListView> cut, string stem) =>
+        cut.Find($"button[id^='{stem}']").GetAttribute("aria-expanded");
+
+    private const string CreateToggle = "munin-explorer-create-toggle-";
+    private const string RenameToggle = "munin-explorer-rename-toggle-";
+    private const string DeleteToggle = "munin-explorer-delete-list-";
+
+    [Fact]
+    public void CreateToggle_WhenItIsDoubleClicked_ThenTheFormIsLeftOpen()
+    {
+        // All three of these were inline lambdas taking nothing, so no MouseEventArgs reached them
+        // and the second click of a double-click shut the form the first had just opened - the
+        // defect the variable panel's own disclosures were guarded against. (Fhi.Metadata-zel47)
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        Assert.Equal("false", Disclosed(cut, CreateToggle));
+
+        PressDisclosure(cut, CreateToggle);
+        PressDisclosure(cut, CreateToggle, clicks: 2);
+
+        Assert.Equal("true", Disclosed(cut, CreateToggle));
+        Assert.NotEmpty(cut.FindAll("input[id^='munin-explorer-new-list-']"));
+    }
+
+    [Fact]
+    public void CreateToggle_WhenItIsShiftClicked_ThenTheFormIsLeftShut()
+    {
+        // The other gesture that stands still: the heading and the count line above this button are
+        // text a reader extends a selection across, and the click that ends one lands here.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        PressDisclosure(cut, CreateToggle, shift: true);
+
+        Assert.Equal("false", Disclosed(cut, CreateToggle));
+        Assert.Empty(cut.FindAll("input[id^='munin-explorer-new-list-']"));
+    }
+
+    [Fact]
+    public void CreateToggle_WhenItIsPressedTwiceAsSeparateGestures_ThenItStillTogglesBothWays()
+    {
+        // The guard is per gesture, not per control: two deliberate presses each arrive with a click
+        // count of one, and a reader who opened the form must still be able to fold it away.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        PressDisclosure(cut, CreateToggle);
+
+        Assert.Equal("true", Disclosed(cut, CreateToggle));
+
+        PressDisclosure(cut, CreateToggle);
+
+        Assert.Equal("false", Disclosed(cut, CreateToggle));
+        Assert.Empty(cut.FindAll("input[id^='munin-explorer-new-list-']"));
+    }
+
+    [Fact]
+    public void CreateToggle_WhenItIsActivatedFromTheKeyboard_ThenEachActivationToggles()
+    {
+        // Enter and Space on a <button> arrive as a click with a count of zero, which is what keeps a
+        // guard on the second click of a pointer gesture from swallowing a second keypress. Verified
+        // rather than assumed, because a guard that caught this would make the form unreachable.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        PressDisclosure(cut, CreateToggle, clicks: 0);
+
+        Assert.Equal("true", Disclosed(cut, CreateToggle));
+
+        PressDisclosure(cut, CreateToggle, clicks: 0);
+
+        Assert.Equal("false", Disclosed(cut, CreateToggle));
+    }
+
+    [Fact]
+    public void RenameToggle_WhenItIsDoubleClicked_ThenTheFormIsLeftOpen()
+    {
+        // The same shape as the create control's, and it failed the same way: the name field
+        // appeared and vanished under a reader who pressed twice. (Fhi.Metadata-zel47)
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        Assert.Equal("false", Disclosed(cut, RenameToggle));
+
+        PressDisclosure(cut, RenameToggle);
+        PressDisclosure(cut, RenameToggle, clicks: 2);
+
+        Assert.Equal("true", Disclosed(cut, RenameToggle));
+        Assert.NotEmpty(cut.FindAll("input[id^='munin-explorer-rename-list-']"));
+    }
+
+    [Fact]
+    public void RenameToggle_WhenItIsShiftClicked_ThenTheFormIsLeftShut()
+    {
+        // The selection gesture that needs no press to be told, for the reason the create control's
+        // does: the words either side of this button are text.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        PressDisclosure(cut, RenameToggle, shift: true);
+
+        Assert.Equal("false", Disclosed(cut, RenameToggle));
+        Assert.Empty(cut.FindAll("input[id^='munin-explorer-rename-list-']"));
+    }
+
+    [Fact]
+    public void RenameToggle_WhenItIsPressedTwiceAsSeparateGestures_ThenItStillTogglesBothWays()
+    {
+        // Two deliberate presses each arrive with a click count of one, so the reader keeps the one
+        // control they have for putting the rename field away.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        PressDisclosure(cut, RenameToggle);
+
+        Assert.Equal("true", Disclosed(cut, RenameToggle));
+
+        PressDisclosure(cut, RenameToggle);
+
+        Assert.Equal("false", Disclosed(cut, RenameToggle));
+        Assert.Empty(cut.FindAll("input[id^='munin-explorer-rename-list-']"));
+    }
+
+    [Fact]
+    public void RenameToggle_WhenItIsActivatedFromTheKeyboard_ThenEachActivationToggles()
+    {
+        // A keyboard activation carries a click count of zero, and the guard must not read that as
+        // the second click of a pointer gesture, or the rename form is unreachable without a mouse.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        PressDisclosure(cut, RenameToggle, clicks: 0);
+
+        Assert.Equal("true", Disclosed(cut, RenameToggle));
+
+        PressDisclosure(cut, RenameToggle, clicks: 0);
+
+        Assert.Equal("false", Disclosed(cut, RenameToggle));
+    }
+
+    [Fact]
+    public void DeleteToggle_WhenItIsDoubleClicked_ThenTheConfirmationIsLeftArmed()
+    {
+        // Guarded with the other two rather than left alone, which the reading "a double-click that
+        // cancels a delete is harmless" would have allowed: this is one control, so the same gesture
+        // on the armed step re-arms it, and "Ja, slett listen" reappears unasked. (Fhi.Metadata-zel47)
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        Assert.Equal("false", Disclosed(cut, DeleteToggle));
+
+        PressDisclosure(cut, DeleteToggle);
+        PressDisclosure(cut, DeleteToggle, clicks: 2);
+
+        Assert.Equal("true", Disclosed(cut, DeleteToggle));
+        Assert.Contains("Ja, slett listen", cut.Markup);
+    }
+
+    [Fact]
+    public void DeleteToggle_WhenTheArmedStepIsDoubleClicked_ThenTheConfirmationStaysCancelled()
+    {
+        // The direction that makes this a defect rather than a convenience: cancelling is the same
+        // button, so an unguarded second click armed the delete again and left the reader a click
+        // away from losing the list they had just decided to keep.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        PressDisclosure(cut, DeleteToggle);
+        PressDisclosure(cut, DeleteToggle);
+
+        Assert.Equal("false", Disclosed(cut, DeleteToggle));
+
+        PressDisclosure(cut, DeleteToggle);
+        PressDisclosure(cut, DeleteToggle, clicks: 2);
+
+        Assert.Equal("true", Disclosed(cut, DeleteToggle));
+    }
+
+    [Fact]
+    public void DeleteToggle_WhenItIsShiftClicked_ThenTheConfirmationIsLeftUnarmed()
+    {
+        // A selection gesture must not arm a destructive step, least of all this one: the modifier
+        // says the reader is taking text, not answering a question nobody has asked yet.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        PressDisclosure(cut, DeleteToggle, shift: true);
+
+        Assert.Equal("false", Disclosed(cut, DeleteToggle));
+        Assert.DoesNotContain("Ja, slett listen", cut.Markup);
+    }
+
+    [Fact]
+    public void DeleteToggle_WhenItIsPressedTwiceAsSeparateGestures_ThenItStillTogglesBothWays()
+    {
+        // Two deliberate presses arm and then cancel, which is the whole of what the two steps are
+        // for: a guard that swallowed the second would leave the confirmation armed with no way out.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        PressDisclosure(cut, DeleteToggle);
+
+        Assert.Equal("true", Disclosed(cut, DeleteToggle));
+        Assert.Contains("Ja, slett listen", cut.Markup);
+
+        PressDisclosure(cut, DeleteToggle);
+
+        Assert.Equal("false", Disclosed(cut, DeleteToggle));
+        Assert.DoesNotContain("Ja, slett listen", cut.Markup);
+    }
+
+    [Fact]
+    public void DeleteToggle_WhenItIsActivatedFromTheKeyboard_ThenEachActivationToggles()
+    {
+        // A click count of zero is Enter or Space, and both steps have to answer it: a reader without
+        // a mouse must be able to arm the confirmation and to change their mind about it.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        PressDisclosure(cut, DeleteToggle, clicks: 0);
+
+        Assert.Equal("true", Disclosed(cut, DeleteToggle));
+
+        PressDisclosure(cut, DeleteToggle, clicks: 0);
+
+        Assert.Equal("false", Disclosed(cut, DeleteToggle));
     }
 
     // -----------------------------------------------------------------------
