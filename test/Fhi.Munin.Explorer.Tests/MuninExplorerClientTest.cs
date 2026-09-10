@@ -883,9 +883,9 @@ public class MuninExplorerClientTest
     [Fact]
     public async Task GetFiltersAsync_WhenAKodeverkNameIsUnresolved_ThenTheRowIsReadWithANullName()
     {
-        // Navn is nullable because fhi.kodeverk can be unreachable, and every row in filters.json
-        // has a resolved name since the re-capture. VariableSearchTest covers the rendering of a
-        // nameless kodeverk, but builds the facet in C#, so only this says the null parses.
+        // navn is nullable because fhi.kodeverk can be unreachable, and no row in filters.json is
+        // nameless since the re-capture, so only this says the null parses. The facet panel's OID
+        // fallback for one is covered beside its sibling facets in VariableSearchTest.
         var filters = await WithJson("""
             {
               "administrativtKodeverk": [

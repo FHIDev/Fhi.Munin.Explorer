@@ -7,6 +7,10 @@
 // The fixtures are reused rather than copied: one set for a human to re-capture when a drift
 // report asks for it, instead of a second set here that nothing would ever look at again.
 //
+// They are not one snapshot: filters.json reports 31791 variables where variables.json holds
+// 18289, and its facet counts are that catalogue's. Nothing here reads a count back out, and
+// re-capturing the corpus together is its own job.
+//
 // Usage:  node scripts/axe-stub-api.mjs <port>
 import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';
@@ -59,10 +63,6 @@ bodies.set(listRoute, JSON.stringify([
   { ...study, navn: study.preferredTerm, aktiv: true, harVariabelbeskrivelse: study.totalVariables > 0,
     datasamlingCount: countCollections(study), delkildeCount: study.delkilder.length },
 ]));
-
-// filters.json is a newer snapshot than the captures beside it: its kilde facet and totalCount
-// describe a catalogue these other routes no longer serve. Left that way on purpose — nothing
-// here reads a facet id back out, and re-taking the corpus as one snapshot is its own job.
 
 // The one route whose fixture cannot be served verbatim. my-list-variables.json is a real capture:
 // 247 entries reported, two of them kept. Served as-is for every page, it says "page 1 of 3" every
