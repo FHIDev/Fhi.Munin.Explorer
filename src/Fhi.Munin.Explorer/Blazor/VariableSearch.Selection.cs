@@ -257,6 +257,12 @@ public partial class VariableSearch
         _sourceLoading = false;
     }
 
+    // Guarded on the same predicate, and for the reason ToggleDetailFromRowHeadingAsync is. Both
+    // ways in ask it here — the "Vis datakilde" pair and the trail's kilde step — since either
+    // closes the view it just opened on a second click. (Fhi.Metadata-j1j3i)
+    private Task ToggleSourceFromControlAsync(SourceKind kind, MouseEventArgs released) =>
+        released.Detail > 1 ? Task.CompletedTask : ToggleSourceAsync(kind);
+
     /// <summary>
     /// Open the kilde or the datasamling the variable belongs to, or close the one already open.
     /// </summary>

@@ -229,7 +229,8 @@ public partial class VariableSearch
                 // the kilde's own view. aria-controls would also dangle — the element it named
                 // does not exist while this button is the thing on screen.
                 builder.AddAttribute(10, "onclick",
-                    EventCallback.Factory.Create(this, () => ToggleSourceAsync(SourceKind.Kilde)));
+                    EventCallback.Factory.Create<MouseEventArgs>(
+                        this, e => ToggleSourceFromControlAsync(SourceKind.Kilde, e)));
                 builder.AddContent(11, crumb.Text);
                 builder.CloseElement();
             }

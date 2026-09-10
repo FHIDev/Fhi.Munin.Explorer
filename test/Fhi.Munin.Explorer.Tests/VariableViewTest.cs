@@ -2,6 +2,7 @@ using System.Text.Json;
 using Bunit;
 using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
+using Microsoft.AspNetCore.Components.Web;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -318,6 +319,72 @@ public class VariableViewTest : BunitContext
 
         Assert.All(cut.FindAll(".munin-explorer-versions__detail"),
                    d => Assert.False(d.HasAttribute("hidden")));
+    }
+
+    /// <summary>
+    /// A pointer press on the first version's disclosure. <paramref name="clicks"/> is the browser's
+    /// click count, so 2 is the second click of a double-click gesture and 0 is how a browser
+    /// reports Enter or Space on a button.
+    /// </summary>
+    /// <remarks>The row is found on every call rather than held: each press re-renders it.</remarks>
+    private static void PressVersion(IRenderedComponent<VariableView> cut, long clicks = 1) =>
+        cut.FindAll(".munin-explorer-versions > li > button")[0]
+           .Click(new MouseEventArgs { Detail = clicks });
+
+    /// <summary>Whether the first version's own panel is showing.</summary>
+    private static bool VersionOpen(IRenderedComponent<VariableView> cut) =>
+        !cut.FindAll(".munin-explorer-versions__detail")[0].HasAttribute("hidden");
+
+    private static VariableDetail OneVersion() =>
+        Detail() with { Versions = [Version(Guid.NewGuid())] };
+
+    [Fact]
+    public void Versions_WhenARowIsDoubleClicked_ThenItIsLeftOpen()
+    {
+        // The same guard and predicate the result row's own disclosure carries, on a row that was
+        // still built from a parameterless lambda: the second click reached ToggleVersionAsync and
+        // shut the version the first had just opened. (Fhi.Metadata-j1j3i)
+        var cut = Render(OneVersion());
+
+        PressVersion(cut);
+        PressVersion(cut, clicks: 2);
+
+        Assert.True(VersionOpen(cut));
+        Assert.Equal("true",
+                     cut.FindAll(".munin-explorer-versions__toggle")[0].GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void Versions_WhenARowIsPressedTwiceAsSeparateGestures_ThenItStillTogglesBothWays()
+    {
+        // The guard is per gesture, not per control: two deliberate presses each arrive with a click
+        // count of one, and a reader who opened a version must still be able to shut it.
+        var cut = Render(OneVersion());
+
+        PressVersion(cut);
+
+        Assert.True(VersionOpen(cut));
+
+        PressVersion(cut);
+
+        Assert.False(VersionOpen(cut));
+    }
+
+    [Fact]
+    public void Versions_WhenARowIsActivatedFromTheKeyboard_ThenEachActivationToggles()
+    {
+        // Enter and Space on a <button> arrive as a click with a count of zero, which is what keeps a
+        // guard on the second click of a pointer gesture from swallowing a second keypress. Verified
+        // rather than assumed, because a guard that caught this would make the version unclosable.
+        var cut = Render(OneVersion());
+
+        PressVersion(cut, clicks: 0);
+
+        Assert.True(VersionOpen(cut));
+
+        PressVersion(cut, clicks: 0);
+
+        Assert.False(VersionOpen(cut));
     }
 
     [Fact]

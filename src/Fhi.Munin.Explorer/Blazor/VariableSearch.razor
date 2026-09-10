@@ -893,7 +893,7 @@ else
                                                 id="@SourceToggleId(kind)"
                                                 aria-expanded="@SourceExpanded(kind)"
                                                 aria-controls="@SourceControls(kind)"
-                                                @onclick="() => ToggleSourceAsync(kind)">@SourceToggleText(kind)</button>
+                                                @onclick="e => ToggleSourceFromControlAsync(kind, e)">@SourceToggleText(kind)</button>
                                     }
 
                                     @* After the owner buttons, not before. Those two are the
