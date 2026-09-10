@@ -5264,6 +5264,23 @@ public class VariableSearchTest : BunitContext
     private static IReadOnlyList<string> Chips(IRenderedComponent<VariableSearch> cut) =>
         [.. cut.FindAll(".munin-explorer-filters__chip").Select(chip => chip.FirstChild!.TextContent.Trim())];
 
+    /// <summary>The <c>lang</c> the chip naming <paramref name="value"/> puts on those words.</summary>
+    /// <remarks>
+    /// Read off the value's own element, and the two elements around it are asserted bare: the
+    /// capsule holds the remove control as well, whose accessible name is this package's prose,
+    /// and <c>lang</c> inherits.
+    /// </remarks>
+    private static string? ChipLang(IRenderedComponent<VariableSearch> cut, string value)
+    {
+        var chip = cut.FindAll(".munin-explorer-filters__chip")
+            .First(c => c.FirstChild!.TextContent.Trim() == value);
+
+        Assert.False(chip.HasAttribute("lang"));
+        Assert.False(chip.QuerySelector(".munin-explorer-filters__chip-remove")!.HasAttribute("lang"));
+
+        return chip.FirstElementChild!.GetAttribute("lang");
+    }
+
     /// <summary>Press the close control on the chip naming <paramref name="value"/>.</summary>
     private static void RemoveChip(IRenderedComponent<VariableSearch> cut, string value) =>
         cut.FindAll(".munin-explorer-filters__chip")
@@ -5379,6 +5396,83 @@ public class VariableSearchTest : BunitContext
 
         Assert.Equal(1, client.SearchFilter!.ActiveCount);
         Assert.Equal(["Streng"], Chips(cut));
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenAChipNamesACatalogueValue_ThenThoseWordsAloneAreMarkedNorwegian()
+    {
+        // A Norwegian name inside an English page is read out with English phonetics otherwise,
+        // which is WCAG 3.1.2. The kildeutforsker's chips have carried the marking from the start;
+        // these are the same capsule and were the only ones passing no language at all.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), EveryFacet());
+        var cut = RenderWith(client, b => b.Add(c => c.Language, "en"));
+
+        ClickFacet(cut, "Tromsøundersøkelsen");
+        ClickFacet(cut, "ICD-10");
+        ClickFacet(cut, "String");
+
+        // The catalogue's own words, whether they read as a name or as one of its abbreviations:
+        // DÅR and HKR are Norwegian short forms rather than international tokens.
+        Assert.Equal("no", ChipLang(cut, "Tromsøundersøkelsen"));
+        Assert.Equal("no", ChipLang(cut, "ICD-10"));
+
+        // The datatype is resolved into the reader's own language, so marking it Norwegian would
+        // be the same defect the other way round — an English word in a Norwegian voice.
+        Assert.Null(ChipLang(cut, "String"));
+
+        // And the datakategori token, which is a CURIE belonging to no language at all.
+        ClickFacet(cut, "ehds-cat:population-health-surveys");
+
+        Assert.Null(ChipLang(cut, "ehds-cat:population-health-surveys"));
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenTheReaderReadsNorwegian_ThenNothingInTheRowIsMarkedAtAll()
+    {
+        // A lang saying what the page already says is noise, so the marking is against the reader's
+        // language rather than a literal "no" written at the call site.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), EveryFacet());
+        var cut = RenderWith(client);
+
+        ClickFacet(cut, "Tromsøundersøkelsen");
+        ClickFacet(cut, "ICD-10");
+
+        Assert.Null(ChipLang(cut, "Tromsøundersøkelsen"));
+        Assert.Null(ChipLang(cut, "ICD-10"));
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenTwoKilderReachTheRowThroughDifferentSweeps_ThenBothAreMarkedAlike()
+    {
+        // Why this is a rule about the whole row and not about one call site: a chosen value the
+        // cross-filtered facets do not name is drawn by UnfacetedHierarchyChips instead, and a
+        // reader must not hear one kilde in Norwegian and the next in English by that accident.
+        var rows = OnePage(
+            Variable("1. Tale", "KODE") with { KildeId = Tromso, KildeName = "Tromsøundersøkelsen" },
+            Variable("2. Spyttsekresjon", "KODE2") with { KildeId = UnknownKilde, KildeName = "Als registeret" });
+
+        var cut = RenderWith(new FilteringClient(rows, Facets()),
+                             b => b.Add(c => c.Filter, new VariableFilter { KildeIds = [Tromso, UnknownKilde] })
+                                    .Add(c => c.Language, "en"));
+
+        // The facet payload names the first and not the second, so the two chips come from the two
+        // sweeps — the order says so: the fallback follows the facet's own values.
+        Assert.Equal(["Tromsøundersøkelsen", "Als registeret"], Chips(cut));
+        Assert.Equal("no", ChipLang(cut, "Tromsøundersøkelsen"));
+        Assert.Equal("no", ChipLang(cut, "Als registeret"));
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenNothingOnScreenKnowsAValuesName_ThenItsChipIsNotMarkedNorwegian()
+    {
+        // The level's own word is this package's prose and follows the reader's language, exactly
+        // as the trail's step does — the fact the trail records as HierarchyCrumb.Norwegian.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))),
+                             b => b.Add(c => c.Filter, new VariableFilter { DatasamlingIds = [Inklusjon2] })
+                                    .Add(c => c.Language, "en"));
+
+        Assert.Equal(["Data collection"], Chips(cut));
+        Assert.Null(ChipLang(cut, "Data collection"));
     }
 
     [Fact]
