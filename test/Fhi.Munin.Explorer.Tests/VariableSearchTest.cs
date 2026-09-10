@@ -1468,8 +1468,8 @@ public class VariableSearchTest : BunitContext
             // trailing margin counted against the line and the row broke apart under a scrollbar.
             "munin-explorer-filters__toolbar",
             // Nivålinjer, the one switch in the component. It wears this name ALONE — the toolbar
-            // rule above selects hd-button-square, and the house classes beside this one squeezed
-            // the control to 4.72px wide on the rig. (Fhi.Metadata-l9l2n.87)
+            // rule above selects hd-button-square, and the house classes beside this one squeeze
+            // the control to one character wide. (Fhi.Metadata-l9l2n.87)
             "munin-explorer-switch",
             "munin-explorer-switch__track",
             "munin-explorer-switch__thumb",
@@ -3138,8 +3138,13 @@ public class VariableSearchTest : BunitContext
     /// value, or one of the toolbar buttons, which this selector also reaches. No label collides
     /// today, and <c>Single</c> is what says so if one ever starts to.
     /// </summary>
+    /// <remarks>
+    /// Trimmed, because <em>visible</em> text is the promise and source indentation is not part of
+    /// it: a control whose label sits on its own line in the .razor — the switch does — would
+    /// otherwise be found or not found according to how the markup happens to be laid out.
+    /// </remarks>
     private static AngleSharp.Dom.IElement Facet(IRenderedComponent<VariableSearch> cut, string label) =>
-        FacetControls(cut).Single(b => b.TextContent.StartsWith(label, StringComparison.Ordinal));
+        FacetControls(cut).Single(b => b.TextContent.TrimStart().StartsWith(label, StringComparison.Ordinal));
 
     /// <summary>The checkbox a facet value is chosen with.</summary>
     private static IElement FacetBox(IRenderedComponent<VariableSearch> cut, string label) =>
@@ -3741,7 +3746,7 @@ public class VariableSearchTest : BunitContext
         //
         // A native <button>, so Tab reaches it and Space activates it without a key handler of
         // ours. Its own name and nothing else: `hd-button-square` beside it drops the control into
-        // the toolbar's `min-width: 0` rule, which measured it 4.72px wide on the rig. And the track
+        // the toolbar's `min-width: 0` rule, which collapses it to one character wide. And the track
         // and thumb aria-hidden, or the accessible name becomes the switch plus two empty spans.
         // (Fhi.Metadata-l9l2n.87)
         var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
@@ -6133,7 +6138,7 @@ public class VariableSearchTest : BunitContext
 
         // The toolbar is still buttons, and still Stiler's own square one — except Nivålinjer, which
         // wears munin-explorer-switch ALONE: the toolbar's rule selects hd-button-square, and beside
-        // it the switch collapsed to one character wide on the rig. (Fhi.Metadata-l9l2n.87)
+        // it the switch collapses to one character wide. (Fhi.Metadata-l9l2n.87)
         var buttons = panel.QuerySelectorAll("button");
         Assert.All(
             buttons.Where(b => b.GetAttribute("role") != "switch"),
@@ -10261,8 +10266,8 @@ public class VariableSearchTest : BunitContext
             // trailing margin counted against the line and the row broke apart under a scrollbar.
             "munin-explorer-filters__toolbar",
             // Nivålinjer, the one switch in the component. It wears this name ALONE — the toolbar
-            // rule above selects hd-button-square, and the house classes beside this one squeezed
-            // the control to 4.72px wide on the rig. (Fhi.Metadata-l9l2n.87)
+            // rule above selects hd-button-square, and the house classes beside this one squeeze
+            // the control to one character wide. (Fhi.Metadata-l9l2n.87)
             "munin-explorer-switch",
             "munin-explorer-switch__track",
             "munin-explorer-switch__thumb",

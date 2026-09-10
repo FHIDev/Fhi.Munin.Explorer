@@ -509,9 +509,9 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 /* Nivålinjer, the one switch in the component. It wears its own name and NOTHING else — no
    `hd-button-square`, no `button-square--*` — because the rule directly above reaches every square
-   button in this row: with the house classes on it the control measured 4.72 x 304.34px on the
-   hostile-host rig — one character wide, every letter on a line of its own, underlined. On its own
-   name it is 114.98 x 32, the height of the pill it replaces. (Fhi.Metadata-l9l2n.87)
+   button in this row and squeezes the control to one character wide, underlined, every letter on a
+   line of its own. Both states measured on the Stiler side of this pair (Fhi.Metadata-l9l2n.86),
+   not here. (Fhi.Metadata-l9l2n.87)
 
    The drawn state hangs on `aria-checked` and never on a modifier class, so the thing a screen
    reader announces and the thing a sighted reader sees cannot come apart.
@@ -527,7 +527,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   border: none;
   border-radius: 0.5rem;
   background: none;
-  color: var(--dark);
+  color: var(--grey60);
   font: normal 500 1rem/1 var(--font);
   cursor: pointer;
 }
@@ -539,40 +539,51 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .munin-explorer-switch:hover,
 .munin-explorer-switch:focus-visible {
   background-color: var(--grey20);
-  color: var(--dark);
 }
 
-/* The track. --grey60 off and --primary on: both are state carried by colour alone on a non-text
-   control, so both owe WCAG 1.4.11's 3:1 against the page ground --grey10 — 6.76:1 and 6.57:1.
-   --grey40, the obvious "off" grey, is 1.82:1 and fails, which is the level lines' own defect
-   (Fhi.Metadata-wcbxi) repeated on the control that turns them off. */
+/* The track, and OFF IS THE STATE THAT NEARLY FAILED. Its --grey20 fill is the same colour as the
+   wrapper's own hover surface, where it measures 1.00:1 and simply is not there — so the carrying
+   signal off is the --grey60 BORDER, at 6.76:1 on --grey10 and 6.38:1 on the hover surface, and
+   the fill is a second signal rather than the one WCAG 1.4.11 is satisfied by. On, --grey60 fills
+   the track at the same two ratios. Never --primary: this is the pair Stiler draws
+   (Fhi.Metadata-l9l2n.86), and a sample painting a different control is the
+   `.munin-explorer-frequency__track` failure again. */
 .munin-explorer-switch__track {
   position: relative;
   flex: none;
   width: 30px;
   height: 18px;
+  border: 1px solid var(--grey60);
   border-radius: 9px;
-  background-color: var(--grey60);
+  background-color: var(--grey20);
 }
 
 .munin-explorer-switch[aria-checked="true"] .munin-explorer-switch__track {
-  background-color: var(--primary);
+  background-color: var(--grey60);
 }
 
-/* The thumb, 12x12 travelling 12px — 3px in from the off end, 15px from the left when on. White on
-   both track colours: 7.24:1 and 7.03:1. */
+/* The thumb, 12x12 travelling 12px — inset 2px from the track's border box, so 3px from its outer
+   edge. It inverts with the track, at 6.38:1 and 7.23:1, but the carrying signal is POSITION: left
+   is off and right is on with every colour removed. */
 .munin-explorer-switch__thumb {
   position: absolute;
-  top: 3px;
-  left: 3px;
+  top: 2px;
+  left: 2px;
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background-color: #fff;
+  background-color: var(--grey60);
 }
 
 .munin-explorer-switch[aria-checked="true"] .munin-explorer-switch__thumb {
-  left: 15px;
+  left: 14px;
+  background-color: #fff;
+}
+
+/* The label is text, so 4.5:1 under 1.4.3 rather than 3:1 — --grey60 off reads 6.76:1 on the page
+   ground and 6.38:1 on the hover surface, --dark on reads 14.28:1 and 13.47:1. */
+.munin-explorer-switch[aria-checked="true"] {
+  color: var(--dark);
 }
 
 .munin-explorer-filters details {

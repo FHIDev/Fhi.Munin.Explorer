@@ -297,7 +297,12 @@ else
                         type="button"
                         role="switch"
                         aria-checked="@(_levelLines ? "true" : "false")"
-                        @onclick="ToggleLevelLinesAsync"><span class="munin-explorer-switch__track" aria-hidden="true"><span class="munin-explorer-switch__thumb"></span></span>@T.LevelLines</button>
+                        @onclick="ToggleLevelLinesAsync">
+                    <span class="munin-explorer-switch__track" aria-hidden="true">
+                        <span class="munin-explorer-switch__thumb"></span>
+                    </span>
+                    @T.LevelLines
+                </button>
             </div>
 
             @* A fold press rewrites every disclosure in the panel and is otherwise silent — the same

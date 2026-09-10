@@ -305,9 +305,14 @@ These are not style preferences — each one is a host that breaks otherwise.
     One thing about that rule is now load-bearing elsewhere: it selects `hd-button-square`, and
     `Nivålinjer` deliberately no longer wears it. The switch carries `munin-explorer-switch` and
     nothing else, because with the house classes beside it the toolbar's `min-width: 0` and
-    `overflow-wrap: anywhere` measured the control at 4.72×304.34px on the hostile-host rig — one
-    character wide, every letter on a line of its own, where 114.98×32 was wanted. A host writing
-    its own toolbar rule owes the switch the same exemption.
+    `overflow-wrap: anywhere` squeeze the control to one character wide, every letter on a line of
+    its own. That is measured rather than feared — 4.72×304.34px with the house classes against
+    114.98×32 without — but **it was not measured here**: the numbers are the Stiler half's
+    (`Fhi.Metadata-l9l2n.86`), taken by injecting this markup into Runa's toolbar against Stiler
+    source. Nothing in this repository can reproduce them, because `samples/HostileHost` restores a
+    published Stiler and .86 shipped its SCSS without a version bump, so the hostile-host rig has no
+    switch rules at all until the release that follows PR 39257. A host writing its own toolbar rule
+    owes the switch the same exemption.
     The row of active-filter chips over the results adds three, all shared with that panel:
     `munin-explorer-filters__active` is the row, `munin-explorer-filters__chip` the capsule around
     one ticked value and `munin-explorer-filters__chip-remove` the close control inside it. Handles,
