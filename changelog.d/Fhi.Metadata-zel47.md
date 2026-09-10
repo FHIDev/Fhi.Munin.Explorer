@@ -8,6 +8,4 @@ category: Fixed
   selection across the words beside them did the same. Both gestures are now refused the way the
   rows and the variable panel's disclosures already refused them; deliberate repeated pressing
   still toggles both ways, and Enter or Space on any of the four is unaffected. These were the
-  last four, and a guard now sweeps every disclosure the package draws rather than the ones
-  someone thought to look at, so a new one cannot arrive without the rule.
-  (Fhi.Metadata-zel47)
+  last four controls in the package that took no click count. (Fhi.Metadata-zel47)

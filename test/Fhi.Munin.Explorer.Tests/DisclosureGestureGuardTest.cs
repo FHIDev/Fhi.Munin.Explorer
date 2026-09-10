@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using AngleSharp.Dom;
 using Bunit;
 using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
@@ -10,17 +11,14 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
-/// One rule over every disclosure this package draws: a gesture that stands still — the second
+/// The rule every disclosure this package draws follows: a gesture that stands still — the second
 /// click of a double-click, or a shift-click extending a selection — never changes what any of them
 /// discloses, and a deliberate press still toggles.
 /// </summary>
 /// <remarks>
-/// Written because the same defect was found by hand three times — the kilde chevron
-/// (Fhi.Metadata-l9l2n.72), five more disclosures (Fhi.Metadata-j1j3i), then four more
-/// (Fhi.Metadata-zel47) — and nothing in the suite enumerated them, so each round only ever fixed
-/// the instances someone had thought to look at. A new
-/// <c>&lt;button aria-expanded @onclick="() =&gt; _flag = !_flag"&gt;</c> compiles, renders and
-/// passes every other test here.
+/// Every round of this defect was found by hand rather than by the suite (Fhi.Metadata-zel47),
+/// because a new <c>&lt;button aria-expanded&gt;</c> passes every other test here. What the
+/// enumeration below does and does not establish is on <see cref="Swept"/>.
 /// </remarks>
 public class DisclosureGestureGuardTest : BunitContext
 {
@@ -41,15 +39,22 @@ public class DisclosureGestureGuardTest : BunitContext
     private static string Disclosed<T>(IRenderedComponent<T> cut) where T : IComponent =>
         string.Join(
             "\n",
-            cut.FindAll(Disclosure).Select(b =>
-                $"{(b.Id is { Length: > 0 } id ? id : b.ClassName)} = {b.GetAttribute("aria-expanded")}"));
+            cut.FindAll(Disclosure).Select(b => $"{Named(b)} = {b.GetAttribute("aria-expanded")}"));
+
+    /// <summary>What a control is called here: its id, or its class where it has no id.</summary>
+    /// <remarks>
+    /// One rule for both halves: a scene whose disclosures share a class would otherwise be told
+    /// by the weaker of two names that the control it pressed is still the one in hand.
+    /// </remarks>
+    private static string? Named(IElement button) =>
+        button.Id is { Length: > 0 } id ? id : button.ClassName;
 
     /// <summary>Whether the control at <paramref name="at"/> is still the one that was pressed.</summary>
     private static bool Survives<T>(IRenderedComponent<T> cut, int at, string? named) where T : IComponent
     {
         var still = cut.FindAll(Disclosure);
 
-        return still.Count > at && still[at].ClassName == named;
+        return still.Count > at && Named(still[at]) == named;
     }
 
     /// <summary>What the disclosure at <paramref name="at"/> says about itself.</summary>
@@ -88,7 +93,7 @@ public class DisclosureGestureGuardTest : BunitContext
 
             // Prefixed with the control's own name, so a failure says which one moved rather than
             // only that the page did.
-            var named = cut.FindAll(Disclosure)[at].ClassName;
+            var named = Named(cut.FindAll(Disclosure)[at]);
             var shut = Disclosed(cut);
 
             Press(cut, at, clicks: 2);
@@ -266,6 +271,19 @@ public class DisclosureGestureGuardTest : BunitContext
     }
 
     [Fact]
+    public void KildeSearchSelectable_WhenEveryDisclosureIsGestured_ThenNoneOfThemMoves()
+    {
+        // The same two: the mode a host wiring ExploreVariablesRequested gets adds a column of tick
+        // boxes and no disclosure, and the scene above never enters those branches to say so.
+        Services.AddSingleton<IMuninExplorerClient>(new DisclosureClient());
+
+        AssertStandingGesturesAreRefused(
+            () => Render<KildeSearch>(b => b.Add(
+                c => c.ExploreVariablesRequested, (IReadOnlyList<Guid> _) => { })),
+            expected: 2);
+    }
+
+    [Fact]
     public void VariableSearch_WhenEveryDisclosureIsGestured_ThenNoneOfThemMoves()
     {
         // Four, and three of them only exist once a row is open: the row's own name, then
@@ -281,7 +299,7 @@ public class DisclosureGestureGuardTest : BunitContext
     {
         var cut = Render<VariableSearch>();
 
-        cut.FindAll(Disclosure)[0].Click(new MouseEventArgs { Detail = 1 });
+        Press(cut, 0);
         cut.FindAll(".munin-explorer-meta__tabs [role=tab]")[1].Click();
 
         return cut;
@@ -315,20 +333,18 @@ public class DisclosureGestureGuardTest : BunitContext
     // -----------------------------------------------------------------------
     // Completeness
 
-    /// <summary>Every source file above that renders an <c>aria-expanded</c> control.</summary>
+    /// <summary>The components the scenes above render, and whose files may therefore draw one.</summary>
     /// <remarks>
-    /// The sweep only sees the components it renders, so a disclosure added to a fifth component
-    /// would sail past it. This is what fails instead — loudly, and at the point the disclosure is
-    /// written rather than the next time someone double-clicks it.
+    /// Types rather than file names, so the check below cannot be satisfied by appending a string to
+    /// it. What it establishes is only where a disclosure lives: it is the scenes that gesture one,
+    /// and each renders the states it renders, so a branch none of them enters is in neither half.
     /// </remarks>
-    private static readonly string[] Swept =
+    private static readonly Type[] Swept =
     [
-        "KildeSearch.razor",
-        "VariableListView.razor",
-        "VariableSearch.DetailPanel.cs",
-        "VariableSearch.razor",
-        "VariableSearch.razor.cs",
-        "VariableView.Versions.cs",
+        typeof(KildeSearch),
+        typeof(VariableListView),
+        typeof(VariableSearch),
+        typeof(VariableView),
     ];
 
     [Fact]
@@ -336,18 +352,19 @@ public class DisclosureGestureGuardTest : BunitContext
     {
         // Blazor/ rather than the project, because obj/ holds generated sources that would answer
         // for the files they were generated from.
-        var drawing = Directory
+        var elsewhere = Directory
             .EnumerateFiles(Repo.In("src", "Fhi.Munin.Explorer", "Blazor"), "*.*", SearchOption.AllDirectories)
             .Where(path => path.EndsWith(".razor", StringComparison.Ordinal)
                            || path.EndsWith(".cs", StringComparison.Ordinal))
             .Where(path => Renders(File.ReadAllText(path)))
-            .Select(Path.GetFileName)
+            .Select(path => Path.GetFileName(path)!)
+            .Where(name => !Swept.Any(c => name.StartsWith($"{c.Name}.", StringComparison.Ordinal)))
             .Order(StringComparer.Ordinal)
             .ToList();
 
-        // Compared against the list rather than asserted a subset, so a component that stops drawing
-        // one leaves a scene above checking nothing and says so.
-        Assert.Equal(Swept, drawing);
+        // Named rather than counted, so a failure says which file drew a disclosure the sweep has
+        // no scene for.
+        Assert.Equal([], elsewhere);
     }
 
     /// <summary>Whether <paramref name="source"/> renders the attribute, rather than mentioning it.</summary>
