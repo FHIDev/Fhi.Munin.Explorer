@@ -48,7 +48,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <para>
 /// Real checkboxes, as helsedata's own are. The refusal to hide the last visible column is what
 /// <c>SetUpdatesAttributeName("checked")</c> below answers, the same way the facet panel answers a
-/// filter press it rolls back; the history is on Fhi.Metadata-f6az7.
+/// filter press it drops mid-fetch; the history is on Fhi.Metadata-f6az7.
 /// </para>
 /// <para>
 /// One copy for both explorers: every paragraph above is a borrowed name or a fact about the

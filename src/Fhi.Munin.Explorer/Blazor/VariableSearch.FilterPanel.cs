@@ -919,9 +919,9 @@ public partial class VariableSearch
                 builder.AddAttribute(7, "onchange",
                                      EventCallback.Factory.Create<ChangeEventArgs>(this, _ => toggle()));
 
-                // What a plain onchange does not do and this panel needs: a press it refuses —
-                // dropped mid-fetch, rolled back when one fails — leaves the browser's own tick on
-                // over a filter that is off, and only a forced update of `checked` unsticks it.
+                // What a plain onchange does not do and this panel needs: a press ApplyFilterAsync
+                // drops mid-fetch writes no state, so the renders either side are equal and the
+                // browser's own tick stays on over a filter that is off until `checked` is forced.
                 builder.SetUpdatesAttributeName("checked");
 
                 builder.CloseElement();
