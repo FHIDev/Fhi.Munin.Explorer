@@ -9,8 +9,8 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// panel cannot answer the question it answers: a kilde chosen three disclosures down, a delkilde
 /// under it and a variabelgruppe under that are three pressed buttons in three collapsed
 /// <c>&lt;details&gt;</c>, and the only sign of them on screen is the facet counts on the summary
-/// lines. The trail puts the same selection above the results as a path, which is also the only
-/// way to undo part of it without opening the panel again.
+/// lines. The trail puts the same selection above the results as a path, and gives the one way
+/// back up it that no single chip can offer: a press clears every level below the step.
 /// </remarks>
 public partial class VariableSearch
 {
@@ -31,6 +31,72 @@ public partial class VariableSearch
         Datasamling,
         Variabelgruppe
     }
+
+    /// <summary>The catalogue's word for a level: the facet it is drawn in, and its keys' prefix.</summary>
+    /// <remarks>
+    /// The one spelling of it. The chip row asks whether a chosen value already has a chip by
+    /// looking its key up among the ones the facets drew, so a prefix written out twice would let
+    /// the two answer differently — every hierarchy value drawing a second chip, and nothing
+    /// failing to build. <see cref="KildeValue(KildeFacet)"/> states the same rule for the label
+    /// beside it.
+    /// </remarks>
+    private static string FacetName(HierarchyLevel level) => level switch
+    {
+        HierarchyLevel.Kilde => "kilde",
+        HierarchyLevel.Delkilde => "delkilde",
+        HierarchyLevel.Datasamling => "datasamling",
+        HierarchyLevel.Variabelgruppe => "variabelgruppe",
+        _ => throw new ArgumentOutOfRangeException(nameof(level))
+    };
+
+    private static string FacetValueKey(HierarchyLevel level, Guid id) => $"{FacetName(level)}:{id}";
+
+    /// <summary>Which facet in the panel holds a level's checkboxes.</summary>
+    /// <remarks>
+    /// Delkilde and datasamling have no facet of their own: both hang inside the kilde tree, so a
+    /// chip for one belongs in the kilde facet's place in the row rather than in a facet of its
+    /// own that the reader would look for and not find.
+    /// </remarks>
+    private static string FacetGroupOf(HierarchyLevel level) =>
+        FacetName(level == HierarchyLevel.Variabelgruppe ? level : HierarchyLevel.Kilde);
+
+    /// <summary>
+    /// One level of the hierarchy: what is chosen in it, how a value of it reads, and what taking
+    /// values off it leaves.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The one table, read by the trail here and by the chip row in the panel. The trail may
+    /// safely remove nothing only because every step it draws has a chip, and a level added to one
+    /// reading and not the other is a chosen value with no control at all — the defect
+    /// Fhi.Metadata-oj286 fixed. One list is what makes that structural rather than remembered in
+    /// two files.
+    /// </para>
+    /// <para>
+    /// <c>Chosen</c> is a function and <c>Apply</c> closes over <c>_filter</c>, so both read the
+    /// filter in force when a chip is pressed rather than the one it was built from — the same
+    /// arrangement every facet toggle uses.
+    /// </para>
+    /// </remarks>
+    private sealed record HierarchyReading(
+        HierarchyLevel Level,
+        Func<IReadOnlyList<Guid>> Chosen,
+        Func<Guid, string?> Name,
+        string Fallback,
+        Func<IReadOnlyList<Guid>, VariableFilter> Apply);
+
+    /// <summary>The four levels, outermost first.</summary>
+    private IReadOnlyList<HierarchyReading> HierarchyLevels =>
+    [
+        new(HierarchyLevel.Kilde, () => _filter.KildeIds, KildeName, T.FieldSource,
+            ids => _filter with { KildeIds = ids }),
+        new(HierarchyLevel.Delkilde, () => _filter.DelkildeIds, DelkildeName, T.FieldDelkilde,
+            ids => _filter with { DelkildeIds = ids }),
+        new(HierarchyLevel.Datasamling, () => _filter.DatasamlingIds, DatasamlingName, T.FieldDataCollection,
+            ids => _filter with { DatasamlingIds = ids }),
+        new(HierarchyLevel.Variabelgruppe, () => _filter.VariabelgruppeIds, VariabelgruppeName,
+            T.FieldVariableGroup, ids => _filter with { VariabelgruppeIds = ids })
+    ];
 
     /// <summary>
     /// One step of the trail: which level it stands for, and how it reads.
@@ -72,82 +138,91 @@ public partial class VariableSearch
         {
             List<HierarchyCrumb> crumbs = new(4);
 
-            Add(HierarchyLevel.Kilde, _filter.KildeIds, KildeName, T.FieldSource);
-            Add(HierarchyLevel.Delkilde, _filter.DelkildeIds, DelkildeName, T.FieldDelkilde);
-            Add(HierarchyLevel.Datasamling, _filter.DatasamlingIds, DatasamlingName, T.FieldDataCollection);
-            Add(HierarchyLevel.Variabelgruppe, _filter.VariabelgruppeIds, VariabelgruppeName, T.FieldVariableGroup);
-
-            return crumbs;
-
-            void Add(HierarchyLevel level, IReadOnlyList<Guid> chosen, Func<Guid, string?> name, string fallback)
+            foreach (var level in HierarchyLevels)
             {
+                var chosen = level.Chosen();
+
                 if (chosen.Count == 0)
                 {
-                    return;
+                    continue;
                 }
 
                 // The first id's name, and the level's own word when nothing on screen knows it —
                 // see the name lookups below for when that happens. Never the id: a guid in a
                 // trail is not information, and the step still has to be pressable to clear what
                 // is under it.
-                var known = name(chosen[0]);
-                var text = known ?? fallback;
+                var known = level.Name(chosen[0]);
+                var text = known ?? level.Fallback;
 
                 crumbs.Add(new HierarchyCrumb(
-                    level,
+                    level.Level,
                     chosen.Count > 1 ? T.CrumbMore(text, chosen.Count - 1) : text,
                     Norwegian: known is not null));
             }
+
+            return crumbs;
         }
     }
 
-    /// <summary>
-    /// The trail, as a list of steps and a control that clears the whole of it.
-    /// </summary>
+    /// <summary>The trail: where the selection stands, and the way back up it.</summary>
     /// <remarks>
     /// <para>
-    /// A list rather than a <c>&lt;nav&gt;</c>. A breadcrumb is a navigation landmark by
-    /// convention, but this component already contributes a search landmark and up to two regions
-    /// to somebody else's page, and two explorers mounted together would put two identically named
-    /// navs in the landmark list with nothing to tell them apart — the search form avoids that by
-    /// naming itself after this instance's title, which a trail cannot borrow without being called
-    /// "Variabelutforsker". The <c>&lt;ol&gt;</c> carries the name instead, and is what says these
-    /// are steps in order. No class on it, for the reason the panel's kilde trail has none: Stiler
+    /// Navigation and nothing else. It removes no filter — the chip row over it is the only place
+    /// a single value is taken off — so the trail's own × is gone: two controls a screen reader
+    /// announced one after the other as "Fjern filteret Vestland 2022" and "Fjern
+    /// hierarkifilteret" were two ways to undo one tick, which is what read as the selection being
+    /// drawn twice. What is left is the thing chips cannot do, clearing every level under a step
+    /// in one press. (Fhi.Metadata-oj286)
+    /// </para>
+    /// <para>
+    /// That rests on the chip row covering every step drawn here, which the facets alone cannot
+    /// promise: they are cross-filtered and can arrive without a value the reader chose — the gap
+    /// <see cref="KildeName"/> has a fallback label for — and a step whose value had no chip would
+    /// have no removal at all short of "Fjern alle filtre". <see cref="UnfacetedHierarchyChips"/>
+    /// is what closes that, and it is what this paragraph depends on rather than the payload.
+    /// </para>
+    /// <para>
+    /// A named <c>role="navigation"</c> rather than a bare <c>&lt;nav&gt;</c>, the pager's
+    /// arrangement for the pager's reason: the landmark is worth having, and it is named so that
+    /// it does not sit anonymously among the host page's own. The name is on the region rather
+    /// than on the <c>&lt;ol&gt;</c>, which would otherwise be announced with the same words one
+    /// breath later. No class on the list, for the reason the panel's kilde trail has none: Stiler
     /// has no breadcrumb rule that can be read back off its compiled stylesheet, so a host draws
     /// the chevrons and a host that draws nothing gets a numbered list that still reads correctly.
+    /// </para>
+    /// <para>
+    /// Two explorers on one page do put two landmarks named "Valgt hierarki" in the list, and
+    /// naming the region after this instance's title the way the search form does would not part
+    /// them: <see cref="Texts.Title"/> is one constant word, so that reading gives two landmarks
+    /// called "Variabelutforsker" instead. Between two ambiguous names the descriptive one is
+    /// worth more, and the pager already puts a second "Paginering" on such a page — telling two
+    /// mounted explorers apart is the host's job, through whatever it wraps each of them in.
     /// </para>
     /// <para>
     /// Every step is a button, including the last one, which has nothing under it to clear. That
     /// is not an oversight: pressing a step makes it the last step, so a last step drawn as plain
     /// text would take the control the reader just pressed out of the document and drop focus to
-    /// <c>&lt;body&gt;</c> — the failure the pager's <c>aria-disabled</c> and the ever-present
-    /// clear button both exist to avoid. It is inert rather than absent, and says so with
-    /// <c>aria-current</c>; <see cref="ApplyFilterAsync"/> returns without a request when the
-    /// filter it is handed is the one already in force.
-    /// </para>
-    /// <para>
-    /// The clear control is the one place that rule cannot be kept. Clearing the hierarchy empties
-    /// the trail, so the button leaves the document with it and focus lands on the page — and the
-    /// alternative, an empty trail kept on screen for a lone × to sit in, is furniture describing a
-    /// selection that no longer exists. What a screen-reader user gets instead is the result
-    /// summary above the list, which is a polite live region and rewrites itself with the wider
-    /// count the moment the fetch lands.
+    /// <c>&lt;body&gt;</c> — the failure the pager's <c>aria-disabled</c> exists to avoid. It is
+    /// inert rather than absent, and says so with <c>aria-current</c>;
+    /// <see cref="ApplyFilterAsync"/> returns without a request when the filter it is handed is
+    /// the one already in force.
     /// </para>
     /// </remarks>
     private RenderFragment Breadcrumb(IReadOnlyList<HierarchyCrumb> crumbs) => builder =>
     {
         builder.OpenElement(0, "div");
         builder.AddAttribute(1, "class", "munin-explorer-breadcrumb");
-
-        builder.OpenElement(2, "ol");
+        builder.AddAttribute(2, "role", "navigation");
         builder.AddAttribute(3, "aria-label", T.HierarchyTrail);
+
+        builder.OpenElement(4, "ol");
 
         for (var index = 0; index < crumbs.Count; index++)
         {
             var crumb = crumbs[index];
             var current = index == crumbs.Count - 1;
 
-            builder.OpenElement(4, "li");
+            builder.OpenElement(5, "li");
             // Keyed by the level rather than by position. Not for a press on a step, which only
             // ever drops steps off the end and patches the same either way — for a level
             // appearing in the middle, which the trail allows: a selection may skip a level, so
@@ -156,20 +231,20 @@ public partial class VariableSearch
             // the reader's finger into the step that took its place; by level it moves instead.
             builder.SetKey(crumb.Level);
 
-            builder.OpenElement(5, "button");
-            builder.AddAttribute(6, "class", "hd-button-reset munin-explorer-crumb");
-            builder.AddAttribute(7, "type", "button");
+            builder.OpenElement(6, "button");
+            builder.AddAttribute(7, "class", "hd-button-reset munin-explorer-crumb");
+            builder.AddAttribute(8, "type", "button");
 
             // Null on every step but the last, so the attribute is left out rather than spelled
             // "false" — the same treatment the sort headers' aria-current gets.
-            builder.AddAttribute(8, "aria-current", current ? "true" : null);
+            builder.AddAttribute(9, "aria-current", current ? "true" : null);
 
             // What pressing it does, which the name on its own does not say. It starts with the
             // visible text so a speech-input user saying what they can see still hits the button
             // (WCAG 2.5.3), and the last step has none because pressing it does nothing.
-            builder.AddAttribute(9, "aria-label", current ? null : T.CrumbLabel(crumb.Text));
+            builder.AddAttribute(10, "aria-label", current ? null : T.CrumbLabel(crumb.Text));
 
-            builder.AddAttribute(10, "onclick",
+            builder.AddAttribute(11, "onclick",
                 EventCallback.Factory.Create(this, () => NarrowToAsync(crumb.Level)));
 
             if (crumb.Norwegian)
@@ -178,16 +253,16 @@ public partial class VariableSearch
                 // button — the result row's name does the same. The button owns the aria-label
                 // above, which is this component's prose in the UI's language, and an accessible
                 // name is announced in the computed language of the element that owns it: a
-                // langed button would have an English reader hear "Tromsøundersøkelsen – remove
-                // the levels below" in a Norwegian voice, which is lang="no" applied backwards.
-                builder.OpenElement(11, "span");
-                builder.AddAttribute(12, "lang", "no");
-                builder.AddContent(13, crumb.Text);
+                // langed button would have an English reader hear "Tromsøundersøkelsen – narrow
+                // to this level" in a Norwegian voice, which is lang="no" applied backwards.
+                builder.OpenElement(12, "span");
+                builder.AddAttribute(13, "lang", "no");
+                builder.AddContent(14, crumb.Text);
                 builder.CloseElement();
             }
             else
             {
-                builder.AddContent(14, crumb.Text);
+                builder.AddContent(15, crumb.Text);
             }
 
             builder.CloseElement();
@@ -195,23 +270,6 @@ public partial class VariableSearch
             builder.CloseElement();
         }
 
-        builder.CloseElement();
-
-        // Outside the list: it is not a step on the path, and a screen reader counting "list, 4
-        // items" must not be counting the control that empties it.
-        // Numbered above the crumb loop's highest, not from where the loop's outer element left
-        // off: the numbers inside the loop's span reach 14, and a fragment that reads as one
-        // ascending run is the only cue a later reader has that nothing collides. The two ranges
-        // are diffed apart today, so a collision here would be silent until the markup is renested.
-        builder.OpenElement(15, "button");
-        builder.AddAttribute(16, "class", "hd-button-reset munin-explorer-breadcrumb__clear");
-        builder.AddAttribute(17, "type", "button");
-        // The visible glyph is a multiplication sign, which is decoration rather than a word, so
-        // the accessible name is spelled out. It is the whole name and not a suffix, because there
-        // is no visible text for it to have to start with.
-        builder.AddAttribute(18, "aria-label", T.ClearHierarchy);
-        builder.AddAttribute(19, "onclick", EventCallback.Factory.Create(this, ClearHierarchyAsync));
-        builder.AddContent(20, "×");
         builder.CloseElement();
 
         builder.CloseElement();
@@ -242,21 +300,6 @@ public partial class VariableSearch
 
         IReadOnlyList<Guid> Keep(HierarchyLevel of, IReadOnlyList<Guid> ids) => of <= level ? ids : [];
     }
-
-    /// <summary>Drop the whole hierarchy selection, and nothing else.</summary>
-    /// <remarks>
-    /// The four levels only. "Fjern alle filtre" in the chip row is the control that clears
-    /// everything; this one is for the reader who has narrowed deep into one kilde and wants the
-    /// datatype, the kodeverk and the date range they also chose to survive it.
-    /// </remarks>
-    private Task ClearHierarchyAsync() =>
-        ApplyFilterAsync(_filter with
-        {
-            KildeIds = [],
-            DelkildeIds = [],
-            DatasamlingIds = [],
-            VariabelgruppeIds = []
-        });
 
     /// <summary>
     /// A kilde's name, or null when nothing on screen knows it.

@@ -109,13 +109,12 @@ internal enum PanelTab
 /// exactly like the <c>munin-explorer</c> root.
 /// </para>
 /// <para>
-/// The hierarchy trail over the results adds two names of ours — <c>munin-explorer-breadcrumb</c>
-/// and its <c>__clear</c> — and reuses <c>munin-explorer-crumb</c>, which the variable panel's
-/// kilde trail already wears, for the steps themselves. It is an <c>&lt;ol&gt;</c> of
-/// <c>&lt;button&gt;</c>s for the reason that trail is one: Stiler has no breadcrumb rule that can
-/// be read back off its compiled stylesheet, so the chevrons between the steps are a host's to
-/// draw and a host that draws nothing gets a numbered list that still reads correctly, in order,
-/// with the right names.
+/// The hierarchy trail over the results adds one name of ours — <c>munin-explorer-breadcrumb</c> —
+/// and reuses <c>munin-explorer-crumb</c>, which the variable panel's kilde trail already wears,
+/// for the steps themselves. It is an <c>&lt;ol&gt;</c> of <c>&lt;button&gt;</c>s for the reason
+/// that trail is one: Stiler has no breadcrumb rule that can be read back off its compiled
+/// stylesheet, so the chevrons between the steps are a host's to draw and a host that draws
+/// nothing gets a numbered list that still reads correctly, in order, with the right names.
 /// </para>
 /// <para>
 /// The column picker adds eight names, all of them helsedata's own and none of them ours. They

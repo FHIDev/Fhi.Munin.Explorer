@@ -404,7 +404,7 @@ public partial class VariableSearch
         // crowded. So the kilder are lifted out of it.
         var values = grouped.Count == 1 ? grouped[0].Children : grouped;
 
-        return new FacetGroup("kilde", T.FieldSource, OpenByDefault: true, values,
+        return new FacetGroup(FacetName(HierarchyLevel.Kilde), T.FieldSource, OpenByDefault: true, values,
                               EmptyText: empty, Chosen: ChosenKilder(facets, levels),
                               Searchable: true);
     }
@@ -560,7 +560,7 @@ public partial class VariableSearch
     /// two ways. The count is the drawn value's alone — a chip carries none.
     /// </remarks>
     private FacetValue KildeValue(KildeFacet kilde) =>
-        new($"kilde:{kilde.Id}",
+        new(FacetValueKey(HierarchyLevel.Kilde, kilde.Id),
             T.Named(kilde.Name, kilde.ShortName).Text,
             null,
             _filter.KildeIds.Contains(kilde.Id),
@@ -574,7 +574,7 @@ public partial class VariableSearch
         .. Tree(levels.Delkilder[kildeId]
                     .Select(delkilde => new TreeNode(
                         delkilde.Id, delkilde.ParentDelkildeId, DelkildeLabel(delkilde), delkilde.Count)),
-                "delkilde:",
+                $"{FacetName(HierarchyLevel.Delkilde)}:",
                 IsDelkildeChosen,
                 ToggleDelkilde,
                 Counted,
@@ -583,7 +583,7 @@ public partial class VariableSearch
 
     /// <summary>A delkilde on its own, on the same terms — the tree below builds it from the same parts.</summary>
     private FacetValue DelkildeValue(DelkildeFacet delkilde) =>
-        new($"delkilde:{delkilde.Id}",
+        new(FacetValueKey(HierarchyLevel.Delkilde, delkilde.Id),
             DelkildeLabel(delkilde),
             null,
             IsDelkildeChosen(delkilde.Id),
@@ -601,7 +601,7 @@ public partial class VariableSearch
 
     /// <summary>A datasamling on its own — the same split the kilde and delkilde above are drawn through.</summary>
     private FacetValue DatasamlingValue(DatasamlingFacet datasamling) =>
-        new($"datasamling:{datasamling.Id}",
+        new(FacetValueKey(HierarchyLevel.Datasamling, datasamling.Id),
             DatasamlingLabel(datasamling),
             null,
             _filter.DatasamlingIds.Contains(datasamling.Id),
@@ -667,12 +667,12 @@ public partial class VariableSearch
     /// reading as a broken one.
     /// </remarks>
     private FacetGroup VariabelgruppeGroup(FilterOptions facets) =>
-        new("variabelgruppe",
+        new(FacetName(HierarchyLevel.Variabelgruppe),
             T.FieldVariableGroup,
             OpenByDefault: false,
             Tree(facets.Variabelgrupper
                      .Select(g => new TreeNode(g.Id, g.ParentId, T.Named(g.Name, null).Text, g.Count)),
-                 "variabelgruppe:",
+                 $"{FacetName(HierarchyLevel.Variabelgruppe)}:",
                  IsGruppeChosen,
                  ToggleGruppe, Counted),
             T.NoVariabelgrupper);
@@ -1158,12 +1158,18 @@ public partial class VariableSearch
     /// A projection of the facets and never a second collection beside them — see
     /// <see cref="ActiveFilters"/>. Every facet is walked rather than a known few named, so one
     /// added later draws chips unasked: a row covering some filters reads as covering all of them.
+    /// A hierarchy value no facet named is spliced in where its own facet stands rather than
+    /// appended after the walk, or one level would read as two filters at opposite ends of the row
+    /// depending on which values the payload happened to name — see
+    /// <see cref="UnfacetedHierarchyChips"/> for why such a value has a chip at all.
     /// </remarks>
     private IReadOnlyList<ActiveFilters.Chip> ActiveFilterChips
     {
         get
         {
             List<ActiveFilters.Chip> chips = [];
+            HashSet<string> removable = [];
+            HashSet<string> walked = [];
 
             foreach (var group in FacetGroups)
             {
@@ -1178,13 +1184,91 @@ public partial class VariableSearch
 
                     var text = group.NameInChips ? T.FilterInFacet(group.Label, value.Label) : value.Label;
 
+                    removable.Add(value.Key);
                     chips.Add(new ActiveFilters.Chip(
                         text, T.RemoveFilter(text), null, null, () => RemoveFilterAsync(toggle)));
                 }
+
+                walked.Add(group.Key);
+                chips.AddRange(
+                    UnfacetedHierarchyChips(removable, level => FacetGroupOf(level) == group.Key));
             }
+
+            // The levels whose facet is not on screen at all, which is every level before the first
+            // answer and after one that failed — the state a host mounting with Filter set lands in.
+            chips.AddRange(
+                UnfacetedHierarchyChips(removable, level => !walked.Contains(FacetGroupOf(level))));
 
             return chips;
         }
+    }
+
+    /// <summary>
+    /// Chips for the chosen kilder, delkilder, datasamlinger and variabelgrupper that the facets
+    /// drew none for, at the levels <paramref name="drawnHere"/> admits.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The facets are cross-filtered, so a value the reader chose can be absent from the payload
+    /// describing what that selection leaves — the same gap <see cref="KildeName"/> has a fallback
+    /// label for — and before the first answer, or after one that failed, there is no payload at
+    /// all while a host may have mounted with <see cref="Filter"/> already set. Such a value
+    /// narrows the results and had no chip, so with the trail's own × gone the only control left
+    /// was "Fjern alle filtre", which drops the datatype and the dates with it. (Fhi.Metadata-oj286)
+    /// </para>
+    /// <para>
+    /// Keyed off what the walk above actually drew rather than off the payload a second time, so
+    /// the two can never disagree about which values already have a control: <c>removable</c> holds
+    /// the <see cref="FacetValue.Key"/> of every chip, and every such key comes from
+    /// <see cref="FacetName"/> — through <see cref="FacetValueKey"/> here and as
+    /// <see cref="Tree"/>'s prefix there. The levels themselves are <see cref="HierarchyLevels"/>,
+    /// the list the trail is drawn from, so neither reading can grow a level the other has not.
+    /// </para>
+    /// <para>
+    /// Values one level cannot name at all collapse into a single chip carrying their count, the
+    /// way a trail step does it: two chips reading "Datasamling" are two controls a screen reader
+    /// cannot tell apart, and removing one would leave one named identically behind, so pressing
+    /// it would read as having done nothing. Such a press takes all of them off, and never a value
+    /// the row has already named on its own.
+    /// </para>
+    /// </remarks>
+    private IReadOnlyList<ActiveFilters.Chip> UnfacetedHierarchyChips(
+        IReadOnlySet<string> removable, Func<HierarchyLevel, bool> drawnHere)
+    {
+        List<ActiveFilters.Chip> chips = [];
+
+        foreach (var level in HierarchyLevels.Where(level => drawnHere(level.Level)))
+        {
+            var missing = level.Chosen()
+                .Where(id => !removable.Contains(FacetValueKey(level.Level, id)))
+                .Select(id => (Id: id, Name: level.Name(id)))
+                .ToList();
+
+            foreach (var (id, name) in missing.Where(value => value.Name is not null))
+            {
+                chips.Add(Chip(name!, () => ToggleAsync(level.Chosen(), id, level.Apply)));
+            }
+
+            // The level's own word where nothing on screen knows the value. Never the id: a guid
+            // is not a name, and the chip still has to say which filter it takes off.
+            var unnamed = missing.Where(value => value.Name is null).Select(value => value.Id).ToList();
+
+            if (unnamed.Count == 0)
+            {
+                continue;
+            }
+
+            var text = unnamed.Count > 1
+                ? T.CrumbMore(level.Fallback, unnamed.Count - 1)
+                : level.Fallback;
+
+            chips.Add(Chip(text, () => ApplyFilterAsync(level.Apply([.. level.Chosen().Except(unnamed)]))));
+        }
+
+        return chips;
+
+        ActiveFilters.Chip Chip(string text, Func<Task> remove) =>
+            new(text, T.RemoveFilter(text), null, null, () => RemoveFilterAsync(remove));
     }
 
     /// <summary>Untick one value from the chip row, through the state its own checkbox writes.</summary>

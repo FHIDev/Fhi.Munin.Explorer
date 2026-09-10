@@ -1507,8 +1507,9 @@ table.munin-explorer-data-list tbody th {
   cursor: default;
 }
 
-/* The × that empties the hierarchy and leaves every other filter alone. Muted until hovered: it
-   is the trail's escape hatch, not the thing the trail is for. */
+/* Nothing renders this any more — the trail's × is gone. The rule stays because Stiler 0.1.42
+   still carries it, and a stand-in that drops a rule the restored stylesheet still has stops
+   standing in for it. It goes when Stiler's goes (Fhi.Metadata-l1f7x). */
 .munin-explorer-breadcrumb__clear {
   color: var(--grey60);
   font-size: 1.25rem;

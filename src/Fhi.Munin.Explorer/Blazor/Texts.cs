@@ -304,7 +304,6 @@ internal sealed record Texts(
     // under their kilde instead of giving them a facet to head.
     string FieldDelkilde,
     string HierarchyTrail,
-    string ClearHierarchy,
     // Prose for tokens that are not names: kildetype as its enum name, and datatype for the panel,
     // which holds the code alone, for a facet the API sent nameless, and for a legacy stored
     // spelling echoed back as one. See AGENTS.md, "The API names a datatype, not this package".
@@ -340,10 +339,9 @@ internal sealed record Texts(
     // "Dødsårsaksregisteret (+2)". Assembled here rather than in C# because where the count goes,
     // and whether a language writes it as a suffix at all, is that language's business.
     Func<string, int, string> CrumbMore,
-    // (text) — a trail step's accessible name, which has to say what pressing it does. It starts
-    // with the step's visible text so a speech-input user saying what they can see still hits the
-    // control (WCAG 2.5.3), which is a constraint on the whole sentence and therefore belongs in
-    // the sentence rather than in the caller.
+    // (text) — a trail step's accessible name. It starts with the step's visible text so a
+    // speech-input user saying what they can see still hits the control (WCAG 2.5.3), and it says
+    // narrowing rather than removing, because the chip row is what removes. (Fhi.Metadata-oj286)
     Func<string, string> CrumbLabel,
     // (search, filters, historicalHidden) — the empty state. It names the filters because matching
     // nothing *with three of them on* is a different thing to be told than matching nothing at all,
@@ -964,7 +962,6 @@ internal sealed record Texts(
         NoVariabelgrupper: "Velg en datakilde for å se variabelgrupper.",
         FieldDelkilde: "Delkilde",
         HierarchyTrail: "Valgt hierarki",
-        ClearHierarchy: "Fjern hierarkifilteret",
         KildeTypeNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["sentraltHelseregister"] = "Sentralt helseregister",
@@ -1020,7 +1017,7 @@ internal sealed record Texts(
             return $"{found}{forSearch}{narrowed}, sortert på {field}, {direction}";
         },
         CrumbMore: (text, others) => $"{text} (+{others})",
-        CrumbLabel: text => $"{text} – fjern nivåene under",
+        CrumbLabel: text => $"{text} – avgrens til dette nivået",
         NoResults: (search, filters, historicalHidden) =>
         {
             var forSearch = search is null ? "Ingen variabler passet søket" : $"Ingen variabler passet søket «{search}»";
@@ -1319,7 +1316,6 @@ internal sealed record Texts(
         NoVariabelgrupper: "Select a data source to see variable groups.",
         FieldDelkilde: "Sub-source",
         HierarchyTrail: "Selected hierarchy",
-        ClearHierarchy: "Clear the hierarchy filter",
         KildeTypeNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["sentraltHelseregister"] = "Central health registry",
@@ -1371,7 +1367,7 @@ internal sealed record Texts(
             return $"{found}{forSearch}{narrowed}, sorted by {field}, {direction}";
         },
         CrumbMore: (text, others) => $"{text} (+{others})",
-        CrumbLabel: text => $"{text} – remove the levels below",
+        CrumbLabel: text => $"{text} – narrow to this level",
         NoResults: (search, filters, historicalHidden) =>
         {
             var forSearch = search is null ? "No variables matched your search" : $"No variables matched your search for “{search}”";

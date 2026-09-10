@@ -331,9 +331,9 @@ These are not style preferences — each one is a host that breaks otherwise.
     them itself: `munin-explorer-crumb` carries the link affordance for a trail step, which is a
     `<button>` — the kilde step of the panel's kilde trail, and every step of the hierarchy trail
     over the results — and without it a trail reads as plain text with no sign it can be pressed;
-    `munin-explorer-breadcrumb` with its `__clear` is that hierarchy trail's own wrapper, where the
-    chevrons between the steps come from and where the × that empties the hierarchy sits, and an
-    undrawn one is a numbered list with a stray × after it; and inside the `munin-explorer-period*`
+    `munin-explorer-breadcrumb` is that hierarchy trail's own wrapper, the navigation landmark the
+    steps sit in and where the chevrons between them come from, and an undrawn one is a plain
+    numbered list; and inside the `munin-explorer-period*`
     wrapper, `__track`, `__fill` and `__track--ongoing` are the period bar itself — only its width
     comes from an inline style, so an undrawn bar renders as nothing at all. The period is still
     legible without it, because the dates are next to it in words, in `__range`.
@@ -436,7 +436,6 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer` | handle |
   | `munin-explorer-alert` | handle |
   | `munin-explorer-breadcrumb` | meaning |
-  | `munin-explorer-breadcrumb__clear` | meaning |
   | `munin-explorer-codes` | handle |
   | `munin-explorer-codes__table` | handle |
   | `munin-explorer-container` | handle |
