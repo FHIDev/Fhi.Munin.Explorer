@@ -17,16 +17,17 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </para>
 /// <para>
 /// So the resolution below deliberately stops at the sources that really are names —
-/// <c>aria-labelledby</c>, then <c>aria-label</c>, then an associated or wrapping
-/// <c>&lt;label&gt;</c>, then the element's own content for a control that is named by it — and
-/// has no arm for <c>placeholder</c> or <c>title</c> at all. An empty answer from here is a
-/// control that announces as unnamed, whatever attributes it happens to carry.
+/// <c>aria-labelledby</c>, then <c>aria-label</c>, then a fieldset's <c>&lt;legend&gt;</c>, then an
+/// associated or wrapping <c>&lt;label&gt;</c>, then the element's own content for a control that is
+/// named by it — and has no arm for <c>placeholder</c> or <c>title</c> at all. An empty answer from
+/// here is a control that announces as unnamed, whatever attributes it happens to carry.
 /// </para>
 /// <para>
-/// Not the whole accname algorithm: no <c>&lt;fieldset&gt;</c>/<c>&lt;legend&gt;</c>, no
-/// <c>alt</c>, no recursion into a labelling element's own labels. Those are not shapes this
-/// package emits, and an implementation that grew arms for them would be asserting against itself
-/// rather than against the markup.
+/// Not the whole accname algorithm: no <c>alt</c>, no recursion into a labelling element's own
+/// labels. Those are not shapes this package emits, and an implementation that grew arms for them
+/// would be asserting against itself rather than against the markup. <c>&lt;fieldset&gt;</c> was in
+/// that list and should not have been — the variable explorer's filter panel is one, and its
+/// legend is the panel's whole accessible name (Fhi.Metadata-l9l2n.83).
 /// </para>
 /// </remarks>
 internal static class AccessibleName
@@ -67,6 +68,17 @@ internal static class AccessibleName
         if (!string.IsNullOrWhiteSpace(ariaLabel))
         {
             return ariaLabel.Trim();
+        }
+
+        // A fieldset is named by its first <legend> CHILD — the filter panel's shape. A descendant
+        // search would hand the outer panel its nested group's words. No legend ends it here: `for`
+        // may not point at a fieldset, so no arm below is one a browser would honour.
+        if (element.TagName.Equals("FIELDSET", StringComparison.OrdinalIgnoreCase))
+        {
+            var legend = element.Children.FirstOrDefault(child =>
+                child.TagName.Equals("LEGEND", StringComparison.OrdinalIgnoreCase));
+
+            return legend is not null ? Collapse(legend.TextContent) : "";
         }
 
         var id = element.GetAttribute("id");

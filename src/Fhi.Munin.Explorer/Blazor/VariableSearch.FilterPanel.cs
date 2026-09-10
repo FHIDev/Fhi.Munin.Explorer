@@ -774,9 +774,6 @@ public partial class VariableSearch
         }
     }
 
-    /// <summary>The legend over the whole panel, saying how many filters are in force.</summary>
-    private string FiltersLegend => _filter.IsEmpty ? T.FiltersTitle : $"{T.FiltersTitle} ({_filter.ActiveCount})";
-
     /// <summary>Which way the last Utvid alle / Skjul alle press left every disclosure, if any.</summary>
     private bool? _foldAll;
 

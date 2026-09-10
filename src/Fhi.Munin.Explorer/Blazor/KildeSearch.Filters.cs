@@ -781,25 +781,21 @@ public sealed partial class KildeSearch
         return label[..cut].TrimEnd() + "…";
     }
 
-    /// <summary>
-    /// The panel's heading, at <see cref="FilterLevel"/>, saying how many values are ticked.
-    /// </summary>
+    /// <summary>The panel's heading, at <see cref="FilterLevel"/>.</summary>
     /// <remarks>
     /// Built by hand for the reason the component's title is: Razor has no syntax for a computed
     /// element name, and the level follows the host's choice of <see cref="HeadingLevel"/>.
     /// <para>
-    /// The number stays inside this heading, unlike a facet's: it counts every facet at once, so
-    /// there is no one summary line for it to sit beside, and with the panel folded away on a
-    /// narrow screen this heading is the only thing saying the list is narrowed. (Fhi.Metadata-l9l2n.53)
+    /// No count in it. The chip row and the count line are both outside the fold, so they say the
+    /// number while this panel is closed too — which is what <c>Fhi.Metadata-l9l2n.53</c> missed in
+    /// keeping it here. (Fhi.Metadata-l9l2n.83)
     /// </para>
     /// </remarks>
     private RenderFragment FiltersHeading => builder =>
     {
-        var chosen = ChosenCount;
-
         builder.OpenElement(0, $"h{FilterLevel}");
         builder.AddAttribute(1, "class", "headline headline-s");
-        builder.AddContent(2, chosen == 0 ? T.FiltersTitle : $"{T.FiltersTitle} ({chosen})");
+        builder.AddContent(2, T.FiltersTitle);
         builder.CloseElement();
     };
 
