@@ -1,6 +1,7 @@
 using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.Display;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.Logging;
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -278,6 +279,10 @@ public partial class VariableSearch
     {
         public static KodeverkKey Of(KodeverkLink link) => new(link.KodeverkType, link.KodeverkReference);
     }
+
+    // Guarded on the same predicate, and for the reason ToggleDetailFromRowHeadingAsync is.
+    private Task ToggleCodesFromControlAsync(KodeverkLink link, MouseEventArgs released) =>
+        released.Detail > 1 ? Task.CompletedTask : ToggleCodesAsync(link);
 
     /// <summary>Open this link's code list, or close the one already open.</summary>
     /// <remarks>
@@ -674,7 +679,8 @@ public partial class VariableSearch
         builder.AddAttribute(2, "type", "button");
         builder.AddAttribute(3, "aria-expanded", open ? "true" : "false");
         builder.AddAttribute(4, "aria-controls", open ? KodeverkCodesId(index) : null);
-        builder.AddAttribute(5, "onclick", EventCallback.Factory.Create(this, () => ToggleCodesAsync(link)));
+        builder.AddAttribute(5, "onclick",
+            EventCallback.Factory.Create<MouseEventArgs>(this, e => ToggleCodesFromControlAsync(link, e)));
         builder.AddContent(6, open ? T.HideCodes : showAll ? T.ShowAllCodes(_codes[key].Count) : T.ShowCodes);
         builder.CloseElement();
 

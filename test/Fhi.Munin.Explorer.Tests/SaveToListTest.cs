@@ -3,6 +3,7 @@ using Bunit;
 using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Tests;
@@ -159,6 +160,15 @@ public class SaveToListTest : BunitContext
         return Render<VariableSearch>(p => p.Add(c => c.IsAuthenticated, signedIn));
     }
 
+    /// <summary>The row's column strip, which is the element a press on the row lands in.</summary>
+    /// <remarks>Found on every call rather than held: a press re-renders the row.</remarks>
+    private static IElement RowStrip(IRenderedComponent<VariableSearch> cut) =>
+        cut.FindAll("ul.munin-explorer-data-list .munin-explorer-dataitem-main")[0];
+
+    /// <summary>That row's OWN disclosure, which is where its open-or-shut state is written.</summary>
+    private static IElement RowName(IRenderedComponent<VariableSearch> cut) =>
+        cut.FindAll("button.munin-explorer-dataitem-main__name")[0];
+
     private static IElement SaveButton(IRenderedComponent<VariableSearch> cut) =>
         cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]")[0];
 
@@ -216,6 +226,92 @@ public class SaveToListTest : BunitContext
         // or sharing its handler — would put the reader in the drawer they were spared.
         Assert.Empty(cut.FindAll(".munin-explorer-detail"));
         Assert.Equal("true", SaveButton(cut).GetAttribute("aria-pressed"));
+    }
+
+    [Fact]
+    public void SaveButton_WhenItIsPressed_ThenItSavesAndDoesNotOpenTheRowAroundIt()
+    {
+        // The collision the row press invites (Fhi.Metadata-l9l2n.81): the strip around this button
+        // opens the panel now, so a bare handler there handles Lagre's click too and saving would
+        // drop the reader into a drawer they never asked for.
+        var client = new ListClient(OnePage(
+            Variable("Alder ved diagnose", "V_BDR.ALDER"),
+            Variable("Skjemastatus", "V_BDR.FORMSTATUS")));
+
+        var cut = RenderSignedIn(client);
+
+        // Read off the markup rather than proved by the click below, and that is the point. bUnit
+        // dispatches a bubbling event to the handler ids it collected before the first handler ran
+        // and skips any the re-render has since disposed — which is the row's, since saving
+        // re-renders it. A click alone would pass with the collision present.
+        Assert.True(
+            SaveButton(cut).HasAttribute("blazor:onclick:stoppropagation"),
+            "Lagre lets the click through to the row, which would open the panel behind the save.");
+
+        // The mousedown is the other way round: the row measures a click against the press it saw
+        // go down, and a drag begun on Lagre lands its click on the row — so the press has to reach
+        // the row or that selection would open the panel. (Fhi.Metadata-l9l2n.81)
+        Assert.False(
+            SaveButton(cut).HasAttribute("blazor:onmousedown:stoppropagation"),
+            "A press on Lagre never reaches the row, so a drag off it opens the panel.");
+
+        SaveButton(cut).Click();
+
+        Assert.Equal(1, client.AddCalls);
+        Assert.Single(client.Stored);
+        Assert.Equal("true", SaveButton(cut).GetAttribute("aria-pressed"));
+
+        // That row's OWN disclosure, not a page-wide query: an open panel carries disclosures of
+        // its own, so a count of them says nothing about the row this press landed in.
+        Assert.Equal(
+            "false",
+            cut.FindAll("button.munin-explorer-dataitem-main__name")[0].GetAttribute("aria-expanded"));
+        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
+    }
+
+    [Fact]
+    public void SaveButton_WhenADragBeginsOnItAndEndsOnTheRow_ThenNothingIsSavedAndThePanelStaysShut()
+    {
+        // "Lagre i liste" is words a reader can drag across as well as press, and a gesture that
+        // begins here and ends on the row lands its click on the row. The row can only tell it from
+        // a press because the mousedown under it reaches the row. (Fhi.Metadata-l9l2n.81)
+        var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER")));
+
+        var cut = RenderSignedIn(client);
+
+        SaveButton(cut).MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
+        RowStrip(cut).MouseUp(new MouseEventArgs { ClientX = 400, ClientY = 240 });
+        RowStrip(cut).Click(new MouseEventArgs { ClientX = 400, ClientY = 240, Detail = 1 });
+
+        Assert.Equal(0, client.AddCalls);
+        Assert.Equal(
+            "false",
+            cut.FindAll("button.munin-explorer-dataitem-main__name")[0].GetAttribute("aria-expanded"));
+        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
+    }
+
+    [Fact]
+    public void SaveButton_WhenADragBeginsAndEndsOnIt_ThenItSavesAndTheRowsNextBareClickStillOpens()
+    {
+        // "Lagre i liste" is our own words rather than the catalogue's, so a pointer that wanders
+        // inside the button is a press and saves. What must not outlive it is the row's verdict:
+        // this click stops here, so nothing of the row's reads it. (Fhi.Metadata-l9l2n.81)
+        var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER")));
+
+        var cut = RenderSignedIn(client);
+
+        SaveButton(cut).MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
+        SaveButton(cut).MouseUp(new MouseEventArgs { ClientX = 200, ClientY = 240 });
+        SaveButton(cut).Click(new MouseEventArgs { ClientX = 200, ClientY = 240, Detail = 1 });
+
+        Assert.Equal(1, client.AddCalls);
+        Assert.Equal("false", RowName(cut).GetAttribute("aria-expanded"));
+
+        // The tooling click on the row, which the verdict left behind would otherwise swallow.
+        RowStrip(cut).QuerySelector(".munin-explorer-dataitem-main__column")!
+            .Click(new MouseEventArgs());
+
+        Assert.Equal("true", RowName(cut).GetAttribute("aria-expanded"));
     }
 
     [Fact]

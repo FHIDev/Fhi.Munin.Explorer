@@ -127,9 +127,9 @@ public sealed record VariableFilter
     /// "which filters go on the wire" cannot describe different filters. Counting the properties
     /// instead makes a value that is set but not sent — <c>KildeType = ""</c>, a blank entry in a
     /// list — count here while <see cref="Equals(VariableFilter)"/> calls the filter equal to
-    /// <see cref="None"/>: a UI would then say "Filtre (1)" over a live clear button whose press
-    /// asks for the filter already in force and does nothing, with no other control able to reach
-    /// that state either.
+    /// <see cref="None"/>: a UI would then say "avgrenset av 1 filter" over a live clear button
+    /// whose press asks for the filter already in force and does nothing, with no other control
+    /// able to reach that state either.
     /// </para>
     /// </remarks>
     public int ActiveCount => ToQuery().Count();

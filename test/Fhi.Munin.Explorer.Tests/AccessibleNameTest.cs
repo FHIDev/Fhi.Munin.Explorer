@@ -105,6 +105,51 @@ public class AccessibleNameTest
     }
 
     [Fact]
+    public void Of_WhenAFieldsetHasALegend_ThenTheLegendNamesTheGroup()
+    {
+        // The filter panel's shape. Without this arm the helper answered "" for it, which reads as
+        // an unnamed group — so the one assertion l9l2n.83 turns on could not be written at all.
+        var element = Parse(
+            "<fieldset class=\"form-fieldset\"><legend class=\"form-element__label\">Filtre</legend>"
+            + "<button type=\"button\">Utvid alle</button></fieldset>",
+            "fieldset");
+
+        Assert.Equal("Filtre", AccessibleName.Of(element));
+    }
+
+    [Fact]
+    public void Of_WhenAFieldsetHoldsAnotherOne_ThenTheInnerLegendDoesNotNameTheOuterGroup()
+    {
+        // The trap in "find the legend": a descendant search hands the outer panel the inner
+        // group's words, and both then announce as the same thing. HTML names a fieldset from its
+        // first legend CHILD.
+        const string html =
+            "<fieldset id=\"outer\"><legend>Filtre</legend>"
+            + "<fieldset id=\"inner\"><legend>Kilde</legend></fieldset></fieldset>";
+
+        Assert.Equal("Filtre", AccessibleName.Of(Parse(html, "#outer")));
+        Assert.Equal("Kilde", AccessibleName.Of(Parse(html, "#inner")));
+    }
+
+    [Fact]
+    public void Of_WhenAFieldsetHasNoLegend_ThenItAnnouncesAsUnnamed()
+    {
+        // The failure direction that matters: a group with nothing naming it must not come back
+        // with the words of whatever happens to be inside it, or of a label pointing at it — HTML
+        // forbids `for` from naming a fieldset, and no browser announces that pairing.
+        var element = Parse("<fieldset><button type=\"button\">Utvid alle</button></fieldset>", "fieldset");
+
+        Assert.Equal("", AccessibleName.Of(element));
+
+        var pointedAt = Parse(
+            "<div><label for=\"filters\">Filtre</label>"
+            + "<fieldset id=\"filters\"><button type=\"button\">Utvid alle</button></fieldset></div>",
+            "fieldset");
+
+        Assert.Equal("", AccessibleName.Of(pointedAt));
+    }
+
+    [Fact]
     public void Of_WhenAButtonPointsAtItselfAndThenAtAName_ThenItReadsAsBoth()
     {
         // The shape the save and remove buttons use: the control's own words first, then the

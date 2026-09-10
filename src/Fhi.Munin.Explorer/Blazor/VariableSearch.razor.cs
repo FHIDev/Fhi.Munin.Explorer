@@ -1029,19 +1029,24 @@ public sealed partial class VariableSearch : ComponentBase
         builder.AddAttribute(10, "onclick",
             EventCallback.Factory.Create<MouseEventArgs>(this, e => ToggleDetailFromRowHeadingAsync(v, e)));
 
+        // The click stops here, or the row behind toggles as well and one press would open the
+        // panel and close it again. The mousedown does NOT: the row measures a click against the
+        // press it saw, and a drag begun here lands its click there. (Fhi.Metadata-l9l2n.81)
+        builder.AddEventStopPropagationAttribute(11, "onclick", true);
+
         // The chevron lives INSIDE the button, not beside it (Fhi.Metadata-zqe14): the button
         // already carries the accessible name and aria-expanded, so a sibling span looked like the
         // disclosure but did nothing when clicked. One control, not two.
-        builder.OpenElement(11, "span");
-        builder.AddAttribute(12, "class",
+        builder.OpenElement(12, "span");
+        builder.AddAttribute(13, "class",
             IsSelected(v)
                 ? "icon icon-keyboard-arrow-down munin-explorer-dataitem-main__expand-icon"
                 : "icon icon-keyboard-arrow-right munin-explorer-dataitem-main__expand-icon");
-        builder.AddAttribute(13, "aria-hidden", "true");
+        builder.AddAttribute(14, "aria-hidden", "true");
         builder.CloseElement();
 
-        builder.OpenElement(14, "span");
-        builder.AddAttribute(15, "class", "munin-explorer-dataitem-main__column__text");
+        builder.OpenElement(15, "span");
+        builder.AddAttribute(16, "class", "munin-explorer-dataitem-main__column__text");
         // Named, because the save button beside it borrows these words for its own accessible
         // name — see RowSaveButton. The id is on the span holding the name rather than on the
         // button around it, so what gets borrowed is the variable and not the whole cell.
@@ -1050,10 +1055,10 @@ public sealed partial class VariableSearch : ComponentBase
         // it is drawn for every row whether that row's panel is open or shut. Both matter to the
         // save button, which points at it in either state — a second emitter would make every row
         // a duplicate-id failure (WCAG 4.1.1) and aim the button at whichever came first.
-        builder.AddAttribute(16, "id", RowHeadingId(v));
+        builder.AddAttribute(17, "id", RowHeadingId(v));
         // Munin's variable names are Norwegian whatever language the surrounding UI is in.
-        builder.AddAttribute(17, "lang", "no");
-        builder.AddContent(18, v.PreferredTerm);
+        builder.AddAttribute(18, "lang", "no");
+        builder.AddContent(19, v.PreferredTerm);
         builder.CloseElement();
 
         builder.CloseElement();

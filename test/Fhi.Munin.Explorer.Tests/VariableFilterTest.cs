@@ -215,7 +215,7 @@ public class VariableFilterTest
     {
         // Counting and sending have to describe the same filter. A blank value narrows nothing, so
         // ToQuery leaves it out and Equals calls the filter unfiltered — counting it anyway leaves
-        // a UI saying "Filtre (1)" over a live clear button whose press does nothing at all.
+        // a UI saying "avgrenset av 1 filter" over a live clear button whose press does nothing.
         var blank = new VariableFilter { KildeType = "", DataTypes = [""] };
 
         Assert.Equal(0, blank.ActiveCount);

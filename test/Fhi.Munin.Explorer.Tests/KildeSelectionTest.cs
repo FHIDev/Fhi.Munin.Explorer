@@ -3,6 +3,7 @@ using Bunit;
 using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Tests;
@@ -91,6 +92,10 @@ public class KildeSelectionTest : BunitContext
         return (cut, handovers);
     }
 
+    /// <summary>A cell of the row holding no control, so a press there lands on the row itself.</summary>
+    private static IElement RowBody(IRenderedComponent<KildeSearch> cut) =>
+        cut.FindAll(".munin-explorer-kilder tbody tr td")[^1];
+
     private static IReadOnlyList<IElement> RowBoxes(IRenderedComponent<KildeSearch> cut) =>
         [.. cut.FindAll(".munin-explorer-kilder tbody .munin-explorer-kilder__select input")];
 
@@ -176,15 +181,33 @@ public class KildeSelectionTest : BunitContext
         // handler bUnit would bubble to. The click reaching nobody is therefore the assertion.
         Assert.Throws<MissingEventHandlerException>(() => RowBoxes(cut)[0].Click());
 
-        // And the mousedown under that click stops here too: the row records where a press went down
-        // and clears it on its own click, so a press the box let through would still be sitting there
-        // when the next row was clicked.
-        Assert.True(RowBoxes(cut)[0].HasAttribute("blazor:onmousedown:stoppropagation"));
+        // The mousedown does NOT stop here, and must not: the row measures a click against the press
+        // it saw go down, so a drag begun on the box and released on the row has to reach it as the
+        // selection it is. The click is what a tick must not carry up. (Fhi.Metadata-l9l2n.81)
+        Assert.False(RowBoxes(cut)[0].HasAttribute("blazor:onmousedown:stoppropagation"));
 
         RowBoxes(cut)[0].Change(true);
 
         Assert.True(RowBoxes(cut)[0].HasAttribute("checked"));
         Assert.Empty(cut.FindAll(".munin-explorer-kilder__expanded"));
+    }
+
+    [Fact]
+    public void RowBox_WhenADragBeginsAndEndsOnIt_ThenTheRowsNextBareClickStillOpensTheDrawer()
+    {
+        // The box is the one control in the row with no click handler at all, so nothing here could
+        // spend a verdict even if it wanted to: what keeps the gesture harmless is that the tooling
+        // click after it reports no click count and is not measured. (Fhi.Metadata-l9l2n.81)
+        var (cut, _) = RenderSelectable(new FakeClient(Kilde("Als registeret", "K_ALS")));
+
+        RowBoxes(cut)[0].MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
+        RowBoxes(cut)[0].MouseUp(new MouseEventArgs { ClientX = 200, ClientY = 240 });
+
+        Assert.Empty(cut.FindAll(".munin-explorer-kilder__expanded"));
+
+        RowBody(cut).Click(new MouseEventArgs());
+
+        Assert.Single(cut.FindAll(".munin-explorer-kilder__expanded"));
     }
 
     // ---------------------------------------------------------------------------------
