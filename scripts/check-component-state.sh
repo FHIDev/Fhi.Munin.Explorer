@@ -4,21 +4,20 @@
 # after a press the component REFUSED. Nothing else here does: bUnit renders a render tree, so the
 # browser's own flip of a checkbox — which happens before any handler runs — never happens in it.
 #
-# WHY THIS EXISTS. The facet panel calls `builder.SetUpdatesAttributeName("checked")`, and it is
-# there for one reason: a render that equals the render before it writes nothing back to the DOM, so
-# a press the component declines leaves the browser's tick standing over a filter that is off.
-# Removing that call left the whole suite green — 1477 passed, 0 failed, measured rather than
-# assumed — because the disagreement is invisible to every test in test/. This run fails on it.
-# (Fhi.Metadata-1s7z1)
+# WHY THIS EXISTS. The column picker and the facet panel both call
+# `builder.SetUpdatesAttributeName("checked")`, and it is there for one reason: a render that equals
+# the render before it writes nothing back to the DOM, so a press the component declines leaves the
+# browser's tick standing over a column that is still drawn, or a filter that is off. Removing
+# either call leaves every test in test/ green — measured rather than assumed, once per call site —
+# because the disagreement is invisible to bUnit. This run fails on either, and each removal fails
+# only its own assertion. (Fhi.Metadata-1s7z1)
 #
 # WHAT IT DOES NOT SEE, so nobody reads a green run as more than it is:
 #   - the two presses it stages are the whole of it. scripts/state-assertions.mjs lists what that
 #     leaves out — the kildeutforsker's copy of the same picker, the facet panel's other refusal
 #     path, and every other control in the component;
-#   - the column picker's own assertion cannot fail on main today, because that picker draws
-#     buttons rather than checkboxes and a button carries no state for a browser to flip. It was
-#     measured against the checkbox picker of Fhi.Metadata-f6az7; the assertion is here so the guard
-#     is standing before that shape lands, and state-assertions.mjs says so beside it;
+#   - one press per call site. The picker's other columns and the panel's other facets go the same
+#     way by construction, but by construction is not measured;
 #   - the sample stylesheet, not helsedata's. This runs ModernHost, as check-accessibility.sh does,
 #     because a control's own state is not a question about CSS. What a rule of Stiler's could do to
 #     the same markup is scripts/check-hostile-host.sh's business;
@@ -118,17 +117,17 @@ for _ in $(seq 1 60); do
     break
   fi
   if ! kill -0 "$host_pid" 2>/dev/null; then
-    echo "the host exited before it answered:" >&2
+    echo "the host exited before it answered - TOOLING failure." >&2
     tail -30 /tmp/state-host.log >&2
-    exit 1
+    exit 2
   fi
   sleep 2
 done
 
 if ! curl -fsS -o /dev/null --max-time 5 "$BASE/" 2>/dev/null; then
-  echo "the host never answered on ${BASE}" >&2
+  echo "the host never answered on ${BASE} - TOOLING failure." >&2
   tail -30 /tmp/state-host.log >&2
-  exit 1
+  exit 2
 fi
 
 SETTLE_MS="${ACCESSIBILITY_SETTLE_MS:-4000}"

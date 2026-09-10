@@ -65,8 +65,8 @@ const findTimeout = 15_000;
 /**
  * What the picker says about each column, whichever shape its control is.
  *
- * A checkbox carries its state in `checked` and a toggle button in `aria-pressed`, and this file
- * has to survive the change from one to the other: the shape is helsedata's to choose, and the
+ * A checkbox carries its state in `checked` and a toggle button in `aria-pressed`. Both are read
+ * because the shape is helsedata's to choose — this picker has already been each of them — and the
  * disagreement being measured is the same either way.
  */
 const readPicker = page => page.locator(`${PICKER} ${ITEM}`).evaluateAll(items => items.map(item => {
@@ -145,11 +145,9 @@ export const assertions = [
     // declined, the render after it equals the render before it, and the browser's own flip is all
     // that would be left saying otherwise.
     //
-    // ON MAIN TODAY THIS CANNOT FAIL, and saying so is the point: ColumnPicker draws each choice as
-    // a `<button aria-pressed>`, which carries no state of its own for a browser to flip. It was
-    // measured against the checkbox picker of Fhi.Metadata-f6az7 instead — with
-    // SetUpdatesAttributeName("checked") it holds, without it this line reports the disagreement —
-    // so the guard is standing for the shape that needs it before that shape lands.
+    // Measured against ColumnPicker.cs as it stands: with SetUpdatesAttributeName("checked") this
+    // holds, with that line removed and the host rebuilt it reports the disagreement, and the facet
+    // assertion below stays green through the removal.
     async stage(page) {
       const picker = page.locator(PICKER).first();
       await picker.waitFor({ state: 'visible', timeout: findTimeout });

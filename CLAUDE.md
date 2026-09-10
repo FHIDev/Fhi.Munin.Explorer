@@ -155,8 +155,9 @@ checkout needs to find the shared database.
   It drives a real browser and asks whether the DOM and the component still agree after a press the
   component refused — the one thing no test in `test/` can see, because the browser flips a checkbox
   itself before any handler runs and bUnit renders a render tree where that never happened.
-  Deleting `SetUpdatesAttributeName("checked")` from the facet panel left 1477 tests green and
-  fails this. No feed credentials, and `PLAYWRIGHT_BROWSER_CHANNEL=msedge` on the terms above.
+  Deleting `SetUpdatesAttributeName("checked")` from the column picker or the facet panel leaves the
+  suite green and fails this, each removal failing only its own assertion. No feed credentials, and
+  `PLAYWRIGHT_BROWSER_CHANNEL=msedge` on the terms above.
 - **A new or renamed `munin-explorer*` name needs a rule in `Fhi.Helsedata.Stiler`, filed as its
   own bead before this PR merges** — `bd create --label=stiler --label=rcl --label=helsedata` —
   not as a clause in the RCL bead's criteria, which is in nobody's `bd ready` and cannot be
