@@ -84,10 +84,16 @@ public partial class VariableSearch
     /// three kildetype rows rather than on every kilde under them. Its <c>Count</c> is then how
     /// many kilder the group holds rather than how many variables a value would leave.
     /// </para>
+    /// <para>
+    /// <c>Language</c> is what <c>Label</c> is written in, and null means "do not mark this"
+    /// rather than "mark it as the page's". Every value decides it, because nothing downstream
+    /// can tell a catalogue name from prose this package composed.
+    /// </para>
     /// </remarks>
     private sealed record FacetValue(
         string Key,
         string Label,
+        string? Language,
         int? Count,
         bool Selected,
         Func<Task>? Toggle,
@@ -100,7 +106,27 @@ public partial class VariableSearch
     /// parent id, and all three become a tree the same way. This is the shape <see cref="Tree"/>
     /// works in so that rule lives in one place.
     /// </remarks>
-    private sealed record TreeNode(Guid Id, Guid? ParentId, string Label, int Count);
+    private sealed record TreeNode(Guid Id, Guid? ParentId, string Label, string? Language, int Count);
+
+    /// <summary>A node whose label came out of the catalogue, carrying that label's language with it.</summary>
+    private static TreeNode Node(Guid id, Guid? parentId, (string Text, string? Language) label, int count) =>
+        new(id, parentId, label.Text, label.Language, count);
+
+    /// <summary>
+    /// What a facet value shows for a thing the catalogue may have left unnamed, and the language
+    /// those words are in.
+    /// </summary>
+    /// <remarks>
+    /// The name is the catalogue's own Norwegian; a code and <see cref="Texts.NotSpecified"/> are
+    /// neither, and marking one of those hands a screen reader an identifier — or this package's
+    /// prose — in a Norwegian voice, which is <c>lang</c> applied backwards (WCAG 3.1.2).
+    /// </remarks>
+    private (string Text, string? Language) CatalogueName(string? name, string? code)
+    {
+        var (text, norwegian) = T.Named(name, code);
+
+        return (text, CatalogueProperties.Foreign(norwegian, Reader));
+    }
 
     /// <summary>The facets on screen, in the order they are drawn.</summary>
     /// <remarks>
@@ -168,9 +194,13 @@ public partial class VariableSearch
         new("datakategori", T.FacetDataCategory, OpenByDefault: false,
             [.. facets.DataCategories.Select(DataCategoryValue)]);
 
-    private FacetValue DataCategoryValue(DataCategoryFacet category) =>
-        new($"datakategori:{category.Value}",
-            CategoryWord(category.Value),
+    private FacetValue DataCategoryValue(DataCategoryFacet category)
+    {
+        var (label, language) = CategoryWord(category.Value);
+
+        return new($"datakategori:{category.Value}",
+            label,
+            language,
             Counted(category.Count),
             // Ordinal, like every other string facet here, because that is what ToggleAsync removes
             // with: a case-insensitive mark over a case-sensitive toggle draws a token as chosen
@@ -179,20 +209,25 @@ public partial class VariableSearch
             () => ToggleAsync(_filter.Categories, category.Value,
                               values => _filter with { Categories = values }),
             []);
+    }
 
     /// <summary>
-    /// The catalogue's word for one EHDS token, or the token itself where there is none.
+    /// The catalogue's word for one EHDS token and the language it is written in, or the token
+    /// itself where there is none.
     /// </summary>
     /// <remarks>
     /// The miss is shown rather than hidden, which is the rule <see cref="CatalogueProperties.Word"/>
     /// states: a facet drawing nothing for a token it cannot name would silently offer fewer
-    /// choices than the catalogue has. A token is ugly and honest.
+    /// choices than the catalogue has. A token is ugly and honest — and unmarked, a CURIE being
+    /// prose in no language at all. An option the vocabulary lists but curated no label for is a
+    /// miss on the same terms, and <see cref="CatalogueProperties.Option"/> is asked which it was
+    /// rather than that being inferred here by comparing the label back against the token.
     /// </remarks>
-    private string CategoryWord(string value) =>
+    private (string Text, string? Language) CategoryWord(string value) =>
         _vocabulary.TryGetValue(DataCategoryKey, out var entry)
-        && CatalogueProperties.Word(entry, value, Reader) is { } word
-            ? word.Label
-            : value;
+        && CatalogueProperties.Option(entry, value, Reader) is { Curated: true } word
+            ? (word.Label, Foreign(word.Language))
+            : (value, null);
 
     /// <summary>
     /// The dataperiode facet — two date fields rather than a list of values.
@@ -248,9 +283,14 @@ public partial class VariableSearch
     }
 
     /// <summary>One bound, written the way the reader's own language writes a day.</summary>
+    /// <remarks>
+    /// Unmarked: the field's name is this package's word and the date is formatted for the reader,
+    /// so both are already in the reader's own language.
+    /// </remarks>
     private FacetValue DateValue(string key, string field, DateOnly date, Func<Task> clear) =>
         new(key,
             T.FilterInFacet(field, date.ToString("d", CatalogueProperties.Culture(Language))),
+            Language: null,
             null,
             Selected: true,
             clear,
@@ -356,9 +396,16 @@ public partial class VariableSearch
     private FacetGroup KildeTypeGroup(FilterOptions facets) =>
         new("kildetype", T.FacetKildeType, OpenByDefault: false, [.. facets.KildeTyper.Select(KildeTypeValue)]);
 
+    /// <summary>One kildetype, in the reader's own language whichever source names it.</summary>
+    /// <remarks>
+    /// So it is unmarked whichever way <see cref="Texts.KildeTypeNameFromApi"/> answers: the API
+    /// resolves the word in the language this package asked in, the table under it is this
+    /// package's own, and what is left is a bare enum token belonging to no language.
+    /// </remarks>
     private FacetValue KildeTypeValue(KildetypeFacet type) =>
         new($"kildetype:{type.Value}",
             T.KildeTypeNameFromApi(type.Value, type.DisplayName),
+            Language: null,
             Counted(type.Count),
             string.Equals(_filter.KildeType, type.Value, StringComparison.OrdinalIgnoreCase),
             () => SetKildeTypeAsync(type.Value),
@@ -516,11 +563,11 @@ public partial class VariableSearch
     private bool KildeMatches(KildeFacet kilde, KildeLevelLookup levels, string term) =>
         LabelMatches(T.Named(kilde.Name, kilde.ShortName).Text, term)
         || levels.DatasamlingerByKilde[kilde.Id].Any(
-               datasamling => LabelMatches(DatasamlingLabel(datasamling), term))
+               datasamling => LabelMatches(DatasamlingLabel(datasamling).Text, term))
         || levels.Delkilder[kilde.Id].Any(
-               delkilde => LabelMatches(DelkildeLabel(delkilde), term)
+               delkilde => LabelMatches(DelkildeLabel(delkilde).Text, term)
                            || levels.DatasamlingerByDelkilde[delkilde.Id].Any(
-                                  datasamling => LabelMatches(DatasamlingLabel(datasamling), term)));
+                                  datasamling => LabelMatches(DatasamlingLabel(datasamling).Text, term)));
 
     private static bool LabelMatches(string label, string term) =>
         label.Contains(term, StringComparison.OrdinalIgnoreCase);
@@ -541,6 +588,7 @@ public partial class VariableSearch
         KildeLevelLookup levels) =>
         new($"kildetype-group:{kilder.Key}",
             KildeTypeNameFromApi(facets, kilder.Key),
+            Language: null,
             kilder.Count(),
             Selected: false,
             Toggle: null,
@@ -557,22 +605,27 @@ public partial class VariableSearch
     /// <summary>A kilde on its own: its words and its toggle, with neither a count nor its tree.</summary>
     /// <remarks>
     /// The one reading of both, so a chip and the checkbox it stands for can never name one kilde
-    /// two ways. The count is the drawn value's alone — a chip carries none.
+    /// two ways — its language included. The count is the drawn value's alone — a chip carries none.
     /// </remarks>
-    private FacetValue KildeValue(KildeFacet kilde) =>
-        new(FacetValueKey(HierarchyLevel.Kilde, kilde.Id),
-            T.Named(kilde.Name, kilde.ShortName).Text,
+    private FacetValue KildeValue(KildeFacet kilde)
+    {
+        var (label, language) = CatalogueName(kilde.Name, kilde.ShortName);
+
+        return new(FacetValueKey(HierarchyLevel.Kilde, kilde.Id),
+            label,
+            language,
             null,
             _filter.KildeIds.Contains(kilde.Id),
             () => ToggleAsync(_filter.KildeIds, kilde.Id, ids => _filter with { KildeIds = ids }),
             []);
+    }
 
     /// <summary>The two levels under a kilde, each hanging where its facet says it does.</summary>
     private IReadOnlyList<FacetValue> KildeChildren(Guid kildeId, KildeLevelLookup levels) =>
     [
         .. DatasamlingValues(levels.DatasamlingerByKilde[kildeId]),
         .. Tree(levels.Delkilder[kildeId]
-                    .Select(delkilde => new TreeNode(
+                    .Select(delkilde => Node(
                         delkilde.Id, delkilde.ParentDelkildeId, DelkildeLabel(delkilde), delkilde.Count)),
                 $"{FacetName(HierarchyLevel.Delkilde)}:",
                 IsDelkildeChosen,
@@ -582,15 +635,21 @@ public partial class VariableSearch
     ];
 
     /// <summary>A delkilde on its own, on the same terms — the tree below builds it from the same parts.</summary>
-    private FacetValue DelkildeValue(DelkildeFacet delkilde) =>
-        new(FacetValueKey(HierarchyLevel.Delkilde, delkilde.Id),
-            DelkildeLabel(delkilde),
+    private FacetValue DelkildeValue(DelkildeFacet delkilde)
+    {
+        var (label, language) = DelkildeLabel(delkilde);
+
+        return new(FacetValueKey(HierarchyLevel.Delkilde, delkilde.Id),
+            label,
+            language,
             null,
             IsDelkildeChosen(delkilde.Id),
             ToggleDelkilde(delkilde.Id),
             []);
+    }
 
-    private string DelkildeLabel(DelkildeFacet delkilde) => T.Named(delkilde.Name, null).Text;
+    private (string Text, string? Language) DelkildeLabel(DelkildeFacet delkilde) =>
+        CatalogueName(delkilde.Name, null);
 
     /// <summary>Datasamlinger as leaves: nothing in the catalogue hangs below one.</summary>
     private IReadOnlyList<FacetValue> DatasamlingValues(IEnumerable<DatasamlingFacet> datasamlinger) =>
@@ -600,16 +659,22 @@ public partial class VariableSearch
     ];
 
     /// <summary>A datasamling on its own — the same split the kilde and delkilde above are drawn through.</summary>
-    private FacetValue DatasamlingValue(DatasamlingFacet datasamling) =>
-        new(FacetValueKey(HierarchyLevel.Datasamling, datasamling.Id),
-            DatasamlingLabel(datasamling),
+    private FacetValue DatasamlingValue(DatasamlingFacet datasamling)
+    {
+        var (label, language) = DatasamlingLabel(datasamling);
+
+        return new(FacetValueKey(HierarchyLevel.Datasamling, datasamling.Id),
+            label,
+            language,
             null,
             _filter.DatasamlingIds.Contains(datasamling.Id),
             () => ToggleAsync(_filter.DatasamlingIds, datasamling.Id,
                               ids => _filter with { DatasamlingIds = ids }),
             []);
+    }
 
-    private string DatasamlingLabel(DatasamlingFacet datasamling) => T.Named(datasamling.Name, null).Text;
+    private (string Text, string? Language) DatasamlingLabel(DatasamlingFacet datasamling) =>
+        CatalogueName(datasamling.Name, null);
 
     /// <summary>The delkilder and datasamlinger of the kilde facet, keyed by what each hangs under.</summary>
     /// <remarks>
@@ -671,7 +736,7 @@ public partial class VariableSearch
             T.FieldVariableGroup,
             OpenByDefault: false,
             Tree(facets.Variabelgrupper
-                     .Select(g => new TreeNode(g.Id, g.ParentId, T.Named(g.Name, null).Text, g.Count)),
+                     .Select(g => Node(g.Id, g.ParentId, CatalogueName(g.Name, null), g.Count)),
                  $"{FacetName(HierarchyLevel.Variabelgruppe)}:",
                  IsGruppeChosen,
                  ToggleGruppe, Counted),
@@ -688,7 +753,7 @@ public partial class VariableSearch
             T.FacetFilter,
             OpenByDefault: false,
             Tree(facets.Filters
-                     .Select(f => new TreeNode(f.Id, f.ParentId, T.Named(f.Name, null).Text, f.Count)),
+                     .Select(f => Node(f.Id, f.ParentId, CatalogueName(f.Name, null), f.Count)),
                  "filter:",
                  IsSavedFilterChosen,
                  ToggleSavedFilter, Counted));
@@ -701,9 +766,16 @@ public partial class VariableSearch
     private FacetGroup DataTypeGroup(FilterOptions facets) =>
         new("datatype", T.FacetDataType, OpenByDefault: false, [.. facets.DataTypes.Select(DataTypeValue)]);
 
+    /// <summary>One datatype, in the reader's own language whichever source names it.</summary>
+    /// <remarks>
+    /// Unmarked for the reason <see cref="KildeTypeValue"/> is: the API resolves the name in the
+    /// language this package asked in, a legacy stored spelling is replaced out of this package's
+    /// own table, and the fallback under both is that table again.
+    /// </remarks>
     private FacetValue DataTypeValue(DataTypeFacet dataType) =>
         new($"datatype:{dataType.Value}",
             DataTypeFacetLabel(dataType),
+            Language: null,
             Counted(dataType.Count),
             _filter.DataTypes.Contains(dataType.Value),
             () => ToggleAsync(_filter.DataTypes, dataType.Value, values => _filter with { DataTypes = values }),
@@ -726,9 +798,19 @@ public partial class VariableSearch
             OpenByDefault: false,
             [.. facets.HelsefagligKodeverk.Select(HelsefagligKodeverkValue)]);
 
+    /// <summary>One helsefaglig kodeverk, by the short name the catalogue keys it on.</summary>
+    /// <remarks>
+    /// Unmarked, on the terms <see cref="Texts.Named"/> already sets for a short name: this is the
+    /// catalogue's key rather than its prose — the slot a kilde's own short name occupies, which
+    /// that reading reports as not Norwegian — and the set is whatever V-HK holds. DÅR and HKR are
+    /// Norwegian abbreviations, ICD-10 and NCMP-NCSP-NCRP are international tokens, and nothing
+    /// here can tell which a given key is. <c>FullName</c> is the Norwegian half, and the panel
+    /// does not draw it.
+    /// </remarks>
     private FacetValue HelsefagligKodeverkValue(HelsefagligKodeverkFacet kodeverk) =>
         new($"hk:{kodeverk.ShortName}",
             kodeverk.ShortName,
+            Language: null,
             Counted(kodeverk.Count),
             _filter.HelsefagligKodeverk.Contains(kodeverk.ShortName),
             () => ToggleAsync(_filter.HelsefagligKodeverk, kodeverk.ShortName,
@@ -741,27 +823,38 @@ public partial class VariableSearch
             OpenByDefault: false,
             [.. facets.AdministrativtKodeverk.Select(AdministrativtKodeverkValue)]);
 
-    private FacetValue AdministrativtKodeverkValue(AdministrativtKodeverkFacet kodeverk) =>
-        new($"ak:{kodeverk.Oid}",
-            // The OID when fhi.kodeverk could not be reached, because a nameless button is worse
-            // than one labelled with the number the filter actually sends.
-            T.Named(kodeverk.Name, kodeverk.Oid).Text,
+    private FacetValue AdministrativtKodeverkValue(AdministrativtKodeverkFacet kodeverk)
+    {
+        // The OID when fhi.kodeverk could not be reached, because a nameless button is worse
+        // than one labelled with the number the filter actually sends — and an OID is a number
+        // rather than Norwegian, which is what CatalogueName marks the two apart by.
+        var (label, language) = CatalogueName(kodeverk.Name, kodeverk.Oid);
+
+        return new($"ak:{kodeverk.Oid}",
+            label,
+            language,
             Counted(kodeverk.Count),
             _filter.AdministrativtKodeverk.Contains(kodeverk.Oid),
             () => ToggleAsync(_filter.AdministrativtKodeverk, kodeverk.Oid,
                               values => _filter with { AdministrativtKodeverk = values }),
             []);
+    }
 
     private FacetGroup InstrumentGroup(FilterOptions facets) =>
         new("instrument", T.FacetInstrument, OpenByDefault: false, [.. facets.Instruments.Select(InstrumentValue)]);
 
-    private FacetValue InstrumentValue(InstrumentFacet instrument) =>
-        new($"instrument:{instrument.Id}",
-            T.Named(instrument.Name, instrument.Code).Text,
+    private FacetValue InstrumentValue(InstrumentFacet instrument)
+    {
+        var (label, language) = CatalogueName(instrument.Name, instrument.Code);
+
+        return new($"instrument:{instrument.Id}",
+            label,
+            language,
             Counted(instrument.Count),
             _filter.InstrumentIds.Contains(instrument.Id),
             () => ToggleAsync(_filter.InstrumentIds, instrument.Id, ids => _filter with { InstrumentIds = ids }),
             []);
+    }
 
     /// <summary>The two filters that are a yes/no rather than a choice of values.</summary>
     /// <remarks>
@@ -773,12 +866,14 @@ public partial class VariableSearch
             T.FacetOther,
             OpenByDefault: false,
             [
-                new FacetValue("has-kildekodeverk", T.HasKildekodeverk, Counted(facets.KildeKodeverkCount),
+                // Both unmarked: the words are this package's own, already in the reader's language.
+                new FacetValue("has-kildekodeverk", T.HasKildekodeverk, Language: null,
+                               Counted(facets.KildeKodeverkCount),
                                _filter.HasKildekodeverk == true, ToggleKildekodeverkAsync, []),
 
                 // No count of its own: the API reports no facet for it, and the number it would
                 // change is the total, which the status line already states.
-                new FacetValue("include-historical", T.IncludeHistorical, null,
+                new FacetValue("include-historical", T.IncludeHistorical, Language: null, Count: null,
                                _filter.IncludeHistorical, ToggleHistoricalAsync, [])
             ],
             NameInChips: true);
@@ -874,7 +969,8 @@ public partial class VariableSearch
                 }
             }
 
-            return new FacetValue($"{keyPrefix}{node.Id}", node.Label, count(node.Count), selected(node.Id), toggle(node.Id), children);
+            return new FacetValue($"{keyPrefix}{node.Id}", node.Label, node.Language, count(node.Count),
+                                  selected(node.Id), toggle(node.Id), children);
         }
     }
 
@@ -1000,6 +1096,14 @@ public partial class VariableSearch
     /// Only the count carries a class, <c>munin-explorer-filters__count</c>, and it sits inside the
     /// label — see KildeSearch.Filters.cs. Keyed because counts reorder the values between
     /// renders, and an unkeyed patch would move the box under the reader's finger. (Fhi.Metadata-j0a2h)
+    /// <para>
+    /// <c>lang</c> goes on the <c>&lt;label&gt;</c>, which already holds the words, and never on
+    /// the <c>&lt;li&gt;</c>, which also holds the values nested under this one: <c>lang</c>
+    /// inherits, so a kilde's Norwegian would reach a child whose own
+    /// <see cref="FacetValue.Language"/> is null and meant it. The kildeutforsker's panel marks
+    /// its labels the same way, and a name marked in its chip but not on the checkbox that chip
+    /// stands for would name one kilde two ways on one page.
+    /// </para>
     /// </remarks>
     private RenderFragment FacetList(IReadOnlyList<FacetValue> values) => builder =>
     {
@@ -1023,18 +1127,22 @@ public partial class VariableSearch
 
             if (toggle is null)
             {
+                // Bare text, so unmarked: no value reaches here with a language of its own, and an
+                // element to hang one on would be new structure in the panel — a munin-explorer
+                // name and a Stiler rule for it — bought for a marking nothing asks for yet.
                 builder.AddContent(2, value.Label);
             }
             else
             {
                 builder.OpenElement(3, "label");
-                builder.OpenElement(4, "input");
-                builder.AddAttribute(5, "type", "checkbox");
-                builder.AddAttribute(6, "checked", value.Selected);
+                builder.AddAttribute(4, "lang", value.Language);
+                builder.OpenElement(5, "input");
+                builder.AddAttribute(6, "type", "checkbox");
+                builder.AddAttribute(7, "checked", value.Selected);
 
                 // The event's own value is ignored: the toggle flips what the filter holds, which
                 // is the one state a press and the render after it are certain to agree about.
-                builder.AddAttribute(7, "onchange",
+                builder.AddAttribute(8, "onchange",
                                      EventCallback.Factory.Create<ChangeEventArgs>(this, _ => toggle()));
 
                 // What a plain onchange does not do and this panel needs: a press that ApplyFilterAsync
@@ -1043,17 +1151,17 @@ public partial class VariableSearch
                 builder.SetUpdatesAttributeName("checked");
 
                 builder.CloseElement();
-                builder.AddContent(8, value.Label);
+                builder.AddContent(9, value.Label);
 
                 // The space is a text node of the label, not the span's first character: a name is
                 // computed per element, so a space inside the span is trimmed off and the name
                 // announces as "Dødsårsaksregisteret(30)".
                 if (value.Count is { } count)
                 {
-                    builder.AddContent(9, " ");
-                    builder.OpenElement(10, "span");
-                    builder.AddAttribute(11, "class", "munin-explorer-filters__count");
-                    builder.AddContent(12, $"({count})");
+                    builder.AddContent(10, " ");
+                    builder.OpenElement(11, "span");
+                    builder.AddAttribute(12, "class", "munin-explorer-filters__count");
+                    builder.AddContent(13, $"({count})");
                     builder.CloseElement();
                 }
 
@@ -1062,7 +1170,7 @@ public partial class VariableSearch
 
             if (value.Children.Count > 0)
             {
-                builder.AddContent(13, FacetList(value.Children));
+                builder.AddContent(14, FacetList(value.Children));
             }
 
             builder.CloseElement();
@@ -1081,28 +1189,34 @@ public partial class VariableSearch
     /// summaries already carry, whose rule holds the tabular figures that stop a column of counts
     /// shivering as the facet is narrowed. (Fhi.Metadata-l9l2n.67)
     /// </para>
+    /// <para>
+    /// No <c>lang</c>: the one value drawn here is <see cref="KildeTypeHeading"/>, whose words are
+    /// the reader's own for the reason <see cref="KildeTypeValue"/> gives. The <c>&lt;summary&gt;</c>
+    /// holds the count as well, so a marking put on it would reach that too — this package's own
+    /// figure inside a foreign scope, which is the same defect one level down.
+    /// </para>
     /// </remarks>
     private void CollapsibleGroup(RenderTreeBuilder builder, FacetValue value)
     {
-        builder.OpenElement(14, "details");
-        builder.AddAttribute(15, "open", GroupOpen);
-        builder.OpenElement(16, "summary");
-        builder.AddContent(17, value.Label);
+        builder.OpenElement(15, "details");
+        builder.AddAttribute(16, "open", GroupOpen);
+        builder.OpenElement(17, "summary");
+        builder.AddContent(18, value.Label);
 
         // The space is a text node of the summary rather than the span's first character, for the
         // reason the value counts further up are: a name is computed per element, so a space inside
         // the span is trimmed off and the group announces as "Biobank12".
         if (value.Count is { } members)
         {
-            builder.AddContent(18, " ");
-            builder.OpenElement(19, "span");
-            builder.AddAttribute(20, "class", "munin-explorer-filters__chosen");
-            builder.AddContent(21, members.ToString(CultureInfo.CurrentCulture));
+            builder.AddContent(19, " ");
+            builder.OpenElement(20, "span");
+            builder.AddAttribute(21, "class", "munin-explorer-filters__chosen");
+            builder.AddContent(22, members.ToString(CultureInfo.CurrentCulture));
             builder.CloseElement();
         }
 
         builder.CloseElement();
-        builder.AddContent(22, FacetList(value.Children));
+        builder.AddContent(23, FacetList(value.Children));
         builder.CloseElement();
     }
 
@@ -1182,11 +1296,11 @@ public partial class VariableSearch
                         continue;
                     }
 
-                    var text = group.NameInChips ? T.FilterInFacet(group.Label, value.Label) : value.Label;
+                    var (text, language) = ChipReading(group, value);
 
                     removable.Add(value.Key);
                     chips.Add(new ActiveFilters.Chip(
-                        text, T.RemoveFilter(text), null, null, () => RemoveFilterAsync(toggle)));
+                        text, T.RemoveFilter(text), null, language, () => RemoveFilterAsync(toggle)));
                 }
 
                 walked.Add(group.Key);
@@ -1244,9 +1358,13 @@ public partial class VariableSearch
                 .Select(id => (Id: id, Name: level.Name(id)))
                 .ToList();
 
+            // Every HierarchyReading.Name reads a facet's or a row's Name and never a code or a
+            // short name, so a non-null one is the catalogue's Norwegian — the split the trail
+            // records as HierarchyCrumb.Norwegian, the fallback below being this package's prose.
             foreach (var (id, name) in missing.Where(value => value.Name is not null))
             {
-                chips.Add(Chip(name!, () => ToggleAsync(level.Chosen(), id, level.Apply)));
+                chips.Add(Chip(name!, Foreign(ReaderLanguage.Norwegian),
+                               () => ToggleAsync(level.Chosen(), id, level.Apply)));
             }
 
             // The level's own word where nothing on screen knows the value. Never the id: a guid
@@ -1262,14 +1380,29 @@ public partial class VariableSearch
                 ? T.CrumbMore(level.Fallback, unnamed.Count - 1)
                 : level.Fallback;
 
-            chips.Add(Chip(text, () => ApplyFilterAsync(level.Apply([.. level.Chosen().Except(unnamed)]))));
+            chips.Add(Chip(text, null,
+                           () => ApplyFilterAsync(level.Apply([.. level.Chosen().Except(unnamed)]))));
         }
 
         return chips;
 
-        ActiveFilters.Chip Chip(string text, Func<Task> remove) =>
-            new(text, T.RemoveFilter(text), null, null, () => RemoveFilterAsync(remove));
+        ActiveFilters.Chip Chip(string text, string? language, Func<Task> remove) =>
+            new(text, T.RemoveFilter(text), null, language, () => RemoveFilterAsync(remove));
     }
+
+    /// <summary>How one chosen value reads in the chip row, and what language those words are in.</summary>
+    /// <remarks>
+    /// Both halves in one reading, because <c>NameInChips</c> settles both: a facet whose heading
+    /// goes into the chip composes this package's prose around the value, and what comes out is
+    /// this package's own words in the reader's language whatever the value alone was written in —
+    /// the same reading <see cref="DateValue"/> applies to the text it composes for itself. Decided
+    /// beside the composition rather than as an override of <see cref="FacetValue.Language"/>, so a
+    /// facet cannot be given one half and left with the other.
+    /// </remarks>
+    private (string Text, string? Language) ChipReading(FacetGroup group, FacetValue value) =>
+        group.NameInChips
+            ? (T.FilterInFacet(group.Label, value.Label), null)
+            : (value.Label, value.Language);
 
     /// <summary>Untick one value from the chip row, through the state its own checkbox writes.</summary>
     /// <remarks>
