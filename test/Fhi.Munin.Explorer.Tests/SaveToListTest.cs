@@ -219,6 +219,46 @@ public class SaveToListTest : BunitContext
     }
 
     [Fact]
+    public void SaveButton_WhenItIsPressed_ThenItSavesAndDoesNotOpenTheRowAroundIt()
+    {
+        // The collision the row press invites (Fhi.Metadata-l9l2n.81): the strip around this button
+        // opens the panel now, so a bare handler there handles Lagre's click too and saving would
+        // drop the reader into a drawer they never asked for.
+        var client = new ListClient(OnePage(
+            Variable("Alder ved diagnose", "V_BDR.ALDER"),
+            Variable("Skjemastatus", "V_BDR.FORMSTATUS")));
+
+        var cut = RenderSignedIn(client);
+
+        // Read off the markup rather than proved by the click below, and that is the point. bUnit
+        // dispatches a bubbling event to the handler ids it collected before the first handler ran
+        // and skips any the re-render has since disposed — which is the row's, since saving
+        // re-renders it. A click alone would pass with the collision present.
+        Assert.True(
+            SaveButton(cut).HasAttribute("blazor:onclick:stoppropagation"),
+            "Lagre lets the click through to the row, which would open the panel behind the save.");
+
+        // The row measures a later click against the last press it saw, and its own click is the
+        // only thing that clears one — so a mousedown Lagre let through would never be cleared.
+        Assert.True(
+            SaveButton(cut).HasAttribute("blazor:onmousedown:stoppropagation"),
+            "Lagre leaves a press on the row that no click of the row's clears.");
+
+        SaveButton(cut).Click();
+
+        Assert.Equal(1, client.AddCalls);
+        Assert.Single(client.Stored);
+        Assert.Equal("true", SaveButton(cut).GetAttribute("aria-pressed"));
+
+        // That row's OWN disclosure, not a page-wide query: an open panel carries disclosures of
+        // its own, so a count of them says nothing about the row this press landed in.
+        Assert.Equal(
+            "false",
+            cut.FindAll("button.munin-explorer-dataitem-main__name")[0].GetAttribute("aria-expanded"));
+        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
+    }
+
+    [Fact]
     public void Row_WhenEveryRowOffersToSave_ThenEachButtonNamesItsOwnVariable()
     {
         // Two rows, because the weak version of this assertion — "the button has an accessible

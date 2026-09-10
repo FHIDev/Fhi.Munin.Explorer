@@ -1,6 +1,7 @@
 using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.Logging;
 
 namespace Fhi.Munin.Explorer.Blazor;
@@ -112,7 +113,14 @@ public partial class VariableSearch
         builder.AddAttribute(7, "aria-labelledby", $"{SaveButtonId(v)} {RowHeadingId(v)}");
 
         builder.AddAttribute(8, "onclick", EventCallback.Factory.Create(this, () => ToggleSavedAsync(v)));
-        builder.AddContent(9, saved ? T.RemoveFromList : T.SaveToList);
+
+        // Both stop here: the row around this button opens the panel on a press, and saving a
+        // variable is not a request to read it — nor is the mousedown under it a press the row
+        // should measure a later click against. (Fhi.Metadata-l9l2n.81)
+        builder.AddEventStopPropagationAttribute(9, "onclick", true);
+        builder.AddEventStopPropagationAttribute(10, "onmousedown", true);
+
+        builder.AddContent(11, saved ? T.RemoveFromList : T.SaveToList);
         builder.CloseElement();
 
         // Said in the row rather than the component's alert region: the other rows are unaffected,
@@ -122,11 +130,11 @@ public partial class VariableSearch
         // own alert region uses (VariableSearch.razor:286). A role="alert" element that is
         // inserted and filled in the same DOM update is announced unreliably; one that is already
         // there and gains text is announced.
-        builder.OpenElement(10, "span");
-        builder.AddAttribute(11, "role", "alert");
-        builder.AddAttribute(12, "aria-live", "assertive");
-        builder.AddAttribute(13, "aria-atomic", "true");
-        builder.AddContent(14, failure switch
+        builder.OpenElement(12, "span");
+        builder.AddAttribute(13, "role", "alert");
+        builder.AddAttribute(14, "aria-live", "assertive");
+        builder.AddAttribute(15, "aria-atomic", "true");
+        builder.AddContent(16, failure switch
         {
             SaveFailure.Throttled => T.RateLimitError,
             SaveFailure.SignInRequired => T.SignInRequiredError,

@@ -634,7 +634,15 @@ else
                        other the flex container that lays the columns out — so both step out of the
                        accessibility tree and let the cells inside become the row's own. *@
                     <div class="munin-explorer-data-list__item__row" role="none">
-                        <div class="munin-explorer-dataitem-main" role="none">
+                        @* The column strip is a pointer shortcut onto the name button inside it:
+                           no tabindex, no role, no key handler. Stiler computes `cursor: pointer`
+                           on this element, so it read as a control before it was one. *@
+                        @* mousedown records where the press began and nothing else — a drag-select
+                           across the row's code ends in a click here too, and the panel must not
+                           open behind a reader copying it. (Fhi.Metadata-l9l2n.81) *@
+                        <div class="munin-explorer-dataitem-main" role="none"
+                             @onmousedown="e => RowPressed(v, e)"
+                             @onclick="e => ToggleDetailFromRowAsync(v, e)">
                         @RowHeading(v)
                         @RowSaveButton(v)
                         @InfoLine(v)
