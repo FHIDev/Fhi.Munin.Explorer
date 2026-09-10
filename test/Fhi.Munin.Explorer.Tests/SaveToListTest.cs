@@ -165,6 +165,10 @@ public class SaveToListTest : BunitContext
     private static IElement RowStrip(IRenderedComponent<VariableSearch> cut) =>
         cut.FindAll("ul.munin-explorer-data-list .munin-explorer-dataitem-main")[0];
 
+    /// <summary>That row's OWN disclosure, which is where its open-or-shut state is written.</summary>
+    private static IElement RowName(IRenderedComponent<VariableSearch> cut) =>
+        cut.FindAll("button.munin-explorer-dataitem-main__name")[0];
+
     private static IElement SaveButton(IRenderedComponent<VariableSearch> cut) =>
         cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]")[0];
 
@@ -284,6 +288,30 @@ public class SaveToListTest : BunitContext
             "false",
             cut.FindAll("button.munin-explorer-dataitem-main__name")[0].GetAttribute("aria-expanded"));
         Assert.Empty(cut.FindAll(".munin-explorer-detail"));
+    }
+
+    [Fact]
+    public void SaveButton_WhenADragBeginsAndEndsOnIt_ThenItSavesAndTheRowsNextBareClickStillOpens()
+    {
+        // "Lagre i liste" is our own words rather than the catalogue's, so a pointer that wanders
+        // inside the button is a press and saves. What must not outlive it is the row's verdict:
+        // this click stops here, so nothing of the row's reads it. (Fhi.Metadata-l9l2n.81)
+        var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER")));
+
+        var cut = RenderSignedIn(client);
+
+        SaveButton(cut).MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
+        SaveButton(cut).MouseUp(new MouseEventArgs { ClientX = 200, ClientY = 240 });
+        SaveButton(cut).Click(new MouseEventArgs { ClientX = 200, ClientY = 240, Detail = 1 });
+
+        Assert.Equal(1, client.AddCalls);
+        Assert.Equal("false", RowName(cut).GetAttribute("aria-expanded"));
+
+        // The tooling click on the row, which the verdict left behind would otherwise swallow.
+        RowStrip(cut).QuerySelector(".munin-explorer-dataitem-main__column")!
+            .Click(new MouseEventArgs());
+
+        Assert.Equal("true", RowName(cut).GetAttribute("aria-expanded"));
     }
 
     [Fact]

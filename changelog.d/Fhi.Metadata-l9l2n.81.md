@@ -14,12 +14,16 @@ category: Fixed
   controls inside the row keep their own jobs: the name still toggles exactly once, and "Lagre i
   liste" still only saves. (Fhi.Metadata-l9l2n.81)
 
-- **A drag that starts on a row's own controls is a selection in both explorers, and an abandoned
-  press no longer swallows the next click.** Highlighting a variable's name — or a kilde's — and
-  dragging across the row released the pointer over the row rather than the button, and the row
-  read that as a press and opened. It now measures the gesture that began on the control, because
-  the press reaches the row while the click still stops at the button. The other half is what
-  happens when a gesture never reaches a click at all: a right-click on the row, or a drag released
-  outside the window, left a coordinate standing that the next click was measured against, so a row
-  activated by speech control or another assistive tool could silently do nothing. A press is now
-  settled when the pointer comes up and belongs to that gesture alone. (Fhi.Metadata-l9l2n.81)
+- **A drag over a row's own controls is a selection in both explorers, and an abandoned press no
+  longer swallows the next click.** Highlighting a variable's name — or a kilde's — and dragging
+  across the row released the pointer over the row rather than the button, and the row read that as
+  a press and opened. It now measures the gesture that began on the control, because the press
+  reaches the row while the click still stops at the button. A gesture that begins *and* ends
+  inside one of those controls is a selection as well, so copying a variable's name no longer opens
+  the panel over the words being copied, and copying a kilde's no longer takes the reader off the
+  list. The other half is what happens when a gesture never reaches a click at all: a right-click
+  on the row, or a drag released outside the window, left a coordinate standing that the next click
+  was measured against, so a row activated by speech control or another assistive tool could
+  silently do nothing. A press is now settled when the pointer comes up and belongs to that gesture
+  alone, and a click that reports no click count — which is how that tooling and the keyboard
+  activate a row — is always a press. (Fhi.Metadata-l9l2n.81)

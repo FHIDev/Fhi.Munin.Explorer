@@ -3,13 +3,14 @@ using Microsoft.AspNetCore.Components.Web;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
-/// The pointer gesture on a result row: where it went down, and whether the one that just ended
-/// travelled far enough across the row to be a drag-selection rather than a press.
+/// The pointer gesture on a result row: where it went down, and whether the click that ended it was
+/// a reader selecting text rather than pressing the row.
 /// </summary>
 /// <remarks>
-/// One rule over two markups — the variabelutforsker's rows and Kelda's. Written twice they would
-/// drift the way the two row renderers did before <see cref="RowCell"/>, and the lifecycle is where
-/// that bites: a press recorded in one place and cleared in another swallows a later click.
+/// One rule over two markups — the variabelutforsker's rows and Kelda's — and over the row and the
+/// controls inside it, which have to answer it the same way or a drag across a name acts on the row
+/// it was copied from. Written out at each of those places it would drift the way the two row
+/// renderers did before <see cref="RowCell"/>.
 /// </remarks>
 internal sealed class RowPress
 {
@@ -30,19 +31,14 @@ internal sealed class RowPress
     /// from the name across the row is selecting text, and the browser lands that gesture's click
     /// on the row rather than on the control it began in.
     /// </remarks>
-    internal void Pressed(Guid row, MouseEventArgs pressed)
-    {
+    internal void Pressed(Guid row, MouseEventArgs pressed) =>
         _wentDown = (row, pressed.ClientX, pressed.ClientY);
 
-        // A new gesture is not the old one's release, and the verdict below belongs to one gesture.
-        _dragged = null;
-    }
-
-    /// <summary>Settle what the gesture ending on <paramref name="row"/> was, for its own click.</summary>
+    /// <summary>Settle whether the gesture ending on <paramref name="row"/> travelled across it.</summary>
     /// <remarks>
-    /// Only a press this row saw go down is measured, and that is what binds the verdict to one
-    /// gesture: a press released anywhere else leaves none, and a press that went down inside the
-    /// row always ends in a click the row receives.
+    /// Only a press this row saw go down is measured, and the record of it is spent here either
+    /// way: a gesture is over once the pointer comes up, and one left standing is what the release
+    /// after it — a selection begun off the list and let go over a row — would be measured against.
     /// </remarks>
     internal void Released(Guid row, MouseEventArgs released)
     {
@@ -57,17 +53,24 @@ internal sealed class RowPress
             : null;
     }
 
-    /// <summary>Whether the gesture that ended on <paramref name="row"/> was a drag-selection.</summary>
+    /// <summary>
+    /// Whether <paramref name="clicked"/> on <paramref name="row"/> was a reader selecting text
+    /// rather than pressing it.
+    /// </summary>
     /// <remarks>
-    /// Reading it spends it. A verdict left standing would be read against a later click that has
-    /// no gesture behind it — which is how assistive tooling activates a row, and a row that
-    /// refused it would be the control-that-does-nothing this guard exists to keep out.
+    /// <para>
+    /// All three gestures in one place, because the row and every control inside it that stops the
+    /// click has to read them alike: distance misses the two that stand still, since a double-click
+    /// takes a word and a shift-click extends the selection to it.
+    /// </para>
+    /// <para>
+    /// A click reporting no count is one no pointer gesture produced — how the keyboard and
+    /// assistive tooling activate a row — so it is a press, and no verdict is read against it. That
+    /// is also what makes a verdict nobody asks for harmless: a gesture that ends inside one of
+    /// those controls lands its click there, where it stops, so no click of the row's is left to
+    /// read the verdict its release found. (Fhi.Metadata-l9l2n.81)
+    /// </para>
     /// </remarks>
-    internal bool Dragged(Guid row)
-    {
-        var dragged = _dragged == row;
-        _dragged = null;
-
-        return dragged;
-    }
+    internal bool WasSelection(Guid row, MouseEventArgs clicked) =>
+        clicked.Detail > 0 && (_dragged == row || clicked.Detail > 1 || clicked.ShiftKey);
 }

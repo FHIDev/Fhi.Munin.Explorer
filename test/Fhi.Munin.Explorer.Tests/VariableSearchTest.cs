@@ -8284,9 +8284,9 @@ public class VariableSearchTest : BunitContext
     [Fact]
     public void Row_WhenADragIsFollowedByAClickWithNoPressBehindIt_ThenThatClickOpensThePanel()
     {
-        // What "leaves nothing behind" has to mean: the drag's own click spends the verdict. A click
-        // with no mousedown of its own — how assistive tooling activates a row — would otherwise be
-        // measured against a gesture that ended long before it. (Fhi.Metadata-l9l2n.81)
+        // What "leaves nothing behind" has to mean. A click with no mousedown of its own — how
+        // assistive tooling activates a row — reports no click count, and RowPress measures no
+        // verdict against one, whether or not anything spent it. (Fhi.Metadata-l9l2n.81)
         var cut = RenderWith(TwoRows());
 
         PressRow(cut, right: 48);
@@ -8395,9 +8395,9 @@ public class VariableSearchTest : BunitContext
     [Fact]
     public void Row_WhenAPressOnItIsReleasedOffTheList_ThenALaterBareClickStillOpensIt()
     {
-        // A press is only ever measured against the click of its own gesture. This one has no click
-        // at all — the pointer left the list before it came up — and the record it leaves behind
-        // must not be read against the tooling click above, which carries no coordinates. (l9l2n.81)
+        // A press is only ever measured against the click of its own gesture. This one has no
+        // click at all — the pointer left the list before it came up — and what it leaves behind
+        // must not be read against the tooling click below. (Fhi.Metadata-l9l2n.81)
         var cut = RenderWith(TwoRows());
 
         RowBody(cut).MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
@@ -8443,11 +8443,36 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
+    public void RowHeading_WhenADragBeginsAndEndsOnTheName_ThenThePanelStaysShutAndTheNextClickOpens()
+    {
+        // The gesture the strip's mouseup sees and its click never does: both ends are inside the
+        // name button, so the click stops there. The name reads the same verdict the row would, and
+        // no click of the row's is left to spend it. (Fhi.Metadata-l9l2n.81)
+        var client = TwoRows();
+        var cut = RenderWith(client);
+
+        Toggles(cut)[0].MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
+        Toggles(cut)[0].MouseUp(new MouseEventArgs { ClientX = 200, ClientY = 240 });
+        Toggles(cut)[0].Click(new MouseEventArgs { ClientX = 200, ClientY = 240, Detail = 1 });
+
+        // Copying the term is not a request to read the variable, and the panel would have opened
+        // underneath the words the reader had just highlighted.
+        Assert.Equal("false", Discloses(cut));
+        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
+        Assert.Equal(0, client.DetailCalls);
+
+        // And the verdict that gesture left is not what the tooling click after it is answered by.
+        RowBody(cut).Click(new MouseEventArgs());
+
+        Assert.Equal("true", Discloses(cut));
+    }
+
+    [Fact]
     public void Row_WhenADragEndsWithNoClickAndAFreshPressFollows_ThenTheStaleVerdictIsNotReused()
     {
-        // The other end of the same rule: a release settles what its own gesture was, and a click
-        // that never arrives — the row went out from under it while a search landed — must not leave
-        // that answer standing for the gesture after it. (Fhi.Metadata-l9l2n.81)
+        // The other end of the same rule: a drag whose click never arrived — the row went out from
+        // under it while a search landed — leaves its answer standing, and the press after it is
+        // still in flight. Neither is what a click with no gesture behind it is measured by.
         var cut = RenderWith(TwoRows());
 
         RowBody(cut).MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });

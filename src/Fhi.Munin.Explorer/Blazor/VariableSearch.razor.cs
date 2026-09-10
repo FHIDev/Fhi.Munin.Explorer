@@ -1029,9 +1029,9 @@ public sealed partial class VariableSearch : ComponentBase
         builder.AddAttribute(10, "onclick",
             EventCallback.Factory.Create<MouseEventArgs>(this, e => ToggleDetailFromRowHeadingAsync(v, e)));
 
-        // The click stops here, or the row behind toggles as well and one press would open the panel
-        // and close it again. The mousedown does NOT: the row measures a click against the press it
-        // saw, and a drag begun here and released on the row lands its click there. (l9l2n.81)
+        // The click stops here, or the row behind toggles as well and one press would open the
+        // panel and close it again. The mousedown does NOT: the row measures a click against the
+        // press it saw, and a drag begun here lands its click there. (Fhi.Metadata-l9l2n.81)
         builder.AddEventStopPropagationAttribute(11, "onclick", true);
 
         // The chevron lives INSIDE the button, not beside it (Fhi.Metadata-zqe14): the button

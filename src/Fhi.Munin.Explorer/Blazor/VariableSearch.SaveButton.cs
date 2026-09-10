@@ -114,9 +114,9 @@ public partial class VariableSearch
 
         builder.AddAttribute(8, "onclick", EventCallback.Factory.Create(this, () => ToggleSavedAsync(v)));
 
-        // The click stops here: the row around this button opens the panel on a press, and saving a
-        // variable is not a request to read it. The mousedown does NOT — a drag begun on Lagre and
-        // released on the row lands its click there, and the row measures what it saw. (l9l2n.81)
+        // The click stops here: the row around this button opens the panel on a press, and saving
+        // a variable is not a request to read it. The mousedown does NOT — a drag begun on Lagre
+        // lands its click on the row, which measures what it saw. (Fhi.Metadata-l9l2n.81)
         builder.AddEventStopPropagationAttribute(9, "onclick", true);
 
         builder.AddContent(10, saved ? T.RemoveFromList : T.SaveToList);

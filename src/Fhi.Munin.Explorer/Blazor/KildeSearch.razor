@@ -630,8 +630,9 @@ else
                            role, no key handler. On helsedata.no Stiler lights the row up under the
                            pointer (Fhi.Metadata-caf5a), which read as a control before it was one. *@
                         @* mousedown records where the press began and mouseup settles what it was —
-                           a drag-select across the row's codes ends in a click on the <tr> too, and
-                           the drawer must not open behind a reader copying K_ALS. (l9l2n.55) *@
+                           a drag-select across the row's codes ends in a click on the <tr> too,
+                           and the drawer must not open behind a reader copying K_ALS.
+                           (Fhi.Metadata-l9l2n.55) *@
                         @* The press the controls inside let through is theirs as much as the row's:
                            a drag begun on the name and released here lands its click here, so the
                            row has to have seen where it went down. *@
@@ -692,7 +693,7 @@ else
                                 <button class="munin-explorer-kilder__name"
                                         type="button"
                                         lang="@CatalogueProperties.Foreign(RowName(kilde).Norwegian, Reader)"
-                                        @onclick="() => SelectAsync(kilde)"
+                                        @onclick="e => SelectFromNameAsync(kilde, e)"
                                         @onclick:stopPropagation="true">@RowName(kilde).Text</button>
 
                                 @* The code under the name, the way Kelda puts it there — it is how a reader

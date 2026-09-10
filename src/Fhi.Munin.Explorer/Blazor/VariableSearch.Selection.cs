@@ -35,11 +35,11 @@ public partial class VariableSearch
         return Task.CompletedTask;
     }
 
-    // The second click of one double-click gesture is not a second request: it toggled the panel
-    // straight back shut, so the row flashed and the reader landed where they started. Keyboard
-    // activation of a button reports no click count at all, so Enter and Space still toggle.
+    // The same question the row asks, because the name is the row's most copyable text and a drag
+    // that begins and ends inside this button lands its click here: a reader taking the term must
+    // not open the panel over the selection they just made. RowPress says which gestures those are.
     private Task ToggleDetailFromRowHeadingAsync(VariableSummary v, MouseEventArgs released) =>
-        released.Detail > 1 ? Task.CompletedTask : ToggleDetailAsync(v);
+        _rowPress.WasSelection(v.Id, released) ? Task.CompletedTask : ToggleDetailAsync(v);
 
     // One gesture at a time, because a pointer has one: the row it went down on is part of what
     // RowPress records. Kelda keeps its own, over the same rule.
@@ -63,16 +63,13 @@ public partial class VariableSearch
     /// stop, because everything it reaches is on that button already (WCAG 2.1.1).
     /// </para>
     /// <para>
-    /// Highlighting a code to copy it is not a request to open the panel, and distance alone misses
-    /// the gestures that stand still: a double-click takes a word, a shift-click extends to it. A
-    /// click no gesture of this row's ended in is how assistive tooling presses, so it opens.
+    /// Highlighting a code to copy it is not a request to open the panel. Which gestures those are
+    /// is <see cref="RowPress"/>'s to say, and the name button in the row asks it the same way, so
+    /// the rule is one sentence in one place rather than a clause per handler.
     /// </para>
     /// </remarks>
     private Task ToggleDetailFromRowAsync(VariableSummary v, MouseEventArgs released) =>
-        // Asked first, because reading the verdict is what spends it — see RowPress.Dragged.
-        _rowPress.Dragged(v.Id) || released.Detail > 1 || released.ShiftKey
-            ? Task.CompletedTask
-            : ToggleDetailAsync(v);
+        _rowPress.WasSelection(v.Id, released) ? Task.CompletedTask : ToggleDetailAsync(v);
 
     /// <summary>
     /// Open this row's detail panel, or close it when it is the one already open.

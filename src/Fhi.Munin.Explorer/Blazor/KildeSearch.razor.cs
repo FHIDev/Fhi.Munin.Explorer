@@ -385,11 +385,13 @@ public sealed partial class KildeSearch : ComponentBase
     // Navn, Status and Opprettet.
     private int RowSpan => (Selectable ? 5 : 4) + OptionalColumns.Count(ColumnVisible);
 
-    // The second click of one double-click gesture is not a second request: it toggled the drawer
-    // straight back shut, so the row flashed and the reader landed where they started. Keyboard
-    // activation of a button reports no click count at all, so Enter and Space still toggle.
+    // The same question the row asks, because a gesture that begins and ends inside this button
+    // lands its click here: the second click of a double-click toggled the drawer straight back
+    // shut, and a drag over the chevron is no more a press. RowPress says which gestures those are.
     private Task ToggleDatasamlingerFromChevronAsync(KildeSummary kilde, MouseEventArgs released) =>
-        released.Detail > 1 ? Task.CompletedTask : ToggleDatasamlingerAsync(kilde);
+        _rowPress.WasSelection(kilde.Id, released)
+            ? Task.CompletedTask
+            : ToggleDatasamlingerAsync(kilde);
 
     private async Task ToggleDatasamlingerAsync(KildeSummary kilde)
     {
@@ -424,11 +426,10 @@ public sealed partial class KildeSearch : ComponentBase
         _rowPress.Released(kilde.Id, released);
 
     // The row opens nothing the toggle does not — Kelda draws no toggle where there is nothing to
-    // open — and a selection is not a press: a drag across the row, a double-click taking a code
-    // and a shift-click extending onto it all leave the drawer shut. (Fhi.Metadata-l9l2n.55)
+    // open — and a selection is not a press: which gestures those are is RowPress's to say, and the
+    // chevron and the name in the row ask it the same way. (Fhi.Metadata-l9l2n.55)
     private Task ToggleDatasamlingerFromRowAsync(KildeSummary kilde, MouseEventArgs released) =>
-        // Asked first, because reading the verdict is what spends it — see RowPress.Dragged.
-        _rowPress.Dragged(kilde.Id) || released.Detail > 1 || released.ShiftKey || !CanExpand(kilde)
+        !CanExpand(kilde) || _rowPress.WasSelection(kilde.Id, released)
             ? Task.CompletedTask
             : ToggleDatasamlingerAsync(kilde);
 
@@ -910,6 +911,12 @@ public sealed partial class KildeSearch : ComponentBase
 
         ClearSearch();
     }
+
+    // The same question the row asks: the name is the row's most copyable text and this button
+    // takes the reader off the list, so a drag that begins and ends inside it must copy the name
+    // and stay put. RowPress says which gestures those are.
+    private Task SelectFromNameAsync(KildeSummary kilde, MouseEventArgs released) =>
+        _rowPress.WasSelection(kilde.Id, released) ? Task.CompletedTask : SelectAsync(kilde);
 
     /// <summary>Open <paramref name="kilde"/>'s view, in place of the list.</summary>
     private async Task SelectAsync(KildeSummary kilde)

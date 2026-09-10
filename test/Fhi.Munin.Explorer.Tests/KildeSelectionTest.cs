@@ -3,6 +3,7 @@ using Bunit;
 using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Tests;
@@ -90,6 +91,10 @@ public class KildeSelectionTest : BunitContext
 
         return (cut, handovers);
     }
+
+    /// <summary>A cell of the row holding no control, so a press there lands on the row itself.</summary>
+    private static IElement RowBody(IRenderedComponent<KildeSearch> cut) =>
+        cut.FindAll(".munin-explorer-kilder tbody tr td")[^1];
 
     private static IReadOnlyList<IElement> RowBoxes(IRenderedComponent<KildeSearch> cut) =>
         [.. cut.FindAll(".munin-explorer-kilder tbody .munin-explorer-kilder__select input")];
@@ -185,6 +190,24 @@ public class KildeSelectionTest : BunitContext
 
         Assert.True(RowBoxes(cut)[0].HasAttribute("checked"));
         Assert.Empty(cut.FindAll(".munin-explorer-kilder__expanded"));
+    }
+
+    [Fact]
+    public void RowBox_WhenADragBeginsAndEndsOnIt_ThenTheRowsNextBareClickStillOpensTheDrawer()
+    {
+        // The box is the one control in the row with no click handler at all, so nothing here could
+        // spend a verdict even if it wanted to: what keeps the gesture harmless is that the tooling
+        // click after it reports no click count and is not measured. (Fhi.Metadata-l9l2n.81)
+        var (cut, _) = RenderSelectable(new FakeClient(Kilde("Als registeret", "K_ALS")));
+
+        RowBoxes(cut)[0].MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
+        RowBoxes(cut)[0].MouseUp(new MouseEventArgs { ClientX = 200, ClientY = 240 });
+
+        Assert.Empty(cut.FindAll(".munin-explorer-kilder__expanded"));
+
+        RowBody(cut).Click(new MouseEventArgs());
+
+        Assert.Single(cut.FindAll(".munin-explorer-kilder__expanded"));
     }
 
     // ---------------------------------------------------------------------------------
