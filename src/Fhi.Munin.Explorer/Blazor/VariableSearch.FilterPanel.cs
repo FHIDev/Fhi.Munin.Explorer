@@ -414,14 +414,24 @@ public partial class VariableSearch
     /// Read off the answer rather than off the values drawn, because a ticked kilde the search has
     /// hidden is still narrowing the results — and would otherwise lose its place in the summary's
     /// count and its chip over the results at once. (Fhi.Metadata-uidue)
+    /// <para>
+    /// This is the one facet reading its ticks off the payload rather than off the tree the panel
+    /// drew, so <see cref="Tree"/> collapsing a repeated id never reaches it: without the
+    /// de-duplication here a payload naming one delkilde twice is one press, two chips.
+    /// (Fhi.Metadata-l9l2n.82)
+    /// </para>
     /// </remarks>
     private IReadOnlyList<FacetValue> ChosenKilder(
         FilterOptions facets, ILookup<Guid, DelkildeFacet> delkilderByKilde) =>
     [
-        .. facets.Kilder.Where(kilde => _filter.KildeIds.Contains(kilde.Id)).Select(kilde => KildeValue(kilde)),
+        .. facets.Kilder
+            .Where(kilde => _filter.KildeIds.Contains(kilde.Id))
+            .DistinctBy(kilde => kilde.Id)
+            .Select(kilde => KildeValue(kilde)),
         .. facets.Kilder
             .SelectMany(kilde => delkilderByKilde[kilde.Id])
             .Where(delkilde => _filter.DelkildeIds.Contains(delkilde.Id))
+            .DistinctBy(delkilde => delkilde.Id)
             .Select(DelkildeValue)
     ];
 
@@ -708,8 +718,12 @@ public partial class VariableSearch
     /// pass a cycle and everything hanging off it vanishes from the panel silently, which is the
     /// same failure the orphan rule above exists to prevent, arriving by the other door. The walk
     /// remembers what it has already placed, so entering a cycle stops at the repeat rather than
-    /// recursing until the stack runs out; that memory also keeps a duplicated id from being drawn
-    /// twice.
+    /// recursing until the stack runs out.
+    /// </para>
+    /// <para>
+    /// An id the payload names more than once is collapsed to one node before any of that, and the
+    /// copy hanging off a parent that is present is the one kept, so where the value sits is the
+    /// payload's meaning rather than its order. (Fhi.Metadata-l9l2n.82)
     /// </para>
     /// </remarks>
     private static IReadOnlyList<FacetValue> Tree(
@@ -719,14 +733,23 @@ public partial class VariableSearch
         Func<Guid, Func<Task>> toggle,
         Func<int, int?> count)
     {
-        var all = nodes.ToList();
+        var listed = nodes.ToList();
 
-        if (all.Count == 0)
+        if (listed.Count == 0)
         {
             return [];
         }
 
-        var known = all.Select(node => node.Id).ToHashSet();
+        var known = listed.Select(node => node.Id).ToHashSet();
+
+        // One node per id, the copy under a parent that is present winning: naming an id twice drew
+        // it twice, so one press ticked both and the row over the results carried two chips for one
+        // filter, and picking by payload order would nest or not nest by it. (Fhi.Metadata-l9l2n.82)
+        var all = listed
+            .GroupBy(node => node.Id)
+            .Select(copies => copies.FirstOrDefault(Parented) ?? copies.First())
+            .ToList();
+
         var byParent = all.Where(node => node.ParentId is not null).ToLookup(node => node.ParentId!.Value);
         HashSet<Guid> placed = [];
 
@@ -734,17 +757,19 @@ public partial class VariableSearch
 
         // Real roots first, then whatever they could not reach: every member of a cycle has its
         // parent present, so none of them is a root, and dropping them would take a filter off the
-        // panel with no error anywhere. (Fhi.Metadata-l9l2n.82)
-        AddRoots(node => node.ParentId is not { } parent || !known.Contains(parent));
+        // panel with no error anywhere.
+        AddRoots(node => !Parented(node));
         AddRoots(_ => true);
 
         return roots;
 
+        bool Parented(TreeNode node) => node.ParentId is { } parent && known.Contains(parent);
+
         void AddRoots(Func<TreeNode, bool> isRoot)
         {
             // A foreach rather than a query, because `placed` is a set the body mutates: building a
-            // node places everything under it, and an id placed twice — a payload naming it twice,
-            // or a cycle's other member — is two <li> siblings with one key the renderer throws on.
+            // node places its whole subtree, so a cycle's other member is already drawn by the time
+            // the second pass reaches it and must not be built as a root of its own as well.
             foreach (var node in all)
             {
                 if (isRoot(node) && !placed.Contains(node.Id))

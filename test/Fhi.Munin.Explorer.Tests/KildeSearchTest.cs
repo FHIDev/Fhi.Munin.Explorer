@@ -4170,12 +4170,9 @@ public class KildeSearchTest : BunitContext
     [Fact]
     public void ActiveFilters_WhenEachValueIsTickedInTurn_ThenTheChipCountEqualsTheTickedValueCount()
     {
-        // THE MEASUREMENT, and asserted after every single press rather than once at the end: a row
-        // that is right about three values and wrong about the fourth is right at the end of the
-        // loop and wrong the moment the reader gets there. Against the panel's own ticks rather
-        // than against a list written out here, because "the chips and the checkboxes agree" is the
-        // claim — a count repeated in the test would pass while both were wrong together.
-        // (Fhi.Metadata-l9l2n.82)
+        // Asserted after every single press rather than once at the end, and against the panel's
+        // own ticks rather than a list written out here: "the chips and the checkboxes agree" is
+        // the claim, and a repeated count passes while both are wrong. (Fhi.Metadata-l9l2n.82)
         var cut = RenderWith(EveryFacet());
 
         foreach (var (heading, choice) in new[]
@@ -4198,10 +4195,9 @@ public class KildeSearchTest : BunitContext
     [Fact]
     public void ActiveFilters_WhenTheChipsAreClearedOneByOne_ThenEachPressTakesExactlyOneValue()
     {
-        // The other direction, on the same terms: a press that cleared its facet rather than its
-        // value, or that left the checkbox ticked, keeps the two counts equal for a moment and
-        // parts them at the next press. Four values across four facets, so a press that cleared a
-        // whole facet could not pass for one that cleared a value. (Fhi.Metadata-l9l2n.82)
+        // The other direction, on the same terms. One value in each of four facets, so a press
+        // that cleared its whole facet rather than its own value could not pass for one that
+        // cleared a value. (Fhi.Metadata-l9l2n.82)
         var cut = RenderWith(EveryFacet());
 
         Tick(cut, "Kildetype", "Biobank");

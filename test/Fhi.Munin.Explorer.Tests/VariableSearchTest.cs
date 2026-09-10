@@ -5091,11 +5091,9 @@ public class VariableSearchTest : BunitContext
     [Fact]
     public void ActiveFilters_WhenEachValueIsTickedInTurn_ThenTheChipCountEqualsTheActiveValueCount()
     {
-        // THE MEASUREMENT, asserted after every single press rather than once at the end: a row
-        // that is right about ten values and wrong about one of them is right at the end of the
-        // loop above and wrong the moment the reader gets there. The filter's own ActiveCount is
-        // the number of values summed over every facet type, so this compares the row against what
-        // the request carries and not against a list written out here. (Fhi.Metadata-l9l2n.82)
+        // Asserted after every single press rather than once at the end: a row that is right about
+        // ten values and wrong about one is right at the end of the loop above. Against the
+        // filter's own ActiveCount, not a number written out here. (Fhi.Metadata-l9l2n.82)
         var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), EveryFacet());
         var cut = RenderWith(client);
 
@@ -5115,11 +5113,9 @@ public class VariableSearchTest : BunitContext
     [Fact]
     public void ActiveFilters_WhenTheFacetIsOneTheKildeutforskerDoesNotHave_ThenTheChipCountIsStillExact()
     {
-        // THE CHECK Fhi.Metadata-l9l2n.68 OWED. Datatype and instrument exist in this panel and in
-        // no other, so a row built by naming the facets the kildeutforsker has — rather than by
-        // walking this panel's own — draws nothing here while passing every test shaped like that
-        // one. Neither label sits inside a collapsed kildetype group, which is what stopped the
-        // check being written the first time. (Fhi.Metadata-l9l2n.82)
+        // Datatype and instrument exist in this panel and in no other, so a row built by naming the
+        // facets the kildeutforsker has — rather than by walking this panel's own — draws nothing
+        // here while passing every test shaped like that one. (Fhi.Metadata-l9l2n.82)
         var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), EveryFacet());
         var cut = RenderWith(client);
 
@@ -5143,12 +5139,9 @@ public class VariableSearchTest : BunitContext
     [Fact]
     public void ActiveFilters_WhenTheFacetPayloadListsOneIdTwice_ThenItIsOneChoiceAndOneChip()
     {
-        // THE DEFECT THIS BEAD IS ABOUT. A value listed both under a parent that is in the payload
-        // and as an orphan was built twice — once by the recursion, once as a root, because the
-        // root pass did not consult what the walk had already placed. One press ticked both drawn
-        // copies, the facet counted two and the row drew two chips for one value. Delkilder run
-        // through the same builder, which is where the reported "Vestland 2022" sits — a delkilde
-        // of FHUS on runa, and no facet of the kildeutforsker's. (Fhi.Metadata-l9l2n.82)
+        // A value listed both under a parent that is in the payload and as an orphan was built
+        // twice, so one press ticked both drawn copies. Every facet drawn as a tree passes through
+        // the same builder, delkilder included. (Fhi.Metadata-l9l2n.82)
         var client = new FilteringClient(
             OnePage(Variable("1. Tale", "KODE")),
             Facets() with
@@ -5174,12 +5167,73 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
+    public void ActiveFilters_WhenTheKildeFacetListsOneDelkildeTwice_ThenItIsOneChoiceAndOneChip()
+    {
+        // The kilde facet is the one that supplies its own Chosen list, read off the payload rather
+        // than off the tree the panel drew, so the builder's de-duplication never reaches it and
+        // the chips can carry a repeat the checkboxes do not. (Fhi.Metadata-l9l2n.82)
+        var client = new FilteringClient(
+            OnePage(Variable("1. Tale", "KODE")),
+            Facets() with
+            {
+                Delkilder =
+                [
+                    new() { Id = Tromso4, Name = "Tromsø 4", KildeId = Tromso, Count = 8 },
+                    new()
+                    {
+                        Id = Tromso4Visit, Name = "Første besøk", KildeId = Tromso,
+                        ParentDelkildeId = Tromso4, Count = 3
+                    },
+                    new()
+                    {
+                        Id = Tromso4Visit, Name = "Første besøk", KildeId = Tromso,
+                        ParentDelkildeId = NotInThePayload, Count = 3
+                    }
+                ]
+            });
+
+        var cut = RenderWith(client);
+
+        Assert.Single(Named(cut, "Første besøk"));
+
+        ClickFacet(cut, "Første besøk");
+
+        Assert.Equal(1, client.SearchFilter!.ActiveCount);
+        Assert.Equal(["Første besøk"], Chips(cut));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Render_WhenTheFacetPayloadListsOneIdTwice_ThenTheCopyUnderItsParentIsTheOneKept(bool orphanFirst)
+    {
+        // Where the value is drawn has to be the payload's meaning rather than its order: an orphan
+        // copy listed ahead of the parent is built as a root, the parented copy is then swallowed,
+        // and the value leaves its group with nothing drawn twice. (Fhi.Metadata-l9l2n.82)
+        VariabelgruppeFacet group = new() { Id = Bakgrunn, Name = "Bakgrunn", Count = 7 };
+        VariabelgruppeFacet parented = new() { Id = Levekaar, Name = "Levekår", ParentId = Bakgrunn, Count = 4 };
+        VariabelgruppeFacet orphan = new() { Id = Levekaar, Name = "Levekår", ParentId = NotInThePayload, Count = 4 };
+
+        var client = new FilteringClient(
+            OnePage(Variable("1. Tale", "KODE")),
+            Facets() with
+            {
+                Variabelgrupper = orphanFirst ? [orphan, group, parented] : [group, parented, orphan]
+            });
+
+        var cut = RenderWith(client);
+
+        var drawn = Assert.Single(Named(cut, "Levekår"));
+
+        Assert.Contains(drawn.ParentElement!, Facet(cut, "Bakgrunn").ParentElement!.QuerySelectorAll("li"));
+    }
+
+    [Fact]
     public void ActiveFilters_WhenOneChipIsCleared_ThenOnlyThatValueGoesAndTheCountFollows()
     {
         // Panel, chips and request in one assertion apiece, because each alone passes against a
-        // clear that half-lands: a chip removed from a row that has stopped projecting the filter,
-        // a checkbox left ticked over a request that widened, or a request that widened by more
-        // than the one value. (Fhi.Metadata-l9l2n.82)
+        // clear that half-lands: a chip removed from a row no longer projecting the filter, or a
+        // request that widened by more than the one value. (Fhi.Metadata-l9l2n.82)
         var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), EveryFacet());
         var cut = RenderWith(client);
 
@@ -5207,8 +5261,8 @@ public class VariableSearchTest : BunitContext
         IRenderedComponent<VariableSearch> cut, string label) =>
         [.. FacetControls(cut).Where(control => control.TextContent.StartsWith(label, StringComparison.Ordinal))];
 
-    /// <summary>A parent id no facet payload in this test carries, so the node naming it is an orphan.</summary>
-    private static readonly Guid NotInThePayload = new("eeeeeeee-0000-0000-0000-000000000001");
+    /// <summary>A parent id no facet payload in this file carries, so the node naming it is an orphan.</summary>
+    private static readonly Guid NotInThePayload = new("ffffffff-0000-0000-0000-000000000001");
 
     [Fact]
     public void ActiveFilters_WhenTheChosenValueIsFromTheCatchAll_ThenItsChipNamesTheFacetAndTheOthersDoNot()
