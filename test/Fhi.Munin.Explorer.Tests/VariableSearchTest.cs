@@ -4429,12 +4429,31 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
-    public void Detail_WhenNoFacetsAreLoadedAndTheTableKnowsTheKildetype_ThenTheTrailSaysTheTablesWord()
+    public void Detail_WhenTheFiltersCallAnsweredNothingAndTheTableKnowsTheKildetype_ThenTheTrailSaysTheTablesWord()
     {
-        // The ordinary shape for every detail-only host: the filters call has not answered, so the
-        // helper's facet lookup is a null read and the shipped table is the whole answer. A trail
-        // step downgraded to the raw token or to "Ikke oppgitt" here is silent. (Fhi.Metadata-3n6e1)
+        // A filters call that answered an empty payload: the facet list is there and holds no
+        // kildetype, so the lookup misses and the shipped table is the whole answer. A trail step
+        // downgraded to the raw token or to "Ikke oppgitt" here is silent. (Fhi.Metadata-3n6e1)
         var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale")))
+            .Knows(Detail(TaleId) with { KildeType = "sentraltHelseregister" })
+            .Knows(Kilde())
+            .Knows(Datasamling()));
+
+        Toggles(cut)[0].Click();
+
+        Assert.Equal(["Sentralt helseregister", "Als registeret (ALS)", "Inklusjon"],
+                     Values(cut)[2].QuerySelectorAll("ol > li").Select(l => l.TextContent));
+    }
+
+    [Fact]
+    public void Detail_WhenTheFiltersCallFailedAndTheTableKnowsTheKildetype_ThenTheTrailSaysTheTablesWord()
+    {
+        // The one shape where the helper's null read is load-bearing: the filters call failed, so
+        // no payload was ever stored and the trail resolves against a null. The panel beside it is
+        // showing its own error, which leaves this step the only word there is. (Fhi.Metadata-3n6e1)
+        var client = new DetailClient(OnePage(Row(TaleId, "1. Tale"))) { FailFilters = true };
+
+        var cut = RenderWith(client
             .Knows(Detail(TaleId) with { KildeType = "sentraltHelseregister" })
             .Knows(Kilde())
             .Knows(Datasamling()));
@@ -6389,6 +6408,9 @@ public class VariableSearchTest : BunitContext
         /// <summary>Never answer a detail fetch from the next one on.</summary>
         public bool StallDetail { get; set; }
 
+        /// <summary>Fail every filters call, so the panel never stores a payload to read from.</summary>
+        public bool FailFilters { get; set; }
+
         public DetailClient Knows(VariableDetail detail)
         {
             _details[detail.Id] = detail;
@@ -6439,6 +6461,13 @@ public class VariableSearchTest : BunitContext
                 ? Task.FromResult(next)
                 : throw new HttpRequestException("nede");
         }
+
+        public override Task<FilterOptions> GetFiltersAsync(
+            string? search = null, VariableFilter? filter = null, string? language = null,
+            CancellationToken cancellationToken = default) =>
+            FailFilters
+                ? throw new HttpRequestException("nede")
+                : base.GetFiltersAsync(search, filter, language, cancellationToken);
 
         /// <summary>Refuse every detail fetch from the next one on with the API's 429.</summary>
         /// <remarks>
