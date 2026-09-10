@@ -590,7 +590,6 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-retry` | meaning |
   | `munin-explorer-search__clear` | handle |
   | `munin-explorer-selection` | handle |
-  | `munin-explorer-selection__explore` | handle |
   | `munin-explorer-skiplink-pagination` | handle |
   | `munin-explorer-source` | id |
   | `munin-explorer-statistics` | handle |

@@ -686,7 +686,6 @@ public class KildeSelectionTest : BunitContext
             "munin-explorer-results__toolbar",   // shared with the count above the table
             "munin-explorer-search__clear",      // shared
             "munin-explorer-selection",          // this bead's
-            "munin-explorer-selection__explore", // this bead's
             "munin-explorer__dropdown",          // the picker, shared
         ], invented);
     }
@@ -794,97 +793,19 @@ public class KildeSelectionTest : BunitContext
     }
 
     [Fact]
-    public void ExploreButton_WhenAHostStylesIt_ThenItsWidthIsHeldStill()
+    public void Ribbon_WhenAHostStylesIt_ThenItIsARow()
     {
-        // The one declaration in this component that a host cannot infer from the markup, and the
-        // reason the ribbon used to jump. The handover's label is one of three and they are
-        // different lengths, so without a floor under its width the button resizes on the first
-        // tick and drags the reset and the count along with it.
-        //
-        // The general guards would pass on a rule that set only a colour, which is why this one
-        // names the declaration - the same shape as the facet fold's guard and the skip link's.
+        // The general guards pass on a rule that sets only a colour, so this one names the
+        // declaration; undrawn, the ribbon's three parts stack. Nothing here asks for a width
+        // floor on the handover any more: Stiler measured one and declined it, so the class that
+        // carried it is gone and demanding it back demands what no host supplies (Fhi.Metadata-kvgu7).
         static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
 
-        IReadOnlyList<string> BlocksFor(string name) =>
-            [.. HostClassNames.SampleDeclarationsFor(name).Select(r => Squeezed(r.Declarations))];
-
         Assert.True(
-            BlocksFor("munin-explorer-selection__explore").Any(d => d.Contains("min-width:", StringComparison.Ordinal)),
-            "Nothing holds the handover button's width, so the ribbon moves on every tick.");
-
-        Assert.True(
-            BlocksFor("munin-explorer-selection").Any(d => d.Contains("display:flex", StringComparison.Ordinal)),
+            HostClassNames.SampleDeclarationsFor("munin-explorer-selection")
+                .Any(rule => Squeezed(rule.Declarations)
+                    .Contains("display:flex", StringComparison.Ordinal)),
             "The ribbon is not a row, so its three parts stack.");
-    }
-
-    [Fact]
-    public void ExploreButton_WhenTheViewportIsNarrower_ThenItsWidthFloorYields()
-    {
-        // CSS resolves max-width before min-width, so the `max-width: 100%` beside the floor cannot
-        // bring a fixed one down - the floor itself has to be container-relative, or a narrow
-        // viewport scrolls sideways under WCAG 1.4.10 (Fhi.Metadata-l9l2n.65).
-        static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
-
-        var rules = HostClassNames
-            .SampleDeclarationsFor("munin-explorer-selection__explore")
-            .Select(rule => (rule.Selector, Block: Squeezed(rule.Declarations)))
-            .ToList();
-
-        var floor = rules
-            .SelectMany(rule => rule.Block.Split(';'))
-            .FirstOrDefault(d => d.StartsWith("min-width:", StringComparison.Ordinal));
-
-        Assert.False(
-            floor is null,
-            "Nothing holds the handover button's width, so the ribbon moves on every tick.");
-
-        // The operand, not just the function: `min(21rem, 24rem)` is a min() that still computes to
-        // a 336px floor in a narrower row, and would pass a test that asked only for `min(`.
-        var operands = System.Text.RegularExpressions.Regex.Match(floor!, @"^min-width:min\((.+)\)$");
-
-        Assert.True(
-            operands.Success
-            && operands.Groups[1].Value.Split(',').Any(operand => operand.Trim() == "100%"),
-            $"The handover button's floor is `{floor}`, which no narrow viewport can bring down, "
-            + "so the page scrolls sideways instead of the button shrinking.");
-
-        // Yielding is half of it: hd-button-square is nowrap at a fixed height, so a button that
-        // shrinks below its label spills the label out of its own box instead. And these have to
-        // outrank it - it ties on specificity with a bare class and is later in the file.
-        var protection = rules
-            .Where(rule => rule.Block.Contains("white-space:normal", StringComparison.Ordinal)
-                        && rule.Block.Contains("height:auto", StringComparison.Ordinal))
-            .ToList();
-
-        Assert.True(
-            protection.Count > 0,
-            "Nothing lets the handover's label wrap, so it spills out of the button once the floor "
-            + "yields.");
-
-        // Per comma-separated part, because specificity is: a list is a set of independent
-        // selectors, so `.something, .munin-explorer-selection__explore` carries two dots and still
-        // matches this button at one class - the tie with hd-button-square that source order loses.
-        static bool Outranks(string selector) => selector
-            .Split(',')
-            .Where(part => part.Contains("munin-explorer-selection__explore", StringComparison.Ordinal))
-            .All(part => part.Count(c => c == '.') > 1);
-
-        var wrapping = protection.FirstOrDefault(rule => Outranks(rule.Selector));
-
-        Assert.True(
-            wrapping.Selector is not null,
-            $"`{protection[0].Selector}` matches the handover at one class, so hd-button-square ties "
-            + "it and wins on source order: the wrap and the auto height above are dead text.");
-
-        // The wrap needs somewhere to go, and a floor rather than nothing: `height: auto` alone
-        // draws the button shorter than the reset button beside it in the same centred row.
-        Assert.True(
-            protection.Any(rule => rule.Block.Contains("min-height:2.75rem", StringComparison.Ordinal)),
-            "The handover has no height floor, so it draws shorter than the reset button beside it.");
-
-        // The trade this makes, accepted rather than overlooked: in the band where the button is
-        // narrower than its longest label but wider than its shortest, ticking a row wraps it to a
-        // second line and moves the rows beneath. A label outside its own box is worse.
     }
 
     [Fact]
@@ -904,7 +825,7 @@ public class KildeSelectionTest : BunitContext
         // in the DOM when it has something to announce.
         Assert.Equal(2, Parts(cut).Count);
         Assert.StartsWith("button:", Parts(cut)[0]);
-        Assert.Contains("munin-explorer-selection__explore", Parts(cut)[0]);
+        Assert.Contains("button-square--primary", Parts(cut)[0]);
         Assert.StartsWith("p:", Parts(cut)[^1]);
 
         TickRow(cut, "Als registeret");
@@ -912,7 +833,7 @@ public class KildeSelectionTest : BunitContext
         // Ticked: the reset appears BETWEEN them rather than before the handover, so the handover
         // has not moved and the count has only slid right.
         Assert.Equal(3, Parts(cut).Count);
-        Assert.Contains("munin-explorer-selection__explore", Parts(cut)[0]);
+        Assert.Contains("button-square--primary", Parts(cut)[0]);
         Assert.Contains("button-square--secondary", Parts(cut)[1]);
         Assert.StartsWith("p:", Parts(cut)[2]);
         Assert.Equal("1 kilde valgt", SelectionLine(cut));
