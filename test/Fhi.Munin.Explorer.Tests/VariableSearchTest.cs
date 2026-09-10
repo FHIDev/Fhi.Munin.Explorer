@@ -7532,9 +7532,9 @@ public class VariableSearchTest : BunitContext
     [Fact]
     public void CodeToggle_WhenItIsDoubleClicked_ThenTheCodeTableIsLeftOpen()
     {
-        // The last of the three same-page disclosures to get this guard: unlike the chevron and the
-        // row name, this callback took no MouseEventArgs at all, so nothing could tell one gesture's
-        // second click from a deliberate second press.
+        // The same guard and predicate as the chevron's and the row name's, on the same
+        // parameterless lambda both of those were: this one came last by scope, not by shape. This
+        // panel's source and version disclosures are still without it (Fhi.Metadata-j1j3i).
         var client = KodeverkRows();
         var cut = OpenData(client);
 
@@ -7547,8 +7547,29 @@ public class VariableSearchTest : BunitContext
         Assert.Equal("Skjul koder", CodeToggles(cut)[0].TextContent);
         Assert.NotNull(Panel(cut).QuerySelector(".munin-explorer-codes table"));
 
-        // The swallowed click is not a second GetKodeverkCodesAsync either — the guard sits in
-        // front of the toggle rather than inside it, so the second click reaches no fetch at all.
+        // Pinned as an invariant, not as evidence of the guard: a reopen is served from _codes, so
+        // an unswallowed second click costs no request either — see the collapse-and-reopen test
+        // above. The stalled-fetch test below is the one that shows the click reached no toggle.
+        Assert.Single(client.RequestsFor("2337"));
+    }
+
+    [Fact]
+    public void CodeToggle_WhenItIsDoubleClickedWhileTheFetchIsOut_ThenTheListIsStillOpenAndLoading()
+    {
+        // What tells a guard in front of the toggle from one inside it, which counting requests
+        // cannot: a fetch already in flight is de-duplicated either way. Only a second click that
+        // never reached ToggleCodesAsync leaves the list open on its "Henter koder \u2026" line.
+        var client = KodeverkRows();
+        var cut = OpenData(client);
+
+        client.StallCodes = true;
+
+        PressCodeToggle(cut);
+        PressCodeToggle(cut, clicks: 2);
+
+        Assert.Equal("true", CodeToggles(cut)[0].GetAttribute("aria-expanded"));
+        Assert.Equal("Henter koder \u2026",
+                     Panel(cut).QuerySelector(".munin-explorer-codes p")!.TextContent);
         Assert.Single(client.RequestsFor("2337"));
     }
 

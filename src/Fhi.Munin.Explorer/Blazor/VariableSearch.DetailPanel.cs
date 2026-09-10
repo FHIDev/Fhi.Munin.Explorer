@@ -280,9 +280,7 @@ public partial class VariableSearch
         public static KodeverkKey Of(KodeverkLink link) => new(link.KodeverkType, link.KodeverkReference);
     }
 
-    // The second click of one double-click gesture is not a second request: it toggled the code
-    // table straight back shut, so the line flashed and the reader landed where they started.
-    // Keyboard activation of a button reports no click count at all, so Enter and Space still toggle.
+    // Guarded on the same predicate, and for the reason ToggleDetailFromRowHeadingAsync is.
     private Task ToggleCodesFromControlAsync(KodeverkLink link, MouseEventArgs released) =>
         released.Detail > 1 ? Task.CompletedTask : ToggleCodesAsync(link);
 
