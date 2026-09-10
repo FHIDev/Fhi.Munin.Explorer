@@ -358,7 +358,7 @@ public partial class VariableSearch
 
     private FacetValue KildeTypeValue(KildetypeFacet type) =>
         new($"kildetype:{type.Value}",
-            T.KildeTypeLabel(type.Value, type.DisplayName),
+            T.KildeTypeName(type.Value, type.DisplayName),
             Counted(type.Count),
             string.Equals(_filter.KildeType, type.Value, StringComparison.OrdinalIgnoreCase),
             () => SetKildeTypeAsync(type.Value),
@@ -513,7 +513,7 @@ public partial class VariableSearch
         IGrouping<string, KildeFacet> kilder,
         ILookup<Guid, DelkildeFacet> delkilderByKilde) =>
         new($"kildetype-group:{kilder.Key}",
-            T.KildeTypeLabel(kilder.Key, kilder.Key),
+            KildeTypeName(kilder.Key),
             kilder.Count(),
             Selected: false,
             Toggle: null,

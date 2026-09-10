@@ -634,6 +634,18 @@ internal sealed record Texts(
         return string.IsNullOrWhiteSpace(fallback) ? NotSpecified : fallback;
     }
 
+    /// <summary>What a facet or a heading shows for a kildetype the API has named.</summary>
+    /// <remarks>
+    /// The vocabulary is editable master data on Munin's side and the label follows
+    /// <c>Accept-Language</c>, so the API's word wins; an API predating that echoes the enum name —
+    /// the value again, bar its casing — and only that reaches the shipped table. (Fhi.Metadata-3n6e1)
+    /// </remarks>
+    public string KildeTypeName(string? value, string? apiName) =>
+        !string.IsNullOrWhiteSpace(apiName)
+        && !string.Equals(apiName, value, StringComparison.OrdinalIgnoreCase)
+            ? apiName
+            : KildeTypeLabel(value, apiName);
+
     /// <summary>
     /// Prose for an identification-level token, falling back to what the API called it.
     /// </summary>

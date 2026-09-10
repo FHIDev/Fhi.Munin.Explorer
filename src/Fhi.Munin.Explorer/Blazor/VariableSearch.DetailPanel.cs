@@ -106,9 +106,10 @@ public partial class VariableSearch
 
         if (!string.IsNullOrWhiteSpace(detail.KildeType))
         {
-            // The one step that is our prose rather than a name out of the catalogue — it follows
-            // Language, so it is the one step not marked as Norwegian.
-            crumbs.Add(new Crumb(T.KildeTypeLabel(detail.KildeType, detail.KildeType), Norwegian: false));
+            // The one step that is a vocabulary rather than a name out of the catalogue, so it
+            // follows Language either way — the API resolves it against Accept-Language, and the
+            // shipped table behind that is the reader's language too. Hence not marked Norwegian.
+            crumbs.Add(new Crumb(KildeTypeName(detail.KildeType), Norwegian: false));
         }
 
         if (!string.IsNullOrWhiteSpace(detail.KildeName))

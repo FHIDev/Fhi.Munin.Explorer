@@ -140,6 +140,26 @@ Norwegian reader can see "Heltall" in the row and "Datatype: Integer" in the pan
 `VariableView` excludes the key for exactly this reason (`DrawnInTheSidebar`); the search panel does
 not, and closing that is its own bead. (`Fhi.Metadata-l9l2n.49`)
 
+**Kildetype is the same vocabulary problem with a smaller table, and the same answer.**
+`/api/explorer/filters` resolves `kildeTyper[].displayName` from the Kilde-scoped Kildetype
+PropertyDefinition and follows `Accept-Language` (`Fhi.Metadata-0mjhi`), so that is the authority
+and `Texts.KildeTypeNames` is the fallback rather than the source. `Texts.KildeTypeName(value,
+apiName)` is the one place the preference is written down, and every kildetype word inside
+`VariableSearch` goes through it — the facet button from its own facet, and the kilde group heading
+and the open row's kilde trail through `VariableSearch.KildeTypeName(value)`, which finds the facet
+by value. The table answers two payloads and no others: an API that predates the resolved label and
+echoes the enum name — `SentraltHelseregister`, the value again bar its casing — and one that sends
+no `displayName` at all. Checked against runa on 2026-09-10 — `api/explorer/kilder/egenskaper`,
+whose `Kildetype` `optionsJson` is the seed itself — the two agree word for word on all eight
+values in both languages, so the switch changed no visible text; what it bought is an edit to the
+master data reaching the page, and the first kildetype Munin adds reading the same on the facet
+button and the heading beneath it (`Fhi.Metadata-1b0ag`).
+
+The components a host mounts on their own — `KildeView`, `VariableView`, `DatasamlingView` — and
+the kildeutforsker's own facets are outside this: none of them fetches the filters endpoint, so
+`Texts.KildeTypeLabel` by value is all they have. Handing them a vocabulary is a public API change
+and its own bead.
+
 ## Comments
 
 Comment the **why**, never the **what**. If a reader can derive it from the signature, delete it.

@@ -4235,11 +4235,11 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
-    public void Render_WhenAKildetypeIsOutsideTheShippedTable_ThenTheFacetTakesTheApisWordsAndTheHeadingTheToken()
+    public void Render_WhenAKildetypeIsOutsideTheShippedTable_ThenTheFacetAndTheHeadingUnderItBothSayTheApisWords()
     {
-        // A member Munin adds to the enum reaches the fallback, and the two sites fall back to
-        // different things because the grouping never reads KildeTyper. Pinned as it stands, not
-        // endorsed: Fhi.Metadata-1b0ag flips this assertion. Two kildetyper, or the group lifts out.
+        // A member Munin adds to the enum reaches no table here, and the heading used to fall back
+        // to the raw token while the facet a line above it read the API's prose — "Ny kildetype"
+        // over "nyKildetype", in one panel. (Fhi.Metadata-1b0ag)
         var cut = RenderWith(new FilteringClient(OnePage(), new FilterOptions
         {
             KildeTyper =
@@ -4262,7 +4262,171 @@ public class VariableSearchTest : BunitContext
         var group = KildeTypeGroups(cut)
             .Single(g => g.TextContent.Contains("Dødsårsaksregisteret", StringComparison.Ordinal));
 
-        Assert.Equal("nyKildetype", group.FirstElementChild!.ChildNodes[0].TextContent.Trim());
+        Assert.Equal("Ny kildetype", group.FirstElementChild!.ChildNodes[0].TextContent.Trim());
+        Assert.DoesNotContain("nyKildetype", FilterPanel(cut).TextContent, StringComparison.Ordinal);
+    }
+
+    /// <summary>Facets whose kildetype words are the API's rather than the shipped table's.</summary>
+    /// <remarks>
+    /// <c>sentraltHelseregister</c> is in <c>Texts.KildeTypeNames</c>, which is the point: a value
+    /// the table also knows is the one case where reading the table looks right and is stale.
+    /// </remarks>
+    private static FilterOptions RewordedKildetyper(string reworded) => new()
+    {
+        KildeTyper =
+        [
+            new() { Value = "sentraltHelseregister", DisplayName = reworded, Count = 30 },
+            new() { Value = "biobank", DisplayName = "Biobank", Count = 12 }
+        ],
+        Kilder =
+        [
+            new() { Id = Dodsarsak, Name = "Dødsårsaksregisteret", KildeType = "sentraltHelseregister", Count = 30 },
+            new() { Id = Tromso, Name = "Tromsøundersøkelsen", KildeType = "biobank", Count = 12 }
+        ],
+        TotalCount = 42
+    };
+
+    [Fact]
+    public void Render_WhenTheApiHasRewordedAKildetype_ThenTheFacetAndTheHeadingUnderItBothFollowIt()
+    {
+        // The kildetype vocabulary is editable master data on Munin's side, so an edit there has to
+        // reach the page — and has to reach both sites, or one panel names one kildetype two ways.
+        // (Fhi.Metadata-3n6e1)
+        var cut = RenderWith(new FilteringClient(OnePage(), RewordedKildetyper("Sentralt helseregister (nytt)")));
+
+        var heading = KildeTypeGroups(cut)
+            .Single(g => g.TextContent.Contains("Dødsårsaksregisteret", StringComparison.Ordinal))
+            .FirstElementChild!.ChildNodes[0].TextContent.Trim();
+
+        Assert.Equal("Sentralt helseregister (nytt) (30)", Facet(cut, "Sentralt helseregister (nytt)").TextContent);
+        Assert.Equal("Sentralt helseregister (nytt)", heading);
+
+        // The table's own word for that value, which is what a table-first read of either site
+        // would have drawn — so the assertions above cannot pass on the stale word by accident.
+        Assert.DoesNotContain("Sentralt helseregister (30)", FilterPanel(cut).TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Detail_WhenTheApiHasRewordedAKildetype_ThenTheOpenRowsTrailSaysItTheWayTheFacetDoes()
+    {
+        // The two consumers of one vocabulary: the facet button in the panel and the kilde trail in
+        // the row opened beside it. They read the same payload, so they cannot be allowed to fall
+        // back to different things. (Fhi.Metadata-3n6e1)
+        var reworded = "Sentralt helseregister (nytt)";
+        var id = Guid.NewGuid();
+        var client = new FacetedDetailClient(OnePage(Row(id, "1. Tale")), RewordedKildetyper(reworded))
+            .Knows(Detail(id) with { KildeType = "sentraltHelseregister" });
+
+        var cut = RenderWith(client);
+
+        Toggles(cut)[0].Click();
+
+        Assert.Equal(reworded, Panel(cut).QuerySelector("ol > li")!.TextContent.Trim());
+        Assert.Equal($"{reworded} (30)", Facet(cut, reworded).TextContent);
+    }
+
+    [Fact]
+    public void Render_WhenAKildetypeArrivesWithNoDisplayNameAtAll_ThenBothSitesFallBackToTheShippedTable()
+    {
+        // An API predating displayName sends nothing at all, which is the shape the test above
+        // does not cover — that one is the enum name echoed back. Both reach the shipped table, in
+        // the reader's own language, which is why deleting it is a different bead. (Fhi.Metadata-3n6e1)
+        var cut = RenderWith(new FilteringClient(OnePage(), RewordedKildetyper("")));
+
+        var heading = KildeTypeGroups(cut)
+            .Single(g => g.TextContent.Contains("Dødsårsaksregisteret", StringComparison.Ordinal))
+            .FirstElementChild!.ChildNodes[0].TextContent.Trim();
+
+        Assert.Equal("Sentralt helseregister (30)", Facet(cut, "Sentralt helseregister").TextContent);
+        Assert.Equal("Sentralt helseregister", heading);
+    }
+
+    [Theory]
+    [InlineData("no", "nb", "Sentralt helseregister, som master data sier det")]
+    [InlineData("en", "en", "Central health registry, as the master data has it")]
+    public void Render_WhenTheApiAnswersInTheRequestLanguage_ThenTheFacetSaysWhatItAnswered(
+        string language, string asked, string expected)
+    {
+        // THE TRAP: a language-sensitive value read out of a hardcoded table renders and loses the
+        // request language with it. Neither word below is in Texts.KildeTypeNames in either
+        // language, so a table-first read goes red instead of reading plausibly, and the two arms
+        // differ — which is the part that says the label moved with the call. (Fhi.Metadata-3n6e1)
+        var client = new LanguageFacetClient(OnePage());
+
+        var cut = RenderWith(client, b => b.Add(c => c.Language, language));
+
+        Assert.Equal(asked, client.FacetLanguage);
+        Assert.Equal($"{expected} (30)", Facet(cut, expected).TextContent);
+    }
+
+    /// <summary>Answers the kildetype facet the way the API does: resolved, in the language asked for.</summary>
+    /// <remarks>
+    /// Checked against runa on 2026-09-10, <c>sentraltHelseregister</c> comes back as "Sentralt
+    /// helseregister" under <c>nb</c> and "Central health registry" under <c>en</c>. The clause on
+    /// the end of each is the test's own, so no shipped table can produce either word.
+    /// </remarks>
+    private sealed class LanguageFacetClient(Page<VariableSummary> answer) : EmptyMuninExplorerClient
+    {
+        public string? FacetLanguage { get; private set; }
+
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
+            SortField sort = SortField.Default,
+            SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(answer);
+
+        public override Task<FilterOptions> GetFiltersAsync(
+            string? search = null, VariableFilter? filter = null, string? language = null,
+            CancellationToken cancellationToken = default)
+        {
+            FacetLanguage = language;
+
+            var resolved = language == ReaderLanguage.English
+                ? "Central health registry, as the master data has it"
+                : "Sentralt helseregister, som master data sier det";
+
+            return Task.FromResult(new FilterOptions
+            {
+                KildeTyper = [new() { Value = "sentraltHelseregister", DisplayName = resolved, Count = 30 }],
+                TotalCount = 30
+            });
+        }
+    }
+
+    /// <summary>Answers the search, the detail endpoint and the facets — the three the trail needs.</summary>
+    /// <remarks>
+    /// <c>DetailClient</c> answers no facets, which is exactly what the trail used not to need. Its
+    /// own fake rather than a facet-carrying <c>DetailClient</c>, so the tests built on that one
+    /// keep asserting against the panel the shipped table alone draws.
+    /// </remarks>
+    private sealed class FacetedDetailClient(Page<VariableSummary> answer, FilterOptions facets)
+        : EmptyMuninExplorerClient
+    {
+        private readonly Dictionary<Guid, VariableDetail> _details = [];
+
+        public FacetedDetailClient Knows(VariableDetail detail)
+        {
+            _details[detail.Id] = detail;
+
+            return this;
+        }
+
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
+            SortField sort = SortField.Default,
+            SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(answer);
+
+        public override Task<FilterOptions> GetFiltersAsync(
+            string? search = null, VariableFilter? filter = null, string? language = null,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(facets);
+
+        public override Task<VariableDetail?> GetVariableAsync(
+            Guid id, bool includeHistorical = false, CancellationToken cancellationToken = default) =>
+            Task.FromResult<VariableDetail?>(_details.GetValueOrDefault(id));
     }
 
     [Fact]

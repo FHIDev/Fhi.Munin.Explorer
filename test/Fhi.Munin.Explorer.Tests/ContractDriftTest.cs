@@ -53,6 +53,44 @@ public class ContractDriftTest
     }
 
     [LiveApiFact]
+    public async Task Filters_WhenReadInBothLanguages_ThenTheKildetypeFacetIsResolvedProseInEachOfThem()
+    {
+        using var api = LiveApiConnection.Open();
+
+        // What the panel leans on since Fhi.Metadata-3n6e1: the kildetype word is the API's rather
+        // than Texts.KildeTypeNames'. An API back to echoing the enum name would put that fallback
+        // silently in charge of the page again, with nothing else here going red.
+
+        // The client rather than RoundTripAsync, so this keeps answering while the shape check above
+        // is red — they fail for unrelated reasons and the second is no use once the first is out.
+        var norwegian = await api.Client.GetFiltersAsync(language: "nb");
+        var english = await api.Client.GetFiltersAsync(language: "en");
+
+        Assert.NotEmpty(norwegian.KildeTyper);
+
+        foreach (var type in norwegian.KildeTyper)
+        {
+            var abroad = english.KildeTyper.SingleOrDefault(
+                other => string.Equals(other.Value, type.Value, StringComparison.Ordinal));
+
+            Assert.True(abroad is not null, $"'{type.Value}' is offered under nb and not under en.");
+
+            Assert.False(
+                string.Equals(type.DisplayName, type.Value, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(abroad.DisplayName, abroad.Value, StringComparison.OrdinalIgnoreCase),
+                $"'{type.Value}' came back as its own enum name rather than as a resolved label, so "
+                + "the facet is being drawn from the shipped fallback table instead of the "
+                + "Kilde-scoped Kildetype PropertyDefinition.");
+        }
+
+        // Biobank is spelled the same in both, so the whole set rather than any one value: a
+        // response that ignored Accept-Language would repeat every word, not just that one.
+        Assert.NotEqual(
+            norwegian.KildeTyper.Select(type => type.DisplayName).OrderBy(name => name, StringComparer.Ordinal),
+            english.KildeTyper.Select(type => type.DisplayName).OrderBy(name => name, StringComparer.Ordinal));
+    }
+
+    [LiveApiFact]
     public async Task KildeList_WhenReadFromTheLiveApi_ThenTheContractStillFitsIt()
     {
         using var api = LiveApiConnection.Open();
