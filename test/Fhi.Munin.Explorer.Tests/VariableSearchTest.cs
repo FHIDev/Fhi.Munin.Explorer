@@ -6236,6 +6236,23 @@ public class VariableSearchTest : BunitContext
 
     private static readonly Guid Inklusjon2 = new("cccccccc-0000-0000-0000-000000000003");
 
+    // Four ids no facet in Facets() names, one per level, so a chip drawn for one of them can only
+    // have come from the fallback row for that level.
+    private static readonly Guid UnknownKilde = new("ffffffff-0000-0000-0000-000000000001");
+    private static readonly Guid UnknownDelkilde = new("ffffffff-0000-0000-0000-000000000002");
+    private static readonly Guid UnknownDatasamling = new("ffffffff-0000-0000-0000-000000000003");
+    private static readonly Guid UnknownGruppe = new("ffffffff-0000-0000-0000-000000000004");
+
+    /// <summary>A shared link's filter, naming a value at every level that nothing on screen knows.</summary>
+    private static VariableFilter UnknownAtEveryLevel() => new()
+    {
+        KildeIds = [UnknownKilde],
+        DelkildeIds = [UnknownDelkilde],
+        DatasamlingIds = [UnknownDatasamling],
+        VariabelgruppeIds = [UnknownGruppe],
+        DataTypes = ["1"]
+    };
+
     private static IReadOnlyList<IElement> Crumbs(IRenderedComponent<VariableSearch> cut) =>
         cut.FindAll(".munin-explorer-breadcrumb ol li button");
 
@@ -6413,10 +6430,11 @@ public class VariableSearchTest : BunitContext
         });
 
         // The level's own word, exactly as the trail's step reads it — the chip names what it takes
-        // off, and a guid would name nothing.
-        Assert.Equal(["Streng", "Datasamling"], Chips(cut));
+        // off, and a guid would name nothing. It stands where the kilde facet holding that level
+        // stands, ahead of the datatype, rather than after every facet in the panel.
+        Assert.Equal(["Datasamling", "Streng"], Chips(cut));
         Assert.Equal("Fjern filteret Datasamling",
-                     AccessibleName.Of(cut.FindAll(".munin-explorer-filters__chip")[1]
+                     AccessibleName.Of(cut.FindAll(".munin-explorer-filters__chip")[0]
                                           .QuerySelector(".munin-explorer-filters__chip-remove")!));
 
         RemoveChip(cut, "Datasamling");
@@ -6425,6 +6443,83 @@ public class VariableSearchTest : BunitContext
         // would have taken with it.
         Assert.Empty(client.SearchFilter!.DatasamlingIds);
         Assert.Equal(["1"], client.SearchFilter!.DataTypes);
+    }
+
+    [Theory]
+    [InlineData("kilde", "Kilde")]
+    [InlineData("delkilde", "Delkilde")]
+    [InlineData("datasamling", "Datasamling")]
+    [InlineData("variabelgruppe", "Variabelgruppe")]
+    public void ActiveFilters_WhenAnUnnamedValueIsRemoved_ThenOnlyItsOwnLevelLosesIt(
+        string level, string word)
+    {
+        // One case per row of the fallback table, because each row pairs a level's ids with the
+        // list its chip writes back and a row wired to a neighbour's list is a chip that clears
+        // another filter — or, when both are empty, one that does nothing at all — while every
+        // other test here stays green. The variabelgruppe row is the one production reaches by
+        // design: the API answers that facet with an empty shortlist until a kilde is chosen, so a
+        // host mounting from a shared link gets its chip from here. (Fhi.Metadata-oj286)
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderFiltered(client, UnknownAtEveryLevel());
+
+        Assert.Equal(["Kilde", "Delkilde", "Datasamling", "Variabelgruppe", "Streng"], Chips(cut));
+
+        RemoveChip(cut, word);
+
+        var applied = client.SearchFilter!;
+
+        Assert.Equal(Survivors("kilde", UnknownKilde), applied.KildeIds);
+        Assert.Equal(Survivors("delkilde", UnknownDelkilde), applied.DelkildeIds);
+        Assert.Equal(Survivors("datasamling", UnknownDatasamling), applied.DatasamlingIds);
+        Assert.Equal(Survivors("variabelgruppe", UnknownGruppe), applied.VariabelgruppeIds);
+        // And never the datatype, which is what "Fjern alle filtre" would have taken as well.
+        Assert.Equal(["1"], applied.DataTypes);
+
+        IReadOnlyList<Guid> Survivors(string of, Guid id) => level == of ? [] : [id];
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenTwoValuesOnOneLevelHaveNoName_ThenTheyAreOneChipAndNotTwoAlike()
+    {
+        // Two chips both reading "Datasamling" would be two controls a screen reader cannot tell
+        // apart, announced with the same sentence — and pressing one would leave one named
+        // identically behind, so the press would read as having done nothing. The trail collapses
+        // several values on a level for the same reason. (Fhi.Metadata-oj286)
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderFiltered(client, new VariableFilter
+        {
+            DatasamlingIds = [Inklusjon2, UnknownDatasamling],
+            DataTypes = ["1"]
+        });
+
+        Assert.Equal(["Datasamling (+1)", "Streng"], Chips(cut));
+
+        RemoveChip(cut, "Datasamling (+1)");
+
+        // One press takes both, because neither could be told from the other to be pressed on its
+        // own — and the datatype still survives it.
+        Assert.Empty(client.SearchFilter!.DatasamlingIds);
+        Assert.Equal(["1"], client.SearchFilter!.DataTypes);
+    }
+
+    [Fact]
+    public void ActiveFilters_WhenOnlyTheRowsKnowAValuesName_ThenItsChipIsItsOwnAndNotTheCollapsedOne()
+    {
+        // A datasamling the facets left out but a result row names: the chip says the name, so it
+        // is nothing like the value beside it that nothing can name, and removing it leaves that
+        // one — and only that one — behind. (Fhi.Metadata-oj286)
+        var row = Variable("1. Tale", "KODE") with { DatasamlingId = Inklusjon2, DatasamlingName = "Inklusjon" };
+        var client = new FilteringClient(OnePage(row));
+        var cut = RenderFiltered(client, new VariableFilter
+        {
+            DatasamlingIds = [Inklusjon2, UnknownDatasamling]
+        });
+
+        Assert.Equal(["Inklusjon", "Datasamling"], Chips(cut));
+
+        RemoveChip(cut, "Inklusjon");
+
+        Assert.Equal([UnknownDatasamling], client.SearchFilter!.DatasamlingIds);
     }
 
     [Fact]
@@ -6528,9 +6623,11 @@ public class VariableSearchTest : BunitContext
 
         // Spelled out rather than summed back off the filter this renders from, which would assert
         // only that the chips are built from the filter and not that every chosen value reaches
-        // the row.
+        // the row. The unnamed datasamling sits with the rest of the kilde facet's values rather
+        // than after the datatype: one level split across two ends of the row would read as two
+        // different filters, on nothing but which values the payload happened to name.
         Assert.Equal(
-            ["Tromsøundersøkelsen", "Tromsø 4", "Fjerde runde", "Bakgrunn", "Streng", "Datasamling"],
+            ["Tromsøundersøkelsen", "Tromsø 4", "Fjerde runde", "Datasamling", "Bakgrunn", "Streng"],
             Chips(cut));
         Assert.Equal(6, cut.FindAll(".munin-explorer-filters__chip").Count);
     }
@@ -6618,7 +6715,9 @@ public class VariableSearchTest : BunitContext
         // A named role="navigation" on the region rather than a bare <nav>, exactly as the pager
         // does it: the landmark is worth having and it must not sit anonymously among the host
         // page's own. The name is there and not on the <ol>, which would otherwise be announced
-        // with the same words one breath later.
+        // with the same words one breath later. It is the trail's own words rather than this
+        // instance's title, which is one constant and would part two mounted explorers no better —
+        // see the codebehind.
         Assert.Equal("navigation", trail.GetAttribute("role"));
         Assert.Equal("Valgt hierarki", AccessibleName.Of(trail));
         Assert.False(trail.QuerySelector("ol")!.HasAttribute("aria-label"));

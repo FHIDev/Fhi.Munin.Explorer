@@ -12,5 +12,8 @@ category: Fixed
   before the first answer, or after one that failed, while a host may have mounted with a filter
   already set. Such a value was drawn in the trail and nowhere else, so with the trail's × gone the
   only control left would have been "Fjern alle filtre", which drops the datatype, the kodeverk and
-  the dates with it. It is listed under its level's own word, exactly as the trail's step reads it.
-  (Fhi.Metadata-oj286)
+  the dates with it. It is listed under its level's own word, exactly as the trail's step reads it,
+  and it stands where its own facet stands in the row rather than after every unrelated one. Where
+  a level has several such values they are one chip carrying a count — "Datasamling (+1)", the way
+  a trail step collapses — because two chips reading the same word are two controls a screen reader
+  cannot tell apart, and one press takes all of them off. (Fhi.Metadata-oj286)

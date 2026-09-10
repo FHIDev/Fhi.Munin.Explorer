@@ -32,6 +32,72 @@ public partial class VariableSearch
         Variabelgruppe
     }
 
+    /// <summary>The catalogue's word for a level: the facet it is drawn in, and its keys' prefix.</summary>
+    /// <remarks>
+    /// The one spelling of it. The chip row asks whether a chosen value already has a chip by
+    /// looking its key up among the ones the facets drew, so a prefix written out twice would let
+    /// the two answer differently — every hierarchy value drawing a second chip, and nothing
+    /// failing to build. <see cref="KildeValue(KildeFacet)"/> states the same rule for the label
+    /// beside it.
+    /// </remarks>
+    private static string FacetName(HierarchyLevel level) => level switch
+    {
+        HierarchyLevel.Kilde => "kilde",
+        HierarchyLevel.Delkilde => "delkilde",
+        HierarchyLevel.Datasamling => "datasamling",
+        HierarchyLevel.Variabelgruppe => "variabelgruppe",
+        _ => throw new ArgumentOutOfRangeException(nameof(level))
+    };
+
+    private static string FacetValueKey(HierarchyLevel level, Guid id) => $"{FacetName(level)}:{id}";
+
+    /// <summary>Which facet in the panel holds a level's checkboxes.</summary>
+    /// <remarks>
+    /// Delkilde and datasamling have no facet of their own: both hang inside the kilde tree, so a
+    /// chip for one belongs in the kilde facet's place in the row rather than in a facet of its
+    /// own that the reader would look for and not find.
+    /// </remarks>
+    private static string FacetGroupOf(HierarchyLevel level) =>
+        FacetName(level == HierarchyLevel.Variabelgruppe ? level : HierarchyLevel.Kilde);
+
+    /// <summary>
+    /// One level of the hierarchy: what is chosen in it, how a value of it reads, and what taking
+    /// values off it leaves.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The one table, read by the trail here and by the chip row in the panel. The trail may
+    /// safely remove nothing only because every step it draws has a chip, and a level added to one
+    /// reading and not the other is a chosen value with no control at all — the defect
+    /// Fhi.Metadata-oj286 fixed. One list is what makes that structural rather than remembered in
+    /// two files.
+    /// </para>
+    /// <para>
+    /// <c>Chosen</c> is a function and <c>Apply</c> closes over <c>_filter</c>, so both read the
+    /// filter in force when a chip is pressed rather than the one it was built from — the same
+    /// arrangement every facet toggle uses.
+    /// </para>
+    /// </remarks>
+    private sealed record HierarchyReading(
+        HierarchyLevel Level,
+        Func<IReadOnlyList<Guid>> Chosen,
+        Func<Guid, string?> Name,
+        string Fallback,
+        Func<IReadOnlyList<Guid>, VariableFilter> Apply);
+
+    /// <summary>The four levels, outermost first.</summary>
+    private IReadOnlyList<HierarchyReading> HierarchyLevels =>
+    [
+        new(HierarchyLevel.Kilde, () => _filter.KildeIds, KildeName, T.FieldSource,
+            ids => _filter with { KildeIds = ids }),
+        new(HierarchyLevel.Delkilde, () => _filter.DelkildeIds, DelkildeName, T.FieldDelkilde,
+            ids => _filter with { DelkildeIds = ids }),
+        new(HierarchyLevel.Datasamling, () => _filter.DatasamlingIds, DatasamlingName, T.FieldDataCollection,
+            ids => _filter with { DatasamlingIds = ids }),
+        new(HierarchyLevel.Variabelgruppe, () => _filter.VariabelgruppeIds, VariabelgruppeName,
+            T.FieldVariableGroup, ids => _filter with { VariabelgruppeIds = ids })
+    ];
+
     /// <summary>
     /// One step of the trail: which level it stands for, and how it reads.
     /// </summary>
@@ -72,32 +138,29 @@ public partial class VariableSearch
         {
             List<HierarchyCrumb> crumbs = new(4);
 
-            Add(HierarchyLevel.Kilde, _filter.KildeIds, KildeName, T.FieldSource);
-            Add(HierarchyLevel.Delkilde, _filter.DelkildeIds, DelkildeName, T.FieldDelkilde);
-            Add(HierarchyLevel.Datasamling, _filter.DatasamlingIds, DatasamlingName, T.FieldDataCollection);
-            Add(HierarchyLevel.Variabelgruppe, _filter.VariabelgruppeIds, VariabelgruppeName, T.FieldVariableGroup);
-
-            return crumbs;
-
-            void Add(HierarchyLevel level, IReadOnlyList<Guid> chosen, Func<Guid, string?> name, string fallback)
+            foreach (var level in HierarchyLevels)
             {
+                var chosen = level.Chosen();
+
                 if (chosen.Count == 0)
                 {
-                    return;
+                    continue;
                 }
 
                 // The first id's name, and the level's own word when nothing on screen knows it —
                 // see the name lookups below for when that happens. Never the id: a guid in a
                 // trail is not information, and the step still has to be pressable to clear what
                 // is under it.
-                var known = name(chosen[0]);
-                var text = known ?? fallback;
+                var known = level.Name(chosen[0]);
+                var text = known ?? level.Fallback;
 
                 crumbs.Add(new HierarchyCrumb(
-                    level,
+                    level.Level,
                     chosen.Count > 1 ? T.CrumbMore(text, chosen.Count - 1) : text,
                     Norwegian: known is not null));
             }
+
+            return crumbs;
         }
     }
 
@@ -126,6 +189,14 @@ public partial class VariableSearch
     /// breath later. No class on the list, for the reason the panel's kilde trail has none: Stiler
     /// has no breadcrumb rule that can be read back off its compiled stylesheet, so a host draws
     /// the chevrons and a host that draws nothing gets a numbered list that still reads correctly.
+    /// </para>
+    /// <para>
+    /// Two explorers on one page do put two landmarks named "Valgt hierarki" in the list, and
+    /// naming the region after this instance's title the way the search form does would not part
+    /// them: <see cref="Texts.Title"/> is one constant word, so that reading gives two landmarks
+    /// called "Variabelutforsker" instead. Between two ambiguous names the descriptive one is
+    /// worth more, and the pager already puts a second "Paginering" on such a page — telling two
+    /// mounted explorers apart is the host's job, through whatever it wraps each of them in.
     /// </para>
     /// <para>
     /// Every step is a button, including the last one, which has nothing under it to clear. That
