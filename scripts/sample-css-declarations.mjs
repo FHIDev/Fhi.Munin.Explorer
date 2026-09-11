@@ -1,6 +1,8 @@
 // Reads two stylesheets and reports where the sample stand-in's DECLARATIONS disagree with
-// Fhi.Helsedata.Stiler's, for the selectors the component's markup puts on a page: the ones under
-// the `munin-explorer` prefix the package owns, and the BORROWED ones it wears from Stiler.
+// Fhi.Helsedata.Stiler's, for two families of selector: the ones under the `munin-explorer` prefix
+// the package owns, and the BORROWED ones — every rule the sample writes for a class name that is
+// not ours. Borrowed is "the rule names a class", not "the component wears that class";
+// `isBorrowed` below says why the wider reading is the right one for a stand-in.
 //
 // The whole point is that it compares declarations and not selectors. `assert-sample-css-in-step.sh`
 // asks whether a name has a rule declaring SOMETHING, which is a question the samples answered
@@ -322,10 +324,16 @@ function isOurs(selector) {
   return /(^|[^A-Za-z0-9_-])munin-explorer/.test(selector);
 }
 
-// A BORROWED rule is one the sample writes for a class name that is Stiler's — the searchbox, the
+// A BORROWED rule is one the sample writes for a class name that is not ours — the searchbox, the
 // buttons, the choicepicker — and `compare` says which half of the comparison it gets. Element,
 // universal and `:root` selectors are not borrowed rules: the sample restyles `body` and declares
 // a palette of its own, and neither is a claim about what Stiler draws for the component.
+//
+// DELIBERATELY "has a class" and not "the component emits it", which is wider than the markup and
+// sweeps in the demo page's own `.datasourcecard*` furniture. The samples carry that on purpose —
+// host.css says so above `.datasourcecard-list` — because a helsedata page loads the whole of
+// Stiler, and a measurement taken on the demo page is misled by any wrong rule in it, emitted name
+// or not (Fhi.Metadata-abmom).
 function isBorrowed(selector) {
   return !isOurs(selector) && /\.[A-Za-z_-]/.test(selector);
 }
@@ -341,7 +349,9 @@ function isCompared(selector) {
 //   font-family  Stiler ships the Graphik typeface and this repository cannot redistribute it,
 //                which the stand-in's own header says. Every font-family in the sample is a
 //                stand-in by construction, so every one of them would be reported forever.
-//   font         The shorthand, for the same reason: it carries a family.
+//   font         The shorthand, for the same reason: it carries a family. Not compared AS A VALUE,
+//                which is not the same as ignored — `fontShorthandCarries` reads the size and the
+//                line-height back out of it, below.
 //   src          `@font-face` only, and the fonts are not ours.
 //
 // EVERYTHING ELSE IS COMPARED: geometry, colour, spacing, display, position, z-index, overflow,
@@ -353,21 +363,46 @@ function isCompared(selector) {
 // two sheets say the same thing in different shorthands — it errs towards reporting rather than
 // towards silence, and such a line is a legitimate baseline entry with a note saying so.
 //
+// The `font` shorthand is the one exception, and it goes the other way only where it would
+// otherwise mean SILENCE: a longhand beside a shorthand is compared against what the shorthand
+// carries, so a sample `font-size` that agrees with Stiler's `font` produces nothing and one that
+// contradicts it produces a `different-value`. The reciprocal is NOT expanded — a longhand Stiler
+// spells out and the sample folds into `font` still reports as missing — because there the
+// shorthand costs a loud baseline line the sample can retire by writing the longhands, and a
+// baseline line with a reason is what this file prefers over a rule nobody can see.
+//
 // SPECIFICITY AND SOURCE ORDER ARE NOT COMPARED either. Two rules can both be present, both
 // declare the same property, and still draw differently because one wins the cascade — which is
 // exactly Fhi.Metadata-cuo0e. What this catches of that is the selector TEXT differing, which is
 // how cuo0e presents; what it does not catch is two identical selectors in a different order.
 const NOT_COMPARED = new Set(["font-family", "font", "src"]);
 
-const FONT_LONGHANDS = new Set([
-  "font-size",
-  "font-weight",
-  "font-style",
-  "font-variant",
-  "font-stretch",
-  "line-height",
-]);
-const EMPTY = new Set();
+// The `font` shorthand is not compared, but it CARRIES two properties that decide geometry, and
+// dropping them wherever Stiler spells the shorthand would be the one place this errs towards
+// silence instead of towards reporting. So the size and the line-height are read back out of it and
+// compared; the rest of the shorthand is not, because `font: normal 21px/160% x` resets weight,
+// style, variant and stretch by omission and reading that off is a second CSS engine.
+//
+// The token is the one carrying a unit or a slash: a bare number in the shorthand is the WEIGHT
+// (`font: normal 500 16px/1 x`), so requiring `px`, `%` or an absolute-size keyword is what keeps
+// `500` from being read as a size. Values arrive normalised, so `1rem/1` is already `16px/1`.
+const FONT_SIZE_TOKEN =
+  /^(?:[\d.]+(?:px|%)|xx-small|x-small|small|medium|large|x-large|xx-large|smaller|larger)(?:\/(\S+))?$/;
+
+function fontShorthandCarries(normalisedValue) {
+  for (const token of normalisedValue.split(" ")) {
+    const match = FONT_SIZE_TOKEN.exec(token);
+    if (!match) continue;
+    const carried = new Map([["font-size", token.split("/")[0]]]);
+    if (match[1] !== undefined) carried.set("line-height", match[1]);
+    return carried;
+  }
+  // `font: inherit`, `font: menu` and anything else with no size in it carry nothing, so a longhand
+  // beside them is compared against nothing and reported.
+  return new Map();
+}
+
+const EMPTY = new Map();
 
 function index(rules) {
   const map = new Map();
@@ -448,25 +483,48 @@ export function compare(samplePath, stilerPath) {
   // Reported only for selectors Stiler ALSO has. A whole selector the sample invents is not
   // reported: the sample carries its own palette and its own host chrome, and neither is a claim
   // about what Stiler draws.
+  //
+  // Counted and reported rather than left implicit: rules are keyed on selector TEXT, so a borrowed
+  // rule Stiler spells differently — a reordered compound, an unshared pseudo-element — is not
+  // compared in either direction and nothing above says so. `missing-selector` is the alarm under
+  // the prefix and is deliberately off here, so this number is the only trace such a rule leaves.
+  let sampleBorrowedUnmatched = 0;
+
   for (const [key, sampleRule] of sample) {
     const stilerRule = stiler.get(key);
-    if (!stilerRule) continue;
-    // `font` is not compared, so a longhand the sample spells out reads as invented wherever
-    // Stiler sets it through the shorthand — nine such lines on Stiler's responsive type alone.
-    // Borrowed selectors only: three baseline lines under the prefix are font longhands, and
-    // suppressing those here would rewrite by side effect a list that is all hand edits.
-    const shorthanded =
-      isBorrowed(sampleRule.selector) && stilerRule.declarations.has("font") ? FONT_LONGHANDS : EMPTY;
+    if (!stilerRule) {
+      if (isBorrowed(sampleRule.selector)) sampleBorrowedUnmatched += 1;
+      continue;
+    }
+    // Borrowed selectors only, and the reason is the list rather than the rule: the prefix half's
+    // lines were measured against the pinned package one at a time, and widening the shorthand
+    // reading would retire some of them by side effect, unmeasured. That is its own change.
+    const carried =
+      isBorrowed(sampleRule.selector) && stilerRule.declarations.has("font")
+        ? fontShorthandCarries(normaliseValue(stilerRule.declarations.get("font"), stilerTokens))
+        : EMPTY;
     for (const [property] of sampleRule.declarations) {
       if (NOT_COMPARED.has(property)) continue;
-      if (shorthanded.has(property)) continue;
       if (stilerRule.declarations.has(property)) continue;
+      const got = normaliseValue(sampleRule.declarations.get(property), sampleTokens);
+      if (carried.has(property)) {
+        const want = carried.get(property);
+        if (got === want) continue;
+        divergences.push({
+          kind: "different-value",
+          context: sampleRule.context,
+          selector: sampleRule.selector,
+          property,
+          detail: `Stiler's 'font' shorthand carries '${property}: ${want}'; the sample's longhand says '${got}'.`,
+        });
+        continue;
+      }
       divergences.push({
         kind: "invented-declaration",
         context: sampleRule.context,
         selector: sampleRule.selector,
         property,
-        detail: `The sample declares '${property}: ${normaliseValue(sampleRule.declarations.get(property), sampleTokens)}'; Stiler's rule for the same selector does not.`,
+        detail: `The sample declares '${property}: ${got}'; Stiler's rule for the same selector does not.`,
       });
     }
   }
@@ -482,6 +540,7 @@ export function compare(samplePath, stilerPath) {
     stilerRuleCount: ours(stiler),
     sampleBorrowedCount: sample.size - ours(sample),
     stilerBorrowedCount: stiler.size - ours(stiler),
+    sampleBorrowedUnmatched,
   };
 }
 
@@ -495,9 +554,18 @@ if (samplePath && stilerPath) {
   for (const d of result.divergences) {
     console.log(mode === "--detail" ? `${keyOf(d)}\t${d.detail}` : keyOf(d));
   }
+  // One fact per line, each anchored on a phrase of its own. The shell half reads three of these
+  // with `sed`, and the first attempt at a second phrase on one line left a greedy `.*` deciding
+  // which number the rule-count floor got.
+  console.error(`# ${result.divergences.length} divergence(s)`);
   console.error(
-    `# ${result.divergences.length} divergence(s) across ${result.stilerRuleCount} Stiler rule(s) and ${result.sampleRuleCount} sample rule(s) under the prefix, ` +
-      `plus ${result.stilerBorrowedCount} Stiler rule(s) and ${result.sampleBorrowedCount} sample rule(s) on borrowed class selectors`,
+    `# ${result.stilerRuleCount} Stiler rule(s) and ${result.sampleRuleCount} sample rule(s) under the prefix`,
+  );
+  console.error(
+    `# ${result.stilerBorrowedCount} Stiler rule(s) and ${result.sampleBorrowedCount} sample rule(s) on borrowed class selectors`,
+  );
+  console.error(
+    `# ${result.sampleBorrowedUnmatched} borrowed sample rule(s) matched no Stiler selector and were not compared`,
   );
 } else {
   console.error("usage: node scripts/sample-css-declarations.mjs <sample.css> <stiler-main.css> [--detail]");

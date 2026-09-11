@@ -752,11 +752,11 @@ public class KildeSelectionTest : BunitContext
 
         // The field gives up padding-right for the controls that sit in it. A control whose right
         // edge starts inside that reservation and ends before it does cannot overlap the text,
-        // whatever the font. Read off the stylesheet's longhand — the spelling the sample took
-        // from Stiler — rather than restated, so widening one and not the other fails here.
-        var reserved = FirstMatch(
-            HostClassNames.SampleDeclarationsFor("searchbox__freetext"),
-            @"padding-right:\s*(\d+)px");
+        // whatever the font. The rule declares the reservation twice — a `padding` shorthand and a
+        // `padding-right` longhand after it — so what computes depends on which comes last, and
+        // reading the longhand alone would pass while a reorder dropped the field to 16px.
+        var reserved = EffectivePaddingRight(
+            HostClassNames.SampleDeclarationsFor("searchbox__freetext"));
 
         var offset = FirstMatch(
             HostClassNames.SampleDeclarationsFor("munin-explorer-search__clear"), @"right:\s*(\d+)px");
@@ -787,6 +787,67 @@ public class KildeSelectionTest : BunitContext
             muted.SelectMany(d => d.Split(';'))
                  .Any(d => d.StartsWith("color:", StringComparison.Ordinal)),
             "No rule mutes the clear button while it is on screen and will not act.");
+    }
+
+    /// <summary>
+    /// The padding-right <paramref name="rules"/> actually compute, in pixels, reading every
+    /// declaration that decides it in source order rather than the first one that matches.
+    /// </summary>
+    /// <remarks>
+    /// A shorthand and a longhand in one block are both contributors and the later wins, so a
+    /// reorder can change the computed box while a regex for either one still finds its number.
+    /// Every rule <paramref name="rules"/> holds is walked, in file order, on the same last-wins
+    /// rule; they are the states of one element and nothing here carries a padding but the base.
+    /// 0 for no match, like <see cref="FirstMatch"/>, which the caller reports.
+    /// </remarks>
+    private static double EffectivePaddingRight(
+        IReadOnlyList<(string Selector, string Declarations)> rules)
+    {
+        var effective = 0d;
+
+        foreach (var (_, declarations) in rules)
+        {
+            foreach (var declaration in declarations.Split(';'))
+            {
+                var parts = declaration.Split(':', 2);
+
+                if (parts.Length != 2)
+                {
+                    continue;
+                }
+
+                var property = parts[0].Trim();
+                var values = parts[1].Trim()
+                    .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+                // `padding: a`, `a b`, `a b c` and `a b c d` all put the right edge second, except
+                // the one-value form where it is the only value there is.
+                if (property == "padding" && values.Length is >= 1 and <= 4)
+                {
+                    effective = Pixels(values.Length == 1 ? values[0] : values[1]);
+                }
+                else if (property == "padding-right")
+                {
+                    effective = Pixels(values.FirstOrDefault() ?? string.Empty);
+                }
+            }
+        }
+
+        return effective;
+    }
+
+    /// <summary>A CSS length in pixels, rem at 16px; 0 for anything this cannot read.</summary>
+    private static double Pixels(string value)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(value, @"^([\d.]+)(px|rem)$");
+
+        if (!match.Success || !double.TryParse(
+                match.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture, out var n))
+        {
+            return 0;
+        }
+
+        return match.Groups[2].Value == "rem" ? n * 16 : n;
     }
 
     /// <summary>

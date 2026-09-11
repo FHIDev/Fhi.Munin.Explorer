@@ -60,7 +60,7 @@ behaviour found later by someone else.
    above stayed green while around forty divergences from `Fhi.Helsedata.Stiler` stood in the
    samples. `scripts/assert-sample-css-matches-stiler.sh` compares declarations — property and
    value — against the published package `samples/HostileHost` pins, for the `munin-explorer`
-   names and for the borrowed ones the sample writes a rule for, and the 213 standing today
+   names and for the borrowed ones the sample writes a rule for, and the 214 standing today
    are listed in `test/sample-css-known-divergences.txt`. **Never add a line to that file to get a
    branch green**: a new divergence and a stale line both fail the build, so the count can only go
    down. Adding one is a hand edit that needs a reason in the PR.
@@ -74,13 +74,16 @@ dotnet build && dotnet test
 dotnet pack -c Release -o artifacts && ./scripts/assert-package-contents.sh artifacts
 ./scripts/assert-sample-css-in-step.sh          # only if you touched samples/ or a class name
 ./scripts/assert-sample-css-matches-stiler.sh   # same trigger; needs Stiler restored, see below
+bash scripts/test-sample-css-declarations.sh    # only if you touched the comparison engine
 ./scripts/assert-portability-guard-armed.sh     # only if you touched Directory.Build.props
 ```
 
 The Stiler comparison needs the package on disk, which means credentials for helsedata's Azure
 Artifacts feed and `dotnet restore samples/HostileHost/HostileHost.csproj` first — see
 `nuget.config`. Without them it exits 2 saying so rather than passing having read nothing; CI runs
-it in the job that holds the feed secret.
+it in the job that holds the feed secret. The engine's own test needs neither — it runs against
+fixtures, and it exists because the engine's borrowed half is all deliberate asymmetries that look
+like bugs and can be tidied away without a single other check going red.
 
 - **A `src/` change needs a changelog fragment** in `changelog.d/`. CI fails without one.
   Fragments here are **English only** — deliberately unlike Munin's bilingual `.en.md`/`.nb.md`

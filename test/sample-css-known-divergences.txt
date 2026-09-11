@@ -52,15 +52,18 @@
 # grey20 where Stiler's own comment says not to. The base rule and the drilldown's grid-column were
 # in it too, until #204.
 #
-# IT IS 213 SINCE Fhi.Metadata-l9l2n.105, and the 39 that arrived are a new FAMILY rather than new
+# IT IS 214 SINCE Fhi.Metadata-l9l2n.105, and the 40 that arrived are a new FAMILY rather than new
 # drift: until that bead the comparison looked only at the munin-explorer prefix, so every rule the
 # sample writes for a name it BORROWS from Stiler - the choicepicker, the buttons, the searchbox,
 # `screenreader-only` - was compared against nothing at all. The sample had invented
 # `white-space: nowrap` on `.dropdown-choicepicker__item`, where Stiler declares no `white-space`,
 # and the 55px overhang that produced was measured against ModernHost and filed as a P2 functional
 # defect in the component (Fhi.Metadata-abmom). They are listed at the bottom of this file under
-# their own heading, which also says how they were measured - not against the pin, because the box
-# they were found on could not restore it.
+# their own heading, which also says how they were measured: off helsedata.no's served bundle
+# first, because the box they were found on could not restore the pin, and then confirmed against
+# the pin by the credentialed CI job. All but one of them: `.datasourcecard__heading|font-weight`
+# arrived after that run, when the `font` shorthand stopped blanket-exempting the longhands
+# beside it, so the bundle is still the only thing that has read that line.
 #
 # IT WAS 174 SINCE Fhi.Metadata-f6az7. Three went and two arrived, and the two are the first
 # entries here with an expiry condition written into them. The three that went - the choicepicker
@@ -76,8 +79,10 @@
 # still draw differently — Fhi.Metadata-cuo0e is that shape. Shorthands are compared as written and
 # not expanded, so `padding: 8px 0` does not answer for `padding-left: 8px`; a line below may
 # therefore describe two spellings of one value rather than a real difference. font-family, the
-# `font` shorthand and `src` are not compared at all, because Stiler ships a typeface this
-# repository cannot redistribute. `scripts/sample-css-declarations.mjs` has the full statement.
+# `font` shorthand and `src` are not compared as values at all, because Stiler ships a typeface
+# this repository cannot redistribute - though the size and line-height a Stiler `font` carries
+# ARE read back out of it on a borrowed selector, so a sample longhand beside one is compared
+# rather than dropped. `scripts/sample-css-declarations.mjs` has the full statement.
 #
 # Filed separately rather than fixed under the guard's own bead, and both now merged in #204:
 # Fhi.Metadata-cuo0e (kilder__expand loses on specificity) and Fhi.Metadata-7e7de (no base
@@ -87,13 +92,24 @@
 # SILENCE HERE ABOUT A SELECTOR IS NOT AGREEMENT. A selector only the sample has is not compared
 # at all: invented-declaration is reported only under selectors Stiler ALSO has, and
 # missing-selector only for selectors Stiler has and the sample lacks - and, on a borrowed name,
-# not even then. So a name Stiler has never heard of produces no line whichever way the two differ,
-# and neither does a borrowed name the sample simply leaves alone. Read a gap here as "Stiler agrees" and a
-# rule the sample invented reads as one the pin shares — which is how a 320px overflow drawn by the
-# sample's own `min-width: 21rem` on `.munin-explorer-selection__explore` was written up as a
-# defect helsedata.no has (Fhi.Metadata-l9l2n.65). Establish that Stiler has the selector before
-# reading its values across; adding baseline lines for a sample-only selector fails as STALE, which
-# is the cheapest way to ask.
+# not even then. So a name Stiler has never heard of produces no line whichever way the two
+# differ, and neither does a borrowed name the sample simply leaves alone. Read a gap here as
+# "Stiler agrees" and a rule the sample invented reads as one the pin shares — which is how a
+# 320px overflow drawn by the sample's own `min-width: 21rem` on
+# `.munin-explorer-selection__explore` was written up as a defect helsedata.no has
+# (Fhi.Metadata-l9l2n.65). Establish that Stiler has the selector before reading its values
+# across; adding baseline lines for a sample-only selector fails as STALE, which is the cheapest
+# way to ask.
+#
+# AND "ONLY THE SAMPLE HAS IT" IS DECIDED ON SELECTOR TEXT, which is a wider silence than it
+# sounds on the borrowed half. Rules are keyed by their normalised selector string, so the
+# sample's `.hd-button-square.button-square--primary` finds nothing under Stiler's
+# `.button-square--primary` and is compared in neither direction — the same shape as
+# `.hd-button-square.margin-right` and `.searchbox__freetext::placeholder`. Under the prefix that
+# mismatch is loud, because it surfaces as a missing-selector; here missing-selector is off by
+# design and nothing takes its place. What the run does instead is COUNT those rules and print the
+# number in its closing banner. Read that number rather than one written down here: it is the size
+# of this file's blind spot for the run that produced it, and it is not zero.
 #
 # DO NOT FIX THESE IN ONE PULL REQUEST. Each one that is not inert changes how the samples draw and
 # needs measuring — see the bead. The guard is what stops the list growing; shrinking it is
@@ -281,7 +297,7 @@ missing-selector||.munin-explorer-retry[aria-disabled=true]:focus|
 
 # ---------------------------------------------------------------------------------------------
 # BORROWED SELECTORS. Everything above this line is a name under the `munin-explorer` prefix; the
-# 39 below are names the component wears from Stiler, which the comparison did not look at until
+# 40 below are names the component wears from Stiler, which the comparison did not look at until
 # Fhi.Metadata-l9l2n.105. `.dropdown-choicepicker__item { white-space: nowrap }` is why it does
 # now: the sample invented that declaration, the guard was blind to it, and a measurement taken
 # against the sample was written up as a P2 functional defect in the component.
@@ -306,6 +322,18 @@ missing-selector||.munin-explorer-retry[aria-disabled=true]:focus|
 # into the one shorthand the sample wrote, and CI against the pin found four divergences there
 # that reading the bundle could not have found. The sample now spells those four the way the pin
 # does. Read the bundle for WHAT a borrowed selector draws, not for how it is written.
+#
+# CONFIRMED AGAINST THE PIN on 2026-09-11, which is the step that matters and the reason the
+# paragraph above is not the last word. The credentialed CI job read Stiler 0.1.42 out of the
+# restored package and reproduced 213 of these 214 lines exactly - no new line, no stale one -
+# across 285 Stiler rules under the prefix (run 34577010548, commit 2eac2ae). The four searchbox
+# padding lines are what the run before it looked like, and they were a defect in these lines
+# rather than in the component: a red run against the pin is a data problem here first.
+#
+# The 214th, `.datasourcecard__heading|font-weight`, is newer than that run and has been read off
+# the bundle only. It is not a value comparison - it says Stiler declares no font-weight longhand
+# under that selector, which minification does not change - so the bundle is decent evidence. Not
+# proof, though, and the next credentialed run is.
 
 # The choicepicker, and the reason this section exists. Every line is a real difference between
 # what the sample draws and what a host on Stiler sees, and the first four are layout-deciding
@@ -347,9 +375,21 @@ missing-declaration||.screenreader-only|left
 missing-declaration||.screenreader-only|top
 
 # The two button resets and the search field. `border: none` against `border: 0` is the
-# shorthand-as-written caveat rather than a difference - neither draws a border. The rest is
-# typography the stand-in cannot reproduce anyway, because Stiler sets it through a `font`
-# shorthand carrying the Graphik family this repository may not redistribute.
+# shorthand-as-written caveat rather than a difference - neither draws a border.
+#
+# The five font lines are the shorthand caveat read the OTHER way round, and the direction matters
+# because it decides whether they are fixable. missing-declaration is emitted only while walking
+# STILER's declarations, so each of these means the pin spells the longhand out; it is the SAMPLE
+# that folds them into a `font` shorthand - `.hd-button-square { font: normal 500 1rem/1
+# var(--font) }` and its two neighbours. The engine reads a size and a line-height back out of
+# STILER's shorthand but not out of the sample's, deliberately: that direction costs a visible
+# baseline line rather than a silence.
+#
+# So these five are not unfixable. Spelling the longhands out in the sample turns each of them
+# into a comparison of real values - some would go, and any that stayed would say
+# `different-value` and name a difference worth arguing about, which is more than they say now.
+# It wants measuring against the pin rather than doing here; the family stays a stand-in for
+# Graphik either way, and that part is untouchable.
 different-value||.hd-button-reset|border
 invented-declaration||.hd-button-reset|appearance
 invented-declaration||.hd-button-reset|margin
@@ -361,10 +401,22 @@ missing-declaration||.hd-button-square|font-weight
 missing-declaration||.hd-button-square|line-height
 missing-declaration||.searchbox__freetext|font-size
 
-# The datasource card, which is the sample host PAGE's own furniture and not something the package
-# emits - it is there so the demo page looks like helsedata's. Two spellings of one margin, and a
-# line clamp the sample leaves off. Nothing the component renders is inside any of it.
+# The datasource card. No markup in this repository emits a `datasourcecard` name - the component
+# stopped, deliberately, under Fhi.Metadata-zs56s - so these eight are rules in the stand-in that
+# nothing here renders. They stay for the reason host.css gives above `.datasourcecard-list`: a
+# helsedata page loads the whole of Stiler, and a stand-in carrying only what one component
+# happens to wear stops standing in for Stiler. That is also why `isBorrowed` is "the selector
+# names a class" rather than "the component emits it" - the wider reading is the point, and these
+# eight lines are its price. Read them as the stand-in drifting from Stiler and not as component
+# defects; retiring them means matching Stiler's card declaration for declaration, which is real
+# work and nobody's yet.
+#
+# Two spellings of one margin, a line clamp the sample leaves off, and a font-weight: the heading's
+# 500 stands in for graphik-medium where Stiler's `font` shorthand resets the weight to normal by
+# omission (Fhi.Metadata-kgl9f). That last one was invisible until the shorthand stopped being
+# read as a blanket exemption for every font longhand beside it.
 invented-declaration||.datasourcecard-list|margin
+invented-declaration||.datasourcecard__heading|font-weight
 invented-declaration||.datasourcecard__info .dot|margin
 missing-declaration||.datasourcecard__info .dot|margin-bottom
 missing-declaration||.datasourcecard__info .dot|margin-left
