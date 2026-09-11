@@ -98,6 +98,7 @@ jobs:
             --notes "$GITHUB_WORKSPACE/release-notes.md"
 
       - name: Open the pull request that records it on main
+        id: changelogpr
         if: steps.changelog.outputs.assembled == 'true'
         # Before the feed push, so a run that dies here has published nothing and can be re-run.
         # The durable record is the BRANCH the assemble step pushed, not this pull request, which
@@ -156,6 +157,7 @@ jobs:
               echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
             echo "::warning::changelog pull request not opened for $BRANCH — open it by hand"
+            echo "opened=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Restore
@@ -245,3 +247,17 @@ jobs:
           # A prerelease tag (v0.2.0-beta.1) is marked as one on GitHub too, so the release
           # list says the same thing the feed does.
           prerelease: ${{ contains(steps.version.outputs.version, '-') }}
+      # The publish above must not depend on this, which is why the step that tries to open the
+      # pull request is deliberately non-fatal and sits before the feed push. But a warning on a
+      # green run is not a signal anybody acts on: v0.1.0-alpha.9's branch went unmerged, alpha.10
+      # consumed the fragments it had left queued, and CHANGELOG.md on main has no alpha.9 section
+      # at all — its entries are filed under alpha.10. Failing HERE, once the package and the
+      # release are out, costs the release nothing and states the true position: the version
+      # shipped, the changelog did not.
+      - name: Say so if the changelog pull request was not opened
+        if: steps.changelogpr.outputs.opened == 'false'
+        env:
+          BRANCH: ${{ steps.changelog.outputs.branch }}
+        run: |
+          echo "::error::Published, but the changelog pull request for $BRANCH was not opened. Open it by hand or the fragments stay queued and the next release republishes them under its own version — the step summary has the command."
+          exit 1
