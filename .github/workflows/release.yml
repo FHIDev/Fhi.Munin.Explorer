@@ -150,14 +150,9 @@ jobs:
 
       - name: Say where the assembled changelog is
         if: steps.changelog.outputs.assembled == 'true'
-        # This used to try `gh pr create` and fall back to printing the command. The attempt could
-        # never succeed — FHIDev withholds pull-request permission from Actions — so it failed on
-        # every release and the fallback ran every time. A call that is guaranteed to fail is not
-        # a safety net, it is noise in the log that makes the real instruction easier to miss.
-        #
-        # The branch is the durable record; the pull request is bookkeeping a human does. Printing
-        # the command and nothing else says exactly that. Forgetting is caught by the guard at the
-        # top of this job on the next release, not by a warning here nobody reads.
+        # Prints the command rather than calling gh pr create: FHIDev withholds pull-request
+        # permission from Actions, so the call can never succeed. The branch is the durable record,
+        # and a forgotten pull request is caught by the guard at the top of this job next release.
         env:
           BRANCH: ${{ steps.changelog.outputs.branch }}
           VERSION: ${{ steps.version.outputs.version }}
