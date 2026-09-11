@@ -1045,8 +1045,9 @@ public class MuninExplorerClientTest
         Assert.Equal(new Guid("6f1d4a5c-0000-4000-8000-000000000001"), Assert.Single(root.Owners).KildeId);
 
         var child = filters.Variabelgrupper[3];
-        Assert.Equal(new Guid("6f1d4a5c-0000-4000-8000-000000000203"), child.ParentId);
-        Assert.NotEqual(child.ParentId.Value, Assert.Single(child.Owners).KildeId);
+        var parentId = new Guid("6f1d4a5c-0000-4000-8000-000000000203");
+        Assert.Equal(parentId, child.ParentId);
+        Assert.NotEqual(parentId, Assert.Single(child.Owners).KildeId);
     }
 
     [Fact]
