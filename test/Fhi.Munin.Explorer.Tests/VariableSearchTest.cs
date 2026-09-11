@@ -10371,6 +10371,100 @@ public class VariableSearchTest : BunitContext
                      Values(cut)[3].QuerySelectorAll("li").Select(l => l.TextContent));
     }
 
+    /// <summary>
+    /// Nineteen datasamlinger over two period bands that do not meet — the worst case measured in
+    /// the catalogue on 2026-09-11, on V_MS.IDENT "PasientFnr".
+    /// </summary>
+    private static IReadOnlyList<DatasamlingReference> Nineteen() =>
+    [
+        .. Enumerable.Range(1, 19).Select(n => new DatasamlingReference
+        {
+            Id = new Guid($"eeeeeeee-0000-0000-0000-{n:000000000000}"),
+            Name = $"MS-oppfølging {n}",
+            ValidFrom = n <= 12
+                ? new DateTimeOffset(2023, 1, 1, 0, 0, 0, TimeSpan.Zero)
+                : new DateTimeOffset(2026, 5, 1, 0, 0, 0, TimeSpan.Zero),
+            ValidTo = n <= 12 ? new DateTimeOffset(2024, 5, 1, 0, 0, 0, TimeSpan.Zero) : null
+        })
+    ];
+
+    [Fact]
+    public void Detail_WhenTheVariableIsInSeveralDatasamlinger_ThenTheTrailCountsThemAndEveryOneIsListed()
+    {
+        // What shipped was the primary name alone, which does not read as incomplete — it reads
+        // as singular. No fixture can see that: Testdata/variable.json holds one datasamling, so the
+        // defect and the fix render the same thing against it (Fhi.Metadata-l9l2n.108).
+        var client = new DetailClient(OnePage(Row(TaleId, "1. Tale")))
+            .Knows(Detail(TaleId) with
+            {
+                DatasamlingName = "Inklusjon",
+                AllDatasamlinger = Nineteen()
+            });
+        var cut = RenderWith(client);
+
+        Toggles(cut)[0].Click();
+
+        Assert.Equal(["Kode", "Beskrivelse", "Kildesti", "Datasamlinger", "Variabelgruppe", "Dataperiode"],
+                     Panel(cut).QuerySelectorAll("dl dt").Select(t => t.TextContent));
+
+        var trail = Values(cut)[2].QuerySelectorAll("ol > li");
+
+        Assert.Equal("19 datasamlinger", trail[^1].TextContent);
+        Assert.DoesNotContain("Inklusjon", Values(cut)[2].TextContent, StringComparison.Ordinal);
+
+        var listed = Values(cut)[3].QuerySelectorAll("li");
+
+        Assert.Equal(Nineteen().Select(d => d.Name),
+                     listed.Select(l => l.QuerySelector("span[lang=\"no\"]")!.TextContent));
+
+        // The two bands, which one range over all nineteen could not have reported.
+        Assert.Contains("2023", listed[0].TextContent, StringComparison.Ordinal);
+        Assert.Contains("2024", listed[0].TextContent, StringComparison.Ordinal);
+        Assert.EndsWith("Pågående)", listed[^1].TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Detail_WhenThePayloadCarriesNoDatasamlingList_ThenThePrimaryNameStandsIn()
+    {
+        // The regression an over-eager fix produces: a payload with the primary name and no list
+        // still ends the trail on that name rather than dropping the step.
+        var client = new DetailClient(OnePage(Row(TaleId, "1. Tale")))
+            .Knows(Detail(TaleId) with
+            {
+                DatasamlingName = "Inklusjon",
+                AllDatasamlinger = []
+            });
+        var cut = RenderWith(client);
+
+        Toggles(cut)[0].Click();
+
+        var trail = Values(cut)[2].QuerySelectorAll("ol > li");
+
+        Assert.Equal("Inklusjon", trail[^1].TextContent);
+        Assert.Equal("no", trail[^1].GetAttribute("lang"));
+
+        // And no list beside the trail, which would be that one step said twice.
+        Assert.DoesNotContain("Datasamlinger",
+                              Panel(cut).QuerySelectorAll("dl dt").Select(t => t.TextContent));
+    }
+
+    [Fact]
+    public void Detail_WhenTheDatasamlingerAreCountedForAnEnglishReader_ThenTheStepIsInEnglish()
+    {
+        // The counted step is this component's own prose rather than a name out of the catalogue,
+        // so it is the one step of the trail that follows Language.
+        var client = new DetailClient(OnePage(Row(TaleId, "1. Tale")))
+            .Knows(Detail(TaleId) with { AllDatasamlinger = Nineteen() });
+        var cut = RenderWith(client, b => b.Add(c => c.Language, "en"));
+
+        Toggles(cut)[0].Click();
+
+        var trail = Values(cut)[2].QuerySelectorAll("ol > li");
+
+        Assert.Equal("19 data collections", trail[^1].TextContent);
+        Assert.False(trail[^1].HasAttribute("lang"));
+    }
+
     [Fact]
     public void Detail_WhenTheKildeHasNoShortName_ThenTheTrailDrawsNoEmptyParentheses()
     {
