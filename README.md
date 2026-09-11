@@ -467,9 +467,9 @@ These are not style preferences — each one is a host that breaks otherwise.
   that needs the distinction selects `.munin-explorer-kilder-scroll--cols-N:has(.munin-explorer-kilder__select)`
   and gives the other table the `:not(:has(…))` arm. That is what
   `Fhi.Helsedata.Stiler` PR 39282 does. It postdates 0.1.42, the version pinned here, and it
-  postdates 0.1.67 as well — merged to `main` at 08:50 UTC on 2026-09-11, an hour and a half after
-  that release went to the feed — so no published Stiler carries these thresholds yet, and a host
-  has them from whichever release is cut next.
+  postdates 0.1.67 as well — that release was already the newest on the feed when the PR merged to
+  `main` at 08:50 UTC on 2026-09-11 — so no published Stiler carries these thresholds yet, and a
+  host has them from whichever release is cut next.
 
   **The whole list, name by name.** The paragraphs above pick out the names worth an argument.
   They used to end in hand-written counts, and every one of them had gone stale: `kilde*` had grown
