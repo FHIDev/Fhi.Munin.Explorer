@@ -8,6 +8,7 @@ using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
+using static Fhi.Munin.Explorer.Tests.KildeColumns;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -819,18 +820,12 @@ public class KildeSearchTest : BunitContext
     [Fact]
     public void ScrollBox_WhenEveryOptionalColumnIsOn_ThenTheModifierFollowsTheWiderHeader()
     {
-        // The state the spill was measured in. A modifier fixed at its first-paint value would hand
-        // a stylesheet the width of a table that is no longer on screen, which is the one way this
-        // can fail quietly: the class is there, the number is stale. (Fhi.Metadata-l9l2n.103)
+        // A modifier fixed at its first-paint value would hand a stylesheet the width of a table that
+        // is no longer on screen, which is the one way this can fail quietly: the class is there and
+        // the number is stale. (Fhi.Metadata-l9l2n.103)
         var cut = RenderWith(new FakeClient(Furnished()));
 
-        foreach (var label in ColumnToggles(cut)
-                     .Where(box => !Ticked(box))
-                     .Select(ColumnName)
-                     .ToList())
-        {
-            ToggleColumn(cut, label);
-        }
+        TurnEveryColumnOn(cut);
 
         Assert.Equal(14, Headers(cut).Count);
 
@@ -5260,37 +5255,9 @@ public class KildeSearchTest : BunitContext
     }
 
     // ---------------------------------------------------------------------------------
-    // The column picker. Kelda's rules, not the variable explorer's: ten optional columns,
-    // three of them on to begin with, and no last-column lock — Navn, Status and Opprettet
-    // are drawn whatever the picker says, so this control cannot empty a row. The choice is
-    // not persisted and not in the host's URL, which is what Kelda does. (Fhi.Metadata-ay3zz)
+    // The column picker. Its helpers are in KildeColumns, because KildeSelectionTest sweeps the
+    // same toggles with the handover wired. (Fhi.Metadata-ay3zz)
     // ---------------------------------------------------------------------------------
-
-    /// <summary>The picker's checkboxes, in the order it lists them.</summary>
-    private static IReadOnlyList<IElement> ColumnToggles(IRenderedComponent<KildeSearch> cut) =>
-        cut.FindAll(".dropdown-choicepicker__item input[type=checkbox]");
-
-    /// <summary>A checkbox's column, which is the label beside it rather than its own text.</summary>
-    private static string ColumnName(IElement toggle) =>
-        toggle.ParentElement!.QuerySelector(".form-control__label")!.TextContent.Trim();
-
-    /// <summary>Whether the column is on screen, as the rendered attribute has it.</summary>
-    private static bool Ticked(IElement toggle) => toggle.HasAttribute("checked");
-
-    /// <summary>The toggle for one named column, refetched so it is never a stale node.</summary>
-    /// <remarks>
-    /// <c>Change</c> and not <c>Click</c>: bUnit raises MissingEventHandlerException for a click
-    /// on an element handling only <c>onchange</c>, and names the event it does handle.
-    /// </remarks>
-    private static void ToggleColumn(IRenderedComponent<KildeSearch> cut, string label)
-    {
-        var box = ColumnToggles(cut).Single(b => ColumnName(b) == label);
-
-        box.Change(!Ticked(box));
-    }
-
-    private static IReadOnlyList<string> Headers(IRenderedComponent<KildeSearch> cut) =>
-        [.. cut.FindAll(".munin-explorer-kilder thead th").Select(th => th.TextContent.Trim())];
 
     private static IReadOnlyList<string> FirstRowCells(IRenderedComponent<KildeSearch> cut) =>
         [.. cut.FindAll(".munin-explorer-kilder tbody tr:first-child > *").Select(c => c.TextContent.Trim())];

@@ -453,10 +453,11 @@ These are not style preferences — each one is a host that breaks otherwise.
   it could ship before the rule that selects on it, and it is the opposite of the bargain every
   other name here makes. What a rule buys is the one thing `Fhi.Helsedata.Stiler` cannot work out
   for itself: above its 780px breakpoint the box is deliberately `overflow-x: visible`, because the
-  page has to be the sticky ancestor for the table's header to pin, and a reader who turns the wide
-  columns on puts the table 663.6px past its box and the host's whole page into a sideways scroll
-  (measured 1440×900, 2026-09-11). A rule that answers that must not reintroduce a scroll container
-  above the breakpoint, or the header stops pinning and the cure is worse than the spill.
+  page has to be the sticky ancestor for the table's header to pin, so a reader who turns the wide
+  columns on runs the table past its box and the host's whole page into a sideways scroll. A rule
+  that answers that must not reintroduce a scroll container above the breakpoint, or the header
+  stops pinning and the cure is worse than the spill. The measurement, and the rule itself, are
+  `Fhi.Metadata-l9l2n.50`.
 
   **The whole list, name by name.** The paragraphs above pick out the names worth an argument.
   They used to end in hand-written counts, and every one of them had gone stale: `kilde*` had grown

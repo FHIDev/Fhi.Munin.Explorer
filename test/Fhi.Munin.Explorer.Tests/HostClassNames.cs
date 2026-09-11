@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
@@ -35,8 +37,8 @@ internal static class HostClassNames
         [.. File.ReadLines(Repo.In("test", "host-class-names.txt"))
                 .Where(l => l.Length > 0 && !l.StartsWith('#'))]);
 
-    private static readonly System.Text.RegularExpressions.Regex CssComment =
-        new(@"/\*.*?\*/", System.Text.RegularExpressions.RegexOptions.Singleline);
+    private static readonly Regex CssComment =
+        new(@"/\*.*?\*/", RegexOptions.Singleline);
 
     /// <summary>
     /// Innermost blocks only — <c>[^{}]</c> on both sides — so the rules inside an
@@ -55,8 +57,16 @@ internal static class HostClassNames
     /// nests today; the day something does, this cut has to learn about it rather than the reader
     /// having to.
     /// </summary>
-    private static readonly System.Text.RegularExpressions.Regex CssRule =
+    private static readonly Regex CssRule =
         new(@"(?<selector>[^{}]*)\{(?<declarations>[^{}]*)\}");
+
+    /// <summary>
+    /// Exempt from <see cref="Orphans"/>: a modifier the package finishes with a number, on an
+    /// element whose base class already carries the rule. Anchored on this one stem rather than on
+    /// <c>--cols-</c> anywhere, so a second one stays a decision somebody makes here.
+    /// </summary>
+    private static readonly Regex CountModifier =
+        new(@"^munin-explorer-kilder-scroll--cols-[0-9]+$");
 
     /// <summary>
     /// The sample stylesheet, held as text rather than parsed: <see cref="RulesIn"/> cuts the rules
@@ -117,34 +127,11 @@ internal static class HostClassNames
 
         return [.. rendered.Distinct(StringComparer.Ordinal)
                            .Where(name => !TheirNames.Value.Contains(name))
-                           .Where(name => !IsCountModifier(name))
+                           .Where(name => !CountModifier.IsMatch(name))
                            .Select(name => Verdict(rules, name))
                            .OfType<string>()
                            .Order(StringComparer.Ordinal)];
     }
-
-    /// <summary>
-    /// The one shape this check deliberately does not ask about: a modifier the package finishes
-    /// with a number at render time, on an element that already carries a rule of its own.
-    ///
-    /// The three shell guards never see these — their extraction drops every token ending in
-    /// <c>-</c>, because a stem a line of C# completes is not a name a stylesheet can be asked to
-    /// carry. This one reads the DOM, so it sees the finished name and would report a fresh orphan
-    /// every time the reader turned a column on. Exempting it is what makes the four checks agree
-    /// about what a name is, rather than a hole in this one.
-    ///
-    /// It is also the whole argument for shipping <c>munin-explorer-kilder-scroll--cols-N</c>
-    /// before the rule that selects on it: undrawn, the box keeps the behaviour its base class
-    /// already gives it. A modifier that degraded to a raw browser default would not belong here.
-    ///
-    /// Anchored on the one stem rather than on <c>--cols-</c> anywhere, so this cannot quietly
-    /// grow to cover a modifier nobody argued for. <see cref="HostClassNamesTest"/> pins that.
-    /// </summary>
-    private static bool IsCountModifier(string cls) =>
-        CountModifier.IsMatch(cls);
-
-    private static readonly System.Text.RegularExpressions.Regex CountModifier =
-        new(@"^munin-explorer-kilder-scroll--cols-[0-9]+$");
 
     /// <summary>
     /// Every rule in a stylesheet, selector cut from declarations. Every question this file answers

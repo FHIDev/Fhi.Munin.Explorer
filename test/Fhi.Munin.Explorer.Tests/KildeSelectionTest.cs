@@ -5,6 +5,7 @@ using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
+using static Fhi.Munin.Explorer.Tests.KildeColumns;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -696,26 +697,13 @@ public class KildeSelectionTest : BunitContext
     [Fact]
     public void ScrollBox_WhenTheHandoverIsWiredAndEveryColumnIsOn_ThenTheModifierCountsFifteen()
     {
-        // The configuration the spill was measured in on 2026-09-11: fifteen header cells, the
-        // table 663.6px past its box and the host page scrolling sideways with it. Fifteen is not
-        // the picker's ten — five of them are columns it cannot reach. (Fhi.Metadata-l9l2n.103)
+        // The widest the table gets, and the configuration the spill was measured in: fifteen is not
+        // the picker's ten — five of them are columns it cannot reach. (Fhi.Metadata-l9l2n.50)
         var (cut, _) = RenderSelectable(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
-        // The label beside the box, not the box's own text, which is what the picker names it by.
-        static string ColumnName(IElement box) =>
-            box.ParentElement!.QuerySelector(".form-control__label")!.TextContent.Trim();
+        TurnEveryColumnOn(cut);
 
-        IReadOnlyList<IElement> Toggles() =>
-            cut.FindAll(".dropdown-choicepicker__item input[type=checkbox]");
-
-        // Named, then refetched one at a time: every tick re-renders the picker, and a node held
-        // across that render is a stale one.
-        foreach (var label in Toggles().Where(box => !box.HasAttribute("checked")).Select(ColumnName).ToList())
-        {
-            Toggles().Single(box => ColumnName(box) == label).Change(true);
-        }
-
-        Assert.Equal(15, cut.FindAll(".munin-explorer-kilder thead th").Count);
+        Assert.Equal(15, Headers(cut).Count);
 
         Assert.Contains(
             "munin-explorer-kilder-scroll--cols-15",
