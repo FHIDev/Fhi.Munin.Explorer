@@ -29,6 +29,766 @@ under alpha.8, which is the whole reason this file exists.
 
 <!-- assemble-changelog: new version sections are inserted directly below this line, newest first. -->
 
+## 0.1.0-alpha.11 — 2026-09-11
+
+### Added
+
+- **A long facet in the kildeutforsker gets a search box over its own values.** Databehandler has
+  39 values on the live catalogue, so finding one meant reading all of them. A facet with **more
+  than ten** values now draws a small search field inside its disclosure; the threshold is one
+  number applied to every facet, never a decision taken per facet, so kildetype's five values stay
+  a plain list. Typing narrows that facet's values and nothing else — not the result table, not the
+  counts, not the other facets, and not the ticks: a value that is ticked and then typed out of
+  sight is still ticked and still narrowing the list, and clearing the box brings it back with its
+  tick on. It is counted over the values the facet has rather than the ones its own search leaves,
+  so the box does not disappear as it starts working. The values are not merged or normalised:
+  four spellings of Folkehelseinstituttet are still four choices with four counts, because deciding
+  that two strings name one organisation is a claim about the catalogue and not about the view.
+  The box carries no class name of its own — it is a native text input inside the filter panel, on
+  the same terms as the dataperiode facet's date fields, so there is nothing new for a host to
+  style beyond the form fields it already styles. Committing the search keeps the reader's place:
+  focus returns to the box only when the redraw takes away a value they could have been standing
+  on, so tabbing or clicking out of the box is never undone under them. (Fhi.Metadata-6we8a)
+- The kilde detail view now loads an expandable hierarchy of delkilder, datasamlinger and
+  variabelgrupper, initially collapsed. Descriptions and validity periods remain available
+  in a separate disclosure. This is shared by the kilde explorer, the variable explorer's
+  source view, and hosts mounting `KildeView` directly.
+- Hosts can also render `KildeHierarchyView` with a `KildeId` and optional `Language`.
+  `KildeView` now needs the registered `IMuninExplorerClient` to load the hierarchy.
+- Hierarchy retries retain keyboard focus and announce completion. Rate-limited requests
+  show the throttling message without enabling another retry; nested lists keep explicit
+  list semantics when hosts hide their markers.
+- **The kilder table's scroll box now says how many columns it is holding.** Beside
+  `munin-explorer-kilder-scroll` the box wears `munin-explorer-kilder-scroll--cols-N`, where N is
+  the number of header cells the table actually rendered rather than the number of choices the
+  column picker offers — the picker reaches ten of them and the table draws four or five more that
+  it cannot. A stylesheet that has to vary the box by how wide the table is now has something to
+  select on, which is a question only the package can answer. (Fhi.Metadata-l9l2n.103)
+- **The kildeutforsker's facet panel gets Utvid alle and Skjul alle.** Since the facets began
+  folding, a reader who wanted to see all of them opened them one at a time — thirteen facets on
+  the live catalogue, one of them open to begin with. The pair sits in a row at the top of the
+  panel, above the facets and so before them in the tab order, and each is an ordinary button with
+  no state of its own to drift: the disclosures still carry `open` and nothing else, exactly as
+  they did. A press is announced to a screen reader, since it rewrites the whole column and is
+  otherwise silent. What a press does not cost is the fold belonging to the reader: after Utvid
+  alle they can still collapse one facet, and ticking a value leaves it collapsed. The panel gets
+  no pair at all with fewer than two facets, where there would be nothing to fold together, and
+  Nivålinjer is deliberately not offered beside them — these facets are not nested, so a
+  level-lines toggle would draw nothing. English hosts get "Expand all" and "Collapse all".
+  (Fhi.Metadata-l9l2n.60)
+- **`HierarchyVariabelgruppe` gains `PresentationOrder`.** The hierarchy endpoint sends
+  `presentationOrder` on a variabelgruppe as it does on the delkilder and datasamlinger above it,
+  and the contract had nowhere to put it, so a host reading the tree could not see the curated
+  order at all. `int?`, null when unordered, the same shape the two neighbouring records already
+  use. (Fhi.Metadata-l9l2n.61)
+- **The kilde list can be sorted, and the order is in the link.** `KildeSearch` draws a
+  "Sorter etter" select above the table offering Navn A–Å, Flest variabler, Sist endret and
+  Opprettet beside the order the catalogue sent, and `KildeExplorer` reads and writes that order as
+  `?sort=` next to `?kilde=` — omitted while the list is in the order it arrived in, so links made
+  before this release still mean what they did. The sorting is done in the browser over the rows
+  the search and the facets left: `GetKilderAsync` is not paged, so the whole catalogue is already
+  in hand and nothing here is asked of the API. Names are collated as `nb-NO`, pinned, whatever
+  language the reader has asked for, so æ, ø, å and the digraph aa all come at the end of the
+  alphabet — a kilde spelled Aa sorts beside Å rather than beside A. A kilde with no value to order
+  by sorts last in every order, never among the smallest, while a recorded zero is ordered as
+  zero. A host owning its own query string mounts `KildeSearch` and binds the new
+  `Order` / `OrderChanged` pair. (Fhi.Metadata-lhdh0)
+- **The Kilde facet in the variabelutforsker reaches datasamlinger.** The source tree stopped at
+  delkilde, which is the level that 41 of the catalogue's 44 kilder do not have: 203 datasamlinger hang
+  straight off a kilde and none of them could be picked. `FilterOptions` now carries a
+  `datasamlinger` facet, and each value hangs under its delkilde where it has one and under its
+  kilde where it has none, at any depth. In The Tromsø study that is Tromsø1, Tromsø2 and Tromsø3
+  becoming selectable beside the two waves that were already there. The counts are cross-filtered
+  like every other value in the panel, a datasamling with no matches is left out as a delkilde
+  already is, and the trail step over the results reads a chosen datasamling's name off the facets
+  rather than off whichever rows happen to be on screen. Against an API that does not send the
+  facet the field is empty and the panel is exactly what it was. A datasamling counts in the
+  facet's own search the way a delkilde does — typing its name keeps its kilde — and a chosen
+  one draws a chip over the results whether or not that search is showing it.
+  (Fhi.Metadata-mgp03)
+- **The kildeutforsker says which filters are active, over the results rather than only inside the
+  panel.** With the facet panel folded away on a narrow screen — or simply scrolled past — the only
+  thing on screen saying a list of 56 sources out of 66 had been narrowed was a clause in the count
+  line, which names no value. A row of chips now sits above the table, one per ticked facet value,
+  each with its own remove control naming the value it clears, and a "Fjern alle filtre" beside them
+  that empties every facet in one press. The row is drawn only while something is ticked. Every
+  press writes the same state the facet checkboxes write, so the panel, the chips and the rows
+  cannot disagree about which filters the list obeys. The count line is unchanged. (Fhi.Metadata-ofoyw)
+- **The kilde detail hierarchy draws Kelda's node icons.** A delkilde wears a folder, a datasamling
+  wears one glyph per datakategori it carries, and a variabelgruppe wears none - the same mapping
+  Kelda's own tree uses, legacy category slugs and all, so the two surfaces cannot show one
+  datasamling as two different things. Several categories draw in a fixed order and never twice; an
+  unrecognised token draws the vocabulary's catch-all, while carrying no category at all draws
+  nothing, because absence is not "Annet". The glyphs are decorative and `aria-hidden`, so a
+  datasamling's categories are read out in words beside them instead. `ShowNodeIcons` on
+  `KildeHierarchyView` and `KildeView` turns the icons off without touching the variable counts.
+  (Fhi.Metadata-s3l7l)
+
+### Changed
+
+- **Nothing a host renders changes.** The forced `checked` update on the column picker's and the
+  facet panel's checkboxes is now guarded by a browser-driven check as well as by unit tests, which
+  cannot see the browser's own flip of a box; and the comment beside the facet call named two
+  refusal paths where only one needs it, since a rolled-back fetch corrects the DOM on its own.
+  (Fhi.Metadata-1s7z1)
+- **The variabelutforsker takes its kildetype words from the API rather than from a table shipped
+  inside the package.** `GET /api/explorer/filters` resolves `kildeTyper[].displayName` from the
+  Kilde-scoped Kildetype master data and follows `Accept-Language`, so an edit there now reaches
+  the page. The shipped table stays as the fallback for an API that answers with the raw enum name
+  or with no `displayName` at all. Checked against the test API on 2026-09-10 the two agree word
+  for word on all eight values in both languages, so no visible text changes today.
+- **The kilde facet's kildetype headings say what the facet button above them says.** A kildetype
+  Munin adds that this package has no word for used to read as prose on the button and as its bare
+  token — `nyKildetype` — on the heading directly beneath it, in the same panel. Both now take the
+  API's word, as does the kilde trail in an opened result row. Where neither the API nor the table
+  has a word, all three now say the token itself rather than one of them saying "Ikke oppgitt".
+  (Fhi.Metadata-3n6e1)
+- **A kilde with nothing counted now reads as empty rather than as a measured value.** The
+  Delkilder, Datasamlinger and Variabler cells of the kilder table mark a count of nought, so
+  Hjerte- og karregisteret's two noughts recede from a reader scanning the column for kilder they
+  can use. The digit is still drawn and still read out — nought is a measurement here, and the
+  columns beside it say "Ikke oppgitt" for a field nobody filled in, so the two have to stay
+  distinguishable. Nothing else about the row changes: the counts were already right-aligned with
+  tabular figures, and the Opprettet column is untouched because it holds the year the source wrote
+  rather than a number this component counted. (Fhi.Metadata-8vbqf)
+- **The package's Microsoft dependencies move from 10.0.11 to 10.0.12.** They are servicing
+  patches with no API change, so nothing a host compiles against moves. What does move is the
+  floor, and for more than the five references the package names directly: every Microsoft
+  10.0.x package it pulls resolves at 10.0.12 too, all 21 of them, transitives included —
+  `Microsoft.JSInterop`, `Microsoft.Extensions.Options`, `Microsoft.Extensions.Primitives`,
+  `Microsoft.Extensions.DependencyInjection` and `Microsoft.AspNetCore.Components` among them,
+  all plausible things for a Blazor host to pin. A host that pins any of the 21 at 10.0.11
+  itself gets NU1605 on restore — an error, not a warning, since the .NET SDK raises it — and
+  has to move its own pin to 10.0.12 or drop it. (Fhi.Metadata-aos2h)
+- **The kildeutforsker's facets fold.** Every facet used to render open at once — the databehandler
+  facet alone has 39 values on the live catalogue — which left the filter column longer than the
+  list it filters. Each facet is now a native `<details>`: the first starts open so the affordance
+  is visible, the rest start folded, and each folds independently from there. A folded facet's
+  summary carries the number of values ticked inside it, so a filter cannot narrow the list from
+  behind a closed disclosure without saying so. Opening a kilde and coming back leaves the search
+  and the ticked values as they were and the folds back at their defaults, because the fold belongs
+  to the browser and the panel is rebuilt. The same shape the variable explorer's own panel already
+  uses, under the same `munin-explorer-filters` handle, so the fold itself asks nothing new of a
+  host. (Fhi.Metadata-co3sf)
+- **The filter tree's level guides are on when the panel first renders.** `LevelLines` now
+  defaults to `true`, so `data-level-lines="true"` is on `munin-explorer-filters` from the first
+  paint and `Nivålinjer` turns the guides off rather than on. Runa's own tree loads with its
+  toggle pressed, and a reader who never finds the button was reading a deep tree with no guides
+  at all. A host that stores what `LevelLinesChanged` raises is unaffected — whatever it passes
+  back still wins; a host that stores nothing gets the guides at every visit. Pass
+  `LevelLines="false"` to keep the previous state. (Fhi.Metadata-dfygj)
+- **The column picker is now real checkboxes, and its trigger sits on the right.** Each optional
+  column is an `<input type="checkbox">` inside a `label.form-control`, where it used to be a
+  `<button aria-pressed>` - a checkbox reads as a multi-select and a pressed button as a toolbar
+  toggle, and assistive technology announces them differently. The trigger gained helsedata's own
+  two icons, `icon-layout` leading and a chevron that follows the open state, and no longer emits
+  an inline `style="position:relative"`: Stiler positions `.munin-explorer__dropdown` itself. Both
+  explorers draw this control from one copy, so the kildeutforsker and the variabelutforsker
+  change together. (Fhi.Metadata-f6az7)
+- **A kildetype facet's `DisplayName` is resolved prose in the request's language, not the raw enum
+  name.** `GET /api/explorer/filters` used to answer `SentraltHelseregister` there, and
+  `KildetypeFacet.DisplayName` was documented as such — so a host was told to supply prose of its
+  own. It no longer has to: the API resolves the label and follows `Accept-Language`, giving
+  `Sentralt helseregister` under `nb` and `Central health registry` under `en`. Two consequences for
+  a host that was reading it. Key off `Value`, which is unchanged and language-independent, wherever
+  identity matters — `DisplayName` now differs between languages. And the facet list is ordered by
+  that resolved label rather than by the value, so `kildeTyper` arrives in a different order in each
+  language; a host mirroring the API's order elsewhere on the page inherits that. This package is
+  one such host. The words it puts on a kildetype are still its own, looked up by `Value` — those
+  did not change — but it draws the kildetype facet, and the kilde headings grouped under it, in
+  the order the API sent. Under `nb` that is the order it always was; an English mount now sorts
+  them by English prose, so which kildetype heads the list depends on the English words rather
+  than on the enum. (Fhi.Metadata-iv9xp)
+- **A folded facet in the kildeutforsker says how many of its values are ticked in words, beside
+  the heading rather than inside it.** The number used to be appended to the facet's own heading
+  text, which put it inside the thing a screen-reader user navigates the panel by and left it to
+  say only "(2)" — a figure with no noun. The summary now reads "Kildetype 2 valgt", with the count
+  as its own element next to the heading, so that whole sentence is what the disclosure is
+  announced as. It is drawn only while at least one of the facet's values is ticked: an untouched
+  facet says nothing rather than "0 valgt", and clearing the last tick takes the count away again.
+  English hosts get "2 selected". The heading is still a heading at the same level, and the
+  disclosure is still the native `open` state with no `aria-expanded` beside it. The summary line
+  is laid out as a row to hold all three, which is also what takes the facet's disclosure marker
+  off the row of its own it had fallen to — that rule is the host's, and both sample stylesheets
+  now carry it. (Fhi.Metadata-l9l2n.53, Fhi.Metadata-l9l2n.58)
+- **The kildeutforsker's result count says how many of the catalogue you are looking at, and how
+  many filters are narrowing it.** The line over the list used to say only the total it was
+  currently showing, so a narrowed list read exactly like a short catalogue and nothing on the page
+  said filtering was happening at all. It now reads `56 kilder av 66, avgrenset av 2 filtre` in
+  Norwegian and `56 sources of 66, narrowed by 2 filters` in English — the variabelutforsker's own
+  words for the same fact, in the same place in the sentence, so the two explorers do not tell it
+  two ways. Both clauses are absent rather than zeroed on an untouched list, which still reads
+  `66 kilder`: `66 kilder av 66, avgrenset av 0 filtre` is more words saying less. The filter count
+  is the same number the empty state already reports, so a narrowed list and a list narrowed to
+  nothing cannot name different filters. The sentence is both the polite status line and the
+  table's accessible name, as before, so a screen reader hears the change too. No new class name
+  and nothing new for a host to style — the three controls above the table still take a row each,
+  which needs a Stiler rule and is tracked separately as Fhi.Metadata-xpv2x and Fhi.Metadata-tciss.
+  (Fhi.Metadata-l9l2n.54)
+- **BREAKING for hosts: every kildetype on the contracts is `string?`, because the API sends null
+  for a kilde that has none.** A kilde with no kildetype is a real state in the catalogue —
+  `K_NKR-NAKKE` is one today — and the API says so with an explicit `null`. The contract still
+  declared a non-nullable `string`, so it told hosts something that was not true: a host
+  deserialising with plain `System.Text.Json` got that null written straight over the `= ""`
+  initialiser and found it wherever it first read the property, which on a Blazor Server host is
+  the circuit and the page. Seven properties change: `KildeSummary.Kildetype`,
+  `KildeDetail.Kildetype`, `VariableDetail.KildeType`, `KildeFacet.KildeType`, and the
+  `EffectiveKildetype` on `DatasamlingDetail`, `KildeDatasamling` and `KildeDelkilde` — those last
+  three are always the owning kilde's kildetype, so they are null exactly when it has none.
+  **What a host must do:** handle null where it reads one of these. The compiler now says where,
+  which is the point of the change; coalesce to your own word for an unset kildetype, as this
+  package renders its reader's — "Ikke oppgitt" under `no`, "Not specified" under `en`.
+  `VariableSummary.KildeType` was already `string?` and is unchanged. Nothing changes on the page:
+  the client's `NullAsEmptyStrings` modifier never covered a nullable string, so the components go
+  on reading these through `Texts.KildeTypeLabel`, which has always taken a null — the kilder
+  table's cell, the kilde, datasamling and variable views, the variable detail panel's crumb, and
+  the kildetype facet, which drops a kilde with no kildetype rather than offering an unnamed
+  checkbox. (Fhi.Metadata-l9l2n.61)
+- **The variabelutforsker's filter panel opens on Kilde alone, with a search box in it, and the
+  kildetype groups under it fold.** The panel used to open with every facet expanded, which put
+  hundreds of controls above the results before the reader had narrowed anything. Exactly one facet
+  is open at first paint now and it is Kilde, because that is the one a reader starts in — and the
+  first thing under its summary is a box that narrows the kilder, matching a kilde's own name or any
+  of its delkilder's. The box narrows only what the panel draws: a kilde ticked and then typed out
+  of sight stays ticked, keeps narrowing the list and is still counted in the facet's own heading,
+  and emptying the box brings it back with its tick on. A term that takes kilder away puts focus
+  back on the box, so committing one with Tab does not drop the reader onto a row the same render
+  removes. Inside that facet the kildetype headings are disclosures of their own, closed, each
+  saying how many kilder it holds, so the facet opens on three rows rather than on 46. Utvid alle
+  and Skjul alle still reach every disclosure in the panel, the groups included. (Fhi.Metadata-l9l2n.67)
+- **The variabelutforsker says which filters are active, and its count shares a row with Kolonner.**
+  The facet panel is the only thing that ever named a chosen value, and it can be folded away,
+  scrolled past or simply longer than the screen — so a reader looking at 630 rows out of 15 020 had
+  a clause in the count line and nothing else. A row of chips now sits above the results, one per
+  chosen value across every facet the explorer filters by, each with a remove control naming the
+  value it clears. "Fjern alle filtre" moves into that row from the foot of the panel: it is the
+  same control, moved rather than copied, so there is still exactly one of it on the page, and the
+  row is drawn only while something is chosen. Every press writes the same filter the facet
+  checkboxes write, so panel, chips and rows cannot disagree about what the list obeys. Below it the
+  result count and the Kolonner picker now share one row where they took a row each. The count is
+  the same sentence in the same polite live region, still naming the ordering, and the ordering
+  itself stays on the column headings and Per side stays at the pager — a second control for either
+  would be a second thing to keep in step. Reading order and tab order are unchanged.
+  (Fhi.Metadata-l9l2n.68)
+- **The variabelutforsker's hit list no longer carries the variable code, which is in the opened
+  row and in the Kolonner picker instead.** A code does not help a reader CHOOSE a variable — it is
+  what they ask for once they have — and it was the widest column of the eight, because a code is
+  one unbreakable token with nowhere to wrap. That width now goes to the name and the datasamling,
+  which is what a researcher scans by. Nothing is lost: the code is in the Identifikasjon block of
+  the panel an opened row shows, whatever the picker says, and Kolonner still offers it as a column
+  for a reader who wants to scan it — off to begin with, like Status, and their choice sticks for
+  as long as the page does. The name plus the datasamling is what tells two variables apart in any
+  case: Barnediabetes alone holds six called "Pasientens alder", and the code was never the thing
+  doing that work. The variable detail page and the reader's saved variable lists are unchanged and
+  still show the code, since those are what an applicant attaches to an application. A host needs
+  no new rule for this — no class name is added, renamed or removed, and the column's existing
+  `munin-explorer-dataitem-*__code` width is what dresses it whenever it is turned back on.
+  (Fhi.Metadata-l9l2n.69)
+- **Neither explorer's filter panel counts the filters in its title any more.** The variabelutforsker's
+  legend read "Filtre (3)" and the kildeutforsker's heading read the same, over a count line already
+  saying "avgrenset av 3 filtre" and a chip row already naming each of the three. The title was the
+  least useful of the three statements — it said how many without saying which — so both now read
+  "Filtre" alone, and the count line and the chips are unchanged. The panel keeps its accessible
+  name: the variabelutforsker's fieldset still announces as "Filtre", and the kildeutforsker's
+  fold toggle still reads "Vis filtre" / "Skjul filtre". (Fhi.Metadata-l9l2n.83)
+- **Nivålinjer is a real switch now, not a button that stays pressed.** The toggle over the
+  variabelutforsker's facet tree was a `<button>` carrying `aria-pressed`, which a screen reader
+  announces as a button held down; it is a `role="switch"` carrying `aria-checked` now, which
+  announces as on and off — what the control has always meant. It is still a native `<button>`, so
+  it keeps the keyboard behaviour a button has: Tab reaches it and Space activates it, with no key
+  handler of ours in the way. Its label and its position in the toolbar are unchanged, and it still
+  writes the same `data-level-lines` marker on the panel, so nothing a host stores or styles for the
+  lines themselves changes. What did change is the control's own markup: it wears
+  `munin-explorer-switch` alone, with a track and a thumb inside it, and no `hd-button-square` or
+  `button-square--*` beside it — see the note for hosts. (Fhi.Metadata-l9l2n.87)
+- **The kildeutforsker's result count, Sorter and Kolonner share one row above the table.** They
+  took a row each, so a reader scrolled past three rows of chrome to reach the first kilde — and on
+  a phone, where the facet panel is folded away, that was most of the first screen. The three now
+  sit on one line, the count at the left and the two controls at the right, wrapping onto their own
+  lines when there is no room rather than pushing the table further down. Nothing about what they
+  say has changed: the count is the same sentence in the same live region, announced the same way,
+  and the picker is still drawn only when there are rows to have columns. Reading order and tab
+  order are unchanged — the row is laid out with flex rather than reordered — and the Sorter label
+  still names its own select. (Fhi.Metadata-tciss)
+
+### Fixed
+
+- **Kilde and variable detail pages no longer show the catalogue's storage vocabulary in a
+  field's label.** "(språkmerket)" and "(flerspråklig)" - and the English "(language-tagged)" /
+  "(multilingual)" - describe how the catalogue stores a value, not something a reader needs;
+  they are stripped from every label and group name at render time, in both languages.
+- **Formål no longer renders twice on a kilde page.** `Formaal` and its EHDS/HealthDCAT-AP mirror
+  `FormaalFlerspraklig` curate the same prose in every fixture that populates both, so the plain
+  field is now dropped from the metadata list once the mirror also holds a value; a source
+  curating only the mirror still shows it. `Rettslig grunnlag`/`hasLegalBasis` and
+  `Tittel`/`TittelFlerspraklig` were suspected of the same duplication but are NOT deduplicated:
+  real fixtures show their EHDS mirror can carry a translation the plain field lacks, so hiding it
+  would delete content rather than tidy the page. Both still render, and both still lose the
+  "(språkmerket)"/"(flerspråklig)" qualifier from their label. (Fhi.Metadata-43jrq)
+- **A signed-out reader is now told that variable lists exist and require signing in.** Where the
+  Variabelliste tab would otherwise sit, `VariableExplorer`/`VariableSearch` now draw one sentence
+  instead of nothing at all — no tab, no save button and no filter panel ever appeared for a reader
+  who had not signed in, and nothing on screen said why. The host's own sign-in control is
+  untouched: this is text, not a second login button, and it carries no link. (Fhi.Metadata-4ifsa)
+- **Creating a variable list no longer reads the list being left.** Two unawaited reads for the
+  outgoing list used to reach the API on every create, spending part of the per-address rate
+  limit's shared budget for nothing - their answers were already discarded. (Fhi.Metadata-7x62u)
+- **Datatype now reads in the page's own language instead of English.** `Streng`, `Heltall`,
+  `Boolsk` and the rest were only matched against the numeric code a fully re-normalized variable
+  carries; a variable still holding its pre-normalization value (`"String"`, `"Integer"`, …) fell
+  through to the raw English word on a Norwegian page. Codes and the legacy aliases now resolve to
+  the same name on the variable detail and the datatype facet. (Fhi.Metadata-88fui)
+- **Double-clicking "Vis koder" leaves the kodeverk code table open** - The second click of a
+  double-click gesture toggled the code table straight back shut, so the line flashed and the
+  reader landed where they started. Deliberate repeated pressing still toggles both ways, and
+  Enter or Space on the control is unaffected. (Fhi.Metadata-fy747)
+- **Saving a variable when the API answers 401/403 now tells the reader to sign in, not to try
+  again.** A host that declares `IsAuthenticated` true while its token provider sends nothing the
+  API accepts used to draw enabled save buttons that failed with "try again shortly" — advice
+  that could never work, because the failure was never one a retry could fix. The my/lists write
+  and read methods on `IMuninExplorerClient` now throw the new `MuninExplorerUnauthorizedException`
+  for a 401/403 instead of the general `HttpRequestException`; a host with its own implementation
+  of the interface should throw it too. (Fhi.Metadata-h5o3o)
+- **Double-clicking or shift-clicking a control in a variable's panel leaves what it opened
+  open** - "Vis datakilde", "Vis datasamling", the kilde step of the panel's trail, "Vis hele
+  variabelen" and its way back, and a version row in the whole variable: the second click of a
+  double-click toggled the view straight back shut, so it flashed and the reader landed where
+  they started. A shift-click extending a selection across the panel's text did the same, at
+  those controls and at "Vis koder". Both gestures are now refused the way a result row already
+  refused them; deliberate repeated pressing still toggles both ways, and Enter or Space on the
+  control is unaffected. (Fhi.Metadata-j1j3i)
+- **"Vis hele variabelen" no longer promises a disclosure it does not make** - the button carried
+  an `aria-expanded` that was always `false` and an `aria-controls` naming an element that is
+  only in the document once the button is gone. It opens a view in place of the list rather than
+  expanding anything beside itself, so it now carries neither, matching the trail's kilde step.
+  (Fhi.Metadata-j1j3i)
+- **Double-clicking a variable row's name leaves the detail panel open** - The name is the row's
+  disclosure, and the second click of a double-click gesture toggled the panel straight back shut,
+  so the row flashed and the reader landed where they started. Deliberate repeated pressing still
+  toggles both ways, and Enter or Space on the name is unaffected. (Fhi.Metadata-kbwo3)
+- **A saved list's "Sist endret" no longer moves when variables are added or removed.** Munin
+  moves `updatedAt` on a rename only, so the stamp the component showed after an add or a remove
+  jumped back to the day of the last rename on the next refresh. A host reading
+  `VariableList.UpdatedAt` off `VariableListState.Lists` now sees it move on the same change the
+  API moves it on; the variable count beside it still moves on both. (Fhi.Metadata-l9l2n.45)
+- **A failure inside the explorer now says what it was in the host's log.** Twenty-nine of the
+  thirty `catch (Exception)` sites in the package caught the exception and threw it away — the
+  thirtieth rethrows — and every one of them now records it through `ILogger<T>` before it writes
+  the sentence the reader sees, as do the thirty branches beside them that tell a 429 or a 401 from
+  a fault. `LogError` for a failure, `LogWarning` where the outcome is expected, and the exception
+  as the first argument so the stack survives. Expected means expected wherever it happens: every
+  saved-list path — the mount, a page turn, switching list, create, rename, delete, remove,
+  annotate and export — records the rate limiter's 429, and the API's own 401 for a token it will
+  not accept, at `Warning` rather than at `Error`. Nothing on screen changed, and nothing changed about when
+  it is shown. What did change is that a fault on a host's own server was previously diagnosable
+  only by elimination: the kildeutforsker rendering "Kunne ikke laste kilder nå" while the
+  variabelutforsker beside it worked took an afternoon across two repositories, the CMS, the
+  cluster and the live API, and never reached an answer. The message templates carry a kilde,
+  variable or list id, a page number and the like — never a URL, a token, a response body, or
+  anything the reader typed, and never the component's own name, which the log category already is.
+  A cancelled call writes nothing: the hierarchy view cancels its own fetch on every new kilde, so
+  logging above that guard would have made ordinary clicking produce Error entries for a kilde that
+  loaded fine. And what the components log through is wrapped, so a host whose sink throws loses a
+  log line rather than the page — `Logger<T>` rethrows a provider's failure, and these calls sit
+  inside the catches that exist to keep the circuit up. (Fhi.Metadata-l9l2n.47)
+- **A datatype no longer reads "String" in a result row beside "Streng" on the variable's detail
+  panel and on the datatype facet.** The list rows in the search results and in the reader's saved
+  list name a datatype from the API's own facets, and the filters endpoint echoes back the word a
+  variable predating the codes was stored as — `displayName` "String" for code `1`, whatever
+  language the call asked for. A stored value is now resolved to its code before the facet is
+  looked up, so a row holding "String" finds the same facet a row holding "1" does, and both list
+  paths and the facet itself then pass the API's word through the same alias table: a legacy
+  stored spelling, English or Norwegian, becomes the shipped table's name for the code it means,
+  in the reader's own language — "Streng" under `no`, "String" under `en`. Every other name
+  reaches the page exactly as the API sent it, so a datatype added on the API's side is named by
+  the API rather than by a table frozen inside this package. When no API name reaches a row at all
+  — the filters call failed, or has not answered yet, or answered without a name for that code —
+  the row now falls back where the facet and the detail panel already did, to the shipped word for
+  the code, rather than showing the bare number beside a facet showing a word. A datatype the
+  shipped table has never heard of still reads as its code there, as it does on the panel.
+  (Fhi.Metadata-l9l2n.49)
+- **Pressing a kilder row opens its datasamlinger, as pressing the chevron does.** On helsedata.no
+  the row already lit up under the pointer and had no handler behind it, so it looked like a
+  control and did nothing when pressed. It now opens the same drawer the expand chevron opens, and
+  only where there is something to open — a kilde with no datasamlinger has no chevron and the row
+  stays inert. Selecting text in a row is not a press: a drag that begins and ends inside the row
+  lands a click on the row too, so a pointer that travels more than a few pixels in either
+  direction between press and release leaves the drawer alone, and so does a shift-click extending
+  a selection onto the row. A double-click, which is how a short code like K_ALS is taken, opens
+  the drawer once instead of flashing it open and shut under the selection being made and asking
+  the catalogue twice for the same kilde — so the code under the name stays copyable. The controls
+  inside the row keep their own jobs: the name still opens the kilde, and the selection box still
+  only ticks. (Fhi.Metadata-l9l2n.55)
+- **The kilde hierarchy tree puts variabelgrupper in the catalogue's curated order.** Every other
+  level of the tree — delkilder and datasamlinger — has been ordered by `presentationOrder` since
+  the tree was drawn; a variabelgruppe was left in name order because the contract had no property
+  to read. Tromsø4's first visit now opens on GENERAL INFORMATION, PHYSICAL EXAMINATION, BLOOD
+  SAMPLES as the catalogue curated it, rather than on ALCOHOL, BLOOD SAMPLES, COFFEE. A group the
+  catalogue has not ordered still falls back to name order, after every ordered sibling. A
+  delkilde's unassigned variabelgrupper are curated among themselves but stay behind its
+  datasamlinger and child delkilder, where they have always been drawn: a group's number counts a
+  sequence of its own — Tromsø4 numbers its datasamlinger 1 and 2 where its groups run 537 to
+  1189 — so it is not comparable with theirs, and an orphan does not outrank a datasamling on the
+  strength of a smaller number. (Fhi.Metadata-l9l2n.61)
+- **The Kilde column names the kilde again where it has no kortnavn.** A kortnavn the Explorer API
+  leaves out arrives as null or as an empty string, and the fallback to the full kilde name was
+  spelled `??`, which only catches the first — so the result list, and the saved-list view beside
+  it, wrote "Ikke oppgitt" over a name they were already holding. Nearly three in five variabler
+  are affected. The saved list's kilde filter fell the same way, leaving a checkbox whose whole
+  accessible name was its count; it now says "Ikke oppgitt" where the list names a kilde neither
+  long nor short, takes a later entry's name for a kilde whose first one carried none, and sorts
+  by what the checkbox says. (Fhi.Metadata-l9l2n.62)
+- **Double-clicking a kilde row's expand chevron leaves the datasamlinger open** - The second click of a double-click gesture toggled the drawer straight back shut, so the row flashed and the reader landed where they started. Deliberate repeated pressing still toggles both ways, and Enter or Space on the chevron is unaffected. (Fhi.Metadata-l9l2n.72)
+- **Pressing a variabelutforsker row opens its panel, as pressing the variable's name does.** On
+  helsedata.no the row's column strip already computed `cursor: pointer` and had no handler behind
+  it, so it looked like a control and did nothing when pressed — the same complaint that made the
+  kildeutforsker's rows pressable. The name keeps being the disclosure: it is the button that
+  carries `aria-expanded`, it is what the panel is named after, and Runa gives it no second
+  destination to be freed up for, so the row is a pointer shortcut onto it and adds no tab stop.
+  Selecting text in a row is not a press: a drag that begins and ends inside the row lands a click
+  on it too, so a pointer that travels more than a few pixels in either direction between press and
+  release leaves the panel alone, and so does a shift-click extending a selection onto the row. A
+  double-click, which is how a short code is taken, opens the panel once instead of flashing it
+  open and shut under the selection and asking the catalogue twice for the same variable. The
+  controls inside the row keep their own jobs: the name still toggles exactly once, and "Lagre i
+  liste" still only saves. (Fhi.Metadata-l9l2n.81)
+- **A drag over a row's own controls is a selection in both explorers, and an abandoned press no
+  longer swallows the next click.** Highlighting a variable's name — or a kilde's — and dragging
+  across the row released the pointer over the row rather than the button, and the row read that as
+  a press and opened. It now measures the gesture that began on the control, because the press
+  reaches the row while the click still stops at the button. A gesture that begins *and* ends
+  inside one of those controls is a selection as well, so copying a variable's name no longer opens
+  the panel over the words being copied, and copying a kilde's no longer takes the reader off the
+  list. The other half is what happens when a gesture never reaches a click at all: a right-click
+  on the row, or a drag released outside the window, left a coordinate standing that the next click
+  was measured against, so a row activated by speech control or another assistive tool could
+  silently do nothing. A press is now settled when the pointer comes up and belongs to that gesture
+  alone, and a click that reports no click count — which is how that tooling and the keyboard
+  activate a row — is always a press. (Fhi.Metadata-l9l2n.81)
+- **Ticking one value in the variabelutforsker's filter panel draws one active-filter chip.** A
+  delkilde, variabelgruppe or saved filter the facet payload listed twice - once under a parent
+  that is in the payload, once as an orphan - was drawn as two checkboxes, so one press ticked both
+  copies, the facet's own count said two and the row over the results showed two chips for one
+  filter. A repeated id is now placed once however many times the payload names it, keeping the
+  copy that hangs off a parent that is present rather than the copy listed first, so where a value
+  sits and the words it carries are the payload's meaning rather than its order. The kilde facet -
+  the one facet reading its ticks off the payload rather than off the drawn tree - collapses its
+  delkilder on those same terms, so a chip and the checkbox it stands for can never keep copies
+  naming one filter two ways. A repeated kilde is collapsed the same way, by id alone, since a
+  kilde carries no parent; that one was also a crash, because two checkboxes drawn under one key
+  took the whole panel down at the first render after a press. The kildeutforsker's chip row is
+  unchanged and was never affected: it walks four fixed facet definitions over a set of ticked
+  values apiece, so it cannot name one value twice. (Fhi.Metadata-l9l2n.82)
+- **The kilder table's expand control now clears the 24 x 24 minimum target size.** It drew a
+  literal "+", and since `hd-button-reset` strips a button's padding and font, that narrow glyph was
+  most of the control: measured, the box was 20 x 24 CSS px, under what WCAG 2.5.8 asks for. It now
+  discloses with helsedata's chevron — Stiler's `icon` is a 24px box — so the kilder table and the
+  variable table open a row the same way and both controls are big enough to hit.
+  (Fhi.Metadata-mpx2p)
+- **The variabelutforsker's filter panel and its active-filter chips now say which language their
+  words are in.** Every chip over the results passed no language at all, so a screen reader on an
+  English page announced "Tromsøundersøkelsen" with English phonetics (WCAG 3.1.2) — the marking
+  the kildeutforsker's own chips and facet labels have carried from the start. A chip drawn from a
+  catalogue value now carries `lang` on those words alone, never on the capsule or on the remove
+  control whose name is this package's prose, and the checkbox that chip stands for carries the
+  same marking, so one kilde is never named two ways on one page. Words that are this package's
+  own — a kildetype, a datatype, a level's fallback word, the catch-all's yes/no filters — carry
+  none, and neither does a token belonging to no language: a datakategori CURIE, an OID, a code,
+  or a helsefaglig kodeverk's short name, which is the catalogue's key and holds ICD-10 beside
+  DÅR. Both sweeps that build the row decide it the same way, so one kilde's chip cannot differ
+  from another's on nothing but which sweep drew it. (Fhi.Metadata-o49mx)
+- **The hierarchy trail no longer offers a second way to undo a filter.** Ticking a kilde, a
+  delkilde or a variabelgruppe drew it twice over the results — once as a removable chip, once as a
+  trail step with an × of its own — so one ticked value had two remove controls a screen reader
+  announced one after the other. The chip row is now the only place a value is removed, and it
+  still holds one chip per chosen value across every facet. A trail step still narrows to its own
+  level and clears every level below it, which is the thing a chip cannot do, and the trail is now
+  a navigation landmark named "Valgt hierarki" rather than a filter list. (Fhi.Metadata-oj286)
+- **A hierarchy value the facets do not name now has a chip of its own.** The facets are
+  cross-filtered and can come back without a value the reader chose — and there are none at all
+  before the first answer, or after one that failed, while a host may have mounted with a filter
+  already set. Such a value was drawn in the trail and nowhere else, so with the trail's × gone the
+  only control left would have been "Fjern alle filtre", which drops the datatype, the kodeverk and
+  the dates with it. It is listed under its level's own word, exactly as the trail's step reads it,
+  and it stands where its own facet stands in the row rather than after every unrelated one. Where
+  a level has several such values they are one chip carrying a count — "Datasamling (+1)", the way
+  a trail step collapses — because two chips reading the same word are two controls a screen reader
+  cannot tell apart, and one press takes all of them off. (Fhi.Metadata-oj286)
+- **Creating or renaming a variable list no longer risks swallowing an unrelated save or removal
+  raised by another surface while it is in flight.** The two page reads a create used to skip, and
+  the one a rename did, were suppressed by counting notifications rather than naming them, so a
+  same-numbered but unrelated `VariableListState` change during that window could be silently
+  dropped instead of redrawing the list on screen. Suppression is now by identity - which list a
+  change names and whether it could touch that list's rows - carried as the argument of the
+  `Changed` event. (Fhi.Metadata-wuxkn)
+- **BREAKING for a host that subscribes to `VariableListState.Changed`: it is
+  `Action<VariableListState.ListChange?>` now, not `Action`.** A handler written as `() => ...`
+  no longer compiles; take the argument and ignore it (`_ => ...`) to keep the old behaviour. The
+  identity travels on the event rather than in a property beside it because these methods await
+  with `ConfigureAwait(false)`, so a shared property could belong to the next raise by the time a
+  handler read it - and reading the wrong one skips a reload, which is the defect above.
+  (Fhi.Metadata-wuxkn)
+- **Double-clicking or shift-clicking "Vis filtre", "Legg til ny liste", "Gi nytt navn" or
+  "Slett listen" leaves each where the first click left it** - the kildeutforsker's filter panel
+  and the saved-list view's three controls took no click count at all, so the second click of a
+  double-click folded the panel, or shut the form, the first click had just opened. On the delete
+  control it also worked the other way: the same button cancels the confirmation, so a stray
+  second click re-armed the delete the reader had just called off. A shift-click extending a
+  selection across the words beside them did the same. Both gestures are now refused the way the
+  rows and the variable panel's disclosures already refused them; deliberate repeated pressing
+  still toggles both ways, and Enter or Space on any of the four is unaffected. These were the
+  last four controls in the package that took no click count. (Fhi.Metadata-zel47)
+- **The disclosure chevron on a Runa variable row is now clickable.** It used to render as a
+  decorative sibling of the row's toggle button, so a reader aiming at the chevron hit nothing;
+  it now sits inside the button, still `aria-hidden`, so the button's accessible name and
+  `aria-expanded` are unchanged and there is exactly one control. (Fhi.Metadata-zqe14)
+
+### Removed
+
+- **The kildeutforsker's handover button no longer carries a class of its own.** It is
+  `hd-button-square button-square--primary` and nothing else; the
+  `munin-explorer-selection__explore` it also wore is gone. No stylesheet anywhere defined that
+  name — not `Fhi.Helsedata.Stiler` 0.1.38, not 0.1.42, and not the live helsedata.no bundle — so
+  it read as a styling seam and was not one. `munin-explorer-selection`, the ribbon around it,
+  stays and is unchanged. The markup is all that changed: the wrap, the auto height and the height
+  floor the removed name carried in the sample stylesheets moved to
+  `.munin-explorer .munin-explorer-selection .hd-button-square`, so the sample hosts draw the button
+  as they did at every width. The three declarations left behind are the `min-width` floor Stiler
+  declined, the `max-width` that existed only to cap it, and a `justify-content` Stiler's own
+  `.hd-button-square` already declares. A host on `Fhi.Helsedata.Stiler` alone still needs the
+  three moved ones until `Fhi.Metadata-s4es0` puts them there. (Fhi.Metadata-kvgu7)
+
+### Notes for hosts
+
+- **`munin-explorer-kilder__count--zero` is new, and a host that styles it must dim rather than
+  hide.** It joins `munin-explorer-kilder__count` on a kilder-table cell whose count is nought. A
+  host that defines no rule for it loses nothing but the emphasis — the cell still reads `0`. A host
+  that writes one owes the digit legible contrast: `display: none`, `visibility: hidden` and
+  replacing the value with a dash all take away the reader's way of telling a register that counts
+  nothing from a field nobody filled in, which the table renders as "Ikke oppgitt". Both sample
+  stylesheets show the shape, a colour on the cell and nothing else. (Fhi.Metadata-8vbqf)
+- The kilde detail hierarchy requires host styling for `munin-explorer-hierarchy`,
+  `munin-explorer-hierarchy__nodes`, `munin-explorer-hierarchy__branch`,
+  `munin-explorer-hierarchy__leaf`, `munin-explorer-hierarchy__count` and
+  `munin-explorer-hierarchy__metadata`. Preserve native `details`/`summary` disclosure behavior,
+  list semantics, visible keyboard focus and wrapping of long names. Count badges are text,
+  not controls; leaf rows must not appear expandable.
+- Helsedata styling is tracked separately in `Fhi.Metadata-wihod`; this change alone does not
+  supply those rules in Stiler. The sample styles are provisional helsedata-based stand-ins.
+  The component ships no CSS or JavaScript assets. Tab visits disclosure summaries, and
+  Enter or Space toggles them locally in the browser.
+- **The 3:1 the level-guide rule owes is now due on first paint.** The guides used to appear only
+  once a reader pressed `Nivålinjer`, so a rule that drew them too faintly was hard to notice;
+  they are drawn at every first render now. A guide line is a non-text control under WCAG 1.4.11
+  and has to clear 3:1 against whatever the host's own page ground paints — the sample stylesheets
+  use `--grey60` for 6.76:1, and `--grey30`, the token every other border in that panel wears,
+  measures 1.16:1 and is invisible on a desktop. `Fhi.Helsedata.Stiler` carries the rule; a host
+  with its own is the one that owes the ratio. (Fhi.Metadata-dfygj)
+- **The column picker needs seven names a host without Stiler must now style**, and one it no
+  longer uses. New: `form-control` and `form-control__label` (the row a checkbox and its label
+  share), and `icon`, `icon-layout`, `icon--right`, `icon-keyboard-arrow-down` and
+  `icon-keyboard-arrow-up` on the trigger. Gone: `hd-button-reset`, with any rule drawing a tick
+  for `aria-pressed`. A host must also supply `position: relative` on `.munin-explorer__dropdown`,
+  which the component used to emit inline and now leaves to the stylesheet - without it the open
+  list anchors to whatever is positioned further up the page. Both chevrons are always in the DOM;
+  hide the one that contradicts `[open]`, since the component ships no script and cannot swap a
+  class. Both sample stylesheets show the whole set. (Fhi.Metadata-f6az7)
+- **A host on Stiler needs at least `Fhi.Helsedata.Stiler` 0.1.53.** The picker's positioning, its
+  right-aligned trigger, the chevron that follows `[open]` and the cue on the column that refuses
+  all ship in that release. Measured against an earlier Stiler: the dropdown computes
+  `position: static` so the open panel anchors to whatever is positioned further up the page, the
+  trigger falls back to the left of the results row, and both chevrons draw at once. helsedata.no
+  pinned 0.1.42 on 2026-09-08, so this component must not reach them in a release that does not
+  lift Stiler with it. (Fhi.Metadata-f6az7)
+- **Delete any rule you wrote for `munin-explorer-selection__explore`; it is no longer emitted.**
+  A previous note here asked hosts for a `min-width` on it, so that the handover button held still
+  across its three labels. `Fhi.Helsedata.Stiler` measured that floor and declined to ship one: the
+  widest label is English's, and a floor wide enough for it leaves around 104px of dead button in
+  the common Norwegian state. Nothing intends to hold the width now, so the button sizes to its own
+  label and the *Nullstill utvalg* button and the count slide when it changes — accepted rather
+  than overlooked. The button itself is unchanged; `hd-button-square button-square--primary` is
+  what always drew it. (Fhi.Metadata-kvgu7)
+- **The floor went, but the handover still has to be allowed to wrap.** `hd-button-square` is
+  `white-space: nowrap` at a fixed `2.75rem`, so the widest label is one unbreakable line: measured
+  on the sample host at a 320px viewport it draws 306px wide in a 226px row and scrolls the page
+  sideways, which is WCAG 1.4.10 Reflow. Give the ribbon's button `white-space: normal`,
+  `height: auto` and a `min-height: 2.75rem` floor, on a selector that outranks the bare
+  `hd-button-square` — both sample stylesheets scope it
+  `.munin-explorer .munin-explorer-selection .hd-button-square`, three classes, so source order
+  cannot take it back. Those three are the whole of what a host needs. The removed rule carried
+  six, and the other three are gone deliberately: `min-width: min(21rem, 100%)` is the floor Stiler
+  declined; `justify-content: center` is already declared by Stiler's own `.hd-button-square`, so
+  repeating it drew nothing; and `max-width: 100%` was there to cap that floor, and with no floor
+  left the ribbon's flex row is what keeps the button inside the line — the 320px measurement above
+  is with the three and without it. `Fhi.Metadata-s4es0` asks `Fhi.Helsedata.Stiler` for the same
+  three, and until that ships a host with no rule of its own overflows. (Fhi.Metadata-kvgu7)
+- **`munin-explorer-selection`, the ribbon around it, stays and still needs `display: flex`.** A
+  host that draws nothing for it gets the handover, the reset and the count stacked. Stiler has the
+  rule on `main` and it is **not** in 0.1.42, the version helsedata.no pins today, so a host on that
+  pin still supplies it themselves until the pin moves (`Fhi.Metadata-kpmt3`). Both sample
+  stylesheets show what it wants. (Fhi.Metadata-kvgu7)
+- **`munin-explorer-kilder-scroll--cols-N` needs no rule, and that is the point of it.** It is a
+  modifier on a box whose base class `munin-explorer-kilder-scroll` you are already styling, so a
+  stylesheet that ignores it leaves the box exactly as it renders today — nothing degrades to a raw
+  browser default, unlike every other name this package invents. N runs from 4 to 15: four columns
+  are always drawn, a fifth appears where the host wired the handover to the variable explorer, and
+  the reader turns the other ten on and off from the column picker.
+  What a rule buys is the failure it exists for. A host that gives the box `overflow-x: auto` at
+  every width needs nothing here. A host that makes it `overflow-x: visible` above a breakpoint —
+  which `Fhi.Helsedata.Stiler` does above 780px, so that the page is the sticky ancestor the table's
+  header pins to — has a table that runs past its box once the reader turns the wide columns on:
+  measured at 1440×900, fifteen columns put the table 663.6px outside the box and the whole host
+  page into a horizontal scroll, which is a WCAG 1.4.10 failure on the host's own site. Select on
+  the counts that overflow your layout. **Do not answer it by restoring a scroll container above the
+  breakpoint** — that takes the sticky ancestor away and the table's header stops pinning, which is
+  a worse regression than the spill. (Fhi.Metadata-l9l2n.103)
+- `AddMuninExplorer` now calls `AddLogging`. It is idempotent and `TryAdd`-based inside, so a host
+  that already configured logging keeps every provider, filter and minimum level it set, and a host
+  that configured none gets the default factory rather than a component that cannot report a fault.
+  The categories to filter on are `Fhi.Munin.Explorer.Blazor.*`, `Fhi.Munin.Explorer.Client.*` and
+  `Fhi.Munin.Explorer.State.*`, and the highest level written is `Error`. `Error` means a fault:
+  a throttled request and a request the API declined to accept the caller for are `Warning`, on
+  the saved-list paths as much as anywhere else, so a host whose token provider is misconfigured
+  fills the `Warning` channel rather than the `Error` one. A host that mounts a
+  component without calling `AddMuninExplorer` at all still renders: the logger is resolved
+  optionally, and the components no-op when there is none, and a provider that throws is caught at
+  that same seam rather than reaching the page. Message templates no longer repeat the component
+  name the category carries, so filter and group on the category.
+- **One new class name for the kildeutforsker's facet summaries, `munin-explorer-filters__chosen`,
+  and one rule a host owes the summary line itself.** The name is the "2 valgt" beside a facet
+  heading, and it is a handle: the words are markup, so a host that defines nothing still gets the
+  count on screen and in the summary's accessible name, and what a rule buys is the dimming, the
+  tabular figures and `flex: none` so the number is not broken across lines. The rule that has to
+  be there is the other one — a `<summary>` laid out as a row, because the heading inside it is a
+  block box and takes the whole first line otherwise, putting the count under the heading and the
+  disclosure marker under that. Both sample stylesheets show the pair, scoped to the kildeutforsker's
+  facets; the rule shipping in `Fhi.Helsedata.Stiler` is unscoped and shared with the
+  variabelutforsker's panel, and it redraws the marker on the trailing edge, since a summary laid
+  out as a row is no longer a list-item and the browser stops drawing one (Fhi.Metadata-l9l2n.58).
+  Not to be confused with `munin-explorer-filters__count`, the hit count beside a single value,
+  whose rule pushes it to the column edge with `margin-left: auto` — on the summary row that edge
+  is the marker's, which is why the two names exist. (Fhi.Metadata-l9l2n.53)
+- **The kilder table's rows are click targets now, and no host stylesheet says so.** No class name
+  changed and no rule is required, but a row that opens on a press wants `cursor: pointer` — the
+  package ships no CSS and cannot supply it, so on `Fhi.Helsedata.Stiler` the pointer stays an
+  arrow until the rule lands there. Every behaviour the row press reaches is still on the chevron
+  button beside it, which is in the tab order and unchanged, so the missing cursor costs
+  discoverability and nothing else. (Fhi.Metadata-l9l2n.55)
+- **The kildeutforsker's fold row wears `munin-explorer-filters__toolbar`, the name the
+  variabelutforsker's own panel already uses**, and it is emitted as a direct child of
+  `munin-explorer-filters`, which is what the rule pinning it to the top of a scrolling facet
+  column selects on. A host that defines nothing gets the two buttons back in inline flow above the
+  facets, which is a usable row and loses no information; what the rule buys is the row staying on
+  screen once the reader has opened several facets and scrolled, plus the background that keeps the
+  facets from showing through as they pass under it. `Fhi.Helsedata.Stiler` carries both, scoped to
+  the width at which the panel is a scrolling sidebar — below that there is no scroll area to pin
+  to and the row simply sits where it is drawn. Both sample stylesheets carry the flex row.
+  (Fhi.Metadata-l9l2n.60)
+- **One new class name for the variabelutforsker's Kilde facet, `munin-explorer-filters__search`,
+  styled from `Fhi.Helsedata.Stiler` PR 39236.** It is the box that narrows that facet's own values.
+  A handle: a host that defines nothing for it gets a browser-default search field, which is
+  visible, operable and named by a `<label>` of its own, so what a rule buys is the box — full
+  width in a sidebar column, 34px tall and at the panel's own type size rather than the page's.
+  A host writing its own rule owes it one thing that is easy to miss: **lead the selector with the
+  element**, `input.munin-explorer-filters__search`. Stiler's global `input[type="search"]` list is
+  (0,1,1) and a bare class is (0,1,0), so a class-only rule loses its `font-size` to that list and
+  the field draws at 18px where 14px was measured — both figures measured on the real stylesheet
+  rather than derived. The rule merged to Stiler's `main` as `0bd0b34` on 2026-09-09 with no version
+  bump, so the floor is the first release that follows 0.1.42 — a host on 0.1.42 or older is in the
+  undressed case above rather than a broken one. Both sample stylesheets carry the stand-in, declaration for
+  declaration. The kildetype groups that appear inside the same facet add no name at all: they are
+  `<details>`/`<summary>` like the facets around them, so their marker, open state and focus ring
+  come from the `.munin-explorer-filters summary` rules a host already has, and their counts wear
+  `munin-explorer-filters__chosen`, which the kildeutforsker's summaries introduced.
+  (Fhi.Metadata-l9l2n.67)
+- **The variabelutforsker now emits four class names that only the kildeutforsker emitted before,
+  and their rules are not in `Fhi.Helsedata.Stiler` 0.1.42.** `munin-explorer-filters__active`,
+  `munin-explorer-filters__chip` and `munin-explorer-filters__chip-remove` are the active-filter row,
+  the capsule around one chosen value and the close control inside it; `munin-explorer-results__toolbar`
+  is the row the result count shares with the Kolonner picker. No name here is new to the package and
+  no new rule is needed for this change — a host already styling the kildeutforsker's chip row and
+  result row is done. What is new is that the variabelutforsker draws them too, so a host on 0.1.42,
+  the version pinned here, now has two surfaces in the undressed case rather than one: the floor is
+  the Stiler release of 2026-09-11, the first that follows 0.1.42, and it carries all four. Undressed
+  is undressed rather than broken — the chips fall back to inline flow with every word and control
+  intact, and the count and picker to two blocks in ordinary flow — except for the close control's
+  24×24 box, which is a WCAG 2.5.5 target and is the one thing lost rather than merely undrawn. Both
+  sample stylesheets show the shape. (Fhi.Metadata-l9l2n.68)
+- **Three new class names, and a toolbar rule that must not reach them.** `munin-explorer-switch` is
+  the Nivålinjer control, `munin-explorer-switch__track` and `munin-explorer-switch__thumb` are the
+  two empty spans inside it that draw the on/off state. `Fhi.Helsedata.Stiler` carries all three
+  from the release that follows PR 39257 — the rules are on `main` there but no version has shipped
+  them yet, so pinning a published Stiler today gets a browser-default `<button>` with its label.
+  That release is tracked as `Fhi.Metadata-aonvl`; until it lands, the only run that measures the
+  control that ships is `STILER_FROM_SOURCE=1 ./scripts/check-hostile-host.sh`, which builds Stiler
+  `main` from a checkout instead of restoring the pin.
+  That is operable and named, since the state is announced from `aria-checked` rather than drawn,
+  but it has no visible on/off mark, so a sighted reader loses the state a screen reader still
+  hears. Both sample stylesheets show the shape Stiler draws: a 30×18 track and a 12×12 thumb
+  travelling 12px, keyed on `[aria-checked="true"]` and never on a modifier class. Read the off
+  state's colours before rewriting them — the track's `--grey20` fill is the same colour as the
+  control's own hover surface and vanishes on it, so what carries WCAG 1.4.11's 3:1 off is the
+  `--grey60` border, not the fill. **The trap is the toolbar rule.**
+  `munin-explorer-filters__toolbar > .hd-button-square` sets `min-width: 0` and `overflow-wrap:
+  anywhere`, and the switch deliberately no longer wears `hd-button-square` so that rule cannot
+  reach it. A host whose own toolbar rule selects the row's children instead of that class will
+  reach it, and the cost is measured rather than guessed — on the Stiler side of this pair, against
+  Stiler source rather than against this repository's fixture, the same markup under those two
+  declarations came out 4.72×304.34px, one character wide with every letter on a line of its own,
+  where 114.98×32 is what the control should draw. (Fhi.Metadata-l9l2n.87)
+- **`munin-explorer-kilder__expand-icon` is new, and a host on `Fhi.Helsedata.Stiler` needs no rule
+  for it.** The chevron inside the kilder table's expand button wears Stiler's own `icon`,
+  `icon--nomargin` and `icon-keyboard-arrow-right` / `icon-keyboard-arrow-down` beside it, and those
+  are what draw it: `.icon` is `1.5rem` square, which is the whole of why the button now measures at
+  least 24 x 24. The new name is a handle for a host or a test to find it by. A host **without**
+  Stiler owes it that box itself — under 24 x 24 the control fails WCAG 2.5.8 — and both sample
+  stylesheets show the shape it needs. (Fhi.Metadata-mpx2p)
+- **Three new class names for the active-filter row, styled from `Fhi.Helsedata.Stiler` PR 39206.**
+  `munin-explorer-filters__active` is the row, `munin-explorer-filters__chip` the capsule around one
+  ticked value and `munin-explorer-filters__chip-remove` the close control inside it. Handles, all
+  three: a host that defines none of them still gets every word and every control, in inline flow
+  rather than in a row of capsules, and the close control's accessible name is written down in the
+  markup rather than drawn. A host writing its own rules owes the close control a 24×24 box — that
+  is a WCAG 2.5.5 target and the only thing here that is lost rather than merely undressed — and
+  owes the capsule's edge 3:1 against whatever the page ground is. Both sample stylesheets show the
+  shape. Nothing else in the row is new: the heading wears Stiler's `caption margin--none`, where
+  `margin--none` is load-bearing because a bare `caption` paragraph's block margins break the row's
+  alignment, and the clear-all is new but wears no new name: `hd-button-square
+  button-square--ghost` is Stiler's, and the facet panel's own fold toggle already wears it.
+  (Fhi.Metadata-ofoyw)
+- The `munin-explorer-breadcrumb__clear` class name is gone: the control it dressed, the × that
+  emptied the hierarchy, is no longer rendered. A host carrying a rule for it can drop it.
+  `munin-explorer-breadcrumb` keeps its name and now carries `role="navigation"` and the trail's
+  own accessible name — but it holds one child where it held two, so a rule that reached the ×
+  through a descendant selector, or laid the wrapper out expecting a second box beside the list,
+  wants checking against the markup rather than assuming nothing moved. (Fhi.Metadata-oj286)
+- **The node icons need two names a host without Stiler must style**:
+  `munin-explorer-hierarchy__icons`, the slot in front of a row's name, and
+  `munin-explorer-hierarchy__icon`, each glyph in it. Both sample stylesheets show the pair. An
+  undefined one is not an unstyled one: every glyph carries `width="1em"`, `height="1em"` and
+  `stroke="currentColor"` of its own, so it draws at text size in the text colour rather than at an
+  SVG's 300x150 default. What is lost is the colour that tells two datakategorier apart at a
+  glance, and the rule to write it with is `data-node-icon` on the glyph - `PHDR`, `EINS`, `other`
+  and the rest of the EHDS codes, plus `kilde` on the grouping folder. helsedata's own appearance
+  is not in this release: it ships from `Fhi.Helsedata.Stiler` under `Fhi.Metadata-wihod`.
+  (Fhi.Metadata-s3l7l)
+- **One new class name for the kildeutforsker's result row, `munin-explorer-results__toolbar`,
+  styled from `Fhi.Helsedata.Stiler` PR 39220.** It is the row holding the result count, the Sorter
+  control and the Kolonner picker. A handle, and the plainest kind: a host that defines nothing for
+  it gets the three back as three blocks in ordinary flow, which is exactly what shipped before the
+  name existed, so what a rule buys is two rows of vertical space and no reader loses a word or a
+  control. The rules landed in Stiler after 0.1.42 was cut, so the floor is the first release that
+  follows it — a host on 0.1.42 or older is in the undressed case above rather than a broken one.
+  A host writing its own owes the row three things the sample stylesheets show: the count is the
+  row's first child and has to take the slack, or it stops holding the left edge; the row has to
+  end its wrapped lines at the trailing edge, or the picker's right-aligned menu opens off the
+  screen; and the open menu needs a width of its own, because a row makes
+  `munin-explorer-header__actions` content-wide and the menu otherwise shrinks to the width of the
+  Kolonner button with the column names spilling out of it. The name says `results` and the element
+  sits above `munin-explorer-results` rather than inside it, which is deliberate: the results
+  container is drawn only when there are rows, and the count in this row is the component's one
+  polite live region, which has to be in the DOM before its text arrives. (Fhi.Metadata-tciss)
+
 ## 0.1.0-alpha.10 — 2026-09-07
 
 ### Added
