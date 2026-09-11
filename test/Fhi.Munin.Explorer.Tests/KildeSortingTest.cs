@@ -237,31 +237,34 @@ public class KildeSortingTest : BunitContext
     }
 
     [Fact]
-    public void Order_WhenACountColumnRunsDescending_ThenTheValueKeyIsTheOnlyOneThatReverses()
+    public void Order_WhenAValueColumnRunsDescending_ThenTheValueKeyIsTheOnlyOneThatReverses()
     {
-        // Sorted keeps three keys outside the reversal on purpose, and the simplification that
-        // folds any of them in leaves this the only red test: the has-value key first, so an
-        // unrecorded year never rises to the top, then the name and the code, so two kilder sharing
-        // a year do not swap places when the reader reverses the column they are tied on.
+        // All three of ByValue's keys outside the reversal, each reachable: the has-value key so an
+        // unrecorded year never rises to the top, then the name, then the code — which only a pair
+        // sharing both a year and a name reaches, so the two Ørret rows are here to reach it.
         var cut = RenderWith(
             Kilde("Ørret-registeret", "K_ORR", established: "2000"),
             Kilde("Als registeret", "K_ALS", established: "2000"),
+            Kilde("Ørret-registeret", "K_ORX", established: "2000"),
             Kilde("Dødsårsaksregisteret", "K_DAR", established: "1990"),
             Kilde("Uten årstall", "K_UTN"),
             Kilde("Åpen kilde", "K_AAP"));
 
         Choose(cut, KildeSortOrder.Established);
 
-        Assert.Equal(
-            ["Als registeret", "Ørret-registeret", "Dødsårsaksregisteret", "Uten årstall", "Åpen kilde"],
-            RowNames(cut));
+        // Read as codes, because the tie the last key breaks is between two rows drawing the same
+        // name and no assertion on names can see it.
+        Assert.Equal(["K_ALS", "K_ORR", "K_ORX", "K_DAR", "K_UTN", "K_AAP"], RowCodes(cut));
 
         Choose(cut, KildeSortOrder.Established);
 
-        // The years turn round; the two 2000s keep their order and the two without a year stay at
-        // the bottom in theirs.
+        // The years turn round; the three 2000s keep their order, K_ORR stays above K_ORX, and the
+        // two without a year stay at the bottom in theirs.
+        Assert.Equal(["K_DAR", "K_ALS", "K_ORR", "K_ORX", "K_UTN", "K_AAP"], RowCodes(cut));
+
         Assert.Equal(
-            ["Dødsårsaksregisteret", "Als registeret", "Ørret-registeret", "Uten årstall", "Åpen kilde"],
+            ["Dødsårsaksregisteret", "Als registeret", "Ørret-registeret", "Ørret-registeret",
+             "Uten årstall", "Åpen kilde"],
             RowNames(cut));
     }
 
@@ -476,6 +479,34 @@ public class KildeSortingTest : BunitContext
 
         Assert.Equal("descending", SortedHeader(cut)!.GetAttribute("aria-sort"));
         Assert.StartsWith("Opprettet", SortedHeader(cut)!.TextContent.Trim(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Control_WhenAColumnIsSorted_ThenOnlyItsOwnHeadingButtonCarriesAriaCurrent()
+    {
+        // aria-current is on the BUTTON, and it is what Fhi.Helsedata.Stiler's rule for the sorted
+        // heading selects on — nothing in this repository reads Stiler, so losing it is silent here
+        // and visible only on helsedata.no, where the sorted column stops being marked at all.
+        var cut = RenderWith(Kilde("Als registeret", "K_ALS"), Kilde("Barnediabetes", "K_BDR"));
+
+        Assert.All(KildeColumns.SortButtons(cut), button => Assert.False(button.HasAttribute("aria-current")));
+
+        Choose(cut, KildeSortOrder.Name);
+
+        var marked = KildeColumns.SortButtons(cut).Where(button => button.HasAttribute("aria-current")).ToList();
+
+        Assert.Single(marked);
+        Assert.Equal("true", marked[0].GetAttribute("aria-current"));
+        Assert.StartsWith("Navn", marked[0].TextContent.Trim(), StringComparison.Ordinal);
+
+        // It moves with the sort rather than accumulating: a mark left on the column pressed before
+        // would say two columns are the current one.
+        Choose(cut, KildeSortOrder.Established);
+
+        var moved = KildeColumns.SortButtons(cut).Where(button => button.HasAttribute("aria-current")).ToList();
+
+        Assert.Single(moved);
+        Assert.StartsWith("Opprettet", moved[0].TextContent.Trim(), StringComparison.Ordinal);
     }
 
     [Fact]

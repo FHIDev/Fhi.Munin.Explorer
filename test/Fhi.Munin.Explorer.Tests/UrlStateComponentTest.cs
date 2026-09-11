@@ -685,6 +685,14 @@ public class UrlStateComponentTest : BunitContext
 
         Assert.Equal(aria, Sorted(cut));
         Assert.Equal($"/kilder?sort={order}&sortDir={direction}", Mirrored());
+
+        // Again after a further render, because the write side omits the key by comparing against
+        // the column's own default rather than against one constant: a comparison that matched the
+        // wrong column would drop this key silently on the next render and not on the first.
+        cut.Render();
+
+        Assert.Equal(aria, Sorted(cut));
+        Assert.Equal($"/kilder?sort={order}&sortDir={direction}", Mirrored());
     }
 
     /// <summary>The names down the table, which is the only place the order is actually visible.</summary>

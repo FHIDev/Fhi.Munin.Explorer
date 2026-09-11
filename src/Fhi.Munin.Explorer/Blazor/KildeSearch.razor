@@ -804,16 +804,11 @@ else
 </section>
 
 @code {
-    // No role="columnheader", unlike the variable explorer's HeaderCell: that one's header is a div
-    // in a flex pseudo-table and this is a th in a thead, which is a column header already. And
-    // munin-explorer-kilder__sort rather than that one's class name, whose two Stiler rules are
-    // scoped to the pseudo-table's prefix (Fhi.Metadata-l9l2n.106); hd-button-reset beside it is
-    // Stiler's own "a button that draws nothing", worn by the row's name button too.
+    // munin-explorer-kilder__sort rather than the variable explorer's header class, whose two
+    // Stiler rules are scoped to that one's pseudo-table prefix (Fhi.Metadata-l9l2n.106).
     private RenderFragment SortableHeader(KildeSortOrder order, string? columnClass = null) =>
-        @*  aria-sort on the CELL, because it describes the column and not the control, and
-            aria-current is what Stiler's rule for the sorted heading selects on. A real <button>
-            gives Tab, Enter and Space for nothing — a keydown handler would mean the wrong element
-            had been reached for. *@
+        @*  aria-current is what Stiler's rule for the sorted heading selects on; aria-sort sits on
+            the cell because it describes the column rather than the control. *@
         @<th scope="col" class="@columnClass" aria-sort="@AriaSort(order)">
             <button class="hd-button-reset munin-explorer-kilder__sort"
                     type="button"

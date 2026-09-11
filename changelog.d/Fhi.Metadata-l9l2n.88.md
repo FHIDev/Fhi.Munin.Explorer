@@ -14,7 +14,7 @@ category: Changed
   order never written to a host's URL. Hosts setting `KildeSearch.Order` should know that a member
   now names a column rather than a direction, and that the new `Direction` parameter is `Ascending`
   by default whatever the order is — a struct has no unset state to read a per-column default out
-  of, so a host that wants what a heading's first press gives passes
-  `KildeSearch.InitialDirection(order)` alongside. `KildeExplorer` carries the new half in
-  `?sortDir=`, omitted wherever the column is running the way that method says it runs, and `Sist
-  endret` is reachable only once its column is turned on in the picker. (Fhi.Metadata-l9l2n.88)
+  of, so a host that wants what a heading's first press gives passes the new public
+  `KildeSearch.InitialDirection(order)` alongside it (see Added). `KildeExplorer` carries the new
+  half in `?sortDir=`, omitted wherever the column is running the way that method says it runs, and
+  `Sist endret` is reachable only once its column is turned on in the picker. (Fhi.Metadata-l9l2n.88)
