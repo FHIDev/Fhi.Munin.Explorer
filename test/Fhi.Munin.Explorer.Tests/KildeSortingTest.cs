@@ -92,6 +92,10 @@ public class KildeSortingTest : BunitContext
     private static IReadOnlyList<string> RowNames(IRenderedComponent<KildeSearch> cut) =>
         [.. cut.FindAll(".munin-explorer-kilder tbody th button").Select(b => b.TextContent.Trim())];
 
+    /// <summary>The codes under the names, which is where a tie between two equal names is visible.</summary>
+    private static IReadOnlyList<string> RowCodes(IRenderedComponent<KildeSearch> cut) =>
+        [.. cut.FindAll(".munin-explorer-kilder tbody th p.caption").Select(p => p.TextContent.Trim())];
+
     /// <summary>Sort on an order's column, which is the only way a reader can.</summary>
     private static void Choose(IRenderedComponent<KildeSearch> cut, KildeSortOrder order) =>
         KildeColumns.SortBy(cut, order);
@@ -166,14 +170,15 @@ public class KildeSortingTest : BunitContext
             Kilde("Stort register", "K_STO", variables: 240),
             Kilde("Lite register", "K_LIT", variables: 7));
 
-        // The first press on a column is ascending, the variable explorer's rule.
-        Choose(cut, KildeSortOrder.Variables);
-
-        Assert.Equal(["Tomt register", "Lite register", "Stort register"], RowNames(cut));
-
+        // The first press on a count column is descending — KildeSearch.InitialDirection, which is
+        // what keeps ?sort=Variables meaning what "Flest variabler" meant.
         Choose(cut, KildeSortOrder.Variables);
 
         Assert.Equal(["Stort register", "Lite register", "Tomt register"], RowNames(cut));
+
+        Choose(cut, KildeSortOrder.Variables);
+
+        Assert.Equal(["Tomt register", "Lite register", "Stort register"], RowNames(cut));
     }
 
     [Fact]
@@ -188,15 +193,17 @@ public class KildeSortingTest : BunitContext
             Kilde("Nullåret", "K_NUL", established: "0"),
             Kilde("Eldst", "K_ELD", established: "1900"));
 
+        // Newest first on the first press, which is what "Opprettet (nyest først)" meant while a
+        // select offered it.
         Choose(cut, KildeSortOrder.Established);
 
-        Assert.Equal(["Nullåret", "Eldst", "Nyest", "Uten årstall"], RowNames(cut));
+        Assert.Equal(["Nyest", "Eldst", "Nullåret", "Uten årstall"], RowNames(cut));
 
         // Reversed, and the kilde with no year does not move: "not recorded" is last in both
         // directions, which is the one place a reversed comparison would have put it first.
         Choose(cut, KildeSortOrder.Established);
 
-        Assert.Equal(["Nyest", "Eldst", "Nullåret", "Uten årstall"], RowNames(cut));
+        Assert.Equal(["Nullåret", "Eldst", "Nyest", "Uten årstall"], RowNames(cut));
     }
 
     [Fact]
@@ -219,14 +226,65 @@ public class KildeSortingTest : BunitContext
         // The two that have no orderable date come last, between themselves in name order — the
         // tiebreak, not the order they arrived in.
         Assert.Equal(
-            ["Endret i fjor", "Endret sist", "Aldri endret", "Sprøytet dato"],
+            ["Endret sist", "Endret i fjor", "Aldri endret", "Sprøytet dato"],
             RowNames(cut));
 
         Choose(cut, KildeSortOrder.SourceUpdated);
 
         Assert.Equal(
-            ["Endret sist", "Endret i fjor", "Aldri endret", "Sprøytet dato"],
+            ["Endret i fjor", "Endret sist", "Aldri endret", "Sprøytet dato"],
             RowNames(cut));
+    }
+
+    [Fact]
+    public void Order_WhenACountColumnRunsDescending_ThenTheValueKeyIsTheOnlyOneThatReverses()
+    {
+        // Sorted keeps three keys outside the reversal on purpose, and the simplification that
+        // folds any of them in leaves this the only red test: the has-value key first, so an
+        // unrecorded year never rises to the top, then the name and the code, so two kilder sharing
+        // a year do not swap places when the reader reverses the column they are tied on.
+        var cut = RenderWith(
+            Kilde("Ørret-registeret", "K_ORR", established: "2000"),
+            Kilde("Als registeret", "K_ALS", established: "2000"),
+            Kilde("Dødsårsaksregisteret", "K_DAR", established: "1990"),
+            Kilde("Uten årstall", "K_UTN"),
+            Kilde("Åpen kilde", "K_AAP"));
+
+        Choose(cut, KildeSortOrder.Established);
+
+        Assert.Equal(
+            ["Als registeret", "Ørret-registeret", "Dødsårsaksregisteret", "Uten årstall", "Åpen kilde"],
+            RowNames(cut));
+
+        Choose(cut, KildeSortOrder.Established);
+
+        // The years turn round; the two 2000s keep their order and the two without a year stay at
+        // the bottom in theirs.
+        Assert.Equal(
+            ["Dødsårsaksregisteret", "Als registeret", "Ørret-registeret", "Uten årstall", "Åpen kilde"],
+            RowNames(cut));
+    }
+
+    [Fact]
+    public void Order_WhenTheNameColumnRunsDescending_ThenTheCodeTiebreakStillRunsAscending()
+    {
+        // ByName reverses its own key and leaves ThenBy(Code) alone, for the reason ByValue leaves
+        // its tiebreaks alone: the code is what makes the order total rather than part of what the
+        // reader asked for. Two kilder share a name here, so the tie is real and visible.
+        var cut = RenderWith(
+            Kilde("Felles register", "K_BBB"),
+            Kilde("Felles register", "K_AAA"),
+            Kilde("Als registeret", "K_ALS"),
+            Kilde("Ørret-registeret", "K_ORR"));
+
+        Choose(cut, KildeSortOrder.Name);
+
+        Assert.Equal(["K_ALS", "K_AAA", "K_BBB", "K_ORR"], RowCodes(cut));
+
+        Choose(cut, KildeSortOrder.Name);
+
+        // The names turn round and the two Felles register rows do not: K_AAA is still above K_BBB.
+        Assert.Equal(["K_ORR", "K_AAA", "K_BBB", "K_ALS"], RowCodes(cut));
     }
 
     [Fact]
@@ -266,9 +324,9 @@ public class KildeSortingTest : BunitContext
 
         Choose(cut, KildeSortOrder.Variables);
 
-        // The even indices, fewest variables first: A (0), C (2) … Y (24).
+        // The even indices, most variables first: Y (24), W (22) … A (0).
         var expected = Enumerable.Range(0, 13)
-            .Select(i => $"Kilde {(char)('A' + (i * 2))}")
+            .Select(i => $"Kilde {(char)('A' + (24 - (i * 2)))}")
             .ToArray();
 
         Assert.Equal(expected, RowNames(cut));
@@ -292,9 +350,9 @@ public class KildeSortingTest : BunitContext
         Choose(cut, KildeSortOrder.Variables);
 
         // Barnediabetes has the most variables of the five and matches none of the search, so a
-        // sort that ran over the catalogue rather than over the matches would end this list.
+        // sort that ran over the catalogue rather than over the matches would head this list.
         Assert.Equal(
-            ["Als registeret", "Kreftregisteret", "Dødsårsaksregisteret", "Reseptregisteret"],
+            ["Reseptregisteret", "Dødsårsaksregisteret", "Kreftregisteret", "Als registeret"],
             RowNames(cut));
     }
 
@@ -312,13 +370,13 @@ public class KildeSortingTest : BunitContext
         Choose(cut, KildeSortOrder.Variables);
 
         Assert.Equal(
-            "2 kilder, sortert etter Variabler, stigende",
+            "2 kilder, sortert etter Variabler, synkende",
             cut.Find("p[role=status]").TextContent.Trim());
 
         Choose(cut, KildeSortOrder.Variables);
 
         Assert.Equal(
-            "2 kilder, sortert etter Variabler, synkende",
+            "2 kilder, sortert etter Variabler, stigende",
             cut.Find("p[role=status]").TextContent.Trim());
     }
 
@@ -339,6 +397,24 @@ public class KildeSortingTest : BunitContext
     // ---------------------------------------------------------------------------------
     // The control, which is the column heading itself since Fhi.Metadata-l9l2n.88.
     // ---------------------------------------------------------------------------------
+
+    [Theory]
+    [InlineData(KildeSortOrder.Standard, SortDirection.Ascending)]
+    [InlineData(KildeSortOrder.Name, SortDirection.Ascending)]
+    [InlineData(KildeSortOrder.Variables, SortDirection.Descending)]
+    [InlineData(KildeSortOrder.SourceUpdated, SortDirection.Descending)]
+    [InlineData(KildeSortOrder.Established, SortDirection.Descending)]
+    public void InitialDirection_WhenAColumnHasNotBeenPressed_ThenItRunsTheWayItsOldSelectLabelSaid(
+        KildeSortOrder order, SortDirection expected)
+    {
+        // The table itself, because two things read it and neither would fail loudly if it drifted:
+        // the first press on a heading, and what KildeExplorer takes ?sort=Variables to mean when no
+        // ?sortDir= is beside it. The select this change removed was labelled "Flest variabler",
+        // "Sist endret (nyest først)" and "Opprettet (nyest først)", and 0.1.0-alpha.11 shipped
+        // links carrying those three orders; flattening this to Ascending would open every one of
+        // them at the other end of the list, silently and with nothing on screen saying so.
+        Assert.Equal(expected, KildeSearch.InitialDirection(order));
+    }
 
     [Fact]
     public void Control_WhenTheListIsOnScreen_ThenTheSortableColumnsAreTheFourThatMapToAnOrder()
@@ -394,10 +470,11 @@ public class KildeSortingTest : BunitContext
         Assert.Equal("descending", SortedHeader(cut)!.GetAttribute("aria-sort"));
 
         // Another column takes it whole: two columns claiming to be sorted is the failure this and
-        // the SingleOrDefault in SortedHeader are both here for.
+        // the SingleOrDefault in SortedHeader are both here for. It arrives at its own initial
+        // direction rather than keeping the one the reader left Navn in.
         Choose(cut, KildeSortOrder.Established);
 
-        Assert.Equal("ascending", SortedHeader(cut)!.GetAttribute("aria-sort"));
+        Assert.Equal("descending", SortedHeader(cut)!.GetAttribute("aria-sort"));
         Assert.StartsWith("Opprettet", SortedHeader(cut)!.TextContent.Trim(), StringComparison.Ordinal);
     }
 
@@ -502,9 +579,36 @@ public class KildeSortingTest : BunitContext
             [KildeSortOrder.Variables, KildeSortOrder.Variables, KildeSortOrder.Name],
             orders);
 
+        // Descending, reversed, then Navn's own initial direction — not the one Variabler was left
+        // in. Dropping the reset would leave the third entry Ascending only by coincidence here, so
+        // Control_WhenAnotherColumnIsPressed below asserts it where the two directions differ.
         Assert.Equal(
-            [SortDirection.Ascending, SortDirection.Descending, SortDirection.Ascending],
+            [SortDirection.Descending, SortDirection.Ascending, SortDirection.Ascending],
             directions);
+    }
+
+    [Fact]
+    public void Control_WhenAnotherColumnIsPressed_ThenItStartsAtItsOwnDirectionRatherThanKeepingTheLast()
+    {
+        // Dropping the reset in SortAsync compiles and leaves the previous column's direction
+        // applied to the new one. Pressed in both directions here, because a reset dropped between
+        // two columns that happen to start the same way is invisible: Navn starts ascending and
+        // Variabler descending, so each of these two presses would keep the wrong one.
+        var cut = RenderWith(Kilde("Als registeret", "K_ALS"), Kilde("Barnediabetes", "K_BDR"));
+
+        Choose(cut, KildeSortOrder.Name);
+
+        Assert.Equal("ascending", SortedHeader(cut)!.GetAttribute("aria-sort"));
+
+        Choose(cut, KildeSortOrder.Variables);
+
+        Assert.Equal("descending", SortedHeader(cut)!.GetAttribute("aria-sort"));
+        Assert.StartsWith("Variabler", SortedHeader(cut)!.TextContent.Trim(), StringComparison.Ordinal);
+
+        Choose(cut, KildeSortOrder.Name);
+
+        Assert.Equal("ascending", SortedHeader(cut)!.GetAttribute("aria-sort"));
+        Assert.StartsWith("Navn", SortedHeader(cut)!.TextContent.Trim(), StringComparison.Ordinal);
     }
 
     [Fact]

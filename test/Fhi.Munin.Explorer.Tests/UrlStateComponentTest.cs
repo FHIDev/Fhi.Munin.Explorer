@@ -592,6 +592,8 @@ public class UrlStateComponentTest : BunitContext
 
         Sort(chosen, order);
 
+        // No sortDir either way: the first press lands on the direction the column runs by default,
+        // and that is the one the URL leaves unsaid.
         Assert.Equal($"/kilder?sort={order}", Mirrored());
 
         // Mounted afresh on the URL the first one wrote, which is what a reload is. The client is
@@ -608,7 +610,11 @@ public class UrlStateComponentTest : BunitContext
             ShowColumn(reloaded, "Sist endret");
         }
 
-        Assert.Equal("ascending", Sorted(reloaded));
+        var expected = KildeSearch.InitialDirection(order) == SortDirection.Ascending
+            ? "ascending"
+            : "descending";
+
+        Assert.Equal(expected, Sorted(reloaded));
         Assert.StartsWith(Heading(order), SortedColumn(reloaded)!, StringComparison.Ordinal);
     }
 
@@ -624,8 +630,8 @@ public class UrlStateComponentTest : BunitContext
 
         Sort(chosen, KildeSortOrder.Name);
 
-        // Ascending writes nothing: it is where every column starts, exactly as the variable
-        // explorer's own sortDir is omitted there.
+        // Ascending writes nothing on this column: it is the way Navn runs by default, and the URL
+        // says only what somebody chose against the default.
         Assert.Equal("/kilder?sort=Name", Mirrored());
 
         Sort(chosen, KildeSortOrder.Name);
@@ -649,6 +655,36 @@ public class UrlStateComponentTest : BunitContext
 
         Assert.Null(Sorted(cut));
         Assert.Equal("/kilder", Mirrored());
+    }
+
+    [Fact]
+    public void Kilder_WhenALinkNamesTheDirectionTheColumnAlreadyRunsIn_ThenTheKeyIsTakenOffTheAddress()
+    {
+        // The write side omits what is at its default, so a link that spells the default out is one
+        // this component would otherwise read, agree with and leave — and then rewrite on the next
+        // render anyway, because Query never produces it. Ascending is Navn's default.
+        var id = Guid.NewGuid();
+
+        var cut = RenderKilder(id, "http://localhost/kilder?sort=Name&sortDir=Ascending");
+
+        Assert.Equal("ascending", Sorted(cut));
+        Assert.Equal("/kilder?sort=Name", Mirrored());
+    }
+
+    [Theory]
+    // Navn runs A–Å by default, so Descending is the one worth writing down; the three count and
+    // date columns run the other way, so on those it is Ascending. Both are read and both survive.
+    [InlineData("Name", "Descending", "descending")]
+    [InlineData("Variables", "Ascending", "ascending")]
+    public void Kilder_WhenALinkNamesADirectionTheColumnDoesNotRunInByDefault_ThenItSurvivesUntouched(
+        string order, string direction, string aria)
+    {
+        var id = Guid.NewGuid();
+
+        var cut = RenderKilder(id, $"http://localhost/kilder?sort={order}&sortDir={direction}");
+
+        Assert.Equal(aria, Sorted(cut));
+        Assert.Equal($"/kilder?sort={order}&sortDir={direction}", Mirrored());
     }
 
     /// <summary>The names down the table, which is the only place the order is actually visible.</summary>
@@ -765,7 +801,9 @@ public class UrlStateComponentTest : BunitContext
 
         var cut = RenderKilder(id, "http://localhost/kilder?SORT=variables");
 
-        Assert.Equal("ascending", Sorted(cut));
+        // Descending because Variabler is a count column and that is what it means with no
+        // sortDir beside it — the case-insensitivity is what this test is about, not the way.
+        Assert.Equal("descending", Sorted(cut));
         Assert.StartsWith("Variabler", SortedColumn(cut)!, StringComparison.Ordinal);
     }
 
@@ -873,6 +911,25 @@ public class UrlStateComponentTest : BunitContext
         {
             Assert.Empty(cut.FindAll(".munin-explorer-datasamling"));
             Assert.NotEmpty(cut.FindAll(".munin-explorer-hierarchy"));
+        });
+    }
+
+    [Fact]
+    public void Moved_WhenOnlyTheDirectionChanges_ThenTheRowsTurnRoundRatherThanBeingTakenForANoOp()
+    {
+        // The direction is the fourth owned key and the newest, so it is the one a comparison
+        // written for three would leave out — and then a Back onto the other half of a reader's own
+        // sort would be swallowed as "nothing here moved" with the address bar saying otherwise.
+        var cut = RenderThreeKilder("http://localhost/kilder?sort=Name");
+
+        Assert.Equal(["Als registeret", "Barnediabetes", "Reseptregisteret"], RowNames(cut));
+
+        Move("/kilder?sort=Name&sortDir=Descending");
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal(["Reseptregisteret", "Barnediabetes", "Als registeret"], RowNames(cut));
+            Assert.Equal("descending", Sorted(cut));
         });
     }
 

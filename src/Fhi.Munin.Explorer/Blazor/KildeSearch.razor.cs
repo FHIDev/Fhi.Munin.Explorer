@@ -728,7 +728,7 @@ public sealed partial class KildeSearch : ComponentBase
             _kilder.Count,
             ChosenCount,
             _order == KildeSortOrder.Standard ? null : T.KildeOrderLabel(_order),
-            T.DirectionName(_direction));
+            _direction);
 
     /// <summary>The search text as it is worth reporting back, which is nothing when it is blank.</summary>
     private string? SearchText => string.IsNullOrWhiteSpace(_search) ? null : _search.Trim();

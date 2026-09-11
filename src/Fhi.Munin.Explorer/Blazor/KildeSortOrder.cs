@@ -20,6 +20,12 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// them, and a heading a press reverses cannot carry the word.
 /// </para>
 /// <para>
+/// <b>Which way one runs first is not here either, but it is per member.</b> A count or a date
+/// column opens on its largest value and the name column on A, which is what those select labels
+/// meant and what a link carrying an order and no direction still means. The one place that is
+/// decided is <see cref="KildeSearch.InitialDirection"/>.
+/// </para>
+/// <para>
 /// <b>Where a value is missing it sorts last, in every order.</b> A kilde the catalogue has not
 /// given an established year, or a source-system change date, or one whose value is not a date at
 /// all, comes after every kilde that has one — never first and never mixed in, so "not recorded"

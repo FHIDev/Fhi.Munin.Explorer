@@ -30,7 +30,8 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// Kelda cannot maintain and so must not adopt — are carried through untouched. <c>?sort=</c> is
 /// omitted while the list is in the order the catalogue sent it, so a link made before this
 /// component could sort still opens the same page, and <c>?sortDir=</c> is omitted with it and
-/// wherever the column runs ascending.
+/// wherever the column runs the way <see cref="KildeSearch.InitialDirection"/> says it runs — so a
+/// link made while the select offered the orders still opens the end of the list it named.
 /// </para>
 /// <para>
 /// <b>Opening a datasamling is a link.</b> That is what buys middle-click, Ctrl+click and working
@@ -83,9 +84,17 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     /// <summary>The direction key: which way the sorted column runs.</summary>
     /// <remarks>
     /// <c>sortDir</c>, spelled and read exactly as <see cref="ExplorerUrlState"/> spells it, and
-    /// carrying a <see cref="SortDirection"/> member's own name. Written only beside a named order
-    /// and only when it is descending, which is the same rule the two sides of the explorer share:
-    /// a direction without an order describes nothing, and ascending is where every order starts.
+    /// carrying a <see cref="SortDirection"/> member's own name. Written only beside a named order,
+    /// and only when the column is not running the way it runs by default — a direction without an
+    /// order describes nothing, and one that repeats the default says nothing either.
+    /// <para>
+    /// That default is the column's own and not ascending for all four, which is what keeps
+    /// <c>?sort=Variables</c> meaning most-variables-first as it did in 0.1.0-alpha.11, where the
+    /// select offering it was labelled "Flest variabler". See
+    /// <see cref="KildeSearch.InitialDirection"/>; the variable side, whose direction has been in
+    /// its own URL since it could be sorted at all, has no such history to keep and omits
+    /// <c>sortDir</c> on ascending alone.
+    /// </para>
     /// </remarks>
     public const string DirectionQueryKey = "sortDir";
 
@@ -195,13 +204,14 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
             : KildeSortOrder.Standard;
 
         // Only with an order to run: a direction beside the catalogue's own sequence names the way
-        // a column runs that nothing is sorted on, and it would be written straight back out.
+        // a column runs that nothing is sorted on, and it would be written straight back out. The
+        // fallback is the column's own, so ?sort=Variables alone still means most-variables-first.
         var direction =
             order != KildeSortOrder.Standard
             && Enum.TryParse<SortDirection>(mirror.Value(DirectionQueryKey), ignoreCase: true, out var way)
             && Enum.IsDefined(way)
                 ? way
-                : SortDirection.Ascending;
+                : KildeSearch.InitialDirection(order);
 
         return (kilde, datasamling, order, direction);
     }
@@ -300,7 +310,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
             _order == KildeSortOrder.Standard
                 ? ""
                 : OrderQueryKey + "=" + Uri.EscapeDataString(_order.ToString()),
-            _order == KildeSortOrder.Standard || _direction == SortDirection.Ascending
+            _order == KildeSortOrder.Standard || _direction == KildeSearch.InitialDirection(_order)
                 ? ""
                 : DirectionQueryKey + "=" + Uri.EscapeDataString(_direction.ToString()),
         ];

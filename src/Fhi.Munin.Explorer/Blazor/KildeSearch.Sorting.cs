@@ -40,6 +40,12 @@ public sealed partial class KildeSearch
     /// nothing with <see cref="KildeSortOrder.Standard"/>, which is the absence of a sort, so a
     /// host writing a URL has nothing to write there either.
     /// <para>
+    /// <b>Ascending unless you say otherwise, whatever <see cref="Order"/> is.</b> A struct
+    /// parameter has no unset state to read a per-column default out of, so a host that means "the
+    /// way this column runs when a reader first presses it" passes
+    /// <see cref="InitialDirection"/> — most-first for the counts and the dates, A–Å for the name.
+    /// </para>
+    /// <para>
     /// <see cref="SortDirection"/> is the variable side's type, reused rather than doubled: it
     /// names a direction and carries no API token of its own, unlike <see cref="SortField"/> —
     /// which is why <see cref="KildeSortOrder"/> is a separate type and this is not.
@@ -60,7 +66,7 @@ public sealed partial class KildeSearch
 
     /// <summary>
     /// Sort on <paramref name="order"/>'s column: the active one again reverses the direction,
-    /// another starts ascending.
+    /// another starts at that column's <see cref="InitialDirection"/>.
     /// </summary>
     /// <remarks>
     /// The variable explorer's rule, at <c>VariableSearch.Querying.cs</c>, and two-state like it —
@@ -68,10 +74,14 @@ public sealed partial class KildeSearch
     /// carries none of that one's guarding, because nothing here is fetched: this list is whole in
     /// memory and the order is applied over it on the next render, so there is no in-flight request
     /// to drop a press for and no failure to put the state back after.
+    /// <para>
+    /// Where it parts from that one is the direction a newly pressed column starts in: the
+    /// column's own rather than ascending for all of them. See <see cref="InitialDirection"/>.
+    /// </para>
     /// </remarks>
     private async Task SortAsync(KildeSortOrder order)
     {
-        if (order == _order)
+        if (IsActiveSort(order))
         {
             _direction = _direction == SortDirection.Ascending
                 ? SortDirection.Descending
@@ -80,7 +90,7 @@ public sealed partial class KildeSearch
         else
         {
             _order = order;
-            _direction = SortDirection.Ascending;
+            _direction = InitialDirection(order);
         }
 
         await RaiseAsync(OrderChanged, _order, Log);
@@ -89,6 +99,47 @@ public sealed partial class KildeSearch
 
     /// <summary>Whether the list is sorted on this column.</summary>
     private bool IsActiveSort(KildeSortOrder order) => _order == order;
+
+    /// <summary>
+    /// Which way a column runs on the first press, and what a link naming an order but no
+    /// direction means.
+    /// </summary>
+    /// <remarks>
+    /// Descending for the three columns holding a count or a date and ascending for the name. Those
+    /// three said which way they ran while a select offered them — the labels were "Flest
+    /// variabler", "Sist endret (nyest først)" and "Opprettet (nyest først)" — so a
+    /// <c>?sort=Variables</c> link made against that release still opens the list it opened then,
+    /// and a first press still puts the largest count and the most recent date at the top rather
+    /// than the smallest and the oldest.
+    /// <para>
+    /// A deliberate departure from the variable explorer, where every column starts ascending: that
+    /// one's presses were never in a released link's meaning, because its direction has travelled in
+    /// <c>?sortDir=</c> since it could be sorted at all. <see cref="KildeSortOrder.Standard"/> has
+    /// no key to run either way and answers ascending, so that the pair has one answer everywhere.
+    /// </para>
+    /// <para>
+    /// <b>It is not the default of <see cref="Direction"/>.</b> That parameter is a struct with no
+    /// unset state, so it starts ascending whatever the order is; a host reproducing what a link
+    /// means passes this alongside, which is what <see cref="KildeExplorer"/> does.
+    /// </para>
+    /// </remarks>
+    public static SortDirection InitialDirection(KildeSortOrder order) => order switch
+    {
+        KildeSortOrder.Standard => SortDirection.Ascending,
+        KildeSortOrder.Name => SortDirection.Ascending,
+        KildeSortOrder.Variables => SortDirection.Descending,
+        KildeSortOrder.SourceUpdated => SortDirection.Descending,
+        KildeSortOrder.Established => SortDirection.Descending,
+        _ => throw new ArgumentOutOfRangeException(
+            nameof(order), order, "No initial direction for this kilde order.")
+    };
+
+    /// <summary>The mark beside the sorted column's word, for the reader who can see it.</summary>
+    /// <remarks>
+    /// Classless and preceded by a space, drawn as the variable explorer draws its own: the span
+    /// carrying it is <c>aria-hidden</c>, because the cell's <c>aria-sort</c> already says this.
+    /// </remarks>
+    private string SortArrow => _direction == SortDirection.Ascending ? " \u2191" : " \u2193";
 
     /// <summary>
     /// The <c>aria-sort</c> the column's header cell carries, or null for every other column.
@@ -101,64 +152,6 @@ public sealed partial class KildeSearch
         !IsActiveSort(order) ? null
         : _direction == SortDirection.Ascending ? "ascending"
         : "descending";
-
-    /// <summary>
-    /// One sortable column heading: a real <c>th</c>, with the control inside it.
-    /// </summary>
-    /// <remarks>
-    /// The variable explorer's <c>HeaderCell</c> logic on Kelda's own element. What is deliberately
-    /// not copied is that method's <c>role="columnheader"</c>: it carries the role because its
-    /// header is a <c>div</c> in a flex pseudo-table, and a <c>th</c> in a <c>thead</c> is a column
-    /// header already — an explicit role restating a native one is a defect rather than parity.
-    /// <para>
-    /// <c>munin-explorer-kilder__sort</c> and not the variable explorer's
-    /// <c>munin-explorer-dataitem-header__button</c>: that name means the pseudo-table, and
-    /// <c>Fhi.Helsedata.Stiler</c>'s two rules for it are scoped to that prefix, so a button here
-    /// wearing it would be both mislabelled and unstyled (Fhi.Metadata-l9l2n.106).
-    /// </para>
-    /// </remarks>
-    private RenderFragment SortableHeader(KildeSortOrder order, string? columnClass = null) => builder =>
-    {
-        builder.OpenElement(0, "th");
-        builder.AddAttribute(1, "scope", "col");
-        builder.AddAttribute(2, "class", columnClass);
-
-        // On the cell and never on the button: it describes the COLUMN's state, and it is what a
-        // screen reader reads when moving across the header.
-        builder.AddAttribute(3, "aria-sort", AriaSort(order));
-
-        // A real button, so Tab reaches it and Enter and Space press it with nothing written here.
-        // A keydown handler would be the sign the wrong element had been reached for.
-        builder.OpenElement(4, "button");
-
-        // hd-button-reset is Stiler's own "this is a button but draw nothing" class, the same one
-        // the row's name button and the expand toggle wear.
-        builder.AddAttribute(5, "class", "hd-button-reset munin-explorer-kilder__sort");
-        builder.AddAttribute(6, "type", "button");
-
-        // What Stiler's rule for the sorted heading selects on, and the variable explorer's button
-        // carries it for the same reason.
-        builder.AddAttribute(7, "aria-current", IsActiveSort(order) ? "true" : null);
-        builder.AddAttribute(8, "onclick", EventCallback.Factory.Create(this, () => SortAsync(order)));
-
-        // The word over the column, which is the word the status line names the order by — one
-        // label for both, so the sentence cannot come to name an order no header shows.
-        builder.AddContent(9, T.KildeOrderLabel(order));
-
-        if (IsActiveSort(order))
-        {
-            // Bare and classless, drawn as the variable explorer draws it: the character is the
-            // whole of it, aria-sort above says the same thing in words, and it needs no CSS.
-            builder.OpenElement(10, "span");
-            builder.AddAttribute(11, "aria-hidden", "true");
-            builder.AddContent(12, _direction == SortDirection.Ascending ? " \u2191" : " \u2193");
-            builder.CloseElement();
-        }
-
-        builder.CloseElement();
-
-        builder.CloseElement();
-    };
 
     /// <summary>
     /// <paramref name="kilder"/> in <paramref name="order"/>, running <paramref name="direction"/>.

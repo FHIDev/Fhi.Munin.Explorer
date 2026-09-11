@@ -512,10 +512,11 @@ internal sealed record Texts(
     // av 2 filtre, sortert etter Variabler, synkende", assembled here for ResultSummary's reason:
     // where each clause sits is this language's grammar, and so is the plural. The filter clause
     // borrows that sibling's words and its place in the sentence, so the same fact is not told two
-    // ways in two UIs. Still no row range, the list is never paged. Three ints: shown, total,
-    // ticked values. The direction is always supplied and belongs to the order clause, so a
-    // language that drops that clause drops the direction with it.
-    Func<int, int, int, string?, string, string> KildeCount,
+    // ways in two UIs. Still no row range, the list is never paged. Three ints — shown, total,
+    // ticked values — then the order's label, null where the list is in the one the catalogue sent,
+    // then the direction, which is always supplied and which each language words itself through
+    // DirectionWord: it belongs to the order clause, so a language that drops that clause drops it.
+    Func<int, int, int, string?, SortDirection, string> KildeCount,
     // (count) — "3 kilder valgt", the selection bar's own line. Its own member rather than
     // KildeCount reused, though both count kilder: that one says how many the search and the facets
     // left, this one how many of those the reader ticked, and the two sit one above the other on
@@ -780,18 +781,35 @@ internal sealed record Texts(
     /// without a word here would be announced as ascending, and a list announced as ordered the
     /// opposite way to the order it is in is worse than one that fails loudly.
     /// </remarks>
-    public string DirectionName(SortDirection direction) => direction switch
-    {
-        SortDirection.Ascending => Ascending,
-        SortDirection.Descending => Descending,
-        _ => throw new ArgumentOutOfRangeException(
-            nameof(direction), direction, "No name for this sort direction.")
-    };
+    public string DirectionName(SortDirection direction) => DirectionWord(direction, Ascending, Descending);
+
+    /// <summary>One of two words for a direction, chosen by an arm rather than by "else".</summary>
+    /// <remarks>
+    /// Static, and taking the two words rather than reading them off the record, because the one
+    /// other caller is <see cref="KildeCount"/>'s lambda — handed to the constructor, so it cannot
+    /// reach an instance member of the record it is being built into. That is also why the words
+    /// below are constants: each language names its own direction, as it names its own order.
+    /// </remarks>
+    private static string DirectionWord(SortDirection direction, string ascending, string descending) =>
+        direction switch
+        {
+            SortDirection.Ascending => ascending,
+            SortDirection.Descending => descending,
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(direction), direction, "No name for this sort direction.")
+        };
 
     // The facet's own label, named once so the empty state cannot come to offer a toggle under a
     // name the filter panel no longer draws. (Fhi.Metadata-rkjlx)
     private const string ShowHistoricalNo = "Vis historiske";
     private const string ShowHistoricalEn = "Show historical";
+
+    // The two direction words, once each: the record carries them and KildeCount's sentence puts
+    // one of them in its order clause, and that lambda cannot read them back off the record.
+    private const string AscendingNo = "stigende";
+    private const string DescendingNo = "synkende";
+    private const string AscendingEn = "ascending";
+    private const string DescendingEn = "descending";
 
     private static readonly Texts No = new(
         Title: "Variabelutforsker",
@@ -1003,8 +1021,8 @@ internal sealed record Texts(
             ["9"] = "Base64Binary",
             ["10"] = "Fødselsnummer (11 siffer)"
         },
-        Ascending: "stigende",
-        Descending: "synkende",
+        Ascending: AscendingNo,
+        Descending: DescendingNo,
         Pagination: "Paginering",
         SkipToPagination: "Hopp til paginering",
         Previous: "Forrige",
@@ -1131,7 +1149,9 @@ internal sealed record Texts(
                 1 => ", avgrenset av 1 filter",
                 _ => $", avgrenset av {filters} filtre"
             })
-            + (order is null ? "" : $", sortert etter {order}, {direction}"),
+            + (order is null
+                ? ""
+                : $", sortert etter {order}, {DirectionWord(direction, AscendingNo, DescendingNo)}"),
         SelectedKildeCount: count => count == 1 ? "1 kilde valgt" : $"{count} kilder valgt",
         SelectKilde: name => $"Velg {name}",
         NoKilderMatch: (search, filters) =>
@@ -1356,8 +1376,8 @@ internal sealed record Texts(
             ["9"] = "Base64Binary",
             ["10"] = "National ID (11 digits)"
         },
-        Ascending: "ascending",
-        Descending: "descending",
+        Ascending: AscendingEn,
+        Descending: DescendingEn,
         Pagination: "Pagination",
         SkipToPagination: "Skip to pagination",
         Previous: "Previous",
@@ -1480,7 +1500,9 @@ internal sealed record Texts(
                 1 => ", narrowed by 1 filter",
                 _ => $", narrowed by {filters} filters"
             })
-            + (order is null ? "" : $", sorted by {order}, {direction}"),
+            + (order is null
+                ? ""
+                : $", sorted by {order}, {DirectionWord(direction, AscendingEn, DescendingEn)}"),
         SelectedKildeCount: count => count == 1 ? "1 source selected" : $"{count} sources selected",
         SelectKilde: name => $"Select {name}",
         NoKilderMatch: (search, filters) =>

@@ -639,7 +639,7 @@ public class KildeSearchTest : BunitContext
         Choose(cut, KildeSortOrder.Variables);
 
         Assert.Equal(
-            "2 kilder av 3, avgrenset av 1 filter, sortert etter Variabler, stigende", ResultCount(cut));
+            "2 kilder av 3, avgrenset av 1 filter, sortert etter Variabler, synkende", ResultCount(cut));
     }
 
     [Fact]
@@ -683,7 +683,7 @@ public class KildeSearchTest : BunitContext
         KildeColumns.SortBy(cut, "Variables");
 
         Assert.Equal(
-            "1 source of 2, narrowed by 2 filters, sorted by Variables, ascending", ResultCount(cut));
+            "1 source of 2, narrowed by 2 filters, sorted by Variables, descending", ResultCount(cut));
     }
 
     [Fact]
