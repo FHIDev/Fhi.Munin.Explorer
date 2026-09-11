@@ -67,6 +67,57 @@ jobs:
             exit 1
           fi
 
+      - name: Refuse to publish while an earlier version's changelog never landed
+        # Tests whether the SECTION is on main, not whether the branch is an ancestor of it: a
+        # squash merge makes a new object, so an ancestry test calls a merged branch unmerged.
+        # Before the feed push, so a failure here has published nothing. See Fhi.Metadata-l9l2n.111.
+        run: |
+          git fetch --quiet origin \
+            '+refs/heads/changelog/v*:refs/remotes/origin/changelog/v*' \
+            '+refs/heads/main:refs/remotes/origin/main'
+
+          git show origin/main:CHANGELOG.md > "$RUNNER_TEMP/changelog-on-main.md"
+
+          missing=""
+          for ref in $(git for-each-ref --format='%(refname:short)' 'refs/remotes/origin/changelog/v*'); do
+            version="${ref#origin/changelog/v}"
+            # The version this run is publishing has no section yet by definition.
+            [ "$version" = "${{ steps.version.outputs.version }}" ] && continue
+            escaped="$(printf '%s' "$version" | sed 's/[.[\*^$]/\\&/g')"
+            # Deliberately the same predicate as the assembler's Get-SectionBody
+            # (scripts/assemble-changelog.ps1:122): '^##\s+' + escaped version + '(\s|$)'.
+            # EXACTLY two hashes, because '#+' would accept a nested '### 0.1.0-alpha.9' inside an
+            # older section and call that version landed; and a whitespace CLASS, because the
+            # assembler accepts a tab where a literal space would not match. If the two ever
+            # disagree, this guard passes releases the assembler has not actually written.
+            if ! grep -qE "^##[[:space:]]+${escaped}([[:space:]]|$)" "$RUNNER_TEMP/changelog-on-main.md"; then
+              missing="$missing $version"
+            fi
+          done
+
+          if [ -n "$missing" ]; then
+            {
+              echo "### An earlier version's changelog never reached main"
+              echo
+              echo 'Publishing now would consume fragments belonging to it and republish them under'
+              echo 'this version. Nothing has been published yet — clear this, then re-run.'
+              echo
+              for v in $missing; do
+                echo "- **$v** — branch \`changelog/v$v\` exists, but \`CHANGELOG.md\` has no \`## $v\` section."
+              done
+              echo
+              echo 'Two ways out, and which one is right depends on whether the entries are'
+              echo 'recoverable:'
+              echo
+              echo '1. **Merge the branch** if its fragments are still queued. Normal case.'
+              echo '2. **Delete the branch** if a later release already consumed those fragments —'
+              echo '   merging then would duplicate entries that are already filed elsewhere. Restoring'
+              echo '   the lost section to `CHANGELOG.md` is a separate hand edit, and a judgement call.'
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::changelog never landed for:$missing — see the step summary, then re-run"
+            exit 1
+          fi
+
       - name: Check the push credential is present
         env:
           ADO_PACKAGING_TOKEN: ${{ secrets.ADO_PACKAGING_TOKEN }}
@@ -97,66 +148,32 @@ jobs:
             --base origin/main \
             --notes "$GITHUB_WORKSPACE/release-notes.md"
 
-      - name: Open the pull request that records it on main
+      - name: Say where the assembled changelog is
         if: steps.changelog.outputs.assembled == 'true'
-        # Before the feed push, so a run that dies here has published nothing and can be re-run.
-        # The durable record is the BRANCH the assemble step pushed, not this pull request, which
-        # needs a permission FHIDev withholds — so failing to open it must not cost the release.
+        # Prints the command rather than calling gh pr create: FHIDev withholds pull-request
+        # permission from Actions, so the call can never succeed. The branch is the durable record,
+        # and a forgotten pull request is caught by the guard at the top of this job next release.
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BRANCH: ${{ steps.changelog.outputs.branch }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          if [ -n "$(gh pr list --head "$BRANCH" --state open --json number --jq '.[].number')" ]; then
-            echo "A pull request for $BRANCH is already open — left as it is."
-            exit 0
-          fi
-
-          # GitHub does not run workflows for events its own GITHUB_TOKEN caused, so this pull
-          # request arrives with its required checks unreported and cannot merge until a human
-          # reopens it or pushes to the branch. Saying so in the body beats leaving somebody to
-          # work it out from a merge button that never lights up.
           {
-            echo 'Opened by `.github/workflows/release.yml` when the tag was pushed: this'
-            echo 'version section in `CHANGELOG.md`, and the fragments it consumed removed in the'
-            echo 'same commit.'
+            echo "### Open the changelog pull request"
             echo
-            echo 'The package and the GitHub release for this tag already carry these notes.'
-            echo 'Merging this is what puts them in `CHANGELOG.md` on `main` and clears'
-            echo '`changelog.d/`. Until it merges the fragments in it are still queued, and the'
-            echo 'next release would publish them again under its own version.'
+            echo "Branch \`$BRANCH\` is pushed and holds this version's assembled section."
+            echo "The package and the GitHub release already carry these notes; merging the pull"
+            echo 'request is what puts them in `CHANGELOG.md` and clears `changelog.d/`.'
             echo
-            echo '**CI has not reported on this pull request and will not on its own.** GitHub'
-            echo 'suppresses workflow runs for events caused by `GITHUB_TOKEN`, so the required'
-            echo 'checks sit unreported and the merge button stays shut. Close and reopen it, or'
-            echo 'push an empty commit, and they run.'
-          } > "$RUNNER_TEMP/pr-body.md"
+            echo '```'
+            echo "gh pr create --repo $GITHUB_REPOSITORY --base main --head $BRANCH \\"
+            echo "  --title 'docs(changelog): assemble v$VERSION'"
+            echo '```'
+            echo
+            echo 'Until it merges the fragments stay queued, and the next release would publish'
+            echo 'them under its own version. That release will refuse to run until this is merged.'
+          } >> "$GITHUB_STEP_SUMMARY"
 
-          if out="$(gh pr create --base main --head "$BRANCH" \
-            --title "docs(changelog): assemble v$VERSION" \
-            --body-file "$RUNNER_TEMP/pr-body.md" 2>&1)"; then
-            echo "$out"
-          else
-            {
-              echo "### The changelog pull request was not opened"
-              echo
-              echo "Branch \`$BRANCH\` is pushed and holds the assembled section — nothing is lost."
-              echo
-              echo 'What `gh` reported:'
-              echo
-              echo '```'
-              echo "$out"
-              echo '```'
-              echo
-              echo "Open it by hand, or the fragments stay queued and the next release republishes"
-              echo "them under its own version:"
-              echo
-              echo '```'
-              echo "gh pr create --base main --head $BRANCH --title 'docs(changelog): assemble v$VERSION'"
-              echo '```'
-            } >> "$GITHUB_STEP_SUMMARY"
-            echo "::warning::changelog pull request not opened for $BRANCH — open it by hand"
-          fi
+          echo "::notice::changelog branch $BRANCH is pushed — open its pull request by hand; the step summary has the command"
 
       - name: Restore
         run: dotnet restore

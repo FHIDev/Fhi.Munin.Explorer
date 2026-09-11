@@ -989,13 +989,21 @@ assembling would stamp a version with notes nobody had written yet. That was the
 `Fhi.Metadata-l9l2n.44` — assembly was a documented manual step, eight versions shipped without it
 being run once, and the notes on the feed were a link to auto-generated commit titles.
 
-The section is committed on a `changelog/v<version>` branch and offered to `main` as a pull
-request the workflow opens, because the `MainRules` ruleset requires one and has no bypass actors:
-an unattended push to `main` is refused whoever makes it, and a credential that could bypass it is
-one this public repository deliberately does not hold. Merging it is the one manual step, and it
-is not one anybody has to remember for a release to carry its notes. Re-running a tag is safe —
-the assembler finds the section already there, writes no duplicate, and leaves the fragments
-queued for the next release alone.
+The section is committed on a `changelog/v<version>` branch, because the `MainRules` ruleset
+requires a pull request for `main` and has no bypass actors: an unattended push is refused whoever
+makes it, and a credential that could bypass it is one this public repository deliberately does not
+hold. Re-running a tag is safe — the assembler finds the section already there, writes no
+duplicate, and leaves the fragments queued for the next release alone.
+
+**Opening that pull request is a manual step, and it is one somebody has to remember.** The
+workflow used to attempt it, but FHIDev withholds pull-request permission from Actions, so the call
+failed on every release; it now prints the `gh pr create` command in the run summary instead of
+making a call that cannot succeed. Until the branch is merged the fragments stay queued, and the
+next release would publish them under its own version.
+
+Forgetting is caught rather than trusted: the release **refuses to run** while a `changelog/v*`
+branch exists whose version has no section in `CHANGELOG.md`. That check sits before the feed push,
+so a failure has published nothing and the run can simply be re-run once the branch is merged.
 
 The workflow refuses to publish a tag whose commit is not on `main`, a tag that is not a clean
 `vMAJOR.MINOR.PATCH`, and a build whose packed version disagrees with the tag. The feed does allow

@@ -41,8 +41,8 @@ note() { printf '  %s\n' "$*"; }
 
 queued=$(find "$WORK/changelog.d" -maxdepth 1 -name '*.md' ! -name 'README.md' | wc -l | tr -d ' ')
 
-# A branch can legitimately have none - the changelog pull request the release workflow opens is
-# the branch that consumed them all - and the assertions below need a section to have been
+# A branch can legitimately have none - the changelog branch the release prepares is the one that
+# consumed them all - and the assertions below need a section to have been
 # written, so one fragment is invented rather than half the checks quietly not running.
 if [ "$queued" = "0" ]; then
   printf 'category: Added\n- No fragment was queued on this branch, so this one stands in for one.\n' \

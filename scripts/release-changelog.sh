@@ -12,9 +12,10 @@
 # WHY A BRANCH AND NOT MAIN. The MainRules ruleset (checked 2026-09-04) requires a pull request
 # for refs/heads/main, lists seven required status checks, and has no bypass actors - so an
 # unattended push is refused whoever makes it, and a credential that could bypass it is one this
-# public repository deliberately does not hold. The workflow therefore prepares the commit and
-# opens the pull request; merging it is the one human step left, and nothing has to be remembered
-# for a release to carry its notes.
+# public repository deliberately does not hold. The workflow therefore prepares the commit on a
+# branch and prints the gh pr create command; FHIDev withholds pull-request permission from
+# Actions, so opening and merging it is the human step, and the next release refuses to run until
+# the section is on main.
 #
 # WHY THE SECTION IS ASSEMBLED ONTO main AND NOT ONTO THE TAG. The tag's own tree predates every
 # assembly commit, so a section written on top of it and offered to main would revert the sections
