@@ -5843,6 +5843,24 @@ public class KildeSearchTest : BunitContext
         /// <inheritdoc cref="MissingDatasamling"/>
         public bool FailDatasamling { get; set; }
 
+        /// <summary>
+        /// Never answer the datasamling fetch, so a test can land it after the reader has left it.
+        /// </summary>
+        /// <remarks>
+        /// <see cref="FakeClient.StallDetail"/>'s reason one step in: every fetch here otherwise
+        /// completes inside the mount, so none is ever in flight across a close and
+        /// <see cref="KildeSearch"/>'s generation guard is never reached on this path.
+        /// </remarks>
+        public bool StallDatasamling { get; set; }
+
+        private readonly List<TaskCompletionSource<DatasamlingDetail?>> _stalls = [];
+
+        /// <summary>Answer the oldest datasamling fetch still hanging.</summary>
+        public void AnswerStalled(DatasamlingDetail detail) => _stalls[0].TrySetResult(detail);
+
+        /// <summary>Fail the oldest datasamling fetch still hanging.</summary>
+        public void FailStalled() => _stalls[0].TrySetException(new HttpRequestException("the API is down"));
+
         public override Task<DatasamlingDetail?> GetDatasamlingAsync(Guid id, CancellationToken cancellationToken = default)
         {
             DatasamlingCalls++;
@@ -5855,6 +5873,15 @@ public class KildeSearchTest : BunitContext
             if (FailDatasamling)
             {
                 throw new HttpRequestException("the API is down");
+            }
+
+            if (StallDatasamling)
+            {
+                // Continuations inline deliberately - see AnswerStalledCodes in VariableExplorerTest.
+                var stall = new TaskCompletionSource<DatasamlingDetail?>();
+                _stalls.Add(stall);
+
+                return stall.Task;
             }
 
             return Task.FromResult<DatasamlingDetail?>(MissingDatasamling
@@ -6030,5 +6057,63 @@ public class KildeSearchTest : BunitContext
 
         Assert.Empty(cut.FindAll("a.munin-explorer-hierarchy__open"));
         Assert.NotEmpty(cut.FindAll(".munin-explorer-drilldown button.hd-button-square"));
+    }
+
+    /// <summary>
+    /// A deep link into a datasamling whose fetch hangs, left for the kilde in the list beside it.
+    /// </summary>
+    /// <remarks>
+    /// The way out is the list button rather than the kilde link because a mount with no route
+    /// wired is the one whose close stays inside this component — which is what puts the abandoned
+    /// fetch and the kilde replacing it in one component's life, where the guard is all that parts them.
+    /// </remarks>
+    private IRenderedComponent<KildeSearch> AbandonedDatasamling(DrillInClient client, Guid kilde)
+    {
+        var cut = RenderDrillIn(client, kilde, Guid.NewGuid(), wireHref: false);
+
+        cut.Find(".munin-explorer-drilldown button.hd-button-square").Click();
+        cut.Find(".munin-explorer-kilder tbody th button").Click();
+
+        return cut;
+    }
+
+    [Fact]
+    public async Task DrillIn_WhenAnAbandonedDatasamlingFetchAnswers_ThenItDoesNotStandInForTheKildeTheReaderOpened()
+    {
+        // The two fetches share _detailGeneration because they write into one view, and the markup
+        // reads _datasamling before _kilde — so a fetch the reader has walked away from would not
+        // leave a stale field behind, it would replace the view they are looking at.
+        var kilde = Guid.NewGuid();
+        var client = new DrillInClient(kilde, Guid.NewGuid()) { StallDatasamling = true };
+
+        var cut = AbandonedDatasamling(client, kilde);
+
+        Assert.Equal(kilde, cut.FindComponent<KildeView>().Instance.Kilde?.Id);
+
+        await cut.InvokeAsync(() => client.AnswerStalled(new() { Id = Guid.NewGuid(), PreferredTerm = "Inklusjon" }));
+
+        Assert.Equal(kilde, cut.FindComponent<KildeView>().Instance.Kilde?.Id);
+        Assert.Empty(cut.FindAll(".munin-explorer-datasamling"));
+        Assert.Equal(string.Empty, DrillInStatus(cut).TextContent.Trim());
+    }
+
+    [Fact]
+    public async Task DrillIn_WhenAnAbandonedDatasamlingFetchFails_ThenItsFailureIsNotReportedOverTheKilde()
+    {
+        // The same guard on the path out of the catch. The kilde it would report over has loaded
+        // perfectly, and the ordering below is what makes that visible: DetailStatus reads the
+        // loading flag before the error, so a stale _detailError raised while the owning fetch is
+        // still in flight hides behind "Henter datakilden …" and no assertion can see it.
+        var kilde = Guid.NewGuid();
+        var client = new DrillInClient(kilde, Guid.NewGuid()) { StallDatasamling = true };
+
+        var cut = AbandonedDatasamling(client, kilde);
+
+        await cut.InvokeAsync(client.FailStalled);
+
+        Assert.Equal(string.Empty, DrillInStatus(cut).TextContent.Trim());
+        Assert.Equal("caption", DrillInStatus(cut).GetAttribute("class"));
+        Assert.DoesNotContain("Kunne ikke hente datasamlingen", cut.Markup, StringComparison.Ordinal);
+        Assert.Equal(kilde, cut.FindComponent<KildeView>().Instance.Kilde?.Id);
     }
 }
