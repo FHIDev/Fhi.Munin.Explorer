@@ -3557,30 +3557,35 @@ public class VariableSearchTest : BunitContext
     [Fact]
     public void GroupCount_WhenAHostStylesIt_ThenTheTabularFiguresComeWithTheName()
     {
-        // Neither CSS guard reads these declarations. `assert-sample-css-in-step.sh` asks only
-        // whether the name has a rule declaring SOMETHING, and the Stiler comparison skips a
-        // selector the pinned Stiler does not carry — which is this one, until a Stiler is cut.
+        // `assert-sample-css-in-step.sh` asks only whether the name has a rule declaring SOMETHING.
+        // The Stiler comparison skips the `__groupcount` key alone, absent from the pinned Stiler,
+        // and reads these under `__chosen`'s key — nothing does once that job skips or they split.
         static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
 
         var rules = HostClassNames.SampleDeclarationsFor("munin-explorer-filters__groupcount")
             .Select(rule => (rule.Selector, Declarations: Squeezed(rule.Declarations)))
             .ToList();
 
-        Assert.True(
-            rules.Any(r => r.Declarations.Contains("font-variant-numeric:tabular-nums", StringComparison.Ordinal)),
-            "The group counts draw at proportional widths, so 45 above 13 shifts sideways and the "
-            + "column shivers as the facet is narrowed — the whole reason this name has a rule.");
+        // `All` and not `Any`: a second block carrying neither declaration is the drift these pin,
+        // and the shared block below would go on satisfying an `Any`. `NotEmpty` because `All`
+        // over nothing passes. (Fhi.Metadata-l9l2n.104)
+        Assert.NotEmpty(rules);
 
-        Assert.True(
-            rules.Any(r => r.Declarations.Contains("color:var(--grey60)", StringComparison.Ordinal)),
-            "Nothing dims the group count, so a size reads as loudly as the kildetype beside it.");
+        Assert.All(rules, r => Assert.True(
+            r.Declarations.Contains("font-variant-numeric:tabular-nums", StringComparison.Ordinal),
+            "The group counts draw at proportional widths, so 45 above 13 shifts sideways and the "
+            + "column shivers as the facet is narrowed — the whole reason this name has a rule."));
+
+        Assert.All(rules, r => Assert.True(
+            r.Declarations.Contains("color:var(--grey60)", StringComparison.Ordinal),
+            "Nothing dims the group count, so a size reads as loudly as the kildetype beside it."));
 
         // The name was split out of `__chosen` and given its own selector nowhere: it was added to
         // `__chosen`'s, in Stiler and in both samples, so the two cannot drift apart. A block of
         // its own is how they start to. (Fhi.Metadata-l9l2n.104)
-        Assert.True(
-            rules.Any(r => r.Selector.Contains("munin-explorer-filters__chosen", StringComparison.Ordinal)),
-            "The group count has a block of its own rather than sharing `__chosen`'s selector.");
+        Assert.All(rules, r => Assert.True(
+            r.Selector.Contains("munin-explorer-filters__chosen", StringComparison.Ordinal),
+            "The group count has a block of its own rather than sharing `__chosen`'s selector."));
     }
 
     [Fact]
