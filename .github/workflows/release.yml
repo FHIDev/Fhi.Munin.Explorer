@@ -68,33 +68,18 @@ jobs:
           fi
 
       - name: Refuse to publish while an earlier version's changelog never landed
-        # The step below cannot open its own pull request — FHIDev withholds that permission from
-        # Actions — so every release ends with a branch somebody has to merge by hand. The thing
-        # that goes wrong is forgetting, and forgetting is invisible at the release that caused it:
-        # it shows up at the NEXT one, when the fragments still queued get consumed and published
-        # under the wrong version.
-        #
-        # That is not hypothetical. changelog/v0.1.0-alpha.9 went unmerged, alpha.10 consumed what
-        # it had left queued, and CHANGELOG.md has no alpha.9 section at all — those entries are
-        # filed under alpha.10, while the alpha.9 package and release say otherwise.
-        #
-        # The test is whether the SECTION is on main, not whether the branch is an ancestor of it.
-        # Those are different questions once a pull request is squash-merged: the squash commit is
-        # a new object, so the branch tip never becomes an ancestor and an ancestry test calls a
-        # perfectly merged branch unmerged. Measured on changelog/v0.1.0-alpha.11, which read as
-        # "diverged" minutes after its pull request merged.
-        #
-        # It sits before the feed push, where a failure has published nothing and the run can be
-        # re-run once the section is in place.
+        # Tests whether the SECTION is on main, not whether the branch is an ancestor of it: a
+        # squash merge makes a new object, so an ancestry test calls a merged branch unmerged.
+        # Before the feed push, so a failure here has published nothing. See Fhi.Metadata-l9l2n.111.
         run: |
           git fetch --quiet origin \
-            '+refs/heads/changelog/*:refs/remotes/origin/changelog/*' \
+            '+refs/heads/changelog/v*:refs/remotes/origin/changelog/v*' \
             '+refs/heads/main:refs/remotes/origin/main'
 
           git show origin/main:CHANGELOG.md > "$RUNNER_TEMP/changelog-on-main.md"
 
           missing=""
-          for ref in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin/changelog); do
+          for ref in $(git for-each-ref --format='%(refname:short)' 'refs/remotes/origin/changelog/v*'); do
             version="${ref#origin/changelog/v}"
             # The version this run is publishing has no section yet by definition.
             [ "$version" = "${{ steps.version.outputs.version }}" ] && continue
