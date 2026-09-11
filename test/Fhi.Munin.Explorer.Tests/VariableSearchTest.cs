@@ -10449,6 +10449,74 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
+    public void Detail_WhenADatasamlingHasNoName_ThenTheCountedStepAndTheListStayInStep()
+    {
+        // The count in the trail and the list beside it must drop the same entries, which holds
+        // because both read NamedDatasamlinger. Filtered twice, they drift into "2 datasamlinger"
+        // standing over three names, or a heading over a list that no longer matches its count.
+        var client = new DetailClient(OnePage(Row(TaleId, "1. Tale")))
+            .Knows(Detail(TaleId) with
+            {
+                DatasamlingName = "Inklusjon",
+                AllDatasamlinger =
+                [
+                    new() { Id = Guid.NewGuid(), Name = "  " },
+                    new() { Id = Bakgrunn, Name = "MS-oppfølging" },
+                    new() { Id = Levekaar, Name = "Inklusjon" }
+                ]
+            });
+        var cut = RenderWith(client);
+
+        Toggles(cut)[0].Click();
+
+        var trail = Values(cut)[2].QuerySelectorAll("ol > li");
+
+        Assert.Equal("2 datasamlinger", trail[^1].TextContent);
+
+        Assert.Equal(["MS-oppfølging", "Inklusjon"],
+                     Values(cut)[3].QuerySelectorAll("li")
+                                   .Select(l => l.QuerySelector("span[lang=\"no\"]")!.TextContent));
+    }
+
+    [Fact]
+    public void Detail_WhenAMembershipPeriodIsMissingOrDefault_ThenItReadsAsEveryOtherViewWritesIt()
+    {
+        // Through CatalogueDate.Period rather than the panel's dataperiode wording: a default at
+        // either end is no date rather than the year 1, and an end with no start stands alone —
+        // an en-dash with nothing before it reads as a value that failed to draw.
+        var client = new DetailClient(OnePage(Row(TaleId, "1. Tale")))
+            .Knows(Detail(TaleId) with
+            {
+                AllDatasamlinger =
+                [
+                    new() { Id = Bakgrunn, Name = "Uten start",
+                            ValidFrom = null, ValidTo = new DateTimeOffset(2024, 5, 1, 0, 0, 0, TimeSpan.Zero) },
+                    new() { Id = Levekaar, Name = "Uten slutt",
+                            ValidFrom = new DateTimeOffset(2023, 1, 1, 0, 0, 0, TimeSpan.Zero),
+                            ValidTo = default(DateTimeOffset) },
+                    new() { Id = Guid.NewGuid(), Name = "Standardstart",
+                            ValidFrom = default(DateTimeOffset),
+                            ValidTo = new DateTimeOffset(2020, 5, 5, 0, 0, 0, TimeSpan.Zero) }
+                ]
+            });
+        var cut = RenderWith(client);
+
+        Toggles(cut)[0].Click();
+
+        var listed = Values(cut)[3].QuerySelectorAll("li").Select(l => l.TextContent).ToList();
+
+        Assert.DoesNotContain(listed, line => line.Contains("0001", StringComparison.Ordinal));
+        Assert.DoesNotContain(listed, line => line.Contains('?', StringComparison.Ordinal));
+
+        // The end standing alone at both ends of the list, and the open period in between.
+        Assert.DoesNotContain("–", listed[0], StringComparison.Ordinal);
+        Assert.Contains("2024", listed[0], StringComparison.Ordinal);
+        Assert.EndsWith("Pågående)", listed[1], StringComparison.Ordinal);
+        Assert.DoesNotContain("–", listed[2], StringComparison.Ordinal);
+        Assert.Contains("2020", listed[2], StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Detail_WhenTheDatasamlingerAreCountedForAnEnglishReader_ThenTheStepIsInEnglish()
     {
         // The counted step is this component's own prose rather than a name out of the catalogue,

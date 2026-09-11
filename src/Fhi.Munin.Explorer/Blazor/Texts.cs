@@ -65,9 +65,9 @@ internal sealed record Texts(
     string FieldKildePath,
     string FieldDataPeriod,
 
-    // The kildesti's last step for a variable that sits in several datasamlinger. A step is one
-    // place, so it counts them and the list beside the trail names every one; the count follows
-    // the reader's language, since the words are ours rather than the catalogue's.
+    // The kildesti's last step for a variable that sits in several datasamlinger: a step is one
+    // place, so it counts them and the list beside the trail names every one. Its own text rather
+    // than DatasamlingerLoaded, whose identical words are a live region's and free to drift.
     Func<int, string> DatasamlingCountCrumb,
 
     string TabDetails,
@@ -801,7 +801,7 @@ internal sealed record Texts(
         Ongoing: "Pågående",
         FieldKildePath: "Kildesti",
         FieldDataPeriod: "Dataperiode",
-        DatasamlingCountCrumb: count => $"{count} datasamlinger",
+        DatasamlingCountCrumb: count => count == 1 ? "1 datasamling" : $"{count} datasamlinger",
         TabDetails: "Detaljer",
         TabData: "Data",
         TabSearchResults: "Søkeresultat",
@@ -1157,7 +1157,7 @@ internal sealed record Texts(
         Ongoing: "Ongoing",
         FieldKildePath: "Source path",
         FieldDataPeriod: "Data period",
-        DatasamlingCountCrumb: count => $"{count} data collections",
+        DatasamlingCountCrumb: count => count == 1 ? "1 data collection" : $"{count} data collections",
         TabDetails: "Details",
         TabData: "Data",
         TabSearchResults: "Search results",

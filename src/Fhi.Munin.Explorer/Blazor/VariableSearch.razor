@@ -814,11 +814,14 @@ else
                                                     @* The plural the trail above cannot carry.
                                                        Drawn only when there are several: a list of
                                                        one name is the step above said twice. *@
-                                                    @if (DatasamlingNames(detail).Count > 1)
+                                                    @{
+                                                        var datasamlinger = NamedDatasamlinger(detail);
+                                                    }
+                                                    @if (datasamlinger.Count > 1)
                                                     {
                                                         <div>
                                                             <dt class="headline headline-xxs margin--none">@T.HeadingDataCollections</dt>
-                                                            <dd>@DatasamlingList(detail)</dd>
+                                                            <dd>@DatasamlingList(datasamlinger)</dd>
                                                         </div>
                                                     }
 

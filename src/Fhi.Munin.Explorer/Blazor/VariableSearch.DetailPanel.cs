@@ -170,6 +170,19 @@ public partial class VariableSearch
     }
 
     /// <summary>
+    /// Every datasamling the variable sits in, less the ones the payload left unnamed.
+    /// </summary>
+    /// <remarks>
+    /// The one place that decides what counts as a datasamling, because three renders read it: the
+    /// trail's count, the guard on the row, and <see cref="DatasamlingList"/>. Written out twice it
+    /// drifts into a count standing over a list of some other number.
+    /// </remarks>
+    private static IReadOnlyList<DatasamlingReference> NamedDatasamlinger(VariableDetail detail) =>
+        detail.AllDatasamlinger
+            .Where(datasamling => !string.IsNullOrWhiteSpace(datasamling.Name))
+            .ToList();
+
+    /// <summary>
     /// Every datasamling the variable sits in, by name.
     /// </summary>
     /// <remarks>
@@ -180,9 +193,8 @@ public partial class VariableSearch
     /// </remarks>
     private static IReadOnlyList<string> DatasamlingNames(VariableDetail detail)
     {
-        var names = detail.AllDatasamlinger
+        var names = NamedDatasamlinger(detail)
             .Select(datasamling => datasamling.Name)
-            .Where(name => !string.IsNullOrWhiteSpace(name))
             .ToList();
 
         if (names.Count == 0 && !string.IsNullOrWhiteSpace(detail.DatasamlingName))
@@ -304,16 +316,16 @@ public partial class VariableSearch
     /// Every datasamling the variable sits in, each with the period of its membership.
     /// </summary>
     /// <remarks>
-    /// The shape <see cref="VariableView"/> draws one press further in, so the two agree: a bare
-    /// <c>&lt;ul&gt;</c>, for the reason the trail is a bare <c>&lt;ol&gt;</c>, with the validity per
-    /// entry because the periods differ — one range over all of them would be nobody's period.
+    /// The validity per entry, since one range over all of them would be nobody's period, and
+    /// through <see cref="CatalogueDate.Period"/> — how every other rendering of this field words
+    /// it. Bare, as <see cref="NameList"/> beside it is: the panel's own rule styles an unclassed
+    /// list, and a name Stiler has never heard of renders as a browser default.
     /// </remarks>
-    private RenderFragment DatasamlingList(VariableDetail detail) => builder =>
+    private RenderFragment DatasamlingList(IReadOnlyList<DatasamlingReference> datasamlinger) => builder =>
     {
         builder.OpenElement(0, "ul");
 
-        foreach (var datasamling in detail.AllDatasamlinger
-                     .Where(datasamling => !string.IsNullOrWhiteSpace(datasamling.Name)))
+        foreach (var datasamling in datasamlinger)
         {
             builder.OpenElement(1, "li");
 
@@ -322,7 +334,8 @@ public partial class VariableSearch
             builder.AddContent(4, datasamling.Name);
             builder.CloseElement();
 
-            if (PeriodText(datasamling.ValidFrom, datasamling.ValidTo) is { } validity)
+            if (CatalogueDate.Period(datasamling.ValidFrom, datasamling.ValidTo, Language, T,
+                                     DateWidth.Narrow) is { } validity)
             {
                 // Outside the lang="no" above: the months and "Pågående" are this component's
                 // words and follow Language, where the name beside them is Munin's Norwegian.
