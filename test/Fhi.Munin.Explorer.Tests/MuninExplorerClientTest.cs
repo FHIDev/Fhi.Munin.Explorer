@@ -79,6 +79,11 @@ public class MuninExplorerClientTest
         // empty with nothing chosen — FilterPanel's remarks say why that is a message rather than
         // an omission, and its wire names are pinned below against a fixed payload.
         Assert.Empty(filters.Variabelgrupper);
+
+        // The tree collection is absent from this capture rather than empty in it: it was taken
+        // before Fhi.Metadata-aui6t added the key, which is the shape an older API still answers
+        // with and the reason a caller with no tree has to be a working caller.
+        Assert.Empty(filters.HierarchyVariabelgrupper);
         Assert.NotEqual(Guid.Empty, filters.Delkilder[0].KildeId);
 
         // Every kodeverk row in this capture has a resolved name. The null that an unreachable
@@ -843,41 +848,290 @@ public class MuninExplorerClientTest
         Assert.Equal(new Guid("6f1d4a5c-0000-4000-8000-000000000011"), filters.Datasamlinger[1].DelkildeId);
     }
 
-    [Fact]
-    public async Task GetFiltersAsync_WhenTheAnswerCarriesVariabelgrupper_ThenEveryWireNameIsRead()
-    {
-        // The shortlist is empty with nothing chosen, so filters.json holds no row and no other
-        // payload here carries the facet at all. Nothing would notice a renamed parentId, and the
-        // group tree would rebuild flat once a datakilde is chosen and a shortlist arrives.
-        var filters = await WithJson("""
+    // Inline because the capture answers both collections empty, and a hand-written row in it would
+    // pin a payload the API does not send. One payload for every test below, so they cannot
+    // disagree about the shape. (Fhi.Metadata-0ecep)
+    private const string VariabelgruppeSurfaces = """
+        {
+          "variabelgrupper": [
             {
-              "variabelgrupper": [
+              "id": "6f1d4a5c-0000-4000-8000-000000000201",
+              "name": "Bakgrunn",
+              "parentId": null,
+              "count": 12,
+              "filter": "1",
+              "global": true,
+              "owners": [
                 {
-                  "id": "6f1d4a5c-0000-4000-8000-000000000201",
-                  "name": "Bakgrunn",
-                  "parentId": null,
-                  "count": 12
-                },
+                  "kildeId": "6f1d4a5c-0000-4000-8000-000000000001",
+                  "delkildeId": "6f1d4a5c-0000-4000-8000-000000000011",
+                  "datasamlingId": "6f1d4a5c-0000-4000-8000-000000000101"
+                }
+              ]
+            },
+            {
+              "id": "6f1d4a5c-0000-4000-8000-000000000202",
+              "name": "Utdanning",
+              "parentId": "6f1d4a5c-0000-4000-8000-000000000201",
+              "count": 3,
+              "global": false,
+              "owners": [
                 {
-                  "id": "6f1d4a5c-0000-4000-8000-000000000202",
-                  "name": "Utdanning",
-                  "parentId": "6f1d4a5c-0000-4000-8000-000000000201",
-                  "count": 3
+                  "kildeId": "6f1d4a5c-0000-4000-8000-000000000001",
+                  "delkildeId": null,
+                  "datasamlingId": "6f1d4a5c-0000-4000-8000-000000000102"
+                }
+              ]
+            },
+            {
+              "id": "6f1d4a5c-0000-4000-8000-000000000203",
+              "name": "Stamme uten egne variabler",
+              "parentId": null,
+              "count": 0,
+              "filter": "2",
+              "global": false,
+              "owners": [
+                {
+                  "kildeId": "6f1d4a5c-0000-4000-8000-000000000002",
+                  "delkildeId": null,
+                  "datasamlingId": null
+                }
+              ]
+            },
+            {
+              "id": "6f1d4a5c-0000-4000-8000-000000000204",
+              "name": "Tilbudt under stammen",
+              "parentId": "6f1d4a5c-0000-4000-8000-000000000203",
+              "count": 7,
+              "filter": null,
+              "global": false,
+              "owners": [
+                {
+                  "kildeId": "6f1d4a5c-0000-4000-8000-000000000002",
+                  "delkildeId": "6f1d4a5c-0000-4000-8000-000000000012",
+                  "datasamlingId": null
                 }
               ]
             }
-            """).GetFiltersAsync();
+          ],
+          "hierarkiVariabelgrupper": [
+            {
+              "id": "6f1d4a5c-0000-4000-8000-000000000201",
+              "name": "Bakgrunn",
+              "parentId": null,
+              "count": 12,
+              "filter": "1",
+              "global": true,
+              "owners": [
+                {
+                  "kildeId": "6f1d4a5c-0000-4000-8000-000000000001",
+                  "delkildeId": "6f1d4a5c-0000-4000-8000-000000000011",
+                  "datasamlingId": "6f1d4a5c-0000-4000-8000-000000000101"
+                }
+              ]
+            },
+            {
+              "id": "6f1d4a5c-0000-4000-8000-000000000202",
+              "name": "Utdanning",
+              "parentId": "6f1d4a5c-0000-4000-8000-000000000201",
+              "count": 3,
+              "global": false,
+              "owners": [
+                {
+                  "kildeId": "6f1d4a5c-0000-4000-8000-000000000001",
+                  "delkildeId": null,
+                  "datasamlingId": "6f1d4a5c-0000-4000-8000-000000000102"
+                }
+              ]
+            },
+            {
+              "id": "6f1d4a5c-0000-4000-8000-000000000203",
+              "name": "Stamme uten egne variabler",
+              "parentId": null,
+              "count": 0,
+              "filter": "2",
+              "global": false,
+              "owners": [
+                {
+                  "kildeId": "6f1d4a5c-0000-4000-8000-000000000002",
+                  "delkildeId": null,
+                  "datasamlingId": null
+                }
+              ]
+            },
+            {
+              "id": "6f1d4a5c-0000-4000-8000-000000000204",
+              "name": "Tilbudt under stammen",
+              "parentId": "6f1d4a5c-0000-4000-8000-000000000203",
+              "count": 7,
+              "filter": null,
+              "global": false,
+              "owners": [
+                {
+                  "kildeId": "6f1d4a5c-0000-4000-8000-000000000002",
+                  "delkildeId": "6f1d4a5c-0000-4000-8000-000000000012",
+                  "datasamlingId": null
+                }
+              ]
+            },
+            {
+              "id": "6f1d4a5c-0000-4000-8000-000000000205",
+              "name": "Kun i treet",
+              "parentId": null,
+              "count": 5,
+              "filter": "2",
+              "global": false,
+              "owners": [
+                {
+                  "kildeId": "6f1d4a5c-0000-4000-8000-000000000002",
+                  "delkildeId": "6f1d4a5c-0000-4000-8000-000000000012",
+                  "datasamlingId": "6f1d4a5c-0000-4000-8000-000000000103"
+                }
+              ]
+            }
+          ]
+        }
+        """;
 
-        Assert.Equal(2, filters.Variabelgrupper.Count);
+    private static Task<FilterOptions> VariabelgruppeSurfacesAsync() =>
+        WithJson(VariabelgruppeSurfaces).GetFiltersAsync();
+
+    [Fact]
+    public async Task GetFiltersAsync_WhenTheAnswerCarriesVariabelgrupper_ThenEveryWireNameIsRead()
+    {
+        // Both collections answer empty in every environment probed so far, so the capture pins
+        // none of these names and a renamed one would land nowhere with nothing going red — the
+        // gap Fhi.Metadata-0ecep opened for the four names this facet had, now that it has seven.
+        var filters = await VariabelgruppeSurfacesAsync();
+
+        Assert.Equal(4, filters.Variabelgrupper.Count);
+        Assert.Equal(5, filters.HierarchyVariabelgrupper.Count);
 
         var root = filters.Variabelgrupper[0];
         Assert.Equal(new Guid("6f1d4a5c-0000-4000-8000-000000000201"), root.Id);
         Assert.Equal("Bakgrunn", root.Name);
         Assert.Null(root.ParentId);
         Assert.Equal(12, root.Count);
+        Assert.Equal("1", root.Filter);
+        Assert.True(root.Global);
 
-        // The parent the caller rebuilds the group tree from.
+        var placement = Assert.Single(root.Owners);
+        Assert.Equal(new Guid("6f1d4a5c-0000-4000-8000-000000000001"), placement.KildeId);
+        Assert.Equal(new Guid("6f1d4a5c-0000-4000-8000-000000000011"), placement.DelkildeId);
+        Assert.Equal(new Guid("6f1d4a5c-0000-4000-8000-000000000101"), placement.DatasamlingId);
+
+        // The parent the caller rebuilds the group tree from, and the one row the tree has and the
+        // standalone facet does not — read from the second collection with the same names.
         Assert.Equal(root.Id, filters.Variabelgrupper[1].ParentId);
+        Assert.Equal("Kun i treet", filters.HierarchyVariabelgrupper[4].Name);
+        Assert.Equal(5, filters.HierarchyVariabelgrupper[4].Count);
+        Assert.False(filters.HierarchyVariabelgrupper[4].Global);
+    }
+
+    [Fact]
+    public async Task GetFiltersAsync_WhenAGroupCarriesOwners_ThenTheyAreReadApartFromItsParentId()
+    {
+        // ParentId is another GROUP and never the catalogue owner, so one property cannot answer
+        // both: a group with no parent still hangs under a kilde, and a child hangs under a
+        // different kilde from the one its parent's id could be mistaken for.
+        var filters = await VariabelgruppeSurfacesAsync();
+
+        var root = filters.Variabelgrupper[0];
+        Assert.Null(root.ParentId);
+        Assert.Equal(new Guid("6f1d4a5c-0000-4000-8000-000000000001"), Assert.Single(root.Owners).KildeId);
+
+        var child = filters.Variabelgrupper[3];
+        var parentId = new Guid("6f1d4a5c-0000-4000-8000-000000000203");
+        Assert.Equal(parentId, child.ParentId);
+        Assert.NotEqual(parentId, Assert.Single(child.Owners).KildeId);
+    }
+
+    [Fact]
+    public async Task GetFiltersAsync_WhenAPlacementStopsAboveADatasamling_ThenTheShallowerShapesAreRead()
+    {
+        // The three shallower shapes a placement comes in — the full one is pinned above — all of
+        // which a tree has to draw. A null is a level the placement does not reach rather than
+        // missing data, and a sentinel id would hang the group off a folder that does not exist.
+        var filters = await VariabelgruppeSurfacesAsync();
+
+        var straightOffItsKilde = Assert.Single(filters.Variabelgrupper[1].Owners);
+        Assert.Null(straightOffItsKilde.DelkildeId);
+        Assert.Equal(new Guid("6f1d4a5c-0000-4000-8000-000000000102"), straightOffItsKilde.DatasamlingId);
+
+        var kildeOnly = Assert.Single(filters.Variabelgrupper[2].Owners);
+        Assert.Null(kildeOnly.DelkildeId);
+        Assert.Null(kildeOnly.DatasamlingId);
+        Assert.Equal(new Guid("6f1d4a5c-0000-4000-8000-000000000002"), kildeOnly.KildeId);
+
+        var delkildeWithNoDatasamling = Assert.Single(filters.Variabelgrupper[3].Owners);
+        Assert.Equal(new Guid("6f1d4a5c-0000-4000-8000-000000000012"), delkildeWithNoDatasamling.DelkildeId);
+        Assert.Null(delkildeWithNoDatasamling.DatasamlingId);
+    }
+
+    [Fact]
+    public async Task GetFiltersAsync_WhenAGroupIsOptedOut_ThenItSurvivesTheReadAndIsNoStandaloneOption()
+    {
+        // The contract keeps every "2" group, because the tree draws them, and the boundary is the
+        // property rather than which collection a row arrived in. (Fhi.Metadata-fbe3w)
+        var filters = await VariabelgruppeSurfacesAsync();
+
+        var treeOnly = filters.HierarchyVariabelgrupper.Single(g => g.Name == "Kun i treet");
+        Assert.Equal("2", treeOnly.Filter);
+        Assert.False(treeOnly.IsStandaloneFacetOption);
+        Assert.DoesNotContain(filters.Variabelgrupper, g => g.Id == treeOnly.Id);
+
+        // The one way an opted-out group reaches the standalone list: as the trunk an offered
+        // descendant nests under, still carrying "2". A caller testing membership rather than the
+        // property would draw it a checkbox; one dropping it would strand the child below it.
+        var trunk = filters.Variabelgrupper[2];
+        Assert.Equal("2", trunk.Filter);
+        Assert.False(trunk.IsStandaloneFacetOption);
+        Assert.Equal(trunk.Id, filters.Variabelgrupper[3].ParentId);
+        Assert.True(filters.Variabelgrupper[3].IsStandaloneFacetOption);
+    }
+
+    [Fact]
+    public async Task GetFiltersAsync_WhenAGroupHasNoFilterValue_ThenItIsNullRatherThanTheOptOut()
+    {
+        // Three states, not two: "1", "2" and unset — the majority case, which means "no opinion"
+        // and not "no". A bool or an enum here would collapse the third into one of the others and
+        // withhold every unset group from the facet. Absent and explicitly null are both unset.
+        var filters = await VariabelgruppeSurfacesAsync();
+
+        var keyAbsent = filters.Variabelgrupper[1];
+        Assert.Null(keyAbsent.Filter);
+        Assert.True(keyAbsent.IsStandaloneFacetOption);
+
+        var explicitlyNull = filters.Variabelgrupper[3];
+        Assert.Null(explicitlyNull.Filter);
+        Assert.True(explicitlyNull.IsStandaloneFacetOption);
+
+        Assert.Equal("1", filters.Variabelgrupper[0].Filter);
+        Assert.True(filters.Variabelgrupper[0].IsStandaloneFacetOption);
+    }
+
+    [Fact]
+    public async Task GetFiltersAsync_WhenTheVariabelgruppeCollectionsArriveAsExplicitNulls_ThenTheyAreReadAsEmpty()
+    {
+        // Both collections and the placements inside a row, on the terms every other collection on
+        // every contract is read: an explicit null is nothing here, not a broken answer, and the
+        // panel draws the facet it still has.
+        var filters = await WithJson("""
+            {
+              "variabelgrupper": [
+                {
+                  "id": "6f1d4a5c-0000-4000-8000-000000000201",
+                  "name": "Bakgrunn",
+                  "count": 12,
+                  "owners": null
+                }
+              ],
+              "hierarkiVariabelgrupper": null
+            }
+            """).GetFiltersAsync();
+
+        Assert.Empty(filters.HierarchyVariabelgrupper);
+        Assert.Empty(Assert.Single(filters.Variabelgrupper).Owners);
     }
 
     [Fact]
