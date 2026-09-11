@@ -832,8 +832,8 @@ public class UrlStateComponentTest : BunitContext
     public void Moved_WhenOnlyTheHostsOwnParametersChange_ThenTheyAreCarriedForwardRatherThanPutBack()
     {
         // The early-return path, which is the one that looks harmless. The owned keys are equal, so
-        // nothing is redrawn — but the mirror holding the host's parameters has to be taken anyway,
-        // or every later link and every later rewrite restores the value the navigation dropped.
+        // nothing is remounted — but the mirror holding the host's parameters has to be taken and
+        // drawn anyway, or every later link and every later rewrite restores the dropped value.
         var kilde = Guid.NewGuid();
         var datasamling = Guid.NewGuid();
 
@@ -841,10 +841,9 @@ public class UrlStateComponentTest : BunitContext
 
         Move($"/kilder?utm_source=b&kilde={kilde}");
 
-        // A Router re-renders the page it serves, so the drill-in's route is rebuilt from the
-        // address that arrived rather than from the one the component mounted on.
-        cut.Render();
-
+        // No render of the test's own: the component redraws on this path itself, because a host
+        // with no Router raises LocationChanged without re-rendering the subtree and the links are
+        // built from the mirror.
         Assert.Equal(
             $"/kilder?utm_source=b&kilde={kilde}&datasamling={datasamling}",
             cut.Find("a.munin-explorer-hierarchy__open").GetAttribute("href"));

@@ -5819,7 +5819,10 @@ public class KildeSearchTest : BunitContext
         public override Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default)
         {
             KildeCalls++;
-            return Task.FromResult<KildeDetail?>(new() { Id = id, Code = "K_ALS", PreferredTerm = "Als registeret" });
+
+            return StallKilde
+                ? _kildeStall.Task
+                : Task.FromResult<KildeDetail?>(new() { Id = id, Code = "K_ALS", PreferredTerm = "Als registeret" });
         }
 
         public override Task<KildeHierarchy?> GetKildeHierarchyAsync(Guid id, CancellationToken cancellationToken = default) =>
@@ -5853,7 +5856,17 @@ public class KildeSearchTest : BunitContext
         /// </remarks>
         public bool StallDatasamling { get; set; }
 
+        /// <summary>Never answer the kilde fetch, so a stale datasamling can land while it runs.</summary>
+        /// <remarks>
+        /// <see cref="StallDatasamling"/>'s trick on the other fetch of the pair, and for the arm
+        /// it leaves out: with the kilde answered inside the click, the loading flag is already
+        /// down when the stale answer lands, so lowering it again is a change nothing can see.
+        /// </remarks>
+        public bool StallKilde { get; set; }
+
         private readonly List<TaskCompletionSource<DatasamlingDetail?>> _stalls = [];
+
+        private readonly TaskCompletionSource<KildeDetail?> _kildeStall = new();
 
         /// <summary>Answer the oldest datasamling fetch still hanging.</summary>
         public void AnswerStalled(DatasamlingDetail detail) => _stalls[0].TrySetResult(detail);
@@ -6115,5 +6128,27 @@ public class KildeSearchTest : BunitContext
         Assert.Equal("caption", DrillInStatus(cut).GetAttribute("class"));
         Assert.DoesNotContain("Kunne ikke hente datasamlingen", cut.Markup, StringComparison.Ordinal);
         Assert.Equal(kilde, cut.FindComponent<KildeView>().Instance.Kilde?.Id);
+    }
+
+    [Fact]
+    public async Task DrillIn_WhenAnAbandonedDatasamlingLandsWhileTheKildeIsStillLoading_ThenTheViewStillSaysSo()
+    {
+        // The third arm of the same guard, the one in the finally, and the only one the two above
+        // cannot reach: their kilde answers inside the click, so the flag it lowers is already
+        // down. Stalled instead, an unguarded finally reports the running fetch as finished —
+        // an empty panel, a blank status line and aria-busy "false" — to a reader still waiting.
+        var kilde = Guid.NewGuid();
+        var client = new DrillInClient(kilde, Guid.NewGuid()) { StallDatasamling = true, StallKilde = true };
+
+        var cut = AbandonedDatasamling(client, kilde);
+
+        Assert.Equal("true", cut.Find(".munin-explorer-drilldown").GetAttribute("aria-busy"));
+
+        await cut.InvokeAsync(() => client.AnswerStalled(new() { Id = Guid.NewGuid(), PreferredTerm = "Inklusjon" }));
+
+        Assert.Equal("true", cut.Find(".munin-explorer-drilldown").GetAttribute("aria-busy"));
+        Assert.Equal("Henter datakilden …", DrillInStatus(cut).TextContent.Trim());
+        Assert.Empty(cut.FindComponents<KildeView>());
+        Assert.Empty(cut.FindAll(".munin-explorer-datasamling"));
     }
 }

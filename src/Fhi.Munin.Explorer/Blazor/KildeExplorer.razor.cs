@@ -230,6 +230,11 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
 
         if (arrived == (_selectedKildeId, _selectedDatasamlingId, _order))
         {
+            // Redrawn anyway, and not left to the host: every link is built from the mirror just
+            // replaced, and a host with no Router — helsedata's CMS — raises this without
+            // re-rendering us, leaving the hrefs naming host parameters the navigation dropped.
+            StateHasChanged();
+
             return;
         }
 

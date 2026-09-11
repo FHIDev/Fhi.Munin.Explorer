@@ -11,5 +11,6 @@ category: Added
   the view. `KildeSearch` gains `SelectedDatasamlingId` and `DatasamlingHref` for a host that owns
   its own query string. A host's own query parameters survive a navigation the way they survive a
   render: the explorer re-reads them off the address that arrived, so a navigation changing only
-  the host's own keys neither loses them nor puts back the ones it dropped.
+  the host's own keys neither loses them nor puts back the ones it dropped — and it redraws its
+  own links from that address itself, rather than waiting for a render the host may never make.
   (Fhi.Metadata-l9l2n.107)
