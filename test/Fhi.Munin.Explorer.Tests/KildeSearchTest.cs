@@ -801,6 +801,61 @@ public class KildeSearchTest : BunitContext
     }
 
     [Fact]
+    public void ScrollBox_Always_ThenItsModifierCountsTheHeaderCellsThatWereRendered()
+    {
+        // Read off the header the table actually drew and never off the picker's selection: the
+        // picker offers ten columns and the header carries four it cannot reach, so the two numbers
+        // are different numbers. The modifier is what lets Stiler vary the box by how wide the table
+        // is, which it cannot work out for itself. (Fhi.Metadata-l9l2n.103)
+        var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
+
+        Assert.Equal(7, Headers(cut).Count);
+
+        Assert.Contains(
+            $"munin-explorer-kilder-scroll--cols-{Headers(cut).Count}",
+            cut.Find(".munin-explorer-kilder-scroll").ClassList);
+    }
+
+    [Fact]
+    public void ScrollBox_WhenEveryOptionalColumnIsOn_ThenTheModifierFollowsTheWiderHeader()
+    {
+        // The state the spill was measured in. A modifier fixed at its first-paint value would hand
+        // a stylesheet the width of a table that is no longer on screen, which is the one way this
+        // can fail quietly: the class is there, the number is stale. (Fhi.Metadata-l9l2n.103)
+        var cut = RenderWith(new FakeClient(Furnished()));
+
+        foreach (var label in ColumnToggles(cut)
+                     .Where(box => !Ticked(box))
+                     .Select(ColumnName)
+                     .ToList())
+        {
+            ToggleColumn(cut, label);
+        }
+
+        Assert.Equal(14, Headers(cut).Count);
+
+        Assert.Contains(
+            "munin-explorer-kilder-scroll--cols-14",
+            cut.Find(".munin-explorer-kilder-scroll").ClassList);
+    }
+
+    [Fact]
+    public void ScrollBox_Always_ThenTheModifierAndTheNestedRowsColspanAgree()
+    {
+        // One number, two readers. The drawer's <td> spans the whole table, so a colspan and a
+        // modifier that disagreed would mean one of them was counting a table nobody rendered.
+        var cut = RenderWith(new FakeClient(Furnished()));
+
+        ToggleColumn(cut, "Gyldighet");
+
+        ExpandToggle(cut, "Als registeret").Click();
+
+        Assert.Contains(
+            $"munin-explorer-kilder-scroll--cols-{cut.Find(".munin-explorer-kilder__expanded").GetAttribute("colspan")}",
+            cut.Find(".munin-explorer-kilder-scroll").ClassList);
+    }
+
+    [Fact]
     public void RenderWithNoKilder_Always_ThenThereIsNoScrollRegionToTabInto()
     {
         // The box is drawn with the table and not before it. An empty list means the fetch failed
@@ -5081,6 +5136,9 @@ public class KildeSearchTest : BunitContext
             "munin-explorer-kilder",
             // The box the table scrolls in, so its overflow stops reaching the host page.
             "munin-explorer-kilder-scroll",
+            // And the count of header cells it is holding, for a stylesheet that has to vary the box
+            // by how wide the table is. Seven here: four always drawn, three optional columns on.
+            "munin-explorer-kilder-scroll--cols-7",
             "munin-explorer-kilder__count",
             "munin-explorer-kilder__expand",
             "munin-explorer-kilder__expand-icon",

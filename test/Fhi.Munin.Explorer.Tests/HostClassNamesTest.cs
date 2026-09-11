@@ -127,4 +127,34 @@ public class HostClassNamesTest
 
         Assert.Single(HostClassNames.OrphansIn(css, ["munin-explorer-alpha"]));
     }
+
+    [Fact]
+    public void Orphans_WhenTheNameIsTheKilderScrollCountModifier_ThenItIsNotAskedAbout()
+    {
+        // The one exemption, and the reason it is not a hole: the three shell guards already drop
+        // `munin-explorer-kilder-scroll--cols-` because it is a stem C# finishes, and this check
+        // reads the DOM so it sees the finished name. Undrawn the box keeps what its base class
+        // gives it, which is why the modifier could ship before the rule that selects on it.
+        Assert.Equal([], HostClassNames.OrphansIn("", ["munin-explorer-kilder-scroll--cols-15"]));
+    }
+
+    [Fact]
+    public void Orphans_WhenANameMerelyLooksLikeTheCountModifier_ThenItIsStillReported()
+    {
+        // The exemption is anchored on the one stem and on digits, so it cannot quietly spread to
+        // any name ending in a modifier: a second count modifier is a decision somebody makes here.
+        Assert.Equal(
+            [
+                "munin-explorer-kilder-scroll--cols-15-extra",
+                "munin-explorer-kilder-scroll--cols-wide",
+                "munin-explorer-list-scroll--cols-9",
+            ],
+            HostClassNames.OrphansIn(
+                "",
+                [
+                    "munin-explorer-kilder-scroll--cols-wide",
+                    "munin-explorer-list-scroll--cols-9",
+                    "munin-explorer-kilder-scroll--cols-15-extra",
+                ]));
+    }
 }

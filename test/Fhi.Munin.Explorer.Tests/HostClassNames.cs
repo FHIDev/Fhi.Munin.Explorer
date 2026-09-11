@@ -117,10 +117,34 @@ internal static class HostClassNames
 
         return [.. rendered.Distinct(StringComparer.Ordinal)
                            .Where(name => !TheirNames.Value.Contains(name))
+                           .Where(name => !IsCountModifier(name))
                            .Select(name => Verdict(rules, name))
                            .OfType<string>()
                            .Order(StringComparer.Ordinal)];
     }
+
+    /// <summary>
+    /// The one shape this check deliberately does not ask about: a modifier the package finishes
+    /// with a number at render time, on an element that already carries a rule of its own.
+    ///
+    /// The three shell guards never see these — their extraction drops every token ending in
+    /// <c>-</c>, because a stem a line of C# completes is not a name a stylesheet can be asked to
+    /// carry. This one reads the DOM, so it sees the finished name and would report a fresh orphan
+    /// every time the reader turned a column on. Exempting it is what makes the four checks agree
+    /// about what a name is, rather than a hole in this one.
+    ///
+    /// It is also the whole argument for shipping <c>munin-explorer-kilder-scroll--cols-N</c>
+    /// before the rule that selects on it: undrawn, the box keeps the behaviour its base class
+    /// already gives it. A modifier that degraded to a raw browser default would not belong here.
+    ///
+    /// Anchored on the one stem rather than on <c>--cols-</c> anywhere, so this cannot quietly
+    /// grow to cover a modifier nobody argued for. <see cref="HostClassNamesTest"/> pins that.
+    /// </summary>
+    private static bool IsCountModifier(string cls) =>
+        CountModifier.IsMatch(cls);
+
+    private static readonly System.Text.RegularExpressions.Regex CountModifier =
+        new(@"^munin-explorer-kilder-scroll--cols-[0-9]+$");
 
     /// <summary>
     /// Every rule in a stylesheet, selector cut from declarations. Every question this file answers

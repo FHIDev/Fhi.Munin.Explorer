@@ -646,8 +646,9 @@ public class KildeSelectionTest : BunitContext
     public void Render_WhenTheColumnIsOnScreen_ThenItAddsExactlyTwoInventedNames()
     {
         // An exact list, like the one next door, and this is the difference between them: with the
-        // handover wired the component writes two further names of its own, the ones marked below.
-        // A third appearing here is news that has to be answered in both sample stylesheets first.
+        // handover wired the component writes two further names of its own, the ones marked below,
+        // and the scroll box counts one column more. A third addition here is news that has to be
+        // answered in both sample stylesheets first.
         var (cut, _) = RenderSelectable(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
         // Searched as well as ticked: the clear control is drawn only when there is something to
@@ -676,6 +677,8 @@ public class KildeSelectionTest : BunitContext
             "munin-explorer-header__actions-button",
             "munin-explorer-kilder",
             "munin-explorer-kilder-scroll",
+            // Eight, not the seven next door: the select column this bead adds counts too.
+            "munin-explorer-kilder-scroll--cols-8",
             "munin-explorer-kilder__count",
             "munin-explorer-kilder__expand",
             "munin-explorer-kilder__expand-icon",
@@ -688,6 +691,35 @@ public class KildeSelectionTest : BunitContext
             "munin-explorer-selection",          // this bead's
             "munin-explorer__dropdown",          // the picker, shared
         ], invented);
+    }
+
+    [Fact]
+    public void ScrollBox_WhenTheHandoverIsWiredAndEveryColumnIsOn_ThenTheModifierCountsFifteen()
+    {
+        // The configuration the spill was measured in on 2026-09-11: fifteen header cells, the
+        // table 663.6px past its box and the host page scrolling sideways with it. Fifteen is not
+        // the picker's ten — five of them are columns it cannot reach. (Fhi.Metadata-l9l2n.103)
+        var (cut, _) = RenderSelectable(new FakeClient(Kilde("Als registeret", "K_ALS")));
+
+        // The label beside the box, not the box's own text, which is what the picker names it by.
+        static string ColumnName(IElement box) =>
+            box.ParentElement!.QuerySelector(".form-control__label")!.TextContent.Trim();
+
+        IReadOnlyList<IElement> Toggles() =>
+            cut.FindAll(".dropdown-choicepicker__item input[type=checkbox]");
+
+        // Named, then refetched one at a time: every tick re-renders the picker, and a node held
+        // across that render is a stale one.
+        foreach (var label in Toggles().Where(box => !box.HasAttribute("checked")).Select(ColumnName).ToList())
+        {
+            Toggles().Single(box => ColumnName(box) == label).Change(true);
+        }
+
+        Assert.Equal(15, cut.FindAll(".munin-explorer-kilder thead th").Count);
+
+        Assert.Contains(
+            "munin-explorer-kilder-scroll--cols-15",
+            cut.Find(".munin-explorer-kilder-scroll").ClassList);
     }
 
     [Fact]
