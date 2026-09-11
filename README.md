@@ -288,9 +288,14 @@ These are not style preferences — each one is a host that breaks otherwise.
     tabular figures, and the tabular figures are the half worth naming: 45 sits directly above 13
     in that list, so without them the column shivers as the facet is narrowed. In
     `Fhi.Helsedata.Stiler` the name is added to `__chosen`'s own selector list rather than given a
-    block of its own (PR 39274), so the two cannot drift apart; a host on a Stiler published before
-    that merge draws the group counts at browser defaults — legible, since the digits are markup,
-    but at the page's own size and colour and without the tabular figures.
+    block of its own, so the two cannot drift apart — merged on `main`, and **in no published Stiler
+    yet**, which is the part a host reading this to size up its pin needs: there is no newer pin to
+    move to, and which version will first carry the rule cannot be named from here, since Stiler's
+    csproj sits at `0.0.0-local` until its pipeline stamps a release. So every host draws the group
+    counts at browser defaults for now — legible, since the digits are markup, but at the page's own
+    size and colour and without the tabular figures. The merge is recorded in
+    `Fhi.Metadata-l9l2n.73`, whose close note names PR 39274, merged 2026-09-11; nothing in this
+    repository reads Stiler, so that bead is the whole of the evidence on this side.
     The saved-list view's `munin-explorer-dataitem-*__desiredData` pair is a handle on the same
     terms and worth one sentence, because the cell holds a control rather than a value: undefined,
     the annotation field is a browser-default text box, which is visible, operable and named, so
