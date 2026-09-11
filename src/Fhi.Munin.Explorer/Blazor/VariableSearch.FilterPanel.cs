@@ -1185,9 +1185,9 @@ public partial class VariableSearch
     /// state and the focus ring are then the ones a host already draws for
     /// <c>.munin-explorer-filters summary</c>, so a group costs no class name and no new rule.
     /// <para>
-    /// The count wears <c>munin-explorer-filters__chosen</c>, the name the kildeutforsker's facet
-    /// summaries already carry, whose rule holds the tabular figures that stop a column of counts
-    /// shivering as the facet is narrowed. (Fhi.Metadata-l9l2n.67)
+    /// The count wears <c>munin-explorer-filters__groupcount</c> and not <c>__chosen</c>: these are
+    /// group sizes, and nothing here is chosen. Stiler gives it <c>__chosen</c>'s own selector, so
+    /// the tabular figures cannot drift apart from it. (Fhi.Metadata-l9l2n.104)
     /// </para>
     /// <para>
     /// No <c>lang</c>: the one value drawn here is <see cref="KildeTypeHeading"/>, whose words are
@@ -1210,7 +1210,7 @@ public partial class VariableSearch
         {
             builder.AddContent(19, " ");
             builder.OpenElement(20, "span");
-            builder.AddAttribute(21, "class", "munin-explorer-filters__chosen");
+            builder.AddAttribute(21, "class", "munin-explorer-filters__groupcount");
             builder.AddContent(22, members.ToString(CultureInfo.CurrentCulture));
             builder.CloseElement();
         }

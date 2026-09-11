@@ -3533,17 +3533,21 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
-    public void Filter_AtFirstPaint_ThenAKildetypeGroupsCountWearsTheNameTheFacetSummariesAlreadyUse()
+    public void Filter_AtFirstPaint_ThenAKildetypeGroupsCountWearsGroupcountRatherThanChosen()
     {
-        // The existing `munin-explorer-filters__chosen`, whose rule holds the tabular figures: two
-        // counts of different digit widths above one another otherwise shift as the facet is
-        // narrowed. A name of its own here would be the cross-repository split this bead avoids.
+        // A group count is the group's SIZE and is drawn with nothing ticked, so `__chosen` — which
+        // the kildeutforsker's facet summaries wear, and which means how many values the reader
+        // chose — told the next reader something false. (Fhi.Metadata-l9l2n.104)
         var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
 
         var count = KildeTypeGroups(cut)[0].FirstElementChild!.QuerySelector("span")!;
 
-        Assert.Equal("munin-explorer-filters__chosen", count.ClassName);
+        Assert.Equal("munin-explorer-filters__groupcount", count.ClassName);
         Assert.Equal("1", count.TextContent);
+
+        // And nowhere in this panel: the variabelutforsker draws no "N valgt" summary of its own,
+        // so a `__chosen` here is a group count that was missed by the rename.
+        Assert.Empty(cut.FindAll(".munin-explorer-filters__chosen"));
 
         // The space belongs to the summary rather than to the span, or the group would be
         // announced as "Sentralt helseregister1".
