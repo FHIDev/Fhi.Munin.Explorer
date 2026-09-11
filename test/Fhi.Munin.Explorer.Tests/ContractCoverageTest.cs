@@ -42,6 +42,57 @@ public class ContractCoverageTest
         Covers<FilterOptions>("filters.json");
 
     [Fact]
+    public void VariabelgruppeSurfaces_WhenReadFromTheDocumentedResponse_ThenEveryFieldIsCovered() =>
+        // Inline rather than from a fixture: both variabelgruppe collections answer empty in every
+        // environment probed so far, so filters.json above reads neither and a field added to the
+        // facet would land nowhere (Fhi.Metadata-0ecep). Writing a row into that capture is what
+        // would make this gate and the freshness one agree about a payload the API does not send,
+        // so the shape is taken from the API's own documented response instead — which makes this
+        // weaker evidence than the captures, on the same terms as the my/lists pair below: it pins
+        // that the contract reads the shape Munin documents, not that Munin still sends it.
+        Assert.NotNull(JsonSerializer.Deserialize<FilterOptions>(
+            """
+            {
+              "variabelgrupper": [
+                {
+                  "id": "8e4507de-d725-4471-aeb9-97999cf411ce",
+                  "name": "Gruppe tilbudt",
+                  "parentId": null,
+                  "count": 1,
+                  "filter": "1",
+                  "global": false,
+                  "owners": [
+                    {
+                      "kildeId": "c368f9fb-2fbc-43c2-b0ba-c6db2b1d2f68",
+                      "delkildeId": null,
+                      "datasamlingId": "25acaea1-6ba9-4417-b514-e014e4b53011"
+                    }
+                  ]
+                }
+              ],
+              "hierarkiVariabelgrupper": [
+                {
+                  "id": "09489d56-c805-420f-898b-211a335724b8",
+                  "name": "Gruppe opt-out",
+                  "parentId": null,
+                  "count": 1,
+                  "filter": "2",
+                  "global": false,
+                  "owners": [
+                    {
+                      "kildeId": "c368f9fb-2fbc-43c2-b0ba-c6db2b1d2f68",
+                      "delkildeId": "c1cc6266-ac04-4e7c-8b33-427dbb9d6871",
+                      "datasamlingId": "f9262831-e1a9-405f-8599-0d0eb6e9b8ed"
+                    }
+                  ]
+                }
+              ],
+              "totalCount": 3
+            }
+            """,
+            Strict));
+
+    [Fact]
     public void KildeList_WhenReadFromARealResponse_ThenEveryFieldIsCovered() =>
         Covers<IReadOnlyList<KildeSummary>>("kilder.json");
 
