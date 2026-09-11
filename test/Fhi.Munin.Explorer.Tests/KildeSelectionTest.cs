@@ -693,6 +693,8 @@ public class KildeSelectionTest : BunitContext
             "munin-explorer-kilder__expand-toggle",
             "munin-explorer-kilder__name",
             "munin-explorer-kilder__select",     // this bead's
+            // The button inside each of the four sortable column headings (Fhi.Metadata-l9l2n.88).
+            "munin-explorer-kilder__sort",
             "munin-explorer-results",            // shared
             "munin-explorer-results__toolbar",   // shared with the count above the table
             "munin-explorer-search__clear",      // shared

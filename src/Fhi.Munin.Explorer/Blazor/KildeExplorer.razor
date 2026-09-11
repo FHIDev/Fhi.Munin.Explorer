@@ -6,7 +6,7 @@
    Deliberately far smaller than VariableExplorer, and that is Kelda's contract rather than a
    shortcut: KildeSearch has no SearchChanged and no pager, so search, filters and column choices
    are component state that goes away on refresh. What is worth putting in a URL is which kilde is
-   open and which order the list is in.
+   open, which order the list is in and which way that order runs.
 
    ?search= is not read, for that same reason — a link carrying it would work exactly once and
    could not be shared onward. It is left in the address bar rather than erased, along with
@@ -30,6 +30,7 @@
              SelectedDatasamlingId="@_selectedDatasamlingId"
              DatasamlingHref="@DatasamlingHref"
              @bind-Order="_order"
+             @bind-Direction="_direction"
              ExploreVariablesRequested="@Handover"
              Language="@Language"
              ShowAccessAndPrices="@ShowAccessAndPrices" />

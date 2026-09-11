@@ -524,9 +524,9 @@ public class KildeSearchTest : BunitContext
             .QuerySelector("input")!
             .Change(false);
 
-    /// <summary>Put the list in <paramref name="order"/> through the control the reader uses.</summary>
+    /// <summary>Sort the list the way the reader does: by pressing the column's own heading.</summary>
     private static void Choose(IRenderedComponent<KildeSearch> cut, KildeSortOrder order) =>
-        cut.Find("select[id^='munin-explorer-sort']").Change(order.ToString());
+        KildeColumns.SortBy(cut, order);
 
     // ---------------------------------------------------------------------------------
     // The list.
@@ -639,7 +639,7 @@ public class KildeSearchTest : BunitContext
         Choose(cut, KildeSortOrder.Variables);
 
         Assert.Equal(
-            "2 kilder av 3, avgrenset av 1 filter, sortert etter Flest variabler", ResultCount(cut));
+            "2 kilder av 3, avgrenset av 1 filter, sortert etter Variabler, stigende", ResultCount(cut));
     }
 
     [Fact]
@@ -677,10 +677,13 @@ public class KildeSearchTest : BunitContext
         // A second value ticked because the plural arm is the one a copy-paste from the nb record
         // leaves in Norwegian, and the singular one above would never notice.
         Tick(cut, "Data processor", "Folkehelseinstituttet");
-        Choose(cut, KildeSortOrder.Variables);
+
+        // Pressed by the English heading, because that is what this reader sees: Choose spells the
+        // columns in Norwegian and would find nothing over an English table.
+        KildeColumns.SortBy(cut, "Variables");
 
         Assert.Equal(
-            "1 source of 2, narrowed by 2 filters, sorted by Most variables", ResultCount(cut));
+            "1 source of 2, narrowed by 2 filters, sorted by Variables, ascending", ResultCount(cut));
     }
 
     [Fact]
@@ -866,11 +869,12 @@ public class KildeSearchTest : BunitContext
     // ---------------------------------------------------------------------------------
 
     [Fact]
-    public void Toolbar_Always_ThenTheCountTheOrderControlAndThePickerShareOneRow()
+    public void Toolbar_Always_ThenTheCountAndThePickerShareOneRow()
     {
-        // Three blocks taking a row each before this bead. Asserted as element order and not as
-        // layout, which is the host stylesheet's: what markup decides is which three children the
-        // row has and the order a keyboard meets them in. (Fhi.Metadata-tciss)
+        // Blocks taking a row each before Fhi.Metadata-tciss, and three of them until the order
+        // control moved onto the column headings (Fhi.Metadata-l9l2n.88). Asserted as element order
+        // and not as layout, which is the host stylesheet's: what markup decides is which children
+        // the row has and the order a keyboard meets them in.
         var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
         var row = cut.Find(".munin-explorer-results__toolbar");
@@ -878,7 +882,6 @@ public class KildeSearchTest : BunitContext
         Assert.Collection(
             row.Children,
             count => Assert.Equal("status", count.GetAttribute("role")),
-            order => Assert.NotNull(order.QuerySelector("select")),
             picker => Assert.Contains("munin-explorer-header", picker.ClassList));
     }
 
@@ -888,7 +891,7 @@ public class KildeSearchTest : BunitContext
         // The row cannot come and go with the rows, and this is the reason the whole shape is what
         // it is: the count inside it is this component's one polite live region, and a live region
         // inserted and filled in the same update is announced unreliably — so a row drawn only with
-        // rows would take the loading message and the empty state with it. The two controls do go,
+        // rows would take the loading message and the empty state with it. The picker does go,
         // which is why a picker over no table is not here. (Fhi.Metadata-tciss)
         var cut = RenderWith(new FakeClient());
 
@@ -5139,9 +5142,11 @@ public class KildeSearchTest : BunitContext
             "munin-explorer-kilder__expand-icon",
             "munin-explorer-kilder__expand-toggle",
             "munin-explorer-kilder__name",
+            // The button inside each of the four sortable column headings (Fhi.Metadata-l9l2n.88).
+            "munin-explorer-kilder__sort",
             "munin-explorer-results",            // shared
-            // The row the count shares with the order control and the column picker. Drawn whether or
-            // not there are rows, unlike the two controls in it. (Fhi.Metadata-tciss)
+            // The row the count shares with the column picker. Drawn whether or not there are rows,
+            // unlike the picker in it. (Fhi.Metadata-tciss)
             "munin-explorer-results__toolbar",
             "munin-explorer-search__clear",      // shared
             "munin-explorer__dropdown",          // the picker, shared

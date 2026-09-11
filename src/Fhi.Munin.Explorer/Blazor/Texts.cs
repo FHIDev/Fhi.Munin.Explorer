@@ -22,7 +22,6 @@ internal sealed record Texts(
     string SearchLabel,
     string SearchPlaceholder,
     string SearchButton,
-    string SortBy,
     string Loading,
     string Error,
 
@@ -509,26 +508,20 @@ internal sealed record Texts(
     // (count) — the variable section's one line. Assembled here rather than at the call site for the
     // reason KildeCount is: the singular is this language's business and not C#'s.
     Func<int, string> KildeVariableCount,
-    // (shown, total, filters, order) — the kilde list's own "56 kilder av 66, avgrenset av 2
-    // filtre, sortert etter Flest variabler", assembled here for ResultSummary's reason: where each
-    // clause sits is this language's grammar, and so is the plural. The filter clause borrows that
-    // sibling's words and its place in the sentence, so the same fact is not told two ways in two
-    // UIs. Still no row range, the list is never paged. Three ints: shown, total, ticked values.
-    Func<int, int, int, string?, string> KildeCount,
+    // (shown, total, filters, order, direction) — the kilde list's own "56 kilder av 66, avgrenset
+    // av 2 filtre, sortert etter Variabler, synkende", assembled here for ResultSummary's reason:
+    // where each clause sits is this language's grammar, and so is the plural. The filter clause
+    // borrows that sibling's words and its place in the sentence, so the same fact is not told two
+    // ways in two UIs. Still no row range, the list is never paged. Three ints: shown, total,
+    // ticked values. The direction is always supplied and belongs to the order clause, so a
+    // language that drops that clause drops the direction with it.
+    Func<int, int, int, string?, string, string> KildeCount,
     // (count) — "3 kilder valgt", the selection bar's own line. Its own member rather than
     // KildeCount reused, though both count kilder: that one says how many the search and the facets
     // left, this one how many of those the reader ticked, and the two sit one above the other on
     // screen. Swapped, each would read as a true sentence in the wrong place — the failure neither
     // one's own test can see.
     Func<int, string> SelectedKildeCount,
-    // Four labels here plus SortDefault for the catalogue's own order, which is the five members of
-    // KildeSortOrder: the default reuses that word rather than adding a fifth label, so it reads as
-    // the variable explorer's own default does. Each of the four says which way it runs, because a
-    // bare "Opprettet" over a select names a column and not an order.
-    string KildeOrderName,
-    string KildeOrderVariables,
-    string KildeOrderSourceUpdated,
-    string KildeOrderEstablished,
     // (name) — the accessible name of one row's checkbox. Every checkbox in a table needs one of
     // its own: "Velg" repeated down a column tells a reader moving from control to control nothing
     // about which row they are standing in.
@@ -567,21 +560,29 @@ internal sealed record Texts(
     };
 
     /// <summary>
-    /// The label for one of the kilde list's orders, in the select and in the result sentence.
+    /// The label for one of the kilde list's orders: the word on its column heading, and the word
+    /// the result sentence names the order by.
     /// </summary>
     /// <remarks>
+    /// The heading's own strings rather than four of this record's own, which is what they were
+    /// while a select offered the orders: each of those said which way it ran — "Flest variabler",
+    /// "Opprettet (nyest først)" — and a heading cannot, because the reader reverses it by pressing
+    /// it. The direction is a word of its own beside the sentence, from <see cref="DirectionName"/>.
+    /// <para>
     /// An arm per member and a throw for anything else, for <see cref="FieldLabel"/>'s reason: an
-    /// order added to <see cref="KildeSortOrder"/> without a word here would be offered under
-    /// whichever label fell through to it, and the sentence under the control would then name an
-    /// order the rows are not in.
+    /// order added to <see cref="KildeSortOrder"/> without a word here would head its column with
+    /// whichever label fell through to it, and the sentence over the table would then name an order
+    /// the rows are not in. <see cref="KildeSortOrder.Standard"/> has no column and is never named
+    /// in the sentence; the arm is what keeps the switch total.
+    /// </para>
     /// </remarks>
     public string KildeOrderLabel(KildeSortOrder order) => order switch
     {
         KildeSortOrder.Standard => SortDefault,
-        KildeSortOrder.Name => KildeOrderName,
-        KildeSortOrder.Variables => KildeOrderVariables,
-        KildeSortOrder.SourceUpdated => KildeOrderSourceUpdated,
-        KildeSortOrder.Established => KildeOrderEstablished,
+        KildeSortOrder.Name => FieldName,
+        KildeSortOrder.Variables => ColumnVariableCount,
+        KildeSortOrder.SourceUpdated => ColumnSourceUpdated,
+        KildeSortOrder.Established => ColumnEstablished,
         _ => throw new ArgumentOutOfRangeException(nameof(order), order, "No label for this kilde order.")
     };
 
@@ -797,7 +798,6 @@ internal sealed record Texts(
         SearchLabel: "Søk i variabler",
         SearchPlaceholder: "Søk etter variabelnavn eller kode",
         SearchButton: "Søk",
-        SortBy: "Sorter etter",
         Loading: "Henter variabler …",
         Error: "Kunne ikke hente variabler nå. Prøv igjen om litt.",
         RateLimitError: "Du har gjort for mange forespørsler. Vent litt før du prøver igjen.",
@@ -1122,7 +1122,7 @@ internal sealed record Texts(
         KildeVariableCount: count => count == 1
             ? "1 publisert variabel i denne kilden."
             : $"{count} publiserte variabler i denne kilden.",
-        KildeCount: (shown, total, filters, order) =>
+        KildeCount: (shown, total, filters, order, direction) =>
             (shown == 1 ? "1 kilde" : $"{shown} kilder")
             + (shown == total ? "" : $" av {total}")
             + (filters switch
@@ -1131,12 +1131,8 @@ internal sealed record Texts(
                 1 => ", avgrenset av 1 filter",
                 _ => $", avgrenset av {filters} filtre"
             })
-            + (order is null ? "" : $", sortert etter {order}"),
+            + (order is null ? "" : $", sortert etter {order}, {direction}"),
         SelectedKildeCount: count => count == 1 ? "1 kilde valgt" : $"{count} kilder valgt",
-        KildeOrderName: "Navn A–Å",
-        KildeOrderVariables: "Flest variabler",
-        KildeOrderSourceUpdated: "Sist endret (nyest først)",
-        KildeOrderEstablished: "Opprettet (nyest først)",
         SelectKilde: name => $"Velg {name}",
         NoKilderMatch: (search, filters) =>
         {
@@ -1156,7 +1152,6 @@ internal sealed record Texts(
         SearchLabel: "Search variables",
         SearchPlaceholder: "Search by variable name or code",
         SearchButton: "Search",
-        SortBy: "Sort by",
         Loading: "Loading variables …",
         Error: "Could not load variables right now. Please try again shortly.",
         RateLimitError: "You have made too many requests. Please wait a little before trying again.",
@@ -1476,7 +1471,7 @@ internal sealed record Texts(
         KildeVariableCount: count => count == 1
             ? "1 published variable in this source."
             : $"{count} published variables in this source.",
-        KildeCount: (shown, total, filters, order) =>
+        KildeCount: (shown, total, filters, order, direction) =>
             (shown == 1 ? "1 source" : $"{shown} sources")
             + (shown == total ? "" : $" of {total}")
             + (filters switch
@@ -1485,12 +1480,8 @@ internal sealed record Texts(
                 1 => ", narrowed by 1 filter",
                 _ => $", narrowed by {filters} filters"
             })
-            + (order is null ? "" : $", sorted by {order}"),
+            + (order is null ? "" : $", sorted by {order}, {direction}"),
         SelectedKildeCount: count => count == 1 ? "1 source selected" : $"{count} sources selected",
-        KildeOrderName: "Name A–Z",
-        KildeOrderVariables: "Most variables",
-        KildeOrderSourceUpdated: "Last modified (newest first)",
-        KildeOrderEstablished: "Established (newest first)",
         SelectKilde: name => $"Select {name}",
         NoKilderMatch: (search, filters) =>
         {

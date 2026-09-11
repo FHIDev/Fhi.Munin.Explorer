@@ -1989,15 +1989,15 @@ table.munin-explorer-data-list tbody th {
 
 /* ---- the kilde list ----
 
-   Kelda's result table, and four more names of ours. The shape rule is the one the datasamlinger
+   Kelda's result table, and five more names of ours. The shape rule is the one the datasamlinger
    table above follows: there was nothing to copy for a list of kilder — Stiler has no table
    component, and helsedata's own variable page lists variables rather than sources — so the shape
-   is a <table> and these four dress it rather than carry it. A host that defines none of them
+   is a <table> and these five dress it rather than carry it. A host that defines none of them
    still gets six columns that line up and a name that visibly is a control, which is what an
    element's own browser default buys and an undefined class name does not.
 
    The six are the ones Kelda shows by default. Its own table has two control columns in front of
-   them, and seven more data columns behind a column picker. The checkbox is the fourth name below;
+   them, and seven more data columns behind a column picker. The checkbox is one of the names below;
    the expand toggle does not belong to the component yet, so it is not named here. */
 .munin-explorer-kilder {
   width: 100%;
@@ -2017,6 +2017,22 @@ table.munin-explorer-data-list tbody th {
   background: var(--grey10);
   color: var(--grey60);
   font-weight: 600;
+}
+
+/* The button inside a sortable heading. Two rules and no base block, which is the whole of what
+   Stiler carries for it: the button already wears `hd-button-reset`, whose `color: inherit` and
+   `font: inherit` hand it the heading's own grey and weight, so what is left to say is which
+   column is sorted and that the word is pressable. The same two declarations dress the variable
+   explorer's header button above — Stiler adds this name to those rules rather than writing a
+   block of its own (Fhi.Metadata-l9l2n.106).
+
+   Nothing draws the arrow: it is a bare <span> with the character in it. */
+.munin-explorer-kilder__sort:hover {
+  text-decoration: underline;
+}
+
+.munin-explorer-kilder__sort[aria-current="true"] {
+  color: var(--primary-dark);
 }
 
 /* The name cell is a <th scope="row">, which browsers centre and bold by default. It is a label

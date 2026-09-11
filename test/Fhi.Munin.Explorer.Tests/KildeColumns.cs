@@ -56,4 +56,41 @@ internal static class KildeColumns
     /// <summary>The header cells the table actually drew, which is what the count modifier counts.</summary>
     internal static IReadOnlyList<string> Headers(IRenderedComponent<KildeSearch> cut) =>
         [.. cut.FindAll(".munin-explorer-kilder thead th").Select(th => th.TextContent.Trim())];
+
+    /// <summary>The buttons the four sortable headings hold, in the order the table draws them.</summary>
+    internal static IReadOnlyList<IElement> SortButtons(IRenderedComponent<KildeSearch> cut) =>
+        cut.FindAll(".munin-explorer-kilder thead .munin-explorer-kilder__sort");
+
+    /// <summary>
+    /// Sort the list the way a reader does: press the heading that says <paramref name="heading"/>.
+    /// </summary>
+    /// <remarks>
+    /// By the word on screen rather than by position, so a test naming a column is asserting the
+    /// reader can reach that order from that column. <c>StartsWith</c> because the sorted heading
+    /// carries the arrow after its word, and refetched on every call since each press re-renders
+    /// the whole head.
+    /// </remarks>
+    internal static void SortBy(IRenderedComponent<KildeSearch> cut, string heading) =>
+        SortButtons(cut)
+            .Single(button => button.TextContent.Trim().StartsWith(heading, StringComparison.Ordinal))
+            .Click();
+
+    /// <summary>The same press, named by the order rather than by the word over the column.</summary>
+    internal static void SortBy(IRenderedComponent<KildeSearch> cut, KildeSortOrder order) =>
+        SortBy(cut, HeadingFor(order));
+
+    /// <summary>The Norwegian heading over an order's column, which is the word a reader presses.</summary>
+    /// <remarks>
+    /// <see cref="KildeSortOrder.Standard"/> has no column and no heading, which is what moving the
+    /// sort onto them cost (Fhi.Metadata-l9l2n.88): it throws rather than answering with a word no
+    /// heading says.
+    /// </remarks>
+    internal static string HeadingFor(KildeSortOrder order) => order switch
+    {
+        KildeSortOrder.Name => "Navn",
+        KildeSortOrder.Variables => "Variabler",
+        KildeSortOrder.SourceUpdated => "Sist endret",
+        KildeSortOrder.Established => "Opprettet",
+        _ => throw new ArgumentOutOfRangeException(nameof(order), order, "This order has no column.")
+    };
 }

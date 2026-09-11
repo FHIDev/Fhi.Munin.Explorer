@@ -92,17 +92,18 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <c>munin-explorer-kilder__count--zero</c> on a cell whose count is nought — the digit is still
 /// drawn, so a host's rule for it dims rather than hides,
 /// <c>munin-explorer-kilder__select</c> for the checkbox column a host that wired
-/// <see cref="ExploreVariablesRequested"/> gets in front of them, and
-/// <c>munin-explorer-filters__toggle</c> and <c>munin-explorer-filters__facets</c> for the facet
-/// panel's disclosure, and <c>munin-explorer-filters__count</c> for the number beside a facet
-/// value — see <c>KildeSearch.Filters.cs</c> for what those three are for. Last is
-/// <c>munin-explorer-results__toolbar</c>, the row the result count shares with the order control
-/// and the column picker: a host that defines nothing for it gets the three back as three blocks
-/// in ordinary flow, which is what they were before the name existed. A host that
-/// styles none of them still gets a usable list, which is why the results are a
-/// <c>&lt;table&gt;</c> and the name is a <c>&lt;button&gt;</c>: an element degrades to its own
-/// browser default — aligned columns, a control that visibly is one — where a class name no
-/// stylesheet has heard of degrades to nothing at all.
+/// <see cref="ExploreVariablesRequested"/> gets in front of them,
+/// <c>munin-explorer-kilder__sort</c> for the button inside each of the four sortable column
+/// headings, and <c>munin-explorer-filters__toggle</c> and <c>munin-explorer-filters__facets</c>
+/// for the facet panel's disclosure, and <c>munin-explorer-filters__count</c> for the number
+/// beside a facet value — see <c>KildeSearch.Filters.cs</c> for what those three are for. Last is
+/// <c>munin-explorer-results__toolbar</c>, the row the result count shares with the column picker:
+/// a host that defines nothing for it gets the two back as two blocks in ordinary flow, which is
+/// what they were before the name existed. A host that styles none of them still gets a usable
+/// list, which is why the results are a <c>&lt;table&gt;</c> and the name is a
+/// <c>&lt;button&gt;</c>: an element degrades to its own browser default — aligned columns, a
+/// control that visibly is one — where a class name no stylesheet has heard of degrades to
+/// nothing at all.
 /// </para>
 /// </remarks>
 public sealed partial class KildeSearch : ComponentBase
@@ -672,7 +673,8 @@ public sealed partial class KildeSearch : ComponentBase
                 _chosen.Values.All(values => values.Count == 0)
                     ? searched
                     : [.. searched.Where(MatchesFacets)],
-                _order);
+                _order,
+                _direction);
         }
     }
 
@@ -693,7 +695,7 @@ public sealed partial class KildeSearch : ComponentBase
 
     /// <summary>
     /// One sentence describing the visible result — "56 kilder av 66, avgrenset av 2 filtre,
-    /// sortert etter Flest variabler" — used both as the live announcement and as the table's
+    /// sortert etter Variabler, synkende" — used both as the live announcement and as the table's
     /// accessible name, so the two cannot drift apart.
     /// </summary>
     /// <remarks>
@@ -709,8 +711,9 @@ public sealed partial class KildeSearch : ComponentBase
     /// </para>
     /// <para>
     /// The catalogue's own order is left unsaid rather than named, so the sentence a reader who has
-    /// touched nothing hears is the one this list has always shown. Choosing it again is still a
-    /// change to the sentence, so the return is announced as well as the departure.
+    /// touched nothing hears is the one this list has always shown — and since the headings replaced
+    /// the select it is the only order the sentence never says, because nothing in the page returns
+    /// to it. The direction is passed whatever the order is and drawn only beside a named one.
     /// </para>
     /// <para>
     /// It takes the list rather than reading <see cref="Visible"/> itself, so that the sentence and
@@ -724,7 +727,8 @@ public sealed partial class KildeSearch : ComponentBase
             visible.Count,
             _kilder.Count,
             ChosenCount,
-            _order == KildeSortOrder.Standard ? null : T.KildeOrderLabel(_order));
+            _order == KildeSortOrder.Standard ? null : T.KildeOrderLabel(_order),
+            T.DirectionName(_direction));
 
     /// <summary>The search text as it is worth reporting back, which is nothing when it is blank.</summary>
     private string? SearchText => string.IsNullOrWhiteSpace(_search) ? null : _search.Trim();
@@ -765,6 +769,7 @@ public sealed partial class KildeSearch : ComponentBase
         // back out is that kilde, so one named on its own is a view with no way out.
         _selectedDatasamlingId = _selectedId is null ? null : SelectedDatasamlingId;
         _order = Order;
+        _direction = Direction;
 
         // Raised here rather than in LoadKildeAsync, which cannot start until the list has
         // answered. The drilldown is on screen from the first render, and ComponentBase draws it

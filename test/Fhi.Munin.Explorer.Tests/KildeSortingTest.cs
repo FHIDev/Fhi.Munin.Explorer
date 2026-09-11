@@ -1,3 +1,4 @@
+using AngleSharp.Dom;
 using Bunit;
 using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
@@ -91,14 +92,18 @@ public class KildeSortingTest : BunitContext
     private static IReadOnlyList<string> RowNames(IRenderedComponent<KildeSearch> cut) =>
         [.. cut.FindAll(".munin-explorer-kilder tbody th button").Select(b => b.TextContent.Trim())];
 
+    /// <summary>Sort on an order's column, which is the only way a reader can.</summary>
     private static void Choose(IRenderedComponent<KildeSearch> cut, KildeSortOrder order) =>
-        cut.Find("select[id^='munin-explorer-sort']").Change(order.ToString());
+        KildeColumns.SortBy(cut, order);
 
-    /// <summary>The order the control is showing, read off the option the markup marks.</summary>
-    private static string SelectedOrder(IRenderedComponent<KildeSearch> cut) =>
-        cut.FindAll("select[id^='munin-explorer-sort'] option")
-           .Single(option => option.HasAttribute("selected"))
-           .TextContent.Trim();
+    /// <summary>The header cell of the column the list is sorted on, or null when none is.</summary>
+    /// <remarks>
+    /// Read off <c>aria-sort</c> rather than off the arrow, because the attribute is the half a
+    /// screen reader has — and asserted as a single element, which is what says no second column
+    /// claims to be sorted too.
+    /// </remarks>
+    private static IElement? SortedHeader(IRenderedComponent<KildeSearch> cut) =>
+        cut.FindAll(".munin-explorer-kilder thead th[aria-sort]").SingleOrDefault();
 
     [Fact]
     public void Order_WhenNobodyHasChosenOne_ThenTheListIsInTheOrderTheCatalogueSentIt()
@@ -150,15 +155,21 @@ public class KildeSortingTest : BunitContext
     }
 
     [Fact]
-    public void Order_WhenSortedByVariableCount_ThenTheMostComeFirstAndZeroIsAValueAndNotAnAbsence()
+    public void Order_WhenSortedByVariableCount_ThenZeroIsOrderedAsAValueInBothDirections()
     {
         // TotalVariables is a non-nullable int, so the contract cannot say "not counted" — an
         // absent count arrives as 0 (Fhi.Metadata-kbfqs). What this pins is that 0 is ordered as 0,
-        // at the bottom of the list, rather than being treated as missing and moved elsewhere.
+        // at whichever end of the list the direction puts it, rather than being treated as missing
+        // and moved elsewhere.
         var cut = RenderWith(
             Kilde("Tomt register", "K_TOM", variables: 0),
             Kilde("Stort register", "K_STO", variables: 240),
             Kilde("Lite register", "K_LIT", variables: 7));
+
+        // The first press on a column is ascending, the variable explorer's rule.
+        Choose(cut, KildeSortOrder.Variables);
+
+        Assert.Equal(["Tomt register", "Lite register", "Stort register"], RowNames(cut));
 
         Choose(cut, KildeSortOrder.Variables);
 
@@ -179,6 +190,12 @@ public class KildeSortingTest : BunitContext
 
         Choose(cut, KildeSortOrder.Established);
 
+        Assert.Equal(["Nullåret", "Eldst", "Nyest", "Uten årstall"], RowNames(cut));
+
+        // Reversed, and the kilde with no year does not move: "not recorded" is last in both
+        // directions, which is the one place a reversed comparison would have put it first.
+        Choose(cut, KildeSortOrder.Established);
+
         Assert.Equal(["Nyest", "Eldst", "Nullåret", "Uten årstall"], RowNames(cut));
     }
 
@@ -194,10 +211,19 @@ public class KildeSortingTest : BunitContext
             Kilde("Aldri endret", "K_ALD"),
             Kilde("Endret sist", "K_NYT", sourceUpdated: "20260423"));
 
+        // Sist endret is one of the seven columns behind the picker, so it has to be on screen
+        // before it can be pressed — the price of the order living on the heading.
+        KildeColumns.ToggleColumn(cut, "Sist endret");
         Choose(cut, KildeSortOrder.SourceUpdated);
 
         // The two that have no orderable date come last, between themselves in name order — the
         // tiebreak, not the order they arrived in.
+        Assert.Equal(
+            ["Endret i fjor", "Endret sist", "Aldri endret", "Sprøytet dato"],
+            RowNames(cut));
+
+        Choose(cut, KildeSortOrder.SourceUpdated);
+
         Assert.Equal(
             ["Endret sist", "Endret i fjor", "Aldri endret", "Sprøytet dato"],
             RowNames(cut));
@@ -240,9 +266,9 @@ public class KildeSortingTest : BunitContext
 
         Choose(cut, KildeSortOrder.Variables);
 
-        // The even indices, most variables first: Y (24), W (22) … A (0).
+        // The even indices, fewest variables first: A (0), C (2) … Y (24).
         var expected = Enumerable.Range(0, 13)
-            .Select(i => $"Kilde {(char)('A' + 24 - (i * 2))}")
+            .Select(i => $"Kilde {(char)('A' + (i * 2))}")
             .ToArray();
 
         Assert.Equal(expected, RowNames(cut));
@@ -266,130 +292,230 @@ public class KildeSortingTest : BunitContext
         Choose(cut, KildeSortOrder.Variables);
 
         // Barnediabetes has the most variables of the five and matches none of the search, so a
-        // sort that ran over the catalogue rather than over the matches would head this list.
+        // sort that ran over the catalogue rather than over the matches would end this list.
         Assert.Equal(
-            ["Reseptregisteret", "Dødsårsaksregisteret", "Kreftregisteret", "Als registeret"],
+            ["Als registeret", "Kreftregisteret", "Dødsårsaksregisteret", "Reseptregisteret"],
             RowNames(cut));
     }
 
     [Fact]
-    public void Order_WhenTheReaderSorts_ThenTheStatusLineSaysWhichOrderTheRowsAreIn()
+    public void Order_WhenTheReaderSorts_ThenTheStatusLineSaysWhichOrderTheRowsAreInAndWhichWay()
     {
         // The rows move under a screen reader with nothing announcing it otherwise: the status line
-        // is polite and atomic, so a sentence that does not change is a change nobody hears.
+        // is polite and atomic, so a sentence that does not change is a change nobody hears. The
+        // direction is in it because a second press on the same column changes nothing else in the
+        // sentence, and a reader who cannot see the arrow would hear the same words twice.
         var cut = RenderWith(Kilde("Als registeret", "K_ALS"), Kilde("Barnediabetes", "K_BDR"));
 
         Assert.Equal("2 kilder", cut.Find("p[role=status]").TextContent.Trim());
 
         Choose(cut, KildeSortOrder.Variables);
 
-        Assert.Equal("2 kilder, sortert etter Flest variabler", cut.Find("p[role=status]").TextContent.Trim());
+        Assert.Equal(
+            "2 kilder, sortert etter Variabler, stigende",
+            cut.Find("p[role=status]").TextContent.Trim());
+
+        Choose(cut, KildeSortOrder.Variables);
+
+        Assert.Equal(
+            "2 kilder, sortert etter Variabler, synkende",
+            cut.Find("p[role=status]").TextContent.Trim());
     }
 
     [Fact]
-    public void Order_WhenTheReaderReadsInEnglish_ThenTheControlAndTheSentenceAreInEnglishToo()
+    public void Order_WhenTheReaderReadsInEnglish_ThenTheHeadingAndTheSentenceAreInEnglishToo()
     {
         Services.AddSingleton<IMuninExplorerClient>(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
         var cut = Render<KildeSearch>(b => b.Add(c => c.Language, "en"));
 
-        Choose(cut, KildeSortOrder.Name);
+        // By the English word, which is the whole point: the heading is the control now, so a
+        // column drawn in one language and pressed by another name would be unreachable.
+        KildeColumns.SortBy(cut, "Name");
 
-        Assert.Contains("Name A–Z", cut.Markup, StringComparison.Ordinal);
-        Assert.Equal("1 source, sorted by Name A–Z", cut.Find("p[role=status]").TextContent.Trim());
+        Assert.Equal("1 source, sorted by Name, ascending", cut.Find("p[role=status]").TextContent.Trim());
     }
 
+    // ---------------------------------------------------------------------------------
+    // The control, which is the column heading itself since Fhi.Metadata-l9l2n.88.
+    // ---------------------------------------------------------------------------------
+
     [Fact]
-    public void Control_WhenTheListIsOnScreen_ThenItOffersEveryOrderNamedByItsOwnLabel()
+    public void Control_WhenTheListIsOnScreen_ThenTheSortableColumnsAreTheFourThatMapToAnOrder()
     {
-        // Built from Enum.GetValues, so an order added to KildeSortOrder appears here without a
-        // second list being edited — and this is what says the labels are the reader's words and
-        // not the member names.
+        // Navn, Variabler and Opprettet are drawn by default and Sist endret sits behind the
+        // picker; the other nine columns read values no order covers, so a button over one of them
+        // would offer a sort this component cannot perform.
         var cut = RenderWith(Kilde("Als registeret", "K_ALS"));
 
-        var offered = cut.FindAll("select[id^='munin-explorer-sort'] option")
-                         .Select(option => option.TextContent.Trim())
-                         .ToArray();
+        Assert.Equal(
+            ["Navn", "Variabler", "Opprettet"],
+            KildeColumns.SortButtons(cut).Select(button => button.TextContent.Trim()));
+
+        KildeColumns.ToggleColumn(cut, "Sist endret");
 
         Assert.Equal(
-            ["Standard", "Navn A–Å", "Flest variabler", "Sist endret (nyest først)", "Opprettet (nyest først)"],
-            offered);
+            ["Navn", "Variabler", "Opprettet", "Sist endret"],
+            KildeColumns.SortButtons(cut).Select(button => button.TextContent.Trim()));
     }
 
     [Fact]
-    public void Control_WhenTheHostNamesAnOrder_ThenItIsTheOneSelectedOnTheFirstPaint()
+    public void Control_WhenTheSorterEtterSelectIsLookedFor_ThenThereIsNoneLeftAnywhere()
     {
-        // `selected` on the option rather than `value` on the select: the second is a DOM property
-        // the interactive renderer sets, so a statically rendered first paint would show Standard
-        // however the reader arrived — and they arrive here from a link.
-        Services.AddSingleton<IMuninExplorerClient>(new FakeClient(Kilde("Als registeret", "K_ALS")));
-
-        var cut = Render<KildeSearch>(b => b.Add(c => c.Order, KildeSortOrder.Established));
-
-        Assert.Equal(
-            "Opprettet (nyest først)",
-            cut.FindAll("select[id^='munin-explorer-sort'] option")
-               .Single(o => o.HasAttribute("selected"))
-               .TextContent.Trim());
-    }
-
-    [Fact]
-    public void Control_WhenTheReaderChoosesAnOrder_ThenTheHostIsToldSoItCanPutItInItsUrl()
-    {
-        var chosen = new List<KildeSortOrder>();
-
-        Services.AddSingleton<IMuninExplorerClient>(new FakeClient(Kilde("Als registeret", "K_ALS")));
-
-        var cut = Render<KildeSearch>(b => b.Add(c => c.OrderChanged, order => chosen.Add(order)));
-
-        Choose(cut, KildeSortOrder.Variables);
-        Choose(cut, KildeSortOrder.Standard);
-
-        Assert.Equal([KildeSortOrder.Variables, KildeSortOrder.Standard], chosen);
-    }
-
-    [Fact]
-    public void Control_WhenTheBrowserSendsSomethingUnreadable_ThenTheCatalogueOrderComesBack()
-    {
-        // A select can only send back a value this component wrote into it, so this is defensive —
-        // and it is a fallback rather than a throw for the reason the URL parse is one: whatever
-        // arrives, the list is still a list.
+        // The dropdown is gone on purpose (Robin, 2026-09-11) and the headings are the whole of the
+        // control. A select that came back would be a second place to hold the same state, which is
+        // what this change was made to stop.
         var cut = RenderWith(Kilde("Als registeret", "K_ALS"), Kilde("Barnediabetes", "K_BDR"));
 
-        Choose(cut, KildeSortOrder.Name);
-        cut.Find("select[id^='munin-explorer-sort']").Change("999");
-
-        Assert.Equal("2 kilder", cut.Find("p[role=status]").TextContent.Trim());
-        Assert.Equal("Standard", SelectedOrder(cut));
-
-        // Again from the catalogue's own order, where the fallback is what is already in force: no
-        // state changes and nothing re-renders, so only the refusal key puts the control back. A
-        // browser moves the selection itself before onchange and bUnit does not, hence the key.
-        cut.Find("select[id^='munin-explorer-sort']").Change("999");
-
-        Assert.Equal("2 kilder", cut.Find("p[role=status]").TextContent.Trim());
-        Assert.Equal("Standard", SelectedOrder(cut));
+        Assert.Empty(cut.FindAll("select"));
     }
 
     [Fact]
-    public void Control_WhenTheSearchMatchesNothing_ThenNoOrderControlIsDrawnOverTheEmptyTable()
+    public void Control_WhenAColumnIsSorted_ThenOnlyItsOwnHeaderCellCarriesAriaSort()
     {
-        // The same rule the column picker follows: a control acting on a table that is not there
-        // offers nothing, and both are inside the branch that draws the results.
+        // aria-sort on the CELL and on one cell only. "none" on every other column is noise a
+        // screen reader reads out on the way past, and the attribute on the button rather than the
+        // cell would describe the control instead of the column.
+        var cut = RenderWith(Kilde("Als registeret", "K_ALS"), Kilde("Barnediabetes", "K_BDR"));
+
+        Assert.Null(SortedHeader(cut));
+
+        Choose(cut, KildeSortOrder.Name);
+
+        var sorted = SortedHeader(cut);
+
+        Assert.NotNull(sorted);
+        Assert.Equal("ascending", sorted!.GetAttribute("aria-sort"));
+        Assert.StartsWith("Navn", sorted.TextContent.Trim(), StringComparison.Ordinal);
+        Assert.DoesNotContain("aria-sort", cut.Find(".munin-explorer-kilder__sort").OuterHtml);
+
+        Choose(cut, KildeSortOrder.Name);
+
+        Assert.Equal("descending", SortedHeader(cut)!.GetAttribute("aria-sort"));
+
+        // Another column takes it whole: two columns claiming to be sorted is the failure this and
+        // the SingleOrDefault in SortedHeader are both here for.
+        Choose(cut, KildeSortOrder.Established);
+
+        Assert.Equal("ascending", SortedHeader(cut)!.GetAttribute("aria-sort"));
+        Assert.StartsWith("Opprettet", SortedHeader(cut)!.TextContent.Trim(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Control_WhenAHeadingIsDrawn_ThenItIsAButtonInsideTheCellWearingTheSettledName()
+    {
+        // type="button" or the press submits a host's surrounding form; the class is the one
+        // Fhi.Helsedata.Stiler's rule names (Fhi.Metadata-l9l2n.106) and cannot be renamed here
+        // alone. A real <button> is also what gives Enter, Space and Tab without a key handler.
+        var cut = RenderWith(Kilde("Als registeret", "K_ALS"));
+
+        var button = KildeColumns.SortButtons(cut)[0];
+
+        Assert.Equal("th", button.ParentElement!.LocalName);
+        Assert.Equal("col", button.ParentElement.GetAttribute("scope"));
+        Assert.Equal("button", button.GetAttribute("type"));
+        Assert.Equal("hd-button-reset munin-explorer-kilder__sort", button.GetAttribute("class"));
+
+        // The cell is a native columnheader, so an explicit role on it would be a redundant one.
+        Assert.False(button.ParentElement.HasAttribute("role"));
+    }
+
+    [Fact]
+    public void Control_WhenAColumnIsSorted_ThenTheArrowIsAClasslessSpanNoScreenReaderAnnounces()
+    {
+        // Drawn exactly as the variable explorer draws it: the character is the whole of the mark,
+        // it needs no CSS, and it is hidden because aria-sort above already says the same thing.
+        var cut = RenderWith(Kilde("Als registeret", "K_ALS"));
+
+        Choose(cut, KildeSortOrder.Name);
+
+        var arrow = cut.Find(".munin-explorer-kilder thead th[aria-sort] span");
+
+        Assert.Equal("true", arrow.GetAttribute("aria-hidden"));
+        Assert.False(arrow.HasAttribute("class"));
+        Assert.Equal("↑", arrow.TextContent.Trim());
+
+        Choose(cut, KildeSortOrder.Name);
+
+        Assert.Equal("↓", cut.Find(".munin-explorer-kilder thead th[aria-sort] span").TextContent.Trim());
+
+        // And on that column alone: an arrow left behind on the column the reader sorted on before
+        // would say the list is in two orders at once.
+        Assert.Single(cut.FindAll(".munin-explorer-kilder thead span[aria-hidden]"));
+    }
+
+    [Fact]
+    public void Control_WhenAHeadingIsRead_ThenItIsNamedByTheColumnRatherThanByTheOrdering()
+    {
+        // The button says what the COLUMN is: the ordering is the arrow's and aria-sort's to carry,
+        // and a button reading "Navn A–Å" would name an order rather than the thing under it —
+        // which is what the labels said while a select offered them.
+        var cut = RenderWith(Kilde("Als registeret", "K_ALS"));
+
+        Assert.Equal("Navn", AccessibleName.Of(KildeColumns.SortButtons(cut)[0]));
+
+        Choose(cut, KildeSortOrder.Name);
+
+        // Still "Navn" once it is the sorted column: the arrow is aria-hidden, so it is not part of
+        // the name a screen reader announces.
+        Assert.Equal("Navn", AccessibleName.Of(KildeColumns.SortButtons(cut)[0]));
+    }
+
+    [Fact]
+    public void Control_WhenTheHostNamesAnOrder_ThenTheListArrivesInItOnTheFirstPaint()
+    {
+        // The host's parameter is where a link's order arrives, and the heading has to show it
+        // without a press: a component that only marked the column it had been pressed on would
+        // open every shared link looking unsorted.
+        Services.AddSingleton<IMuninExplorerClient>(new FakeClient(
+            Kilde("Als registeret", "K_ALS", established: "1990"),
+            Kilde("Barnediabetes", "K_BDR", established: "2020")));
+
+        var cut = Render<KildeSearch>(b => b
+            .Add(c => c.Order, KildeSortOrder.Established)
+            .Add(c => c.Direction, SortDirection.Descending));
+
+        Assert.Equal("descending", SortedHeader(cut)!.GetAttribute("aria-sort"));
+        Assert.StartsWith("Opprettet", SortedHeader(cut)!.TextContent.Trim(), StringComparison.Ordinal);
+        Assert.Equal(["Barnediabetes", "Als registeret"], RowNames(cut));
+    }
+
+    [Fact]
+    public void Control_WhenTheReaderSorts_ThenTheHostIsToldBothHalvesSoItCanPutThemInItsUrl()
+    {
+        // Both callbacks on every press, including the one that only reverses: a host told the
+        // order and not the direction would write a link that opens the same column the other way.
+        var orders = new List<KildeSortOrder>();
+        var directions = new List<SortDirection>();
+
+        Services.AddSingleton<IMuninExplorerClient>(new FakeClient(Kilde("Als registeret", "K_ALS")));
+
+        var cut = Render<KildeSearch>(b => b
+            .Add(c => c.OrderChanged, order => orders.Add(order))
+            .Add(c => c.DirectionChanged, direction => directions.Add(direction)));
+
+        Choose(cut, KildeSortOrder.Variables);
+        Choose(cut, KildeSortOrder.Variables);
+        Choose(cut, KildeSortOrder.Name);
+
+        Assert.Equal(
+            [KildeSortOrder.Variables, KildeSortOrder.Variables, KildeSortOrder.Name],
+            orders);
+
+        Assert.Equal(
+            [SortDirection.Ascending, SortDirection.Descending, SortDirection.Ascending],
+            directions);
+    }
+
+    [Fact]
+    public void Control_WhenTheSearchMatchesNothing_ThenThereIsNoHeadingToSortByEither()
+    {
+        // The table goes with the rows, and the headings with the table: there is nothing to order
+        // and nothing offering to.
         var cut = RenderWith(Kilde("Als registeret", "K_ALS"));
 
         cut.Find(".searchbox__freetext").Change("finnes ikke");
 
-        Assert.Empty(cut.FindAll("select[id^='munin-explorer-sort']"));
-    }
-
-    [Fact]
-    public void Control_WhenItIsRead_ThenTheSelectIsNamedByAVisibleLabel()
-    {
-        // A select with no <label for> is announced as "combo box" and nothing else. AccessibleName
-        // refuses placeholder and title on purpose, so this is the name a screen reader really has.
-        var cut = RenderWith(Kilde("Als registeret", "K_ALS"));
-
-        Assert.Equal("Sorter etter", AccessibleName.Of(cut.Find("select[id^='munin-explorer-sort']")));
+        Assert.Empty(KildeColumns.SortButtons(cut));
     }
 }
