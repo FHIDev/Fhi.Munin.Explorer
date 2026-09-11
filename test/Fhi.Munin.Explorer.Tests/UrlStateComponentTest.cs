@@ -1,9 +1,12 @@
+using System.Reflection;
 using AngleSharp.Dom;
 using Bunit;
+using Bunit.TestDoubles;
 using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Tests;
@@ -384,7 +387,11 @@ public class UrlStateComponentTest : BunitContext
     private static KildeSummary Kilde(Guid id, string name) => new() { Id = id, Name = name, Code = "K" };
 
     /// <summary>Answers with one kilde, so there is a row to open and a selection to hand over.</summary>
-    private sealed class OneKildeClient(Guid id) : EmptyMuninExplorerClient
+    /// <remarks>
+    /// And one datasamling under it, because the drill-in Kelda offers out of a kilde is a link
+    /// this component builds the address for — the tree has to have a node to hang it on.
+    /// </remarks>
+    private sealed class OneKildeClient(Guid id, Guid? datasamling = null) : EmptyMuninExplorerClient
     {
         public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
             string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
@@ -392,6 +399,28 @@ public class UrlStateComponentTest : BunitContext
 
         public override Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default) =>
             Task.FromResult<KildeDetail?>(new KildeDetail { Id = id, PreferredTerm = "Als registeret" });
+
+        public override Task<KildeHierarchy?> GetKildeHierarchyAsync(Guid id, CancellationToken cancellationToken = default) =>
+            Task.FromResult<KildeHierarchy?>(datasamling is { } open
+                ? new KildeHierarchy
+                {
+                    KildeId = id,
+                    DirectDatasamlinger = [new() { Id = open, Name = "Inklusjon" }]
+                }
+                : new KildeHierarchy { KildeId = id });
+
+        public override Task<DatasamlingDetail?> GetDatasamlingAsync(Guid id, CancellationToken cancellationToken = default) =>
+            Task.FromResult<DatasamlingDetail?>(new() { Id = id, Code = "K_ALS.INKLUSJON", PreferredTerm = "Inklusjon" });
+    }
+
+    /// <summary>The kildeutforsker at <paramref name="url"/>, over a kilde with one datasamling.</summary>
+    private IRenderedComponent<KildeExplorer> RenderKilder(Guid kilde, Guid datasamling, string url)
+    {
+        Services.AddSingleton<IMuninExplorerClient>(new OneKildeClient(kilde, datasamling));
+        Prepare();
+        Navigation.NavigateTo(url);
+
+        return Render<KildeExplorer>();
     }
 
     /// <inheritdoc cref="RenderExplorer"/>
@@ -414,6 +443,49 @@ public class UrlStateComponentTest : BunitContext
         var cut = RenderKilder(id, $"http://localhost/kilder?kilde={id}");
 
         Assert.NotEmpty(cut.FindAll(".munin-explorer-drilldown"));
+    }
+
+    [Fact]
+    public void Kilder_WhenALinkCarriesADatasamlingBesideItsKilde_ThenItOpensAndTheAddressKeepsBoth()
+    {
+        // The whole claim of ?datasamling=: a link pasted into a fresh tab lands on the same page,
+        // and the address it rewrites still names the kilde the reader can go back out to.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+
+        var cut = RenderKilder(kilde, datasamling, $"http://localhost/kilder?kilde={kilde}&datasamling={datasamling}");
+
+        Assert.NotEmpty(cut.FindAll(".munin-explorer-datasamling"));
+        Assert.Equal($"/kilder?kilde={kilde}&datasamling={datasamling}", Mirrored());
+    }
+
+    [Fact]
+    public void Kilder_WhenALinkCarriesADatasamlingAndNoKilde_ThenItIsDroppedFromTheAddress()
+    {
+        // A datasamling opens in place of the kilde it belongs to, so one named on its own is a
+        // view with no way back out. Dropped rather than opened, and the address says so.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+
+        var cut = RenderKilder(kilde, datasamling, $"http://localhost/kilder?datasamling={datasamling}");
+
+        Assert.Empty(cut.FindAll(".munin-explorer-datasamling"));
+        Assert.Equal("/kilder", Mirrored());
+    }
+
+    [Fact]
+    public void Kilder_WhenAKildeIsOpen_ThenItsTreesRouteCarriesBothKeysAndTheHostsOwnParameter()
+    {
+        // The one thing KildeSearch cannot work out for itself: which keys the address carries.
+        // A link that dropped the host's own parameter would erase it on the drill-in.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+
+        var cut = RenderKilder(kilde, datasamling, $"http://localhost/kilder?utm_source=nyhetsbrev&kilde={kilde}");
+
+        Assert.Equal(
+            $"/kilder?utm_source=nyhetsbrev&kilde={kilde}&datasamling={datasamling}",
+            cut.Find("a.munin-explorer-hierarchy__open").GetAttribute("href"));
     }
 
     [Fact]
@@ -512,7 +584,7 @@ public class UrlStateComponentTest : BunitContext
             ]);
     }
 
-    /// <inheritdoc cref="RenderKilder"/>
+    /// <inheritdoc cref="RenderExplorer"/>
     private IRenderedComponent<KildeExplorer> RenderThreeKilder(string url)
     {
         Services.AddSingleton<IMuninExplorerClient>(new ThreeKilderClient());
@@ -628,6 +700,258 @@ public class UrlStateComponentTest : BunitContext
                                b => b.Add(c => c.VariableExplorerPath, "/"));
 
         Assert.NotEmpty(cut.FindAll(".munin-explorer-kilder__select"));
+    }
+
+    /// <summary>
+    /// What a host's <c>Router</c> does to a standing circuit: the address moves and nothing
+    /// reloads, which is the one event <c>KildeExplorer.Moved</c> exists for.
+    /// </summary>
+    /// <remarks>
+    /// Every other test here navigates and <em>then</em> renders, which is the fresh-mount path a
+    /// router-less host takes. Nothing below mounts anything after moving: the component is already
+    /// standing, exactly as it is on helsedata once the circuit is up.
+    /// </remarks>
+    private void Move(string url) => Navigation.NavigateTo(url);
+
+    /// <summary>Every navigation this test's browser has made, so one nobody asked for is visible.</summary>
+    private int Moves => ((BunitNavigationManager)Navigation).History.Count;
+
+    /// <summary>Two kilder, a datasamling under the first, for drilling in and coming back out.</summary>
+    private sealed class TwoKilderClient(Guid first, Guid second, Guid datasamling) : EmptyMuninExplorerClient
+    {
+        public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
+            string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<KildeSummary>>(
+                [Kilde(first, "Als registeret"), Kilde(second, "Reseptregisteret")]);
+
+        public override Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default) =>
+            Task.FromResult<KildeDetail?>(new KildeDetail { Id = id, PreferredTerm = "Als registeret" });
+
+        public override Task<KildeHierarchy?> GetKildeHierarchyAsync(Guid id, CancellationToken cancellationToken = default) =>
+            Task.FromResult<KildeHierarchy?>(new KildeHierarchy
+            {
+                KildeId = id,
+                DirectDatasamlinger = id == first ? [new() { Id = datasamling, Name = "Inklusjon" }] : [],
+            });
+
+        public override Task<DatasamlingDetail?> GetDatasamlingAsync(Guid id, CancellationToken cancellationToken = default) =>
+            Task.FromResult<DatasamlingDetail?>(new() { Id = id, Code = "K_ALS.INKLUSJON", PreferredTerm = "Inklusjon" });
+    }
+
+    /// <inheritdoc cref="RenderExplorer"/>
+    private IRenderedComponent<KildeExplorer> RenderTwoKilder(
+        Guid first, Guid second, Guid datasamling, string url)
+    {
+        Services.AddSingleton<IMuninExplorerClient>(new TwoKilderClient(first, second, datasamling));
+        Prepare();
+        Navigation.NavigateTo(url);
+
+        return Render<KildeExplorer>();
+    }
+
+    [Fact]
+    public void Moved_WhenARouterInterceptsTheDrillIn_ThenTheStandingComponentDrawsWhatTheNewAddressNames()
+    {
+        // The whole of the second half of this change. Without it the address bar says
+        // ?datasamling= and the view underneath is still the kilde, because the query is read at
+        // initialisation and a router leaves the component standing.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+
+        var cut = RenderKilder(kilde, datasamling, $"http://localhost/kilder?kilde={kilde}");
+
+        Assert.Empty(cut.FindAll(".munin-explorer-datasamling"));
+
+        Move($"/kilder?kilde={kilde}&datasamling={datasamling}");
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".munin-explorer-datasamling")));
+    }
+
+    [Fact]
+    public void Moved_WhenTheReaderPressesBackOutOfADatasamling_ThenTheKildeIsDrawnAgainWithoutALoad()
+    {
+        // The other direction, and the reason a real link was chosen: Back has to mean what it
+        // means everywhere else, and it arrives here as a LocationChanged and nothing else.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+
+        var cut = RenderKilder(kilde, datasamling, $"http://localhost/kilder?kilde={kilde}&datasamling={datasamling}");
+
+        Move($"/kilder?kilde={kilde}");
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Empty(cut.FindAll(".munin-explorer-datasamling"));
+            Assert.NotEmpty(cut.FindAll(".munin-explorer-hierarchy"));
+        });
+    }
+
+    [Fact]
+    public void Moved_WhenItReadsTheNewAddress_ThenItNavigatesNowhereItself()
+    {
+        // Every navigation clears the browser's forward list, so a reload issued from here would
+        // take away the one thing a real link was chosen to keep — and one slipping in later
+        // would leave every other assertion in this file passing.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+
+        var cut = RenderKilder(kilde, datasamling, $"http://localhost/kilder?kilde={kilde}");
+
+        var before = Moves;
+
+        Move($"/kilder?kilde={kilde}&datasamling={datasamling}");
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".munin-explorer-datasamling")));
+
+        // The reader's own move and nothing behind it.
+        Assert.Equal(before + 1, Moves);
+        Assert.Equal($"http://localhost/kilder?kilde={kilde}&datasamling={datasamling}", Navigation.Uri);
+    }
+
+    [Fact]
+    public void Moved_WhenTheNavigationIsToAnotherPage_ThenThisOneLeavesItAlone()
+    {
+        // A host's Router raises LocationChanged for every page it serves, not only for this one.
+        // Without the path guard the explorer would read another page's query as its own and
+        // rewrite that page's address bar on the way out.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+
+        var cut = RenderKilder(kilde, datasamling, $"http://localhost/kilder?kilde={kilde}&datasamling={datasamling}");
+
+        var written = JSInterop.Invocations[ReplaceState].Count;
+
+        Move($"/variabler?kilde={Guid.NewGuid()}");
+
+        Assert.NotEmpty(cut.FindAll(".munin-explorer-datasamling"));
+        Assert.Equal(written, JSInterop.Invocations[ReplaceState].Count);
+        Assert.Equal($"/kilder?kilde={kilde}&datasamling={datasamling}", Mirrored());
+    }
+
+    [Fact]
+    public void Moved_WhenOnlyTheHostsOwnParametersChange_ThenTheyAreCarriedForwardRatherThanPutBack()
+    {
+        // The early-return path, which is the one that looks harmless. The owned keys are equal, so
+        // nothing is remounted — but the mirror holding the host's parameters has to be taken and
+        // drawn anyway, or every later link and every later rewrite restores the dropped value.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+
+        var cut = RenderKilder(kilde, datasamling, $"http://localhost/kilder?utm_source=a&kilde={kilde}");
+
+        Move($"/kilder?utm_source=b&kilde={kilde}");
+
+        // No render of the test's own: the component redraws on this path itself, because a host
+        // with no Router raises LocationChanged without re-rendering the subtree and the links are
+        // built from the mirror.
+        Assert.Equal(
+            $"/kilder?utm_source=b&kilde={kilde}&datasamling={datasamling}",
+            cut.Find("a.munin-explorer-hierarchy__open").GetAttribute("href"));
+
+        // And the next owned change writes the host's new value back rather than erasing it.
+        cut.FindAll("button").First(button => button.TextContent.Contains("Tilbake", StringComparison.Ordinal)).Click();
+
+        Assert.Equal("/kilder?utm_source=b", Mirrored());
+    }
+
+    [Fact]
+    public void Moved_WhenAnOwnedKeyChangesToo_ThenTheHostsArrivingParametersAreTheOnesMirrored()
+    {
+        // The same refresh on the path that does redraw. A mirror left pinned to the mounting
+        // address would put utm_source=a back the moment anything rewrote the URL.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+
+        var cut = RenderKilder(kilde, datasamling, $"http://localhost/kilder?utm_source=a&kilde={kilde}");
+
+        Move($"/kilder?utm_source=b&kilde={kilde}&datasamling={datasamling}");
+
+        cut.WaitForAssertion(
+            () => Assert.Equal($"/kilder?utm_source=b&kilde={kilde}&datasamling={datasamling}", Mirrored()));
+    }
+
+    /// <summary>Whoever is listening for a navigation, read off the event itself.</summary>
+    /// <remarks>
+    /// Reflection because a leak has no other symptom: rendering a disposed component is a no-op,
+    /// so a handler left behind costs nothing any assertion on a view could see. The field is
+    /// asserted to exist, so a framework renaming it fails here rather than reporting none ever.
+    /// </remarks>
+    private static IReadOnlyList<object> Listeners(NavigationManager navigation)
+    {
+        var field = typeof(NavigationManager).GetField(
+            "_locationChanged", BindingFlags.Instance | BindingFlags.NonPublic);
+
+        Assert.NotNull(field);
+
+        return field.GetValue(navigation) is EventHandler<LocationChangedEventArgs> subscribed
+            ? [.. subscribed.GetInvocationList().Select(handler => handler.Target!)]
+            : [];
+    }
+
+    [Fact]
+    public void Moved_WhenTheComponentIsGone_ThenItIsNotStillListeningForNavigations()
+    {
+        // LocationChanged belongs to the host and outlives every component that touches it. A
+        // handler left behind keeps this one alive with it, and reads the next page's address as
+        // its own — silently, because rendering a disposed component does nothing at all.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+
+        var cut = RenderKilder(kilde, datasamling, $"http://localhost/kilder?kilde={kilde}");
+
+        var explorer = cut.Instance;
+
+        Assert.Contains(explorer, Listeners(Navigation));
+
+        // The call the renderer makes when a host's Router leaves the page, made directly: the
+        // renderer's own DisposeComponents queues it and returns, which is a race from here.
+        ((IDisposable)explorer).Dispose();
+
+        Assert.DoesNotContain(explorer, Listeners(Navigation));
+        Assert.Null(Record.Exception(() => Move($"/kilder?kilde={kilde}&datasamling={datasamling}")));
+    }
+
+    [Fact]
+    public async Task Kilder_WhenAnotherKildeIsReportedWhileADatasamlingIsOpen_ThenTheDatasamlingGoesWithIt()
+    {
+        // Driven at the seam KildeChanged guards: SelectedKildeIdChanged is a public parameter and
+        // says only which kilde is open. Nothing composed today raises it with a datasamling still
+        // held here, so the assignment is an invariant — and this is what notices it going.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+        var second = Guid.NewGuid();
+
+        var cut = RenderKilder(kilde, datasamling, $"http://localhost/kilder?kilde={kilde}&datasamling={datasamling}");
+        var reported = cut.FindComponent<KildeSearch>().Instance.SelectedKildeIdChanged;
+
+        await cut.InvokeAsync(() => reported.InvokeAsync(second));
+
+        Assert.Equal($"/kilder?kilde={second}", Mirrored());
+    }
+
+    [Fact]
+    public void Kilder_WhenAnotherKildeIsOpenedAfterComingBackOutOfADatasamling_ThenTheAddressCarriesNoDatasamling()
+    {
+        // The pair KildeChanged keeps in step. A datasamling id that outlived the kilde it belongs
+        // to would sit in a field nothing draws, go into every address this component writes, and
+        // be what Moved compares the next arriving one against.
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+
+        var cut = RenderTwoKilder(first, second, datasamling, $"http://localhost/kilder?kilde={first}");
+
+        // In, and back out to the kilde, the way the two links in the markup go.
+        Move($"/kilder?kilde={first}&datasamling={datasamling}");
+        Move($"/kilder?kilde={first}");
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".munin-explorer-hierarchy")));
+
+        cut.FindAll("button").First(button => button.TextContent.Contains("Tilbake", StringComparison.Ordinal)).Click();
+
+        cut.FindAll(".munin-explorer-kilder__name")[1].Click();
+
+        Assert.Equal($"/kilder?kilde={second}", Mirrored());
     }
 
     [Fact]

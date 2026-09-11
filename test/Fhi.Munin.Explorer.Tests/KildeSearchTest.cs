@@ -5799,4 +5799,356 @@ public class KildeSearchTest : BunitContext
 
         Assert.Equal("Ikke oppgitt", AccessibleName.Of(cut.Find("th button.munin-explorer-kilder__name")));
     }
+
+    /// <summary>One kilde, one datasamling under it, and a detail for both.</summary>
+    /// <remarks>
+    /// Its own client rather than <see cref="FakeClient"/> extended, because the drill-in is the
+    /// only thing here that asks the API for a hierarchy and for a datasamling, and the counts
+    /// below are what say a view was fetched rather than merely drawn empty.
+    /// </remarks>
+    private sealed class DrillInClient(Guid kilde, Guid datasamling) : EmptyMuninExplorerClient
+    {
+        public int KildeCalls { get; private set; }
+        public int DatasamlingCalls { get; private set; }
+
+        public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
+            string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<KildeSummary>>(
+                [new() { Id = kilde, Code = "K_ALS", Name = "Als registeret" }]);
+
+        public override Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            KildeCalls++;
+
+            return StallKilde
+                ? _kildeStall.Task
+                : Task.FromResult<KildeDetail?>(new() { Id = id, Code = "K_ALS", PreferredTerm = "Als registeret" });
+        }
+
+        public override Task<KildeHierarchy?> GetKildeHierarchyAsync(Guid id, CancellationToken cancellationToken = default) =>
+            Task.FromResult<KildeHierarchy?>(new()
+            {
+                KildeId = id,
+                DirectDatasamlinger = [new() { Id = datasamling, Name = "Inklusjon", VariableCount = 9 }]
+            });
+
+        /// <summary>What the datasamling fetch does instead of answering, if anything.</summary>
+        /// <remarks>
+        /// Three switches rather than one, because the three sentences they produce are the point:
+        /// a datasamling the catalogue does not publish, one the limiter refused, and a catalogue
+        /// that is down all have to stay apart. See the kilde twin's <c>FakeClient</c>.
+        /// </remarks>
+        public bool MissingDatasamling { get; set; }
+
+        /// <inheritdoc cref="MissingDatasamling"/>
+        public bool RateLimitDatasamling { get; set; }
+
+        /// <inheritdoc cref="MissingDatasamling"/>
+        public bool FailDatasamling { get; set; }
+
+        /// <summary>
+        /// Never answer the datasamling fetch, so a test can land it after the reader has left it.
+        /// </summary>
+        /// <remarks>
+        /// <see cref="FakeClient.StallDetail"/>'s reason one step in: every fetch here otherwise
+        /// completes inside the mount, so none is ever in flight across a close and
+        /// <see cref="KildeSearch"/>'s generation guard is never reached on this path.
+        /// </remarks>
+        public bool StallDatasamling { get; set; }
+
+        /// <summary>Never answer the kilde fetch, so a stale datasamling can land while it runs.</summary>
+        /// <remarks>
+        /// <see cref="StallDatasamling"/>'s trick on the other fetch of the pair, and for the arm
+        /// it leaves out: with the kilde answered inside the click, the loading flag is already
+        /// down when the stale answer lands, so lowering it again is a change nothing can see.
+        /// </remarks>
+        public bool StallKilde { get; set; }
+
+        private readonly List<TaskCompletionSource<DatasamlingDetail?>> _stalls = [];
+
+        private readonly TaskCompletionSource<KildeDetail?> _kildeStall = new();
+
+        /// <summary>Answer the oldest datasamling fetch still hanging.</summary>
+        public void AnswerStalled(DatasamlingDetail detail) => _stalls[0].TrySetResult(detail);
+
+        /// <summary>Fail the oldest datasamling fetch still hanging.</summary>
+        public void FailStalled() => _stalls[0].TrySetException(new HttpRequestException("the API is down"));
+
+        public override Task<DatasamlingDetail?> GetDatasamlingAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            DatasamlingCalls++;
+
+            if (RateLimitDatasamling)
+            {
+                throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+            }
+
+            if (FailDatasamling)
+            {
+                throw new HttpRequestException("the API is down");
+            }
+
+            if (StallDatasamling)
+            {
+                // Continuations inline deliberately - see AnswerStalledCodes in VariableExplorerTest.
+                var stall = new TaskCompletionSource<DatasamlingDetail?>();
+                _stalls.Add(stall);
+
+                return stall.Task;
+            }
+
+            return Task.FromResult<DatasamlingDetail?>(MissingDatasamling
+                ? null
+                : new() { Id = id, Code = "K_ALS.INKLUSJON", PreferredTerm = "Inklusjon" });
+        }
+    }
+
+    /// <summary>Kelda mounted the way <see cref="KildeExplorer"/> mounts it, at some address.</summary>
+    private IRenderedComponent<KildeSearch> RenderDrillIn(
+        DrillInClient client, Guid? kilde, Guid? datasamling, bool wireHref = true) =>
+        RenderWith(client, p => p
+            .Add(c => c.SelectedKildeId, kilde)
+            .Add(c => c.SelectedDatasamlingId, datasamling)
+            .Add(c => c.DatasamlingHref, wireHref
+                ? (Func<Guid?, string>)(id => id is null ? $"/kilder?kilde={kilde}" : $"/kilder?kilde={kilde}&datasamling={id}")
+                : null));
+
+    [Fact]
+    public void DrillIn_WhenTheAddressNamesADatasamlingOfTheOpenKilde_ThenItsOwnViewReplacesTheKildesAndTheKildeIsNotFetched()
+    {
+        // DatasamlingView is Runa's component rendered unchanged, and the kilde's payload would be
+        // a round trip for a view nobody is looking at.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+        var client = new DrillInClient(kilde, datasamling);
+
+        var cut = RenderDrillIn(client, kilde, datasamling);
+
+        Assert.NotEmpty(cut.FindAll(".munin-explorer-datasamling"));
+        Assert.Empty(cut.FindAll(".munin-explorer-kilde"));
+        Assert.Equal(1, client.DatasamlingCalls);
+        Assert.Equal(0, client.KildeCalls);
+    }
+
+    [Fact]
+    public void DrillIn_WhenADatasamlingIsOpen_ThenTheRegionIsNamedByItRatherThanByTheKilde()
+    {
+        // A silent drilldown is a screen-reader dead end: the region is labelled by the shared
+        // heading, so the heading changing is what the announcement is.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+
+        var cut = RenderDrillIn(new DrillInClient(kilde, datasamling), kilde, datasamling);
+        var region = cut.Find(".munin-explorer-drilldown");
+
+        Assert.Equal("polite", cut.Find(".munin-explorer-drilldown [role=status]").GetAttribute("aria-live"));
+        Assert.Equal("Inklusjon", AccessibleName.Of(region));
+    }
+
+    [Fact]
+    public void DrillIn_WhenADatasamlingIsOpen_ThenTheWayOutIsALinkToItsKildeRatherThanAButtonToTheList()
+    {
+        // One step back rather than two: the reader arrived from the kilde. A link because it is
+        // the address that changes — the same reason the route in is one.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+
+        var cut = RenderDrillIn(new DrillInClient(kilde, datasamling), kilde, datasamling);
+        var back = cut.Find(".munin-explorer-drilldown a.hd-button-square");
+
+        Assert.Equal($"/kilder?kilde={kilde}", back.GetAttribute("href"));
+        Assert.Contains("Tilbake til datakilden", back.TextContent, StringComparison.Ordinal);
+        Assert.Empty(cut.FindAll(".munin-explorer-drilldown button.hd-button-square"));
+    }
+
+    [Fact]
+    public void DrillIn_WhenTheAddressNamesADatasamlingAndNoKilde_ThenItIsDroppedAndTheListIsDrawn()
+    {
+        // A datasamling opens in place of the kilde it belongs to, and the kilde is the way back
+        // out — so one named on its own is a view with no way out of it.
+        var datasamling = Guid.NewGuid();
+        var client = new DrillInClient(Guid.NewGuid(), datasamling);
+
+        var cut = RenderDrillIn(client, kilde: null, datasamling: datasamling);
+
+        Assert.NotEmpty(cut.FindAll(".munin-explorer-kilder tbody tr"));
+        Assert.Empty(cut.FindAll(".munin-explorer-datasamling"));
+        Assert.Equal(0, client.DatasamlingCalls);
+    }
+
+    [Fact]
+    public void DrillIn_WhenTheKildeIsOpen_ThenEveryDatasamlingInItsTreeCarriesTheRouteTheHostWired()
+    {
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+
+        var cut = RenderDrillIn(new DrillInClient(kilde, datasamling), kilde, datasamling: null);
+        var link = cut.Find("a.munin-explorer-hierarchy__open");
+
+        Assert.Equal($"/kilder?kilde={kilde}&datasamling={datasamling}", link.GetAttribute("href"));
+        Assert.Empty(cut.FindAll(".munin-explorer-hierarchy summary a"));
+    }
+
+    /// <summary>The one line the drill-in has to say why it is empty.</summary>
+    private static IElement DrillInStatus(IRenderedComponent<KildeSearch> cut) =>
+        cut.Find(".munin-explorer-drilldown p[role=status]");
+
+    [Fact]
+    public void DrillIn_WhenTheCatalogueDoesNotPublishTheDatasamling_ThenTheViewSaysSoRatherThanGoingBlank()
+    {
+        // A datasamling can be withdrawn between a link being copied and being followed, and
+        // neither arm of the drill-in draws anything then — so this sentence is the whole view.
+        // Its own sentence, not the kilde's: it says which of the two the reader asked for.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+        var client = new DrillInClient(kilde, datasamling) { MissingDatasamling = true };
+
+        var cut = RenderDrillIn(client, kilde, datasamling);
+
+        Assert.Equal("Fant ingen detaljer for denne datasamlingen.", DrillInStatus(cut).TextContent.Trim());
+        Assert.Equal("infobox infobox--bg-yellow", DrillInStatus(cut).GetAttribute("class"));
+        Assert.Empty(cut.FindAll(".munin-explorer-datasamling"));
+        Assert.Empty(cut.FindComponents<KildeView>());
+        Assert.DoesNotContain("Fant ingen detaljer for denne datakilden", cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DrillIn_WhenTheDatasamlingFetchIsRateLimited_ThenItSaysTheReaderAskedTooOften()
+    {
+        // The kilde twin's three sentences, one step further in, and they have to stay apart for
+        // the same reason: "kunne ikke hente" invites the retry the limiter is counting, and "fant
+        // ingen detaljer" says there is nothing to come back for.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+        var client = new DrillInClient(kilde, datasamling) { RateLimitDatasamling = true };
+
+        var cut = RenderDrillIn(client, kilde, datasamling);
+
+        Assert.Contains("for mange forespørsler", DrillInStatus(cut).TextContent, StringComparison.Ordinal);
+        Assert.Equal("infobox infobox--bg-yellow", DrillInStatus(cut).GetAttribute("class"));
+        Assert.DoesNotContain("Kunne ikke hente datasamlingen", cut.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("Fant ingen detaljer", cut.Markup, StringComparison.Ordinal);
+        Assert.Empty(cut.FindAll(".munin-explorer-datasamling"));
+
+        // Nothing asks again by itself: one deep link, one request.
+        Assert.Equal(1, client.DatasamlingCalls);
+    }
+
+    [Fact]
+    public void DrillIn_WhenTheDatasamlingFetchFails_ThenItSaysSoRatherThanEscapingInitialisation()
+    {
+        // An exception out of OnInitializedAsync tears down the circuit for helsedata's whole CMS
+        // page rather than for this component, so the fetch has to be caught where it is awaited —
+        // and the sentence has to stay the fault's rather than the catalogue's.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+        var client = new DrillInClient(kilde, datasamling) { FailDatasamling = true };
+
+        var cut = RenderDrillIn(client, kilde, datasamling);
+
+        Assert.Equal(
+            "Kunne ikke hente datasamlingen nå. Prøv igjen om litt.",
+            DrillInStatus(cut).TextContent.Trim());
+        Assert.Equal("infobox infobox--bg-yellow", DrillInStatus(cut).GetAttribute("class"));
+        Assert.DoesNotContain("Fant ingen detaljer", cut.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("Kunne ikke hente datakilden", cut.Markup, StringComparison.Ordinal);
+        Assert.Empty(cut.FindAll(".munin-explorer-datasamling"));
+
+        // And the way back out is still there, which is the whole difference between a failed
+        // fetch and a dead end.
+        Assert.Equal($"/kilder?kilde={kilde}", cut.Find(".munin-explorer-drilldown a.hd-button-square").GetAttribute("href"));
+    }
+
+    [Fact]
+    public void DrillIn_WhenTheHostWiredNoRoute_ThenTheTreeOffersNoneAndTheWayOutStaysTheListButton()
+    {
+        // What a mount that owns no address bar gets — ModernHost's bare KildeSearch before this
+        // page wired the query. A control with nowhere to go is worse than the coarser one.
+        var kilde = Guid.NewGuid();
+
+        var cut = RenderDrillIn(new DrillInClient(kilde, Guid.NewGuid()), kilde, datasamling: null, wireHref: false);
+
+        Assert.Empty(cut.FindAll("a.munin-explorer-hierarchy__open"));
+        Assert.NotEmpty(cut.FindAll(".munin-explorer-drilldown button.hd-button-square"));
+    }
+
+    /// <summary>
+    /// A deep link into a datasamling whose fetch hangs, left for the kilde in the list beside it.
+    /// </summary>
+    /// <remarks>
+    /// The way out is the list button rather than the kilde link because a mount with no route
+    /// wired is the one whose close stays inside this component — which is what puts the abandoned
+    /// fetch and the kilde replacing it in one component's life, where the guard is all that parts them.
+    /// </remarks>
+    private IRenderedComponent<KildeSearch> AbandonedDatasamling(DrillInClient client, Guid kilde)
+    {
+        var cut = RenderDrillIn(client, kilde, Guid.NewGuid(), wireHref: false);
+
+        cut.Find(".munin-explorer-drilldown button.hd-button-square").Click();
+        cut.Find(".munin-explorer-kilder tbody th button").Click();
+
+        return cut;
+    }
+
+    [Fact]
+    public async Task DrillIn_WhenAnAbandonedDatasamlingFetchAnswers_ThenItDoesNotStandInForTheKildeTheReaderOpened()
+    {
+        // The two fetches share _detailGeneration because they write into one view, and the markup
+        // reads _datasamling before _kilde — so a fetch the reader has walked away from would not
+        // leave a stale field behind, it would replace the view they are looking at.
+        var kilde = Guid.NewGuid();
+        var client = new DrillInClient(kilde, Guid.NewGuid()) { StallDatasamling = true };
+
+        var cut = AbandonedDatasamling(client, kilde);
+
+        Assert.Equal(kilde, cut.FindComponent<KildeView>().Instance.Kilde?.Id);
+
+        await cut.InvokeAsync(() => client.AnswerStalled(new() { Id = Guid.NewGuid(), PreferredTerm = "Inklusjon" }));
+
+        Assert.Equal(kilde, cut.FindComponent<KildeView>().Instance.Kilde?.Id);
+        Assert.Empty(cut.FindAll(".munin-explorer-datasamling"));
+        Assert.Equal(string.Empty, DrillInStatus(cut).TextContent.Trim());
+    }
+
+    [Fact]
+    public async Task DrillIn_WhenAnAbandonedDatasamlingFetchFails_ThenItsFailureIsNotReportedOverTheKilde()
+    {
+        // The same guard on the path out of the catch. The kilde it would report over has loaded
+        // perfectly, and the ordering below is what makes that visible: DetailStatus reads the
+        // loading flag before the error, so a stale _detailError raised while the owning fetch is
+        // still in flight hides behind "Henter datakilden …" and no assertion can see it.
+        var kilde = Guid.NewGuid();
+        var client = new DrillInClient(kilde, Guid.NewGuid()) { StallDatasamling = true };
+
+        var cut = AbandonedDatasamling(client, kilde);
+
+        await cut.InvokeAsync(client.FailStalled);
+
+        Assert.Equal(string.Empty, DrillInStatus(cut).TextContent.Trim());
+        Assert.Equal("caption", DrillInStatus(cut).GetAttribute("class"));
+        Assert.DoesNotContain("Kunne ikke hente datasamlingen", cut.Markup, StringComparison.Ordinal);
+        Assert.Equal(kilde, cut.FindComponent<KildeView>().Instance.Kilde?.Id);
+    }
+
+    [Fact]
+    public async Task DrillIn_WhenAnAbandonedDatasamlingLandsWhileTheKildeIsStillLoading_ThenTheViewStillSaysSo()
+    {
+        // The third arm of the same guard, the one in the finally, and the only one the two above
+        // cannot reach: their kilde answers inside the click, so the flag it lowers is already
+        // down. Stalled instead, an unguarded finally reports the running fetch as finished —
+        // an empty panel, a blank status line and aria-busy "false" — to a reader still waiting.
+        var kilde = Guid.NewGuid();
+        var client = new DrillInClient(kilde, Guid.NewGuid()) { StallDatasamling = true, StallKilde = true };
+
+        var cut = AbandonedDatasamling(client, kilde);
+
+        Assert.Equal("true", cut.Find(".munin-explorer-drilldown").GetAttribute("aria-busy"));
+
+        await cut.InvokeAsync(() => client.AnswerStalled(new() { Id = Guid.NewGuid(), PreferredTerm = "Inklusjon" }));
+
+        Assert.Equal("true", cut.Find(".munin-explorer-drilldown").GetAttribute("aria-busy"));
+        Assert.Equal("Henter datakilden …", DrillInStatus(cut).TextContent.Trim());
+        Assert.Empty(cut.FindComponents<KildeView>());
+        Assert.Empty(cut.FindAll(".munin-explorer-datasamling"));
+    }
 }

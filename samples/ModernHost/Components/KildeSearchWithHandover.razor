@@ -1,13 +1,27 @@
 @using Fhi.Munin.Explorer.Blazor
 @using Fhi.Munin.Explorer.Contracts
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.WebUtilities
+@using Microsoft.Extensions.Primitives
+@implements IDisposable
 @inject NavigationManager Nav
 
 @* The wrapper is the island, not KildeSearch, and that is the whole point: an EventCallback
    created in a statically-rendered parent serialises as {"HasDelegate":true} and arrives empty,
-   so @rendermode on the component tag would not be enough. (Fhi.Metadata-5ghur) *@
+   so @rendermode on the component tag would not be enough. (Fhi.Metadata-5ghur)
 
-<KildeSearch Language="@Language"
+   It also owns the address bar by hand, which is what this page is here to show: ?kilde= and
+   ?datasamling= are read, written and re-read on every navigation, and @key is what remounts a
+   component that reads its query at initialisation. KildeExplorer does all of this for a host that
+   would rather not. (Fhi.Metadata-l9l2n.107) *@
+
+<KildeSearch @key="_arrival"
+             Language="@Language"
              ShowAccessAndPrices="@ShowAccessAndPrices"
+             SelectedKildeId="@_kilde"
+             SelectedKildeIdChanged="Opened"
+             SelectedDatasamlingId="@_datasamling"
+             DatasamlingHref="@_address"
              ExploreVariablesRequested="ExploreVariables" />
 
 @code {
@@ -15,6 +29,89 @@
 
     /// <summary>Forwarded so the page above can choose, the way a real host does.</summary>
     [Parameter] public bool ShowAccessAndPrices { get; set; }
+
+    private Guid? _kilde;
+    private Guid? _datasamling;
+
+    /// <summary>How many addresses have arrived under this circuit, which KildeSearch is keyed on.</summary>
+    private int _arrival;
+
+    // Held rather than written into the markup: a method group is a new delegate on every render,
+    // and a changed parameter re-renders the whole list for nothing.
+    private Func<Guid?, string>? _address;
+
+    protected override void OnInitialized()
+    {
+        _address = Address;
+        ReadAddress();
+        Nav.LocationChanged += Moved;
+    }
+
+    public void Dispose() => Nav.LocationChanged -= Moved;
+
+    /// <summary>
+    /// The two keys this page owns. The datasamling is honoured only beside a kilde, which is the
+    /// rule <c>KildeSearch</c> itself applies — the kilde is the way back out of a datasamling.
+    /// </summary>
+    private void ReadAddress()
+    {
+        // TryGetValue, not the indexer: ParseQuery hands back a plain dictionary, which throws on a
+        // key the address does not carry — and the address carries neither until a kilde is opened.
+        var query = QueryHelpers.ParseQuery(new Uri(Nav.Uri).Query);
+
+        // The package's own constants rather than string literals: this page spells the two keys
+        // in three places, and a host that spelled one of them differently from KildeExplorer
+        // would hand out links the component it wraps cannot read back.
+        _kilde = Value(query, KildeExplorer.QueryKey);
+        _datasamling = _kilde is null ? null : Value(query, KildeExplorer.DatasamlingQueryKey);
+    }
+
+    private static Guid? Value(IReadOnlyDictionary<string, StringValues> query, string key) =>
+        query.TryGetValue(key, out var value) && Guid.TryParse(value.ToString(), out var id) ? id : null;
+
+    /// <summary>Where a datasamling of the open kilde lives, or the open kilde on its own.</summary>
+    private string Address(Guid? datasamling) =>
+        _kilde is not { } kilde ? "/kilder"
+        : datasamling is { } open
+            ? $"/kilder?{KildeExplorer.QueryKey}={kilde}&{KildeExplorer.DatasamlingQueryKey}={open}"
+            : $"/kilder?{KildeExplorer.QueryKey}={kilde}";
+
+    /// <summary>
+    /// Put the opened kilde in the address, so the entry the drill-in leaves behind names it.
+    /// </summary>
+    /// <remarks>
+    /// Replacing rather than pushing, as <c>KildeExplorer</c> does: opening a kilde from the list
+    /// is not a step the reader asked to be able to go back to, but it is the step Back has to land
+    /// on after a datasamling.
+    /// </remarks>
+    private void Opened(Guid? kilde)
+    {
+        _kilde = kilde;
+
+        Nav.NavigateTo(Address(null), replace: true);
+    }
+
+    /// <summary>Read the address again when a press was intercepted, or Back or Forward pressed.</summary>
+    /// <remarks>
+    /// Remounting rather than reloading, for the reason <c>KildeExplorer.Moved</c> gives at length:
+    /// any navigation clears the browser's forward list, so forcing a load here would take the
+    /// reader's Forward button away.
+    /// </remarks>
+    private void Moved(object? sender, LocationChangedEventArgs e)
+    {
+        var before = (_kilde, _datasamling);
+
+        ReadAddress();
+
+        if ((_kilde, _datasamling) == before)
+        {
+            return;
+        }
+
+        _arrival++;
+
+        StateHasChanged();
+    }
 
     /// <summary>
     /// Turn the reader's chosen kilder into the query the variable explorer already reads, and go

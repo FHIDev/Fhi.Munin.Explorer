@@ -70,13 +70,25 @@
          aria-labelledby="@DetailHeadingId"
          aria-busy="@DetailBusy">
         @* --ghost-blue for the same reason the variable explorer's way out wears it: a plain ghost
-           shows nothing until :hover, and this is navigation. (Fhi.Metadata-l9l2n.34) *@
-        <button class="hd-button-square button-square--ghost-blue margin-bottom"
-                type="button"
-                @onclick="CloseAsync">@T.BackToKilder</button>
+           shows nothing until :hover, and this is navigation. (Fhi.Metadata-l9l2n.34)
+
+           An <a> out of a datasamling and a <button> out of a kilde, because the two do different
+           things: one changes the address and one changes this component's own state. Both wear
+           Stiler's button names, so the pair invents no class. *@
+        @if (_selectedDatasamlingId is not null && KildeHref is { } kildeHref)
+        {
+            <a class="hd-button-square button-square--ghost-blue margin-bottom"
+               href="@kildeHref">@T.BackToKilde</a>
+        }
+        else
+        {
+            <button class="hd-button-square button-square--ghost-blue margin-bottom"
+                    type="button"
+                    @onclick="CloseAsync">@T.BackToKilder</button>
+        }
 
         @* Keep the landmark named while the shared detail heading is still loading. *@
-        @if (_kilde is null)
+        @if (_kilde is null && _datasamling is null)
         {
             @DrilldownHeading
         }
@@ -86,13 +98,28 @@
            aria-live="polite"
            aria-atomic="true">@DetailStatus</p>
 
-        @if (_kilde is { } kilde)
+        @* The datasamling takes the drill-in over when the address names one, exactly as Runa's own
+           owner panel holds a kilde or a datasamling and never both. DatasamlingView is the same
+           component Runa renders, passed the same four parameters — the route is what was missing
+           here, not the view.
+
+           Neither arm is the third state, and that is deliberate: a datasamling that was asked for
+           and did not arrive draws no view at all, and the status line above is what says why. *@
+        @if (_datasamling is { } datasamling)
+        {
+            <DatasamlingView Datasamling="datasamling"
+                             Language="@Language"
+                             HeadingLevel="@KildeLevel"
+                             HeadingId="@DetailHeadingId" />
+        }
+        else if (_selectedDatasamlingId is null && _kilde is { } kilde)
         {
             @* Only the additional sections belong to this explorer; KildeView owns the hierarchy. *@
             <KildeView Kilde="kilde"
                        Language="@Language"
                        HeadingLevel="@KildeLevel"
-                       HeadingId="@DetailHeadingId">
+                       HeadingId="@DetailHeadingId"
+                       DatasamlingHref="@NodeHref">
                 <Sections>
                     @* At SectionLevel rather than a literal h2: these have to land on the level
                        KildeView gives its own block headings, or "Variabler" reads as part of the

@@ -60,6 +60,8 @@ TARGETS=(
   "/kilder::kilde-drilldown"
   "/kilder::kilde-hierarchy-collapsed"
   "/kilder::kilde-hierarchy-expanded"
+  "/kilder::kilde-hierarchy-open"
+  "/kilder::kilde-datasamling"
   "/kilder::kilde-hierarchy-metadata"
   "/kilder::kilder-expanded"
   "/kilder::kilder-columns"

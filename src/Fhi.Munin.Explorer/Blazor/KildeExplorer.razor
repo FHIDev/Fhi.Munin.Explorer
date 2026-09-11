@@ -12,10 +12,23 @@
    could not be shared onward. It is left in the address bar rather than erased, along with
    everything else this component does not own.
 
+   ?datasamling= is read beside ?kilde= rather than instead of it, so the drill-in from a kilde to
+   one of its datasamlinger is an address that names the whole path: a link opens the datasamling,
+   and Back leaves the kilde behind it.
+
+   @key is _arrival, the count of addresses that arrived under a standing circuit, so a press a
+   host's Router intercepted remounts the component that reads its query at initialisation. Keyed
+   on the count and not on the ids: opening a kilde from the list moves those without a navigation,
+   and remounting there would throw away the list the reader pressed in.
+
    No @page and no @rendermode, like everything else here; but this one owns the query string, so
    it must be mounted interactively. No class names and no markup of its own. *@
 
-<KildeSearch @bind-SelectedKildeId="_selectedKildeId"
+<KildeSearch @key="_arrival"
+             SelectedKildeId="@_selectedKildeId"
+             SelectedKildeIdChanged="@KildeChanged"
+             SelectedDatasamlingId="@_selectedDatasamlingId"
+             DatasamlingHref="@DatasamlingHref"
              @bind-Order="_order"
              ExploreVariablesRequested="@Handover"
              Language="@Language"

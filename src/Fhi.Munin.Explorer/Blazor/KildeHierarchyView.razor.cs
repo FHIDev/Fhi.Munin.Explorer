@@ -48,6 +48,37 @@ public sealed partial class KildeHierarchyView : ComponentBase, IDisposable
     /// </remarks>
     [Parameter] public bool ShowNodeIcons { get; set; } = true;
 
+    /// <summary>
+    /// Where a datasamling's own page lives, given its id — or null, which is the default and draws
+    /// no link at all. The link is a plain <c>&lt;a href&gt;</c>, so whatever this returns has to be
+    /// an address the browser can open on its own: middle-click and Ctrl+click are part of what a
+    /// link is, and nothing here intercepts the press.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A delegate, so it can only be set by a parent component: a host mounting this type as an
+    /// interactive root passes parameters as JSON and cannot serialise one. <see cref="KildeSearch"/>
+    /// is what sets it, from the address <see cref="KildeExplorer"/> owns, for the same reason
+    /// <c>VariableExplorerPath</c> is a path rather than a callback — only the host knows where its
+    /// explorer is mounted.
+    /// </para>
+    /// <para>
+    /// <b>It does not touch the disclosure.</b> The link is drawn in the node's own list item,
+    /// after the <c>&lt;details&gt;</c> rather than inside its <c>&lt;summary&gt;</c>, so the
+    /// summary keeps its one job: Enter and Space on a branch still expand and collapse it, and
+    /// the link is a separate tab stop that navigates. Inside the summary it would be nested
+    /// interactive content — part of the summary's accessible name, and a press that toggles the
+    /// node as well as following the link, since Blink's disclosure exempts only form controls.
+    /// </para>
+    /// <para>
+    /// That placement is a host stylesheet's to finish. Undrawn, the link sits on its own line
+    /// under the node it belongs to, and under that node's children while the branch is open;
+    /// putting it back on the summary's own line is a rule on the <c>&lt;li&gt;</c>, which both
+    /// sample stylesheets show.
+    /// </para>
+    /// </remarks>
+    [Parameter] public Func<Guid, string>? DatasamlingHref { get; set; }
+
     private Texts T => Texts.For(Language);
     private Guid? _requestedId;
     private CancellationTokenSource? _request;
@@ -164,6 +195,22 @@ public sealed partial class KildeHierarchyView : ComponentBase, IDisposable
                 builder.AddContent(11, Label(node));
                 builder.CloseElement();
             }
+
+            // Beside the disclosure and never inside its <summary>: a link there is nested
+            // interactive content, it joins the summary's accessible name, and Blink exempts only
+            // form controls — so a Ctrl+click would open a tab AND toggle the node underneath it.
+            if (node.DatasamlingId is { } datasamling && DatasamlingHref?.Invoke(datasamling) is { } href)
+            {
+                builder.OpenElement(12, "a");
+                builder.AddAttribute(13, "class", "munin-explorer-hierarchy__open");
+                builder.AddAttribute(14, "href", href);
+                // A link list full of "Åpne" names nothing; the name opens with the visible word,
+                // which is what WCAG 2.5.3 asks, and goes on to say which datasamling.
+                builder.AddAttribute(15, "aria-label", T.OpenDatasamlingNamed(node.Name));
+                builder.AddContent(16, T.OpenDatasamling);
+                builder.CloseElement();
+            }
+
             builder.CloseElement();
         }
         builder.CloseElement();

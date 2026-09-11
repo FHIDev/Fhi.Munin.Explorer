@@ -21,6 +21,13 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// its own query string.
 /// </para>
 /// <para>
+/// The drill-in from a kilde to one of its datasamlinger is the same bargain one step further in.
+/// <see cref="SelectedDatasamlingId"/> says which one is open and <see cref="DatasamlingHref"/> is
+/// how the tree links to it; leave the second unset and no datasamling can be reached from here at
+/// all, which is what a mount that owns no address bar gets. It is a link rather than a press
+/// deliberately, so the reader keeps middle-click, Ctrl+click and the browser's own Back button.
+/// </para>
+/// <para>
 /// The same host contract the variable explorer follows, for the same reasons: no <c>@page</c>, no
 /// <c>@rendermode</c>, no router, no <c>HeadOutlet</c> and no CSS. One parameterised root
 /// component that the host mounts wherever it likes, at whatever render mode it likes.
@@ -147,6 +154,40 @@ public sealed partial class KildeSearch : ComponentBase
     [Parameter] public EventCallback<Guid?> SelectedKildeIdChanged { get; set; }
 
     /// <summary>
+    /// The datasamling the reader has opened out of that kilde, or null for the kilde itself.
+    /// </summary>
+    /// <remarks>
+    /// Read once, on initialisation, like <see cref="SelectedKildeId"/> beside it, and ignored
+    /// without one: a datasamling opens in place of the kilde it belongs to, and the way back out
+    /// is the kilde. There is no <c>…Changed</c> to pair with it because nothing here ever changes
+    /// it — <see cref="DatasamlingHref"/> makes the drill-in a link, so the address changes first
+    /// and this parameter follows from it.
+    /// </remarks>
+    [Parameter] public Guid? SelectedDatasamlingId { get; set; }
+
+    /// <summary>
+    /// Where a datasamling of the open kilde can be opened, given its id — or the open kilde alone,
+    /// given null. Leave it unset and no datasamling can be reached from the tree.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A link rather than a press, so opening a datasamling means what opening anything means in a
+    /// browser: middle-click and Ctrl+click open a tab, the address is one that can be pasted, and
+    /// Back returns to the kilde. This component has no <c>NavigationManager</c> and no idea which
+    /// query keys the host's address carries, so it asks rather than builds —
+    /// <see cref="KildeExplorer"/> is that answer already written, and the two keys it names are
+    /// <c>?kilde=</c> and <c>?datasamling=</c>.
+    /// </para>
+    /// <para>
+    /// A plain delegate, so it can only be set by a parent component: a host mounting this type as
+    /// an interactive root passes its parameters as JSON and Blazor throws on a delegate it cannot
+    /// serialise. That is the same boundary <see cref="ExploreVariablesRequested"/> documents, and
+    /// the same answer — create it inside an interactive component.
+    /// </para>
+    /// </remarks>
+    [Parameter] public Func<Guid?, string>? DatasamlingHref { get; set; }
+
+    /// <summary>
     /// Raised when the reader asks to explore variables for the kilder they have chosen, carrying
     /// the ids that go with them. Wire it, or no selection column is drawn.
     /// </summary>
@@ -267,6 +308,12 @@ public sealed partial class KildeSearch : ComponentBase
     private KildeDetail? _kilde;
     private bool _detailLoading;
     private string? _detailError;
+
+    // The datasamling opened out of that kilde, and what was fetched for it. One at a time with
+    // _kilde rather than beside it: a datasamling takes the drill-in over, the way Runa's own
+    // owner panel holds one or the other and never both.
+    private Guid? _selectedDatasamlingId;
+    private DatasamlingDetail? _datasamling;
 
     // Bumped by every open and every close, so a detail fetch can tell whether the view it is
     // about to write into is still the one it was started for. The id alone cannot say that: it
@@ -713,6 +760,10 @@ public sealed partial class KildeSearch : ComponentBase
     {
         _search = Search;
         _selectedId = SelectedKildeId;
+
+        // Only with a kilde. A datasamling opens in place of the kilde it belongs to and the way
+        // back out is that kilde, so one named on its own is a view with no way out.
+        _selectedDatasamlingId = _selectedId is null ? null : SelectedDatasamlingId;
         _order = Order;
 
         // Raised here rather than in LoadKildeAsync, which cannot start until the list has
@@ -743,7 +794,15 @@ public sealed partial class KildeSearch : ComponentBase
         // has replaced it.
         StateHasChanged();
 
-        if (_selectedId is { } id)
+        // The datasamling instead of the kilde, not beside it: the drill-in draws one view, and the
+        // kilde's own payload would be fetched for nothing.
+        if (_selectedDatasamlingId is { } datasamling)
+        {
+            await LoadDatasamlingAsync(datasamling);
+
+            StateHasChanged();
+        }
+        else if (_selectedId is { } id)
         {
             await LoadKildeAsync(id);
 
@@ -957,6 +1016,8 @@ public sealed partial class KildeSearch : ComponentBase
         _selectedId = null;
         _selectedName = null;
         _kilde = null;
+        _selectedDatasamlingId = null;
+        _datasamling = null;
         _detailError = null;
         _detailLoading = false;
 
@@ -1022,10 +1083,86 @@ public sealed partial class KildeSearch : ComponentBase
         }
     }
 
+    /// <summary>Fetch the datasamling the drill-in is showing in place of its kilde.</summary>
+    /// <remarks>
+    /// The same generation counter <see cref="LoadKildeAsync"/> uses, because the two write into
+    /// the same view and only one of them is ever in flight: a fetch the reader has navigated away
+    /// from must not paint its answer over the one they are waiting for.
+    /// </remarks>
+    private async Task LoadDatasamlingAsync(Guid id)
+    {
+        var generation = ++_detailGeneration;
+
+        _datasamling = null;
+        _detailError = null;
+        _detailLoading = true;
+
+        try
+        {
+            var detail = await Client.GetDatasamlingAsync(id);
+
+            if (generation != _detailGeneration)
+            {
+                return;
+            }
+
+            _datasamling = detail;
+
+            // Null is "the catalogue does not publish this" rather than a fault, exactly as it is
+            // for a kilde — see the remarks on IMuninExplorerClient.
+            _detailError = detail is null ? T.DatasamlingMissing : null;
+        }
+        catch (Exception ex)
+        {
+            if (ex is MuninExplorerRateLimitedException)
+            {
+                Log?.LogWarning(ex, "the rate limiter refused datasamling {DatasamlingId}", id);
+            }
+            else
+            {
+                Log?.LogError(ex, "could not load datasamling {DatasamlingId}", id);
+            }
+
+            if (generation != _detailGeneration)
+            {
+                return;
+            }
+
+            _detailError = ex is MuninExplorerRateLimitedException ? T.RateLimitError : T.DatasamlingError;
+        }
+        finally
+        {
+            if (generation == _detailGeneration)
+            {
+                _detailLoading = false;
+            }
+        }
+    }
+
     /// <summary>
     /// The one message the open view's status line holds at a time: loading, or why it is empty.
     /// </summary>
-    private string? DetailStatus => _detailLoading ? T.KildeLoading : _detailError;
+    private string? DetailStatus => _detailLoading
+        ? (_selectedDatasamlingId is null ? T.KildeLoading : T.DatasamlingLoading)
+        : _detailError;
+
+    /// <summary>
+    /// The address of the open kilde without the datasamling, for the way back out of one.
+    /// </summary>
+    /// <remarks>
+    /// Null when the host wired no <see cref="DatasamlingHref"/>, and then the drill-in keeps the
+    /// button back to the list it has always had: a control with nowhere to go is worse than the
+    /// coarser one.
+    /// </remarks>
+    private string? KildeHref => DatasamlingHref?.Invoke(null);
+
+    // The held-delegate idiom KildeExplorer.DatasamlingHref explains, one layer down: the tree
+    // takes a Guid where the host's route takes a Guid?, and an adapter written in the markup
+    // would be a changed parameter on every render.
+    private Func<Guid, string>? _nodeHref;
+
+    private Func<Guid, string>? NodeHref =>
+        DatasamlingHref is null ? null : _nodeHref ??= id => DatasamlingHref!(id);
 
     /// <summary>
     /// <c>caption</c> normally, and the warning box when the line is carrying a failure — the same
@@ -1051,6 +1188,17 @@ public sealed partial class KildeSearch : ComponentBase
         builder.AddContent(3, T.KildeTitle);
         builder.CloseElement();
     };
+
+    /// <summary>
+    /// The name the drill-in can be labelled by before its own view arrives, or null for none.
+    /// </summary>
+    /// <remarks>
+    /// Only the kilde has one: the list the reader came from knew it. Nothing here knows a
+    /// datasamling's name before the fetch answers — the tree that links to it belongs to the view
+    /// the drill-in has just replaced — so that heading follows the status line instead.
+    /// </remarks>
+    private (string Text, bool Norwegian)? DrilldownName =>
+        _selectedDatasamlingId is null ? _selectedName : null;
 
     /// <summary>
     /// The open view's own heading, drawn only until <see cref="KildeView"/> arrives with one of
@@ -1088,8 +1236,8 @@ public sealed partial class KildeSearch : ComponentBase
         builder.AddAttribute(1, "class", "headline headline-s");
         builder.AddAttribute(2, "id", DetailHeadingId);
         builder.AddAttribute(3, "lang",
-                             _selectedName is { } open ? CatalogueProperties.Foreign(open.Norwegian, Reader) : null);
-        builder.AddContent(4, _selectedName?.Text ?? DetailStatus ?? T.KildeLoading);
+                             DrilldownName is { } open ? CatalogueProperties.Foreign(open.Norwegian, Reader) : null);
+        builder.AddContent(4, DrilldownName?.Text ?? DetailStatus ?? T.KildeLoading);
         builder.CloseElement();
     };
 

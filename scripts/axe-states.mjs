@@ -65,6 +65,37 @@ export const states = {
       throw new Error('Opening one branch changed a sibling disclosure');
     }
   },
+  // The link that opens a datasamling, which only a host wiring DatasamlingHref draws — /kilder's
+  // wrapper is that host. It asserts where the link is: inside a <summary> it would join the
+  // summary's accessible name and toggle the node on the press that followed it.
+  'kilde-hierarchy-open': async page => {
+    await states['kilde-hierarchy-collapsed'](page);
+    if (!await page.locator('.munin-explorer-hierarchy__open').count()) {
+      // A delkilde's datasamlinger are not drawn until it is opened, and which kind the fixture
+      // puts at the top is not this state's to depend on.
+      for (const summary of await page.locator('.munin-explorer-hierarchy > ul > li > details > summary').all()) {
+        await summary.click();
+      }
+    }
+    await page.locator('.munin-explorer-hierarchy__open').first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
+    if (await page.locator('.munin-explorer-hierarchy summary .munin-explorer-hierarchy__open').count()) {
+      throw new Error('The datasamling link must not be a descendant of a <summary>');
+    }
+  },
+  // And the page it opens, which is DatasamlingView — the same component Runa renders. Followed by
+  // its own href rather than by a click, so the state does not turn on whether the host's router
+  // intercepted the press.
+  'kilde-datasamling': async page => {
+    await states['kilde-hierarchy-open'](page);
+    const href = await page.locator('.munin-explorer-hierarchy__open').first().getAttribute('href');
+    if (!href) {
+      throw new Error('The datasamling link must carry a real href');
+    }
+    await page.goto(new URL(href, page.url()).toString());
+    await page.locator('.munin-explorer-datasamling').first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
+  },
   'kilde-hierarchy-metadata': async page => {
     await states['kilde-hierarchy-collapsed'](page);
     const metadata = page.locator('.munin-explorer-hierarchy__metadata');
