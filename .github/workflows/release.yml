@@ -99,7 +99,13 @@ jobs:
             # The version this run is publishing has no section yet by definition.
             [ "$version" = "${{ steps.version.outputs.version }}" ] && continue
             escaped="$(printf '%s' "$version" | sed 's/[.[\*^$]/\\&/g')"
-            if ! grep -qE "^#+ +${escaped}( |$)" "$RUNNER_TEMP/changelog-on-main.md"; then
+            # Deliberately the same predicate as the assembler's Get-SectionBody
+            # (scripts/assemble-changelog.ps1:122): '^##\s+' + escaped version + '(\s|$)'.
+            # EXACTLY two hashes, because '#+' would accept a nested '### 0.1.0-alpha.9' inside an
+            # older section and call that version landed; and a whitespace CLASS, because the
+            # assembler accepts a tab where a literal space would not match. If the two ever
+            # disagree, this guard passes releases the assembler has not actually written.
+            if ! grep -qE "^##[[:space:]]+${escaped}([[:space:]]|$)" "$RUNNER_TEMP/changelog-on-main.md"; then
               missing="$missing $version"
             fi
           done
