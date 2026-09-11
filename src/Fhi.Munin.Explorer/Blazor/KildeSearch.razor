@@ -18,10 +18,10 @@
    row, `munin-explorer-kilder__count` for the columns holding a number with
    `munin-explorer-kilder__count--zero` on a cell whose count is nought,
    `munin-explorer-kilder__select` for the checkbox column in front of them,
+   `munin-explorer-kilder__sort` for the button a sortable column heading holds,
    `munin-explorer-filters__toggle` and `munin-explorer-filters__facets` for the panel that folds
    away on a narrow screen, `munin-explorer-filters__count` for the number beside a facet value,
-   and `munin-explorer-results__toolbar` for the row the count shares with the order control and
-   the column picker.
+   and `munin-explorer-results__toolbar` for the row the count shares with the column picker.
 
    The result list is a <table>, unlike the variable explorer's, and that is the shape rule rather
    than an inconsistency. Runa's rows are helsedata's own `munin-explorer-data-list`, a <ul> with a
@@ -32,11 +32,14 @@
    degrades to its own browser default where an unknown class name degrades to nothing. The name
    is a <button> for the same reason.
 
-   No pager and no sortable headers, and no URL state written from here. The first two are Kelda
-   parity decisions recorded under the epic, not omissions — the endpoint is not paged, and the
-   order is chosen from one control above the table rather than from thirteen column headings.
-   The third is this component's contract: the order and the open kilde are what a host puts in
-   its URL, and KildeExplorer is the mount that does it. See the component class.
+   No pager, and no URL state written from here. The first is a Kelda parity decision recorded
+   under the epic, not an omission — the endpoint is not paged. The second is this component's
+   contract: the order, its direction and the open kilde are what a host puts in its URL, and
+   KildeExplorer is the mount that does it. See the component class.
+
+   Four of the headings sort, and they are the whole of the sort control: the «Sorter etter» select
+   over the table is gone, so the catalogue's own order is what a clean URL gives and is no longer
+   re-selectable in the page (Fhi.Metadata-l9l2n.88).
 
    Accessibility: helsedata.no is a public-sector site, so WCAG 2.1 AA is a legal requirement, and
    this is our markup on their page. Visible focus and contrast are the host stylesheet's to get
@@ -416,17 +419,19 @@ else
        is ticked. (Fhi.Metadata-ofoyw) *@
     @ActiveFilters.For(this, T.ActiveFiltersTitle, ActiveFilterChips, T.ClearFilters, ClearFacetsAsync)
 
-    @* The count, the order control and the column picker on one row, where they used to take a row
-       each. `munin-explorer-results__toolbar` is the row, spelled the way Stiler's rule spells it
-       (Fhi.Metadata-xpv2x) — a name the two halves have to agree on letter for letter.
+    @* The count and the column picker on one row, where they used to take a row each.
+       `munin-explorer-results__toolbar` is the row, spelled the way Stiler's rule spells it
+       (Fhi.Metadata-xpv2x) — a name the two halves have to agree on letter for letter. The order
+       control that used to sit between them is gone: sorting is on the column headings now, the
+       way the variable explorer's is (Fhi.Metadata-l9l2n.88).
 
-       The row is drawn unconditionally and the two controls inside it are not, which is the whole
-       of the decision. The count is this component's one polite live region, and a live region
-       inserted and filled in the same DOM update is announced unreliably — so the element has to
-       be in the DOM before its text arrives, and a row that came and went with the rows would take
-       the loading message and the empty state with it. The controls keep the guard of their own
-       they have always had. Nothing in the row repeats the sentence either: a visible count beside
-       a live region saying the same thing is two announcements rather than a row.
+       The row is drawn unconditionally and the control inside it is not, which is the whole of the
+       decision. The count is this component's one polite live region, and a live region inserted
+       and filled in the same DOM update is announced unreliably — so the element has to be in the
+       DOM before its text arrives, and a row that came and went with the rows would take the
+       loading message and the empty state with it. The picker keeps the guard of its own it has
+       always had. Nothing in the row repeats the sentence either: a visible count beside a live
+       region saying the same thing is two announcements rather than a row.
 
        Outside `munin-explorer-results` despite the name, because that container is drawn only with
        rows on screen and everything in it with it. The row is a sibling of the other blocks over
@@ -465,42 +470,10 @@ else
 
         @if (visible.Count > 0)
         {
-            @* The order the list is in. In the row with the column picker, and drawn on the same
-               condition: an order control over no rows orders nothing.
-
-               A <select> and not the proposal's chips: the mockup styles its own names from an
-               inline <style> block, so nothing in it carries across, and an element degrades to its
-               own browser default where a class no stylesheet has heard of degrades to nothing.
-
-               The select and the wrapper both go unclassed. The form-element family in
-               `test/host-class-names.txt` is __label, __sublabel, __caption and --error with
-               nothing for the control itself, which is why the pager's size control is bare too;
-               and the wrapper is what keeps the label over its own select as one item of the row
-               rather than two. The label wears Stiler's `form-element__label`, the same name the
-               search box above it does. *@
-            <div>
-                <label class="form-element__label" for="@SortSelectId">@T.SortBy</label>
-
-                @* `selected` on the option rather than `value` on the select, for the reason the
-                   size control gives: `value` is a DOM property the interactive renderer sets, so a
-                   statically rendered first paint would show the first order whatever the host
-                   asked for — and this one arrives from a link. *@
-                @* Keyed on the refusal count, the same reason the size control is: a browser moves
-                   a select's own selection before `onchange` runs, and a refused value that leaves
-                   the order where it was renders nothing to move it back. See _orderRefusals. *@
-                <select id="@SortSelectId" @key="_orderRefusals" @onchange="ChooseOrderAsync">
-                    @foreach (var offered in OfferedOrders)
-                    {
-                        <option value="@offered" selected="@(_order == offered)">@T.KildeOrderLabel(offered)</option>
-                    }
-                </select>
-            </div>
-
             @* The column picker, at the end of the row above the table, which is where the variable
                explorer puts its own and where helsedata's page puts theirs. Drawn only with rows on
-               screen, unlike that one: there the header also carries the ordering a reader pressed,
-               and here an empty list means the fetch failed or the search matched nothing, so the
-               control would be offering columns for a table that is not there.
+               screen, unlike that one: an empty list means the fetch failed or the search matched
+               nothing, so the control would be offering columns for a table that is not there.
 
                Its own `munin-explorer-header` wrapper comes into the row with it, and Stiler's rule
                for the row reaches through that wrapper to hold the open list at its own width — in
@@ -599,7 +572,11 @@ else
                                        @onchange="() => TickAllVisible(visible)" />
                             </th>
                         }
-                        <th scope="col">@T.FieldName</th>
+                        @* The four sortable headings, drawn by SortableHeader: a th with a button
+                           in it, aria-sort on the cell, and the arrow beside the word. Their labels
+                           come from T.KildeOrderLabel rather than from the record directly, so the
+                           heading and the sentence over the table always name the order alike. *@
+                        @SortableHeader(KildeSortOrder.Name)
                         @if (ColumnVisible(KildeColumn.Kildetype))
                         {
                             <th scope="col">@T.ColumnKildetype</th>
@@ -631,18 +608,21 @@ else
                         }
                         @if (ColumnVisible(KildeColumn.Variables))
                         {
-                            <th scope="col" class="munin-explorer-kilder__count">@T.ColumnVariableCount</th>
+                            @SortableHeader(KildeSortOrder.Variables, "munin-explorer-kilder__count")
                         }
                         @* No __count on this one: it holds a year the catalogue wrote down as text,
                            not a number this component counted, and the class right-aligns figures. *@
-                        <th scope="col">@T.ColumnEstablished</th>
+                        @SortableHeader(KildeSortOrder.Established)
                         @if (ColumnVisible(KildeColumn.Imported))
                         {
                             <th scope="col">@T.ColumnImported</th>
                         }
                         @if (ColumnVisible(KildeColumn.SourceUpdated))
                         {
-                            <th scope="col">@T.ColumnSourceUpdated</th>
+                            @* Behind the picker, so this order is reachable only once the reader
+                               has turned the column on — the price of the sort living on the
+                               headings. A link that names it still sorts the list. *@
+                            @SortableHeader(KildeSortOrder.SourceUpdated)
                         }
                     </tr>
                 </thead>
@@ -822,3 +802,20 @@ else
     }
 }
 </section>
+
+@code {
+    // munin-explorer-kilder__sort rather than the variable explorer's header class, whose two
+    // Stiler rules are scoped to that one's pseudo-table prefix (Fhi.Metadata-l9l2n.106).
+    private RenderFragment SortableHeader(KildeSortOrder order, string? columnClass = null) =>
+        @*  aria-current is what Stiler's rule for the sorted heading selects on; aria-sort sits on
+            the cell because it describes the column rather than the control. *@
+        @<th scope="col" class="@columnClass" aria-sort="@AriaSort(order)">
+            <button class="hd-button-reset munin-explorer-kilder__sort"
+                    type="button"
+                    aria-current="@(IsActiveSort(order) ? "true" : null)"
+                    @onclick="() => SortAsync(order)">@T.KildeOrderLabel(order)@if (IsActiveSort(order))
+                                                      {
+                                                          <span aria-hidden="true">@SortArrow</span>
+                                                      }</button>
+        </th>;
+}

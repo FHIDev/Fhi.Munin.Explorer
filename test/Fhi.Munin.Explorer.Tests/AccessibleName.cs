@@ -121,7 +121,7 @@ internal static class AccessibleName
         // why this arm cannot rescue the field the guard above is aimed at.
         if (NamedByItsContent(element))
         {
-            return Collapse(element.TextContent);
+            return Content(element);
         }
 
         return "";
@@ -181,6 +181,50 @@ internal static class AccessibleName
         return Collapse(builder.ToString());
     }
 
+    /// <summary>
+    /// The element's own words, with every <c>aria-hidden</c> subtree left out of them.
+    /// </summary>
+    /// <remarks>
+    /// <c>TextContent</c> would be this but for the hidden half, and the hidden half is the whole
+    /// point: accname skips a hidden subtree, and both explorers put their sort arrow in one, so
+    /// the flattened text of a sorted heading reads "Navn ↑" for a control announced as "Navn".
+    /// </remarks>
+    private static string Content(IElement element)
+    {
+        var builder = new StringBuilder();
+
+        AppendVisible(builder, element);
+
+        return Collapse(builder.ToString());
+    }
+
+    // Whitespace as written, unlike Append above, which trims each element's alternative before
+    // joining it. The two walks answer differently for a space living inside a child element, and
+    // this one keeps what TextContent always gave the controls named by their content.
+    private static void AppendVisible(StringBuilder builder, INode node)
+    {
+        foreach (var child in node.ChildNodes)
+        {
+            if (child is IElement element && IsHidden(element))
+            {
+                continue;
+            }
+
+            if (child is IText text)
+            {
+                builder.Append(text.Data);
+                continue;
+            }
+
+            AppendVisible(builder, child);
+        }
+    }
+
+    // aria-hidden takes a subtree off the accessibility tree, so nothing under it is announced and
+    // nothing under it can contribute to a name.
+    private static bool IsHidden(IElement element) =>
+        string.Equals(element.GetAttribute("aria-hidden"), "true", StringComparison.OrdinalIgnoreCase);
+
     // accname computes each ELEMENT's alternative and trims it before joining, while a text node
     // contributes its data as written. Flattening the label instead invents a space that no
     // browser announces — Fhi.Metadata-ueiq6.
@@ -189,6 +233,11 @@ internal static class AccessibleName
         foreach (var child in node.ChildNodes)
         {
             if (named.Contains(child))
+            {
+                continue;
+            }
+
+            if (child is IElement hidden && IsHidden(hidden))
             {
                 continue;
             }

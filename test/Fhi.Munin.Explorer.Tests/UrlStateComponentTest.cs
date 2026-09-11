@@ -532,9 +532,41 @@ public class UrlStateComponentTest : BunitContext
         Assert.Equal("/kilder?search=als", Mirrored());
     }
 
-    /// <summary>The sort control the kilde list hangs above its table.</summary>
-    private static IElement Sort(IRenderedComponent<KildeExplorer> cut) =>
-        cut.Find("select[id^='munin-explorer-sort']");
+    /// <summary>Sort the list the way a reader does: press the column's own heading.</summary>
+    /// <remarks>
+    /// By the Norwegian word on screen, since these tests mount in the default language. The
+    /// heading IS the control now — there is no «Sorter etter» select any more
+    /// (Fhi.Metadata-l9l2n.88).
+    /// </remarks>
+    private static void Sort(IRenderedComponent<KildeExplorer> cut, KildeSortOrder order) =>
+        cut.FindAll(".munin-explorer-kilder thead .munin-explorer-kilder__sort")
+           .Single(button => button.TextContent.Trim().StartsWith(Heading(order), StringComparison.Ordinal))
+           .Click();
+
+    /// <summary>The heading over an order's column, which is the word the press looks for.</summary>
+    private static string Heading(KildeSortOrder order) => order switch
+    {
+        KildeSortOrder.Name => "Navn",
+        KildeSortOrder.Variables => "Variabler",
+        KildeSortOrder.SourceUpdated => "Sist endret",
+        KildeSortOrder.Established => "Opprettet",
+        _ => throw new ArgumentOutOfRangeException(nameof(order), order, "This order has no column.")
+    };
+
+    /// <summary>Turn one of the picker's columns on, so its heading is there to be pressed.</summary>
+    private static void ShowColumn(IRenderedComponent<KildeExplorer> cut, string label) =>
+        cut.FindAll(".dropdown-choicepicker__item")
+           .Single(item => item.TextContent.Contains(label, StringComparison.Ordinal))
+           .QuerySelector("input[type=checkbox]")!
+           .Change(true);
+
+    /// <summary>The order the table says it is in, read off the one cell carrying aria-sort.</summary>
+    private static string? Sorted(IRenderedComponent<KildeExplorer> cut) =>
+        cut.FindAll(".munin-explorer-kilder thead th[aria-sort]").SingleOrDefault()?.GetAttribute("aria-sort");
+
+    /// <summary>The column the table says it is sorted on, or null when it is in catalogue order.</summary>
+    private static string? SortedColumn(IRenderedComponent<KildeExplorer> cut) =>
+        cut.FindAll(".munin-explorer-kilder thead th[aria-sort]").SingleOrDefault()?.TextContent.Trim();
 
     [Theory]
     [InlineData(KildeSortOrder.Name)]
@@ -545,14 +577,23 @@ public class UrlStateComponentTest : BunitContext
     {
         // The round trip, both halves in one test and per order: writing a token the component
         // cannot read back is a link that silently opens on the wrong order, and the two halves are
-        // written in different files. So this presses the control, reads what reached replaceState,
+        // written in different files. So this presses the heading, reads what reached replaceState,
         // and mounts a second explorer on exactly that URL.
         var id = Guid.NewGuid();
 
         var chosen = RenderKilder(id, "http://localhost/kilder");
 
-        Sort(chosen).Change(order.ToString());
+        // Sist endret is behind the column picker, so its heading is not on screen to be pressed
+        // until the reader turns the column on.
+        if (order == KildeSortOrder.SourceUpdated)
+        {
+            ShowColumn(chosen, "Sist endret");
+        }
 
+        Sort(chosen, order);
+
+        // No sortDir either way: the first press lands on the direction the column runs by default,
+        // and that is the one the URL leaves unsaid.
         Assert.Equal($"/kilder?sort={order}", Mirrored());
 
         // Mounted afresh on the URL the first one wrote, which is what a reload is. The client is
@@ -560,12 +601,99 @@ public class UrlStateComponentTest : BunitContext
         // seals its service collection the moment anything resolves from it.
         Navigation.NavigateTo($"http://localhost{Mirrored()}");
 
-        Assert.Equal(order.ToString(), Selected(Render<KildeExplorer>()));
+        var reloaded = Render<KildeExplorer>();
+
+        // The column is off again on a fresh mount — the picker's choice is not in the URL — so an
+        // order behind it comes back with nothing marked, while the rows are in it all the same.
+        if (order == KildeSortOrder.SourceUpdated)
+        {
+            ShowColumn(reloaded, "Sist endret");
+        }
+
+        var expected = KildeSearch.InitialDirection(order) == SortDirection.Ascending
+            ? "ascending"
+            : "descending";
+
+        Assert.Equal(expected, Sorted(reloaded));
+        Assert.StartsWith(Heading(order), SortedColumn(reloaded)!, StringComparison.Ordinal);
     }
 
-    /// <summary>The order the control is showing, read off the option the markup marks.</summary>
-    private static string? Selected(IRenderedComponent<KildeExplorer> cut) =>
-        Sort(cut).QuerySelectorAll("option").Single(option => option.HasAttribute("selected")).GetAttribute("value");
+    [Fact]
+    public void Kilder_WhenTheReaderPressesTheSameHeadingTwice_ThenTheDirectionIsInTheUrlAndComesBackFromIt()
+    {
+        // The direction is half the state a heading holds, and it is the half that was not in the
+        // URL before this bead: a link made on a descending column would open ascending, showing
+        // the other end of the list under the same heading.
+        var id = Guid.NewGuid();
+
+        var chosen = RenderKilder(id, "http://localhost/kilder");
+
+        Sort(chosen, KildeSortOrder.Name);
+
+        // Ascending writes nothing on this column: it is the way Navn runs by default, and the URL
+        // says only what somebody chose against the default.
+        Assert.Equal("/kilder?sort=Name", Mirrored());
+
+        Sort(chosen, KildeSortOrder.Name);
+
+        Assert.Equal("/kilder?sort=Name&sortDir=Descending", Mirrored());
+
+        Navigation.NavigateTo($"http://localhost{Mirrored()}");
+
+        Assert.Equal("descending", Sorted(Render<KildeExplorer>()));
+    }
+
+    [Fact]
+    public void Kilder_WhenALinkCarriesADirectionWithoutAnOrder_ThenItIsDroppedRatherThanKept()
+    {
+        // A direction beside the catalogue's own sequence describes the way a column runs that
+        // nothing is sorted on. Dropped rather than carried, like any unreadable value of ours:
+        // leaving it would hand on a link claiming the list is in an order it is not in.
+        var id = Guid.NewGuid();
+
+        var cut = RenderKilder(id, "http://localhost/kilder?sortDir=Descending");
+
+        Assert.Null(Sorted(cut));
+        Assert.Equal("/kilder", Mirrored());
+    }
+
+    [Fact]
+    public void Kilder_WhenALinkNamesTheDirectionTheColumnAlreadyRunsIn_ThenTheKeyIsTakenOffTheAddress()
+    {
+        // The write side omits what is at its default, so a link that spells the default out is one
+        // this component would otherwise read, agree with and leave — and then rewrite on the next
+        // render anyway, because Query never produces it. Ascending is Navn's default.
+        var id = Guid.NewGuid();
+
+        var cut = RenderKilder(id, "http://localhost/kilder?sort=Name&sortDir=Ascending");
+
+        Assert.Equal("ascending", Sorted(cut));
+        Assert.Equal("/kilder?sort=Name", Mirrored());
+    }
+
+    [Theory]
+    // Navn runs A–Å by default, so Descending is the one worth writing down; the three count and
+    // date columns run the other way, so on those it is Ascending. Both are read and both survive.
+    [InlineData("Name", "Descending", "descending")]
+    [InlineData("Variables", "Ascending", "ascending")]
+    public void Kilder_WhenALinkNamesADirectionTheColumnDoesNotRunInByDefault_ThenItSurvivesUntouched(
+        string order, string direction, string aria)
+    {
+        var id = Guid.NewGuid();
+
+        var cut = RenderKilder(id, $"http://localhost/kilder?sort={order}&sortDir={direction}");
+
+        Assert.Equal(aria, Sorted(cut));
+        Assert.Equal($"/kilder?sort={order}&sortDir={direction}", Mirrored());
+
+        // Again after a further render, because the write side omits the key by comparing against
+        // the column's own default rather than against one constant: a comparison that matched the
+        // wrong column would drop this key silently on the next render and not on the first.
+        cut.Render();
+
+        Assert.Equal(aria, Sorted(cut));
+        Assert.Equal($"/kilder?sort={order}&sortDir={direction}", Mirrored());
+    }
 
     /// <summary>The names down the table, which is the only place the order is actually visible.</summary>
     private static IReadOnlyList<string> RowNames(IRenderedComponent<KildeExplorer> cut) =>
@@ -603,7 +731,7 @@ public class UrlStateComponentTest : BunitContext
 
         Assert.Equal(["Reseptregisteret", "Als registeret", "Barnediabetes"], RowNames(cut));
 
-        Sort(cut).Change(KildeSortOrder.Name.ToString());
+        Sort(cut, KildeSortOrder.Name);
 
         Assert.Equal(["Als registeret", "Barnediabetes", "Reseptregisteret"], RowNames(cut));
     }
@@ -624,14 +752,19 @@ public class UrlStateComponentTest : BunitContext
     {
         // The catalogue's own order is the one every link made before this control existed carries,
         // so writing ?sort=Standard onto it would be this component changing links it did not make.
+        // Nothing in the page returns to that order any more — the select that offered it is gone —
+        // so what a clean URL means is the list untouched, which is what this pins.
         var id = Guid.NewGuid();
 
         var cut = RenderKilder(id, "http://localhost/kilder");
 
-        Sort(cut).Change(KildeSortOrder.Name.ToString());
-        Sort(cut).Change(KildeSortOrder.Standard.ToString());
-
+        Assert.Null(Sorted(cut));
         Assert.Equal("/kilder", Mirrored());
+
+        // And a press does write, so the line above is not a component that mirrors nothing at all.
+        Sort(cut, KildeSortOrder.Name);
+
+        Assert.Equal("/kilder?sort=Name", Mirrored());
     }
 
     [Fact]
@@ -660,7 +793,7 @@ public class UrlStateComponentTest : BunitContext
 
         var cut = RenderKilder(id, $"http://localhost/kilder?sort={Uri.EscapeDataString(token)}");
 
-        Assert.Equal(KildeSortOrder.Standard.ToString(), Selected(cut));
+        Assert.Null(Sorted(cut));
 
         // And the unreadable token is taken off the address bar rather than carried: it is one of
         // ours, so leaving it would hand on a link that says the list is in an order it is not in.
@@ -676,7 +809,10 @@ public class UrlStateComponentTest : BunitContext
 
         var cut = RenderKilder(id, "http://localhost/kilder?SORT=variables");
 
-        Assert.Equal(KildeSortOrder.Variables.ToString(), Selected(cut));
+        // Descending because Variabler is a count column and that is what it means with no
+        // sortDir beside it — the case-insensitivity is what this test is about, not the way.
+        Assert.Equal("descending", Sorted(cut));
+        Assert.StartsWith("Variabler", SortedColumn(cut)!, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -783,6 +919,25 @@ public class UrlStateComponentTest : BunitContext
         {
             Assert.Empty(cut.FindAll(".munin-explorer-datasamling"));
             Assert.NotEmpty(cut.FindAll(".munin-explorer-hierarchy"));
+        });
+    }
+
+    [Fact]
+    public void Moved_WhenOnlyTheDirectionChanges_ThenTheRowsTurnRoundRatherThanBeingTakenForANoOp()
+    {
+        // The direction is the fourth owned key and the newest, so it is the one a comparison
+        // written for three would leave out — and then a Back onto the other half of a reader's own
+        // sort would be swallowed as "nothing here moved" with the address bar saying otherwise.
+        var cut = RenderThreeKilder("http://localhost/kilder?sort=Name");
+
+        Assert.Equal(["Als registeret", "Barnediabetes", "Reseptregisteret"], RowNames(cut));
+
+        Move("/kilder?sort=Name&sortDir=Descending");
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal(["Reseptregisteret", "Barnediabetes", "Als registeret"], RowNames(cut));
+            Assert.Equal("descending", Sorted(cut));
         });
     }
 

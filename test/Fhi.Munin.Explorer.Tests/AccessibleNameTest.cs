@@ -174,4 +174,29 @@ public class AccessibleNameTest
 
         Assert.Equal("Lagre i liste", AccessibleName.Of(element));
     }
+
+    [Fact]
+    public void Of_WhenAButtonHoldsAHiddenDecoration_ThenItIsNotPartOfTheName()
+    {
+        // Both explorers' sorted column heading. accname skips a hidden subtree, so the arrow is
+        // drawn and not announced — and a helper that flattened the text instead would report a
+        // heading whose name changed every time the reader pressed it.
+        var element = Parse(
+            "<button type=\"button\">Navn<span aria-hidden=\"true\"> \u2191</span></button>",
+            "button");
+
+        Assert.Equal("Navn", AccessibleName.Of(element));
+    }
+
+    [Fact]
+    public void Of_WhenALabelHoldsAHiddenDecoration_ThenItIsNotPartOfTheNameEither()
+    {
+        // The same rule on the other traversal, so the two cannot drift: a wrapping label's hidden
+        // words are no more announced than a button's own.
+        var element = Parse(
+            "<label><input type=\"checkbox\"/>Biobank<span aria-hidden=\"true\"> (1)</span></label>",
+            "input");
+
+        Assert.Equal("Biobank", AccessibleName.Of(element));
+    }
 }

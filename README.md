@@ -224,11 +224,13 @@ These are not style preferences — each one is a host that breaks otherwise.
     `KildeView`, the `munin-explorer-datasamling*` ones in `DatasamlingView`, the
     `munin-explorer-whole*` ones in `VariableView`, and the `munin-explorer-kilder*` names in
     `KildeSearch` — the kilde list's table, the checkbox column in front of it, the button that
-    opens a row and the columns that hold a number. The samples style them for arrangement — the
-    root as a grid at desktop width, `-filters`, `-detail`, `-drilldown`, `-kodeverk*` and
-    `-codes*` for spacing, indentation and a rule between rows, the kilde, datasamling and variable
-    views' name block, main column and sidebar as one page layout under three prefixes, the kilde
-    list as a table with its counts right-aligned, and a count of nought dimmed under
+    opens a row, the button inside each sortable column heading, and the columns that hold a
+    number. The samples style them for arrangement — the root as a grid at desktop width,
+    `-filters`, `-detail`, `-drilldown`, `-kodeverk*` and `-codes*` for spacing, indentation and a
+    rule between rows, the kilde, datasamling and variable views' name block, main column and
+    sidebar as one page layout under three prefixes, the kilde list as a table with its counts
+    right-aligned, the sorted heading's button marked by the two declarations Stiler already gives
+    the variable explorer's, and a count of nought dimmed under
     `munin-explorer-kilder__count--zero` so an empty register reads as empty rather than as a
     measured value — and `munin-explorer-group` is now the space
     between one group and the next and nothing else. It used to draw Runa's 11px blue uppercase
@@ -609,6 +611,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-kilder__expanded` | handle |
   | `munin-explorer-kilder__name` | handle |
   | `munin-explorer-kilder__select` | handle |
+  | `munin-explorer-kilder__sort` | handle |
   | `munin-explorer-kodeverk` | handle |
   | `munin-explorer-kodeverk__item` | handle |
   | `munin-explorer-kodeverk__name` | handle |
@@ -871,9 +874,10 @@ shared URL that opened on the sender's Variabelliste would be an empty page for 
 
 The open kilde and the order the list is in go in the address bar, and a link restores both. It is
 much the smaller of the two, because Kelda carries less — no personal lists and no pager, so
-`?kilde=`, `?datasamling=` and `?sort=` are the whole of what it owns and the rest is component
-state that goes away on refresh. `?sort=` is omitted while the list is in the order the catalogue
-sent, so a link made before the list could be sorted still means what it did.
+`?kilde=`, `?datasamling=`, `?sort=` and `?sortDir=` are the whole of what it owns and the rest is
+component state that goes away on refresh. `?sort=` is omitted while the list is in the order the
+catalogue sent, so a link made before the list could be sorted still means what it did, and
+`?sortDir=` is omitted with it and wherever the sorted column runs ascending.
 
 `?datasamling=` is read beside `?kilde=` and never instead of it: a datasamling opens in place of
 the kilde it belongs to, and the kilde is the way back out, so one named on its own is dropped on
@@ -922,8 +926,8 @@ Four things are worth knowing before mounting one.
   otherwise, because the failure they replace is invisible: prerendered, the page renders and the
   URL simply never follows the view.
 - **Your own parameters are safe.** Each component reads and rewrites only the keys it owns —
-  `ExplorerUrlState.QueryKeys` for the variable explorer, `?kilde=`, `?datasamling=` and `?sort=`
-  for the kildeutforsker — and carries everything else through untouched. `DeclinedKeys` keeps one of ours as well, for a page
+  `ExplorerUrlState.QueryKeys` for the variable explorer, `?kilde=`, `?datasamling=`, `?sort=` and
+  `?sortDir=` for the kildeutforsker — and carries everything else through untouched. `DeclinedKeys` keeps one of ours as well, for a page
   that already means something else by `?page=`; a declined key is left where it is rather than
   overwritten.
 - **`KildeExplorer` needs `VariableExplorerPath`** to offer the handover to the variable

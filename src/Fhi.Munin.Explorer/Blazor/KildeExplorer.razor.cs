@@ -25,11 +25,13 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// the path they arrived on, <c>PathBase</c> included, rather than on the site root.
 /// </para>
 /// <para>
-/// <b>It reads and writes <c>?kilde=</c>, <c>?datasamling=</c> and <c>?sort=</c>, and nothing
-/// else.</b> A host's own parameters — and <c>?search=</c>, which Kelda cannot maintain and so must
-/// not adopt — are carried through untouched. <c>?sort=</c> is omitted while the list is in the
-/// order the catalogue sent it, so a link made before this component could sort still opens the
-/// same page.
+/// <b>It reads and writes <c>?kilde=</c>, <c>?datasamling=</c>, <c>?sort=</c> and
+/// <c>?sortDir=</c>, and nothing else.</b> A host's own parameters — and <c>?search=</c>, which
+/// Kelda cannot maintain and so must not adopt — are carried through untouched. <c>?sort=</c> is
+/// omitted while the list is in the order the catalogue sent it, so a link made before this
+/// component could sort still opens the same page, and <c>?sortDir=</c> is omitted with it and
+/// wherever the column runs the way <see cref="KildeSearch.InitialDirection"/> says it runs — so a
+/// link made while the select offered the orders still opens the end of the list it named.
 /// </para>
 /// <para>
 /// <b>Opening a datasamling is a link.</b> That is what buys middle-click, Ctrl+click and working
@@ -78,6 +80,23 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     /// </para>
     /// </remarks>
     public const string OrderQueryKey = "sort";
+
+    /// <summary>The direction key: which way the sorted column runs.</summary>
+    /// <remarks>
+    /// <c>sortDir</c>, spelled and read exactly as <see cref="ExplorerUrlState"/> spells it, and
+    /// carrying a <see cref="SortDirection"/> member's own name. Written only beside a named order,
+    /// and only when the column is not running the way it runs by default — a direction without an
+    /// order describes nothing, and one that repeats the default says nothing either.
+    /// <para>
+    /// That default is the column's own and not ascending for all four, which is what keeps
+    /// <c>?sort=Variables</c> meaning most-variables-first as it did in 0.1.0-alpha.11, where the
+    /// select offering it was labelled "Flest variabler". See
+    /// <see cref="KildeSearch.InitialDirection"/>; the variable side, whose direction has been in
+    /// its own URL since it could be sorted at all, has no such history to keep and omits
+    /// <c>sortDir</c> on ascending alone.
+    /// </para>
+    /// </remarks>
+    public const string DirectionQueryKey = "sortDir";
 
     [Inject] private NavigationManager Navigation { get; set; } = default!;
 
@@ -129,6 +148,8 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
 
     private KildeSortOrder _order;
 
+    private SortDirection _direction;
+
     private UrlMirror _mirror = default!;
 
     /// <summary>
@@ -155,12 +176,12 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         InteractiveMount.Require(RendererInfo.IsInteractive, nameof(KildeExplorer));
 
         _mirror = new UrlMirror(Navigation, JS, Owns);
-        (_selectedKildeId, _selectedDatasamlingId, _order) = Read(_mirror);
+        (_selectedKildeId, _selectedDatasamlingId, _order, _direction) = Read(_mirror);
 
         Navigation.LocationChanged += Moved;
     }
 
-    /// <summary>What the three owned keys say, or their defaults where the URL says nothing usable.</summary>
+    /// <summary>What the four owned keys say, or their defaults where the URL says nothing usable.</summary>
     /// <remarks>
     /// An id in a URL is whatever a stranger typed. One that does not parse opens the list, and one
     /// that parses but names nothing the API publishes opens a view that says so — the component's
@@ -168,7 +189,8 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     /// enough for the order, for <c>ExplorerUrlState.Named</c>'s reason: it accepts any number, so
     /// <c>?sort=999</c> would succeed and hand the list an order no arm covers.
     /// </remarks>
-    private static (Guid? Kilde, Guid? Datasamling, KildeSortOrder Order) Read(UrlMirror mirror)
+    private static (Guid? Kilde, Guid? Datasamling, KildeSortOrder Order, SortDirection Direction) Read(
+        UrlMirror mirror)
     {
         var kilde = Guid.TryParse(mirror.Value(QueryKey), out var parsed) ? parsed : (Guid?)null;
 
@@ -181,7 +203,17 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
             ? sorted
             : KildeSortOrder.Standard;
 
-        return (kilde, datasamling, order);
+        // Only with an order to run: a direction beside the catalogue's own sequence names the way
+        // a column runs that nothing is sorted on, and it would be written straight back out. The
+        // fallback is the column's own, so ?sort=Variables alone still means most-variables-first.
+        var direction =
+            order != KildeSortOrder.Standard
+            && Enum.TryParse<SortDirection>(mirror.Value(DirectionQueryKey), ignoreCase: true, out var way)
+            && Enum.IsDefined(way)
+                ? way
+                : KildeSearch.InitialDirection(order);
+
+        return (kilde, datasamling, order, direction);
     }
 
     /// <summary>
@@ -228,7 +260,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         // dropped and put them back into every later link and rewrite.
         _mirror = mirror;
 
-        if (arrived == (_selectedKildeId, _selectedDatasamlingId, _order))
+        if (arrived == (_selectedKildeId, _selectedDatasamlingId, _order, _direction))
         {
             // Redrawn anyway, and not left to the host: every link is built from the mirror just
             // replaced, and a host with no Router — helsedata's CMS — raises this without
@@ -238,7 +270,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
             return;
         }
 
-        (_selectedKildeId, _selectedDatasamlingId, _order) = arrived;
+        (_selectedKildeId, _selectedDatasamlingId, _order, _direction) = arrived;
         _arrival++;
 
         StateHasChanged();
@@ -249,12 +281,13 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     private static bool Owns(string key) =>
         string.Equals(key, QueryKey, StringComparison.OrdinalIgnoreCase)
         || string.Equals(key, DatasamlingQueryKey, StringComparison.OrdinalIgnoreCase)
-        || string.Equals(key, OrderQueryKey, StringComparison.OrdinalIgnoreCase);
+        || string.Equals(key, OrderQueryKey, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(key, DirectionQueryKey, StringComparison.OrdinalIgnoreCase);
 
     protected override Task OnAfterRenderAsync(bool firstRender) =>
         _mirror.MirrorAsync(Query(_selectedDatasamlingId)).AsTask();
 
-    /// <summary>The three keys this component owns, as a query string, omitting what is at its default.</summary>
+    /// <summary>The four keys this component owns, as a query string, omitting what is at its default.</summary>
     /// <remarks>
     /// The catalogue's own order writes nothing, so an untouched explorer leaves the address bar as
     /// it found it — <see cref="ExplorerUrlState.ToQueryString"/>'s rule, for its reason: a link
@@ -277,6 +310,9 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
             _order == KildeSortOrder.Standard
                 ? ""
                 : OrderQueryKey + "=" + Uri.EscapeDataString(_order.ToString()),
+            _order == KildeSortOrder.Standard || _direction == KildeSearch.InitialDirection(_order)
+                ? ""
+                : DirectionQueryKey + "=" + Uri.EscapeDataString(_direction.ToString()),
         ];
 
         return string.Join("&", owned.Where(pair => pair.Length != 0));
