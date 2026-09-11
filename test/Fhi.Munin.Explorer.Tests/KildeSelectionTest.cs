@@ -728,6 +728,59 @@ public class KildeSelectionTest : BunitContext
     }
 
     [Fact]
+    public void SelectColumn_WhenTheHostWiredTheHandover_ThenItIsInsideTheBoxStilerScopesItsThresholdsTo()
+    {
+        // Presence is the trap: Stiler reaches this class THROUGH the scroll box, so a guard that
+        // found it anywhere in the document would pass with the column moved out of reach.
+        var (cut, _) = RenderSelectable(new FakeClient(Kilde("Als registeret", "K_ALS")));
+
+        var scope = HostClassNames.KilderSelectScope(cut.FindAll("[class]"));
+
+        // Asserted first, so a renamed wrapper fails here rather than making the count below a
+        // vacuous zero that reads as the class having gone.
+        Assert.True(
+            scope.ScrollBoxes == 1,
+            $"Expected one .{HostClassNames.KilderScroll} to scope to, found {scope.ScrollBoxes}. "
+            + HostClassNames.KilderSelectConsequence);
+
+        Assert.True(
+            scope.Inside > 0,
+            $"KildeSearch renders no .{HostClassNames.KilderSelect} inside "
+            + $".{HostClassNames.KilderScroll} with the handover wired. "
+            + HostClassNames.KilderSelectConsequence);
+
+        Assert.True(
+            scope.Outside == 0,
+            $"{scope.Outside} element(s) carry .{HostClassNames.KilderSelect} outside "
+            + $".{HostClassNames.KilderScroll}, where no threshold can see them. "
+            + HostClassNames.KilderSelectConsequence);
+    }
+
+    [Fact]
+    public void SelectColumn_WhenTheHostWiredNoHandover_ThenNothingCarriesTheClassAtAll()
+    {
+        // The other half of Stiler's branch, and the one no sample host enters: its
+        // `:not(:has(...))` arm reads the same column count as a table with a content column there
+        // instead, so the class turning up here is the same fault upside down.
+        Services.AddSingleton<IMuninExplorerClient>(new FakeClient(Kilde("Als registeret", "K_ALS")));
+
+        var cut = Render<KildeSearch>();
+
+        var scope = HostClassNames.KilderSelectScope(cut.FindAll("[class]"));
+
+        Assert.True(
+            scope.ScrollBoxes == 1,
+            $"Expected one .{HostClassNames.KilderScroll} to scope to, found {scope.ScrollBoxes}. "
+            + HostClassNames.KilderSelectConsequence);
+
+        Assert.True(
+            scope.Inside + scope.Outside == 0,
+            $"{scope.Inside + scope.Outside} element(s) carry .{HostClassNames.KilderSelect} with no "
+            + "handover wired, so a host that has none is measured as a host that has one. "
+            + HostClassNames.KilderSelectConsequence);
+    }
+
+    [Fact]
     public void ClearButton_WhenAHostStylesIt_ThenItStaysInsideTheRoomTheFieldReserved()
     {
         // Same shape as the guard above: the general checks ask whether a name has a rule that

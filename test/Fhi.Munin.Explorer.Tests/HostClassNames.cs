@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using AngleSharp.Dom;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -249,4 +250,42 @@ internal static class HostClassNames
     /// </summary>
     internal static IEnumerable<string> Of(IEnumerable<AngleSharp.Dom.IElement> elements) =>
         elements.SelectMany(e => e.ClassList);
+
+    // Stiler's eleven per-column-count sticky-header thresholds select
+    // `.munin-explorer-kilder-scroll--cols-N:has(.munin-explorer-kilder__select)`, so that second
+    // name has to stay INSIDE the box (Fhi.Helsedata.Stiler PR 39282, Fhi.Metadata-l9l2n.50).
+    internal const string KilderScroll = "munin-explorer-kilder-scroll";
+    internal const string KilderSelect = "munin-explorer-kilder__select";
+
+    /// <summary>
+    /// What is lost when the selection column stops being visible to a selector scoped to the
+    /// scroll box. Both branches of the guard report it, because the consequence is the same
+    /// whichever way the contract breaks and a reader deleting the class meets only this sentence.
+    /// </summary>
+    internal const string KilderSelectConsequence =
+        "Fhi.Helsedata.Stiler (PR 39282, Fhi.Metadata-l9l2n.50) keys its eleven per-column-count "
+        + "sticky-header thresholds on :has(.munin-explorer-kilder__select) scoped to "
+        + ".munin-explorer-kilder-scroll, which is the only thing telling a selectable host's 32px "
+        + "checkbox column from the far wider content column a non-selectable host draws at the same "
+        + "column count. Without that signal every threshold picks the other branch, overflow-x: "
+        + "visible turns on at a width the table does not fit, and helsedata.no gains a horizontal "
+        + "scrollbar across the whole page. Nothing errors and nothing else fails, because this "
+        + "package ships no CSS and the samples carry their own copies. Restore the emission rather "
+        + "than moving the class or relaxing this test.";
+
+    /// <summary>
+    /// What a stylesheet scoped to the scroll box can see of the selection column: boxes to scope
+    /// to, select cells inside one, and select cells that escaped. Counted rather than answered
+    /// yes/no, because Stiler reaches the class THROUGH the box and presence is not containment.
+    /// </summary>
+    internal static (int ScrollBoxes, int Inside, int Outside) KilderSelectScope(
+        IEnumerable<IElement> elements)
+    {
+        var all = elements.ToList();
+
+        var select = all.Where(e => e.ClassList.Contains(KilderSelect))
+                        .ToLookup(e => e.Closest('.' + KilderScroll) is not null);
+
+        return (all.Count(e => e.ClassList.Contains(KilderScroll)), select[true].Count(), select[false].Count());
+    }
 }
