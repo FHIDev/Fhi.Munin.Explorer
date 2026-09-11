@@ -2378,7 +2378,6 @@ table.munin-explorer-data-list tbody th {
   font-size: 1rem;
   align-items: center;
   padding: 4px 20px;
-  white-space: nowrap;
 }
 
 .dropdown-choicepicker__item:first-of-type { padding-top: 16px; }

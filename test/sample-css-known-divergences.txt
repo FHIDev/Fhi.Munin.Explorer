@@ -17,7 +17,9 @@
 #   <kind>|<at-rule context>|<selector>|<property>
 #
 #   missing-selector      Stiler has a rule for this selector under the munin-explorer prefix and
-#                         the sample has none at all. The property field is empty.
+#                         the sample has none at all. The property field is empty. Prefix only:
+#                         a BORROWED selector the sample never writes is not reported, because the
+#                         sample stands in for what the component touches and no further.
 #   missing-declaration   Both have the rule; Stiler declares this property and the sample does not.
 #   different-value       Both declare the property, with values that differ after normalisation
 #                         (rem to px, var() resolved, hex to rgb — see the engine).
@@ -50,7 +52,17 @@
 # grey20 where Stiler's own comment says not to. The base rule and the drilldown's grid-column were
 # in it too, until #204.
 #
-# IT IS 174 SINCE Fhi.Metadata-f6az7. Three went and two arrived, and the two are the first
+# IT IS 213 SINCE Fhi.Metadata-l9l2n.105, and the 39 that arrived are a new FAMILY rather than new
+# drift: until that bead the comparison looked only at the munin-explorer prefix, so every rule the
+# sample writes for a name it BORROWS from Stiler - the choicepicker, the buttons, the searchbox,
+# `screenreader-only` - was compared against nothing at all. The sample had invented
+# `white-space: nowrap` on `.dropdown-choicepicker__item`, where Stiler declares no `white-space`,
+# and the 55px overhang that produced was measured against ModernHost and filed as a P2 functional
+# defect in the component (Fhi.Metadata-abmom). They are listed at the bottom of this file under
+# their own heading, which also says how they were measured - not against the pin, because the box
+# they were found on could not restore it.
+#
+# IT WAS 174 SINCE Fhi.Metadata-f6az7. Three went and two arrived, and the two are the first
 # entries here with an expiry condition written into them. The three that went - the choicepicker
 # selector, the trigger's icon rule and the dropdown - were missing-selector lines the column
 # picker's own rules made false, so the sample moved TOWARDS Stiler and the stale half of the guard
@@ -74,8 +86,9 @@
 #
 # SILENCE HERE ABOUT A SELECTOR IS NOT AGREEMENT. A selector only the sample has is not compared
 # at all: invented-declaration is reported only under selectors Stiler ALSO has, and
-# missing-selector only for selectors Stiler has and the sample lacks, so a name Stiler has never
-# heard of produces no line whichever way the two differ. Read a gap here as "Stiler agrees" and a
+# missing-selector only for selectors Stiler has and the sample lacks - and, on a borrowed name,
+# not even then. So a name Stiler has never heard of produces no line whichever way the two differ,
+# and neither does a borrowed name the sample simply leaves alone. Read a gap here as "Stiler agrees" and a
 # rule the sample invented reads as one the pin shares — which is how a 320px overflow drawn by the
 # sample's own `min-width: 21rem` on `.munin-explorer-selection__explore` was written up as a
 # defect helsedata.no has (Fhi.Metadata-l9l2n.65). Establish that Stiler has the selector before
@@ -265,3 +278,90 @@ missing-selector||.munin-explorer-meta__tab-content|
 missing-selector||.munin-explorer-meta__tab|
 missing-selector||.munin-explorer-pagination-pages .hd-button-reset:hover|
 missing-selector||.munin-explorer-retry[aria-disabled=true]:focus|
+
+# ---------------------------------------------------------------------------------------------
+# BORROWED SELECTORS. Everything above this line is a name under the `munin-explorer` prefix; the
+# 39 below are names the component wears from Stiler, which the comparison did not look at until
+# Fhi.Metadata-l9l2n.105. `.dropdown-choicepicker__item { white-space: nowrap }` is why it does
+# now: the sample invented that declaration, the guard was blind to it, and a measurement taken
+# against the sample was written up as a P2 functional defect in the component.
+#
+# The half that is asymmetric, and it is deliberate: a borrowed selector Stiler has and the sample
+# does not write is NOT reported. The sample stands in for the parts of the design system the
+# component touches and no further, so `missing-selector` here would be a list that can never go
+# down. Where the sample DOES write the rule, it owes what Stiler declares and owes nothing more.
+#
+# HOW THESE WERE MEASURED, said plainly because it is not the way the lines above were. The
+# forge box has no Azure Artifacts credentials and no Stiler checkout, so the pinned 0.1.42
+# package could not be restored to read. These were read instead off helsedata.no's own compiled
+# bundle - https://helsedata.no/dist/styles.d631bfe8c6817ff25092.css, fetched 2026-09-11 - which
+# is Stiler as helsedata actually serves it. For `.dropdown-choicepicker__item` the two agree
+# declaration for declaration with the 0.1.42 reading in the bead, which is the one selector
+# there was a second source for. CI compares against the pin, and the pin is the authority: a
+# line here that 0.1.42 does not produce fails as stale and should be deleted rather than argued
+# with.
+
+# The choicepicker, and the reason this section exists. Every line is a real difference between
+# what the sample draws and what a host on Stiler sees, and the first four are layout-deciding
+# rather than cosmetic: item padding and `inline-flex` set item height and the list's shrink-to-fit
+# width, which is the geometry Fhi.Metadata-abmom measured. Not fixed here - changing them moves
+# every box in the open picker and needs its own measurement. Filed as Fhi.Metadata-4gjgp.
+different-value||.dropdown-choicepicker__item|display
+different-value||.dropdown-choicepicker__item|padding
+different-value||.dropdown-choicepicker__item:first-of-type|padding-top
+different-value||.dropdown-choicepicker__item:last-of-type|padding-bottom
+different-value||.dropdown-choicepicker|top
+missing-declaration||.dropdown-choicepicker__item|color
+missing-declaration||.dropdown-choicepicker__item:first-of-type|border-radius
+missing-declaration||.dropdown-choicepicker__item:last-of-type|border-radius
+missing-declaration||.dropdown-choicepicker|display
+missing-declaration||.dropdown-choicepicker|flex-direction
+invented-declaration||.dropdown-choicepicker|color
+invented-declaration||.dropdown-choicepicker|margin
+invented-declaration||.dropdown-choicepicker|z-index
+
+# The checkbox row inside an item. Stiler dresses it from `.form-control` itself and declares only
+# `word-break: normal` under this selector; the sample lays the row out here instead, because it
+# has no `.form-control` component to inherit from. Inert for the list's width - both are inside
+# the item's own box - and it is the stand-in supplying something absent rather than contradicting
+# something present.
+invented-declaration||.dropdown-choicepicker__item .form-control__label|align-self
+invented-declaration||.dropdown-choicepicker__item .form-control__label|margin-left
+
+# `.screenreader-only`. Two different recipes for the same job: Stiler moves the element to
+# `left: -10000px`, the sample uses the clip-rect one. Both take it out of sight and leave it in
+# the accessibility tree, and the sample's is the one that survives a host with `overflow: hidden`
+# on an ancestor. Deliberate, and not a candidate for fixing.
+invented-declaration||.screenreader-only|border
+invented-declaration||.screenreader-only|clip
+invented-declaration||.screenreader-only|margin
+invented-declaration||.screenreader-only|padding
+invented-declaration||.screenreader-only|white-space
+missing-declaration||.screenreader-only|left
+missing-declaration||.screenreader-only|top
+
+# The two button resets and the search field. `border: none` against `border: 0` is the
+# shorthand-as-written caveat rather than a difference - neither draws a border. The rest is
+# typography the stand-in cannot reproduce anyway, because Stiler sets it through a `font`
+# shorthand carrying the Graphik family this repository may not redistribute.
+different-value||.hd-button-reset|border
+invented-declaration||.hd-button-reset|appearance
+invented-declaration||.hd-button-reset|margin
+invented-declaration||.hd-button-reset|text-align
+missing-declaration||.hd-button-reset|font-weight
+missing-declaration||.hd-button-reset|text-decoration
+missing-declaration||.hd-button-square|font-size
+missing-declaration||.hd-button-square|font-weight
+missing-declaration||.hd-button-square|line-height
+missing-declaration||.searchbox__freetext|font-size
+
+# The datasource card, which is the sample host PAGE's own furniture and not something the package
+# emits - it is there so the demo page looks like helsedata's. Two spellings of one margin, and a
+# line clamp the sample leaves off. Nothing the component renders is inside any of it.
+invented-declaration||.datasourcecard-list|margin
+invented-declaration||.datasourcecard__info .dot|margin
+missing-declaration||.datasourcecard__info .dot|margin-bottom
+missing-declaration||.datasourcecard__info .dot|margin-left
+missing-declaration||.datasourcecard__info .dot|margin-right
+missing-declaration||.datasourcecard__intro p|-webkit-box-orient
+missing-declaration||.datasourcecard__intro p|-webkit-line-clamp

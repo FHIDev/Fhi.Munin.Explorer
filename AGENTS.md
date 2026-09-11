@@ -471,7 +471,8 @@ the other, and run the script.
 the gap between those two is wide enough to have held around forty divergences while it stayed
 green. A rule carrying half of Stiler's declarations passes it; so does the right property carrying
 the wrong value. `scripts/assert-sample-css-matches-stiler.sh` closes it by comparing
-**declarations** — property and value — for every selector under the prefix, against the published
+**declarations** — property and value — for every selector under the prefix, and for every
+**borrowed** selector the sample writes a rule for, against the published
 `Fhi.Helsedata.Stiler` `main.css` that `samples/HostileHost` pins. The published package rather
 than Stiler's `main` on purpose: it is the Stiler a host actually restores, so a green run means
 "the stand-in matches what helsedata will have" rather than "it matches unreleased work". It runs
@@ -481,7 +482,15 @@ not proof the comparison ran** — a fork pull request gets no secret, the job s
 counts a skip as fine. That is the bound `check-hostile-host.sh` beside it has always had, and this
 guard inherits it rather than closing it; read the job, not the tick.
 
-The 174 divergences standing today are listed in `test/sample-css-known-divergences.txt`. **Nothing
+The borrowed half is asymmetric on purpose: a Stiler selector the sample does not write at all is
+not reported, because the sample stands in for the parts of the design system the component touches
+and no further — but where it *does* write the rule, it owes what Stiler declares and owes nothing
+more. That last clause is the one that was missing until `Fhi.Metadata-l9l2n.105`. The sample had
+invented `white-space: nowrap` on `.dropdown-choicepicker__item`, the comparison never looked at a
+borrowed name, and a 55px overhang measured against the sample was filed as a P2 defect in the
+component.
+
+The 213 divergences standing today are listed in `test/sample-css-known-divergences.txt`. **Nothing
 writes that file.** A divergence not listed fails the build, and a listed line that no longer
 diverges also fails it with an instruction to delete the line, so the count can only go down.
 Adding a line is a hand edit that needs a reason; do not add one to get a branch green. What the

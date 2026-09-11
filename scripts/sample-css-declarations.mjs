@@ -1,5 +1,6 @@
 // Reads two stylesheets and reports where the sample stand-in's DECLARATIONS disagree with
-// Fhi.Helsedata.Stiler's, for the selectors under the `munin-explorer` prefix the package owns.
+// Fhi.Helsedata.Stiler's, for the selectors the component's markup puts on a page: the ones under
+// the `munin-explorer` prefix the package owns, and the BORROWED ones it wears from Stiler.
 //
 // The whole point is that it compares declarations and not selectors. `assert-sample-css-in-step.sh`
 // asks whether a name has a rule declaring SOMETHING, which is a question the samples answered
@@ -312,13 +313,25 @@ function customProperties(rules) {
 // ---------------------------------------------------------------------------------------------
 // Comparison
 
-// A rule is ours to compare when its selector names something under the prefix the package owns.
-// Stiler is a whole design system and most of main.css has nothing to do with us; a rule for
-// `.hd-button-square` alone is helsedata's to change and the sample is not obliged to mirror it.
-// A COMPOUND selector counts — `.munin-explorer .hd-button-square.button-square--ghost` is a rule
-// Stiler wrote for the component, and the sample owes it.
+// Two families of selector reach a page through this component, and the comparison below is
+// asymmetric between them. A rule is OURS when its selector names something under the prefix the
+// package owns; a COMPOUND selector counts, because
+// `.munin-explorer .hd-button-square.button-square--ghost` is a rule Stiler wrote for the
+// component and the sample owes it.
 function isOurs(selector) {
   return /(^|[^A-Za-z0-9_-])munin-explorer/.test(selector);
+}
+
+// A BORROWED rule is one the sample writes for a class name that is Stiler's — the searchbox, the
+// buttons, the choicepicker — and `compare` says which half of the comparison it gets. Element,
+// universal and `:root` selectors are not borrowed rules: the sample restyles `body` and declares
+// a palette of its own, and neither is a claim about what Stiler draws for the component.
+function isBorrowed(selector) {
+  return !isOurs(selector) && /\.[A-Za-z_-]/.test(selector);
+}
+
+function isCompared(selector) {
+  return isOurs(selector) || isBorrowed(selector);
 }
 
 // Properties deliberately NOT compared, and why. Each is something the sample CANNOT reproduce
@@ -346,10 +359,20 @@ function isOurs(selector) {
 // how cuo0e presents; what it does not catch is two identical selectors in a different order.
 const NOT_COMPARED = new Set(["font-family", "font", "src"]);
 
+const FONT_LONGHANDS = new Set([
+  "font-size",
+  "font-weight",
+  "font-style",
+  "font-variant",
+  "font-stretch",
+  "line-height",
+]);
+const EMPTY = new Set();
+
 function index(rules) {
   const map = new Map();
   for (const rule of rules) {
-    if (!isOurs(rule.selector)) continue;
+    if (!isCompared(rule.selector)) continue;
     const key = `${rule.context}|${rule.selector}`;
     if (!map.has(key)) {
       map.set(key, { context: rule.context, selector: rule.selector, declarations: new Map() });
@@ -375,6 +398,11 @@ export function compare(samplePath, stilerPath) {
   for (const [key, stilerRule] of stiler) {
     const sampleRule = sample.get(key);
     if (!sampleRule) {
+      // A selector the sample simply does not write. Under the prefix that is a hole — the sample
+      // is the only stylesheet those names have here. On a BORROWED selector it is not: the sample
+      // stands in for the parts of the design system the component touches and no more, and
+      // demanding it mirror all of `.hd-button-square` would be a baseline that can never go down.
+      if (!isOurs(stilerRule.selector)) continue;
       divergences.push({
         kind: "missing-selector",
         context: stilerRule.context,
@@ -410,20 +438,28 @@ export function compare(samplePath, stilerPath) {
     }
   }
 
-  // The fourth kind, and the one the bead's list turns on twice: a declaration the sample INVENTS.
+  // The fourth kind, and the one a borrowed selector fails by: a declaration the sample INVENTS.
   // `.munin-explorer-detail`'s border-top is one — Stiler's `_detail.scss` says in as many words
-  // that there is deliberately none there — and the expand icon's ::before glyph is another. A
-  // stand-in that draws something the real stylesheet does not is as misleading as one that draws
-  // nothing.
+  // that there is deliberately none there — and `.dropdown-choicepicker__item`'s `white-space:
+  // nowrap` was another, which is what makes this the check the borrowed half needed
+  // (Fhi.Metadata-l9l2n.105). A stand-in that draws something the real stylesheet does not is as
+  // misleading as one that draws nothing.
   //
   // Reported only for selectors Stiler ALSO has. A whole selector the sample invents is not
-  // reported: the sample legitimately stands in for parts of the design system outside this
-  // prefix, and it carries its own palette in `:root`.
+  // reported: the sample carries its own palette and its own host chrome, and neither is a claim
+  // about what Stiler draws.
   for (const [key, sampleRule] of sample) {
     const stilerRule = stiler.get(key);
     if (!stilerRule) continue;
+    // `font` is not compared, so a longhand the sample spells out reads as invented wherever
+    // Stiler sets it through the shorthand — nine such lines on Stiler's responsive type alone.
+    // Borrowed selectors only: three baseline lines under the prefix are font longhands, and
+    // suppressing those here would rewrite by side effect a list that is all hand edits.
+    const shorthanded =
+      isBorrowed(sampleRule.selector) && stilerRule.declarations.has("font") ? FONT_LONGHANDS : EMPTY;
     for (const [property] of sampleRule.declarations) {
       if (NOT_COMPARED.has(property)) continue;
+      if (shorthanded.has(property)) continue;
       if (stilerRule.declarations.has(property)) continue;
       divergences.push({
         kind: "invented-declaration",
@@ -437,7 +473,16 @@ export function compare(samplePath, stilerPath) {
 
   divergences.sort((a, b) => keyOf(a).localeCompare(keyOf(b)));
 
-  return { divergences, sampleRuleCount: sample.size, stilerRuleCount: stiler.size };
+  // Counted apart: the shell half floors the PREFIX count to catch a parser gone stale, and the
+  // couple of thousand borrowed rules Stiler carries would hide that inside one number.
+  const ours = (map) => [...map.values()].filter((r) => isOurs(r.selector)).length;
+  return {
+    divergences,
+    sampleRuleCount: ours(sample),
+    stilerRuleCount: ours(stiler),
+    sampleBorrowedCount: sample.size - ours(sample),
+    stilerBorrowedCount: stiler.size - ours(stiler),
+  };
 }
 
 export function keyOf(d) {
@@ -451,7 +496,8 @@ if (samplePath && stilerPath) {
     console.log(mode === "--detail" ? `${keyOf(d)}\t${d.detail}` : keyOf(d));
   }
   console.error(
-    `# ${result.divergences.length} divergence(s) across ${result.stilerRuleCount} Stiler rule(s) and ${result.sampleRuleCount} sample rule(s) under the prefix`,
+    `# ${result.divergences.length} divergence(s) across ${result.stilerRuleCount} Stiler rule(s) and ${result.sampleRuleCount} sample rule(s) under the prefix, ` +
+      `plus ${result.stilerBorrowedCount} Stiler rule(s) and ${result.sampleBorrowedCount} sample rule(s) on borrowed class selectors`,
   );
 } else {
   console.error("usage: node scripts/sample-css-declarations.mjs <sample.css> <stiler-main.css> [--detail]");

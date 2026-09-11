@@ -12,7 +12,13 @@
 # that gets it wrong, and nothing here measured it. (Fhi.Metadata-3dwar)
 #
 # So this compares DECLARATIONS — property and value — for the selectors under the `munin-explorer`
-# prefix the package owns. `scripts/sample-css-declarations.mjs` is the comparison, and the comment
+# prefix the package owns, and for the BORROWED Stiler names the sample writes a rule for. The
+# borrowed half is asymmetric: a Stiler selector the sample never writes is not reported, because
+# the sample stands in for what the component touches and no further, but a rule the sample DOES
+# write owes what Stiler declares and owes nothing more. Without that clause the sample's invented
+# `white-space: nowrap` on `.dropdown-choicepicker__item` was invisible here, and a measurement
+# taken against the sample was written up as a P2 defect in the component
+# (Fhi.Metadata-l9l2n.105). `scripts/sample-css-declarations.mjs` is the comparison, and the comment
 # above `NOT_COMPARED` in it is the honest statement of what is compared and what is not: font
 # family and `src` are skipped because Stiler ships a typeface this repository cannot redistribute,
 # shorthands are compared as written rather than expanded, and specificity and source order are not
@@ -36,7 +42,7 @@
 # an unconfigured guard should say so and stop rather than go red. But it means a required check
 # passing is not on its own proof that the stylesheets were compared. Read the job, not the tick.
 #
-# THE BASELINE IS NOT SELF-UPDATING, and that is the point of it. 175 declaration-level
+# THE BASELINE IS NOT SELF-UPDATING, and that is the point of it. 213 declaration-level
 # divergences stand today. They are listed in test/sample-css-known-divergences.txt, this script
 # reads that list, and NOTHING here ever writes to it. A guard that records its own failures is
 # decoration. So:
@@ -153,7 +159,9 @@ cut -f1 < "$DETAIL" | LC_ALL=C sort -u > "$FOUND"
 # A floor, not a count, and it guards the same failure the floors in assert-sample-css-in-step.sh
 # guard: an extraction that stops matching reports zero divergences, which is indistinguishable
 # from a perfect stylesheet and would be reported as a pass. Stiler carries 275 rules under the
-# prefix today; a stale parser yields a handful.
+# prefix today; a stale parser yields a handful. The floor counts the PREFIX rules alone and not
+# the borrowed ones, because Stiler has a couple of thousand rules with a class in them and a
+# parser could go stale against every munin-explorer partial while that number stayed enormous.
 RULES=$(node "$ENGINE" "$MODERN" "$STILER_MAIN_CSS" 2>&1 >/dev/null | sed -n 's/.*across \([0-9]*\) Stiler rule.*/\1/p')
 MIN_STILER_RULES=100
 if [ -z "$RULES" ] || [ "$RULES" -lt "$MIN_STILER_RULES" ]; then
@@ -216,6 +224,7 @@ fi
 [ "$status" = "0" ] || exit "$status"
 
 echo "The sample stand-in matches Fhi.Helsedata.Stiler's declarations for every selector under the"
-echo "munin-explorer prefix, apart from the $(wc -l < "$BASE" | tr -d ' ') divergence(s) listed in $KNOWN."
+echo "munin-explorer prefix and every borrowed one it writes a rule for, apart from the"
+echo "$(wc -l < "$BASE" | tr -d ' ') divergence(s) listed in $KNOWN."
 echo "Compared $RULES Stiler rule(s) property by property; both sample hosts are covered, because"
 echo "their two copies are byte-identical and this script checked that before comparing one."
