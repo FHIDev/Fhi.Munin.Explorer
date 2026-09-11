@@ -266,23 +266,26 @@ internal static class HostClassNames
         elements.SelectMany(e => e.ClassList);
 
     /// <summary>
-    /// What is lost when the selection column stops being visible to a selector scoped to the
-    /// scroll box. Every assertion of the guard reports it, because the consequence is the same
-    /// whichever way the contract breaks and a reader deleting the class meets only this sentence.
+    /// What is lost when the scroll box and the selection column stop agreeing about whether the
+    /// host wired the handover. Every assertion of the guard reports it, because the consequence is
+    /// the same whichever way it breaks and a reader who broke it meets only this sentence.
     /// </summary>
     internal const string KilderSelectConsequence =
         "Fhi.Helsedata.Stiler keys its eleven per-column-count sticky-header thresholds on "
         + ":has(.munin-explorer-kilder__select) scoped to .munin-explorer-kilder-scroll, which is "
         + "the only thing telling a selectable host's 32px checkbox column from the far wider "
         + "content column a non-selectable host draws at the same column count. Those thresholds "
-        + "are PR 39282's (Fhi.Metadata-l9l2n.50), merged to Stiler's main on 2026-09-11 and NOT "
-        + "in 0.1.42 — the version samples/HostileHost pins and helsedata.no restores today — so "
-        + "this is the contract a host takes on with the release that follows, not a page that is "
-        + "broken now. Without the signal every threshold picks the other branch, overflow-x: "
-        + "visible turns on at a width the table does not fit, and the host page gains a horizontal "
-        + "scrollbar across its whole width. Nothing errors and nothing else fails, because this "
-        + "package ships no CSS and the samples carry their own copies. Restore the emission rather "
-        + "than moving the class or relaxing this test.";
+        + "are PR 39282's (Fhi.Metadata-l9l2n.50), merged to Stiler's main on 2026-09-11 at 08:50 "
+        + "UTC, and no published version carries them yet: 0.1.67 went to the feed at 07:14 that "
+        + "morning, and samples/HostileHost and helsedata.no both still pin 0.1.42. So this is the "
+        + "contract a host takes on with whichever release is cut next, not a page that is broken "
+        + "now. Get the signal wrong in either direction — the class missing where the handover is "
+        + "wired, or emitted where it is not — and every threshold picks the other branch, "
+        + "overflow-x: visible turns on at a width the table does not fit, and the host page gains "
+        + "a horizontal scrollbar across its whole width. Nothing errors and nothing else fails, "
+        + "because this package ships no CSS and the samples carry their own copies. Match the "
+        + "emission to whether the handover is wired, rather than moving the class or relaxing "
+        + "this test.";
 
     /// <summary>
     /// What a stylesheet scoped to the scroll box can see of the selection column: boxes to scope
@@ -290,8 +293,8 @@ internal static class HostClassNames
     /// yes/no, because Stiler reaches the class THROUGH the box and presence is not containment.
     ///
     /// The threshold selectors this stands in for are in <see cref="KilderSelectConsequence"/>,
-    /// which says which Stiler release carries them — nothing in this repository reads Stiler, so a
-    /// claim about it is pinned to a version or it is a guess.
+    /// which names the Stiler PR and the published versions that do not carry it — nothing in this
+    /// repository reads Stiler, so a claim about it is pinned to a version or it is a guess.
     /// </summary>
     internal static (int ScrollBoxes, int Inside, int Outside) KilderSelectScope(
         IEnumerable<IElement> elements)
