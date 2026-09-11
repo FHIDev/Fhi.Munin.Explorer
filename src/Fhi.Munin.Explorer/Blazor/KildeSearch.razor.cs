@@ -1156,9 +1156,9 @@ public sealed partial class KildeSearch : ComponentBase
     /// </remarks>
     private string? KildeHref => DatasamlingHref?.Invoke(null);
 
-    // One delegate for the tree below rather than a lambda in the markup, which would be a changed
-    // parameter on every render. It reads the property rather than capturing it, so a host that
-    // swaps the delegate is followed.
+    // The held-delegate idiom KildeExplorer.DatasamlingHref explains, one layer down: the tree
+    // takes a Guid where the host's route takes a Guid?, and an adapter written in the markup
+    // would be a changed parameter on every render.
     private Func<Guid, string>? _nodeHref;
 
     private Func<Guid, string>? NodeHref =>

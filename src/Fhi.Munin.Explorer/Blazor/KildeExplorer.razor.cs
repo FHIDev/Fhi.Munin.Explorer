@@ -54,7 +54,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     public const string QueryKey = "kilde";
 
     /// <summary>
-    /// The second key it owns: the datasamling the reader opened out of that kilde.
+    /// The datasamling key: the one the reader opened out of that kilde.
     /// </summary>
     /// <remarks>
     /// Beside <see cref="QueryKey"/> rather than instead of it, so the address names the whole path
@@ -65,7 +65,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     /// </remarks>
     public const string DatasamlingQueryKey = "datasamling";
 
-    /// <summary>The third key it owns: the order the kilde list is in.</summary>
+    /// <summary>The order key: the order the kilde list is in.</summary>
     /// <remarks>
     /// <c>sort</c>, spelled and read exactly as <see cref="ExplorerUrlState"/> spells it, and
     /// carrying a <see cref="KildeSortOrder"/> member's own name. The catalogue's own order is
@@ -141,6 +141,9 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     /// keying on that would throw away the list and the fetch the reader is already watching.
     /// </remarks>
     private int _arrival;
+
+    /// <summary>Held rather than written into the markup — see <see cref="DatasamlingHref"/>.</summary>
+    private Func<Guid?, string>? _address;
 
     private EventCallback<IReadOnlyList<Guid>> Handover =>
         VariableExplorerPath is null
@@ -220,14 +223,16 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         var mirror = new UrlMirror(address, JS, Owns);
         var arrived = Read(mirror);
 
+        // Above the guard, because a navigation changing only the host's own keys leaves the owned
+        // ones equal: refreshed below it, the mirror would keep carrying parameters the navigation
+        // dropped and put them back into every later link and rewrite.
+        _mirror = mirror;
+
         if (arrived == (_selectedKildeId, _selectedDatasamlingId, _order))
         {
             return;
         }
 
-        // The mirror too, not only what it said: it holds the host's own parameters, and mirroring
-        // the ones this component arrived with would put back keys the navigation had dropped.
-        _mirror = mirror;
         (_selectedKildeId, _selectedDatasamlingId, _order) = arrived;
         _arrival++;
 
@@ -271,8 +276,6 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
 
         return string.Join("&", owned.Where(pair => pair.Length != 0));
     }
-
-    private Func<Guid?, string>? _address;
 
     /// <summary>
     /// This page's address showing the open kilde, and the datasamling named — or the kilde alone

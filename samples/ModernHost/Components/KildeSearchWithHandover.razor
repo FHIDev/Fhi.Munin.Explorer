@@ -59,8 +59,11 @@
         // key the address does not carry — and the address carries neither until a kilde is opened.
         var query = QueryHelpers.ParseQuery(new Uri(Nav.Uri).Query);
 
-        _kilde = Value(query, "kilde");
-        _datasamling = _kilde is null ? null : Value(query, "datasamling");
+        // The package's own constants rather than string literals: this page spells the two keys
+        // in three places, and a host that spelled one of them differently from KildeExplorer
+        // would hand out links the component it wraps cannot read back.
+        _kilde = Value(query, KildeExplorer.QueryKey);
+        _datasamling = _kilde is null ? null : Value(query, KildeExplorer.DatasamlingQueryKey);
     }
 
     private static Guid? Value(IReadOnlyDictionary<string, StringValues> query, string key) =>
@@ -69,8 +72,9 @@
     /// <summary>Where a datasamling of the open kilde lives, or the open kilde on its own.</summary>
     private string Address(Guid? datasamling) =>
         _kilde is not { } kilde ? "/kilder"
-        : datasamling is { } open ? $"/kilder?kilde={kilde}&datasamling={open}"
-        : $"/kilder?kilde={kilde}";
+        : datasamling is { } open
+            ? $"/kilder?{KildeExplorer.QueryKey}={kilde}&{KildeExplorer.DatasamlingQueryKey}={open}"
+            : $"/kilder?{KildeExplorer.QueryKey}={kilde}";
 
     /// <summary>
     /// Put the opened kilde in the address, so the entry the drill-in leaves behind names it.

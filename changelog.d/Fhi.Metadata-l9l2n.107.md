@@ -9,4 +9,7 @@ category: Added
   hierarchy collapsed again, not expanded to where the reader was. `DatasamlingView`, which the
   variable explorer already reached, is rendered unchanged — the route was what was missing, not
   the view. `KildeSearch` gains `SelectedDatasamlingId` and `DatasamlingHref` for a host that owns
-  its own query string. (Fhi.Metadata-l9l2n.107)
+  its own query string. A host's own query parameters survive a navigation the way they survive a
+  render: the explorer re-reads them off the address that arrived, so a navigation changing only
+  the host's own keys neither loses them nor puts back the ones it dropped.
+  (Fhi.Metadata-l9l2n.107)

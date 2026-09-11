@@ -5829,11 +5829,37 @@ public class KildeSearchTest : BunitContext
                 DirectDatasamlinger = [new() { Id = datasamling, Name = "Inklusjon", VariableCount = 9 }]
             });
 
+        /// <summary>What the datasamling fetch does instead of answering, if anything.</summary>
+        /// <remarks>
+        /// Three switches rather than one, because the three sentences they produce are the point:
+        /// a datasamling the catalogue does not publish, one the limiter refused, and a catalogue
+        /// that is down all have to stay apart. See the kilde twin's <c>FakeClient</c>.
+        /// </remarks>
+        public bool MissingDatasamling { get; set; }
+
+        /// <inheritdoc cref="MissingDatasamling"/>
+        public bool RateLimitDatasamling { get; set; }
+
+        /// <inheritdoc cref="MissingDatasamling"/>
+        public bool FailDatasamling { get; set; }
+
         public override Task<DatasamlingDetail?> GetDatasamlingAsync(Guid id, CancellationToken cancellationToken = default)
         {
             DatasamlingCalls++;
-            return Task.FromResult<DatasamlingDetail?>(
-                new() { Id = id, Code = "K_ALS.INKLUSJON", PreferredTerm = "Inklusjon" });
+
+            if (RateLimitDatasamling)
+            {
+                throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+            }
+
+            if (FailDatasamling)
+            {
+                throw new HttpRequestException("the API is down");
+            }
+
+            return Task.FromResult<DatasamlingDetail?>(MissingDatasamling
+                ? null
+                : new() { Id = id, Code = "K_ALS.INKLUSJON", PreferredTerm = "Inklusjon" });
         }
     }
 
@@ -5921,6 +5947,76 @@ public class KildeSearchTest : BunitContext
 
         Assert.Equal($"/kilder?kilde={kilde}&datasamling={datasamling}", link.GetAttribute("href"));
         Assert.Empty(cut.FindAll(".munin-explorer-hierarchy summary a"));
+    }
+
+    /// <summary>The one line the drill-in has to say why it is empty.</summary>
+    private static IElement DrillInStatus(IRenderedComponent<KildeSearch> cut) =>
+        cut.Find(".munin-explorer-drilldown p[role=status]");
+
+    [Fact]
+    public void DrillIn_WhenTheCatalogueDoesNotPublishTheDatasamling_ThenTheViewSaysSoRatherThanGoingBlank()
+    {
+        // A datasamling can be withdrawn between a link being copied and being followed, and
+        // neither arm of the drill-in draws anything then — so this sentence is the whole view.
+        // Its own sentence, not the kilde's: it says which of the two the reader asked for.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+        var client = new DrillInClient(kilde, datasamling) { MissingDatasamling = true };
+
+        var cut = RenderDrillIn(client, kilde, datasamling);
+
+        Assert.Equal("Fant ingen detaljer for denne datasamlingen.", DrillInStatus(cut).TextContent.Trim());
+        Assert.Equal("infobox infobox--bg-yellow", DrillInStatus(cut).GetAttribute("class"));
+        Assert.Empty(cut.FindAll(".munin-explorer-datasamling"));
+        Assert.Empty(cut.FindComponents<KildeView>());
+        Assert.DoesNotContain("Fant ingen detaljer for denne datakilden", cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DrillIn_WhenTheDatasamlingFetchIsRateLimited_ThenItSaysTheReaderAskedTooOften()
+    {
+        // The kilde twin's three sentences, one step further in, and they have to stay apart for
+        // the same reason: "kunne ikke hente" invites the retry the limiter is counting, and "fant
+        // ingen detaljer" says there is nothing to come back for.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+        var client = new DrillInClient(kilde, datasamling) { RateLimitDatasamling = true };
+
+        var cut = RenderDrillIn(client, kilde, datasamling);
+
+        Assert.Contains("for mange forespørsler", DrillInStatus(cut).TextContent, StringComparison.Ordinal);
+        Assert.Equal("infobox infobox--bg-yellow", DrillInStatus(cut).GetAttribute("class"));
+        Assert.DoesNotContain("Kunne ikke hente datasamlingen", cut.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("Fant ingen detaljer", cut.Markup, StringComparison.Ordinal);
+        Assert.Empty(cut.FindAll(".munin-explorer-datasamling"));
+
+        // Nothing asks again by itself: one deep link, one request.
+        Assert.Equal(1, client.DatasamlingCalls);
+    }
+
+    [Fact]
+    public void DrillIn_WhenTheDatasamlingFetchFails_ThenItSaysSoRatherThanEscapingInitialisation()
+    {
+        // An exception out of OnInitializedAsync tears down the circuit for helsedata's whole CMS
+        // page rather than for this component, so the fetch has to be caught where it is awaited —
+        // and the sentence has to stay the fault's rather than the catalogue's.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+        var client = new DrillInClient(kilde, datasamling) { FailDatasamling = true };
+
+        var cut = RenderDrillIn(client, kilde, datasamling);
+
+        Assert.Equal(
+            "Kunne ikke hente datasamlingen nå. Prøv igjen om litt.",
+            DrillInStatus(cut).TextContent.Trim());
+        Assert.Equal("infobox infobox--bg-yellow", DrillInStatus(cut).GetAttribute("class"));
+        Assert.DoesNotContain("Fant ingen detaljer", cut.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("Kunne ikke hente datakilden", cut.Markup, StringComparison.Ordinal);
+        Assert.Empty(cut.FindAll(".munin-explorer-datasamling"));
+
+        // And the way back out is still there, which is the whole difference between a failed
+        // fetch and a dead end.
+        Assert.Equal($"/kilder?kilde={kilde}", cut.Find(".munin-explorer-drilldown a.hd-button-square").GetAttribute("href"));
     }
 
     [Fact]

@@ -101,7 +101,10 @@
         @* The datasamling takes the drill-in over when the address names one, exactly as Runa's own
            owner panel holds a kilde or a datasamling and never both. DatasamlingView is the same
            component Runa renders, passed the same four parameters — the route is what was missing
-           here, not the view. *@
+           here, not the view.
+
+           Neither arm is the third state, and that is deliberate: a datasamling that was asked for
+           and did not arrive draws no view at all, and the status line above is what says why. *@
         @if (_datasamling is { } datasamling)
         {
             <DatasamlingView Datasamling="datasamling"
