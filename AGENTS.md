@@ -471,7 +471,8 @@ the other, and run the script.
 the gap between those two is wide enough to have held around forty divergences while it stayed
 green. A rule carrying half of Stiler's declarations passes it; so does the right property carrying
 the wrong value. `scripts/assert-sample-css-matches-stiler.sh` closes it by comparing
-**declarations** — property and value — for every selector under the prefix, against the published
+**declarations** — property and value — for every selector under the prefix, and for every
+**borrowed** selector the sample writes a rule for, against the published
 `Fhi.Helsedata.Stiler` `main.css` that `samples/HostileHost` pins. The published package rather
 than Stiler's `main` on purpose: it is the Stiler a host actually restores, so a green run means
 "the stand-in matches what helsedata will have" rather than "it matches unreleased work". It runs
@@ -481,14 +482,33 @@ not proof the comparison ran** — a fork pull request gets no secret, the job s
 counts a skip as fine. That is the bound `check-hostile-host.sh` beside it has always had, and this
 guard inherits it rather than closing it; read the job, not the tick.
 
-The 174 divergences standing today are listed in `test/sample-css-known-divergences.txt`. **Nothing
+The borrowed half is asymmetric on purpose: a Stiler selector the sample does not write at all is
+not reported, because the sample stands in for the parts of the design system the component touches
+and no further — but where it *does* write the rule, it owes what Stiler declares and owes nothing
+more. That last clause is the one that was missing until `Fhi.Metadata-l9l2n.105`. The sample had
+invented `white-space: nowrap` on `.dropdown-choicepicker__item`, the comparison never looked at a
+borrowed name, and a 55px overhang measured against the sample was filed as a P2 defect in the
+component.
+
+**"Where it does write the rule" means where Stiler spells the selector the same way**, which is
+narrower than it sounds and the borrowed half's real bound. Rules are keyed on selector text, so
+the sample's `.hd-button-square.button-square--primary` finds nothing under Stiler's
+`.button-square--primary` and is compared in neither direction — and `missing-selector`, the alarm
+that catches exactly that under the prefix, is deliberately off here. What replaces it is a count:
+the run prints how many borrowed rules the sample writes matched no Stiler selector, and that
+number is the size of the blind spot for that run. It is not zero. Read it.
+
+The 214 divergences standing today are listed in `test/sample-css-known-divergences.txt`. **Nothing
 writes that file.** A divergence not listed fails the build, and a listed line that no longer
 diverges also fails it with an instruction to delete the line, so the count can only go down.
 Adding a line is a hand edit that needs a reason; do not add one to get a branch green. What the
 comparison does **not** see is source order and specificity — two rules can both exist, both
 declare the property, and still draw differently (`Fhi.Metadata-cuo0e`) — and shorthands, which are
 compared as written rather than expanded. `font-family`, the `font` shorthand and `src` are not
-compared at all, because Stiler ships a typeface this repository cannot redistribute.
+compared as values, because Stiler ships a typeface this repository cannot redistribute — but the
+size and line-height a Stiler `font` carries are read back out of it on a borrowed selector, so a
+sample longhand beside one is compared rather than dropped. That exception exists because dropping
+them was the one place the comparison erred towards silence, and they are geometry.
 
 A rule is not the same as a host being told. **Adding a `munin-explorer*` name means adding a row
 to the README's inventory table**, between the `<!-- class-names:start -->` markers, with the kind

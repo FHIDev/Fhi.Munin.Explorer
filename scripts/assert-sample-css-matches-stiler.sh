@@ -12,11 +12,26 @@
 # that gets it wrong, and nothing here measured it. (Fhi.Metadata-3dwar)
 #
 # So this compares DECLARATIONS — property and value — for the selectors under the `munin-explorer`
-# prefix the package owns. `scripts/sample-css-declarations.mjs` is the comparison, and the comment
-# above `NOT_COMPARED` in it is the honest statement of what is compared and what is not: font
+# prefix the package owns, and for the BORROWED names the sample writes a rule for. The borrowed
+# half is asymmetric: a Stiler selector the sample never writes is not reported, because the sample
+# stands in for what the component touches and no further, but a rule the sample DOES write owes
+# what Stiler declares and owes nothing more — PROVIDED Stiler spells the selector the same way.
+# Rules are keyed on selector text, so the sample's `.hd-button-square.button-square--primary`
+# finds nothing under Stiler's `.button-square--primary` and is compared in neither direction. That
+# is not silent: the run counts those rules and the closing banner prints the number, because
+# `missing-selector` — the alarm that catches the same mistake under the prefix — is deliberately
+# off here and the count is the only trace left.
+#
+# Without the borrowed half the sample's invented `white-space: nowrap` on
+# `.dropdown-choicepicker__item` was invisible here, and a measurement taken against the sample
+# was written up as a P2 defect in the component (Fhi.Metadata-l9l2n.105).
+#
+# `scripts/sample-css-declarations.mjs` is the comparison, and the comment above
+# `NOT_COMPARED` in it is the honest statement of what is compared and what is not: font
 # family and `src` are skipped because Stiler ships a typeface this repository cannot redistribute,
-# shorthands are compared as written rather than expanded, and specificity and source order are not
-# compared at all.
+# shorthands are compared as written rather than expanded — with one exception, the size and
+# line-height carried by a `font` shorthand, which are geometry and are read back out of it rather
+# than dropped — and specificity and source order are not compared at all.
 #
 # WHICH STILER. The published package, read out of the NuGet global-packages folder — not a
 # checkout of Stiler's `main`. That is a deliberate choice and not a compromise. Diffing against
@@ -36,7 +51,7 @@
 # an unconfigured guard should say so and stop rather than go red. But it means a required check
 # passing is not on its own proof that the stylesheets were compared. Read the job, not the tick.
 #
-# THE BASELINE IS NOT SELF-UPDATING, and that is the point of it. 175 declaration-level
+# THE BASELINE IS NOT SELF-UPDATING, and that is the point of it. 214 declaration-level
 # divergences stand today. They are listed in test/sample-css-known-divergences.txt, this script
 # reads that list, and NOTHING here ever writes to it. A guard that records its own failures is
 # decoration. So:
@@ -153,8 +168,17 @@ cut -f1 < "$DETAIL" | LC_ALL=C sort -u > "$FOUND"
 # A floor, not a count, and it guards the same failure the floors in assert-sample-css-in-step.sh
 # guard: an extraction that stops matching reports zero divergences, which is indistinguishable
 # from a perfect stylesheet and would be reported as a pass. Stiler carries 275 rules under the
-# prefix today; a stale parser yields a handful.
-RULES=$(node "$ENGINE" "$MODERN" "$STILER_MAIN_CSS" 2>&1 >/dev/null | sed -n 's/.*across \([0-9]*\) Stiler rule.*/\1/p')
+# prefix today; a stale parser yields a handful. The floor counts the PREFIX rules alone and not
+# the borrowed ones, because Stiler has a couple of thousand rules with a class in them and a
+# parser could go stale against every munin-explorer partial while that number stayed enormous.
+#
+# The engine prints one fact per line, each ending in the phrase that names it, and each `sed` below
+# anchors on that phrase rather than on a leading `.*`: a greedy prefix would have re-pointed this
+# floor at the borrowed count the day a second "Stiler rule(s)" appeared on the same line.
+SUMMARY=$(node "$ENGINE" "$MODERN" "$STILER_MAIN_CSS" 2>&1 >/dev/null)
+RULES=$(printf '%s\n' "$SUMMARY" | sed -n 's/^# \([0-9]*\) Stiler rule(s) and .* under the prefix$/\1/p')
+BORROWED=$(printf '%s\n' "$SUMMARY" | sed -n 's/^# \([0-9]*\) Stiler rule(s) and .* on borrowed class selectors$/\1/p')
+UNMATCHED=$(printf '%s\n' "$SUMMARY" | sed -n 's/^# \([0-9]*\) borrowed sample rule(s) matched no Stiler selector.*$/\1/p')
 MIN_STILER_RULES=100
 if [ -z "$RULES" ] || [ "$RULES" -lt "$MIN_STILER_RULES" ]; then
   echo "::error::Read only ${RULES:-0} rule(s) under the munin-explorer prefix out of" >&2
@@ -162,6 +186,17 @@ if [ -z "$RULES" ] || [ "$RULES" -lt "$MIN_STILER_RULES" ]; then
   echo "which is below the floor of $MIN_STILER_RULES. Either the parser in $ENGINE has gone stale" >&2
   echo "against the stylesheet, or this is not Stiler's real main.css — and either way the" >&2
   echo "comparison below would report a clean run having compared almost nothing." >&2
+  exit 2
+fi
+
+# No floor on these two — one is enormous and the other is allowed to be zero — but an EMPTY
+# one is the stale-parser failure again, and the banner would print a blank where a number goes.
+if [ -z "$BORROWED" ] || [ -z "$UNMATCHED" ]; then
+  echo "::error::Could not read the borrowed-rule counts out of the summary $ENGINE printed:" >&2
+  printf '%s\n' "$SUMMARY" >&2
+  echo "The phrases this script greps for have moved. Fix the parse rather than dropping the" >&2
+  echo "numbers: the unmatched count is the only trace a borrowed rule compared against nothing" >&2
+  echo "leaves, because missing-selector is deliberately off for borrowed names." >&2
   exit 2
 fi
 
@@ -216,6 +251,12 @@ fi
 [ "$status" = "0" ] || exit "$status"
 
 echo "The sample stand-in matches Fhi.Helsedata.Stiler's declarations for every selector under the"
-echo "munin-explorer prefix, apart from the $(wc -l < "$BASE" | tr -d ' ') divergence(s) listed in $KNOWN."
-echo "Compared $RULES Stiler rule(s) property by property; both sample hosts are covered, because"
-echo "their two copies are byte-identical and this script checked that before comparing one."
+echo "munin-explorer prefix, and for every borrowed one the two sheets spell the same way, apart"
+echo "from the $(wc -l < "$BASE" | tr -d ' ') divergence(s) listed in $KNOWN."
+echo "Compared $RULES Stiler rule(s) under the prefix property by property, plus $BORROWED borrowed one(s)."
+echo "$UNMATCHED borrowed rule(s) the sample writes matched no Stiler selector and were compared"
+echo "against NOTHING — rules are keyed on selector text, so a compound Stiler spells differently"
+echo "is simply absent from both directions. That is not a pass for those rules; see \"SILENCE HERE\""
+echo "in $KNOWN."
+echo "Both sample hosts are covered, because their two copies are byte-identical and this script"
+echo "checked that before comparing one."
