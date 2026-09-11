@@ -204,9 +204,10 @@ become one `CHANGELOG.md` section and that section is the package's `PackageRele
 run `assemble-changelog.ps1` by hand to release: it was a documented manual step for three weeks
 and eight versions shipped without it (`Fhi.Metadata-l9l2n.44`). `-DryRun`, and
 `scripts/release-changelog.sh --dry-run`, are the rehearsals. The commit reaches `main` as a pull
-request the workflow opens, since `MainRules` has no bypass actors — merging it is the one step
-left to a person, and it arrives with its checks unreported because no workflow runs for an event
-`GITHUB_TOKEN` caused.
+request somebody opens by hand, since `MainRules` has no bypass actors and FHIDev withholds
+pull-request permission from Actions — the workflow prints the `gh pr create` command instead.
+Merging it is the one step left to a person, and the next release refuses to run until the section
+is on `main`.
 
 ## Host constraints worth remembering
 
