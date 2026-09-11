@@ -442,6 +442,23 @@ These are not style preferences — each one is a host that breaks otherwise.
   the helper belongs in the sentence above; one that does not belongs in the table, and no column
   belongs in both.
 
+  The kilder table's scroll box carries a second interpolated family, and this one exists so a
+  stylesheet can ask a question the package is the only thing able to answer. Beside
+  `munin-explorer-kilder-scroll` the box wears `munin-explorer-kilder-scroll--cols-` finished with
+  the number of header cells the table actually drew — four the picker cannot reach, five where the
+  host wired the handover, plus whichever of the ten optional columns are on, so the range is
+  `--cols-4` to `--cols-15` and the number is the header's rather than the picker's. **Undrawn it
+  costs nothing**, which is the unusual part: it is a modifier on an element whose base class is
+  already styled, so a stylesheet with no rule for it leaves the box exactly as it was. That is why
+  it could ship before the rule that selects on it, and it is the opposite of the bargain every
+  other name here makes. What a rule buys is the one thing `Fhi.Helsedata.Stiler` cannot work out
+  for itself: above its 780px breakpoint the box is deliberately `overflow-x: visible`, because the
+  page has to be the sticky ancestor for the table's header to pin, so a reader who turns the wide
+  columns on runs the table past its box and the host's whole page into a sideways scroll. A rule
+  that answers that must not reintroduce a scroll container above the breakpoint, or the header
+  stops pinning and the cure is worse than the spill. The measurement, and the rule itself, are
+  `Fhi.Metadata-l9l2n.50`.
+
   **The whole list, name by name.** The paragraphs above pick out the names worth an argument.
   They used to end in hand-written counts, and every one of them had gone stale: `kilde*` had grown
   from nine names to twelve, `kilder*` from three to four, and the eight `munin-explorer-whole*`

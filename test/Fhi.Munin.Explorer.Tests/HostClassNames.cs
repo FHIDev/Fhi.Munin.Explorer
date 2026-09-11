@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
@@ -35,8 +37,8 @@ internal static class HostClassNames
         [.. File.ReadLines(Repo.In("test", "host-class-names.txt"))
                 .Where(l => l.Length > 0 && !l.StartsWith('#'))]);
 
-    private static readonly System.Text.RegularExpressions.Regex CssComment =
-        new(@"/\*.*?\*/", System.Text.RegularExpressions.RegexOptions.Singleline);
+    private static readonly Regex CssComment =
+        new(@"/\*.*?\*/", RegexOptions.Singleline);
 
     /// <summary>
     /// Innermost blocks only — <c>[^{}]</c> on both sides — so the rules inside an
@@ -55,8 +57,16 @@ internal static class HostClassNames
     /// nests today; the day something does, this cut has to learn about it rather than the reader
     /// having to.
     /// </summary>
-    private static readonly System.Text.RegularExpressions.Regex CssRule =
+    private static readonly Regex CssRule =
         new(@"(?<selector>[^{}]*)\{(?<declarations>[^{}]*)\}");
+
+    /// <summary>
+    /// Exempt from <see cref="Orphans"/>: a modifier the package finishes with a number, on an
+    /// element whose base class already carries the rule. Anchored on this one stem rather than on
+    /// <c>--cols-</c> anywhere, so a second one stays a decision somebody makes here.
+    /// </summary>
+    private static readonly Regex CountModifier =
+        new(@"^munin-explorer-kilder-scroll--cols-[0-9]+$");
 
     /// <summary>
     /// The sample stylesheet, held as text rather than parsed: <see cref="RulesIn"/> cuts the rules
@@ -117,6 +127,7 @@ internal static class HostClassNames
 
         return [.. rendered.Distinct(StringComparer.Ordinal)
                            .Where(name => !TheirNames.Value.Contains(name))
+                           .Where(name => !CountModifier.IsMatch(name))
                            .Select(name => Verdict(rules, name))
                            .OfType<string>()
                            .Order(StringComparer.Ordinal)];

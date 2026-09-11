@@ -380,10 +380,16 @@ public sealed partial class KildeSearch : ComponentBase
             : "caption";
 
 
-    // The nested row spans the whole table, so it has to count the columns the mount actually has —
-    // now the picker's choice as well as the host's. Four are always drawn: the expand control,
-    // Navn, Status and Opprettet.
-    private int RowSpan => (Selectable ? 5 : 4) + OptionalColumns.Count(ColumnVisible);
+    // The columns the header actually renders — the picker's choice as well as the host's. Four are
+    // always drawn: the expand control, Navn, Status and Opprettet. The nested row's colspan and the
+    // scroll box's modifier both read it, so the number they mean can never be two numbers.
+    private int ColumnCount => (Selectable ? 5 : 4) + OptionalColumns.Count(ColumnVisible);
+
+    // Stiler has to vary the box by how wide the table is and cannot count the columns itself, so
+    // the package writes the count down. No rule behind it draws nothing, which leaves the box
+    // exactly as it is today. (Fhi.Metadata-l9l2n.103)
+    private string ScrollClass =>
+        $"munin-explorer-kilder-scroll munin-explorer-kilder-scroll--cols-{ColumnCount}";
 
     // The same question the row asks, because a gesture that begins and ends inside this button
     // lands its click here: the second click of a double-click toggled the drawer straight back
