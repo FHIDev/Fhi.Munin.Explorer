@@ -277,10 +277,26 @@ These are not style preferences — each one is a host that breaks otherwise.
     (0,1,1) and a bare class is (0,1,0), so a class on any other element loses the font-size to it
     and the field draws at 18px instead of 14px. And the rule reached `Fhi.Helsedata.Stiler`'s
     `main` after 0.1.42 was cut, so the floor is the first release that follows it — a host on
-    0.1.42 or older is in the undressed case above rather than a broken one. The kildetype groups inside that
-    same facet add no name at all: they are `<details>`/`<summary>` like the facets around them, so
-    the marker, the open state and the focus ring come from rules a host already has, and their
-    counts wear `munin-explorer-filters__chosen` from the row above.
+    0.1.42 or older is in the undressed case above rather than a broken one. The kildetype groups
+    inside that same facet add no name for the disclosure itself: they are `<details>`/`<summary>`
+    like the facets around them, so the marker, the open state and the focus ring come from rules a
+    host already has. The count is where they do add a name, and it is one to read this list for. It
+    wears `munin-explorer-filters__groupcount`, which is the row above's form under a name that says
+    what these numbers are: a group's SIZE, drawn whether or not anything in it is ticked, where
+    `__chosen` means how many values the reader chose. They shared the name until
+    `Fhi.Metadata-l9l2n.104`, and one of the two uses contradicted it. A handle on the same terms as
+    `__chosen` — the digits are markup either way, so what a rule buys is the dimming and the
+    tabular figures, and the tabular figures are the half worth naming: 45 sits directly above 13
+    in that list, so without them the column shivers as the facet is narrowed. In
+    `Fhi.Helsedata.Stiler` the name is added to `__chosen`'s own selector list rather than given a
+    block of its own, so the two cannot drift apart — merged on `main`, and **in no published Stiler
+    yet**, which is the part a host reading this to size up its pin needs: there is no newer pin to
+    move to, and which version will first carry the rule cannot be named from here, since Stiler's
+    csproj sits at `0.0.0-local` until its pipeline stamps a release. So every host draws the group
+    counts at browser defaults for now — legible, since the digits are markup, but at the page's own
+    size and colour and without the tabular figures. The merge is recorded in
+    `Fhi.Metadata-l9l2n.73`, whose close note names PR 39274, merged 2026-09-11; nothing in this
+    repository reads Stiler, so that bead is the whole of the evidence on this side.
     The saved-list view's `munin-explorer-dataitem-*__desiredData` pair is a handle on the same
     terms and worth one sentence, because the cell holds a control rather than a value: undefined,
     the annotation field is a browser-default text box, which is visible, operable and named, so
@@ -550,6 +566,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-filters__chosen` | handle |
   | `munin-explorer-filters__count` | handle |
   | `munin-explorer-filters__facets` | handle |
+  | `munin-explorer-filters__groupcount` | handle |
   | `munin-explorer-filters__search` | handle |
   | `munin-explorer-filters__toggle` | handle |
   | `munin-explorer-filters__toolbar` | handle |

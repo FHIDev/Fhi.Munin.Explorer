@@ -3533,21 +3533,59 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
-    public void Filter_AtFirstPaint_ThenAKildetypeGroupsCountWearsTheNameTheFacetSummariesAlreadyUse()
+    public void Filter_AtFirstPaint_ThenAKildetypeGroupsCountWearsGroupcountRatherThanChosen()
     {
-        // The existing `munin-explorer-filters__chosen`, whose rule holds the tabular figures: two
-        // counts of different digit widths above one another otherwise shift as the facet is
-        // narrowed. A name of its own here would be the cross-repository split this bead avoids.
+        // A group count is the group's SIZE and is drawn with nothing ticked, so `__chosen` — which
+        // the kildeutforsker's facet summaries wear, and which means how many values the reader
+        // chose — told the next reader something false. (Fhi.Metadata-l9l2n.104)
         var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
 
         var count = KildeTypeGroups(cut)[0].FirstElementChild!.QuerySelector("span")!;
 
-        Assert.Equal("munin-explorer-filters__chosen", count.ClassName);
+        Assert.Equal("munin-explorer-filters__groupcount", count.ClassName);
         Assert.Equal("1", count.TextContent);
+
+        // And nowhere in this panel: the variabelutforsker draws no "N valgt" summary of its own,
+        // so a `__chosen` here is a group count that was missed by the rename.
+        Assert.Empty(cut.FindAll(".munin-explorer-filters__chosen"));
 
         // The space belongs to the summary rather than to the span, or the group would be
         // announced as "Sentralt helseregister1".
         Assert.Equal("Sentralt helseregister 1", KildeTypeGroups(cut)[0].FirstElementChild!.TextContent);
+    }
+
+    [Fact]
+    public void GroupCount_WhenAHostStylesIt_ThenTheTabularFiguresComeWithTheName()
+    {
+        // `assert-sample-css-in-step.sh` asks only whether the name has a rule declaring SOMETHING.
+        // The Stiler comparison skips the `__groupcount` key alone, absent from the pinned Stiler,
+        // and reads these under `__chosen`'s key — nothing does once that job skips or they split.
+        static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
+
+        var rules = HostClassNames.SampleDeclarationsFor("munin-explorer-filters__groupcount")
+            .Select(rule => (rule.Selector, Declarations: Squeezed(rule.Declarations)))
+            .ToList();
+
+        // `All` and not `Any`: a second block carrying neither declaration is the drift these pin,
+        // and the shared block below would go on satisfying an `Any`. `NotEmpty` because `All`
+        // over nothing passes. (Fhi.Metadata-l9l2n.104)
+        Assert.NotEmpty(rules);
+
+        Assert.All(rules, r => Assert.True(
+            r.Declarations.Contains("font-variant-numeric:tabular-nums", StringComparison.Ordinal),
+            "The group counts draw at proportional widths, so 45 above 13 shifts sideways and the "
+            + "column shivers as the facet is narrowed — the whole reason this name has a rule."));
+
+        Assert.All(rules, r => Assert.True(
+            r.Declarations.Contains("color:var(--grey60)", StringComparison.Ordinal),
+            "Nothing dims the group count, so a size reads as loudly as the kildetype beside it."));
+
+        // The name was split out of `__chosen` and given its own selector nowhere: it was added to
+        // `__chosen`'s, in Stiler and in both samples, so the two cannot drift apart. A block of
+        // its own is how they start to. (Fhi.Metadata-l9l2n.104)
+        Assert.All(rules, r => Assert.True(
+            r.Selector.Contains("munin-explorer-filters__chosen", StringComparison.Ordinal),
+            "The group count has a block of its own rather than sharing `__chosen`'s selector."));
     }
 
     [Fact]
