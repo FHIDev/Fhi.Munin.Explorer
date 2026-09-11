@@ -43,13 +43,9 @@ public class ContractCoverageTest
 
     [Fact]
     public void VariabelgruppeSurfaces_WhenReadFromTheDocumentedResponse_ThenEveryFieldIsCovered() =>
-        // Inline rather than from a fixture: both variabelgruppe collections answer empty in every
-        // environment probed so far, so filters.json above reads neither and a field added to the
-        // facet would land nowhere (Fhi.Metadata-0ecep). Writing a row into that capture is what
-        // would make this gate and the freshness one agree about a payload the API does not send,
-        // so the shape is taken from the API's own documented response instead — which makes this
-        // weaker evidence than the captures, on the same terms as the my/lists pair below: it pins
-        // that the contract reads the shape Munin documents, not that Munin still sends it.
+        // Inline rather than from a fixture: both collections answer empty in every environment
+        // probed so far, so a field added to the facet lands nowhere in filters.json — and a row
+        // written into that capture would pin a payload the API does not send. (Fhi.Metadata-0ecep)
         Assert.NotNull(JsonSerializer.Deserialize<FilterOptions>(
             """
             {

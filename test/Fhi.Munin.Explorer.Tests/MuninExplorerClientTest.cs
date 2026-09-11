@@ -848,13 +848,9 @@ public class MuninExplorerClientTest
         Assert.Equal(new Guid("6f1d4a5c-0000-4000-8000-000000000011"), filters.Datasamlinger[1].DelkildeId);
     }
 
-    /// <summary>Both variabelgruppe surfaces, with one row for every shape the API documents.</summary>
-    /// <remarks>
-    /// Inline because <c>Testdata/filters.json</c> answers both collections empty and is a capture,
-    /// where a hand-written row would make the freshness and coverage gates agree about a payload
-    /// the API does not send. One payload for all of the tests below, so they cannot disagree about
-    /// the shape they are pinning. (Fhi.Metadata-0ecep)
-    /// </remarks>
+    // Inline because the capture answers both collections empty, and a hand-written row in it would
+    // pin a payload the API does not send. One payload for every test below, so they cannot
+    // disagree about the shape. (Fhi.Metadata-0ecep)
     private const string VariabelgruppeSurfaces = """
         {
           "variabelgrupper": [
@@ -1075,10 +1071,8 @@ public class MuninExplorerClientTest
     [Fact]
     public async Task GetFiltersAsync_WhenAGroupIsOptedOut_ThenItSurvivesTheReadAndIsNoStandaloneOption()
     {
-        // The decision in Fhi.Metadata-fbe3w, pinned where it is easiest to break: the contract
-        // keeps every "2" group, because the tree draws them, and the presentation boundary is the
-        // property rather than which collection a row arrived in. Discarding them here would empty
-        // a folder the reader can see variables in.
+        // The contract keeps every "2" group, because the tree draws them, and the boundary is the
+        // property rather than which collection a row arrived in. (Fhi.Metadata-fbe3w)
         var filters = await VariabelgruppeSurfacesAsync();
 
         var treeOnly = filters.HierarchyVariabelgrupper.Single(g => g.Name == "Kun i treet");

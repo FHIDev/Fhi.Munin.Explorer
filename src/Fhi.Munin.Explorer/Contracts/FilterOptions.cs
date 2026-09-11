@@ -17,9 +17,10 @@ public sealed record FilterOptions
     [JsonPropertyName("kilder")] public IReadOnlyList<KildeFacet> Kilder { get; init; } = [];
 
     /// <summary>
-    /// The standalone variabelgruppe facet — the flat checkbox list, a subset by id of
-    /// <see cref="HierarchyVariabelgrupper"/>, which carries the same values for every member a
-    /// row in both collections has.
+    /// The standalone variabelgruppe facet — the flat checkbox list. Where the API answers
+    /// <see cref="HierarchyVariabelgrupper"/> as well, this is a subset of it by id and a row in
+    /// both carries the same values in both; against an API that predates that collection this one
+    /// is populated and it is empty, so the subset relation is not something to rely on blind.
     /// </summary>
     /// <remarks>
     /// What it offers depends on the request. With a kilde, delkilde or datasamling chosen: every
@@ -192,6 +193,11 @@ public sealed record VariabelgruppeFacet
     /// is what decides the standalone facet's membership while no kilde, delkilde or datasamling
     /// is chosen.
     /// </summary>
+    /// <remarks>
+    /// Not nullable, because the API's own member is not: it is denormalised into a <c>NOT NULL</c>
+    /// column where every shape other than an explicit <c>true</c> — absent key, <c>false</c>, an
+    /// unreadable property bag — has already collapsed to <c>false</c>.
+    /// </remarks>
     [JsonPropertyName("global")] public bool Global { get; init; }
 
     /// <summary>Where the group hangs in the catalogue: one entry per placement a tree draws it at.</summary>
@@ -229,7 +235,10 @@ public sealed record VariabelgruppeFacet
 /// </remarks>
 public sealed record VariabelgruppeOwner
 {
-    /// <summary>The owning kilde. Always present — a placement without one is not returned.</summary>
+    /// <summary>
+    /// The owning kilde. Not nullable, because the API's own member is not — an unresolvable one
+    /// costs the placement rather than the id, as the remarks above say.
+    /// </summary>
     [JsonPropertyName("kildeId")] public Guid KildeId { get; init; }
 
     /// <summary>

@@ -11,5 +11,6 @@ category: Added
   because an opted-out group still appears in `Variabelgrupper` as the trunk an offered descendant
   nests under. `IsStandaloneFacetOption` is that test; which collection a row came from is not.
   `Filter` is a `string?` rather than a bool, so a group whose source file left it unset stays
-  distinguishable from one that opted out. Both collections are empty against an API predating the
-  change, and `Variabelgrupper` keeps reading exactly as before.
+  distinguishable from one that opted out. `HierarchyVariabelgrupper` is empty against an API
+  predating the change, where `Variabelgrupper` keeps reading as before — with `Filter` null,
+  `Global` false and `Owners` empty, since that API sends none of the three.
