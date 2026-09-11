@@ -67,6 +67,48 @@ jobs:
             exit 1
           fi
 
+      - name: Refuse to publish while an earlier changelog branch is unmerged
+        # The step below cannot open its own pull request — FHIDev withholds that permission from
+        # Actions — so every release ends with a branch somebody has to merge by hand. The thing
+        # that goes wrong is forgetting, and forgetting is invisible at the release that caused it:
+        # it shows up at the NEXT one, when the fragments still queued get consumed and published
+        # under the wrong version.
+        #
+        # That is not hypothetical. changelog/v0.1.0-alpha.9 went unmerged, alpha.10 consumed what
+        # it had left queued, and CHANGELOG.md has no alpha.9 section at all — those entries are
+        # filed under alpha.10, while the alpha.9 package and release say otherwise.
+        #
+        # So the check belongs here rather than there. It is normally green, it goes red only when
+        # something was genuinely missed, and it sits before the feed push, where a failure has
+        # published nothing and the run can simply be re-run once the branch is merged.
+        run: |
+          git fetch --quiet origin \
+            '+refs/heads/changelog/*:refs/remotes/origin/changelog/*' \
+            '+refs/heads/main:refs/remotes/origin/main'
+
+          unmerged=""
+          for ref in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin/changelog); do
+            short="${ref#origin/}"
+            # The branch this run is about to (re)create is not somebody else's leftover.
+            [ "$short" = "changelog/v${{ steps.version.outputs.version }}" ] && continue
+            if ! git merge-base --is-ancestor "$ref" origin/main; then
+              unmerged="$unmerged $short"
+            fi
+          done
+
+          if [ -n "$unmerged" ]; then
+            {
+              echo "### An earlier changelog branch is still unmerged"
+              echo
+              echo 'Publishing now would consume fragments that belong to it and republish them'
+              echo 'under this version. Merge these first, then re-run — nothing has been published:'
+              echo
+              for b in $unmerged; do echo "- \`$b\`"; done
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::unmerged changelog branch(es):$unmerged — merge them, then re-run this release"
+            exit 1
+          fi
+
       - name: Check the push credential is present
         env:
           ADO_PACKAGING_TOKEN: ${{ secrets.ADO_PACKAGING_TOKEN }}
@@ -97,68 +139,37 @@ jobs:
             --base origin/main \
             --notes "$GITHUB_WORKSPACE/release-notes.md"
 
-      - name: Open the pull request that records it on main
-        id: changelogpr
+      - name: Say where the assembled changelog is
         if: steps.changelog.outputs.assembled == 'true'
-        # Before the feed push, so a run that dies here has published nothing and can be re-run.
-        # The durable record is the BRANCH the assemble step pushed, not this pull request, which
-        # needs a permission FHIDev withholds — so failing to open it must not cost the release.
+        # This used to try `gh pr create` and fall back to printing the command. The attempt could
+        # never succeed — FHIDev withholds pull-request permission from Actions — so it failed on
+        # every release and the fallback ran every time. A call that is guaranteed to fail is not
+        # a safety net, it is noise in the log that makes the real instruction easier to miss.
+        #
+        # The branch is the durable record; the pull request is bookkeeping a human does. Printing
+        # the command and nothing else says exactly that. Forgetting is caught by the guard at the
+        # top of this job on the next release, not by a warning here nobody reads.
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BRANCH: ${{ steps.changelog.outputs.branch }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          if [ -n "$(gh pr list --head "$BRANCH" --state open --json number --jq '.[].number')" ]; then
-            echo "A pull request for $BRANCH is already open — left as it is."
-            exit 0
-          fi
-
-          # GitHub does not run workflows for events its own GITHUB_TOKEN caused, so this pull
-          # request arrives with its required checks unreported and cannot merge until a human
-          # reopens it or pushes to the branch. Saying so in the body beats leaving somebody to
-          # work it out from a merge button that never lights up.
           {
-            echo 'Opened by `.github/workflows/release.yml` when the tag was pushed: this'
-            echo 'version section in `CHANGELOG.md`, and the fragments it consumed removed in the'
-            echo 'same commit.'
+            echo "### Open the changelog pull request"
             echo
-            echo 'The package and the GitHub release for this tag already carry these notes.'
-            echo 'Merging this is what puts them in `CHANGELOG.md` on `main` and clears'
-            echo '`changelog.d/`. Until it merges the fragments in it are still queued, and the'
-            echo 'next release would publish them again under its own version.'
+            echo "Branch \`$BRANCH\` is pushed and holds this version's assembled section."
+            echo "The package and the GitHub release already carry these notes; merging the pull"
+            echo 'request is what puts them in `CHANGELOG.md` and clears `changelog.d/`.'
             echo
-            echo '**CI has not reported on this pull request and will not on its own.** GitHub'
-            echo 'suppresses workflow runs for events caused by `GITHUB_TOKEN`, so the required'
-            echo 'checks sit unreported and the merge button stays shut. Close and reopen it, or'
-            echo 'push an empty commit, and they run.'
-          } > "$RUNNER_TEMP/pr-body.md"
+            echo '```'
+            echo "gh pr create --repo $GITHUB_REPOSITORY --base main --head $BRANCH \\"
+            echo "  --title 'docs(changelog): assemble v$VERSION'"
+            echo '```'
+            echo
+            echo 'Until it merges the fragments stay queued, and the next release would publish'
+            echo 'them under its own version. That release will refuse to run until this is merged.'
+          } >> "$GITHUB_STEP_SUMMARY"
 
-          if out="$(gh pr create --base main --head "$BRANCH" \
-            --title "docs(changelog): assemble v$VERSION" \
-            --body-file "$RUNNER_TEMP/pr-body.md" 2>&1)"; then
-            echo "$out"
-          else
-            {
-              echo "### The changelog pull request was not opened"
-              echo
-              echo "Branch \`$BRANCH\` is pushed and holds the assembled section — nothing is lost."
-              echo
-              echo 'What `gh` reported:'
-              echo
-              echo '```'
-              echo "$out"
-              echo '```'
-              echo
-              echo "Open it by hand, or the fragments stay queued and the next release republishes"
-              echo "them under its own version:"
-              echo
-              echo '```'
-              echo "gh pr create --base main --head $BRANCH --title 'docs(changelog): assemble v$VERSION'"
-              echo '```'
-            } >> "$GITHUB_STEP_SUMMARY"
-            echo "::warning::changelog pull request not opened for $BRANCH — open it by hand"
-            echo "opened=false" >> "$GITHUB_OUTPUT"
-          fi
+          echo "::notice::changelog branch $BRANCH is pushed — open its pull request by hand; the step summary has the command"
 
       - name: Restore
         run: dotnet restore
@@ -247,17 +258,3 @@ jobs:
           # A prerelease tag (v0.2.0-beta.1) is marked as one on GitHub too, so the release
           # list says the same thing the feed does.
           prerelease: ${{ contains(steps.version.outputs.version, '-') }}
-      # The publish above must not depend on this, which is why the step that tries to open the
-      # pull request is deliberately non-fatal and sits before the feed push. But a warning on a
-      # green run is not a signal anybody acts on: v0.1.0-alpha.9's branch went unmerged, alpha.10
-      # consumed the fragments it had left queued, and CHANGELOG.md on main has no alpha.9 section
-      # at all — its entries are filed under alpha.10. Failing HERE, once the package and the
-      # release are out, costs the release nothing and states the true position: the version
-      # shipped, the changelog did not.
-      - name: Say so if the changelog pull request was not opened
-        if: steps.changelogpr.outputs.opened == 'false'
-        env:
-          BRANCH: ${{ steps.changelog.outputs.branch }}
-        run: |
-          echo "::error::Published, but the changelog pull request for $BRANCH was not opened. Open it by hand or the fragments stay queued and the next release republishes them under its own version — the step summary has the command."
-          exit 1
