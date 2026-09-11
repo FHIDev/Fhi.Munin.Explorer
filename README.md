@@ -569,6 +569,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-hierarchy__leaf` | handle |
   | `munin-explorer-hierarchy__metadata` | handle |
   | `munin-explorer-hierarchy__nodes` | handle |
+  | `munin-explorer-hierarchy__open` | handle |
   | `munin-explorer-kilde__aside` | handle |
   | `munin-explorer-kilde__body` | handle |
   | `munin-explorer-kilde__datasamlinger` | handle |
@@ -853,9 +854,18 @@ shared URL that opened on the sender's Variabelliste would be an empty page for 
 
 The open kilde and the order the list is in go in the address bar, and a link restores both. It is
 much the smaller of the two, because Kelda carries less — no personal lists and no pager, so
-`?kilde=` and `?sort=` are the whole of what it owns and the rest is component state that goes away
-on refresh. `?sort=` is omitted while the list is in the order the catalogue sent, so a link made
-before the list could be sorted still means what it did.
+`?kilde=`, `?datasamling=` and `?sort=` are the whole of what it owns and the rest is component
+state that goes away on refresh. `?sort=` is omitted while the list is in the order the catalogue
+sent, so a link made before the list could be sorted still means what it did.
+
+`?datasamling=` is read beside `?kilde=` and never instead of it: a datasamling opens in place of
+the kilde it belongs to, and the kilde is the way back out, so one named on its own is dropped on
+the first render. Each datasamling in the hierarchy carries a link of its own beside the name —
+`munin-explorer-hierarchy__open`, a plain `<a href>`, so middle-click and Ctrl+click open a tab and
+the address can be pasted into a fresh one. It is a separate element rather than a second job for
+the `<summary>`, which keeps expanding and collapsing on Enter and Space as it did. There is no
+route from Kelda to a single variable: `VariableView` is the variable explorer's own surface and is
+reached from there.
 
 An open kilde's collection section loads its hierarchy separately: delkilder, datasamlinger and
 variabelgrupper appear as nested lists with native disclosures, initially collapsed. Tab visits
@@ -885,8 +895,8 @@ Four things are worth knowing before mounting one.
   otherwise, because the failure they replace is invisible: prerendered, the page renders and the
   URL simply never follows the view.
 - **Your own parameters are safe.** Each component reads and rewrites only the keys it owns —
-  `ExplorerUrlState.QueryKeys` for the variable explorer, `?kilde=` and `?sort=` for the
-  kildeutforsker — and carries everything else through untouched. `DeclinedKeys` keeps one of ours as well, for a page
+  `ExplorerUrlState.QueryKeys` for the variable explorer, `?kilde=`, `?datasamling=` and `?sort=`
+  for the kildeutforsker — and carries everything else through untouched. `DeclinedKeys` keeps one of ours as well, for a page
   that already means something else by `?page=`; a declined key is left where it is rather than
   overwritten.
 - **`KildeExplorer` needs `VariableExplorerPath`** to offer the handover to the variable

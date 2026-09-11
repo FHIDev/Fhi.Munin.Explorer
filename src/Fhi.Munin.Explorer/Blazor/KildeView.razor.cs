@@ -207,6 +207,19 @@ public sealed partial class KildeView : ComponentBase
     public bool ShowNodeIcons { get; set; } = true;
 
     /// <summary>
+    /// Where a datasamling in the tree can be opened, given its id — see
+    /// <see cref="KildeHierarchyView.DatasamlingHref"/>, which this is passed straight to. Null, the
+    /// default, draws no link.
+    /// </summary>
+    /// <remarks>
+    /// Only <see cref="KildeSearch"/> sets it. <see cref="VariableSearch"/> reaches a datasamling
+    /// through the variable that named one, so its tree leaves this null and the two explorers show
+    /// the same view with one link each has a route for.
+    /// </remarks>
+    [Parameter]
+    public Func<Guid, string>? DatasamlingHref { get; set; }
+
+    /// <summary>
     /// The section's own word for itself, which the source decides rather than the explorer: it
     /// draws the delkilder now, so the wording for a flat table promised none of them
     /// (Fhi.Metadata-wtz80).

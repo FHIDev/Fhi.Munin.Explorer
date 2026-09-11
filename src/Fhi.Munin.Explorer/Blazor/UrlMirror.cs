@@ -19,17 +19,20 @@ internal sealed class UrlMirror
     private readonly List<(string Name, string Value)> _owned = [];
     private string? _mirrored;
 
+    // The circuit's own address is where both halves are readable at once, and it is already
+    // absolute: PathBase is in it, where NavigationManager.Uri's path alone is relative to the
+    // mount point and would send a reader behind a reverse proxy out of the application.
+    public UrlMirror(NavigationManager navigation, IJSRuntime js, Func<string, bool> owns)
+        : this(new Uri(navigation.Uri), js, owns)
+    {
+    }
+
     // owns: whether a decoded parameter name is the component's to read and rewrite. Everything
     // else is carried through untouched, which is the difference between this and a component that
     // rewrites the whole query.
-    public UrlMirror(NavigationManager navigation, IJSRuntime js, Func<string, bool> owns)
+    public UrlMirror(Uri address, IJSRuntime js, Func<string, bool> owns)
     {
         _js = js;
-
-        // The circuit's own address is where both halves are readable at once, and it is already
-        // absolute: PathBase is in it, where Path alone is relative to the mount point and would
-        // send a reader behind a reverse proxy out of the application.
-        var address = new Uri(navigation.Uri);
         _path = address.AbsolutePath;
 
         var carried = new StringBuilder();
@@ -54,6 +57,9 @@ internal sealed class UrlMirror
         _carried = carried.ToString();
     }
 
+    /// <summary>The address's own path, so a caller can tell this page from another one.</summary>
+    public string Path => _path;
+
     /// <summary>The owned part of the incoming query, for the component's own parser to read.</summary>
     public string Owned =>
         string.Join('&', _owned.Select(pair => Uri.EscapeDataString(pair.Name) + "=" + Uri.EscapeDataString(pair.Value)));
@@ -68,17 +74,29 @@ internal sealed class UrlMirror
             : null;
 
     /// <summary>
+    /// This page's address carrying <paramref name="query"/> as the owned keys, for an
+    /// <c>&lt;a href&gt;</c> the browser resolves on its own.
+    /// </summary>
+    /// <param name="query">The owned keys as a query string with no leading <c>?</c>.</param>
+    /// <remarks>
+    /// Absolute-path rather than relative for <see cref="MirrorAsync"/>'s reason, which a link has
+    /// too: a bare <c>?x=1</c> resolves against the document's <c>&lt;base href&gt;</c> and lands
+    /// wherever that points rather than back on this page.
+    /// </remarks>
+    public string Address(string query)
+    {
+        var whole = Join(_carried, query);
+
+        return whole.Length == 0 ? _path : _path + "?" + whole;
+    }
+
+    /// <summary>
     /// Puts <paramref name="query"/> in the address bar beside what the component does not own.
     /// </summary>
     /// <param name="query">The owned keys as a query string with no leading <c>?</c>.</param>
     public async ValueTask MirrorAsync(string query)
     {
-        var whole = Join(_carried, query);
-
-        // The path leads both: replaceState resolves a relative URL against the document's <base
-        // href> rather than the current address, so a bare "?x=1" lands wherever that points and
-        // loses this page. The path alone to clear — "" would leave the old query in place.
-        var url = whole.Length == 0 ? _path : _path + "?" + whole;
+        var url = Address(query);
 
         // Without this, every render would call into JS to write the URL it is already showing.
         if (url == _mirrored)

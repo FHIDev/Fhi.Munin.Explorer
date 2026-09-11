@@ -368,6 +368,9 @@ internal sealed record Texts(
     string NoKilder,
     // The way out of an opened kilde, back to the list.
     string BackToKilder,
+    // And the way out of an opened datasamling, which is one step rather than two: the reader
+    // arrived from the kilde and the kilde is what they were reading.
+    string BackToKilde,
     // The status column's two values. A kilde that is no longer collecting data is kept for
     // historical reference rather than removed, so this says which it is rather than hiding one.
     string StatusActive,
@@ -469,6 +472,13 @@ internal sealed record Texts(
     string HierarchyEmpty,
     string HierarchyRetry,
     string HierarchyMetadata,
+    // The link beside a datasamling in the tree, and the name a screen reader reads it by. Two
+    // members rather than one because they are not the same string: the visible word is short
+    // enough to repeat down a column of rows, and a link list full of "Åpne" names nothing — so the
+    // accessible name opens with the visible word, which is what WCAG 2.5.3 asks, and goes on to
+    // say which datasamling.
+    string OpenDatasamling,
+    Func<string, string> OpenDatasamlingNamed,
     // The node icons are decorative and aria-hidden, so a datasamling's datakategorier are said in
     // words beside them or nowhere. Keyed by DataCategoryIcons.Order, and the retired slugs have no
     // key of their own: they resolve onto a successor and are read out under its name.
@@ -1040,6 +1050,7 @@ internal sealed record Texts(
         KildeListError: "Kunne ikke laste kilder nå. Prøv igjen om litt.",
         NoKilder: "Ingen kilder er registrert ennå.",
         BackToKilder: "← Tilbake til kildeutforsker",
+        BackToKilde: "← Tilbake til datakilden",
         StatusActive: "Aktiv",
         StatusPassive: "Passiv",
         ColumnKildetype: "Kildetype",
@@ -1078,6 +1089,8 @@ internal sealed record Texts(
         HierarchyEmpty: "Ingen delkilder, datasamlinger eller variabelgrupper er tilgjengelige.",
         HierarchyRetry: "Prøv å laste strukturen på nytt",
         HierarchyMetadata: "Beskrivelser og gyldighetsperioder",
+        OpenDatasamling: "Åpne",
+        OpenDatasamlingNamed: name => $"Åpne datasamlingen {name}",
         DataCategoryNamed: names => $"Datakategori: {names}.",
         DataCategoryNames: new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -1391,6 +1404,7 @@ internal sealed record Texts(
         KildeListError: "Could not load the sources right now. Please try again shortly.",
         NoKilder: "No sources have been registered yet.",
         BackToKilder: "← Back to the source explorer",
+        BackToKilde: "← Back to the data source",
         StatusActive: "Active",
         StatusPassive: "Passive",
         ColumnKildetype: "Source type",
@@ -1429,6 +1443,8 @@ internal sealed record Texts(
         HierarchyEmpty: "No sub-sources, data collections or variable groups are available.",
         HierarchyRetry: "Retry loading the structure",
         HierarchyMetadata: "Descriptions and validity periods",
+        OpenDatasamling: "Open",
+        OpenDatasamlingNamed: name => $"Open the data collection {name}",
         DataCategoryNamed: names => $"Data category: {names}.",
         DataCategoryNames: new Dictionary<string, string>(StringComparer.Ordinal)
         {

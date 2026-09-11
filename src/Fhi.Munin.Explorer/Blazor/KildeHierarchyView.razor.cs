@@ -48,6 +48,29 @@ public sealed partial class KildeHierarchyView : ComponentBase, IDisposable
     /// </remarks>
     [Parameter] public bool ShowNodeIcons { get; set; } = true;
 
+    /// <summary>
+    /// Where a datasamling's own page lives, given its id — or null, which is the default and draws
+    /// no link at all. The link is a plain <c>&lt;a href&gt;</c>, so whatever this returns has to be
+    /// an address the browser can open on its own: middle-click and Ctrl+click are part of what a
+    /// link is, and nothing here intercepts the press.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A delegate, so it can only be set by a parent component: a host mounting this type as an
+    /// interactive root passes parameters as JSON and cannot serialise one. <see cref="KildeSearch"/>
+    /// is what sets it, from the address <see cref="KildeExplorer"/> owns, for the same reason
+    /// <c>VariableExplorerPath</c> is a path rather than a callback — only the host knows where its
+    /// explorer is mounted.
+    /// </para>
+    /// <para>
+    /// <b>It does not touch the disclosure.</b> The link is its own element beside the name, so the
+    /// <c>&lt;summary&gt;</c> keeps its one job: Enter and Space on a branch still expand and
+    /// collapse it, and the link is a separate tab stop that navigates. A summary that did both
+    /// would leave the tree unopenable from the keyboard.
+    /// </para>
+    /// </remarks>
+    [Parameter] public Func<Guid, string>? DatasamlingHref { get; set; }
+
     private Texts T => Texts.For(Language);
     private Guid? _requestedId;
     private CancellationTokenSource? _request;
@@ -203,6 +226,20 @@ public sealed partial class KildeHierarchyView : ComponentBase, IDisposable
             builder.AddAttribute(31, "class", "screenreader-only");
             builder.AddContent(32, $" {T.VariableCountSuffix}");
             builder.CloseElement();
+            builder.CloseElement();
+        }
+
+        // An element of its own rather than a second job for the summary above it, so the
+        // disclosure keeps working. aria-label names the datasamling, because a link list full of
+        // "Åpne" names nothing; it opens with the visible word, which is what WCAG 2.5.3 asks.
+        if (node.DatasamlingId is { } datasamling && DatasamlingHref?.Invoke(datasamling) is { } href)
+        {
+            builder.AddContent(40, " ");
+            builder.OpenElement(41, "a");
+            builder.AddAttribute(42, "class", "munin-explorer-hierarchy__open");
+            builder.AddAttribute(43, "href", href);
+            builder.AddAttribute(44, "aria-label", T.OpenDatasamlingNamed(node.Name));
+            builder.AddContent(45, T.OpenDatasamling);
             builder.CloseElement();
         }
     };

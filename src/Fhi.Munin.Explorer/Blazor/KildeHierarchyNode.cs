@@ -10,9 +10,13 @@ internal enum KildeNodeKind
     Variabelgruppe
 }
 
+// DatasamlingId is last and defaulted because only one of the three kinds has one: a delkilde and
+// a variabelgruppe have no page to open, so the node that can be routed to is the node that carries
+// an id rather than one that carries a flag beside it.
 internal sealed record KildeHierarchyNode(
     string Key, string Name, int Count, int? Order, KildeNodeKind Kind,
-    IReadOnlyList<string> Categories, IReadOnlyList<KildeHierarchyNode> Children)
+    IReadOnlyList<string> Categories, IReadOnlyList<KildeHierarchyNode> Children,
+    Guid? DatasamlingId = null)
 {
     internal static IReadOnlyList<KildeHierarchyNode> From(KildeHierarchy hierarchy) =>
         Ordered(hierarchy.Delkilder.Select(d => From(d, hierarchy.KildeId.ToString()))
@@ -36,7 +40,7 @@ internal sealed record KildeHierarchyNode(
     {
         var key = $"{parent}/datasamling/{node.Id}";
         return new(key, node.Name, node.VariableCount, node.PresentationOrder, KildeNodeKind.Datasamling,
-            node.Categories, Ordered(node.Variabelgrupper.Select(g => From(g, key))));
+            node.Categories, Ordered(node.Variabelgrupper.Select(g => From(g, key))), node.Id);
     }
 
     private static KildeHierarchyNode From(HierarchyVariabelgruppe node, string parent)

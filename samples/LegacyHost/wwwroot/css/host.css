@@ -2910,6 +2910,18 @@ table.munin-explorer-data-list tbody th {
   padding: 0 4px;
   white-space: nowrap;
 }
+/* The route out of a datasamling in the tree and into its own page. A link rather than a second
+   job for the <summary>, so the disclosure keeps expanding and this keeps navigating. --primary on
+   the page ground is 6.57:1, and the underline is what marks it a link without relying on colour. */
+.munin-explorer-hierarchy__open {
+  color: var(--primary);
+  margin-left: 8px;
+  text-decoration: underline;
+}
+.munin-explorer-hierarchy__open:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
 .munin-explorer-hierarchy__metadata {
   border-top: 1px solid var(--grey30);
   margin-bottom: 16px;
