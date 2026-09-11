@@ -5802,18 +5802,41 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
+    public void Render_WhenOneIdIsNamedBothOptedOutAndOffered_ThenTheKeptCopyDecidesTheWholeRow()
+    {
+        // Reading offered-ness off the payload while the label comes from the copy OnePerId keeps
+        // leaves one row taking its checkbox from one rule and its name from another.
+        VariabelgruppeFacet group = new() { Id = Bakgrunn, Name = "Bakgrunn", Count = 7 };
+        VariabelgruppeFacet optedOut = new()
+        {
+            Id = Levekaar,
+            Name = "Levekår",
+            ParentId = NotInThePayload,
+            Count = 4,
+            Filter = VariabelgruppeFacet.StandaloneFacetOptOut
+        };
+        VariabelgruppeFacet offered = new() { Id = Levekaar, Name = "Levekår", ParentId = Bakgrunn, Count = 4 };
+
+        var client = new FilteringClient(
+            OnePage(Variable("1. Tale", "KODE")),
+            Facets() with { Variabelgrupper = [optedOut, group, offered] });
+
+        var cut = RenderWith(client);
+
+        Assert.Single(Named(cut, "Levekår"));
+
+        ClickFacet(cut, "Levekår");
+
+        Assert.Equal([Levekaar], client.SearchFilter?.VariabelgruppeIds);
+    }
+
+    [Fact]
     public void Render_WhenAGroupIsOptedOutOfTheStandaloneFacet_ThenItNestsWhatIsOfferedWithoutOfferingItself()
     {
         // The API returns such a row only to carry the offered group under it. A checkbox there
         // offers a filter the API withholds and lets it be submitted; dropping the row strands the
         // child. Both halves asserted, because either alone passes against the other's failure.
-        VariabelgruppeFacet trunk = new()
-        {
-            Id = Bakgrunn,
-            Name = "Bakgrunn",
-            Count = 0,
-            Filter = VariabelgruppeFacet.StandaloneFacetOptOut
-        };
+        var trunk = OptedOutTrunk();
         VariabelgruppeFacet offered = new() { Id = Levekaar, Name = "Levekår", ParentId = Bakgrunn, Count = 4 };
 
         var client = new FilteringClient(
@@ -5840,13 +5863,7 @@ public class VariableSearchTest : BunitContext
     {
         // The container has no checkbox to untick, so without a chip the only control left over a
         // filter narrowing the rows is "Fjern alle filtre", which drops every other filter with it.
-        VariabelgruppeFacet trunk = new()
-        {
-            Id = Bakgrunn,
-            Name = "Bakgrunn",
-            Count = 0,
-            Filter = VariabelgruppeFacet.StandaloneFacetOptOut
-        };
+        var trunk = OptedOutTrunk();
 
         var client = new FilteringClient(
             OnePage(Variable("1. Tale", "KODE")),
@@ -5856,10 +5873,49 @@ public class VariableSearchTest : BunitContext
 
         Assert.Equal(["Bakgrunn"], Chips(cut));
 
+        // The folded facet counts what the chip row shows, or the panel says nothing is chosen in
+        // the facet over the very filter a chip beside it offers to take off.
+        Assert.Contains("Variabelgruppe (1)", FacetHeadings(cut));
+
         RemoveChip(cut, "Bakgrunn");
 
         Assert.Empty(client.SearchFilter!.VariabelgruppeIds);
     }
+
+    [Fact]
+    public void Render_WhenAnOptedOutGroupIsDrawnForAnEnglishReader_ThenItsRowIsMarkedLikeItsChip()
+    {
+        // A container has no <label> to hang lang on, and the catalogue's Norwegian left unmarked
+        // there while the chip for the same group carries it names one group two ways on one page —
+        // an English voice pronouncing "Bakgrunn" as English (WCAG 3.1.2).
+        var client = new FilteringClient(
+            OnePage(Variable("1. Tale", "KODE")),
+            Facets() with { Variabelgrupper = [OptedOutTrunk()] });
+
+        var cut = RenderWith(client, b =>
+        {
+            b.Add(c => c.Filter, new VariableFilter { VariabelgruppeIds = [Bakgrunn] });
+            b.Add(c => c.Language, "en");
+        });
+
+        Assert.Equal("no", ContainerRow(cut, "Bakgrunn").GetAttribute("lang"));
+        Assert.Equal(ChipLang(cut, "Bakgrunn"), ContainerRow(cut, "Bakgrunn").GetAttribute("lang"));
+    }
+
+    /// <summary>A variabelgruppe the payload returns to nest others under without offering it.</summary>
+    private static VariabelgruppeFacet OptedOutTrunk() => new()
+    {
+        Id = Bakgrunn,
+        Name = "Bakgrunn",
+        Count = 0,
+        Filter = VariabelgruppeFacet.StandaloneFacetOptOut
+    };
+
+    /// <summary>The words of a facet row that carries no checkbox, on the element holding them.</summary>
+    private static AngleSharp.Dom.IElement ContainerRow(
+        IRenderedComponent<VariableSearch> cut, string label) =>
+        cut.FindAll(".munin-explorer-filters li > span")
+            .Single(words => words.TextContent == label);
 
     [Fact]
     public void ActiveFilters_WhenOneChipIsCleared_ThenOnlyThatValueGoesAndTheCountFollows()
