@@ -98,10 +98,10 @@ public class KildeSelectionTest : BunitContext
         cut.FindAll(".munin-explorer-kilder tbody tr td")[^1];
 
     private static IReadOnlyList<IElement> RowBoxes(IRenderedComponent<KildeSearch> cut) =>
-        [.. cut.FindAll(".munin-explorer-kilder tbody .munin-explorer-kilder__select input")];
+        [.. cut.FindAll($".munin-explorer-kilder tbody .{HostClassNames.KilderSelect} input")];
 
     private static IElement HeaderBox(IRenderedComponent<KildeSearch> cut) =>
-        cut.Find(".munin-explorer-kilder thead .munin-explorer-kilder__select input");
+        cut.Find($".munin-explorer-kilder thead .{HostClassNames.KilderSelect} input");
 
     /// <summary>Tick the row whose name button reads <paramref name="name"/>.</summary>
     /// <remarks>
@@ -111,7 +111,7 @@ public class KildeSelectionTest : BunitContext
     private static void TickRow(IRenderedComponent<KildeSearch> cut, string name, bool ticked = true) =>
         cut.FindAll(".munin-explorer-kilder tbody tr")
            .Single(row => row.QuerySelector("th button")!.TextContent.Trim() == name)
-           .QuerySelector(".munin-explorer-kilder__select input")!
+           .QuerySelector($".{HostClassNames.KilderSelect} input")!
            .Change(ticked);
 
     private static string SelectionLine(IRenderedComponent<KildeSearch> cut) =>
@@ -152,7 +152,14 @@ public class KildeSelectionTest : BunitContext
 
         var cut = Render<KildeSearch>();
 
-        Assert.Empty(cut.FindAll(".munin-explorer-kilder__select"));
+        // The class is also the other half of Stiler's branch: its `:not(:has(...))` arm reads the
+        // same column count as a table with a content column there instead, so the class turning up
+        // here is SelectColumn_WhenTheHostWiredTheHandover_...'s containment fault upside down.
+        Assert.True(
+            cut.FindAll('.' + HostClassNames.KilderSelect).Count == 0,
+            $"A .{HostClassNames.KilderSelect} with no handover wired measures a host that has none "
+            + $"as a host that has one. {HostClassNames.KilderSelectConsequence}");
+
         Assert.Empty(cut.FindAll(".munin-explorer-selection"));
         Assert.DoesNotContain("Nullstill utvalg", cut.Markup);
     }
@@ -707,7 +714,7 @@ public class KildeSelectionTest : BunitContext
 
         Assert.Contains(
             "munin-explorer-kilder-scroll--cols-15",
-            cut.Find(".munin-explorer-kilder-scroll").ClassList);
+            cut.Find('.' + HostClassNames.KilderScroll).ClassList);
     }
 
     [Fact]
@@ -718,13 +725,42 @@ public class KildeSelectionTest : BunitContext
         // would satisfy. What a host must actually supply is the width: a table shares itself out
         // between its columns, so one holding a single checkbox takes the same share as
         // Dataansvarlig and squeezes the eight columns that carry words.
-        var rules = HostClassNames.SampleDeclarationsFor("munin-explorer-kilder__select");
+        var rules = HostClassNames.SampleDeclarationsFor(HostClassNames.KilderSelect);
 
         static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
 
         Assert.True(
             rules.Any(rule => Squeezed(rule.Declarations).Contains("width:", StringComparison.Ordinal)),
             "No rule gives the checkbox column a width, so it takes an equal share of the table.");
+    }
+
+    [Fact]
+    public void SelectColumn_WhenTheHostWiredTheHandover_ThenItIsInsideTheBoxStilerScopesItsThresholdsTo()
+    {
+        // Presence is the trap: Stiler reaches this class THROUGH the scroll box, so a guard that
+        // found it anywhere in the document would pass with the column moved out of reach.
+        var (cut, _) = RenderSelectable(new FakeClient(Kilde("Als registeret", "K_ALS")));
+
+        var scope = HostClassNames.KilderSelectScope(cut.FindAll("[class]"));
+
+        // Asserted first, so a renamed wrapper fails here rather than making the count below a
+        // vacuous zero that reads as the class having gone.
+        Assert.True(
+            scope.ScrollBoxes == 1,
+            $"Expected one .{HostClassNames.KilderScroll} to scope to, found {scope.ScrollBoxes}. "
+            + HostClassNames.KilderSelectConsequence);
+
+        Assert.True(
+            scope.Inside > 0,
+            $"KildeSearch renders no .{HostClassNames.KilderSelect} inside "
+            + $".{HostClassNames.KilderScroll} with the handover wired. "
+            + HostClassNames.KilderSelectConsequence);
+
+        Assert.True(
+            scope.Outside == 0,
+            $"{scope.Outside} element(s) carry .{HostClassNames.KilderSelect} outside "
+            + $".{HostClassNames.KilderScroll}, where no threshold can see them. "
+            + HostClassNames.KilderSelectConsequence);
     }
 
     [Fact]
@@ -1091,6 +1127,6 @@ public class KildeSelectionTest : BunitContext
         var (cut, _) = RenderSelectable(new FakeClient(Kilde("", "K_ALS")));
 
         Assert.Equal("Velg K_ALS",
-                     AccessibleName.Of(cut.Find("tbody .munin-explorer-kilder__select input[type=checkbox]")));
+                     AccessibleName.Of(cut.Find($"tbody .{HostClassNames.KilderSelect} input[type=checkbox]")));
     }
 }

@@ -1,4 +1,6 @@
 using System.Text.RegularExpressions;
+using AngleSharp;
+using AngleSharp.Dom;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -18,6 +20,10 @@ namespace Fhi.Munin.Explorer.Tests;
 /// declaration that would make it mean something missing. The reader who deletes the declaration
 /// block and leaves the selector behind gets a failure here rather than an unstyled component on
 /// helsedata.no.
+///
+/// <see cref="HostClassNames.KilderSelectScope"/> is run the same way, for the other half of that
+/// shape: not whether a rule draws a name but WHERE the name is, because Stiler's kilder thresholds
+/// reach the selection column through the scroll box and cannot see one that left it.
 /// </summary>
 public class HostClassNamesTest
 {
@@ -28,6 +34,19 @@ public class HostClassNamesTest
     /// behind that could answer for the name and make the experiment pass for the wrong reason.
     /// </summary>
     private static readonly Regex Rule = new(@"(?<selector>[^{}]*)\{(?<declarations>[^{}]*)\}");
+
+    /// <summary>
+    /// The class-bearing elements of a markup fragment, so the DOM shapes this file has to tell
+    /// apart can be written down here whether or not any component renders them — the same reason
+    /// <c>AccessibleNameTest</c> parses rather than renders.
+    /// </summary>
+    private static IReadOnlyList<IElement> Elements(string html)
+    {
+        var context = BrowsingContext.New(Configuration.Default);
+        var document = context.OpenAsync(response => response.Content(html)).Result;
+
+        return [.. document.QuerySelectorAll("[class]")];
+    }
 
     private static string WithEveryRuleForEmptied(string css, string name) =>
         Rule.Replace(css, m => m.Groups["selector"].Value.Contains('.' + name, StringComparison.Ordinal)
@@ -156,5 +175,59 @@ public class HostClassNamesTest
                     "munin-explorer-list-scroll--cols-9",
                     "munin-explorer-kilder-scroll--cols-15-extra",
                 ]));
+    }
+
+    [Fact]
+    public void KilderSelectScope_WhenTheSelectColumnLeavesTheScrollBox_ThenItIsCountedAsOutside()
+    {
+        // The acceptance experiment for the containment half of the kilder guard. A check that
+        // asked whether the class is in the document answers the same for both fragments below,
+        // which is exactly why the guard asks where it is instead. (Fhi.Metadata-l9l2n.110)
+        var inside = HostClassNames.KilderSelectScope(Elements("""
+            <div class="munin-explorer-kilder-scroll">
+              <table class="munin-explorer-kilder">
+                <tr><td class="munin-explorer-kilder__select"></td></tr>
+              </table>
+            </div>
+            """));
+
+        Assert.Equal((1, 1, 0), inside);
+
+        var escaped = HostClassNames.KilderSelectScope(Elements("""
+            <table class="munin-explorer-kilder">
+              <tr><td class="munin-explorer-kilder__select"></td></tr>
+            </table>
+            <div class="munin-explorer-kilder-scroll"></div>
+            """));
+
+        Assert.Equal((1, 0, 1), escaped);
+    }
+
+    [Fact]
+    public void KilderSelectScope_WhenTheScrollBoxItselfCarriesTheSelectClass_ThenItIsCountedAsOutside()
+    {
+        // The one shape where presence and containment part company, and the collapse-the-wrapper
+        // refactor is how markup reaches it: `:has()` matches descendants only, so a box that IS
+        // the select element satisfies no threshold and must not read as the passing shape.
+        var scope = HostClassNames.KilderSelectScope(Elements(
+            """<div class="munin-explorer-kilder-scroll munin-explorer-kilder__select"></div>"""));
+
+        Assert.Equal((1, 0, 1), scope);
+    }
+
+    [Fact]
+    public void KilderSelectScope_WhenTheWrapperIsRenamed_ThenThereIsNoBoxToScopeTo()
+    {
+        // Told apart from "the column is gone" on purpose: both leave Inside at zero, and a guard
+        // that reported only that would send the reader after the wrong class.
+        var scope = HostClassNames.KilderSelectScope(Elements("""
+            <div class="munin-explorer-kilder-overflow">
+              <table class="munin-explorer-kilder">
+                <tr><td class="munin-explorer-kilder__select"></td></tr>
+              </table>
+            </div>
+            """));
+
+        Assert.Equal((0, 0, 1), scope);
     }
 }
