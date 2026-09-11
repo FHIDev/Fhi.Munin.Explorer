@@ -67,7 +67,7 @@ jobs:
             exit 1
           fi
 
-      - name: Refuse to publish while an earlier changelog branch is unmerged
+      - name: Refuse to publish while an earlier version's changelog never landed
         # The step below cannot open its own pull request — FHIDev withholds that permission from
         # Actions — so every release ends with a branch somebody has to merge by hand. The thing
         # that goes wrong is forgetting, and forgetting is invisible at the release that caused it:
@@ -78,34 +78,52 @@ jobs:
         # it had left queued, and CHANGELOG.md has no alpha.9 section at all — those entries are
         # filed under alpha.10, while the alpha.9 package and release say otherwise.
         #
-        # So the check belongs here rather than there. It is normally green, it goes red only when
-        # something was genuinely missed, and it sits before the feed push, where a failure has
-        # published nothing and the run can simply be re-run once the branch is merged.
+        # The test is whether the SECTION is on main, not whether the branch is an ancestor of it.
+        # Those are different questions once a pull request is squash-merged: the squash commit is
+        # a new object, so the branch tip never becomes an ancestor and an ancestry test calls a
+        # perfectly merged branch unmerged. Measured on changelog/v0.1.0-alpha.11, which read as
+        # "diverged" minutes after its pull request merged.
+        #
+        # It sits before the feed push, where a failure has published nothing and the run can be
+        # re-run once the section is in place.
         run: |
           git fetch --quiet origin \
             '+refs/heads/changelog/*:refs/remotes/origin/changelog/*' \
             '+refs/heads/main:refs/remotes/origin/main'
 
-          unmerged=""
+          git show origin/main:CHANGELOG.md > "$RUNNER_TEMP/changelog-on-main.md"
+
+          missing=""
           for ref in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin/changelog); do
-            short="${ref#origin/}"
-            # The branch this run is about to (re)create is not somebody else's leftover.
-            [ "$short" = "changelog/v${{ steps.version.outputs.version }}" ] && continue
-            if ! git merge-base --is-ancestor "$ref" origin/main; then
-              unmerged="$unmerged $short"
+            version="${ref#origin/changelog/v}"
+            # The version this run is publishing has no section yet by definition.
+            [ "$version" = "${{ steps.version.outputs.version }}" ] && continue
+            escaped="$(printf '%s' "$version" | sed 's/[.[\*^$]/\\&/g')"
+            if ! grep -qE "^#+ +${escaped}( |$)" "$RUNNER_TEMP/changelog-on-main.md"; then
+              missing="$missing $version"
             fi
           done
 
-          if [ -n "$unmerged" ]; then
+          if [ -n "$missing" ]; then
             {
-              echo "### An earlier changelog branch is still unmerged"
+              echo "### An earlier version's changelog never reached main"
               echo
-              echo 'Publishing now would consume fragments that belong to it and republish them'
-              echo 'under this version. Merge these first, then re-run — nothing has been published:'
+              echo 'Publishing now would consume fragments belonging to it and republish them under'
+              echo 'this version. Nothing has been published yet — clear this, then re-run.'
               echo
-              for b in $unmerged; do echo "- \`$b\`"; done
+              for v in $missing; do
+                echo "- **$v** — branch \`changelog/v$v\` exists, but \`CHANGELOG.md\` has no \`## $v\` section."
+              done
+              echo
+              echo 'Two ways out, and which one is right depends on whether the entries are'
+              echo 'recoverable:'
+              echo
+              echo '1. **Merge the branch** if its fragments are still queued. Normal case.'
+              echo '2. **Delete the branch** if a later release already consumed those fragments —'
+              echo '   merging then would duplicate entries that are already filed elsewhere. Restoring'
+              echo '   the lost section to `CHANGELOG.md` is a separate hand edit, and a judgement call.'
             } >> "$GITHUB_STEP_SUMMARY"
-            echo "::error::unmerged changelog branch(es):$unmerged — merge them, then re-run this release"
+            echo "::error::changelog never landed for:$missing — see the step summary, then re-run"
             exit 1
           fi
 
