@@ -731,16 +731,26 @@ public partial class VariableSearch
     /// environment probed so far. Saying "pick a datakilde" is what stops an empty list from
     /// reading as a broken one.
     /// </remarks>
-    private FacetGroup VariabelgruppeGroup(FilterOptions facets) =>
-        new(FacetName(HierarchyLevel.Variabelgruppe),
+    private FacetGroup VariabelgruppeGroup(FilterOptions facets)
+    {
+        // An opted-out group is in this payload only to carry the offered groups under it, so it is
+        // a container here: a checkbox would offer a filter the API says the reader may not have,
+        // and dropping the row would strand its children.
+        var containers = facets.Variabelgrupper
+            .Where(gruppe => !gruppe.IsStandaloneFacetOption)
+            .Select(gruppe => gruppe.Id)
+            .ToHashSet();
+
+        return new(FacetName(HierarchyLevel.Variabelgruppe),
             T.FieldVariableGroup,
             OpenByDefault: false,
             Tree(facets.Variabelgrupper
                      .Select(g => Node(g.Id, g.ParentId, CatalogueName(g.Name, null), g.Count)),
                  $"{FacetName(HierarchyLevel.Variabelgruppe)}:",
-                 IsGruppeChosen,
-                 ToggleGruppe, Counted),
+                 id => !containers.Contains(id) && IsGruppeChosen(id),
+                 id => containers.Contains(id) ? null : ToggleGruppe(id), Counted),
             T.NoVariabelgrupper);
+    }
 
     private bool IsGruppeChosen(Guid id) => _filter.VariabelgruppeIds.Contains(id);
 
@@ -906,12 +916,17 @@ public partial class VariableSearch
     /// datasamlinger, which carry their own key prefix and their own selection, and so cannot be
     /// nodes here.
     /// </para>
+    /// <para>
+    /// <c>toggle</c> answering null makes a node a container rather than a checkbox, the way
+    /// <see cref="FacetValue.Toggle"/> already reads it — for a row the payload returned to nest
+    /// something else under rather than to offer.
+    /// </para>
     /// </remarks>
     private static IReadOnlyList<FacetValue> Tree(
         IEnumerable<TreeNode> nodes,
         string keyPrefix,
         Func<Guid, bool> selected,
-        Func<Guid, Func<Task>> toggle,
+        Func<Guid, Func<Task>?> toggle,
         Func<int, int?> count,
         Func<Guid, IReadOnlyList<FacetValue>>? under = null)
     {

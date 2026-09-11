@@ -5802,6 +5802,66 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
+    public void Render_WhenAGroupIsOptedOutOfTheStandaloneFacet_ThenItNestsWhatIsOfferedWithoutOfferingItself()
+    {
+        // The API returns such a row only to carry the offered group under it. A checkbox there
+        // offers a filter the API withholds and lets it be submitted; dropping the row strands the
+        // child. Both halves asserted, because either alone passes against the other's failure.
+        VariabelgruppeFacet trunk = new()
+        {
+            Id = Bakgrunn,
+            Name = "Bakgrunn",
+            Count = 0,
+            Filter = VariabelgruppeFacet.StandaloneFacetOptOut
+        };
+        VariabelgruppeFacet offered = new() { Id = Levekaar, Name = "Levekår", ParentId = Bakgrunn, Count = 4 };
+
+        var client = new FilteringClient(
+            OnePage(Variable("1. Tale", "KODE")),
+            Facets() with { Variabelgrupper = [trunk, offered] });
+
+        var cut = RenderWith(client);
+
+        Assert.Empty(Named(cut, "Bakgrunn"));
+
+        var container = cut.FindAll(".munin-explorer-filters li")
+            .Single(li => li.TextContent.StartsWith("Bakgrunn", StringComparison.Ordinal));
+        var child = Assert.Single(Named(cut, "Levekår"));
+
+        Assert.Contains(child.ParentElement!, container.QuerySelectorAll("li"));
+
+        ClickFacet(cut, "Levekår");
+
+        Assert.Equal([Levekaar], client.SearchFilter?.VariabelgruppeIds);
+    }
+
+    [Fact]
+    public void Render_WhenAnOptedOutGroupIsAlreadyChosen_ThenItsChipIsStillTheWayOffIt()
+    {
+        // The container has no checkbox to untick, so without a chip the only control left over a
+        // filter narrowing the rows is "Fjern alle filtre", which drops every other filter with it.
+        VariabelgruppeFacet trunk = new()
+        {
+            Id = Bakgrunn,
+            Name = "Bakgrunn",
+            Count = 0,
+            Filter = VariabelgruppeFacet.StandaloneFacetOptOut
+        };
+
+        var client = new FilteringClient(
+            OnePage(Variable("1. Tale", "KODE")),
+            Facets() with { Variabelgrupper = [trunk] });
+
+        var cut = RenderFiltered(client, new VariableFilter { VariabelgruppeIds = [Bakgrunn] });
+
+        Assert.Equal(["Bakgrunn"], Chips(cut));
+
+        RemoveChip(cut, "Bakgrunn");
+
+        Assert.Empty(client.SearchFilter!.VariabelgruppeIds);
+    }
+
+    [Fact]
     public void ActiveFilters_WhenOneChipIsCleared_ThenOnlyThatValueGoesAndTheCountFollows()
     {
         // Panel, chips and request in one assertion apiece, because each alone passes against a

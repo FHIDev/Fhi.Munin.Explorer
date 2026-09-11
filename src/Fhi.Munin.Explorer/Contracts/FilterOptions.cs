@@ -19,8 +19,9 @@ public sealed record FilterOptions
     /// <summary>
     /// The standalone variabelgruppe facet — the flat checkbox list. Where the API answers
     /// <see cref="HierarchyVariabelgrupper"/> as well, this is a subset of it by id and a row in
-    /// both carries the same values in both; against an API that predates that collection this one
-    /// is populated and it is empty, so the subset relation is not something to rely on blind.
+    /// both carries the same values in both; against an API that predates that collection this
+    /// list is populated while <see cref="HierarchyVariabelgrupper"/> is empty, so the subset
+    /// relation is not something to rely on blind.
     /// </summary>
     /// <remarks>
     /// What it offers depends on the request. With a kilde, delkilde or datasamling chosen: every
@@ -213,11 +214,11 @@ public sealed record VariabelgruppeFacet
 
     /// <summary>Whether the standalone facet may offer this group as a checkbox of its own.</summary>
     /// <remarks>
-    /// Membership of <see cref="FilterOptions.Variabelgrupper"/> is not that question. An opted-out
-    /// group is withheld there on its own terms and comes back as the trunk an offered descendant
-    /// nests under, still carrying <c>"2"</c> — so draw such a trunk as a container rather than
-    /// dropping it, which would strand its children. The folder tree ignores this entirely and
-    /// shows every group it is given.
+    /// Membership of <see cref="FilterOptions.Variabelgrupper"/> is not that question. A group is
+    /// never listed there for its own sake once it is opted out, but it is listed as the trunk an
+    /// offered descendant nests under, still carrying <c>"2"</c> — so draw such a trunk as a
+    /// container rather than dropping it, which would strand its children. The folder tree ignores
+    /// this entirely and shows every group it is given.
     /// </remarks>
     [JsonIgnore]
     public bool IsStandaloneFacetOption => !string.Equals(Filter, StandaloneFacetOptOut, StringComparison.Ordinal);
