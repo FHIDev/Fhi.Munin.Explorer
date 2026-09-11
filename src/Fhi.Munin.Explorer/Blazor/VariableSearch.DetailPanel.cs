@@ -100,6 +100,11 @@ public partial class VariableSearch
     /// A level with nothing in it is left out rather than written as "Ikke oppgitt": a trail is
     /// read as a path, and a step saying nothing is worse than a shorter path. All three missing
     /// leaves an empty list, which the markup reports as "Ikke oppgitt" once.
+    /// <para>
+    /// The last step is the one level a variable can occupy several of at once, and a step is one
+    /// place: it counts them rather than naming them, and <see cref="DatasamlingList"/> beside the
+    /// trail names every one.
+    /// </para>
     /// </remarks>
     private IReadOnlyList<Crumb> KildeCrumbs(VariableDetail detail)
     {
@@ -125,9 +130,17 @@ public partial class VariableSearch
                 OpensKilde: true));
         }
 
-        if (!string.IsNullOrWhiteSpace(detail.DatasamlingName))
+        var datasamlinger = DatasamlingNames(detail);
+
+        if (datasamlinger.Count == 1)
         {
-            crumbs.Add(new Crumb(detail.DatasamlingName, Norwegian: true));
+            crumbs.Add(new Crumb(datasamlinger[0], Norwegian: true));
+        }
+        else if (datasamlinger.Count > 1)
+        {
+            // Our own prose about the catalogue rather than a name out of it, so it follows
+            // Language and is not marked Norwegian — the same reason the kildetype step is not.
+            crumbs.Add(new Crumb(T.DatasamlingCountCrumb(datasamlinger.Count), Norwegian: false));
         }
 
         return crumbs;
@@ -151,6 +164,42 @@ public partial class VariableSearch
         if (names.Count == 0 && !string.IsNullOrWhiteSpace(detail.VariabelgruppeName))
         {
             names.Add(detail.VariabelgruppeName);
+        }
+
+        return names;
+    }
+
+    /// <summary>
+    /// Every datasamling the variable sits in, less the ones the payload left unnamed.
+    /// </summary>
+    /// <remarks>
+    /// The one place that decides what counts as a datasamling, because three renders read it: the
+    /// trail's count, the guard on the row, and <see cref="DatasamlingList"/>. Written out twice it
+    /// drifts into a count standing over a list of some other number.
+    /// </remarks>
+    private static IReadOnlyList<DatasamlingReference> NamedDatasamlinger(VariableDetail detail) =>
+        detail.AllDatasamlinger
+            .Where(datasamling => !string.IsNullOrWhiteSpace(datasamling.Name))
+            .ToList();
+
+    /// <summary>
+    /// Every datasamling the variable sits in, by name.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="VariableDetail.AllDatasamlinger"/> rather than the primary one alone, for the
+    /// reason <see cref="VariabelgruppeNames"/> reads its own list: a variable in nineteen of them
+    /// written up under one reads as singular rather than as incomplete. The primary name is the
+    /// fallback for a payload that carries no list.
+    /// </remarks>
+    private static IReadOnlyList<string> DatasamlingNames(VariableDetail detail)
+    {
+        var names = NamedDatasamlinger(detail)
+            .Select(datasamling => datasamling.Name)
+            .ToList();
+
+        if (names.Count == 0 && !string.IsNullOrWhiteSpace(detail.DatasamlingName))
+        {
+            names.Add(detail.DatasamlingName);
         }
 
         return names;
@@ -257,6 +306,45 @@ public partial class VariableSearch
             builder.OpenElement(2, "li");
             builder.AddAttribute(3, "lang", "no");
             builder.AddContent(4, name);
+            builder.CloseElement();
+        }
+
+        builder.CloseElement();
+    };
+
+    /// <summary>
+    /// Every datasamling the variable sits in, each with the period of its membership.
+    /// </summary>
+    /// <remarks>
+    /// The validity per entry, since one range over all of them would be nobody's period, and
+    /// through <see cref="CatalogueDate.Period"/> — how every other rendering of this field words
+    /// it. Bare, as <see cref="NameList"/> beside it is: the panel's own rule styles an unclassed
+    /// list, and a name Stiler has never heard of renders as a browser default.
+    /// </remarks>
+    private RenderFragment DatasamlingList(IReadOnlyList<DatasamlingReference> datasamlinger) => builder =>
+    {
+        builder.OpenElement(0, "ul");
+
+        foreach (var datasamling in datasamlinger)
+        {
+            builder.OpenElement(1, "li");
+
+            builder.OpenElement(2, "span");
+            builder.AddAttribute(3, "lang", "no");
+            builder.AddContent(4, datasamling.Name);
+            builder.CloseElement();
+
+            if (CatalogueDate.Period(datasamling.ValidFrom, datasamling.ValidTo, Language, T,
+                                     DateWidth.Narrow) is { } validity)
+            {
+                // Outside the lang="no" above: the months and "Pågående" are this component's
+                // words and follow Language, where the name beside them is Munin's Norwegian.
+                builder.OpenElement(5, "span");
+                builder.AddAttribute(6, "class", "caption");
+                builder.AddContent(7, $" ({validity})");
+                builder.CloseElement();
+            }
+
             builder.CloseElement();
         }
 
