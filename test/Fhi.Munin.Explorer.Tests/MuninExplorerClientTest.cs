@@ -817,14 +817,16 @@ public class MuninExplorerClientTest
                   "name": "Tromsø 1",
                   "delkildeId": null,
                   "kildeId": "6f1d4a5c-0000-4000-8000-000000000001",
-                  "count": 5
+                  "count": 5,
+                  "categories": ["ehds-cat:population-health-surveys", "RPDG"]
                 },
                 {
                   "id": "6f1d4a5c-0000-4000-8000-000000000102",
                   "name": "Fjerde runde",
                   "delkildeId": "6f1d4a5c-0000-4000-8000-000000000011",
                   "kildeId": "6f1d4a5c-0000-4000-8000-000000000001",
-                  "count": 4
+                  "count": 4,
+                  "categories": []
                 }
               ]
             }
@@ -839,8 +841,45 @@ public class MuninExplorerClientTest
         Assert.Equal(new Guid("6f1d4a5c-0000-4000-8000-000000000001"), straightOffItsKilde.KildeId);
         Assert.Equal(5, straightOffItsKilde.Count);
 
+        // Both tokens in the order they arrived, and both spellings the vocabulary mixes: a caller
+        // matching on a prefix would drop the bare code, and one datasamling carries several.
+        Assert.Equal(["ehds-cat:population-health-surveys", "RPDG"], straightOffItsKilde.Categories);
+
         // The parent that decides which level the panel draws it under.
         Assert.Equal(new Guid("6f1d4a5c-0000-4000-8000-000000000011"), filters.Datasamlinger[1].DelkildeId);
+        Assert.Empty(filters.Datasamlinger[1].Categories);
+    }
+
+    [Fact]
+    public async Task GetFiltersAsync_WhenADatasamlingCarriesNoCategoriesKeyOrAnExplicitNull_ThenBothReadAsEmpty()
+    {
+        // The deployed API sends the key on every row, so neither shape is live today: the first is
+        // an API predating Fhi.Metadata-h8gry and the second is the explicit null Munin writes
+        // elsewhere. A caller iterates Categories without a null check either way.
+        var filters = await WithJson("""
+            {
+              "datasamlinger": [
+                {
+                  "id": "6f1d4a5c-0000-4000-8000-000000000103",
+                  "name": "Uten feltet",
+                  "delkildeId": null,
+                  "kildeId": "6f1d4a5c-0000-4000-8000-000000000001",
+                  "count": 3
+                },
+                {
+                  "id": "6f1d4a5c-0000-4000-8000-000000000104",
+                  "name": "Med eksplisitt null",
+                  "delkildeId": null,
+                  "kildeId": "6f1d4a5c-0000-4000-8000-000000000001",
+                  "count": 2,
+                  "categories": null
+                }
+              ]
+            }
+            """).GetFiltersAsync();
+
+        Assert.Equal(2, filters.Datasamlinger.Count);
+        Assert.All(filters.Datasamlinger, datasamling => Assert.Empty(datasamling.Categories));
     }
 
     [Fact]

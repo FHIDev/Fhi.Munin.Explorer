@@ -154,6 +154,15 @@ public sealed record DatasamlingFacet
 
     [JsonPropertyName("kildeId")] public Guid KildeId { get; init; }
     [JsonPropertyName("count")] public int Count { get; init; }
+
+    /// <summary>
+    /// Datakategori tokens for the datasamling — the same field name, tokens and semantics as
+    /// <see cref="HierarchyDatasamling.Categories"/>, so one mapping serves whichever of the two
+    /// endpoints a caller read. Not <see cref="FilterOptions.DataCategories"/>, which is the
+    /// selectable facet with counts. Empty means no category rather than <c>ehds-cat:other</c>,
+    /// and is also what an API predating the field leaves here.
+    /// </summary>
+    [JsonPropertyName("categories")] public IReadOnlyList<string> Categories { get; init; } = [];
 }
 
 /// <summary>A datatype facet.</summary>
