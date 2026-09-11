@@ -724,8 +724,8 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 /* An item on the summary row above, so it sits beside its heading rather than at the trailing edge
    the count further up claims with `margin-left: auto` — that edge is the marker's here. Cosmetic
-   only: the words are markup, so it is announced as "Kildetype 2 valgt" either way. (Fhi.Metadata-l9l2n.53)
-   `__groupcount` shares it rather than copying, so the tabular figures cannot drift. (Fhi.Metadata-l9l2n.104) */
+   only: the words are markup, so it is announced as "Kildetype 2 valgt" either way. `__groupcount`
+   shares the rule rather than copying it. (Fhi.Metadata-l9l2n.53, Fhi.Metadata-l9l2n.104) */
 .munin-explorer-filters__chosen,
 .munin-explorer-filters__groupcount {
   flex: none;

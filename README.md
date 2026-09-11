@@ -278,9 +278,10 @@ These are not style preferences — each one is a host that breaks otherwise.
     and the field draws at 18px instead of 14px. And the rule reached `Fhi.Helsedata.Stiler`'s
     `main` after 0.1.42 was cut, so the floor is the first release that follows it — a host on
     0.1.42 or older is in the undressed case above rather than a broken one. The kildetype groups inside that
-    same facet add no name at all: they are `<details>`/`<summary>` like the facets around them, so
-    the marker, the open state and the focus ring come from rules a host already has. Their counts
-    wear `munin-explorer-filters__groupcount`, which is the row above's form under a name that says
+    same facet add no name for the disclosure itself: they are `<details>`/`<summary>` like the
+    facets around them, so the marker, the open state and the focus ring come from rules a host
+    already has. The count is where they do add a name, and it is one to read this list for. It
+    wears `munin-explorer-filters__groupcount`, which is the row above's form under a name that says
     what these numbers are: a group's SIZE, drawn whether or not anything in it is ticked, where
     `__chosen` means how many values the reader chose. They shared the name until
     `Fhi.Metadata-l9l2n.104`, and one of the two uses contradicted it. A handle on the same terms as
