@@ -193,7 +193,13 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   width: 100%;
   height: 3.5rem;
   margin: 0;
-  padding: 18px 104px 16px 16px;
+  /* Four declarations rather than one shorthand because Stiler writes four, and the guard compares
+     shorthands as written; the computed box is 18/104/16/16 either way. helsedata.no's served
+     bundle shows one shorthand only because its minifier collapsed them. */
+  padding: 16px;
+  padding-top: 18px;
+  padding-right: 104px;
+  padding-left: 16px;
   line-height: 56px;
   color: var(--dark);
   background-color: #fff;

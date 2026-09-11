@@ -752,11 +752,11 @@ public class KildeSelectionTest : BunitContext
 
         // The field gives up padding-right for the controls that sit in it. A control whose right
         // edge starts inside that reservation and ends before it does cannot overlap the text,
-        // whatever the font. Read off the stylesheet rather than restated, so widening one and not
-        // the other fails here.
+        // whatever the font. Read off the stylesheet's longhand — the spelling the sample took
+        // from Stiler — rather than restated, so widening one and not the other fails here.
         var reserved = FirstMatch(
             HostClassNames.SampleDeclarationsFor("searchbox__freetext"),
-            @"padding:\s*\d+px\s+(\d+)px");
+            @"padding-right:\s*(\d+)px");
 
         var offset = FirstMatch(
             HostClassNames.SampleDeclarationsFor("munin-explorer-search__clear"), @"right:\s*(\d+)px");

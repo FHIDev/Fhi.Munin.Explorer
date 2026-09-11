@@ -300,6 +300,12 @@ missing-selector||.munin-explorer-retry[aria-disabled=true]:focus|
 # there was a second source for. CI compares against the pin, and the pin is the authority: a
 # line here that 0.1.42 does not produce fails as stale and should be deleted rather than argued
 # with.
+#
+# That bundle is MINIFIED, and shorthands are compared as written, so it under-reports: its
+# minifier had collapsed Stiler's `padding: 16px` plus three longhands on `.searchbox__freetext`
+# into the one shorthand the sample wrote, and CI against the pin found four divergences there
+# that reading the bundle could not have found. The sample now spells those four the way the pin
+# does. Read the bundle for WHAT a borrowed selector draws, not for how it is written.
 
 # The choicepicker, and the reason this section exists. Every line is a real difference between
 # what the sample draws and what a host on Stiler sees, and the first four are layout-deciding
