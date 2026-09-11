@@ -32,10 +32,11 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// same page.
 /// </para>
 /// <para>
-/// <b>Opening a datasamling is a link, and so a page load.</b> That is what buys middle-click,
-/// Ctrl+click and a working Back button in a package with no router of its own. Where the host has
-/// a <c>Router</c> the press is intercepted instead, and this component forces the load
-/// rather than leaving the address ahead of the view — see <c>Moved</c>.
+/// <b>Opening a datasamling is a link.</b> That is what buys middle-click, Ctrl+click and working
+/// Back and Forward buttons in a package with no router of its own. A host with no router follows
+/// it as an ordinary page load; a host with a <c>Router</c> intercepts the press, and this
+/// component reads the new address itself rather than leaving it ahead of the view — see
+/// <c>Moved</c>. Either way the kilde's hierarchy comes back collapsed.
 /// </para>
 /// <para>
 /// <b>It must be mounted interactively</b> — <c>render-mode="Server"</c> in a legacy Blazor Server
@@ -130,7 +131,16 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
 
     private UrlMirror _mirror = default!;
 
-    private bool _reloading;
+    /// <summary>
+    /// How many times the address has moved under a standing circuit, which is the key
+    /// <see cref="KildeSearch"/> is mounted under.
+    /// </summary>
+    /// <remarks>
+    /// A counter rather than the state itself, because the two do not change together: opening a
+    /// kilde from the list is this component's own field moving with no navigation behind it, and
+    /// keying on that would throw away the list and the fetch the reader is already watching.
+    /// </remarks>
+    private int _arrival;
 
     private EventCallback<IReadOnlyList<Guid>> Handover =>
         VariableExplorerPath is null
@@ -172,42 +182,56 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     }
 
     /// <summary>
-    /// Reload the page when a navigation this component's own links made was intercepted rather
-    /// than followed.
+    /// Read the address again when something moved the page under a standing circuit, and draw
+    /// what it now names.
     /// </summary>
     /// <remarks>
     /// <para>
     /// Opening a datasamling is an <c>&lt;a href&gt;</c>, so that middle-click, Ctrl+click and the
-    /// browser's own Back button all mean what they mean everywhere else. In a host with no router
-    /// — helsedata's Optimizely CMS, and <c>samples/LegacyHost</c> — the browser simply follows it
-    /// and this component initialises again from the new address. A host with a <c>Router</c>
-    /// intercepts the press instead, leaves the circuit standing and re-renders: the address
-    /// changes and nothing reads it, because the query is read at initialisation. Forcing the load
-    /// is what makes one component behave the same in both.
+    /// browser's own Back and Forward buttons all mean what they mean everywhere else. In a host
+    /// with no router — helsedata's Optimizely CMS, and <c>samples/LegacyHost</c> — the browser
+    /// simply follows it and this component initialises again from the new address. A host with a
+    /// <c>Router</c> intercepts the press instead, leaves the circuit standing and re-renders: the
+    /// address changes and nothing reads it, because the query is read at initialisation. This is
+    /// what makes one component behave the same in both.
     /// </para>
     /// <para>
-    /// <c>replace</c> rather than a push, because the browser has already made the history entry
-    /// this is arriving for — a second one equal to it turns the reader's next Back into a Forward.
-    /// And only for this page: a host navigating somewhere else has its own destination, and
-    /// reloading it would take away the client-side navigation it asked for.
+    /// <b>Nothing is navigated from here</b>, and that is the point rather than an economy. A
+    /// forced reload would answer the same question, but every navigation clears the browser's
+    /// forward list — so arriving on a Back and reloading would take the reader's Forward button
+    /// away, which is the one thing a real link was chosen to keep. Re-reading and remounting is
+    /// a press-for-press equal of the load the router-less host performs, minus the load.
+    /// </para>
+    /// <para>
+    /// What it does not carry across is the tree: <see cref="KildeSearch"/> is remounted, so an
+    /// open kilde is fetched again and every disclosure in its hierarchy comes back collapsed.
+    /// The router-less host loses the same thing to the page load, so the two agree.
     /// </para>
     /// </remarks>
     private void Moved(object? sender, LocationChangedEventArgs e)
     {
         var address = new Uri(e.Location);
 
-        if (_reloading
-            || !string.Equals(address.AbsolutePath, _mirror.Path, StringComparison.Ordinal)
-            || Read(new UrlMirror(address, JS, Owns)) == (_selectedKildeId, _selectedDatasamlingId, _order))
+        if (!string.Equals(address.AbsolutePath, _mirror.Path, StringComparison.Ordinal))
         {
             return;
         }
 
-        // Set before the call and never cleared: the circuit this belongs to is on its way out, so
-        // a second notification arriving in the gap is one more load of a page already leaving.
-        _reloading = true;
+        var mirror = new UrlMirror(address, JS, Owns);
+        var arrived = Read(mirror);
 
-        Navigation.NavigateTo(e.Location, forceLoad: true, replace: true);
+        if (arrived == (_selectedKildeId, _selectedDatasamlingId, _order))
+        {
+            return;
+        }
+
+        // The mirror too, not only what it said: it holds the host's own parameters, and mirroring
+        // the ones this component arrived with would put back keys the navigation had dropped.
+        _mirror = mirror;
+        (_selectedKildeId, _selectedDatasamlingId, _order) = arrived;
+        _arrival++;
+
+        StateHasChanged();
     }
 
     public void Dispose() => Navigation.LocationChanged -= Moved;

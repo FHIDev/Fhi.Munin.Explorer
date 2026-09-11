@@ -384,7 +384,11 @@ public class UrlStateComponentTest : BunitContext
     private static KildeSummary Kilde(Guid id, string name) => new() { Id = id, Name = name, Code = "K" };
 
     /// <summary>Answers with one kilde, so there is a row to open and a selection to hand over.</summary>
-    private sealed class OneKildeClient(Guid id) : EmptyMuninExplorerClient
+    /// <remarks>
+    /// And one datasamling under it, because the drill-in Kelda offers out of a kilde is a link
+    /// this component builds the address for — the tree has to have a node to hang it on.
+    /// </remarks>
+    private sealed class OneKildeClient(Guid id, Guid? datasamling = null) : EmptyMuninExplorerClient
     {
         public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
             string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
@@ -392,6 +396,28 @@ public class UrlStateComponentTest : BunitContext
 
         public override Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default) =>
             Task.FromResult<KildeDetail?>(new KildeDetail { Id = id, PreferredTerm = "Als registeret" });
+
+        public override Task<KildeHierarchy?> GetKildeHierarchyAsync(Guid id, CancellationToken cancellationToken = default) =>
+            Task.FromResult<KildeHierarchy?>(datasamling is { } open
+                ? new KildeHierarchy
+                {
+                    KildeId = id,
+                    DirectDatasamlinger = [new() { Id = open, Name = "Inklusjon" }]
+                }
+                : new KildeHierarchy { KildeId = id });
+
+        public override Task<DatasamlingDetail?> GetDatasamlingAsync(Guid id, CancellationToken cancellationToken = default) =>
+            Task.FromResult<DatasamlingDetail?>(new() { Id = id, Code = "K_ALS.INKLUSJON", PreferredTerm = "Inklusjon" });
+    }
+
+    /// <summary>The kildeutforsker at <paramref name="url"/>, over a kilde with one datasamling.</summary>
+    private IRenderedComponent<KildeExplorer> RenderKilder(Guid kilde, Guid datasamling, string url)
+    {
+        Services.AddSingleton<IMuninExplorerClient>(new OneKildeClient(kilde, datasamling));
+        Prepare();
+        Navigation.NavigateTo(url);
+
+        return Render<KildeExplorer>();
     }
 
     /// <inheritdoc cref="RenderExplorer"/>
@@ -414,6 +440,49 @@ public class UrlStateComponentTest : BunitContext
         var cut = RenderKilder(id, $"http://localhost/kilder?kilde={id}");
 
         Assert.NotEmpty(cut.FindAll(".munin-explorer-drilldown"));
+    }
+
+    [Fact]
+    public void Kilder_WhenALinkCarriesADatasamlingBesideItsKilde_ThenItOpensAndTheAddressKeepsBoth()
+    {
+        // The whole claim of ?datasamling=: a link pasted into a fresh tab lands on the same page,
+        // and the address it rewrites still names the kilde the reader can go back out to.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+
+        var cut = RenderKilder(kilde, datasamling, $"http://localhost/kilder?kilde={kilde}&datasamling={datasamling}");
+
+        Assert.NotEmpty(cut.FindAll(".munin-explorer-datasamling"));
+        Assert.Equal($"/kilder?kilde={kilde}&datasamling={datasamling}", Mirrored());
+    }
+
+    [Fact]
+    public void Kilder_WhenALinkCarriesADatasamlingAndNoKilde_ThenItIsDroppedFromTheAddress()
+    {
+        // A datasamling opens in place of the kilde it belongs to, so one named on its own is a
+        // view with no way back out. Dropped rather than opened, and the address says so.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+
+        var cut = RenderKilder(kilde, datasamling, $"http://localhost/kilder?datasamling={datasamling}");
+
+        Assert.Empty(cut.FindAll(".munin-explorer-datasamling"));
+        Assert.Equal("/kilder", Mirrored());
+    }
+
+    [Fact]
+    public void Kilder_WhenAKildeIsOpen_ThenItsTreesRouteCarriesBothKeysAndTheHostsOwnParameter()
+    {
+        // The one thing KildeSearch cannot work out for itself: which keys the address carries.
+        // A link that dropped the host's own parameter would erase it on the drill-in.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+
+        var cut = RenderKilder(kilde, datasamling, $"http://localhost/kilder?utm_source=nyhetsbrev&kilde={kilde}");
+
+        Assert.Equal(
+            $"/kilder?utm_source=nyhetsbrev&kilde={kilde}&datasamling={datasamling}",
+            cut.Find("a.munin-explorer-hierarchy__open").GetAttribute("href"));
     }
 
     [Fact]
@@ -512,7 +581,7 @@ public class UrlStateComponentTest : BunitContext
             ]);
     }
 
-    /// <inheritdoc cref="RenderKilder"/>
+    /// <inheritdoc cref="RenderExplorer"/>
     private IRenderedComponent<KildeExplorer> RenderThreeKilder(string url)
     {
         Services.AddSingleton<IMuninExplorerClient>(new ThreeKilderClient());

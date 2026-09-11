@@ -32,10 +32,99 @@ public sealed class KildeHierarchyViewTest : BunitContext
             });
     }
 
-    private IRenderedComponent<KildeHierarchyView> Mount(Client client, Guid id, string language = "nb")
+    private IRenderedComponent<KildeHierarchyView> Mount(
+        Client client, Guid id, string language = "nb", Func<Guid, string>? datasamlingHref = null)
     {
         Services.AddSingleton<IMuninExplorerClient>(client);
-        return Render<KildeHierarchyView>(p => p.Add(c => c.KildeId, id).Add(c => c.Language, language));
+        return Render<KildeHierarchyView>(p => p
+            .Add(c => c.KildeId, id)
+            .Add(c => c.Language, language)
+            .Add(c => c.DatasamlingHref, datasamlingHref));
+    }
+
+    /// <summary>The tree with a route out of every datasamling, which is what Kelda mounts.</summary>
+    private IRenderedComponent<KildeHierarchyView> MountWithRoute(Guid id)
+    {
+        var client = new Client { Fetch = (_, _) => Task.FromResult<KildeHierarchy?>(Hierarchy(id)) };
+
+        return Mount(client, id, datasamlingHref: d => $"/kilder?kilde={id}&datasamling={d}");
+    }
+
+    private static IReadOnlyList<IElement> OpenLinks(IRenderedComponent<KildeHierarchyView> cut) =>
+        cut.FindAll("a.munin-explorer-hierarchy__open");
+
+    [Fact]
+    public void Render_WhenADatasamlingCanBeOpened_ThenItsLinkIsOutsideEverySummary()
+    {
+        // The whole point of the control, and the one way it fails silently. Inside a <summary> the
+        // link joins the summary's accessible name and — Blink exempts only form controls — a
+        // Ctrl+click would open a tab AND toggle the node the reader was reading.
+        var cut = MountWithRoute(Guid.NewGuid());
+
+        Assert.NotEmpty(OpenLinks(cut));
+        Assert.Empty(cut.FindAll("summary a"));
+        Assert.All(OpenLinks(cut), link => Assert.Equal("li", link.ParentElement?.LocalName));
+        Assert.All(cut.FindAll("summary"), summary =>
+            Assert.DoesNotContain("Åpne", AccessibleName.Of(summary), StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Render_WhenADatasamlingHasVariabelgrupper_ThenItsLinkIsASiblingOfTheDisclosureRatherThanOfItsChildren()
+    {
+        // A node with children is the case the defect lived in: the link has to leave the <details>
+        // entirely, not merely leave the <summary> — inside it, collapsed, it would not be there at
+        // all, and the disclosure would still own the press.
+        var cut = MountWithRoute(Guid.NewGuid());
+        var branch = cut.FindAll("li").Single(li =>
+            li.Children.Any(child => child.LocalName == "details")
+            && li.Children.Any(child => child.ClassList.Contains("munin-explorer-hierarchy__open")));
+
+        var details = branch.Children.Single(child => child.LocalName == "details");
+
+        Assert.Contains("Collection", details.QuerySelector("summary")!.TextContent, StringComparison.Ordinal);
+
+        // Its own <details> and not an ancestor's: inside it the link would be disclosure content,
+        // hidden while the node is collapsed, which is every node the reader has not opened.
+        Assert.Empty(details.QuerySelectorAll("a"));
+    }
+
+    [Fact]
+    public void Render_WhenADatasamlingCanBeOpened_ThenTheLinkCarriesTheHrefAndNamesTheDatasamling()
+    {
+        var id = Guid.NewGuid();
+        var cut = MountWithRoute(id);
+        var direct = OpenLinks(cut).Single(link => AccessibleName.Of(link) == "Åpne datasamlingen Direct");
+
+        // A real href rather than an onclick: middle-click and Ctrl+click are the reader's, and
+        // nothing here intercepts the press.
+        Assert.StartsWith($"/kilder?kilde={id}&datasamling=", direct.GetAttribute("href"), StringComparison.Ordinal);
+        Assert.Equal("Åpne", direct.TextContent);
+        Assert.Equal("Åpne datasamlingen Direct", AccessibleName.Of(direct));
+    }
+
+    [Fact]
+    public void Render_WhenOnlyDatasamlingerCanBeOpened_ThenNoDelkildeOrVariabelgruppeCarriesALink()
+    {
+        // Only a datasamling has a page, so only a datasamling gets a link. The tree carries four
+        // nodes that are not one, and a link on any of them would be a route to nowhere.
+        var cut = MountWithRoute(Guid.NewGuid());
+
+        Assert.Equal(2, OpenLinks(cut).Count);
+        Assert.Equal(
+            ["Åpne datasamlingen Collection", "Åpne datasamlingen Direct"],
+            OpenLinks(cut).Select(AccessibleName.Of).Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void Render_WhenNoHostWiredARoute_ThenTheTreeDrawsNoLinkAtAll()
+    {
+        // The default, and Runa's mount: it reaches a datasamling through the variable that named
+        // one, so a link here would be a second route with nothing behind it.
+        var id = Guid.NewGuid();
+        var cut = Mount(new Client { Fetch = (_, _) => Task.FromResult<KildeHierarchy?>(Hierarchy(id)) }, id);
+
+        Assert.Empty(OpenLinks(cut));
+        Assert.Empty(cut.FindAll("a"));
     }
 
     [Fact]

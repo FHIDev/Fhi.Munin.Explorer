@@ -16,7 +16,9 @@
         <code>samples/LegacyHost</code> and <code>samples/HostileHost</code> mount that. This page
         keeps the bare component alive instead, because a host that owns its own address bar has to
         be able to mount it, and because the wrapper below is what the handover looks like when the
-        host wires it by hand.
+        host wires it by hand. The wrapper owns <code>?kilde=</code> and
+        <code>?datasamling=</code> here too, which is the rest of that job: reading them at
+        initialisation, rewriting them, and remounting on a navigation the router intercepted.
     </p>
     <p class="hostchrome-note">
         <strong>The component is behind a wrapper here, not mounted straight onto the tag</strong>,

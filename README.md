@@ -860,12 +860,22 @@ sent, so a link made before the list could be sorted still means what it did.
 
 `?datasamling=` is read beside `?kilde=` and never instead of it: a datasamling opens in place of
 the kilde it belongs to, and the kilde is the way back out, so one named on its own is dropped on
-the first render. Each datasamling in the hierarchy carries a link of its own beside the name —
+the first render. Each datasamling in the hierarchy carries a link of its own —
 `munin-explorer-hierarchy__open`, a plain `<a href>`, so middle-click and Ctrl+click open a tab and
-the address can be pasted into a fresh one. It is a separate element rather than a second job for
-the `<summary>`, which keeps expanding and collapsing on Enter and Space as it did. There is no
-route from Kelda to a single variable: `VariableView` is the variable explorer's own surface and is
-reached from there.
+the address can be pasted into a fresh one. It is written in the node's own `<li>`, **after** the
+`<details>` and never inside the `<summary>`: a link in a summary is nested interactive content,
+so it would join the summary's accessible name and — Blink exempts only form controls — toggle the
+node on the same press that followed it. Outside, the summary keeps expanding and collapsing on
+Enter and Space as it did, and the link is a tab stop of its own. Where it *draws* is the host
+stylesheet's answer: undrawn it sits on a line below the node, and both sample stylesheets put it
+back on the node's own line with a rule on the `<li>`. There is no route from Kelda to a single
+variable: `VariableView` is the variable explorer's own surface and is reached from there.
+
+Opening one is a real navigation, so what a reader arrives back to is a freshly mounted view: the
+kilde is fetched again and its hierarchy comes back collapsed rather than expanded to where they
+were. That is the same in a host with a `Router`, where the press is intercepted and
+`KildeExplorer` remounts `KildeSearch` itself rather than forcing a reload — a reload would clear
+the browser's forward list, and the forward button is half of what the link was chosen to keep.
 
 An open kilde's collection section loads its hierarchy separately: delkilder, datasamlinger and
 variabelgrupper appear as nested lists with native disclosures, initially collapsed. Tab visits

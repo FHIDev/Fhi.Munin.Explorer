@@ -63,10 +63,18 @@ public sealed partial class KildeHierarchyView : ComponentBase, IDisposable
     /// explorer is mounted.
     /// </para>
     /// <para>
-    /// <b>It does not touch the disclosure.</b> The link is its own element beside the name, so the
-    /// <c>&lt;summary&gt;</c> keeps its one job: Enter and Space on a branch still expand and
-    /// collapse it, and the link is a separate tab stop that navigates. A summary that did both
-    /// would leave the tree unopenable from the keyboard.
+    /// <b>It does not touch the disclosure.</b> The link is drawn in the node's own list item,
+    /// after the <c>&lt;details&gt;</c> rather than inside its <c>&lt;summary&gt;</c>, so the
+    /// summary keeps its one job: Enter and Space on a branch still expand and collapse it, and
+    /// the link is a separate tab stop that navigates. Inside the summary it would be nested
+    /// interactive content — part of the summary's accessible name, and a press that toggles the
+    /// node as well as following the link, since Blink's disclosure exempts only form controls.
+    /// </para>
+    /// <para>
+    /// That placement is a host stylesheet's to finish. Undrawn, the link sits on its own line
+    /// under the node it belongs to, and under that node's children while the branch is open;
+    /// putting it back on the summary's own line is a rule on the <c>&lt;li&gt;</c>, which both
+    /// sample stylesheets show.
     /// </para>
     /// </remarks>
     [Parameter] public Func<Guid, string>? DatasamlingHref { get; set; }
@@ -187,6 +195,22 @@ public sealed partial class KildeHierarchyView : ComponentBase, IDisposable
                 builder.AddContent(11, Label(node));
                 builder.CloseElement();
             }
+
+            // Beside the disclosure and never inside its <summary>: a link there is nested
+            // interactive content, it joins the summary's accessible name, and Blink exempts only
+            // form controls — so a Ctrl+click would open a tab AND toggle the node underneath it.
+            if (node.DatasamlingId is { } datasamling && DatasamlingHref?.Invoke(datasamling) is { } href)
+            {
+                builder.OpenElement(12, "a");
+                builder.AddAttribute(13, "class", "munin-explorer-hierarchy__open");
+                builder.AddAttribute(14, "href", href);
+                // A link list full of "Åpne" names nothing; the name opens with the visible word,
+                // which is what WCAG 2.5.3 asks, and goes on to say which datasamling.
+                builder.AddAttribute(15, "aria-label", T.OpenDatasamlingNamed(node.Name));
+                builder.AddContent(16, T.OpenDatasamling);
+                builder.CloseElement();
+            }
+
             builder.CloseElement();
         }
         builder.CloseElement();
@@ -226,20 +250,6 @@ public sealed partial class KildeHierarchyView : ComponentBase, IDisposable
             builder.AddAttribute(31, "class", "screenreader-only");
             builder.AddContent(32, $" {T.VariableCountSuffix}");
             builder.CloseElement();
-            builder.CloseElement();
-        }
-
-        // An element of its own rather than a second job for the summary above it, so the
-        // disclosure keeps working. aria-label names the datasamling, because a link list full of
-        // "Åpne" names nothing; it opens with the visible word, which is what WCAG 2.5.3 asks.
-        if (node.DatasamlingId is { } datasamling && DatasamlingHref?.Invoke(datasamling) is { } href)
-        {
-            builder.AddContent(40, " ");
-            builder.OpenElement(41, "a");
-            builder.AddAttribute(42, "class", "munin-explorer-hierarchy__open");
-            builder.AddAttribute(43, "href", href);
-            builder.AddAttribute(44, "aria-label", T.OpenDatasamlingNamed(node.Name));
-            builder.AddContent(45, T.OpenDatasamling);
             builder.CloseElement();
         }
     };

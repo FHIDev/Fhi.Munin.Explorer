@@ -36,10 +36,6 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 #     and a green run says nothing about either (Fhi.Metadata-oj286);
 #   - error and empty states, which need the stub to answer differently than it does;
 #   - hierarchy branches beyond the two opened levels in kilde-hierarchy-expanded;
-#   - the link out of a datasamling in that hierarchy, and the datasamling view it opens. Only
-#     KildeExplorer wires KildeSearch.DatasamlingHref, and /kilder here mounts the bare KildeSearch
-#     on purpose — so the link is not drawn in the host this scans and a green run says nothing
-#     about it. samples/LegacyHost is where it can be exercised (Fhi.Metadata-l9l2n.107);
 #   - the English texts, and samples/LegacyHost, the same component in the other host;
 #   - the list tab's own create, rename and delete forms, and the annotation field in a row.
 # Each is another page load and settle, about ten seconds, and none carries the risk the
@@ -64,6 +60,8 @@ TARGETS=(
   "/kilder::kilde-drilldown"
   "/kilder::kilde-hierarchy-collapsed"
   "/kilder::kilde-hierarchy-expanded"
+  "/kilder::kilde-hierarchy-open"
+  "/kilder::kilde-datasamling"
   "/kilder::kilde-hierarchy-metadata"
   "/kilder::kilder-expanded"
   "/kilder::kilder-columns"

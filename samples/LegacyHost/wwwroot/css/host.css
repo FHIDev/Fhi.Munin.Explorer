@@ -2910,12 +2910,22 @@ table.munin-explorer-data-list tbody th {
   padding: 0 4px;
   white-space: nowrap;
 }
-/* The route out of a datasamling in the tree and into its own page. A link rather than a second
-   job for the <summary>, so the disclosure keeps expanding and this keeps navigating. --primary on
-   the page ground is 6.57:1, and the underline is what marks it a link without relying on colour. */
+/* The route out of a datasamling in the tree and into its own page. The package writes it after
+   the node's <details> and never inside the <summary>, which would toggle the node on the same
+   press - so this grid is what puts it back on the node's own line. (Fhi.Metadata-l9l2n.107) */
+.munin-explorer-hierarchy__nodes > li {
+  align-items: baseline;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+/* --primary on the page ground is 6.57:1, and the underline is what marks it a link without
+   relying on colour. */
 .munin-explorer-hierarchy__open {
   color: var(--primary);
+  grid-column: 2;
+  grid-row: 1;
   margin-left: 8px;
+  padding: 8px 4px;
   text-decoration: underline;
 }
 .munin-explorer-hierarchy__open:focus-visible {

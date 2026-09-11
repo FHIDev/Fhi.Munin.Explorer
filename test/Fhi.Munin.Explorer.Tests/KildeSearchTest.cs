@@ -5799,4 +5799,140 @@ public class KildeSearchTest : BunitContext
 
         Assert.Equal("Ikke oppgitt", AccessibleName.Of(cut.Find("th button.munin-explorer-kilder__name")));
     }
+
+    /// <summary>One kilde, one datasamling under it, and a detail for both.</summary>
+    /// <remarks>
+    /// Its own client rather than <see cref="FakeClient"/> extended, because the drill-in is the
+    /// only thing here that asks the API for a hierarchy and for a datasamling, and the counts
+    /// below are what say a view was fetched rather than merely drawn empty.
+    /// </remarks>
+    private sealed class DrillInClient(Guid kilde, Guid datasamling) : EmptyMuninExplorerClient
+    {
+        public int KildeCalls { get; private set; }
+        public int DatasamlingCalls { get; private set; }
+
+        public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
+            string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<KildeSummary>>(
+                [new() { Id = kilde, Code = "K_ALS", Name = "Als registeret" }]);
+
+        public override Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            KildeCalls++;
+            return Task.FromResult<KildeDetail?>(new() { Id = id, Code = "K_ALS", PreferredTerm = "Als registeret" });
+        }
+
+        public override Task<KildeHierarchy?> GetKildeHierarchyAsync(Guid id, CancellationToken cancellationToken = default) =>
+            Task.FromResult<KildeHierarchy?>(new()
+            {
+                KildeId = id,
+                DirectDatasamlinger = [new() { Id = datasamling, Name = "Inklusjon", VariableCount = 9 }]
+            });
+
+        public override Task<DatasamlingDetail?> GetDatasamlingAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            DatasamlingCalls++;
+            return Task.FromResult<DatasamlingDetail?>(
+                new() { Id = id, Code = "K_ALS.INKLUSJON", PreferredTerm = "Inklusjon" });
+        }
+    }
+
+    /// <summary>Kelda mounted the way <see cref="KildeExplorer"/> mounts it, at some address.</summary>
+    private IRenderedComponent<KildeSearch> RenderDrillIn(
+        DrillInClient client, Guid? kilde, Guid? datasamling, bool wireHref = true) =>
+        RenderWith(client, p => p
+            .Add(c => c.SelectedKildeId, kilde)
+            .Add(c => c.SelectedDatasamlingId, datasamling)
+            .Add(c => c.DatasamlingHref, wireHref
+                ? (Func<Guid?, string>)(id => id is null ? $"/kilder?kilde={kilde}" : $"/kilder?kilde={kilde}&datasamling={id}")
+                : null));
+
+    [Fact]
+    public void DrillIn_WhenTheAddressNamesADatasamlingOfTheOpenKilde_ThenItsOwnViewReplacesTheKildesAndTheKildeIsNotFetched()
+    {
+        // DatasamlingView is Runa's component rendered unchanged, and the kilde's payload would be
+        // a round trip for a view nobody is looking at.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+        var client = new DrillInClient(kilde, datasamling);
+
+        var cut = RenderDrillIn(client, kilde, datasamling);
+
+        Assert.NotEmpty(cut.FindAll(".munin-explorer-datasamling"));
+        Assert.Empty(cut.FindAll(".munin-explorer-kilde"));
+        Assert.Equal(1, client.DatasamlingCalls);
+        Assert.Equal(0, client.KildeCalls);
+    }
+
+    [Fact]
+    public void DrillIn_WhenADatasamlingIsOpen_ThenTheRegionIsNamedByItRatherThanByTheKilde()
+    {
+        // A silent drilldown is a screen-reader dead end: the region is labelled by the shared
+        // heading, so the heading changing is what the announcement is.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+
+        var cut = RenderDrillIn(new DrillInClient(kilde, datasamling), kilde, datasamling);
+        var region = cut.Find(".munin-explorer-drilldown");
+
+        Assert.Equal("polite", cut.Find(".munin-explorer-drilldown [role=status]").GetAttribute("aria-live"));
+        Assert.Equal("Inklusjon", AccessibleName.Of(region));
+    }
+
+    [Fact]
+    public void DrillIn_WhenADatasamlingIsOpen_ThenTheWayOutIsALinkToItsKildeRatherThanAButtonToTheList()
+    {
+        // One step back rather than two: the reader arrived from the kilde. A link because it is
+        // the address that changes — the same reason the route in is one.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+
+        var cut = RenderDrillIn(new DrillInClient(kilde, datasamling), kilde, datasamling);
+        var back = cut.Find(".munin-explorer-drilldown a.hd-button-square");
+
+        Assert.Equal($"/kilder?kilde={kilde}", back.GetAttribute("href"));
+        Assert.Contains("Tilbake til datakilden", back.TextContent, StringComparison.Ordinal);
+        Assert.Empty(cut.FindAll(".munin-explorer-drilldown button.hd-button-square"));
+    }
+
+    [Fact]
+    public void DrillIn_WhenTheAddressNamesADatasamlingAndNoKilde_ThenItIsDroppedAndTheListIsDrawn()
+    {
+        // A datasamling opens in place of the kilde it belongs to, and the kilde is the way back
+        // out — so one named on its own is a view with no way out of it.
+        var datasamling = Guid.NewGuid();
+        var client = new DrillInClient(Guid.NewGuid(), datasamling);
+
+        var cut = RenderDrillIn(client, kilde: null, datasamling: datasamling);
+
+        Assert.NotEmpty(cut.FindAll(".munin-explorer-kilder tbody tr"));
+        Assert.Empty(cut.FindAll(".munin-explorer-datasamling"));
+        Assert.Equal(0, client.DatasamlingCalls);
+    }
+
+    [Fact]
+    public void DrillIn_WhenTheKildeIsOpen_ThenEveryDatasamlingInItsTreeCarriesTheRouteTheHostWired()
+    {
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+
+        var cut = RenderDrillIn(new DrillInClient(kilde, datasamling), kilde, datasamling: null);
+        var link = cut.Find("a.munin-explorer-hierarchy__open");
+
+        Assert.Equal($"/kilder?kilde={kilde}&datasamling={datasamling}", link.GetAttribute("href"));
+        Assert.Empty(cut.FindAll(".munin-explorer-hierarchy summary a"));
+    }
+
+    [Fact]
+    public void DrillIn_WhenTheHostWiredNoRoute_ThenTheTreeOffersNoneAndTheWayOutStaysTheListButton()
+    {
+        // What a mount that owns no address bar gets — ModernHost's bare KildeSearch before this
+        // page wired the query. A control with nowhere to go is worse than the coarser one.
+        var kilde = Guid.NewGuid();
+
+        var cut = RenderDrillIn(new DrillInClient(kilde, Guid.NewGuid()), kilde, datasamling: null, wireHref: false);
+
+        Assert.Empty(cut.FindAll("a.munin-explorer-hierarchy__open"));
+        Assert.NotEmpty(cut.FindAll(".munin-explorer-drilldown button.hd-button-square"));
+    }
 }
