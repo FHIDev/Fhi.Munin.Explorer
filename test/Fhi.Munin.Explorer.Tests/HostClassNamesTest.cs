@@ -204,6 +204,18 @@ public class HostClassNamesTest
     }
 
     [Fact]
+    public void KilderSelectScope_WhenTheScrollBoxItselfCarriesTheSelectClass_ThenItIsCountedAsOutside()
+    {
+        // The one shape where presence and containment part company, and the collapse-the-wrapper
+        // refactor is how markup reaches it: `:has()` matches descendants only, so a box that IS
+        // the select element satisfies no threshold and must not read as the passing shape.
+        var scope = HostClassNames.KilderSelectScope(Elements(
+            """<div class="munin-explorer-kilder-scroll munin-explorer-kilder__select"></div>"""));
+
+        Assert.Equal((1, 0, 1), scope);
+    }
+
+    [Fact]
     public void KilderSelectScope_WhenTheWrapperIsRenamed_ThenThereIsNoBoxToScopeTo()
     {
         // Told apart from "the column is gone" on purpose: both leave Inside at zero, and a guard

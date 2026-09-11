@@ -12,9 +12,13 @@ namespace Fhi.Munin.Explorer.Tests;
 /// keeps: it renders at raw browser defaults on helsedata.no and looks like a bug in the component.
 ///
 /// "Draws it" rather than "names it", because a rule with an empty block draws exactly what no rule
-/// draws. Every question here goes through <see cref="RulesIn"/>, which cuts each rule's selector
-/// apart from its declarations, rather than searching the stylesheet as one string — a substring
-/// search cannot tell a rule that does something from a rule that does nothing.
+/// draws. Every stylesheet question here goes through <see cref="RulesIn"/>, which cuts each rule's
+/// selector apart from its declarations, rather than searching the stylesheet as one string — a
+/// substring search cannot tell a rule that does something from a rule that does nothing.
+///
+/// One member asks something else and reads no stylesheet at all. <see cref="KilderSelectScope"/>
+/// answers WHERE a rendered name sits, because the rules that need it reach it through an ancestor:
+/// a name in the document is not a name in reach, and only the DOM can tell those two apart.
 ///
 /// <c>headline-sm</c> was exactly that for months. It reads like one of helsedata's heading classes,
 /// it sat beside <c>headline</c> where a real one would, and it is a typo for <c>headline-s</c> that
@@ -62,12 +66,22 @@ internal static class HostClassNames
         new(@"(?<selector>[^{}]*)\{(?<declarations>[^{}]*)\}");
 
     /// <summary>
+    /// The two kilder names this file reasons about in more than one place, so the spelling is
+    /// written once: the scroll box a host's thresholds scope to, and the selection column those
+    /// thresholds look for inside it. <see cref="KilderSelectScope"/> says why the pair matters.
+    /// </summary>
+    internal const string KilderScroll = "munin-explorer-kilder-scroll";
+
+    /// <inheritdoc cref="KilderScroll"/>
+    internal const string KilderSelect = "munin-explorer-kilder__select";
+
+    /// <summary>
     /// Exempt from <see cref="Orphans"/>: a modifier the package finishes with a number, on an
     /// element whose base class already carries the rule. Anchored on this one stem rather than on
     /// <c>--cols-</c> anywhere, so a second one stays a decision somebody makes here.
     /// </summary>
     private static readonly Regex CountModifier =
-        new(@"^munin-explorer-kilder-scroll--cols-[0-9]+$");
+        new($"^{KilderScroll}--cols-[0-9]+$");
 
     /// <summary>
     /// The sample stylesheet, held as text rather than parsed: <see cref="RulesIn"/> cuts the rules
@@ -248,28 +262,25 @@ internal static class HostClassNames
     /// in the markup would otherwise arrive here as one long token that no stylesheet defines — a
     /// false orphan, reported against a name nobody wrote.
     /// </summary>
-    internal static IEnumerable<string> Of(IEnumerable<AngleSharp.Dom.IElement> elements) =>
+    internal static IEnumerable<string> Of(IEnumerable<IElement> elements) =>
         elements.SelectMany(e => e.ClassList);
-
-    // Stiler's eleven per-column-count sticky-header thresholds select
-    // `.munin-explorer-kilder-scroll--cols-N:has(.munin-explorer-kilder__select)`, so that second
-    // name has to stay INSIDE the box (Fhi.Helsedata.Stiler PR 39282, Fhi.Metadata-l9l2n.50).
-    internal const string KilderScroll = "munin-explorer-kilder-scroll";
-    internal const string KilderSelect = "munin-explorer-kilder__select";
 
     /// <summary>
     /// What is lost when the selection column stops being visible to a selector scoped to the
-    /// scroll box. Both branches of the guard report it, because the consequence is the same
+    /// scroll box. Every assertion of the guard reports it, because the consequence is the same
     /// whichever way the contract breaks and a reader deleting the class meets only this sentence.
     /// </summary>
     internal const string KilderSelectConsequence =
-        "Fhi.Helsedata.Stiler (PR 39282, Fhi.Metadata-l9l2n.50) keys its eleven per-column-count "
-        + "sticky-header thresholds on :has(.munin-explorer-kilder__select) scoped to "
-        + ".munin-explorer-kilder-scroll, which is the only thing telling a selectable host's 32px "
-        + "checkbox column from the far wider content column a non-selectable host draws at the same "
-        + "column count. Without that signal every threshold picks the other branch, overflow-x: "
-        + "visible turns on at a width the table does not fit, and helsedata.no gains a horizontal "
-        + "scrollbar across the whole page. Nothing errors and nothing else fails, because this "
+        "Fhi.Helsedata.Stiler keys its eleven per-column-count sticky-header thresholds on "
+        + ":has(.munin-explorer-kilder__select) scoped to .munin-explorer-kilder-scroll, which is "
+        + "the only thing telling a selectable host's 32px checkbox column from the far wider "
+        + "content column a non-selectable host draws at the same column count. Those thresholds "
+        + "are PR 39282's (Fhi.Metadata-l9l2n.50), merged to Stiler's main on 2026-09-11 and NOT "
+        + "in 0.1.42 — the version samples/HostileHost pins and helsedata.no restores today — so "
+        + "this is the contract a host takes on with the release that follows, not a page that is "
+        + "broken now. Without the signal every threshold picks the other branch, overflow-x: "
+        + "visible turns on at a width the table does not fit, and the host page gains a horizontal "
+        + "scrollbar across its whole width. Nothing errors and nothing else fails, because this "
         + "package ships no CSS and the samples carry their own copies. Restore the emission rather "
         + "than moving the class or relaxing this test.";
 
@@ -277,14 +288,21 @@ internal static class HostClassNames
     /// What a stylesheet scoped to the scroll box can see of the selection column: boxes to scope
     /// to, select cells inside one, and select cells that escaped. Counted rather than answered
     /// yes/no, because Stiler reaches the class THROUGH the box and presence is not containment.
+    ///
+    /// The threshold selectors this stands in for are in <see cref="KilderSelectConsequence"/>,
+    /// which says which Stiler release carries them — nothing in this repository reads Stiler, so a
+    /// claim about it is pinned to a version or it is a guess.
     /// </summary>
     internal static (int ScrollBoxes, int Inside, int Outside) KilderSelectScope(
         IEnumerable<IElement> elements)
     {
         var all = elements.ToList();
 
+        // From the PARENT, because `:has()` is a descendant relation and `Closest` starts at the
+        // element itself: a box carrying both names matches no threshold, so counting it Inside
+        // would fail green in exactly the direction this helper exists to catch.
         var select = all.Where(e => e.ClassList.Contains(KilderSelect))
-                        .ToLookup(e => e.Closest('.' + KilderScroll) is not null);
+                        .ToLookup(e => e.ParentElement?.Closest('.' + KilderScroll) is not null);
 
         return (all.Count(e => e.ClassList.Contains(KilderScroll)), select[true].Count(), select[false].Count());
     }

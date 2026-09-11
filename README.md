@@ -458,6 +458,15 @@ These are not style preferences — each one is a host that breaks otherwise.
   that answers that must not reintroduce a scroll container above the breakpoint, or the header
   stops pinning and the cure is worse than the spill. The measurement, and the rule itself, are
   `Fhi.Metadata-l9l2n.50`.
+  **The count on its own does not say which table it is.** N counts the four always-drawn columns,
+  the selection column where the host wired the handover, and whichever optional columns are on, so
+  `--cols-9` is a selectable table with four optional columns *or* a non-selectable one with five —
+  and those differ by a 32px checkbox
+  column against a full column of words, which is most of the width a threshold is choosing against.
+  The only thing that tells them apart is whether the box contains the selection column, so a rule
+  that needs the distinction selects `.munin-explorer-kilder-scroll--cols-N:has(.munin-explorer-kilder__select)`
+  and gives the other table the `:not(:has(…))` arm. That is what
+  `Fhi.Helsedata.Stiler` PR 39282 does; it postdates 0.1.42, the version pinned here.
 
   **The whole list, name by name.** The paragraphs above pick out the names worth an argument.
   They used to end in hand-written counts, and every one of them had gone stale: `kilde*` had grown
