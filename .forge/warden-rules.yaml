@@ -106,17 +106,19 @@ rules:
       pattern: >-
         A new test, assertion, or CI guard added to catch a specific regression, where the production code path it claims to guard is absent, stubbed, or synthetically constructed within the test itself
       check: >-
-        Verify the assertion can actually fail on this revision: confirm the production call or attribute it guards exists in the shipped code, and that deleting or breaking that specific production element makes this assertion red. A guard built against a synthetic fixture or a not-yet-implemented shape proves only that the measurement harness works — it does not guard the regression. If the implementation lands in a later PR, hold the guard until then or point it at the real implementation now.
+        Verify the assertion can actually fail on this revision: confirm the production call or attribute it guards exists in the shipped code, and that deleting or breaking that specific production element makes this assertion red. A guard built against a synthetic fixture or a not-yet-implemented shape proves only that the measurement harness works — it does not guard the regression. A bUnit test that news up the DTO it claims to pin, or stubs the service whose call is the regression, fails this the same way an .mjs scan against a synthetic box does. If the implementation lands in a later PR, hold the guard until then or point it at the real implementation now.
       source: copilot:PR#254
       added: "2026-09-10"
       paths:
         - scripts/**/*.mjs
+        - scripts/**/*.sh
+        - test/**/*.cs
     - id: wire-contract-untested-by-json
       category: testing
       pattern: >-
         A new or changed DTO/wire contract (new type, property, or `[JsonPropertyName]`) where the tests construct the object directly in C# rather than deserializing it from a JSON fixture
       check: >-
-        Verify a JSON fixture under Testdata/ contains the new member and that a deserialization test asserts every new field — wire name, IDs, parent IDs, names, counts. Tests that new up the DTO in C# pass even when the wire name or field shape is wrong, so they are not evidence the contract matches Munin's JSON.
+        Verify a deserialization test reads the new member from JSON and asserts every new field — wire name, IDs, parent IDs, names, counts. Where the capture can carry the value, re-take the whole file under Testdata/ as docs/contract-drift.md says; a member hand-added to one is reverted without a word by the next capture. Where the value moves with the catalogue — fixed ids, parent ids, counts — pin the wire names against an inline `WithJson` payload instead, as `MuninExplorerClientTest` does under "wire names the capture cannot pin". Tests that new up the DTO in C# pass even when the wire name or field shape is wrong, so they are not evidence the contract matches Munin's JSON. Note that a fixture carrying the member is not itself that evidence either: `ContractCoverageTest` reads with UnmappedMemberHandling.Disallow, which proves only that every field the API sends has somewhere to land.
       source: copilot:PR#250
       added: "2026-09-10"
       paths:
@@ -124,11 +126,10 @@ rules:
     - id: changelog-fragment-grammar
       category: style
       pattern: >-
-        Prose in changelog.d/ fragments, XML doc comments, or other release-note text that ships to readers
+        Prose in a changelog.d/ fragment, which ships to readers as release-note text
       check: >-
         Read each sentence of the fragment as written and verify it is grammatical — in particular that omitted relative pronouns ('that', 'which', 'who'), articles, and prepositions are present where the sentence needs them, since these fragments are assembled verbatim into CHANGELOG.md and the package's PackageReleaseNotes with no later editing pass.
       source: copilot:PR#250
       added: "2026-09-10"
       paths:
-        - changelog.d/**
         - changelog.d/**/*.md
