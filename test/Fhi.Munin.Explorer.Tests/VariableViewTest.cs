@@ -546,7 +546,7 @@ public class VariableViewTest : BunitContext
         var cut = Render(Detail());
 
         Assert.Empty(cut.FindAll("aside"));
-        Assert.NotEmpty(cut.Find(".munin-explorer-whole__main").QuerySelectorAll("dl.munin-explorer-meta__grid"));
+        Assert.NotEmpty(cut.Find(".munin-explorer-whole__main").QuerySelectorAll("dl.munin-explorer-page__fields"));
     }
 
     [Fact]
@@ -556,7 +556,7 @@ public class VariableViewTest : BunitContext
         // through raw loses the row rather than drawing an empty one — and no compiler says so,
         // because the label helper has always taken a null. (Fhi.Metadata-l9l2n.61)
         var facts = Render(Detail() with { KildeType = null })
-            .Find($"#{DetailSectionIds.Source} dl.munin-explorer-meta__grid");
+            .Find($"#{DetailSectionIds.Source} dl.munin-explorer-page__fields");
 
         Assert.Equal(
             ["Kildenavn", "Kortnavn", "Type datakilde"],
@@ -726,7 +726,7 @@ public class VariableViewTest : BunitContext
         // answers "Ikke oppgitt" for a variable naming no source, so the list keeps a row even
         // with all three of its fields blank.
         var facts = Render(Sparse())
-            .Find($"#{DetailSectionIds.Source} dl.munin-explorer-meta__grid");
+            .Find($"#{DetailSectionIds.Source} dl.munin-explorer-page__fields");
 
         // The whole list rather than its first row: a row added above this one is a new row
         // appearing, not the fallback going, and the two should not fail alike.

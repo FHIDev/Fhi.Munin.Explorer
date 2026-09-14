@@ -152,8 +152,8 @@ internal enum PanelTab
 /// The kilde and datasamling do not open inside that panel: they take over the component's own
 /// area as a drill-in, wearing the handle <c>munin-explorer-drilldown</c> and again no style
 /// name. What it holds is a heading in Stiler's <c>headline headline-s</c> and a
-/// <c>&lt;dl&gt;</c>, or — for a kilde — the whole of <c>KildeView</c>, so what a host supplies
-/// for it is the base <c>&lt;dl&gt;</c> styling the variable's own panel already needed.
+/// <c>&lt;dl&gt;</c>, or — for a kilde — the whole of <c>KildeView</c>, whose fact lists wear the
+/// detail chassis's <c>munin-explorer-page__fields</c> rather than this panel's own grid.
 /// <c>munin-explorer-source</c> is not a class: it is the prefix of the element id that names
 /// the region (<c>munin-explorer-source-{instance}</c>), so a host or a test reaching for
 /// <c>.munin-explorer-source</c> finds nothing. It was a class, back when the kilde opened
@@ -1336,7 +1336,9 @@ public sealed partial class VariableSearch : ComponentBase
             builder.AddContent(seq + 4, row.Label);
             builder.CloseElement();
 
-            seq = DetailBlocks.Values(builder, seq + 5, row, Reader, T);
+            // The panel's own prefix, passed rather than defaulted: DetailBlocks draws the detail
+            // pages' fact lists too, and those moved to the chassis. (Fhi.Metadata-35w0p.11)
+            seq = DetailBlocks.Values(builder, seq + 5, row, Reader, T, "munin-explorer-meta__language");
 
             builder.CloseElement();
         }

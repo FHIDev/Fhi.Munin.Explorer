@@ -961,9 +961,9 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
    level rather than by element. Only the page margin is overridden: the size comes from Stiler's
    own headline classes, which the heading also wears.
 
-   Direct children throughout, so none of this reaches into KildeView: its <dl>s wear the result
-   vocabulary's munin-explorer-meta__grid and are styled by that further down, and a descendant
-   selector here would out-specify it and take its spacing away. */
+   Direct children throughout, so none of this reaches into KildeView: its <dl>s wear the chassis's
+   munin-explorer-page__fields and are styled by that further down, and a descendant selector here
+   would out-specify it and take its spacing away. */
 .munin-explorer-drilldown > h2,
 .munin-explorer-drilldown > h3,
 .munin-explorer-drilldown > h4,
@@ -1715,8 +1715,8 @@ table.munin-explorer-data-list tbody th {
    column and a sidebar — is a page layout. Stiler had no page layout to take, and helsedata's
    variables.css had no kilde section to read one back off, so there was nothing to copy and
    these had to be invented outright. What the layout HOLDS is named from elsewhere: the headings
-   are Stiler's `headline`, the fact lists are `munin-explorer-meta__grid` from the result
-   vocabulary above, and the kildetype badge is named by nobody but us — see the rule for it
+   are Stiler's `headline`, the fact lists are `munin-explorer-page__fields` from the chassis
+   below, and the kildetype badge is named by nobody but us — see the rule for it
    below.
 
    They arrived unstyled. The view shipped in #43 with a whole prefix of its own and neither sample
@@ -1876,6 +1876,32 @@ table.munin-explorer-data-list tbody th {
   scroll-margin-top: 140px;
 }
 
+/* ---- the fact lists on a detail page ----
+
+   `munin-explorer-page__fields` and `munin-explorer-page__language` are Stiler's own since 0.1.75
+   and stand in the extracted region below. The marker is `margin: 0` there and nothing else — none
+   of the panel marker's uppercase, letter-spacing or grey — so writing that look here would invent
+   it, and a host on Stiler draws the name at body size until `Fhi.Metadata-4ozhj` lands.
+
+   The swap moves these sample pages, whatever it does on a host with Stiler: the stand-in for the
+   panel grid above diverges from Stiler's by six recorded declarations
+   (test/sample-css-known-divergences.txt), so a fact list here gains a 40px row gap, a 24px bottom
+   margin and a font shorthand it had none of, and loses the marker's uppercase and grey.
+
+   The three below are the stand-in's own, as the same three above the panel grid are: Stiler
+   declares nothing for a grid item, and a <dd> left alone keeps the browser's 40px indent. */
+.munin-explorer-page__fields dt {
+  margin-bottom: 4px;
+}
+
+.munin-explorer-page__fields dd {
+  margin: 0;
+}
+
+.munin-explorer-page__fields dd + dd {
+  margin-top: 10px;
+}
+
 /* ---- the contents nav inside that column ----
 
    `form-menu__list` and `form-menu__list__item` are borrowed: global, unscoped classes in Stiler's
@@ -1911,9 +1937,9 @@ table.munin-explorer-data-list tbody th {
 }
 
 /* Copied from Stiler's `_trail.scss`, selector for selector: a stand-in that works differently from
-   the rule it stands in for is not standing in for it. Inert since Fhi.Metadata-35w0p.6 stopped
-   emitting the aside, and kept for as long as Stiler keeps it — the fact lists now take the
-   unscoped two-lane default, which is the right shape for a full-width column. (Fhi.Metadata-hi0po) */
+   the rule it stands in for is not standing in for it. Inert twice over — Fhi.Metadata-35w0p.6
+   stopped emitting the aside and Fhi.Metadata-35w0p.11 took the class off the detail fact lists —
+   and kept for as long as Stiler keeps it. (Fhi.Metadata-hi0po) */
 .munin-explorer-kilde__aside .munin-explorer-meta__grid,
 .munin-explorer-whole__aside .munin-explorer-meta__grid,
 .munin-explorer-datasamling__aside .munin-explorer-meta__grid {
