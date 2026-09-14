@@ -150,4 +150,36 @@ public sealed partial class DatasamlingView : ComponentBase
     /// </remarks>
     private string StatisticsHeading =>
         StatisticsBlock.Heading(Datasamling?.StatisticsType, T);
+
+    /// <summary>The sections this view draws, in the order it draws them.</summary>
+    private IReadOnlyList<DetailTocEntry> Toc { get; set; } = [];
+
+    /// <inheritdoc />
+    protected override void OnParametersSet() => Toc = BuildToc();
+
+    /// <summary>This view's own predicates, which are what the nav and the blocks both read.</summary>
+    /// <remarks>
+    /// The explorer's own sections arrive through <see cref="Sections"/> and are wrapped in no
+    /// section of ours, so the nav does not offer them — this view never learns what they are.
+    /// </remarks>
+    private IReadOnlyList<DetailTocEntry> BuildToc()
+    {
+        if (Datasamling is not { } datasamling)
+        {
+            return [];
+        }
+
+        DetailTocBuilder toc = new();
+
+        toc.Add(Groups.Count > 0, DetailSectionIds.Metadata, T.HeadingMetadata);
+        toc.Add(!string.IsNullOrWhiteSpace(datasamling.InclusionAndExclusionCriteria),
+                DetailSectionIds.Criteria, T.FieldInclusionCriteria);
+        toc.Add(DetailBlocks.AnyFacts(SourceInformation), DetailSectionIds.Source, T.HeadingSourceInformation);
+        toc.Add(AnyStatistics, DetailSectionIds.Statistics, StatisticsHeading);
+
+        return toc.Entries;
+    }
+
+    /// <summary>Whether the section with this id is drawn, which is whether the nav names it.</summary>
+    private bool Drawn(string id) => Toc.Contains(id);
 }

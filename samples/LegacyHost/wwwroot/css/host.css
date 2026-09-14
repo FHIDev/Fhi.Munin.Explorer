@@ -1830,6 +1830,40 @@ table.munin-explorer-data-list tbody th {
   scroll-margin-top: 140px;
 }
 
+/* ---- the contents nav inside that column ----
+
+   `form-menu__list` and `form-menu__list__item` are borrowed: global, unscoped classes in Stiler's
+   `pages/_healthregisterpage.scss` that reach its compiled stylesheet, so a host on Stiler needs no
+   rule of ours. This stand-in was written from helsedata.no's `application.css` instead and came
+   out three declarations short of the pinned 0.1.42 — `margin` here, `background-color` and
+   `transition` on the link — which `assert-sample-css-matches-stiler.sh` named. Read Stiler for
+   what Stiler declares, never a deployed site: helsedata.no serves no `form-menu` rule outside
+   `application.css`, which looked like proof these names were not Stiler's and is not, because
+   that site does not run Stiler at all. `Fhi.Metadata-u0cxn` was opened on that misreading and is
+   closed moot. `form-menu__list__item` has no rule anywhere — only `--active` and `--active-child`
+   do, and this package emits neither.
+
+   Two of Stiler's declarations are deliberately left out: `a:focus { outline: none }`, which is
+   safe only beside the `.is-tabbing` rules that put a focus ring back and which need their script,
+   and the `a:after` overlay those rules paint on, which draws nothing without them. Dropping them
+   leaves the browser's own focus ring, which is the accessible half of that pair. */
+.form-menu__list {
+  list-style: none;
+  margin: 0;
+  padding-left: 0;
+}
+
+.form-menu__list a {
+  display: block;
+  margin: 0;
+  padding: 8px 4px 8px 24px;
+  position: relative;
+  background-color: transparent;
+  color: var(--dark);
+  text-decoration: none;
+  transition: background-color 0.2s ease;
+}
+
 /* Copied from Stiler's `_trail.scss`, selector for selector: a stand-in that works differently from
    the rule it stands in for is not standing in for it. Inert since Fhi.Metadata-35w0p.6 stopped
    emitting the aside, and kept for as long as Stiler keeps it — the fact lists now take the

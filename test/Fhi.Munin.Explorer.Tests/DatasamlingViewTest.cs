@@ -154,8 +154,11 @@ public class DatasamlingViewTest : BunitContext
             "munin-explorer-page",
             "munin-explorer-page__body",
             "munin-explorer-page__main",
-            // The wrapper each block below the name sits in, so a contents nav can anchor on it.
+            // The wrapper each block below the name sits in, so the contents nav can anchor on it.
             "munin-explorer-page__section",
+            // The contents column, drawn now that the nav fills it. The nav inside wears
+            // helsedata's own form-menu names, which is why it adds none of ours.
+            "munin-explorer-page__toc",
         ], invented);
     }
 
@@ -175,10 +178,11 @@ public class DatasamlingViewTest : BunitContext
         Assert.Equal("munin-explorer-page__body", body.ClassName);
         Assert.Contains("munin-explorer-datasamling__main", cut.Find(".munin-explorer-page__main").ClassList);
 
-        // Nothing fills the contents column yet, so the body is one child in one track rather than
-        // an empty rail beside the content. DetailPageTest pins the shape with the column in it.
-        Assert.Contains("munin-explorer-page__main", Assert.Single(body.Children).ClassList);
-        Assert.Empty(cut.FindAll(".munin-explorer-page__toc"));
+        // The contents nav fills the column, so the body is two children in two tracks and the nav
+        // comes first — ahead in the DOM of the sections it points into, not only beside them.
+        Assert.Equal(
+            ["munin-explorer-page__toc", "munin-explorer-page__main munin-explorer-datasamling__main"],
+            body.Children.Select(child => child.ClassName));
     }
 
     // ---------------------------------------------------------------------------------
@@ -334,13 +338,24 @@ public class DatasamlingViewTest : BunitContext
             section.Children.Length > 1, $"Section '{section.Id}' holds its heading and nothing else."));
     }
 
+    /// <summary>
+    /// A datasamling the catalogue has filled in nothing for beyond what it is called. Shared with
+    /// the contents tests below so both ask about the same payload.
+    /// </summary>
+    private static DatasamlingDetail Sparse() => new()
+    {
+        Id = Guid.NewGuid(),
+        Code = "D",
+        PreferredTerm = "D",
+    };
+
     [Fact]
     public void Sections_WhenTheCatalogueHasFilledInNothing_ThenTheSourceBoxStillDrawsARow()
     {
         // Why the source box survives its emptiness check on a payload this bare while the
         // statistics box beside it does not: the kildetype and identification rows both answer
         // "Ikke oppgitt" rather than nothing, and Statistics has no row with a fallback.
-        var cut = Render(new DatasamlingDetail { Id = Guid.NewGuid(), Code = "D", PreferredTerm = "D" });
+        var cut = Render(Sparse());
 
         // The whole list rather than the first row, and by label: a row added above this one is a
         // new row appearing, not the fallback going, and the two should not fail alike.
@@ -360,6 +375,131 @@ public class DatasamlingViewTest : BunitContext
         var ids = Wrappers(Render(Datasamling())).Select(section => section.Id!).ToList();
 
         Assert.Equal(ids.Distinct(StringComparer.Ordinal), ids);
+    }
+
+    // ---------------------------------------------------------------------------------
+    // The contents nav in the column beside them.
+    // ---------------------------------------------------------------------------------
+
+    /// <summary>Where the nav's entries point, in document order.</summary>
+    private static IReadOnlyList<string> Targets(IRenderedComponent<DatasamlingView> cut) =>
+        [.. cut.FindAll(".munin-explorer-page__toc a").Select(link => link.GetAttribute("href")!)];
+
+    /// <summary>What the nav's entries say, in document order.</summary>
+    private static IReadOnlyList<string> Entries(IRenderedComponent<DatasamlingView> cut) =>
+        [.. cut.FindAll(".munin-explorer-page__toc a").Select(link => link.TextContent)];
+
+    [Fact]
+    public void Contents_Always_ThenEveryEntryPointsAtASectionThatIsReallyThere()
+    {
+        // Read against the sections themselves rather than against a list written here: an entry
+        // taken off the sections a view COULD draw is the dead anchor this nav is likeliest to
+        // produce, and the two lists cannot drift apart while this compares them.
+        var cut = Render(Datasamling());
+
+        Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+        Assert.Equal(Wrappers(cut).Select(section => section.FirstElementChild!.TextContent), Entries(cut));
+    }
+
+    [Fact]
+    public void Contents_WhenABlockDrawsNothing_ThenItGetsNoEntryEither()
+    {
+        // The payload Sections_WhenABlockDrawsNothing uses, asked one column over: the criteria and
+        // the statistics both go, so the nav is down to the two blocks that are left.
+        var cut = Render(Datasamling() with
+        {
+            InclusionAndExclusionCriteria = null,
+            Frequency = null,
+            CountingUnit = null,
+            VariableCount = 0,
+        });
+
+        Assert.Equal(["#" + DetailSectionIds.Metadata, "#" + DetailSectionIds.Source], Targets(cut));
+    }
+
+    [Fact]
+    public void Contents_WhenTheSameDatasamlingIsReadInBothLanguages_ThenOnlyTheWordsDiffer()
+    {
+        // THE TRAP once more, one column over from the sections: the words translate and the hrefs
+        // must not, or a link one reader sends lands nowhere for the other.
+        var norwegian = Render(Datasamling(), language: "no");
+        var english = Render(Datasamling(), language: "en");
+
+        Assert.Equal(Targets(norwegian), Targets(english));
+        Assert.Equal(["Metadata", "Inklusjons- og eksklusjonskriterier", "Kildeinformasjon"],
+                     Entries(norwegian).Take(3));
+        Assert.Equal(["Metadata", "Inclusion and exclusion criteria", "Source information"],
+                     Entries(english).Take(3));
+    }
+
+    [Fact]
+    public void Contents_Always_ThenTheNavIsNamedInTheReadersLanguage()
+    {
+        // A landmark among the host page's own, so it says which navigation it is.
+        Assert.Equal("Innhold",
+                     Render(Datasamling(), language: "no").Find(".munin-explorer-page__toc nav").GetAttribute("aria-label"));
+        Assert.Equal("Contents",
+                     Render(Datasamling(), language: "en").Find(".munin-explorer-page__toc nav").GetAttribute("aria-label"));
+    }
+
+    [Theory]
+    [InlineData("full")]
+    [InlineData("sparse")]
+    public void Contents_WhateverTheCatalogueFilledIn_ThenEveryLinkResolvesToASectionInTheDocument(string fixture)
+    {
+        // The one assertion that catches a predicate in BuildToc drifting from the condition on its
+        // block, which is a dead in-page link no compiler and no markup test sees.
+        var cut = Render(fixture == "full" ? Datasamling() : Sparse());
+
+        Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+
+        // Resolved through the DOM rather than compared as strings: `#metadata` is also the CSS
+        // selector for the element it has to land on, so this is the browser's own question.
+        Assert.All(Targets(cut), href => Assert.NotNull(cut.Find(href)));
+    }
+
+    [Fact]
+    public void Contents_WhenTheCatalogueFilledInNothing_ThenOnlyTheSourceBoxIsNamed()
+    {
+        // Three of the four go. The source box survives because its kildetype row falls back to
+        // "Ikke oppgitt", which is a row and therefore content — the same reason the variable and
+        // kilde views keep theirs on a payload this bare.
+        Assert.Equal(["#" + DetailSectionIds.Source], Targets(Render(Sparse())));
+    }
+
+    [Fact]
+    public void Contents_WhenTheDatasamlingIsReplacedAfterTheFirstRender_ThenTheNavIsRebuiltWithIt()
+    {
+        // Toc is cached and rebuilt only in OnParametersSet, so every predicate it reads has to be
+        // a parameter or derived from one. They all hang off Datasamling, and this is what says so
+        // if one stops doing.
+        var cut = Render(Sparse());
+
+        Assert.Equal(["#" + DetailSectionIds.Source], Targets(cut));
+
+        cut.Render(p => p.Add(c => c.Datasamling, Datasamling()));
+
+        Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+        Assert.Contains("#" + DetailSectionIds.Metadata, Targets(cut));
+    }
+
+    [Theory]
+    [InlineData("yearly", "Statistikk (Årsbasert)")]
+    [InlineData("accumulated", "Statistikk (Akkumulert)")]
+    [InlineData(null, "Statistikk")]
+    public void Contents_WhateverTheStatisticsTypeIs_ThenTheNavEntrySaysWhatTheHeadingSays(
+        string? statisticsType, string expected)
+    {
+        // The one entry whose words are not a fixed text: the catalogue's own statistikktype sits
+        // inside this heading. The nav names the block without drawing it, so this is where the two
+        // could say different things with nothing failing.
+        var cut = Render(Datasamling() with { StatisticsType = statisticsType });
+
+        var heading = cut.Find($"#{DetailSectionIds.Statistics}").FirstElementChild!.TextContent;
+        var entry = cut.Find($".munin-explorer-page__toc a[href='#{DetailSectionIds.Statistics}']").TextContent;
+
+        Assert.Equal(expected, heading);
+        Assert.Equal(heading, entry);
     }
 
     // ---------------------------------------------------------------------------------

@@ -378,8 +378,11 @@ public class KildeViewTest : BunitContext
             "munin-explorer-page",
             "munin-explorer-page__body",
             "munin-explorer-page__main",
-            // The wrapper each block below the name sits in, so a contents nav can anchor on it.
+            // The wrapper each block below the name sits in, so the contents nav can anchor on it.
             "munin-explorer-page__section",
+            // The contents column, drawn now that the nav fills it. The nav inside wears
+            // helsedata's own form-menu names, which is why it adds none of ours.
+            "munin-explorer-page__toc",
         ], invented);
     }
 
@@ -400,10 +403,11 @@ public class KildeViewTest : BunitContext
         Assert.Equal("munin-explorer-page__body", body.ClassName);
         Assert.Contains("munin-explorer-kilde__main", cut.Find(".munin-explorer-page__main").ClassList);
 
-        // Nothing fills the contents column yet, so the body is one child in one track rather than
-        // an empty rail beside the content. DetailPageTest pins the shape with the column in it.
-        Assert.Contains("munin-explorer-page__main", Assert.Single(body.Children).ClassList);
-        Assert.Empty(cut.FindAll(".munin-explorer-page__toc"));
+        // The contents nav fills the column, so the body is two children in two tracks and the nav
+        // comes first — ahead in the DOM of the sections it points into, not only beside them.
+        Assert.Equal(
+            ["munin-explorer-page__toc", "munin-explorer-page__main munin-explorer-kilde__main"],
+            body.Children.Select(child => child.ClassName));
     }
 
     // ---------------------------------------------------------------------------------
@@ -1332,13 +1336,24 @@ public class KildeViewTest : BunitContext
                                                          $"Section '{section.Id}' holds its heading and nothing else."));
     }
 
+    /// <summary>
+    /// A source the catalogue has filled in nothing for beyond what it is called. Shared with the
+    /// contents tests below so both ask about the same payload.
+    /// </summary>
+    private static KildeDetail Sparse() => new()
+    {
+        Id = Guid.NewGuid(),
+        Code = "K",
+        PreferredTerm = "K",
+    };
+
     [Fact]
     public void Sections_WhenTheCatalogueHasFilledInNothing_ThenBothFactBoxesStillDrawARow()
     {
         // Why both fact boxes survive their emptiness checks on a payload this bare:
         // KildeTypeLabel answers "Ikke oppgitt" for a source carrying no kildetype and
         // TotalVariables is an int, so no payload the catalogue can send empties either list.
-        var cut = Render(new KildeDetail { Id = Guid.NewGuid(), Code = "K_X", PreferredTerm = "X" });
+        var cut = Render(Sparse());
 
         // Named rather than merely counted, so taking a fallback away fails here saying which row
         // went, rather than somewhere else saying a box was empty.
@@ -1356,6 +1371,143 @@ public class KildeViewTest : BunitContext
         var ids = Wrappers(Render(Study())).Select(section => section.Id!).ToList();
 
         Assert.Equal(ids.Distinct(StringComparer.Ordinal), ids);
+    }
+
+    // ---------------------------------------------------------------------------------
+    // The contents nav in the column beside them.
+    // ---------------------------------------------------------------------------------
+
+    /// <summary>Where the nav's entries point, in document order.</summary>
+    private static IReadOnlyList<string> Targets(IRenderedComponent<KildeView> cut) =>
+        [.. cut.FindAll(".munin-explorer-page__toc a").Select(link => link.GetAttribute("href")!)];
+
+    /// <summary>What the nav's entries say, in document order.</summary>
+    private static IReadOnlyList<string> Entries(IRenderedComponent<KildeView> cut) =>
+        [.. cut.FindAll(".munin-explorer-page__toc a").Select(link => link.TextContent)];
+
+    [Fact]
+    public void Contents_Always_ThenEveryEntryPointsAtASectionThatIsReallyThere()
+    {
+        // The failure this nav is likeliest to produce: an entry taken off a static list of the
+        // sections a view COULD draw, pointing at an anchor that one suppressed. Read against the
+        // sections themselves rather than against a list written here, so neither can drift alone.
+        var cut = Render(Study());
+
+        Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+        Assert.Equal(Wrappers(cut).Select(section => section.FirstElementChild!.TextContent), Entries(cut));
+    }
+
+    [Fact]
+    public void Contents_WhenABlockDrawsNothing_ThenItGetsNoEntryEither()
+    {
+        // The same payload Sections_WhenABlockDrawsNothing uses, asked one column over: a source
+        // with no curated metadata draws no metadata section, so the nav must not offer one.
+        var cut = Render(Kilde() with { PropertyMetadata = [], AdditionalProperties = new Dictionary<string, string?>() });
+
+        Assert.DoesNotContain("#" + DetailSectionIds.Metadata, Targets(cut));
+        Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+    }
+
+    [Fact]
+    public void Contents_WhenTheSameSourceIsReadInBothLanguages_ThenOnlyTheWordsDiffer()
+    {
+        // THE TRAP once more, one column over from the sections: the words translate and the hrefs
+        // must not, or a link a Norwegian reader sends lands nowhere for an English one.
+        var norwegian = Render(Kilde(), language: "no");
+        var english = Render(Kilde(), language: "en");
+
+        Assert.Equal(Targets(norwegian), Targets(english));
+        Assert.Equal(["Metadata", "Datasamlinger", "Kildeinformasjon", "Statistikk"], Entries(norwegian));
+        Assert.Equal(["Metadata", "Data collections", "Source information", "Statistics"], Entries(english));
+    }
+
+    [Fact]
+    public void Contents_Always_ThenTheNavIsNamedInTheReadersLanguage()
+    {
+        // A landmark among the host page's own, so it says which navigation it is. The nav itself
+        // wears no class: the column around it is what Stiler makes sticky.
+        Assert.Equal("Innhold",
+                     Render(Kilde(), language: "no").Find(".munin-explorer-page__toc nav").GetAttribute("aria-label"));
+        Assert.Equal("Contents",
+                     Render(Kilde(), language: "en").Find(".munin-explorer-page__toc nav").GetAttribute("aria-label"));
+    }
+
+    [Theory]
+    [InlineData("study")]
+    [InlineData("kilde")]
+    [InlineData("sparse")]
+    public void Contents_WhateverTheCatalogueFilledIn_ThenEveryLinkResolvesToASectionInTheDocument(string fixture)
+    {
+        // The one assertion that catches a predicate in BuildToc drifting from the condition on its
+        // block, which is a dead in-page link no compiler and no markup test sees. Asked of a source
+        // with delkilder, one without, and one with nothing at all.
+        var cut = Render(fixture switch { "study" => Study(), "kilde" => Kilde(), _ => Sparse() });
+
+        Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+
+        // Resolved through the DOM rather than compared as strings: `#metadata` is also the CSS
+        // selector for the element it has to land on, so this is the browser's own question.
+        Assert.All(Targets(cut), href => Assert.NotNull(cut.Find(href)));
+    }
+
+    [Fact]
+    public void Contents_WhenTheCatalogueFilledInNothing_ThenOnlyTheBlocksWithNoEmptyStateAreNamed()
+    {
+        // Three of the four survive a payload this bare, for three different reasons: the datasamling
+        // tree has no empty state at all, the counts box always has a total to report, and the source
+        // box falls back to "Ikke oppgitt". Only the curated metadata goes.
+        Assert.Equal(["#" + DetailSectionIds.DataCollections, "#" + DetailSectionIds.Source,
+                      "#" + DetailSectionIds.Statistics],
+                     Targets(Render(Sparse())));
+    }
+
+    [Fact]
+    public void Contents_WhenTheSourceIsReplacedAfterTheFirstRender_ThenTheNavIsRebuiltWithIt()
+    {
+        // Toc is cached and rebuilt only in OnParametersSet, so every predicate it reads has to be
+        // a parameter or derived from one. They are — Groups, SourceInformation, Statistics and the
+        // delkilde count all hang off Kilde — and this is what says so if one stops being.
+        var cut = Render(Sparse());
+
+        Assert.DoesNotContain("#" + DetailSectionIds.Metadata, Targets(cut));
+
+        cut.Render(p => p.Add(c => c.Kilde, Study()));
+
+        Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+        Assert.Contains("#" + DetailSectionIds.Metadata, Targets(cut));
+    }
+
+    [Fact]
+    public void Contents_WhenTheDatasamlingHeadingFollowsTheSource_ThenTheNavSaysWhatTheBlockSays()
+    {
+        // The one entry whose words are not a fixed text: a source with delkilder heads this block
+        // differently from one without, and a host overrides both with DataCollectionsHeading. The
+        // nav names the block without drawing it, so the two could differ with nothing failing.
+        (KildeDetail Kilde, string? Heading)[] cases =
+        [
+            (Kilde(), null),
+            (Study(), null),
+            // The parameter half of `DataCollectionsHeading ?? DefaultDataCollectionsHeading`, the
+            // only half a host moves and the only path on which the coalesce is written twice.
+            (Kilde(), "Mine datasamlinger"),
+        ];
+
+        foreach (var (kilde, heading) in cases)
+        {
+            var cut = Render(kilde, dataCollectionsHeading: heading);
+            var entry = cut.Find($".munin-explorer-page__toc a[href='#{DetailSectionIds.DataCollections}']");
+
+            Assert.Equal(
+                cut.Find($"#{DetailSectionIds.DataCollections}").FirstElementChild!.TextContent,
+                entry.TextContent);
+
+            // Both halves falling back to the default would agree too, which is a different defect
+            // and not one this comparison can see.
+            if (heading is not null)
+            {
+                Assert.Equal(heading, entry.TextContent.Trim());
+            }
+        }
     }
 
     // ---------------------------------------------------------------------------------

@@ -27,6 +27,11 @@ public sealed class DetailSection : ComponentBase
     /// The element id, which a reader's deep link ends in. A fixed English literal, never derived
     /// from the heading: the headings are bilingual, so a derived id would differ between nb and en.
     /// </summary>
+    /// <remarks>
+    /// Nothing per-instance goes in it, so a page mounts one detail view. Two of them write these
+    /// ids twice, and the second view's contents nav then scrolls the reader into the first view's
+    /// sections, because a browser resolves a fragment to the first element that matches.
+    /// </remarks>
     [Parameter, EditorRequired]
     public string Id { get; set; } = "";
 

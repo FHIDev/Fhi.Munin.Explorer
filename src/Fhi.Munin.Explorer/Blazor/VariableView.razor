@@ -3,7 +3,8 @@
 @if (Variable is { } variable)
 {
     <DetailPage ViewRoot="munin-explorer-whole"
-                ViewMain="munin-explorer-whole__main">
+                ViewMain="munin-explorer-whole__main"
+                Contents="@DetailToc.Column(Toc, T.HeadingContents)">
         <Header>
             <div class="munin-explorer-whole__header">
                 @{ var named = T.Named(variable.PreferredTerm, variable.Code); }
@@ -28,12 +29,12 @@
         </Header>
         <ChildContent>
 
-            @* Every block below is a <section> carrying a fixed English id, so a contents nav
-               can anchor on it and a link into one is the same link in either language. Where a
-               block can come out empty the wrapper sits INSIDE that check, never around it. *@
+            @* Every block below is a <section> carrying a fixed English id, and draws exactly when
+               Drawn says the contents nav names it — one predicate per section, so the nav can
+               never link to a block left out, in either language. *@
 
             @* Resolved from the payload, exactly as the kilde view resolves a source's. *@
-            @if (Groups.Count > 0)
+            @if (Drawn(DetailSectionIds.Metadata))
             {
                 <DetailSection Id="@DetailSectionIds.Metadata">
                     @DetailBlocks.Heading(BlockLevel, T.HeadingMetadata, "headline headline-s")
@@ -49,7 +50,7 @@
                rebuilt here, so this view wraps none of it in a section. *@
             @Sections
 
-            @if (Versions.Count > 0)
+            @if (Drawn(DetailSectionIds.Versions))
             {
                 <DetailSection Id="@DetailSectionIds.Versions">
                     @DetailBlocks.Heading(BlockLevel, T.HeadingVersionHistory, "headline headline-s")
@@ -60,7 +61,7 @@
             @* Heading and table both, or neither — the block answers the emptiness question
                itself, and StatisticsBlock.AnyStatistics is that same answer, so this view and
                the row's Data tab cannot disagree about it. *@
-            @if (StatisticsBlock.AnyStatistics(variable))
+            @if (Drawn(DetailSectionIds.Statistics))
             {
                 <DetailSection Id="@DetailSectionIds.Statistics">
                     @StatisticsBlock.For(variable, BlockLevel, "headline headline-s", T)
@@ -74,7 +75,7 @@
             @* Checked although it does not empty under this package's own texts: the row that
                keeps it full falls back to Texts.NotSpecified, a string the host constructs, so
                presence follows the content rather than that string. *@
-            @if (DetailBlocks.AnyFacts(SourceInformation))
+            @if (Drawn(DetailSectionIds.Source))
             {
                 <DetailSection Id="@DetailSectionIds.Source">
                     @DetailBlocks.Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
@@ -82,23 +83,23 @@
                 </DetailSection>
             }
 
-            @if (CatalogueDate.Period(variable.DataFrom, variable.DataTo, Language, T, Dates) is { } period)
+            @if (Drawn(DetailSectionIds.DataPeriod))
             {
                 <DetailSection Id="@DetailSectionIds.DataPeriod">
                     @DetailBlocks.Heading(BlockLevel, T.FieldDataPeriod, "headline headline-s")
-                    <p class="margin--none">@period</p>
+                    <p class="margin--none">@DataPeriod</p>
                 </DetailSection>
             }
 
-            @if (!string.IsNullOrWhiteSpace(variable.DataType))
+            @if (Drawn(DetailSectionIds.DataType))
             {
                 <DetailSection Id="@DetailSectionIds.DataType">
                     @DetailBlocks.Heading(BlockLevel, T.FieldDataType, "headline headline-s")
-                    <p class="margin--none">@T.DataTypeLabel(variable.DataType)</p>
+                    <p class="margin--none">@DataTypeLabel</p>
                 </DetailSection>
             }
 
-            @if (variable.AllVariabelgrupper.Count > 0)
+            @if (Drawn(DetailSectionIds.VariableGroups))
             {
                 <DetailSection Id="@DetailSectionIds.VariableGroups">
                     @DetailBlocks.Heading(BlockLevel, T.FieldVariableGroups, "headline headline-s")
@@ -111,7 +112,7 @@
                 </DetailSection>
             }
 
-            @if (variable.AllDatasamlinger.Count > 0)
+            @if (Drawn(DetailSectionIds.DataCollections))
             {
                 <DetailSection Id="@DetailSectionIds.DataCollections">
                     @DetailBlocks.Heading(BlockLevel, T.HeadingDataCollections, "headline headline-s")

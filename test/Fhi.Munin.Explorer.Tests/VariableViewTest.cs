@@ -83,10 +83,11 @@ public class VariableViewTest : BunitContext
         Assert.Equal("munin-explorer-page__body", body.ClassName);
         Assert.Contains("munin-explorer-whole__main", cut.Find(".munin-explorer-page__main").ClassList);
 
-        // Nothing fills the contents column yet, so the body is one child in one track rather than
-        // an empty rail beside the content. DetailPageTest pins the shape with the column in it.
-        Assert.Contains("munin-explorer-page__main", Assert.Single(body.Children).ClassList);
-        Assert.Empty(cut.FindAll(".munin-explorer-page__toc"));
+        // The contents nav fills the column, so the body is two children in two tracks and the nav
+        // comes first — ahead in the DOM of the sections it points into, not only beside them.
+        Assert.Equal(
+            ["munin-explorer-page__toc", "munin-explorer-page__main munin-explorer-whole__main"],
+            body.Children.Select(child => child.ClassName));
     }
 
     [Fact]
@@ -707,13 +708,24 @@ public class VariableViewTest : BunitContext
             section.Children.Length > 1, $"Section '{section.Id}' holds its heading and nothing else."));
     }
 
+    /// <summary>
+    /// A variable the catalogue has filled in nothing for, which is seven of the eight blocks gone.
+    /// Shared with the contents tests below so both ask about the same payload.
+    /// </summary>
+    private static VariableDetail Sparse() => new()
+    {
+        Id = Guid.NewGuid(),
+        Code = "V",
+        PreferredTerm = "V",
+    };
+
     [Fact]
     public void Sections_WhenTheCatalogueHasFilledInNothing_ThenTheSourceBoxStillDrawsARow()
     {
         // Why the source box survives its emptiness check on a payload this bare: KildeTypeLabel
         // answers "Ikke oppgitt" for a variable naming no source, so the list keeps a row even
         // with all three of its fields blank.
-        var facts = Render(new VariableDetail { Id = Guid.NewGuid(), Code = "V", PreferredTerm = "V" })
+        var facts = Render(Sparse())
             .Find($"#{DetailSectionIds.Source} dl.munin-explorer-meta__grid");
 
         // The whole list rather than its first row: a row added above this one is a new row
@@ -731,5 +743,166 @@ public class VariableViewTest : BunitContext
         var ids = Wrappers(Render(Whole())).Select(section => section.Id!).ToList();
 
         Assert.Equal(ids.Distinct(StringComparer.Ordinal), ids);
+    }
+
+    // ---------------------------------------------------------------------------------
+    // The contents nav in the column beside them.
+    // ---------------------------------------------------------------------------------
+
+    /// <summary>Where the nav's entries point, in document order.</summary>
+    private static IReadOnlyList<string> Targets(IRenderedComponent<VariableView> cut) =>
+        [.. cut.FindAll(".munin-explorer-page__toc a").Select(link => link.GetAttribute("href")!)];
+
+    /// <summary>What the nav's entries say, in document order.</summary>
+    private static IReadOnlyList<string> Entries(IRenderedComponent<VariableView> cut) =>
+        [.. cut.FindAll(".munin-explorer-page__toc a").Select(link => link.TextContent)];
+
+    [Fact]
+    public void Contents_Always_ThenEveryEntryPointsAtASectionThatIsReallyThere()
+    {
+        // All eight blocks, read against the sections themselves rather than against a list written
+        // here: an entry taken off the sections a view COULD draw is the dead anchor this nav is
+        // likeliest to produce, and the two cannot drift apart while this compares them.
+        var cut = Render(Whole());
+
+        Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+        Assert.Equal(Wrappers(cut).Select(section => section.FirstElementChild!.TextContent), Entries(cut));
+    }
+
+    [Fact]
+    public void Contents_WhenABlockDrawsNothing_ThenItGetsNoEntryEither()
+    {
+        // The plain fixture, which suppresses five of the eight — the statistics block among them,
+        // whose emptiness check lives in StatisticsBlock rather than in this view. A nav offering
+        // any of the five would be offering a link to an anchor that is not in the document.
+        var cut = Render(Detail());
+
+        Assert.Equal(
+            ["#" + DetailSectionIds.Metadata, "#" + DetailSectionIds.Source, "#" + DetailSectionIds.DataType],
+            Targets(cut));
+    }
+
+    [Fact]
+    public void Contents_WhenTheSameVariableIsReadInBothLanguages_ThenOnlyTheWordsDiffer()
+    {
+        // THE TRAP once more, one column over from the sections: the words translate and the hrefs
+        // must not, or a link one reader sends lands nowhere for the other.
+        var norwegian = Render(Whole(), "no");
+        var english = Render(Whole(), "en");
+
+        Assert.Equal(Targets(norwegian), Targets(english));
+
+        // The statistics entry is left out of both, for the reason HeadingsExceptStatistics gives:
+        // the catalogue's own statistikktype is inside that heading.
+        Assert.Equal(
+            ["Metadata", "Versjonshistorikk", "Kildeinformasjon", "Dataperiode", "Datatype",
+             "Variabelgrupper", "Datasamlinger"],
+            Entries(norwegian).Where((_, index) => index != 2));
+        Assert.Equal(
+            ["Metadata", "Version history", "Source information", "Data period", "Data type",
+             "Variable groups", "Data collections"],
+            Entries(english).Where((_, index) => index != 2));
+    }
+
+    [Fact]
+    public void Contents_Always_ThenTheNavIsNamedInTheReadersLanguage()
+    {
+        // A landmark among the host page's own, so it says which navigation it is.
+        Assert.Equal("Innhold",
+                     Render(Whole(), "no").Find(".munin-explorer-page__toc nav").GetAttribute("aria-label"));
+        Assert.Equal("Contents",
+                     Render(Whole(), "en").Find(".munin-explorer-page__toc nav").GetAttribute("aria-label"));
+    }
+
+    [Theory]
+    [InlineData("whole")]
+    [InlineData("plain")]
+    [InlineData("sparse")]
+    public void Contents_WhateverTheCatalogueFilledIn_ThenEveryLinkResolvesToASectionInTheDocument(string fixture)
+    {
+        // The one assertion that catches a predicate in BuildToc drifting from the condition on its
+        // block, which is a dead in-page link no compiler and no markup test sees. Asked of a full
+        // payload, a plain one and one with nothing in it at all, because a list and a set of
+        // predicates agree most easily when everything is present.
+        var cut = Render(fixture switch { "whole" => Whole(), "plain" => Detail(), _ => Sparse() });
+
+        Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+
+        // Resolved through the DOM rather than compared as strings: `#metadata` is also the CSS
+        // selector for the element it has to land on, so this is the browser's own question.
+        Assert.All(Targets(cut), href => Assert.NotNull(cut.Find(href)));
+    }
+
+    [Fact]
+    public void Contents_WhenTheCatalogueFilledInNothing_ThenOneEntrySurvivesAndTheColumnIsStillDrawn()
+    {
+        // Sparse() suppresses seven of the eight and the source box keeps the last one, so the
+        // emptiest nav this view can reach is one entry and the column is drawn. The no-entries
+        // path — a null Column, no rail at all — is unreachable here and pinned in DetailTocTest.
+        var cut = Render(Sparse());
+
+        Assert.Equal(["#" + DetailSectionIds.Source], Targets(cut));
+        Assert.Single(cut.FindAll(".munin-explorer-page__toc"));
+    }
+
+    [Fact]
+    public void Contents_WhenTheVariableIsReplacedAfterTheFirstRender_ThenTheNavIsRebuiltWithIt()
+    {
+        // Toc is cached and rebuilt only in OnParametersSet, so every predicate it reads has to be
+        // a parameter or something derived from one. They are — Groups, Versions, SourceInformation
+        // and both lists all hang off Variable — and this is what says so if one stops being.
+        var cut = Render(Sparse());
+
+        Assert.Equal(["#" + DetailSectionIds.Source], Targets(cut));
+
+        cut.Render(p => p.Add(c => c.Variable, Whole()));
+
+        Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+        Assert.Contains("#" + DetailSectionIds.Versions, Targets(cut));
+    }
+
+    [Theory]
+    [InlineData("yearly", "Statistikk (Årsbasert)")]
+    [InlineData("accumulated", "Statistikk (Akkumulert)")]
+    [InlineData("akkumulert", "Statistikk (Akkumulert)")]
+    [InlineData("kvartalsvis", "Statistikk (kvartalsvis)")]
+    [InlineData(null, "Statistikk")]
+    public void Contents_WhateverTheStatisticsTypeIs_ThenTheNavEntrySaysWhatTheHeadingSays(
+        string? statisticsType, string expected)
+    {
+        // The nav has to name this block without drawing it, and the block names itself from a
+        // field. Two spellings of that would be two spellings of one fact — a reader sees one
+        // wording in the nav and another over what it jumps to, and nothing fails. Every type the
+        // catalogue has been seen to send, plus one it has not, plus none at all.
+        var cut = Render(Whole() with { DatasamlingStatisticsType = statisticsType });
+
+        var heading = cut.Find($"#{DetailSectionIds.Statistics}").FirstElementChild!.TextContent;
+        var entry = cut.Find($".munin-explorer-page__toc a[href='#{DetailSectionIds.Statistics}']").TextContent;
+
+        Assert.Equal(expected, heading);
+        Assert.Equal(heading, entry);
+    }
+
+    [Fact]
+    public void DataType_WhenTheCatalogueHoldsOnlyWhitespace_ThenNeitherTheBlockNorItsNavEntryIsDrawn()
+    {
+        // Present but blank is its own case, and the branch that tells it from null is the one no
+        // rich fixture reaches: a section reading "Datatype" over an empty paragraph, and a nav
+        // entry pointing at it.
+        var cut = Render(Detail() with { DataType = "   " });
+
+        Assert.DoesNotContain(DetailSectionIds.DataType, Wrappers(cut).Select(section => section.Id!));
+        Assert.DoesNotContain("#" + DetailSectionIds.DataType, Targets(cut));
+    }
+
+    [Fact]
+    public void Sections_WhenTwoOfThisViewAreDrawn_ThenBothWriteTheSameIdsRatherThanIdsOfTheirOwn()
+    {
+        // The deep-link promise and its price in one assertion. Nothing per-instance goes in these
+        // ids, so a link one reader sends another lands in the same place — and TWO of these views
+        // in one document would therefore carry every id twice, with the browser resolving each
+        // nav link to the first. That is why a page mounts one; DetailSectionIds has the reasoning.
+        Assert.Equal(Wrappers(Render(Whole())).Select(section => section.Id!),
+                     Wrappers(Render(Whole())).Select(section => section.Id!));
     }
 }

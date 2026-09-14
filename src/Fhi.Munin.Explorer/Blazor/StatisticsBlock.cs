@@ -40,7 +40,7 @@ internal static class StatisticsBlock
 
         builder.OpenElement(0, $"h{headingLevel}");
         builder.AddAttribute(1, "class", headingClass);
-        builder.AddContent(2, Heading(variable.DatasamlingStatisticsType, texts));
+        builder.AddContent(2, HeadingFor(variable, texts));
         builder.CloseElement();
 
         var rows = Rows(variable);
@@ -67,6 +67,18 @@ internal static class StatisticsBlock
     /// </remarks>
     internal static bool AnyStatistics([NotNullWhen(true)] VariableDetail? variable) =>
         variable is { Statistics.Count: > 0 };
+
+    /// <summary>
+    /// The heading <see cref="For"/> will emit for this variable, for a caller that has to name
+    /// the block without drawing it.
+    /// </summary>
+    /// <remarks>
+    /// The contents nav labels its statistics entry with this. Read rather than rebuilt from
+    /// <see cref="Heading"/> at the call site: which field the heading is named from is this
+    /// block's answer, so a second spelling of it here would drift with nothing failing.
+    /// </remarks>
+    internal static string HeadingFor(VariableDetail? variable, Texts texts) =>
+        Heading(variable?.DatasamlingStatisticsType, texts);
 
     /// <summary>
     /// The heading, which names the kind of statistics rather than just saying "Statistikk".
