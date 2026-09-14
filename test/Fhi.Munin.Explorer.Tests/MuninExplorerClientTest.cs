@@ -851,11 +851,11 @@ public class MuninExplorerClientTest
     }
 
     [Fact]
-    public async Task GetFiltersAsync_WhenADatasamlingCarriesNoCategoriesKeyOrAnExplicitNull_ThenBothReadAsEmpty()
+    public async Task GetFiltersAsync_WhenADatasamlingCarriesNoCategoriesKey_ThenItReadsAsEmpty()
     {
-        // The deployed API sends the key on every row, so neither shape is live today: the first is
-        // an API predating Fhi.Metadata-h8gry and the second is the explicit null Munin writes
-        // elsewhere. A caller iterates Categories without a null check either way.
+        // runa sends the key on all 308 rows, so this is an API predating Fhi.Metadata-h8gry — and
+        // filters.json, which predates it too and is re-captured under Fhi.Metadata-uqyh7, once
+        // hierarkiVariabelgrupper has somewhere to land. A caller reads Categories either way.
         var filters = await WithJson("""
             {
               "datasamlinger": [
@@ -865,21 +865,12 @@ public class MuninExplorerClientTest
                   "delkildeId": null,
                   "kildeId": "6f1d4a5c-0000-4000-8000-000000000001",
                   "count": 3
-                },
-                {
-                  "id": "6f1d4a5c-0000-4000-8000-000000000104",
-                  "name": "Med eksplisitt null",
-                  "delkildeId": null,
-                  "kildeId": "6f1d4a5c-0000-4000-8000-000000000001",
-                  "count": 2,
-                  "categories": null
                 }
               ]
             }
             """).GetFiltersAsync();
 
-        Assert.Equal(2, filters.Datasamlinger.Count);
-        Assert.All(filters.Datasamlinger, datasamling => Assert.Empty(datasamling.Categories));
+        Assert.Empty(Assert.Single(filters.Datasamlinger).Categories);
     }
 
     [Fact]
@@ -988,6 +979,30 @@ public class MuninExplorerClientTest
 
         Assert.Empty(page.Items);
         Assert.Equal(0, page.TotalCount);
+    }
+
+    [Fact]
+    public async Task GetFiltersAsync_WhenADatasamlingsCategoriesArriveAsAnExplicitNull_ThenTheyAreReadAsEmpty()
+    {
+        // The same rule on a facet row, where a caller reads Categories per row in a loop and has
+        // no obvious place to put a null check. Nothing about this list is special —
+        // NullAsEmptyCollectionsTest is what keeps the converter matching every IReadOnlyList<T>.
+        var filters = await WithJson("""
+            {
+              "datasamlinger": [
+                {
+                  "id": "6f1d4a5c-0000-4000-8000-000000000104",
+                  "name": "Med eksplisitt null",
+                  "delkildeId": null,
+                  "kildeId": "6f1d4a5c-0000-4000-8000-000000000001",
+                  "count": 2,
+                  "categories": null
+                }
+              ]
+            }
+            """).GetFiltersAsync();
+
+        Assert.Empty(Assert.Single(filters.Datasamlinger).Categories);
     }
 
     [Fact]
