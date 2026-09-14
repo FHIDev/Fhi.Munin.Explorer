@@ -1,19 +1,23 @@
 @namespace Fhi.Munin.Explorer.Blazor
 
-<div class="munin-explorer-page @LegacyRoot">
+<div class="@RootClasses">
 
     @Header
 
-    @* The chassis name alone. The legacy `__body` names are a two-track grid on every published
-       Stiler, and the contents column below is a second child for that second track to catch —
-       which is the 320px rail Fhi.Metadata-35w0p.6 took the main column out of. *@
+    @* The chassis name alone. Every published Stiler lays the three views' own `__body` names out
+       as a grid of their own, and two `grid-template-columns` on one element are settled by source
+       order rather than by either stylesheet meaning it. *@
     <div class="munin-explorer-page__body">
 
-        @* Drawn whether or not anything fills it: the chassis body is a grid whose first track is a
-           fixed 250px, so a body holding the main column alone would lay that column out in it. *@
-        <div class="munin-explorer-page__toc">@Contents</div>
+        @* Only when something fills it: the body's second track is declared for a body that has
+           this column, so an unfilled page is one child in one track and costs no rail and no gap
+           at any width. *@
+        @if (Contents is not null)
+        {
+            <div class="munin-explorer-page__toc">@Contents</div>
+        }
 
-        <div class="munin-explorer-page__main @LegacyMain">
+        <div class="@MainClasses">
             @ChildContent
         </div>
     </div>

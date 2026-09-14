@@ -14,17 +14,16 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// and a fourth surface would have made it four.
 /// </para>
 /// <para>
-/// The legacy names are parameters rather than a prefix this component completes, because a name
-/// assembled at runtime is invisible to the two checks that reconcile what the package emits
+/// Each view's own names are parameters rather than a prefix this component completes, because a
+/// name assembled at runtime is invisible to the two checks that reconcile what the package emits
 /// against the README inventory and the sample stylesheets — both read literals out of
 /// <c>src/</c>. Passing <c>munin-explorer-kilde__main</c> whole keeps the name greppable.
 /// </para>
 /// <para>
 /// The body is the one element that sheds its older name instead of wearing both, and so takes no
-/// legacy parameter at all: every published Stiler still lays the three views' own body names out
-/// as <c>minmax(0, 1fr) 320px</c>, the track the aside used to fill, and the contents column this
-/// chassis always emits is a second child for that second track to catch — which put the main
-/// column back in the 320px rail Fhi.Metadata-35w0p.6 took it out of.
+/// parameter at all: every published Stiler lays the three views' own body names out as a grid of
+/// their own, and an element wearing both names would carry two <c>grid-template-columns</c>
+/// declarations from two blocks, with source order rather than either stylesheet deciding it.
 /// </para>
 /// <para>
 /// Public only because a Razor component must be, in the way <see cref="DetailSection"/> and
@@ -44,11 +43,11 @@ public sealed partial class DetailPage : ComponentBase
     /// surface this chassis has nothing to do with.
     /// </remarks>
     [Parameter, EditorRequired]
-    public string LegacyRoot { get; set; } = "";
+    public string ViewRoot { get; set; } = "";
 
     /// <summary>The view's own main-column class, worn beside <c>munin-explorer-page__main</c>.</summary>
     [Parameter, EditorRequired]
-    public string LegacyMain { get; set; } = "";
+    public string ViewMain { get; set; } = "";
 
     /// <summary>
     /// The name block: the heading, the identifiers under it, and the description. It sits above
@@ -58,13 +57,29 @@ public sealed partial class DetailPage : ComponentBase
     public RenderFragment? Header { get; set; }
 
     /// <summary>
-    /// The contents column, beside the main one. Its element is drawn whether this is set or not —
-    /// see the remark in the markup — so an unset one is an empty column rather than no column.
+    /// The contents column, beside the main one. Its element is drawn only when this is set, so a
+    /// view that passes nothing draws one column in one track rather than an empty rail beside it.
     /// </summary>
+    /// <remarks>
+    /// Nothing in the package sets it yet: the contents nav that fills it is <c>Fhi.Metadata-35w0p.12</c>,
+    /// and the column it lands in is declared here so that the nav is markup and a stylesheet rule
+    /// rather than a new element as well.
+    /// </remarks>
     [Parameter]
     public RenderFragment? Contents { get; set; }
 
     /// <summary>The main column: every section the view draws, in the order it draws them.</summary>
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
+
+    private string RootClasses => Beside("munin-explorer-page", ViewRoot);
+
+    private string MainClasses => Beside("munin-explorer-page__main", ViewMain);
+
+    /// <summary>
+    /// The chassis name and the view's own, with no trailing space when a caller passes none —
+    /// the class list is what the exact-name tests tokenise, and an empty name is not a name.
+    /// </summary>
+    private static string Beside(string chassis, string view) =>
+        string.IsNullOrWhiteSpace(view) ? chassis : $"{chassis} {view}";
 }

@@ -382,15 +382,17 @@ These are not style preferences — each one is a host that breaks otherwise.
     styled under `munin-explorer-kilder__expanded` in an expanded result row, so a clean rename
     would have taken a surface nobody would think to retest with it. The body is the exception and
     wears `munin-explorer-page__body` alone: every published Stiler still lays
-    `munin-explorer-kilde__body` and its two siblings out as `minmax(0, 1fr) 320px`, the track the
-    aside used to fill, and the contents column below is a second child for that second track to
-    catch — which put the main column back in the 320px rail `Fhi.Metadata-35w0p.6` took it out
-    of. Handles, all four — undefined, the body and its two columns are blocks in ordinary flow,
-    which stacks the contents column above the main one and loses no words. Stiler's rules are written, in the same
+    `munin-explorer-kilde__body` and its two siblings out as `minmax(0, 1fr) 320px`, so an element
+    wearing an old name and the chassis name would carry a `grid-template-columns` from each of two
+    blocks and draw whichever the host loaded last. Handles, all four — undefined, the body and its
+    two columns are blocks in ordinary flow, which stacks the contents column above the main one and
+    loses no words. Stiler's rules are written, in the same
     `_page.scss` and merged as PR 39300, and that PR bumped no version either, so no published
-    Stiler draws the two-track body yet. The contents column is drawn whether anything fills it or
-    not: its track is a fixed 250px, and a body holding only the main column would lay that column
-    out in it.
+    Stiler draws the two-track body yet. The contents column is drawn only when something fills it,
+    and nothing in the package does until the contents nav ships (`Fhi.Metadata-35w0p.12`) — so the
+    two-track rule is scoped to a body that has one, in both sample stylesheets and in the Stiler
+    rule before it publishes (`Fhi.Metadata-ex5wb`). Ungated, a fixed 250px first track would lay a
+    lone main column out in it.
   - Names that carry meaning nothing else carries, so a host without Stiler's rules has to draw
     them itself: `munin-explorer-crumb` carries the link affordance for a trail step, which is a
     `<button>` — the kilde step of the panel's kilde trail, and every step of the hierarchy trail

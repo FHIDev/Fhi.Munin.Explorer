@@ -78,16 +78,15 @@ public class VariableViewTest : BunitContext
 
         var body = Assert.Single(cut.FindAll(".munin-explorer-page__body"));
 
-        // The body, and only the body, sheds its older name: every published Stiler lays
-        // `munin-explorer-<view>__body` out as `minmax(0, 1fr) 320px`, so the contents column
-        // below would take the first track and leave the main column in the 320px rail.
+        // The body, and only the body, sheds its older name: an element wearing both would carry a
+        // `grid-template-columns` from each block, settled by which stylesheet the host loaded last.
         Assert.Equal("munin-explorer-page__body", body.ClassName);
         Assert.Contains("munin-explorer-whole__main", cut.Find(".munin-explorer-page__main").ClassList);
 
-        // The contents column comes first and is drawn empty. Its track is a fixed 250px, so a body
-        // holding the main column alone would lay that column out in it.
-        Assert.Equal("munin-explorer-page__toc", body.Children[0].ClassName);
-        Assert.Empty(body.Children[0].TextContent);
+        // Nothing fills the contents column yet, so the body is one child in one track rather than
+        // an empty rail beside the content. DetailPageTest pins the shape with the column in it.
+        Assert.Contains("munin-explorer-page__main", Assert.Single(body.Children).ClassList);
+        Assert.Empty(cut.FindAll(".munin-explorer-page__toc"));
     }
 
     [Fact]

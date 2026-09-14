@@ -8,7 +8,6 @@ category: Changed
   and `munin-explorer-kilde__main` sit beside the chassis names there, and so do the `-datasamling`
   and `-whole` equivalents — because one of them, `munin-explorer-kilde__datasamlinger`, is styled
   by an expanded row in the kildeutforsker as well as by the detail page. The body is the one
-  element that does not keep its old name: `munin-explorer-kilde__body`,
-  `munin-explorer-datasamling__body` and `munin-explorer-whole__body` are no longer emitted, and
-  the reason is in the notes for hosts. The markup below the chassis is untouched, down to the
-  count of `dt`/`dd` pairs. (Fhi.Metadata-35w0p.9)
+  element that does not keep its old name, which is a break and is written up under Removed. The
+  markup below the chassis is untouched, down to the count of `dt`/`dd` pairs.
+  (Fhi.Metadata-35w0p.9)

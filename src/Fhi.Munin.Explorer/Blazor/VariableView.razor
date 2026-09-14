@@ -2,8 +2,8 @@
 
 @if (Variable is { } variable)
 {
-    <DetailPage LegacyRoot="munin-explorer-whole"
-                LegacyMain="munin-explorer-whole__main">
+    <DetailPage ViewRoot="munin-explorer-whole"
+                ViewMain="munin-explorer-whole__main">
         <Header>
             <div class="munin-explorer-whole__header">
                 @{ var named = T.Named(variable.PreferredTerm, variable.Code); }

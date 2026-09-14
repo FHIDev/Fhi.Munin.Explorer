@@ -380,7 +380,6 @@ public class KildeViewTest : BunitContext
             "munin-explorer-page__main",
             // The wrapper each block below the name sits in, so a contents nav can anchor on it.
             "munin-explorer-page__section",
-            "munin-explorer-page__toc",
         ], invented);
     }
 
@@ -396,16 +395,15 @@ public class KildeViewTest : BunitContext
 
         var body = Assert.Single(cut.FindAll(".munin-explorer-page__body"));
 
-        // The body, and only the body, sheds its older name: every published Stiler lays
-        // `munin-explorer-<view>__body` out as `minmax(0, 1fr) 320px`, so the contents column
-        // below would take the first track and leave the main column in the 320px rail.
+        // The body, and only the body, sheds its older name: an element wearing both would carry a
+        // `grid-template-columns` from each block, settled by which stylesheet the host loaded last.
         Assert.Equal("munin-explorer-page__body", body.ClassName);
         Assert.Contains("munin-explorer-kilde__main", cut.Find(".munin-explorer-page__main").ClassList);
 
-        // The contents column comes first and is drawn empty. Its track is a fixed 250px, so a body
-        // holding the main column alone would lay that column out in it.
-        Assert.Equal("munin-explorer-page__toc", body.Children[0].ClassName);
-        Assert.Empty(body.Children[0].TextContent);
+        // Nothing fills the contents column yet, so the body is one child in one track rather than
+        // an empty rail beside the content. DetailPageTest pins the shape with the column in it.
+        Assert.Contains("munin-explorer-page__main", Assert.Single(body.Children).ClassList);
+        Assert.Empty(cut.FindAll(".munin-explorer-page__toc"));
     }
 
     // ---------------------------------------------------------------------------------
@@ -1865,42 +1863,6 @@ public class KildeViewTest : BunitContext
                                   branch => !branch.Contains("__aside", StringComparison.Ordinal)
                                             && Regex.IsMatch(branch, Base))),
             "No unscoped rule leaves munin-explorer-meta__grid two lanes for the main column.");
-    }
-
-    [Fact]
-    public void Body_WhenAHostLaysOutADetailView_ThenTheColumnIsTheOnlyTrack()
-    {
-        // The other stylesheet half, and the one the markup change needs: the aside is gone, so a
-        // body still declaring `minmax(0, 1fr) 320px` above 1024px leaves a 320px track with
-        // nothing in it and narrows the column this change exists to widen. (Fhi.Metadata-35w0p.6)
-        var rules = Regex
-            .Matches(WideBlock(HostClassNames.SampleCss), @"(?<selector>[^{}]*)\{(?<declarations>[^{}]*)\}")
-            .Select(rule => (Selector: rule.Groups["selector"].Value,
-                             Declarations: rule.Groups["declarations"].Value))
-            .ToList();
-
-        foreach (var body in (string[])
-                 [
-                     "munin-explorer-kilde__body",
-                     "munin-explorer-datasamling__body",
-                     "munin-explorer-whole__body",
-                 ])
-        {
-            // Per branch, so grouping the three under one selector stays equivalent CSS here.
-            var tracks = rules
-                .Where(rule => rule.Selector.Split(',').Any(
-                    branch => Regex.IsMatch(branch, $@"\.{body}(?![\w-])")))
-                .Select(rule => Regex.Match(rule.Declarations, @"grid-template-columns:\s*([^;]+)"))
-                .Where(match => match.Success)
-                .Select(match => match.Groups[1].Value.Trim())
-                .ToList();
-
-            // Nothing here may pass by saying nothing: deleting the rule would empty the set.
-            Assert.NotEmpty(tracks);
-
-            // Anchored on the whole value, so a second track appended to it fails.
-            Assert.All(tracks, value => Assert.Matches(@"^minmax\(\s*0\s*,\s*1fr\s*\)$", value));
-        }
     }
 
     [Fact]

@@ -8,11 +8,9 @@ category: Notes for hosts
   full-width column — do not narrow the base rule to win it back, or the metadata groups lose their
   two lanes with it. And `munin-explorer-kilde__body`, `munin-explorer-datasamling__body` and
   `munin-explorer-whole__body` were grids whose second track is a fixed 320px above 1024px. With
-  nothing left to put in it that track is empty space to the right of the page: rendered in
+  nothing left to put in it that track was empty space to the right of the page: rendered in
   `samples/LegacyHost` at a 1440px viewport before this change, the main column measured 954px
-  inside a 1298px body, the missing 344px being the track and its gap. **Both sample stylesheets
-  now declare one track**, so a host that copied them should take the same line out. The
-  `Fhi.Helsedata.Stiler` rule they stand in for still declares two, and `Fhi.Metadata-35w0p.39`
-  is what removes it — a separate release, so that the two need not land together. Until it ships,
-  a host on Stiler alone draws the empty track; a host writing its own rules for those three names
-  can drop the second one today. (Fhi.Metadata-35w0p.6)
+  inside a 1298px body, the missing 344px being the track and its gap. Do not go and edit those
+  three rules, though — `Fhi.Metadata-35w0p.9`, in this same release, stops emitting all three
+  names, so the element is `munin-explorer-page__body` and nothing wears them at all. The entry
+  under Removed says what to move where. (Fhi.Metadata-35w0p.6)

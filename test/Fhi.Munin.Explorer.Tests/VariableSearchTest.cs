@@ -11770,9 +11770,8 @@ public class VariableSearchTest : BunitContext
                 "munin-explorer-kilde__kildetype",
                 "munin-explorer-kilde__description",
                 "munin-explorer-page__body",
-                // Drawn empty: nothing fills the contents column yet, and it is emitted anyway
-                // because the chassis grid would otherwise lay the main column out in its track.
-                "munin-explorer-page__toc",
+                // No contents column: it is emitted only when something fills it, and nothing does
+                // until the contents nav ships (Fhi.Metadata-35w0p.12).
                 "munin-explorer-page__main",
                 "munin-explorer-kilde__main",
                 // The wrapper each block below the name sits in. First seen on the datasamlinger,

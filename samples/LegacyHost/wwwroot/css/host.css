@@ -1744,9 +1744,9 @@ table.munin-explorer-data-list tbody th {
   max-width: 65ch;   /* prose, and prose the full width of a wide window is unreadable */
 }
 
-/* One track, at every width. Nothing has worn these names since the chassis took the body over in
-   Fhi.Metadata-35w0p.9, so like the aside below they match nothing and stay only because Stiler
-   still carries them — where the second track is what caught the chassis's contents column. */
+/* Nothing has worn these names since the chassis took the body over in Fhi.Metadata-35w0p.9, so
+   like the aside below they match nothing and stand in for Stiler's own two tracks again — the one
+   track 35w0p.6 collapsed them to fixed a rail no element can be in now. Out with Stiler's, 39. */
 .munin-explorer-kilde__body,
 .munin-explorer-datasamling__body,
 .munin-explorer-whole__body {
@@ -1758,7 +1758,7 @@ table.munin-explorer-data-list tbody th {
   .munin-explorer-kilde__body,
   .munin-explorer-datasamling__body,
   .munin-explorer-whole__body {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) 320px;
     align-items: start;
   }
 }
@@ -1784,8 +1784,8 @@ table.munin-explorer-data-list tbody th {
 }
 
 /* The chassis the three detail views share, worn beside the prefix each of them already had.
-   Every declaration is Stiler's own, from components/munin-explorer/_page.scss, which took its
-   numbers off helsedata's register pages (Fhi.Metadata-35w0p.4, Fhi.Metadata-35w0p.7). */
+   Every declaration is Stiler's own, from components/munin-explorer/_page.scss. Two below restate
+   a rule above because Stiler has both and both names are on the element — not a leftover. */
 .munin-explorer-page > * > :is(h2, h3, h4, h5, h6):first-child {
   margin-top: 0;
 }
@@ -1799,7 +1799,10 @@ table.munin-explorer-data-list tbody th {
    `$desktop-all` token, the exact complement of `$tablet`, so no width matches both a min- and a
    max-width rule. A stand-in that spells a breakpoint differently is standing in for nothing. */
 @media (min-width: 1025px) {
-  .munin-explorer-page__body {
+  /* Two tracks only for a body that has two children: the contents column is emitted only when
+     something fills it, and a lone main column under a fixed first track lands in 250px of a 1440px
+     page. Stiler's own copy is ungated until Fhi.Metadata-ex5wb, so this is ahead of it. */
+  .munin-explorer-page__body:has(> .munin-explorer-page__toc) {
     grid-template-columns: 250px minmax(0, 1fr);
     align-items: start;
   }
