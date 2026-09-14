@@ -1744,9 +1744,9 @@ table.munin-explorer-data-list tbody th {
   max-width: 65ch;   /* prose, and prose the full width of a wide window is unreadable */
 }
 
-/* One track, at every width. The 320px rail these bodies were shaped around stopped being emitted
-   in Fhi.Metadata-35w0p.6, and a second track with nothing in it is 344px of dead page rather than
-   a harmless leftover. The block stays inside the breakpoint it has always been declared in. */
+/* One track, at every width. Nothing has worn these names since the chassis took the body over in
+   Fhi.Metadata-35w0p.9, so like the aside below they match nothing and stay only because Stiler
+   still carries them — where the second track is what caught the chassis's contents column. */
 .munin-explorer-kilde__body,
 .munin-explorer-datasamling__body,
 .munin-explorer-whole__body {

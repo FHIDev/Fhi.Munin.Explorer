@@ -304,7 +304,7 @@ public class KildeViewTest : BunitContext
     }
 
     private static IReadOnlyList<string> BlockHeadings(IRenderedComponent<KildeView> cut) =>
-        [.. cut.FindAll(".munin-explorer-kilde__body .headline-s").Select(e => e.TextContent)];
+        [.. cut.FindAll(".munin-explorer-page__body .headline-s").Select(e => e.TextContent)];
 
     // ---------------------------------------------------------------------------------
     // Styling contract. The package ships no CSS, so every class name this view emits is
@@ -364,7 +364,6 @@ public class KildeViewTest : BunitContext
             "munin-explorer-hierarchy",
             "munin-explorer-hierarchy__metadata",
             "munin-explorer-kilde",
-            "munin-explorer-kilde__body",
             "munin-explorer-kilde__datasamlinger",
             "munin-explorer-kilde__delkilde",
             "munin-explorer-kilde__delkilde-description",
@@ -388,16 +387,19 @@ public class KildeViewTest : BunitContext
     [Fact]
     public void Chassis_WhenTheViewIsDrawn_ThenTheSharedNamesAreWornBesideThisViewsOwn()
     {
-        // Both sets on each element, which is the whole of this change: `__datasamlinger` below is
-        // styled inside an expanded row of the kildeutforsker as well as on this page, so renaming
-        // the prefix would have moved a surface nothing here renders. (Fhi.Metadata-35w0p.9)
+        // Both sets on every element but the body, which is the whole of this change:
+        // `__datasamlinger` below is styled inside an expanded row of the kildeutforsker as well as
+        // on this page, so renaming the prefix would have moved a surface nothing here renders.
         var cut = Render(Kilde());
 
         Assert.Contains("munin-explorer-kilde", cut.Find(".munin-explorer-page").ClassList);
 
         var body = Assert.Single(cut.FindAll(".munin-explorer-page__body"));
 
-        Assert.Contains("munin-explorer-kilde__body", body.ClassList);
+        // The body, and only the body, sheds its older name: every published Stiler lays
+        // `munin-explorer-<view>__body` out as `minmax(0, 1fr) 320px`, so the contents column
+        // below would take the first track and leave the main column in the 320px rail.
+        Assert.Equal("munin-explorer-page__body", body.ClassName);
         Assert.Contains("munin-explorer-kilde__main", cut.Find(".munin-explorer-page__main").ClassList);
 
         // The contents column comes first and is drawn empty. Its track is a fixed 250px, so a body
@@ -501,7 +503,7 @@ public class KildeViewTest : BunitContext
 
         // Counted as well as checked: Assert.All passes over an empty collection, so a selector
         // that stopped matching would leave this test green while checking nothing.
-        var blocks = cut.FindAll(".munin-explorer-kilde__body .headline-s");
+        var blocks = cut.FindAll(".munin-explorer-page__body .headline-s");
         var groups = cut.FindAll(".munin-explorer-group");
 
         Assert.Equal(4, blocks.Count);

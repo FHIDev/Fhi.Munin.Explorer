@@ -70,15 +70,18 @@ public class VariableViewTest : BunitContext
     [Fact]
     public void Chassis_WhenTheViewIsDrawn_ThenTheSharedNamesAreWornBesideThisViewsOwn()
     {
-        // Both sets on each element: the chassis is added beside this view's own prefix rather
-        // than replacing it, so a host rule keyed on either one still draws. (Fhi.Metadata-35w0p.9)
+        // Both sets on every element but the body: the chassis is added beside this view's own
+        // prefix rather than replacing it, so a host rule keyed on either one still draws.
         var cut = Render(Detail());
 
         Assert.Contains("munin-explorer-whole", cut.Find(".munin-explorer-page").ClassList);
 
         var body = Assert.Single(cut.FindAll(".munin-explorer-page__body"));
 
-        Assert.Contains("munin-explorer-whole__body", body.ClassList);
+        // The body, and only the body, sheds its older name: every published Stiler lays
+        // `munin-explorer-<view>__body` out as `minmax(0, 1fr) 320px`, so the contents column
+        // below would take the first track and leave the main column in the 320px rail.
+        Assert.Equal("munin-explorer-page__body", body.ClassName);
         Assert.Contains("munin-explorer-whole__main", cut.Find(".munin-explorer-page__main").ClassList);
 
         // The contents column comes first and is drawn empty. Its track is a fixed 250px, so a body

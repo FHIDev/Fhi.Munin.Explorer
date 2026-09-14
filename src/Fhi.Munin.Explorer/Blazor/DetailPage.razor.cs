@@ -17,7 +17,14 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// The legacy names are parameters rather than a prefix this component completes, because a name
 /// assembled at runtime is invisible to the two checks that reconcile what the package emits
 /// against the README inventory and the sample stylesheets — both read literals out of
-/// <c>src/</c>. Passing <c>munin-explorer-kilde__body</c> whole keeps the name greppable.
+/// <c>src/</c>. Passing <c>munin-explorer-kilde__main</c> whole keeps the name greppable.
+/// </para>
+/// <para>
+/// The body is the one element that sheds its older name instead of wearing both, and so takes no
+/// legacy parameter at all: every published Stiler still lays the three views' own body names out
+/// as <c>minmax(0, 1fr) 320px</c>, the track the aside used to fill, and the contents column this
+/// chassis always emits is a second child for that second track to catch — which put the main
+/// column back in the 320px rail Fhi.Metadata-35w0p.6 took it out of.
 /// </para>
 /// <para>
 /// Public only because a Razor component must be, in the way <see cref="DetailSection"/> and
@@ -38,10 +45,6 @@ public sealed partial class DetailPage : ComponentBase
     /// </remarks>
     [Parameter, EditorRequired]
     public string LegacyRoot { get; set; } = "";
-
-    /// <summary>The view's own body class, worn beside <c>munin-explorer-page__body</c>.</summary>
-    [Parameter, EditorRequired]
-    public string LegacyBody { get; set; } = "";
 
     /// <summary>The view's own main-column class, worn beside <c>munin-explorer-page__main</c>.</summary>
     [Parameter, EditorRequired]

@@ -107,7 +107,7 @@ public class DatasamlingViewTest : BunitContext
 
     /// <summary>The headings of the blocks under the name, in the order they are drawn.</summary>
     private static IReadOnlyList<string> BlockHeadings(IRenderedComponent<DatasamlingView> cut) =>
-        [.. cut.FindAll(".munin-explorer-datasamling__body .headline-s").Select(e => e.TextContent)];
+        [.. cut.FindAll(".munin-explorer-page__body .headline-s").Select(e => e.TextContent)];
 
     // ---------------------------------------------------------------------------------
     // Styling contract. The package ships no CSS, so every class name this view emits is
@@ -144,7 +144,6 @@ public class DatasamlingViewTest : BunitContext
         Assert.Equal(
         [
             "munin-explorer-datasamling",
-            "munin-explorer-datasamling__body",
             "munin-explorer-datasamling__criteria",
             "munin-explorer-datasamling__description",
             "munin-explorer-datasamling__header",
@@ -164,15 +163,18 @@ public class DatasamlingViewTest : BunitContext
     [Fact]
     public void Chassis_WhenTheViewIsDrawn_ThenTheSharedNamesAreWornBesideThisViewsOwn()
     {
-        // Both sets on each element: the chassis is added beside this view's own prefix rather
-        // than replacing it, so a host rule keyed on either one still draws. (Fhi.Metadata-35w0p.9)
+        // Both sets on every element but the body: the chassis is added beside this view's own
+        // prefix rather than replacing it, so a host rule keyed on either one still draws.
         var cut = Render(Datasamling());
 
         Assert.Contains("munin-explorer-datasamling", cut.Find(".munin-explorer-page").ClassList);
 
         var body = Assert.Single(cut.FindAll(".munin-explorer-page__body"));
 
-        Assert.Contains("munin-explorer-datasamling__body", body.ClassList);
+        // The body, and only the body, sheds its older name: every published Stiler lays
+        // `munin-explorer-<view>__body` out as `minmax(0, 1fr) 320px`, so the contents column
+        // below would take the first track and leave the main column in the 320px rail.
+        Assert.Equal("munin-explorer-page__body", body.ClassName);
         Assert.Contains("munin-explorer-datasamling__main", cut.Find(".munin-explorer-page__main").ClassList);
 
         // The contents column comes first and is drawn empty. Its track is a fixed 250px, so a body
