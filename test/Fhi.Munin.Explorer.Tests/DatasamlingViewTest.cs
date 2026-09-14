@@ -338,13 +338,24 @@ public class DatasamlingViewTest : BunitContext
             section.Children.Length > 1, $"Section '{section.Id}' holds its heading and nothing else."));
     }
 
+    /// <summary>
+    /// A datasamling the catalogue has filled in nothing for beyond what it is called. Shared with
+    /// the contents tests below so both ask about the same payload.
+    /// </summary>
+    private static DatasamlingDetail Sparse() => new()
+    {
+        Id = Guid.NewGuid(),
+        Code = "D",
+        PreferredTerm = "D",
+    };
+
     [Fact]
     public void Sections_WhenTheCatalogueHasFilledInNothing_ThenTheSourceBoxStillDrawsARow()
     {
         // Why the source box survives its emptiness check on a payload this bare while the
         // statistics box beside it does not: the kildetype and identification rows both answer
         // "Ikke oppgitt" rather than nothing, and Statistics has no row with a fallback.
-        var cut = Render(new DatasamlingDetail { Id = Guid.NewGuid(), Code = "D", PreferredTerm = "D" });
+        var cut = Render(Sparse());
 
         // The whole list rather than the first row, and by label: a row added above this one is a
         // new row appearing, not the fallback going, and the two should not fail alike.
@@ -430,14 +441,6 @@ public class DatasamlingViewTest : BunitContext
         Assert.Equal("Contents",
                      Render(Datasamling(), language: "en").Find(".munin-explorer-page__toc nav").GetAttribute("aria-label"));
     }
-
-    /// <summary>A datasamling the catalogue has filled in nothing for beyond what it is called.</summary>
-    private static DatasamlingDetail Sparse() => new()
-    {
-        Id = Guid.NewGuid(),
-        Code = "D",
-        PreferredTerm = "D",
-    };
 
     [Theory]
     [InlineData("full")]

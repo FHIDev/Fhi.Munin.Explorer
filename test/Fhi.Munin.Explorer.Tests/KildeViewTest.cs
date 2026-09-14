@@ -1336,13 +1336,24 @@ public class KildeViewTest : BunitContext
                                                          $"Section '{section.Id}' holds its heading and nothing else."));
     }
 
+    /// <summary>
+    /// A source the catalogue has filled in nothing for beyond what it is called. Shared with the
+    /// contents tests below so both ask about the same payload.
+    /// </summary>
+    private static KildeDetail Sparse() => new()
+    {
+        Id = Guid.NewGuid(),
+        Code = "K",
+        PreferredTerm = "K",
+    };
+
     [Fact]
     public void Sections_WhenTheCatalogueHasFilledInNothing_ThenBothFactBoxesStillDrawARow()
     {
         // Why both fact boxes survive their emptiness checks on a payload this bare:
         // KildeTypeLabel answers "Ikke oppgitt" for a source carrying no kildetype and
         // TotalVariables is an int, so no payload the catalogue can send empties either list.
-        var cut = Render(new KildeDetail { Id = Guid.NewGuid(), Code = "K_X", PreferredTerm = "X" });
+        var cut = Render(Sparse());
 
         // Named rather than merely counted, so taking a fallback away fails here saying which row
         // went, rather than somewhere else saying a box was empty.
@@ -1421,14 +1432,6 @@ public class KildeViewTest : BunitContext
                      Render(Kilde(), language: "en").Find(".munin-explorer-page__toc nav").GetAttribute("aria-label"));
     }
 
-    /// <summary>A source the catalogue has filled in nothing for beyond what it is called.</summary>
-    private static KildeDetail Sparse() => new()
-    {
-        Id = Guid.NewGuid(),
-        Code = "K",
-        PreferredTerm = "K",
-    };
-
     [Theory]
     [InlineData("study")]
     [InlineData("kilde")]
@@ -1478,15 +1481,32 @@ public class KildeViewTest : BunitContext
     public void Contents_WhenTheDatasamlingHeadingFollowsTheSource_ThenTheNavSaysWhatTheBlockSays()
     {
         // The one entry whose words are not a fixed text: a source with delkilder heads this block
-        // differently from one without. The nav names the block without drawing it, so this is
-        // where the two could say different things with nothing failing.
-        foreach (var kilde in new[] { Kilde(), Study() })
+        // differently from one without, and a host overrides both with DataCollectionsHeading. The
+        // nav names the block without drawing it, so the two could differ with nothing failing.
+        (KildeDetail Kilde, string? Heading)[] cases =
+        [
+            (Kilde(), null),
+            (Study(), null),
+            // The parameter half of `DataCollectionsHeading ?? DefaultDataCollectionsHeading`, the
+            // only half a host moves and the only path on which the coalesce is written twice.
+            (Kilde(), "Mine datasamlinger"),
+        ];
+
+        foreach (var (kilde, heading) in cases)
         {
-            var cut = Render(kilde);
+            var cut = Render(kilde, dataCollectionsHeading: heading);
+            var entry = cut.Find($".munin-explorer-page__toc a[href='#{DetailSectionIds.DataCollections}']");
 
             Assert.Equal(
                 cut.Find($"#{DetailSectionIds.DataCollections}").FirstElementChild!.TextContent,
-                cut.Find($".munin-explorer-page__toc a[href='#{DetailSectionIds.DataCollections}']").TextContent);
+                entry.TextContent);
+
+            // Both halves falling back to the default would agree too, which is a different defect
+            // and not one this comparison can see.
+            if (heading is not null)
+            {
+                Assert.Equal(heading, entry.TextContent.Trim());
+            }
         }
     }
 

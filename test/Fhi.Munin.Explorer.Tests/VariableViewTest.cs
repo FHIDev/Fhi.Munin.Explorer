@@ -708,13 +708,24 @@ public class VariableViewTest : BunitContext
             section.Children.Length > 1, $"Section '{section.Id}' holds its heading and nothing else."));
     }
 
+    /// <summary>
+    /// A variable the catalogue has filled in nothing for, which is seven of the eight blocks gone.
+    /// Shared with the contents tests below so both ask about the same payload.
+    /// </summary>
+    private static VariableDetail Sparse() => new()
+    {
+        Id = Guid.NewGuid(),
+        Code = "V",
+        PreferredTerm = "V",
+    };
+
     [Fact]
     public void Sections_WhenTheCatalogueHasFilledInNothing_ThenTheSourceBoxStillDrawsARow()
     {
         // Why the source box survives its emptiness check on a payload this bare: KildeTypeLabel
         // answers "Ikke oppgitt" for a variable naming no source, so the list keeps a row even
         // with all three of its fields blank.
-        var facts = Render(new VariableDetail { Id = Guid.NewGuid(), Code = "V", PreferredTerm = "V" })
+        var facts = Render(Sparse())
             .Find($"#{DetailSectionIds.Source} dl.munin-explorer-meta__grid");
 
         // The whole list rather than its first row: a row added above this one is a new row
@@ -803,14 +814,6 @@ public class VariableViewTest : BunitContext
                      Render(Whole(), "en").Find(".munin-explorer-page__toc nav").GetAttribute("aria-label"));
     }
 
-    /// <summary>A variable the catalogue has filled in nothing for, which is five of eight blocks gone.</summary>
-    private static VariableDetail Sparse() => new()
-    {
-        Id = Guid.NewGuid(),
-        Code = "V",
-        PreferredTerm = "V",
-    };
-
     [Theory]
     [InlineData("whole")]
     [InlineData("plain")]
@@ -831,11 +834,11 @@ public class VariableViewTest : BunitContext
     }
 
     [Fact]
-    public void Contents_WhenNoBlockDrawsAtAll_ThenThereIsNoNavAndNoColumnHoldingIt()
+    public void Contents_WhenTheCatalogueFilledInNothing_ThenOneEntrySurvivesAndTheColumnIsStillDrawn()
     {
-        // Sparse() suppresses seven of the eight, and the source box keeps the last one — see
-        // Sections_WhenTheCatalogueHasFilledInNothing. So the emptiest nav this view can reach is
-        // one entry, and the column is drawn because something fills it.
+        // Sparse() suppresses seven of the eight and the source box keeps the last one, so the
+        // emptiest nav this view can reach is one entry and the column is drawn. The no-entries
+        // path — a null Column, no rail at all — is unreachable here and pinned in DetailTocTest.
         var cut = Render(Sparse());
 
         Assert.Equal(["#" + DetailSectionIds.Source], Targets(cut));
