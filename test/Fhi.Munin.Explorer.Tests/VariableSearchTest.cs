@@ -3070,6 +3070,22 @@ public class VariableSearchTest : BunitContext
         /// <summary>Never answer a search from the next one on — the in-flight path.</summary>
         public bool StallSearch { get; set; }
 
+        /// <summary>How many times a kilde's hierarchy was asked for.</summary>
+        /// <remarks>
+        /// Nought on every path this component has. Counted so that a tree drawn from a second
+        /// request rather than from the filters answer fails a test instead of merely being slow.
+        /// (Fhi.Metadata-adog5)
+        /// </remarks>
+        public int HierarchyCalls { get; private set; }
+
+        public override Task<KildeHierarchy?> GetKildeHierarchyAsync(
+            Guid id, CancellationToken cancellationToken = default)
+        {
+            HierarchyCalls++;
+
+            return base.GetKildeHierarchyAsync(id, cancellationToken);
+        }
+
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
             string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default,
@@ -3143,8 +3159,55 @@ public class VariableSearchTest : BunitContext
     /// lookup here to suit one control, and the strictness is what makes <c>Single</c> worth
     /// having. Nivålinjer, whose label is on its own line, has <see cref="LevelLinesSwitch"/>.
     /// </remarks>
-    private static AngleSharp.Dom.IElement Facet(IRenderedComponent<VariableSearch> cut, string label) =>
-        FacetControls(cut).Single(b => b.TextContent.StartsWith(label, StringComparison.Ordinal));
+    private static AngleSharp.Dom.IElement Facet(IRenderedComponent<VariableSearch> cut, string label)
+    {
+        ExpandBranches(cut);
+
+        return FacetControls(cut).Single(b => b.TextContent.StartsWith(label, StringComparison.Ordinal));
+    }
+
+    /// <summary>Open every branch of every facet tree, so a value nested under one can be found.</summary>
+    /// <remarks>
+    /// Branches start shut, and a shut one renders no children at all — so a lookup by label has to
+    /// open them first, where the panel used to draw them unasked. A press here writes no filter and
+    /// asks the API for nothing, which is what makes it invisible to everything else a test
+    /// measures. (Fhi.Metadata-adog5)
+    /// </remarks>
+    private static void ExpandBranches(IRenderedComponent<VariableSearch> cut)
+    {
+        // Bounded, because opening one branch reveals the disclosures under it: a panel that kept
+        // drawing shut branches is a message rather than a hang.
+        for (var guard = 0; guard < 500; guard++)
+        {
+            var shut = cut.FindAll(".munin-explorer-filters button[aria-expanded=false]");
+
+            if (shut.Count == 0)
+            {
+                return;
+            }
+
+            shut[0].Click();
+        }
+
+        throw new InvalidOperationException("the filter panel never ran out of shut branches");
+    }
+
+    /// <summary>The words one row of a facet tree carries: its own label or heading, and no more.</summary>
+    /// <remarks>
+    /// Direct children, so neither the arrow inside the row's disclosure nor anything the reader has
+    /// opened underneath it joins the answer. (Fhi.Metadata-adog5)
+    /// </remarks>
+    private static string RowWords(AngleSharp.Dom.IElement row) =>
+        row.Children
+            .Where(child => child.TagName is "LABEL" or "SPAN")
+            .Select(child => child.TextContent)
+            .FirstOrDefault(string.Empty);
+
+    /// <summary>The disclosure on the branch whose value reads <paramref name="label"/>.</summary>
+    private static IElement Branch(IRenderedComponent<VariableSearch> cut, string label) =>
+        cut.FindAll(".munin-explorer-filters__branch")
+            .Single(li => RowWords(li).StartsWith(label, StringComparison.Ordinal))
+            .QuerySelector(".munin-explorer-filters__disclosure")!;
 
     /// <summary>The toolbar's Nivålinjer switch, found by the role rather than by its label.</summary>
     /// <remarks>
@@ -3309,9 +3372,46 @@ public class VariableSearchTest : BunitContext
         KildeFacet(cut).FirstElementChild!.TextContent.Trim();
 
     /// <summary>The kildetype groups inside the kilde facet, in the order they are drawn.</summary>
+    /// <remarks>
+    /// The rows of the facet's own list, read as its direct children rather than by a descendant
+    /// selector: every branch under a group is a row of a list nested inside it, so a selector
+    /// would enrol the kilder too once the reader opens one. (Fhi.Metadata-adog5)
+    /// </remarks>
     private static IReadOnlyList<AngleSharp.Dom.IElement> KildeTypeGroups(
         IRenderedComponent<VariableSearch> cut) =>
-        [.. KildeFacet(cut).QuerySelectorAll("ul > li > details")];
+        KildeFacet(cut).QuerySelector("ul") is { } list
+            ? [.. list.Children.Where(child => child.TagName.Equals("LI", StringComparison.OrdinalIgnoreCase))]
+            : [];
+
+    /// <summary>The same, with every branch opened first, for a lookup by something nested in one.</summary>
+    private static IReadOnlyList<AngleSharp.Dom.IElement> UnfoldedKildeTypeGroups(
+        IRenderedComponent<VariableSearch> cut)
+    {
+        ExpandBranches(cut);
+
+        return KildeTypeGroups(cut);
+    }
+
+    /// <summary>The heading words on a branch row that is a group rather than a value.</summary>
+    /// <remarks>
+    /// The row's own spans, so neither the arrow the disclosure draws nor anything the reader has
+    /// opened underneath joins the answer.
+    /// </remarks>
+    private static string GroupHeadingWords(AngleSharp.Dom.IElement row) => RowWords(row).Trim();
+
+    /// <summary>The disclosure on a branch row.</summary>
+    private static IElement BranchDisclosure(AngleSharp.Dom.IElement row) =>
+        row.QuerySelector(".munin-explorer-filters__disclosure")!;
+
+    /// <summary>Press one of the toolbar's buttons, without opening anything on the way to it.</summary>
+    /// <remarks>
+    /// <see cref="Facet"/> opens every branch before it looks, which is right for a value nested in
+    /// the tree and wrong for the two controls whose whole job is to fold it. (Fhi.Metadata-adog5)
+    /// </remarks>
+    private static void ClickToolbar(IRenderedComponent<VariableSearch> cut, string label) =>
+        cut.FindAll(".munin-explorer-filters__toolbar button")
+            .Single(b => b.TextContent.Trim().StartsWith(label, StringComparison.Ordinal))
+            .Click();
 
     /// <summary>The box that narrows the kilde facet's own values.</summary>
     private static AngleSharp.Dom.IElement KildeSearchField(IRenderedComponent<VariableSearch> cut) =>
@@ -3511,25 +3611,35 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
-    public void Filter_AtFirstPaint_ThenTheKildetypeGroupsAreClosedDisclosuresRatherThanButtons()
+    public void Filter_AtFirstPaint_ThenEachKildetypeGroupIsAShutDisclosureBesideItsHeading()
     {
-        // Built as <details>/<summary>, so the marker, the open state and the focus ring are the
-        // ones a host already draws for `.munin-explorer-filters summary`. A button with a chevron
-        // of its own looks identical in a mockup and costs a Stiler round. (Fhi.Metadata-l9l2n.67)
+        // The panel opens on the group rows and nothing under them (Fhi.Metadata-l9l2n.67), and the
+        // control that opens one is a button rather than a <summary> round the row: the rows below
+        // carry checkboxes, and the two presses have to be separable. (Fhi.Metadata-adog5)
         var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
 
         var groups = KildeTypeGroups(cut);
 
-        Assert.Equal(["Sentralt helseregister 1", "Biobank 1"],
-                     groups.Select(g => g.FirstElementChild!.TextContent.Trim()));
+        Assert.Equal(["Sentralt helseregister", "Biobank"], groups.Select(GroupHeadingWords));
+        Assert.All(groups, g => Assert.Contains("munin-explorer-filters__branch", g.ClassName!));
 
-        Assert.All(groups, g => Assert.False(g.HasAttribute("open")));
-        Assert.All(groups, g => Assert.Equal("SUMMARY", g.FirstElementChild!.TagName.ToUpperInvariant()));
+        // Shut, and saying so where a screen reader reads it: a <details> carries the state in an
+        // attribute no ARIA consumer is asked for.
+        Assert.All(groups, g => Assert.Equal("false", BranchDisclosure(g).GetAttribute("aria-expanded")));
 
-        // No class on the disclosure and no control inside the summary: either is the tell that a
-        // chevron was drawn by hand, which is what would need a name and a rule of its own.
-        Assert.All(groups, g => Assert.False(g.HasAttribute("class")));
-        Assert.Empty(KildeFacet(cut).QuerySelectorAll("summary button, summary [role='button']"));
+        // Nothing at all under a shut branch, rather than something hidden: a host stylesheet that
+        // beats `[hidden]` cannot put a tab stop back that was never rendered.
+        Assert.All(groups, g => Assert.Empty(g.QuerySelectorAll("ul")));
+        Assert.Empty(KildeFacet(cut).QuerySelectorAll("li ul"));
+
+        // Named after the branch it opens, in the reader's own language, and pointing at nothing
+        // while there is nothing drawn for it to point at.
+        Assert.Equal("Vis nivåene under Sentralt helseregister",
+                     AccessibleName.Of(BranchDisclosure(groups[0])));
+        Assert.All(groups, g => Assert.False(BranchDisclosure(g).HasAttribute("aria-controls")));
+
+        // The disclosure is never the checkbox, and never wraps one.
+        Assert.All(groups, g => Assert.Empty(BranchDisclosure(g).QuerySelectorAll("input")));
     }
 
     [Fact]
@@ -3540,7 +3650,7 @@ public class VariableSearchTest : BunitContext
         // chose — told the next reader something false. (Fhi.Metadata-l9l2n.104)
         var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        var count = KildeTypeGroups(cut)[0].FirstElementChild!.QuerySelector("span")!;
+        var count = KildeTypeGroups(cut)[0].QuerySelector("span.munin-explorer-filters__groupcount")!;
 
         Assert.Equal("munin-explorer-filters__groupcount", count.ClassName);
         Assert.Equal("1", count.TextContent);
@@ -3549,9 +3659,12 @@ public class VariableSearchTest : BunitContext
         // so a `__chosen` here is a group count that was missed by the rename.
         Assert.Empty(cut.FindAll(".munin-explorer-filters__chosen"));
 
-        // The space belongs to the summary rather than to the span, or the group would be
-        // announced as "Sentralt helseregister1".
-        Assert.Equal("Sentralt helseregister 1", KildeTypeGroups(cut)[0].FirstElementChild!.TextContent);
+        // The space belongs to the row rather than to the span, or the heading and its size would
+        // run together into "Sentralt helseregister1".
+        Assert.Equal("Sentralt helseregister 1",
+                     string.Concat(KildeTypeGroups(cut)[0].ChildNodes
+                         .SkipWhile(node => node is IElement { TagName: "BUTTON" })
+                         .Select(node => node.TextContent)));
     }
 
     [Fact]
@@ -3665,6 +3778,10 @@ public class VariableSearchTest : BunitContext
 
         Assert.Contains("Tromsøundersøkelsen", KildeFacet(cut).TextContent, StringComparison.Ordinal);
         Assert.DoesNotContain("Dødsårsaksregisteret", KildeFacet(cut).TextContent, StringComparison.Ordinal);
+
+        // And the name itself is on the page. Every branch starts shut, so a kilde kept for a match
+        // nobody can see would be a row that answers a term it never shows. (Fhi.Metadata-adog5)
+        Assert.Contains("Første besøk", KildeFacet(cut).TextContent, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -3680,6 +3797,40 @@ public class VariableSearchTest : BunitContext
 
         Assert.Contains("Tromsøundersøkelsen", KildeFacet(cut).TextContent, StringComparison.Ordinal);
         Assert.DoesNotContain("Dødsårsaksregisteret", KildeFacet(cut).TextContent, StringComparison.Ordinal);
+        Assert.Contains("Andre runde", KildeFacet(cut).TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Filter_WhenTheKildeSearchMatchesDeepInTheTree_ThenThePathDownToItIsOpened()
+    {
+        // Three branches stand between the kilde the search kept and the datasamling that kept it,
+        // and every one of them starts shut: the match is what the reader typed, so it is the one
+        // thing the facet has to be showing them afterwards. (Fhi.Metadata-adog5)
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE")),
+                                                 FacetsWithDatasamlinger()));
+
+        KildeSearchField(cut).Change("Andre runde");
+
+        // The kildetype heading is lifted away once a term leaves one group standing, so the kilde
+        // is the top of the path here.
+        Assert.Equal("true", Branch(cut, "Tromsøundersøkelsen").GetAttribute("aria-expanded"));
+        Assert.Equal("true", Branch(cut, "Tromsø 4").GetAttribute("aria-expanded"));
+        Assert.Equal("true", Branch(cut, "Første besøk").GetAttribute("aria-expanded"));
+        Assert.Contains("Andre runde", FilterPanel(cut).TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Filter_WhenTheKildeSearchNamesTheKildeItself_ThenItsOwnBranchIsLeftShut()
+    {
+        // The other half of the same rule. A row the reader can already see matched on its own
+        // name, so unfolding it would answer a term with levels nobody asked about.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE")),
+                                                 FacetsWithDatasamlinger()));
+
+        KildeSearchField(cut).Change("Tromsøundersøkelsen");
+
+        Assert.Equal("false", Branch(cut, "Tromsøundersøkelsen").GetAttribute("aria-expanded"));
+        Assert.DoesNotContain("Tromsø 4", FilterPanel(cut).TextContent, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -3751,14 +3902,16 @@ public class VariableSearchTest : BunitContext
 
         Assert.NotEqual(Disclosures(cut).Count, OpenDisclosures(cut).Count);
 
-        ClickFacet(cut, "Utvid alle");
+        ClickToolbar(cut, "Utvid alle");
 
         Assert.Equal(Disclosures(cut).Count, OpenDisclosures(cut).Count);
 
-        // The kildetype groups too. Disclosures() counts direct children of the panel alone, so
-        // without this the press could leave every group folded and the suite would stay green.
+        // The tree's branches too. Disclosures() counts direct children of the panel alone, so
+        // without this the press could leave every branch shut and the suite would stay green.
         Assert.NotEmpty(KildeTypeGroups(cut));
-        Assert.All(KildeTypeGroups(cut), group => Assert.True(group.HasAttribute("open")));
+        Assert.All(KildeTypeGroups(cut),
+                   group => Assert.Equal("true", BranchDisclosure(group).GetAttribute("aria-expanded")));
+        Assert.NotEmpty(KildeFacet(cut).QuerySelectorAll("li ul"));
     }
 
     [Fact]
@@ -3768,15 +3921,17 @@ public class VariableSearchTest : BunitContext
         // hundreds of buttons expanded, which is what there has to be a way back from.
         var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        ClickFacet(cut, "Utvid alle");
-        ClickFacet(cut, "Skjul alle");
+        ClickToolbar(cut, "Utvid alle");
+        ClickToolbar(cut, "Skjul alle");
 
         Assert.Empty(OpenDisclosures(cut));
 
-        // Skjul alle reaches the kildetype groups as well — the panel is unfolded to hundreds of
+        // Skjul alle reaches the tree's branches as well — the panel is unfolded to hundreds of
         // rows without them, which is the state there has to be a way back from.
         Assert.NotEmpty(KildeTypeGroups(cut));
-        Assert.All(KildeTypeGroups(cut), group => Assert.False(group.HasAttribute("open")));
+        Assert.All(KildeTypeGroups(cut),
+                   group => Assert.Equal("false", BranchDisclosure(group).GetAttribute("aria-expanded")));
+        Assert.Empty(KildeFacet(cut).QuerySelectorAll("li ul"));
     }
 
     [Fact]
@@ -3789,11 +3944,11 @@ public class VariableSearchTest : BunitContext
 
         Assert.Equal("", region.TextContent);
 
-        ClickFacet(cut, "Utvid alle");
+        ClickToolbar(cut, "Utvid alle");
 
         Assert.Equal("Alle filtre er utvidet.", region.TextContent);
 
-        ClickFacet(cut, "Skjul alle");
+        ClickToolbar(cut, "Skjul alle");
 
         Assert.Equal("Alle filtre er skjult.", region.TextContent);
     }
@@ -3805,7 +3960,7 @@ public class VariableSearchTest : BunitContext
         // has always kept a filter change from collapsing a facet the reader opened.
         var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        ClickFacet(cut, "Skjul alle");
+        ClickToolbar(cut, "Skjul alle");
         ClickFacet(cut, "Vis historiske");
 
         Assert.Empty(OpenDisclosures(cut));
@@ -4380,12 +4535,10 @@ public class VariableSearchTest : BunitContext
             TotalCount = 42
         }));
 
-        // A heading names a level and does not filter, so it is a summary rather than a label — the
-        // group is a disclosure over its kilder since Fhi.Metadata-l9l2n.67, and the name is the
-        // summary's own first node, ahead of the count span.
-        var unnamed = cut.FindAll(".munin-explorer-filters summary")
-            .Single(summary => summary.ChildNodes[0].TextContent.Trim() == "Ikke oppgitt")
-            .ParentElement!;
+        // A heading names a level and does not filter, so it is a span rather than a label — and a
+        // branch of its own since Fhi.Metadata-l9l2n.67, which has to be opened before the kilde
+        // under it is drawn at all.
+        var unnamed = UnfoldedKildeTypeGroups(cut).Single(row => GroupHeadingWords(row) == "Ikke oppgitt");
 
         Assert.Equal(["Dødsårsaksregisteret (30)"],
                      unnamed.QuerySelectorAll("ul > li > label").Select(label => label.TextContent));
@@ -4436,10 +4589,10 @@ public class VariableSearchTest : BunitContext
 
         // Picked by the kilde inside it rather than by position: the headings follow the order
         // KildeTyper arrived in, and this test is about their words rather than that order.
-        var group = KildeTypeGroups(cut)
+        var group = UnfoldedKildeTypeGroups(cut)
             .Single(g => g.TextContent.Contains("Dødsårsaksregisteret", StringComparison.Ordinal));
 
-        Assert.Equal("Ny kildetype", group.FirstElementChild!.ChildNodes[0].TextContent.Trim());
+        Assert.Equal("Ny kildetype", GroupHeadingWords(group));
         Assert.DoesNotContain("nyKildetype", FilterPanel(cut).TextContent, StringComparison.Ordinal);
     }
 
@@ -4471,9 +4624,8 @@ public class VariableSearchTest : BunitContext
         // (Fhi.Metadata-3n6e1)
         var cut = RenderWith(new FilteringClient(OnePage(), RewordedKildetyper("Sentralt helseregister (nytt)")));
 
-        var heading = KildeTypeGroups(cut)
-            .Single(g => g.TextContent.Contains("Dødsårsaksregisteret", StringComparison.Ordinal))
-            .FirstElementChild!.ChildNodes[0].TextContent.Trim();
+        var heading = GroupHeadingWords(UnfoldedKildeTypeGroups(cut)
+            .Single(g => g.TextContent.Contains("Dødsårsaksregisteret", StringComparison.Ordinal)));
 
         Assert.Equal("Sentralt helseregister (nytt) (30)", Facet(cut, "Sentralt helseregister (nytt)").TextContent);
         Assert.Equal("Sentralt helseregister (nytt)", heading);
@@ -4510,9 +4662,8 @@ public class VariableSearchTest : BunitContext
         // the reader's own language, which is why deleting it is a different bead. (Fhi.Metadata-3n6e1)
         var cut = RenderWith(new FilteringClient(OnePage(), RewordedKildetyper("")));
 
-        var heading = KildeTypeGroups(cut)
-            .Single(g => g.TextContent.Contains("Dødsårsaksregisteret", StringComparison.Ordinal))
-            .FirstElementChild!.ChildNodes[0].TextContent.Trim();
+        var heading = GroupHeadingWords(UnfoldedKildeTypeGroups(cut)
+            .Single(g => g.TextContent.Contains("Dødsårsaksregisteret", StringComparison.Ordinal)));
 
         Assert.Equal("Sentralt helseregister (30)", Facet(cut, "Sentralt helseregister").TextContent);
         Assert.Equal("Sentralt helseregister", heading);
@@ -4539,9 +4690,8 @@ public class VariableSearchTest : BunitContext
             TotalCount = 16
         }));
 
-        var heading = KildeTypeGroups(cut)
-            .Single(g => g.TextContent.Contains("Dødsårsaksregisteret", StringComparison.Ordinal))
-            .FirstElementChild!.ChildNodes[0].TextContent.Trim();
+        var heading = GroupHeadingWords(UnfoldedKildeTypeGroups(cut)
+            .Single(g => g.TextContent.Contains("Dødsårsaksregisteret", StringComparison.Ordinal)));
 
         Assert.Equal("nyKildetype (4)", Facet(cut, "nyKildetype").TextContent);
         Assert.Equal("nyKildetype", heading);
@@ -4572,9 +4722,8 @@ public class VariableSearchTest : BunitContext
         // is allowed to beat — and dropping the case-insensitive test here goes unnoticed without it.
         var cut = RenderWith(new FilteringClient(OnePage(), RewordedKildetyper("SentraltHelseregister")));
 
-        var heading = KildeTypeGroups(cut)
-            .Single(g => g.TextContent.Contains("Dødsårsaksregisteret", StringComparison.Ordinal))
-            .FirstElementChild!.ChildNodes[0].TextContent.Trim();
+        var heading = GroupHeadingWords(UnfoldedKildeTypeGroups(cut)
+            .Single(g => g.TextContent.Contains("Dødsårsaksregisteret", StringComparison.Ordinal)));
 
         Assert.Equal("Sentralt helseregister (30)", Facet(cut, "Sentralt helseregister").TextContent);
         Assert.Equal("Sentralt helseregister", heading);
@@ -4598,9 +4747,8 @@ public class VariableSearchTest : BunitContext
             TotalCount = 16
         }));
 
-        var heading = KildeTypeGroups(cut)
-            .Single(g => g.TextContent.Contains("Dødsårsaksregisteret", StringComparison.Ordinal))
-            .FirstElementChild!.ChildNodes[0].TextContent.Trim();
+        var heading = GroupHeadingWords(UnfoldedKildeTypeGroups(cut)
+            .Single(g => g.TextContent.Contains("Dødsårsaksregisteret", StringComparison.Ordinal)));
 
         Assert.Equal("Ikke oppgitt", heading);
     }
@@ -5110,6 +5258,428 @@ public class VariableSearchTest : BunitContext
         var cut = RenderWith(new FilteringClient(OnePage()));
 
         Assert.Equal(2, Facet(cut, "Tromsøundersøkelsen").ParentElement!.QuerySelectorAll("li").Length);
+    }
+
+    // ---- the tree folds, branch by branch (Fhi.Metadata-adog5) ----
+
+    /// <summary>A Guid built out of two numbers, so a fixture can mint as many as it needs.</summary>
+    private static Guid Numbered(int space, int index) =>
+        new($"{space:x8}-0000-0000-0000-{index:x12}");
+
+    /// <summary>A payload the size the live catalogue reaches: many kilder, each with a long list.</summary>
+    /// <remarks>
+    /// Built rather than pinned to a measured total. The figures in this bead's own notes moved 40%
+    /// in a day while it was open, so what is asserted against this is the shape — one crowded
+    /// kilde among many — and never a number the catalogue owns. (Fhi.Metadata-adog5)
+    /// </remarks>
+    private static FilterOptions ManyDatasamlinger(int kilder = 44, int each = 7)
+    {
+        List<KildeFacet> sources = [];
+        List<DatasamlingFacet> collections = [];
+
+        for (var k = 0; k < kilder; k++)
+        {
+            var kildeId = Numbered(1, k);
+
+            sources.Add(new()
+            {
+                Id = kildeId,
+                Name = $"Kilde {k}",
+                KildeType = "sentraltHelseregister",
+                Count = each,
+            });
+
+            for (var d = 0; d < each; d++)
+            {
+                collections.Add(new()
+                {
+                    Id = Numbered(2, (k * each) + d),
+                    Name = $"Datasamling {k}-{d}",
+                    KildeId = kildeId,
+                    Count = 1,
+                });
+            }
+        }
+
+        return new FilterOptions
+        {
+            KildeTyper =
+            [
+                new() { Value = "sentraltHelseregister", DisplayName = "Sentralt helseregister", Count = kilder }
+            ],
+            Kilder = sources,
+            Datasamlinger = collections,
+            TotalCount = kilder * each,
+        };
+    }
+
+    /// <summary>Every row drawn anywhere in the filter panel.</summary>
+    private static int RowsInThePanel(IRenderedComponent<VariableSearch> cut) =>
+        FilterPanel(cut).QuerySelectorAll("li").Length;
+
+    [Fact]
+    public void Branches_AtFirstPaint_ThenNothingUnderTheTopLevelIsDrawnAtAll()
+    {
+        // Shut is the resting state of every branch, and shut means absent rather than hidden: a
+        // host stylesheet that beats `[hidden]` — which is how two tab panels came to be drawn at
+        // once on 2026-09-03 — cannot put back a tab stop that was never rendered.
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithDatasamlinger()));
+
+        var panel = FilterPanel(cut).TextContent;
+
+        Assert.DoesNotContain("Tromsøundersøkelsen", panel, StringComparison.Ordinal);
+        Assert.DoesNotContain("Tromsø 4", panel, StringComparison.Ordinal);
+        Assert.DoesNotContain("Fjerde runde", panel, StringComparison.Ordinal);
+        Assert.Empty(FilterPanel(cut).QuerySelectorAll("li ul"));
+
+        // And the kildetype rows themselves ARE drawn, or the assertions above would hold over an
+        // empty panel and say nothing.
+        Assert.Equal(["Sentralt helseregister", "Biobank"], KildeTypeGroups(cut).Select(GroupHeadingWords));
+    }
+
+    [Fact]
+    public void Branches_WhenEachLevelIsOpenedInTurn_ThenItRevealsItsOwnChildrenAndNoDeeperOnes()
+    {
+        // Four levels, opened one at a time: kildetype, kilde, delkilde, and the datasamlinger that
+        // hang off each. Opening one must not open the ones below it, or "collapsed by default"
+        // holds for the first press alone.
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithDatasamlinger()));
+
+        BranchDisclosure(KildeTypeGroups(cut)[1]).Click();
+
+        Assert.Contains("Tromsøundersøkelsen", FilterPanel(cut).TextContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("Tromsø 4", FilterPanel(cut).TextContent, StringComparison.Ordinal);
+
+        Branch(cut, "Tromsøundersøkelsen").Click();
+
+        // Both of the kilde's own children: the delkilde, and the datasamling whose DelkildeId is
+        // null — the majority case in the catalogue, and the one an inner join would lose.
+        Assert.Contains("Tromsø 4", FilterPanel(cut).TextContent, StringComparison.Ordinal);
+        Assert.Contains("Tromsø 1", FilterPanel(cut).TextContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("Fjerde runde", FilterPanel(cut).TextContent, StringComparison.Ordinal);
+
+        Branch(cut, "Tromsø 4").Click();
+
+        Assert.Contains("Fjerde runde", FilterPanel(cut).TextContent, StringComparison.Ordinal);
+        Assert.Contains("Første besøk", FilterPanel(cut).TextContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("Andre runde", FilterPanel(cut).TextContent, StringComparison.Ordinal);
+
+        Branch(cut, "Første besøk").Click();
+
+        Assert.Contains("Andre runde", FilterPanel(cut).TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Branches_WhenOneIsClosedAgain_ThenTheLevelsAboveItStayOpen()
+    {
+        // Independently, which is the half a single "expand all" flag would fail: shutting the
+        // delkilde must not take the kilde down with it.
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithDatasamlinger()));
+
+        ExpandBranches(cut);
+
+        Branch(cut, "Tromsø 4").Click();
+
+        Assert.Equal("false", Branch(cut, "Tromsø 4").GetAttribute("aria-expanded"));
+        Assert.Equal("true", Branch(cut, "Tromsøundersøkelsen").GetAttribute("aria-expanded"));
+        Assert.Contains("Tromsø 1", FilterPanel(cut).TextContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("Fjerde runde", FilterPanel(cut).TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Branches_WhenOneIsShutAfterExpandAll_ThenItStaysShutThroughTheNextAnswer()
+    {
+        // Utvid alle is walked off the facets rather than remembered as a flag, and this is the
+        // difference: a sticky flag consulted while drawing would reopen the branch on the next
+        // render and leave it impossible to collapse at all. (Fhi.Metadata-adog5)
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithDatasamlinger()));
+
+        ClickToolbar(cut, "Utvid alle");
+        Branch(cut, "Tromsø 4").Click();
+
+        Assert.Equal("false", Branch(cut, "Tromsø 4").GetAttribute("aria-expanded"));
+
+        // A tick refetches both endpoints and rebuilds the tree, which is the render a flag would
+        // have reopened it in.
+        TickWhereItStands(cut, "Dødsårsaksregisteret");
+
+        Assert.Equal("false", Branch(cut, "Tromsø 4").GetAttribute("aria-expanded"));
+        Assert.Equal("true", Branch(cut, "Tromsøundersøkelsen").GetAttribute("aria-expanded"));
+        Assert.DoesNotContain("Fjerde runde", FilterPanel(cut).TextContent, StringComparison.Ordinal);
+    }
+
+    /// <summary>Tick a facet value where it stands, unfolding nothing to reach it.</summary>
+    /// <remarks>
+    /// <see cref="ClickFacet"/> goes through <see cref="Facet"/>, which opens every branch first —
+    /// right for a value nested in a shut tree, and fatal to a test about a branch the reader shut.
+    /// </remarks>
+    private static void TickWhereItStands(IRenderedComponent<VariableSearch> cut, string label)
+    {
+        var box = FilterPanel(cut).QuerySelectorAll("li")
+            .Single(row => RowWords(row).StartsWith(label, StringComparison.Ordinal))
+            .QuerySelector("input[type=checkbox]")!;
+
+        box.Change(!box.HasAttribute("checked"));
+    }
+
+    [Fact]
+    public void Branches_WhenTheDisclosureIsActivatedFromTheKeyboard_ThenItStillOpens()
+    {
+        // Enter and Space on a <button> synthesise a click reporting no count at all, and the guard
+        // on the handler refuses the two selection gestures that do report one — so a press with no
+        // count has to go through, or the tree is mouse-only. (Fhi.Metadata-zel47)
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithDatasamlinger()));
+
+        BranchDisclosure(KildeTypeGroups(cut)[1]).Click(new MouseEventArgs());
+
+        Assert.Equal("true", BranchDisclosure(KildeTypeGroups(cut)[1]).GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void Branches_WhenAValueHasNothingUnderIt_ThenItOffersNoDisclosureAtAll()
+    {
+        // A control that discloses nothing is a control a reader presses to no effect, and a tab
+        // stop on every leaf of a tree that is mostly leaves.
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithDatasamlinger()));
+
+        ExpandBranches(cut);
+
+        var datasamling = Facet(cut, "Tromsø 1").ParentElement!;
+        var kilde = Facet(cut, "Dødsårsaksregisteret").ParentElement!;
+
+        Assert.Empty(datasamling.QuerySelectorAll(".munin-explorer-filters__disclosure"));
+        Assert.DoesNotContain("munin-explorer-filters__branch", datasamling.ClassName ?? "", StringComparison.Ordinal);
+
+        // The kilde with nothing under it goes the same way, so the rule is "has children" rather
+        // than "is at the leaf level".
+        Assert.Empty(kilde.QuerySelectorAll(".munin-explorer-filters__disclosure"));
+    }
+
+    [Fact]
+    public void Branches_WhenOneIsOpened_ThenItSaysSoWhereAScreenReaderReadsIt()
+    {
+        // aria-expanded on a real <button>, which is what makes it keyboard-operable with no keydown
+        // handler of its own — and aria-controls only while there is a list to point at, a
+        // reference to an absent id being an ARIA error rather than a relationship.
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithDatasamlinger()));
+
+        var shut = BranchDisclosure(KildeTypeGroups(cut)[1]);
+
+        Assert.Equal("BUTTON", shut.TagName.ToUpperInvariant());
+        Assert.Equal("button", shut.GetAttribute("type"));
+        Assert.Equal("Vis nivåene under Biobank", AccessibleName.Of(shut));
+        Assert.False(shut.HasAttribute("aria-controls"));
+
+        shut.Click();
+
+        var open = BranchDisclosure(KildeTypeGroups(cut)[1]);
+
+        Assert.Equal("true", open.GetAttribute("aria-expanded"));
+        Assert.Equal("Skjul nivåene under Biobank", AccessibleName.Of(open));
+
+        var controls = open.GetAttribute("aria-controls");
+
+        Assert.False(string.IsNullOrEmpty(controls));
+        Assert.Equal("UL", cut.Find($"#{controls}").TagName.ToUpperInvariant());
+    }
+
+    [Fact]
+    public void Branches_WhenAKildetypeSpellsItselfWithCharactersAnIdCannotHold_ThenAriaControlsStillResolves()
+    {
+        // A kildetype group's key ends in whatever the API spells that kildetype with. A space in
+        // an id makes aria-controls name two ids and find neither, which is a relationship lost
+        // with nothing on screen or in a log to say so. (Fhi.Metadata-adog5)
+        var facets = Facets() with
+        {
+            KildeTyper =
+            [
+                new() { Value = "kilde register", DisplayName = "Med mellomrom", Count = 1 },
+                new() { Value = "kilde-register", DisplayName = "Med bindestrek", Count = 1 }
+            ],
+            Kilder =
+            [
+                new() { Id = Dodsarsak, Name = "Dødsårsaksregisteret", KildeType = "kilde register", Count = 1 },
+                new() { Id = Tromso, Name = "Tromsøundersøkelsen", KildeType = "kilde-register", Count = 1 }
+            ]
+        };
+
+        var cut = RenderWith(new FilteringClient(OnePage(), facets));
+
+        List<string> ids = [];
+
+        for (var group = 0; group < KildeTypeGroups(cut).Count; group++)
+        {
+            BranchDisclosure(KildeTypeGroups(cut)[group]).Click();
+            ids.Add(BranchDisclosure(KildeTypeGroups(cut)[group]).GetAttribute("aria-controls")!);
+        }
+
+        Assert.Equal(2, ids.Count);
+        Assert.All(ids, id => Assert.DoesNotContain(" ", id, StringComparison.Ordinal));
+        Assert.All(ids, id => Assert.Equal("UL", cut.Find($"#{id}").TagName.ToUpperInvariant()));
+
+        // And two kildetyper differing only in punctuation are two ids: folding them onto one would
+        // point both disclosures at the same list and duplicate the id in the page.
+        Assert.Equal(2, ids.Distinct(StringComparer.Ordinal).Count());
+    }
+
+    [Fact]
+    public void Branches_WhenTheReaderIsEnglish_ThenTheDisclosureIsNamedInEnglish()
+    {
+        // The name is prose this package writes, so it follows Language rather than the catalogue —
+        // the node's own name inside it is the catalogue's and is left alone.
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithDatasamlinger()),
+                             b => b.Add(c => c.Language, "en"));
+
+        Assert.Equal("Show the levels under Biobank", AccessibleName.Of(Branch(cut, "Biobank")));
+    }
+
+    [Theory]
+    [InlineData("en", "en", "Show the levels under", "Hide the levels under")]
+    [InlineData("nb-NO", "no", "Vis nivåene under", "Skjul nivåene under")]
+    public void Branches_WhenACatalogueNameLabelsTheDisclosure_ThenEachPartKeepsItsLanguage(
+        string language, string uiLanguage, string expand, string collapse)
+    {
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithDatasamlinger()),
+                             b => b.Add(c => c.Language, language));
+        ExpandBranches(cut);
+        var button = Branch(cut, "Tromsøundersøkelsen");
+        var ids = button.GetAttribute("aria-labelledby")!.Split(' ');
+
+        Assert.False(button.HasAttribute("aria-label"));
+        Assert.Equal(2, ids.Length);
+        Assert.Equal(uiLanguage, cut.Find($"#{ids[0]}").GetAttribute("lang"));
+        Assert.Equal("no", cut.Find($"#{ids[1]}").GetAttribute("lang"));
+        Assert.Equal("Tromsøundersøkelsen", cut.Find($"#{ids[1]}").TextContent);
+        Assert.Equal($"{collapse} Tromsøundersøkelsen", AccessibleName.Of(button));
+
+        button.Click();
+
+        button = Branch(cut, "Tromsøundersøkelsen");
+        Assert.Equal($"{expand} Tromsøundersøkelsen", AccessibleName.Of(button));
+        Assert.Equal(ids, button.GetAttribute("aria-labelledby")!.Split(' '));
+        var allIds = cut.FindAll("[id]").Select(element => element.Id).ToList();
+        Assert.Equal(allIds.Count, allIds.Distinct(StringComparer.Ordinal).Count());
+    }
+
+    [Fact]
+    public void Branches_WhenOneIsToggled_ThenNothingIsFetchedAndNoFilterMoves()
+    {
+        // The whole promise of the control: a reader can look inside a kilde without filtering on
+        // it, and the tree is drawn from the filters answer the panel already had — so opening a
+        // branch asks the API for nothing, a hierarchy call included.
+        var client = new FilteringClient(OnePage(), FacetsWithDatasamlinger());
+        var cut = RenderWith(client);
+
+        var searches = client.SearchCalls;
+        var facets = client.FacetCalls;
+
+        ExpandBranches(cut);
+        Branch(cut, "Tromsøundersøkelsen").Click();
+
+        Assert.Equal(searches, client.SearchCalls);
+        Assert.Equal(facets, client.FacetCalls);
+        Assert.Equal(0, client.HierarchyCalls);
+        Assert.Equal(0, client.SearchFilter?.ActiveCount ?? 0);
+        Assert.Empty(Chips(cut));
+        Assert.Empty(cut.FindAll(".munin-explorer-filters input[type=checkbox][checked]"));
+    }
+
+    [Fact]
+    public void Branches_WhenAChosenValuesBranchIsShutAndReopened_ThenItIsStillChosen()
+    {
+        // Selection lives in the filter and expansion in the panel, and the two must not be
+        // coupled: a reader tidying the tree away would otherwise drop the filter with it.
+        var client = new FilteringClient(OnePage(), FacetsWithDatasamlinger());
+        var cut = RenderWith(client);
+
+        ClickFacet(cut, "Fjerde runde");
+
+        Assert.Equal(["Fjerde runde"], Chips(cut));
+
+        Branch(cut, "Tromsøundersøkelsen").Click();
+
+        // Out of sight and still narrowing: the chip over the results and the facet's own count are
+        // both read off the payload rather than off what is drawn. (Fhi.Metadata-uidue)
+        Assert.DoesNotContain("Fjerde runde", FilterPanel(cut).TextContent, StringComparison.Ordinal);
+        Assert.Equal(["Fjerde runde"], Chips(cut));
+        Assert.Equal("Kilde (1)", KildeHeading(cut));
+
+        Branch(cut, "Tromsøundersøkelsen").Click();
+        ExpandBranches(cut);
+
+        Assert.True(FacetChosen(cut, "Fjerde runde"));
+        Assert.Equal([Tromso4Round], client.SearchFilter?.DatasamlingIds);
+    }
+
+    [Fact]
+    public void Branches_WhenTheCatalogueIsLarge_ThenAShutPanelDrawsTheKilderAndAnOpenKildeOnlyItsOwn()
+    {
+        // The crowding argument this bead was held over, measured on a payload of its own rather
+        // than on a catalogue total that moves: with one kildetype its heading is lifted away, so
+        // the reader lands on the kilder — and opening one costs that kilde's list and no other's.
+        var facets = ManyDatasamlinger();
+        var cut = RenderWith(new FilteringClient(OnePage(), facets));
+
+        var kilder = facets.Kilder.Count;
+        var each = facets.Datasamlinger.Count / kilder;
+
+        Assert.Equal(kilder, KildeTypeGroups(cut).Count);
+        Assert.DoesNotContain("Datasamling ", FilterPanel(cut).TextContent, StringComparison.Ordinal);
+
+        var shut = RowsInThePanel(cut);
+
+        Branch(cut, "Kilde 7").Click();
+
+        Assert.Equal(shut + each, RowsInThePanel(cut));
+        Assert.Contains("Datasamling 7-0", FilterPanel(cut).TextContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("Datasamling 8-0", FilterPanel(cut).TextContent, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Branches_WhateverTheFirstShutOneIs_ThenEverythingFocusableInItsRowIsItsOwnTwoControls(
+        bool oneKildetype)
+    {
+        // The shape scripts/state-assertions.mjs counts, pinned on both payloads it can meet: with
+        // one kildetype the heading is lifted away and the first shut branch is a kilde row with a
+        // checkbox of its own, so a count that subtracts a fixed one for the disclosure is wrong.
+        var cut = RenderWith(new FilteringClient(
+            OnePage(), oneKildetype ? ManyDatasamlinger() : FacetsWithDatasamlinger()));
+
+        var row = KildeTypeGroups(cut)[0];
+
+        Assert.Equal(0, DisclosedControls(row));
+
+        BranchDisclosure(row).Click();
+
+        Assert.True(DisclosedControls(KildeTypeGroups(cut)[0]) > 0);
+    }
+
+    /// <summary>What one branch row holds that is the reader's to reach, and not the row's own.</summary>
+    /// <remarks>
+    /// The C# half of the browser assertion's own filter: everything deeper sits in a row of its
+    /// own, so the row's disclosure and its checkbox are the two elements whose nearest
+    /// <c>&lt;li&gt;</c> is this one. (Fhi.Metadata-adog5)
+    /// </remarks>
+    private static int DisclosedControls(AngleSharp.Dom.IElement row) =>
+        row.QuerySelectorAll("a[href], button, input, select, textarea, [tabindex]:not([tabindex='-1'])")
+            .Count(control => control.Closest("li") != row);
+
+    [Fact]
+    public void Branches_WhenTheCatalogueIsLargeAndEverythingIsOpened_ThenEveryDatasamlingIsReachable()
+    {
+        // The other end of the same fixture: Utvid alle has to reach the branches, or the control
+        // that used to unfold the whole panel now unfolds the facets and stops at the tree.
+        var facets = ManyDatasamlinger();
+        var cut = RenderWith(new FilteringClient(OnePage(), facets));
+
+        ClickToolbar(cut, "Utvid alle");
+
+        var drawn = FilterPanel(cut).QuerySelectorAll("li > label")
+            .Count(label => label.TextContent.StartsWith("Datasamling ", StringComparison.Ordinal));
+
+        Assert.Equal(facets.Datasamlinger.Count, drawn);
     }
 
     [Fact]
@@ -5883,8 +6453,12 @@ public class VariableSearchTest : BunitContext
 
         Assert.Empty(Named(cut, "Bakgrunn"));
 
+        ExpandBranches(cut);
+
+        // By the row's own words rather than by its text, which now opens with the arrow the
+        // branch's disclosure draws.
         var container = cut.FindAll(".munin-explorer-filters li")
-            .Single(li => li.TextContent.StartsWith("Bakgrunn", StringComparison.Ordinal));
+            .Single(li => RowWords(li).StartsWith("Bakgrunn", StringComparison.Ordinal));
         var child = Assert.Single(Named(cut, "Levekår"));
 
         Assert.Contains(child.ParentElement!, container.QuerySelectorAll("li"));
@@ -5983,8 +6557,12 @@ public class VariableSearchTest : BunitContext
     /// everywhere and the wrong one where how many there are is the question. (Fhi.Metadata-l9l2n.82)
     /// </remarks>
     private static IReadOnlyList<AngleSharp.Dom.IElement> Named(
-        IRenderedComponent<VariableSearch> cut, string label) =>
-        [.. FacetControls(cut).Where(control => control.TextContent.StartsWith(label, StringComparison.Ordinal))];
+        IRenderedComponent<VariableSearch> cut, string label)
+    {
+        ExpandBranches(cut);
+
+        return [.. FacetControls(cut).Where(control => control.TextContent.StartsWith(label, StringComparison.Ordinal))];
+    }
 
     /// <summary>A parent id no facet payload in this file carries, so the node naming it is an orphan.</summary>
     private static readonly Guid NotInThePayload = new("ffffffff-0000-0000-0000-000000000001");
@@ -6511,8 +7089,12 @@ public class VariableSearchTest : BunitContext
         ClickFacet(cut, "GruppeB");
         Assert.Equal([Levekaar], client.SearchFilter?.VariabelgruppeIds);
 
-        static int Drawn(IRenderedComponent<VariableSearch> cut, string label) =>
-            FacetControls(cut).Count(b => b.TextContent.StartsWith(label, StringComparison.Ordinal));
+        static int Drawn(IRenderedComponent<VariableSearch> cut, string label)
+        {
+            ExpandBranches(cut);
+
+            return FacetControls(cut).Count(b => b.TextContent.StartsWith(label, StringComparison.Ordinal));
+        }
     }
 
     [Fact]
@@ -6557,8 +7139,14 @@ public class VariableSearchTest : BunitContext
         // it the switch collapses to one character wide. (Fhi.Metadata-l9l2n.87)
         var buttons = panel.QuerySelectorAll("button");
         Assert.All(
-            buttons.Where(b => b.GetAttribute("role") != "switch"),
+            buttons.Where(b => b.GetAttribute("role") != "switch" && !b.HasAttribute("aria-expanded")),
             b => Assert.Contains("hd-button-square", b.ClassName!));
+
+        // The branch disclosures are the panel's one shape a host stylesheet does not already
+        // dress, so they carry a name of their own — and nothing else does. (Fhi.Metadata-adog5)
+        Assert.All(
+            buttons.Where(b => b.HasAttribute("aria-expanded")),
+            b => Assert.Equal("munin-explorer-filters__disclosure", b.ClassName));
         Assert.Equal(
             "munin-explorer-switch",
             Assert.Single(buttons, b => b.GetAttribute("role") == "switch").ClassName);

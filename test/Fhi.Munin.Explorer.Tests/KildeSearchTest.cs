@@ -5177,7 +5177,7 @@ public class KildeSearchTest : BunitContext
         // without: `__chosen` had four declarations that drew nothing while the summary still laid
         // its <h4> out as a block. The PARTICULAR DECLARATION a host owes is the row — and the
         // marker with it, since a row is not a list-item and gets none. (Fhi.Metadata-l9l2n.58)
-        var rules = HostClassNames.SampleDeclarationsFor("munin-explorer-filters__facets");
+        var rules = HostClassNames.SampleDeclarationsFor("munin-explorer-filters");
 
         static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
 
@@ -5196,7 +5196,7 @@ public class KildeSearchTest : BunitContext
             summary.Any(rule => rule.Selector.Contains("::after", StringComparison.Ordinal)
                                 && !rule.Selector.Contains("[open]", StringComparison.Ordinal)
                                 && rule.Declarations.Contains(
-                                    "counter(list-item,disclosure-closed)", StringComparison.Ordinal)),
+                                    "icon_down.svg", StringComparison.Ordinal)),
             "Nothing draws the disclosure marker back, and a summary laid out as a row is not a "
             + "list-item, so the browser draws none: a folded facet shows nothing to press.");
 
@@ -5204,7 +5204,7 @@ public class KildeSearchTest : BunitContext
         Assert.True(
             summary.Any(rule => rule.Selector.Contains("[open]", StringComparison.Ordinal)
                                 && rule.Declarations.Contains(
-                                    "counter(list-item,disclosure-open)", StringComparison.Ordinal)),
+                                    "icon_up.svg", StringComparison.Ordinal)),
             "The marker does not turn when the facet opens, so an open facet still looks shut.");
     }
 

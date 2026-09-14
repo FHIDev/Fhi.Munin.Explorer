@@ -122,8 +122,11 @@ export const states = {
   },
 
   // The filter tree unfolded, with the guide lines drawn (Fhi.Metadata-wcbxi): axe skips what a
-  // closed <details> hides. Nivålinjer is deliberately NOT pressed — the lines are on at first
-  // render since Fhi.Metadata-dfygj, so pressing it would scan this state with them gone.
+  // closed <details> hides, and since Fhi.Metadata-adog5 it would see nothing of the source tree
+  // at all — a shut branch renders no values, so every level below the first is absent rather than
+  // hidden. Utvid alle reaches both, which is why it is the one press here. Nivålinjer is
+  // deliberately NOT pressed — the lines are on at first render since Fhi.Metadata-dfygj, so
+  // pressing it would scan this state with them gone.
   'filters-level-lines': async page => {
     const panel = page.locator('.munin-explorer-filters');
     await panel.waitFor({ state: 'visible', timeout: findTimeout });
@@ -132,6 +135,13 @@ export const states = {
 
     await page
       .locator('.munin-explorer-filters[data-level-lines="true"] ul ul')
+      .first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
+
+    // And the branches themselves, so a press that unfolded the facets and stopped at the tree
+    // leaves this state failing to arrive rather than scanning a tree that is not there.
+    await page
+      .locator('.munin-explorer-filters__disclosure[aria-expanded="true"]')
       .first()
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
